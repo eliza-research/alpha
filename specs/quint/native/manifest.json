@@ -13,7 +13,7 @@
         "apps/app/src/runtime/local-agent-storage.ts",
         "apps/app/src/runtime/resident-recovery.ts",
         "backend/runtime.ts",
-        "backend/native-cloud-runtime-config.ts",
+        "backend/native-cloud-runtime.ts",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/LocalAgentProviderAdmission.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentCredentialShutdownRetry.java",
@@ -63,7 +63,7 @@
         "apps/app/src/runtime/voice-states.ts",
         "apps/app/src/runtime/cloud-voice.ts",
         "apps/app/src/runtime/live-segment-stream.ts",
-        "apps/app/src/runtime/native-resident-capture.ts",
+        "vendor/eliza/packages/voice/src/voice-assistant-session.ts",
         "apps/app/src/runtime/voice-turn-routes.ts",
         "apps/app/src/runtime/app-speech.ts",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeVoiceBinding.java",
@@ -78,7 +78,9 @@
         "staleEndpointAfterNewSpeechTest",
         "reviewedReadResumesSameTurnTest",
         "muteKeepsReplyAndStopsMicrophoneTest",
-        "stopRejectsLateCaptureTest"
+        "stopRejectsLateCaptureTest",
+        "inputCloseBarrierTest",
+        "stoppingPendingCloseNeverSendsTest"
       ],
       "invariants": [
         "TypeOK",
@@ -88,12 +90,15 @@
         "HeardIsCompleted",
         "VoiceNeverApproves",
         "DictationNeverSubmits",
-        "MutedMicrophoneOff"
+        "MutedMicrophoneOff",
+        "BusyInputClosed",
+        "SendWaitsForClose"
       ],
       "abstractions": [
         "At most three session identities, five turn identities and five utterance identities.",
         "Two complete sentences represent streamed playback and heard-content accounting.",
-        "Errors retire the session; disclosure and exact owner binding are represented as admission predicates."
+        "Errors retire the session; disclosure and exact owner binding are represented as admission predicates.",
+        "Current shared controller closes capture before dispatch and holds it through reply. beginSubmission/inputClosed split a pending capture close; submit combines the completed barrier for synchronous observations."
       ]
     },
     {
@@ -104,15 +109,15 @@
       "invariant": "safety",
       "sources": [
         "apps/app/src/local-speech-playback.ts",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/SpeechAudioFocusPolicy.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/SpeechPcmQueue.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/LiveCaptureAdmission.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLiveVoiceCapture.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeLiveVoicePipe.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/SpeechStreamValidation.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/StreamingSpeechPlayback.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AudioTrackSpeechOutput.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaParadeeSpeech.java"
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechAudioFocusPolicy.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechPcmQueue.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureAdmission.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveVoiceCapture.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureController.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechStreamValidation.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/StreamingSpeechPlayback.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/AudioTrackSpeechOutput.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/ParadeeVoice.java"
       ],
       "tests": [
         "queueBackpressureTest",
@@ -145,10 +150,10 @@
       "sources": [
         "apps/app/src/runtime/always-on-listener.ts",
         "apps/app/src/runtime/always-on-listener-status.ts",
-        "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListenerPolicy.java",
-        "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListeningEpoch.java",
-        "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/IndicatorLease.java",
-        "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListenerStore.java",
+        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListenerPolicy.java",
+        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListeningEpoch.java",
+        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/IndicatorLease.java",
+        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListenerStore.java",
         "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListeningService.java",
         "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ConsentActivity.java",
         "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListenerControlProvider.java",
@@ -182,15 +187,18 @@
       "invariant": "safety",
       "sources": [
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDataReset.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/ResetAuthorization.java",
+        "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset/ResetAuthorization.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/ResetRecoveryActivity.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/ResetCloudRevocation.java",
+        "vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudKeyRevocation.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaApplication.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaResetPlugin.java",
-        "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListenerStore.java",
-        "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListenerControlProvider.java"
+        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListenerStore.java",
+        "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListenerControlProvider.java",
+        "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset/DataReset.java",
+        "patches/eliza/reset-durable-admission.patch"
       ],
       "tests": [
+        "prepared",
         "successfulResetTest",
         "failedListenerRetainsDataTest",
         "staleDeviceCredentialRejectedTest",
@@ -238,18 +246,20 @@
       "step": "step",
       "invariant": "safety",
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/DeferredDeletionJournal.java",
+        "vendor/eliza/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeferredDeletionJournal.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeDeletionCoordinator.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeDeletionClaim.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeDeletionRecovery.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/DeletionDeadline.java",
+        "vendor/eliza/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeletionDispatchClaim.java",
+        "vendor/eliza/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeletionReceiptRecovery.java",
+        "vendor/eliza/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeletionDeadline.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/DeletionWorker.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/NotesDeletionLease.java",
         "apps/app/src/runtime/deletion-owner.ts",
-        "apps/app/src/runtime/deletion-window.ts",
+        "vendor/eliza/packages/contracts/src/deletion-window.ts",
         "apps/app/src/runtime/deletions.ts",
         "apps/app/src/runtime/note-audio-deletions.ts",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeOwnerReminderHost.java"
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeOwnerReminderHost.java",
+        "vendor/eliza/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeferredDeletionCoordinator.java",
+        "patches/eliza/deletion-owner-dispatch.patch"
       ],
       "tests": [
         "undoBeforeExpiryTest",
@@ -284,13 +294,13 @@
         "apps/app/src/prototype/photo-library-adapter.ts",
         "apps/app/src/prototype/video-edit-review.ts",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeReadEpoch.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/PhotoLibraryAccess.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/PermittedMediaCatalog.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/PermittedMediaReview.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/PhotoAttachmentSource.java",
+        "vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotoLibraryAccess.java",
+        "vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedMediaCatalog.java",
+        "vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PermittedMediaReview.java",
+        "vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/SelectedPhotoCopy.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/SelectedDocumentAccess.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/OwnedVideoPlayback.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/VideoCopyEdits.java",
+        "vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/OwnedVideoPlayback.java",
+        "vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/VideoCopyEdits.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPhotoLibraryPlugin.java"
       ],
       "tests": [
@@ -323,7 +333,7 @@
       "invariant": "safety",
       "sources": [
         "apps/app/src/runtime/aosp-telephony.ts",
-        "apps/app/src/runtime/aosp-telephony-client.ts",
+        "vendor/eliza/packages/contracts/src/native-telephony.ts",
         "apps/app/src/runtime/aosp-image.ts",
         "apps/app/src/runtime/sms-agent-contract.ts",
         "apps/app/src/runtime/sms-subscription-revision.ts",
@@ -332,12 +342,12 @@
         "apps/app/src/runtime/clock-contract.ts",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaImageCapabilities.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaTelephonyPlugin.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaContactsCatalog.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/SmsSendJournal.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/SmsRecords.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/SmsPageCursor.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/ClockContract.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/ClockHandoff.java",
+        "vendor/eliza/plugins/plugin-native-contacts/android/src/main/java/ai/eliza/plugins/contacts/ContactsCatalog.java",
+        "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsSendJournal.java",
+        "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsRecords.java",
+        "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsPageCursor.java",
+        "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/clock/ClockProfile.java",
+        "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/clock/ClockHandoff.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaReminders.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentScheduleRearm.java"
       ],
@@ -380,7 +390,7 @@
         "apps/app/src/runtime/cloud-protocol.ts",
         "apps/app/src/runtime/voice-assistant.ts",
         "apps/app/src/runtime/local-agent.ts",
-        "apps/app/src/runtime/google-calendar-outbox.ts",
+        "vendor/eliza/plugins/plugin-calendar/src/linked-sync/sync-controller.ts",
         "apps/app/src/runtime/inbox-operation.ts",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDataReset.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/LocalAgentProviderAdmission.java"
@@ -407,14 +417,18 @@
       ],
       "tests": [
         "signInAndVoiceTest",
+        "replacementSetup",
         "accountReplacementRetiresPendingWorkTest",
         "retiredCalendarDispatchRejectedTest",
         "retiredInboxConfirmRejectedTest",
+        "resetSetup",
         "resetCalendarCompletionRejectedTest",
         "resetInboxReplyRejectedTest",
         "resetDuringDispatchedEffectsTest",
         "backgroundRetiresVoiceGenerationTest",
         "uncoordinatedIdentityChangeDetectedTest",
+        "signedInSetup",
+        "readySetup",
         "mfaAndAcknowledgementRecoveryTest",
         "cancelledAttemptCanRetryTest",
         "precommitStorageFailureTest",
@@ -511,9 +525,9 @@
       "step": "step",
       "invariant": "safety",
       "sources": [
-        "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/IndicatorLease.java",
-        "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/CrashLoopBreaker.java",
-        "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListenerStore.java",
+        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/IndicatorLease.java",
+        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/CrashLoopBreaker.java",
+        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListenerStore.java",
         "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/SenseApplication.java",
         "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListeningService.java"
       ],
@@ -563,11 +577,11 @@
       "step": "step",
       "invariant": "safety",
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/StreamingSpeechPlayback.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/SpeechPcmQueue.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AudioTrackSpeechOutput.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/SpeechAudioFocusPolicy.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/VoiceLatencyTrials.java"
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/StreamingSpeechPlayback.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechPcmQueue.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/AudioTrackSpeechOutput.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechAudioFocusPolicy.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/VoiceLatencyTrials.java"
       ],
       "stateMapping": {
         "started/terminal/stopped/writer/outputOpen": "StreamingSpeechPlayback.start, settle, stop, run/finally",
@@ -699,8 +713,8 @@
       "step": "step",
       "invariant": "safety",
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/LiveVadGate.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLiveVoiceCapture.java"
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveVadGate.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveVoiceCapture.java"
       ],
       "stateMapping": {
         "speaking/above/below": "LiveVadGate.speaking,above,below with exact2-window start and16-window end counts",
@@ -738,7 +752,7 @@
       "step": "step",
       "invariant": "safety",
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeVoiceIpc.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/BufferedStreamExchange.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeVoiceBinding.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/VoiceEventAdmission.java"
       ],
@@ -762,8 +776,8 @@
         "concurrentHandleTest",
         "replacedHandleTest",
         "schedulingFailureTest",
-        "deadlineAfterReturnDecisionTest",
-        "replacementBeforeScheduleFailureTest"
+        "replacementBeforeScheduleFailureTest",
+        "deadlineAfterReturnDecisionTest"
       ],
       "invariants": [
         "TypeOK",
@@ -786,10 +800,10 @@
       "step": "step",
       "invariant": "safety",
       "sources": [
-        "android/aosp/listener/systemui/chip/source/AlphaListeningController.java",
-        "android/aosp/listener/systemui/chip/source/AlphaListeningLease.java",
-        "android/aosp/listener/systemui/chip/source/AlphaListeningPolicy.java",
-        "android/aosp/listener/systemui/chip/source/AlphaListeningChipView.java"
+        "vendor/eliza/packages/os/android/sense/systemui/chip/source/SenseListeningController.java",
+        "vendor/eliza/packages/os/android/sense/systemui/chip/source/SenseListeningLease.java",
+        "vendor/eliza/packages/os/android/sense/systemui/chip/source/SenseListeningPolicy.java",
+        "vendor/eliza/packages/os/android/sense/systemui/chip/source/SenseListeningChipView.java"
       ],
       "stateMapping": {
         "view": "Controller identity/AudioManager observations, user-switch state, display/keyguard/shade state and measured chip/host visibility",

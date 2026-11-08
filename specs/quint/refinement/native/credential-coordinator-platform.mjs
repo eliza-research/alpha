@@ -11,7 +11,7 @@ export function credentialCoordinatorPlatform() {
   files['android/content/Context.java']=files['android/content/Context.java'].replace('public class Context {','public class Context {\npublic java.io.File getNoBackupFilesDir(){return getFilesDir();}\npublic String getPackageName(){return "ai.elizaresearch.alphaphone";}\npublic android.content.pm.PackageManager getPackageManager(){return new android.content.pm.PackageManager();}');
   files['android/content/Intent.java']=`package android.content;
 public class Intent {
-  public static final String ACTION_VIEW = "view", CATEGORY_BROWSABLE = "browse";
+  public static final String ACTION_VIEW = "view", CATEGORY_BROWSABLE = "browse", CATEGORY_DEFAULT = "default";
   private android.net.Uri data;
   public Intent() {}
   public Intent(String action, android.net.Uri value) {
@@ -57,7 +57,7 @@ public class Activity extends android.content.Context {
   }
 }`;
   files['androidx/lifecycle/Lifecycle.java']='package androidx.lifecycle;public class Lifecycle {public enum State {RESUMED;public boolean isAtLeast(State other){return true;}}public State getCurrentState(){return State.RESUMED;}}';
-  files['android/content/pm/PackageManager.java']='package android.content.pm;public class PackageManager {public static final int MATCH_DEFAULT_ONLY=1;public java.util.List<Object> queryIntentActivities(android.content.Intent intent,int flags){return java.util.List.of();}}';
+  files['android/content/pm/PackageManager.java']='package android.content.pm;public class PackageManager {public static final int MATCH_DEFAULT_ONLY=1, PERMISSION_GRANTED=0;public java.util.List<Object> queryIntentActivities(android.content.Intent intent,int flags){return java.util.List.of();}}';
   files['android/content/pm/verify/domain/DomainVerificationManager.java']='package android.content.pm.verify.domain;public class DomainVerificationManager {public DomainVerificationUserState getDomainVerificationUserState(String name){return null;}}';
   files['android/content/pm/verify/domain/DomainVerificationUserState.java']='package android.content.pm.verify.domain;public class DomainVerificationUserState {public static final int DOMAIN_STATE_VERIFIED=1,DOMAIN_STATE_SELECTED=2;public java.util.Map<String,Integer> getHostToStateMap(){return java.util.Map.of();}public boolean isLinkHandlingAllowed(){return false;}}';
   files['android/net/Uri.java']=`package android.net;
@@ -164,7 +164,11 @@ public class JsonCredentialSlots {
 }`;
   files['ai/elizaresearch/alphaphone/ElizaAgentService.java']=files['ai/elizaresearch/alphaphone/ElizaAgentService.java']
    .replace('throw new AssertionError("Unused credential shutdown");','return CredentialCoordinatorPorts.strictStop();')
-   .replace('return false;','return CredentialCoordinatorPorts.confirmed && request==CredentialCoordinatorPorts.strictEpoch;')
+   .replace('return false;','return CredentialCoordinatorPorts.confirmed(request);')
+   .replace('throw new AssertionError("Unexercised strict shutdown reserve");','return CredentialCoordinatorPorts.reserveStrict();')
+   .replace('throw new AssertionError("Unexercised strict shutdown retry");','CredentialCoordinatorPorts.retryStrict(request);')
+   .replace('public static boolean abandonCredentialShutdown(long request){return true;}', 'public static boolean abandonCredentialShutdown(long request){return CredentialCoordinatorPorts.shutdown.abandon(request);}')
+   .replace('public static boolean releaseCredentialShutdown(long request){return true;}', 'public static boolean releaseCredentialShutdown(long request){return CredentialCoordinatorPorts.shutdown.release(request);}')
    .replace('return ResidentTestPorts.boot();','return CredentialCoordinatorPorts.boot();')
    .replace('return ResidentTestPorts.request(input);','return CredentialCoordinatorPorts.request(input);')
    .replace('throw new AssertionError("Unused stream");','CredentialCoordinatorPorts.stream(input,events,handle);')

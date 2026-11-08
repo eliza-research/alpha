@@ -9,17 +9,17 @@ working source. The source lists, named invariants, scenarios and bounds are in
 | Model | Source symbols inspected | State represented |
 | --- | --- | --- |
 | `ResidentRuntime` | `AlphaLocalAgentPlugin.start`, `cancelStart`, `stop`, `getStatus`, `handleOnDestroy`, `startResidentIfAdmissible`, `LocalAgentProviderAdmission.bindCloudProvider`, `applyProviderEnvironment`, `providerStatus`, `ResidentCredentialShutdownRetry.await`, `ResidentScheduleRearm.decide`, renderer `residentRecoveryReason` | Local resident lifecycle, source admission, exact credential generation, uncertain unbind, retained recovery records, reset fence |
-| `VoiceSession` | `VoiceAssistantSession.start`, `stop`, `setMuted`, `speechStarted`, `schedule`, `submit`, `respond`, `resume`, `playSentence`, `createNativeLiveDictation`, `createCloudVoice` | Session/turn/utterance generations, semantic and long-gap endpointing, capture, mute, barge-in, completed-sentence accounting, separately reviewed read response and local dictation |
+| `VoiceSession` | `VoiceAssistantSession.start`, `stop`, `setMuted`, `speechStarted`, `schedule`, `submit`, `respond`, `resume`, `respond`, `createNativeLiveDictation`, `createCloudVoice` | Session/turn/utterance generations, semantic and long-gap endpointing, capture, mute, barge-in, completed-sentence accounting, separately reviewed read response and local dictation |
 | `SpeechResources` | `LiveCaptureAdmission.begin`, `attach`, `stop`, `cancelAll`, `SpeechAudioFocusPolicy.changed`, `stopsCapture`, `SpeechPcmQueue.offer`, `take`, `close` | Capture reservation and late startup, one capture owner, transient focus/duck/loss, bounded PCM queue and canceled stream |
 | `AlwaysOnListener` | `ListenerPolicy.decide`, `holdsMicrophone`, `processesAudio`, `latchesIndicatorLoss`, `IndicatorLease.renew`, `verdict`, `ListeningEpoch.current`, `ListenerStore` consent generation | Consent, visibility, unlock, call/privacy, SystemUI lease, explained pause, sticky indicator loss and queued recognition invalidation |
-| `ResetRecovery` | `ResetAuthorization.begin`, `confirm`, `authenticate`, `retire`, `AlphaDataReset.record`, `automaticAttempt`, `retry`, `admittedAttempt`, `automaticAttemptAllowed`, `admitAndExit` | Activity-bound approval, durable pending marker, listener-first reset, bounded automatic retry, recovery surface, accepted dispatch and externally observed erasure |
+| `ResetRecovery` | `ResetAuthorization.begin`, `confirm`, `authenticate`, `retire`, `DataReset.record`, `automaticAttempt`, `retry`, `admittedAttempt`, `automaticAttemptAllowed`, `admitAndExit` | Activity-bound approval, durable pending marker, listener-first reset, bounded automatic retry, recovery surface, accepted dispatch and externally observed erasure |
 | `DeletionJournal` | `DeferredDeletionJournal.stage`, `undo`, `expire`, `list`, `acknowledge`, `NativeDeletionCoordinator.reconcile`, `stageOwnerCurrent` | Durable intent, monotonic Undo window, changed boot, exact owner/source admission, dispatch uncertainty and retained no-replay receipt |
-| `MediaLifecycle` | `NativeReadEpoch.current`, `LibraryCatalog.observeScope`, `PhotoAttachmentSource.read`, `publish`, browser `beginPhotoEdit`, `savePhotoEdit`, `cancelPhotoEdit`, `resultPhotoEdit` | Per-item permission, lifecycle/source revision, selected read, reviewed output, canceled temporary capture and active playback |
-| `DeviceActions` | `SmsSendJournal.beginDispatch`, `endDispatch`, `sentResult`, `status`, `existing`, telephony read epoch checks, `retainReminderCreation`, `checkReminderCreation`, `reconcileReminderCreations`, `ClockContract.receiver` | Image/permission/SIM gates, exact reviewed SMS binding, durable dispatch, multipart evidence, retired operation id, stale contacts, reminder creation recovery and revision-bound notification |
+| `MediaLifecycle` | `NativeReadEpoch.current`, `LibraryCatalog.observeScope`, `SelectedPhotoCopy.read`, `publish`, browser `beginPhotoEdit`, `savePhotoEdit`, `cancelPhotoEdit`, `resultPhotoEdit` | Per-item permission, lifecycle/source revision, selected read, reviewed output, canceled temporary capture and active playback |
+| `DeviceActions` | `SmsSendJournal.beginDispatch`, `endDispatch`, `sentResult`, `status`, `existing`, telephony read epoch checks, `retainReminderCreation`, `checkReminderCreation`, `reconcileReminderCreations`, `ClockHandoff.receiver` | Image/permission/SIM gates, exact reviewed SMS binding, durable dispatch, multipart evidence, retired operation id, stale contacts, reminder creation recovery and revision-bound notification |
 | `RendererRecovery` | `RendererRecoveryBudget.onLoss`, `MainActivity.onRenderProcessGone`, delayed recreation and stock Settings actions | Three immediate losses, exact 60-second window, five-second backoff, HOME escape, duplicate callbacks and activity ownership |
 | `VadSegmentation` | `LiveVadGate.accept`, `close` | Two high windows to open, sixteen low windows to close, hysteresis thresholds, nonfinite values and counter reset |
-| `VoiceIpcAssembly` | `NativeVoiceIpc.exchange` | Handle ownership, deadline, response/chunk assembly, size limit, completion validation, first failure and cleanup |
-| `ListenerLeaseProducer` | SystemUI `AlphaListeningController`, `AlphaListeningLease` | Measured eligible surfaces, queued acknowledgements, target validation, client generation and lease retirement |
+| `VoiceIpcAssembly` | `BufferedStreamExchange.exchange` | Handle ownership, deadline, response/chunk assembly, size limit, completion validation, first failure and cleanup |
+| `ListenerLeaseProducer` | SystemUI `SenseListeningController`, `SenseListeningLease` | Measured eligible surfaces, queued acknowledgements, target validation, client generation and lease retirement |
 
 The reviewed source paths are listed as repository-relative paths in the
 manifest. Every callback accepting an identity has matching and stale scenarios.
@@ -286,3 +286,26 @@ credential store's real lifecycle coordinator, including strict shutdown,
 rebind, partial writes, concurrent owners and in-flight request/stream retirement.
 Its observation relation and platform boundaries are in
 [credential-coordinator-report.md](../refinement/native/credential-coordinator-report.md).
+
+## Current shared-source port
+
+The current pin is `475a8d59dc1811c2cde093613519906a5a3f6457`. The manifest now
+maps the retained models to current product wrappers and shared Java or client
+implementations. `current-policies.mjs` compiles the current classes directly,
+including package-scoped SMS operations in a package-local observation harness.
+`current-renderer.mjs` records the transitive source graph before executing the
+shared voice controller and renderer resident wrapper.
+
+The shared voice controller closes its capture before sending a turn and holds
+input closed through response playback and owner review. `beginSubmission` and
+`inputClosed` represent the asynchronous close boundary, while `submit` combines
+the completed boundary for synchronous source observations. `inputCloseFailed`
+retires the active session and reports the source error state. Eight actual
+controller schedules include delayed close, rejected close and Stop racing close.
+The request and service-stop lease fields in `NativeCredentialMutation` model
+native-issued request expiry/cancellation and exact shutdown ownership.
+
+The detailed current-pin source report is
+`specs/quint/refinement/native/current-port-report.md`. Earlier counts above are
+historical checks of their stated revisions. Current implementation receipts
+retain source/model/driver hashes and explicit Android/provider obligations.

@@ -194,6 +194,18 @@ private static final class ResidentAttachDiagnostic {
  private static void clearEnrollment(){AlphaCanonicalNotifications.stop();rootToken=null;ownerToken=null;ownerIdentity=null;notificationAgent=null;expiresAt=0;}
  static long currentCredentialIntent(){return credentialIntents.current();}
  static long reserveCredentialIntent(){return credentialIntents.reserve();}
+ static long reserveCredentialIntent(java.util.function.BooleanSupplier ownerCurrent){
+  synchronized(lifecycleLock){
+   if(!ownerCurrent.getAsBoolean())throw new IllegalStateException("Credential owner closed");
+   return credentialIntents.reserve();
+  }
+ }
+ private long providerIntent(String requestId){
+  synchronized(lifecycleLock){
+   if(disposed)throw new IllegalStateException("Local agent bridge closed");
+   return requestId==null?credentialIntents.reserve():providerConfigurations.begin(requestId);
+  }
+ }
  static void requireCredentialIntent(long intent){credentialIntents.require(intent);}
  interface CredentialMutation<T> {
   boolean requiresShutdown()throws Exception;
@@ -339,7 +351,7 @@ private static final class ResidentAttachDiagnostic {
   if(!validProviderToken(key,1024)||!model.matches("[A-Za-z0-9][A-Za-z0-9._/-]{0,127}")){call.reject("Enter a valid Cerebras key.");return;}
   if(!CEREBRAS_PROVIDER_MODEL.equals(model)){call.reject(PRODUCT_NAME+" uses "+CEREBRAS_PROVIDER_MODEL+" on Cerebras.");return;}
   final String requestId=call.getString("requestId","");final long configuration;
-  try{configuration=providerConfigurations.begin(requestId);}catch(Exception unavailable){call.reject("Provider request was cancelled or is unavailable.");return;}
+  try{configuration=providerIntent(requestId);}catch(Exception unavailable){call.reject("Provider request was cancelled or is unavailable.");return;}
   PluginWorkers.submit(workers,()->{try{
    AlphaCredentialStore store=new AlphaCredentialStore(getContext(),()->{if(disposed)throw new IllegalStateException("Local agent bridge closed");providerConfigurations.require(requestId,configuration);});
    store.assertCurrent();
@@ -350,19 +362,29 @@ private static final class ResidentAttachDiagnostic {
  }
  /** Reserve a native-issued lease before receiving any provider keys or removal request. */
  @PluginMethod public void prepareProviderConfiguration(PluginCall call){
-  try{call.resolve(new JSObject().put("requestId",providerConfigurations.reserve()));}
+  try{
+   synchronized(lifecycleLock){
+    if(disposed)throw new IllegalStateException("Local agent bridge closed");
+    call.resolve(new JSObject().put("requestId",providerConfigurations.reserve()));
+   }
+  }
   catch(Exception unavailable){call.reject("Provider setup is busy. Try again shortly.");}
  }
  /** Cancels only this request's still-current credential intent; no store write or runtime stop. */
  @PluginMethod public void cancelProviderConfiguration(PluginCall call){
-  try{providerConfigurations.cancel(call.getString("requestId",""));call.resolve();}
+  try{
+   synchronized(lifecycleLock){
+    if(disposed)throw new IllegalStateException("Local agent bridge closed");
+    providerConfigurations.cancel(call.getString("requestId",""));call.resolve();
+   }
+  }
   catch(Exception invalid){call.reject("Invalid provider cancellation request.");}
  }
  /** Deletes the provider slot and reads it back; resolves only when the slot is gone. */
  @PluginMethod public void clearProvider(PluginCall call) {
   final boolean onlyIfPresent=Boolean.TRUE.equals(call.getBoolean("onlyIfPresent"));
   final String requestId=call.getString("requestId",null);final long configuration;
-  try{configuration=requestId==null?reserveCredentialIntent():providerConfigurations.begin(requestId);}catch(Exception cancelled){call.reject("Provider change was cancelled or is unavailable.");return;}
+  try{configuration=providerIntent(requestId);}catch(Exception cancelled){call.reject("Provider change was cancelled or is unavailable.");return;}
   PluginWorkers.submit(workers,()->{try{
    call.resolve(clearProviderSlot(new AlphaCredentialStore(getContext(),()->{if(disposed)throw new IllegalStateException("Local agent bridge closed");if(requestId==null)requireCredentialIntent(configuration);else providerConfigurations.require(requestId,configuration);}),onlyIfPresent));
   }catch(Exception error){call.reject("The provider key could not be removed.");}finally{if(requestId!=null)providerConfigurations.finish(requestId,configuration);}},()->{if(requestId!=null)providerConfigurations.finish(requestId,configuration);call.reject("Local agent bridge is closed.");});
@@ -383,7 +405,9 @@ private static final class ResidentAttachDiagnostic {
   if(!runtimePackaged()){call.reject("On-device agent is unavailable in this version.");return;}
   String credentialId=call.getString("credentialId",""),model=call.getString("model","");
   if(!CLOUD_PROVIDER_MODEL.equals(model)){call.reject("Choose a supported Cloud model.");return;}
-  final long configuration=reserveCredentialIntent();
+  final long configuration;
+  try{configuration=providerIntent(null);}
+  catch(Exception closed){call.reject("Local agent bridge is closed.");return;}
   PluginWorkers.submit(workers,()->{try{
    AlphaCredentialStore store=new AlphaCredentialStore(getContext(),()->{if(disposed)throw new IllegalStateException("Local agent bridge closed");requireCredentialIntent(configuration);});
    String applied=bindCloudProvider(store,credentialId,model);store.assertCurrent();
@@ -672,6 +696,7 @@ private static final class ResidentAttachDiagnostic {
   String requestId=call.getString("requestId","");
   if(!requestId.matches("[a-f0-9-]{36}")){call.reject("Invalid startup request");return;}
   synchronized(lifecycleLock){
+   if(disposed){call.reject("Local agent bridge is closed.");return;}
    // A start that attached owns no launch: its cancellation retires nothing.
    if(attachedStarts.remove(requestId)){call.resolve();return;}
    if(requestId.equals(startRequestId)&&startRequestEpoch==lifecycleEpoch){
@@ -748,6 +773,7 @@ private static final class ResidentAttachDiagnostic {
  }
  @PluginMethod public void stop(PluginCall call) {
   synchronized(lifecycleLock){
+   if(disposed){call.reject("Local agent bridge is closed.");return;}
    startRequestId=null;startOwnsLaunch=false;
    AlphaCanonicalNotifications.forget(getContext());invalidateCalls();++lifecycleEpoch;accepting=false;stopping=true;clearEnrollment();
    try{ElizaAgentService.stop(getContext());call.resolve(new JSObject().put("state","stopping"));}

@@ -28,7 +28,7 @@ public final class CredentialCoordinatorTraces {
     return field.get(null);
   }
   static long intent() throws Exception {
-    return ((Number)field("credentialIntentEpoch")).longValue();
+    return AlphaLocalAgentPlugin.currentCredentialIntent();
   }
   static String key(String name) { return CloudDeployment.storageSlot(name); }
   static void put(String slot, String value) {
@@ -85,7 +85,7 @@ public final class CredentialCoordinatorTraces {
           get("local-agent-provider:v1") != null, "admission", admission,
           "running",
           ResidentTestPorts.serviceActive || ResidentTestPorts.socketListening,
-          "committed", written, "requestedStop",
+          "committed", written, "legacyBlocked", get(LegacyCloudRecovery.JOURNAL) != null, "requestedStop",
           CredentialCoordinatorPorts.strictStops > stopBase ? 1 : 0,
           "acknowledgedStop",
           CredentialCoordinatorPorts.strictStops > stopBase &&
@@ -118,6 +118,10 @@ public final class CredentialCoordinatorTraces {
   static void event(String kind, String slot, String value) {
     if (trace == null)
       return;
+    if (slot != null && slot.endsWith(LegacyCloudRecovery.JOURNAL)) {
+      if (kind.equals("write-committed")) trace.step("blockLegacy", observe());
+      return;
+    }
     if (kind.equals("strict-stop")) {
       trace.step("retire", observe());
       return;
@@ -327,6 +331,67 @@ public final class CredentialCoordinatorTraces {
       nativeLive.handleOnDestroy();
     }
   }
+  static JSONObject requestObservation(AlphaLocalAgentPlugin plugin, String id) throws Exception {
+    Object requests = Trace.read(plugin, "providerConfigurations");
+    Object lease = ((java.util.Map<?, ?>) Trace.read(requests, "requests")).get(id);
+    JSONObject value = observe();
+    value.put("s.ownerEpoch", intent()).put("s.requestKnown", lease != null)
+        .put("s.requestBegun", lease != null && (Boolean) Trace.read(lease, "begun"));
+    if (lease != null) value.put("s.requestEpoch", Trace.read(lease, "intent"));
+    return value;
+  }
+  static void providerRequest(String scenario) throws Exception {
+    AlphaLocalAgentPlugin plugin = new AlphaLocalAgentPlugin();
+    plugin.load();
+    try {
+      PluginCall prepare = new PluginCall(new JSObject());
+      plugin.prepareProviderConfiguration(prepare);
+      check(prepare.rejection == null, "Request preparation failed");
+      String id = prepare.result.getString("requestId");
+      trace.step("reserveProviderRequest", requestObservation(plugin, id));
+      if (scenario.equals("provider-request-destroy")) {
+        plugin.handleOnDestroy();
+        long before = intent();
+        PluginCall late = new PluginCall(new JSObject());
+        plugin.prepareProviderConfiguration(late);
+        check(late.rejection != null && intent() == before, "Destroyed bridge reserved provider request");
+        late = new PluginCall(new JSObject().put("requestId", id));
+        plugin.cancelProviderConfiguration(late);
+        check(late.rejection != null && intent() == before, "Destroyed bridge cancelled live request");
+        trace.stutter("destroyed provider entry points preserve request ownership", requestObservation(plugin, id));
+        return;
+      }
+      if (scenario.equals("provider-request-cancel") || scenario.equals("provider-request-unknown")) {
+        boolean matching = scenario.equals("provider-request-cancel");
+        PluginCall cancel = new PluginCall(new JSObject().put("requestId", matching ? id : "unknown"));
+        plugin.cancelProviderConfiguration(cancel);
+        check(cancel.rejection == null, "Cancellation failed");
+        trace.step("cancelProviderRequest", requestObservation(plugin, id), matching);
+        if (matching) {
+          PluginCall clear = new PluginCall(new JSObject().put("requestId", id));
+          plugin.clearProvider(clear);
+          check(clear.rejection != null && CredentialCoordinatorPorts.strictStops == 0, "Cancelled request dispatched");
+          trace.value.getJSONArray("steps").put(new JSONObject().put("label", "cancelled request cannot begin")
+              .put("action", Trace.action("beginProviderRequest").put("reject", true)).put("expect", requestObservation(plugin, id)));
+        }
+        return;
+      }
+      selected = "local-agent-provider:v1";
+      trace.step("begin", observe(), "provider", 0, 1);
+      automaticStop();
+      PluginCall clear = new PluginCall(new JSObject().put("requestId", id));
+      synchronized (field("lifecycleLock")) {
+        plugin.clearProvider(clear);
+        trace.step("beginProviderRequest", requestObservation(plugin, id));
+      }
+      await(clear);
+      finish(clear, true);
+      long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+      while ((Boolean)requestObservation(plugin,id).get("s.requestKnown") && System.nanoTime() < deadline) Thread.sleep(1);
+      check(!(Boolean)requestObservation(plugin,id).get("s.requestKnown"), "Completed request retained");
+      trace.step("finishProviderRequest", requestObservation(plugin,id), true);
+    } finally { plugin.handleOnDestroy(); }
+  }
   static void timeout(boolean dispatchFailure, boolean absent,
                       boolean acknowledged) throws Exception {
     trace.step("begin", observe(), "cloud", 2, 1);
@@ -527,6 +592,12 @@ public final class CredentialCoordinatorTraces {
     trace.value.put("sourceObservations", observations)
         .put("portEvents", CredentialCoordinatorPorts.events);
     switch (args[1]) {
+    case "provider-request-cancel":
+    case "provider-request-unknown":
+    case "provider-request-destroy":
+    case "provider-request-clear":
+      providerRequest(args[1]);
+      break;
     case "provider-clear":
     case "provider-bind":
     case "provider-new-bind":

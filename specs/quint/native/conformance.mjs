@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {currentNativeSource} from '../refinement/native/current-sources.mjs';
 import {spawnSync} from 'node:child_process';
 import {mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
@@ -11,7 +12,7 @@ const work = mkdtempSync(join(tmpdir(), 'alpha-quint-native-'));
 const quint = join(root, 'node_modules/.bin/quint');
 const specification = join(directory, 'AlwaysOnListener.qnt');
 const nativeDirectory = join(root, 'android/app/src/main/java/ai/elizaresearch/alphaphone');
-const listenerDirectory = join(root, 'android/sense/src/main/java/ai/elizaresearch/alphaphone/sense');
+const listenerDirectory = join(root, 'vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense');
 
 function run(command, args) {
   const result = spawnSync(command, args, {cwd: root, encoding: 'utf8', timeout: 120_000, maxBuffer: 8 * 1024 * 1024});
@@ -70,9 +71,11 @@ try {
   writeFileSync(inputs, rows.join('\n') + '\n');
   const harness = join(work, 'NativeQuintConformance.java');
   writeFileSync(harness, `package ai.elizaresearch.alphaphone;
-import ai.elizaresearch.alphaphone.sense.ListenerPolicy;
-import ai.elizaresearch.alphaphone.sense.IndicatorLease;
-import ai.elizaresearch.alphaphone.sense.CrashLoopBreaker;
+import ai.eliza.sense.ListenerPolicy;
+import ai.eliza.sense.IndicatorLease;
+import ai.eliza.sense.CrashLoopBreaker;
+import ai.eliza.voice.SpeechAudioFocusPolicy;
+import ai.eliza.plugins.system.reset.ResetAuthorization;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -167,7 +170,7 @@ public final class NativeQuintConformance {
 }
 `);
   run('javac', ['-d', work, harness, join(listenerDirectory, 'ListenerPolicy.java'),
-    join(nativeDirectory, 'ResetAuthorization.java'), join(nativeDirectory, 'SpeechAudioFocusPolicy.java'),
+    currentNativeSource('ResetAuthorization.java'), currentNativeSource('SpeechAudioFocusPolicy.java'),
     join(listenerDirectory, 'IndicatorLease.java'), join(listenerDirectory, 'CrashLoopBreaker.java'),
     join(nativeDirectory, 'ResidentScheduleRearm.java')]);
   console.log(run('java', ['-cp', work, 'ai.elizaresearch.alphaphone.NativeQuintConformance', inputs]));

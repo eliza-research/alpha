@@ -4,14 +4,16 @@ import {app, directory, javaTraces} from './java.mjs';
 import {captureInputs, checkTraces} from '../check-traces.mjs';
 import {residentSources} from './resident-coordinator.mjs';
 import {credentialCoordinatorPlatform} from './credential-coordinator-platform.mjs';
+import {currentNativeSource,nativePatchInputs} from './current-sources.mjs';
 
 export const credentialCoordinatorSources = [
   ...residentSources,
   ...['AlphaCredentialStore.java', 'AlphaConnectionPlugin.java', 'SerialStorageTasks.java',
-    'RendererCredentialSlots.java', 'ConnectionRoutes.java', 'GoogleConnectReturn.java',
-    'CalendarSyncConsent.java'].map(name => app + name),
+    'RendererCredentialSlots.java', 'ConnectionRoutes.java', 'GoogleWorkspaceReturn.java','GoogleWorkspaceReturnFlow.java','LegacyCloudRecovery.java',
+    'CalendarSyncConsent.java'].map(name => currentNativeSource(name)), ...['ConnectionTransport','DelegationCallback','PendingRequests','SecureSlotPolicy','CloudConnectionPolicy','CredentialShutdownLease'].map(name=>currentNativeSource(name+'.java')),
 ];
 export const credentialScenarios = [
+  'provider-request-cancel', 'provider-request-unknown', 'provider-request-destroy', 'provider-request-clear',
   'cloud-write', 'cloud-remove', 'same-cloud', 'ordinary', 'unbound', 'other-environment',
   'oversize', 'write-before', 'write-after', 'strip-before', 'provider-clear', 'provider-bind',
   'late-connection-write', 'late-connection-remove', 'late-native-clear', 'late-native-bind', 'late-native-provider',
@@ -22,7 +24,7 @@ export const credentialScenarios = [
 
 export function generateCredentialCoordinatorTraces(scenario, extraSources = []) {
   const fixture = credentialCoordinatorPlatform();
-  const sources = [...credentialCoordinatorSources,
+  const sources = [...credentialCoordinatorSources, ...nativePatchInputs, directory+'/current-sources.mjs',
     ...['CredentialCoordinatorPorts.java', 'CredentialCoordinatorTraces.java', 'CredentialResidentTraces.java',
       'ResidentTestPorts.java', 'resident-platform.mjs', 'resident-coordinator.mjs',
       'credential-coordinator-platform.mjs', 'Trace.java', 'java.mjs'].map(name => `${directory}/${name}`),

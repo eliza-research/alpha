@@ -13,7 +13,7 @@ function deferred() {
   return {promise, resolve, reject};
 }
 
-function voiceHarness() {
+function voiceHarness(closeGate) {
   let now = 0;
   let current = true;
   let handlers;
@@ -39,7 +39,7 @@ function voiceHarness() {
   const session = new VoiceAssistantSession({
     conversationId: 'refinement',
     assertCurrent() { if (!current) throw new DOMException('retired', 'AbortError'); },
-    async listen(value) { handlers = value; return {fullDuplex: true, async close() {}, cancel() {}}; },
+    async listen(value) { handlers = value; return {fullDuplex: true, async close() { if (closeGate) await closeGate.promise; }, cancel() {}}; },
     send(input) {
       const pending = deferred(); requests.push({input, pending});
       input.signal.addEventListener('abort', () => pending.reject(input.signal.reason), {once: true});
@@ -56,6 +56,7 @@ function voiceHarness() {
     's.phase': session.getSnapshot().phase === 'awaiting-user-input' ? 'awaiting-review' : session.getSnapshot().phase,
     's.capture': Boolean(session.capture),
     's.muted': session.muted,
+    's.inputHeld': session.getSnapshot().inputHeld === true,
   });
   return {session, clock, requests, playbacks, observe,
     get handlers() { return handlers; },
@@ -79,7 +80,7 @@ export async function voiceTraces() {
     host.handlers.onSpeechStart(0); step(action('speechStarts'));
     host.handlers.onSpeechEnd(0); host.handlers.onSegment('Please describe the weather.'); await flush();
     step(action('segment', 0, true), {...host.observe(), 's.text': Boolean(host.session.getSnapshot().pendingText)});
-    await host.clock.advance(800); step(action('submit', true), {...host.observe(), 's.sent': qset(host.requests.map((_, index) => index + 1))});
+    await host.clock.advance(1200); step(action('submit', true), {...host.observe(), 's.sent': qset(host.requests.map((_, index) => index + 1))});
     if (mode === 'stop-pending' || mode === 'retire-pending') {
       if (mode === 'retire-pending') { host.retire(); await flush(); } else await host.session.stop();
       step(action('stop'));
@@ -97,6 +98,28 @@ export async function voiceTraces() {
           expect: {...host.observe(), 's.heard': host.heard()}});
         await host.session.stop(); step(action('stop'));
       }
+    }
+    traces.push(trace);
+  }
+  for (const mode of ['release', 'reject', 'stop']) {
+    const closeGate = deferred();
+    const host = voiceHarness(closeGate);
+    const trace = {name: `voice-close-${mode}`, expect: host.observe(), steps: []};
+    const step = (name, ...args) => trace.steps.push({label: name, action: action(name, ...args), expect: {...host.observe(), 's.sent': qset(host.requests.map((_, index) => index + 1))}});
+    await host.session.start(); step('start', false, true);
+    host.handlers.onSpeechStart(0); step('speechStarts');
+    host.handlers.onSpeechEnd(0); host.handlers.onSegment('Please describe the weather.'); await flush(); step('segment', 0, true);
+    await host.clock.advance(1200); step('beginSubmission', true);
+    if (host.requests.length !== 0) throw new Error('Source sent before capture close');
+    if (mode === 'stop') {
+      const stopping = host.session.stop(); await flush(); step('stop');
+      closeGate.resolve(); await stopping; await flush();
+      trace.steps.push({label: 'retired close completes', action: null, expect: {...host.observe(), 's.sent': qset([])}});
+    } else if (mode === 'reject') {
+      closeGate.reject(new Error('unconfirmed capture close')); await flush(); step('inputCloseFailed');
+    } else {
+      closeGate.resolve(); await flush(); step('inputClosed');
+      await host.session.stop(); step('stop');
     }
     traces.push(trace);
   }

@@ -13,6 +13,8 @@ import org.json.*;
  * evaluated here.
  */
 public final class CredentialCoordinatorPorts {
+  public static final ai.eliza.plugins.agent.runtime.CredentialShutdownLease shutdown =
+      new ai.eliza.plugins.agent.runtime.CredentialShutdownLease();
   public interface Observer {
     void event(String kind, String slot, String value);
   }
@@ -49,13 +51,25 @@ public final class CredentialCoordinatorPorts {
   }
   public static synchronized long elapsed() { return time += tick; }
   public static long strictStop() {
+    long request = reserveStrict();
+    retryStrict(request);
+    return request;
+  }
+  public static long reserveStrict() {
+    strictEpoch = shutdown.acquire();
+    return strictEpoch;
+  }
+  public static void retryStrict(long request) {
+    shutdown.retry(request);
     strictStops++;
-    strictEpoch++;
     emit("strict-stop", null, null);
     stopped.countDown();
     if (failStop)
       throw new IllegalStateException("Strict stop dispatch uncertain");
-    return strictEpoch;
+  }
+  public static boolean confirmed(long request) {
+    shutdown.acknowledge(request, confirmed);
+    return shutdown.isConfirmed(request);
   }
   public static JSONObject boot() {
     JSONObject state = ResidentTestPorts.boot();

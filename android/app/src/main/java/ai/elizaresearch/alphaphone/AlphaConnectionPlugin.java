@@ -155,7 +155,10 @@ public final class AlphaConnectionPlugin extends Plugin {
   });
  }
  private long credentialIntent(String name){
-  return RendererCredentialSlots.credentialSlot(name)?AlphaLocalAgentPlugin.reserveCredentialIntent():0;
+  if(!RendererCredentialSlots.credentialSlot(name))return 0;
+  return AlphaLocalAgentPlugin.reserveCredentialIntent(()->{
+   synchronized(foregroundLock){return !destroyed;}
+  });
  }
  private AlphaCredentialStore storage(long intent){
   return new AlphaCredentialStore(getContext(),()->{if(destroyed)throw new IllegalStateException("Connection closed");if(intent!=0)AlphaLocalAgentPlugin.requireCredentialIntent(intent);});
@@ -378,9 +381,8 @@ public final class AlphaConnectionPlugin extends Plugin {
   requests.resumeAll();
  }
  @Override protected void handleOnDestroy() {
-  destroyed=true;
+  synchronized(foregroundLock){destroyed=true;foregroundLock.notifyAll();}
   requests.cancelAll();
-  synchronized(foregroundLock){foregroundLock.notifyAll();}
   storageTasks.close();workers.shutdownNow(); super.handleOnDestroy();
  }
 }
