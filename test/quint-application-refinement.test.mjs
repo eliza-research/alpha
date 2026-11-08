@@ -4,8 +4,8 @@ import {runApplicationRefinement} from '../specs/quint/refinement/application/in
 
 test('application source observations match bounded Quint component traces', {timeout: 600000}, async () => {
   const result = await runApplicationRefinement();
-  assert.equal(result.receipts.length, 49);
-  assert.equal(new Set(result.receipts.map(receipt => receipt.coverageModel)).size, 45);
+  assert.equal(result.receipts.length, 50);
+  assert.equal(new Set(result.receipts.map(receipt => receipt.coverageModel)).size, 46);
   assert.ok(result.receipts.every(receipt => receipt.passed && receipt.inputsUnchanged && receipt.driverInputsBound));
   assert.ok(Array.isArray(result.obligations), 'remaining obligations accompany the bounded evidence');
 });

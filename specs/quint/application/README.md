@@ -37,6 +37,7 @@ repository-wide allocation and source hashes are recorded in `../coverage.json`.
 | `LauncherOwnership` | Shared launcher and system bridge | Inventory and default read generations, exact component/profile handoff and retired launch fencing |
 | `LauncherObserver` | Shared launcher watcher and system bridge | Package and document events, refresh debounce, late listener settlement and idempotent retirement |
 | `LauncherFavorites` | Shared mobile launcher and Alpha view registry | Ordered favorites, legacy migration, storage refusal, external choice ownership and visible reordering |
+| `HomeGesture` | Alpha Home adapter and shared launcher | Pointer ownership, held and dragged activation, keyboard focus and edit-layer retirement |
 | `CallbackLanding` | Static delegation-return page | Query multiplicity, state shape, result exclusivity, size/description limits, early URL scrubbing and exact app-link exposure |
 | `ListFocus` | `createKeyedListFocus`, current Notes/Photos bindings | Two captures and roots, semantic identity, focus movement, discarded renders and current visibility |
 | `RendererFailureUI` | `RootErrorBoundary`, global startup recovery and shared crash classification | One recovery surface, fixed diagnostic classes, modal retirement and explicit reload |
