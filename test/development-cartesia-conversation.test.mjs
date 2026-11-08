@@ -196,7 +196,12 @@ test('accepted session reset retires busy traces and old frames cannot revive th
 });
 
 
-test('actual SDK and Alpha preserve A queued playback while B failure settles once',async()=>{
+// The paired client compiles the SDK's own packages/ui source, whose @elizaos/* imports resolve only in
+// the prepared SDK (npm run agent:prepare). npm test skips it without one; npm run verify in CI sets
+// ALPHA_REQUIRE_PREPARED_SDK=1 with ALPHA_CLOUD_COLLECTOR_SOURCE, where a missing SDK fails.
+const skipUnprepared=!process.env.ALPHA_CLOUD_COLLECTOR_SOURCE&&process.env.ALPHA_REQUIRE_PREPARED_SDK!=='1'?'Prepared SDK unavailable; run npm run agent:prepare and export ALPHA_CLOUD_COLLECTOR_SOURCE':false;
+test('actual SDK and Alpha preserve A queued playback while B failure settles once',{skip:skipUnprepared},async()=>{
+ assert.ok(process.env.ALPHA_CLOUD_COLLECTOR_SOURCE,'ALPHA_REQUIRE_PREPARED_SDK=1 needs ALPHA_CLOUD_COLLECTOR_SOURCE');
  const observed=[];let readAutomaticMute;
  const observe=row=>{if(observed.length<32&&Buffer.byteLength(JSON.stringify([...observed,row]))<=7168)observed.push(row);};
  // Compile the paired SDK client without replacing its reducer, frame parser or drain.
