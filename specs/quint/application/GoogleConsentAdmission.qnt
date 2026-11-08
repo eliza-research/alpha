@@ -17,7 +17,7 @@ module GoogleConsentAdmission {
   pure def beginRead(value: State, kind: str): State = {
     val id = value.latest + 1
     {...value, latest: id, pending: value.pending.union(Set(id)),
-      reads: value.reads.set(id, {owner: value.owner, kind: kind}), verified: 0, tier: 0, unverified: false}
+      reads: value.reads.set(id, {owner: value.owner, kind: kind}), verified: 0, tier: 0, unverified: false, choice: false}
   }
   val busy = s.mode != "closed" and s.pending.contains(s.latest)
   action open(mode: str): bool = all {s.mode == "closed", Set("settings", "calendar").contains(mode), s.latest < 6,
@@ -50,10 +50,9 @@ module GoogleConsentAdmission {
   action permissionReply = all {s.permission != NoPermission, s.dispatches.length() < 4,
     val prior = s.permission
     val settled = {...s, permission: NoPermission}
-    s' = if (s.mode != "calendar" or prior.panel != s.panel) settled
-      else if (not(s.savedOn)) {...settled, choice: true}
-      else if (prior.owner != s.owner) settled
+    s' = if (s.mode != "calendar" or prior.panel != s.panel or prior.owner != s.owner) settled
       else if (prior.read != s.verified) {...settled, unverified: true}
+      else if (not(s.savedOn)) {...settled, choice: true}
       else dispatch(settled, 1)}
   action allow = all {s.mode == "calendar", not(busy), s.choice, s.dispatches.length() < 4,
     val admitted = {...s, savedOn: true, choice: false}
@@ -75,7 +74,8 @@ module GoogleConsentAdmission {
       and Tiers.contains(request.held) and Tiers.contains(request.tier) and request.floor.in(1.to(2))
       and request.tier >= request.floor and request.tier >= request.held
   })
-  val safety = TypeOK and CurrentVerification and DispatchKeepsGrant
+  val ChoiceOwnsVerification = not(s.choice) or (s.mode == "calendar" and s.verified != 0)
+  val safety = TypeOK and CurrentVerification and DispatchKeepsGrant and ChoiceOwnsVerification
   run unknownListBlocksConsentTest = init.then(open("calendar")).then(reply(1, 0)).then(connectCalendar)
     .expect(s.unverified and s.dispatches == List() and safety)
   run modifyTierSurvivesAddAccountTest = init.then(open("settings")).then(reply(1, 3)).then(connectSettings)
@@ -88,4 +88,7 @@ module GoogleConsentAdmission {
     .then(connectSettings).expect(s.dispatches.nth(0).owner == 2 and s.dispatches.nth(0).tier == 2 and safety)
   run explicitAllowOpensCurrentTierTest = initWith(false).then(open("calendar")).then(reply(1, 3)).then(connectCalendar)
     .then(permissionReply).then(allow).expect(s.savedOn and not(s.choice) and s.dispatches.nth(0).tier == 3 and safety)
+  run newerReadWithdrawsSavedOffChoiceTest = initWith(false).then(open("calendar")).then(reply(1, 2)).then(connectCalendar)
+    .then(permissionReply).expect(s.choice).then(reload).then(reply(2, 1))
+    .expect(not(s.choice) and s.dispatches == List() and safety)
 }

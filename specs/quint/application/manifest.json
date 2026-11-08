@@ -1045,7 +1045,8 @@
       "failedReadbackRetiresAwaitedConsentTest",
       "unknownRevokeReadbackBlocksConsentTest",
       "staleOwnerCannotRestoreReadTest",
-      "explicitAllowOpensCurrentTierTest"
+      "explicitAllowOpensCurrentTierTest",
+      "newerReadWithdrawsSavedOffChoiceTest"
     ],
     "sources": [
       "apps/app/src/runtime/google-connection-ui.tsx",
@@ -2093,6 +2094,33 @@
     "abstractions": [
       "Exact scope queue ownership across actual inbox instances, cancellation, refusal, release, and FIFO admission.",
       "Four callers, two exact effective scopes and one empty provider page per dispatch. Durable result retention has a separate model."
+    ]
+  },
+  {
+    "path": "specs/quint/application/GoogleCalendarAccessChoice.qnt",
+    "module": "GoogleCalendarAccessChoice",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "replacementReadOnlyRetiresOldWriteChoiceTest",
+      "freshReplacementWriteReviewAdmitsItsOwnChoiceTest",
+      "newerSameOwnerReadRetiresHeldAllowTest",
+      "retiredIntentCannotShowHeldPermissionChoiceTest",
+      "freshReadOnlyAllowContinuesConsentTest"
+    ],
+    "invariants": [
+      "ExactChoice",
+      "VerifiedDispatch",
+      "Bounded"
+    ],
+    "sources": [
+      "apps/app/src/runtime/google-connection-ui.tsx",
+      "apps/app/src/runtime/google-connection-return.ts"
+    ],
+    "abstractions": [
+      "Exact verified account read and Calendar intent for a pending Allow Calendar changes prompt and its guarded persistence and continuation.",
+      "Two Cloud bindings, four intents, six reads and six access captures. Controlled native access receipts, Calendar helper and browser consent. Post-consent return, physical persistence and provider effects remain separate."
     ]
   }
 ]

@@ -8,6 +8,6 @@ test('mounted Google consent retains only verified current readbacks and grant t
   assert.equal(receipt.passed, true);
   assert.equal(receipt.inputsUnchanged, true);
   assert.equal(receipt.driverInputsBound, true);
-  assert.equal(receipt.traces, 16);
-  assert.equal(receipt.checkpoints, 100);
+  assert.equal(receipt.traces, 18);
+  assert.equal(receipt.checkpoints, 114);
 });

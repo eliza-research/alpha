@@ -172,6 +172,10 @@ const cases = [
   ['owner-replacement-while-permission-held', true, [openCalendar, reply(1, 3), ask, ['replaceOwner'], reply(2, 1), permissionReply, ask, permissionReply]],
   ['explicit-allow-after-saved-off', false, [openCalendar, reply(1, 3), ask, permissionReply, ['allow']]],
   ['close-during-held-permission', true, [openCalendar, reply(1, 3), ask, ['close'], permissionReply]],
+  ['saved-off-choice-withdraws-on-new-account-read', false, [openCalendar, reply(1, 2), ask, permissionReply,
+    ['reload'], reply(2, 1)]],
+  ['held-saved-off-permission-cannot-show-choice-after-owner-replacement', false, [openCalendar, reply(1, 2), ask,
+    ['replaceOwner'], reply(2, 1), permissionReply]],
 ];
 
 export async function checkGoogleConsentAdmission(extraSources = []) {

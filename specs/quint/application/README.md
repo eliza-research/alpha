@@ -38,6 +38,7 @@ repository-wide allocation and source hashes are recorded in `../coverage.json`.
 | `GoogleConsentAdmission` | Mounted Google connections panel and shared Gmail grant rules | Verified account readback, preserved Gmail tier, stale permission continuation and revoke readback |
 | `GoogleCalendarLinkFlow` | Current Connect Google Calendar orchestration | Verified account, select/resume, pending and conflict readback, latest review ownership and exact operation key |
 | `GoogleCalendarLinkPublication` | Mounted Google account panel for Calendar | Independent read and link ownership, host admission, exact current notice and retained review |
+| `GoogleCalendarAccessChoice` | Mounted Google Calendar access prompt | Exact verified read and intent, stale Ask and Allow receipts, current consent and link admission |
 | `GoogleCalendarDisconnect` | Current Calendar-aware Google disconnect helper | Exact pause admission and readback, independently authorized revoke, callback retirement and bounded cleanup |
 | `NotificationCollection` | `notification-store`, `notifications-adapter`, `AlphaNotificationListener` | Opt-in external collection, package/signature/preview consent, lock privacy, history expiry, policy epoch and independent app/channel delivery settings |
 | `FilesAndSharing` | `reviewFileEmail`, `reviewMailAttachment`, `mediaCopyIntent`, share adapters | One exact source, owner and draft identity, initially unchecked selection, reread before local insertion, cancellation and revoked grant. Send has its own Inbox model |
