@@ -40,8 +40,9 @@ public final class FinitePolicyTraces {
   return Trace.fields("started", Trace.read(budget, "started"), "windowStart", Trace.read(budget, "windowStart"),
     "losses", Math.min(4, (Integer) Trace.read(budget, "lossesInWindow")));
  }
+ // The finite projection covers genuine crashes while the activity is visible.
  static void loss(Trace trace, RendererRecoveryBudget budget, int now, boolean home) throws Exception {
-  RendererRecoveryBudget.Action outcome = budget.onLoss(now, home);
+  RendererRecoveryBudget.Action outcome = budget.onLoss(now, home, true, true);
   trace.step("rendererGone", budget(budget).put("s.decision", outcome.name()).put("s.delay", RendererRecoveryBudget.delay(outcome)), now, true);
  }
  static JSONArray rendererTraces() throws Exception {
@@ -67,11 +68,11 @@ public final class FinitePolicyTraces {
    }
   // Reachable saturation and defensive overflow regression execute the actual source.
   RendererRecoveryBudget budget = new RendererRecoveryBudget();
-  for (int i = 0; i < 10000; i++) budget.onLoss(0, false);
+  for (int i = 0; i < 10000; i++) budget.onLoss(0, false, true, true);
   if (!Trace.read(budget, "lossesInWindow").equals(4)) throw new AssertionError("budget did not saturate");
   java.lang.reflect.Field counter = RendererRecoveryBudget.class.getDeclaredField("lossesInWindow");
   counter.setAccessible(true); counter.setInt(budget, Integer.MAX_VALUE);
-  if (budget.onLoss(0, false) != RendererRecoveryBudget.Action.RECREATE_AFTER_BACKOFF)
+  if (budget.onLoss(0, false, true, true) != RendererRecoveryBudget.Action.RECREATE_AFTER_BACKOFF)
    throw new AssertionError("overflow revived immediate recreation");
   return result;
  }

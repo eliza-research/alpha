@@ -22,10 +22,10 @@ export async function runNativeRefinement() {
     const assumptions = model === 'VadSegmentation'
       ? ['All 18 reachable gate counter states and all 11 probability classes plus close are covered.', 'Float classes use the actual 0.35f and 0.5f comparisons. PCM generation and capture buffers remain external.']
       : model === 'RendererRecovery'
-        ? ['Helper projection covers count classes 0..4+ and elapsed deltas below/at/above 60000ms, equality and backwards time, with reachable prefixes including a fifth loss.', 'Elapsed realtime is nonnegative. The source counter saturates at four; a 10000-loss run and MAX_VALUE defensive regression verify overflow does not revive immediate recreation.', 'Model Activity recreation actions frame the observed helper state. MainActivity lifecycle and Settings launches remain separate obligations.']
+        ? ['Helper projection covers count classes 0..4+ and elapsed deltas below/at/above 60000ms, equality and backwards time, with reachable prefixes including a fifth loss.', 'Elapsed realtime is nonnegative. The source counter saturates at four; a 10000-loss run and MAX_VALUE defensive regression verify overflow does not revive immediate recreation.', 'The helper projection fixes crashed=true and visible=true. Deferred background recovery, MainActivity lifecycle and Settings launches remain separate obligations.']
         : ['Complete five-event/two-unlock/two-package/two-owner/three-lifecycle admission table, with one actual admitAndStart invocation per fresh case.', 'Environment setup is external input. Running-service idempotency and plugin lifecycle mutation remain separate obligations.'];
     results.push(await checkTraces({model, id: `${model}-native`, sources: finiteSources, driverHashes: finiteHashes,
-      scope: 'complete-finite-helper', assumptions, traces: traces[model]}));
+      scope: model === 'RendererRecovery' ? 'bounded-component' : 'complete-finite-helper', assumptions, traces: traces[model]}));
   }
   const componentSources = [
     'vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset/ResetAuthorization.java',
