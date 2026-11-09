@@ -1908,6 +1908,35 @@
         "maxSteps": 80,
         "maxVerifyDepth": 6
       }
+    },
+    {
+      "path": "specs/quint/services/WorkflowWorkerStaging.qnt",
+      "module": "WorkflowWorkerStaging",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "firstPublicationTest",
+        "corruptInputPreservesPreviousTest",
+        "coherentManifestReplacementStillRefusedTest",
+        "refusedPublishRestoresExactPreviousTest",
+        "refusedRestoreLeavesBackupTest",
+        "cleanupFailureExposesPublishedTargetAndBackupTest"
+      ],
+      "invariants": [
+        "VisibleIndexMatchesTarget",
+        "PublicationMatchesVerifiedSource",
+        "OrdinaryRefusalKeepsPrevious",
+        "UncertainWriteRetainsBackup"
+      ],
+      "sources": [
+        "scripts/workflow-worker-artifact.mjs",
+        "scripts/stage-workflow-worker.mjs"
+      ],
+      "abstractions": [
+        "Exact verified worker artifact, copied extraction index, previous directory, target publication, rollback and uncertain cleanup outcomes.",
+        "Two synthetic generations and one retained backup. Packaging and installed extraction remain separately tested."
+      ]
     }
   ]
 }

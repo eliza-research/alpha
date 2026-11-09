@@ -910,3 +910,13 @@ workflow worker publication, native Google artifact, mobile producer,
 Android profile and packaging scripts. Their model allocations describe
 the relevant owners. Individual stage, backup, interruption and QA
 launcher behaviors retain separate review obligations.
+
+`WorkflowWorkerStaging` replays 14 schedules and 55 checkpoints through
+the actual host artifact verifier and publication helper. It rehashes the target,
+extraction index and retained backup, and refuses coherent manifest
+replacement during copy. A refused publication restores the previous
+target when rollback succeeds. A refused rollback leaves the previous
+artifact in its backup. A failed backup cleanup can report failure
+after the new target was published. The fixtures use private scratch
+directories. Installed extraction and process interruption retain
+separate evidence.

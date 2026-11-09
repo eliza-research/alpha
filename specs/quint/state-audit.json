@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "805743e972cd26c64a7bf422f569d3cfe7cd4827958ad2cac8050bcf7ec04ece",
+  "ledgerSha256": "500af54fb8401d05f135420c1f9306785aff071c8e6b35f43c0fb88d637a54dd",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -46836,7 +46836,8 @@
       "sha256": "e31076dade085ec4647e4ed26f7de5c18f38879ce5da19f842e2abb0f816186f",
       "allocatedModels": [
         "WorkflowExecution",
-        "ReviewedWorkflowLauncher"
+        "ReviewedWorkflowLauncher",
+        "WorkflowWorkerStaging"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -47015,7 +47016,8 @@
       "sha256": "eb9bc1665425ec4b3a7d5cbe4b4492a65e17957d55ef60b4b2568e7eb55aee68",
       "allocatedModels": [
         "WorkflowExecution",
-        "ReviewedWorkflowLauncher"
+        "ReviewedWorkflowLauncher",
+        "WorkflowWorkerStaging"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -219704,6 +219706,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "7f3c04941440ebf4ffeeb2f21728d5ff493ae78e488e5ae5141530a34adc95e5"
+    "sha256": "4957b3e1ff4a9485cc3f11395738f6a976e1261f48a4a33bef7b0c0c2c061344"
   }
 }

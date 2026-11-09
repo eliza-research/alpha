@@ -50330,7 +50330,8 @@
       "path": "scripts/stage-workflow-worker.mjs",
       "models": [
         "WorkflowExecution",
-        "ReviewedWorkflowLauncher"
+        "ReviewedWorkflowLauncher",
+        "WorkflowWorkerStaging"
       ],
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
@@ -50451,7 +50452,8 @@
       "path": "scripts/workflow-worker-artifact.mjs",
       "models": [
         "WorkflowExecution",
-        "ReviewedWorkflowLauncher"
+        "ReviewedWorkflowLauncher",
+        "WorkflowWorkerStaging"
       ],
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
