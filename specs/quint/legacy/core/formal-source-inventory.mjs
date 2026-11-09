@@ -36,13 +36,18 @@ export function authenticateFormalSources(directory, revision, models, registere
 
 /** Keep original specification bytes outside vendor while current runtime source stays live. */
 export function materializeHistoricalFormalSources(root, sources) {
+  return materializeHistoricalSources(root,sources,'specs/quint/legacy/core/source-inventory.json');
+}
+
+/** Bind a separate historical runtime witness to its own reviewed source inventory. */
+export function materializeHistoricalSources(root, sources, inventoryName) {
   root = resolve(root);
-  const inventoryPath = join(root, 'specs/quint/legacy/core/source-inventory.json');
+  const inventoryPath = resolve(root, inventoryName);
   const inventory = JSON.parse(readFileSync(inventoryPath));
   const revision = inventory.revision;
   assert.match(revision, /^[a-f0-9]{40}$/);
   const expected = new Map([
-    ...inventory.models.flatMap(model => [{path:model.source,sha256:model.sha256}, ...model.configs]),
+    ...(inventory.models ?? []).flatMap(model => [{path:model.source,sha256:model.sha256}, ...model.configs]),
     ...(inventory.historicalArtifacts ?? []),
   ].map(file => [file.path, file.sha256]));
   const vendor = join(root, 'vendor/eliza'), mappings = new Map();
@@ -74,10 +79,11 @@ export function materializeHistoricalFormalSources(root, sources) {
   const resolveSource = source => mappings.get(resolve(root,source)) ?? source;
   const inputs = sources.map(resolveSource);
   inputs.push(inventoryPath,fileURLToPath(import.meta.url));
+  let manifest;
   if (mappings.size) {
-    const manifest = join(prefix,'.source.json');
-    publish(manifest,Buffer.from(JSON.stringify({schema:1,revision,files:Object.fromEntries([...expected].sort())})+'\n'));
+    manifest = join(prefix,'.source-'+digest(relative(root,inventoryPath)).slice(0,12)+'.json');
+    publish(manifest,Buffer.from(JSON.stringify({schema:1,revision,inventory:relative(root,inventoryPath),files:Object.fromEntries([...expected].sort())})+'\n'));
     inputs.push(manifest);
   }
-  return {sources:[...new Set(inputs)],resolveSource,revision};
+  return {sources:[...new Set(inputs)],resolveSource,revision,manifest};
 }

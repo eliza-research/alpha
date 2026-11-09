@@ -2399,12 +2399,20 @@
         "temporal": "CheckedTemporal"
       }
     ],
-    "sources": [
-      "vendor/eliza/packages/core/src/runtime/embeddings.ts",
-      "vendor/eliza/plugins/plugin-sql/src/base.ts",
-      "vendor/eliza/plugins/plugin-sql/src/embedding-space.ts",
-      "vendor/eliza/plugins/plugin-sql/src/pglite/adapter.ts"
-    ],
+    "sources": [],
+    "historicalRuntime": {
+      "revision": "4787d51a142c63c98371c832997184c53f7218d3",
+      "inventory": "specs/quint/legacy/core/source-inventory.json",
+      "classification": "historical-upstream-runtime-fragments",
+      "paths": [
+        "packages/core/src/runtime/embeddings.ts",
+        "packages/core/src/embedding-vector-space.ts",
+        "plugins/plugin-sql/src/base.ts",
+        "plugins/plugin-sql/src/embedding-space.ts",
+        "plugins/plugin-sql/src/pglite/adapter.ts"
+      ],
+      "scope": "Original provenance counterexample against immutable historical fragments with byte-bound supporting dependencies; not a current runtime build or qualification. Current SQL and embedding source is allocated to NamedEmbeddingProvenance, which checks the repaired admission contract."
+    },
     "upstreamSources": [
       {
         "path": "packages/core/tla/EmbeddingDimension.tla",

@@ -35,10 +35,17 @@ export function verifyNativeGoogleHostArtifact(root,directory){
 }
 
 function fixedInputHashes(root,sdk){
+ const host='packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts';
+ const raw='vendor/eliza/'+host,effective='.eliza/client-features/'+host,stamp='.eliza/client-features/.source.json';
+ const provenance=JSON.parse(regularFile(path.join(root,stamp)).bytes);
+ const digest=hash(regularFile(path.join(root,raw)).bytes);
+ if(provenance.sourceFiles?.[host]!==digest||provenance.files?.[host]!==digest||
+  hash(regularFile(path.join(root,effective)).bytes)!==digest)
+  throw Error('Native Google host must consume exact pinned upstream bytes');
  const names=new Set([...CORE_STATE_INPUTS,'package.json','tsconfig.json','vendor/eliza/tsconfig.json',
   path.relative(root,path.join(sdk,'tsconfig.json')),'scripts/build-native-google-host.ts','scripts/local-agent-source.mjs',
   'upstream.lock.json','scripts/native-google-host-artifact.mjs','scripts/prepare-client-features.mjs',
-  'patches/eliza/managed-google-body-limit-client-manifest.json','patches/eliza/managed-google-body-limit-client.patch']);
+  'scripts/upstream-native-source.mjs',raw,effective,stamp]);
  return Object.fromEntries([...names].sort().map(name=>{
   if(!safe(name))throw Error('Native Google build input escaped product source');
   return [name,hash(regularFile(path.join(root,name)).bytes)];

@@ -290,10 +290,10 @@ The resident Google host is shared Eliza source. The product entry
 character and installed Google consent settings. The host uses Eliza Cloud's
 owner-scoped Gmail and Calendar services, and browser development uses the same
 host with its own credential and consent ports. The pinned Alpha SDK consumes
-the shared source directly from the reviewed pin. The hash-bound
-`patches/eliza/managed-google-body-limit-client.patch` retains Alpha's existing
-32,000-character, surrogate-safe Gmail body limit and truncation marker; the other
-shared host modules are copied unchanged. `scripts/build-native-google-host.ts` bundles the product entry into
+the shared source directly from the reviewed pin, including the 32,000-character,
+surrogate-safe Gmail body limit and truncation marker. The prepared host is
+byte-identical to upstream; product behavior patches are not admitted.
+`scripts/build-native-google-host.ts` bundles the product entry into
 `google-host.mjs`; Android stages and verifies the artifact before loading it
 through `ELIZA_NATIVE_GOOGLE_HOST_MODULE`.
 

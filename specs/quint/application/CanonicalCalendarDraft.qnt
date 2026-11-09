@@ -90,7 +90,10 @@ module CanonicalCalendarDraft {
     s' = if (job.kind == "write") {...settled, slots: s.slots.set(owner, row(job.draft))}
       else if (s.bound == owner and s.lease == job.lease and selected(s) and s.text == job.draft)
         {...settled, consuming: false, text: NoDraft, slots: s.slots.set(owner, row(NoDraft))}
-      else if (s.bound == owner and s.lease == job.lease)
+      // A failed retired clear remains unconfirmed when the same owner has
+      // reopened. Preserve its bytes and require review in the new lifetime.
+      // This bounded model admits no newer same-owner write while one is held.
+      else if (s.bound == owner)
         {...settled, consuming: false, conflict: true, savedText: s.slots.get(owner).draft}
       else settled}
   action openRecovery = s' = if (selected(s) and recovery) {...s, recoveryOpen: true} else s
@@ -114,7 +117,8 @@ module CanonicalCalendarDraft {
   val CurrentLease = (s.lease == 0 iff s.bound == "") and s.lease.in(0.to(s.sequence)) and s.sequence.in(0.to(6))
   val ForeignUnavailable = s.foreign implies not(recovery) and not(resumeOffered)
   val OwnsWrites = Owners.forall(owner => s.writes.get(owner) == NoWrite or s.writes.get(owner).draft.owner == owner)
-  val safety = OwnsEditor and CurrentLease and ForeignUnavailable and OwnsWrites and s.notices == 0
+  val ReviewBlocksConsume = s.conflict implies not(s.consuming)
+  val safety = OwnsEditor and CurrentLease and ForeignUnavailable and OwnsWrites and ReviewBlocksConsume and s.notices == 0
 
   run previousAccountBytesStayInOriginalSlotTest = init.then(bind("A",false)).then(edit("First A",false))
     .then(setOwner("")).expect(renderedForm == "").then(synchronize).then(bind("B",false))
@@ -127,6 +131,12 @@ module CanonicalCalendarDraft {
   run lateClearKeepsOriginalAccountDraftTest = init.then(bind("A",false)).then(edit("First A",false)).then(closeForm)
     .then(commit(true)).then(bind("B",false)).then(releaseWrite("A"))
     .expect(s.slots.get("A").draft.title == "First A" and s.slots.get("B") == NoSlot and safety)
+  run retiredClearRequiresSameOwnerReviewTest = init.then(bind("A",false)).then(edit("First A",false)).then(closeForm)
+    .then(commit(true)).then(bind("B",false)).then(bind("A",false)).then(releaseWrite("A"))
+    .expect(s.lease == 3 and s.text.title == "First A" and s.slots.get("A").draft.title == "First A"
+      and s.slots.get("B") == NoSlot and s.conflict and s.savedText.title == "First A" and not(canConsume(s)) and safety)
+    .then(restoreSaved).expect(not(s.conflict) and s.form.title == "First A"
+      and s.text.title == "First A" and s.slots.get("A").draft.title == "First A" and safety)
   run foreignStoredFrameCannotBeOfferedTest = init.then(seed("B","A","Saved A")).then(bind("B",false)).then(failRead)
     .then(openRecovery).expect(not(s.recoveryOpen) and not(resumeOffered) and s.slots.get("B").draft.owner == "A" and safety)
   run earlierLifetimeCannotDiscardNewDraftTest = init.then(bind("A",false)).then(edit("First A",false)).then(closeForm)

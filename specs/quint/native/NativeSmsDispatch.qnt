@@ -79,8 +79,7 @@ module NativeSmsDispatch {
     else if (mode=="long-number") s' = response(s,"invalid",0)
     else if (hasRetainedId(s)) s' = retained(s,binding)
     else if (s.reviews.get(actor).binding!=0) s' = response(s,"busy",0)
-    else if (not(permitted(s,actor)) or mode=="divide-refused") s' = decide(s,binding,"denied")
-    else if (mode=="empty-parts") s' = response(s,"too-long",0)
+    else if (not(permitted(s,actor)) or mode.in(Set("divide-refused","empty-parts"))) s' = decide(s,binding,"denied")
     else s' = response({ ...s,reviews:s.reviews.set(actor,{binding:binding,sim:s.sim}) },"pending",0)
   }
 
@@ -308,4 +307,8 @@ module NativeSmsDispatch {
     .then(provider("exact","complete")).then(callback(1,"sent",true,"complete")).then(callback(2,"sent",true,"complete"))
     .then(callback(1,"delivery",true,"complete")).then(callback(2,"delivery",true,"complete"))
     .expect(s.memory.status=="sent" and s.memory.delivered==Set())
+  run emptyDivisionCannotReviveReviewedIdTest = initWith(1,1,false).then(request(1,1,"empty-parts"))
+    .expect(s.reply=="denied" and s.disk.decision=="denied" and s.attempts==0 and s.reviews==actors.mapBy(_=>noReview))
+    .then(request(2,1,"complete")).expect(s.reply=="denied" and s.replyBinding==1 and s.attempts==0)
+    .then(request(2,2,"complete")).expect(s.reply=="invalid" and s.disk.binding==1 and s.attempts==0)
 }

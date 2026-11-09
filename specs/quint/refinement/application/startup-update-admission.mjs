@@ -140,7 +140,8 @@ export async function checkStartupUpdateAdmission() {
   assert.equal(stamp.files[shared], digest);
   const pinned = createHash('sha256').update(read('vendor/eliza/' + shared)).digest('hex');
   assert.equal(stamp.sourceFiles[shared], pinned);
-  assert.equal(digest, pinned, 'the consumed update gate is the exact reviewed upstream source');
+  assert.equal(digest, pinned, 'the prepared updater is the exact reviewed upstream source');
+  assert.equal(Object.hasOwn(stamp, 'appUpdateResumePatch'), false, 'the retired updater patch has no receipt');
   const marker = '  let pending: Activation | undefined;\n  let acknowledged: string | undefined;';
   assert.equal(gate.split(marker).length, 2);
   const inspect = '  globalThis.inspect = () => ({pending, acknowledged});';

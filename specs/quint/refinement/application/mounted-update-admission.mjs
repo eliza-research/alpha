@@ -208,7 +208,8 @@ export async function checkMountedUpdateAdmission() {
   assert.equal(stamp.files[shared], digest);
   const pinned = createHash('sha256').update(read('vendor/eliza/' + shared)).digest('hex');
   assert.equal(stamp.sourceFiles[shared], pinned);
-  assert.equal(digest, pinned, 'the consumed update gate is the exact reviewed upstream source');
+  assert.equal(digest, pinned, 'the prepared updater is the exact reviewed upstream source');
+  assert.equal(Object.hasOwn(stamp, 'appUpdateResumePatch'), false, 'the retired updater patch has no receipt');
   const text = read(main);
   const settings = read('apps/app/src/prototype/settings-adapter.ts');
   const idleStart=settings.indexOf('export function automaticUpdateIdle(');

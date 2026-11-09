@@ -1713,6 +1713,28 @@
         },
         "note": "The engine gitlink, model pins, listed native builder inputs and JNI source are unchanged. The shared Android speech consumers changed, including the upstream Cloud transport dependency. The exact recorded engine and model bytes may be staged for integrity verification. Previous component execution and owner acceptance stay at their original source pins. Current device and user acceptance remain open. The current reviewed upstream merge includes the Alpha Compute namespace change. Shared native builder and JNI input objects stay unchanged, while the generated consumer JNI class and package identity change. The renamed embedding host requires a rebuilt, reviewed receipt; no native, device or owner qualification transfers. The current identity follow-up changes only four callback/test/default-persona files. Native input objects remain unchanged from the prior reviewed SDK; the pending consumer JNI requalification and current speech/device acceptance gates remain in force.",
         "productJniIdentityChanged": true
+      },
+      {
+        "priorPin": "b1817660a0347ae19551b9ee296410fe55f02d59",
+        "admittedAt": "6f414658b08cf8075d8fb12ece2ec968a221af7e",
+        "engineCommit": "6337fd4c4bd071c17235986344d552d4036e177b",
+        "nativeInputsUnchanged": false,
+        "nativeQualificationTransferred": false,
+        "unchangedBuildInputObjects": {
+          "packages/app/scripts/paradee-voice/build-native.ts": "b91c2c98ab9f83324ad51f6a234aebbb1cad3405",
+          "packages/app/scripts/stage-elizavoice-lib.ts": "dd9b0c8b48ccdb61ea4767d6907afb77a95aefe0",
+          "packages/app/platforms/android/app/src/main/elizavoice-jni": "4e2a70ed029f3100cfede14a7d2f150f7d1bafd3",
+          "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java": "c7cfb4d376fd92be1039e57ce196f91011d7ee2b",
+          "plugins/plugin-local-inference/native/llama.cpp": "6337fd4c4bd071c17235986344d552d4036e177b",
+          "plugins/plugin-local-inference/native/android/inputs.json": "f19a130f6d30082e8ed2fbd0eb1aa5f390c050a1",
+          "packages/app/scripts/lib/android-bun-artifacts.lock.json": "83c8e91becc3a2c46902cc168fdc9b88fc038e5d"
+        },
+        "nativeSourceCatalog": {
+          "path": "android/upstream-native-sources.json",
+          "sha256": "569e1f2e673ed624a2194fddbc04ad0afdea3c5f80de1a2fed593def46636141"
+        },
+        "note": "The seven listed engine, model-pin, native builder, Bun and JNI source objects are unchanged at the reviewed upstream pin 6f414658b08cf8075d8fb12ece2ec968a221af7e. The native catalog admits zero product patches: the reviewed notice cleanup now comes directly from upstream and has the same effective bytes as its earlier reviewed postimages. The exact recorded engine and model bytes may be staged for integrity verification. Shared speech consumers changed earlier, and the Alpha Compute package and generated consumer JNI class identity changed. The renamed embedding host still requires a rebuilt, reviewed receipt. Historical component execution and owner acceptance keep their original source/artifact identities; current application speech, JNI, device and user qualification remain open. No qualification transfers.",
+        "productJniIdentityChanged": true
       }
     ],
     "developComparison": {

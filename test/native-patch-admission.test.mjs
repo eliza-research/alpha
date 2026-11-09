@@ -3,11 +3,24 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {materializeNativePatches,verifyNativePatchReceipt} from '../scripts/prepare-patched-native.mjs';
+import {materializeNativePatches,verifyNativePatchReceipt,preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
 import {sha} from '../scripts/upstream-native-source.mjs';
 const module='plugins/plugin-native-test/android',target=module+'/src/main/java/Test.java';
 function fixture(run,sourceModule=module,sourceTarget=sourceModule+'/src/main/java/Test.java'){const root=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-patch-test-'));try{const before=Buffer.from('old\n'),after=Buffer.from('new\n'),patch=`--- a/${sourceTarget}\n+++ b/${sourceTarget}\n@@ -1 +1 @@\n-old\n+new\n`,patchRoot=path.join(root,'patches'),temporary=path.join(root,'stage');fs.mkdirSync(patchRoot);fs.mkdirSync(temporary);fs.writeFileSync(path.join(patchRoot,'test.patch'),patch);const manifest={schema:1,baseCommit:'pin',patches:[{module:sourceModule,file:'test.patch',sha256:sha(patch),targets:[{path:sourceTarget,beforeSha256:sha(before),afterSha256:sha(after)}]}]};const source={pin:'pin',read:()=>new Map([[sourceTarget,{bytes:before,mode:'100644',sha256:sha(before)}]])};run({root,manifest,source,patchRoot,temporary});}finally{fs.rmSync(root,{recursive:true,force:true});}}
 test('admission materializes only authenticated declared source',()=>fixture(args=>{const result=materializeNativePatches(args);assert.equal(result.files[target],sha('new\n'));assert.equal(fs.readFileSync(path.join(args.temporary,target),'utf8'),'new\n');}));
+test('production native staging refuses a reintroduced patch catalog before writing a cache',()=>{
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-native-retired-'));
+ try{
+  fs.mkdirSync(path.join(root,'vendor'));fs.symlinkSync(fs.realpathSync('vendor/eliza'),path.join(root,'vendor/eliza'),'dir');
+  fs.copyFileSync('upstream.lock.json',path.join(root,'upstream.lock.json'));fs.mkdirSync(path.join(root,'android'));
+  const catalog=JSON.parse(fs.readFileSync('android/upstream-native-sources.json'));
+  assert.deepEqual(catalog.patches,[]);
+  catalog.patches=[{module:'plugins/plugin-native-notifications/android',file:'retired.patch'}];
+  fs.writeFileSync(path.join(root,'android/upstream-native-sources.json'),JSON.stringify(catalog));
+  assert.throws(()=>preparePatchedNative({root}),/without product patches/);
+  assert.equal(fs.existsSync(path.join(root,'.eliza')),false,'refused production patches cannot create or replace staging');
+ }finally{fs.rmSync(root,{recursive:true,force:true});}
+});
 test('admission accepts an owner-only executable staged under umask 027',()=>fixture(args=>{
  const read=args.source.read;args.source.read=()=>new Map([...read()].map(([name,file])=>[name,{...file,mode:'100755'}]));
  const previous=process.umask(0o027);

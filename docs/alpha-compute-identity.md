@@ -29,6 +29,21 @@ resident producer's migrated PGlite snapshot. The dependency lock and recorded
 engine/model bytes are unchanged; native, device and user qualification do not
 transfer to this application.
 
+The separately reviewed source `450087e00e6dc1c289aab0c3e424560b7040d163`
+retains the callback identity and exact stock-biography fingerprint, preserves
+edited biographies and includes the reviewed foreground updater gate, scheduler,
+source tests and bounded model. Its six-file delta from `ac18377c5a` changes no
+native source or dependency lock. The source is published on
+[`codex/alphaphone-identity-ota-reviewed-20261109`](https://github.com/elizaOS/eliza/tree/450087e00e6dc1c289aab0c3e424560b7040d163).
+
+Its reviewed child `6f414658b08cf8075d8fb12ece2ec968a221af7e`
+([elizaOS/eliza#39180](https://github.com/elizaOS/eliza/pull/39180)) adds shared
+notice-cleanup and Unicode-safe Gmail body-limit fixes with owning-module
+regressions. The three production postimages match the prior reviewed fixes;
+that source selection retires its local behavior patches. These source-only
+reviews retain their exact records and do not qualify new built artifacts or
+transfer device, security or user acceptance.
+
 Android treats the renamed package as a separate installation. It cannot replace
 an APK from the earlier namespace or inherit that package's private data, Android
 roles, grants, Keystore entries or update sessions. This change supplies no data

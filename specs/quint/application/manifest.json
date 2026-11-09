@@ -1916,6 +1916,7 @@
       "oldReadCannotFillNextAccountTest",
       "queuedEditStaysWithCapturedOwnerTest",
       "lateClearKeepsOriginalAccountDraftTest",
+      "retiredClearRequiresSameOwnerReviewTest",
       "foreignStoredFrameCannotBeOfferedTest",
       "earlierLifetimeCannotDiscardNewDraftTest"
     ],
@@ -1923,7 +1924,8 @@
       "OwnsEditor",
       "CurrentLease",
       "ForeignUnavailable",
-      "OwnsWrites"
+      "OwnsWrites",
+      "ReviewBlocksConsume"
     ],
     "sources": [
       "apps/app/src/prototype/canonical-calendar-drafts.ts",
@@ -1949,6 +1951,7 @@
       "orphanCannotBeRestagedTest",
       "orphanCannotBeUndoneTest",
       "ordinaryChangesKeepOrphanUntilExplicitReplacementTest",
+      "completedOneOffCannotSnoozeTest",
       "aGenuinePairBlocksReplacementTest",
       "explicitClockCancelLeavesOrphanWithoutReceiptTest",
       "aPendingAlarmCannotAcquireSoundOnLockGrantTest"

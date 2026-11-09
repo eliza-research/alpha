@@ -1,6 +1,4 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
-import os from 'node:os';
 import { upstreamNativeSource } from './upstream-native-source.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -310,11 +308,8 @@ export const CLIENT_FEATURE_PATHS = [
   // Framework-free resident Cloud binding controller (AP-04/P-22).
   'packages/auth/src/auth/cloud-resident-binding.ts',
 ];
-// Product body-size policy stays downstream. Automatic update behavior is now
-// consumed directly from the reviewed upstream pin.
-export const CLIENT_FEATURE_PATCHES = [
-  ['managedGoogleBodyLimitPatch', 'managed-google-body-limit-client', 'packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts'],
-];
+// Shared behavior is consumed from the reviewed upstream pin; there are no product patches.
+export const CLIENT_FEATURE_PATCHES = [];
 // Copied client source imports Alpha's installed runtime dependencies, so each copied package's
 // declared ranges must hold for them. Gaps are allowed only with a reviewed reason; an exception
 // that no longer matches the installed version or range fails so it is removed or reviewed again.
@@ -385,38 +380,17 @@ export function checkClientFeatureDependencies(root, upstream, paths = CLIENT_FE
 /** Copy authenticated upstream source outside the immutable vendor checkout. With check, only
  * confirm the prepared copy is current and throw instead of rebuilding it. */
 export function prepareClientFeatures({ root = projectRoot, projectVoice = true, check = false, log } = {}) {
+  for (const prefix of ['app-update-resume-client', 'managed-google-body-limit-client']) {
+    for (const suffix of ['.patch', '-manifest.json']) {
+      const retired = path.join(root, 'patches/eliza', prefix + suffix);
+      if (regularPath(retired)) throw Error('Retired client patch slot: ' + prefix);
+    }
+  }
   const upstream = upstreamNativeSource(root);
   for (const exception of checkClientFeatureDependencies(root, upstream))
     log?.(`Client feature dependency exception: ${exception.package} ${exception.dependency} ${exception.range}, installed ${exception.installed}: ${exception.reason}`);
   const source = new Map(CLIENT_FEATURE_PATHS.flatMap(prefix => [...upstream.read(prefix)]));
   const sourceFiles = Object.fromEntries([...source].map(([name, file]) => [name, file.sha256]));
-  const clientPatches = {};
-  for (const [key, prefix, name] of CLIENT_FEATURE_PATCHES) {
-    const manifestFile = path.join(root, 'patches/eliza', prefix + '-manifest.json');
-    if (!regularPath(manifestFile)) continue;
-    const manifestBytes = fs.readFileSync(manifestFile), manifest = JSON.parse(manifestBytes);
-    const patchFile = path.join(root, 'patches/eliza', prefix + '.patch');
-    if (manifest.schema !== 1 || manifest.baseCommit !== upstream.pin || manifest.path !== name ||
-        !source.has(name) || manifest.beforeSha256 !== source.get(name).sha256 ||
-        !/^[a-f0-9]{64}$/.test(manifest.afterSha256) || !regularPath(patchFile))
-      throw Error(prefix + ' patch source mismatch');
-    const patchBytes = fs.readFileSync(patchFile);
-    const headers = patchBytes.toString().split('\n').filter(line => line.startsWith('--- ') || line.startsWith('+++ '));
-    if (hash(patchBytes) !== manifest.patchSha256 ||
-        JSON.stringify(headers) !== JSON.stringify(['--- a/' + name, '+++ b/' + name]))
-      throw Error(prefix + ' patch digest or target mismatch');
-    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-client-patch-'));
-    try {
-      const target = path.join(temporary, name);
-      fs.mkdirSync(path.dirname(target), {recursive:true});
-      fs.writeFileSync(target, source.get(name).bytes);
-      execFileSync('patch', ['--batch', '--fuzz=0', '--forward', '-p1', '--input', patchFile], {cwd:temporary, stdio:'pipe', timeout:30000});
-      const bytes = fs.readFileSync(target);
-      if (hash(bytes) !== manifest.afterSha256) throw Error(prefix + ' patch output mismatch');
-      source.set(name, {bytes, mode:source.get(name).mode, sha256:manifest.afterSha256});
-      clientPatches[key] = {...manifest, manifestSha256:hash(manifestBytes)};
-    } finally { fs.rmSync(temporary, {recursive:true, force:true}); }
-  }
   if(projectVoice){
   // Upstream publishes every renderer type as a leaf entry (@elizaos/core/schema-types,
   // @elizaos/ui/api/transport, plugin-calendar auto-join-types); copied files stay byte-exact.
@@ -490,7 +464,6 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
   const files = Object.fromEntries([...source].map(([name, file]) => [name, file.sha256]));
   const provenance = {
     baseCommit: upstream.pin, sourceFiles, projectionVersion:projectVoice?14:0, files,
-    ...clientPatches,
   };
   const parent = path.join(root, '.eliza'), destination = path.join(parent, 'client-features');
   regularPath(parent, true);
@@ -508,8 +481,7 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
         const previous = JSON.parse(fs.readFileSync(stamp));
         const actual = inventory(destination); delete actual['.source.json'];
         return previous.baseCommit === upstream.pin && previous.projectionVersion === provenance.projectionVersion &&
-          Object.keys(previous).length === Object.keys(provenance).length &&
-          CLIENT_FEATURE_PATCHES.every(([key]) => JSON.stringify(previous[key] ?? null) === JSON.stringify(clientPatches[key] ?? null)) &&
+          JSON.stringify(Object.keys(previous).sort()) === JSON.stringify(Object.keys(provenance).sort()) &&
           matches(previous.sourceFiles || {}, sourceFiles) && matches(previous.files || {}, files) && matches(actual, files);
       } catch (error) { if (error.code !== 'ENOENT' || attempt >= 4) throw error; }
     }

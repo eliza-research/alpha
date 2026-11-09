@@ -1840,6 +1840,20 @@
         "inputSha256": "05c0f82c62f6e3e7eeda16e0f24d1d36da84a995dcaac0aa7a60d863dd63b5d7",
         "evidence": "docs/security/resident-source-review-ac18377c-2026-11-09.json",
         "scope": "Fresh full-lock findings and four-file identity delta only. Original exception objects, deadlines and pending fixes unchanged. Existing built/static, native and packaged evidence stays source-bound; no security/device/release acceptance."
+      },
+      {
+        "priorUpstreamCommit": "ac18377c5a9e4eb7afeac1c62a026ad3be95733e",
+        "upstreamCommit": "450087e00e6dc1c289aab0c3e424560b7040d163",
+        "inputSha256": "05c0f82c62f6e3e7eeda16e0f24d1d36da84a995dcaac0aa7a60d863dd63b5d7",
+        "evidence": "docs/security/resident-source-review-450087e0-2026-11-09.json",
+        "scope": "Fresh unchanged full-lock findings and reviewed persona/foreground-update source delta only. All 84 exception objects, dates and 12 pending fixes remain unchanged. Prior built/static, packaged, native and device evidence keeps its original source and artifact identity; no acceptance transfers."
+      },
+      {
+        "priorUpstreamCommit": "450087e00e6dc1c289aab0c3e424560b7040d163",
+        "upstreamCommit": "6f414658b08cf8075d8fb12ece2ec968a221af7e",
+        "inputSha256": "05c0f82c62f6e3e7eeda16e0f24d1d36da84a995dcaac0aa7a60d863dd63b5d7",
+        "evidence": "docs/security/resident-source-review-6f414658-2026-11-09.json",
+        "scope": "Fresh unchanged full-lock findings and reviewed upstream notice-cleanup/Gmail Unicode-cap delta only. All 84 exception objects, dates and 12 pending fixes remain unchanged. Prior build/static, packaged, native and device evidence retains its source and artifact identity; no acceptance transfers."
       }
     ],
     "pinReview": {
@@ -1909,6 +1923,22 @@
         "inputSha256": "05c0f82c62f6e3e7eeda16e0f24d1d36da84a995dcaac0aa7a60d863dd63b5d7",
         "basis": "Fresh npm bulk query reproduces identical 3694 versions, all 103 finding rows and severity counts. The four identity/callback/default-persona files do not change the byte-identical dependency lock. All 84 exception objects/dates and existing pending findings remain unchanged; historical built/static evidence retains its exact prior SDK and artifact identities.",
         "evidence": "docs/security/resident-source-review-ac18377c-2026-11-09.json"
+      },
+      {
+        "from": "ac18377c5a9e4eb7afeac1c62a026ad3be95733e",
+        "to": "450087e00e6dc1c289aab0c3e424560b7040d163",
+        "date": "2026-11-09",
+        "inputSha256": "05c0f82c62f6e3e7eeda16e0f24d1d36da84a995dcaac0aa7a60d863dd63b5d7",
+        "basis": "Fresh npm bulk query reproduces identical 3694 versions, all 103 finding rows and severity counts against a byte-identical Bun lock. The curated six-file delta adds exact historical persona recognition and the shared foreground updater gate/scheduler with tests/model. Existing 84 exceptions, dates and 12 pending fixes are unchanged. Historical build/static evidence remains exact to its recorded SDK and artifacts.",
+        "evidence": "docs/security/resident-source-review-450087e0-2026-11-09.json"
+      },
+      {
+        "from": "450087e00e6dc1c289aab0c3e424560b7040d163",
+        "to": "6f414658b08cf8075d8fb12ece2ec968a221af7e",
+        "date": "2026-11-09",
+        "inputSha256": "05c0f82c62f6e3e7eeda16e0f24d1d36da84a995dcaac0aa7a60d863dd63b5d7",
+        "basis": "Fresh npm bulk query reproduces identical 3694 versions, all 103 finding rows and severity counts against a byte-identical Bun lock. Three shared production files exactly match their previously reviewed postimages and two owning-module regression files are added upstream. Product behavior patches are retired. Existing 84 exceptions, dates and 12 pending fixes are unchanged. Historical qualification remains source/artifact bound.",
+        "evidence": "docs/security/resident-source-review-6f414658-2026-11-09.json"
       }
     ],
     "sourcePinReviewHistory": [
@@ -1943,6 +1973,24 @@
         "scope": "FRESH_FULL_LOCK_AND_IDENTITY_DELTA_REVIEW_ONLY",
         "evidence": "docs/security/resident-source-review-ac18377c-2026-11-09.json",
         "packagedReview": "Prior SDK86 agent/worker/host static review and historical staged-runtime receipts retain their original source and artifact identities. This source-lock review does not qualify new artifacts, native libraries, current APKs, devices or releases.",
+        "exceptionDatesChanged": false,
+        "approvalGranted": false
+      },
+      {
+        "atUTC": "2026-11-09T21:19:31.679296+00:00",
+        "sdk": "450087e00e6dc1c289aab0c3e424560b7040d163",
+        "scope": "FRESH_FULL_LOCK_AND_CURATED_SOURCE_DELTA_REVIEW_ONLY",
+        "evidence": "docs/security/resident-source-review-450087e0-2026-11-09.json",
+        "packagedReview": "Current source-lock review only. SDK86 agent/worker/host static review and historical staged-runtime receipts remain tied to their original source and artifact identities. This review grants no new bundle, native, APK, device, security, signing or release qualification.",
+        "exceptionDatesChanged": false,
+        "approvalGranted": false
+      },
+      {
+        "atUTC": "2026-11-09T22:10:56.009957+00:00",
+        "sdk": "6f414658b08cf8075d8fb12ece2ec968a221af7e",
+        "scope": "FRESH_FULL_LOCK_AND_REVIEWED_UPSTREAM_FIXES_ONLY",
+        "evidence": "docs/security/resident-source-review-6f414658-2026-11-09.json",
+        "packagedReview": "Current source-lock and exact three-file upstream postimage review only. Historical agent/worker/host static review and staged-runtime receipts retain their original source/artifact identities. No bundle, native, APK, device, security, signing or release qualification transfers.",
         "exceptionDatesChanged": false,
         "approvalGranted": false
       }

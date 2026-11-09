@@ -6,6 +6,22 @@ Current SDK `489efc0b0e53ccbf9554f6017ac0d7b94f7056e8` has a fresh npm bulk quer
 
 The prior identity-only source review below remains historical. SDK `ac18377c5a9e4eb7afeac1c62a026ad3be95733e` has a fresh npm bulk query reproducing the same 3,694 registry versions and all 103 findings as SDK `86ab55fd81`. The dependency lock is byte-identical; all exception objects, review deadlines and pending fixes remain unchanged. This four-file identity follow-up grants no new artifact, security or release qualification. See the [source-lock review](security/resident-source-review-ac18377c-2026-11-09.json).
 
+## Parallel source-only reviews — November 9
+
+SDK `450087e00e6dc1c289aab0c3e424560b7040d163` and its reviewed child
+`6f414658b08cf8075d8fb12ece2ec968a221af7e` have fresh root and resident
+registry audits. Both reproduce the three moderate root findings and all 103
+resident findings across 3,694 versions. All 84 resident exceptions, original
+review deadlines and 12 pending fixes remain unchanged. The resident audit still
+exits nonzero for pending findings. The child adds the three reviewed shared
+notice/Gmail production postimages and their owning-module regressions.
+
+These source-only reviews are retained in the
+[450087e0 record](security/resident-source-review-450087e0-2026-11-09.json) and
+[6f414658 record](security/resident-source-review-6f414658-2026-11-09.json).
+They do not relabel the SDK 489 built-artifact review or historical packaged and
+native evidence, and grant no new artifact, security or release qualification.
+
 ## Built static review at SDK 86ab55fd81 — November 9
 
 SDK `86ab55fd81f68a2c5dd4fd32e1c1431723648c58` has a fresh npm bulk audit of
