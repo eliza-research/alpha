@@ -23,6 +23,11 @@ export function createExternalBrowserHandoff({tabs, reviews, shell, Browser, sta
     if (flags.sharing || flags.confirming || flags.disposed || !shell()) return;
     const id = state()?.cur, page = tabs.pageBinding(id, {https: true});
     if (!page) { report(new Error('Load an HTTPS page before opening another browser.')); return; }
+    const checkCurrentPage = () => {
+      if (flags.disposed || document.hidden || shell()?.S().view !== 'browser' || !tabs.current(page, state()?.cur)) {
+        throw new Error('The page changed. Review it again before leaving Alpha.');
+      }
+    };
     flags.sharing = true;
     try {
       const priv = isPrivate(id);
@@ -33,8 +38,10 @@ export function createExternalBrowserHandoff({tabs, reviews, shell, Browser, sta
         flags.confirming = false;
         if (!approved) return;
       }
-      if (flags.disposed || document.hidden || shell().S().view!=='browser' || !tabs.current(page, state()?.cur)) throw new Error('The page changed. Review it again before leaving Alpha.');
-      flags.lastGeometry=''; await update();
+      checkCurrentPage();
+      flags.lastGeometry = '';
+      await update();
+      checkCurrentPage();
       await Browser.openExternalBrowser({...tabs.guard(page),privateConfirmed:priv});
     } catch (error) { report(error); }
     finally { flags.sharing=false; flags.confirming=false; flags.lastGeometry=''; await update(); }
