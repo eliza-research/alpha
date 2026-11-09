@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "project": "frameworks/base",
+  "revision": "94b4c163b7dfe5ce3607f7bb8456f9573f7de57d",
+  "patch": "alpha-core-launcher.patch",
+  "patchSha256": "8d9792dda2b37d9f24fc2393785f2b693826f5594d5e8c1f66ee4e5c2ecc44da",
+  "files": [
+    {
+      "path": "packages/SystemUI/res/values/config.xml",
+      "beforeSha256": "f9556cc853a04591a54f8470904f023bb41d7c9980217fd7306117dcafcae513",
+      "afterSha256": "c09bbcdf4434410f6d42e12525e25e2ae56b43a5e2d3dbc17a4a7874f1239f76",
+      "new": false
+    },
+    {
+      "path": "packages/SystemUI/src/com/android/systemui/qs/AlphaCoreLauncherPolicy.java",
+      "beforeSha256": null,
+      "afterSha256": "c2076451cfdfaf8e71dcf5f7367ec0b6f2065d8b9592043ad6cbeb6162f98fa7",
+      "new": true
+    },
+    {
+      "path": "packages/SystemUI/src/com/android/systemui/qs/FgsManagerController.kt",
+      "beforeSha256": "2a6d58fc5055b6c83dc17d109a319e9f0436b5993a69caac847f433cabc95fb7",
+      "afterSha256": "0d3c233959ae3d40d24c06019b37df142daa9fb0411612c4bbe12d44b560809d",
+      "new": false
+    },
+    {
+      "path": "packages/SystemUI/src/com/android/systemui/qs/pipeline/data/repository/AlphaQsDefaultsPolicy.java",
+      "beforeSha256": null,
+      "afterSha256": "61d02da4a164c2594856e3df24d8fe9fbf346bae45a3320b5f859649b09940fb",
+      "new": true
+    },
+    {
+      "path": "packages/SystemUI/src/com/android/systemui/qs/pipeline/data/repository/UserTileSpecRepository.kt",
+      "beforeSha256": "4c83f0e2cd8fa562212ea5cded98106094dc7671d4f5fdc3e5dea39d83f9045b",
+      "afterSha256": "6eb8701f6863b77801c1b7761ed420c610d435f56ed51562c9c884c1578e80db",
+      "new": false
+    },
+    {
+      "path": "services/core/java/com/android/server/pm/permission/AlphaSharedStoragePolicy.java",
+      "beforeSha256": null,
+      "afterSha256": "71fcbf26572a4383d02e8af2ca110467a7915c1bdfaa36e7df711e2234d4a1d1",
+      "new": true
+    },
+    {
+      "path": "services/core/java/com/android/server/pm/permission/DefaultPermissionGrantPolicy.java",
+      "beforeSha256": "5678cf02ef133d61585e5be1b59d5a6b74f6e4768d50f2480432fb78cc973ff8",
+      "afterSha256": "a48f8c0634a572e580c7feec07aa5d444ba11cc1aeaa884d4c95de57695917c4",
+      "new": false
+    }
+  ],
+  "compilation": "pending",
+  "imageBuilt": false,
+  "deviceQualified": false,
+  "ownerCustomLayoutsPreserved": true,
+  "ownerExplicitStorageModesPreserved": true,
+  "appPrivateStorageGranted": false,
+  "crashRecoveryAndVoiceControlsChanged": false
+}
