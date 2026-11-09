@@ -425,10 +425,10 @@ export class LocalAgentProtocol {
    * repeated once without streaming under the same clientMessageId: the agent returns the durable
    * outcome recorded for that key (or waits for the in-flight turn) and never runs a second turn.
    * Stop and connection changes are never retried. */
-  async send(id:string,text:string,options:{metadata?:Record<string,unknown>;clientMessageId?:string;channelType?:ChatChannel;onReplyReady?:(results:readonly unknown[]|undefined)=>void;signal?:AbortSignal;onText?:StreamTextListener}={}):Promise<RemoteChatReply> {
+  async send(id:string,text:string,options:{images?:Array<{data:string;mimeType:string;name:string}>;metadata?:Record<string,unknown>;clientMessageId?:string;channelType?:ChatChannel;onReplyReady?:(results:readonly unknown[]|undefined)=>void;signal?:AbortSignal;onText?:StreamTextListener}={}):Promise<RemoteChatReply> {
     const path=`/api/conversations/${encodeURIComponent(identifier(id))}/messages`;
     const headers=conversationViewHeaders(options.metadata);
-    const body={text,channelType:options.channelType??'DM',metadata:options.metadata,clientMessageId:options.clientMessageId};
+    const body={text,images:options.images,channelType:options.channelType??'DM',metadata:options.metadata,clientMessageId:options.clientMessageId};
     if(this.bridge.stream&&options.onText){
       if(!this.session)throw Error('Start the local agent first.');
       const controller=new AbortController();this.streams.add(controller);

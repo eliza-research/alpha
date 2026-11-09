@@ -1,3 +1,5 @@
+import type {VerifiedSession} from '../runtime/alpha-client';
+import {browserDocuments} from '../browser/documents';
 import {projectNoteForModel,type StickyNote} from '../../../../.eliza/client-features/plugins/plugin-notes/src/types.ts';
 import type {VoiceStartupStage} from '../runtime/diagnostics-export';
 import {cloudServiceName} from '../runtime/cloud-protocol';
@@ -166,6 +168,26 @@ function releaseComposerSend(shell:Shell,heldKey:string|undefined,heldText:strin
     draft.edit(heldText);
     settleFirstSendSlot(shell,heldKey,key,heldText,()=>shell.live&&draft.binding===key);
   });
+}
+function attachmentKey(session:VerifiedSession,conversationId:string,messageId:string){
+  return JSON.stringify(['chat-attachment-v1',session.origin,session.ownerId,session.agentId,conversationId,messageId]);
+}
+async function saveAttachment(session:VerifiedSession,conversationId:string,messageId:string,attachment:unknown){
+  await browserDocuments.edit(attachmentKey(session,conversationId,messageId),async()=>({raw:JSON.stringify(attachment),result:undefined}));
+}
+async function restoreAttachments(messages:Shell[],session:VerifiedSession,conversationId:string){
+  return Promise.all(messages.map(async message=>{
+    if(message.from!=='user')return message;
+    const saved=await browserDocuments.read(attachmentKey(session,conversationId,message.clientMessageId||message.id));
+    if(!saved?.raw)return message;
+    const attachment=JSON.parse(saved.raw);
+    const transcript=attachment?.transcriptAttachment;
+    const photo=attachment?.cameraAttachment;
+    return {...message,
+      ...(typeof transcript?.title==='string'?{transcriptAttachment:transcript}:{}),
+      ...(typeof photo?.image==='string'&&/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(photo.image)?{cameraAttachment:photo}:{}),
+    };
+  }));
 }
 const preDispatchRefusals=new Set(['Finish the connection or history operation before sending.','Wait for the current reply before sending another message.',NO_AGENT_SEND,RESIDENT_STARTING_NOTICE,RESIDENT_RECOVERING_NOTICE]);
 // It also marks every failure that happened before it posted the message (`notDispatched`).
@@ -687,6 +709,15 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       if (history && history.sessionId === session && this.restoredHistory !== history) {
         if(!history.automatic){this.draftRecoveryAbort?.abort();this.draftBindingAbort?.abort();this.composerDraft.retire(false);draftBindingAfterPaint=true;cancelMessageContext(this);this.reviewedSourceDraft=null;this.transcriptAttachment=null;this.cameraAttachment=null;}
         this.restoredHistory = history;
+        const attachmentSession=connectionController.getSnapshot().session;
+        if(attachmentSession)void restoreAttachments(history.messages,attachmentSession,history.conversationId).then(messages=>{
+          if(!this.live||connectionController.getSnapshot().history!==history)return;
+          this.setState((previous:Shell)=>({msgs:previous.msgs.map((message:Shell)=>{
+            const saved=messages.find(item=>item.id===message.id);
+            return saved?{...message,transcriptAttachment:saved.transcriptAttachment,cameraAttachment:saved.cameraAttachment}:message;
+          })}));
+        }).catch(()=>this.toast('Saved attachments could not load. Try reopening this conversation.'));
+
         alphaClient.disconnect();
         if (this.live) this.setState((previous:Shell)=>{
           if(!this.live||connectionController.getSnapshot().history!==history)return null;
@@ -768,7 +799,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       if (connection.session) {
         alphaClient.attachVerifiedTransport({
           session: connection.session,
-          send: ({ text, context, requestId, signal, onText, replyTo, onReplyReady, channelType, expectedConversationId,voiceTurnSignal }) => trackDispatch(this,()=>connectionController.send(text, context, requestId, signal, onText,replyTo,onReplyReady,channelType,expectedConversationId,voiceTurnSignal)),
+          send: ({ text, context, requestId, signal, onText, replyTo, onReplyReady, channelType, expectedConversationId,voiceTurnSignal,images }) => trackDispatch(this,()=>connectionController.send(text, context, requestId, signal, onText,replyTo,onReplyReady,channelType,expectedConversationId,voiceTurnSignal,images)),
           // Remote text is not authority to execute device actions. This path
           // accepts chat only until the server supports verified proposals.
           execute: ({ proposal, context, signal }) => connectionController.execute(proposal, context, signal),
@@ -1637,6 +1668,12 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     const sameChat=()=>connectionController.getSnapshot().session?.sessionId===sessionId;
     const attempt:SendAttempt=this.sendAttempt={transportCalled:false,preDispatch:false,streamed:false};
     const userId=crypto.randomUUID(),streamedId=crypto.randomUUID();let streamed=false;
+    const sentAttachment=fromComposer?{transcriptAttachment:transcript,cameraAttachment:this.cameraAttachment}:null;
+    if(sentAttachment&&(transcript||this.cameraAttachment)&&connection.session&&conversationId){
+      try{await saveAttachment(connection.session,conversationId,userId,sentAttachment);}
+      catch{if(fromComposer)releaseComposerSend(this,heldKey,heldText);this.toast('Attachment could not be saved. Try again.');return;}
+    }
+
     const replaceStream=(value:string,streaming=true)=>this.setState((previous:Shell)=>({msgs:previous.msgs.map((message:Shell)=>message.id===streamedId?{...message,text:value,streaming}:message)}));
     let streamFrame=0,latestStream:string|undefined;
     const flushStream=()=>{if(streamFrame){cancelAnimationFrame(streamFrame);streamFrame=0;}if(latestStream!==undefined){const value=latestStream;latestStream=undefined;if(this.live)replaceStream(value);}};
@@ -1670,13 +1707,17 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
           if(!streamFrame&&!document.hidden)streamFrame=requestAnimationFrame(()=>{streamFrame=0;if(this.live)flushStream();});
         }
         else{streamed=true;this.setState((previous:Shell)=>({turnStatus:'',msgs:[...previous.msgs,{id:streamedId,from:'agent',text:value,card:null,streaming:true}]}));}
-      },replyTarget,results=>{readyNavigation=results;});}
+      },replyTarget,results=>{readyNavigation=results;},{channelType:'DM',requestId:userId,images:sentAttachment?.cameraAttachment?[{data:sentAttachment.cameraAttachment.image.split(',')[1],mimeType:'image/jpeg',name:'Camera photo'}]:undefined});}
       // Before settlement, stop, or failure renders: a late frame must not overwrite the final text.
       finally{localTurnStatus.removeEventListener('label',showStatus);flushStream();}
       // Only the composer's own send holds its draft; a prompt from elsewhere never settles it.
       if(fromComposer)await this.composerDraft?.commit();
       if (!this.live||!sameChat()) return;
       const identity=reply.messageBinding;
+      if(sentAttachment&&identity&&reply.userMessageId&&(transcript||sentAttachment.cameraAttachment)){
+        await saveAttachment(identity.session,identity.conversationId,reply.userMessageId,sentAttachment);
+      }
+
       const planCard=planActionCard(reply.planAction);
       const settlementCurrent=()=>this.live&&sameChat()&&JSON.stringify(connectionController.getSnapshot().session)===JSON.stringify(sourceSession)&&(!identity||connectionController.getSelectedConversationId()===identity.conversationId);
       if(!settlementCurrent())return;

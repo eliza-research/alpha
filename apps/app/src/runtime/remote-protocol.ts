@@ -278,9 +278,9 @@ export class RemoteProtocol {
   /** A dropped response (transport failure or gateway timeout) is reconciled once by repeating the
    * identical request with the same clientMessageId; the agent returns its durable outcome for that
    * key instead of running a second turn. Cancellation is never retried. */
-  async send(id: string, text: string, options: { metadata?: Record<string, unknown>; clientMessageId?: string; channelType?:ChatChannel; signal?: AbortSignal } = {}): Promise<RemoteChatReply> {
+  async send(id: string, text: string, options: { images?:Array<{data:string;mimeType:string;name:string}>;metadata?: Record<string, unknown>; clientMessageId?: string; channelType?:ChatChannel; signal?: AbortSignal } = {}): Promise<RemoteChatReply> {
     const path = `/api/conversations/${encodeURIComponent(string(id))}/messages`;
-    const body = { text: string(text), channelType: options.channelType ?? "DM", ...(options.metadata ? { metadata: options.metadata } : {}), ...(options.clientMessageId ? { clientMessageId: options.clientMessageId } : {}) };
+    const body = { text: string(text), images:options.images, channelType: options.channelType ?? "DM", ...(options.metadata ? { metadata: options.metadata } : {}), ...(options.clientMessageId ? { clientMessageId: options.clientMessageId } : {}) };
     const headers = conversationViewHeaders(options.metadata);
     let raw: unknown;
     try { raw = await this.authorized(path, "POST", body, options.signal, headers); }
