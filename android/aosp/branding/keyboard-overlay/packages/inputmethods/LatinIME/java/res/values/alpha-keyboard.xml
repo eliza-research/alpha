@@ -72,6 +72,8 @@
     <color name="sliding_key_input_preview_color_lxx_light">#0000FF</color>
     <color name="key_background_lxx_light">#FAFAFA</color>
     <color name="key_background_pressed_lxx_light">#DCE2FF</color>
+    <color name="key_action_background_lxx_light">#0000FF</color>
+    <color name="key_action_background_pressed_lxx_light">#0000CC</color>
     <color name="suggested_word_background_selected_lxx_light">#DCE2FF</color>
     <color name="gesture_floating_preview_color_lxx_light">#FAFAFA</color>
     <color name="emoji_tab_page_indicator_background_lxx_light">#FAFAFA</color>
