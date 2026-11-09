@@ -196,7 +196,7 @@ test('empty-store logout retires an in-flight login poll without NULL-state resu
 test('managed Google bridge admits combined consent and encoded owner reads without exposing credentials',async()=>{
  const f=await fixture(),grant=randomUUID();try{
   f.setResponse(async(url,input)=>{assert.equal(input.redirect,'error');const parsed=new URL(url);
-   if(parsed.pathname.endsWith('/connect/initiate')){assert.deepEqual(JSON.parse(input.body),{side:'owner',capabilities:['google.basic_identity','google.gmail.triage','google.calendar.read']});return Response.json({authUrl:'https://accounts.google.com/o/oauth2/v2/auth?state=synthetic'});}
+   if(parsed.pathname.endsWith('/connect/initiate')){const {redirectUrl,...body}=JSON.parse(input.body);assert.deepEqual(body,{side:'owner',capabilities:['google.basic_identity','google.gmail.triage','google.calendar.read']});assert.equal(new URL(redirectUrl).origin,f.origin());assert.equal(new URL(redirectUrl).pathname,'/__alpha-browser-cloud/google-return');return Response.json({authUrl:'https://accounts.google.com/o/oauth2/v2/auth?state=synthetic'});}
    if(parsed.pathname.endsWith('/disconnect')){assert.deepEqual(JSON.parse(input.body),{side:'owner',connectionId:grant});return Response.json({ok:true});}
    return Response.json({fixture:true,query:Object.fromEntries(parsed.searchParams)});
   });
@@ -1191,3 +1191,16 @@ test('owner key management HTTP keeps keys masked, revision-fenced and RAM-only'
   assert.equal((await readFile(profileFile(f.profile,'initial-credential.json'),'utf8')).includes('synthetic-http'),false);
  }finally{release();await f.close();await resident.close();residentFixture.close();}
 });
+
+ test('browser Google return is host-owned, single-use and bound to the current credential',async()=>{
+ const f=await fixture();try{
+  let redirect;
+  f.setResponse(async(url,input)=>{redirect=JSON.parse(input.body).redirectUrl;return Response.json({authUrl:'https://accounts.google.com/o/oauth2/v2/auth?state=fixture'});});
+  const initiate=()=>f.rpc({operation:'request',environment:'production',requestId:randomUUID(),input:{url:'https://api.eliza.app/api/v1/eliza/google/connect/initiate',method:'POST',headers:{Accept:'application/json'},credentialReference:reference,body:JSON.stringify({side:'owner',capabilities:['google.basic_identity']})}});
+  await initiate();const callback=new URL(redirect);callback.pathname='/google-return';callback.searchParams.set('google_connected','true');callback.searchParams.set('connection_id',randomUUID());
+  const valid=await fetch(callback);assert.equal(valid.status,200);const page=await valid.text();assert.match(page,/BroadcastChannel/);assert.match(page,/window.close/);assert.ok(!page.includes(secret));assert.equal((await fetch(callback)).status,410);
+  await initiate();const changed=new URL(redirect);changed.pathname='/google-return';
+  await writeFile(profileFile(f.profile,'credentials.json'),JSON.stringify({production:{credentialReference:'browser-cloud-reference:'+randomUUID(),credentialId:randomUUID(),token:secret,userId:owner,organizationId:org}}),{mode:0o600});
+  assert.equal((await fetch(changed)).status,409);
+ }finally{await f.close();}
+ });

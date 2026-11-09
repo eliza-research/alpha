@@ -6,7 +6,7 @@ import {gmailGrantTier,googleAccountAccessLabel} from './gmail-grants';
 import {useEffect,useRef,useState,useSyncExternalStore} from 'react';
 import {holdPhoneInert} from './modal-inert';
 import {connectionController} from './connection-ui';
-import {createGoogleAccounts,GOOGLE_ACCOUNTS_CHANGED,googleDisconnectConfirmation,googleDisconnectMessage,googleCalendarDisconnectLifecycle,linkGoogleCalendar,type GoogleDisconnectContext} from './google-accounts';
+import {createGoogleAccounts,notifyGoogleAccountsChanged,GOOGLE_ACCOUNTS_CHANGED,googleDisconnectConfirmation,googleDisconnectMessage,googleCalendarDisconnectLifecycle,linkGoogleCalendar,type GoogleDisconnectContext} from './google-accounts';
 import {clearGoogleCalendarSelectionForConnection} from './google-calendar-selection';
 import {openConnectionBrowser,googleWorkspaceReturnPort} from './native-connection';
 import {prepareGoogleWorkspaceReturn,watchGoogleWorkspaceReturn,sameGoogleWorkspaceBinding,type GoogleWorkspaceBinding} from './google-workspace-return';
@@ -58,6 +58,7 @@ export function GoogleConnectionsPanel(){
  const [choice,setChoice]=useState<GoogleCalendarAccessChoice|null>(null);
  // The agent host reads the owner's Google switches; republish whenever device settings load or change.
  useEffect(()=>{const sync=()=>{setAccess(googleAgentAccess());void publishGoogleAgentAccess();};sync();window.addEventListener('alpha:device-settings',sync);return()=>window.removeEventListener('alpha:device-settings',sync);},[]);
+ const browserReturned=useRef(false),browserReturnPending=useRef(false);
  const returnedWorkspaceOwner=useRef<GoogleWorkspaceBinding|null>(null);
  const returnedWorkspace=useRef<{result:'connected'|'denied'|'failed';connectionId?:string}|null>(null);
  // A completed disconnect notice survives its own account-list refresh, within the same owner.
@@ -117,11 +118,12 @@ export function GoogleConnectionsPanel(){
    // The Calendar intent links only from this readback, and only the returned grant when Google named one.
    const calendar=googleConnectionController.calendar();
    if(calendar?.authorizing&&(!returned||returned.result==='connected'))await linkCalendar(calendar,requiredConnectionId?rows.filter(row=>row.connectionId===requiredConnectionId):rows);
+   if(browserReturned.current&&requiredConnectionId&&returnedGrantVisible()&&current()){browserReturned.current=false;notifyGoogleAccountsChanged();googleConnectionController.close();}
   }catch(error){if(current()){connectionController.rejectCloudSession(cloud.sessionId,error);setNotice(unverifiedAccounts);}}
   finally{if(active.current===abort)setBusy(false);}
  }
  useEffect(()=>{if(!open)return;void load();return()=>{active.current?.abort();};},[open,identity,revision,cloud?.client]);
- useEffect(()=>{if(!open)disconnectNotice.current=null;},[open]);
+ useEffect(()=>{if(!open){disconnectNotice.current=null;browserReturnPending.current=false;}},[open]);
  useEffect(()=>{
   if(!open||!binding)return;
   const watcher=watchGoogleConnectionReturn({binding,current:currentGoogleConnectionReturnBinding,foreground:()=>!document.hidden,refresh:()=>setRevision(value=>value+1),
@@ -140,6 +142,16 @@ export function GoogleConnectionsPanel(){
   },()=>{if(googleConnectionController.getSnapshot())setNotice('Google return could not be verified. Check Google connections.');});
   return()=>watcher.close();
  },[identity,cloud?.client]);
+ useEffect(()=>{
+  if(isAndroid||typeof BroadcastChannel==='undefined')return;
+  const channel=new BroadcastChannel('alpha-google-return');
+  channel.onmessage=event=>{
+   const owner=currentWorkspaceBinding(),data=event.data;
+   if(!owner||!browserReturnPending.current||!googleConnectionController.getSnapshot()||data?.type!=='alpha-google-return'||data.credentialId!==owner.credentialId||data.result!=='connected'||!/^[-a-zA-Z0-9_]{1,128}$/.test(data.connectionId??''))return;
+   browserReturnPending.current=false;browserReturned.current=true;returnedWorkspaceOwner.current=owner;returnedWorkspace.current={result:'connected',connectionId:data.connectionId};setRevision(value=>value+1);
+  };
+  return()=>channel.close();
+ },[identity]);
  useEffect(()=>{if(!open)return;const accountsChanged=()=>setRevision(value=>value+1);window.addEventListener(GOOGLE_ACCOUNTS_CHANGED,accountsChanged);return()=>window.removeEventListener(GOOGLE_ACCOUNTS_CHANGED,accountsChanged);},[open]);
  useEffect(()=>{
   if(!open)return;
@@ -176,9 +188,10 @@ export function GoogleConnectionsPanel(){
    if(!current())return;
    cancelReturn=watcher.arm(); // Before openExternal; its immediate resolution is not a return.
    phase='browser';
+   browserReturnPending.current=!isAndroid;
    await openConnectionBrowser(url,abort.signal);abort.signal.throwIfAborted();
    if(current())setNotice(authorization.appReturn?'After authorizing Google, return to Alpha to verify the connection.':'After authorizing Google, return here and check connections.');
-  }catch(error){cancelReturn?.();if(returnState)await googleWorkspaceReturnPort?.cancel(returnState).catch(()=>{});if(current()){if(phase==='cloud')connectionController.rejectCloudSession(cloud.sessionId,error);setNotice('Google authorization could not start. Check your Cloud sign-in and retry.');}}
+  }catch(error){browserReturnPending.current=false;cancelReturn?.();if(returnState)await googleWorkspaceReturnPort?.cancel(returnState).catch(()=>{});if(current()){if(phase==='cloud')connectionController.rejectCloudSession(cloud.sessionId,error);setNotice('Google authorization could not start. Check your Cloud sign-in and retry.');}}
   finally{if(active.current===abort)setBusy(false);}
  }
  /** Off only stops agent writes; on uses the existing grant, or asks Google once when it is missing. */
