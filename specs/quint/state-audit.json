@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "87a9d16f6f91c311fcbdf2f8b4f298bd002de1e0698d5663fa41df38a22eb544",
+  "ledgerSha256": "08583b33ddda7970f06fb2c432db326446c84b3a54911dc091077cf5574982e8",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -22,17 +22,17 @@
     "The ledger supplies pinned source bytes. Effective client/native/runtime patch outputs require their separately authenticated source mappings."
   ],
   "counts": {
-    "files": 5699,
+    "files": 5700,
     "testSupportFiles": 287,
     "testSupportCandidates": 11480,
-    "parsedFiles": 5629,
+    "parsedFiles": 5630,
     "languageReview": 70,
     "parseErrors": 0,
-    "candidates": 67134,
-    "writeSites": 66569,
-    "writeAssociations": 59748,
+    "candidates": 67174,
+    "writeSites": 66638,
+    "writeAssociations": 59785,
     "asynchronous": 8301,
-    "unassignedWrites": 10189
+    "unassignedWrites": 10221
   },
   "files": [
     {
@@ -46016,7 +46016,8 @@
         "DevelopmentRuntimeLoader",
         "CombinedAgentLauncher",
         "ReviewedWorkflowLauncher",
-        "CoreConnectorCustody"
+        "CoreConnectorCustody",
+        "MobileBundleAdmission"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -46318,6 +46319,69 @@
       "parseErrors": [],
       "asynchronous": 0,
       "unassignedWrites": 3
+    },
+    {
+      "path": "vendor/eliza/packages/agent/scripts/build-mobile-bundle.ts",
+      "sha256": "8194667dca284bf957795c0bfa91094d67673981cfad47fd3ec2cb7f31c8af4a",
+      "allocatedModels": [
+        "MobileBundleAdmission"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "<module>",
+          "line": 83,
+          "bindings": 30,
+          "writes": 29
+        },
+        {
+          "owner": "findPgliteDist",
+          "line": 184,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "findPgliteDist.ArrowFunction@203",
+          "line": 212,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "setup",
+          "line": 575,
+          "bindings": 4,
+          "writes": 1
+        },
+        {
+          "owner": "findEthersCommonJsIndex",
+          "line": 807,
+          "bindings": 1,
+          "writes": 2
+        },
+        {
+          "owner": "findViemPackageRoot",
+          "line": 860,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "findInstalledPackageRoot",
+          "line": 933,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "setup.ArrowFunction@1385",
+          "line": 1392,
+          "bindings": 1,
+          "writes": 1
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 32
     },
     {
       "path": "vendor/eliza/packages/agent/scripts/mobile-stubs/argon2.ts",
@@ -218922,6 +218986,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "0c263ac64876184c663d6716496ac9b5a75d6e7f49456e1b1ce342e79639c32b"
+    "sha256": "d76d4b295c6880da4d9620c6647799a7d8d03494d5a6609d474bab96858946ea"
   }
 }

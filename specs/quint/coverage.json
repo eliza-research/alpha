@@ -49579,7 +49579,8 @@
         "DevelopmentRuntimeLoader",
         "CombinedAgentLauncher",
         "ReviewedWorkflowLauncher",
-        "CoreConnectorCustody"
+        "CoreConnectorCustody",
+        "MobileBundleAdmission"
       ],
       "scope": "development-runtime",
       "treatment": "domain-contract-or-support",
@@ -50122,6 +50123,17 @@
           "text": "if (retireFailedHandoff) await retireFailedHandoff();"
         }
       ]
+    },
+    {
+      "path": "vendor/eliza/packages/agent/scripts/build-mobile-bundle.ts",
+      "models": [
+        "MobileBundleAdmission"
+      ],
+      "scope": "shared-upstream",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "sha256": "8194667dca284bf957795c0bfa91094d67673981cfad47fd3ec2cb7f31c8af4a",
+      "stateAnchors": []
     },
     {
       "path": "vendor/eliza/packages/agent/scripts/mobile-stubs/argon2.ts",
@@ -619008,7 +619020,8 @@
     {
       "path": "patches/eliza/mobile-uuid-build.json",
       "models": [
-        "Application"
+        "Application",
+        "MobileBundleAdmission"
       ],
       "sha256": "bf31b0a89b756b5deb7281bd3f56baccba25ccea0337fba04ae2ddf9d31a011b"
     },
@@ -619255,7 +619268,8 @@
       "models": [
         "Application",
         "ResidentRuntime",
-        "CoreRuntimeShutdown"
+        "CoreRuntimeShutdown",
+        "MobileBundleAdmission"
       ],
       "sha256": "a806e8eada974f400afe18e00e5cf275d3519ab00462615076e3d4124639a288"
     },
@@ -619264,7 +619278,8 @@
       "models": [
         "TaskServiceLifecycle",
         "CanonicalNotesStore",
-        "CoreTurnControllers"
+        "CoreTurnControllers",
+        "MobileBundleAdmission"
       ],
       "sha256": "62682bc4e49ea7c2f187a3b688f65289b4092c0438fd1cc210b5892ab306ee9d"
     },
@@ -619273,7 +619288,8 @@
       "models": [
         "TaskServiceLifecycle",
         "CanonicalNotesStore",
-        "CoreTurnControllers"
+        "CoreTurnControllers",
+        "MobileBundleAdmission"
       ],
       "sha256": "5b2f99180a222f743367959b7ba0360d9d30597ba80d91ea126830074d190258"
     },
@@ -619282,7 +619298,8 @@
       "models": [
         "TaskServiceLifecycle",
         "CanonicalNotesStore",
-        "CoreTurnControllers"
+        "CoreTurnControllers",
+        "MobileBundleAdmission"
       ],
       "sha256": "2e4f7ef05ae6f09285c2a6141876c14b5f30539c926a46864bf8862ae8d3b7bd"
     },
@@ -619306,7 +619323,8 @@
         "DevelopmentRuntimeLoader",
         "CombinedAgentLauncher",
         "ReviewedWorkflowLauncher",
-        "CoreConnectorCustody"
+        "CoreConnectorCustody",
+        "MobileBundleAdmission"
       ],
       "sha256": "331e2ce0df2c43a1f34969bc12b54d51292134320599e4a765e77b5129853171"
     },
@@ -619336,7 +619354,8 @@
         "TaskServiceLifecycle",
         "CanonicalNotesStore",
         "CoreTurnControllers",
-        "CoreConnectorCustody"
+        "CoreConnectorCustody",
+        "MobileBundleAdmission"
       ],
       "sha256": "c857f206dfed8c329cb44259208937b5016e45ce81b108e8fdbee5df6222e862"
     },
@@ -619611,7 +619630,8 @@
         "TaskServiceLifecycle",
         "CanonicalNotesStore",
         "CoreTurnControllers",
-        "CoreConnectorCustody"
+        "CoreConnectorCustody",
+        "MobileBundleAdmission"
       ],
       "sha256": "a0f840fa8572fae33dc3958769c4bd9a951e6f18d04c2345979147134a1473b2"
     }
@@ -619620,7 +619640,7 @@
     "apps/app/index.html"
   ],
   "sharedSourceDiscovery": {
-    "sharedSourceCount": 4843,
+    "sharedSourceCount": 4844,
     "producer": "specs/quint/refinement/services/runtime-bundle-inputs.json",
     "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
     "meaning": "Authenticated source identities and domain allocations. Runtime activation and implementation refinement require separate evidence."
