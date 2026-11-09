@@ -1118,6 +1118,40 @@
       }
     },
     {
+      "path": "specs/quint/services/LifeOpsScheduledTaskRoute.qnt",
+      "module": "LifeOpsScheduledTaskRoute",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "vendor/eliza/plugins/plugin-scheduling/src/routes/scheduled-tasks.ts",
+        "vendor/eliza/plugins/plugin-scheduling/src/scheduled-task/runner.ts",
+        "vendor/eliza/plugins/plugin-scheduling/src/scheduled-task/schema.ts",
+        "vendor/eliza/plugins/plugin-scheduling/src/scheduled-task/state-log.ts"
+      ],
+      "tests": [
+        "ownerListAndInvalidFilterTest",
+        "exactEditAndRejectionTest",
+        "snoozeCompleteReopenTest",
+        "oneClaimWinsTest",
+        "completionBeforeEgressTest",
+        "completionAfterEgressTest",
+        "occurrenceFenceGapTest"
+      ],
+      "invariants": ["EgressHasClaimAndGuard", "FireReplyIdentity"],
+      "stateMapping": {
+        "state/at/completed/text/cron/zone": "Actual task-store snapshot and bounded clock instant",
+        "slots/claims/writes/guards/egress": "Held SDK calls and actual in-memory conditional write and claim outcomes at controlled dispatch boundaries",
+        "logs/reply/fireReplies": "Actual log-store counts and route response identities/status"
+      },
+      "abstractions": [
+        "Two generic runner handles share an SDK in-memory task and log store. A hidden fixture row appears only in list cases. Mutable examples use one manual task and one cron edit.",
+        "The as-built model preserves the occurrence ABA witness. ExactOccurrenceEgress and NoOlderOccurrenceRestore are desired properties with a directed violation witness, not passing invariants.",
+        "Route framing and host authorization, real SQL, configured host admission and provider dispatch remain separate."
+      ],
+      "bounds": {"maxSamples": 1000, "maxSteps": 80, "seed": "123"}
+    },
+    {
       "path": "specs/quint/services/WorkflowScheduleTasks.qnt",
       "module": "WorkflowScheduleTasks",
       "init": "init",
