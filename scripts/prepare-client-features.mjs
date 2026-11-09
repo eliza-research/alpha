@@ -285,6 +285,7 @@ export const CLIENT_FEATURE_PATHS = [
   'plugins/plugin-assistant/src/services/device-actions/calendar-contract.ts',
   'plugins/plugin-assistant/src/services/device-actions/device-record-presentation.ts',
   'plugins/plugin-assistant/src/services/device-actions/notes-contract.ts',
+  'plugins/plugin-assistant/src/services/device-actions/notes-organize-contract.ts',
   'plugins/plugin-assistant/src/services/device-actions/reminder-create-contract.ts',
   'plugins/plugin-assistant/src/services/device-actions/reminder-contract.ts',
   'plugins/plugin-files',
