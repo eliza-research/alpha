@@ -57,5 +57,8 @@ test('leaving the note stops reading; a finished reading reports completion',asy
 test('the editor toolbar has no Read aloud or Dictate button',async({page})=>{
  await openNote(page);
  for(const name of ['Read aloud','Stop reading','Dictate'])await expect(page.getByRole('button',{name,exact:true})).toHaveCount(0);
- for(const name of ['Back to notes','Turn into checklist','Share note','More'])await expect(page.getByRole('button',{name,exact:true})).toBeVisible();
+ for(const name of ['Back to notes','Turn into checklist','More'])await expect(page.getByRole('button',{name,exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'More',exact:true}).click();
+ await expect(page.getByRole('dialog',{name:'Note actions',exact:true}).getByRole('button',{name:'Share note',exact:true})).toBeVisible();
+ await page.keyboard.press('Escape');
 });

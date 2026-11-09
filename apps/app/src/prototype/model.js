@@ -3157,7 +3157,7 @@ registerView("notes", {
     if (isEdit) {
       ed = Object.assign({}, common, {
         isText: n.kind === "text", isList: n.kind === "list",
-        done: common.close, doneDisabled: false, saveStatus: "",
+        saveStatus: "",
         body: n.body || "",
         onBody: function (e) { notesUpd(api, n.id, { body: e.target.value }); },
         listCss: n.kind === "list" ? "color: var(--acct)" : "", listLabel: n.kind === "list" ? "Turn into text" : "Turn into checklist",

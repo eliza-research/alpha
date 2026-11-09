@@ -19,7 +19,11 @@ function containsPath(directory, file) {
 }
 
 function isTemporarySource(path) {
-  return isAbsolute(path) && resolve(path) === path && containsPath(resolve(tmpdir()), path) && !containsPath(root, path);
+  // macOS exposes the same temp directory through /var and canonical /private/var.
+  // Accept either root spelling; live files still need the physical containment check below.
+  const temporaryRoots = [resolve(tmpdir()), realpathSync(tmpdir())];
+  return isAbsolute(path) && resolve(path) === path && temporaryRoots.some(directory => containsPath(directory, path))
+    && !containsPath(root, path) && !containsPath(realpathSync(root), path);
 }
 
 function isGeneratedFile(path) {

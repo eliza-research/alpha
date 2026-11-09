@@ -31,7 +31,7 @@ public final class CalendarDeletionRestartInstrumentedTest {
  }
  private static Uri calendars(String account){return CalendarContract.Calendars.CONTENT_URI.buildUpon().appendQueryParameter(CalendarContract.CALLER_IS_SYNCADAPTER,"true").appendQueryParameter("account_name",account).appendQueryParameter("account_type",CalendarContract.ACCOUNT_TYPE_LOCAL).build();}
  @Test public void externalRestartPhase()throws Exception{
-  Bundle args=InstrumentationRegistry.getArguments();assertEquals("Explicit external restart campaign required","1",args.getString("calendarDeletionRestart"));
+  Bundle args=InstrumentationRegistry.getArguments();org.junit.Assume.assumeTrue("Explicit external restart campaign required","1".equals(args.getString("calendarDeletionRestart")));
   assertTrue("Never mutate the owner user's provider",Process.myUid()/100000>0);
   String run=args.getString("restartRun",""),phase=args.getString("restartPhase",""),mode=args.getString("restartMode","");
   assertTrue(run.matches("[0-9a-f]{32}"));assertTrue(mode.equals("undo")||mode.equals("expiry"));assertTrue(phase.equals("prepare")||phase.equals("verify")||phase.equals("replay"));

@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
+import {mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {join} from 'node:path';
+import {dirname, join} from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {captureInputs, checkTraces, literal, qmap, qset, verifyRefinementReceiptInputs} from '../specs/quint/refinement/check-traces.mjs';
@@ -89,8 +89,8 @@ test('matching observations still fail when the model safety invariant is false'
   } finally { rmSync(directory, {recursive: true, force: true}); }
 });
 
-test('generated inputs survive fixture cleanup while live source remains authoritative', async () => {
-  const directory = mkdtempSync(join(tmpdir(), 'alpha-refinement-generated-'));
+test('canonical temporary inputs survive fixture cleanup while live source remains authoritative', async () => {
+  const directory = realpathSync(mkdtempSync(join(tmpdir(), 'alpha-refinement-generated-')));
   const generated = join(directory, 'GeneratedFixture.java');
   const stable = join(directory, 'StableFixtureInput.java');
   const testSource = fileURLToPath(import.meta.url);
@@ -109,6 +109,13 @@ test('generated inputs survive fixture cleanup while live source remains authori
       /explicit driver-bound temporary file/);
     await assert.rejects(checkTraces({...options, driverHashes: undefined, generatedSources: [generated]}),
       /explicit driver-bound temporary file/);
+
+    const linkedDirectory = join(directory, 'linked-repository-tests');
+    symlinkSync(dirname(testSource), linkedDirectory, 'dir');
+    const escaped = join(linkedDirectory, 'quint-refinement-harness.test.mjs');
+    await assert.rejects(checkTraces({...options, sources: [...sources, escaped],
+      driverHashes: captureInputs([...sources, escaped]), generatedSources: [escaped]}),
+      /explicit driver-bound temporary file/, 'a temporary directory alias cannot admit repository source as generated');
 
     const receipt = await checkTraces({...options, generatedSources: [generated]});
     assert.deepEqual(receipt.generatedSourceSnapshots, {[generated]: driverHashes[generated]});

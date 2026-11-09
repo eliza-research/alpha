@@ -20,25 +20,13 @@ final class WorkflowNoticeOwnerFixture implements AutoCloseable {
  static void prepare()throws Exception{
   org.junit.Assume.assumeTrue("Synthetic restore requires test-mocks build",BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS);
   Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();assertTrue(android.os.Process.myUid()/100000>0);
-  assertFalse("Fresh fixture preferences",context.getSharedPreferences(PREFS,0).contains("identity"));
-  int port;try(ServerSocket probe=new ServerSocket(0,1,InetAddress.getByName("127.0.0.1"))){port=probe.getLocalPort();}
-  String origin="http://127.0.0.1:"+port,token="SYNTHETIC-LOCAL-ONLY-"+UUID.randomUUID();
-  JSONObject identity=new JSONObject().put("origin",origin).put("ownerId","fixture-owner-"+UUID.randomUUID()).put("agentId",UUID.randomUUID().toString());
-  AlphaCredentialStore store=new AlphaCredentialStore(context);assertNull(store.readCredentialSlot("remote:"+origin));
+  JSONObject identity=seed(context);AlphaCredentialStore store=new AlphaCredentialStore(context);
   String id="approval-"+(UUID.randomUUID().toString()+UUID.randomUUID()).replace("-","");
   JSONObject route=new JSONObject(identity.toString()).put("scope","a".repeat(64)).put("workflowId","fixture-flow").put("runId","fixture-run-"+UUID.randomUUID()).put("versionId","fixture-version");
   JSONObject approval=new JSONObject().put("id",id).put("bindingHash","b".repeat(64)).put("route",route).put("expiresAt",System.currentTimeMillis()+600000L);
-  assertTrue(context.getSharedPreferences(PREFS,0).edit().putString("identity",identity.toString()).putString("token",token).putString("approval",approval.toString()).commit());
+  assertTrue(context.getSharedPreferences(PREFS,0).edit().putString("approval",approval.toString()).commit());
   try(WorkflowNoticeOwnerFixture fixture=new WorkflowNoticeOwnerFixture(context);BoundedActivityScenario<MainActivity> activity=BoundedActivityScenario.launch(MainActivity.class)){
-   AppNavigation.liveMode();long end=SystemClock.elapsedRealtime()+20000;
-   while(!"true".equals(WebViewTestDriver.evaluate("Boolean(document.documentElement.dataset.activeView)"))&&SystemClock.elapsedRealtime()<end)SystemClock.sleep(50);
-   JSONObject credential=new JSONObject().put("origin",origin).put("token",token).put("sessionId",token).put("identityId",identity.getString("ownerId")).put("expiresAt",System.currentTimeMillis()+3600000);
-   store.writeCredentialSlot("remote:"+origin,credential.toString());
-   String selection=new JSONObject().put("kind","local").put("origin",origin).toString();
-   assertEquals("true",WebViewTestDriver.evaluate("localStorage.setItem('alpha.connection.selection.v1',"+JSONObject.quote(selection)+");localStorage.getItem('alpha.connection.selection.v1')==="+JSONObject.quote(selection)));
-   WebViewTestDriver.evaluate("location.reload();true");fixture.awaitOwner(true);
-   JSONObject restored=new JSONObject((String)new JSONTokener(WebViewTestDriver.evaluate("localStorage.getItem('alpha.connection.selection.v1')")).nextValue());
-   assertEquals(2,restored.length());assertEquals("local",restored.getString("kind"));assertEquals(origin,restored.getString("origin"));
+   fixture.signIn();
    // One real main-process bridge publication. Never race the main owner fence
    // with a helper-process ledger write, and never retry an unknown publication.
    WebViewTestDriver.evaluate("window.__fixtureApprovalPost=null;Capacitor.Plugins.AlphaHostedResults.postWorkflowApprovalNotice("+approval+").then(value=>window.__fixtureApprovalPost={value},error=>window.__fixtureApprovalPost={error:String(error)});true");
@@ -60,6 +48,30 @@ final class WorkflowNoticeOwnerFixture implements AutoCloseable {
 
 
   }
+ }
+ /** Persists a fresh synthetic owner identity and its loopback token; returns the identity. */
+ static JSONObject seed(Context context)throws Exception{
+  org.junit.Assume.assumeTrue("Synthetic restore requires test-mocks build",BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS);
+  assertFalse("Fresh fixture preferences",context.getSharedPreferences(PREFS,0).contains("identity"));
+  int port;try(ServerSocket probe=new ServerSocket(0,1,InetAddress.getByName("127.0.0.1"))){port=probe.getLocalPort();}
+  String origin="http://127.0.0.1:"+port,token="SYNTHETIC-LOCAL-ONLY-"+UUID.randomUUID();
+  JSONObject identity=new JSONObject().put("origin",origin).put("ownerId","fixture-owner-"+UUID.randomUUID()).put("agentId",UUID.randomUUID().toString());
+  assertNull(new AlphaCredentialStore(context).readCredentialSlot("remote:"+origin));
+  assertTrue(context.getSharedPreferences(PREFS,0).edit().putString("identity",identity.toString()).putString("token",token).commit());
+  return identity;
+ }
+ /** In the launched activity: the real renderer restores the seeded session, which becomes the native notice owner. */
+ void signIn()throws Exception{
+  AlphaCredentialStore store=new AlphaCredentialStore(context);
+  AppNavigation.liveMode();long end=SystemClock.elapsedRealtime()+20000;
+  while(!"true".equals(WebViewTestDriver.evaluate("Boolean(document.documentElement.dataset.activeView)"))&&SystemClock.elapsedRealtime()<end)SystemClock.sleep(50);
+  JSONObject credential=new JSONObject().put("origin",origin).put("token",token).put("sessionId",token).put("identityId",identity.getString("ownerId")).put("expiresAt",System.currentTimeMillis()+3600000);
+  store.writeCredentialSlot("remote:"+origin,credential.toString());
+  String selection=new JSONObject().put("kind","local").put("origin",origin).toString();
+  assertEquals("true",WebViewTestDriver.evaluate("localStorage.setItem('alpha.connection.selection.v1',"+JSONObject.quote(selection)+");localStorage.getItem('alpha.connection.selection.v1')==="+JSONObject.quote(selection)));
+  WebViewTestDriver.evaluate("location.reload();true");awaitOwner(true);
+  JSONObject restored=new JSONObject((String)new JSONTokener(WebViewTestDriver.evaluate("localStorage.getItem('alpha.connection.selection.v1')")).nextValue());
+  assertEquals(2,restored.length());assertEquals("local",restored.getString("kind"));assertEquals(origin,restored.getString("origin"));
  }
  static JSONObject approval(Context context)throws Exception{return new JSONObject(context.getSharedPreferences(PREFS,0).getString("approval","{}"));}
  static JSONObject publication(Context context)throws Exception{return new JSONObject(context.getSharedPreferences(PREFS,0).getString("publication","{}"));}

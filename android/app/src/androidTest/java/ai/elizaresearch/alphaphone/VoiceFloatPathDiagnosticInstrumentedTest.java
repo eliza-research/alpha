@@ -43,6 +43,11 @@ public final class VoiceFloatPathDiagnosticInstrumentedTest {
   ByteBuffer b=ByteBuffer.allocate(samples.length*4).order(ByteOrder.LITTLE_ENDIAN);for(float x:samples)b.putFloat(x);
   try(OutputStream out=new FileOutputStream(file)){out.write(b.array());}
  }
+ /** Records the variant's transcript and keyword check, or its rejection, without ending the run. */
+ static String transcribe(SessionSpeech engine,float[] input,JSONObject evidence,String name)throws Exception{
+  try{String transcript=engine.transcribe(input);evidence.put(name+"Transcript",transcript).put(name+"Recognized",recognized(transcript));return transcript;}
+  catch(IllegalArgumentException|IllegalStateException|IOException rejected){evidence.put(name+"TranscriptError",String.valueOf(rejected.getMessage()));return null;}
+ }
  static boolean recognized(String transcript){String lower=transcript.toLowerCase(Locale.ROOT);for(String word:new String[]{"quick","brown","fox","lazy","dog"})if(!lower.contains(word))return false;return true;}
  @Test public void floatAndSavedPcmPathsAreComparedAndRetained()throws Exception {
   org.junit.Assume.assumeTrue("Opt-in real local models required","1".equals(InstrumentationRegistry.getArguments().getString("localSpeech")));
@@ -57,14 +62,14 @@ public final class VoiceFloatPathDiagnosticInstrumentedTest {
    float[] floatInput=linear16k(audio.samples,audio.sampleRate),pcmInput=linear16k(pcm,audio.sampleRate);
    float[] unityGain=new float[pcmInput.length];for(int i=0;i<unityGain.length;i++)unityGain[i]=Math.max(-1f,Math.min(1f,pcmInput[i]*32768f/32767f));
    double resampledPeak=0;for(float x:floatInput)resampledPeak=Math.max(resampledPeak,Math.abs(x));
-   // Same order as the canonical test's first synthesis transcription, then the PCM variants.
-   String floatTranscript=engine.transcribe(floatInput),pcmTranscript=engine.transcribe(pcmInput),unityTranscript=engine.transcribe(unityGain),floatAgain=engine.transcribe(floatInput);
+   // Metrics and raw buffers first: transcribe rejects samples beyond +/-1, and that rejection is evidence too.
    evidence.put("sampleRate",audio.sampleRate).put("samples",audio.samples.length).put("floatPeak",peak).put("resampledPeak",resampledPeak).put("clippedSamples",clipped).put("exactZeroSamples",exactZeros)
-    .put("pcmGain",32767.0/32768.0).put("quantizationMaxError",maxError).put("quantizationSnrDb",errorEnergy>0?10*Math.log10(signalEnergy/errorEnergy):JSONObject.NULL)
-    .put("floatTranscript",floatTranscript).put("floatRecognized",recognized(floatTranscript)).put("floatRepeatTranscript",floatAgain).put("floatDeterministic",floatTranscript.equals(floatAgain))
-    .put("savedPcmTranscript",pcmTranscript).put("savedPcmRecognized",recognized(pcmTranscript)).put("savedPcmUnityGainTranscript",unityTranscript).put("savedPcmUnityGainRecognized",recognized(unityTranscript));
+    .put("pcmGain",32767.0/32768.0).put("quantizationMaxError",maxError).put("quantizationSnrDb",errorEnergy>0?10*Math.log10(signalEnergy/errorEnergy):JSONObject.NULL);
    writeFloats(new File(folder,"float-path-synthesized-float32le.raw"),audio.samples);writeFloats(new File(folder,"float-path-asr-input-float32le-16k.raw"),floatInput);
    try(OutputStream out=new FileOutputStream(new File(folder,"float-path-synthesized.wav"))){out.write(wav);}
+   // Same order as the canonical test's first synthesis transcription, then the PCM variants.
+   String floatTranscript=transcribe(engine,floatInput,evidence,"float"),pcmTranscript=transcribe(engine,pcmInput,evidence,"savedPcm"),unityTranscript=transcribe(engine,unityGain,evidence,"savedPcmUnityGain"),floatAgain=transcribe(engine,floatInput,evidence,"floatRepeat");
+   if(floatTranscript!=null&&floatAgain!=null)evidence.put("floatDeterministic",floatTranscript.equals(floatAgain));
    evidence.put("originalFloatSamplesRetained",true).put("complete",true);
   } finally { try(Writer out=new FileWriter(new File(folder,"float-path-diagnostic.json"))){out.write(evidence.toString(2));} }
   assertTrue("Diagnostic evidence recorded",evidence.getBoolean("complete"));

@@ -144,6 +144,50 @@ export function requiredAppLinkProblems(tree, {host, path: callbackPath, activit
 }
 
 /**
+ * Every http/https VIEW intent filter in a parsed aapt XMLtree, one line per URL shape Android
+ * matches: "<component> <scheme>://<host><path>", where a path prefix ends in "*" and any other
+ * data attribute is shown in brackets. Android combines data attributes within one filter, so a
+ * filter with two hosts yields two lines.
+ */
+export function webViewFilters(tree) {
+  const manifest = tree?.name === 'manifest' ? tree : tree?.children?.find(node => node.name === 'manifest');
+  const application = manifest?.children?.find(node => node.name === 'application');
+  const qualified = name => name?.startsWith('.') ? manifest?.attrs?.package + name : name;
+  const lines = new Set();
+  for (const component of application?.children ?? []) {
+    for (const filter of component.children.filter(child => child.name === 'intent-filter')) {
+      if (!filter.children.some(node => node.name === 'action' && node.attrs.name === 'android.intent.action.VIEW')) continue;
+      const data = filter.children.filter(node => node.name === 'data');
+      const values = name => [...new Set(data.map(node => node.attrs[name]).filter(value => value !== undefined))];
+      const schemes = values('scheme').filter(scheme => scheme === 'http' || scheme === 'https');
+      if (!schemes.length) continue;
+      const hosts = values('host').length ? values('host') : ['(any host)'];
+      const paths = [...values('path'), ...values('pathPrefix').map(prefix => `${prefix}*`),
+        ...['pathPattern', 'pathAdvancedPattern', 'pathSuffix'].flatMap(name => values(name).map(value => ` [${name}=${value}]`))];
+      const other = [...new Set(data.flatMap(node => Object.keys(node.attrs)))]
+        .filter(name => !['scheme', 'host', 'path', 'pathPrefix', 'pathPattern', 'pathAdvancedPattern', 'pathSuffix'].includes(name))
+        .sort().map(name => ` [${name}=${values(name).join(',')}]`).join('');
+      for (const scheme of schemes) for (const host of hosts) for (const shape of paths.length ? paths : [' (any path)'])
+        lines.add(`${qualified(component.attrs.name)} ${scheme}://${host}${shape}${other}`);
+    }
+  }
+  return [...lines].sort();
+}
+
+/**
+ * The merged manifest's web VIEW filters must be exactly `allowed`. A new web return is added to
+ * the allow-list on purpose; any other filter (a broad prefix on the Cloud host, a library's
+ * handler) could pull a sign-in page back into Alpha.
+ */
+export function webViewFilterProblems(tree, allowed) {
+  const found = webViewFilters(tree);
+  return [
+    ...found.filter(line => !allowed.includes(line)).map(line => `Unexpected web VIEW intent filter ${line}; add it to the allowed set in scripts/verify-apks.mjs only if it is deliberate`),
+    ...allowed.filter(line => !found.includes(line)).map(line => `Missing web VIEW intent filter ${line}`),
+  ];
+}
+
+/**
  * What Cloud accepts in ELIZA_ANDROID_ASSET_LINKS_JSON, mirrored from the pinned
  * packages/cloud/shared/src/lib/auth/android-asset-links.ts. Cloud publishes [] for every app when
  * any entry breaks one of these rules, so a value is checked here before an operator sets it.

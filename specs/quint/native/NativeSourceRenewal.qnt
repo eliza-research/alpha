@@ -5,7 +5,7 @@ module NativeSourceRenewal {
   type State = {
     rows: int -> Row, visible: Set[int], routes: Set[int], serial: int, now: int,
     owner: int, revision: int, online: bool, revoked: bool, gate: str,
-    posts: int, cancels: int, wakeups: int, process: int, locked: bool, reply: Reply
+    posts: int, cancels: int, wakeups: int, process: int, locked: bool, retryId: int, retryMode: str, reply: Reply
   }
   var s: State
   val ids=Set(1,2,3,4)
@@ -16,7 +16,7 @@ module NativeSourceRenewal {
   pure def reply(status: str): Reply = {status:status,id:0,token:0,question:false}
 
   action init = s'={rows:ids.mapBy(_=>empty),visible:Set(),routes:Set(),serial:0,now:1000,
-    owner:1,revision:1,online:true,revoked:false,gate:"allowed",posts:0,cancels:0,wakeups:0,process:1,locked:false,reply:reply("none")}
+    owner:1,revision:1,online:true,revoked:false,gate:"allowed",posts:0,cancels:0,wakeups:0,process:1,locked:false,retryId:0,retryMode:"renew",reply:reply("none")}
   pure def ownerOf(id: int): int = if (id==4) 2 else 1
   pure def sourceOf(id: int): int = if (id==2) 2 else 1
   pure def current(state: State, id: int): str =
@@ -86,32 +86,38 @@ module NativeSourceRenewal {
     }
   }
 
-  pure def consume(state: State): State = result({ ...state,wakeups:state.wakeups+1 },"consumed")
+  pure def consume(state: State): State = result({ ...state,wakeups:state.wakeups+1,retryId:0 },"consumed")
   pure def pendingId(state: State): int =
     if (state.rows.get(1).token>0) 1 else if (state.rows.get(2).token>0) 2
     else if (state.rows.get(3).token>0) 3 else if (state.rows.get(4).token>0) 4 else 0
-  action capture(id: int, mode: str, refusedWrite: bool): bool = all {
-    ids.contains(id), captureModes.contains(mode), s.wakeups<10, s.serial<6, s.cancels<12,
-    val check=current(s,id)
-    val row=s.rows.get(id)
-    s'=if (mode.in(Set("foreign","wrong-prefix"))) result(s,"ignored")
-      else if (row.phase!="posted") consume(s)
-      else if (check=="unverifiable" or refusedWrite) result(s,"ignored")
-      else if (check=="stale") consume(cancelSet(s,Set(id),true))
-      else consume({ ...s,serial:s.serial+1,rows:ids.mapBy(key=>{
-        val old=s.rows.get(key)
-        if (key==id) { ...old,token:s.serial+1,question:mode=="question" }
+  pure def attemptCapture(state: State, id: int, mode: str, refusedWrite: bool): State = {
+    val check=current(state,id)
+    val row=state.rows.get(id)
+    val queued={ ...state,retryId:id,retryMode:mode }
+    if (mode.in(Set("foreign","wrong-prefix"))) result(state,"ignored")
+      else if (row.phase!="posted") consume(queued)
+      else if (check=="unverifiable" or refusedWrite) result(queued,"ignored")
+      else if (check=="stale") consume(cancelSet(queued,Set(id),true))
+      else consume({ ...queued,serial:state.serial+1,rows:ids.mapBy(key=>{
+        val old=state.rows.get(key)
+        if (key==id) { ...old,token:state.serial+1,question:mode=="question" }
         else { ...old,token:0,question:false }
       }) })
   }
+  action capture(id: int, mode: str, refusedWrite: bool): bool = all {
+    ids.contains(id), captureModes.contains(mode), s.wakeups<10, s.serial<6, s.cancels<12,
+    s'=attemptCapture(s,id,mode,refusedWrite)
+  }
   action pending = all {
     s.cancels<12,
-    val id=pendingId(s)
+    // The current bridge retries the last uncommitted intent on an unlocked read.
+    val retried=if (not(s.locked) and s.retryId!=0) attemptCapture(s,s.retryId,s.retryMode,false) else s
+    val id=pendingId(retried)
     s'=if (s.locked) result(s,"rejected")
-      else if (id==0) result(s,"empty")
-      else if (current(s,id)=="stale") result(cancelSet(s,Set(id),true),"empty")
-      else if (current(s,id)=="unverifiable") result(s,"rejected")
-      else { ...s,reply:{status:"pending",id:id,token:s.rows.get(id).token,question:s.rows.get(id).question} }
+      else if (id==0) result(retried,"empty")
+      else if (current(retried,id)=="stale") result(cancelSet(retried,Set(id),true),"empty")
+      else if (current(retried,id)=="unverifiable") result(retried,"rejected")
+      else { ...retried,reply:{status:"pending",id:id,token:retried.rows.get(id).token,question:retried.rows.get(id).question} }
   }
   action settle(token: int, discard: bool): bool = all {
     token.in(0.to(6)), s.cancels<12,
@@ -130,7 +136,7 @@ module NativeSourceRenewal {
   action revision(id: int): bool = all { id.in(Set(1,2)), s'={ ...s,revision:id } }
   action gate(mode: str): bool = all { gates.contains(mode), s'={ ...s,gate:mode } }
   action time(now: int): bool = all { now.in(Set(1000,1500,2000)), s'={ ...s,now:now } }
-  action restart = all { s.process<3, s'={ ...s,process:s.process+1,wakeups:0 } }
+  action restart = all { s.process<3, s'={ ...s,process:s.process+1,wakeups:0,retryId:0 } }
 
   val VisibleAlertHasBothRoutes = s.visible.subseteq(s.routes) and s.routes.subseteq(ids)
   val SingleExactPending = ids.filter(id=>s.rows.get(id).token>0).size()<=1

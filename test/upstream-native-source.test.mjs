@@ -26,6 +26,7 @@ test('batch source matches git show for binary and executable files and refuses 
  assert.equal(files.get('module/run').mode,'100755');
  fs.writeFileSync(path.join(repo,'module/binary'),'changed');assert.throws(()=>source.read('module'),/drift/);assert.throws(()=>upstreamNativeSource(root),/dirty/);
  git('checkout','--','module/binary');fs.chmodSync(path.join(repo,'module/run'),0o644);assert.throws(()=>source.read('module'),/drift/);
+ fs.chmodSync(path.join(repo,'module/run'),0o750);assert.equal(source.read('module').get('module/run').mode,'100755');
  fs.chmodSync(path.join(repo,'module/run'),0o755);fs.unlinkSync(path.join(repo,'module/binary'));fs.symlinkSync('run',path.join(repo,'module/binary'));assert.throws(()=>source.read('module'),/Symlink/);
  }finally{fs.rmSync(root,{recursive:true,force:true});}
 });

@@ -6,7 +6,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
-import { archiveWebPayload, readBuildFlags, verifyOwnerRouteTable } from "../scripts/apk.mjs";
+import { archiveWebPayload, parseXmlTree, readBuildFlags, validateApk, verifyOwnerRouteTable } from "../scripts/apk.mjs";
+import { webViewFilterProblems, webViewFilters } from "../scripts/render-assetlinks.mjs";
 import { voiceBundleAdmission, VOICE_BUNDLE_FORMAT } from "../scripts/voice-host.mjs";
 const root = path.resolve(import.meta.dirname, "..");
 test("Cloud QA evidence requires one explicit Cloud profile before any APK work", () => {
@@ -328,4 +329,63 @@ test("APK voice admission requires the complete recorded bundle and every record
   const pair = { ...host, models: [...host.models, row("asr/mmproj.gguf", "asr-mmproj")], asrSlot: { paths: ["asr/phonon.gguf", "asr/mmproj.gguf"] } };
   assert.match(voiceBundleAdmission(apk(undefined, ["tts/paradee/paradee.gguf", "tts/paradee/misaki.lex", "vad/silero.gguf", "asr/phonon.gguf"]), pair).differences.join(), /ASR slot is incomplete \(asr\/mmproj\.gguf missing\)/);
   assert.equal(voiceBundleAdmission(apk(), pair).asr, true);
+});
+
+test('merged-manifest check keeps launcher-only permissions and components out of standalone', () => {
+  // Stand-ins for aapt's merged xmltree: the launcher carries every launcher-only entry, standalone none.
+  const identity = {appId: 'ai.elizaresearch.alphaphone'};
+  const launcherOnly = ['READ_CONTACTS', 'READ_SMS', 'SEND_SMS', 'CALL_PHONE', 'READ_PHONE_STATE', 'EXPAND_STATUS_BAR', 'RECEIVE_SMS', 'RECEIVE_MMS', 'RECEIVE_WAP_PUSH', 'READ_CALL_LOG']
+    .map(name => `android.permission.${name}`)
+    .concat(['AlphaInCallService', 'AlphaCallActivity', 'AlphaDialPadActivity', 'AlphaSmsDeliverReceiver', 'AlphaSmsSendReceiver', 'AlphaMmsWapPushReceiver', 'AlphaMmsResultReceiver', 'AlphaRespondViaMessageService', 'AlphaSmsComposeActivity'].map(name => `ai.elizaresearch.alphaphone.${name}`));
+  const apk = (home, entries) => () => ({packageName: identity.appId, home, launcher: true, webPayload: true, badging: '', xml: ['android.permission.CAMERA', ...entries].map(name => `A: android:name="${name}"`).join('\n')});
+  assert.doesNotThrow(() => validateApk('launcher.apk', identity, true, apk(true, launcherOnly)));
+  assert.doesNotThrow(() => validateApk('standalone.apk', identity, false, apk(false, [])));
+  for (const entry of ['android.permission.READ_PHONE_STATE', 'android.permission.EXPAND_STATUS_BAR', 'ai.elizaresearch.alphaphone.AlphaSmsSendReceiver']) {
+    const name = entry.split('.').at(-1);
+    assert.throws(() => validateApk('launcher.apk', identity, true, apk(true, launcherOnly.filter(other => other !== entry))), new RegExp(`Invalid.*${name}.*launcher\\.apk`));
+    assert.throws(() => validateApk('standalone.apk', identity, false, apk(false, [entry])), new RegExp(`Invalid.*${name}.*standalone\\.apk`));
+  }
+});
+
+// A merged-manifest xmltree with the main manifest's two web returns on MainActivity.
+function webFilterTree(extra = "") {
+  const attr = (name, value, indent) => `${" ".repeat(indent)}A: http://schemas.android.com/apk/res/android:${name}(0x01010000)="${value}" (Raw: "${value}")`;
+  const filter = data => ["      E: intent-filter (line=4)", "        A: http://schemas.android.com/apk/res/android:autoVerify(0x010104ee)=(type 0x12)0xffffffff",
+    "        E: action (line=5)", attr("name", "android.intent.action.VIEW", 10),
+    "        E: category (line=6)", attr("name", "android.intent.category.BROWSABLE", 10),
+    "        E: data (line=7)", ...Object.entries(data).map(([name, value]) => attr(name, value, 10))].join("\n");
+  return ["E: manifest (line=1)", '  A: package="ai.elizaresearch.alphaphone" (Raw: "ai.elizaresearch.alphaphone")', "  E: application (line=2)",
+    "    E: activity (line=3)", attr("name", "ai.elizaresearch.alphaphone.MainActivity", 6),
+    filter({scheme: "https", host: "eliza.app", path: "/alphaphone/auth/callback"}),
+    filter({scheme: "https", host: "eliza.app", path: "/alphaphone/gmail/callback"}),
+    // A custom-scheme return is not a web handler.
+    filter({scheme: "alphaphone", host: "cloud-delegation"}),
+    extra].join("\n");
+}
+const allowedWebFilters = ["/alphaphone/auth/callback", "/alphaphone/gmail/callback"]
+  .map(shape => `ai.elizaresearch.alphaphone.MainActivity https://eliza.app${shape}`);
+
+test("APK verification accepts exactly the allowed web VIEW filters", () => {
+  const tree = parseXmlTree(webFilterTree());
+  assert.deepEqual(webViewFilters(tree), [...allowedWebFilters].sort());
+  assert.deepEqual(webViewFilterProblems(tree, allowedWebFilters), []);
+  assert.deepEqual(webViewFilterProblems(tree, [...allowedWebFilters, "ai.elizaresearch.alphaphone.MainActivity https://staging.eliza.app/alphaphone/auth/callback"]),
+    ["Missing web VIEW intent filter ai.elizaresearch.alphaphone.MainActivity https://staging.eliza.app/alphaphone/auth/callback"]);
+});
+
+test("APK verification rejects and names an extra web VIEW filter", () => {
+  const broad = ["      E: intent-filter (line=9)", "        E: action (line=10)",
+    '          A: http://schemas.android.com/apk/res/android:name(0x01010003)="android.intent.action.VIEW" (Raw: "android.intent.action.VIEW")',
+    "        E: data (line=11)",
+    '          A: http://schemas.android.com/apk/res/android:scheme(0x01010027)="https" (Raw: "https")',
+    '          A: http://schemas.android.com/apk/res/android:host(0x01010028)="eliza.app" (Raw: "eliza.app")',
+    '          A: http://schemas.android.com/apk/res/android:pathPrefix(0x0101002b)="/" (Raw: "/")'].join("\n");
+  assert.deepEqual(webViewFilterProblems(parseXmlTree(webFilterTree(broad)), allowedWebFilters),
+    ["Unexpected web VIEW intent filter ai.elizaresearch.alphaphone.MainActivity https://eliza.app/*; add it to the allowed set in scripts/verify-apks.mjs only if it is deliberate"]);
+  // A library activity's handler with no host and no path is reported too.
+  const library = ["    E: activity (line=20)",
+    '      A: http://schemas.android.com/apk/res/android:name(0x01010003)="com.example.Viewer" (Raw: "com.example.Viewer")',
+    broad.replace(/\n.*android:host.*/, "").replace(/\n.*android:pathPrefix.*/, "")].join("\n");
+  assert.deepEqual(webViewFilterProblems(parseXmlTree(webFilterTree(library)), allowedWebFilters),
+    ["Unexpected web VIEW intent filter com.example.Viewer https://(any host) (any path); add it to the allowed set in scripts/verify-apks.mjs only if it is deliberate"]);
 });

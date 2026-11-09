@@ -54,7 +54,7 @@ test('native Google and email share MFA admission; callback state custody remain
  assert.match(complete,/deadline <= System\.currentTimeMillis\(\)/);
  assert.match(complete,/if \(destroyed \|\| attempt != current \|\| current\.cancelled\)/,'destroyed, replaced and cancelled attempts cannot publish MFA');
  assert.match(complete,/if \(current\.mfaType != null\)/,'a second challenge cannot replace an active challenge');
- assert.match(complete,/notifyListeners\("signInMfaRequired", required, true\)/,'cold Google return retains only its nonsecret outcome');
+ assert.match(complete,/notifyListeners\("signInMfaRequired", required, true\)/,'a live Google attempt retains only its nonsecret MFA outcome');
  const verify=method(source,' private void verify(PluginCall call, boolean mfa)',' private void release(');
  assert.match(verify,/\(current\.google && !mfa\)/,'Google may verify MFA, never an email code');
  assert.match(verify,/!current\.id\.equals\(call\.getString\("attemptId"\)\)/);

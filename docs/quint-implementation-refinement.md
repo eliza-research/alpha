@@ -896,6 +896,20 @@ receipt. The actual Android producer and its pre-provider smoke have
 separate provenance. Staging interruption and installed execution
 remain open.
 
+
+### Combined pull-request integration (2026-11-08)
+
+The integration retains the source/model boundary: refreshed coverage hashes do not
+prove semantic refinement. Canonical notification acknowledgement now rechecks the
+exact owner and agent before consuming a tap token. The source-driven trace includes
+an attempted acknowledgement after an agent switch. Explicit retirement clears both
+waiting and delivered tap slots; temporary suspension preserves them.
+
+The hosted-result model admits the existing reconciled-result replacement behavior:
+a changed retained digest starts a new dispatch generation, while repeated publication
+of that same digest does not repost it. The native harnesses compile the current
+bridge handlers and explicitly model the separate source-renewal port. Tests of the
+draft signing workflow use synthetic keys only and portable archive/stat fixtures.
 `CloudConnectionNotices` checks two mounted schedules and 16 checkpoints.
 The baseline shows the sign-in notice intercepting the plan notice's
 Redeem, Choose and Dismiss targets. The repaired stack preserves the

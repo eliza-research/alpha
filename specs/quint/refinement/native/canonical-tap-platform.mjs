@@ -17,11 +17,13 @@ export function canonicalTapPlatform(actor, bridge, host, route) {
     'ai/elizaresearch/alphaphone/AlphaCanonicalNotifications.java': `package ai.elizaresearch.alphaphone;
 import android.content.Context;
 import android.content.Intent;
+import android.os.SystemClock;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.json.*;
 final class AlphaCanonicalNotifications {
  private static final java.util.concurrent.Executor SERIAL=TapPorts.serial::add;
- ${['active','waitingTap','pendingTap','restoring','context','stopped','stream','session,identity','owner,fence'].map(field).join('\n')}
+ ${['active','waitingTap','waitingTapAt','pendingTap','restoring','context','stopped','stream','session,identity','owner,fence'].map(field).join('\n')}
+ ${member(actor, /^ private static final long TAP_WINDOW_MS=[^;]+;/m)}
  ${member(actor, /^ private static final AtomicInteger restoration=[^;]+;/m)}
  ${member(actor, /^ private AlphaCanonicalNotifications\(Context context\)[^\n]+/m)}
  static void ensure(Context context){} // Owner acquisition is the controlled fixture port.
@@ -56,6 +58,9 @@ final class AlphaNotificationsPlugin extends TapBridgeHost {
 }
 `,
     'ai/elizaresearch/alphaphone/NativeNotificationRoute.java': route.replace(member(route, /^package ai\.elizaos\.app;$/m), 'package ai.elizaresearch.alphaphone;'),
+    'android/os/SystemClock.java': `package android.os;
+public final class SystemClock {public static long elapsedRealtime(){return ai.elizaresearch.alphaphone.CanonicalTapTraces.elapsedRealtime();}}
+`,
     'android/content/Context.java': `package android.content;
 public class Context {public Context getApplicationContext(){return this;}}
 `,

@@ -133,7 +133,7 @@ test('the chooser and Settings offer only production connections', async ({ page
   await expect(chooser).toHaveCount(0);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   const settings = page.locator('[data-screen]');
-  await expect(settings.getByRole('button', { name: 'Agent', exact: true })).toBeVisible();
+  await expect(settings.getByRole('button', { name: 'Account', exact: true })).toBeVisible();
   const settingsText = await settings.innerText();
   expect(settingsText).not.toMatch(/mock mode/i);
   expect(settingsText).not.toMatch(/staging/i);
@@ -143,7 +143,7 @@ test('the chooser and Settings offer only production connections', async ({ page
   await expect(settings.getByText('Runtime', { exact: true })).toHaveCount(0);
   await expect(settings.getByText('Web app', { exact: true })).toHaveCount(0);
   await expect(settings.getByText('Development preview', { exact: true })).toHaveCount(0);
-  await expect(settings.getByText(/^\d+\.\d+\.\d+/).first()).toBeVisible();
+  await expect(settings.getByText(/^Version \d+\.\d+\.\d+/).first()).toBeVisible();
   // The notices this build serves, unrouted: the page must render them, not the fallback.
   const served = await page.request.get('/licenses/third-party-notices.json');
   expect(served.ok()).toBe(true);
@@ -151,7 +151,7 @@ test('the chooser and Settings offer only production connections', async ({ page
   expect(Array.isArray(notices) && notices.length > 0).toBe(true);
   await settings.getByText('Open source licenses', { exact: true }).click();
   await expect(settings.getByText('Open source licenses', { exact: true }).first()).toBeVisible();
-  await expect(settings.getByText(notices[0].name, { exact: true }).first()).toBeVisible();
+  await expect(settings.getByRole('button', { name: `${notices[0].name} ${notices[0].version}`, exact: true })).toBeVisible();
   await expect(settings.getByText('License notices unavailable', { exact: true })).toHaveCount(0);
 });
 
@@ -171,6 +171,7 @@ test('Settings shows the flags and obligations of flagged license entries, and n
   await page.getByText('About', { exact: true }).click();
   await settings.getByText('Open source licenses', { exact: true }).click();
   await expect(settings.getByText('copyleft-package', { exact: true })).toBeVisible();
+  await settings.getByRole('button', { name: 'copyleft-package 2.0.0', exact: true }).click();
   // Known flags are labelled; a flag this build does not know is shown as written, never dropped.
   await expect(settings.getByText('Copyleft (GPL family) · Network copyleft (AGPL) · future-flag', { exact: true })).toBeVisible();
   await expect(settings.getByText('Corresponding source must be available at https://example.test/copyleft.', { exact: true })).toBeVisible();
@@ -178,8 +179,12 @@ test('Settings shows the flags and obligations of flagged license entries, and n
   // One flagged entry only: unflagged and pre-flag entries get no flag row.
   await expect(settings.getByText('Flagged', { exact: true })).toHaveCount(1);
   await expect(settings.getByText('Obligation', { exact: true })).toHaveCount(2);
-  await expect(settings.getByText('plain-package', { exact: true })).toBeVisible();
-  await expect(settings.getByText('legacy-entry', { exact: true })).toBeVisible();
+  for (const name of ['plain-package 1.0.0', 'legacy-entry 3.0.0']) {
+    await settings.getByRole('button', { name: 'Back to licenses', exact: true }).click();
+    await settings.getByRole('button', { name, exact: true }).click();
+    await expect(settings.getByText('Flagged', { exact: true })).toHaveCount(0);
+    await expect(settings.getByText('Obligation', { exact: true })).toHaveCount(0);
+  }
 });
 
 test('Settings keeps the unavailable fallback when the license notices cannot be read', async ({ page }) => {
@@ -285,7 +290,7 @@ test('production ignores the development render-failure hook', async ({ page }) 
   await page.evaluate(() => window.dispatchEvent(new Event('alpha:force-render-error')));
   await settings.click();
   await expect(page.getByRole('alertdialog')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Agent', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Account', exact: true })).toBeVisible();
 });
 
 // Production speech is device-only (owner rule): the browser build has no on-device engine, so the

@@ -14,7 +14,8 @@ import java.util.zip.GZIPInputStream;
  * Release Maps uses its explicitly configured HTTPS endpoint directly.
  * The navigation methods (all builds) own the screen-off session of AlphaNavigationService:
  * the renderer starts it only from an explicit Start, mirrors the next instruction, and
- * hears exactly one navigationStopped event when the notification's Stop ends it. */
+ * hears exactly one navigationStopped event when the notification's Stop ends it. Each bridge
+ * has its own instance; the session and its stop event belong to the one that started it. */
 @CapacitorPlugin(name="AlphaMapsTransport")
 public final class AlphaMapsTransportPlugin extends Plugin {
  private final ConcurrentHashMap<String,Pending> pending=new ConcurrentHashMap<>();
@@ -94,8 +95,9 @@ public final class AlphaMapsTransportPlugin extends Plugin {
   result.put("stopped",session!=null&&AlphaNavigationService.stop(getContext(),session,navigationStops,"app"));call.resolve(result);
  }
  @Override protected void handleOnDestroy(){
-  // Guidance lives in this renderer; without it the session must not keep a stale notification.
-  // The flag comes first: a Start still running on the bridge thread sees it and retires its own session.
+  // Guidance lives in the renderer that started the session; without it the session must not keep a stale
+  // notification. A session another bridge owns keeps running. The flag comes first: a Start still running
+  // on the bridge thread sees it and retires its own session, and no event goes to this closed renderer.
   destroyed=true;
   AlphaNavigationService.stop(getContext(),null,navigationStops,"renderer-closed");
   for(Pending job:pending.values())job.cancel("Regional transport closed");workers.shutdownNow();deadlines.shutdownNow();closers.shutdown();pending.clear();earlyCancelled.clear();}

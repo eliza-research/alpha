@@ -214,7 +214,6 @@ test("receivers and callbacks a plugin registers are released when it is destroy
     if (/registerComponentCallbacks\(/.test(code)) assert.ok(/unregisterComponentCallbacks\(/.test(code), `${name}: registers component callbacks and never unregisters them`);
     // An activity listening on its own bridge shares that bridge's lifetime; a plugin does not own it.
     if (/addWebViewListener\(/.test(code) && /extends Plugin\b/.test(code)) assert.ok(/removeWebViewListener\(/.test(code), `${name}: adds a WebView listener and never removes it`);
-    if (/setStopListener\(/.test(code) && /extends Plugin/.test(code)) assert.ok(/clearStopListener\(/.test(code), `${name}: sets a navigation stop listener and never clears it`);
   }
 });
 

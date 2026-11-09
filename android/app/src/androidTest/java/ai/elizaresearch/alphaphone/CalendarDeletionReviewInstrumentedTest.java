@@ -45,13 +45,14 @@ public final class CalendarDeletionReviewInstrumentedTest {
  }
  private boolean present(ContentResolver resolver,long id){try(Cursor row=resolver.query(ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI,id),new String[]{"deleted"},null,null,null)){assertNotNull(row);return row.moveToFirst()&&row.getInt(0)==0;}}
  @Test public void nativeReviewCancelUndoAndExpiry()throws Exception{
-  assertTrue("Explicit Calendar review gate", "1".equals(InstrumentationRegistry.getArguments().getString("calendarDeletionReview")));assertTrue("Disposable secondary user required",Process.myUid()/100000>0);
+  org.junit.Assume.assumeTrue("Explicit Calendar review gate", "1".equals(InstrumentationRegistry.getArguments().getString("calendarDeletionReview")));assertTrue("Disposable secondary user required",Process.myUid()/100000>0);
   Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();ContentResolver resolver=context.getContentResolver();
   for(String permission:new String[]{Manifest.permission.READ_CALENDAR,Manifest.permission.WRITE_CALENDAR})assertEquals(PackageManager.PERMISSION_GRANTED,context.checkSelfPermission(permission));
   String account="alpha-review-"+java.util.UUID.randomUUID(),title="Owned Calendar review";
   ContentValues calendar=new ContentValues();calendar.put("account_name",account);calendar.put("account_type",CalendarContract.ACCOUNT_TYPE_LOCAL);calendar.put("name",account);calendar.put("calendar_displayName",account);calendar.put("ownerAccount",account);calendar.put("calendar_access_level",CalendarContract.Calendars.CAL_ACCESS_OWNER);calendar.put("calendar_timezone","UTC");calendar.put("visible",1);calendar.put("sync_events",1);
   Uri calendars=CalendarContract.Calendars.CONTENT_URI.buildUpon().appendQueryParameter(CalendarContract.CALLER_IS_SYNCADAPTER,"true").appendQueryParameter("account_name",account).appendQueryParameter("account_type",CalendarContract.ACCOUNT_TYPE_LOCAL).build();
   Uri created=resolver.insert(calendars,calendar);assertNotNull(created);long calendarId=ContentUris.parseId(created);
+  Throwable primary=null;
   try{
    long begin=System.currentTimeMillis()/1000*1000+172800000,end=begin+3600000;
    ContentValues event=new ContentValues();event.put("calendar_id",calendarId);event.put("title",title);event.put("dtstart",begin);event.put("dtend",end);event.put("eventTimezone","UTC");Uri inserted=resolver.insert(CalendarContract.Events.CONTENT_URI,event);assertNotNull(inserted);long eventId=ContentUris.parseId(inserted);
@@ -71,8 +72,11 @@ public final class CalendarDeletionReviewInstrumentedTest {
     while(SystemClock.elapsedRealtime()<limit){receipt=NativeDeletionCoordinator.get(context).receipt("calendar",deletion.getString("id"));if("deleted".equals(receipt.optString("phase")))break;SystemClock.sleep(100);}
     assertNotNull(receipt);assertEquals("Actual scheduled expiry", "deleted",receipt.getString("phase"));assertFalse(present(resolver,eventId));
    }
-  }finally{
+  }catch(Exception|AssertionError failure){primary=failure;throw failure;}
+  finally{
+   try{
    Uri exact=ContentUris.withAppendedId(calendars,calendarId);try(Cursor row=resolver.query(exact,new String[]{"account_name","name"},null,null,null)){assertNotNull(row);assertTrue(row.moveToFirst());assertEquals(account,row.getString(0));assertEquals(account,row.getString(1));}assertEquals(1,resolver.delete(exact,null,null));
+   }catch(Exception|AssertionError cleanup){if(primary!=null)primary.addSuppressed(cleanup);else throw cleanup;}
   }
  }
 }

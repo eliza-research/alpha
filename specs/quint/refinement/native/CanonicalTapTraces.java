@@ -50,6 +50,7 @@ final class AlphaLocalAgentPlugin {
 }
 
 public final class CanonicalTapTraces {
+ public static long elapsedRealtime(){return TapPorts.now;}
  static void check(boolean condition,String message){if(!condition)throw new AssertionError(message);}
  static Field field(String name)throws Exception{
   var value=AlphaCanonicalNotifications.class.getDeclaredField(name);value.setAccessible(true);return value;
@@ -258,7 +259,7 @@ public final class CanonicalTapTraces {
   {
    Fixture f=new Fixture("suspend-preserves-both-slots-and-owner-agent-readback");
    f.attach(1,1);f.create(1,"/chat");f.capture(2,1,"/notes",true);
-   f.detach(false);f.read();f.attach(1,2);f.read();f.detach(false);f.attach(1,1);f.read();
+   f.detach(false);f.read();f.attach(1,2);f.read();f.ack(1,"ok");f.detach(false);f.attach(1,1);f.read();
    f.detach(true);f.read();traces.put(f.trace.value);
   }
   {

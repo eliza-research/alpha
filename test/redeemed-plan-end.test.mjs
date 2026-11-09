@@ -11,7 +11,7 @@ import vm from 'node:vm';
 const ui=readFileSync(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
 const section=(start,end)=>{const a=ui.indexOf(start),b=ui.indexOf(end,a+start.length);assert.ok(a>=0&&b>a,start);return ui.slice(a,b).replace(/^export /gm,'');};
 const code=stripTypeScriptTypes([
-  section('function cloudUnreachable(', '/** Notice shown when Cloud inference'),
+  section('function signInRefused(', '/** Notice shown when Cloud inference'),
   section('function signInClient(', '/**\n * A new key was stored'),
   section('async function admitCloudResident(', '/**\n * Cloud reported'),
   section('async function recheckResidentPlan(', '/** Bind or unbind'),
@@ -27,7 +27,7 @@ async function admit(redeemed){
   // Cloud's billing snapshot: an active plan with no reported period end.
   const client={environment:'production',entitlementSource:()=>({issuer:'https://cloud.invalid',entitlement:async()=>null,entitlementKeys:async()=>[],fallbackPlan:async()=>({status:'active',planName:'Pilot',periodEnd:null})})};
   const box={operation:null,planRecheck:null,signInReadinessOwner:null,state:{session:{},open:false,cloudAccount:{credentialId:'credential-1'},residentPlanNotice:null,planEndsAt:stored.endsAt},active:{kind:'resident'},residentBinding:'unbound',cloud:client,service:null,redeemedPlanEnd:redeemed,AbortController,DOMException,Date,Error,
-    CloudProtocolError:class extends Error {},EntitlementError:entitlement.EntitlementError,checkEntitlement:entitlement.checkEntitlement,planAdmission:entitlement.planAdmission,isEntitlementSignInFailure:entitlement.isEntitlementSignInFailure,
+    CloudProtocolError:class extends Error {},EntitlementError:entitlement.EntitlementError,checkEntitlement:entitlement.checkEntitlement,planAdmission:entitlement.planAdmission,isEntitlementSignInFailure:entitlement.isEntitlementSignInFailure,residentAdmissionOutcome:entitlement.residentAdmissionOutcome,cloudUnreachable:entitlement.cloudUnreachable,CloudIdentityUnreachable:entitlement.CloudIdentityUnreachable,identityReadRefused:entitlement.identityReadRefused,
     CloudResidentBindingController:shared.CloudResidentBindingController,CloudResidentBindingError:shared.CloudResidentBindingError,recentResidentPlanAdmission:shared.recentResidentPlanAdmission,
     cloudCredentialStore:{read:async()=>({credentialId:'credential-1'})},cloudServiceName:()=>'Eliza Cloud',
     verifyService:async()=>{box.service={client,identity:identityRow};},

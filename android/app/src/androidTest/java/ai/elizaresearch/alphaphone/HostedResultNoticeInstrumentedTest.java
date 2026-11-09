@@ -80,6 +80,12 @@ public final class HostedResultNoticeInstrumentedTest {
   android.app.PendingIntent tap=android.app.PendingIntent.getActivity(context,0,new android.content.Intent(context,MainActivity.class),android.app.PendingIntent.FLAG_IMMUTABLE);
   android.app.Notification result=poster.result(tap,new android.app.Notification.Builder(context,AlphaHostedResultsPlugin.CHANNEL).setSmallIcon(android.R.drawable.ic_popup_reminder).build()).build();
   assertEquals(HostedResultNotices.SUPERSEDE_AFTER_MS,result.getTimeoutAfter());assertEquals(AlphaHostedResultsPlugin.CHANNEL,result.getChannelId());assertEquals(android.app.Notification.VISIBILITY_PRIVATE,result.visibility);
+  android.app.Notification silent=poster.result(tap,result.publicVersion,null,true).build();
+  assertEquals("alpha-hosted-results-visible",silent.getGroup());
+  assertEquals(android.app.Notification.GROUP_ALERT_SUMMARY,silent.getGroupAlertBehavior());
+  assertEquals("Silencing does not move the notice to another channel",result.getChannelId(),silent.getChannelId());
+  assertNull("An ordinary result keeps the channel alert behavior",result.getGroup());
+  assertEquals(android.app.Notification.GROUP_ALERT_ALL,result.getGroupAlertBehavior());
   long now=System.currentTimeMillis(),expiresAt=now+5*3600000L;String source=UUID.randomUUID().toString();
   android.app.Notification renewal=poster.renewal(source,expiresAt,now).build();
   assertEquals(5*3600000L,renewal.getTimeoutAfter());

@@ -59,12 +59,12 @@ test('the recorder surface has a named Stop action and no provider-branded trans
 test('audio playback refuses a foreign or deleted native handle before starting playback',async()=>{
  const implementation=between('  async function playSaved(','  let listener:');
  for(const metadata of [{audioId:'audio',noteId:'other'},{audioId:'audio',noteId:'note',deletedAt:1},{audioId:'other',noteId:'note'},{audioId:'audio',noteId:'note'}]){
-  const calls={play:0,toast:0};const context=vm.createContext({savedPlaying:undefined,savedPosition:0,savedEpoch:0,savedStarting:undefined,savedTick:undefined,stopping:Promise.resolve(),
+  const calls={play:0,toast:0};const context=vm.createContext({savedPlaybackError:undefined,savedPlaying:undefined,savedPosition:0,savedEpoch:0,savedStarting:undefined,savedTick:undefined,stopping:Promise.resolve(),
    refresh(){},setInterval:()=>1,api:{toast:()=>calls.toast++},noteAudio:{describe:async()=>metadata,play:async()=>{calls.play++;},state:async()=>({playing:true})}});
   context.stopSaved=()=>{context.savedEpoch++;context.savedPlaying=undefined;};
   vm.runInContext(stripTypeScriptTypes(implementation,{mode:'transform'}),context);await context.playSaved({id:'note',audio:{audioId:'audio'}});
   const valid=metadata.noteId==='note'&&metadata.audioId==='audio'&&metadata.deletedAt===undefined;
-  assert.equal(calls.play,valid?1:0);assert.equal(calls.toast,valid?0:1);
+  assert.equal(calls.play,valid?1:0);assert.equal(calls.toast,0);assert.equal(context.savedPlaybackError?.audioId,valid?undefined:'audio');
  }
 });
 

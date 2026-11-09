@@ -8,12 +8,11 @@ import android.system.Os;
 import androidx.test.platform.app.InstrumentationRegistry;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.security.MessageDigest;
 import java.util.*;
 import org.json.*;
 import org.junit.Assume;
 import org.junit.Test;
+import static ai.elizaresearch.alphaphone.ResidentTestFixture.*;
 import static org.junit.Assert.*;
 
 /** Opt-in service-only resident test. No Activity, WebView, UI acceptance, or ordinary background-start claim. */
@@ -21,14 +20,6 @@ public final class ResidentServiceInstrumentedTest {
  private Context context;
  private JSONObject fixture;
  private final JSONArray traceDiagnostics=new JSONArray();
- private static String hash(byte[] bytes)throws Exception {StringBuilder value=new StringBuilder();for(byte b:MessageDigest.getInstance("SHA-256").digest(bytes))value.append(String.format(Locale.ROOT,"%02x",b&255));return value.toString();}
- private static byte[] bounded(InputStream input,int max)throws Exception {ByteArrayOutputStream out=new ByteArrayOutputStream();byte[] buf=new byte[8192];int n;while((n=input.read(buf))!=-1){assertTrue("Input exceeds bound",out.size()+n<=max);out.write(buf,0,n);}return out.toByteArray();}
- private static String boundedHash(InputStream input,long max)throws Exception {
-  MessageDigest digest=MessageDigest.getInstance("SHA-256");byte[] buffer=new byte[65536];long total=0;int count;
-  while((count=input.read(buffer))!=-1){assertTrue("Input exceeds bound",count<=max-total);total+=count;digest.update(buffer,0,count);}
-  StringBuilder value=new StringBuilder();for(byte b:digest.digest())value.append(String.format(Locale.ROOT,"%02x",b&255));return value.toString();
- }
- private static String fileHash(File file)throws Exception {try(InputStream in=new FileInputStream(file)){MessageDigest digest=MessageDigest.getInstance("SHA-256");byte[] buf=new byte[65536];int n;while((n=in.read(buf))!=-1)digest.update(buf,0,n);StringBuilder s=new StringBuilder();for(byte b:digest.digest())s.append(String.format(Locale.ROOT,"%02x",b&255));return s.toString();}}
  private String ownerBearer, ownerIdentityId;
  private JSONObject nativeCall(String path,String method,JSONObject body,String bearer)throws Exception {
   JSONObject headers=new JSONObject();if(bearer!=null)headers.put("Authorization","Bearer "+bearer);
@@ -73,33 +64,10 @@ public final class ResidentServiceInstrumentedTest {
   assertEquals(paired.getString("identityId"),who.getJSONObject("identity").getString("id"));
  }
 
- private JSONObject nativeGet(String path,String bearer)throws Exception {
-  JSONObject headers=new JSONObject();if(bearer!=null)headers.put("Authorization","Bearer "+bearer);
-  return new JSONObject(ElizaAgentService.requestLocalAgent(new JSONObject().put("path",path).put("method","GET").put("headers",headers).put("timeoutMs",10000).toString()));
- }
- private String processStart(int pid)throws Exception {String stat=new String(Files.readAllBytes(new File("/proc/"+pid+"/stat").toPath()),StandardCharsets.UTF_8);String[] columns=stat.substring(stat.lastIndexOf(')')+2).split(" ");return columns[19];}
- private JSONObject ownedChild()throws Exception {
-  List<JSONObject> matches=new ArrayList<>();File[] processes=new File("/proc").listFiles();assertNotNull(processes);
-  String bundle=new File(context.getFilesDir(),"agent/agent-bundle.js").getCanonicalPath();
-  for(File proc:processes){if(!proc.getName().matches("[0-9]+"))continue;
-   try {if(Os.stat(proc.getPath()).st_uid!=Process.myUid())continue;
-    String command=new String(Files.readAllBytes(new File(proc,"cmdline").toPath()),StandardCharsets.UTF_8);
-    if(!Arrays.asList(command.split(String.valueOf((char)0))).contains(bundle))continue;
-    String executable=Os.readlink(new File(proc,"exe").getPath());
-    if(!fileHash(new File(executable)).equals(fixture.getString("processExecutableSha256")))continue;
-    int pid=Integer.parseInt(proc.getName());matches.add(new JSONObject().put("pid",pid).put("start",processStart(pid)).put("uid",Process.myUid()).put("executableSha256",fixture.getString("processExecutableSha256")));
-   } catch(IOException|android.system.ErrnoException raced) { /* Other processes may exit during observation. */ }
-  }
-  assertEquals("Require exactly one verified native runtime process",1,matches.size());return matches.get(0);
- }
- private void stopped(JSONObject child)throws Exception {
-  long end=SystemClock.elapsedRealtime()+30000;
-  while(SystemClock.elapsedRealtime()<end){boolean gone=child==null||!new File("/proc/"+child.getInt("pid")).exists();if(!gone)try{gone=!processStart(child.getInt("pid")).equals(child.getString("start"));}catch(IOException raced){gone=true;}
-   JSONObject status=ElizaAgentService.getLocalAgentBootState(context);if(gone&&!status.optBoolean("socketListening")&&!status.optBoolean("serviceActive"))return;SystemClock.sleep(100);}
-  fail("Resident process/socket did not stop within30s");
- }
- private JSONObject owner()throws Exception {JSONObject who=request("/api/auth/me",null);assertEquals("owner",who.getJSONObject("identity").getString("kind"));assertEquals("OWNER",who.getJSONObject("access").getString("role"));assertTrue("Native owner session mismatch",ownerBearer.equals(who.getJSONObject("session").getString("id")));who.getJSONObject("session").put("id","native-service-session");return who;}
- private JSONObject agent()throws Exception {JSONArray agents=request("/api/agents",null).getJSONArray("agents");assertEquals(1,agents.length());JSONObject agent=agents.getJSONObject(0);assertEquals("running",agent.getString("status"));return agent;}
+ private JSONObject ownedChild()throws Exception {return ResidentTestFixture.ownedChild(context,fixture.getString("processExecutableSha256"));}
+ private void stopped(JSONObject child)throws Exception {ResidentTestFixture.stopped(context,child);}
+ private JSONObject owner()throws Exception {return ResidentTestFixture.owner(request("/api/auth/me",null),ownerBearer);}
+ private JSONObject agent()throws Exception {return ResidentTestFixture.agent(request("/api/agents",null));}
  private JSONArray history(String id)throws Exception{return request("/api/conversations/"+id+"/messages",null).getJSONArray("messages");}
  private JSONObject trace(String room,String messageId)throws Exception {
   long end=SystemClock.elapsedRealtime()+30000;

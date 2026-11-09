@@ -312,6 +312,7 @@
     "apps/app/src/prototype/automations-adapter.ts",
     "apps/app/src/prototype/browser-adapter.ts",
     "apps/app/src/prototype/browser-camera.ts",
+    "apps/app/src/prototype/browser-external-handoff.ts",
     "apps/app/src/prototype/calendar-adapter.ts",
     "apps/app/src/prototype/calendar-approval-adapter.ts",
     "apps/app/src/prototype/calendar-approval-review.ts",

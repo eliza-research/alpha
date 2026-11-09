@@ -12,7 +12,7 @@ import java.util.UUID;
 /** Durable, redacted notice projection; it never schedules or executes a workflow. */
 final class HostedResultNotices {
  interface Storage { String read(String slot)throws Exception; void write(String slot,String value)throws Exception; }
- interface Poster { boolean allowed(); boolean active(String key); void post(String key); void cancel(String key); }
+ interface Poster { boolean allowed(); boolean active(String key); void post(String key); void cancel(String key); default void post(String key,boolean silent){post(key);} }
  /** A daily brief supersedes the previous one; an unopened result notice withdraws itself after a day. History stays in the inbox. */
  static final long SUPERSEDE_AFTER_MS=24L*3600000;
  /** Source renewal notices appear within the final 24 hours of a reviewed source and withdraw themselves at expiry. */
@@ -24,6 +24,9 @@ final class HostedResultNotices {
  static long renewalTimeout(long expiresAt,long now){return Math.max(1,expiresAt-now);}
  static final String LEDGER="hosted-notices:v1", PENDING="hosted-notices:pending:v1", OWNER="hosted-notices:owner:v1";
  private final Storage storage; private final Poster poster;
+ /** Scope whose results panel is on screen; a result for it posts without sound or vibration. Cleared when the app pauses. */
+ private volatile String showing;
+ void showing(String scope){if(scope!=null&&!scope.matches("[a-f0-9]{64}"))throw new IllegalArgumentException("Invalid scope");showing=scope;}
  HostedResultNotices(Storage storage,Poster poster){this.storage=storage;this.poster=poster;}
  static String hash(String value)throws Exception {byte[] digest=MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));StringBuilder out=new StringBuilder();for(byte b:digest)out.append(String.format(java.util.Locale.ROOT,"%02x",b&255));return out.toString();}
  private JSONObject read(String slot)throws Exception {String value=storage.read(slot);return value==null?new JSONObject():new JSONObject(value);}
@@ -49,8 +52,9 @@ final class HostedResultNotices {
   if(!ownerMatches(requested))return "owner-changed";
   JSONObject result=result(requested);String digest=hash(result.toString()),key=hash(requested.getString("scope")+":"+requested.getString("runId"));
   JSONObject ledger=read(LEDGER),record=ledger.optJSONObject(key);
+  // HostedInbox replaces a retained result only for a reconciled cancellation; that outcome gets a fresh notice under the same tag.
+  if(record!=null&&!digest.equals(record.getString("digest"))){ledger.remove(key);record=null;}
   if(record!=null){
-   if(!digest.equals(record.getString("digest")))throw new IllegalStateException("Retained result changed");
    String phase=record.getString("phase");
    if(phase.equals("dispatching")){record.put("phase",poster.active(key)?"posted":"uncertain");write(LEDGER,ledger);}
    return record.getString("phase");
@@ -65,11 +69,22 @@ final class HostedResultNotices {
   for(String other:keys){JSONObject prior=ledger.optJSONObject(other);if(prior==null||other.equals(key)||other.equals(pendingKey)||!"posted".equals(prior.optString("phase"))||!record.getString("scope").equals(prior.optString("scope"))||!record.getString("workflowId").equals(prior.optString("workflowId")))continue;prior.put("phase","superseded");poster.cancel(other);}
   write(LEDGER,ledger); // Exact route and uncertain dispatch state precede any OS effect.
   if(record.getString("phase").equals("denied"))return "denied";
-  try {poster.post(key);record.put("phase","posted");write(LEDGER,ledger);return "posted";}
+  try {poster.post(key,record.getString("scope").equals(showing));record.put("phase","posted");write(LEDGER,ledger);return "posted";}
   catch(SecurityException denied){record.put("phase","denied");write(LEDGER,ledger);return "denied";}
  }
  synchronized void capture(String key)throws Exception {
   capture(key,false);
+ }
+ /** These results were shown in the app: their notices are withdrawn. A tap already captured for one stays pending. Returns how many were withdrawn. */
+ synchronized int withdraw(String scope,java.util.List<String> runIds)throws Exception {
+  if(scope==null||!scope.matches("[a-f0-9]{64}")||runIds.size()>200)throw new IllegalArgumentException("Invalid notice identity");
+  JSONObject ledger=read(LEDGER);ArrayList<String> keys=new ArrayList<>();
+  for(String run:runIds){if(run==null||!run.matches("[A-Za-z0-9][A-Za-z0-9_-]{0,127}"))throw new IllegalArgumentException("Invalid notice identity");
+   String key=hash(scope+":"+run);JSONObject record=ledger.optJSONObject(key);
+   if(record==null||!ownerMatches(record)||!java.util.Set.of("posted","dispatching","uncertain").contains(record.optString("phase")))continue;
+   record.put("phase","opened");keys.add(key);}
+  if(keys.isEmpty())return 0;
+  write(LEDGER,ledger);for(String key:keys)poster.cancel(key);return keys.size();
  }
  synchronized void capture(String key,boolean question)throws Exception {
   if(key==null||!key.matches("[a-f0-9]{64}"))return;

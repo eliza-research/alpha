@@ -40,7 +40,12 @@ final class DevelopmentVoiceCapture {
    recorder.setOnInfoListener((source, what, extra) -> {
     if (what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED || what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_FILESIZE_REACHED) stopAutomatically();
    });
-   recorder.setOnErrorListener((source, what, extra) -> { synchronized(this) { cancel(); } JSObject result=new JSObject();result.put("status","failed");result.put("message","Recording stopped because Android reported a microphone error");events.accept(result); });
+   recorder.setOnErrorListener((source, what, extra) -> {
+    // Carry the id taken before cancel() clears it: the renderer ignores events for other recordings.
+    JSObject result=new JSObject();
+    synchronized(this) { if (recorder != source) return; result.put("recordingId",id); cancel(); }
+    result.put("status","failed");result.put("message","Recording stopped because Android reported a microphone error");events.accept(result);
+   });
    recorder.prepare(); recorder.start(); startedAt = SystemClock.elapsedRealtime();
    deadline = this::stopAutomatically; handler.postDelayed(deadline,59000);
    JSObject result = new JSObject(); result.put("status","recording"); result.put("recordingId",id); result.put("maxDurationMs",59000); return result;
@@ -57,15 +62,15 @@ final class DevelopmentVoiceCapture {
  }
  synchronized void stopAutomatically() {
   if (recorder == null) return;
+  String recordingId = id;
   try { events.accept(stop()); }
-  catch (RuntimeException error) { JSObject result=new JSObject();result.put("status","failed");result.put("message","Recording could not be saved");events.accept(result); }
+  catch (RuntimeException error) { JSObject result=new JSObject();result.put("recordingId",recordingId);result.put("status","failed");result.put("message","Recording could not be saved");events.accept(result); }
  }
  synchronized JSObject retain(AlphaNoteAudioPlugin store,String recordingId,String noteId,String transcript)throws Exception {File chosen=selected(recordingId);if(chosen==null)throw new IllegalStateException();return store.retain(chosen,recordingId,noteId,durationMs,transcript);}
  synchronized File selected(String recordingId) {
   if (recorder != null || file == null || !id.equals(recordingId)) return null;
   return file;
  }
- synchronized void discard(String recordingId) { if (id != null && id.equals(recordingId)) cancel(); }
  synchronized void cancel() {
   if (deadline != null) handler.removeCallbacks(deadline);
   if (recorder != null) { try { recorder.stop(); } catch (RuntimeException ignored) {} recorder.release(); recorder=null; }

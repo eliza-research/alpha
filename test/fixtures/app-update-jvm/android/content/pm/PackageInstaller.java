@@ -30,6 +30,8 @@ public class PackageInstaller {
  public Runnable committing=()->{};
  /** Runs as Android answers getMySessions, while each read waits on its session's lock: to destroy a bridge at that moment, or to let validation end. */
  public volatile Runnable listing=()->{};
+ /** Runs as a returned session's progress is read, which a tap does between reading the kept confirmation and acting on it: to land a status at that moment. */
+ public volatile Runnable asking=()->{};
  public boolean listDown,infoDown,abandonDown;
  /** The phase that throws next, once: open, write, fsync, stream (its close), sender (the status PendingIntent), intent (setStagingProgress's reply, lost once Android holds the value), reply (commit's, lost once Android has done its work), kill (the process, ahead of a session's close, which then never lands) or close (the session's, after it lands). */
  public String failAt="";
@@ -47,13 +49,13 @@ public class PackageInstaller {
  }
  /** What one read returned, not a view of the session. */
  public static class SessionInfo {
-  private final int id;private final boolean sealed,active,committed;private final float progress;private final android.net.Uri referrer;
-  SessionInfo(int id,Internal internal,float progress){this.id=id;sealed=internal.sealed;active=internal.active>0;committed=internal.validated;this.progress=progress;referrer=internal.referrer;}
+  private final int id;private final boolean sealed,active,committed;private final float progress;private final android.net.Uri referrer;private final PackageInstaller android;
+  SessionInfo(PackageInstaller android,int id,Internal internal,float progress){this.android=android;this.id=id;sealed=internal.sealed;active=internal.active>0;committed=internal.validated;this.progress=progress;referrer=internal.referrer;}
   public int getSessionId(){return id;}
   public boolean isSealed(){return sealed;}
   public boolean isActive(){return active;}
   public boolean isCommitted(){return committed;}
-  public float getProgress(){return progress;}
+  public float getProgress(){android.asking.run();return progress;}
   public android.net.Uri getReferrerUri(){return referrer;}
  }
  public class Session implements java.io.Closeable {
@@ -105,7 +107,7 @@ public class PackageInstaller {
   waiting.run();
   int sdk=android.os.Build.VERSION.SDK_INT;
   boolean unordered=sdk==31||sdk==32||sdk>=38||!"REL".equals(android.os.Build.VERSION.CODENAME);
-  return new SessionInfo(id,session,stale&&unordered&&session.intended&&!session.sealed?0f:sdk>=33?progress:session.progress);
+  return new SessionInfo(this,id,session,stale&&unordered&&session.intended&&!session.sealed?0f:sdk>=33?progress:session.progress);
  }
  public SessionInfo getSessionInfo(int id){if(infoDown)throw new RuntimeException("DeadSystemException");return sessions.contains(id)?read(id,()->{}):null;}
  /** PackageInstallerService writing its session file. */

@@ -76,11 +76,13 @@ test('rendering sends nothing; one tap sends the exact answer once and stored te
  }finally{delete globalThis.mapsChatFixture;}
 });
 
-test('an older question, a draft or a busy connection never sends an answer',async()=>{
+test('an older question, a draft, an open edit or a busy connection never sends an answer',async()=>{
  const older=fixture([{id:'a1',from:'agent',text:shareText},{id:'u2',from:'user',text:'Never mind'}]);
  try{assert.equal(older.shell.renderVals().msgs[0].hasMapsChoice,false);}finally{delete globalThis.mapsChatFixture;}
  const draft=fixture([{id:'a1',from:'agent',text:shareText}]);
  try{draft.shell.st.draft='Keep my words';draft.shell.renderVals().msgs[0].mapsChoices[0].choose();await tick();assert.equal(draft.f.sent.length,0);assert.equal(draft.f.toasts.length,1);assert.equal(draft.shell.st.draft,'Keep my words');}finally{delete globalThis.mapsChatFixture;}
+ const editing=fixture([{id:'a1',from:'agent',text:shareText}]);
+ try{editing.shell.messageEditTarget={messageId:'m'};editing.shell.renderVals().msgs[0].mapsChoices[0].choose();await tick();assert.equal(editing.f.sent.length,0);assert.deepEqual(editing.f.toasts,['Finish or cancel the message you are editing first.']);assert.equal(editing.shell.renderVals().msgs[0].hasMapsChoice,true,'the question can still be answered');}finally{delete globalThis.mapsChatFixture;}
  const busy=fixture([{id:'a1',from:'agent',text:shareText}]);
  try{busy.f.snapshot.busy=true;busy.shell.renderVals().msgs[0].mapsChoices[1].choose();await tick();assert.equal(busy.f.sent.length,0);}finally{delete globalThis.mapsChatFixture;}
 });

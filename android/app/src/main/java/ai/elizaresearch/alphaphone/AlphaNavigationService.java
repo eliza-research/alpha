@@ -35,7 +35,7 @@ public final class AlphaNavigationService extends Service {
  static final String EXTRA_SESSION = "session", EXTRA_AUTHORITY = "authority", EXTRA_REASON = "reason";
  static final String SESSION_PATTERN = "[A-Za-z0-9_-]{8,80}";
 
- /** Receives the single terminal stop of each session; registered by the Maps bridge. */
+ /** Receives the single terminal stop of a session; the Maps bridge that started it owns it. */
  interface StopListener { void stopped(String session, String reason); }
 
  private static final class Session {

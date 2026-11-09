@@ -13,7 +13,7 @@ const SECURE_STORE_NATIVE_ONLY_MODULE='plugins/plugin-native-secure-store/androi
 const SPEECH_JNI_SOURCE='packages/app/platforms/android/app/src/main/elizavoice-jni';
 const safe=name=>typeof name==='string'&&!name.startsWith('/')&&!name.split('/').some(x=>!x||x==='.'||x==='..')&&!name.includes('\\');
 function inventory(root){const files={};function visit(dir){for(const row of fs.readdirSync(dir,{withFileTypes:true})){const name=path.join(dir,row.name);if(row.isSymbolicLink())throw Error('Symlink in patched source');if(row.isDirectory())visit(name);else if(row.isFile())files[path.relative(root,name)]=sha(fs.readFileSync(name));else throw Error('Nonregular patched source');}}visit(root);return files;}
-function verifyModes(root,modes){for(const [name,mode] of Object.entries(modes))if((fs.statSync(path.join(root,name)).mode&0o111)!==(mode==='100755'?0o111:0))throw Error('Native staged source mode drift');}
+function verifyModes(root,modes){for(const [name,mode] of Object.entries(modes))if(Boolean(fs.statSync(path.join(root,name)).mode&0o100)!==(mode==='100755'))throw Error('Native staged source mode drift');}
 function same(a,b){return JSON.stringify(Object.entries(a).sort())===JSON.stringify(Object.entries(b).sort());}
 /** Verify every input/output byte: existing native sources, the auth descriptor, and explicit shared speech Java additions. */
 export function materializeNativePatches({source,manifest,patchRoot,temporary}){

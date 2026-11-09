@@ -10,6 +10,7 @@ const data=resolve(process.env.ALPHA_MAPS_DATA||join(homedir(),'.local/share/alp
 const args=process.argv.slice(2);let port=5173;
 if(args.length){if(args.length!==2||args[0]!=='--port'||!/^\d+$/.test(args[1]))throw Error('Usage: npm run dev:maps -- --port 5173');port=Number(args[1]);}
 if(port<1024||port>65535||[47850,47851,47852].includes(port))throw Error('Choose an app port from 1024–65535 outside the Maps service ports.');
+const prepareSteps=`\nPrepare the region in this order (docs/maps-regional-validation.md, Reproduction):\n 1. python3 scripts/maps/prepare-region.py\n 2. python3 scripts/maps/index-region.py (PyOsmium 4.1.1)\n 3. From ${data}: java -Xmx512m -jar graphhopper.jar server ${join(root,'scripts/maps/graphhopper.yml')}, then stop it once the graph is imported\n 4. Review the data, then python3 scripts/maps/dataset_manifest.py seal`;
 const children=[];const abort=new AbortController();let stopping=false;
 async function stop(code){
  if(stopping)return;stopping=true;abort.abort();
@@ -29,14 +30,14 @@ async function ready(url,validate,format='json'){
  throw Error(`Service did not become ready: ${url}`);
 }
 try{
- for(const name of ['graphhopper.jar','places.sqlite','monaco.mbtiles','source-manifest.json'])if(!existsSync(join(data,name))||!statSync(join(data,name)).isFile())throw Error(`Missing regional data: ${join(data,name)}. Prepare it explicitly with python3 scripts/maps/prepare-region.py.`);
- if(!existsSync(join(data,'graph-cache','properties')))throw Error('Prepared GraphHopper graph-cache is required. Complete the regional data preparation first.');
+ for(const name of ['graphhopper.jar','places.sqlite','monaco.mbtiles','source-manifest.json'])if(!existsSync(join(data,name))||!statSync(join(data,name)).isFile())throw Error(`Missing regional data: ${join(data,name)}.${prepareSteps}`);
+ if(!existsSync(join(data,'graph-cache','properties')))throw Error(`Prepared GraphHopper graph-cache is missing.${prepareSteps}`);
  const candidates=[process.env.ALPHA_MAPS_JAVA,process.env.JAVA_HOME&&join(process.env.JAVA_HOME,'bin/java'),'/opt/homebrew/opt/openjdk@21/bin/java','/usr/local/opt/openjdk@21/bin/java','java'].filter(Boolean);
  const java=candidates.find(candidate=>{const result=spawnSync(candidate,['-version'],{encoding:'utf8',timeout:5000});const version=(result.stderr||'')+(result.stdout||'');return result.status===0&&Number(version.match(/version "(\d+)/)?.[1])>=21;});
  if(!java)throw Error('Java 21 or newer is required. Set ALPHA_MAPS_JAVA to its executable.');
  if(spawnSync('python3',['--version'],{timeout:5000}).status!==0)throw Error('Python 3 is required for the regional gateway.');
  const manifest=spawnSync('python3',[join(root,'scripts/maps/dataset_manifest.py'),'verify','--data',data],{encoding:'utf8',timeout:30000});
- if(manifest.status!==0)throw Error('Regional runtime manifest is missing or stale. Review the prepared data and run python3 scripts/maps/dataset_manifest.py seal explicitly.');
+ if(manifest.status!==0)throw Error(`Regional runtime manifest is missing or stale.${prepareSteps}`);
  for(const value of [47850,47851,47852,port])await free(value);
  start('Regional router',java,['-Xmx512m','-jar','graphhopper.jar','server',join(root,'scripts/maps/graphhopper.yml')],{cwd:data});
  await ready('http://127.0.0.1:47851/info',value=>Array.isArray(value.profiles));

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
+import {mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -28,7 +28,7 @@ const scenarios=[
 ];
 
 async function campaign(scenarios, extraSources, check, {pinnedProbe=false} = {}) {
-  const temporary=mkdtempSync(join(tmpdir(),'quint-mms-dispatch-'));
+  const temporary=realpathSync(mkdtempSync(join(tmpdir(),'quint-mms-dispatch-')));
   try {
     const staged=prepareNativeFixture(root,temporary);
     const sourceRoot=pinnedProbe?join(root,'vendor/eliza'):staged.root;

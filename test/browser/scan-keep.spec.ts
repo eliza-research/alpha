@@ -1,9 +1,10 @@
 import {test,expect} from '@playwright/test';
+import {stubOcr} from './helpers/ocr-stub';
 
 /** Opens the scan review of an unsaved scan-mode capture whose Keep answers come from `answers` in order:
  * 'saved', or a ScanKeepError with or without retry. Records every Keep call on window.keepCalls. */
 async function open(page:any,answers:string[]){
- await page.goto('/');await expect(page.getByRole('button',{name:'Camera',exact:true})).toBeVisible();
+ await stubOcr(page,'');await page.goto('/');await expect(page.getByRole('button',{name:'Camera',exact:true})).toBeVisible();
  await page.evaluate(async(answers:string[])=>{
   const c=document.createElement('canvas');c.width=40;c.height=30;const image=await new Promise<Blob>(r=>c.toBlob(b=>r(b!),'image/jpeg'));
   const {openScanReview,ScanKeepError}=await import('/src/prototype/scan-review.ts');
@@ -15,8 +16,8 @@ async function open(page:any,answers:string[]){
    throw new ScanKeepError('Keep photo unconfirmed. Check Photos before keeping it again.',false);
   });
  },answers);
- // Local recognition reports into the same status; let it settle so only Keep writes there next.
- await expect(status(page)).toContainText('No text recognized',{timeout:60_000});
+ // Stubbed recognition reports into the same status; let it settle so only Keep writes there next.
+ await expect(status(page)).toContainText('No text recognized');
 }
 function status(page:any){return page.getByRole('dialog',{name:'Review scanned text'}).getByRole('status',{name:'Scan status'});}
 

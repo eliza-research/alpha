@@ -10,6 +10,7 @@
 import {
   allowanceText as sharedAllowanceText,
   describeSubscription as sharedDescribeSubscription,
+  isEntitlementSignInFailure,
   redeemFailureMessage as sharedRedeemFailureMessage,
   retryDuration,
   serviceLimitMessage as sharedServiceLimitMessage,
@@ -23,6 +24,7 @@ import {
 } from '../../../../.eliza/client-features/packages/cloud/sdk/src/subscription-entitlement.ts';
 
 import { formatMonthDay, formatTime } from '../prototype/locale-time.ts';
+import { CloudResidentBindingError, type ResidentAdmission } from '../../../../.eliza/client-features/packages/auth/src/auth/cloud-resident-binding.ts';
 export * from '../../../../.eliza/client-features/packages/cloud/sdk/src/subscription-entitlement.ts';
 
 /** Alpha's names in shared copy; the service name is the configured deployment's. */
@@ -76,4 +78,69 @@ export function redeemFailureMessage(error: unknown, serviceName = 'Cloud'): str
 export function subscriptionSummary(view: SubscriptionView | null | undefined, options: { planEndsAt?: number | null; lastLimit?: ServiceLimit | null; lastLimitAt?: number | null; now?: number; serviceName?: string } = {}): SubscriptionSummary {
   const { serviceName, ...rest } = options;
   return { ...sharedSubscriptionSummary(view, { ...rest, copy: alphaSubscriptionCopy(serviceName) }), ...describeSubscription(view, serviceName) };
+}
+/** A Cloud identity read that failed without Cloud refusing the credential (identityReadRefused). */
+export class CloudIdentityUnreachable extends Error {
+  constructor(cause: unknown) {
+    super('Cloud could not be reached', { cause });
+    this.name = 'CloudIdentityUnreachable';
+  }
+}
+/** A Cloud outage or no network: not a refusal of the account or the plan. The transports reject
+ * with these messages and no stable code; a Cloud HTTP answer is unreachable only for 408, 429 or 5xx. */
+export function cloudUnreachable(error: unknown): boolean {
+  if (error instanceof CloudIdentityUnreachable) return true;
+  if (!(error instanceof Error) || error.name === 'AbortError') return false;
+  const { code, status } = error as { code?: unknown; status?: unknown };
+  if (error.name === 'CloudProtocolError') return code === 'http' && typeof status === 'number' && (status === 408 || status === 429 || status >= 500);
+  return /^(Connection request failed|Connection timed out|Request cancelled)$/.test(error.message);
+}
+/** Cloud refused the saved credential while reading its identity: a 401 or an explicit credential
+ * code, the shared entitlement client's rule. Any other failed read (an edge 403 or 404, a redirect,
+ * a transport or secure-storage rejection) is not a refusal. */
+export function identityReadRefused(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const { status, code } = error as { status?: unknown; code?: unknown };
+  return status === 401 || code === 'expired' || code === 'credentials-missing' || code === 'account-changed';
+}
+/**
+ * What the phone does with a resident admission (the shared controller's reason): the inference
+ * binding, the plan view, and whether the sign-in is detached, its offline grace forgotten or the
+ * owner asked to sign in. Never whether the agent runs. `attached`: a Cloud connection is held;
+ * `verified`: it is the account this admission verified.
+ */
+export type ResidentAdmissionOutcome = {
+  binding: ResidentAdmission['binding'];
+  view: { residentPlanNotice: 'offline' | 'needs-plan' | null; residentSubscription: SubscriptionView | null; planEndsAt: number | null; residentSavedCredential?: false };
+  signIn?: 'required' | 'rejected' | 'account-changed';
+  detach?: boolean;
+  forgetPlan?: boolean;
+};
+export function residentAdmissionOutcome(admission: ResidentAdmission<SubscriptionView>, connection: { attached: boolean; verified: boolean }): ResidentAdmissionOutcome {
+  const outage: SubscriptionView = { kind: 'unavailable', reason: 'outage' };
+  switch (admission.reason) {
+    case 'signed-out':
+      // First run or signed out: sign-in is required, and the agent runs meanwhile without Cloud inference.
+      return { binding: 'unbound', view: { residentSavedCredential: false, residentSubscription: null, residentPlanNotice: null, planEndsAt: null }, signIn: 'required', detach: connection.attached };
+    case 'offline':
+      // A plan verified recently for this sign-in keeps its binding; nothing is said about it.
+      return { binding: admission.binding, view: { residentPlanNotice: 'offline', residentSubscription: outage, planEndsAt: admission.recent?.endsAt ?? null } };
+    case 'sign-in-rejected':
+    case 'account-changed': {
+      // The shared controller's own account-changed fence (a newer credential replaced this one) is
+      // not a refusal of this sign-in: it never detaches and leaves the plan grace to the newer one.
+      // Before the identity was verified only a rejected read of this sign-in detaches it.
+      const fence = admission.error instanceof CloudResidentBindingError;
+      const rejected = admission.reason === 'sign-in-rejected';
+      const detach = !admission.identity ? rejected && connection.attached : !fence && isEntitlementSignInFailure(admission.error) && connection.verified;
+      return { binding: 'unbound', view: { residentPlanNotice: null, residentSubscription: null, planEndsAt: null }, signIn: rejected ? 'rejected' : 'account-changed', detach, forgetPlan: rejected && !fence };
+    }
+    case 'plan-unavailable':
+      return { binding: 'unbound', view: { residentPlanNotice: 'needs-plan', residentSubscription: outage, planEndsAt: null } };
+    case 'needs-plan':
+      // The plan notice offers Redeem code / Choose a plan / Check plan again; nothing is bound.
+      return { binding: 'unbound', view: { residentSubscription: admission.plan?.view ?? null, residentPlanNotice: 'needs-plan', planEndsAt: null } };
+    case 'admitted':
+      return { binding: 'cloud', view: { residentSubscription: admission.plan?.view ?? null, residentPlanNotice: null, planEndsAt: admission.endsAt ?? null } };
+  }
 }

@@ -15,6 +15,12 @@ export const testReadReference = path =>
   (/^docs\/.*\.md$/.test(path) && !/^docs\/market-research\//.test(path)) ||
   path === 'README.md';
 
+// Android files that browser specs read; test/ci-affected.test.mjs scans test/browser to keep this complete.
+export const browserReadAndroid = new Set([
+  'android/app/src/androidTest/java/ai/elizaresearch/alphaphone/StartupDocumentProbe.java',
+  'android/video-fixture/src/main/assets/qa-source.mp4',
+]);
+
 // Unknown paths run everything. Only explicitly non-executable reference data is ignored.
 export function affected(paths) {
   const result = { verify: false, browser: false, android: false, prepare: false };
@@ -40,6 +46,8 @@ export function affected(paths) {
       // Explicit qualification/diagnostics; resident push/nightly runs are opt-in by repository variable,
       // and the emulator evidence and digest process-recovery workflows have no trigger but a dispatch.
       // The advisory audit is scheduled and dispatched only; its script and test run in verify.
+    } else if (browserReadAndroid.has(path)) {
+      result.browser = result.android = true;
     } else if (/^android\//.test(path)) {
       result.android = true;
     } else if (/^apps\/app\//.test(path)) {

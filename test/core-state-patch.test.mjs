@@ -12,7 +12,7 @@ import {sourceManifest} from '../scripts/combined-agent-source.mjs';
 import {writeCoreStateFixture} from './fixtures/core-state-root.mjs';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 function fixture(t, simple = false) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-core-state-'));
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-core-state-')));
   const source = path.join(root, 'source'), pin = '1'.repeat(40);
   t.after(() => fs.rmSync(root, {recursive: true, force: true}));
   writeCoreStateFixture(root, source, pin, simple);

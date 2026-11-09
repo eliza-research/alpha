@@ -15,7 +15,7 @@ test('a conversation capture interrupted by a call is discarded and shows the ca
  for(const callback of f.events.get('recordingStopped')||[])callback({recordingId:recording,durationMs:1800,interrupted:'call-active'});
  await clock.flush();await clock.advance(100);
  const shown=f.renderChat();
- assert.equal(shown.state,'error');assert.equal(shown.lines[0].t,'Voice paused for a call. Start again after the call.');
+ assert.equal(shown.state,'error');assert.equal(shown.lines[0].t,'Voice paused for a phone call.');
  assert.equal(f.uploads,0,'the clip is not transcribed');assert.equal(f.sends,0,'nothing is sent');
  assert.ok(f.recordingCancels.includes(recording),'the interrupted capture is cancelled');
 });
@@ -32,7 +32,7 @@ test('a call before capture acknowledgment retires only the matching recording',
  f.releaseStart({recordingId:recording,maxDurationMs:59000});
  await starting;await clock.flush();
  const shown=f.renderChat();
- assert.equal(shown.state,'error');assert.match(shown.lines[0].t,/Voice paused for a call/);
+ assert.equal(shown.state,'error');assert.match(shown.lines[0].t,/Voice paused for a phone call/);
  assert.equal(f.uploads,0);assert.equal(f.sends,0);assert.equal(f.activeRecording,null);
 });
 

@@ -104,11 +104,11 @@ test('the note editor keeps More (Pin, Move to, Delete) on screen beside the oth
   const {foreign,errors}=await canonicalNotesFixture(page);
   await openCanonicalNotes(page);
   await page.getByRole('button', { name: 'New note', exact: true }).click();
-  // Back · Checklist · Share · ⋯ in one row; Pin, Move to and Delete are in ⋯.
-  for (const name of ['Back to notes', 'Share note', 'More']) await reachable(page, page.getByRole('button', { name, exact: true }));
+  // Back · Checklist · ⋯ stay in one row; Share, Pin and Delete live in More.
+  for (const name of ['Back to notes', 'Turn into checklist', 'More']) await reachable(page, page.getByRole('button', { name, exact: true }));
   const sizes = await page.locator('[data-alpha-subview="notes-editor"] [data-alpha-app-header="detail"] button').evaluateAll(list => list.map(el => el.getBoundingClientRect().width));
   for (const width of sizes) expect(width).toBeGreaterThanOrEqual(43.5);
-  expect(sizes.length).toBeGreaterThanOrEqual(4);
+  expect(sizes.length).toBeGreaterThanOrEqual(3);
   expect(foreign).toEqual([]);
   expect(errors).toEqual([]);
 });
@@ -166,7 +166,7 @@ test.describe('menus and sheets over a scrim own focus', () => {
     ['browser', ['Menu', 'Share'], 'Share page', 'Close share', null],
     ['photos:viewer', ['Photo info'], 'Photo info', 'Close info', 'Photo info'],
     ['photos:viewer', ['Share photo'], 'Share photo', 'Close share', 'Share photo'],
-    ['notes:editor', ['Share note'], 'Share', 'Cancel', 'Share note'],
+    ['notes:editor', ['More', 'Share note'], 'Share', 'Cancel', 'Share note'],
     ['files-storage', ['Sort files'], 'Sort and more', 'Close menu', 'Sort files'],
     ['files:preview', ['Move file'], 'Move to', 'Close move', 'Move file'],
     ['files:preview', ['Share file'], 'Share file', 'Close share', 'Share file'],
@@ -194,8 +194,11 @@ test.describe('menus and sheets over a scrim own focus', () => {
       const last = page.getByRole('button', { name: steps.at(-1)!, exact: true }).first();
       await expect(last).toBeVisible();
       // Everything the user could operate before the popup opened must be operable again after it.
-      await page.evaluate(() => { for (const el of document.querySelectorAll('.os button, .os input, .os textarea, .os a[href]')) if (el.getClientRects().length && !el.closest('[inert]')) (el as any).__alphaBefore = true; });
-      await last.click();
+      await page.evaluate(() => { for (const el of document.querySelectorAll('.os button, .os input, .os textarea, .os a[href]')) if (el.getClientRects().length && !el.closest('[inert],[aria-hidden="true"]')) (el as any).__alphaBefore = true; });
+      if(nativeShare){
+        await expect(page.getByRole('dialog',{name:'Note actions',exact:true}).getByRole('button',{name:'Share note',exact:true})).toBeVisible();
+        await last.focus();await page.keyboard.press('Enter');
+      }else await last.click();
       const dialog = page.getByRole('dialog', { name, exact: true });
       await expect(dialog).toBeVisible();
       const inside = () => page.evaluate(() => !!document.activeElement?.closest('dialog,[role="dialog"]'));
@@ -222,6 +225,13 @@ test.describe('menus and sheets over a scrim own focus', () => {
       const stranded = await page.evaluate(() => Array.from(document.querySelectorAll('.os button, .os input, .os textarea, .os a[href]'))
         .filter(el => (el as any).__alphaBefore && el.isConnected && !!el.closest('[inert],[aria-hidden="true"]')).map(el => el.getAttribute('aria-label') || el.textContent));
       expect(stranded).toEqual([]);
+      if(nativeShare){
+        // Closing the nested native share panel returns to its still-open menu, then Escape closes that menu.
+        await expect(page.getByRole('dialog',{name:'Note actions',exact:true})).toBeVisible();
+        await page.keyboard.press('Escape');
+        await expect(page.getByRole('dialog',{name:'Note actions',exact:true})).toHaveCount(0);
+        await expect(page.getByRole('button',{name:'More',exact:true})).toBeFocused();
+      }
     });
   }
 

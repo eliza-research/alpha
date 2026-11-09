@@ -453,8 +453,9 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     shell.stoppedReplyNotice=notice;
     if(!shell.live)return;
     const pending=notice===STOPPED_REPLY_NOTICE||notice===STOPPED_CANCELLED_NOTICE,sessionId=snapshot.session?.sessionId;
-    // Without a notice: a restored conversation already shows the outcome; otherwise say why the check ended.
-    const text=notice||(replaced?'':snapshot.message===STOPPED_CONFIRMED_NOTICE?STOPPED_CONFIRMED_NOTICE:STOPPED_UNCHECKED_NOTICE);
+    // A new send retires the pending check; clearing it must not invent an unchecked outcome.
+    // Confirmed cancellation and outcomes the check actually reported remain in the transcript.
+    const text=notice||(!replaced&&snapshot.message===STOPPED_CONFIRMED_NOTICE?STOPPED_CONFIRMED_NOTICE:'');
     // A check that already reported its result keeps that statement (and its offer) when a later send clears the notice.
     const reported=!notice&&!replaced&&!!before&&before!==STOPPED_REPLY_NOTICE&&before!==STOPPED_CANCELLED_NOTICE;
     shell.setState((previous:Shell)=>{
@@ -616,19 +617,15 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     }
     if(view==='messages')providerSelection=shell.smsSelection?.();
     if(view==='calendar')providerSelection=shell.calendarSelection?.();
-    if (view === 'contacts' || view==='calendar'&&!providerSelection) {
+    // Contacts emit no selection: native rows stay in the contacts adapter and no operation takes a contact.
+    if (view==='calendar'&&!providerSelection) {
       const state = shell.vget(view);
-      const record = (view === 'calendar' ? state.events : state.list)?.find((row: Shell) => row.id === state.open);
+      const record = state.events?.find((row: Shell) => row.id === state.open);
       // Only native-backed rows have authority; fixture records never become
       // agent targets. Content stays local; only identity/revision is sent.
-      if (record && (view === 'contacts' || record.alphaReminderId)) {
-        const id = String(record.alphaCalendarId || record.alphaReminderId || record.id), key = `${view}:${id}`;
-        shell.entityRevisions ||= new Map();
-        const signature = JSON.stringify(record), previous = shell.entityRevisions.get(key);
-        const revision = previous?.signature === signature ? previous.revision : (previous?.revision || 0) + 1;
-        shell.entityRevisions.set(key, { signature, revision });
-        providerSelection = { kind: view === 'contacts' ? 'contact' : record.alphaCalendarId ? 'calendar-event' : 'reminder', id, revision: String(revision) };
-        if(record.alphaReminderId){const target=shell.reminderTargets?.get(id);providerSelection=target?{kind:'reminder',id:target.reminderId,revision:target.revision,accountId:target.sourceId,sourceRevision:target.sourceRevision,occurrenceId:target.occurrenceId,...(target.timingVersion===2?{timingVersion:2}: {})}:undefined;}
+      if (record?.alphaReminderId) {
+        const target=shell.reminderTargets?.get(String(record.alphaCalendarId || record.alphaReminderId));
+        providerSelection=target?{kind:'reminder',id:target.reminderId,revision:target.revision,accountId:target.sourceId,sourceRevision:target.sourceRevision,occurrenceId:target.occurrenceId,...(target.timingVersion===2?{timingVersion:2}: {})}:undefined;
       }
     }
     if(view==='calendar'&&shell.clockSelection?.())providerSelection=shell.clockSelection();
@@ -677,7 +674,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         this.composerDraft.retire(false);
         this.startupDraft=null;
         cancelMessageContext(this);
-        this.closeSummaryReview?.();this.reviewedSourceDraft=null;
+        this.closeSummaryReview?.();this.reviewedSourceDraft=null;this.transcriptAttachment=null;
         clearMapsSelection();
         this.connectionSession = session;
         alphaClient.disconnect();
@@ -688,7 +685,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       }
       const history = connectionController.getSnapshot().history;
       if (history && history.sessionId === session && this.restoredHistory !== history) {
-        if(!history.automatic){this.draftRecoveryAbort?.abort();this.draftBindingAbort?.abort();this.composerDraft.retire(false);draftBindingAfterPaint=true;cancelMessageContext(this);this.reviewedSourceDraft=null;}
+        if(!history.automatic){this.draftRecoveryAbort?.abort();this.draftBindingAbort?.abort();this.composerDraft.retire(false);draftBindingAfterPaint=true;cancelMessageContext(this);this.reviewedSourceDraft=null;this.transcriptAttachment=null;}
         this.restoredHistory = history;
         alphaClient.disconnect();
         if (this.live) this.setState((previous:Shell)=>{
@@ -827,7 +824,9 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       return result.status==='succeeded'?{status:'succeeded',reminderResult:isReminderCreate(operation)?validateReminderCreateResult(operation,result.result,operationId):validateReminderResult(operation,result.result)}:{status:'unknown'};
     });
     connectionController.setViewInteractionExecutor(async(view,capability,params,signal,current)=>{
-      current();if(!this.live||view!=='browser'||capability!=='browser-command'||!params||typeof params!=='object'||!this.browserCommand)throw Error('Native view capability is unavailable');
+      current();
+      if(view==='browser'&&capability==='browser-command'&&(!this.live||!this.browserCommand))return {ok:false,code:'UNAVAILABLE',message:'Native view capability is unavailable'};
+      if(!this.live||view!=='browser'||capability!=='browser-command'||!params||typeof params!=='object'||!this.browserCommand)throw Error('Native view capability is unavailable');
       return this.browserCommand((params as Record<string,unknown>).command,signal,current);
     });
     connectionController.setNavigationContext(()=>this.live?alphaClient.getState().context:null);
@@ -1294,6 +1293,15 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       context(this);await this.send(text,expected);return true;
     };
     api.openReviewedWebSource=(url:string,signal:AbortSignal)=>this.browserNavigateApproved(url,signal);
+    api.composeTranscriptQuestion=(noteId:string,title:string)=>{
+      context(this);
+      const selection=this.notesSelection;
+      if(selection?.id!==noteId || this.messageEditTarget || this.composerDraft?.holding){
+        this.toast('Reopen the recording before attaching its transcript.');return;
+      }
+      this.transcriptAttachment={title,selection:JSON.stringify(selection)};
+      this.setState((previous:Shell)=>({chat:'sheet',shade:false,draft:previous.draft?.trim()?previous.draft:'Summarize this for me'}));
+    };
     api.composeContentQuestion=(draft:string,source?:Source)=>{
       this.reviewedSourceDraft={draft,source:sourceOf(source)};
       context(this);this.setState({chat:'sheet',shade:false,draft});
@@ -1355,6 +1363,8 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
   p.renderVals = function () {
     const out = originalVals.call(this);
     const composeTarget=this.messageEditTarget||this.messageReplyTarget;
+    out.attachedTranscript=this.transcriptAttachment?.title||'';
+    out.removeTranscript=()=>{this.transcriptAttachment=null;this.setState({});};
     out.messageComposeContext=composeTarget?(this.messageEditTarget?'Editing message':'Replying to '+(composeTarget.from==='user'?'your message':out.name))+': '+composeTarget.text.replace(/\s+/g,' ').slice(0,160):'';
     out.cancelMessageContext=()=>{cancelMessageContext(this);this.setState({});};
     const draft=this.composerDraft?.state;
@@ -1582,7 +1592,9 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     if(!this.messageEditTarget&&s.view==='camera'&&cameraFrameQuestionRequested(text)&&askAboutCameraFrame(text.trim())){if(fromComposer)this.setState({draft:''});return;}
     const editTarget:ConversationMessageTarget|undefined=this.messageEditTarget,replyTarget:ConversationMessageTarget|undefined=fromComposer?this.messageReplyTarget:undefined,editView=s.view;
     if(editTarget){
-      if(argument!==undefined||!connectionController.messageTargetCurrent(editTarget))return;
+      // An app action must not replace or abandon the user's open edit.
+      if(argument!==undefined){this.toast('Finish or cancel the message you are editing first.');return;}
+      if(!connectionController.messageTargetCurrent(editTarget))return;
       this.draftSendPending=true;
       try {
         if(!await messageReviews.confirm('edit-message-'+editTarget.messageId,'Edit and resend message','This replaces the selected message and all later messages in this conversation. It does not undo actions that already ran.\n\nOriginal: '+editTarget.text+'\n\nReplacement: '+text,'Edit and resend'))return;
@@ -1594,6 +1606,9 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     }
     const sourceDraft=fromComposer&&this.reviewedSourceDraft?.draft===text?sourceOf(this.reviewedSourceDraft.source):undefined;
     context(this);
+    const transcript=fromComposer?this.transcriptAttachment:null;
+    const transcriptCurrent=()=>!transcript||(this.S().view==='notes'&&JSON.stringify(this.notesSelection)===transcript.selection&&this.transcriptAttachment===transcript);
+    if(!transcriptCurrent()){this.toast('The recording changed. Remove the transcript or attach it again.');return;}
     const revision=alphaClient.getState().context.revision,connection=connectionController.getSnapshot(),sessionId=connection.session?.sessionId,conversationId=connection.history?.conversationId;
     const current=()=>{const selected=connectionController.getSnapshot();return this.live&&!document.hidden&&(!selected.busy||selected.backgroundWork===true)&&!selected.open&&!document.querySelector('[data-alpha-chat-recorder],[data-alpha-pill-voice]')&&selected.session?.sessionId===sessionId&&selected.history?.conversationId===conversationId&&alphaClient.getState().context.revision===revision;};
     const heldText=String(s.draft||'');let heldKey:string|undefined;
@@ -1624,11 +1639,14 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       navigation=connectionController.captureViewNavigation(alphaClient.getState().context);
       // The request becomes pending after the render above; render again so Stop is offered before any streamed text.
       queueMicrotask(()=>{if(this.live&&alphaClient.getState().pending)this.setState({});});
+      if(!transcriptCurrent())throw new NotDispatched('The recording changed. Attach the transcript again.');
       // The planning label shows only until the first reply text; it is never kept as a message.
       const showStatus=(event:Event)=>{if(this.live&&!streamed&&this.sendAttempt===attempt)this.setState({turnStatus:(event as CustomEvent<string>).detail});};
       localTurnStatus.addEventListener('label',showStatus);
       let reply;
-      try{reply = await alphaClient.send(text,value=>{
+      // The Notes view context carries the exact selected record and revision.
+      const requestText=transcript?'Use the transcript of the selected voice note to answer this question.\n\n'+text:text;
+      try{reply = await alphaClient.send(requestText,value=>{
         attempt.streamed=true;
         if(!this.live)return;
         if(streamed){
@@ -1648,6 +1666,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       const settlementCurrent=()=>this.live&&sameChat()&&JSON.stringify(connectionController.getSnapshot().session)===JSON.stringify(sourceSession)&&(!identity||connectionController.getSelectedConversationId()===identity.conversationId);
       if(!settlementCurrent())return;
       // The agent chose not to reply: no empty bubble, the sent message keeps its saved identity.
+      if(transcript && this.transcriptAttachment===transcript){this.transcriptAttachment=null;this.setState({});}
       if(reply.ignored&&!reply.proposals?.length&&!reply.completedActions?.length&&!reply.completedReads?.length){
         await new Promise<void>(resolve=>this.setState((previous:Shell)=>settlementCurrent()?(()=>{const saved=!!reply.userMessageId&&previous.msgs.some((m:Shell)=>m.id===reply.userMessageId);return {msgs:previous.msgs.filter((m:Shell)=>m.id!==streamedId&&!(m.id===userId&&saved)).map((m:Shell)=>m.id===userId&&reply.userMessageId&&identity?{...m,id:reply.userMessageId,messageBinding:identity}:m)};})():null,resolve));
         if(this.messageReplyTarget===replyTarget)this.messageReplyTarget=undefined;

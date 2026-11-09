@@ -76,11 +76,12 @@ test('canonical Notes UI creates, edits, trashes and restores the same committed
 test('Stop saves canonical audio locally and Generate transcript later uses its retained recording only on request',async({page})=>{
  const {foreign,errors}=await canonicalNotesFixture(page);await openCanonicalNotes(page);
  let uploads=0;
+ const pending=Promise.withResolvers<void>();
  await page.route('**/__alpha-browser-cloud',async route=>{
   const request=route.request(),type=request.headers()['content-type']||'';
   if(type.includes('multipart/form-data')){
    const body=request.postDataBuffer()!;expect(body.includes(Buffer.from('audio/wav'))).toBe(true);expect(body.indexOf(Buffer.from('RIFF'))).toBeGreaterThan(0);expect(body.includes(Buffer.from('WAVE'))).toBe(true);
-   uploads++;await route.fulfill({json:{text:'A closed Notes fixture.',local:false}});return;
+   uploads++;await pending.promise;await route.fulfill({json:{text:'A closed Notes fixture.',local:false}});return;
   }
   const input=request.method()==='POST'?request.postDataJSON():null;
   if(input?.operation==='secureRead'&&input.slot==='cloud:production'){await route.fulfill({json:{value:JSON.stringify({credentialId:'notes-fixture',credentialReference:'closed-fixture-reference'})}});return;}
@@ -119,6 +120,12 @@ test('Stop saves canonical audio locally and Generate transcript later uses its 
  expect(retained.audioId).toBe(saved.format.data.audio.audioId);expect(retained.noteId).toBe(saved.id);
  await expect(page.getByRole('button',{name:'Generate transcript',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Generate transcript',exact:true}).click();
+ try {
+  await expect(page.getByRole('status').filter({hasText:'Transcribing…'})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Cancel transcription'})).toBeEnabled();
+  await expect(page.getByRole('button',{name:'Generate transcript',exact:true})).toHaveCount(0);
+ } finally {pending.resolve();}
+
  await expect.poll(()=>snapshot(page).then((state:any)=>state.notes[0].body)).toBe('\nA closed Notes fixture.');
  expect(uploads).toBe(1);
  await expect(page.getByRole('button',{name:'Generate transcript',exact:true})).toHaveCount(0);
@@ -128,6 +135,17 @@ test('Stop saves canonical audio locally and Generate transcript later uses its 
  const requests=await page.evaluate(()=>(window as any).canonicalNotesFixture.requests.filter((r:any)=>r.path==='/api/views/notes/interact'));
  expect(requests.filter((r:any)=>r.body.capability==='create-note')).toHaveLength(1);expect(requests.filter((r:any)=>r.body.capability==='update-note')).toHaveLength(1);
  expect(JSON.stringify(requests)).not.toMatch(/blob:|file:\/\/|content:\/\//);
+ await page.getByRole('button',{name:'Ask Alpha about this transcript',exact:true}).click();
+ const attachment=page.getByRole('group',{name:'Attached transcript'});
+ await expect(attachment).toBeVisible();await expect(attachment).not.toContainText('A closed Notes fixture.');
+ await expect(page.getByRole('dialog',{name:'Ask about selected content'})).toHaveCount(0);
+ const question=page.locator('textarea[data-alpha-composer]:visible').first();
+ await expect(question).toHaveValue('Summarize this for me');
+ const remove=attachment.getByRole('button',{name:'Remove transcript'});
+ await expect(remove.locator('.note-transcript-remove-icon')).toBeVisible();
+ await question.fill('What did I say?');
+ await attachment.getByRole('button',{name:'Remove transcript'}).click();
+ await expect(attachment).toHaveCount(0);await expect(question).toHaveValue('What did I say?');
  await page.evaluate(()=>(window as any).micContext.close());
  expect(foreign).toEqual([]);expect(errors).toEqual([]);
 });
@@ -248,7 +266,7 @@ test('an agent append refreshes the open note and its row, and a stale owner edi
  expect(foreign).toEqual([]);expect(errors).toEqual([]);
 });
 
-test('the single Notes list hides Previous notes without importing or changing retained device data',async({page})=>{
+test('the Notes list keeps retained device data separate behind Previous notes',async({page})=>{
  const {errors}=await canonicalNotesFixture(page);
  const before=await page.evaluate(async()=>{
   const m=await import('/src/runtime/browser-notes-document.ts');
@@ -258,12 +276,13 @@ test('the single Notes list hides Previous notes without importing or changing r
  await openCanonicalNotes(page);
  await expect(page.getByRole('button',{name:'Open Previous local note',exact:true})).toHaveCount(0);
  await expect(page.getByRole('button',{name:'Record voice note',exact:true})).toBeVisible();
- await expect(page.getByRole('button',{name:'Previous notes',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Previous notes',exact:true})).toBeVisible();
  await expect(page.getByRole('group',{name:'Folders',exact:true})).toHaveCount(0);
  await page.getByRole('button',{name:'New note',exact:true}).click();
  await page.getByRole('textbox',{name:'Title',exact:true}).fill('Canonical only');
  await page.getByRole('textbox',{name:'Note',exact:true}).fill('New text stays in the canonical store.');
- await page.getByRole('button',{name:'Done editing note',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Done editing note',exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Back to notes',exact:true}).click();
  await expect(page.getByRole('button',{name:'Open Canonical only',exact:true})).toBeVisible();
  expect(await page.evaluate(async()=>(await import('/src/runtime/browser-notes-document.ts')).readBrowserNotesRaw())).toBe(before);
  expect((await snapshot(page)).notes.map((note:any)=>note.title)).toEqual(['Canonical only']);

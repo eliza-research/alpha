@@ -247,19 +247,18 @@ test('journey D: an occurrence missed while the app was closed leaves one explic
  await advanceTo(page,'2026-10-03T07:40:00Z');
  await page.goto('/?mode=dev');
  await tickFor(page,60_000);
+ // The missed-record rule itself is covered in dev-digest-schedule.spec.ts; here it is the precondition for Home.
  const state=await digests(page);
  expect(state.results.map(r=>[r.scheduledAt,r.status,r.output])).toEqual([['2026-10-03T07:00:00.000Z','missed',MISSED]]);
- const panel=await openDigests(page);
- await panel.getByRole('button',{name:'Refresh',exact:true}).click();
- await expect(panel.getByRole('article').filter({hasText:'Missed — not run'})).toHaveCount(1);
- await expect(panel.getByRole('article')).toHaveCount(1);
- await expect.poll(async()=>(await digests(page)).acks).toEqual([1]);
- // The delivered missed record is not a brief: Home has nothing to show for this schedule.
+ // The missed record is not a brief: Home has nothing to show for this schedule.
  expect(await retainedBrief(page)).toBeNull();
  await expect(homeBrief(page)).toHaveCount(0);
  await page.reload();
  await expect(page.getByRole('region',{name:'Home'})).toBeVisible();
  await tickFor(page,60_000);
+ // Once this app has received the missed record, it is still not a brief.
+ await expect.poll(async()=>(await digests(page)).acks).toEqual([1]);
+ expect(await retainedBrief(page)).toBeNull();
  // The card Home renders says so, and names neither a brief nor the missed occurrence.
  await expect(homeBrief(page)).toHaveCount(0);
  await expect(briefCard(page)).toHaveCount(0);
