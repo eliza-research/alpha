@@ -35,6 +35,9 @@ cannot qualify the new identity, so the embedding host requires a rebuilt and
 reviewed candidate. Voice and physical-device acceptance remain separate gates.
 Historical reports retain their original hashes and dates; company/package text
 in those reports has been renamed and is not fresh execution evidence.
+The historical native OTA report is retained verbatim at an immutable revision;
+[its reference](evidence/launcher-ota-native-validation-20261109.json) records the
+original blob and digest instead of relabelling its captured facts.
 
 Repository and release URLs keep the existing GitHub organization, which is a
 separate identifier from the company name.
