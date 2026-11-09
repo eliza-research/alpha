@@ -3015,5 +3015,52 @@
       "maxSteps": 80,
       "maxVerifyDepth": 8
     }
+  },
+  {
+    "path": "specs/quint/application/BrowserExternalHandoff.qnt",
+    "module": "BrowserExternalHandoff",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "publicExactDispatchTest",
+      "privateDuplicateIsSuppressedTest",
+      "privateCancellationRestoresPresentationTest",
+      "sameAddressRecommitDuringFinalPresentationTest",
+      "viewDepartureDuringFinalPresentationTest",
+      "selectedTabChangeBeforeDispatchTest",
+      "hiddenDocumentCannotDispatchTest",
+      "missingHttpsNeverPreparesTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/browser-external-handoff.ts",
+      "vendor/eliza/plugins/plugin-native-browser-surface/src/tab-host.ts"
+    ],
+    "abstractions": [
+      "One selected tab and bounded presentation epochs, including a retained handoff across view departure and same-address recommit. The external bridge and presentation surface are closed fixtures."
+    ]
+  },
+  {
+    "path": "specs/quint/application/ClientObservationSupport.qnt",
+    "module": "ClientObservationSupport",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "ExactPeerIsCheckedAgainTest",
+      "NewProcessCannotBeLearnedInSameSessionTest",
+      "CancelledSharedHandshakeRestartsUnderTurnSignalTest",
+      "CancelledTurnDoesNotCancelSharedHandshakeTest",
+      "RetirementFencesLateComparisonTest",
+      "LegacyPeerPreservesOrdinaryContextTest",
+      "ConnectionReplacementFencesLateComparisonTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/client-observation-support.ts",
+      "apps/app/src/runtime/connection-ui.tsx"
+    ],
+    "abstractions": [
+      "One serialized turn, one shared background learn, five status reads, independent connection epoch replacement and explicit retirement. The status callback is a closed fixture."
+    ]
   }
 ]

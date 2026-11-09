@@ -1343,3 +1343,27 @@ composer after an owner or conversation change. Its post-save guard now
 checks the exact composer binding and attachment before publication. The
 original row stays under its scoped storage key. Browser image preview,
 native preview timing and deferred React commits remain separate.
+
+`EmailSuggestionReview` checks 17 schedules and 142 checkpoints in the
+actual renderer review with the pinned shared Inbox fitting rules. The
+rendered opener retains the reply text and agent session. Confirm and
+Cancel belong to the displayed review. Changing the destination requires
+a new Confirm, even when a retained callback fires before the next render.
+Closing the conversation retires the review before insertion. The replay
+records local draft insertion at a closed Inbox port. The composer,
+actual DOM focus and provider delivery remain separate.
+
+`BrowserExternalHandoff` checks 13 schedules and 79 checkpoints using the
+actual renderer handoff and byte-matched shared tab host. After the final
+presentation await, the handoff verifies the current Browser view and
+exact navigation commitment. The replay reproduces stale calls after view
+departure and a same-address recommit, and checks private approval and
+duplicate suppression. The bridge is closed. Android chooser delivery and
+external application behavior remain separate.
+
+`ClientObservationSupport` checks 19 schedules and 103 checkpoints in the
+actual optional-field handshake. The replay observes the status calls,
+nonce admission and retirement through shared learning, abort and
+connection replacement. It covers a legacy peer and repeated comparison
+against the learned process. Real transport, broader concurrent turn
+schedules and any remote handling of the optional field remain separate.
