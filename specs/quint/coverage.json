@@ -22403,7 +22403,7 @@
     },
     {
       "path": "apps/app/src/prototype/inbox-cloud-adapter.ts",
-      "sha256": "6bf67a469b64706d8d7f4c557a70e1c164060569d34308f8c9de5eb7d6d2e0c6",
+      "sha256": "43df199d31d2cf4b43365c42d5af35f01c8ad71cb0ab925f7e661d83a7fc73f7",
       "models": [
         "InboxDelivery",
         "InboxCoordinator",
@@ -22885,7 +22885,7 @@
           "text": "const id = typeof receipt.providerResult?.messageId === 'string' ? receipt.providerResult.messageId : '';"
         },
         {
-          "line": 380,
+          "line": 173,
           "text": "const binding = connectionController.getCloudClient();"
         },
         {
@@ -22897,7 +22897,7 @@
           "text": "const valid = () => token === generation && !controller.signal.aborted && binding.sessionId === connectionController.getCloudClient()?.sessionId;"
         },
         {
-          "line": 392,
+          "line": 256,
           "text": "const classified = classifyGmailFailure(error, 'read');"
         },
         {
@@ -22921,7 +22921,7 @@
           "text": "const {client}=binding;"
         },
         {
-          "line": 417,
+          "line": 226,
           "text": "const hint=readGmailAccountChoice(connectionController.getSnapshot().cloudAccount);"
         },
         {
@@ -23025,7 +23025,7 @@
           "text": "const pageToken = more && query === loadedQuery ? nextPageToken : null;"
         },
         {
-          "line": 528,
+          "line": 484,
           "text": "const loadGeneration = generation + 1;"
         },
         {
@@ -23041,7 +23041,7 @@
           "text": "const merged = mergeMailboxPage({ messages, firstPageRevision, seenCursors }, result, pageToken), shifted = merged.shifted;"
         },
         {
-          "line": 560,
+          "line": 146,
           "text": "const binding = connectionController.getCloudClient(), accountId = selected;"
         },
         {
@@ -23117,7 +23117,7 @@
           "text": "const message=body.message,accountId=selected;"
         },
         {
-          "line": 638,
+          "line": 602,
           "text": "const page=await client.gmailThread(accountId,message.threadId,signal);"
         },
         {
@@ -23145,7 +23145,7 @@
           "text": "await work('Loading selected attachment\u2026',async({client},signal,valid)=>{const file=await client.gmailAttachment(accountId,source.message.id,attachment.partId,source.historyId!,signal).catch(error=>{t"
         },
         {
-          "line": 664,
+          "line": 600,
           "text": "const accountId=selected;"
         },
         {
@@ -23221,7 +23221,7 @@
           "text": "const openReply = () => { const st = api?.get('inbox'), current = body; return current && st?.open != null && current.message.id === st.open ? current : undefined; };"
         },
         {
-          "line": 748,
+          "line": 173,
           "text": "const binding = connectionController.getCloudClient();"
         },
         {
@@ -23261,7 +23261,7 @@
           "text": "const attached = Array.isArray(value.attach) && value.attach.length > 0;"
         },
         {
-          "line": 796,
+          "line": 173,
           "text": "const binding = connectionController.getCloudClient();"
         },
         {
@@ -23289,7 +23289,7 @@
           "text": "const current = () => {"
         },
         {
-          "line": 814,
+          "line": 271,
           "text": "const active = connectionController.getCloudClient();"
         },
         {
@@ -23309,155 +23309,151 @@
           "text": "const chips: Bag[] = binding ? ["
         },
         {
-          "line": 841,
+          "line": 840,
           "text": "const extraFolders = binding&&selected&&st.q==null?["
         },
         {
-          "line": 848,
+          "line": 847,
           "text": "for(const row of extraFolders)Object.assign(row,{icon:'/icons/lucide/'+folderIcons[row.value==='all'?'All mail':row.value==='spam'?'Spam':row.value==='trash'?'Trash':row.label]+'.svg',checkCss:row.on?"
         },
         {
-          "line": 849,
+          "line": 848,
           "text": "const localDrafts=drafts.chips(chip);"
         },
         {
-          "line": 853,
+          "line": 852,
           "text": "const date = (value: string | null) => { const d = new Date(value || ''); if (!value || Number.isNaN(d.valueOf())) return ''; const now = new Date();"
         },
         {
-          "line": 855,
+          "line": 854,
           "text": "const fullDate = (value: string) => { const d = new Date(value); return Number.isNaN(d.valueOf()) ? '' : `${weekdayName(d)}, ${formatMonthDay(d, true)}, ${formatTime(d)}`; };"
         },
         {
-          "line": 856,
+          "line": 855,
           "text": "const activeBody = st.open && body?.message.id === st.open ? body : null;"
         },
         {
-          "line": 857,
+          "line": 856,
           "text": "const rows:Bag[] = messages.map(m => {"
         },
         {
-          "line": 860,
+          "line": 859,
           "text": "const swipe = current.sw?.((dx: number, dy: number) => { if (dx >= 0 || Math.abs(dx) < Math.abs(dy)) return false; void swipeArchive(m); return true; }) ?? { down: () => {}, up: () => {} };"
         },
         {
-          "line": 861,
+          "line": 860,
           "text": "const senderImage=mailSenderImage(sentView?null:m.fromEmail,true);"
         },
         {
-          "line": 862,
+          "line": 861,
           "text": "const name = sentView ? (m.to.length ? `To: ${m.to.join(', ')}` : 'To: (no recipients)') : m.from; return { name, senderImage,hideSenderImage:(event:Event)=>{(event.currentTarget as HTMLImageElement)."
         },
         {
-          "line": 867,
+          "line": 866,
           "text": "if (draftsView()) rows.splice(0, rows.length, ...providerDrafts.map(d => { const name = d.to.length ? `Draft to ${d.to.join(', ')}` : 'Draft (no recipients)';"
         },
         {
-          "line": 871,
+          "line": 870,
           "text": "const linkRows = (source: NonNullable<typeof body>) => { const cached = linkRowCache.get(source); if (cached) return cached; const seen = new Set<string>(), list: GmailLink[] = [];"
         },
         {
-          "line": 872,
+          "line": 871,
           "text": "for (const link of [...(source.links || []), ...linkifyMailText(source.bodyText)]) if (link.href.startsWith('https://') && !seen.has(link.href) && list.length < 50) { seen.add(link.href); list.push(li"
         },
         {
-          "line": 873,
+          "line": 872,
           "text": "const rows = list.map(link => { const host = new URL(link.href).hostname; return { label: link.text === link.href ? host : `${link.text} (${host})`, href: link.href, host, mismatch: linkTextMismatch(l"
         },
         {
-          "line": 876,
+          "line": 875,
           "text": "const showRemoteImages=true;"
         },
         {
-          "line": 877,
+          "line": 876,
           "text": "let formatted:ReturnType<typeof prepareMailHtml>|null=null;"
         },
         {
-          "line": 879,
+          "line": 878,
           "text": "let cached=htmlBodies.get(activeBody);if(!cached){cached={};htmlBodies.set(activeBody,cached);}"
         },
         {
-          "line": 880,
+          "line": 879,
           "text": "const mode=showRemoteImages?'shown':'hidden';"
         },
         {
-          "line": 883,
+          "line": 882,
           "text": "const activeLinks=activeBody?(formatted?linkRows(activeBody).filter(link=>!formatted!.inlineLinks.has(link.href)):linkRows(activeBody)):[];"
         },
         {
-          "line": 884,
+          "line": 883,
           "text": "const htmlLoaded=(event:Bag)=>{const frame=event.currentTarget as HTMLIFrameElement,doc=frame.contentDocument;if(!doc)return;"
         },
         {
-          "line": 885,
+          "line": 884,
           "text": "const resize=()=>{if(frame.isConnected)frame.style.height=Math.min(32000,Math.max(120,doc.documentElement.scrollHeight,doc.body.scrollHeight))+'px';};resize();doc.addEventListener('load',resize,true);"
         },
         {
-          "line": 886,
+          "line": 885,
           "text": "const follow=(event:Event)=>{const target=(event.target as Element)?.closest('a[data-alpha-link]');if(!target)return;event.preventDefault();if(body!==activeBody)return;openLink({href:target.getAttribu"
         },
         {
-          "line": 890,
+          "line": 889,
           "text": "const needsGmailConnection=!!binding&&accountsChecked&&accountsSession===binding.sessionId&&!selected&&!operation&&phase!=='scheduled'&&!failure;"
         },
         {
-          "line": 892,
+          "line": 891,
           "text": "openSearch: () => changeQuery(''), closeSearch: () => changeQuery(null), clearSearch:()=>{changeQuery('');queueMicrotask(()=>document.querySelector<HTMLInputElement>('.mail-search-input')?.focus());},"
         },
         {
-          "line": 895,
-          "text": "canRefresh: !!selected, refreshDisabled: !!operation, refresh: () => { const shown=cachedListShown; invalidateList(false); cachedListShown=shown; void provider.bind(selected); void load(); },"
-        },
-        {
-          "line": 901,
+          "line": 900,
           "text": "body: activeBody.loading?'Loading message\u2026':activeBody.bodyText || '(Empty message)', loading:!!activeBody.loading,canLoadThread:!thread&&!activeBody.loading&&!!provider.capabilities()?.threads,loadTh"
         },
         {
-          "line": 907,
+          "line": 906,
           "text": "const parts=current.attachments??[],kept=current.historyId?parts.filter(a=>a.partId&&a.size<=5*1024*1024):[],omitted=parts.filter(a=>!kept.includes(a));"
         },
         {
-          "line": 912,
+          "line": 911,
           "text": "const mount = p.componentDidMount, unmount = p.componentWillUnmount;"
         },
         {
-          "line": 920,
+          "line": 919,
           "text": "const next = connectionController.getCloudClient()?.sessionId,nextKey=homeOwnerKey();"
         },
         {
-          "line": 924,
+          "line": 923,
           "text": "const nextAgent = connectionController.getSnapshot().session?.sessionId;"
         },
         {
-          "line": 936,
+          "line": 935,
           "text": "const binding = connectionController.getCloudClient(), cloudAccount = connectionController.getSnapshot().cloudAccount;"
         },
         {
-          "line": 937,
+          "line": 936,
           "text": "const grant = selected || homePreview?.accountId || readGmailAccountChoice(cloudAccount) || '';"
         },
         {
-          "line": 939,
+          "line": 938,
           "text": "let rows: GmailAccount[] | null = null;"
         },
         {
-          "line": 942,
+          "line": 941,
           "text": "const next = rows?.find(a => a.connectionId === grant), prior = accounts.find(a => a.connectionId === grant);"
         },
         {
-          "line": 943,
+          "line": 942,
           "text": "const dropped = !grant || !gmailReadable(next) || !!prior && gmailGrantChange({ sessionId: accountsSession || null, account: prior }, { sessionId: binding?.sessionId ?? null, account: next }).dropRead"
         },
         {
-          "line": 950,
+          "line": 949,
           "text": "const read = attention.updatedAt !== null && attention.unread !== undefined;"
         },
         {
-          "line": 954,
+          "line": 953,
           "text": "void restoreHomeMailbox().finally(() => warmHomeMailbox(true).then(() => { const hint = readGmailAccountChoice(connectionController.getSnapshot().cloudAccount); if (hint && hint === selected && accoun"
         }
       ],
-      "integrationReview": "2026-11-09 preview review: saved Inbox before background refresh with owner/epoch invalidation; optional Cloud restore pending presentation; provider pending-vs-failed presentation; existing Cloud-preview storage eligibility; About removal; dedicated embedding authority separated from own text/voice. Existing domain allocations retained; actual browser and owning tests recorded separately. Semantic refinement and device acceptance remain open.",
+      "integrationReview": "2026-11-09 removed duplicate Inbox retry/banner; the existing refresh icon reuses the same read-only retry and retained messages remain visible. Provider errors and permission invalidation stay enforced. Existing model allocation retained; browser and source-model evidence remain distinct.",
       "reviewStatus": "state-audit-required"
     },
     {
@@ -34383,14 +34379,14 @@
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "8aabc9bdc9bfc07acb68ab3e3d0e948ee096cd2d216cb4fd244d62298f75f482",
+      "sha256": "e98f7b9e5edd13ca8733dc3438b378e69f79a8aad94c4b8262c34ffe275f7874",
       "stateAnchors": [
         {
-          "line": 3359,
+          "line": 3358,
           "text": "<sc-if value=\"{{workflows.automation.editingSchedule}}\"><sc-if value=\"{{workflows.automation.scheduleClockEditable}}\"><label class=\"schedule-instructions\">Time ({{workflows.automation.e"
         }
       ],
-      "integrationReview": " 2026-11-09: suppress only duplicate navigation metadata when it equals remaining-distance status. Distinct arrival/background notices remain. Four-trace mounted Maps comparison and five existing accessibility scenarios passed on the parent composition; current-main replay follows. No action or permission transition changed."
+      "integrationReview": "2026-11-09 removed duplicate Inbox retry/banner; the existing refresh icon reuses the same read-only retry and retained messages remain visible. Provider errors and permission invalidation stay enforced. Existing model allocation retained; browser and source-model evidence remain distinct."
     },
     {
       "path": "apps/app/src/prototype/use-in-email-review.ts",

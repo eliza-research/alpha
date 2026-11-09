@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "80fbb1d25937585b24fd85132d623d5391c8ca07",
-  "ledgerSha256": "3adb2c1897364ce50b87b8b487ad6a1ec632a60e49c7f25c4bf3c9ab0e437443",
+  "ledgerSha256": "feec1dbd0750887e770daa69aa494aa0131779580c6924d6a3d8db3350b0297d",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -34996,7 +34996,7 @@
     },
     {
       "path": "apps/app/src/prototype/inbox-cloud-adapter.ts",
-      "sha256": "6bf67a469b64706d8d7f4c557a70e1c164060569d34308f8c9de5eb7d6d2e0c6",
+      "sha256": "43df199d31d2cf4b43365c42d5af35f01c8ad71cb0ab925f7e661d83a7fc73f7",
       "allocatedModels": [
         "InboxDelivery",
         "InboxCoordinator",
@@ -35110,19 +35110,19 @@
         },
         {
           "owner": "installInboxCloudAdapter.ArrowFunction@794.linkRows",
-          "line": 871,
+          "line": 870,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "installInboxCloudAdapter.ArrowFunction@794.htmlLoaded",
-          "line": 884,
+          "line": 883,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installInboxCloudAdapter.FunctionExpression@913.ArrowFunction@935",
-          "line": 939,
+          "owner": "installInboxCloudAdapter.FunctionExpression@912.ArrowFunction@934",
+          "line": 938,
           "bindings": 1,
           "writes": 2
         }
@@ -39969,7 +39969,7 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "8aabc9bdc9bfc07acb68ab3e3d0e948ee096cd2d216cb4fd244d62298f75f482",
+      "sha256": "e98f7b9e5edd13ca8733dc3438b378e69f79a8aad94c4b8262c34ffe275f7874",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -220814,6 +220814,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "f7c68e130665ed1fe18c4d914469cf9a3944259be0771c132d08c774b51e8b38"
+    "sha256": "40759cfba657496bd901b1b1f2f06abf459245d3d387ec7ea7ba4c332a6bda70"
   }
 }
