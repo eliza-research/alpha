@@ -6355,7 +6355,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "75d50e45f90c22e405030aaa7ee1b527d7b91d0a634f8d028395768afa0dc5e6",
+      "sha256": "00fb2dd0b1921dfd2bbaf0223aa23ed551cbb8a74b744e94dcd169b582587239",
       "stateAnchors": [
         {
           "line": 14,
@@ -8224,7 +8224,8 @@
         "NativeUpdateActivation",
         "NativeUpdateStaging",
         "NativeClockReview",
-        "NativeCrashJournal"
+        "NativeCrashJournal",
+        "NativeGmailBackground"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -49054,12 +49055,13 @@
       "path": "scripts/build-native-google-host.ts",
       "models": [
         "NativeGoogleAccessFile",
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
-      "sha256": "7ef99aa093e8566620ce08b23a279c70bae5c5f003b336defff00c015f1ac851",
+      "sha256": "3b4390d9ac72eaa39bcce8b0ab7dd515040c07e115d02217edf2f8302a3a8147",
       "stateAnchors": []
     },
     {
@@ -49141,7 +49143,8 @@
         "CombinedAgentLauncher",
         "ReviewedWorkflowLauncher",
         "CoreConnectorCustody",
-        "MobileBundleAdmission"
+        "MobileBundleAdmission",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "development-runtime",
       "treatment": "domain-contract-or-support",
@@ -49607,7 +49610,8 @@
       "models": [
         "DevelopmentHost",
         "ResidentRuntime",
-        "ReviewedWorkflowLauncher"
+        "ReviewedWorkflowLauncher",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
@@ -49644,12 +49648,13 @@
       "path": "scripts/native-google-host-artifact.mjs",
       "models": [
         "NativeGoogleAccessFile",
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
-      "sha256": "65793e1ceacbc8b49c2733072d34827a20fc3082fe4fc1b8a4e351007c680b42",
+      "sha256": "f22eed6561ab217c1171ea8df46ad2aed17c2450833ee55d9767679821abf808",
       "stateAnchors": []
     },
     {
@@ -49934,7 +49939,8 @@
       "models": [
         "WorkflowExecution",
         "ReviewedWorkflowLauncher",
-        "WorkflowWorkerStaging"
+        "WorkflowWorkerStaging",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
@@ -133385,7 +133391,8 @@
     {
       "path": "vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs",
       "models": [
-        "DevelopmentRuntimeLoader"
+        "DevelopmentRuntimeLoader",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "shared-upstream",
       "treatment": "domain-contract-or-support",
@@ -618628,7 +618635,7 @@
         "NativeSmsDispatch",
         "NativeMmsDispatch"
       ],
-      "sha256": "faf549fba3d83dd006c6fd10be946d0aaebb894f659d9537f747f51ec3bfa949"
+      "sha256": "4fbc4a25d4b3eb56a9011672f40bb29fd19dbe4cd6ecf278b8936a1c91d446f2"
     },
     {
       "path": "patches/eliza/notes-organize-agent.patch",
@@ -618907,7 +618914,8 @@
         "CombinedAgentLauncher",
         "ReviewedWorkflowLauncher",
         "CoreConnectorCustody",
-        "MobileBundleAdmission"
+        "MobileBundleAdmission",
+        "NativeGoogleHostArtifact"
       ],
       "sha256": "331e2ce0df2c43a1f34969bc12b54d51292134320599e4a765e77b5129853171"
     },
@@ -618927,7 +618935,8 @@
         "TaskServiceLifecycle",
         "CanonicalNotesStore",
         "CoreTurnControllers",
-        "ReviewedWorkflowLauncher"
+        "ReviewedWorkflowLauncher",
+        "NativeGoogleHostArtifact"
       ],
       "sha256": "bd5c0ae286c2802fed48f8e51150d4f2de75fb4c8563cfdcdd4d1347fb888c5f",
       "integrationReview": "Retains the reviewed source boundary and authenticated patch catalog; integration also admits installed dependency ranges and bounded source-copy helpers. Configuration identity alone is not runtime/refinement evidence."
@@ -619099,7 +619108,7 @@
       "models": [
         "NativeGmailBackground"
       ],
-      "sha256": "65947131687f81fb580a75c406c90c44092408418fc85bebd10b65eb3c144671"
+      "sha256": "5e5201b471dfc9d823788953828206f0b1c3a26483a4405398105e8ebaa6085c"
     }
   ],
   "runtimeAssets": [

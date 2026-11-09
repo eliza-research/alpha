@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "03547238d73e34b32f62379335d3f09ae304e2f676210459b1440e1edbeecbc7",
+  "ledgerSha256": "4aa416032b3decceab74f8387e0d3ed462f5d535133a513b32414ed64979c61b",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -28,11 +28,11 @@
     "parsedFiles": 5656,
     "languageReview": 71,
     "parseErrors": 0,
-    "candidates": 67318,
-    "writeSites": 66878,
-    "writeAssociations": 60016,
-    "asynchronous": 8344,
-    "unassignedWrites": 10263
+    "candidates": 67322,
+    "writeSites": 66889,
+    "writeAssociations": 60018,
+    "asynchronous": 8345,
+    "unassignedWrites": 10272
   },
   "files": [
     {
@@ -19152,7 +19152,7 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaGmailPlugin.java",
-      "sha256": "75d50e45f90c22e405030aaa7ee1b527d7b91d0a634f8d028395768afa0dc5e6",
+      "sha256": "00fb2dd0b1921dfd2bbaf0223aa23ed551cbb8a74b744e94dcd169b582587239",
       "allocatedModels": [
         "InboxDelivery",
         "NativeGmailBackground"
@@ -19170,102 +19170,108 @@
         {
           "owner": "AlphaGmailPlugin.submit@18",
           "line": 18,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaGmailPlugin.submit@19",
+          "line": 19,
           "bindings": 3,
           "writes": 0
         },
         {
-          "owner": "AlphaGmailPlugin.submit@18.lambda@18",
-          "line": 18,
+          "owner": "AlphaGmailPlugin.submit@19.lambda@19",
+          "line": 20,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaGmailPlugin.foreground@19",
-          "line": 19,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "AlphaGmailPlugin.requireForeground@21",
-          "line": 21,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "AlphaGmailPlugin.configure@22",
+          "owner": "AlphaGmailPlugin.foreground@22",
           "line": 22,
-          "bindings": 6,
-          "writes": 0
-        },
-        {
-          "owner": "AlphaGmailPlugin.withdraw@23",
-          "line": 23,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaGmailPlugin.status@24",
+          "owner": "AlphaGmailPlugin.requireForeground@24",
           "line": 24,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaGmailPlugin.pending@25",
+          "owner": "AlphaGmailPlugin.configure@25",
           "line": 25,
-          "bindings": 2,
+          "bindings": 7,
           "writes": 0
         },
         {
-          "owner": "AlphaGmailPlugin.consume@26",
+          "owner": "AlphaGmailPlugin.withdraw@26",
           "line": 26,
-          "bindings": 2,
+          "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaGmailPlugin.releaseQuestion@27",
+          "owner": "AlphaGmailPlugin.status@27",
           "line": 27,
-          "bindings": 2,
+          "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaGmailPlugin.notificationSettings@28",
+          "owner": "AlphaGmailPlugin.pending@28",
           "line": 28,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "AlphaGmailPlugin.capture@30",
+          "owner": "AlphaGmailPlugin.consume@29",
+          "line": 29,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaGmailPlugin.releaseQuestion@30",
           "line": 30,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "AlphaGmailPlugin.capture@30.lambda@30",
-          "line": 30,
-          "bindings": 2,
-          "writes": 0
-        },
-        {
-          "owner": "AlphaGmailPlugin.resumeDelivery@31",
+          "owner": "AlphaGmailPlugin.notificationSettings@31",
           "line": 31,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "AlphaGmailPlugin.handleOnNewIntent@33",
+          "owner": "AlphaGmailPlugin.capture@33",
           "line": 33,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaGmailPlugin.capture@33.lambda@33",
+          "line": 33,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaGmailPlugin.resumeDelivery@34",
+          "line": 34,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaGmailPlugin.handleOnNewIntent@36",
+          "line": 36,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaGmailPlugin.handleOnResume@34",
-          "line": 34,
+          "owner": "AlphaGmailPlugin.handleOnResume@37",
+          "line": 37,
           "bindings": 1,
           "writes": 0
         }
       ],
       "parseErrors": [],
-      "asynchronous": 9,
+      "asynchronous": 10,
       "unassignedWrites": 3
     },
     {
@@ -26531,7 +26537,8 @@
         "NativeUpdateActivation",
         "NativeUpdateStaging",
         "NativeClockReview",
-        "NativeCrashJournal"
+        "NativeCrashJournal",
+        "NativeGmailBackground"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -46250,10 +46257,11 @@
     },
     {
       "path": "scripts/build-native-google-host.ts",
-      "sha256": "7ef99aa093e8566620ce08b23a279c70bae5c5f003b336defff00c015f1ac851",
+      "sha256": "3b4390d9ac72eaa39bcce8b0ab7dd515040c07e115d02217edf2f8302a3a8147",
       "allocatedModels": [
         "NativeGoogleAccessFile",
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -46261,14 +46269,14 @@
       "owners": [
         {
           "owner": "<module>",
-          "line": 32,
-          "bindings": 1,
-          "writes": 1
+          "line": 11,
+          "bindings": 2,
+          "writes": 3
         }
       ],
       "parseErrors": [],
       "asynchronous": 0,
-      "unassignedWrites": 1
+      "unassignedWrites": 3
     },
     {
       "path": "scripts/build-workflow-worker.ts",
@@ -46371,7 +46379,8 @@
         "CombinedAgentLauncher",
         "ReviewedWorkflowLauncher",
         "CoreConnectorCustody",
-        "MobileBundleAdmission"
+        "MobileBundleAdmission",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -46610,7 +46619,8 @@
       "allocatedModels": [
         "DevelopmentHost",
         "ResidentRuntime",
-        "ReviewedWorkflowLauncher"
+        "ReviewedWorkflowLauncher",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -46697,25 +46707,38 @@
     },
     {
       "path": "scripts/native-google-host-artifact.mjs",
-      "sha256": "65793e1ceacbc8b49c2733072d34827a20fc3082fe4fc1b8a4e351007c680b42",
+      "sha256": "f22eed6561ab217c1171ea8df46ad2aed17c2450833ee55d9767679821abf808",
       "allocatedModels": [
         "NativeGoogleAccessFile",
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
         {
+          "owner": "regularFile",
+          "line": 17,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "fixedInputHashes",
+          "line": 38,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
           "owner": "addNativeGoogleHostArtifact",
-          "line": 36,
-          "bindings": 3,
-          "writes": 4
+          "line": 107,
+          "bindings": 1,
+          "writes": 2
         }
       ],
       "parseErrors": [],
       "asynchronous": 0,
-      "unassignedWrites": 1
+      "unassignedWrites": 8
     },
     {
       "path": "scripts/prepare-client-features.mjs",
@@ -47231,7 +47254,8 @@
       "allocatedModels": [
         "WorkflowExecution",
         "ReviewedWorkflowLauncher",
-        "WorkflowWorkerStaging"
+        "WorkflowWorkerStaging",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -67050,7 +67074,8 @@
       "path": "vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs",
       "sha256": "10b43806d93aa4e7bba53cc33df975afa69f39aa760507b7aeff9cfeb026fc2b",
       "allocatedModels": [
-        "DevelopmentRuntimeLoader"
+        "DevelopmentRuntimeLoader",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -219768,6 +219793,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "1727ead0dc62197810feb7c4896e46766a36f24702bbae789b297c34fdb2f29b"
+    "sha256": "6b905e10d31ff03bf72895a0c73f32494493fe038f8e7f653a5776c6e8c5b928"
   }
 }
