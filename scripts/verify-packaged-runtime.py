@@ -22,6 +22,23 @@ import zipfile
 ROOT = Path(__file__).resolve().parent.parent
 LOCAL_EMBEDDING_MODEL = {'path': 'assets/agent/models/bge-small-en-v1.5-f16.gguf', 'sha256': 'f0b2fef971e8366438bfd2d9aefea1b0115919389448806d290237f638bae999'}
 
+# Independent policy for the exact Android producer's reviewed core transforms.
+MOBILE_CORE_PATCH_TARGETS = [
+    ('task-service-stop.patch', ['packages/core/src/services/task.ts']),
+    ('notes-state-runtime.patch', [
+        'plugins/plugin-notes/src/service.ts', 'plugins/plugin-notes/src/store.ts',
+        'plugins/plugin-notes/src/types.ts', 'plugins/plugin-notes/src/validation.ts',
+    ]),
+    ('turn-controller-isolation.patch', ['packages/core/src/runtime/turn-controller.ts']),
+    ('room-queue-admission.patch', ['packages/core/src/runtime/room-handler-queue.ts']),
+    ('embedding-store-identity.patch', ['packages/core/src/runtime/embeddings.ts']),
+    ('named-embedding-provenance.patch', [
+        'plugins/plugin-sql/src/base.ts', 'packages/agent/src/api/conversation-routes.ts',
+        'plugins/plugin-assistant/src/features/advanced-capabilities/experience/service.ts',
+    ]),
+    ('plugin-connector-custody.patch', ['packages/core/src/plugin-lifecycle.ts']),
+]
+
 
 def digest(stream):
     value = hashlib.sha256()
@@ -198,22 +215,12 @@ def verify(apk, release=False, runtime_profile="native", local_embeddings=False)
                 raise ValueError('Packaged mobile producer adapter changed')
             core_manifest_file = ROOT / 'patches/eliza/core-state-manifest.json'
             core_manifest = json.loads(core_manifest_file.read_text())
-            core_targets = [('task-service-stop.patch', ['packages/core/src/services/task.ts']),
-                            ('notes-state-runtime.patch', ['plugins/plugin-notes/src/service.ts',
-                             'plugins/plugin-notes/src/store.ts', 'plugins/plugin-notes/src/types.ts',
-                             'plugins/plugin-notes/src/validation.ts']),
-                            ('turn-controller-isolation.patch', ['packages/core/src/runtime/turn-controller.ts']),
-                            ('room-queue-admission.patch', ['packages/core/src/runtime/room-handler-queue.ts']),
-                            ('embedding-store-identity.patch', ['packages/core/src/runtime/embeddings.ts']),
-                            ('named-embedding-provenance.patch', ['plugins/plugin-sql/src/base.ts',
-                             'packages/agent/src/api/conversation-routes.ts',
-                             'plugins/plugin-assistant/src/features/advanced-capabilities/experience/service.ts'])]
             if (set(core_manifest) != {'schema', 'baseCommit', 'patches'} or
                     core_manifest.get('schema') != 1 or core_manifest.get('baseCommit') != pin or
-                    len(core_manifest.get('patches', [])) != len(core_targets)):
+                    len(core_manifest.get('patches', [])) != len(MOBILE_CORE_PATCH_TARGETS)):
                 raise ValueError('Packaged core patch policy differs')
             core_files, core_patches, core_transforms = {}, [], []
-            for core_patch, (patch_name, targets) in zip(core_manifest['patches'], core_targets):
+            for core_patch, (patch_name, targets) in zip(core_manifest['patches'], MOBILE_CORE_PATCH_TARGETS):
                 if (set(core_patch) != {'file', 'sha256', 'targets'} or
                         core_patch.get('file') != patch_name or len(core_patch.get('targets', [])) != len(targets) or
                         core_patch.get('sha256') != file_hash(ROOT / 'patches/eliza' / patch_name)):
@@ -230,7 +237,7 @@ def verify(apk, release=False, runtime_profile="native", local_embeddings=False)
                 core_patches.append({'file': patch_name, 'sha256': core_patch['sha256']})
             core_inputs = ['scripts/core-state-patch.mjs', 'scripts/core-state-preload.mjs',
                            'scripts/combined-agent-source.mjs', 'patches/eliza/core-state-manifest.json'] + [
-                           'patches/eliza/' + name for name, _targets in core_targets]
+                           'patches/eliza/' + name for name, _targets in MOBILE_CORE_PATCH_TARGETS]
             expected_core = {'version': 1, 'baseCommit': pin,
                              'manifestSha256': file_hash(core_manifest_file),
                              'inputHashes': {name: file_hash(ROOT / name) for name in core_inputs},
