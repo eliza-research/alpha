@@ -25,6 +25,7 @@ import {DailyApps} from '../daily';
 import {browserCamera,browserLibrary,browserPhotoLibrary,mountBrowserCamera,importBrowserPhoto,openCameraImageImport,saveBrowserMedia} from './browser-camera';
 import { registerPlugin } from '../platform-plugins';
 import { Capacitor } from '@capacitor/core';
+import {cameraFocusTarget} from '../browser/camera-focus';
 
 type CameraCaptureAttempt={status:'succeeded'|'failed'|'unknown';summary:string;cameraResult?:CameraCaptureResult};
 let requestedPhoto:((operationId:string,signal:AbortSignal,current:()=>void)=>Promise<CameraCaptureAttempt>)|undefined;
@@ -136,7 +137,7 @@ export function lensFromReceipt(value: unknown): Lens {
   return { minZoom, maxZoom, hasFlash: row.hasFlash === true, zoom: Number.isFinite(zoom) && zoom >= minZoom && zoom <= maxZoom ? zoom : 1, flash: row.hasFlash === true && row.flash === 'on' };
 }
 export function zoomStops(lens: Pick<Lens, 'minZoom' | 'maxZoom'>): [number, string][] {
-  const stops = ZOOM_STOPS.filter(([ratio]) => ratio >= lens.minZoom - 1e-3 && ratio <= lens.maxZoom + 1e-3);
+  const stops = ZOOM_STOPS.filter(([ratio]) => ratio >= lens.minZoom && ratio <= lens.maxZoom);
   return stops.length > 1 ? stops : [];
 }
 /** A saved still's receipt: a MediaStore (or browser library) identity, never a file path. */
@@ -772,6 +773,10 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   }
   /** Set when the native size or duration limit stopped the recording. */
   let limitStop = false;
+  let nativeFocus:HTMLElement|undefined,focusTimer:number|undefined;
+  const cameraPointers=new Map<number,{x:number;y:number}>();
+  let pinchStart=0,pinchZoom=1,pinchUsed=false;
+  let pendingZoom:{ratio:number;token:number}|undefined;
   const session=createCameraSession({
     camera:sessionCamera,active,available:()=>browserMode||Capacitor.isPluginAvailable('ElizaCamera'),
     preview:()=>({direction,resolution:{width:1280,height:720},mirror:direction==='front'}),
@@ -780,7 +785,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       recordingFinishing(){api?.set({rec:false});},
       recordingSaved:adoptVideo,
       recordingFailed(){limitStop=false;if(!disposed)message('Video may not have saved. Check Photos.');},
-      changed(){settle();schedule();takePendingShot();},
+      changed(){settle();schedule();takePendingShot();void takePendingZoom();},
     },
   });
   function hideAccess(){accessPanel?.remove();accessPanel=undefined;}
@@ -839,6 +844,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   }
   async function stop() {
     pendingShot=undefined;
+    clearCameraInteraction();
     // A scan review that opened a system picker stays open while Android covers the WebView.
     closeQuestion?.();closeQuestion=undefined;if(!systemPickerActive())cancelScan(); mask(false); hideAccess();
     await session.stop();
@@ -860,7 +866,32 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   /** Tap to focus runs alongside everything else: it never holds a lock the shutter waits on. */
   function focusAt(x:number,y:number){
     if(session.phase!=='ready'||session.recordingStarting||session.finalizing)return;
-    void camera.setFocusPoint({x:Math.max(0,Math.min(1,x)),y:Math.max(0,Math.min(1,y))}).catch(()=>{/* Focus is best effort. */});
+    const point={x:Math.max(0,Math.min(1,x)),y:Math.max(0,Math.min(1,y))};
+    if(!browserMode){
+      nativeFocus?.remove();window.clearTimeout(focusTimer);
+      const frame=document.querySelector<HTMLElement>(finder);
+      if(frame){const target=nativeFocus=cameraFocusTarget(point,frame);focusTimer=window.setTimeout(()=>{target.remove();if(nativeFocus===target)nativeFocus=undefined;},1100);}
+    }
+    void camera.setFocusPoint(point).catch(()=>{/* A target is not a claim that autofocus succeeded. */});
+  }
+  function clearCameraInteraction(){
+    nativeFocus?.remove();nativeFocus=undefined;window.clearTimeout(focusTimer);focusTimer=undefined;
+    cameraPointers.clear();pinchStart=0;pinchUsed=false;pendingZoom=undefined;
+  }
+  /** Keep the latest pinch position while another camera control is settling. */
+  async function takePendingZoom(){
+    if(!pendingZoom||session.busy)return;
+    const requested=pendingZoom;pendingZoom=undefined;
+    if(session.phase!=='ready'||!session.current(requested.token)||session.recording)return;
+    const outcome=await session.control(()=>camera.setZoom({zoom:requested.ratio}));
+    if(outcome==='done'){zoomRatio=requested.ratio;api?.set({nativeZoom:zoomRatio});}
+    else if(outcome==='failed')message('Zoom could not be changed.');
+  }
+  function zoomTo(ratio:number){
+    if(session.phase!=='ready'||session.recording||session.recordingStarting||session.finalizing)return;
+    nativeFocus?.remove();nativeFocus=undefined;
+    pendingZoom={ratio:Math.max(lens.minZoom,Math.min(lens.maxZoom,ratio)),token:session.token()};
+    void takePendingZoom();
   }
   /** The session's recordingSaved hook: only a MediaStore (or browser) receipt read back from the library is kept. */
   async function adoptVideo(receipt:VideoReceipt) {
@@ -875,6 +906,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     message(limitReached?'Maximum length reached. Video saved.':'');
   }
   function flipLens(owner: Bag) {
+    clearCameraInteraction();
     const next = direction === 'back' ? 'front' : 'back';
     return control(async () => {
       if (flash) {
@@ -1147,8 +1179,24 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     data.toggleFlash = () => { const next = !flash; void control(() => camera.setSettings({ settings: { flash: next ? 'on' : 'off' } }), () => { flash = next; currentApi.set({ flash: next }); }); };
     const stops = ready ? zoomStops(lens) : [];
     data.showZoom = !recordingBusy && stops.length > 1;
-    data.zooms = stops.map(([ratio, label]) => ({ label, aria: `Zoom ${label.replace('×', '')}x`, css: Math.abs(ratio - zoomRatio) < 1e-3 ? ZOOM_ON : ZOOM_OFF, pick: () => { void control(() => camera.setZoom({ zoom: ratio }), () => { zoomRatio = ratio; currentApi.set({ nativeZoom: ratio }); }); } }));
-    data.vfUp = (event: PointerEvent) => { const bounds = document.querySelector(finder)?.getBoundingClientRect(); focusAt((event.clientX - (bounds?.left ?? 0)) / (bounds?.width || window.innerWidth), (event.clientY - (bounds?.top ?? 0)) / (bounds?.height || window.innerHeight)); };
+    data.zooms = stops.map(([ratio, label]) => ({ label, aria: `Zoom ${label.replace('×', '')}x`, css: Math.abs(ratio - zoomRatio) < 1e-3 ? ZOOM_ON : ZOOM_OFF, pick: () => zoomTo(ratio) }));
+    data.vfDown = (event:PointerEvent) => {
+      event.stopPropagation();cameraPointers.set(event.pointerId,{x:event.clientX,y:event.clientY});
+      (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+      if(cameraPointers.size===2){const [a,b]=[...cameraPointers.values()];pinchStart=Math.hypot(a.x-b.x,a.y-b.y);pinchZoom=zoomRatio;pinchUsed=true;}
+    };
+    data.vfMove = (event:PointerEvent) => {
+      event.stopPropagation();if(!cameraPointers.has(event.pointerId))return;
+      cameraPointers.set(event.pointerId,{x:event.clientX,y:event.clientY});
+      if(cameraPointers.size===2&&pinchStart){const [a,b]=[...cameraPointers.values()];zoomTo(pinchZoom*Math.hypot(a.x-b.x,a.y-b.y)/pinchStart);}
+    };
+    data.vfCancel = () => {cameraPointers.clear();pinchStart=0;pinchUsed=false;};
+    data.vfUp = (event: PointerEvent) => {
+      event.stopPropagation();const start=cameraPointers.get(event.pointerId),wasPinch=pinchUsed;cameraPointers.delete(event.pointerId);
+      if(cameraPointers.size<2)pinchStart=0;if(!cameraPointers.size)pinchUsed=false;
+      if(wasPinch||start&&Math.hypot(event.clientX-start.x,event.clientY-start.y)>12)return;
+      const bounds = document.querySelector(finder)?.getBoundingClientRect();focusAt((event.clientX - (bounds?.left ?? 0)) / (bounds?.width || window.innerWidth), (event.clientY - (bounds?.top ?? 0)) / (bounds?.height || window.innerHeight));
+    };
     data.vfClick = (event: MouseEvent) => { if (event.detail === 0) focusAt(0.5, 0.5); };
     data.showModes = !recordingBusy;
     data.modes = [...(data.modes || []),{label:'Alpha',css:st.mode==='alpha'?'color:white':'color:rgba(255,255,255,.55)',dot:st.mode==='alpha'?1:0}].map((m: Bag) => ({ ...m, pick: () => { if (recordingBusy || session.capturing) return; const mode = m.label.toLowerCase(); if (mode === 'photo' || mode === 'video' || mode === 'alpha') { if (currentApi.get('camera').mode !== mode) {pendingShot=undefined;bindMode(mode);} currentApi.set({ mode, rec: false }); } } }));

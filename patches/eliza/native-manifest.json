@@ -95,13 +95,13 @@
     },
     {
       "file": "camera-capture-latency.patch",
-      "sha256": "50b8fa55d2f016bd475134ecde94fd2ce26649d67914f1c0f91875f06b15a913",
+      "sha256": "53f53221ee1cd2e73b42e0b383dab3c5d4587570208daf60c4bc28b462ad839d",
       "module": "plugins/plugin-native-camera/android",
       "targets": [
         {
           "path": "plugins/plugin-native-camera/android/src/main/java/ai/eliza/plugins/camera/CameraPlugin.kt",
           "beforeSha256": "0d6dec5115f050cfac2f6f32b22f68e4a36e6d4ec2b10e815fa74303ec2d4c53",
-          "afterSha256": "21062bbea75e071ef5f6c503aea2deb09b73b6675d6dde93e82a4847be534049"
+          "afterSha256": "a02d876a7a237d4c3540d852685b1b6d9e9e587406d767ca0c643120a248f98c"
         },
         {
           "path": "plugins/plugin-native-camera/android/src/main/java/ai/eliza/plugins/camera/GalleryImageWriter.kt",

@@ -15,6 +15,7 @@ const syncCamera=source.match(/  const syncCamera = [^\n]+\n/)[0];
 const sessionSource=fs.readFileSync(new URL('../.eliza/client-features/plugins/plugin-native-camera/src/session.ts',import.meta.url),'utf8');
 const hostPorts=fs.readFileSync(new URL('../.eliza/client-features/plugins/plugin-native-camera/src/host-ports.ts',import.meta.url),'utf8');
 const shared=stripTypeScriptTypes((hostPorts+sessionSource).replace(/^import[^;]*;$/gm,'').replace(/^export /gm,''),{mode:'transform'});
+const focusUI=stripTypeScriptTypes(fs.readFileSync(new URL('../apps/app/src/browser/camera-focus.ts',import.meta.url),'utf8').split('/** Owns')[0].replace(/^export /gm,''));
 const settle=async()=>{for(let i=0;i<16;i++)await Promise.resolve();};
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
 function fixture({permission=false,failing=true,navigateAfterPhoto=false,receipt={width:1280,height:720,deviceId:'0',minZoom:0.5,maxZoom:10,hasFlash:true,zoom:1,flash:'off'}}={}){
@@ -43,7 +44,7 @@ function fixture({permission=false,failing=true,navigateAfterPhoto=false,receipt
   const browserMode=false,libraryAvailable=()=>true,normalize=row=>({...row,id:'native-camera-'+row.id}),nativeId=id=>id.replace(/^native-camera-/,''),cancelScan=()=>{};function schedule(){}
   const finder='[data-alpha-camera="viewfinder"]';let state={said:'',mode:'photo'};
   const api={S:{get chat(){return view().chat;}},isActive:()=>view().active,set:patch=>Object.assign(state,patch),get:()=>state,setView:name=>{calls.views.push(name);if(navigateAfterPhoto&&name==='photos')view().active=false;},shell:patch=>{view().chat=patch.chat;}};`;
- vm.runInContext(shared+stripTypeScriptTypes(prelude+helpers+scanWords+lastTile+session+frameAsk+syncCamera+`;globalThis.testCamera={cameraFrameQuestionRequested,askAboutCameraFrame,recordingOptions:()=>RECORDING,bindMode,modeSettled:()=>modeChange,start,stop,control,capture,record,focusAt,takeRequestedPhoto,zoomStops,lensFromReceipt,photoReceiptPath,cameraScanRequested,scanRequest:()=>scanRequest(),active,installViewPresence,syncCamera,CHAT_GRACE_MS,
+ vm.runInContext(shared+focusUI+stripTypeScriptTypes(prelude+helpers+scanWords+lastTile+session+frameAsk+syncCamera+`;globalThis.testCamera={cameraFrameQuestionRequested,askAboutCameraFrame,recordingOptions:()=>RECORDING,bindMode,modeSettled:()=>modeChange,start,stop,control,capture,record,focusAt,takeRequestedPhoto,zoomStops,lensFromReceipt,photoReceiptPath,cameraScanRequested,scanRequest:()=>scanRequest(),active,installViewPresence,syncCamera,CHAT_GRACE_MS,
   flip:()=>flipLens(api),
   setFlash:on=>{flash=on;},setZoom:z=>{zoomRatio=z;},mode:m=>{state.mode=m;},
   state:()=>({phase:session.phase,denied:session.denied,said:state.said,capturing:session.capturing,recording:session.recording,flash,zoomRatio,lens,last:lastCapture,fl:state.fl})};
@@ -192,10 +193,18 @@ function fixture({permission=false,failing=true,navigateAfterPhoto=false,receipt
 // FixFocus: a focus that never settles does not block the shutter.
 {
  const f=fixture({failing:false});await f.api.start();f.api.focusAt(0.5,0.5);assert.equal(f.calls.focus,1);
+ assert.equal(f.env.window.document.querySelectorAll('[data-alpha-camera-focus]').length,1,'Native tap shows a local focus target without waiting for autofocus');
  await f.api.capture();assert.equal(f.calls.captures.length,1,'Shutter after tap-to-focus captures');
  assert.equal(f.calls.captures[0].thumbnailOnly,true,'Native shutter returns a thumbnail, not the full JPEG');
  assert.equal(f.api.state().last.id,'native-camera-42','The capture becomes the last-capture tile');assert.equal(f.api.state().said,'','No "Saving photo" pill');
  assert.equal(f.api.state().fl,1,'Shutter flash');f.env.window.close();
+}
+// The Pixel's real minimum is about .556, so a .5 chip must not be offered.
+{
+ const f=fixture({failing:false,receipt:{width:1280,height:720,deviceId:'0',minZoom:.55577338,maxZoom:8}});await f.api.start();
+ assert.deepEqual(JSON.parse(JSON.stringify(f.api.zoomStops(f.api.state().lens))),[[1,'1×'],[2,'2'],[5,'5']]);
+ assert.deepEqual(JSON.parse(JSON.stringify(f.api.zoomStops({minZoom:.5001,maxZoom:2}))),[[1,'1×'],[2,'2']]);
+ await f.api.stop();assert.equal(f.env.window.document.querySelectorAll('[data-alpha-camera-focus]').length,0);f.env.window.close();
 }
 // A tap during the first gallery write survives until the last queued shot opens Photos.
 {

@@ -1,5 +1,10 @@
 type Point={x:number;y:number};
 type FocusSettings=MediaTrackSettings&{focusMode?:string;pointsOfInterest?:Point[]};
+/** A selected point, distinct from confirmation that the lens acquired focus. */
+export function cameraFocusTarget(input:Point,frame:HTMLElement){
+ const target=document.createElement('span');target.dataset.alphaCameraFocus='target';target.setAttribute('role','status');target.setAttribute('aria-label','Focus target');
+ target.style.cssText=`position:absolute;left:${input.x*100}%;top:${input.y*100}%;width:42px;height:42px;transform:translate(-50%,-50%);border:2px solid #ffd34e;border-radius:8px;box-shadow:0 0 2px #000;pointer-events:none;z-index:3;box-sizing:border-box`;frame.append(target);return target;
+}
 /** Owns a focus target and retires late driver replies with the preview. */
 export class BrowserCameraFocus{
  private epoch=0;
@@ -11,8 +16,7 @@ export class BrowserCameraFocus{
   this.clear();const token=this.epoch,{frame,video,track,zoom,mirror,development}=options;
   if(track.readyState!=='live')throw Error('Start camera first.');
   const x=Math.max(0,Math.min(1,input.x)),y=Math.max(0,Math.min(1,input.y));
-  const target=this.reticle=document.createElement('span');target.dataset.alphaCameraFocus='target';target.setAttribute('role','status');target.setAttribute('aria-label',development?'Development focus target':'Focus target');
-  target.style.cssText=`position:absolute;left:${x*100}%;top:${y*100}%;width:42px;height:42px;transform:translate(-50%,-50%);border:2px solid #ffd34e;border-radius:8px;box-shadow:0 0 2px #000;pointer-events:none;z-index:3;box-sizing:border-box`;frame.append(target);
+  const target=this.reticle=cameraFocusTarget({x,y},frame);target.setAttribute('aria-label',development?'Development focus target':'Focus target');
   const alive=()=>token===this.epoch&&target.isConnected&&track.readyState==='live';
   const capabilities=track.getCapabilities() as MediaTrackCapabilities&{focusMode?:string[]};
   const supported=navigator.mediaDevices.getSupportedConstraints() as MediaTrackSupportedConstraints&{pointsOfInterest?:boolean};
