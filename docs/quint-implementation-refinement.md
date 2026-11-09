@@ -861,3 +861,28 @@ post and send-handler publication, sibling keys, disposal ordering,
 nested registration and two isolated runtimes.
 The Android mobile producer observed the connector patch as its
 twelfth authenticated transform and passed the pre-provider turn smoke.
+
+`NativeActionRecovery` checks 35 JVM schedules and 189 checkpoints for
+notification, deletion and reminder receipt recovery and passive
+history. The baseline reproduced foreign-binding reminder recovery
+and selected reminder details in passive history. The repair derives
+the selected row's exact binding before reminder lookup. Passive
+history exposes a retained-details flag, and exact reads and stored
+bytes preserve the original result. The replay uses synthetic receipts
+and observes no repeat dispatch. Platform receipt delivery and
+physical storage durability remain open.
+
+## Authored stylesheets
+
+The source ledger includes 15 product stylesheets. Their allocations
+follow the owners of the conditional presentation. They remain
+provisional pending semantic review. Shared style assets retain the
+separate consumed-source discovery policy.
+
+| Source area | Mounted evidence and remaining state |
+| --- | --- |
+| Phone and prototype | Maps hit targets, dock clearance, Calendar agenda retention, Camera layout and reduced motion have mounted evidence. Modal and composer scrim ownership across app families remains open. |
+| Workflow and scan | Workflow filters, typed layout, correction and review have mounted cases. Pending filter focus and the video review viewport still need their own projections. |
+| Browser dialogs | Calendar, document, review and attachment styles now have source allocations. Cross-dialog pointer and focus ownership remains open. |
+| Device and startup | Existing profile, inset and permission fixtures cover visible setup states. The audit keeps the style conditions for pending, disabled and short-height presentation. |
+| Membership, connection and Undo | Billing and Undo style inputs follow their operation owners. The two independently admitted connection notices and Settings suppression need a joint mounted projection. |

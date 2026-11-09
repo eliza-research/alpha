@@ -6181,12 +6181,13 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaActionJournal.java",
       "models": [
         "WorkflowExecution",
-        "NativeClockReview"
+        "NativeClockReview",
+        "NativeActionRecovery"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "48b5f531109d9b65125048609e386c3ea31aac33f2d54189dc3af21702051e18",
+      "sha256": "f7cdc4ec367f8ecabf53562b6deedf5eda4b86fec1145a2f289acb335d2777b3",
       "stateAnchors": [
         {
           "line": 12,
@@ -6196,16 +6197,18 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaActionJournalPlugin.java",
-      "sha256": "167d6b90f79481010ddf9f88ae17bd53cb7f2b6bfcda93b84e5f0ba3a0eca629",
       "models": [
         "WorkflowExecution",
-        "NativeClockReview"
+        "NativeClockReview",
+        "NativeActionRecovery"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "e1ccef19c3f1fcf2bd673b68ce0eb2a48c4db01ec479c7b710d2ba6de7e081f8",
       "stateAnchors": [
         {
-          "line": 53,
+          "line": 55,
           "text": "private final android.os.Handler clockMain = new android.os.Handler(android.os.Looper.getMainLooper());"
         }
       ]
@@ -8885,7 +8888,8 @@
       "models": [
         "NoticesAndCaches",
         "WorkflowExecution",
-        "WorkflowNoticeDelivery"
+        "WorkflowNoticeDelivery",
+        "NativeActionRecovery"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -9842,6 +9846,18 @@
       ]
     },
     {
+      "path": "apps/app/src/browser/calendar-editor.css",
+      "models": [
+        "CalendarPresentation",
+        "CanonicalCalendarEditorClose"
+      ],
+      "scope": "application",
+      "treatment": "conditional-presentation-source",
+      "reviewStatus": "state-audit-required",
+      "sha256": "ae6c471d0a5c0618323f245bd69743fdfe03fcb6c1a92012d1f43324e28395dc",
+      "stateAnchors": []
+    },
+    {
       "path": "apps/app/src/browser/calendar-editor.ts",
       "sha256": "c1c8d36fd8a6e3371cfa752b7ccbda2c60bd720adeb868ce7148129ad0e3b1a5",
       "models": [
@@ -9968,6 +9984,17 @@
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
+      "stateAnchors": []
+    },
+    {
+      "path": "apps/app/src/browser/calendar-meeting.css",
+      "models": [
+        "CalendarPresentation"
+      ],
+      "scope": "application",
+      "treatment": "conditional-presentation-source",
+      "reviewStatus": "state-audit-required",
+      "sha256": "f671693addc21437d764b94bf4b0b7449402cef76daeda4c2e56c18f0433ff1b",
       "stateAnchors": []
     },
     {
@@ -10117,6 +10144,17 @@
           "text": "const begin=index===0?row.begin:calendarInstant(date.toISOString().slice(0,-1),zone,Number.NaN,'forward'),end=begin+duration;"
         }
       ]
+    },
+    {
+      "path": "apps/app/src/browser/calendar-response.css",
+      "models": [
+        "CalendarPresentation"
+      ],
+      "scope": "application",
+      "treatment": "conditional-presentation-source",
+      "reviewStatus": "state-audit-required",
+      "sha256": "2ad0061f90fcc9d6e22d09e7cbe8d9964d16d65607286056d659d8892f0d9720",
+      "stateAnchors": []
     },
     {
       "path": "apps/app/src/browser/calendar-response.ts",
@@ -11961,6 +11999,18 @@
       ]
     },
     {
+      "path": "apps/app/src/browser/device-controls.css",
+      "models": [
+        "DeviceActions",
+        "PreferencesAndPresentation"
+      ],
+      "scope": "application",
+      "treatment": "conditional-presentation-source",
+      "reviewStatus": "state-audit-required",
+      "sha256": "7ea9125951766b186eb87de899e78d325e5301a21667ccc9eb6a7ee45261bd7e",
+      "stateAnchors": []
+    },
+    {
       "path": "apps/app/src/browser/device-controls.tsx",
       "sha256": "1843855a88eaea78e6058dfbb187bbb0152ebfe8455fce25f6b512bc901100a5",
       "models": [
@@ -12679,6 +12729,18 @@
           "text": "if(generation!==this.generation||!settings.locationEnabled||!foreground())throw new DOMException(devSurfacesEnabled?'Location is off. Turn it on in device contr"
         }
       ]
+    },
+    {
+      "path": "apps/app/src/browser/mail-attachments.css",
+      "models": [
+        "FilesAndSharing",
+        "ReviewedCopies"
+      ],
+      "scope": "application",
+      "treatment": "conditional-presentation-source",
+      "reviewStatus": "state-audit-required",
+      "sha256": "5f91b7af9e3f2ab46bb6b2174f0af978ed3f35177e2672f9e589c9bd7e8c89d2",
+      "stateAnchors": []
     },
     {
       "path": "apps/app/src/browser/mail-attachments.ts",
@@ -13478,6 +13540,18 @@
       ]
     },
     {
+      "path": "apps/app/src/browser/review.css",
+      "models": [
+        "BrowserReadingState",
+        "FilesAndSharing"
+      ],
+      "scope": "application",
+      "treatment": "conditional-presentation-source",
+      "reviewStatus": "state-audit-required",
+      "sha256": "69f35c33bb5e83ddde25dea543671a6637407d8bc31df0d7b03788d358f74118",
+      "stateAnchors": []
+    },
+    {
       "path": "apps/app/src/browser/review.ts",
       "sha256": "868471b75eb5596ac756480dc5d1e2f8a12c79e03d80c51893429115370df37d",
       "models": [
@@ -13552,6 +13626,18 @@
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
+      "stateAnchors": []
+    },
+    {
+      "path": "apps/app/src/browser/selected-document-viewer.css",
+      "models": [
+        "FilesAndSharing",
+        "FilesPreview"
+      ],
+      "scope": "application",
+      "treatment": "conditional-presentation-source",
+      "reviewStatus": "state-audit-required",
+      "sha256": "2595cf758bfb3a09f1266f81e13e182902adef415dbc6707f4d2ec2f2478969d",
       "stateAnchors": []
     },
     {
@@ -18433,6 +18519,17 @@
           "text": "p.componentDidMount=function(){mount.call(this);owner=this;session=binding()?.sessionId||null;this.automationCommitted=(event:CustomEvent<{sessionId:string}>)=>{const selected=binding();if(!owner?.liv"
         }
       ]
+    },
+    {
+      "path": "apps/app/src/prototype/automations.css",
+      "models": [
+        "WorkflowExecution"
+      ],
+      "scope": "application",
+      "treatment": "conditional-presentation-source",
+      "reviewStatus": "state-audit-required",
+      "sha256": "4eaffea25299c2af04464e5c69ac6e413edf79f33570a09ae2ff711ec8c29f99",
+      "stateAnchors": []
     },
     {
       "path": "apps/app/src/prototype/browser-adapter.ts",
@@ -33366,6 +33463,22 @@
       ]
     },
     {
+      "path": "apps/app/src/prototype/phone.css",
+      "models": [
+        "ShellNavigation",
+        "PreferencesAndPresentation",
+        "Maps",
+        "DockClearanceOwnership",
+        "HomeLayout",
+        "ChatInput"
+      ],
+      "scope": "application",
+      "treatment": "conditional-presentation-source",
+      "reviewStatus": "state-audit-required",
+      "sha256": "8b2d45353806eeee536c9471560c6ee3df63d183db06ebd680ec3826472ac1b5",
+      "stateAnchors": []
+    },
+    {
       "path": "apps/app/src/prototype/photo-library-adapter.ts",
       "sha256": "9c1b669a1f15a1d9d7e4ad4023c2854f721a3e5502dfd85974a3c900741551bc",
       "models": [
@@ -33511,6 +33624,18 @@
           "text": "takeStatus() { const value = status; status = ''; return value; },"
         }
       ]
+    },
+    {
+      "path": "apps/app/src/prototype/prototype.css",
+      "models": [
+        "PreferencesAndPresentation",
+        "AssistantConversation"
+      ],
+      "scope": "application",
+      "treatment": "conditional-presentation-source",
+      "reviewStatus": "state-audit-required",
+      "sha256": "68785d9399fb21cc8f08e3dc323cd9f7e47d234e76c9a07cd4bc93b8e9872310",
+      "stateAnchors": []
     },
     {
       "path": "apps/app/src/prototype/reminder-adapter.ts",
@@ -34025,6 +34150,19 @@
           "text": "const controller=new AbortController(),dialog=document.createElement('dialog');dialog.setAttribute('aria-label','Correct document page');dialog.className='scan-"
         }
       ]
+    },
+    {
+      "path": "apps/app/src/prototype/scan-dialog.css",
+      "models": [
+        "ScanDocument",
+        "MediaLifecycle",
+        "CameraSession"
+      ],
+      "scope": "application",
+      "treatment": "conditional-presentation-source",
+      "reviewStatus": "state-audit-required",
+      "sha256": "a8864125abc68005780b7678e92ecebeea78ee868c2ff0aa5e42f04254168a45",
+      "stateAnchors": []
     },
     {
       "path": "apps/app/src/prototype/scan-document.ts",
@@ -39280,6 +39418,18 @@
       "stateAnchors": []
     },
     {
+      "path": "apps/app/src/runtime/cloud-membership-ui.css",
+      "models": [
+        "IdentitySession",
+        "ServiceAuthorization"
+      ],
+      "scope": "application",
+      "treatment": "conditional-presentation-source",
+      "reviewStatus": "state-audit-required",
+      "sha256": "d2155680ba49292e285beb39e0d8e3765870f3e588a8b858a0e7bc18cfc99c2b",
+      "stateAnchors": []
+    },
+    {
       "path": "apps/app/src/runtime/cloud-membership-ui.tsx",
       "models": [
         "ServiceAuthorization"
@@ -40006,6 +40156,19 @@
       "stateAnchors": []
     },
     {
+      "path": "apps/app/src/runtime/connection-ui.css",
+      "models": [
+        "Application",
+        "IdentitySession",
+        "ServiceAuthorization"
+      ],
+      "scope": "application",
+      "treatment": "conditional-presentation-source",
+      "reviewStatus": "state-audit-required",
+      "sha256": "cffc4c8c55ef1f7d0a30df4b02c400e6ae0ea0a133ee4191e6acc1cdfee65745",
+      "stateAnchors": []
+    },
+    {
       "path": "apps/app/src/runtime/connection-ui.tsx",
       "models": [
         "Application",
@@ -40159,6 +40322,17 @@
           "text": "let current:()=>string|null=()=>null;"
         }
       ]
+    },
+    {
+      "path": "apps/app/src/runtime/deletion-undo.css",
+      "models": [
+        "DeletionJournal"
+      ],
+      "scope": "application",
+      "treatment": "conditional-presentation-source",
+      "reviewStatus": "state-audit-required",
+      "sha256": "95423567541e15fdc5b24927702ffb9e3c12e29a9173f3c6d380346d30dd08ba",
+      "stateAnchors": []
     },
     {
       "path": "apps/app/src/runtime/deletion-undo.tsx",
@@ -47290,6 +47464,18 @@
           "text": "const browser = walkthroughProgress(startupPermissionProgressKey, {1: startupPermissionKeys.length}, 1);"
         }
       ]
+    },
+    {
+      "path": "apps/app/src/startup-permissions.css",
+      "models": [
+        "StartupPermissions",
+        "PermissionWalkthrough"
+      ],
+      "scope": "application",
+      "treatment": "conditional-presentation-source",
+      "reviewStatus": "state-audit-required",
+      "sha256": "ea654be2027657818e6a441081a9c178a5e92b67a094b37ffbe1a1645c9c3a8b",
+      "stateAnchors": []
     },
     {
       "path": "apps/app/src/startup-permissions.tsx",
@@ -486824,7 +487010,8 @@
       "path": "vendor/eliza/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/ActionJournal.java",
       "models": [
         "DurableStore",
-        "NativeClockReview"
+        "NativeClockReview",
+        "NativeActionRecovery"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -486898,7 +487085,8 @@
       "path": "vendor/eliza/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/ActionJournalPlugin.java",
       "models": [
         "DurableStore",
-        "NativeClockReview"
+        "NativeClockReview",
+        "NativeActionRecovery"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -487073,7 +487261,8 @@
       "models": [
         "DeletionJournal",
         "DurableStore",
-        "ResetRecovery"
+        "ResetRecovery",
+        "NativeActionRecovery"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -504886,7 +505075,8 @@
         "DeviceActions",
         "NoticesAndCaches",
         "NotificationCollection",
-        "WorkflowNoticeDelivery"
+        "WorkflowNoticeDelivery",
+        "NativeActionRecovery"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -504950,7 +505140,8 @@
       "models": [
         "DeviceActions",
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "NativeActionRecovery"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -506603,7 +506794,8 @@
         "DurableStore",
         "NoticesAndCaches",
         "NotificationCollection",
-        "NativeReminderDelivery"
+        "NativeReminderDelivery",
+        "NativeActionRecovery"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -619203,7 +619395,7 @@
       "models": [
         "Application"
       ],
-      "sha256": "e6b68b34dc4871a1adb0c8b226d00af632ca27d3afce5fd378a79e07e53581fb"
+      "sha256": "ab352f9bea8a3881e5f29f8b58c71b7f1a25fc2fb92aa6c2e7c2c57ce2cdff23"
     },
     {
       "path": "specs/quint/legacy/core/source-inventory.json",
@@ -619231,7 +619423,7 @@
       "models": [
         "Application"
       ],
-      "sha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b"
+      "sha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d"
     },
     {
       "path": "scripts/quint-java-state-audit.mjs",

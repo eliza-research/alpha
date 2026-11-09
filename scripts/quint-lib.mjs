@@ -127,7 +127,9 @@ export function sharedSourcePaths() {
 }
 
 export const sourcePaths = () => [...new Set([
-  ...sourceRoots.flatMap(root => filesWithin(join(repositoryRoot, root), path => sourceExtensions.has(extname(path)))).map(relativePath),
+  // Product CSS controls mounted visibility, focus affordances and pointer ownership.
+  ...sourceRoots.flatMap(root => filesWithin(join(repositoryRoot, root),
+    path => sourceExtensions.has(extname(path)) || extname(path) === '.css')).map(relativePath),
   ...runtimeScriptPaths, ...runtimeAssetPaths, ...sharedSourcePaths(),
 ])].sort();
 export const readJson = path => JSON.parse(readFileSync(path, 'utf8'));
