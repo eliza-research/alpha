@@ -15,7 +15,7 @@ const model = 'NativeAppInfoHandoff';
 const harness = 'AppInfoHandoffTraces.java';
 const modulePath = 'plugins/plugin-native-system/android';
 
-export async function checkNativeAppInfoHandoff(extraSources = []) {
+export async function withAppInfoSource(run, extraSources = []) {
   const temporary = mkdtempSync(join(tmpdir(), 'quint-native-app-info-'));
   try {
     const staged = prepareNativeFixture(root, temporary);
@@ -28,7 +28,7 @@ export async function checkNativeAppInfoHandoff(extraSources = []) {
       'android/consumer-host.json', 'upstream.lock.json', 'patches/eliza/native-manifest.json',
       'test/fixtures/native-source.mjs', 'test/fixtures/jvm-tools.mjs',
       'scripts/prepare-patched-native.mjs', 'scripts/upstream-native-source.mjs',
-      ...[harness, 'Trace.java', 'java.mjs', 'app-info-handoff-platform.mjs'].map(name => join(directory, name)),
+      ...['Trace.java', 'java.mjs', 'app-info-handoff-platform.mjs'].map(name => join(directory, name)),
       fileURLToPath(import.meta.url), ...(jsonJar ? [jsonJar] : []), ...generatedSources, ...extraSources,
     ];
     const driverHashes = captureInputs(sources);
@@ -40,7 +40,15 @@ export async function checkNativeAppInfoHandoff(extraSources = []) {
     verifyNativePatchReceipt(readFileSync(sourceReceipt, 'utf8'), staged);
     assert.equal(driverHashes[join(root, 'vendor/eliza', launcherPath)], pinned.sha256);
     assert.equal(driverHashes[launcher], staged.files[launcherPath]);
-    const traces = javaTraces(harness, [appInfoSource, ...ports]);
+    return await run({sources, driverHashes, generatedSources, javaSources: [appInfoSource, ...ports]});
+  } finally {
+    rmSync(temporary, {recursive:true, force:true});
+  }
+}
+
+export async function checkNativeAppInfoHandoff(extraSources = []) {
+  return withAppInfoSource(async ({sources, driverHashes, generatedSources, javaSources}) => {
+    const traces = javaTraces(harness, javaSources);
     const receipt = await checkTraces({
       model, sources, driverHashes, generatedSources, traces, scope:'bounded-orchestration', assumptions:[
         'The complete AlphaSystemPlugin compiles and openAppInfo runs with exact authenticated SystemLauncherApps validation and codes and the installed Capacitor getData/getString members.',
@@ -52,7 +60,5 @@ export async function checkNativeAppInfoHandoff(extraSources = []) {
       model, obligation:'Installed App info dispatch and profile acceptance',
       reason:'Real package visibility, Binder replies, Android Settings resolution and cross-profile task placement remain Android platform behavior.',
     }]};
-  } finally {
-    rmSync(temporary, {recursive:true, force:true});
-  }
+  }, [join(directory, harness), ...extraSources]);
 }

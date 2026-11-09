@@ -1721,6 +1721,49 @@
     }
   },
   {
+    "path": "specs/quint/application/AppInfoHandoffComposition.qnt",
+    "module": "AppInfoHandoffComposition",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "personalDetailsDeliverWithoutRefreshTest",
+      "removedWorkPackageRefreshesPublishedInventoryTest",
+      "retiredDrawerReplyLeavesNewMenuTest",
+      "acceptedDispatchRemainsTheSameReplyTest"
+    ],
+    "invariants": [
+      "ExactBridgeTarget",
+      "SameProfileForQueryAndSettings",
+      "RefusedLookupHasNoDispatch",
+      "FailedReplyKeepsNoticeOwner"
+    ],
+    "sources": [
+      "apps/app/src/prototype/home-shell.ts",
+      "apps/app/src/native.ts",
+      "apps/app/src/platform-plugins.ts",
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaSystemPlugin.java",
+      "vendor/eliza/packages/ui/src/mobile-shell/InstalledAppsGridDrawer.tsx",
+      "vendor/eliza/plugins/plugin-native-system/src/client/launcher.ts",
+      "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SystemLauncherApps.java"
+    ],
+    "stateMapping": {
+      "open/menu/inventory/listReads": "Real mounted drawer selection, launcher snapshot and inventory reads",
+      "staged/platform": "Controlled Android package, profile, dispatch and launcher inventory changes",
+      "selected/phase/request": "Exact active selection and raw captured Capacitor request across queued, answered and settled checkpoints",
+      "reply/notice": "Exact JVM observed query, Settings intent and response plus actual owner-specific Home toast"
+    },
+    "abstractions": [
+      "Two synthetic installed app identities, one distinct work profile, and one outstanding App info call.",
+      "Chromium and JVM bridge source run with controlled transport, Android platform and inventory ports. Physical Android behavior remains separate."
+    ],
+    "bounds": {
+      "maxSamples": 1000,
+      "maxSteps": 80,
+      "maxVerifyDepth": 8
+    }
+  },
+  {
     "path": "specs/quint/application/DrawerInteraction.qnt",
     "module": "DrawerInteraction",
     "init": "init",
