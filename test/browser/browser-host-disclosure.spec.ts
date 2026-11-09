@@ -18,15 +18,16 @@ test('connected browser host preserves its privacy contract and resident memory 
  await page.getByRole('button',{name:'Settings',exact:true}).click();
  // The slim Settings UI has no information-only privacy page. The connection's
  // canonical privacy classification still refuses a native redaction claim for a browser host.
- expect(await page.evaluate(async()=>{const {egressPrivacy}=await import('/src/prototype/native-adapter.ts');const {connectionController}=await import('/src/runtime/connection-ui.tsx');return egressPrivacy(connectionController.getSnapshot(),false);})).toEqual({big:'Not reported',sub:'Depends on the selected agent; not reported'});
+ expect(await page.evaluate(async()=>{const {egressPrivacy}=await import('/src/prototype/native-adapter.ts');const {connectionController}=await import('/src/runtime/connection-ui.tsx');return egressPrivacy(connectionController.getSnapshot(),false);})).toEqual({big:'Not reported',sub:'Depends on your agent'});
  await expect(page.getByRole('button',{name:'Privacy & data',exact:true})).toHaveCount(0);
  expect(await page.locator('body').innerText()).not.toContain('Identifier swap only');
  await page.evaluate(async()=>{await Promise.all(document.getAnimations().filter(animation=>Number.isFinite(animation.effect?.getComputedTiming().endTime)).map(animation=>animation.finished.catch(()=>{})));});
  await page.screenshot({path:info.outputPath('browser-host-privacy.png')});
  await page.getByRole('button',{name:'About',exact:true}).click();
- await expect(page.getByRole('button',{name:'Export diagnostics',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Export diagnostics',exact:true})).toHaveCount(0);
  await page.getByRole('button',{name:'Back to Settings',exact:true}).click();
- await page.getByRole('button',{name:'Developer',exact:true}).click();
+ await page.getByRole('button',{name:'General',exact:true}).click();await page.getByRole('button',{name:'Developer',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Export diagnostics',exact:true})).toBeVisible();
  await expect(page.getByText('Usage not reported by agent',{exact:true})).toBeVisible();
  await page.evaluate(async()=>{await(await import('/src/runtime/connection-ui.tsx')).connectionController.offline();});
  // P-43: the development host stays resident; offline() returns to that agent.

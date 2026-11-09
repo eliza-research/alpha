@@ -19,24 +19,37 @@ export interface ExternalHandoffDeps {
 /** "Open in another browser" for the current tab. A private page leaves Alpha only after the user
  * confirms it, and only if the same page is still showing. */
 export function createExternalBrowserHandoff({tabs, reviews, shell, Browser, state, isPrivate, update, report, flags}: ExternalHandoffDeps) {
-  return async function openExternalBrowser() {
-    if (flags.sharing || flags.confirming || flags.disposed || !shell()) return;
+  let visit = 0;
+  async function open() {
+    const owner = shell(), openedIn = visit;
+    if (flags.sharing || flags.confirming || flags.disposed || !owner) return;
     const id = state()?.cur, page = tabs.pageBinding(id, {https: true});
     if (!page) { report(new Error('Load an HTTPS page before opening another browser.')); return; }
+    const checkCurrentPage = () => {
+      const visible = owner.S();
+      if (openedIn !== visit || shell() !== owner || flags.disposed || document.hidden ||
+          visible.screen !== 'home' || visible.view !== 'browser' || !tabs.current(page, state()?.cur)) {
+        throw new Error('The page changed. Review it again before leaving Alpha.');
+      }
+    };
     flags.sharing = true;
     try {
       const priv = isPrivate(id);
-      shell().vset('browser', {menu:false});
+      owner.vset('browser', {menu:false});
       if (priv) {
         flags.confirming = true; flags.lastGeometry = ''; await update();
+        checkCurrentPage();
         const approved = await reviews.confirm('external-browser', 'Leave private browsing?', `Open in another browser?\n${page.url}\n\nIt may save this address and use its own sign-ins. Your Alpha sign-ins and private tabs aren't shared.`, 'Choose browser');
         flags.confirming = false;
         if (!approved) return;
       }
-      if (flags.disposed || document.hidden || shell().S().view!=='browser' || !tabs.current(page, state()?.cur)) throw new Error('The page changed. Review it again before leaving Alpha.');
-      flags.lastGeometry=''; await update();
+      checkCurrentPage();
+      flags.lastGeometry = '';
+      await update();
+      checkCurrentPage();
       await Browser.openExternalBrowser({...tabs.guard(page),privateConfirmed:priv});
     } catch (error) { report(error); }
     finally { flags.sharing=false; flags.confirming=false; flags.lastGeometry=''; await update(); }
-  };
+  }
+  return {open, retire() {visit++;}};
 }

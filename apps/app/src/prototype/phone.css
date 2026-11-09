@@ -438,21 +438,13 @@ html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > 
 .alpha-landscape [data-alpha-maps-guidance="true"] > :is(.alpha-map-credits,[data-alpha-maps-guidance-controls]) {
   position:relative!important; inset:auto!important; width:auto; flex:none;
 }
+/* Keep the same left-to-right reading order as portrait. A second grid row
+   placed the time above the first control in the accessibility tree. */
 .alpha-landscape [data-alpha-maps-guidance-controls] {
-  display:grid!important; gap:4px 8px!important; padding:8px 10px!important;
-  grid-template-columns:48px minmax(0,1fr) 48px 48px;
-  grid-template-areas:"time time meta meta" "remaining remaining remaining remaining" "end reroute ask voice";
+  gap:8px!important; padding:8px 10px!important;
 }
-.alpha-landscape [data-alpha-maps-guidance-controls] > div { display:contents; }
-.alpha-landscape [data-alpha-maps-guidance-controls] > div > * { margin-top:0!important; }
-.alpha-landscape [data-alpha-maps-guidance-controls] > div > .serif { grid-area:time; font-size:24px!important; overflow-wrap:anywhere; }
-.alpha-landscape [data-alpha-maps-guidance-controls] > div > .serif + div { grid-area:meta; }
-.alpha-landscape [data-alpha-maps-guidance-controls] > div > [role="status"] { grid-area:remaining; }
-.alpha-landscape [data-alpha-maps-guidance-controls] > div > button { grid-area:reroute; }
 .alpha-landscape [data-alpha-maps-guidance-controls] > button { width:48px!important; height:48px!important; }
-.alpha-landscape [data-alpha-maps-guidance-controls] > button:first-child { grid-area:end; }
-.alpha-landscape [data-alpha-maps-guidance-controls] > button:nth-last-child(2) { grid-area:ask; }
-.alpha-landscape [data-alpha-maps-guidance-controls] > button:last-child { grid-area:voice; }
+.alpha-landscape [data-alpha-maps-guidance-controls] > div > .serif { font-size:24px!important; overflow-wrap:anywhere; }
 .alpha-landscape [data-alpha-maps-guidance="true"] > .alpha-map-credits:has(details[open]) { z-index:6; }
 .alpha-landscape [data-alpha-maps-guidance="true"] .alpha-map-info {
   top:0; right:44px; bottom:auto; width:min(320px,calc(100% - 52px)); max-height:160px;

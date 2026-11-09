@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "b1817660a0347ae19551b9ee296410fe55f02d59",
-  "ledgerSha256": "5e84568f0a0568b614cd9635ea259f71b54122dd24cff958404c4954817075ec",
+  "ledgerSha256": "993941638842cda5c484534f826e87fe3493aceeb7b0d0e44b988454cb4ecdc9",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -22,17 +22,17 @@
     "The ledger supplies pinned source bytes. Effective client/native/runtime patch outputs require their separately authenticated source mappings."
   ],
   "counts": {
-    "files": 5750,
+    "files": 5752,
     "testSupportFiles": 296,
     "testSupportCandidates": 11377,
-    "parsedFiles": 5660,
+    "parsedFiles": 5662,
     "languageReview": 90,
     "parseErrors": 0,
-    "candidates": 67448,
-    "writeSites": 67029,
-    "writeAssociations": 60097,
+    "candidates": 67477,
+    "writeSites": 67062,
+    "writeAssociations": 60130,
     "asynchronous": 8345,
-    "unassignedWrites": 10332
+    "unassignedWrites": 10338
   },
   "files": [
     {
@@ -22242,7 +22242,9 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaSystemPlugin.java",
       "sha256": "9bec25631f4070e35568afd7b98603807ebc0cdf92df6a323580232a23c3e180",
       "allocatedModels": [
-        "PreferencesAndPresentation"
+        "PreferencesAndPresentation",
+        "NativeAppInfoHandoff",
+        "AppInfoHandoffComposition"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -30457,7 +30459,8 @@
       "sha256": "bfc094aafe6183cec37da7f2f50ceee483399e0b7a1825c69076dc70475f08ef",
       "allocatedModels": [
         "BrowserSession",
-        "DurableStore"
+        "DurableStore",
+        "WorkflowRequestRecoveryAdmission"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -32496,7 +32499,9 @@
         "StartupUpdateAdmission",
         "CanonicalNotificationTapAdmission",
         "ShadeNoticeQuestionAdmission",
-        "AppearancePreferenceAdmission"
+        "AppearancePreferenceAdmission",
+        "WorkflowClockAdmission",
+        "NotesTrashReadPublication"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -32908,7 +32913,8 @@
       "path": "apps/app/src/native.ts",
       "sha256": "542f12f9c9aec7b890b325249cba74d974dd31e9b6896444b5618c9dd476d052",
       "allocatedModels": [
-        "Application"
+        "Application",
+        "AppInfoHandoffComposition"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -32993,7 +32999,8 @@
       "path": "apps/app/src/platform-plugins.ts",
       "sha256": "0500bb5d20c28ae676185903b54eb20e0668ca63ace5a6beb52594f01f23720a",
       "allocatedModels": [
-        "Application"
+        "Application",
+        "AppInfoHandoffComposition"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -33084,13 +33091,17 @@
     },
     {
       "path": "apps/app/src/prototype/agent-adapter.ts",
-      "sha256": "758ab90f377245a7ce340860aff51ae531f76b7ac329ecc6abf45f894b33ebe1",
+      "sha256": "ba69bd17a0571aea778e4b5bbbb417b049d28d1697a5a1ec63cbfff79287a786",
       "allocatedModels": [
         "Application",
         "AssistantConversation",
         "NotesLifecycle",
         "ChatAttachments",
-        "FirstSendDraftMigration"
+        "FirstSendDraftMigration",
+        "WorkflowClockAdmission",
+        "NotesTrashReadPublication",
+        "PreviousNotesAvailability",
+        "PreviousNotesSourceOpening"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -33271,20 +33282,20 @@
           "writes": 16
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1817",
-          "line": 1823,
+          "owner": "installAgentAdapter.FunctionExpression@1822",
+          "line": 1828,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1829",
-          "line": 1847,
+          "owner": "installAgentAdapter.FunctionExpression@1834",
+          "line": 1852,
           "bindings": 2,
           "writes": 4
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1956",
-          "line": 1957,
+          "owner": "installAgentAdapter.FunctionExpression@1961",
+          "line": 1962,
           "bindings": 1,
           "writes": 12
         }
@@ -33386,61 +33397,64 @@
     },
     {
       "path": "apps/app/src/prototype/automations-adapter.ts",
-      "sha256": "88db562cc08559eb128aa1790c0c4c46f6571cb148fd0bec410b11e1e3ba5167",
+      "sha256": "87c366822ad3f38b743ec22393978f7f08de675547b19053b57114907fa2a2d6",
       "allocatedModels": [
         "WorkflowExecution",
-        "ReminderOpenIntent"
+        "ReminderOpenIntent",
+        "WorkflowRequestRecoveryAdmission",
+        "ScheduledTaskControls"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
         {
           "owner": "<module>",
-          "line": 31,
+          "line": 33,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "installAutomationsAdapter",
-          "line": 41,
+          "line": 43,
           "bindings": 29,
-          "writes": 134
+          "writes": 140
         },
         {
-          "owner": "installAutomationsAdapter.settled.ArrowFunction@66",
-          "line": 67,
+          "owner": "installAutomationsAdapter.settled.ArrowFunction@80",
+          "line": 81,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installAutomationsAdapter.refresh",
-          "line": 82,
+          "line": 97,
           "bindings": 2,
           "writes": 6
         },
         {
           "owner": "installAutomationsAdapter.work",
-          "line": 101,
+          "line": 124,
           "bindings": 4,
           "writes": 3
         },
         {
           "owner": "installAutomationsAdapter.allowAnother",
-          "line": 113,
+          "line": 136,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "installAutomationsAdapter.save",
-          "line": 132,
+          "line": 155,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAutomationsAdapter.ArrowFunction@146",
-          "line": 154,
-          "bindings": 4,
-          "writes": 14
+          "owner": "installAutomationsAdapter.ArrowFunction@169",
+          "line": 175,
+          "bindings": 5,
+          "writes": 15
         }
       ],
       "parseErrors": [],
@@ -33463,10 +33477,11 @@
     },
     {
       "path": "apps/app/src/prototype/browser-adapter.ts",
-      "sha256": "685a8e21b95743b9c31b98761f05230e074d8c081f2d7a18f7877c32853f818d",
+      "sha256": "e0f14dbf070ec814130e49729ddd82cb3a41b8454608a06128799dc479a40e04",
       "allocatedModels": [
         "BrowserSession",
-        "BrowserUnderlay"
+        "BrowserUnderlay",
+        "BrowserExternalHandoff"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -33746,14 +33761,22 @@
     },
     {
       "path": "apps/app/src/prototype/browser-external-handoff.ts",
-      "sha256": "2e2456c626abdd38ce099fc0352c7a837fe09d613d2627806b304dd309207c1e",
+      "sha256": "66e12b0bbf390f4f830e1cda93f463500d4a1a041bc1a132a9aae5863da7136a",
       "allocatedModels": [
-        "BrowserSession"
+        "BrowserSession",
+        "BrowserExternalHandoff"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
-      "owners": [],
+      "owners": [
+        {
+          "owner": "createExternalBrowserHandoff",
+          "line": 22,
+          "bindings": 1,
+          "writes": 1
+        }
+      ],
       "parseErrors": [],
       "asynchronous": 0,
       "unassignedWrites": 8
@@ -34053,14 +34076,15 @@
     },
     {
       "path": "apps/app/src/prototype/camera-adapter.ts",
-      "sha256": "6d707480b8fff997b1eea5f40ccc6d59916be60a80eb96f9d7d41b46e5b3c7ce",
+      "sha256": "d4719fb423bba2d39237b97e30d32f0eb8b021c616fc6b7d2029c5c05d15a966",
       "allocatedModels": [
         "MediaLifecycle",
         "PhotosWindow",
         "PhotosTrash",
         "CanonicalCalendarDraftHandoff",
         "CameraPreviewRetirement",
-        "ChatAttachments"
+        "ChatAttachments",
+        "PhotosOwnedAlbumDialog"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -34082,7 +34106,7 @@
           "owner": "installPrototypeCameraAdapter",
           "line": 180,
           "bindings": 109,
-          "writes": 442
+          "writes": 437
         },
         {
           "owner": "installPrototypeCameraAdapter.FunctionExpression@185",
@@ -34219,19 +34243,19 @@
         {
           "owner": "installPrototypeCameraAdapter.ArrowFunction@1382",
           "line": 1390,
-          "bindings": 5,
-          "writes": 109
+          "bindings": 7,
+          "writes": 117
         },
         {
-          "owner": "installPrototypeCameraAdapter.ArrowFunction@1612",
-          "line": 1614,
+          "owner": "installPrototypeCameraAdapter.ArrowFunction@1630",
+          "line": 1632,
           "bindings": 1,
           "writes": 1
         }
       ],
       "parseErrors": [],
       "asynchronous": 99,
-      "unassignedWrites": 115
+      "unassignedWrites": 114
     },
     {
       "path": "apps/app/src/prototype/canonical-calendar-drafts.ts",
@@ -34489,10 +34513,12 @@
     },
     {
       "path": "apps/app/src/prototype/clock-adapter.ts",
-      "sha256": "77b9c7c49f1ff59abfdcc24ec8e5a0c86d7c8404463b122dd859ae8de551e260",
+      "sha256": "3c8ed25e07cd7cab53f235875b974f21caf2c55e37bc7da431f788be0b08b424",
       "allocatedModels": [
-        "DeviceActions"
+        "DeviceActions",
+        "WorkflowClockAdmission"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -34505,18 +34531,18 @@
         {
           "owner": "installClockAdapter",
           "line": 11,
-          "bindings": 17,
-          "writes": 54
+          "bindings": 18,
+          "writes": 50
         },
         {
           "owner": "installClockAdapter.dispatch",
-          "line": 64,
+          "line": 66,
           "bindings": 3,
           "writes": 7
         },
         {
-          "owner": "installClockAdapter.ArrowFunction@84",
-          "line": 85,
+          "owner": "installClockAdapter.ArrowFunction@86",
+          "line": 87,
           "bindings": 1,
           "writes": 2
         }
@@ -34920,7 +34946,8 @@
         "LauncherOwnership",
         "LauncherObserver",
         "HomeGesture",
-        "DrawerInteraction"
+        "DrawerInteraction",
+        "AppInfoHandoffComposition"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -35192,7 +35219,9 @@
       "path": "apps/app/src/prototype/legacy-notes-access.ts",
       "sha256": "beec749de9b332757e3acabaf32804144ee7cfe1b37835e46c36a41ac01c6946",
       "allocatedModels": [
-        "NotesLifecycle"
+        "NotesLifecycle",
+        "PreviousNotesAvailability",
+        "PreviousNotesSourceOpening"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -35534,7 +35563,8 @@
         "CameraPreviewRetirement",
         "RetainedReminderTapAdmission",
         "ReminderOpenIntent",
-        "AppearancePreferenceAdmission"
+        "AppearancePreferenceAdmission",
+        "WorkflowClockAdmission"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -38944,10 +38974,12 @@
     },
     {
       "path": "apps/app/src/prototype/notes-trash-adapter.ts",
-      "sha256": "cc2ea41af468bde106a6edbadc0f980867ee56bc6487c94afe6b410208112b49",
+      "sha256": "61482de078a799503ffa56f4675ea121484863b064797d72efb6e5a6f5816a31",
       "allocatedModels": [
-        "NotesLifecycle"
+        "NotesLifecycle",
+        "NotesTrashReadPublication"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -38960,24 +38992,24 @@
         {
           "owner": "installNotesTrashAdapter",
           "line": 31,
-          "bindings": 5,
-          "writes": 16
+          "bindings": 6,
+          "writes": 18
         },
         {
           "owner": "installNotesTrashAdapter.deleteForever",
-          "line": 164,
+          "line": 168,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installNotesTrashAdapter.FunctionExpression@178",
-          "line": 179,
+          "owner": "installNotesTrashAdapter.FunctionExpression@182",
+          "line": 183,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "installNotesTrashAdapter.ArrowFunction@213",
-          "line": 214,
+          "owner": "installNotesTrashAdapter.ArrowFunction@218",
+          "line": 219,
           "bindings": 1,
           "writes": 27
         }
@@ -39095,7 +39127,7 @@
     },
     {
       "path": "apps/app/src/prototype/phone.css",
-      "sha256": "f718ef2e3a262826e177090ad31b319d472cd10a42ee0da4ca661355268493ea",
+      "sha256": "e9e52df7bc41f3d176f7c784db75727bec8de5a0bce41efd793cc9f1e28a1e5f",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -39923,7 +39955,7 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "79e3e9c339db29699b6c621a719794d076b704458a5a16f42a509d4aa4d10871",
+      "sha256": "1c94732bcaf76e4a09ba7a4945dcc81332b59a282f0c27c121f7fa478029a309",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -39936,7 +39968,11 @@
         "CameraPreviewRetirement",
         "MapsRerouteOwnership",
         "ModalScrimOwnership",
-        "NotesRecorderMediaAdmission"
+        "NotesRecorderMediaAdmission",
+        "WorkflowRequestRecoveryAdmission",
+        "ScheduledTaskControls",
+        "WorkflowClockAdmission",
+        "PhotosOwnedAlbumDialog"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -39948,9 +39984,10 @@
     },
     {
       "path": "apps/app/src/prototype/use-in-email-review.ts",
-      "sha256": "bd5bd1b2787d34e16b1951a46654a305e819e116c74139972adb11e03c72f092",
+      "sha256": "00a8bfe1898027b6062a5cef403ff25c128cb207abbc338398d70c573ef2853a",
       "allocatedModels": [
-        "ShellNavigation"
+        "ShellNavigation",
+        "EmailSuggestionReview"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -39958,19 +39995,13 @@
       "owners": [
         {
           "owner": "installUseInEmailReview",
-          "line": 14,
+          "line": 15,
           "bindings": 3,
-          "writes": 10
+          "writes": 11
         },
         {
-          "owner": "installUseInEmailReview.confirm",
-          "line": 33,
-          "bindings": 1,
-          "writes": 3
-        },
-        {
-          "owner": "installUseInEmailReview.FunctionExpression@47",
-          "line": 48,
+          "owner": "installUseInEmailReview.FunctionExpression@60",
+          "line": 61,
           "bindings": 4,
           "writes": 6
         }
@@ -40882,10 +40913,12 @@
     },
     {
       "path": "apps/app/src/runtime/automations-protocol.ts",
-      "sha256": "b1b1e229c87702bfa1c60e8fe82f2e4697da670e569d5b2edd217748452e13bc",
+      "sha256": "d47943bea26fa2f06a43b7fe680ebc80334d5601ddee01cf2840945af60f2d6e",
       "allocatedModels": [
-        "WorkflowExecution"
+        "WorkflowExecution",
+        "ScheduledTaskControls"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -40897,43 +40930,43 @@
         },
         {
           "owner": "schedule",
-          "line": 46,
+          "line": 47,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "mergeAutomationRows",
-          "line": 94,
+          "line": 96,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "AutomationsProtocol",
-          "line": 98,
+          "line": 100,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "AutomationsProtocol.list",
-          "line": 102,
+          "line": 104,
           "bindings": 2,
           "writes": 3
         },
         {
           "owner": "AutomationsProtocol.savePrompt",
-          "line": 110,
+          "line": 112,
           "bindings": 1,
           "writes": 3
         },
         {
           "owner": "AutomationsProtocol.setPromptEnabled",
-          "line": 119,
+          "line": 121,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "AutomationsProtocol.editReminder",
-          "line": 150,
+          "line": 158,
           "bindings": 1,
           "writes": 1
         }
@@ -40946,7 +40979,8 @@
       "path": "apps/app/src/runtime/automations-route-policy.ts",
       "sha256": "fe3ba7cbc62500fb1b95646e973a6fdbffacbb58e3e8db26de7574fecb31ad82",
       "allocatedModels": [
-        "WorkflowExecution"
+        "WorkflowExecution",
+        "ScheduledTaskControls"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -41301,7 +41335,9 @@
       "path": "apps/app/src/runtime/client-observation-support.ts",
       "sha256": "a394b8ba5689199cf63767e1f19d6ab8e71b552290f51cf609c68ad57b3cc2ec",
       "allocatedModels": [
-        "AssistantConversation"
+        "AssistantConversation",
+        "ClientObservationSupport",
+        "ObservationTurnDispatch"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -41354,7 +41390,8 @@
       "path": "apps/app/src/runtime/clock-handoff-history.ts",
       "sha256": "5484d97c750534bec427ee134c99c9ddd11f42d9b29220dfa5e4bc86460feef9",
       "allocatedModels": [
-        "DeviceActions"
+        "DeviceActions",
+        "WorkflowClockAdmission"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -41772,7 +41809,9 @@
         "CanonicalNotificationTapAdmission",
         "CloudConnectionNotices",
         "ChatAttachments",
-        "RetainedReminderTapAdmission"
+        "RetainedReminderTapAdmission",
+        "ClientObservationSupport",
+        "ObservationTurnDispatch"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -43422,7 +43461,8 @@
         "ApplicationComposition",
         "ResidentRuntime",
         "ResidentLiveness",
-        "ChatAttachments"
+        "ChatAttachments",
+        "ObservationTurnDispatch"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -44428,7 +44468,8 @@
       "path": "apps/app/src/runtime/phone-context.ts",
       "sha256": "6bb467133d6c359eea1cce7da5ed3590704f8b745d7cdec46cb3d3c7a1ee3688",
       "allocatedModels": [
-        "ShellNavigation"
+        "ShellNavigation",
+        "ObservationTurnDispatch"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -44942,7 +44983,8 @@
       "path": "apps/app/src/runtime/view-navigation.ts",
       "sha256": "96c0511d8c336da8239dacb0823181255e6241a031f999cff56d64ab805c4858",
       "allocatedModels": [
-        "ShellNavigation"
+        "ShellNavigation",
+        "CommittedViewObservation"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -45138,7 +45180,9 @@
       "path": "apps/app/src/runtime/workflow-intents.ts",
       "sha256": "2f79c96825f076dadb02b0529aac5859db241c2b12e1412340bd26191ddc1b1a",
       "allocatedModels": [
-        "WorkflowExecution"
+        "WorkflowExecution",
+        "WorkflowRequestRecoveryAdmission",
+        "ScheduledTaskControls"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -45410,7 +45454,8 @@
       "sha256": "4a083bcd66cbaf363a4d8501af933344fb3e20bd90f4fc4cba97b56519f41306",
       "allocatedModels": [
         "MobileBundleAdmission",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "AndroidBuildInputReadiness"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -45504,7 +45549,8 @@
       "allocatedModels": [
         "MobileBundleAdmission",
         "NativeViewSubscription",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "AndroidBrowserModuleStage"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -45748,7 +45794,8 @@
       "sha256": "51605fb5a38b9aed1f7d262ee8f284229c209f45db9a626900d3f1bef389bd10",
       "allocatedModels": [
         "EmbeddingStoreIdentity",
-        "NamedEmbeddingProvenance"
+        "NamedEmbeddingProvenance",
+        "AndroidBuildInputReadiness"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -46416,7 +46463,8 @@
       "sha256": "5b2f99180a222f743367959b7ba0360d9d30597ba80d91ea126830074d190258",
       "allocatedModels": [
         "MobileBundleAdmission",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "AndroidBuildInputReadiness"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -46626,7 +46674,8 @@
       "allocatedModels": [
         "NativeSmsDispatch",
         "NativeMmsDispatch",
-        "NativeSettingsHandoff"
+        "NativeSettingsHandoff",
+        "AndroidBrowserModuleStage"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -46769,7 +46818,8 @@
       "sha256": "e19b5da9a836a643befafe2aa4825fd419e375361315cb3d332af7a312725e3b",
       "allocatedModels": [
         "EmbeddingStoreIdentity",
-        "NamedEmbeddingProvenance"
+        "NamedEmbeddingProvenance",
+        "AndroidBuildInputReadiness"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -47013,7 +47063,8 @@
       "allocatedModels": [
         "NativeListenerInput",
         "NativeSpeechWarmup",
-        "NativeRecognizerAvailability"
+        "NativeRecognizerAvailability",
+        "AndroidBuildInputReadiness"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -51593,7 +51644,8 @@
       "sha256": "734e1b59a56114d49c48fe85de7aca38885b45037b32f05952a88d0d1e157c7f",
       "allocatedModels": [
         "AssistantConversation",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "CommittedViewObservation"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -53648,7 +53700,8 @@
       "sha256": "3ff1abec8446ae804286c81fccc2d1ce4334b01c3d4b0a535464084b1028dbca",
       "allocatedModels": [
         "AssistantConversation",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "CommittedViewObservation"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -53712,7 +53765,8 @@
       "sha256": "07cd6caaab63a46b2f8ce305df360ff23711191d89903738ba67323b38e4e132",
       "allocatedModels": [
         "AssistantConversation",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "CommittedViewObservation"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -53828,7 +53882,8 @@
       "sha256": "db673e57b7bd1cf2e7059a32d3b9194dc3af76b23c7482013bbe104ff2ff226f",
       "allocatedModels": [
         "AssistantConversation",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "CommittedViewObservation"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -75889,7 +75944,8 @@
       "path": "vendor/eliza/packages/contracts/src/workflow-intents.ts",
       "sha256": "3e4fa9bd054e82d244b8d7dc576e6a6f8c694e12548dc1d9d35e918f9cc8e9fa",
       "allocatedModels": [
-        "WorkflowExecution"
+        "WorkflowExecution",
+        "ScheduledTaskControls"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -78382,7 +78438,8 @@
         "WorkflowExecution",
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
-        "CoreServiceLifecycle"
+        "CoreServiceLifecycle",
+        "CommittedViewObservation"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -89701,7 +89758,8 @@
       "allocatedModels": [
         "Application",
         "DraftDispatch",
-        "ShellNavigation"
+        "ShellNavigation",
+        "CommittedViewObservation"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -89810,7 +89868,8 @@
       "allocatedModels": [
         "Application",
         "DraftDispatch",
-        "ShellNavigation"
+        "ShellNavigation",
+        "CommittedViewObservation"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -89833,7 +89892,8 @@
       "allocatedModels": [
         "Application",
         "DraftDispatch",
-        "ShellNavigation"
+        "ShellNavigation",
+        "CommittedViewObservation"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -110821,7 +110881,8 @@
       "allocatedModels": [
         "Application",
         "ShellNavigation",
-        "PreferencesAndPresentation"
+        "PreferencesAndPresentation",
+        "AppInfoHandoffComposition"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -151852,7 +151913,8 @@
       "allocatedModels": [
         "InboxCoordinator",
         "InboxDelivery",
-        "InboxProviderDrafts"
+        "InboxProviderDrafts",
+        "EmailSuggestionReview"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -173477,7 +173539,8 @@
       "sha256": "3d5d2d683bc86ea5f317feb20e69ae77e806008ea780a37b977eff4d7f8b2832",
       "allocatedModels": [
         "BrowserSession",
-        "BrowserSiteState"
+        "BrowserSiteState",
+        "BrowserExternalHandoff"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -194327,7 +194390,9 @@
       "path": "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SystemLauncherApps.java",
       "sha256": "efc6ae85566aa1209c549b9b3b20042ff450af95ef1ce59b0211749c77a6f64e",
       "allocatedModels": [
-        "ShellNavigation"
+        "ShellNavigation",
+        "NativeAppInfoHandoff",
+        "AppInfoHandoffComposition"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -195673,7 +195738,8 @@
       "path": "vendor/eliza/plugins/plugin-native-system/src/client/launcher.ts",
       "sha256": "89625214c861f533e5c8526fd4f3b398e984e76e6136adae85d324877c82ab51",
       "allocatedModels": [
-        "ShellNavigation"
+        "ShellNavigation",
+        "AppInfoHandoffComposition"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -209782,7 +209848,8 @@
       "path": "vendor/eliza/plugins/plugin-personal-assistant/src/lifeops/scheduled-task/dossier-activity-migration.ts",
       "sha256": "6a278ae9757c2c9571ea5a9c19f66768edf9e9025e7cdb43851e97fea1c78351",
       "allocatedModels": [
-        "AssistantConversation"
+        "AssistantConversation",
+        "PersonalAssistantScheduledTaskCustody"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -209809,7 +209876,8 @@
       "path": "vendor/eliza/plugins/plugin-personal-assistant/src/lifeops/scheduled-task/dossier-activity-policy.ts",
       "sha256": "119cc992f66f057fe96fe9a7c3e69237b2f1675405d05d063291e28af4fc014d",
       "allocatedModels": [
-        "AssistantConversation"
+        "AssistantConversation",
+        "PersonalAssistantScheduledTaskCustody"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -209824,7 +209892,8 @@
       "sha256": "dd63d8acbadc76a2a49fdf823269c327318b6b13d9c429442c768ae967e51c68",
       "allocatedModels": [
         "AssistantConversation",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "PersonalAssistantScheduledTaskCustody"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -209995,7 +210064,8 @@
       "sha256": "e3a7fdcd2e767e3efa9fc3d274e6ef41ebbc49bdcfd4e319d2e95f4e5b98e67c",
       "allocatedModels": [
         "AssistantConversation",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "PersonalAssistantScheduledTaskCustody"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -213389,7 +213459,9 @@
       "path": "vendor/eliza/plugins/plugin-scheduling/src/routes/scheduled-tasks.ts",
       "sha256": "84fd87d0ee67aff682b46f825b84623352b3cf1b95b69de0071366d327804001",
       "allocatedModels": [
-        "Application"
+        "Application",
+        "LifeOpsScheduledTaskRoute",
+        "PersonalAssistantScheduledTaskCustody"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -213861,7 +213933,8 @@
       "path": "vendor/eliza/plugins/plugin-scheduling/src/scheduled-task/migration.ts",
       "sha256": "c415c5389342f1c8633249307e662a683688f403eaa0d1b792deac27a81994b6",
       "allocatedModels": [
-        "Application"
+        "Application",
+        "PersonalAssistantScheduledTaskCustody"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -214041,7 +214114,9 @@
       "path": "vendor/eliza/plugins/plugin-scheduling/src/scheduled-task/runner.ts",
       "sha256": "17a2adc96410df5298fc7c0398df9f1ba331a70d83e75233e8edd8a59723df06",
       "allocatedModels": [
-        "Application"
+        "Application",
+        "LifeOpsScheduledTaskRoute",
+        "PersonalAssistantScheduledTaskCustody"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -214182,7 +214257,8 @@
       "path": "vendor/eliza/plugins/plugin-scheduling/src/scheduled-task/schema.ts",
       "sha256": "a9b2cf7697554f491a4cfdaf1fd4a04b293b6c8cd4a2c5bed7fd1ab2a33ff07e",
       "allocatedModels": [
-        "Application"
+        "Application",
+        "LifeOpsScheduledTaskRoute"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -214270,7 +214346,8 @@
       "path": "vendor/eliza/plugins/plugin-scheduling/src/scheduled-task/state-log.ts",
       "sha256": "613bc04dca28137be5a0623ca839c3b114d94f5c1fe77091f0eb74f6501139fc",
       "allocatedModels": [
-        "Application"
+        "Application",
+        "LifeOpsScheduledTaskRoute"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -214303,7 +214380,8 @@
       "path": "vendor/eliza/plugins/plugin-scheduling/src/scheduled-task/store.ts",
       "sha256": "0224506d41ec46db1134ae1ca48624771c6d8da205b9aa8321f49615a0a1e7c6",
       "allocatedModels": [
-        "DurableStore"
+        "DurableStore",
+        "PersonalAssistantScheduledTaskCustody"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -220638,10 +220716,88 @@
       "parseErrors": [],
       "asynchronous": 0,
       "unassignedWrites": 2
+    },
+    {
+      "path": "apps/app/src/runtime/workflow-request-recovery.ts",
+      "sha256": "364edc8dc60eff1f89affba210e2f22d1c35f18c4db32dcd23c82eebdde0e413",
+      "allocatedModels": [
+        "WorkflowRequestRecoveryAdmission"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "createWorkflowRequestRecovery",
+          "line": 12,
+          "bindings": 1,
+          "writes": 2
+        },
+        {
+          "owner": "createWorkflowRequestRecovery.retire",
+          "line": 14,
+          "bindings": 1,
+          "writes": 1
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/packages/app/scripts/mobile/android/consumer-host.mjs",
+      "sha256": "4241d3cf14ac6e5b919537ed84943d6a630c614c00f6f19b5a253977f8be178e",
+      "allocatedModels": [
+        "AndroidBrowserModuleStage"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "<module>",
+          "line": 35,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "fields",
+          "line": 63,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "generateAndroidConsumerHost",
+          "line": 139,
+          "bindings": 16,
+          "writes": 19
+        },
+        {
+          "owner": "generateAndroidConsumerHost.input",
+          "line": 232,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "generateAndroidConsumerHost.ArrowFunction@389",
+          "line": 390,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "AndroidConsumerHostError",
+          "line": 44,
+          "bindings": 1,
+          "writes": 1
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 7
     }
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "8f344a8645c5bf09b2c263b25989ca397bf620651407bdcb96905e97392a932c"
+    "sha256": "cf0b4cdbd0ca52629c3f0ae685a18e3f992be405e8f1609246549a9196233eac"
   }
 }

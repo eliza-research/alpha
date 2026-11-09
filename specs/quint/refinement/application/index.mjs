@@ -36,8 +36,20 @@ import {checkRetainedReminderTapAdmission} from './retained-reminder-tap-admissi
 import {checkReminderOpenIntent} from './reminder-open-intent.mjs';
 import {checkFirstSendDraftMigration} from './first-send-draft-migration.mjs';
 import {checkShadeNoticeQuestionAdmission} from './shade-notice-question-admission.mjs';
+import {checkWorkflowClockAdmission} from './workflow-clock-admission.mjs';
+import {checkPhotosOwnedAlbumDialog} from './photos-owned-album-dialog.mjs';
+import {checkBrowserExternalHandoff} from './browser-external-handoff.mjs';
+import {checkObservationTurnDispatch} from './observation-turn-dispatch.mjs';
+import {checkClientObservationSupport} from './client-observation-support.mjs';
+import {checkEmailSuggestionReview} from './email-suggestion-review.mjs';
 import {checkSharePanelAdmission} from './share-panel-admission.mjs';
+import {checkWorkflowRequestRecoveryAdmission} from './workflow-request-recovery-admission.mjs';
 import {checkAppearancePreferenceAdmission} from './appearance-preference-admission.mjs';
+import {checkNotesTrashReadPublication} from './notes-trash-read-publication.mjs';
+import {checkPreviousNotesAvailability} from './previous-notes-availability.mjs';
+import {checkCommittedViewObservation} from './committed-view-observation.mjs';
+import {checkPreviousNotesSourceOpening} from './previous-notes-source-opening.mjs';
+import {checkScheduledTaskControls} from './scheduled-task-controls.mjs';
 import {checkAgentCalendarSyncControl} from './agent-calendar-sync-control.mjs';
 import {checkGoogleCalendarLinkFlow} from './google-calendar-link-flow.mjs';
 import {checkGoogleCalendarDisconnect} from './google-calendar-disconnect.mjs';
@@ -71,6 +83,7 @@ import {checkRetainedHomeBrief} from './retained-home-brief.mjs';
 import {checkHomeFailureNotice} from './home-failure-notice.mjs';
 import {checkHomeGesture} from './home-gesture.mjs';
 import {checkDrawerInteraction} from './drawer-interaction.mjs';
+import {checkAppInfoHandoffComposition} from './app-info-handoff-composition.mjs';
 import {checkLauncherOwnership} from './launcher-ownership.mjs';
 import {checkLauncherObserver} from './launcher-observer.mjs';
 import {checkLauncherFavorites} from './launcher-favorites.mjs';
@@ -95,18 +108,29 @@ const adapters = [checkChatAttachments, application, shellNavigation, startupPer
   checkCanonicalCalendarDraftHandoff,
   checkCameraPreviewRetirement,
   checkNotesRecorderMediaAdmission, checkRetainedReminderTapAdmission, checkReminderOpenIntent, checkFirstSendDraftMigration,
-  checkShadeNoticeQuestionAdmission,
+  checkShadeNoticeQuestionAdmission, checkWorkflowClockAdmission,
+  checkBrowserExternalHandoff,
+  checkPhotosOwnedAlbumDialog,
+  checkClientObservationSupport,
+  checkObservationTurnDispatch,
+  checkEmailSuggestionReview,
   checkSharePanelAdmission,
+  checkWorkflowRequestRecoveryAdmission,
   checkAppearancePreferenceAdmission,
+  checkNotesTrashReadPublication,
+  checkPreviousNotesAvailability,
+  checkCommittedViewObservation,
+  checkPreviousNotesSourceOpening,
+  checkScheduledTaskControls,
   runStartupPermissionsCoordinatorRefinement, checkVaultCoordinator, checkNotesCoordinator, listFocus, checkRecoveryUI, checkShellCoordinator, checkNativeViewSubscription, filesPreview, runPermissionChoicesRefinement, checkCanonicalNotesController, checkCanonicalNotesDraft,
-  checkCanonicalNotesFeedback, checkCanonicalNotesMutation, checkCanonicalNotesView, checkCanonicalCalendarDraft, checkAgentCalendarRefresh, checkAgentCalendarMutation, checkAgentCalendarEventReturn, checkMapsEventReturn, checkMapsRerouteOwnership, checkCloudConnectionNotices, checkModalScrimOwnership, checkAgentCalendarSyncControl, checkGoogleCalendarLinkFlow, checkGoogleCalendarDisconnect, checkGoogleCalendarLinkPublication, checkGoogleCalendarAccessChoice, checkFilesBrowserController, checkFilesFilter, checkPhotosWindow, checkPhotosTrash, checkGoogleConsentAdmission, checkGoogleAccessPublication, checkBrowserDeletionPoll, checkBrowserJournalRetention, checkBrowserReminderOrphan, checkBrowserOwnerReminderRead, checkBrowserOwnerReminderAction, checkHomeFailureNotice, checkHomeGesture, checkDrawerInteraction, checkLauncherOwnership, checkLauncherObserver, checkLauncherFavorites, checkAccessibleToastLifetime, checkModalToastForwarding, checkScreenFocusOwnership, checkDockClearanceOwnership, checkMountedUpdateAdmission, checkStartupUpdateAdmission, checkCanonicalNotificationTapAdmission, checkResidentLiveness];
+  checkCanonicalNotesFeedback, checkCanonicalNotesMutation, checkCanonicalNotesView, checkCanonicalCalendarDraft, checkAgentCalendarRefresh, checkAgentCalendarMutation, checkAgentCalendarEventReturn, checkMapsEventReturn, checkMapsRerouteOwnership, checkCloudConnectionNotices, checkModalScrimOwnership, checkAgentCalendarSyncControl, checkGoogleCalendarLinkFlow, checkGoogleCalendarDisconnect, checkGoogleCalendarLinkPublication, checkGoogleCalendarAccessChoice, checkFilesBrowserController, checkFilesFilter, checkPhotosWindow, checkPhotosTrash, checkGoogleConsentAdmission, checkGoogleAccessPublication, checkBrowserDeletionPoll, checkBrowserJournalRetention, checkBrowserReminderOrphan, checkBrowserOwnerReminderRead, checkBrowserOwnerReminderAction, checkHomeFailureNotice, checkHomeGesture, checkDrawerInteraction, checkAppInfoHandoffComposition, checkLauncherOwnership, checkLauncherObserver, checkLauncherFavorites, checkAccessibleToastLifetime, checkModalToastForwarding, checkScreenFocusOwnership, checkDockClearanceOwnership, checkMountedUpdateAdmission, checkStartupUpdateAdmission, checkCanonicalNotificationTapAdmission, checkResidentLiveness];
 
 /** Component traces, with remaining obligations kept explicit for the aggregate report. */
-export async function runApplicationRefinement() {
-  return collectApplicationCampaigns(adapters);
+export async function runApplicationRefinement(onProgress) {
+  return collectApplicationCampaigns(adapters, onProgress);
 }
 
-export async function collectApplicationCampaigns(campaigns) {
+export async function collectApplicationCampaigns(campaigns, onProgress) {
   const receipts = [], obligations = [], failures = [];
   const manifest = JSON.parse(readFileSync(resolve(root, 'specs/quint/application/manifest.json'), 'utf8'));
   const entries = new Map((Array.isArray(manifest) ? manifest : manifest.models).map(entry => [entry.module, entry]));
@@ -131,6 +155,7 @@ export async function collectApplicationCampaigns(campaigns) {
     } catch (error) {
       failures.push({campaign: adapter.name, error});
     }
+    onProgress?.({receipts, failures});
   }
   return {receipts, obligations, failures};
 }

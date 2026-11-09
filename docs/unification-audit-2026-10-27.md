@@ -210,7 +210,7 @@ Largest relevant orchestration files: `apps/app/src/runtime/connection-ui.tsx` 2
 - This is a deliberately limited development host, not the production resident. Production should not be described as having these separate actions.
 - Upstream convention: `PROPOSE_DEVICE_ACTION` with `create_note`, typed reminder operations and canonical navigation `VIEWS`/`VIEWS_SHOW`.
 - Recommendation: make development exercise the same resident/device action service with a deliberately non-effecting executor, or retire the diagnostic host where no longer used. Do not merely rename CREATE_REMINDER: its wall-clock+timezone shape differs from the legacy upstream dueAt and modern typed reminder_create contracts. Reuse upstream reminder input resolution. Keep fixture/no-effect guarantees explicit.
-- Tests to migrate: `backend/test-runtime.ts`, `scripts/dev-agent.mjs`, `scripts/test-dev-agent.mjs`, development proposal fixtures. Live provider evidence must not be replaced with mocks.
+- Tests to migrate: `backend/test-runtime.ts`, [dev-agent.mjs](https://github.com/eliza-research/alphaphone/blob/f3b1db5cf17250472407fa2b125c48ac94dbb969/scripts/dev-agent.mjs), [test-dev-agent.mjs](https://github.com/eliza-research/alphaphone/blob/f3b1db5cf17250472407fa2b125c48ac94dbb969/scripts/test-dev-agent.mjs), development proposal fixtures. Live provider evidence must not be replaced with mocks.
 
 ### 3. Device executor orchestration is large and Alpha-owned (high-value shared extraction)
 
@@ -253,7 +253,7 @@ Largest relevant orchestration files: `apps/app/src/runtime/connection-ui.tsx` 2
 
 ### 8. Managed Google host is still Alpha-owned but generally reusable
 
-- Alpha backend: `managed-google-agent-host.ts` 101 lines, `managed-google-agent-broker.ts` 46, `managed-google-route-policy.ts` 74, `native-google-cloud-port.ts` 43, `native-google-agent-host.ts` 32. Also `scripts/gmail-agent-mailbox-host.ts`, `scripts/gmail-agent-read-host.ts` and `calendar-agent-write-host.ts`.
+- Alpha backend: `managed-google-agent-host.ts` 101 lines, `managed-google-agent-broker.ts` 46, `managed-google-route-policy.ts` 74, `native-google-cloud-port.ts` 43, `native-google-agent-host.ts` 32. Also [gmail-agent-mailbox-host.ts](https://github.com/eliza-research/alphaphone/blob/f3b1db5cf17250472407fa2b125c48ac94dbb969/scripts/gmail-agent-mailbox-host.ts), `scripts/gmail-agent-read-host.ts` and `calendar-agent-write-host.ts`.
 - Upstream already defines `ManagedGmailAdapter`, managed-gmail read/send/manage transports and managed Calendar interfaces. Alpha implements the private loopback host expected by these interfaces.
 - Move the host port adapter, revision-bound prepare/dispatch/read receipt flow and route admission into a shared host package. Inject deployment origin, identity/credential port, allowed capabilities, client user-agent and account selector. Avoid Alpha prefixes in new cross-product IDs; preserve old persisted IDs through a supported compatibility reader/migration.
 - The service currently requires exactly one matching account rather than sharing a canonical account-selection policy. A shared selector can support both products without guessing when several accounts are connected.

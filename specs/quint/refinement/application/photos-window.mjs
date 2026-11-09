@@ -46,7 +46,7 @@ async function compilePhotosWindow(extraSources = []) {
         assert.equal(text.split(marker).length, 2, "One real Photos window observer seam");
         const observed = text.replace("loading = true; const token = ++libraryEpoch;", "loading = true; const token = ++libraryEpoch;__ports.loadInfo={more,token};")
           .replace("trashLoading = true; const token = ++trashEpoch;", "trashLoading = true; const token = ++trashEpoch;__ports.trashInfo={more,token};");
-        return { loader: "ts", contents: observed.replace(marker, `  __ports.inspect=()=>({disposed,captures,loaded,loading,next,libraryEpoch,libraryAccess,refreshAgain,counts,countsBusy,countsError,countsEpoch,albumRows,albumKey,albumNext,albumBusy,albumEpoch,trash,trashNext,trashLoaded,trashLoading,trashRefreshAgain,trashEpoch,selection,preview,reading,photoReadEpoch});
+        return { loader: "ts", contents: observed.replace(marker, `  __ports.inspect=()=>({disposed,captures,loaded,loading,next,libraryEpoch,libraryAccess,refreshAgain,counts,countsBusy,countsError,countsEpoch,albumRows,albumKey,albumNext,albumBusy,albumEpoch,trash,trashNext,trashLoaded,trashLoading,trashRefreshAgain,trashEpoch,selection,preview,reading,photoReadEpoch,mutating});
 ${marker}`) };
       });
     } }]
@@ -55,11 +55,11 @@ ${marker}`) };
   captureSources(sources);
   return { code: built.outputFiles[0].text, sources };
 }
-async function createPhotosWindowFixture(compiled, { holdCounts = false, holdTrash = false } = {}) {
+async function createPhotosWindowFixture(compiled, { holdCounts = false, holdTrash = false, albumPort = {} } = {}) {
   const dom = new JSDOM("<!doctype html><html><head></head><body></body></html>", { url: "https://fixture.invalid" });
   const { window } = dom, { document } = window;
   Object.defineProperty(document, "hidden", { configurable: true, value: false, writable: true });
-  const accesses = [], pages = [], updates = [], summaries = [], trashes = [];
+  const accesses = [], pages = [], updates = [], summaries = [], trashes = [], toasts = [];
   const ports = {}, listeners = new Map();
   const native = {
     libraryAccess() {
@@ -92,7 +92,8 @@ async function createPhotosWindowFixture(compiled, { holdCounts = false, holdTra
       return { async remove() { listeners.delete(event); } };
     },
     async cancelPhotoSelected() {
-    }
+    },
+    ...albumPort
   };
   ports.plugin = (name) => name === "AlphaPhotos" || name === "AlphaMailAttachments" ? native : new Proxy({}, {
     get: (_target, method) => () => {
@@ -119,7 +120,8 @@ async function createPhotosWindowFixture(compiled, { holdCounts = false, holdTra
     Object.assign(state, patch);
     updates.push(structuredClone(patch));
     afterSet(patch);
-  }, toast() {
+  }, toast(message) {
+    toasts.push(message);
   } };
   class Component {
   }
@@ -220,7 +222,7 @@ async function createPhotosWindowFixture(compiled, { holdCounts = false, holdTra
     await tick();
     window.close();
   }
-  return { state, shell, api, views, window, document, accesses, pages, updates, summaries, trashes, render, retry, more, access, page, counts, trash, hide, show, leave, enter, emitLibrary, retire, close, get active() {
+  return { state, shell, api, views, window, document, accesses, pages, updates, summaries, trashes, toasts, render, retry, more, access, page, counts, trash, hide, show, leave, enter, emitLibrary, retire, close, get active() {
     return active;
   }, onSet(callback) {
     afterSet = callback;

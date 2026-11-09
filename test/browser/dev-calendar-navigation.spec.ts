@@ -22,7 +22,7 @@ test('a delayed event open cannot take over after navigation away',async({page})
 test('a delayed event open keeps the other header actions covered and lands in view',async({page})=>{
  await pendDelayedOpen(page);
  // Only Back to apps sits above the cover; a tap on New event meets the cover and starts no draft.
- await expect.poll(()=>headerReach(page)).toEqual({'Back to apps':true,'Month view':false,'Clock alarms':false,'Today':false,'New event':false});
+ await expect.poll(()=>headerReach(page)).toEqual({'Back to apps':true,'Month view':false,'Today':false,'New event':false});
  const newEvent=await page.getByRole('button',{name:'New event',exact:true}).filter({visible:true}).first().boundingBox();expect(newEvent).not.toBeNull();await page.mouse.click(newEvent!.x+newEvent!.width/2,newEvent!.y+newEvent!.height/2);
  await page.evaluate(()=>(window as any).releaseCalendarOpen());expect(await page.evaluate(()=>(window as any).pendingCalendarOpen)).toEqual({status:'opened'});
  const detail=page.locator('[data-alpha-subview="calendar-detail"]');await expect(detail).toContainText('Delayed event');await expect(page.getByRole('button',{name:'Back to calendar',exact:true})).toBeVisible();await expect(page.locator('[data-alpha-subview="calendar-form"]')).toHaveCount(0);
@@ -30,6 +30,6 @@ test('a delayed event open keeps the other header actions covered and lands in v
  expect(await detail.evaluate(event=>{const cover=event.previousElementSibling!,header=document.querySelector('[data-alpha-subview="calendar-list"] [data-alpha-app-header="main"]')!,back=header.querySelector('.app-header-back')!.getBoundingClientRect(),c=cover.getBoundingClientRect(),h=header.getBoundingClientRect();return {cover:cover.getAttribute('aria-hidden')==='true'&&cover.childElementCount===0,spansHeader:c.top<=h.top&&c.bottom>=h.bottom,backUnderEvent:event.contains(document.elementFromPoint(back.x+back.width/2,back.y+back.height/2))};})).toEqual({cover:true,spansHeader:true,backUnderEvent:true});
  // Once the event is closed, the header works as usual: New event starts a draft.
  await page.getByRole('button',{name:'Back to calendar',exact:true}).click();await expect(detail).toHaveCount(0);
- await expect.poll(()=>headerReach(page)).toEqual({'Back to apps':true,'Month view':true,'Clock alarms':true,'Today':true,'New event':true});
+ await expect.poll(()=>headerReach(page)).toEqual({'Back to apps':true,'Month view':true,'Today':true,'New event':true});
  await page.getByRole('button',{name:'New event',exact:true}).filter({visible:true}).first().click();await expect(page.locator('[data-alpha-subview="calendar-form"]')).toHaveCount(1);
 });
