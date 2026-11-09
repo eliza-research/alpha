@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "dec170f861bdb756c2edb8a92f71f15f0d86288c",
-  "ledgerSha256": "e19975bf42a507df85b74553ccc2af5433c67c464403eaaab0efd002eedc4cf0",
+  "ledgerSha256": "d635ba1ef99c76588632680c10448d3b399762815dd2ac01ed8e57c950d97fa5",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -29,10 +29,10 @@
     "languageReview": 91,
     "parseErrors": 0,
     "candidates": 68875,
-    "writeSites": 68128,
+    "writeSites": 68130,
     "writeAssociations": 61150,
     "asynchronous": 8521,
-    "unassignedWrites": 10428
+    "unassignedWrites": 10430
   },
   "files": [
     {
@@ -30736,7 +30736,8 @@
       "allocatedModels": [
         "BrowserSession",
         "DurableStore",
-        "CalendarPreservationConfirmation"
+        "CalendarPreservationConfirmation",
+        "BrowserAlbumStorage"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -30761,7 +30762,8 @@
         "NotesLifecycle",
         "GoogleAccessPublication",
         "BrowserReminderOrphan",
-        "BrowserHostedResultNotice"
+        "BrowserHostedResultNotice",
+        "BrowserAlbumStorage"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -31409,7 +31411,8 @@
       "allocatedModels": [
         "BrowserSession",
         "DurableStore",
-        "GoogleAccessPublication"
+        "GoogleAccessPublication",
+        "BrowserAlbumStorage"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -33851,11 +33854,13 @@
     },
     {
       "path": "apps/app/src/prototype/browser-camera.ts",
-      "sha256": "6e410466c3bdc1ec4deda394c2716835bc3604b07aa0e969dc6f459f6038b6c5",
+      "sha256": "1b8559b0afacfeac49f8e8cf5f12e8438ee1a5a3d5f94e91844a4cf373a15541",
       "allocatedModels": [
         "MediaLifecycle",
-        "CameraPreviewRetirement"
+        "CameraPreviewRetirement",
+        "BrowserAlbumStorage"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -33872,200 +33877,200 @@
           "writes": 5
         },
         {
-          "owner": "transaction.ArrowFunction@29",
-          "line": 29,
+          "owner": "runPhotoTransaction.ArrowFunction@37",
+          "line": 37,
           "bindings": 3,
           "writes": 8
         },
         {
           "owner": "rows",
-          "line": 44,
+          "line": 52,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "rows.ArrowFunction@46",
-          "line": 46,
+          "owner": "rows.ArrowFunction@54",
+          "line": 54,
           "bindings": 2,
           "writes": 2
         },
         {
-          "owner": "read.ArrowFunction@53",
-          "line": 53,
+          "owner": "read.ArrowFunction@61",
+          "line": 61,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "change.ArrowFunction@55",
-          "line": 55,
+          "owner": "change.ArrowFunction@63",
+          "line": 63,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "renderEdit",
-          "line": 74,
+          "line": 82,
           "bindings": 3,
           "writes": 4
         },
         {
           "owner": "beginPhotoEdit",
-          "line": 88,
+          "line": 96,
           "bindings": 2,
           "writes": 2
         },
         {
-          "owner": "resultPhotoEdit.ArrowFunction@102",
-          "line": 102,
+          "owner": "resultPhotoEdit.ArrowFunction@110",
+          "line": 110,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "resultPhotoEdit.ArrowFunction@102.ArrowFunction@102",
-          "line": 103,
+          "owner": "resultPhotoEdit.ArrowFunction@110.ArrowFunction@110",
+          "line": 111,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "cancelPhotoEdit",
-          "line": 109,
+          "line": 117,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "savePhotoEdit.ArrowFunction@115",
-          "line": 115,
+          "owner": "savePhotoEdit.ArrowFunction@123",
+          "line": 123,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "savePhotoEdit.ArrowFunction@115.ArrowFunction@115",
-          "line": 116,
+          "owner": "savePhotoEdit.ArrowFunction@123.ArrowFunction@123",
+          "line": 124,
           "bindings": 1,
           "writes": 4
         },
         {
-          "owner": "savePhotoEdit.ArrowFunction@126",
-          "line": 126,
+          "owner": "savePhotoEdit.ArrowFunction@134",
+          "line": 134,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "savePhotoEdit.ArrowFunction@126.ArrowFunction@126",
-          "line": 127,
+          "owner": "savePhotoEdit.ArrowFunction@134.ArrowFunction@134",
+          "line": 135,
           "bindings": 2,
           "writes": 3
         },
         {
-          "owner": "savePhotoEdit.ArrowFunction@140",
-          "line": 140,
+          "owner": "savePhotoEdit.ArrowFunction@148",
+          "line": 148,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "savePhotoEdit.ArrowFunction@140.ArrowFunction@140",
-          "line": 140,
+          "owner": "savePhotoEdit.ArrowFunction@148.ArrowFunction@148",
+          "line": 148,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "selectedMediaRows.ArrowFunction@163",
-          "line": 163,
+          "owner": "selectedMediaRows.ArrowFunction@171",
+          "line": 171,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "saveBrowserMedia",
-          "line": 182,
+          "line": 190,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "saveVideoCopy.ArrowFunction@189",
-          "line": 189,
+          "owner": "saveVideoCopy.ArrowFunction@197",
+          "line": 197,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "saveVideoCopy.ArrowFunction@194",
-          "line": 194,
+          "owner": "saveVideoCopy.ArrowFunction@202",
+          "line": 202,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "saveVideoCopy.ArrowFunction@194.ArrowFunction@194",
-          "line": 194,
+          "owner": "saveVideoCopy.ArrowFunction@202.ArrowFunction@202",
+          "line": 202,
           "bindings": 2,
           "writes": 3
         },
         {
-          "owner": "saveVideoCopy.ArrowFunction@195",
-          "line": 195,
+          "owner": "saveVideoCopy.ArrowFunction@203",
+          "line": 203,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "saveVideoCopy.ArrowFunction@195.ArrowFunction@195",
-          "line": 195,
+          "owner": "saveVideoCopy.ArrowFunction@203.ArrowFunction@203",
+          "line": 203,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "albums",
-          "line": 203,
+          "line": 211,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "changeAlbum.ArrowFunction@217",
-          "line": 218,
+          "owner": "changeAlbum.commit.ArrowFunction@226",
+          "line": 227,
           "bindings": 3,
           "writes": 11
         },
         {
-          "owner": "changeMany.ArrowFunction@236",
-          "line": 237,
-          "bindings": 2,
-          "writes": 3
-        },
-        {
-          "owner": "deletePreparedTrash.ArrowFunction@251",
+          "owner": "changeMany.ArrowFunction@250",
           "line": 251,
           "bindings": 2,
           "writes": 3
         },
         {
+          "owner": "deletePreparedTrash.ArrowFunction@265",
+          "line": 265,
+          "bindings": 2,
+          "writes": 3
+        },
+        {
           "owner": "setScreenLight",
-          "line": 269,
+          "line": 283,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "startPreview",
-          "line": 276,
+          "line": 290,
           "bindings": 3,
           "writes": 7
         },
         {
-          "owner": "stopRecording.ArrowFunction@330.ArrowFunction@332",
-          "line": 332,
+          "owner": "stopRecording.ArrowFunction@344.ArrowFunction@346",
+          "line": 346,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "prepare",
-          "line": 346,
+          "line": 360,
           "bindings": 2,
           "writes": 3
         },
         {
           "owner": "openCameraImageImport",
-          "line": 354,
+          "line": 368,
           "bindings": 17,
           "writes": 47
         },
         {
           "owner": "openCameraImageImport.button",
-          "line": 362,
+          "line": 376,
           "bindings": 1,
           "writes": 2
         }
@@ -34399,7 +34404,8 @@
         "CanonicalCalendarDraftHandoff",
         "CameraPreviewRetirement",
         "ChatAttachments",
-        "PhotosOwnedAlbumDialog"
+        "PhotosOwnedAlbumDialog",
+        "BrowserAlbumStorage"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -39335,12 +39341,13 @@
     },
     {
       "path": "apps/app/src/prototype/notifications-adapter.ts",
-      "sha256": "54f0fe9f96b24849f26308e796192efdb3c32630712a3720ed4047bb566933e5",
+      "sha256": "d381759f115103759258b42e50bda4846e7ad2d88333085059ef548c2da45f50",
       "allocatedModels": [
         "NoticesAndCaches",
         "NotificationCollection",
         "CanonicalNotificationTapAdmission",
-        "ShadeNoticeQuestionAdmission"
+        "ShadeNoticeQuestionAdmission",
+        "ShadeRowCustody"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -39371,15 +39378,15 @@
           "writes": 7
         },
         {
-          "owner": "installNotificationsAdapter.FunctionExpression@121",
-          "line": 122,
+          "owner": "installNotificationsAdapter.FunctionExpression@144",
+          "line": 145,
           "bindings": 1,
           "writes": 3
         }
       ],
       "parseErrors": [],
       "asynchronous": 17,
-      "unassignedWrites": 35
+      "unassignedWrites": 37
     },
     {
       "path": "apps/app/src/prototype/own-notice-question.ts",
@@ -40287,7 +40294,8 @@
         "WorkflowRequestRecoveryAdmission",
         "ScheduledTaskControls",
         "WorkflowClockAdmission",
-        "PhotosOwnedAlbumDialog"
+        "PhotosOwnedAlbumDialog",
+        "ShadeRowCustody"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -112936,7 +112944,8 @@
       "allocatedModels": [
         "BrowserSession",
         "BrowserSiteState",
-        "DurableStore"
+        "DurableStore",
+        "BrowserAlbumStorage"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -223635,6 +223644,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "635e2f1dc1953acb4e11a89c7688c832d7a1c7d578719f0b49280eb1d136d148"
+    "sha256": "055aa0b9aee388403c037a273b77dba8c65cf21c2746f355ad889374b6db3ccd"
   }
 }
