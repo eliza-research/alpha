@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-import {mkdirSync, mkdtempSync, readFileSync, rmSync} from 'node:fs';
+import {mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {isAbsolute, join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -27,7 +27,7 @@ function sourceInputs(extraSources) {
 
 function runProbe(binary, real) {
   assert.ok(isAbsolute(binary), 'The selected executable must be an absolute path');
-  const scratch = mkdtempSync(join(tmpdir(), 'quint-development-loader-'));
+  const scratch = realpathSync(mkdtempSync(join(tmpdir(), 'quint-development-loader-')));
   const home = join(scratch, 'home');
   try {
     mkdirSync(home, {mode: 0o700});

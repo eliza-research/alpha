@@ -57,7 +57,7 @@ export async function checkHistoricalCalendarNavigation(extraSources = []) {
           return events.indexOf(title) + 1;
         });
         return {'s.view': view, 's.top': top, 's.focus': focus, Displayed: qset(displayed),
-          BackEnabled: await backToCalendar.isVisible(), EditEnabled: await f.button('Edit event').isVisible()};
+          BackEnabled: await backToCalendar.isVisible(), EditEnabled: await detail.locator('summary[aria-label="Event actions"]').isVisible() && await detail.locator('button[aria-label="Edit event"]').isEnabled()};
       }
       const t = {name, init: call('StartState', 'proposed', 'write', 'up', false), expect: await observe(), steps: []};
       const mark = async (label, action) => t.steps.push({label, action, expect: await observe()});
@@ -91,6 +91,7 @@ export async function checkHistoricalCalendarNavigation(extraSources = []) {
     });
     await schedule('mounted edit Back returns the exact existing event', async c => {
       await c.open(1);
+      await c.detail.locator('summary[aria-label="Event actions"]').click();
       await c.f.button('Edit event').click();await c.editor.waitFor();
       await c.mark('Enter the existing writable event editor', call('Edit'));
       await c.title.fill('Historical comparison dirty edit');

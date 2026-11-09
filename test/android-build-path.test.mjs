@@ -106,6 +106,14 @@ test('preflight refuses a staged native Google host older than its product sourc
   // A built host artifact recording the hash of one product input, staged as agent:stage-android does.
   const hash = text => workerHash(Buffer.from(text));
   const artifact = `artifacts/mobile-workflow-worker-${f.commit}`, staged = 'android/app/src/main/assets/agent/workflow-worker';
+  const previous = {source: process.env.ALPHA_LOCAL_AGENT_SOURCE_DIR, worker: process.env.ALPHA_WORKFLOW_WORKER_OUTPUT};
+  process.env.ALPHA_LOCAL_AGENT_SOURCE_DIR = f.source;
+  process.env.ALPHA_WORKFLOW_WORKER_OUTPUT = path.join(f.root, artifact);
+  t.after(() => {
+    for (const [name, value] of [['ALPHA_LOCAL_AGENT_SOURCE_DIR', previous.source], ['ALPHA_WORKFLOW_WORKER_OUTPUT', previous.worker]]) {
+      if (value === undefined) delete process.env[name]; else process.env[name] = value;
+    }
+  });
   f.write('backend/managed-google-route-policy.ts', 'export const policy = 1;\n');
   writeCoreStateFixture(f.root, f.source, f.commit);
   const manifest = JSON.stringify({version: 1, files: {'google-host.mjs': hash('host-1')}, nativeGoogleHost: {version: 1, module: 'google-host.mjs', bunVersion: '1.4.2', inputs: {'backend/managed-google-route-policy.ts': hash('export const policy = 1;\n')}, coreState: coreStateBuildRecord(f.root, [], [])}});

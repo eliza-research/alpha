@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseCommit": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
+  "baseCommit": "b1817660a0347ae19551b9ee296410fe55f02d59",
   "patches": [
     {
       "file": "google-browser-sign-in.patch",
@@ -95,13 +95,13 @@
     },
     {
       "file": "camera-capture-latency.patch",
-      "sha256": "50b8fa55d2f016bd475134ecde94fd2ce26649d67914f1c0f91875f06b15a913",
+      "sha256": "53f53221ee1cd2e73b42e0b383dab3c5d4587570208daf60c4bc28b462ad839d",
       "module": "plugins/plugin-native-camera/android",
       "targets": [
         {
           "path": "plugins/plugin-native-camera/android/src/main/java/ai/eliza/plugins/camera/CameraPlugin.kt",
           "beforeSha256": "0d6dec5115f050cfac2f6f32b22f68e4a36e6d4ec2b10e815fa74303ec2d4c53",
-          "afterSha256": "21062bbea75e071ef5f6c503aea2deb09b73b6675d6dde93e82a4847be534049"
+          "afterSha256": "a02d876a7a237d4c3540d852685b1b6d9e9e587406d767ca0c643120a248f98c"
         },
         {
           "path": "plugins/plugin-native-camera/android/src/main/java/ai/eliza/plugins/camera/GalleryImageWriter.kt",
@@ -333,6 +333,23 @@
           "path": "plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/TelephonyPlugin.java",
           "beforeSha256": "f317d127515d4676ce262f7d94118057206acc6d7ee0ee0e0f5e4309d12e8a56",
           "afterSha256": "34385713fdbdf4e17c9f16c3a154a2534b497e67de3fd6d03369b0d03720c3c9"
+        }
+      ]
+    },
+    {
+      "file": "browser-tab-underlay-native.patch",
+      "sha256": "766476a1546b4b556e55e2e2dd63581b6c4c1d4510225568c93c312dd8d257e3",
+      "module": "plugins/plugin-native-browser-surface/android",
+      "targets": [
+        {
+          "path": "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserTabHostPlugin.java",
+          "beforeSha256": "d0c69f56fba2a0eee08a25a5ff2325e1f19dcabec257f29b4f2dd9474b55f3a5",
+          "afterSha256": "69544d81f436606d5320a2cdbad29f659feea7c3d43ff5941c7e4dd4d5c41684"
+        },
+        {
+          "path": "plugins/plugin-native-browser-surface/android/build.gradle",
+          "beforeSha256": "5579dbc1f0c6a05f567d4635ab8c9ab8a19661dcbe8cee30361edbc2fb2ffd13",
+          "afterSha256": "6fe461621a5e4761de57937bcb55d19b575b425ee975f5341927d7943989b616"
         }
       ]
     },

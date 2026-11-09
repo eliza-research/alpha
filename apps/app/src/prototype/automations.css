@@ -98,3 +98,7 @@
 .workflow-save-review pre{font-size:12px}
 
 .workflow-filter-trigger:focus-visible{outline:2px solid var(--acct);outline-offset:2px}
+
+.automation-new .workflow-choice{display:grid;grid-template-columns:24px minmax(0,1fr) 16px;align-items:center;gap:14px;padding:14px 12px;background:var(--s2);border:0;border-radius:14px;margin-bottom:4px;color:var(--fg)}
+.workflow-choice>span{margin:0;color:inherit}.workflow-choice strong{font-size:16px;font-weight:600}.workflow-choice small{display:block;margin-top:2px;font-size:14px;color:var(--mut)}
+.workflow-choice>.i:last-child{width:16px;color:var(--mut)}.automation-new .automation-more{min-height:44px;border:0}

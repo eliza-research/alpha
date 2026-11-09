@@ -45,6 +45,7 @@ test('native worker extractor verifies bytes and preserves the previous installa
 import java.io.*; import java.nio.file.*; import java.nio.charset.StandardCharsets;
 public class WorkerAssetTest {
  public static void main(String[] args)throws Exception{
+  String payloadName=args.length>2?args[2]:"lib/worker.js";
   File assets=new File(args[0]),root=new File(args[1]);byte[] index=Files.readAllBytes(new File(assets,"files.sha256").toPath());
   WorkflowWorkerAssets.Source source=p->new FileInputStream(new File(assets,p));
   File installed=WorkflowWorkerAssets.install(root,new ByteArrayInputStream(index),source,"1/100");
@@ -61,14 +62,14 @@ public class WorkerAssetTest {
   if(!WorkflowWorkerAssets.install(root,new ByteArrayInputStream(index),unread,"1/100").equals(installed))throw new AssertionError("unchanged install moved");
   for(File file:root.listFiles())if(file.getName().startsWith(".workflow-worker-"))throw new AssertionError("kept leftover staging "+file.getName());
   for(String damage:new String[]{"modified","missing","extra","symlink"}){
-   Path payload=new File(installed,"lib/worker.js").toPath(),extra=new File(installed,"unindexed.js").toPath();
+   Path payload=new File(installed,payloadName).toPath(),extra=new File(installed,"unindexed.js").toPath();
    if(damage.equals("modified"))Files.write(payload,new byte[]{1});
    if(damage.equals("missing"))Files.delete(payload);
    if(damage.equals("extra"))Files.write(extra,new byte[]{1});
-   if(damage.equals("symlink")){Files.delete(payload);Files.createSymbolicLink(payload,new File(assets,"lib/worker.js").toPath());}
+   if(damage.equals("symlink")){Files.delete(payload);Files.createSymbolicLink(payload,new File(assets,payloadName).toPath());}
    int[] repaired={0};WorkflowWorkerAssets.Source repair=p->{repaired[0]++;return source.open(p);};
    WorkflowWorkerAssets.install(root,new ByteArrayInputStream(index),repair,"1/100");
-   if(repaired[0]==0||Files.isSymbolicLink(payload)||!java.util.Arrays.equals(Files.readAllBytes(payload),Files.readAllBytes(new File(assets,"lib/worker.js").toPath()))||Files.exists(extra))throw new AssertionError("kept "+damage+" cached payload");
+   if(repaired[0]==0||Files.isSymbolicLink(payload)||!java.util.Arrays.equals(Files.readAllBytes(payload),Files.readAllBytes(new File(assets,payloadName).toPath()))||Files.exists(extra))throw new AssertionError("kept "+damage+" cached payload");
   }
   int[] opened={0};WorkflowWorkerAssets.Source counted=p->{opened[0]++;return source.open(p);};
   WorkflowWorkerAssets.install(root,new ByteArrayInputStream(index),counted,"2/200");
@@ -94,7 +95,10 @@ public class WorkerAssetTest {
   if(process.env.ALPHA_WORKFLOW_WORKER_OUTPUT){
    const realAssets=path.join(temporary,'real-assets'),realState=path.join(temporary,'real-agent');
    const staged=stageWorkerArtifact(process.env.ALPHA_WORKFLOW_WORKER_OUTPUT,realAssets);fs.mkdirSync(realState);
-   assert.match(execFileSync(javaBinary('java'),['-cp',temporary,identity+'.WorkerAssetTest',realAssets,realState],{encoding:'utf8',timeout:30000}),/^PASS extract/);
+   const manifest=JSON.parse(fs.readFileSync(path.join(realAssets,'manifest.json'),'utf8'));
+   const payload=Object.keys(manifest.files).find(name=>name.startsWith('lib/')&&name.endsWith('.js'));
+   assert.ok(payload,'real artifact must contain a worker module');
+   assert.match(execFileSync(javaBinary('java'),['-cp',temporary,identity+'.WorkerAssetTest',realAssets,realState,payload],{encoding:'utf8',timeout:30000}),/^PASS extract/);
    console.log(`Verified native extractor against ${staged.files} real worker artifact files (host JVM only)`);
   }
  }finally{fs.rmSync(temporary,{recursive:true,force:true});}

@@ -32,6 +32,14 @@ export async function openBrowserCalendar(page: Page) {
   await selectCalendarSource(page, 'Browser calendar (development)');
 }
 
+/** Use the visible event menu; editing and deletion are no longer inline controls. */
+export async function chooseCalendarEventAction(page: Page, action: 'Edit event' | 'Delete event') {
+  const menu = page.locator('details').filter({has: page.getByLabel('Event actions', {exact: true})});
+  await expect(menu).toBeVisible();
+  if (await menu.getAttribute('open') === null) await menu.getByLabel('Event actions', {exact: true}).click();
+  await menu.getByRole('button', {name: action, exact: true}).click();
+}
+
 /** What a Home calendar card titles itself while its calendar cannot be read. */
 export const calendarUnavailable = 'Calendar unavailable';
 

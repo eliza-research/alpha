@@ -6,13 +6,28 @@ test('camera question uses an unsaved frame and releases review on cancel',async
  expect(await page.evaluate(async()=>{const {browserPhotoLibrary}=await import('/src/prototype/browser-camera.ts');return (await browserPhotoLibrary.list()).items.length;})).toBe(0);
  await review.getByRole('button',{name:'Cancel',exact:true}).click();await expect(review).toHaveCount(0);await page.evaluate(async()=>(await import('/src/prototype/camera-adapter.ts')).askAboutCapture());await expect(review.getByRole('img')).toBeVisible();await review.getByRole('textbox',{name:'Content excerpt'}).fill('A sign saying ALPHA');await review.getByRole('button',{name:'Use in conversation'}).click();await expect(page.getByRole('textbox',{name:'Message Alpha',exact:true})).toHaveValue('What does this mean?\n\nSource: Camera frame\n\nA sign saying ALPHA');
 });
-test('imported photo question extracts real local text and composes a corrected excerpt',async({page})=>{
+test('imported photo opens a compact image attachment without a review dialog',async({page})=>{
  test.setTimeout(90000);await page.goto('/?mode=dev');await page.evaluate(async()=>{const {importBrowserPhoto}=await import('/src/prototype/browser-camera.ts');const canvas=document.createElement('canvas');canvas.width=800;canvas.height=300;const context=canvas.getContext('2d')!;context.fillStyle='white';context.fillRect(0,0,800,300);context.fillStyle='black';context.font='bold 70px sans-serif';context.fillText('ALPHA 42',60,170);await importBrowserPhoto({image:canvas.toDataURL('image/jpeg'),width:800,height:300},new AbortController().signal);});
- await page.getByRole('button',{name:'Photos',exact:true}).click();await page.getByRole('button',{name:/^Photo, /}).first().click();await page.getByRole('button',{name:'Ask Alpha about this photo',exact:true}).click();const review=page.getByRole('dialog',{name:'Ask about selected content'});await expect(review.getByRole('button',{name:'Extract text locally'})).toBeEnabled();await review.getByRole('button',{name:'Extract text locally'}).click();await expect(review.getByRole('textbox',{name:'Content excerpt'})).toHaveValue(/ALPHA 42/,{timeout:65000});await review.getByRole('textbox',{name:'Content excerpt'}).fill('ALPHA 42 corrected');await review.getByRole('button',{name:'Use in conversation'}).click();await expect(page.getByRole('textbox',{name:'Message Alpha',exact:true})).toHaveValue('What does this mean?\n\nSource: Selected photo\n\nALPHA 42 corrected');
+ await page.getByRole('button',{name:'Photos',exact:true}).click();await page.getByRole('button',{name:/^Photo, /}).first().click();await page.getByRole('button',{name:'Ask Alpha about this photo',exact:true}).click();await expect(page.getByRole('dialog',{name:'Ask about selected content'})).toHaveCount(0);await expect(page.getByAltText('Captured photo')).toBeVisible();await expect(page.getByRole('textbox',{name:'Message Alpha',exact:true})).toHaveValue('');
 });
 test('cancelling local image recognition terminates its worker without composing',async({page})=>{
  await page.goto('/?mode=dev');await page.evaluate(async()=>{
   (window as any).questionWorker={posted:0,terminated:0,composed:false};(window as any).Worker=class {postMessage(){(window as any).questionWorker.posted++;}terminate(){(window as any).questionWorker.terminated++;}};
   const canvas=document.createElement('canvas');canvas.width=20;canvas.height=20;const blob=await new Promise<Blob>(resolve=>canvas.toBlob(value=>resolve(value!),'image/png'));const {reviewContentQuestion}=await import('/src/browser/content-question.ts');reviewContentQuestion({name:'Cancel image',text:'',current:()=>true,compose:()=>{(window as any).questionWorker.composed=true;},image:async()=>blob});
  });const review=page.getByRole('dialog',{name:'Ask about selected content'});await review.getByRole('button',{name:'Extract text locally'}).click();await expect.poll(()=>page.evaluate(()=>(window as any).questionWorker.posted)).toBe(1);await review.getByRole('textbox',{name:'Question about content'}).fill('Changed question during recognition');await expect(review.getByRole('button',{name:'Use in conversation'})).toBeDisabled();await review.getByRole('button',{name:'Cancel',exact:true}).click();await expect(review).toHaveCount(0);expect(await page.evaluate(()=>(window as any).questionWorker)).toEqual({posted:1,terminated:1,composed:false});
+});
+
+test('Alpha shutter attaches one capture to a chat draft',async({page})=>{
+ await page.addInitScript(()=>{const canvas=document.createElement('canvas');canvas.width=320;canvas.height=240;const context=canvas.getContext('2d')!;const paint=()=>{context.fillStyle='white';context.fillRect(0,0,320,240);context.fillStyle='black';context.font='36px sans-serif';context.fillText('ALPHA',30,100);};paint();setInterval(paint,50);const devices=navigator.mediaDevices;devices.getUserMedia=async()=>canvas.captureStream(20);Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:devices});});
+ await page.goto('/?mode=dev');
+ await page.getByRole('button',{name:'Camera',exact:true}).click();
+ const camera=page.locator('[data-alpha-camera-root]');
+ await expect(camera.getByLabel('Camera tools')).toHaveCount(0);
+ await expect.poll(()=>camera.locator('video').evaluate((v:HTMLVideoElement)=>v.readyState)).toBeGreaterThanOrEqual(2);
+ await camera.getByRole('button',{name:'Alpha mode'}).click();
+ await camera.getByRole('button',{name:'Attach photo to chat'}).click();
+ await expect(page.getByAltText('Captured photo')).toBeVisible();
+ await expect(page.locator('.alpha-chat-composer textarea')).toHaveValue('');
+ await page.getByRole('button',{name:'Remove photo'}).click();
+ await expect(page.getByAltText('Captured photo')).toHaveCount(0);
 });

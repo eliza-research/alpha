@@ -28,7 +28,7 @@ const HEADER_CLEARANCE_PROPERTY = '--alpha-header-clearance';
 // App headers, the Apps drawer's title row with its Close button, and an open
 // in-phone modal sheet (a month picker, a menu): a notice goes below it, or, when the sheet
 // leaves no room, just above the dock as before, never over the sheet's header.
-const APP_HEADERS = '[data-alpha-app-header],[data-alpha-layer="drawer"] div:has(> h1),[role="dialog"][aria-modal="true"]:not([data-alpha-layer="drawer"])';
+const APP_HEADERS = '[data-alpha-app-header],[data-alpha-layer="drawer"] div:has(> h1),[role="dialog"][aria-modal="true"]:not([data-alpha-layer="drawer"]),.photo-import-menu[open] > div';
 const DOCK = '[data-alpha-layer="composer"],[data-alpha-layer="pill"] > *,.alpha-chat-composer';
 
 /** The dock elements on screen now: rendered, and not retired behind the shade or a voice session. */
@@ -81,7 +81,7 @@ function installHeaderClearance(): () => void {
   };
   const schedule = () => { if (!frame) frame = requestAnimationFrame(measure); };
   const changes = new MutationObserver(schedule);
-  changes.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['inert', 'data-alpha-chat-half'] });
+  changes.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['inert', 'data-alpha-chat-half', 'open'] });
   const root = new MutationObserver(schedule);
   root.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style'] });
   window.addEventListener('resize', schedule);

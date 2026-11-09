@@ -86,6 +86,7 @@ export async function checkCanonicalCalendarEditorClose(extraSources = []) {
         await mark('Click the Calendar list New event action', call('newForm'));
       };
       const edit = async (expected) => {
+        await detail.locator('summary[aria-label="Event actions"]').click();
         await f.button('Edit event').click();
         if (expected) await title.waitFor();
         await mark('Click the exact event detail Edit action', call('editForm'));

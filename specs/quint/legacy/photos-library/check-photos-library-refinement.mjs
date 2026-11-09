@@ -128,6 +128,7 @@ async function openPhotos(page, rows) {
 
 async function enterSelect(page, t, where = 'list') {
   await expect(toast(page)).toHaveCount(0);
+  await page.locator(`summary[aria-label="${where === 'list' ? 'Photos tools' : 'Album options'}"]`).click();
   await button(page, where === 'list' ? 'Select photos' : 'Select items').click();
   await expect(view(page, where).getByRole('button', {name: 'Cancel selection', exact: true})).toBeVisible();
   await t.point('Mounted '+where+' selection mode opens empty', action('EnterSelect'));
@@ -160,7 +161,7 @@ async function batch(page, rows) {
   await toggle(page, t, rows[1], 2);
   const cap = divergence(t.trace, 'mounted_selection_accepts_the_second_item', 'AsBuilt_Cap');
   await button(page, 'Unfavorite selected').click();
-  await expect(button(page, 'Select photos')).toBeVisible();
+  await expect(page.locator('summary[aria-label="Photos tools"]')).toBeVisible();
   await expect(page.getByText('Removed 2 from Favorites', {exact: true})).toBeVisible();
   await t.point('All-favorite selection toggles both exact rows off', action('BatchFavorite'));
   const favorites = divergence(t.trace, 'favorite_is_reversible_for_a_selected_batch', 'AsBuilt_FavToggle');
@@ -188,7 +189,7 @@ async function batch(page, rows) {
 
   await button(page, 'Delete selected').click();
   await expect(tile(page, rows[2].id)).toHaveCount(0);
-  await expect(button(page, 'Select photos')).toBeVisible();
+  await expect(page.locator('summary[aria-label="Photos tools"]')).toBeVisible();
   await t.point('Deleting the selection puts only that photo in Recently deleted', action('BatchTrash'));
   await openTrash(page, t, rows[2]);
   await enterSelect(page, t, 'album');
@@ -205,7 +206,7 @@ async function batch(page, rows) {
   await toggle(page, t, rows[2], 3);
   await button(page, 'Delete selected').click();
   await expect(tile(page, rows[2].id)).toHaveCount(0);
-  await expect(button(page, 'Select photos')).toBeVisible();
+  await expect(page.locator('summary[aria-label="Photos tools"]')).toBeVisible();
   await t.point('A second Trash action keeps the other surviving photo live', action('BatchTrash'));
   await openTrash(page, t, rows[2]);
   await enterSelect(page, t, 'album');
@@ -249,7 +250,7 @@ async function reviewAndViewer(page, rows) {
   await enterSelect(page, t);
   await toggle(page, t, target, 3);
   await button(page, 'Unfavorite selected').click();
-  await expect(button(page, 'Select photos')).toBeVisible();
+  await expect(page.locator('summary[aria-label="Photos tools"]')).toBeVisible();
   await t.point('Owner unfavorites only the newest item', action('BatchFavorite'));
   const filtered = await runView({type: 'photos_filter', favorite: true});
   assert.equal(filtered.shown, 2);

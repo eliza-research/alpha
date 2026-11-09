@@ -1,3 +1,4 @@
+import {openPhotoTools} from './helpers/owned-photo';
 import {test,expect,type Page} from '@playwright/test';
 import {photosBridge} from './helpers/photos-bridge';
 
@@ -30,7 +31,7 @@ async function selection(page:Page,count:number,declineAt=0,holdFirst=false,unkn
   };
  },{count,declineAt,holdFirst,unknownAt});
  await page.getByRole('button',{name:'Photos',exact:true}).click();
- await page.getByRole('button',{name:'Select photos',exact:true}).click();
+ await openPhotoTools(page);await page.getByRole('button',{name:'Select photos',exact:true}).click();
  await page.getByRole('button',{name:'Select all',exact:true}).click();
  await page.getByRole('button',{name:'Favorite selected',exact:true}).click();
 }
@@ -45,7 +46,7 @@ for(const [count,sizes] of [[500,[500]],[501,[500,1]],[1001,[500,500,1]]] as con
 }
 for(const declineAt of [1,2])test(`declining permitted batch ${declineAt} dispatches no later confirmation`,async({page})=>{
  await selection(page,1001,declineAt);
- await expect(page.getByRole('button',{name:'Select photos',exact:true})).toBeEnabled();
+ await openPhotoTools(page);await expect(page.getByRole('button',{name:'Select photos',exact:true})).toBeEnabled();
  expect(await page.evaluate(()=>(window as any).mediaFixture.batchCalls.map((call:any)=>call.items.length))).toEqual(declineAt===1?[500]:[500,500]);
 });
 test('leaving Photos during a reviewed batch stops later requests and stale publication',async({page})=>{
@@ -54,14 +55,14 @@ test('leaving Photos during a reviewed batch stops later requests and stale publ
  await page.evaluate(()=>(window as any).mediaFixture.shell.goHome());
  await page.evaluate(()=>(window as any).mediaFixture.release());
  await page.getByRole('button',{name:'Photos',exact:true}).click();
- await expect(page.getByRole('button',{name:'Select photos',exact:true})).toBeEnabled();
+ await openPhotoTools(page);await expect(page.getByRole('button',{name:'Select photos',exact:true})).toBeEnabled();
  expect(await page.evaluate(()=>(window as any).mediaFixture.batchCalls.length)).toBe(1);
  await expect(page.getByText(/Added .* to Favorites/)).toHaveCount(0);
 });
 
 for(const count of [500,1001])test(`an unknown batch result among ${count} items reports uncertainty and is not replayed`,async({page})=>{
  await selection(page,count,0,false,1);
- await expect(page.getByRole('button',{name:'Select photos',exact:true})).toBeEnabled();
+ await openPhotoTools(page);await expect(page.getByRole('button',{name:'Select photos',exact:true})).toBeEnabled();
  await expect(page.getByText(count===500?"Couldn't confirm the change.":'Added 501 to Favorites · 500 not confirmed',{exact:true})).toBeVisible();
  await expect(page.getByText(/Added 0 to Favorites|Nothing changed\. Try again\.|not changed/)).toHaveCount(0);
  expect(await page.evaluate(()=>(window as any).mediaFixture.toasts)).toEqual([count===500?"Couldn't confirm the change.":'Added 501 to Favorites · 500 not confirmed']);

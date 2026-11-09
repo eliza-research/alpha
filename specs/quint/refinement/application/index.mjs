@@ -1,3 +1,4 @@
+import {checkChatAttachments} from './chat-attachments.mjs';
 import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {root} from './support.mjs';
@@ -82,7 +83,7 @@ import {checkStartupUpdateAdmission} from './startup-update-admission.mjs';
 import {checkCanonicalNotificationTapAdmission} from './canonical-notification-tap-admission.mjs';
 import {checkResidentLiveness} from './resident-liveness.mjs';
 
-const adapters = [application, shellNavigation, startupPermissions, assistantConversation, notesLifecycle,
+const adapters = [checkChatAttachments, application, shellNavigation, startupPermissions, assistantConversation, notesLifecycle,
   browserSession, credentialVault, developmentSurfaces, filesAndSharing, preferences, durableStore,
   permissionWalkthrough, developmentDevice, permanentVoiceDeletion, developmentHost, filesTree,
   calendarPresentation, draftDispatch, notificationCollection, callbackLanding,

@@ -25,7 +25,7 @@ test('actual voice activity sits below the chat notices, and an unconfirmed clea
   await f.shell.startVoice();
   for(const state of ['starting','listening']){
    const model=state==='starting'?f.initialView:f.renderChat();
-   assert.equal(model.state,state);assert.notEqual(model.activity,null);
+   assert.equal(model.state,state);if(state==='starting')assert.equal(model.activity,null);else assert.notEqual(model.activity,null);
    const html=render({inlineChatRecorder:true,chatRecorder:model});
    const doc=new JSDOM(html).window.document,notices=doc.querySelector('.alpha-chat-notices'),controls=doc.querySelector('.alpha-voice-composer');
    assert.ok(notices&&controls);
@@ -36,15 +36,15 @@ test('actual voice activity sits below the chat notices, and an unconfirmed clea
    assert.equal(notices.querySelector('.alpha-voice-error'),null,'no error or support-code content');
    assert.equal(notices.querySelector('[data-alpha-voice-recovery]'),null);
    assert.ok(doc.querySelector('[aria-label="Stop voice conversation"]'));
-   assert.equal(doc.querySelectorAll('[data-alpha-voice-animation]').length,1);
-   assert.equal(doc.querySelectorAll('[aria-label="Voice activity"]').length,1);
+   assert.equal(doc.querySelectorAll('[data-alpha-voice-animation]').length,state==='starting'?0:1);
+   assert.equal(doc.querySelectorAll('[aria-label="Voice activity"]').length,state==='starting'?0:1);
   }
   // The same actual adapter must preserve uncertain cleanup instead of claiming mic-off.
   f.cleanupError=Error('Cleanup could not be confirmed');
   f.renderChat().stop();for(let count=0;count<10;count++)await f.tick();
   const held=f.renderChat();assert.equal(held.state,'error');assert.equal(held.activity,null);
   assert.equal(held.muted,'mixed');assert.equal(held.muteLabel,'Microphone status unconfirmed');
-  assert.equal(held.recoveryLabel,'');assert.match(held.lines[0].t,/Could not confirm voice media stopped/);
+  assert.ok(!held.recoveryLabel);assert.match(held.lines[0].t,/Could not confirm voice media stopped/);
   const heldDoc=new JSDOM(render({inlineChatRecorder:true,chatRecorder:held})).window.document;
   assert.equal(heldDoc.querySelectorAll('[data-alpha-voice-animation]').length,0);
   assert.equal(heldDoc.querySelector('[role="alert"]'),null);assert.doesNotMatch(heldDoc.body.textContent,/Could not confirm|Close the app/);

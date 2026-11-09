@@ -39,9 +39,23 @@ function fixture({currentOnly=false,producerInputs=false}={}){
   for(const name of new Set([...qualified.inputs.map(row=>row.path),...embeddingProducerInputPaths])){const file=path.join(vendor,name);fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,execFileSync('git',['-C',path.join(root,'vendor/eliza'),'show','HEAD:'+name]));}
  }else{
   fs.mkdirSync(vendor);git(vendor,'init');
-  // Borrow only the checked-out objects; cloning a partial source can fetch unrelated history.
+  // Borrow only local objects. Flatten their existing alternates so this fixture does not
+  // add another level to Git's alternates limit or fetch unrelated history.
   const objects=git(path.join(root,'vendor/eliza'),'rev-parse','--path-format=absolute','--git-path','objects');
-  fs.writeFileSync(path.join(vendor,'.git/objects/info/alternates'),objects+'\n');
+  const borrowed=[],seen=new Set();
+  const borrow=directory=>{
+   directory=fs.realpathSync(directory);
+   if(seen.has(directory))return;
+   seen.add(directory);
+   const file=path.join(directory,'info/alternates');
+   if(fs.existsSync(file))for(const line of fs.readFileSync(file,'utf8').split('\n').filter(Boolean)){
+    const alternate=line.startsWith('"')?JSON.parse(line):line;
+    borrow(path.resolve(directory,alternate));
+   }
+   borrowed.push(directory);
+  };
+  borrow(objects);
+  fs.writeFileSync(path.join(vendor,'.git/objects/info/alternates'),borrowed.join('\n')+'\n');
   git(vendor,'sparse-checkout','init','--no-cone');
   git(vendor,'sparse-checkout','set','--no-cone',...qualified.inputs.map(row=>'/'+row.path),...embeddingProducerInputPaths.map(name=>'/'+name),'/plugins/plugin-local-inference/native/llama.cpp');
   git(vendor,'checkout','--detach',JSON.parse(fs.readFileSync(path.join(dir,'upstream.lock.json'),'utf8')).commit);

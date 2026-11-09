@@ -14,7 +14,7 @@ import stat
 import subprocess
 import sys
 
-SDK = '99b49439ce9d0cb5607e9831b9f7f58d89525029'
+SDK = json.loads((Path(__file__).resolve().parents[2] / 'upstream.lock.json').read_text(encoding='utf-8'))['commit']
 NODE = '26.13.0'
 HOST = '4ba9ec0cbbb773855838b3ba45a59b97476a15f1d07983a3b5a039fcb00c7845'
 JSON_SHA = '3ea61b2a06e31edf1c91134fe9106b0ebb16628be169f3db75bc7a2b06b45796'

@@ -46,6 +46,7 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
  const pending=new Map<string,{environment:Environment;expiresAt:number;previousReference:string|null}>();
  const claims=new Map<string,{environment:Environment;previousReference:string|null;expiresAt:number;credential:Credential}>();
  const active=new Map<string,{controller:AbortController;environment:Environment;credentialId?:string}>();
+ const workspaceReturns=new Map<string,{environment:Environment;reference:string;credentialId:string;origin:string;expiresAt:number}>();
  // This host admits Calendar writes only after an explicit current-owner Sync intent.
  // A resident/source restart requires a fresh intent; renderer load defaults never enable it.
  let calendarGeneration=0,calendarAccess:{credentialId:string;reference:string;generation:number}|null=null;
@@ -307,6 +308,19 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
  const send=(res:ServerResponse,status:number,data:unknown)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(data));};
  const handler=async(req:IncomingMessage,res:ServerResponse)=>{
   const host=req.headers.host,origin=req.headers.origin;
+  if(req.url?.startsWith('/google-return?')&&req.method==='GET'&&host&&/^(127\.0\.0\.1|localhost):\d+$/.test(host)){
+   const url=new URL(req.url,`http://${host}`),state=url.searchParams.get('state')??'',attempt=workspaceReturns.get(state);
+   if(!attempt||attempt.expiresAt<=Date.now()||attempt.origin!==url.origin){send(res,410,{error:'Google return expired. Start again in Alpha.'});return;}
+   workspaceReturns.delete(state);
+   try{await admitted(attempt.environment,attempt.reference,attempt.credentialId);}catch{send(res,409,{error:'Alpha account changed. Start again in Alpha.'});return;}
+   const id=url.searchParams.get('connection_id'),connected=url.searchParams.get('google_connected')==='true'&&id&&UUID.test(id);
+   // This signal only wakes the app's authenticated connection readback. URL markers never authorize access.
+   const message=JSON.stringify({type:'alpha-google-return',credentialId:attempt.credentialId,result:connected?'connected':'failed',...(connected?{connectionId:id}:{})});
+   const script=`new BroadcastChannel('alpha-google-return').postMessage(${message});window.close();`;
+   const hash=createHash('sha256').update(script).digest('base64');
+   res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','Referrer-Policy':'no-referrer','Content-Security-Policy':`default-src 'none'; script-src 'sha256-${hash}'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`});
+   res.end(`<!doctype html><html><head><title>Alpha</title></head><body><script>${script}</script></body></html>`);return;
+  }
   if(req.url===GOOGLE_BROWSER_RETURN&&req.method==='GET'&&host&&/^(127\.0\.0\.1|localhost):\d+$/.test(host)){
    res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','Referrer-Policy':'no-referrer','Content-Security-Policy':`default-src 'none'; script-src 'sha256-${googleReturnHash}'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`});
    res.end(`<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Return to Alpha</title></head><body><p>Return to Alpha.</p><script>${googleReturnScript}</script></body></html>`);
@@ -400,7 +414,14 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
     const accountRead=method==='GET'&&input.body===undefined&&['/api/v1/user','/api/v1/billing/limits','/api/v1/subscription/entitlement','/api/v1/subscription/entitlement-keys','/api/v1/maps/capabilities'].includes(route);
     const selfRevoke=method==='DELETE'&&route==='/api/v1/api-keys/current'&&input.body===undefined;
     if(!selfRevoke&&!redeem&&!accountRead&&!mapsPost&&!mapsTile&&!managedGoogleRequest(url,method,input.body))throw Error('Unsupported Cloud route');
-    const c=await admitted(env,input.credentialReference);active.get(ownedId)!.credentialId=c.credentialId;if(selfRevoke)await current(env,c,controller.signal);const response=await canonical(env,route,controller.signal,{method,headers:{...(input.body===undefined?{}:{'Content-Type':'application/json'}),...(mapsRequestId?{'Idempotency-Key':mapsRequestId}:{})},...(input.body===undefined?{}:{body:input.body})},c);if(selfRevoke)options.diagnostic?.({environment:env,operation:route,status:response.status});let result=await boundedServiceJson(response);await current(env,c,controller.signal);if(response.ok&&route==='/api/v1/user'&&result.success===true){const who=object(result.data);result={success:true,data:{id:who.id,organization_id:who.organization_id,...(typeof who.email==='string'?{email:who.email}:{})}};}if(selfRevoke)result={success:result.success,...(typeof result.status==='string'?{status:result.status}:{}),...(typeof result.credentialId==='string'?{credentialId:result.credentialId}:{}),...(typeof result.revokedAt==='string'?{revokedAt:result.revokedAt}:{})};send(res,200,{status:response.status,data:result});return;
+    const c=await admitted(env,input.credentialReference);active.get(ownedId)!.credentialId=c.credentialId;if(selfRevoke)await current(env,c,controller.signal);let requestBody=input.body;
+    if(method==='POST'&&route==='/api/v1/eliza/google/connect/initiate'){
+     for(const [state,attempt] of workspaceReturns)if(attempt.expiresAt<=Date.now()||attempt.credentialId===c.credentialId)workspaceReturns.delete(state);
+     const state=randomBytes(32).toString('base64url'),origin=`http://${host}`;
+     workspaceReturns.set(state,{environment:env,reference:c.credentialReference,credentialId:c.credentialId,origin,expiresAt:Date.now()+600000});
+     requestBody=JSON.stringify({...JSON.parse(input.body),redirectUrl:`${origin}${BROWSER_CLOUD_BRIDGE_PATH}/google-return?state=${state}`});
+    }
+    const response=await canonical(env,route,controller.signal,{method,headers:{...(input.body===undefined?{}:{'Content-Type':'application/json'}),...(mapsRequestId?{'Idempotency-Key':mapsRequestId}:{})},...(requestBody===undefined?{}:{body:requestBody})},c);if(selfRevoke)options.diagnostic?.({environment:env,operation:route,status:response.status});let result=await boundedServiceJson(response);await current(env,c,controller.signal);if(response.ok&&route==='/api/v1/user'&&result.success===true){const who=object(result.data);result={success:true,data:{id:who.id,organization_id:who.organization_id,...(typeof who.email==='string'?{email:who.email}:{})}};}if(selfRevoke)result={success:result.success,...(typeof result.status==='string'?{status:result.status}:{}),...(typeof result.credentialId==='string'?{credentialId:result.credentialId}:{}),...(typeof result.revokedAt==='string'?{revokedAt:result.revokedAt}:{})};send(res,200,{status:response.status,data:result});return;
    }
    if(data.operation==='stt'||data.operation==='tts'){
     const c=await admitted(env,data.credentialReference,data.credentialId);active.get(ownedId)!.credentialId=c.credentialId;

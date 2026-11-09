@@ -1,4 +1,4 @@
-import {openBrowserCalendar} from './helpers/browser-calendar';
+import {openBrowserCalendar, chooseCalendarEventAction} from './helpers/browser-calendar';
 import { returnToApps } from './app-navigation';
 import {test,expect} from '@playwright/test';
 for(const next of ['event','home','new-draft'] as const)test(`late Calendar deletion preserves newer ${next}`,async({page})=>{
@@ -16,7 +16,7 @@ for(const next of ['event','home','new-draft'] as const)test(`late Calendar dele
   const f=(window as any).deleteCompletion={calls:0,release:null,done:false};
   BrowserCalendar.prototype.remove=async function(input){f.calls++;const result=await remove.call(this,input);await new Promise<void>(resolve=>f.release=resolve);f.done=true;return result;};
  });
- await page.getByRole('button',{name:'Delete event',exact:true}).click();
+ await chooseCalendarEventAction(page, 'Delete event');
  await page.getByRole('dialog',{name:'Delete calendar event?'}).getByRole('button',{name:'Delete event',exact:true}).click();
  await expect.poll(()=>page.evaluate(()=>typeof(window as any).deleteCompletion.release)).toBe('function');
  await page.getByRole('button',{name:'Back to calendar',exact:true}).click();

@@ -73,6 +73,7 @@ export function homeAttentionCard(out: Bag): ReactElement | null {
 
 /** Keep the brief widget available; show an honest empty state until a retained brief exists. */
 export function homeBriefCard(out: Bag): ReactElement | null {
+  if(out.homeBriefHas!==true)return null;
   const retained=out.homeBriefHas===true,failed=retained&&out.homeBriefFailed===true;
   return createElement(OverviewBriefCard, {
     title: retained?String(out.homeBriefTitle || 'Your brief'):'Your brief', status: retained?String(out.homeBriefStatus || 'No brief yet'):'No brief yet', failed,

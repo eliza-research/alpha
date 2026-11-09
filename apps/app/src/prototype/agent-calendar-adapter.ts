@@ -264,10 +264,9 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
   // Shared daily-overview states for the agent calendar feed: reading, not connected, failed, stale and fresh.
   // Only a current complete feed may supply an item or a real empty state.
   const failed=!!model?.error||model?.status==='error'||model?.status==='unavailable',unverified=model?.status==='partial';
-  // A verified event names its source on the card and on an overdue reminder's Next line; the quiet
-  // read claims no read time, and an empty or unverified card names no source.
+  // Keep the source in the accessible description of a verified event.
   const source=event&&home.verified?'Agent Calendar':'';
-  let feed=failed||unverified?presentHomeAgendaFeed({status:model?.error?'error':model!.status,hasItem:!!event,feedState:model?.feed?.state??null,asOf:Date.parse(model?.feed?.syncedAt??'')||null,error:model?.error??null,now,source:'Agent Calendar',emptyLabel:home.emptyLabel}):{state:home.verified?'ready':'pending',read:source,description:source,stale:false,title:home.emptyLabel};
+  let feed=failed||unverified?presentHomeAgendaFeed({status:model?.error?'error':model!.status,hasItem:!!event,feedState:model?.feed?.state??null,asOf:Date.parse(model?.feed?.syncedAt??'')||null,error:model?.error??null,now,source:'Agent Calendar',emptyLabel:home.emptyLabel}):{state:home.verified?'ready':'pending',read:'',description:source,stale:false,title:home.emptyLabel};
   // A complete historical or future-dated empty snapshot cannot establish today's empty calendar.
   if(home.verified&&!event&&!confirmedEmpty)feed={state:'error',read:'Open Calendar to retry',description:'Agent Calendar has not been verified. Open Calendar to retry.',stale:false,title:'Calendar has not been verified'};
   // A partial feed is still retryable, but Home need only show the Calendar entry.

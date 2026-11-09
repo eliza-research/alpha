@@ -60,6 +60,7 @@ import {checkNativeGmailBackground} from './gmail-background.mjs';
 import {checkNativeDigestConsent} from './native-digest.mjs';
 import {checkNativeCalendarScopedReview} from './scoped-calendar-review.mjs';
 import {checkNativeCalendarSyncEnable} from './calendar-sync-enable.mjs';
+import {checkBrowserUnderlay} from './browser-underlay.mjs';
 
 export async function runNativeRefinement() {
   const earlyInputs = [fileURLToPath(import.meta.url)];
@@ -181,9 +182,10 @@ export async function runNativeRefinement() {
       checkNativeSmsDispatch, checkNativeMmsDispatch, checkNativeTextScaleLifecycle, checkNativeCrashJournal,
       checkNativeSettingsHandoff, checkNativeSourceRenewal, checkNativeAssistantEntry, checkNativeActionRecovery,
       checkNativeGmailBackground, checkNativeDigestConsent, checkNativeCalendarScopedReview,
-      checkNativeCalendarSyncEnable].map(withInputs(nativeInputs)),
+      checkNativeCalendarSyncEnable, checkBrowserUnderlay].map(withInputs(nativeInputs)),
   ];
   const baseObligations = [
+    {model: 'BrowserUnderlay', obligation: 'Android lifecycle, rendering, rounded geometry and physical input', reason: 'The production Kotlin touch path runs with controlled Android ports. Native presentation, split delivery, hover and drag need separate installed evidence.'},
     {model: 'GoogleBrowserReturnClaim', obligation: 'Installed callback delivery and durable credential custody',
       reason: 'The authenticated Java claim and grace functions execute under controlled queues, storage and HTTPS. Installed lifecycle, secure-store durability and intra-worker schedules remain separate.'},
     ...reviewedCopiesObligations,

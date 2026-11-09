@@ -1,3 +1,4 @@
+import {openPhotoTools} from './helpers/owned-photo';
 import {test,expect,type Locator} from '@playwright/test';
 
 async function expectWhiteImageContrast(elements:Locator) {
@@ -17,7 +18,7 @@ for(const theme of ['light','dark']) {
   await expect(page.locator('.photo-favorite-badge').first()).toBeAttached();
   await expectWhiteImageContrast(page.locator('.photo-media-badge,.photo-favorite-badge'));
   await page.locator('.photo-media-badge').first().scrollIntoViewIfNeeded();
-  await page.getByRole('button',{name:'Select photos',exact:true}).click();
+  await openPhotoTools(page);await page.getByRole('button',{name:'Select photos',exact:true}).click();
   await expect(page.locator('.photo-selection-badge').first()).toBeVisible();
   await expectWhiteImageContrast(page.locator('.photo-selection-badge'));
  });

@@ -11,7 +11,7 @@ for(const theme of ['light','dark'])for(const kind of Object.keys(dialogs) as (k
   if(kind==='calendar'){const {openCalendarRecovery}=await import('/src/browser/calendar-recovery.ts');openCalendarRecovery();}
 
  },kind);
- if(kind==='clock'){await page.getByRole('button',{name:'Calendar',exact:true}).click();await page.getByRole('button',{name:'Clock alarms',exact:true}).click();}
+ if(kind==='clock'){await page.getByRole('button',{name:'Workflows',exact:true}).click();await page.getByRole('button',{name:'Clock alarms',exact:true}).click();}
  const [name,close]=dialogs[kind],dialog=page.getByRole('dialog',{name,exact:true});await expect(dialog).toBeVisible();
  expect(await dialog.evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);
  const actions=[close,...(kind==='result'?['Use result']:kind==='urgency'?['Urgent','Not urgent']:kind==='clock'?['Save alarm']:[])];

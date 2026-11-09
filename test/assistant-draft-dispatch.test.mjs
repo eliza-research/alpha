@@ -1,4 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from './support/strip-types.mjs';
+import {restoreAttachments} from './support/attachment-restoration.mjs';
 // Alpha's composer contract, run against the shared controller exactly as the pin projects it
 // (apps/app/src/prototype/assistant-draft-controller.ts only re-exports it under Alpha's name).
 const code=stripTypeScriptTypes(readFileSync(new URL('../.eliza/client-features/packages/ui/src/state/durable-draft-controller.ts',import.meta.url),'utf8'),{mode:'strip'});
@@ -41,7 +42,7 @@ for (const transition of ['session', 'history']) test(`the shell retires the old
   const ports = {
     connectionController: {subscribe: callback => { changed = callback; return () => {}; }, getSnapshot: () => snapshot},
     alphaClient: {disconnect() {}}, cancelMessageContext() {}, clearMapsSelection() {},
-    syncStoppedReplyNotice() {}, syncCanonicalNotes() {}, context() {},
+    syncStoppedReplyNotice() {}, syncCanonicalNotes() {}, context() {}, restoreAttachments,
     collapseSystemNotices: messages => messages, mergeConversationDelivery: messages => messages,
   };
   const install = new Function(...Object.keys(ports), stripTypeScriptTypes(source.slice(start, end), {mode: 'transform'}));

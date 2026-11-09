@@ -293,13 +293,16 @@ test('a microphone that does not start leaves the recorder open with one line an
   let refuse = true;
   const start = driver.start;
   driver.start = async () => { if (refuse) throw Object.assign(new Error('Microphone permission denied'), {code: 'permission-denied'}); return start(); };
-  const s = session(driver);
+  let recoveries = 0;
+  const s = new NoteRecorderSession(driver, async () => null, () => {}, {onPermissionDenied: () => recoveries++});
   await assert.rejects(s.begin());
   assert.equal(s.phase, 'failed');
   assert.equal(s.error, 'Allow the microphone in Settings.');
+  assert.equal(recoveries, 1);
   refuse = false;
   await s.togglePause();
   assert.equal(s.phase, 'recording');
+  assert.equal(recoveries, 1, 'a successful retry does not reopen access setup');
   s.close();
 });
 

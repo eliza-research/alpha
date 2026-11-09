@@ -14,3 +14,11 @@ export async function openOwnedPhotoViewer(page:Page,theme='light'){
  await page.getByRole('button',{name:/^Photo, /}).click();
  await expect(page.locator('[data-alpha-subview="photos-viewer"]:not([inert])')).toBeVisible();
 }
+
+/** Open the visible Photos menu without toggling an already-open menu closed. */
+export async function openPhotoTools(page:Page){
+ const menu=page.locator('details').filter({has:page.getByLabel('Photos tools',{exact:true})}).filter({visible:true});
+ await expect(menu).toBeVisible();
+ if(await menu.getAttribute('open')===null)await menu.getByLabel('Photos tools',{exact:true}).click();
+ return menu;
+}

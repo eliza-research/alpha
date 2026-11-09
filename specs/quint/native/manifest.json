@@ -2522,6 +2522,35 @@
       }
     },
     {
+      "path": "specs/quint/native/BrowserUnderlay.qnt",
+      "module": "BrowserUnderlay",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BelowHostLayer.kt",
+        "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserSurfacePlugin.kt"
+      ],
+      "tests": [
+        "missingRectsTest",
+        "hostFingerStaysHostTest",
+        "pageGestureStaysPageTest",
+        "hiddenGestureIsConsumedTest",
+        "resumeRequiresNewGeometryTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "NoHostGestureBecomesPage",
+        "NoPageStartWithoutHostRects",
+        "DisposedPageCannotBeShown"
+      ],
+      "abstractions": [
+        "Coordinates, rounded hit tests, shadows and event dispatch stay native-library/Pixel evidence.",
+        "Pause represents Android cancellation; exact activity lifecycle sequencing requires signed-device qualification.",
+        "Session, profile and sensitive-overlay authority remain BrowserSession/BrowserSiteState."
+      ]
+    },
+    {
       "path": "specs/quint/native/NativeGmailBackground.qnt",
       "module": "NativeGmailBackground",
       "init": "init",

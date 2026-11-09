@@ -1,3 +1,4 @@
+import {chooseCalendarEventAction} from './helpers/browser-calendar';
 import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import { expect, type Page } from '@playwright/test';
 import {openCanonicalCalendarForm} from './helpers/canonical-calendar';
@@ -30,7 +31,7 @@ const settle = async (page: Page) => {
   await settled(page);
 };
 
-const press = async (page: Page, steps: string[]) => { for (const step of steps) await page.getByRole('button', { name: step, exact: true }).first().click(); };
+const press = async (page: Page, steps: string[]) => { for (const step of steps) { if(step==='Edit event'||step==='Delete event') await chooseCalendarEventAction(page,step); else await (step === 'Photos tools' ? page.getByLabel(step, { exact: true }) : page.getByRole('button', { name: step, exact: true }).first()).click(); } };
 /** The named subview is on screen and exposed (not retired behind another subview). */
 const showing = async (page: Page, subview?: string) => {
   if (subview) await expect(page.locator(`[data-alpha-subview="${subview}"]:not([inert])`)).toBeVisible();
@@ -126,7 +127,7 @@ export const LIVE_STATES: State[] = [
   live('Settings password manager', ['Settings', 'Apps', 'Passwords']),
   live('Browser menu', ['Browser', 'Menu']),
   live('Browser address', ['Browser', 'Edit address']),
-  live('Calendar alarms', ['Calendar', 'Clock alarms']),
+  live('Workflow alarms', ['Workflows', 'New automation', 'Clock alarms']),
   legacyNotes('Notes note menu', ['New note', 'More']),
   {name:'live Notes source document',open:async(page,theme)=>{await page.addInitScript(offline);await page.goto(theme ? `/?theme=${theme}` : '/');await openLegacyAttachment(page);await settle(page);}},
   legacyNotes('Notes recorder', ['Record voice note'], 'notes-recorder'),
@@ -165,7 +166,7 @@ export const MOCK_STATES: State[] = [
   mock('inbox', ['Search email']),
   mock('inbox:mail', ['Reply'], 'inbox-composing'),
   mock('calendar:event', ['Edit event'], 'calendar-form'),
-  mock('calendar', ['Clock alarms']),
+  mock('workflows', ['Clock alarms']),
   mock('browser', ['Menu']),
   mock('browser', ['Menu', 'Bookmarks and history'], 'browser-library'),
   mock('browser', ['Menu', 'Share']),
@@ -174,7 +175,7 @@ export const MOCK_STATES: State[] = [
   mock('photos:viewer', ['Edit photo'], 'photos-edit'),
   mock('photos:viewer', ['Photo info']),
   mock('photos:viewer', ['Share photo']),
-  mock('photos', ['Select photos']),
+  mock('photos', ['Photos tools', 'Select photos']),
   // Earlier folder-creation controls were retired; the live retained-record state above covers recovery.
   mock('notes', ['Open The case for on-device agents'], 'notes-link'),
   mock('notes:editor', ['More', 'Share note']),

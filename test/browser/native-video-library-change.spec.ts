@@ -30,7 +30,7 @@ async function openPendingVideoCopy(page:Page){
  });
  await page.getByRole('button',{name:'Photos',exact:true}).click();
  await page.getByRole('button',{name:/^Video, /}).click();
- await expect(page.locator('[data-alpha-subview="photos-viewer"]').getByRole('button',{name:/^Video, /}).first()).toBeVisible();await page.getByRole('button',{name:'Play video',exact:true}).click();await expect(page.locator('[data-alpha-photo-frame] video')).toBeVisible();await page.getByRole('button',{name:'Pause video',exact:true}).click();await page.getByRole('button',{name:'Edit video',exact:true}).click();
+ await expect(page.locator('[data-alpha-subview="photos-viewer"]').getByRole('button',{name:'Video. Tap to show or hide controls, swipe to browse',exact:true})).toBeVisible();await page.getByRole('button',{name:'Play video',exact:true}).click();await expect(page.locator('[data-alpha-photo-frame] video')).toBeVisible();await page.getByRole('button',{name:'Pause video',exact:true}).click();await page.getByRole('button',{name:'Edit video',exact:true}).click();
  const dialog=page.getByRole('dialog',{name:'Edit video',exact:true});
  await expect(dialog.getByRole('button',{name:'Save video copy',exact:true})).toBeEnabled();
  await dialog.getByRole('slider',{name:'Start seconds'}).press('ArrowRight');

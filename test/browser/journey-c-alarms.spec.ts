@@ -29,7 +29,7 @@ const actions=(page:Page)=>page.evaluate(async()=>(await (await import('/src/bro
 /** Read-only view of persisted development Clock alarms. */
 const alarms=(page:Page)=>page.evaluate(async()=>{const raw=await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw();return raw?JSON.parse(raw).reminders.filter((r:any)=>r.id.startsWith('alarm_')).map((r:any)=>({title:r.title,at:r.at,status:r.status})):[];});
 const clock=(page:Page)=>page.getByRole('dialog',{name:'Clock alarms',exact:true});
-async function openClock(page:Page){await page.getByRole('button',{name:'Calendar',exact:true}).click();await page.getByRole('button',{name:'Clock alarms',exact:true}).click();await expect(clock(page)).toBeVisible();return clock(page);}
+async function openClock(page:Page){await page.getByRole('button',{name:'Workflows',exact:true}).click();await page.getByRole('button',{name:'Clock alarms',exact:true}).click();await expect(clock(page)).toBeVisible();return clock(page);}
 async function queue(page:Page,operation:object){
  await page.getByRole('button',{name:'Settings',exact:true}).click();
  await openConnectionDiagnostics(page);
@@ -104,7 +104,7 @@ test('journey C: agent-proposed alarm is reviewed, saved once, survives reload, 
  await expect.poll(async()=>(await actions(page)).proposals.map((p:any)=>[p.payload.operation.action,p.state,p.receipt?.result?.status])).toEqual([['set','completed','opened'],['show','completed','opened']]);
  expect(await alarms(page)).toEqual([{title:LABEL,at,status:'scheduled'}]);
 
- // 6. Reload: still exactly one alarm, reachable through Calendar -> Clock alarms.
+ // 6. Reload: still exactly one alarm, reachable through Workflows -> Clock alarms.
  await page.reload();
  dialog=await openClock(page);
  await expect(dialog.getByText(LABEL,{exact:true})).toHaveCount(1);

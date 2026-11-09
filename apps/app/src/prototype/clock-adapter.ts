@@ -8,7 +8,7 @@ import {secureConnectionStore} from '../runtime/native-connection';
 const actions=['set','show','snooze','dismiss'] as const;
 /** A reviewed handoff, never a local alarm database or a provider-success claim. */
 export function installClockAdapter(Component:any,views:Bag,options:{simulated:boolean;browser?:boolean}) {
- const p=Component.prototype,render=views.calendar.render,leave=views.calendar.onLeave;
+ const p=Component.prototype,render=views.workflows.render,leave=views.workflows.onLeave;
  const draftId=crypto.randomUUID();let draftRevision=0;
  const selection=()=>open?{kind:'clock-draft',id:draftId,revision:String(draftRevision)}:undefined;
  let owner:any,open=false,action:ClockRequest['action']='set',time='07:00',label='',snooze='10',days:ClockDay[]=[],review:ClockRequest|null=null,busy=false,message='',generation=0;
@@ -22,7 +22,7 @@ export function installClockAdapter(Component:any,views:Bag,options:{simulated:b
  const simulated=()=>testMocksEnabled&&mockRequested();
  const repeatAvailable=()=>simulated()||repeatSupported;
  const blocked=()=>!testMocksEnabled&&mockRequested();
- const publish=()=>{++draftRevision;owner?.vset('calendar',{});};
+ const publish=()=>{++draftRevision;owner?.vset('workflows',{});};
  const history=createClockHandoffHistory(secureConnectionStore,()=>localStorage.getItem(clockHandoffLegacyKey));
  let snapshot:ClockHandoffSnapshot|null=null,loading=false,historyGeneration=0;
  const restore=async()=>{
@@ -39,7 +39,7 @@ export function installClockAdapter(Component:any,views:Bag,options:{simulated:b
  const close=()=>{if(!busy){open=false;review=null;publish();}};
  const back=(event:Event)=>{if(!open)return;event.preventDefault();event.stopImmediatePropagation();close();};
  const modal=createInlineModal(close,()=>document.querySelector<HTMLElement>('button[aria-label="Clock alarms"]'));
- views.calendar.onLeave=(...args:any[])=>{open=false;review=null;++generation;return leave?.(...args);};
+ views.workflows.onLeave=(...args:any[])=>{open=false;review=null;++generation;return leave?.(...args);};
  const retireReview=()=>{review=null;++generation;};
  const hidden=()=>{if(document.hidden)retireReview();else if(open&&!busy)void restore();};
  const mount=p.componentDidMount,unmount=p.componentWillUnmount;
@@ -81,7 +81,7 @@ export function installClockAdapter(Component:any,views:Bag,options:{simulated:b
   if(token===generation){message=result.message;publish();}
   else if(open&&!document.hidden)void restore();
  };
- views.calendar.render=(state:Bag,api:Bag)=>{
+ views.workflows.render=(state:Bag,api:Bag)=>{
   const out=render(state,api);
   out.openClock=()=>{if(busy)return;if(options.browser&&!simulated()&&!blocked()){void DailyApps.clockHandoff({action:'show',reviewed:true}).catch(()=>api.toast('Clock could not be opened. Try again.'));return;}open=true;review=null;void restore();publish();};
   const currentReview=review;

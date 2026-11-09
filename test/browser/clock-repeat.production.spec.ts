@@ -25,7 +25,7 @@ async function clockBridge(page: Page, repeatDaysVersion: number | null) {
 const handoffs = (page: Page) => page.evaluate(() => (window as any).clockHandoffs ?? []) as Promise<Array<Record<string, unknown>>>;
 async function openClock(page: Page) {
   await residentHome(page);
-  await button(page, 'Calendar').click();
+  await button(page, 'Workflows').click();
   await button(page, 'Clock alarms').click();
   return page.getByRole('dialog', { name: 'Clock alarms', exact: true });
 }
