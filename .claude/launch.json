@@ -2,18 +2,6 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "radical-studio",
-      "runtimeExecutable": "python3",
-      "runtimeArgs": [
-        "-m",
-        "http.server",
-        "8781",
-        "--directory",
-        "design-assets/radical-studio"
-      ],
-      "port": 8781
-    },
-    {
       "name": "alphaphone-production",
       "runtimeExecutable": "npm",
       "runtimeArgs": [
@@ -53,21 +41,6 @@
         "--strictPort"
       ],
       "port": 5420
-    },
-    {
-      "name": "chat-drag-main-ui",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": [
-        "--prefix",
-        "/tmp/claude-1000/-home-shaw-Work-alphaphone/d0e28343-6c26-4cf5-8759-cdbe010223a6/scratchpad/wt",
-        "run",
-        "dev:ui",
-        "--",
-        "--port",
-        "5430",
-        "--strictPort"
-      ],
-      "port": 5430
     }
   ]
 }

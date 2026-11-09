@@ -47,8 +47,12 @@ import {checkGmailAgentMailboxRecovery} from './gmail-agent-mailbox-recovery.mjs
 import {checkDevelopmentDigestPending} from './development-digest-pending.mjs';
 import {checkAndroidGzipAssetStage} from './android-gzip-asset-stage.mjs';
 import {checkResidentJavaSourceStage} from './resident-java-source-stage.mjs';
+import {checkAndroidBrowserModuleStage} from './android-browser-module-stage.mjs';
+import {checkAndroidBuildInputReadiness} from './android-build-input-readiness.mjs';
+import {checkLifeOpsScheduledTaskRoute} from './lifeops-scheduled-task-route.mjs';
+import {checkPersonalAssistantScheduledTaskCustody} from './personal-assistant-scheduled-task-custody.mjs';
 
-export async function runServicesRefinement() {
+export async function runServicesRefinement(onProgress) {
   const driver = fileURLToPath(import.meta.url);
   const direct = check => [check.name, () => check()];
   const withDriver = check => [check.name, () => check([driver])];
@@ -61,7 +65,9 @@ export async function runServicesRefinement() {
     ...[checkBrowserGoogleReturn, checkCombinedAgentLauncher, checkReviewedWorkflowLauncher,
       checkCoreConnectorCustody, checkMobileBundleAdmission, checkWorkflowWorkerStaging, checkNativeGoogleHostArtifact,
       checkPreparedSourceStamp, checkCloudQaLauncher, checkBrowserCloudRequestCustody, checkGmailAgentMailboxRecovery,
-      checkDevelopmentDigestPending, checkAndroidGzipAssetStage, checkResidentJavaSourceStage].map(withDriver),
+      checkDevelopmentDigestPending, checkAndroidGzipAssetStage, checkResidentJavaSourceStage,
+      checkAndroidBrowserModuleStage, checkAndroidBuildInputReadiness, checkLifeOpsScheduledTaskRoute,
+      checkPersonalAssistantScheduledTaskCustody].map(withDriver),
     ...[runInboxCoordinatorRefinement, runInboxCleanupRefinement, runInboxProviderDraftsRefinement,
       runWorkflowEngineRefinement, runWorkflowWakeupRefinement, runWorkflowTaskRefinement, runCanonicalNotesRefinement,
       runTaskServiceRefinement, runTaskSchedulerRuntimeRefinement, runPilotApkUpdateRefinement,
@@ -94,6 +100,10 @@ export async function runServicesRefinement() {
       reason: 'The scratch replay exercises the actual wrapper and byte comparison. The modeled merge uses a one-layer fixture. Independent APK checks and installed OCR have separate evidence.'},
     {model: 'ResidentJavaSourceStage', obligation: 'Concurrent readers, process interruption and Gradle consumption',
       reason: 'Serial source replay observes exact settled trees and manifests, including a retained backup when restore is refused. Reader timing, cleanup failures and actual Gradle builds remain separate.'},
+    {model: 'AndroidBuildInputReadiness', obligation: 'Full runtime and APK admission',
+      reason: 'The native prerequisite gates and report execute on bounded private inputs with controlled verification ports. A successful report does not exercise Gradle, APK verification, signing or installed behavior.'},
+    {model: 'AndroidBrowserModuleStage', obligation: 'Concurrent module publication, Gradle configuration and APK consumption',
+      reason: 'The selected browser module executes actual source staging, Gradle host generation and receipt verification in scratch. Concurrent processes, the full module graph, Gradle and installed input handling remain separate.'},
     {model: 'NativeGoogleHostArtifact', obligation: 'Cross-process publication, interruption and installed use',
       reason: 'The source replay verifies a private candidate and restore under the serial producer contract. Independent readers, process death between the two publication renames and installed host execution remain separate.'},
     {model: 'CoreTurnControllers', obligation: 'Detached callbacks, reentrant observers and provider composition', reason: 'The source campaign checks lookup, cancellation and closure in two registries. Arbitrary reentrant observers and detached callbacks require separate source schedules.'},
@@ -112,5 +122,5 @@ export async function runServicesRefinement() {
     {model: 'NativeCredentialMutation', obligation: 'Real shutdown, encryption and lock interleavings', reason: 'Actual credential-store classification, recheck, admission invalidation and preflight run against primitive storage/lifecycle ports. Those ports do not establish native shutdown or encrypted persistence.'},
     {model: 'PdfWorker', obligation: 'Kernel isolation, descriptor transfer, watchdog and memory kill', reason: 'Actual service request/render/cleanup/reply code executes against Android primitives. Host stubs cannot establish kernel or real PDF renderer behavior.', requires: ['IsolatedPdfInstrumentedTest on a disposable admitted installation']},
   ];
-  return collectRefinementCampaigns(campaigns, obligations);
+  return collectRefinementCampaigns(campaigns, obligations, onProgress);
 }

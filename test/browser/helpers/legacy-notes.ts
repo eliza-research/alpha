@@ -1,5 +1,5 @@
 import {expect,test,type Page} from '@playwright/test';
-/** Seed only the isolated test's retained legacy document before explicitly opening Older notes.
+/** Seed only the isolated test's retained legacy document before selecting that source.
  * Production source selection never initializes or migrates a missing legacy document. */
 export async function openLegacyNotes(page:Page,records:Record<string,unknown>[]=[]){
  if(test.info().project.name==='production')await seedRetainedNotes(page,records);
@@ -35,6 +35,11 @@ const retainedSource = (page:Page,activate=false) => page.evaluate(activate=>{
 /** Navigate only; leave raw-store setup and recovery assertions to the caller. */
 export async function selectLegacyNotes(page:Page){
  await page.getByRole('button',{name:'Notes',exact:true}).click();
+ await selectLegacyNotesSource(page);
+}
+
+/** Select within an already open Notes view without hiding its current ownership state. */
+export async function selectLegacyNotesSource(page:Page){
  await expect(page.locator('html')).toHaveAttribute('data-active-view','notes');
  await expect(page.getByRole('button',{name:/^(Older|Previous) notes$/})).toHaveCount(0);
  await expect.poll(()=>retainedSource(page)).toBe(true);

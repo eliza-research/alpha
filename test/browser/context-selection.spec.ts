@@ -223,9 +223,11 @@ test.describe('capture',()=>{
   await page.getByRole('button',{name:'Photos',exact:true}).click();await page.getByRole('button',{name:/^Photo, /}).first().click();
   await expect.poll(async()=>(await selectedObject(page))?.kind).toBe('photo');const selected=await selectedObject(page);
   await page.getByRole('button',{name:'Ask Alpha about this photo',exact:true}).click();
-  const dialog=review(page);await expect(dialog.getByRole('heading')).toHaveText('Ask Alpha');await expect(dialog.getByLabel('Selected source',{exact:true})).toHaveText('Selected photo');await expect(dialog.getByRole('img')).toBeVisible();
-  await dialog.getByRole('textbox',{name:'Content excerpt'}).fill('A reviewed description');await dialog.getByRole('button',{name:'Use in conversation',exact:true}).click();
-  await expect(composer(page)).toHaveValue('What does this mean?\n\nSource: Selected photo\n\nA reviewed description');
+  await expect(review(page)).toHaveCount(0);
+  await expect(page.getByAltText('Captured photo')).toBeVisible();
+  await expect(composer(page)).toHaveValue('');
+  const expectedImage=await page.evaluate(async id=>{const {browserPhotoLibrary}=await import('/src/prototype/browser-camera.ts');return (await browserPhotoLibrary.read({id})).image;},selected!.id.replace(/^native-camera-/,''));
+  await expect(page.getByAltText('Captured photo')).toHaveAttribute('src',expectedImage);
   // The envelope still names the same item at the same revision; no content is in it, and the
   // revision is a session-local counter rather than the library's own revision.
   expect(await selectedObject(page)).toEqual(selected);expect(Object.keys(selected!).sort()).toEqual(['id','kind','revision']);
@@ -240,21 +242,20 @@ test.describe('capture',()=>{
   await expect.poll(async()=>(await selectedObject(page))?.revision).not.toBe(selected!.revision);
   const changed=await selectedObject(page);expect(changed).toMatchObject({kind:'photo',id:selected!.id});expect(changed!.revision).toMatch(/^capture-[0-9a-f]{12}-\d+$/);
  });
- test('a photo trashed during its review adds nothing, and the other photo is never sent',async({page})=>{
+ test('a photo trashed while its attachment loads adds nothing and never sends another photo',async({page})=>{
   await photo(page,'FIRST');await photo(page,'SECOND');
   await page.getByRole('button',{name:'Photos',exact:true}).click();await page.getByRole('button',{name:/^Photo, /}).first().click();
   await expect.poll(async()=>(await selectedObject(page))?.kind).toBe('photo');const selected=await selectedObject(page);
+  await page.evaluate(id=>{
+   return import('/src/prototype/browser-camera.ts').then(({browserPhotoLibrary:library})=>{
+    const read=library.read.bind(library);(window as any).readOriginalPhoto=read;
+    library.read=async input=>{if(input.id!==id)return read(input);(window as any).photoReadHeld=true;await new Promise<void>(resolve=>(window as any).releasePhotoRead=resolve);return read(input);};
+   });
+  },selected!.id.replace(/^native-camera-/,''));
   await page.getByRole('button',{name:'Ask Alpha about this photo',exact:true}).click();
-  const dialog=review(page);await expect(dialog.getByRole('img')).toBeVisible();
-  await dialog.getByRole('textbox',{name:'Content excerpt'}).fill('A reviewed description');
-  // Another surface trashes the open item while the review is showing. The view has not refreshed.
-  await page.evaluate(async id=>{const {browserPhotoLibrary}=await import('/src/prototype/browser-camera.ts');const row=await browserPhotoLibrary.read({id});await browserPhotoLibrary.setTrashed({id,revision:row.mutationRevision,trashed:true});},selected!.id.replace(/^native-camera-/,''));
-  await dialog.getByRole('button',{name:'Use in conversation',exact:true}).click();
-  await expect(page.getByText('This photo changed or is no longer available. Nothing was added to your conversation.',{exact:true})).toBeVisible();
-  await expect(dialog).toHaveCount(0);await expect(composer(page)).toHaveCount(0);
-  // The stale viewer closes. The remaining photo was not opened or sent in its place.
-  await expect.poll(()=>selectedObject(page)).toBeNull();
-  await expect(page.getByRole('button',{name:'Ask Alpha about this photo',exact:true})).toHaveCount(0);
-  await expect(page.getByRole('button',{name:/^Photo, /})).toHaveCount(1);
+  await expect.poll(()=>page.evaluate(()=>(window as any).photoReadHeld)).toBe(true);
+  await page.evaluate(async id=>{const {browserPhotoLibrary}=await import('/src/prototype/browser-camera.ts');const row=await (window as any).readOriginalPhoto({id});await browserPhotoLibrary.setTrashed({id,revision:row.mutationRevision,trashed:true});(window as any).releasePhotoRead();},selected!.id.replace(/^native-camera-/,''));
+  await expect(page.getByText('This photo changed. Open it again.',{exact:true})).toBeVisible();
+  await expect(review(page)).toHaveCount(0);await expect(page.getByAltText('Captured photo')).toHaveCount(0);
  });
 });

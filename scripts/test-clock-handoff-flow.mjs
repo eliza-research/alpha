@@ -8,19 +8,20 @@ import {createInlineModal} from '../apps/app/src/runtime/inline-modal.ts';
 import {currentClockTimeZone,buildClockRequest,describeClockDays} from '../apps/app/src/runtime/clock-contract.ts';
 import {createClockHandoffHistory,clockHandoffLegacyKey,clockHandoffSlot} from '../apps/app/src/runtime/clock-handoff-history.ts';
 const source=stripTypeScriptTypes(fs.readFileSync(new URL('../apps/app/src/prototype/clock-adapter.ts',import.meta.url),'utf8').replace(/^import .*?;\n/gm,'').replace(/^export /gm,''));
-let writes=[],store=new Map(),secure=new Map(),failStorage=false,response={status:'opened',message:'Clock request sent. Check Clock.'},hold,hidden=false;
+let writes=[],store=new Map(),secure=new Map(),failStorage=false,response={status:'opened',message:'Clock request sent. Check Clock.'},hold,holdOpening,hidden=false;
 const document={addEventListener(){},removeEventListener(){},querySelector(){return null;},documentElement:{dataset:{connectionMode:'live'}},get hidden(){return hidden;}};
 const localStorage={getItem:k=>store.get(k)||null,setItem:(k,v)=>{if(failStorage)throw Error('full');store.set(k,v);}};
 let repeatVersion=1;
 const DailyApps={surfaceInfo:async()=>({developmentBuild:false,assistant:false,...(repeatVersion?{clockRepeatDaysVersion:repeatVersion}:{})}),clockHandoff:async request=>{writes.push(request);if(hold)return new Promise(resolve=>hold=resolve);if(response instanceof Error)throw response;return {...response,action:request.action};}};
-const secureConnectionStore={read:async slot=>structuredClone(secure.get(slot)??null),compareExchange:async(slot,expected,value)=>{if(failStorage)throw Error('full');if(JSON.stringify(secure.get(slot)??null)!==JSON.stringify(expected))return {status:'conflict'};secure.set(slot,structuredClone(value));return {status:'saved'};}};
+const secureConnectionStore={read:async slot=>structuredClone(secure.get(slot)??null),compareExchange:async(slot,expected,value)=>{if(value?.record?.status==='opening'&&holdOpening===true)await new Promise(resolve=>holdOpening=resolve);if(failStorage)throw Error('full');if(JSON.stringify(secure.get(slot)??null)!==JSON.stringify(expected))return {status:'conflict'};secure.set(slot,structuredClone(value));return {status:'saved'};}};
 const settle=async()=>{for(let i=0;i<20;i++)await Promise.resolve();};
 let flags={testMocksEnabled:true,devSurfacesEnabled:true};
 async function fixture(simulated=false){
  class Shell{componentDidMount(){}componentWillUnmount(){}vset(){}}
+ let active=true;
  const views={workflows:{render:()=>({})}};
  vm.runInNewContext(source+'\ninstallClockAdapter(Shell,views,{simulated});',{...flags,createClockHandoffHistory,clockHandoffLegacyKey,secureConnectionStore,createInlineModal,currentClockTimeZone,buildClockRequest,describeClockDays,DailyApps,Shell,views,simulated,document,window:{addEventListener(){},removeEventListener(){}},queueMicrotask,localStorage,crypto:{randomUUID},Date,Intl,console});
- const shell=new Shell();shell.componentDidMount();const render=()=>views.workflows.render({},{});render().openClock();await settle();return {shell,render,leave:()=>views.workflows.onLeave()};
+ const shell=new Shell();shell.componentDidMount();const render=()=>views.workflows.render({},{isActive:()=>active});render().openClock();await settle();return {shell,render,leave:()=>{active=false;views.workflows.onLeave();},enter:()=>{active=true;}};
 }
 for(const testMocksEnabled of [true,false]){
 flags={testMocksEnabled,devSurfacesEnabled:testMocksEnabled};writes=[];store=new Map();secure=new Map();failStorage=false;hidden=false;hold=undefined;response={status:'opened',message:'Clock request sent. Check Clock.'};
@@ -57,8 +58,16 @@ response=new Error('lost response');f.render().clock.prepare();await f.render().
 f.shell.componentWillUnmount();f=await fixture();assert.match(f.render().clock.message,/unknown/);assert.equal(writes.length,count,'recreation must not dispatch or retry');
 failStorage=true;f.render().clock.prepare();await f.render().clock.review.confirm();assert.equal(writes.length,count);assert.equal(f.render().clock.message,"Can’t reach Clock. Reopen it and try again.");failStorage=false;
 hidden=true;f.render().clock.prepare();await f.render().clock.review.confirm();assert.equal(writes.length,count);hidden=false;
+// A mode change during the opening write must also prevent the synthetic handoff.
+f.render().clock.close();f.render().openClock();await settle();f.render().clock.prepare();
+holdOpening=true;const awaitingOpening=f.render().clock.review.confirm();await settle();
+assert.equal(typeof holdOpening,'function');document.documentElement.dataset.connectionMode='mock';holdOpening();holdOpening=null;
+await awaitingOpening;document.documentElement.dataset.connectionMode='live';assert.equal(writes.length,count,'a mock request cannot dispatch after its opening write');
 // Leaving the view invalidates even a retained confirmation callback.
-f.render().clock.prepare();const departed=f.render().clock.review;f.leave();await departed.confirm();assert.equal(writes.length,count);assert.equal(f.render().clock,null);assert.equal(f.shell.clockSelection(),undefined);f.render().openClock();assert.equal(f.render().clock.review,null);
+f.render().clock.prepare();const departed=f.render().clock.review,staleOpener=f.render().openClock;f.leave();await departed.confirm();assert.equal(writes.length,count);assert.equal(f.render().clock,null);assert.equal(f.shell.clockSelection(),undefined);
+staleOpener();assert.equal(f.render().clock,null,'an opener from a departed Workflows visit cannot create a Clock draft');
+f.enter();staleOpener();assert.equal(f.render().clock,null,'returning to Workflows cannot revive an old opener');
+f.render().openClock();assert.equal(f.render().clock.review,null);
 // Both startup mock and a mode switch during review prevent the native call.
 // Without ELIZA_DEV_ALLOW_TEST_MOCKS there is no simulation: a mock request fails closed.
 for(const startupMock of [true,false]){const mock=await fixture(startupMock);mock.render().clock.prepare();document.documentElement.dataset.connectionMode='mock';const review=mock.render().clock.review;assert.equal(review.label,testMocksEnabled?'Simulate Clock request':'Continue to Clock');await review.confirm();assert.equal(writes.length,count);assert.match(mock.render().clock.message,testMocksEnabled?/simulated/:/unavailable without a live connection/);mock.shell.componentWillUnmount();document.documentElement.dataset.connectionMode='live';}
