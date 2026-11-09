@@ -33,13 +33,15 @@ import {runFactWriteScopeRefinement} from './fact-write-scope.mjs';
 import {runNativeGoogleAccessFileRefinement} from './native-google-access-file.mjs';
 import {runNamedEmbeddingProvenanceRefinement} from './named-embedding-provenance.mjs';
 import {checkDevelopmentRuntimeLoader} from './development-runtime-loader.mjs';
+import {checkCombinedAgentLauncher} from './combined-agent-launcher.mjs';
 
 export async function runServicesRefinement() {
   const receipts = [];
   for (const check of [authorizationRefinement, googleAccountsRefinement, googleAccountsLifecycleRefinement, calendarRefinement, calendarLinkedRefinement,
     inboxRefinement, mapsRefinement, cacheRefinement, workflowRefinement, policyRefinement,
     readingRefinement, scanRefinement, credentialRefinement, pdfRefinement, runSignInCoordinatorRefinement, runCoreRetirementRefinement, runCoreServiceLifecycleRefinement, runCoreRuntimeShutdownRefinement, runTurnControllerRefinement,
-    () => checkDevelopmentRuntimeLoader([fileURLToPath(import.meta.url)])]) {
+    () => checkDevelopmentRuntimeLoader([fileURLToPath(import.meta.url)]),
+    () => checkCombinedAgentLauncher([fileURLToPath(import.meta.url)])]) {
     const result = await check();
     receipts.push(...(Array.isArray(result) ? result : [result]));
   }

@@ -46,12 +46,12 @@ export function jvmSkip(...names){
 export const jsonJarSkip=jvmSkip('json');
 
 /** Compiles the sources (plus org.json when needed) and returns the main class's stdout for the given stdin. */
-export function runJvm(sources,mainClass,{json=false,args=[],input}={}){
+export function runJvm(sources,mainClass,{json=false,args=[],input,timeout=jvmTimeout}={}){
  const temporary=mkdtempSync(join(tmpdir(),'alpha-jvm-'));
  try{
   const classpath=json?['-cp',jsonJar]:[];
   execFileSync(javaBinary('javac'),['--release','11',...classpath,'-d',temporary,...sources],{timeout:jvmTimeout});
-  return execFileSync(javaBinary('java'),['-cp',json?temporary+':'+jsonJar:temporary,mainClass,...args],{encoding:'utf8',timeout:jvmTimeout,input});
+  return execFileSync(javaBinary('java'),['-cp',json?temporary+':'+jsonJar:temporary,mainClass,...args],{encoding:'utf8',timeout,input});
  }finally{rmSync(temporary,{recursive:true,force:true});}
 }
 

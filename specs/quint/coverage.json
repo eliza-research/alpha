@@ -6530,119 +6530,120 @@
         "NativeUpdateActivation",
         "NativeUpdateComposition",
         "NativeUpdateStaging",
-        "NativeTextScaleLifecycle"
+        "NativeTextScaleLifecycle",
+        "NativeCrashJournal"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "ab0f876df284740215e69360ff5a260d175ea161303e4b9262d9fd9e797f7d0f",
+      "sha256": "0cfc18e222962fff4a9eb29048e7592be7bc8178d89993dcfedef227ed923013",
       "stateAnchors": [
         {
           "line": 153,
           "text": "private final java.util.concurrent.ExecutorService diagnosticsWorker=java.util.concurrent.Executors.newSingleThreadExecutor();"
         },
         {
-          "line": 243,
+          "line": 254,
           "text": "private static final String UPDATE_STATUS=\"ai.elizaresearch.alphaphone.UPDATE_STATUS\";"
         },
         {
-          "line": 258,
+          "line": 269,
           "text": "private static final java.util.regex.Pattern UPDATE_BINDING=java.util.regex.Pattern.compile(\"alpha-update://([^/]+)/([1-9][0-9]{0,17})/[0-9a-f]{64}/([0-9a-f]{64})/([0-9]+)(/intent)?\");"
         },
         {
-          "line": 312,
+          "line": 323,
           "text": "var record=store().read();if(record==null||record.id.equals(liveOwner))return null;"
         },
         {
-          "line": 315,
+          "line": 326,
           "text": "var observation=ai.eliza.plugins.agent.updater.RuntimeUpdatePause.Session.PENDING;"
         },
         {
-          "line": 328,
+          "line": 339,
           "text": "var installed=context.getPackageManager().getPackageInfo(context.getPackageName(),0);"
         },
         {
-          "line": 354,
+          "line": 365,
           "text": "private static final Object updateBarrier=new Object();"
         },
         {
-          "line": 355,
+          "line": 366,
           "text": "private static final java.util.Set<AlphaDevicePlugin> updateBridges=new java.util.HashSet<>();"
         },
         {
-          "line": 356,
+          "line": 367,
           "text": "private final String updateBridgeId=java.util.UUID.randomUUID().toString();"
         },
         {
-          "line": 357,
+          "line": 368,
           "text": "private static volatile UpdateActivation activation;"
         },
         {
-          "line": 423,
+          "line": 434,
           "text": "var record=UpdatePause.store().read();"
         },
         {
-          "line": 429,
+          "line": 440,
           "text": "var session=getContext().getPackageManager().getPackageInstaller().getSessionInfo(record.session);"
         },
         {
-          "line": 449,
+          "line": 460,
           "text": "try{var settled=UpdatePause.reconcile();if(settled!=null){settleUpdate(settled.id,BuildConfig.VERSION_CODE==settled.targetCode?\"installed\":\"canceled\");return true;}}catch(Exception unavailable){/* Unk"
         },
         {
-          "line": 456,
+          "line": 467,
           "text": "private final java.util.concurrent.ExecutorService updateWorker=java.util.concurrent.Executors.newSingleThreadExecutor();"
         },
         {
-          "line": 458,
+          "line": 469,
           "text": "private static volatile int updateSession;"
         },
         {
-          "line": 463,
+          "line": 474,
           "text": "private static volatile Intent updateConfirm;"
         },
         {
-          "line": 465,
+          "line": 476,
           "text": "private static volatile boolean updateDue;"
         },
         {
-          "line": 467,
+          "line": 478,
           "text": "private static volatile boolean updateOpen;"
         },
         {
-          "line": 469,
+          "line": 480,
           "text": "private static volatile long updateAsked;"
         },
         {
-          "line": 471,
+          "line": 482,
           "text": "private static volatile AlphaDevicePlugin updateOwner;"
         },
         {
-          "line": 473,
+          "line": 484,
           "text": "private final android.content.BroadcastReceiver updateStatus=new android.content.BroadcastReceiver(){"
         },
         {
-          "line": 512,
+          "line": 523,
           "text": "var current=getContext().getPackageManager().getPackageInstaller().getSessionInfo(id);"
         },
         {
-          "line": 524,
+          "line": 535,
           "text": "var record=UpdatePause.store().read();"
         },
         {
-          "line": 526,
+          "line": 537,
           "text": "var pending=getContext().getPackageManager().getPackageInstaller().getSessionInfo(record.session);"
         },
         {
-          "line": 556,
+          "line": 567,
           "text": "private static final java.util.concurrent.atomic.AtomicBoolean updating=new java.util.concurrent.atomic.AtomicBoolean();"
         },
         {
-          "line": 562,
+          "line": 573,
           "text": "private static final java.util.concurrent.atomic.AtomicInteger updatesCommitted=new java.util.concurrent.atomic.AtomicInteger();"
         },
         {
-          "line": 572,
+          "line": 583,
           "text": "private volatile javax.net.ssl.HttpsURLConnection updateActive;"
         }
       ]
@@ -8524,7 +8525,8 @@
         "Application",
         "NativeUpdateActivation",
         "NativeUpdateStaging",
-        "NativeClockReview"
+        "NativeClockReview",
+        "NativeCrashJournal"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -18958,7 +18960,8 @@
       "path": "apps/app/src/prototype/browser-camera.ts",
       "sha256": "6e410466c3bdc1ec4deda394c2716835bc3604b07aa0e969dc6f459f6038b6c5",
       "models": [
-        "MediaLifecycle"
+        "MediaLifecycle",
+        "CameraPreviewRetirement"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -20641,12 +20644,13 @@
         "MediaLifecycle",
         "PhotosWindow",
         "PhotosTrash",
-        "CanonicalCalendarDraftHandoff"
+        "CanonicalCalendarDraftHandoff",
+        "CameraPreviewRetirement"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "46cda3d33f7af5c55970619af29e9f20996787e00de529346a2d2de4727a73c7",
+      "sha256": "bf01f13015f393c7820f323a07d35f29ac73e6b589ab5cf43b8000709bb938dc",
       "stateAnchors": []
     },
     {
@@ -25305,7 +25309,8 @@
         "ShellNavigation",
         "AccessibleToastLifetime",
         "CalendarPreservationConfirmation",
-        "CanonicalCalendarEditorClose"
+        "CanonicalCalendarEditorClose",
+        "CameraPreviewRetirement"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -35611,7 +35616,8 @@
         "ModalToastForwarding",
         "DockClearanceOwnership",
         "CalendarPreservationConfirmation",
-        "CanonicalCalendarEditorClose"
+        "CanonicalCalendarEditorClose",
+        "CameraPreviewRetirement"
       ],
       "treatment": "stateless-presentation-contract",
       "scope": "application",
@@ -42318,7 +42324,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "fecf5f489319660675a0533e3ae5f1a65948f0c2d7dc4f55a197927aa1e96d28",
+      "sha256": "6213425be96bf5b30f2aafc86459facb8ff5cfaf8b393dc0c11c049cd4c102b3",
       "stateAnchors": [
         {
           "line": 64,
@@ -42411,10 +42417,6 @@
         {
           "line": 112,
           "text": "const binding = useRef<{"
-        },
-        {
-          "line": 122,
-          "text": "const mutationBusy = useRef(false);"
         },
         {
           "line": 123,
@@ -42537,287 +42539,287 @@
           "text": "const selected = connectionController.getWorkflowClient();"
         },
         {
-          "line": 251,
+          "line": 252,
           "text": "const controller = new AbortController();"
         },
         {
-          "line": 252,
+          "line": 253,
           "text": "let disposed = false;"
         },
         {
-          "line": 253,
+          "line": 254,
           "text": "let releaseBrowser:undefined|(()=>void),releaseScheduler:undefined|(()=>void);"
         },
         {
-          "line": 255,
+          "line": 256,
           "text": "const session = connection.session!,"
         },
         {
-          "line": 262,
+          "line": 263,
           "text": "const client=selected.client.hosted();let inbox:ResultInbox;"
         },
         {
-          "line": 263,
+          "line": 264,
           "text": "const development=devSurfacesEnabled&&browserDevProfile&&JSON.parse(localStorage.getItem('alpha.connection.selection.v1')||'null')?.kind==='development';"
         },
         {
-          "line": 264,
+          "line": 265,
           "text": "const storage=development?await (await import('../browser/digest-storage')).browserDigestStore(session,()=>!disposed&&connectionController.getSnapshot().session?.sessionId===session.sessionId,controll"
         },
         {
-          "line": 265,
+          "line": 266,
           "text": "const notices:HostedResultBinding={scope:slot.slice('hosted-digests:v1:'.length),origin:session.origin,ownerId:session.ownerId,agentId:session.agentId,current:()=>!disposed&&binding.current?.sessionId"
         },
         {
-          "line": 266,
+          "line": 267,
           "text": "let ready=false;"
         },
         {
-          "line": 268,
+          "line": 269,
           "text": "const cloud=testMocksEnabled&&connection.kind==='cloud'?await secureConnectionStore.read<Record<string,unknown>>(`cloud-runtime:${session.sessionId}`):null;"
         },
         {
-          "line": 276,
+          "line": 277,
           "text": "const b = {"
         },
         {
-          "line": 288,
+          "line": 289,
           "text": "if(development){const {startDevelopmentDigestScheduler}=await import('../browser/development-digests');if(!disposed)releaseScheduler=startDevelopmentDigestScheduler(notices.current,controller.signal);"
         },
         {
-          "line": 291,
+          "line": 292,
           "text": "const old = await b.inbox.history();"
         },
         {
-          "line": 297,
+          "line": 298,
           "text": "const resume = () => {"
         },
         {
-          "line": 303,
+          "line": 304,
           "text": "let ticks = 0;"
         },
         {
-          "line": 313,
+          "line": 314,
           "text": "let deviceFrame=0;const deviceResume=()=>{refreshFlight.current?.controller.abort();cancelAnimationFrame(deviceFrame);deviceFrame=requestAnimationFrame(resume);};"
         },
         {
-          "line": 316,
+          "line": 317,
           "text": "const listener = DailyApps.addListener(\"appResumed\", resume).catch("
         },
         {
-          "line": 336,
+          "line": 337,
           "text": "const previous = document.activeElement as HTMLElement | null;"
         },
         {
-          "line": 337,
+          "line": 338,
           "text": "const phone = document.querySelector<HTMLElement>('.os');"
         },
         {
-          "line": 338,
+          "line": 339,
           "text": "const releaseInert = holdPhoneInert(phone);"
         },
         {
-          "line": 341,
+          "line": 342,
           "text": "const back = (event: Event) => {"
         },
         {
-          "line": 347,
+          "line": 348,
           "text": "const key = (event: KeyboardEvent) => {"
         },
         {
-          "line": 351,
+          "line": 352,
           "text": "const items = Array.from(panel.current.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),summary,a[href]')).filter(item => item.ge"
         },
         {
-          "line": 352,
+          "line": 353,
           "text": "const first = items[0], last = items.at(-1);"
         },
         {
-          "line": 358,
+          "line": 359,
           "text": "const modal = panel.current;"
         },
         {
-          "line": 371,
+          "line": 372,
           "text": "const renewalSources=useRef(sources);renewalSources.current=sources;"
         },
         {
-          "line": 372,
+          "line": 373,
           "text": "const renewalFlight=resolveTap;"
         },
         {
-          "line": 373,
+          "line": 374,
           "text": "const renewalStart=useRef(startRenewal);renewalStart.current=startRenewal;"
         },
         {
-          "line": 375,
+          "line": 376,
           "text": "const checkRenewal=()=>renewalFlight.current(async()=>{"
         },
         {
-          "line": 376,
+          "line": 377,
           "text": "const b=binding.current;if(!isAndroid||!b||!canSyncResults()||questionBusy.current||questionClose.current)return;"
         },
         {
-          "line": 379,
+          "line": 380,
           "text": "let tapped=false;"
         },
         {
-          "line": 380,
+          "line": 381,
           "text": "try{const tap=await nativeSources.pendingSourceRenewal();if(!tap.token||!tap.selection||typeof tap.expiresAt!=='number'||binding.current!==b||!b.notices.current()||!canSyncResults())return;tapped=true"
         },
         {
-          "line": 381,
+          "line": 382,
           "text": "const current=()=>mounted.current&&binding.current===b&&b.notices.current()&&canSyncResults()&&!connectionController.getSnapshot().open&&renewalSources.current.some(source=>!source.revoked&&source.liv"
         },
         {
-          "line": 387,
+          "line": 388,
           "text": "useEffect(()=>{if(!isAndroid)return;const listener=nativeSources.addListener('renewSource',()=>{void checkRenewal();}).catch(()=>null);void checkRenewal();return()=>{void listener.then(l=>l?.remove())"
         },
         {
-          "line": 390,
+          "line": 391,
           "text": "useEffect(()=>{if(!isAndroid)return;for(const source of sources){if(source.live?.provider!=='native')continue;const bound=loops.some(l=>!l.removed&&l.spec.enabled&&l.spec.sourceId===source.id);if(boun"
         },
         {
-          "line": 391,
+          "line": 392,
           "text": "function clearRenewal(id:string){const selection=renewalSources.current.find(source=>source.id===id)?.live;if(selection?.provider==='native')void nativeSources.clearSourceRenewal({selection}).catch(()"
         },
         {
-          "line": 393,
+          "line": 394,
           "text": "const source=sources.find(s=>s.id===id);if(!source)return;setRenewing(id);setReview(null);setSourceId('');"
         },
         {
-          "line": 394,
+          "line": 395,
           "text": "const bound=loops.find(l=>!l.removed&&l.spec.sourceId===id);if(bound)setZone(bound.spec.timeZone);"
         },
         {
-          "line": 399,
+          "line": 400,
           "text": "const renewalLoops=(id:string|null)=>id?loops.filter(l=>!l.removed&&l.spec.enabled&&l.spec.sourceId===id).map(l=>({id:l.id,expectedVersionId:l.versionId,mutationId:crypto.randomUUID(),spec:{version:1,"
         },
         {
-          "line": 400,
+          "line": 401,
           "text": "const renewalNote=(id:string|null)=>{const moved=renewalLoops(id);return moved.length?`\\nRenewal: ${moved.map(l=>l.spec.template+' at '+l.spec.localTime).join(', ')} ${moved.length===1?'moves':'move'}"
         },
         {
-          "line": 402,
+          "line": 403,
           "text": "const billing=interactiveDevelopment?'Digests use the configured development reply.':isAndroid&&connection.kind==='resident'?`Model usage counts against your ${cloudServiceName(connectionController.ge"
         },
         {
-          "line": 404,
+          "line": 405,
           "text": "const missedOffers=available?missedRunNowOffers(binding.current?.sessionId===connection.session?.sessionId?results:[],loops,sources):new Map<string,MissedRunNow>();"
         },
         {
-          "line": 411,
+          "line": 412,
           "text": "const b = binding.current;"
         },
         {
-          "line": 419,
+          "line": 420,
           "text": "const reviewed:Pending = value===pending&&!digestPendingDiscardable(value) ? {...value,phase:'dispatched'} : {...value,phase:'review'};"
         },
         {
-          "line": 423,
+          "line": 424,
           "text": "let body=value.body;"
         },
         {
-          "line": 426,
+          "line": 427,
           "text": "const grant=await nativeSources.nativeSourceConsent({sessionId:b.sessionId,...value.nativeConsent,confirmed:true});"
         },
         {
-          "line": 431,
+          "line": 432,
           "text": "const source=sources.find(source=>source.id===body.id);"
         },
         {
-          "line": 443,
+          "line": 445,
           "text": "const dispatched:Pending={...value,phase:'dispatched'};"
         },
         {
-          "line": 447,
+          "line": 449,
           "text": "const saved=await b.client.mutate(value.path, body, b.controller.signal);"
         },
         {
-          "line": 450,
+          "line": 453,
           "text": "const source=(saved as {source?:{id?:unknown;revision?:unknown}}).source;"
         },
         {
-          "line": 452,
+          "line": 455,
           "text": "for(const loop of value.rebind){if(binding.current!==b)return;await b.client.mutate('loops',{spec:{...loop.spec,sourceId:source.id,sourceRevision:source.revision},mutationId:loop.mutationId,confirmed:"
         },
         {
-          "line": 458,
+          "line": 461,
           "text": "if(value.missedRunId&&binding.current===b){const id=value.missedRunId;setRanMissed(prior=>new Set([...prior,id]));}"
         },
         {
-          "line": 480,
+          "line": 486,
           "text": "const b=binding.current;if(!b||busy||!pending||!digestPendingDiscardable(pending))return;"
         },
         {
-          "line": 484,
+          "line": 490,
           "text": "async function loadNativeCalendars(){const b=binding.current;if(!b||busy)return;setBusy(true);try{const permission=await nativeCalendars.requestWorkflowReadAccess();if(permission.status!=='granted')th"
         },
         {
-          "line": 487,
+          "line": 493,
           "text": "const b=binding.current;if(!b||busy)return;"
         },
         {
-          "line": 493,
+          "line": 499,
           "text": "let expectedBinding:Record<string,unknown>;try{expectedBinding=await nativeSources.nativeSourceIdentity({sessionId:b.sessionId});if(binding.current!==b)return;}catch{setMessage('Reconnect your agent, "
         },
         {
-          "line": 495,
+          "line": 501,
           "text": "const sourceId=crypto.randomUUID(),reviewedAt=Date.now(),observedAt=new Date(reviewedAt).toISOString(),expiresAt=reviewedAt+hours*3600000;"
         },
         {
-          "line": 496,
+          "line": 502,
           "text": "const scope={calendars:selectedCalendars.map(id=>({id,revision:calendarChoices.find(calendar=>calendar.id===id)!.sourceRevision})),reminders:selectedReminders,timeZone:zone,window:'owner_day_and_overd"
         },
         {
-          "line": 497,
+          "line": 503,
           "text": "const renews=renewing&&sources.find(s=>s.id===renewing)?.live?.provider==='native'?renewing:null,rebind=renewalLoops(renews);"
         },
         {
-          "line": 501,
+          "line": 507,
           "text": "const old = loops.find((l) => !l.removed && l.spec.template === template);"
         },
         {
-          "line": 526,
+          "line": 532,
           "text": "const source = sources.find((s) => s.id === (sourceId || old?.spec.sourceId));"
         },
         {
-          "line": 539,
+          "line": 545,
           "text": "const spec = {"
         },
         {
-          "line": 548,
+          "line": 554,
           "text": "const changed = old && (old.spec.localTime !== spec.localTime || old.spec.timeZone !== zone) ? ` Changes ${old.spec.localTime} (${old.spec.timeZone}) to ${spec.localTime} (${zone}).` : \"\";"
         },
         {
-          "line": 549,
+          "line": 555,
           "text": "const native = source.live?.provider === \"native\";"
         },
         {
-          "line": 561,
+          "line": 567,
           "text": "const liveBinding = binding.current;"
         },
         {
-          "line": 562,
+          "line": 568,
           "text": "const now=Date.now(),renewals=digestRenewals(sources,loops,now);"
         },
         {
-          "line": 564,
+          "line": 570,
           "text": "const deviceZone=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone;}catch{return '';}})();"
         },
         {
-          "line": 637,
+          "line": 643,
           "text": "{liveBinding && <HostedLiveSourcePicker key={liveBinding.sessionId} client={liveBinding.client} scope={liveBinding.notices.scope} signal={liveBinding.controller.signal} current={() => binding.current "
         },
         {
-          "line": 699,
+          "line": 705,
           "text": "const reviewedAt = Date.now(),"
         },
         {
-          "line": 704,
+          "line": 710,
           "text": "const renews=renewing&&!sources.find(s=>s.id===renewing)?.live?renewing:null;"
         },
         {
-          "line": 741,
+          "line": 747,
           "text": "{features.dossier&&sources.find(s=>s.id===sourceId)?.live?.provider==='native'&&<button disabled={busy} onClick={()=>{const source=sources.find(s=>s.id===sourceId)!;setReview({path:'dossier',body:{sou"
         }
       ]
@@ -49314,7 +49316,8 @@
       "models": [
         "TaskServiceLifecycle",
         "TaskSchedulerRuntime",
-        "DevelopmentRuntimeLoader"
+        "DevelopmentRuntimeLoader",
+        "CombinedAgentLauncher"
       ],
       "scope": "development-runtime",
       "treatment": "domain-contract-or-support",
@@ -49714,7 +49717,8 @@
     {
       "path": "scripts/start-combined-agent.mjs",
       "models": [
-        "Application"
+        "Application",
+        "CombinedAgentLauncher"
       ],
       "scope": "development-runtime",
       "treatment": "domain-contract-or-support",
@@ -508202,7 +508206,8 @@
       "path": "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/crash/CrashLog.java",
       "models": [
         "Application",
-        "RendererFailureUI"
+        "RendererFailureUI",
+        "NativeCrashJournal"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -618419,7 +618424,8 @@
         "ResidentRuntime",
         "AlwaysOnListener",
         "NativeSmsDispatch",
-        "NativeMmsDispatch"
+        "NativeMmsDispatch",
+        "NativeCrashJournal"
       ],
       "sha256": "0bce8e83df6cf39ec58ebda94cdd0976c2558f346e8c0988e4fa904f6578d7cd"
     },
@@ -618919,7 +618925,8 @@
         "CanonicalNotesStore",
         "CoreTurnControllers",
         "TaskSchedulerRuntime",
-        "DevelopmentRuntimeLoader"
+        "DevelopmentRuntimeLoader",
+        "CombinedAgentLauncher"
       ],
       "sha256": "25b46e944ecd6a4d5569e8eace9e2f9b22eea2ebdd36075e90fd15d1b9fb6478"
     },
@@ -618937,7 +618944,8 @@
       "models": [
         "TaskServiceLifecycle",
         "CanonicalNotesStore",
-        "CoreTurnControllers"
+        "CoreTurnControllers",
+        "CombinedAgentLauncher"
       ],
       "sha256": "a2f4d279f3f98ff078f3aedd6b9dc2dc5c3396ecdc7fb7f09b0da7e0c085062e"
     },

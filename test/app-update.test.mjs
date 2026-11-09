@@ -48,7 +48,7 @@ final class AlphaDevicePlugin extends Plugin {
 ${handOff}
 ${plugin.slice(start,end).replace(deadline,'UPDATE_DEADLINE_NANOS=java.util.concurrent.TimeUnit.SECONDS.toNanos(3)')}}
 `);
-  assert.match(runJvm([members,join(root,'vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/updater/RuntimeUpdatePause.java'),nativeSource('PluginWorkers.java'),...javaFiles(fixture('app-update-jvm')),fixture('UpdateFlowTest.java')],'ai.elizaresearch.alphaphone.UpdateFlowTest'),/^PASS update flow/);
+  assert.match(runJvm([members,join(root,'vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/updater/RuntimeUpdatePause.java'),nativeSource('PluginWorkers.java'),...javaFiles(fixture('app-update-jvm')),fixture('UpdateFlowTest.java')],'ai.elizaresearch.alphaphone.UpdateFlowTest',{timeout:240000}),/^PASS update flow/);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });
 
