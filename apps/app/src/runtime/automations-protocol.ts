@@ -137,7 +137,7 @@ export class AutomationsProtocol {
  }
  async scheduledVerb(id:string,verb:ScheduledVerb,signal:AbortSignal):Promise<unknown>{
   const result=object(await this.request('/api/lifeops/scheduled-tasks/'+automationId(id)+'/'+verb,'POST',verb==='snooze'?{minutes:60}:{},signal));
-  if(verb==='fire'){const fire=object(result.fire);if(!['fired','raced','skipped','dispatch_deferred','dispatch_failed'].includes(fire.kind))throw Error('Scheduled execution was not confirmed.');if(!['fired','raced'].includes(fire.kind))throw new AutomationOutcomeError(text(fire.reason)||text(fire.error)||'This item did not run. Read its current status before trying again.');}
+  if(verb==='fire'){const fire=object(result.fire);if(!['fired','raced','skipped','dispatch_deferred','dispatch_failed'].includes(fire.kind))throw Error('Scheduled execution was not confirmed.');if(fire.kind==='raced')throw new AutomationOutcomeError('Another run was already in progress.');if(fire.kind!=='fired')throw new AutomationOutcomeError(text(fire.reason)||text(fire.error)||'This item did not run. Read its current status before trying again.');}
   else if(object(result.task).taskId!==id)throw Error('Scheduled change was not confirmed.');
   return result;
  }

@@ -781,3 +781,12 @@ button[aria-label$=" on or off"][aria-pressed]::before { content:""; position:ab
 .schedule-controls details button { display:block; text-align:start; width:100%; min-height:44px; padding:4px 12px; }
 .schedule-instructions { display:grid; gap:6px; }
 .schedule-instructions textarea { min-height:6em; padding:12px; border-radius:12px; font:inherit; background:var(--s2);color:var(--fg); }
+
+.photo-import-menu { position:relative; z-index:3; }
+.photo-import-menu summary { display:grid; place-items:center; width:44px; height:44px; list-style:none; cursor:pointer; }
+.photo-import-menu summary::-webkit-details-marker { display:none; }
+.photo-import-menu > div { position:absolute; top:100%; right:0; width:max-content; padding:4px; border-radius:16px; color:var(--fg); background:var(--bg); box-shadow:0 4px 20px var(--shc); }
+.photo-import-menu button { display:block; min-height:44px; width:100%; padding:0 14px; text-align:start; }
+
+dialog.alarm-page{position:fixed;inset:0 auto auto 0;margin:0;width:100vw;height:100dvh;max-width:none;max-height:none;border:0;padding:20px;background:var(--bg)}
+.alarm-page::backdrop{background:transparent}.alarm-page .alpha-browser-dialog-content{flex:1}.alarm-page-header{display:flex;align-items:center;gap:16px;margin-bottom:16px}.alarm-page-header button{border:0!important;background:transparent!important}

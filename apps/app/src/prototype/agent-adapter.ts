@@ -674,7 +674,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         this.composerDraft.retire(false);
         this.startupDraft=null;
         cancelMessageContext(this);
-        this.closeSummaryReview?.();this.reviewedSourceDraft=null;this.transcriptAttachment=null;
+        this.closeSummaryReview?.();this.cameraAttachment=null;this.reviewedSourceDraft=null;this.transcriptAttachment=null;
         clearMapsSelection();
         this.connectionSession = session;
         alphaClient.disconnect();
@@ -685,7 +685,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       }
       const history = connectionController.getSnapshot().history;
       if (history && history.sessionId === session && this.restoredHistory !== history) {
-        if(!history.automatic){this.draftRecoveryAbort?.abort();this.draftBindingAbort?.abort();this.composerDraft.retire(false);draftBindingAfterPaint=true;cancelMessageContext(this);this.reviewedSourceDraft=null;this.transcriptAttachment=null;}
+        if(!history.automatic){this.draftRecoveryAbort?.abort();this.draftBindingAbort?.abort();this.composerDraft.retire(false);draftBindingAfterPaint=true;cancelMessageContext(this);this.reviewedSourceDraft=null;this.transcriptAttachment=null;this.cameraAttachment=null;}
         this.restoredHistory = history;
         alphaClient.disconnect();
         if (this.live) this.setState((previous:Shell)=>{
@@ -1293,6 +1293,10 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       context(this);await this.send(text,expected);return true;
     };
     api.openReviewedWebSource=(url:string,signal:AbortSignal)=>this.browserNavigateApproved(url,signal);
+    api.attachCameraPhoto=(id:string,image:string)=>{
+      this.cameraAttachment={id,image};
+      this.setState({chat:'sheet',shade:false});
+    };
     api.composeTranscriptQuestion=(noteId:string,title:string)=>{
       context(this);
       const selection=this.notesSelection;
@@ -1363,6 +1367,15 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
   p.renderVals = function () {
     const out = originalVals.call(this);
     const composeTarget=this.messageEditTarget||this.messageReplyTarget;
+    const photo=this.cameraAttachment;
+    out.attachedCameraPhoto=photo&&this.S().view==='photos'&&this.vget('photos').open===photo.id?photo.image:'';
+    out.removeCameraPhoto=()=>{
+      this.cameraAttachment=null;
+      if(photo&&this.S().view==='photos'&&this.vget('photos').open===photo.id){
+        this.vset('photos',{open:null,nativePhotoSelection:null});
+      }
+      this.setState({});
+    };
     out.attachedTranscript=this.transcriptAttachment?.title||'';
     out.removeTranscript=()=>{this.transcriptAttachment=null;this.setState({});};
     out.messageComposeContext=composeTarget?(this.messageEditTarget?'Editing message':'Replying to '+(composeTarget.from==='user'?'your message':out.name))+': '+composeTarget.text.replace(/\s+/g,' ').slice(0,160):'';
@@ -1666,6 +1679,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       const settlementCurrent=()=>this.live&&sameChat()&&JSON.stringify(connectionController.getSnapshot().session)===JSON.stringify(sourceSession)&&(!identity||connectionController.getSelectedConversationId()===identity.conversationId);
       if(!settlementCurrent())return;
       // The agent chose not to reply: no empty bubble, the sent message keeps its saved identity.
+      if(fromComposer&&this.cameraAttachment){this.cameraAttachment=null;this.setState({});}
       if(transcript && this.transcriptAttachment===transcript){this.transcriptAttachment=null;this.setState({});}
       if(reply.ignored&&!reply.proposals?.length&&!reply.completedActions?.length&&!reply.completedReads?.length){
         await new Promise<void>(resolve=>this.setState((previous:Shell)=>settlementCurrent()?(()=>{const saved=!!reply.userMessageId&&previous.msgs.some((m:Shell)=>m.id===reply.userMessageId);return {msgs:previous.msgs.filter((m:Shell)=>m.id!==streamedId&&!(m.id===userId&&saved)).map((m:Shell)=>m.id===userId&&reply.userMessageId&&identity?{...m,id:reply.userMessageId,messageBinding:identity}:m)};})():null,resolve));

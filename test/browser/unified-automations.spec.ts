@@ -17,6 +17,7 @@ async function setup(page:Page,recurring=false){
   let result:any={};
   if(path==='/api/automations')result={automations:[{id:'workflow:flow',type:'workflow',title:flow.name,description:flow.description,status:'paused',enabled:false,workflowId:'flow',schedules:[]},...[trigger,...(created?[created]:[])].map(row=>({id:'trigger:'+row.id,type:'coordinator_text',title:row.displayName,description:row.instructions,status:row.enabled?'active':'paused',enabled:row.enabled,triggerId:row.id,schedules:[row]}))]};
   else if(path==='/api/lifeops/scheduled-tasks?ownerVisibleOnly=1')result={tasks:[schedule]};
+  else if(path==='/api/lifeops/scheduled-tasks/weekly/fire'&&method==='POST')result={fire:{kind:'fired',task:schedule}};
   else if(path==='/api/lifeops/scheduled-tasks/weekly/edit'&&method==='POST'){Object.assign(schedule,body);result={task:schedule};}
   else if(path==='/api/lifeops/reminders')result={reminders:[{definition:{id:'reminder',title:'Check the draft',description:'',status:'active',timezone:'UTC',cadence:{kind:'once',dueAt:'2026-12-01T10:00:00Z'}},occurrence:{id:'occurrence'}}]};
   else if(path==='/api/triggers'&&method==='POST'){created={id:'created',...body};result={trigger:created};}
@@ -92,4 +93,20 @@ test('schedule time and instructions change only after confirmation',async({page
  await page.getByRole('button',{name:'Confirm Save schedule',exact:true}).click();
  await expect.poll(()=>writes().length).toBe(1);
  expect(writes()[0].body).toEqual({promptInstructions:'Review my week.',trigger:{kind:'cron',expression:'30 9 * * *',tz:'UTC'}});
+});
+
+test('workflow choices collapse and a confirmed schedule run fires once',async({page})=>{
+ const calls=await setup(page,true);
+ await page.getByRole('button',{name:'New automation',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Clock alarms'})).toBeVisible();
+ await page.getByRole('button',{name:'More options',exact:true}).click();
+ await page.getByRole('button',{name:'Fewer options',exact:true}).click();
+ await expect(page.getByRole('button',{name:/Build step by step/})).toHaveCount(0);
+ await page.getByLabel('Back to automations').click();
+ await page.getByRole('region',{name:'Workflows',exact:true}).getByText('Weekly review',{exact:true}).click();
+ await page.getByRole('button',{name:'Run now',exact:true}).click();
+ expect(calls.filter(c=>c.path.endsWith('/fire'))).toHaveLength(0);
+ await page.getByRole('button',{name:'Confirm Run now',exact:true}).click();
+ await expect(page.locator('[data-alpha-subview=automations-detail]').getByText('Run started.',{exact:true})).toBeVisible();
+ expect(calls.filter(c=>c.path.endsWith('/fire')&&c.method==='POST')).toHaveLength(1);
 });
