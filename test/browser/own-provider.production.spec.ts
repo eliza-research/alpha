@@ -17,7 +17,7 @@ async function fixture(page:Page, signedOut=false, freshAccess=false,nativeEmail
   const leases=new Set<string>();let mode:'cloud'|'own'='cloud',revision=crypto.randomUUID(),unbound=false;const keys:{text?:string;voice?:string}={};
   // reject: true refuses the key; 'echo' refuses it with a message that repeats most of the entered key.
   // holdReply holds the next chat reply until releaseReply(): the turn is dispatched, nothing has streamed yet.
-  const f=w.ownProvider={events:[] as string[],saved:0,edited:0,removed:0,revealed:0,selected:0,cancelled:0,cleared:0,checks:0,hold:false,reject:false as boolean|'echo',pending:false,release:null as null|(()=>void),matched:false,holdCloudRead:false,cloudReadPending:false,cloudReadCompletions:0,releaseCloudRead:null as null|(()=>void),emailStarts:0,emailVerifications:0,holdVerify:false,verifyPending:false,releaseVerify:null as null|(()=>void),startFail:false,startHold:false,startRelease:null as null|(()=>void),starting:false,holdReply:false,replyHeld:false,releaseReply:null as null|(()=>void)};
+  const f=w.ownProvider={events:[] as string[],saved:0,edited:0,removed:0,revealed:0,selected:0,cancelled:0,cleared:0,checks:0,hold:false,reject:false as boolean|'echo',pending:false,release:null as null|(()=>void),matched:false,holdCloudRead:false,cloudReadPending:false,cloudReadCompletions:0,releaseCloudRead:null as null|(()=>void),emailStarts:0,emailVerifications:0,holdVerify:false,verifyPending:false,releaseVerify:null as null|(()=>void),startFail:false,startHold:false,startRelease:null as null|(()=>void),starting:false,holdReply:false,replyHeld:false,releaseReply:null as null|(()=>void),holdSelect:false,selectPending:false,releaseSelect:null as null|(()=>void)};
   localStorage.setItem(dataKey,'existing local app data');
   if(signedOut){delete w.flagOff.slots['cloud:production'];w.flagOff.persist();}
   const status=async()=>{const cloud=await base('Agent','providerStatus',{});return {
@@ -76,6 +76,7 @@ async function fixture(page:Page, signedOut=false, freshAccess=false,nativeEmail
     current(input);if(input.mode!=='cloud'&&input.mode!=='own')throw Error('Invalid provider mode');
     if(input.mode==='own'&&!keys.text)throw Error('Save a Text key first');
     if(input.mode==='cloud'&&!w.flagOff.slots['cloud:production'])throw Error('Sign in to Cloud first');
+    if(f.holdSelect){f.selectPending=true;await new Promise<void>(resolve=>f.releaseSelect=resolve);f.selectPending=false;current(input);}
     mode=input.mode;unbound=false;committed(input);f.selected++;f.events.push('select:'+mode);return status();
    }
    if(method==='editProviderKeys'){
@@ -129,6 +130,22 @@ async function ownKeySetupReady(page:Page){
  if(await setup.count())await expect(setup).not.toContainText('AI connection isn’t confirmed yet');
  await completeAccessSetup(page);
 }
+
+test('pending provider change shows progress instead of a false failure',async({page})=>{
+ const observed=await fixture(page);await residentHome(page);await openProvider(page);await enterKeys(page);
+ await dialog(page).getByRole('button',{name:'Save and use own keys',exact:true}).click();await expect(dialog(page)).toHaveCount(0);
+ await page.getByRole('button',{name:'AI connection',exact:true}).click();
+ await page.evaluate(()=>(window as any).ownProvider.holdSelect=true);
+ await dialog(page).getByRole('button',{name:'Cloud',exact:true}).click();
+ await expect.poll(()=>page.evaluate(()=>(window as any).ownProvider.selectPending)).toBe(true);
+ await expect(dialog(page).getByText('Updating connection…',{exact:true})).toBeVisible();
+ await expect(dialog(page).getByText('Status unavailable.',{exact:true})).toHaveCount(0);
+ await expect(dialog(page).getByRole('button',{name:'Try again',exact:true})).toHaveCount(0);
+ await page.evaluate(()=>(window as any).ownProvider.releaseSelect());await expect(dialog(page)).toHaveCount(0);
+ await page.getByRole('button',{name:'AI connection',exact:true}).click();
+ await expect(dialog(page).getByRole('button',{name:'Cloud',exact:true})).toHaveAttribute('aria-pressed','true');
+ await noLeaks(page,observed);
+});
 
 test('Cloud is the default; explicit own-key save and return to Cloud preserve existing app data',async({page},info)=>{
  const observed=await fixture(page);await residentHome(page);

@@ -4028,13 +4028,13 @@ function OwnProviderChoice({heading,busy,replying=false,saving,status,statusUnav
  useEffect(()=>{if(own)setEditing(false);},[own,status?.revision]);
  return <section aria-label="AI provider" className="alpha-provider">
   {heading&&<h3>AI connection</h3>}
-  {statusUnavailable&&<div className="alpha-provider-status"><p role="status">Status unavailable.</p><button type="button" className="alpha-btn alpha-btn--text" disabled={busy} onClick={onRetryStatus}>Try again</button></div>}
+  {statusUnavailable&&!busy&&<div className="alpha-provider-status"><p role="status">Status unavailable.</p><button type="button" className="alpha-btn alpha-btn--text" disabled={busy} onClick={onRetryStatus}>Try again</button></div>}
   <div className="alpha-segmented" role="group" aria-label="Provider">
    <button type="button" disabled={busy||replying} aria-pressed={!editing&&cloud} onClick={()=>{setEditing(false);onDismissError();if(!cloud)void onCloud();}}>Cloud</button>
    <button type="button" disabled={busy||replying} aria-pressed={own||editing} onClick={()=>{connectionController.cancelProviderSelection();onDismissError();if(!own){if(managed?.keys.text.configured){setEditing(false);void onOwn();}else setEditing(true);}}}>Own API keys</button>
   </div>
   {!editing&&<div className="alpha-provider-own">
-   <p>{own?(status?.configured?(status.voiceConfigured?'Text and voice connected':'Text connected · Voice off'):'Text key needed'):'Cloud selected'}</p>
+   <p role={busy?'status':undefined}>{busy?'Updating connection…':own?(status?.configured?(status.voiceConfigured?'Text and voice connected':'Text connected · Voice off'):'Text key needed'):'Cloud selected'}</p>
    {managed&&<button type="button" className="alpha-btn alpha-btn--secondary" disabled={busy} onClick={()=>{onDismissError();setViewing(value=>!value);}}>{viewing?'Close keys':'View keys'}</button>}
   </div>}
   {viewing&&managed&&!editing&&<ProviderKeys status={managed} busy={busy||replying} retirement={epoch}
