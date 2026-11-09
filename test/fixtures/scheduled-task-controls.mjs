@@ -28,6 +28,7 @@ function compile() {
     ['./workflow-authoring', 'export const showAgentStatus=()=>{};'],
     ['./home-cards', 'export const homeReadIsStale=()=>false;export const presentHomeWorkflowFreshness=()=>({});'],
     ['../runtime/workflow-request-recovery', 'export const createWorkflowRequestRecovery=()=>({retire(){},open(){throw Error("Browser recovery outside installed-slot fixture");}});'],
+    ['../browser/domain-recovery', 'export function openDomainRecovery(){throw Error("Browser dialog outside installed-slot fixture");}'],
     ['../browser/domain-document', 'export class BrowserDomainDocument {constructor(){throw Error("Browser document outside fixture");}}'],
     ['../browser/documents', 'export const browserDocuments=null;'],
     ['@capacitor/core', 'export const Capacitor={getPlatform:()=>"android",isNativePlatform:()=>true};'],
