@@ -32,3 +32,15 @@ voice IME is enabled while LatinIME remains selected, tap LatinIME's microphone,
 Start/Stop real Cloud dictation into a draft, and verify Cancel, Back, field/account
 switch, lock/call interruption, password denial and owner opt-out. Source/host
 checks do not establish those device outcomes. No user records are changed by staging.
+
+Run `test/aosp-fresh-presets.test.py` with `ALPHA_DICTATION_APP_ROOT` pointing to
+the reviewed candidate app source and the retained `ALPHA_FRESH_PRESET_INPUTS` /
+`ALPHA_BRANDING_ASSETS`. Its dictation case exercises the normal staging plan,
+then checks the overlay package against the actual launcher manifest and voice subtype.
+A source tree without that service cannot qualify this paired image/app change.
+
+Native acceptance must also verify the keyboard-focus fix while switching from
+LatinIME to this auxiliary IME: transient IME visibility must not blur the target
+field or dismiss the voice panel. Test Start/Stop insertion and Cancel back to the
+normal keyboard in both Alpha's composer and another editable app. This interaction
+has not been established by source/model checks.

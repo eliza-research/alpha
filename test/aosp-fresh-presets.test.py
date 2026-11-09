@@ -79,6 +79,25 @@ public class FreshTest {
    overlay=root/'vendor/alphaphone/branding/overlay/frameworks/base/packages/SystemUI/res/values/alpha-system-entry.xml'
    self.assertEqual(overlay.read_bytes(),(BRAND/'system-entry/product-overlay/values/alpha-system-entry.xml').read_bytes())
 
+ def test_dictation_overlay_is_staged_and_matches_the_reviewed_launcher_service(self):
+  with tempfile.TemporaryDirectory(prefix='alpha-dictation-stage-')as d,patch.object(stage,'check_revision'):
+   root=Path(d)/'aosp';root.mkdir();plan,_=self.plan(root)
+   key='vendor/alphaphone/branding/overlay/frameworks/base/core/res/res/values/alpha-keyboard-dictation.xml'
+   source=BRAND/'overlay/frameworks/base/core/res/res/values/alpha-keyboard-dictation.xml'
+   self.assertEqual(plan[key],source.read_bytes(),'normal image staging must carry the dictation binding')
+   target=ET.fromstring(plan[key]).find("string[@name='config_systemSpeechRecognizer']").text
+   self.assertEqual(target,json.loads((REPO/'app.config.json').read_text())['appId'])
+   app=Path(os.environ.get('ALPHA_DICTATION_APP_ROOT',REPO))
+   manifest=ET.parse(app/'android/app/src/launcher/AndroidManifest.xml').getroot()
+   a='{http://schemas.android.com/apk/res/android}'
+   service=manifest.find("application/service[@"+a+"name='.AlphaKeyboardDictationService']")
+   self.assertIsNotNone(service,'staged app source must include the matching auxiliary voice IME')
+   self.assertEqual(service.attrib[a+'permission'],'android.permission.BIND_INPUT_METHOD')
+   metadata=service.find('meta-data');self.assertEqual(metadata.attrib[a+'resource'],'@xml/alpha_keyboard_dictation')
+   subtype=ET.parse(app/'android/app/src/launcher/res/xml/alpha_keyboard_dictation.xml').getroot().find('subtype')
+   self.assertEqual(subtype.attrib[a+'imeSubtypeMode'],'voice')
+   self.assertEqual(subtype.attrib[a+'isAuxiliary'],'true')
+
  def test_setup_icon_reuses_reviewed_product_bytes_geometry_and_clip(self):
   pin=stage.LOCK['productIcon'];icon=(REPO/pin['path']).read_bytes()
   self.assertEqual(stage.digest(icon),pin['sha256'])
