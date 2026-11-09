@@ -80,7 +80,7 @@
   ],
   "upstream": {
     "url": "https://github.com/elizaOS/eliza.git",
-    "commit": "dec170f861bdb756c2edb8a92f71f15f0d86288c",
+    "commit": "5500c73b3d8ff8395999bbb620e7e3fc0ebb1df4",
     "appSource": "packages/app",
     "nativeSystemSource": "plugins/plugin-native-system",
     "osSource": "packages/os"
@@ -9439,7 +9439,7 @@
     },
     {
       "path": "apps/app/src/browser/calendar-editor-draft.ts",
-      "sha256": "6d4477895c623905164c2ee9ce1ceedcb80ad495a2a0c9537486e8bab2907627",
+      "sha256": "a9f9d7aae0e5f554a716f811e7cace307ce72b02c46c4240f864a752760d868d",
       "models": [
         "CalendarSync"
       ],
@@ -19191,7 +19191,7 @@
     },
     {
       "path": "apps/app/src/prototype/calendar-edit-draft-adapter.ts",
-      "sha256": "62811f4fc9cd27393b86f531af86f47c2c15432c6cd9e0336a965254f30841a4",
+      "sha256": "284c3866d0c92d8e3befa3f333c58c8df295dc65b21095eef9e028a6285213d1",
       "models": [
         "CalendarSync"
       ],
@@ -19274,7 +19274,7 @@
     },
     {
       "path": "apps/app/src/prototype/calendar-form-draft-adapter.ts",
-      "sha256": "45956455f90b0f3a4d54d1468f95955b709ce481065225216d72f7b36197dd92",
+      "sha256": "fe699b5348fb3b32478cf07fcf985f6efcae51fb883daa7d84709bdc3dc3838a",
       "models": [
         "CalendarSync"
       ],
@@ -19347,7 +19347,7 @@
         },
         {
           "line": 53,
-          "text": "const current=()=>owner===shell&&shell.live&&api.isActive()&&shell.vget('calendar').form===form&&shell.calendarDraftText===text;"
+          "text": "const current=()=>owner===shell&&shell.live&&api.isActive()&&shell.vget('calendar').form===form;"
         },
         {
           "line": 59,
@@ -19910,7 +19910,7 @@
       "scope": "application",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "4dce9c067b3f18c1e6dd9a6a09837416526ff3016c06226d7fc6d935378af3a3",
+      "sha256": "13f865c1c25c3d27f18b51b1fc47ea8701357bddd83806f8a5a375b29cb029ad",
       "stateAnchors": [
         {
           "line": 8,
@@ -23516,7 +23516,7 @@
     },
     {
       "path": "apps/app/src/prototype/inbox-unsaved.ts",
-      "sha256": "33336fb2c1b952a75270928b2feb141f6b0918c92c46b5da4f0c6cfe5fb80ef3",
+      "sha256": "f8df9f07908b8a00e7c162dd59ebb31cb38f1e4ffea54475b203cd16a4596153",
       "models": [
         "InboxDelivery",
         "InboxCoordinator",
@@ -23579,7 +23579,7 @@
         },
         {
           "line": 57,
-          "text": "async clear(){const expected=text;if(expected)await controller.consume(expected,()=>alive&&text===expected);},"
+          "text": "async clear(){const expected=text;if(expected)await controller.consume(expected,()=>alive);},"
         },
         {
           "line": 58,
@@ -47609,7 +47609,7 @@
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
-      "sha256": "bdcfd00f9c4c3996465af997c44c8d85dea2f221e52673a04248d500c9ee98a9",
+      "sha256": "309b6f61c96dd7e6d0f51f963d62be270ce1a885f4bd483cc4925423ae1c08d1",
       "stateAnchors": []
     },
     {
@@ -421855,7 +421855,7 @@
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "cf92c31ad8a05cea453e1127f56840e5df235d087b59784f0567a2d81769c050",
+      "sha256": "f63b6c7c58753f58ea5572772f38e5f68936018d70d73ceb704987e00df415db",
       "stateAnchors": [
         {
           "line": 146,
@@ -421910,295 +421910,295 @@
           "text": "let selection: Set<string> | null = null,"
         },
         {
-          "line": 263,
+          "line": 264,
           "text": "let dialog: Dialog | undefined,"
         },
         {
-          "line": 266,
+          "line": 267,
           "text": "let selectionEpoch = 0;"
         },
         {
-          "line": 267,
+          "line": 268,
           "text": "let generation = 0,"
         },
         {
-          "line": 275,
+          "line": 276,
           "text": "const repaint = () => api?.set({ filesBrowserRevision: ++revision });"
         },
         {
-          "line": 276,
+          "line": 277,
           "text": "const modal = createInlineModal("
         },
         {
-          "line": 285,
+          "line": 286,
           "text": "const toast = (text: string) => {"
         },
         {
-          "line": 288,
+          "line": 289,
           "text": "const failed = (value: Result) => {"
         },
         {
-          "line": 310,
+          "line": 311,
           "text": "const state = await storage.storageState();"
         },
         {
-          "line": 323,
+          "line": 324,
           "text": "const extraVolumes = () =>"
         },
         {
-          "line": 327,
+          "line": 328,
           "text": "const lists = await Promise.all("
         },
         {
-          "line": 330,
+          "line": 331,
           "text": "const value = await storage.storageTrashList(onVolume(volume));"
         },
         {
-          "line": 350,
+          "line": 351,
           "text": "const volumeLabel = (volume?: string) =>"
         },
         {
-          "line": 354,
+          "line": 355,
           "text": "const here = () => (place.kind === \"folder\" ? onVolume(place.volume) : {});"
         },
         {
-          "line": 357,
+          "line": 358,
           "text": "const next: Partial<Record<FilesCategory, number>> = {};"
         },
         {
-          "line": 372,
+          "line": 373,
           "text": "let trash = 0;"
         },
         {
-          "line": 383,
+          "line": 384,
           "text": "const ticket = ++generation,"
         },
         {
-          "line": 431,
+          "line": 432,
           "text": "const listed = new Set(entries.map((e) => e.path));"
         },
         {
-          "line": 449,
+          "line": 450,
           "text": "const key ="
         },
         {
-          "line": 469,
+          "line": 470,
           "text": "let listening: Promise<{ remove(): Promise<void> }> | undefined,"
         },
         {
-          "line": 471,
+          "line": 472,
           "text": "const changed = () => {"
         },
         {
-          "line": 479,
+          "line": 480,
           "text": "const visibility = () => {"
         },
         {
-          "line": 502,
+          "line": 503,
           "text": "let base: { from: Place; path: string; volume?: string } = {"
         },
         {
-          "line": 544,
+          "line": 545,
           "text": "const current = () => ticket === selectionEpoch && currentApi.isActive();"
         },
         {
-          "line": 548,
+          "line": 549,
           "text": "const volume = place.kind === \"folder\" ? place.volume : undefined;"
         },
         {
-          "line": 549,
+          "line": 550,
           "text": "const value = await storage.storageSelect({"
         },
         {
-          "line": 580,
+          "line": 581,
           "text": "const value = await storage.storageShare({ paths, ...onVolume(volume) });"
         },
         {
-          "line": 590,
+          "line": 591,
           "text": "const summarize = (outcomes: Outcome[], done: string, verb: string) => {"
         },
         {
-          "line": 591,
+          "line": 592,
           "text": "const ok = outcomes.filter((o) => o.status === done).length,"
         },
         {
-          "line": 610,
+          "line": 611,
           "text": "const value = await storage.storageTransfer({"
         },
         {
-          "line": 646,
+          "line": 647,
           "text": "const value = await storage.storageTrash({ paths, ...onVolume(volume) });"
         },
         {
-          "line": 648,
+          "line": 649,
           "text": "const outcomes = value.outcomes || [],"
         },
         {
-          "line": 677,
+          "line": 678,
           "text": "const value = await storage.storageRestore({ ids, ...onVolume(volume) });"
         },
         {
-          "line": 694,
+          "line": 695,
           "text": "const byVolume = new Map<string | undefined, string[]>();"
         },
         {
-          "line": 695,
+          "line": 696,
           "text": "for (const row of items)"
         },
         {
-          "line": 697,
+          "line": 698,
           "text": "empty: for (const [volume, ids] of byVolume)"
         },
         {
-          "line": 698,
+          "line": 699,
           "text": "for (let at = 0; at < ids.length; at += EMPTY_BATCH)"
         },
         {
-          "line": 753,
+          "line": 754,
           "text": "const value = await storage.storageList({"
         },
         {
-          "line": 802,
+          "line": 803,
           "text": "const ticket = ++filterGeneration;"
         },
         {
-          "line": 806,
+          "line": 807,
           "text": "const query = await storage.storageQuery({"
         },
         {
-          "line": 865,
+          "line": 893,
           "text": "const reviewingPrimary = () =>"
         },
         {
-          "line": 869,
+          "line": 897,
           "text": "const runner: FilesAgentRunner = {"
         },
         {
-          "line": 874,
+          "line": 902,
           "text": "const result = await storage.storageReviewedIdentities({"
         },
         {
-          "line": 885,
+          "line": 913,
           "text": "const reviewRequired = {"
         },
         {
-          "line": 931,
+          "line": 941,
           "text": "const value = await storage.storageSelect({ path: op.path });"
         },
         {
-          "line": 950,
+          "line": 960,
           "text": "const value = await storage.storageShare({ paths: op.paths });"
         },
         {
-          "line": 962,
+          "line": 972,
           "text": "const value = await storage.storageCreateFolder({"
         },
         {
-          "line": 979,
+          "line": 989,
           "text": "const selection = {"
         },
         {
-          "line": 998,
+          "line": 1008,
           "text": "const done = (value.outcomes || []).filter("
         },
         {
-          "line": 1012,
+          "line": 1022,
           "text": "const toggle = (path: string) => {"
         },
         {
-          "line": 1018,
+          "line": 1028,
           "text": "const press = (path: string) => ({"
         },
         {
-          "line": 1041,
+          "line": 1051,
           "text": "const entryRow = (entry: StorageEntry, showFolder = false) => {"
         },
         {
-          "line": 1042,
+          "line": 1052,
           "text": "const on = !!selection?.has(entry.path),"
         },
         {
-          "line": 1044,
+          "line": 1054,
           "text": "const meta = entry.directory"
         },
         {
-          "line": 1099,
+          "line": 1109,
           "text": "const out = render(state, currentApi);"
         },
         {
-          "line": 1100,
+          "line": 1110,
           "text": "const visible = currentApi.isActive?.() !== false;"
         },
         {
-          "line": 1107,
+          "line": 1117,
           "text": "const sort: SortMode ="
         },
         {
-          "line": 1109,
+          "line": 1119,
           "text": "const granted = access === \"granted\";"
         },
         {
-          "line": 1111,
+          "line": 1121,
           "text": "const primary = volumes.find((v) => v.primary) ?? volumes[0];"
         },
         {
-          "line": 1116,
+          "line": 1126,
           "text": "const newFolder = () => {"
         },
         {
-          "line": 1118,
+          "line": 1128,
           "text": "const target = place.kind === \"folder\" ? place : rootFolder;"
         },
         {
-          "line": 1160,
+          "line": 1170,
           "text": "const value = await storage.storageRequestAccess();"
         },
         {
-          "line": 1224,
+          "line": 1234,
           "text": "const at = place;"
         },
         {
-          "line": 1225,
+          "line": 1235,
           "text": "const volumeName ="
         },
         {
-          "line": 1229,
+          "line": 1239,
           "text": "const title ="
         },
         {
-          "line": 1240,
+          "line": 1250,
           "text": "let items: Record<string, unknown>[] = [];"
         },
         {
-          "line": 1306,
+          "line": 1316,
           "text": "const listed ="
         },
         {
-          "line": 1309,
+          "line": 1319,
           "text": "const paths = () => [...(selection || [])];"
         },
         {
-          "line": 1413,
+          "line": 1423,
           "text": "const all = entries.map((e) => e.path);"
         },
         {
-          "line": 1417,
+          "line": 1427,
           "text": "const volumeHere = at.kind === \"folder\" ? at.volume : undefined;"
         },
         {
-          "line": 1431,
+          "line": 1441,
           "text": "const only = paths();"
         },
         {
-          "line": 1462,
+          "line": 1472,
           "text": "const path = opened.path;"
         },
         {
-          "line": 1463,
+          "line": 1473,
           "text": "const volume = opened.volume;"
         },
         {
-          "line": 1663,
+          "line": 1673,
           "text": "const preset = module.preset;"
         }
       ]
@@ -424043,6 +424043,18 @@
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
       "sha256": "6bb0d5e33523042b93ec79f58b39c36517b120846bdaf5b2b72e29a30b4e5f2f",
+      "stateAnchors": []
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-files/test/browser-agent-filter.test.mjs",
+      "models": [
+        "FilesBrowserController",
+        "FilesFilter"
+      ],
+      "scope": "shared-module-dependency",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "sha256": "81dfcc75aaf0ddf9107a100a37475c774afa764e71d6063b058b88b4bcf156f7",
       "stateAnchors": []
     },
     {
@@ -613557,7 +613569,7 @@
         "NativeSpeechWarmup",
         "NativeRecognizerAvailability"
       ],
-      "sha256": "b41437c7db6a92ee00996633d594fc86e8aa24da826d7c39dc59a66dd08f4959"
+      "sha256": "7e9f6932295ca49c3cba3f7a2020ba8259b1aef134db96e1d88f53d7760c70c3"
     },
     {
       "path": "app.config.json",
@@ -613586,7 +613598,7 @@
         "MobileBundleAdmission",
         "NativeGoogleHostArtifact"
       ],
-      "sha256": "fe298330a3150dcf161a735c2a982574a70a731f15ccad905927bc56e8197d95"
+      "sha256": "1d40e1167757e7907d49179b1fc42aad7694c1d0865d0d5a017a1b526704d9df"
     },
     {
       "path": "scripts/upstream-mobile-build.mjs",
@@ -613594,7 +613606,7 @@
         "Application",
         "MobileBundleAdmission"
       ],
-      "sha256": "2188418d9101d37c7a71f6f9b01a8c198e8f1331107c89c954efa1da6c79b698"
+      "sha256": "a0eee8fac502e1deaa7ed4eac96dd27156930232fee076ca560599d75a8dbecd"
     },
     {
       "path": "android/upstream-native-sources.json",
@@ -613872,7 +613884,7 @@
         "CoreServiceLifecycle",
         "ApplicationComposition"
       ],
-      "sha256": "668b10f10881ccbfa7973eff001307f331e2f6d03a34cbe4ecb49660ae14a8db"
+      "sha256": "2a58ad35f8e547099a3b5b308fe0335eb2d7f1c38068c58a5d26200c517ef1a9"
     },
     {
       "path": "upstream.lock.json",
@@ -613884,7 +613896,7 @@
         "NativeGoogleHostArtifact",
         "ResidentJavaSourceStage"
       ],
-      "sha256": "038f041c544d079bb1c14ee99dde2ae20579b2fbeea059f9638b626c45c6517d"
+      "sha256": "899628daa589da867f199c2aa3e1af99e220613d8f47b97f453a49894690c905"
     },
     {
       "path": "vendor/eliza/packages/app/platforms/android/sense/src/main/AndroidManifest.xml",
@@ -613942,7 +613954,7 @@
     },
     {
       "path": "patches/eliza/managed-google-agent-manifest.json",
-      "sha256": "45441ac42a7bff765c7892326bb5bcf89b0794c198a0206337eb61b0d1c217fb",
+      "sha256": "62068850426b2c12e130a55bd158517e2bc15f909fa5192a11b7f4b40c2eb1c6",
       "models": [
         "BrowserCloudRequestCustody",
         "GmailAgentMailboxRecovery",
@@ -613956,9 +613968,9 @@
     "apps/app/index.html"
   ],
   "sharedSourceDiscovery": {
-    "sharedSourceCount": 4885,
+    "sharedSourceCount": 4886,
     "producer": "specs/quint/refinement/services/runtime-bundle-inputs.json",
-    "sourcePin": "dec170f861bdb756c2edb8a92f71f15f0d86288c",
+    "sourcePin": "5500c73b3d8ff8395999bbb620e7e3fc0ebb1df4",
     "meaning": "Authenticated source identities and domain allocations. Runtime activation and implementation refinement require separate evidence."
   }
 }

@@ -1,15 +1,15 @@
 {
   "schema": 1,
   "classification": "observed-product-android-bundle-inputs",
-  "sourcePin": "dec170f861bdb756c2edb8a92f71f15f0d86288c",
+  "sourcePin": "5500c73b3d8ff8395999bbb620e7e3fc0ebb1df4",
   "producer": {
     "script": "scripts/build-mobile-agent.mjs",
     "observer": "specs/quint/refinement/services/runtime-bundle-audit.mjs",
     "inputHashes": {
       "specs/quint/refinement/services/runtime-bundle-audit.mjs": "0527954e0c6a927698e6351b0150eb3bb660e573a7570330d38d80e6f8bd9f67",
       "specs/quint/refinement/services/runtime-bundle-graph.mjs": "0bd78236abb72ae29b2716ead130dcbb2a00455a326ecc2280fc6bf5988eadf5",
-      "upstream.lock.json": "038f041c544d079bb1c14ee99dde2ae20579b2fbeea059f9638b626c45c6517d",
-      "scripts/upstream-mobile-build.mjs": "2188418d9101d37c7a71f6f9b01a8c198e8f1331107c89c954efa1da6c79b698",
+      "upstream.lock.json": "899628daa589da867f199c2aa3e1af99e220613d8f47b97f453a49894690c905",
+      "scripts/upstream-mobile-build.mjs": "a0eee8fac502e1deaa7ed4eac96dd27156930232fee076ca560599d75a8dbecd",
       "scripts/local-agent-source.mjs": "bd5c0ae286c2802fed48f8e51150d4f2de75fb4c8563cfdcdd4d1347fb888c5f",
       "scripts/build-mobile-agent.mjs": "d0201c2bc3cb74d9ad0ba725deac43d08d3be4f2ba45ce50ffd2d1732fd6c0ae",
       "scripts/mobile-uuid-adapter.mjs": "821d33c77787d3069b3e18c1eeac05ab2b2d00f2691824663577acee0366884d",
@@ -18,18 +18,18 @@
       "scripts/core-state-patch.mjs": "9ff01918776f2f60336fb1e119092863095b9459e1df6ee23c1a708124626550",
       "scripts/core-state-preload.mjs": "c5368c9075aa8c7660bee01338185fbe673c9b8dd6889dd1ab01d195efa17c10",
       "scripts/combined-agent-source.mjs": "a2f4d279f3f98ff078f3aedd6b9dc2dc5c3396ecdc7fb7f09b0da7e0c085062e",
-      "scripts/upstream-core-sources.mjs": "fe298330a3150dcf161a735c2a982574a70a731f15ccad905927bc56e8197d95"
+      "scripts/upstream-core-sources.mjs": "1d40e1167757e7907d49179b1fc42aad7694c1d0865d0d5a017a1b526704d9df"
     },
     "coreState": {
       "version": 2,
-      "baseCommit": "dec170f861bdb756c2edb8a92f71f15f0d86288c",
-      "manifestSha256": "fe298330a3150dcf161a735c2a982574a70a731f15ccad905927bc56e8197d95",
+      "baseCommit": "5500c73b3d8ff8395999bbb620e7e3fc0ebb1df4",
+      "manifestSha256": "1d40e1167757e7907d49179b1fc42aad7694c1d0865d0d5a017a1b526704d9df",
       "inputHashes": {
         "scripts/core-state-patch.mjs": "9ff01918776f2f60336fb1e119092863095b9459e1df6ee23c1a708124626550",
         "scripts/core-state-preload.mjs": "c5368c9075aa8c7660bee01338185fbe673c9b8dd6889dd1ab01d195efa17c10",
         "scripts/combined-agent-source.mjs": "a2f4d279f3f98ff078f3aedd6b9dc2dc5c3396ecdc7fb7f09b0da7e0c085062e",
         "scripts/build-policy-source.mjs": "3512c1e3a1c4d0c2c1dec2d3b99d12752edf2f90af9b35aba10ffb1cdffb09bb",
-        "scripts/upstream-core-sources.mjs": "fe298330a3150dcf161a735c2a982574a70a731f15ccad905927bc56e8197d95"
+        "scripts/upstream-core-sources.mjs": "1d40e1167757e7907d49179b1fc42aad7694c1d0865d0d5a017a1b526704d9df"
       },
       "patches": [],
       "files": {
@@ -149,11 +149,11 @@
       "version": "1.4.2",
       "revision": "744846f844374847c902b5e7fd59b4342a51ef99"
     },
-    "bundleSha256": "d86fd25cb27dcb9fcef07a716c724913a00104e78b892512458d9c8d5d34b74f",
+    "bundleSha256": "e9fcdf49cfdddcb5c59e79bfccb93740e57287595576f9b1023a9101a582937b",
     "sourceTreeVerifiedBeforeAndAfter": true,
     "inputHashesUnchanged": true,
-    "rawMetafileSha256": "6f9792e5203a207acf33d6127206079f81c5a5562f39b94de0dff3922fb5d9eb",
-    "producerObservationSha256": "63eda1b436c3718fbc733b29b9bb61a3fb990969f5eefd9bd9dc787b09d862b0"
+    "rawMetafileSha256": "0d01705542a735fdca7421357e1c41201799dcdfd6f0419051835e2f96bc16eb",
+    "producerObservationSha256": "f76a97278a751ac5650d10d8a6f83b62fd283cf7a88ec74612f23dc6398dd7d4"
   },
   "counts": {
     "parsed": 9990,
@@ -68661,7 +68661,7 @@
     },
     "plugins/plugin-assistant/src/features/advanced-capabilities/evaluators/preference-items.ts": {
       "sha256": "95be14edcca6f75dc36537503f22b4ac00280154fa747692fb78fc05bb24c601",
-      "bytesInOutput": 15846,
+      "bytesInOutput": 15848,
       "tracked": true,
       "gitObject": "07bd6f95cb668e60cc0d2228deac6214204c485e",
       "imports": [

@@ -11,11 +11,11 @@ const names=['libelizainference.so','libelizavoicejni.so','libc++_shared.so'];
 const model={path:'android/app/src/main/assets/agent/models/bge-small-en-v1.5-f16.gguf',sha256:'f0b2fef971e8366438bfd2d9aefea1b0115919389448806d290237f638bae999',dimensions:384};
 const forkPath='plugins/plugin-local-inference/native/llama.cpp';
 
-// dec170 adds Quint verification scripts and a development dependency to these two manifests.
+// The merged pin adds Quint verification scripts and a development dependency to these two manifests.
 // Bind the exact manifest transition without relabeling the original native qualification.
 const formalOnlyManifestAdvance = {
   qualifiedAt: '99b49439ce9d0cb5607e9831b9f7f58d89525029',
-  sourcePin: 'dec170f861bdb756c2edb8a92f71f15f0d86288c',
+  sourcePin: '5500c73b3d8ff8395999bbb620e7e3fc0ebb1df4',
   files: {
     'package.json': {
       reviewed: 'd0c735b8ea487c192a9f6839a64db6c6185ec753f177836d96f73b86abf35f6a',

@@ -11,8 +11,8 @@
   },
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
-  "sourcePin": "dec170f861bdb756c2edb8a92f71f15f0d86288c",
-  "ledgerSha256": "d386571abc0856fb782e48867de161afbb51be27745b466629b868279c3376dc",
+  "sourcePin": "5500c73b3d8ff8395999bbb620e7e3fc0ebb1df4",
+  "ledgerSha256": "45e791a484c1352d796cffd6ffa54e03057e3465bd5fa32bba18cb5718677c26",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -22,17 +22,17 @@
     "The ledger supplies pinned source bytes. Effective client/native/runtime patch outputs require their separately authenticated source mappings."
   ],
   "counts": {
-    "files": 5771,
-    "testSupportFiles": 301,
-    "testSupportCandidates": 11433,
-    "parsedFiles": 5680,
+    "files": 5772,
+    "testSupportFiles": 302,
+    "testSupportCandidates": 11442,
+    "parsedFiles": 5681,
     "languageReview": 91,
     "parseErrors": 0,
-    "candidates": 68609,
-    "writeSites": 67889,
-    "writeAssociations": 60916,
-    "asynchronous": 8479,
-    "unassignedWrites": 10402
+    "candidates": 68619,
+    "writeSites": 67904,
+    "writeAssociations": 60928,
+    "asynchronous": 8482,
+    "unassignedWrites": 10405
   },
   "files": [
     {
@@ -29090,7 +29090,7 @@
     },
     {
       "path": "apps/app/src/browser/calendar-editor-draft.ts",
-      "sha256": "6d4477895c623905164c2ee9ce1ceedcb80ad495a2a0c9537486e8bab2907627",
+      "sha256": "a9f9d7aae0e5f554a716f811e7cace307ce72b02c46c4240f864a752760d868d",
       "allocatedModels": [
         "CalendarSync"
       ],
@@ -33967,7 +33967,7 @@
     },
     {
       "path": "apps/app/src/prototype/calendar-edit-draft-adapter.ts",
-      "sha256": "62811f4fc9cd27393b86f531af86f47c2c15432c6cd9e0336a965254f30841a4",
+      "sha256": "284c3866d0c92d8e3befa3f333c58c8df295dc65b21095eef9e028a6285213d1",
       "allocatedModels": [
         "CalendarSync"
       ],
@@ -33993,7 +33993,7 @@
     },
     {
       "path": "apps/app/src/prototype/calendar-form-draft-adapter.ts",
-      "sha256": "45956455f90b0f3a4d54d1468f95955b709ce481065225216d72f7b36197dd92",
+      "sha256": "fe699b5348fb3b32478cf07fcf985f6efcae51fb883daa7d84709bdc3dc3838a",
       "allocatedModels": [
         "CalendarSync"
       ],
@@ -34251,7 +34251,7 @@
     },
     {
       "path": "apps/app/src/prototype/canonical-calendar-drafts.ts",
-      "sha256": "4dce9c067b3f18c1e6dd9a6a09837416526ff3016c06226d7fc6d935378af3a3",
+      "sha256": "13f865c1c25c3d27f18b51b1fc47ea8701357bddd83806f8a5a375b29cb029ad",
       "allocatedModels": [
         "CalendarPresentation",
         "CanonicalCalendarDraft",
@@ -35155,7 +35155,7 @@
     },
     {
       "path": "apps/app/src/prototype/inbox-unsaved.ts",
-      "sha256": "33336fb2c1b952a75270928b2feb141f6b0918c92c46b5da4f0c6cfe5fb80ef3",
+      "sha256": "f8df9f07908b8a00e7c162dd59ebb31cb38f1e4ffea54475b203cd16a4596153",
       "allocatedModels": [
         "InboxDelivery",
         "InboxCoordinator",
@@ -46859,7 +46859,7 @@
     },
     {
       "path": "scripts/stage-embedding-host.mjs",
-      "sha256": "bdcfd00f9c4c3996465af997c44c8d85dea2f221e52673a04248d500c9ee98a9",
+      "sha256": "309b6f61c96dd7e6d0f51f963d62be270ce1a885f4bd483cc4925423ae1c08d1",
       "allocatedModels": [
         "EmbeddingStoreIdentity",
         "NamedEmbeddingProvenance",
@@ -146877,7 +146877,7 @@
     },
     {
       "path": "vendor/eliza/plugins/plugin-files/src/browser/files-browser-adapter.ts",
-      "sha256": "cf92c31ad8a05cea453e1127f56840e5df235d087b59784f0567a2d81769c050",
+      "sha256": "f63b6c7c58753f58ea5572772f38e5f68936018d70d73ceb704987e00df415db",
       "allocatedModels": [
         "FilesTree",
         "FilesPreview",
@@ -146898,36 +146898,36 @@
         {
           "owner": "installFilesBrowserAdapter",
           "line": 229,
-          "bindings": 31,
-          "writes": 125
+          "bindings": 32,
+          "writes": 127
         },
         {
           "owner": "installFilesBrowserAdapter.loadCounts",
-          "line": 357,
+          "line": 358,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "installFilesBrowserAdapter.reload",
-          "line": 431,
+          "line": 432,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "installFilesBrowserAdapter.emptyTrash",
-          "line": 694,
+          "line": 695,
           "bindings": 2,
           "writes": 2
         },
         {
-          "owner": "installFilesBrowserAdapter.ArrowFunction@1091",
-          "line": 1099,
+          "owner": "installFilesBrowserAdapter.ArrowFunction@1101",
+          "line": 1109,
           "bindings": 2,
           "writes": 50
         }
       ],
       "parseErrors": [],
-      "asynchronous": 19,
+      "asynchronous": 20,
       "unassignedWrites": 15
     },
     {
@@ -147508,6 +147508,28 @@
       "parseErrors": [],
       "asynchronous": 0,
       "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-files/test/browser-agent-filter.test.mjs",
+      "sha256": "81dfcc75aaf0ddf9107a100a37475c774afa764e71d6063b058b88b4bcf156f7",
+      "allocatedModels": [
+        "FilesBrowserController",
+        "FilesFilter"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "test-support-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "ArrowFunction@5",
+          "line": 12,
+          "bindings": 9,
+          "writes": 10
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 2,
+      "unassignedWrites": 3
     },
     {
       "path": "vendor/eliza/plugins/plugin-files/test/browser-files-share.test.mjs",
@@ -222864,6 +222886,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "c58b1a019231ae141f537d4f9aea8c6706f3f91fc61d2f90aaa77f1227032761"
+    "sha256": "6786d7ce51f28c1bb24611e984ea1c64f8a2f6ac82e920f7284b9378d0bf6b08"
   }
 }

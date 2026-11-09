@@ -54,7 +54,7 @@ export function inboxUnsaved(owner:string,publish:()=>void,restore:(value:InboxU
   resume(){if(controller.state.conflict){applying=true;try{controller.restoreSaved();}finally{applying=false;}}else if(text)restore(readInboxUnsaved(text,owner));},
   replace(){controller.keepCurrent();},
   retry(){return controller.retry();},
-  async clear(){const expected=text;if(expected)await controller.consume(expected,()=>alive&&text===expected);},
+  async clear(){const expected=text;if(expected)await controller.consume(expected,()=>alive);},
   recover(current:unknown){const recovery=controller.recovery();if(!recovery)return;recoveryAbort?.abort();recoveryAbort=new AbortController();openDomainRecovery({capture:async signal=>{const captured=await recovery.capture(signal);return {...captured,raw:JSON.stringify({saved:captured.raw,current})};},reset:recovery.reset},'email edits','Email edit recovery','Back up retained edits before resetting this recovery copy. Explicitly saved drafts and provider mail will not change.',recoveryAbort.signal,undefined,Capacitor.getPlatform()==='android'?'device':'browser');},
   retire(){
    if(!alive)return;
