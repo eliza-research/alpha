@@ -1199,6 +1199,19 @@ when a later adapter throws. They report the failed adapter and continue
 with subsequent campaigns. A failed replay still fails the aggregate. The
 collector cannot recover from termination of its own process.
 
+The strict command writes an atomic progress record next to its final JSON
+report. It binds the current registries, family drivers, source ledger and
+candidate audit, then records each finished family's receipt paths and
+failure count. A process interruption can leave a running progress record.
+The final report still revalidates source receipts and records the open
+application-wide proof obligation separately.
+
+The frozen 221-model collector rerun ended before its aggregate was
+written. Independent revalidation preserved 185 passing receipts for
+154 models, with 3,132 traces and 21,626 checkpoints. The receipts cover
+87 application, 45 service and 22 native models. Their archive records
+the exact revision and per-receipt hashes.
+
 `SharePanelAdmission` checks 11 source schedules and 57 checkpoints. A
 retained destination button previously dispatched after replacement or
 retirement. A repeat event could also dispatch twice from the same panel.
