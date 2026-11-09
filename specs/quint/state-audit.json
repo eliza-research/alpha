@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "b1817660a0347ae19551b9ee296410fe55f02d59",
-  "ledgerSha256": "1182e5d71c369dcc7d38460d3c1bcbc71635a8dfb9ba63e4a05a11781d5420de",
+  "ledgerSha256": "87350658e9fc91d9d9100e06f589db7309c7eff4f2a1e4f8ec22631c380eac24",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -46167,7 +46167,8 @@
       "sha256": "4a083bcd66cbaf363a4d8501af933344fb3e20bd90f4fc4cba97b56519f41306",
       "allocatedModels": [
         "MobileBundleAdmission",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "AndroidBuildInputReadiness"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -46506,7 +46507,8 @@
       "sha256": "51605fb5a38b9aed1f7d262ee8f284229c209f45db9a626900d3f1bef389bd10",
       "allocatedModels": [
         "EmbeddingStoreIdentity",
-        "NamedEmbeddingProvenance"
+        "NamedEmbeddingProvenance",
+        "AndroidBuildInputReadiness"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -47214,7 +47216,8 @@
       "sha256": "5b2f99180a222f743367959b7ba0360d9d30597ba80d91ea126830074d190258",
       "allocatedModels": [
         "MobileBundleAdmission",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "AndroidBuildInputReadiness"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -47535,7 +47538,8 @@
       "sha256": "e19b5da9a836a643befafe2aa4825fd419e375361315cb3d332af7a312725e3b",
       "allocatedModels": [
         "EmbeddingStoreIdentity",
-        "NamedEmbeddingProvenance"
+        "NamedEmbeddingProvenance",
+        "AndroidBuildInputReadiness"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -47793,7 +47797,8 @@
       "allocatedModels": [
         "NativeListenerInput",
         "NativeSpeechWarmup",
-        "NativeRecognizerAvailability"
+        "NativeRecognizerAvailability",
+        "AndroidBuildInputReadiness"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -221522,6 +221527,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "225a63b1d07d396316d4e2fa8bd8e06bc1292b79af353d9f0eb7f7a0f580eec2"
+    "sha256": "02c8b76f8c75390194ac46d43a7c57cf28da28e3df57c94acd7998ea648d6ece"
   }
 }

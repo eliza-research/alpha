@@ -1307,6 +1307,12 @@ The replay covers refusal, prior-output retention, interrupted host
 recovery and stale receipts. Gradle execution and installed behavior
 remain separate.
 
+`AndroidBuildInputReadiness` checks eight schedules and 55 checkpoints.
+The actual preflight distinguishes reportable inputs, readiness before
+preparation and strict prepared-payload admission. The closed source
+replay uses disposable Git checkouts and exact synthetic stamps. It keeps
+voice qualification and signing separate from staged input availability.
+
 `LifeOpsScheduledTaskRoute` checks 13 schedules and 81 checkpoints against
 the pinned route, generic runner and SDK in-memory store. One schedule
 holds an old dispatch, completes and reopens the task, then claims a new

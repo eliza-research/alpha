@@ -47640,13 +47640,39 @@
       "path": "scripts/android-build-preflight.mjs",
       "models": [
         "MobileBundleAdmission",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "AndroidBuildInputReadiness"
       ],
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
       "sha256": "4a083bcd66cbaf363a4d8501af933344fb3e20bd90f4fc4cba97b56519f41306",
-      "stateAnchors": []
+      "stateAnchors": [
+        {
+          "line": 48,
+          "text": "export function mainPinStatus(root, pin) {"
+        },
+        {
+          "line": 100,
+          "text": "export function checkoutProblems(root, {voiceHost = verifyVoiceHost, allowUnpackagedRuntime = false, runtimeProfile = \"native\", allowOlderUpstreamPin = false, notes = []} = {}) {"
+        },
+        {
+          "line": 134,
+          "text": "export function preparedRuntimeProblems(root, preparedSource, {allowUnpackagedRuntime = false, testMocks = false, embeddingHost = verifyEmbeddingHost, googleHost = verifyStagedGoogleHos"
+        },
+        {
+          "line": 207,
+          "text": "export function strictBuildInputs(root, preparedSource, {env = process.env, voiceHost = verifyVoiceHost, runtimeProfile = \"native\", localEmbeddings = false, workerDirectory} = {}) {"
+        },
+        {
+          "line": 265,
+          "text": "export function formatReport(rows) {"
+        },
+        {
+          "line": 279,
+          "text": "async function main() {"
+        }
+      ]
     },
     {
       "path": "scripts/android-gzip-assets.mjs",
@@ -48284,7 +48310,8 @@
       "path": "scripts/build-embedding-host.mjs",
       "models": [
         "EmbeddingStoreIdentity",
-        "NamedEmbeddingProvenance"
+        "NamedEmbeddingProvenance",
+        "AndroidBuildInputReadiness"
       ],
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
@@ -48942,7 +48969,8 @@
       "path": "scripts/mobile-uuid-adapter.mjs",
       "models": [
         "MobileBundleAdmission",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "AndroidBuildInputReadiness"
       ],
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
@@ -49137,7 +49165,8 @@
       "path": "scripts/stage-embedding-host.mjs",
       "models": [
         "EmbeddingStoreIdentity",
-        "NamedEmbeddingProvenance"
+        "NamedEmbeddingProvenance",
+        "AndroidBuildInputReadiness"
       ],
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
@@ -49434,7 +49463,8 @@
       "models": [
         "NativeListenerInput",
         "NativeSpeechWarmup",
-        "NativeRecognizerAvailability"
+        "NativeRecognizerAvailability",
+        "AndroidBuildInputReadiness"
       ],
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
@@ -620292,7 +620322,8 @@
         "TaskServiceLifecycle",
         "CanonicalNotesStore",
         "CoreTurnControllers",
-        "MobileBundleAdmission"
+        "MobileBundleAdmission",
+        "AndroidBuildInputReadiness"
       ],
       "sha256": "5b2f99180a222f743367959b7ba0360d9d30597ba80d91ea126830074d190258"
     },
