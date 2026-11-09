@@ -790,3 +790,6 @@ button[aria-label$=" on or off"][aria-pressed]::before { content:""; position:ab
 
 dialog.alarm-page{position:fixed;inset:0 auto auto 0;margin:0;width:100vw;height:100dvh;max-width:none;max-height:none;border:0;padding:20px;background:var(--bg)}
 .alarm-page::backdrop{background:transparent}.alarm-page .alpha-browser-dialog-content{flex:1}.alarm-page-header{display:flex;align-items:center;gap:16px;margin-bottom:16px}.alarm-page-header button{border:0!important;background:transparent!important}
+
+.sent-content-attachment{align-self:flex-end;max-width:80%;box-sizing:border-box;padding:10px 14px;margin-bottom:4px;border:1px solid var(--line);border-radius:18px;background:var(--s2);color:var(--fg);display:grid;gap:3px}
+.sent-content-attachment small{color:var(--mut);font-size:12px}.sent-content-attachment strong{font-size:14px;overflow-wrap:anywhere}.sent-content-attachment img{width:120px;max-height:150px;object-fit:contain;border-radius:10px}

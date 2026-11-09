@@ -1368,7 +1368,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     const out = originalVals.call(this);
     const composeTarget=this.messageEditTarget||this.messageReplyTarget;
     const photo=this.cameraAttachment;
-    out.attachedCameraPhoto=photo&&this.S().view==='photos'&&this.vget('photos').open===photo.id?photo.image:'';
+    out.attachedCameraPhoto=photo&&!this.S().msgs.some((m:Shell)=>m.cameraAttachment===photo)&&this.S().view==='photos'&&this.vget('photos').open===photo.id?photo.image:'';
     out.removeCameraPhoto=()=>{
       this.cameraAttachment=null;
       if(photo&&this.S().view==='photos'&&this.vget('photos').open===photo.id){
@@ -1376,7 +1376,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       }
       this.setState({});
     };
-    out.attachedTranscript=this.transcriptAttachment?.title||'';
+    out.attachedTranscript=this.S().msgs.some((m:Shell)=>m.transcriptAttachment&&m.transcriptAttachment===this.transcriptAttachment)?'':this.transcriptAttachment?.title||'';
     out.removeTranscript=()=>{this.transcriptAttachment=null;this.setState({});};
     out.messageComposeContext=composeTarget?(this.messageEditTarget?'Editing message':'Replying to '+(composeTarget.from==='user'?'your message':out.name))+': '+composeTarget.text.replace(/\s+/g,' ').slice(0,160):'';
     out.cancelMessageContext=()=>{cancelMessageContext(this);this.setState({});};
@@ -1409,6 +1409,8 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     const shownNotices=collapseSystemNotices(live);
     if(shownNotices!==live){const kept=new Set(shownNotices.map(item=>item.id)),hidden=new Set(live.filter(item=>item.systemNotice&&!kept.has(item.id)).map(item=>item.id));out.msgs=(out.msgs||[]).filter((m:Shell)=>!hidden.has(m.id));}
     out.msgs=(out.msgs||[]).map((m:Shell)=>{
+      const sent=live.find(item=>item.id===m.id);
+      m={...m,sentTranscript:sent?.transcriptAttachment?.title||'',sentPhoto:sent?.cameraAttachment?.image||''};
       const c=m.c||{};
       // A system notice card already carries its text; do not print it a second time above the card.
       if(c.systemNotice&&m.cGeneric&&m.displayText===c.sub)return {...m,hasCalendarText:false};
@@ -1639,7 +1641,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     let streamFrame=0,latestStream:string|undefined;
     const flushStream=()=>{if(streamFrame){cancelAnimationFrame(streamFrame);streamFrame=0;}if(latestStream!==undefined){const value=latestStream;latestStream=undefined;if(this.live)replaceStream(value);}};
     // Functional: a reply or delivery that landed while the draft was being held is kept.
-    this.setState((previous:Shell)=>({ msgs: [...previous.msgs, { id: userId, from: 'user', text }], ...(fromComposer?{draft:''}:{}), typing: true, chat: previous.chat === 'full' ? 'full' : 'sheet', shade: false }),focusAfterCommit);
+    this.setState((previous:Shell)=>({ msgs: [...previous.msgs, { id: userId, from: 'user', text, ...(fromComposer?{transcriptAttachment:transcript,cameraAttachment:this.cameraAttachment}:{} ) }], ...(fromComposer?{draft:''}:{}), typing: true, chat: previous.chat === 'full' ? 'full' : 'sheet', shade: false }),focusAfterCommit);
     let navigation:ReturnType<typeof connectionController.captureViewNavigation>|undefined,readyNavigation:readonly unknown[]|undefined;
     const deliverNavigation=(results:readonly unknown[]|undefined)=>deliverChatNavigation(this,navigation,results);
     try {

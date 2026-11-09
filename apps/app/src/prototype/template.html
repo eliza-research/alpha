@@ -4022,6 +4022,9 @@
     <sc-for list="{{msgs}}" as="m">
       <div data-alpha-message-id="{{m.id}}" style="display: flex; flex-direction: column">
         <sc-if value="{{m.isUser}}">
+          <sc-if value="{{m.sentTranscript}}"><div class="sent-content-attachment" aria-label="Sent transcript"><small>Transcript</small><strong>{{m.sentTranscript}}</strong></div></sc-if>
+          <sc-if value="{{m.sentPhoto}}"><div class="sent-content-attachment" aria-label="Sent photo"><img src="{{m.sentPhoto}}" alt="Sent photo" /></div></sc-if>
+
           <div data-alpha-message-text role="{{m.messageActionsRole}}" tabIndex="{{m.messageActionsTabIndex}}" aria-label="{{m.messageActionsLabel}}" aria-haspopup="{{m.messageActionsPopup}}" aria-expanded="{{m.messageActionsOpen}}" onClick="{{m.openMessageActions}}" onKeyDown="{{m.messageActionsKey}}" onContextMenu="{{m.messageActionsContext}}" onPointerDown="{{m.messageActionsDown}}" onPointerMove="{{m.messageActionsMove}}" onPointerUp="{{m.messageActionsCancel}}" onPointerCancel="{{m.messageActionsCancel}}" style="align-self: flex-end; max-width: 80%; background: var(--acc); color: var(--alpha-white); padding: 11px 16px; border-radius: 22px 22px 6px 22px; font-size: 15px; line-height: 1.4">{{m.text}}</div>
         </sc-if>
         <sc-if value="{{m.isAgent}}">
