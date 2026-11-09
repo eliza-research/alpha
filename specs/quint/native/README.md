@@ -711,3 +711,25 @@ Activity port. This establishes the app's dispatch behavior, while Android
 acceptance, task placement and Settings effects remain external.
 `PermissionChoices` and `StartupPermissions` cover renderer permission
 flow, and `RendererRecovery` covers the native renderer escape buttons.
+
+### Native hosted source renewal
+
+`NativeSourceRenewal` follows the source grant's exact identity through
+arming, durable dispatch reservation, redacted alerts, two opaque tap
+routes, and the latest pending review. The JVM executes the product host,
+ledger, poster and renewal bridge members. It checks the notification
+shape, both tap identities, cancellation and the empty retained wakeup.
+Only a foreground read of an exact current grant can return pending
+metadata.
+
+The replay preserves two as-built outcomes. Notification admission can
+change between the host and poster checks, leaving a posted row without
+a visible alert. Clear and owner withdrawal cancel the alert and routes
+before saving, so a reported save refusal can leave a posted row after
+cancellation. A final post write refusal can instead leave a dispatching
+row and a visible tag, which can retry the same tag after restart.
+
+The ports supply synthetic grants, journal outcomes, alert registration,
+and copied intents. No Android Activity is launched. WorkManager timing,
+resident provider behavior and installed notification enforcement remain
+separate.
