@@ -352,6 +352,18 @@
           "afterSha256": "6fe461621a5e4761de57937bcb55d19b575b425ee975f5341927d7943989b616"
         }
       ]
+    },
+    {
+      "file": "gmail-background-retirement.patch",
+      "sha256": "5e5201b471dfc9d823788953828206f0b1c3a26483a4405398105e8ebaa6085c",
+      "module": "plugins/plugin-native-notifications/android",
+      "targets": [
+        {
+          "path": "plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/MailBackgroundDelivery.java",
+          "beforeSha256": "a1e2d2a21478ffd95b981e00396f9dc3a73721a0ce44145dbad4fdc6dfd6852d",
+          "afterSha256": "44453023e4b0b97ec266e028039f6dc6a80553b566023117304176398b5d530d"
+        }
+      ]
     }
   ],
   "modules": [

@@ -133,10 +133,16 @@ function settleFirstSendSlot(shell:Shell,slot:string,conversation:string,text:st
       for(const delay of [0,150,600,1500]){
         if(delay)await new Promise(resolve=>setTimeout(resolve,delay));
         if(!current())return;
-        if((await to.read())?.text!==text)continue;
+        const destination=await to.read();
+        if(!current())return;
+        if(destination?.text!==text)continue;
         const saved=await from.read();
-        if(!saved||saved.text!==text)return;
+        if(!current()||!saved||saved.text!==text)return;
         if(saved.sending===true)continue;
+        // The source read can outlive the copy that first admitted this migration.
+        const confirmed=await to.read();
+        if(!current())return;
+        if(confirmed?.text!==text)continue;
         try{await from.save(saved,'');return;}catch{/* A newer write won; read it again. */}
       }
     }catch{/* Storage review stays with the slot's own recovery. */}
@@ -185,6 +191,7 @@ async function restoreAttachments(messages:Shell[],session:VerifiedSession,conve
     const transcript=attachment?.transcriptAttachment;
     const photo=attachment?.cameraAttachment;
     return {...message,
+      ...(typeof attachment.displayText==='string'&&attachment.requestText===message.text?{text:attachment.displayText}:{}),
       ...(typeof transcript?.title==='string'?{transcriptAttachment:transcript}:{}),
       ...(typeof photo?.image==='string'&&/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(photo.image)?{cameraAttachment:photo}:{}),
     };
@@ -715,7 +722,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
           if(!this.live||connectionController.getSnapshot().history!==history)return;
           this.setState((previous:Shell)=>({msgs:previous.msgs.map((message:Shell)=>{
             const saved=messages.find(item=>item.id===message.id);
-            return saved?{...message,transcriptAttachment:saved.transcriptAttachment,cameraAttachment:saved.cameraAttachment}:message;
+            return saved?{...message,...(message.text===history.messages.find(item=>item.id===message.id)?.text?{text:saved.text}:{}),transcriptAttachment:saved.transcriptAttachment,cameraAttachment:saved.cameraAttachment}:message;
           })}));
         }).catch(()=>this.toast('Saved attachments could not load. Try reopening this conversation.'));
 
@@ -1661,6 +1668,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     const sourceDraft=fromComposer&&this.reviewedSourceDraft?.draft===text?sourceOf(this.reviewedSourceDraft.source):undefined;
     context(this);
     const transcript=fromComposer?this.transcriptAttachment:null;
+    const requestText=transcript?'Use the transcript of the selected voice note to answer this question.\n\n'+text:text;
     const transcriptCurrent=()=>!transcript||(this.S().view==='notes'&&JSON.stringify(this.notesSelection)===transcript.selection&&this.transcriptAttachment===transcript);
     if(!transcriptCurrent()){this.toast('The recording changed. Remove the transcript or attach it again.');return;}
     const revision=alphaClient.getState().context.revision,connection=connectionController.getSnapshot(),sessionId=connection.session?.sessionId,conversationId=connection.history?.conversationId;
@@ -1676,7 +1684,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     const sameChat=()=>connectionController.getSnapshot().session?.sessionId===sessionId;
     const attempt:SendAttempt=this.sendAttempt={transportCalled:false,preDispatch:false,streamed:false};
     const userId=crypto.randomUUID(),streamedId=crypto.randomUUID();let streamed=false;
-    const sentAttachment=fromComposer?{transcriptAttachment:transcript,cameraAttachment:this.cameraAttachment}:null;
+    const sentAttachment=fromComposer?{transcriptAttachment:transcript,cameraAttachment:this.cameraAttachment,displayText:text,requestText}:null;
     if(sentAttachment&&(transcript||this.cameraAttachment)&&connection.session&&conversationId){
       try{await saveAttachment(connection.session,conversationId,userId,sentAttachment);}
       catch{if(fromComposer)releaseComposerSend(this,heldKey,heldText);this.toast('Attachment could not be saved. Try again.');return;}
@@ -1705,7 +1713,6 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       localTurnStatus.addEventListener('label',showStatus);
       let reply;
       // The Notes view context carries the exact selected record and revision.
-      const requestText=transcript?'Use the transcript of the selected voice note to answer this question.\n\n'+text:text;
       try{reply = await alphaClient.send(requestText,value=>{
         attempt.streamed=true;
         if(!this.live)return;

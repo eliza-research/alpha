@@ -1932,6 +1932,399 @@
         "Finite representative identities and successful storage writes only. Models are contract checks, not complete implementation refinement or cross-device persistence proof.",
         "Source review recorded in specs/quint/ui-return-review-20261109.md."
       ]
+    },
+    {
+      "path": "specs/quint/services/WorkflowWorkerStaging.qnt",
+      "module": "WorkflowWorkerStaging",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "firstPublicationTest",
+        "corruptInputPreservesPreviousTest",
+        "coherentManifestReplacementStillRefusedTest",
+        "refusedPublishRestoresExactPreviousTest",
+        "refusedRestoreLeavesBackupTest",
+        "cleanupFailureExposesPublishedTargetAndBackupTest"
+      ],
+      "invariants": [
+        "VisibleIndexMatchesTarget",
+        "PublicationMatchesVerifiedSource",
+        "OrdinaryRefusalKeepsPrevious",
+        "UncertainWriteRetainsBackup"
+      ],
+      "sources": [
+        "scripts/workflow-worker-artifact.mjs",
+        "scripts/stage-workflow-worker.mjs"
+      ],
+      "abstractions": [
+        "Exact verified worker artifact, copied extraction index, previous directory, target publication, rollback and uncertain cleanup outcomes.",
+        "Two synthetic generations and one retained backup. Packaging and installed extraction remain separately tested."
+      ]
+    },
+    {
+      "path": "specs/quint/services/NativeGoogleHostArtifact.qnt",
+      "module": "NativeGoogleHostArtifact",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "completeBuildPublishesCurrentReceiptTest",
+        "staleProductInputRefusesReadbackTest",
+        "refusedCandidateLeavesPriorPairTest",
+        "coherentCompilerInputDriftRefusesPublicationTest",
+        "sdkPostcheckRefusesAfterPrivateOutputTest",
+        "preflightRefusalKeepsPriorPairTest",
+        "refusedManifestRenameRestoresPriorModuleTest",
+        "refusedFirstManifestRenameRemovesCandidateTest",
+        "outputDigestDriftRefusesPublicationTest",
+        "concurrentPeerChangeAbortsPublicationTest"
+      ],
+      "invariants": [
+        "AcceptedReadbackMatchesDeclared",
+        "AcceptedBuildRequiresMetadata",
+        "ProducerOrder",
+        "BuildScratchReleased",
+        "ReceiptBindsCompiledSource",
+        "FailedBuildPreservesPriorPair",
+        "PeerReplacementRetainsPriorReceipt"
+      ],
+      "sources": [
+        "scripts/native-google-host-artifact.mjs",
+        "scripts/build-native-google-host.ts",
+        "scripts/workflow-worker-artifact.mjs",
+        "scripts/local-agent-source.mjs",
+        "scripts/core-state-patch.mjs",
+        "vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs",
+        "apps/app/src/browser/calendar-sync-fields.ts",
+        "apps/app/src/runtime/browser-cloud-resident.ts",
+        "apps/app/src/runtime/calendar-linked-provider.ts",
+        "apps/app/src/runtime/cloud-deployment.generated.ts",
+        "apps/app/src/runtime/cloud-protocol.ts",
+        "apps/app/src/runtime/cloud-sign-in.ts",
+        "apps/app/src/runtime/gmail-grants.ts",
+        "apps/app/src/runtime/google-workspace-return.ts",
+        "apps/app/src/runtime/inbox-attachment.ts",
+        "apps/app/src/runtime/managed-service-routes.ts",
+        "backend/calendar-read-timing.ts",
+        "backend/managed-google-agent-broker.ts",
+        "backend/managed-google-agent-host.ts",
+        "backend/managed-google-failure-stage.ts",
+        "backend/managed-google-route-policy.ts",
+        "backend/native-cloud-runtime.ts",
+        "backend/native-google-agent-host.ts",
+        "backend/native-google-cloud-port.ts",
+        "config/alpha-product.json",
+        "package.json",
+        "patches/eliza/cloud-speech-client-manifest.json",
+        "patches/eliza/cloud-speech-client.patch",
+        "patches/eliza/core-state-manifest.json",
+        "patches/eliza/embedding-store-identity.patch",
+        "patches/eliza/named-embedding-provenance.patch",
+        "patches/eliza/notes-state-runtime.patch",
+        "patches/eliza/plugin-connector-custody.patch",
+        "patches/eliza/room-queue-admission.patch",
+        "patches/eliza/task-service-stop.patch",
+        "patches/eliza/turn-controller-isolation.patch",
+        "scripts/client-speech-patch.mjs",
+        "scripts/combined-agent-source.mjs",
+        "scripts/core-state-preload.mjs",
+        "scripts/gmail-agent-mailbox-host.ts",
+        "scripts/prepare-client-features.mjs",
+        "tsconfig.json",
+        "upstream.lock.json",
+        "vendor/eliza/packages/auth/src/auth/native-cloud-sign-in.ts",
+        "vendor/eliza/packages/cloud/sdk/native-host/subscription-grant.mjs",
+        "vendor/eliza/packages/cloud/sdk/src/cloud-account-billing.ts",
+        "vendor/eliza/packages/cloud/sdk/src/subscription-entitlement.ts",
+        "vendor/eliza/packages/contracts/src/calendar-linked-sync.ts",
+        "vendor/eliza/packages/contracts/src/calendar.ts",
+        "vendor/eliza/plugins/plugin-assistant/src/utils/html-entities.ts",
+        "vendor/eliza/plugins/plugin-calendar/src/linked-sync/google-sync-port.ts",
+        "vendor/eliza/plugins/plugin-calendar/src/service/managed-calendar-host.ts",
+        "vendor/eliza/plugins/plugin-files/src/browser/attachment.ts",
+        "vendor/eliza/plugins/plugin-inbox/src/mailbox/attachments.ts",
+        "vendor/eliza/plugins/plugin-inbox/src/mailbox/failures.ts",
+        "vendor/eliza/plugins/plugin-inbox/src/mailbox/grants.ts",
+        "vendor/eliza/plugins/plugin-inbox/src/mailbox/links.ts",
+        "vendor/eliza/plugins/plugin-inbox/src/mailbox/managed-gmail-client.ts",
+        "vendor/eliza/tsconfig.json"
+      ],
+      "stateMapping": {
+        "source/sdkCurrent": "Exact physical synthetic product input and prepared SDK committed input bytes",
+        "host/receipt": "Published module, additive worker manifest digest, compiler input digest and raw selected core preimage",
+        "attempt/outcome": "Actual projection/version/compiler/private write/metadata events, prior exact pair, scratch cleanup and result categories"
+      },
+      "abstractions": [
+        "One selected product input, two identities, one private generic worker artifact and optional representative core target. The actual producer wraps a synthetic compiler port.",
+        "Serial selected builds verify the private candidate against compiled input bindings before publication, retain the prior pair on a definite selected failure and reject a detected peer replacement. Cross-process writers, ambiguous interruption and installed Android staging are separate."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 6
+      }
+    },
+    {
+      "path": "specs/quint/services/PreparedSourceStamp.qnt",
+      "module": "PreparedSourceStamp",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "exactThenOrdinaryReuseTest",
+        "staleAndDefaultRequireCurrentTest",
+        "dirtyOrWrongCommitRefusesTest",
+        "ownedLockAndOccupiedBackupAreKeptTest",
+        "occupiedCandidateFailsSourceAdmissionTest",
+        "refusedCandidateWriteLeavesPreservedPriorTest",
+        "invalidLocationsRefuseTest"
+      ],
+      "invariants": [
+        "CurrentHasPriorStamp",
+        "SuccessRequiresCurrentVerifiedSource"
+      ],
+      "sources": [
+        "scripts/prepare-local-agent.mjs",
+        "scripts/local-agent-source.mjs",
+        "scripts/copy-file-clone.mjs",
+        "vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs",
+        "vendor/eliza/packages/app/scripts/lib/committed-source.mjs"
+      ],
+      "stateMapping": {
+        "source": "Checked-out commit, tracked bytes and selected untracked sidecars",
+        "stamp/backup": "Exact source-only live stamp and external preserved or preexisting peer bytes",
+        "outcome": "Actual preparer process result after final source verification"
+      },
+      "abstractions": [
+        "An existing local prepared source, two synthetic Git revisions, one backup slot and settled source-only operations. Existing sidecars are observed without modeling the independent process that created them.",
+        "The selected candidate open can fail after preserving the prior stamp. Source checkout creation, concurrent producers, full dependency installation and interruption remain separate."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 7
+      }
+    },
+    {
+      "path": "specs/quint/services/CloudQaLauncher.qnt",
+      "module": "CloudQaLauncher",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "successfulReceiptSurvivesChildExitTest",
+        "badSavedRouteDoesNotLaunchTest",
+        "noPidErrorReleasesLogWithoutReceiptTest",
+        "failedRecordPreservesPriorReceiptAfterReapTest",
+        "cancelledPendingRecordCanStillPublishHistoricalReceiptTest",
+        "linkedLogRefusesBeforeChildOrModeChangeTest",
+        "hardlinkedLogRefusesBeforeChildOrModeChangeTest",
+        "fifoLogRefusesBeforeChildTest",
+        "matchingPreloadAndParentObservationTest",
+        "receiptCanObserveDifferentHeadFromAdmittedChildTest",
+        "matchingParentReceiptCanPrecedePreloadRefusalTest"
+      ],
+      "invariants": [
+        "OwnedChildKeepsLog",
+        "ReceiptRequiresSpawn",
+        "AdmittedChildRequiresStagingProfile",
+        "SettledOwnsNoLiveChild",
+        "FailedRecordKeepsPriorReceipt",
+        "InvalidLogDoesNotAdmitChild",
+        "ReceiptCopiesParentHead",
+        "AdmittedChildBindsReviewedPin",
+        "RejectedPreloadHasNoAdmission"
+      ],
+      "sources": [
+        "scripts/start-cloud-qa.mjs",
+        "scripts/core-state-preload.mjs",
+        "scripts/cloud-sdk-authority.mjs",
+        "scripts/native-view-policy.mjs",
+        "config/cloud-deployment.json",
+        "config/native-view-declarations.json",
+        "vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs"
+      ],
+      "stateMapping": {
+        "profile/marker/token/route": "Physical private files and parsed staging text route before a child request",
+        "source/entry": "Selected explicit or default fixture SDK and actual entry check",
+        "logOpen/child/pid/supervised/stop/cancelled": "Product-owned descriptor and actual shared supervisor over the closed child port",
+        "receipt/fault/tempClean/result/exitCode": "Real staged and published receipt bytes, controlled source faults and launcher exit",
+        "foreignLogModeChanged": "Observed preservation of a distinct synthetic file under a linked log path",
+        "requestedPin/preloadHead/admittedPin/preloadOutcome": "Parent manifest pin and separately observed exact child preload with controlled Git HEAD",
+        "parentHead/receiptHead": "Late launcher Git response and the revision actually published in the current receipt"
+      },
+      "abstractions": [
+        "One invocation, one fixed policy pin, two independently observed HEAD values and one optional previous receipt. A historical process receipt can survive cancellation, child exit and retry. Its revision is the parent observation.",
+        "Exact product launcher and pinned shared profile, receipt and supervision run with synthetic staging input and a closed child port. Kernel signals, port availability, readiness, concurrent owners and provider behavior are outside this model."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 50,
+        "maxVerifyDepth": 12
+      }
+    },
+    {
+      "path": "specs/quint/services/BrowserCloudRequestCustody.qnt",
+      "module": "BrowserCloudRequestCustody",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "rejectedDuplicateCannotRetireTheIncumbentTest",
+        "cancelledSlotCannotBeReusedUntilSettlementTest",
+        "disconnectedHandlerCannotRetireItsSuccessorTest",
+        "independentSlotRetainsItsOwnReplyTest"
+      ],
+      "invariants": [
+        "PendingInvocationsOwnTheirExactSlots",
+        "OccupiedSlotsHaveTheirPendingInvocation",
+        "DuplicateNeverDispatches",
+        "AbortedInvocationsCannotSucceed",
+        "DisconnectedPendingInvocationsAreAborted"
+      ],
+      "sources": [
+        "scripts/browser-cloud-dev-bridge.ts",
+        "backend/managed-google-route-policy.ts"
+      ],
+      "stateMapping": {
+        "owners/slots": "Private active map ownership, with source admission and cancellation observed indirectly",
+        "dispatched/pending/aborted/closed/status": "Closed injected request dispatch, actual response-close listener, exact abort signal and observed response status"
+      },
+      "abstractions": [
+        "Two request IDs, four one-shot invocation identities and one host instance. The credential-free public entitlement-key route exercises the same active request map without profile I/O.",
+        "Aborted requests keep their ID until settlement. The fixture controls upstream release and inbound response closure. Real sockets, authenticated route-specific effects, other login and resident state, and process restart are separate."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 50,
+        "maxVerifyDepth": 8
+      }
+    },
+    {
+      "path": "specs/quint/services/GmailAgentMailboxRecovery.qnt",
+      "module": "GmailAgentMailboxRecovery",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "lostDispatchReadsOnceAndRetainsTerminalReceiptTest",
+        "priorUnknownNeverReadsMessageOrDispatchesTest",
+        "changedHistoryReviewStopsBeforeAccountRecheckTest",
+        "permissionWithdrawalStopsBeforeDispatchTest",
+        "abortSuppressesReadbackTest",
+        "abortDuringReadbackPreservesFirstErrorTest"
+      ],
+      "invariants": [
+        "DispatchUsesExactReviewAndGrant",
+        "NonPreparedReceiptNeverResubmits",
+        "RecoveryReadsAtMostOnce",
+        "DispatchAtMostOncePerInvocation",
+        "AbortedInvocationNeverReportsSuccess"
+      ],
+      "sources": [
+        "scripts/gmail-agent-mailbox-host.ts",
+        "apps/app/src/runtime/cloud-protocol.ts",
+        "vendor/eliza/plugins/plugin-inbox/src/mailbox/managed-gmail-client.ts"
+      ],
+      "stateMapping": {
+        "sameScope/message/request/kind": "Invocation input bound to the selected scope and opaque turn and message IDs",
+        "durable": "In-memory provider receipt state, kind and success message keyed by exact turn",
+        "proposal/sent/calls": "Actual in-memory CloudProtocol route order and encoded prepare and dispatch proposal",
+        "aborted/result/recoveryReads": "Actual AbortSignal, returned confirmation or error and observed recovery reads"
+      },
+      "abstractions": [
+        "One selected owner grant, two turn, message and history representatives, four mailbox mutation kinds, and at most two sequential invocations. Durable states are synthetic provider replies.",
+        "The source driver executes the exact mailbox helper, CloudProtocol and projected upstream Gmail decoder without files, bearer credentials or network. Provider mutation, durable storage behavior, concurrent invocations and outer host credential selection are separate."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 50,
+        "maxVerifyDepth": 12
+      }
+    },
+    {
+      "path": "specs/quint/services/DevelopmentDigestPending.qnt",
+      "module": "DevelopmentDigestPending",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "reviewedIntentAdvancesWithoutPayloadChangeTest",
+        "legacyRetryUsesOriginalNoncanonicalBytesTest",
+        "changedPayloadAndDowngradeCannotReachHostTest",
+        "staleTabCannotAdvanceOrClearAnotherCommitTest",
+        "lostAcknowledgementRequiresReadbackTest",
+        "rawByteDriftRejectsEquivalentLegacyRetryTest"
+      ],
+      "invariants": [
+        "ExistingIntentOnlyAdvancesPhase",
+        "RefusedWritesLeaveExactBytes",
+        "CommittedWritesUseExactExpectedBytes",
+        "ConflictMeansDifferentExpectedBytes",
+        "LostAcknowledgementKeepsObservedBytes",
+        "GuardNeverReachesHost"
+      ],
+      "sources": [
+        "apps/app/src/runtime/local-agent-storage.ts",
+        "scripts/local-agent-dev-storage.ts",
+        "apps/app/src/runtime/hosted-digest-ui.tsx"
+      ],
+      "stateMapping": {
+        "stored/before/proposed/expected": "Actual host JSON string and transport CAS payload, with distinct ordered payloads and legacy encoding",
+        "actor/caches": "Two independent renderer storage instances with private observed bytes, inferred through the next CAS",
+        "result/casAttempted/reads/compares/commits": "Actual adapter return or refusal, transport requests and in-memory rename count"
+      },
+      "abstractions": [
+        "One selected pending slot, two renderer store instances, six payload encodings and three phases. A synthetic host writer may re-encode the same legacy payload.",
+        "Exact client and host storage code run with closed in-memory filesystem and request ports. Selected before-commit and lost-ack faults are transport events. Real profile I/O, crash durability, same-tab concurrent reads and downstream provider mutation are separate."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 50,
+        "maxVerifyDepth": 12
+      }
+    },
+    {
+      "path": "specs/quint/services/AndroidGzipAssetStage.qnt",
+      "module": "AndroidGzipAssetStage",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "unprotectedLosesPublishedNameTest",
+        "wrappedAssetRoundTripsTest",
+        "previousPackageFailsAfterWebSyncTest",
+        "refusedRemovalRequiresFreshSyncTest",
+        "invalidInputIsNotWrappedTest",
+        "absentStageIsUnchangedTest"
+      ],
+      "invariants": [
+        "ProtectedAssetHasSingleStagedRepresentation",
+        "RefusedRemovalRetainsExactInput",
+        "PublishedAssetHasSingleRepresentation",
+        "SuccessfulAuditRequiresExactBytes"
+      ],
+      "sources": [
+        "scripts/android-gzip-assets.mjs",
+        "scripts/build-android.mjs",
+        "scripts/verify-apks.mjs",
+        "vendor/eliza/plugins/plugin-files/src/documents/local-ocr.ts"
+      ],
+      "stateMapping": {
+        "web/raw/wrapper": "Exact selected web bytes and staged single or double gzip layers",
+        "packaged/plain": "Retained gzip bytes or the unwrapped name from the simulated merger",
+        "protection/audit": "Actual wrapping and package comparison outcomes"
+      },
+      "abstractions": [
+        "One selected gzip asset and two content identities, with missing and invalid input. The simulated asset merger unwraps one layer.",
+        "Source removal can fail after wrapper publication. Concurrent staging, wrapper write interruption, real Gradle and installed OCR are separate."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 7
+      }
     }
   ]
 }

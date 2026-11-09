@@ -54,18 +54,45 @@ test('actual canonical renderer methods recheck foreground after queueing and be
 test('actual acknowledgment body retains an undispatched tap and never revives an ambiguous POST',()=>{
  const actor=readFileSync(nativeSource('AlphaCanonicalNotifications.java'),'utf8');const start=actor.indexOf(' static void acknowledge('),end=actor.indexOf('\n }\n}',start);assert.ok(start>=0&&end>start);const ack=actor.slice(start,end+3);
  const java=`package ai.elizaresearch.alphaphone;import org.json.*;
- class AlphaLocalAgentPlugin {static int posts;static boolean lose;static JSONObject markNotificationRead(JSONObject session,String id)throws Exception{posts++;if(lose)throw new java.io.IOException("Synthetic lost reply");return new JSONObject().put("status",200);}}
- class AlphaCanonicalNotifications {interface ForegroundCheck{void current()throws Exception;}static AlphaCanonicalNotifications active;static JSONObject pendingTap;final JSONObject session=new JSONObject();final JSONObject identity=new JSONObject().put("subjectUserId","owner").put("agentId","agent");void check(){if(active!=this)throw new SecurityException("Retired");}
+ class AlphaLocalAgentPlugin {
+  static int posts;static boolean lose;static String lastNotice;
+  static JSONObject markNotificationRead(JSONObject session,String id)throws Exception{
+   posts++;lastNotice=id;
+   if(lose)throw new java.io.IOException("Synthetic lost reply");
+   return new JSONObject().put("status",200);
+  }
+ }
+ class AlphaCanonicalNotifications {
+  interface ForegroundCheck{void current()throws Exception;}
+  static AlphaCanonicalNotifications active;static JSONObject pendingTap;
+  final JSONObject session=new JSONObject();
+  final JSONObject identity=new JSONObject().put("subjectUserId","fixture-owner").put("agentId","fixture-agent");
+  AlphaCanonicalNotifications()throws JSONException{}
+  void check(){if(active!=this)throw new SecurityException("Retired");}
  ${ack}
  }
- public class ActualAcknowledgmentTest {static int checks;interface Work{void run()throws Exception;}static void rejected(Work work)throws Exception{try{work.run();}catch(Exception expected){checks++;return;}throw new AssertionError("Expected refusal");}static void reset()throws Exception{AlphaCanonicalNotifications.active=new AlphaCanonicalNotifications();AlphaCanonicalNotifications.pendingTap=new JSONObject().put("token","A").put("notificationId","notice-A").put("ownerId","owner").put("agentId","agent").put("expiresAt",System.currentTimeMillis()+60000);AlphaLocalAgentPlugin.posts=0;AlphaLocalAgentPlugin.lose=false;}static void check(boolean ok){if(!ok)throw new AssertionError();checks++;}
+ public class ActualAcknowledgmentTest {
+ static int checks;interface Work{void run()throws Exception;}
+ static void rejected(Work work)throws Exception{try{work.run();}catch(Exception expected){checks++;return;}throw new AssertionError("Expected refusal");}
+ static JSONObject tap(String token)throws JSONException{
+  return new JSONObject().put("token",token).put("notificationId","notice-"+token)
+   .put("ownerId","fixture-owner").put("agentId","fixture-agent").put("expiresAt",System.currentTimeMillis()+60000);
+ }
+ static void reset()throws Exception{
+  AlphaCanonicalNotifications.active=new AlphaCanonicalNotifications();AlphaCanonicalNotifications.pendingTap=tap("A");
+  AlphaLocalAgentPlugin.posts=0;AlphaLocalAgentPlugin.lose=false;AlphaLocalAgentPlugin.lastNotice=null;
+ }
+ static void check(boolean ok){if(!ok)throw new AssertionError();checks++;}
  public static void main(String[]args)throws Exception{
  reset();rejected(()->AlphaCanonicalNotifications.acknowledge("A",()->{throw new SecurityException("Locked after queue");}));check(AlphaLocalAgentPlugin.posts==0);check("A".equals(AlphaCanonicalNotifications.pendingTap.getString("token")));
- reset();rejected(()->AlphaCanonicalNotifications.acknowledge("A",()->{AlphaCanonicalNotifications.pendingTap=new JSONObject().put("token","B").put("notificationId","notice-B").put("ownerId","owner").put("agentId","agent").put("expiresAt",System.currentTimeMillis()+60000);}));check(AlphaLocalAgentPlugin.posts==0);check("B".equals(AlphaCanonicalNotifications.pendingTap.getString("token")));
+ reset();rejected(()->AlphaCanonicalNotifications.acknowledge("A",()->{AlphaCanonicalNotifications.pendingTap=tap("B");}));check(AlphaLocalAgentPlugin.posts==0);check("B".equals(AlphaCanonicalNotifications.pendingTap.getString("token")));
  reset();rejected(()->AlphaCanonicalNotifications.acknowledge("A",()->{AlphaCanonicalNotifications.active=null;AlphaCanonicalNotifications.pendingTap=null;}));check(AlphaLocalAgentPlugin.posts==0);check(AlphaCanonicalNotifications.pendingTap==null);
- reset();AlphaCanonicalNotifications.pendingTap.put("ownerId","other-owner");rejected(()->AlphaCanonicalNotifications.acknowledge("A",()->{}));check(AlphaLocalAgentPlugin.posts==0);check(AlphaCanonicalNotifications.pendingTap!=null);
- reset();AlphaCanonicalNotifications.pendingTap.put("agentId","other-agent");rejected(()->AlphaCanonicalNotifications.acknowledge("A",()->{}));check(AlphaLocalAgentPlugin.posts==0);check(AlphaCanonicalNotifications.pendingTap!=null);
- reset();AlphaCanonicalNotifications.acknowledge("A",()->{});check(AlphaLocalAgentPlugin.posts==1);check(AlphaCanonicalNotifications.pendingTap==null);
+ for(String key:new String[]{"ownerId","agentId"}){
+  reset();JSONObject foreign=AlphaCanonicalNotifications.pendingTap.put(key,"fixture-foreign");
+  rejected(()->AlphaCanonicalNotifications.acknowledge("A",()->{}));
+  check(AlphaLocalAgentPlugin.posts==0);check(AlphaCanonicalNotifications.pendingTap==foreign);
+ }
+ reset();AlphaCanonicalNotifications.acknowledge("A",()->{});check(AlphaLocalAgentPlugin.posts==1);check("notice-A".equals(AlphaLocalAgentPlugin.lastNotice));check(AlphaCanonicalNotifications.pendingTap==null);
  reset();AlphaLocalAgentPlugin.lose=true;rejected(()->AlphaCanonicalNotifications.acknowledge("A",()->{}));check(AlphaLocalAgentPlugin.posts==1);check(AlphaCanonicalNotifications.pendingTap==null);
  System.out.println("PASS actual native acknowledgment state "+checks);
  }} `;

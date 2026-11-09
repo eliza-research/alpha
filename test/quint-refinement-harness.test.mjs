@@ -4,7 +4,7 @@ import {mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileS
 import {tmpdir} from 'node:os';
 import {dirname, join} from 'node:path';
 import {randomUUID} from 'node:crypto';
-import {fileURLToPath} from 'node:url';
+import {fileURLToPath, pathToFileURL} from 'node:url';
 import {captureInputs, checkTraces, literal, qmap, qset, verifyRefinementReceiptInputs} from '../specs/quint/refinement/check-traces.mjs';
 
 test('refinement literals preserve collection identity and reject unsupported values', () => {
@@ -87,6 +87,28 @@ test('matching observations still fail when the model safety invariant is false'
     assert.equal(receipt.invariant, 'safety');
     assert.equal(receipt.passed, false);
   } finally { rmSync(directory, {recursive: true, force: true}); }
+});
+
+test('checker exit preserves the tool failure separately from a model mismatch', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'alpha-refinement-checker-exit-'));
+  const preload = join(directory, 'exit.mjs');
+  const output = join(directory, 'result.json');
+  const prior = process.env.NODE_OPTIONS;
+  try {
+    writeFileSync(preload, 'process.exit(27);\n');
+    process.env.NODE_OPTIONS = `--import=${pathToFileURL(preload).href}`;
+    await assert.rejects(checkTraces({model: 'DevelopmentHost', sources: [fileURLToPath(import.meta.url)],
+      scope: 'bounded-component', out: output,
+      traces: [{name: 'tool-exit', expect: {'s.active': qset([])}}]}), /Quint checker failed.*exit 27/);
+    const [result] = JSON.parse(readFileSync(output)).results;
+    assert.equal(result.kind, 'tool-failure');
+    assert.equal(result.exitCode, 27);
+    assert.equal(result.signal, null);
+  } finally {
+    if (prior === undefined) delete process.env.NODE_OPTIONS;
+    else process.env.NODE_OPTIONS = prior;
+    rmSync(directory, {recursive: true, force: true});
+  }
 });
 
 test('canonical temporary inputs survive fixture cleanup while live source remains authoritative', async () => {

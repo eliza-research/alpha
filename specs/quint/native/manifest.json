@@ -2549,6 +2549,231 @@
         "Pause represents Android cancellation; exact activity lifecycle sequencing requires signed-device qualification.",
         "Session, profile and sensitive-overlay authority remain BrowserSession/BrowserSiteState."
       ]
+    },
+    {
+      "path": "specs/quint/native/NativeGmailBackground.qnt",
+      "module": "NativeGmailBackground",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "continuationSurvivesRecreationAndSameSelectionTest",
+        "workerRetiredByCredentialTest",
+        "stoppedWorkerRetriesWithoutPageTest",
+        "postcommitFaultKeepsCursorTest",
+        "withdrawHeldGrantPreservesSavedCursorTest",
+        "withdrawQueuedGrantBeforeTransportTest",
+        "unrelatedWithdrawalLeavesQueuedSelectionTest",
+        "retiringSavedGrantKeepsUnrelatedPendingTest",
+        "withdrawingNeitherGrantLeavesBothUntouchedTest",
+        "revokedTapCanRetryAfterRestorationTest",
+        "offlineQuestionCanBeCancelledLocallyTest",
+        "supersededTapCannotSettleAfterVerificationTest",
+        "refusedEnqueueRestoresSavedSelectionTest",
+        "refusedEnqueueKeepsOldWorkerRetiredTest",
+        "refusedEnqueueCannotRetireLaterSameGrantTest",
+        "refusedEnqueueCannotRetireSettledSuccessorTest",
+        "uncertainNoticeNeverRepostsTest"
+      ],
+      "invariants": [
+        "RetiredSelectionIsEmpty",
+        "ExactSchedule",
+        "ContinuationKeepsBaseline",
+        "VisibleNoticeIsPosted",
+        "TapNeedsRetainedNotice",
+        "AdmissionEpoch",
+        "PendingGrantOwnsAttempt",
+        "HeldConsumeHasExactTap",
+        "HeldRefusalOwnsClosedBridge"
+      ],
+      "sources": [
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/GmailBackground.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/GmailDeliveryWorker.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaGmailPlugin.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CloudDeployment.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/PluginWorkers.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCredentialStore.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/LocalAgentProviderAdmission.java",
+        "vendor/eliza/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/MailBackgroundDelivery.java",
+        "vendor/eliza/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/MailHistoryReconciliation.java",
+        "patches/eliza/gmail-background-retirement.patch"
+      ],
+      "stateMapping": {
+        "credential/remoteOwner/grants/reset": "Synthetic raw credential classes, remotely reported owner/grants and pending reset",
+        "generation/grant/owner/boundCredential/cursor/continuation/phase/incomplete/checked": "Selected encrypted row, exact owner and decimal history progress",
+        "latestGeneration/attempt/admitted/configuring/configOwner/configCredential/configAttempt/configGrantVerified/configQueued/pendingGrant": "Actual generation assignment and admitted epoch with one held account response",
+        "periodic/catchup/schedules/cancels": "Closed WorkManager command names, generations and request counts",
+        "workGeneration/workEpoch/workReply/historyReads/process/retiredBridge/refusalAttempt": "Exact worker snapshot and result, page reads and reconstruction",
+        "notice/tap/visible/posts/allowed/observable/locked/online/bridgeReply/tapAuthorityReads/consumeGeneration/consumeEpoch/consumeCurrent": "Ledger and exact pending/consume/release, synthetic posting and foreground readback"
+      },
+      "abstractions": [
+        "Three grants, two remote owners, three credential equality classes, one retained notice and one held transport callback across two bridge instances.",
+        "Four-page Worker checkpoint, 20-digit decimal cursor examples, synthetic work commands, selected HTTP outcomes and pre/postcommit storage failures.",
+        "Targeted retirement fences only matching saved or pending grants. Consume checks the exact still-current tap after remote admission. Releasing a question remains local cancellation. Executor refusal releases only its own unadmitted attempt, advances the settled epoch and preserves the durable selection.",
+        "Android and provider effects are closed. WorkManager delivery, real durable storage and installed notification/Activity enforcement remain outside the campaign."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 4
+      }
+    },
+    {
+      "path": "specs/quint/native/NativeDigestConsent.qnt",
+      "module": "NativeDigestConsent",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "heldDescribeRejectsRevokedGrantTest",
+        "heldDescribeRejectsExactExpiryTest",
+        "heldDescribeReturnsFreshExactGrantTest",
+        "heldContentRejectsRevokedGrantTest",
+        "expiredWhileReadingNeverPublishesTest",
+        "storeRefusalAfterCommitKeepsGrantTest",
+        "bothTemplatesReadOnlyApprovedProjectionTest",
+        "noCalendarPortForReminderOnlyTest"
+      ],
+      "invariants": [
+        "NoPayloadOnRefusal",
+        "ExactSelectionCustody",
+        "BoundedProjectedOutput",
+        "NoUnreviewedReminder",
+        "DescribedBeforeExpiry"
+      ],
+      "sources": [
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeDigestSources.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeDigestHost.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/HostedDelivery.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/HostedResultNotices.java"
+      ],
+      "stateMapping": {
+        "rows/now/writes/restarts": "Selected durable consent, exact scope/revision, revocation and expiry across host reconstruction",
+        "owner/generation/foreground/transport/calendarRevision/calendarPermission": "Controlled admission, review foreground and source identity",
+        "readOwner/readSource/readGeneration/readKind/readProfile/readScope": "One retained read across controlled source suspension",
+        "reply/replyAt/requestKind/grantReply/events/reminders/calendarReads/reminderReads": "Actual returned metadata and bounded projected result with source port counts"
+      },
+      "abstractions": [
+        "Two owners and two exact grant slots, opaque revision equality, one selected owner day, and one held source operation.",
+        "Described grant is revalidated after Calendar identity checking. Content reads also repeat exact consent checks.",
+        "Synthetic storage, resident, Calendar and Reminder ports only. No device/provider action or model egress."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 4
+      }
+    },
+    {
+      "path": "specs/quint/native/NativeCalendarScopedReview.qnt",
+      "module": "NativeCalendarScopedReview",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "canonicalTicketOwnsStagingTest",
+        "differentRevisionRefusedTest",
+        "deadlineInclusiveTest",
+        "expiredTicketRefusedTest",
+        "providerRereadRefusesChangedSourceTest",
+        "pauseRetiresQueuedReviewTest",
+        "revocationRefusesPositiveTest",
+        "uncertainEnqueueRetainedTest",
+        "heldCurrentInspectionPublishesTest",
+        "pauseRetiresHeldInspectionTest",
+        "destroyRetiresHeldInspectionTest"
+      ],
+      "invariants": [
+        "BoundedTicket",
+        "PendingReviewOwnsReply",
+        "VisibleReviewCurrent",
+        "CanonicalStageOnly",
+        "EnqueueResultAfterAttempt",
+        "TicketHasCurrentEpoch"
+      ],
+      "sources": [
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarScopedDeletionReview.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarDeletionIdentity.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCalendarPlugin.java"
+      ],
+      "sharedSources": [
+        "plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/CalendarEventGuard.java",
+        "plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/read/CalendarSourceIdentity.java"
+      ],
+      "stateMapping": {
+        "epoch/retired/ticket/ticketEpoch/expires/now/inspectHeld/inspectEpoch/inspectResult": "Actual volatile lifecycle, one canonical stored tuple with clock/deadline, and captured worker handoff plus observed originating epoch",
+        "reviewPhase/reviewEpoch/reviewResult/competing": "One reviewing CAS, queued UI delivery epoch, visible dialog, terminal resolution and rejected overlapping request",
+        "provider/granted/locked/focused/dialogFocused/resumed": "Controlled provider revision and platform admission inputs",
+        "stageRefused/stageCount/staged": "Synthetic enqueue outcome, exact target comparison and side-effect-attempt count"
+      },
+      "abstractions": [
+        "One selected scoped occurrence, four exact tuple coordinates with opaque hash equality, two provider drift classes, one held final permission result and one review dialog.",
+        "The initial inspection and worker provider reread are macrosteps except the explicitly held permission result. Multi-ticket capacity, real CalendarProvider mutation and downstream journal settlement are outside this component.",
+        "The ticket insertion and pause clear share a generation monitor. This models ticket authority at insertion, not delivery of an already-committed reply after a later pause."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 4
+      }
+    },
+    {
+      "path": "specs/quint/native/NativeCalendarSyncEnable.qnt",
+      "module": "NativeCalendarSyncEnable",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "currentEnablePersistsExactConsentTest",
+        "pauseAfterCommittedEnableRevokesTest",
+        "pauseBeforeReadRetiresOldEnableTest",
+        "pauseRetiresEnableWithSameDisabledBytesTest",
+        "changedCasSnapshotAlsoRetiresOldEnableTest",
+        "pauseRetriesExactCasTest",
+        "pauseCasExhaustionIsUnavailableTest",
+        "freshExplicitReviewCanEnableAfterPauseTest",
+        "pauseCasExhaustionRetainsPriorConsentTest"
+      ],
+      "invariants": [
+        "LeaseOwnsEpoch",
+        "HeldOwnsPendingReply",
+        "BothGatesUseCommittedConsent",
+        "CommittedConsentHasOwner",
+        "PausedConsentNotResurrected"
+      ],
+      "sources": [
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncBridge.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncConsent.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncSnapshot.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncMutation.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncReceiptRecovery.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeDeletionCoordinator.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCredentialStore.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCalendarPlugin.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaConnectionPlugin.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/LocalAgentProviderAdmission.java"
+      ],
+      "sharedSources": [
+        "plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/write/CalendarEventOptions.java",
+        "plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeferredDeletionJournal.java",
+        "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeProviderAdmission.java"
+      ],
+      "stateMapping": {
+        "epoch/lease/leaseEpoch/dialog/prepareResult/enableResult/pauseResult/statusResult": "Actual bridge epoch, current lease, observed dialog and bridge results",
+        "durable/writes/compareAttempts/pauseRefusals": "Closed store bytes, accepted CAS sequence, attempt counts and injected contention",
+        "held/heldExpected/claimedEpoch/enabledEpoch": "Final enable read suspension, captured CAS snapshot class, lease generation and committed enable provenance",
+        "cloudWriteAllowed/deletionAllowed": "Actual exact saved-consent and deletion-refusal outputs"
+      },
+      "abstractions": [
+        "One bridge, one exact owner/destination, pre-marked local source with no events and one held consent worker. Synthetic platform and credential store, no provider writes.",
+        "Saved bytes are partitioned into absent, unchanged disabled, and enabled classes for this schedule. Enabled operation provenance is observed via accepted store writes.",
+        "One bridge monitor orders enabled CAS against local lease retirement. A successful durable pause fences the old enable, and an exhausted pause CAS reports unavailable without fabricating durable revocation."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 4
+      }
     }
   ]
 }

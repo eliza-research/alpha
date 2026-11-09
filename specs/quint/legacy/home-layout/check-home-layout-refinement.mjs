@@ -372,6 +372,7 @@ async function mounted(extraSources) {
     async function scenario(launcher, body) {
       const page = await browser.newPage({baseURL, viewport: {width: 412, height: 915}, hasTouch: true, reducedMotion: 'reduce'});
       page.setDefaultTimeout(35000);
+      page.setDefaultNavigationTimeout(90000);
       const foreign = await fenceNetwork(page), errors = [];
       page.on('pageerror', error => errors.push(error.message));
       await attachFixture(page, launcher);

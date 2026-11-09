@@ -4,15 +4,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {stageWorkerArtifact,verifyWorkerArtifact,workerHash} from '../scripts/workflow-worker-artifact.mjs';
+import {stageWorkerArtifact,verifyWorkerArtifact} from '../scripts/workflow-worker-artifact.mjs';
+import {writeWorkerFixture as fixture} from './fixtures/workflow-worker-assets.mjs';
 import {javaBinary} from './fixtures/jvm-tools.mjs';
 const root=path.resolve(import.meta.dirname,'..');
-function fixture(directory){
- const files={};for(const name of ['node_modules/smthrs/package.json','node_modules/zod/package.json','node_modules/effect/package.json','node_modules/@smthrs/engine/package.json','dependencies.json','lib/worker.js']){
-  const bytes=Buffer.from(name.endsWith('.js')?'export const text="synthetic";':'{}');const file=path.join(directory,name);fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,bytes);files[name]=workerHash(bytes);
- }
- const manifest={version:1,sourceStampSha256:'a'.repeat(64),lockSha256:'b'.repeat(64),files};fs.writeFileSync(path.join(directory,'manifest.json'),JSON.stringify(manifest));return manifest;
-}
 test('worker staging rejects drift, traversal, missing files and symlinks before replacement',()=>{
  const temporary=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'worker-stage-')));
  try{

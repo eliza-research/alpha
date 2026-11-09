@@ -32,6 +32,17 @@ test('reviewed TaskService patch materializes exact bytes while preserving origi
   assert.ok(prepared.files.has(ROOM_QUEUE_TARGET));
   assert.ok(prepared.files.has(EMBEDDING_STATE_TARGET));
 });
+test('the independent APK verifier admits exactly the reviewed Android core transforms', () => {
+  const root = path.resolve(import.meta.dirname, '..');
+  coreStateReceipt(root);
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, CORE_STATE_MANIFEST), 'utf8'));
+  const targets = manifest.patches.map(patch => [patch.file, patch.targets.map(target => target.path)]);
+  const verifier = path.join(root, 'scripts/verify-packaged-runtime.py');
+  const policy = execFileSync('python3', ['-c',
+    'import json,runpy,sys; print(json.dumps(runpy.run_path(sys.argv[1])["MOBILE_CORE_PATCH_TARGETS"]))', verifier],
+  {encoding: 'utf8'});
+  assert.deepEqual(JSON.parse(policy), targets);
+});
 test('missing, modified and wrong-pin patch inputs fail closed', t => {
   for (const mode of ['missing', 'digest', 'pin', 'target', 'output', 'input', 'linked']) {
     const f = fixture(t), patch = path.join(f.root, 'patches/eliza/task-service-stop.patch'), manifest = f.manifest();

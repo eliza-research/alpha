@@ -390,7 +390,8 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
      controller.signal.throwIfAborted();state[env]={...claimed,credentialId:value.credentialId};retire(env);await save(state);claims.delete(value.credentialReference);send(res,200,data.operation==='secureCompareExchange'?{status:'saved'}:{});
     });return;
    }
-   ownedId=requestId(data.requestId);if(active.has(ownedId))throw Error('Cloud request already active');active.set(ownedId,{controller,environment:env,credentialId:data.credentialId});
+   const id=requestId(data.requestId);if(active.has(id))throw Error('Cloud request already active');
+   active.set(id,{controller,environment:env,credentialId:data.credentialId});ownedId=id;
    if(data.operation==='request'){
     const input=object(data.input);if(typeof input.url!=='string'||input.url.length>12000||/[\\#\s]/.test(input.url))throw Error('Invalid Cloud URL');const rawPath=input.url.split('?')[0];if(rawPath.includes('%')||rawPath.includes('..'))throw Error('Invalid Cloud path');const url=new URL(input.url);if(url.origin!==authorities[env]||url.username||url.password||url.hash||url.port)throw Error('Unsupported Cloud authority');
     const route=url.pathname+url.search;const method=input.method;
@@ -441,7 +442,7 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
    }
    throw Error('Unsupported development operation');
   }catch(error:any){if(!res.writableEnded&&!res.destroyed)send(res,error.name==='AbortError'?409:error.status??400,{error:error.name==='AbortError'?'Cloud operation cancelled':'Cloud development request rejected',...(error.code?{code:error.code}:{})});}
-  finally{if(ownedId)active.delete(ownedId);res.removeListener('close',closed);}
+  finally{if(ownedId&&active.get(ownedId)?.controller===controller)active.delete(ownedId);res.removeListener('close',closed);}
  };
  // Host-only read port for the local development agent. It shares the exact
  // credential store and fences with the browser bridge; no bearer leaves it.

@@ -800,3 +800,61 @@ bytes unchanged and that a reminder creation retains its original result.
 The ports provide one selected journal row, storage interruption, deletion
 receipt evidence and notification active-list matches. No notification,
 reminder, deletion, provider or Android device action executes.
+
+### Native Gmail background delivery
+
+`NativeGmailBackground` joins the Alpha WorkManager worker and bridge to
+the pinned mail delivery and history engine. The source replay observes
+the installed schedule identities, network constraint, periodic UPDATE
+and catch-up KEEP commands, exact input generation, status and retry
+classification. It checks that a four-page retry keeps the original
+20-digit cursor and continuation, including after reconstruction and
+same-owner revalidation. Only the final page advances a retained pagination cursor.
+Credential retirement and pending reset fence a held worker response.
+A synthetic failure after a durable page write retains the new cursor.
+
+The baseline in commit `42dda1db19` reproduced a held configuration for
+grant B committing after a second bridge withdrew B while grant A remained
+saved. It also reproduced local consume of a previously captured token
+after the remote grant was revoked and pending readback refused.
+
+The authenticated repair records the grant before the bridge queues its
+selection. Withdrawing the matching pending grant leaves another saved
+selection's cursor, work and notices in place. Removing a saved grant
+preserves an unrelated pending selection. Consumption rechecks the remote
+owner and grant, then the same foreground, selection epoch and exact tap.
+A revoke or offline response retains the tap for an exact later retry.
+Releasing a question remains local cancellation and keeps the notice.
+
+The replay uses authenticated staged Java, synthetic work requests, vault
+bytes and alert state, and intercepts every child-JVM URL open. Installed
+WorkManager execution, notice delivery and live provider freshness remain
+outside the replay.
+
+The executor-refusal baseline in commit `592074fd49` closes the old bridge
+after its foreground check and before its configure call can acquire the
+lifecycle lock. The rejected enqueue leaves an unadmitted grant registered
+and fences the saved selection. The repair releases only that exact
+unadmitted attempt into a fresh settled epoch. The saved cursor, work and
+visible notice survive. A subsequent worker can continue, and a worker
+that captured an earlier epoch remains retired. A delayed rejection cannot
+retire a newer pending or admitted selection, including a newer request for
+the same grant. Work that the executor accepted before teardown can still
+drain under the existing policy.
+
+### Native digest consent and readback
+
+`NativeDigestConsent` follows reviewed native digest consent by exact owner,
+agent, installation, enrollment, source and revision. The replay executes
+the product host and grant store plus the exact hosted source admission
+method. It uses closed storage, resident and Calendar and Reminder ports.
+It checks scope refusal, same-revision replay, tombstones, expiry, write
+failures before and after commit, and selected owner-day projection.
+Source rows are synthetic and the result stays within the JVM observer.
+
+The baseline in commit `261c7e6779` holds Calendar identity verification
+after the host captures a grant. A revoke or exact expiry during that
+check could leave `describe` returning the captured metadata. The host
+now rechecks the durable grant and current clock after verification. It
+reuses the completed Calendar check. Content reads retain their separate
+final consent check before returning projected events and reminders.

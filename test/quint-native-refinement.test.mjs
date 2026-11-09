@@ -5,6 +5,10 @@ import {runNativeRefinement} from '../specs/quint/refinement/native/index.mjs';
 
 test('native source transitions refine their finite Quint projections', {timeout: 1200000}, async () => {
   const results = await runNativeRefinement();
+  if (results.failures.length) {
+    throw new AggregateError(results.failures.map(({campaign, error}) => Error(campaign, {cause: error})),
+      `Native refinement campaigns failed: ${results.failures.map(({campaign}) => campaign).join(', ')}`);
+  }
   const manifest = JSON.parse(readFileSync(new URL('../specs/quint/native/manifest.json', import.meta.url)));
   const expected = [...manifest.models.map(model => model.module).filter(model => !['ApplicationComposition', 'ControllerComposition'].includes(model)),
     'NativeCredentialMutation'].sort();

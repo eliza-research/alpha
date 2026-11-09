@@ -2,13 +2,14 @@ package ai.elizaresearch.alphaphone;
 
 import android.content.Context;
 import ai.eliza.plugins.agent.runtime.CredentialShutdownLease;
+import java.util.concurrent.CountDownLatch;
 
 /** Test port for the resident's real lease with a controllable stop observation. */
 final class AlphaLocalAgentPlugin {
  static final CredentialShutdownLease lease = new CredentialShutdownLease();
  static volatile boolean confirmed = true;
  static volatile int stops, releases;
- static volatile java.util.concurrent.CountDownLatch pauseRequested = new java.util.concurrent.CountDownLatch(0);
+ static volatile CountDownLatch pauseRequested = new CountDownLatch(0);
  static volatile Runnable acquiring = () -> {};
  static volatile Runnable confirming = () -> {};
 

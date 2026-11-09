@@ -1,3 +1,4 @@
+import {collectRefinementCampaigns} from '../campaigns.mjs';
 import {fileURLToPath} from 'node:url';
 import {readdirSync} from 'node:fs';
 import {join} from 'node:path';
@@ -19,7 +20,7 @@ import {checkRendererCoordinator} from './renderer-coordinator.mjs';
 import {checkSharedRecording} from './shared-recording.mjs';
 import {checkLiveCapture} from './live-capture.mjs';
 
-import {modelStateInventory, unobservedStateFields} from '../model-state.mjs';
+import {modelStateInventory, traceActionCoverage, unobservedStateFields} from '../model-state.mjs';
 import {checkAsrPipe} from './asr-pipe.mjs';
 import {checkPipedCapture} from './piped-capture.mjs';
 import {checkCaptureFrames} from './capture-frames.mjs';
@@ -55,57 +56,16 @@ import {checkNativeSettingsHandoff} from './settings-handoff.mjs';
 import {checkNativeSourceRenewal} from './source-renewal.mjs';
 import {checkNativeAssistantEntry} from './assistant-entry.mjs';
 import {checkNativeActionRecovery} from './action-recovery.mjs';
+import {checkNativeGmailBackground} from './gmail-background.mjs';
+import {checkNativeDigestConsent} from './native-digest.mjs';
+import {checkNativeCalendarScopedReview} from './scoped-calendar-review.mjs';
+import {checkNativeCalendarSyncEnable} from './calendar-sync-enable.mjs';
 import {checkBrowserUnderlay} from './browser-underlay.mjs';
 
 export async function runNativeRefinement() {
-  const models = ['VadSegmentation', 'RendererRecovery', 'ResidentScheduling'];
-  const sources = [voice + 'LiveVadGate.java', app + 'RendererRecoveryBudget.java', app + 'ResidentScheduleRearm.java'];
-  const finiteSources = [...sources, `${directory}/Trace.java`, `${directory}/FinitePolicyTraces.java`, fileURLToPath(import.meta.url), `${directory}/java.mjs`];
-  const finiteHashes = captureInputs(finiteSources);
-  const traces = javaTraces('FinitePolicyTraces.java', sources);
-  const results = [];
-  for (const model of models) {
-    const assumptions = model === 'VadSegmentation'
-      ? ['All 18 reachable gate counter states and all 11 probability classes plus close are covered.', 'Float classes use the actual 0.35f and 0.5f comparisons. PCM generation and capture buffers remain external.']
-      : model === 'RendererRecovery'
-        ? ['Helper projection covers count classes 0..4+ and elapsed deltas below/at/above 60000ms, equality and backwards time, with reachable prefixes including a fifth loss.', 'Elapsed realtime is nonnegative. The source counter saturates at four; a 10000-loss run and MAX_VALUE defensive regression verify overflow does not revive immediate recreation.', 'The helper projection fixes crashed=true and visible=true. Deferred background recovery, MainActivity lifecycle and Settings launches remain separate obligations.']
-        : ['Complete five-event/two-unlock/two-package/two-owner/three-lifecycle admission table, with one actual admitAndStart invocation per fresh case.', 'Environment setup is external input. Running-service idempotency and plugin lifecycle mutation remain separate obligations.'];
-    results.push(await checkTraces({model, id: `${model}-native`, sources: finiteSources, driverHashes: finiteHashes,
-      scope: model === 'RendererRecovery' ? 'bounded-component' : 'complete-finite-helper', assumptions, traces: traces[model]}));
-  }
-  const componentSources = [
-    'vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset/ResetAuthorization.java',
-    ...['LiveCaptureAdmission.java', 'SpeechPcmQueue.java', 'SpeechAudioFocusPolicy.java'].map(name => voice + name),
-    app + 'NativeReadEpoch.java',
-    'vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/SelectedPhotoCopy.java',
-    ...['IndicatorLease.java', 'ListenerPolicy.java', 'CrashLoopBreaker.java'].map(name => sense + name),
-  ];
-  const componentInputs = [...componentSources, `${directory}/Trace.java`, `${directory}/ComponentTraces.java`, fileURLToPath(import.meta.url), `${directory}/java.mjs`];
-  const componentHashes = captureInputs(componentInputs);
-  const components = javaTraces('ComponentTraces.java', componentSources);
-  for (const [model, modelTraces] of Object.entries(components)) {
-    results.push(await checkTraces({model, id: `${model}-native`, sources: componentInputs, driverHashes: componentHashes,
-      scope: 'bounded-component', traces: modelTraces, assumptions: [
-        'Actual Java helper methods execute against controlled environment inputs. Observed fields are listed in this receipt.',
-        'Model macro setup may include external admission/review actions whose implementation is outside this component projection.',
-        'Android services, permission observers, UI lifecycle and physical devices remain integration obligations.',
-      ]}));
-  }
-  const journalSources = [
-    ...['DeferredDeletionJournal.java', 'DeletionDeadline.java'].map(name => 'vendor/eliza/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/' + name),
-    'vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsSendJournal.java',
-    voice + 'BufferedStreamExchange.java',
-  ];
-  const journalInputs = [...journalSources, `${directory}/Trace.java`, `${directory}/JournalTraces.java`, fileURLToPath(import.meta.url), `${directory}/java.mjs`];
-  const journalHashes = captureInputs(journalInputs);
-  const journals = javaTraces('JournalTraces.java', journalSources, [], 'ai.eliza.plugins.messages.JournalTraces');
-  for (const [model, modelTraces] of Object.entries(journals)) {
-    results.push(await checkTraces({model, id: `${model}-native`, scope: 'bounded-component', traces: modelTraces,
-      sources: journalInputs, driverHashes: journalHashes,
-      assumptions: ['In-memory atomic store and serialized callback port execute the actual journal/IPC source.',
-        'Multi-action checkpoints cover one synchronous source call. Internal model states between these actions are not source observations.',
-        'No actual provider effect, telephony role, Binder transport, credential root or power-loss durability is exercised.']}));
-  }
+  const earlyInputs = [fileURLToPath(import.meta.url)];
+  const nativeInputs = [...earlyInputs, join(root, 'specs/quint/refinement/model-state.mjs')];
+  const withInputs = inputs => check => [check.name, () => check(inputs)];
   const extraGroups = [
     ['PlaybackTraces.java', ['StreamingSpeechPlayback.java', 'SpeechPcmQueue.java', 'SpeechAudioFocusPolicy.java', 'VoiceLatencyTrials.java'].map(name => voice + name)],
     ['ResidentTraces.java', [
@@ -113,113 +73,119 @@ export async function runNativeRefinement() {
       'vendor/eliza/plugins/plugin-native-agent/test/provider-admission/NativeProviderAdmissionTest.java',
     ], 'ai.eliza.plugins.agent.runtime.ResidentTraces'],
   ];
-  const stubs = 'vendor/eliza/packages/app/test/android/sense-fixtures/systemui-chip-jvm';
-  const producerSources = readdirSync(join(root, stubs), {recursive: true}).filter(name => name.endsWith('.java')).map(name => join(stubs, name))
-    .concat(['SenseListeningPolicy.java', 'SenseListeningLease.java'].map(name => `vendor/eliza/packages/os/android/sense/systemui/chip/source/${name}`));
+  const producerSources = () => {
+    const stubs = 'vendor/eliza/packages/app/test/android/sense-fixtures/systemui-chip-jvm';
+    return readdirSync(join(root, stubs), {recursive: true}).filter(name => name.endsWith('.java')).map(name => join(stubs, name))
+      .concat(['SenseListeningPolicy.java', 'SenseListeningLease.java'].map(name => `vendor/eliza/packages/os/android/sense/systemui/chip/source/${name}`));
+  };
   extraGroups.push(['ProducerTraces.java', producerSources, 'com.android.systemui.privacy.ProducerTraces']);
-  for (const [harness, groupSources, main] of extraGroups) {
-    const inputs = [...groupSources, `${directory}/${harness}`, `${directory}/Trace.java`, `${directory}/java.mjs`, fileURLToPath(import.meta.url)];
-    const hashes = captureInputs(inputs);
-    const group = javaTraces(harness, groupSources, [], main);
-    for (const [model, modelTraces] of Object.entries(group)) results.push(await checkTraces({model, id: `${model}-native`,
-      sources: inputs, driverHashes: hashes,
-      scope: 'bounded-component', traces: modelTraces, assumptions: [
-        'Actual production helper/class executes with controlled ports and source-executing fixture utilities.',
-        'Only fields present in observedFields are claimed. Multi-action checkpoints map one synchronous call or one completed worker execution.',
-        'External startup, Android observations, provider authenticity and unrestricted scheduler interleavings remain explicit obligations.',
-      ]}));
-  }
-  const renderer = await captureRendererImplementation([fileURLToPath(import.meta.url)]);
-  const modelTraces = await voiceTraces(renderer.implementation);
-  results.push(await checkTraces({model: 'VoiceSession', id: 'VoiceSession-native', scope: 'bounded-component', traces: modelTraces,
-    sources: renderer.sources, driverHashes: renderer.driverHashes,
-    assumptions: ['Actual TypeScript and its transitive shared implementation execute with controlled capture/reply/playback/timer inputs.',
-      'Voice traces bound two sentences and one submitted turn.']}));
-  results.push(await checkNavigationProgress([fileURLToPath(import.meta.url)]));
-  results.push(await checkNativeNavigationOwnership([fileURLToPath(import.meta.url)]));
-  results.push(await checkGoogleBrowserReturnClaim([fileURLToPath(import.meta.url)]));
-  const lifecycle = await residentLifecycleTraces([fileURLToPath(import.meta.url)]);
-  results.push(await checkTraces({model: 'ResidentRuntime', id: 'ResidentRuntime-lifecycle-native', scope: 'bounded-component',
-    ...lifecycle, assumptions: [
-      'Unmodified local-agent.ts is bundled with a synthetic Capacitor port and virtual time. All transitive implementation inputs are hashed before execution.',
-      'Stop resolution, rejection and timeout are actual wrapper outcomes. Connect cancellation observes actual cancelStart calls and absent publication.',
-      'The port assumes native owned-start/attached-start cancellation semantics. Actual AlphaLocalAgentPlugin lock/service behavior remains external.',
-    ]}));
-  const reset = await checkResetOrchestration([fileURLToPath(import.meta.url)]);
-  if (reset.results.some(result => result.status !== 'passed')) throw new Error('Reset coordinator refinement failed');
-  results.push(...reset.receipts);
-  results.push(await checkDeletionCoordinator([fileURLToPath(import.meta.url)]));
-  results.push(await checkResidentCoordinator([fileURLToPath(import.meta.url)]));
-  const credential = await checkCredentialCoordinator([fileURLToPath(import.meta.url)]);
-  results.push(...credential.receipts);
-  for (const check of [checkNativeNoteRecording, checkNoteRecordingService, checkVoiceDraft, checkNotePermission]) {
-    results.push(await check([fileURLToPath(import.meta.url)]));
-  }
-  results.push(await checkCredentialLeasePolicies([fileURLToPath(import.meta.url)]));
-  results.push(await checkRendererCoordinator([fileURLToPath(import.meta.url)]));
-  results.push(await checkSharedRecording([fileURLToPath(import.meta.url)]));
-  results.push(await checkLiveCapture([fileURLToPath(import.meta.url)]));
-  const nativeInputs = [fileURLToPath(import.meta.url), join(root, 'specs/quint/refinement/model-state.mjs')];
-  for (const check of [checkAsrPipe, checkPipedCapture, checkCaptureFrames, checkIndicatorProvider, checkListenerStore, checkListenerService, checkSpeechWarmup, checkRecognizerAvailability, checkOnDeviceRecognizer, checkListenerInput, checkSpeechGate, checkSpeechOutputPreparation, checkBatchCaptureCompletion, checkReviewedCopies]) {
-    results.push(await check(nativeInputs));
-  }
-  const updatePause = await checkRuntimeUpdatePause(nativeInputs);
-  results.push(updatePause.receipt);
-  const updateActivation = await runNativeUpdateActivationRefinement(nativeInputs);
-  results.push(...updateActivation.receipts);
-  const updateComposition = await checkNativeUpdateComposition(nativeInputs);
-  results.push(updateComposition.receipt);
-  const updateStaging = await checkNativeUpdateStaging(nativeInputs);
-  results.push(updateStaging.receipt);
-  const notificationTap = await checkCanonicalNotificationTap(nativeInputs);
-  results.push(notificationTap.receipt);
-  const noticeDelivery = await checkWorkflowNoticeDelivery(nativeInputs);
-  results.push(noticeDelivery.receipt);
-  const hostedResults = await checkNativeHostedResultNotices(nativeInputs);
-  results.push(hostedResults.receipt);
-  const hostedInbox = await checkNativeHostedInbox(nativeInputs);
-  results.push(hostedInbox.receipt);
-  const reminderDelivery = await checkNativeReminderDelivery(nativeInputs);
-  results.push(reminderDelivery.receipt);
-  const clockReview = await checkNativeClockReview(nativeInputs);
-  results.push(clockReview.receipt);
-  const smsDispatch = await checkNativeSmsDispatch(nativeInputs);
-  results.push(smsDispatch.receipt);
-  const mmsDispatch = await checkNativeMmsDispatch(nativeInputs);
-  results.push(mmsDispatch.receipt);
-  const textScale = await checkNativeTextScaleLifecycle(nativeInputs);
-  results.push(textScale.receipt);
-  const crashJournal = await checkNativeCrashJournal(nativeInputs);
-  results.push(crashJournal.receipt);
-  const settingsHandoff = await checkNativeSettingsHandoff(nativeInputs);
-  results.push(settingsHandoff.receipt);
-  const sourceRenewal = await checkNativeSourceRenewal(nativeInputs);
-  results.push(sourceRenewal.receipt);
-  const assistantEntry = await checkNativeAssistantEntry(nativeInputs);
-  results.push(assistantEntry.receipt);
-  const actionRecovery = await checkNativeActionRecovery(nativeInputs);
-  results.push(actionRecovery.receipt);
-  results.push(await checkBrowserUnderlay(nativeInputs));
-  const obligations = [
+  const campaigns = [
+    ['FinitePolicyTraces', async record => {
+      const models = ['VadSegmentation', 'RendererRecovery', 'ResidentScheduling'];
+      const sources = [voice + 'LiveVadGate.java', app + 'RendererRecoveryBudget.java', app + 'ResidentScheduleRearm.java'];
+      const finiteSources = [...sources, `${directory}/Trace.java`, `${directory}/FinitePolicyTraces.java`, fileURLToPath(import.meta.url), `${directory}/java.mjs`];
+      const finiteHashes = captureInputs(finiteSources);
+      const traces = javaTraces('FinitePolicyTraces.java', sources);
+      for (const model of models) {
+        const assumptions = model === 'VadSegmentation'
+          ? ['All 18 reachable gate counter states and all 11 probability classes plus close are covered.', 'Float classes use the actual 0.35f and 0.5f comparisons. PCM generation and capture buffers remain external.']
+          : model === 'RendererRecovery'
+            ? ['Helper projection covers count classes 0..4+ and elapsed deltas below/at/above 60000ms, equality and backwards time, with reachable prefixes including a fifth loss.', 'Elapsed realtime is nonnegative. The source counter saturates at four; a 10000-loss run and MAX_VALUE defensive regression verify overflow does not revive immediate recreation.', 'The helper projection fixes crashed=true and visible=true. Deferred background recovery, MainActivity lifecycle and Settings launches remain separate obligations.']
+            : ['Complete five-event/two-unlock/two-package/two-owner/three-lifecycle admission table, with one actual admitAndStart invocation per fresh case.', 'Environment setup is external input. Running-service idempotency and plugin lifecycle mutation remain separate obligations.'];
+        record(await checkTraces({model, id: `${model}-native`, sources: finiteSources, driverHashes: finiteHashes,
+          scope: model === 'RendererRecovery' ? 'bounded-component' : 'complete-finite-helper', assumptions, traces: traces[model]}));
+      }
+    }],
+    ['ComponentTraces', async record => {
+      const componentSources = [
+        'vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset/ResetAuthorization.java',
+        ...['LiveCaptureAdmission.java', 'SpeechPcmQueue.java', 'SpeechAudioFocusPolicy.java'].map(name => voice + name),
+        app + 'NativeReadEpoch.java',
+        'vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/SelectedPhotoCopy.java',
+        ...['IndicatorLease.java', 'ListenerPolicy.java', 'CrashLoopBreaker.java'].map(name => sense + name),
+      ];
+      const componentInputs = [...componentSources, `${directory}/Trace.java`, `${directory}/ComponentTraces.java`, fileURLToPath(import.meta.url), `${directory}/java.mjs`];
+      const componentHashes = captureInputs(componentInputs);
+      const components = javaTraces('ComponentTraces.java', componentSources);
+      for (const [model, modelTraces] of Object.entries(components)) {
+        record(await checkTraces({model, id: `${model}-native`, sources: componentInputs, driverHashes: componentHashes,
+          scope: 'bounded-component', traces: modelTraces, assumptions: [
+            'Actual Java helper methods execute against controlled environment inputs. Observed fields are listed in this receipt.',
+            'Model macro setup may include external admission/review actions whose implementation is outside this component projection.',
+            'Android services, permission observers, UI lifecycle and physical devices remain integration obligations.',
+          ]}));
+      }
+    }],
+    ['JournalTraces', async record => {
+      const journalSources = [
+        ...['DeferredDeletionJournal.java', 'DeletionDeadline.java'].map(name => 'vendor/eliza/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/' + name),
+        'vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsSendJournal.java',
+        voice + 'BufferedStreamExchange.java',
+      ];
+      const journalInputs = [...journalSources, `${directory}/Trace.java`, `${directory}/JournalTraces.java`, fileURLToPath(import.meta.url), `${directory}/java.mjs`];
+      const journalHashes = captureInputs(journalInputs);
+      const journals = javaTraces('JournalTraces.java', journalSources, [], 'ai.eliza.plugins.messages.JournalTraces');
+      for (const [model, modelTraces] of Object.entries(journals)) {
+        record(await checkTraces({model, id: `${model}-native`, scope: 'bounded-component', traces: modelTraces,
+          sources: journalInputs, driverHashes: journalHashes,
+          assumptions: ['In-memory atomic store and serialized callback port execute the actual journal/IPC source.',
+            'Multi-action checkpoints cover one synchronous source call. Internal model states between these actions are not source observations.',
+            'No actual provider effect, telephony role, Binder transport, credential root or power-loss durability is exercised.']}));
+      }
+    }],
+    ...extraGroups.map(([harness, sourceList, main]) => [harness, async record => {
+      const groupSources = typeof sourceList === 'function' ? sourceList() : sourceList;
+      const inputs = [...groupSources, `${directory}/${harness}`, `${directory}/Trace.java`, `${directory}/java.mjs`, fileURLToPath(import.meta.url)];
+      const hashes = captureInputs(inputs);
+      const group = javaTraces(harness, groupSources, [], main);
+      for (const [model, modelTraces] of Object.entries(group)) record(await checkTraces({model, id: `${model}-native`,
+        sources: inputs, driverHashes: hashes,
+        scope: 'bounded-component', traces: modelTraces, assumptions: [
+          'Actual production helper/class executes with controlled ports and source-executing fixture utilities.',
+          'Only fields present in observedFields are claimed. Multi-action checkpoints map one synchronous call or one completed worker execution.',
+          'External startup, Android observations, provider authenticity and unrestricted scheduler interleavings remain explicit obligations.',
+        ]}));
+    }]),
+    ['voiceTraces', async record => {
+      const renderer = await captureRendererImplementation([fileURLToPath(import.meta.url)]);
+      const modelTraces = await voiceTraces(renderer.implementation);
+      record(await checkTraces({model: 'VoiceSession', id: 'VoiceSession-native', scope: 'bounded-component', traces: modelTraces,
+        sources: renderer.sources, driverHashes: renderer.driverHashes,
+        assumptions: ['Actual TypeScript and its transitive shared implementation execute with controlled capture/reply/playback/timer inputs.',
+          'Voice traces bound two sentences and one submitted turn.']}));
+    }],
+    ...[checkNavigationProgress, checkNativeNavigationOwnership, checkGoogleBrowserReturnClaim].map(withInputs(earlyInputs)),
+    ['residentLifecycleTraces', async record => {
+      const lifecycle = await residentLifecycleTraces([fileURLToPath(import.meta.url)]);
+      record(await checkTraces({model: 'ResidentRuntime', id: 'ResidentRuntime-lifecycle-native', scope: 'bounded-component',
+        ...lifecycle, assumptions: [
+          'Unmodified local-agent.ts is bundled with a synthetic Capacitor port and virtual time. All transitive implementation inputs are hashed before execution.',
+          'Stop resolution, rejection and timeout are actual wrapper outcomes. Connect cancellation observes actual cancelStart calls and absent publication.',
+          'The port assumes native owned-start/attached-start cancellation semantics. Actual AlphaLocalAgentPlugin lock/service behavior remains external.',
+        ]}));
+    }],
+    [checkResetOrchestration.name, async record => {
+      const reset = await checkResetOrchestration(earlyInputs);
+      record({receipts: reset.receipts});
+      const failed = reset.results.filter(result => result.status !== 'passed');
+      if (failed.length) throw new Error(`Reset coordinator refinement failed: ${failed.map(result => `${result.name} (${result.status})`).join(', ')}`);
+    }],
+    ...[checkDeletionCoordinator, checkResidentCoordinator, checkCredentialCoordinator, checkNativeNoteRecording,
+      checkNoteRecordingService, checkVoiceDraft, checkNotePermission, checkCredentialLeasePolicies,
+      checkRendererCoordinator, checkSharedRecording, checkLiveCapture].map(withInputs(earlyInputs)),
+    ...[checkAsrPipe, checkPipedCapture, checkCaptureFrames, checkIndicatorProvider, checkListenerStore,
+      checkListenerService, checkSpeechWarmup, checkRecognizerAvailability, checkOnDeviceRecognizer, checkListenerInput,
+      checkSpeechGate, checkSpeechOutputPreparation, checkBatchCaptureCompletion, checkReviewedCopies,
+      checkRuntimeUpdatePause, runNativeUpdateActivationRefinement, checkNativeUpdateComposition,
+      checkNativeUpdateStaging, checkCanonicalNotificationTap, checkWorkflowNoticeDelivery,
+      checkNativeHostedResultNotices, checkNativeHostedInbox, checkNativeReminderDelivery, checkNativeClockReview,
+      checkNativeSmsDispatch, checkNativeMmsDispatch, checkNativeTextScaleLifecycle, checkNativeCrashJournal,
+      checkNativeSettingsHandoff, checkNativeSourceRenewal, checkNativeAssistantEntry, checkNativeActionRecovery,
+      checkNativeGmailBackground, checkNativeDigestConsent, checkNativeCalendarScopedReview,
+      checkNativeCalendarSyncEnable, checkBrowserUnderlay].map(withInputs(nativeInputs)),
+  ];
+  const baseObligations = [
     {model: 'BrowserUnderlay', obligation: 'Android lifecycle, rendering, rounded geometry and physical input', reason: 'The production Kotlin touch path runs with controlled Android ports. Native presentation, split delivery, hover and drag need separate installed evidence.'},
-    ...updatePause.obligations,
-    ...updateActivation.obligations,
-    ...updateComposition.obligations,
-    ...updateStaging.obligations,
-    ...notificationTap.obligations,
-    ...noticeDelivery.obligations,
-    ...hostedResults.obligations,
-    ...hostedInbox.obligations,
-    ...reminderDelivery.obligations,
-    ...clockReview.obligations,
-    ...smsDispatch.obligations,
-    ...mmsDispatch.obligations,
-    ...textScale.obligations,
-    ...crashJournal.obligations,
-    ...settingsHandoff.obligations,
-    ...sourceRenewal.obligations,
-    ...assistantEntry.obligations,
-    ...actionRecovery.obligations,
     {model: 'GoogleBrowserReturnClaim', obligation: 'Installed callback delivery and durable credential custody',
       reason: 'The authenticated Java claim and grace functions execute under controlled queues, storage and HTTPS. Installed lifecycle, secure-store durability and intra-worker schedules remain separate.'},
     ...reviewedCopiesObligations,
@@ -256,21 +222,25 @@ export async function runNativeRefinement() {
     {model: 'VoiceIpcAssembly', obligation: 'Deadline scheduling races and actual owner/binding admission', reason: 'Eight actual exchanges check return/cleanup. Static deadline scheduling and local assembly state need a deterministic observer seam.'},
     {model: 'ListenerLeaseProducer', obligation: 'Controller measurement and real SystemUI/Binder identity', reason: 'Actual lease delivery consumes fixture snapshots. Controller/view geometry and real identity checks remain external.'},
   ];
+  const {receipts, obligations, failures} = await collectRefinementCampaigns(campaigns, baseObligations);
   const modelPaths = new Map(loadModels().map(model => [model.module, model.path]));
-  for (const model of new Set(results.map(receipt => receipt.model))) {
-    const related = results.filter(receipt => receipt.model === model);
-    const coveredActions = new Set(related.flatMap(receipt => Object.keys(receipt.actions)));
+  for (const model of new Set(receipts.map(receipt => receipt.model))) {
+    const related = receipts.filter(receipt => receipt.model === model);
+    const actionCoverage = traceActionCoverage(related);
+    const coveredActions = new Set([...actionCoverage.modelTransitionActions, ...actionCoverage.modelInitializers]);
     const coveredFields = new Set(related.flatMap(receipt => receipt.observedFields));
     const inventory = modelStateInventory(join(root, modelPaths.get(model)), model);
-    const missing = inventory.actions.filter(name => !['init', 'check', 'step', 'initFor', 'counterInit', 'budgetInit'].includes(name) && !coveredActions.has(name));
+    const missing = inventory.actions.filter(name => !['init', 'check', 'step'].includes(name) && !coveredActions.has(name));
     if (missing.length) obligations.push({model, obligation: 'Unexecuted model transitions', reason: missing.join(', ')});
     const unobserved = unobservedStateFields(inventory, [...coveredFields]);
     if (unobserved.length) obligations.push({model, obligation: 'Unobserved model fields', reason: unobserved.join(', ')});
   }
-  return {receipts: results, obligations};
+  return {receipts, obligations, failures};
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const result = await runNativeRefinement();
-  console.log(JSON.stringify({receipts: result.receipts.map(({model, traces, checkpoints, receiptPath}) => ({model, traces, checkpoints, receiptPath})), obligations: result.obligations}, null, 2));
+  console.log(JSON.stringify({receipts: result.receipts.map(({model, traces, checkpoints, receiptPath}) => ({model, traces, checkpoints, receiptPath})), obligations: result.obligations,
+    failures: result.failures.map(({campaign, error}) => ({campaign, error: String(error)}))}, null, 2));
+  if (result.failures.length) process.exitCode = 1;
 }

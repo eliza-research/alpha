@@ -71,8 +71,8 @@ export interface NoteRecorderDriver {
 export interface NoteLiveHandlers { speechStart(): void; interim(text: string): void; final(text: string): void; lost(): void }
 /** Opens a live transcription stream for display, or null when none is available. */
 export type NoteLivePort = (handlers: NoteLiveHandlers) => Promise<{ close(): Promise<void> | void } | null>;
-type NoteRecorderOwner = { identity: string; folderId: string | null; current(): boolean };
-type NoteRecorderOptions = { pollMs?: number; visible?: () => boolean; live?: NoteLivePort; owner?: () => NoteRecorderOwner | undefined; remoteTranscription?: () => boolean; automaticTranscription?: boolean; onPermissionDenied?: () => void };
+type NoteRecorderOwner = { identity: string; folderId: string | null; current(): boolean; captureCurrent?(): boolean };
+type NoteRecorderOptions = { pollMs?: number; visible?: () => boolean; live?: NoteLivePort; owner?: () => NoteRecorderOwner | undefined; remoteTranscription?: () => boolean; automaticTranscription?: boolean; prepareCapture?: () => Promise<boolean>; onPermissionDenied?: () => void };
 /** Text of one finished segment; '' for silence. Throws when the route fails. */
 export type SegmentTranscriber = (segmentId: string, signal: AbortSignal) => Promise<string>;
 /** `failed`: the microphone did not start; the recorder stays open with one error line. */
@@ -92,6 +92,7 @@ export function noteRecorderError(reason: string | undefined): string {
   if (reason === 'sign-in') return 'Sign in to transcribe. The audio is kept.';
   if (reason === 'save') return 'Couldn’t save. Try again.';
   if (reason === 'owner') return 'Return to the original Notes account. Your recording is kept.';
+  if (reason === 'media') return 'Audio couldn’t stop. Restart Alpha before recording.';
   if (reason === 'capture') return 'The microphone isn’t available.';
   return 'The microphone stopped.';
 }
@@ -102,6 +103,7 @@ function startFailure(error: unknown): string {
   if (code === 'recovery') return 'recovery';
   if (code === 'permission-denied' || name === 'NotAllowedError') return 'permission';
   if (code === 'call-active') return 'call';
+  if (code === 'media-unconfirmed') return 'media';
   return 'capture';
 }
 export function formatRecordingClock(ms: number): string {
@@ -255,20 +257,28 @@ export class NoteRecorderSession {
     else if (this.open) void this.pump();
   }
   /** Adopt a recording that is already open (a recovered one, or one left running), else start one. */
-  async begin(): Promise<void> {
+  async begin(): Promise<'recording' | void> {
     if (this.open && this.phase !== 'failed') return;
     const epoch = ++this.epoch;
     this.phase = 'starting'; this.error = ''; this.changed();
     try {
       await this.bindOwner(epoch);
       if (!this.owned(epoch)) return;
+      const captureCurrent = () => this.owner?.captureCurrent?.() !== false;
+      if (!captureCurrent()) { this.close(); return; }
+      const mediaReady = !this.options.prepareCapture || await this.options.prepareCapture();
+      if (epoch !== this.epoch) return;
+      if (!this.owned(epoch) || !captureCurrent()) { this.close(); return; }
       const existing = await this.driver.status();
       if (!this.owned(epoch)) return;
       if (existing.state !== 'idle' && !this.matches(existing)) {
         this.phase = 'failed'; this.error = noteRecorderError('owner'); this.changed(); return;
       }
+      if (existing.state === 'idle' && !mediaReady)
+        throw Object.assign(Error('Previous audio could not stop'), {code: 'media-unconfirmed'});
       await this.attach(epoch);
       if (!this.owned(epoch)) return;
+      if (existing.state === 'idle' && !captureCurrent()) { this.close(); return; }
       const binding = this.ownerDigest ? { ownerDigest: this.ownerDigest, folderId: this.recordingFolder } : undefined;
       const status = existing.state === 'idle' ? await this.driver.start(binding) : existing;
       // Discarded while starting: the recording the microphone just began goes too.
@@ -282,6 +292,7 @@ export class NoteRecorderSession {
       if (!this.matches(status) || binding && existing.state === 'idle' && status.binding?.folderId !== binding.folderId)
         throw Error('Notes recording owner could not be verified');
       this.apply(status);
+      if (status.state === 'recording') return 'recording';
     } catch (error) {
       if (epoch !== this.epoch) return;
       this.detach(); this.phase = 'failed';

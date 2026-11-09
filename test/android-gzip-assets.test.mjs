@@ -5,10 +5,10 @@ import os from 'node:os';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import {protectGzipAssets,packagedGzipProblems,isGzip} from '../scripts/android-gzip-assets.mjs';
+import {mergeGzipAssets} from './fixtures/android-gzip-assets.mjs';
 
 const temporary=()=>fs.mkdtempSync(path.join(os.tmpdir(),'alpha-gzip-assets-'));
-/** What the Android asset merger does to a *.gz asset: unpack one layer and drop the suffix. */
-const merge=directory=>{for(const entry of fs.readdirSync(directory,{withFileTypes:true})){const file=path.join(directory,entry.name);if(entry.isDirectory())merge(file);else if(entry.name.endsWith('.gz')){fs.writeFileSync(file.slice(0,-3),zlib.gunzipSync(fs.readFileSync(file)));fs.rmSync(file);}}};
+
 
 test('a gzip web asset survives the Android asset merger under its published name',()=>{
  const web=temporary(),android=temporary();
@@ -17,14 +17,14 @@ test('a gzip web asset survives the Android asset merger under its published nam
   for(const root of [web,android]){fs.mkdirSync(path.join(root,'ocr'));fs.writeFileSync(path.join(root,'ocr/eng.traineddata.gz'),model);fs.writeFileSync(path.join(root,'ocr/worker.min.js'),'worker');}
   // Without protection the merger publishes eng.traineddata, and the engine's request for .gz finds nothing.
   const unprotected=temporary();
-  try{fs.cpSync(android,unprotected,{recursive:true});merge(unprotected);assert.equal(fs.existsSync(path.join(unprotected,'ocr/eng.traineddata.gz')),false);assert.match(packagedGzipProblems(unprotected,web).join('\n'),/ocr\/eng\.traineddata\.gz is missing from the APK web payload/);}
+  try{fs.cpSync(android,unprotected,{recursive:true});mergeGzipAssets(unprotected);assert.equal(fs.existsSync(path.join(unprotected,'ocr/eng.traineddata.gz')),false);assert.match(packagedGzipProblems(unprotected,web).join('\n'),/ocr\/eng\.traineddata\.gz is missing from the APK web payload/);}
   finally{fs.rmSync(unprotected,{recursive:true,force:true});}
   assert.deepEqual(protectGzipAssets(android),['ocr/eng.traineddata.gz']);
   assert.deepEqual(fs.readdirSync(path.join(android,'ocr')).sort(),['eng.traineddata.gz.gz','worker.min.js']);
   const wrapped=fs.readFileSync(path.join(android,'ocr/eng.traineddata.gz.gz'));
   assert.deepEqual(protectGzipAssets(android),[],'an already wrapped payload is left alone');
   assert.ok(wrapped.equals(fs.readFileSync(path.join(android,'ocr/eng.traineddata.gz.gz'))));
-  merge(android);
+  mergeGzipAssets(android);
   const packaged=fs.readFileSync(path.join(android,'ocr/eng.traineddata.gz'));
   assert.ok(packaged.equals(model)&&isGzip(packaged),'the APK carries the original gzip bytes');
   assert.deepEqual(packagedGzipProblems(android,web),[]);
