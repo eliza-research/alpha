@@ -92,6 +92,17 @@
           "afterSha256": "183053f31c514ab444823e2d3966619f920af3fed212e884d0f23802585e9f47"
         }
       ]
+    },
+    {
+      "file": "plugin-connector-custody.patch",
+      "sha256": "a0f840fa8572fae33dc3958769c4bd9a951e6f18d04c2345979147134a1473b2",
+      "targets": [
+        {
+          "path": "packages/core/src/plugin-lifecycle.ts",
+          "beforeSha256": "954a7a185c6bb467831a221abd60fb2bec7683e3f5e615408c9ccbece1ccd8be",
+          "afterSha256": "208a5acb62404a722969aa3e11f76edbe6dffd44e66f6f62914148e2a8ed3435"
+        }
+      ]
     }
   ]
 }

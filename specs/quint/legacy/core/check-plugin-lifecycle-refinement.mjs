@@ -220,7 +220,7 @@ export async function checkPluginLifecycleRefinement(extraSources = []) {
 
   for (const lateConnector of [false, true]) {
     const f = await serviceFixture(sql, model, lateConnector);
-    const t = schedule(lateConnector ? 'late_start_effect_projection_without_registry' : 'unload_withdraws_held_starts_and_rejects_later_load', f.observe);
+    const t = schedule(lateConnector ? 'late_start_cannot_republish_connector' : 'unload_withdraws_held_starts_and_rejects_later_load', f.observe);
     try {
       f.unload(11);
       t.point('owner holds the dispose hook', action('Unload', 11));
@@ -243,10 +243,7 @@ export async function checkPluginLifecycleRefinement(extraSources = []) {
       t.point('late returned service stops and teardown settles both callers',
         action('StartDone', 1, false), action('StartDone', 2, true), action('AwaitStarts', 11),
         action('UnloadStop', 11), action('UnloadFinish', 11), action('UnloadJoin', 12));
-      if (lateConnector) {
-        assert.equal(f.observe()['sourceState.registry'], 'A');
-        recordedDifference(differences, 'PluginLateStartConnector', model, t.trace, 'sourceState.registry');
-      }
+      if (lateConnector) assert.equal(f.observe()['sourceState.registry'], 'none');
       campaigns.get(model).push(t.trace);
     } finally {await f.cleanup();}
   }
@@ -310,7 +307,7 @@ export async function checkPluginLifecycleRefinement(extraSources = []) {
     scope: 'bounded-orchestration', assumptions: [
       'The actual AgentRuntime and plugin lifecycle execute with bound pinned source and isolated PGlite for service cases. Hook promises and connector registrations are synthetic. No connector sends.',
       'One service type, two class identities, one connector key and the actor counts from each original profile. Original macrosteps group selected source microtasks.',
-      'Selected differences in rollback visibility, late hook effects, and shutdown lookup clear are checked separately against exact source observations. These schedules do not check temporal fairness.',
+      'Selected differences in rollback visibility and shutdown lookup clear are checked separately against exact source observations. These schedules do not check temporal fairness.',
     ]};
   const receipts = [];
   for (const [profile, traces] of campaigns) {

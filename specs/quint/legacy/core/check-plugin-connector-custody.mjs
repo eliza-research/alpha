@@ -7,19 +7,23 @@ import {loadTaskService} from '../../refinement/services/task-service/module.mjs
 const sibling = 'sibling';
 const denyFetch = async () => {throw Error('The connector custody fixture forbids external requests');};
 
-async function fixture(runtime, identity, {detached = false, eager = false} = {}) {
+async function fixture(runtime, identity, {detached = false, eager = false, heldDisposal = false} = {}) {
   const a = 'quint-connector-owner-'+identity;
   const b = 'quint-connector-rival-'+identity;
   const type = 'quint-connector-service-'+identity;
   const source = 'quint-connector-custody-'+identity;
   const start = Promise.withResolvers(), started = Promise.withResolvers();
   const stop = Promise.withResolvers(), stopping = Promise.withResolvers();
-  const after = Promise.withResolvers();
-  let continuation, unloading, loading, stopCalls = 0;
+  const after = Promise.withResolvers(), dispose = Promise.withResolvers(), disposing = Promise.withResolvers();
+  const legacy = source+'-legacy';
+  let continuation, onDetached, unloading, loading, stopCalls = 0;
   const service = {name: 'HeldConnectorService', serviceType: type, async start(owner) {
     started.resolve();
     await start.promise;
-    if (detached) continuation = after.promise.then(() => register(owner, 'late'));
+    if (detached) continuation = after.promise.then(async () => {
+      register(owner, 'late');
+      await onDetached?.();
+    });
     else register(owner, 'late');
     return {async stop() {
       stopCalls++;
@@ -34,21 +38,31 @@ async function fixture(runtime, identity, {detached = false, eager = false} = {}
       if (!eager) await owner.registerService(service);
     },
     ...(eager ? {services: [service]} : {}),
+    ...(heldDisposal ? {async dispose() {disposing.resolve(); await dispose.promise;}} : {}),
   };
   const rival = {name: b, init(_config, owner) {
     register(owner, 'rival');
     register(owner, 'sibling', sibling);
   }};
   function register(owner, label, accountId) {
-    owner.registerMessageConnector({source, label, accountId, async sendHandler() {return label;}});
+    const sendHandler = async () => label;
+    owner.registerMessageConnector({source, label, accountId, sendHandler});
+    owner.registerPostConnector({source, label, accountId});
+    if (!accountId) owner.registerSendHandler(legacy, sendHandler);
   }
   function keys(name) {
-    return runtime.getPluginOwnership(name)?.messageConnectors
-      .filter(entry => entry.source === source).map(entry => entry.accountId ?? 'default').sort() ?? null;
+    const ownership = runtime.getPluginOwnership(name);
+    const selected = entries => entries.filter(entry => entry.source === source)
+      .map(entry => entry.accountId ?? 'default').sort();
+    return ownership ? {
+      message: selected(ownership.messageConnectors),
+      post: selected(ownership.postConnectors),
+      legacy: ownership.sendHandlerSources.includes(legacy),
+    } : {message: null, post: null, legacy: null};
   }
-  async function route(accountId) {
+  async function route(accountId, target = source) {
     try {
-      return await runtime.sendMessageToTarget({source, accountId}, {text: 'synthetic fixture', agentVoiced: true});
+      return await runtime.sendMessageToTarget({source: target, accountId}, {text: 'synthetic fixture', agentVoiced: true});
     } catch (error) {
       assert.match(error.message, /No send handler registered for source/);
       return 'missing';
@@ -56,13 +70,19 @@ async function fixture(runtime, identity, {detached = false, eager = false} = {}
   }
   async function observe() {
     const connectors = runtime.getMessageConnectors().filter(entry => entry.source === source);
-    const current = runtime.getPluginOwnership(a);
+    const posts = runtime.getPostConnectors().filter(entry => entry.source === source);
+    const current = runtime.getPluginOwnership(a), owner = keys(a), rival = keys(b);
     return {
       owner: current ? current.plugin === first ? 'first' : 'replacement' : 'absent',
-      ownerKeys: keys(a), rivalKeys: keys(b),
+      ownerKeys: owner.message, rivalKeys: rival.message,
+      ownerPostKeys: owner.post, rivalPostKeys: rival.post,
+      ownerLegacyKey: owner.legacy, rivalLegacyKey: rival.legacy,
       default: connectors.find(entry => !entry.accountId)?.label ?? 'missing',
       sibling: connectors.find(entry => entry.accountId === sibling)?.label ?? 'missing',
+      defaultPost: posts.find(entry => !entry.accountId)?.label ?? 'missing',
+      siblingPost: posts.find(entry => entry.accountId === sibling)?.label ?? 'missing',
       route: await route(undefined), siblingRoute: await route(sibling),
+      legacyRoute: await route(undefined, legacy),
       servicePublished: runtime.getService(type) !== null,
       stopCalls,
     };
@@ -71,6 +91,7 @@ async function fixture(runtime, identity, {detached = false, eager = false} = {}
     start.resolve();
     stop.resolve();
     after.resolve();
+    dispose.resolve();
     try {
       await continuation;
       await unloading;
@@ -79,6 +100,8 @@ async function fixture(runtime, identity, {detached = false, eager = false} = {}
       await runtime.unloadPlugin(b);
     } finally {
       runtime.unregisterMessageConnector(source);
+      runtime.unregisterMessageConnector(legacy);
+      runtime.unregisterPostConnector(source);
     }
   }
   try {
@@ -92,6 +115,7 @@ async function fixture(runtime, identity, {detached = false, eager = false} = {}
   return {
     runtime, observe, cleanup, first, a, b,
     registerRival: () => runtime.registerPlugin(rival),
+    registerHost: () => register(runtime, 'host'),
     registerReplacement(label) {
       return runtime.registerPlugin({name: a, init(_config, owner) {if (label) register(owner, label);}});
     },
@@ -101,23 +125,76 @@ async function fixture(runtime, identity, {detached = false, eager = false} = {}
       await assert.rejects(runtime.getServiceLoadPromise(type), /not found or failed to start/);
     },
     async returnStart() {start.resolve(); await stopping.promise;},
+    async beginDispose() {unloading = runtime.unloadPlugin(a); await disposing.promise;},
+    async publishBeforeCordon() {start.resolve(); assert.ok((await loading).service);},
+    async completeDispose() {dispose.resolve(); await stopping.promise;},
     async finish() {
       stop.resolve();
       const ownership = await unloading;
-      if (loading) assert.match((await loading).error?.message, /not found or failed to start/);
+      if (loading && !heldDisposal) assert.match((await loading).error?.message, /not found or failed to start/);
       return ownership;
     },
-    async completeDetached() {assert.ok(continuation); after.resolve(); await continuation;},
+    async completeDetached(run) {assert.ok(continuation); onDetached = run; after.resolve(); await continuation;},
   };
 }
 
 const expected = (owner, ownerKeys, rivalKeys, label, account = 'missing', stopCalls = 1) => ({
-  owner, ownerKeys, rivalKeys, default: label, sibling: account,
-  route: label, siblingRoute: account === 'missing' ? label : account,
+  owner, ownerKeys, rivalKeys, ownerPostKeys: ownerKeys, rivalPostKeys: rivalKeys,
+  ownerLegacyKey: ownerKeys?.includes('default') ?? null, rivalLegacyKey: rivalKeys?.includes('default') ?? null,
+  default: label, sibling: account, defaultPost: label, siblingPost: account,
+  route: label, siblingRoute: account === 'missing' ? label : account, legacyRoute: label,
   servicePublished: false, stopCalls,
 });
 
-/** Source baseline for the original PluginLateStartConnector mismatch and adjacent rival schedules. */
+async function sharedClassRuntimeIsolation(sql, left) {
+  const database = await sql.createIsolatedTestDatabase('quint-connector-isolation-'+randomUUID(), [], {postgresUrl: null});
+  const right = database.runtime;
+  right.fetch = denyFetch;
+  const source = 'quint-shared-class-route', serviceType = 'quint-shared-class-service';
+  const owners = new Map([[left, 'quint-left-owner'], [right, 'quint-right-owner']]);
+  const stopped = new Map();
+  const checkpoints = [];
+  const definition = {name: 'SharedConnectorClass', serviceType, async start(runtime) {
+    runtime.registerMessageConnector({source, label: owners.get(runtime)});
+    return {async stop() {stopped.set(runtime, (stopped.get(runtime) ?? 0)+1);}};
+  }};
+  const observe = runtime => {
+    const name = owners.get(runtime);
+    return {
+      route: runtime.getMessageConnectors().find(entry => entry.source === source)?.label ?? 'missing',
+      owned: runtime.getPluginOwnership(name)?.messageConnectors.some(entry => entry.source === source) ?? false,
+      published: runtime.getService(serviceType) !== null,
+      stopped: stopped.get(runtime) ?? 0,
+    };
+  };
+  function point(label, expected) {
+    const actual = [observe(left), observe(right)];
+    assert.deepEqual(actual, expected, label);
+    checkpoints.push({label, actual});
+  }
+  const active = runtime => ({route: owners.get(runtime), owned: true, published: true, stopped: 0});
+  const inactive = stopped => ({route: 'missing', owned: false, published: false, stopped});
+  try {
+    await right.initialize({skipMigrations: true});
+    for (const [runtime, name] of owners) await runtime.registerPlugin({
+      name, init: (_config, runtime) => runtime.registerService(definition),
+    });
+    await left.getServiceLoadPromise(serviceType);
+    point('left start captures its owner even after right registers the same class', [active(left), inactive(0)]);
+    await right.getServiceLoadPromise(serviceType);
+    point('each runtime publishes its own exact route', [active(left), active(right)]);
+    await left.unloadPlugin(owners.get(left));
+    point('left unload keeps right service and route untouched', [inactive(1), active(right)]);
+    return {name: 'shared service class keeps runtime-local owner custody', checkpoints};
+  } finally {
+    try {
+      await left.unloadPlugin(owners.get(left));
+      await right.stop();
+    } finally {await database.cleanup();}
+  }
+}
+
+/** Replay the original late connector schedules against the authenticated product repair. */
 export async function checkPluginConnectorCustody(extraSources = []) {
   const sql = await loadTaskService([fileURLToPath(import.meta.url), ...extraSources]);
   const database = await sql.createIsolatedTestDatabase('quint-connector-custody-'+randomUUID(), [], {postgresUrl: null});
@@ -141,78 +218,98 @@ export async function checkPluginConnectorCustody(extraSources = []) {
 
   try {
     await runtime.initialize({skipMigrations: true});
-    await scenario('late start becomes publicly routable without an owner', {eager: true}, async (f, point) => {
+    await scenario('late start cannot republish a withdrawn connector', {eager: true}, async (f, point) => {
       await f.withdraw();
       await point('connector and service class withdrawn', expected('first', ['default'], null, 'missing', 'missing', 0));
       await f.returnStart();
-      await point('late start publishes even though returned service is being stopped', expected('first', ['default'], null, 'late'));
+      await point('late publication is refused while returned service is stopped', expected('first', ['default'], null, 'missing'));
       assert.equal((await f.finish()).plugin, f.first);
-      await point('unload finishes while connector and handler remain', expected('absent', null, null, 'late'));
+      await point('unload finishes with no connector or handler', expected('absent', null, null, 'missing'));
       assert.equal(await f.runtime.unloadPlugin(f.a), null);
       await f.registerReplacement();
-      await point('same name registered without inheriting the orphan key', expected('replacement', [], null, 'late'));
+      await point('same-name registration has no stale key', expected('replacement', [], null, 'missing'));
       await f.runtime.unloadPlugin(f.a);
-      await point('second unload cannot remove the unowned key', expected('absent', null, null, 'late'));
+      await point('second unload also leaves no route', expected('absent', null, null, 'missing'));
     });
 
-    await scenario('late start displaces a rival that already owns the exact key', {}, async (f, point) => {
+    await scenario('late start preserves a rival that already owns the exact key', {}, async (f, point) => {
       await f.registerRival();
       await point('rival takes default key and claims sibling account', expected('first', [], ['default', sibling], 'rival', 'sibling', 0));
       await f.withdraw();
       await f.returnStart();
-      await point('late start takes only default from the rival', expected('first', ['default'], [sibling], 'late', 'sibling'));
+      await point('retired publication leaves both rival keys intact', expected('first', [], ['default', sibling], 'rival', 'sibling'));
       await f.finish();
-      await point('late key outlives unload while sibling stays rival-owned', expected('absent', null, [sibling], 'late', 'sibling'));
+      await point('both exact routes outlive the unrelated unload', expected('absent', null, ['default', sibling], 'rival', 'sibling'));
       await f.runtime.unloadPlugin(f.b);
-      await point('rival unload removes only its sibling account', expected('absent', null, null, 'late'));
+      await point('rival unload removes both of its own keys', expected('absent', null, null, 'missing'));
     });
 
-    await scenario('rival takes the exact key after late publication', {}, async (f, point) => {
+    await scenario('rival can claim the exact key while late service stops', {}, async (f, point) => {
       await f.withdraw();
       await f.returnStart();
-      await point('late key is briefly visible under withdrawing owner', expected('first', ['default'], null, 'late'));
+      await point('old route remains withdrawn while the late service stops', expected('first', ['default'], null, 'missing'));
       await f.registerRival();
-      await point('rival replaces late key before teardown finishes', expected('first', [], ['default', sibling], 'rival', 'sibling'));
+      await point('rival claims the keys before teardown finishes', expected('first', [], ['default', sibling], 'rival', 'sibling'));
       await f.finish();
       await point('rival remains the public route and exact owner', expected('absent', null, ['default', sibling], 'rival', 'sibling'));
     });
 
-    await scenario('detached start continuation runs after unregister with no replacement', {detached: true}, async (f, point) => {
+    await scenario('detached lazy continuation cannot install an orphan', {detached: true}, async (f, point) => {
       await f.withdraw();
       await f.returnStart();
       await f.finish();
       await point('unload completes with no public connector', expected('absent', null, null, 'missing'));
       await f.completeDetached();
-      await point('old continuation installs an unowned route', expected('absent', null, null, 'late'));
+      await point('old continuation has no publication authority', expected('absent', null, null, 'missing'));
       await f.registerReplacement('replacement');
-      await point('a deliberate current claim overwrites the orphan', expected('replacement', ['default'], null, 'replacement'));
+      await point('a deliberate current claim works', expected('replacement', ['default'], null, 'replacement'));
       await f.runtime.unloadPlugin(f.a);
       await point('current claim is removed by its own unload', expected('absent', null, null, 'missing'));
     });
 
-    await scenario('detached start continuation adopts a replacement of the same name', {detached: true}, async (f, point) => {
+    for (const eager of [false, true]) {
+      await scenario('detached '+(eager ? 'eager' : 'lazy')+' continuation cannot overwrite the replacement',
+        {detached: true, eager}, async (f, point) => {
+          await f.withdraw();
+          await f.returnStart();
+          await f.finish();
+          await f.registerReplacement('replacement');
+          await point('replacement owns its own connector', expected('replacement', ['default'], null, 'replacement'));
+          await f.completeDetached();
+          await point('retired continuation preserves replacement route and ownership', expected('replacement', ['default'], null, 'replacement'));
+          await f.runtime.unloadPlugin(f.a);
+          await point('replacement unload removes only its own route', expected('absent', null, null, 'missing'));
+        });
+    }
+
+    await scenario('unscoped host claims stay callable across old teardown', {}, async (f, point) => {
       await f.withdraw();
+      f.registerHost();
+      await point('host registers through all three existing unscoped APIs', expected('first', [], null, 'host', 'missing', 0));
       await f.returnStart();
       await f.finish();
-      await f.registerReplacement('replacement');
-      await point('replacement owns its own connector', expected('replacement', ['default'], null, 'replacement'));
-      await f.completeDetached();
-      await point('retired continuation overwrites the replacement route and borrows its ownership', expected('replacement', ['default'], null, 'late'));
-      await f.runtime.unloadPlugin(f.a);
-      await point('replacement unload finally removes the old route', expected('absent', null, null, 'missing'));
+      await point('retired start cannot displace the unscoped host', expected('absent', null, null, 'host'));
     });
 
-    await scenario('detached eager continuation strips a replacement claim without adopting it', {detached: true, eager: true}, async (f, point) => {
+    await scenario('current nested plugin registration uses its own capture', {detached: true}, async (f, point) => {
       await f.withdraw();
       await f.returnStart();
       await f.finish();
-      await f.registerReplacement('replacement');
-      await point('replacement owns its own connector', expected('replacement', ['default'], null, 'replacement'));
-      await f.completeDetached();
-      await point('old registration capture strips the replacement claim', expected('replacement', [], null, 'late'));
-      await f.runtime.unloadPlugin(f.a);
-      await point('replacement unload cannot remove the late unowned route', expected('absent', null, null, 'late'));
+      await f.completeDetached(f.registerRival);
+      await point('rival init opens a distinct live ownership scope', expected('absent', null, ['default', sibling], 'rival', 'sibling'));
     });
+
+    await scenario('disposal still settles before connector withdrawal', {heldDisposal: true}, async (f, point) => {
+      await f.beginDispose();
+      await f.publishBeforeCordon();
+      await point('start still publishes normally while disposal is held',
+        {...expected('first', ['default'], null, 'late', 'missing', 0), servicePublished: true});
+      await f.completeDispose();
+      await point('after disposal existing cleanup withdraws connector and service', expected('first', ['default'], null, 'missing'));
+      await f.finish();
+      await point('unload returns after its sole service stop', expected('absent', null, null, 'missing'));
+    });
+    records.push(await sharedClassRuntimeIsolation(sql, runtime));
   } finally {
     try {await runtime.stop();}
     finally {await database.cleanup();}

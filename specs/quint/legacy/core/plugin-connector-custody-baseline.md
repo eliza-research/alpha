@@ -1,6 +1,6 @@
 # Late plugin connector publication on the pinned runtime
 
-The original `CorePluginLifecycle` inflight campaign preserves its `PluginLateStartConnector` mismatch. The translated model and original profiles stay unchanged. This separate source campaign checks public runtime state at finer scheduling boundaries.
+The original `CorePluginLifecycle` inflight campaign reproduced the `PluginLateStartConnector` mismatch. Commit `f0a28195bf560c9cec2dda63ab6f3fdb4b4ddfa9` preserves the as-built source test. The translated model and original profiles stay unchanged. This separate source campaign checks public runtime state at finer scheduling boundaries.
 
 The fixture executes the pinned `AgentRuntime` with one isolated PGlite database. Its actors have distinct synthetic plugin names, service types and connector sources. It holds promises inside real start and stop hooks. At each checkpoint it reads `getPluginOwnership`, `getMessageConnectors` and `getService`. It also calls the actual route selector through `sendMessageToTarget` with local handlers that only return a label. The fixture refuses external fetches. Loader and fixture hashes are captured before execution and revalidated after cleanup.
 
@@ -15,9 +15,13 @@ The fixture executes the pinned `AgentRuntime` with one isolated PGlite database
 
 In `teardownPluginOwnership`, connector removal precedes `stopOwnedServices`. The latter withdraws classes and awaits captured starts. `RuntimeServiceLifecycle._runServiceStart` stops a returned instance whose class has been withdrawn, but the service hook can already have published a connector. The three publication wrappers update the registry first. Their ownership bookkeeping removes the exact claim from other owners and then attributes it to the active capture. A detached continuation outlives the awaited start. Eager and lazy starts differ because `getOwnershipTarget` prefers an inherited registration capture and otherwise resolves the current record by plugin name.
 
-A narrow repair would record the exact runtime and ownership object at service-start admission and retire that record at the existing connector-withdrawal boundary. It would refuse publication from a retired capture before a wrapped message connector, post connector or default send handler can update the registry or transfer a claim. Runtime-local service class ownership would distinguish the same class object in different runtimes. Registration still needs its pending capture for eager startup. A second teardown sweep alone cannot restore a displaced rival or catch a callback that runs after unload. The fixture establishes the message connector path; equivalent positive and negative checks would be needed for the other two wrappers before applying the repair.
+## Authenticated correction
 
-The campaign covers this API schedule with synthetic hooks. It does not establish that an installed Alpha profile enables a particular remote connector or exposes plugin hot reload. Explicit direct unregister calls, entirely unscoped callbacks, runtime shutdown and arbitrary plugin side effects are separate boundaries. There are no production edits in this baseline.
+The product-owned patch records the exact runtime and ownership object at service-start admission and retires that record at the existing post-disposal connector-withdrawal boundary. Each of the three publication wrappers checks that record before updating the registry or transferring a key. A retired call returns through the existing void API. Service class ownership is runtime-local. Pending declared classes use their registration's capture during eager startup, and a current nested registration gets a new capture.
+
+The repaired campaign exercises the six original schedules across message, post and default send-handler APIs. It also checks unscoped host publication, registration nested inside a retired continuation, publication while disposal is still pending, and one shared service class started by two runtimes. The historical Quint source replay now includes the corrected connector observation in its matching projection. The registration rollback and final shutdown lookup mismatches remain separate.
+
+The patch is applied by the existing core-state manifest, with an exact required transform in the mobile build receipt and APK source snapshot. The fixture executes authenticated runtime source with isolated databases and closed synthetic handlers. Installed-profile connector activation, explicit direct unregister calls, entirely unscoped callbacks and arbitrary plugin effects remain separate boundaries.
 
 Run with Node 26 from the repository root.
 

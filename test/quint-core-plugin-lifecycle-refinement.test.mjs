@@ -9,7 +9,8 @@ test('original plugin lifecycle profiles refine selected runtime ownership sched
     ['CorePluginLifecycle', 'CorePluginLifecycleRegister', 'CorePluginLifecycleServices']);
   assert.deepEqual(receipts.map(receipt => receipt.traces), [2, 2, 2]);
   assert.ok(receipts.every(receipt => receipt.passed && receipt.driverInputsBound && receipt.inputsUnchanged));
-  assert.equal(mismatches.length, 3);
+  assert.deepEqual(mismatches.map(receipt => receipt.name),
+    ['PluginRegistrationRollbackVisibility', 'PluginRuntimeStopLookup']);
   assert.ok(mismatches.every(receipt => !receipt.passed && receipt.driverInputsBound
     && receipt.results[0].kind === 'observation-mismatch'));
 });

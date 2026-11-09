@@ -6,7 +6,7 @@ import os from 'node:os';
 import childProcess, {execFileSync, spawnSync} from 'node:child_process';
 import {syncBuiltinESMExports} from 'node:module';
 import {createHash} from 'node:crypto';
-import {CORE_STATE_TARGET, NOTES_STATE_TARGET, ROOM_QUEUE_TARGET, EMBEDDING_STATE_TARGET, CORE_STATE_MANIFEST, coreStatePatch, coreStateReceipt,
+import {CORE_STATE_TARGET, NOTES_STATE_TARGET, ROOM_QUEUE_TARGET, EMBEDDING_STATE_TARGET, PLUGIN_CONNECTOR_TARGET, CORE_STATE_MANIFEST, coreStatePatch, coreStateReceipt,
   coreStateBuildPlugin, coreStateBuildRecord, verifyCoreStateBuildRecord, coreRuntimeArguments, combinedCoreRuntime, coreStateRequiredTargets} from '../scripts/core-state-patch.mjs';
 import {sourceManifest} from '../scripts/combined-agent-source.mjs';
 import {writeCoreStateFixture} from './fixtures/core-state-root.mjs';
@@ -63,7 +63,7 @@ test('real Bun preload transforms the selected clean source and refuses subseque
   const f = fixture(t, true);
   fs.writeFileSync(path.join(f.source, 'package.json'), JSON.stringify({workspaces: []}));
   fs.writeFileSync(path.join(f.source, 'turbo.json'), JSON.stringify({tasks: {}}));
-  fs.writeFileSync(path.join(f.source, 'entry.mjs'), `import {value} from './${CORE_STATE_TARGET}'; console.log(value);\n`);
+  fs.writeFileSync(path.join(f.source, 'entry.mjs'), `import {value} from './${CORE_STATE_TARGET}'; import {value as connector} from './${PLUGIN_CONNECTOR_TARGET}'; console.log(value, connector);\n`);
   const env = {...process.env, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null'};
   execFileSync('git', ['init', '-q', f.source], {env});
   execFileSync('git', ['-C', f.source, 'add', '.'], {env});
@@ -74,7 +74,7 @@ test('real Bun preload transforms the selected clean source and refuses subseque
   const args = coreRuntimeArguments(f.root, f.source, [path.join(f.source, 'entry.mjs')]);
   const run = spawnSync(process.env.ALPHA_BUN || 'bun', args, {encoding: 'utf8', timeout: 30000,
     env: {...env, ALPHA_CORE_STATE_SOURCE: f.source}});
-  assert.equal(run.status, 0, run.stderr); assert.equal(run.stdout.trim(), 'after');
+  assert.equal(run.status, 0, run.stderr); assert.equal(run.stdout.trim(), 'after after');
   assert.match(fs.readFileSync(f.file, 'utf8'), /before/);
   fs.appendFileSync(path.join(f.source, 'entry.mjs'), '// source drift\n');
   const rejected = spawnSync(process.env.ALPHA_BUN || 'bun', args, {encoding: 'utf8', timeout: 30000,
@@ -86,7 +86,7 @@ test('real Bun preload transforms the selected clean source and refuses subseque
   const selected = combinedCoreRuntime(f.root, f.source, manifestFile, snapshot, [path.join(f.source, 'entry.mjs')]);
   const frozen = spawnSync(process.env.ALPHA_BUN || 'bun', selected.args, {encoding: 'utf8', timeout: 30000,
     env: {...env, ...selected.environment}});
-  assert.equal(frozen.status, 0, frozen.stderr); assert.equal(frozen.stdout.trim(), 'after');
+  assert.equal(frozen.status, 0, frozen.stderr); assert.equal(frozen.stdout.trim(), 'after after');
   fs.appendFileSync(path.join(f.source, 'entry.mjs'), '// second change\n');
   const changed = spawnSync(process.env.ALPHA_BUN || 'bun', selected.args, {encoding: 'utf8', timeout: 30000,
     env: {...env, ...selected.environment}});
@@ -158,10 +158,13 @@ test('each producer must transform exactly its selected reviewed targets', t => 
   verifyCoreStateBuildRecord(f.root, record, both);
   assert.throws(() => coreStateBuildRecord(f.root, [...prepared.transforms, prepared.transforms[0]], both), /transformation/);
   const embeddingFile = path.join(f.source, EMBEDDING_STATE_TARGET);
-  const all = [...both, ...coreStateRequiredTargets([embeddingFile])];
-  assert.deepEqual(all, [...both, EMBEDDING_STATE_TARGET]);
+  const connectorFile = path.join(f.source, PLUGIN_CONNECTOR_TARGET);
+  const all = [...both, ...coreStateRequiredTargets([embeddingFile, connectorFile])];
+  assert.deepEqual(all, [...both, EMBEDDING_STATE_TARGET, PLUGIN_CONNECTOR_TARGET]);
   assert.throws(() => coreStateBuildRecord(f.root, prepared.transforms, all), /selected core/);
   load({path: embeddingFile});
+  assert.throws(() => coreStateBuildRecord(f.root, prepared.transforms, all), /selected core/);
+  load({path: connectorFile});
   verifyCoreStateBuildRecord(f.root, coreStateBuildRecord(f.root, prepared.transforms, all), all);
   assert.deepEqual(coreStateRequiredTargets(['/host/transport.ts']), []);
 });
