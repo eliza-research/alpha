@@ -1813,7 +1813,7 @@
             <h2 style="margin: 0; font-size: 15px; font-weight: 600">{{photos.v.day}}</h2>
             <div style="font-size: 12.5px; opacity: .72; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{photos.v.sub}}</div>
           </div>
-          <sc-if value="{{photos.v.notSecure}}"><button class="ib" aria-label="{{photos.v.askLabel}}" onClick="{{photos.v.ask}}"><span style="width: 30px; height: 30px; border-radius: 15px; background: rgba(255,255,255,.16); display: flex; align-items: center; justify-content: center; font-family: Denton, Fraunces, Georgia, serif; font-style: italic; font-size: 18px"><span class="alpha-compute-mark" aria-hidden="true"></span></span></button></sc-if>
+          <sc-if value="{{photos.v.ask}}"><button class="ib" aria-label="{{photos.v.askLabel}}" onClick="{{photos.v.ask}}"><span style="width: 30px; height: 30px; border-radius: 15px; background: rgba(255,255,255,.16); display: flex; align-items: center; justify-content: center; font-family: Denton, Fraunces, Georgia, serif; font-style: italic; font-size: 18px"><span class="alpha-compute-mark" aria-hidden="true"></span></span></button></sc-if>
         </div>
       </div>
       <sc-if value="{{photos.v.hasPrev}}"><button class="ib" aria-label="Previous" onClick="{{photos.v.prev}}" style="position: absolute; left: 4px; top: 50%; margin-top: -22px; z-index: 3; color: var(--alpha-white); opacity: {{photos.v.chromeOp}}; pointer-events: {{photos.v.chromePE}}; transition: opacity .25s"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if>

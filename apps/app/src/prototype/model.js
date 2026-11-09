@@ -2364,7 +2364,7 @@ registerView("photos", {
         info: function () { api.set({ sheet: "info" }); },
         del: function () { var next = seq[idx + 1] || seq[idx - 1] || (secure ? "none" : null); phDelete([cur.id], api, { open: next, seq: seq.filter(function (x) { return x !== cur.id; }) }); },
         notSecure: !secure,
-        ask: function () { api.send("What's in this photo?"); },
+        ask: cur.kind === "video" ? undefined : function () { api.send("What's in this photo?"); },
         play: function () { api.set({ playing: true, ppos: 0 }); api.later(function () { api.set({ ppos: 100 }); }, 40); api.later(function () { var s = api.get("photos"); if (s.open === cur.id) api.set({ playing: false, ppos: 0 }); }, phSecs(cur.dur) * 1000 + 120); },
         pause: function () { api.set({ playing: false, ppos: 0 }); },
         info2: {
