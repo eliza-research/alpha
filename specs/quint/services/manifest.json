@@ -1760,6 +1760,52 @@
         "maxSteps": 80,
         "maxVerifyDepth": 15
       }
+    },
+    {
+      "path": "specs/quint/services/ReviewedWorkflowLauncher.qnt",
+      "module": "ReviewedWorkflowLauncher",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "dependencyRefusalTest",
+        "missingEntryRetainsTokenTest",
+        "invalidRoutingKeepsMigratedIdentityTest",
+        "cleanPinnedEntryTest",
+        "otherRevisionCanLeaveReceiptTest",
+        "postSpawnGitFailureLeavesChildTest",
+        "postSpawnWriteFailureLeavesChildTest"
+      ],
+      "invariants": [
+        "EntryCheckFollowsToken",
+        "SpawnRequiresPrivateProfile",
+        "ReceiptDescribesRequestedChild",
+        "PatchedEntryRequiresPinnedReceipt"
+      ],
+      "sources": [
+        "scripts/start-reviewed-workflow-agent.mjs",
+        "scripts/local-agent-source.mjs",
+        "scripts/agent-identity.mjs",
+        "scripts/agent-model.mjs",
+        "scripts/agent-embeddings.mjs",
+        "scripts/core-state-preload.mjs",
+        "scripts/core-state-patch.mjs"
+      ],
+      "stateMapping": {
+        "source/deps/profile/token/entryChecked/entry": "Actual path admission, directory and entry checks, private profile and durable token",
+        "config/identity/text/embeddings/features/logOpen": "Actual profile bytes and private launch descriptor",
+        "child/childPid/metadata/pid/revision/supervised": "Returned synthetic child, actual process receipt and handler ordering",
+        "booted/childClosed/preloadEntry/forwarded/outcome/exitCode": "Synthetic process observations and actual optional authenticated preload"
+      },
+      "abstractions": [
+        "One invocation and child, fixed synthetic source bytes during each launch, two source selection modes, finite preflight outcomes. Real workflow readiness and compiled backend execution have separate scope.",
+        "Current source publishes receipt before supervision. Post-spawn Git read and file-write failure can leave the child responsive. Preload can reject after metadata publication."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 11
+      }
     }
   ]
 }
