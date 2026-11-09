@@ -6,7 +6,7 @@ import {test,expect,type Page,type Locator} from '@playwright/test';
 test.beforeEach(async({context})=>guardNoMedia(context));
 const key='alpha.browser.execution.local.v1';
 async function open(page:Page){await page.getByRole('button',{name:'Settings',exact:true}).click();await openConnectionDiagnostics(page);}
-async function setup(page:Page){await page.goto('/?mode=dev');await openLegacyNotes(page);await returnToApps(page);await open(page);await page.getByRole('button',{name:'Connect development profile'}).click();await openConnectionDiagnostics(page);await page.getByText('Development device actions',{exact:true}).click();}
+async function setup(page:Page){await page.goto('/?mode=dev');await open(page);await page.getByRole('button',{name:'Connect development profile'}).click();await returnToApps(page);await openLegacyNotes(page);await returnToApps(page);await open(page);await page.getByText('Development device actions',{exact:true}).click();}
 async function queue(page:Page){await page.getByRole('button',{name:'Queue action for review'}).click();await expect(page.getByText('Action queued. Send a chat message to review it on the current screen.',{exact:true})).toBeVisible();}
 // A recovered card can appear before the first chat finishes saving its conversation.
 // Wait for this reply before injecting failures or confirming its action.
@@ -119,7 +119,7 @@ for(const action of ['set','show','dismiss','snooze'] as const)test(`approved de
  // Closing Clock silences its UI without dismissing or snoozing the alarm.
  if(action==='dismiss'||action==='snooze'){
   await page.evaluate(async()=>{const {DailyApps}=await import('/src/daily.ts');await DailyApps.scheduleReminder({id:'alarm_reviewed',title:'Ringing alarm',at:Date.now()+60000});await (await import('/src/browser/reminder-store.ts')).reminderDocument.edit(()=>({reminders:[] as any[]}),data=>{data.reminders[0].status='posted';data.reminders[0].at=Date.now()-1000;});});
-  const clock=page.getByRole('dialog',{name:'Clock alarms',exact:true});await expect(clock).toBeVisible();await clock.getByRole('button',{name:'Cancel',exact:true}).click();await expect(clock).toHaveCount(0);
+  const clock=page.getByRole('dialog',{name:'Clock alarms',exact:true});await expect(clock).toBeVisible();await clock.getByRole('button',{name:'Back',exact:true}).click();await expect(clock).toHaveCount(0);
   expect(await page.evaluate(async ()=>JSON.parse((await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())!).reminders[0].status)).toBe('posted');
  }
  expect((await state(page)).journal).toHaveLength(0);await page.getByText('clock handoff',{exact:true}).click();await expect.poll(async()=>(await state(page)).proposals[0].state).toBe('completed');expect((await state(page)).journal[0].result.clockResult).toEqual({kind:'clock-handoff',action,status:'opened'});

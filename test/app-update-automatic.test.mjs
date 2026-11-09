@@ -44,22 +44,23 @@ test('offline checks and active edits retry without requesting native installati
 test('a focused editor is remembered before either native readiness path freezes the UI',async()=>{
   const gate=readFileSync('.eliza/client-features/packages/ui/src/state/app-update-gate.ts','utf8');
   const activationId='11111111-2222-4333-8444-555555555555',bridgeId='aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
-  for(const event of [false,true]){
+  for(const event of [false,true])for(const automatic of [false,true]){
     const dom=new JSDOM('<textarea></textarea>'),{window}=dom,{document}=window;
     const field=document.querySelector('textarea');field.focus();
     window.HTMLDialogElement.prototype.showModal=function(){field.blur();this.setAttribute('open','');};
     window.HTMLDialogElement.prototype.close=function(){this.removeAttribute('open');};
-    const waits=[],acknowledgments=[];let notify,prepared;
-    let state=event?{pending:false,bridgeId}:{pending:true,phase:'preparing',activationId,bridgeId,automatic:true};
+    const waits=[],acknowledgments=[];let notify,prepared,notices=0;
+    let state=event?{pending:false,bridgeId}:{pending:true,phase:'preparing',activationId,bridgeId,automatic};
     const context=vm.createContext({window,document,setTimeout(callback){waits.push(callback);}});
     vm.runInContext(stripTypeScriptTypes(gate.replace(/^export /gm,'')+'\nglobalThis.watch=watchMountedAppUpdates;',{mode:'strip'}),context);
     await context.watch({async updateState(){return state;},async addListener(_,callback){notify=callback;return {remove:async()=>{}};},
       async activateUpdate(input){acknowledgments.push(input);},continueUpdate:async()=>{}},
       {dialogClass:'test',dialogLabel:'Update',pendingLabel:'Updating',continueLabel:'Continue',navigationEvents:[]},
-      async(_current,automatic,editing)=>{prepared={automatic,editing,blurred:document.activeElement!==field};throw Error('Editing at freeze');},()=>{});
-    if(event){await new Promise(setImmediate);state={pending:true,phase:'preparing',activationId,bridgeId,automatic:true};notify(state);}
-    await new Promise(setImmediate);assert.deepEqual(prepared,{automatic:true,editing:true,blurred:true},'event='+event);assert.equal(acknowledgments.length,1);assert.equal(acknowledgments[0].ready,false);
-    state={pending:false,activationId,bridgeId,outcome:'failed'};assert.ok(waits.length);waits.shift()();await new Promise(setImmediate);dom.window.close();
+      async(_current,automatic,editing)=>{prepared={automatic,editing,blurred:document.activeElement!==field};throw Error('Editing at freeze');},()=>{notices++;});
+    if(event){await new Promise(setImmediate);state={pending:true,phase:'preparing',activationId,bridgeId,automatic};notify(state);}
+    await new Promise(setImmediate);assert.deepEqual(prepared,{automatic,editing:true,blurred:true},'event='+event);assert.equal(acknowledgments.length,1);assert.equal(acknowledgments[0].ready,false);
+    state={pending:false,activationId,bridgeId,outcome:'failed'};assert.ok(waits.length);waits.shift()();await new Promise(setImmediate);
+    assert.equal(notices,automatic?0:1,'only a refused owner-requested update explains the refusal');dom.window.close();
   }
 });
 

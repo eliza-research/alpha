@@ -260,7 +260,8 @@ public final class AlphaDevicePlugin extends Plugin {
  }
  /** A downloaded automatic update may only replace idle, unlocked Home. The image also hosts calls. */
  private boolean automaticUpdateReady(){
-  if(!(getActivity() instanceof MainActivity)||!shareForeground(getActivity()))return false;
+  android.app.Activity activity=getActivity();
+  if(!(activity instanceof MainActivity)||((MainActivity)activity).isAssistantSurface()||!shareForeground(activity))return false;
   try{
    if(AlphaImageCapability.verified(getContext())){
     android.telecom.TelecomManager calls=getContext().getSystemService(android.telecom.TelecomManager.class);

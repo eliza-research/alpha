@@ -105,6 +105,7 @@ async function fixture(name, code) {
     assert.equal(block('alpha-back'), block('launcher-home'));
     for (const request of pending.values()) assert.deepEqual(request.flushes, draftOwners);
     return {
+      'state.automatic': active?.automatic === true,
       'state.active': currentActivation(),
       'state.bridge': bridges.indexOf(active?.bridgeId ?? ''),
       'state.phase': active?.phase ?? 'idle',
@@ -144,15 +145,15 @@ async function fixture(name, code) {
   return {
     result,
     end: () => window.close(),
-    async notify(id, bridge, phase, show = true) {
+    async notify(id, bridge, phase, show = true, automatic = false) {
       failModal = !show;
-      listener(entry(id, bridge, phase));
-      await save('an exact Android readiness event freezes mounted navigation', 'notify', id, bridge, phase, show);
+      listener({...entry(id, bridge, phase),automatic});
+      await save('an exact Android readiness event freezes mounted navigation', 'notify', id, bridge, phase, show, automatic);
     },
     async pending(id, bridge, phase, canContinue = false, show = true, automatic = false) {
       failModal = !show;
       await readBack({pending: true, ...entry(id, bridge, phase), canContinue, automatic});
-      await save('the native readback owns the mounted activation and local draft flush', 'readPending', id, bridge, phase, canContinue, show);
+      await save('the native readback owns the mounted activation and local draft flush', 'readPending', id, bridge, phase, canContinue, show, automatic);
     },
     async finish(id, ready, replaceOwner = false) {
       const request = pending.get(id);

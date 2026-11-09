@@ -5,7 +5,11 @@ const tabHostModule='/@fs'+fileURLToPath(new URL('../../.eliza/client-features/p
 // The adapter's handoff factory and the actual DOM review; only native dispatch/presentation are stand-ins.
 // browser-external-handoff.production.spec.ts drives the same handoff from the rendered Browser menu.
 async function fixture(page:any,priv=true){
- await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));await page.goto('/');
+ // The factory fixture needs a document and the real Vite modules. The
+ // production-menu suite separately mounts the application shell.
+ const fixturePath='/__alpha_browser_handoff_fixture';
+ await page.route('**'+fixturePath,(route:any)=>route.fulfill({contentType:'text/html',body:'<!doctype html><html><body></body></html>'}));
+ await page.goto(fixturePath,{waitUntil:'domcontentloaded'});
  await page.addScriptTag({type:'module',content:`import {BrowserTabSession} from ${JSON.stringify(tabHostModule)};window.handoffTabHost=BrowserTabSession;`});
  await page.evaluate(async(priv)=>{
   const {BrowserReviews}=await import('/src/browser/review.ts');

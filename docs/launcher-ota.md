@@ -39,12 +39,15 @@ an install dialog by itself. The manual Settings update action remains available
 to enable permission and to support older versions of Android.
 
 The launcher waits for idle Home, without voice, a focused editor, a review,
-an open app, drawer or shade. It checks again at native preparation after the
+an open app, Home editing, drawer or shade. It checks again at native preparation after the
 download: beginning work during a download prevents automatic activation. Every
 live renderer must retain its drafts before the resident stops. Existing native
 session binding and durable runtime-pause admission remain the authority across
 process death and APK replacement. A download, status request or retry does not
 authorize another commit of an uncertain session.
+Native admission also requires a focused, resumed and unlocked main activity.
+On the Alpha image, an active or unknown Telecom call state defers automatic
+activation. These checks repeat after staging and after resident shutdown.
 
 Android owns the final unattended-install decision. The app requests
 `USER_ACTION_NOT_REQUIRED` and declares the normal
@@ -122,6 +125,11 @@ the release environment. This change does not bypass their independent approval
 or exact-APK qualification. A fully automatic merge-to-production release must
 connect those existing gates before enabling continuous publication. Merging
 source alone is not currently a production release trigger.
+The [qualified publication workflow](runbooks/publish-qualified-app-update.md)
+provides the protected bridge from exact private Cloud signing output and reviewed
+voice evidence to public delivery. Its existing producer limits differ from the
+application's 2 GiB update limit; native speech releases use the admitted local
+delivery path until a native producer bridge is separately qualified.
 
 ## Acceptance on the phone host
 

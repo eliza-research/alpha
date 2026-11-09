@@ -186,9 +186,10 @@ export function updateCheckDue(checkedAt: number, now: number): boolean {
   return !(now >= checkedAt && now - checkedAt < UPDATE_CHECK_INTERVAL_MS);
 }
 /** Field updates wait for Home, outside voice, edits and foreground reviews. */
-export function automaticUpdateIdle(shell: {screen?:unknown;view?:unknown;voice?:unknown;typing?:unknown;chat?:unknown;drawer?:unknown;shade?:unknown}, connection: {busy?:unknown;open?:unknown}, editor: boolean): boolean {
+export function automaticUpdateIdle(shell: {screen?:unknown;view?:unknown;voice?:unknown;typing?:unknown;chat?:unknown;drawer?:unknown;shade?:unknown;homeEdit?:unknown;homeAdd?:unknown;drawerMenu?:unknown}, connection: {busy?:unknown;open?:unknown}, editor: boolean): boolean {
   return shell.screen === 'home' && !shell.view && shell.voice === 'off' && !shell.typing &&
     (shell.chat === 'input' || shell.chat === 'hidden') && !shell.drawer && !shell.shade &&
+    !shell.homeEdit && !shell.homeAdd && !shell.drawerMenu &&
     !connection.busy && !connection.open && !editor;
 }
 /** Cloud QA profile facts replace prototype navigation, not device settings links. */

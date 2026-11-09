@@ -75,7 +75,7 @@ test('the automatic update check is due fifteen minutes after the last answer',(
 test('unattended installation waits for idle Home and never interrupts foreground work',()=>{
  const home={screen:'home',view:null,voice:'off',typing:false,chat:'input',drawer:false,shade:false};
  assert.equal(m.automaticUpdateIdle(home,{},false),true);
- for(const change of [{screen:'lock'},{view:'notes'},{view:'workflows'},{voice:'listening'},{typing:true},{chat:'sheet'},{chat:'full'},{drawer:true},{shade:true}])
+ for(const change of [{screen:'lock'},{view:'notes'},{view:'workflows'},{voice:'listening'},{typing:true},{chat:'sheet'},{chat:'full'},{drawer:true},{shade:true},{homeEdit:true},{homeAdd:true},{drawerMenu:{packageName:'example'}}])
   assert.equal(m.automaticUpdateIdle({...home,...change},{},false),false,JSON.stringify(change));
  for(const connection of [{busy:true},{open:true}])assert.equal(m.automaticUpdateIdle(home,connection,false),false);
  assert.equal(m.automaticUpdateIdle(home,{},true),false);

@@ -25,6 +25,9 @@
 +                    ready: !!prepared,
 +                    ...(prepared ? { resumeEligible: true } : {}),
 +                  })
+@@ -287 +298 @@
+-              const explain = matching && terminal === "failed" && localRefusal;
++              const explain = matching && terminal === "failed" && localRefusal && !active.automatic;
 @@ -309,0 +321 @@
 +      editingAtFreeze = editing();
 @@ -321,0 +334,66 @@

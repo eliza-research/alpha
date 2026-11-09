@@ -72,7 +72,10 @@
     "scripts/deliver-app-update.mjs",
     "scripts/update-apk-admission.mjs",
     "scripts/update-artifact.mjs",
-    "scripts/owner/InspectUpdateApk.java"
+    "scripts/owner/InspectUpdateApk.java",
+    "scripts/ci/qualified-app-update.py",
+    "scripts/ci/admit-cloud-signing-input.py",
+    "scripts/ci/private-apk-storage.py"
   ],
   "excludedDirectories": [
     ".cxx",
@@ -6245,8 +6248,24 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "5cbc8021d014680111892621060cc419a068148407b781d7bd1f66cccc15c668",
+      "sha256": "bea8e921170b08f2e35131d03a4c8425ae001d955d6bff9e6c9f822418cb5b3a",
       "stateAnchors": [
+        {
+          "line": 30,
+          "text": "static boolean shareForeground(android.app.Activity activity){"
+        },
+        {
+          "line": 34,
+          "text": "return lock!=null&&users!=null&&!lock.isDeviceLocked()&&users.isUserUnlocked()&&activity instanceof androidx.lifecycle.LifecycleOwner&&((androidx.lifecycle.LifecycleOwner)activity)"
+        },
+        {
+          "line": 39,
+          "text": "activity.runOnUiThread(()->{if(!shareForeground(activity)){call.reject(\"Open and unlock Alpha before sharing.\");return;}try{"
+        },
+        {
+          "line": 47,
+          "text": "activity.runOnUiThread(()->{if(!shareForeground(activity)){call.reject(\"Open and unlock Alpha before copying.\");return;}try{android.content.ClipboardManager clipboard=activity.getS"
+        },
         {
           "line": 82,
           "text": "// Only permissions Alpha declares. Contacts is removed from the manifest, so it is not reported."
@@ -6292,279 +6311,303 @@
           "text": "static String automaticUpdateStatus(Context context){"
         },
         {
-          "line": 261,
-          "text": "/** SHA-256 of the original certificate of Alpha's one signer (apksigner's digest), which key rotation never changes: an update manifest offers an APK only to installs of that sign"
+          "line": 262,
+          "text": "private boolean automaticUpdateReady(){"
         },
         {
-          "line": 271,
-          "text": "* A session's binding: package, versionCode, SHA-256, signer and boot. It is the session's referrer, so it sits in the record Android"
+          "line": 264,
+          "text": "if(!(activity instanceof MainActivity)||((MainActivity)activity).isAssistantSurface()||!shareForeground(activity))return false;"
+        },
+        {
+          "line": 268,
+          "text": "if(calls==null||calls.isInCall())return false;"
         },
         {
           "line": 273,
+          "text": "/** SHA-256 of the original certificate of Alpha's one signer (apksigner's digest), which key rotation never changes: an update manifest offers an APK only to installs of that sign"
+        },
+        {
+          "line": 283,
+          "text": "* A session's binding: package, versionCode, SHA-256, signer and boot. It is the session's referrer, so it sits in the record Android"
+        },
+        {
+          "line": 285,
           "text": "* A build that states its commit intent ends it with /intent; automatic attempts add /automatic so a later"
         },
         {
-          "line": 276,
+          "line": 288,
           "text": "private static final java.util.regex.Pattern UPDATE_BINDING=java.util.regex.Pattern.compile(\"alpha-update://([^/]+)/([1-9][0-9]{0,17})/[0-9a-f]{64}/([0-9a-f]{64})/([0-9]+)(/intent)"
         },
         {
-          "line": 326,
+          "line": 338,
           "text": "return session!=null&&(expected.equals(String.valueOf(session.getReferrerUri()))||(expected+\"/automatic\").equals(String.valueOf(session.getReferrerUri())));"
         },
         {
-          "line": 330,
+          "line": 342,
           "text": "var record=store().read();if(record==null||record.id.equals(liveOwner))return null;"
         },
         {
-          "line": 331,
+          "line": 343,
           "text": "PackageInstaller installer=context.getPackageManager().getPackageInstaller();"
         },
         {
-          "line": 332,
+          "line": 344,
           "text": "PackageInstaller.SessionInfo session=installer.getSessionInfo(record.session);"
         },
         {
-          "line": 333,
+          "line": 345,
           "text": "var observation=ai.eliza.plugins.agent.updater.RuntimeUpdatePause.Session.PENDING;"
         },
         {
-          "line": 346,
+          "line": 358,
           "text": "var installed=context.getPackageManager().getPackageInfo(context.getPackageName(),0);"
         },
         {
-          "line": 349,
+          "line": 361,
           "text": "if(shutdownRequest>=0){AlphaLocalAgentPlugin.releaseUpdateShutdown(shutdownRequest);shutdownRequest=-1;}"
         },
         {
-          "line": 356,
+          "line": 368,
           "text": "final boolean automatic;"
         },
         {
-          "line": 362,
+          "line": 374,
           "text": "UpdateActivation(AlphaDevicePlugin owner,boolean automatic){this.owner=owner;this.automatic=automatic;waiting.addAll(updateBridges);}"
         },
         {
-          "line": 373,
+          "line": 385,
           "text": "private static final Object updateBarrier=new Object();"
         },
         {
-          "line": 374,
+          "line": 386,
           "text": "private static final java.util.Set<AlphaDevicePlugin> updateBridges=new java.util.HashSet<>();"
         },
         {
-          "line": 375,
+          "line": 387,
           "text": "private final String updateBridgeId=java.util.UUID.randomUUID().toString();"
         },
         {
-          "line": 376,
+          "line": 388,
           "text": "private static volatile UpdateActivation activation;"
         },
         {
-          "line": 379,
+          "line": 391,
           "text": "private JSObject preparation(UpdateActivation pending){return new JSObject().put(\"activationId\",pending.id).put(\"bridgeId\",updateBridgeId).put(\"automatic\",pending.automatic).put(\"p"
         },
         {
-          "line": 385,
+          "line": 397,
           "text": "// A completed barrier cannot grow. Its installer must retry preparation;"
         },
         {
-          "line": 448,
+          "line": 460,
           "text": "var session=getContext().getPackageManager().getPackageInstaller().getSessionInfo(record.session);"
         },
         {
-          "line": 475,
+          "line": 487,
           "text": "private final java.util.concurrent.ExecutorService updateWorker=java.util.concurrent.Executors.newSingleThreadExecutor();"
         },
         {
-          "line": 477,
+          "line": 489,
           "text": "private static volatile int updateSession;"
         },
         {
-          "line": 482,
+          "line": 494,
           "text": "private static volatile Intent updateConfirm;"
         },
         {
-          "line": 484,
+          "line": 496,
           "text": "private static volatile boolean updateDue;"
         },
         {
-          "line": 486,
+          "line": 498,
           "text": "private static volatile boolean updateOpen;"
         },
         {
-          "line": 487,
+          "line": 499,
           "text": "/** Automatic attempts never open Android's optional confirmation without an explicit Continue/Install tap. */"
         },
         {
-          "line": 488,
+          "line": 500,
           "text": "private static volatile boolean updateAutomatic;"
         },
         {
-          "line": 490,
+          "line": 502,
           "text": "private static volatile long updateAsked;"
         },
         {
-          "line": 492,
+          "line": 504,
           "text": "private static volatile AlphaDevicePlugin updateOwner;"
         },
         {
-          "line": 494,
+          "line": 506,
           "text": "private final android.content.BroadcastReceiver updateStatus=new android.content.BroadcastReceiver(){"
         },
         {
-          "line": 501,
+          "line": 513,
           "text": "if(binding!=null&&binding.group(4).equals(String.valueOf(updateBoot()))){updateAutomatic=binding.group(6)!=null;updateOwner=AlphaDevicePlugin.this;updateSession=id;}"
         },
         {
-          "line": 506,
+          "line": 518,
           "text": "if(inFront()&&!updateAutomatic)confirmUpdate();"
         },
         {
-          "line": 533,
+          "line": 545,
           "text": "var current=getContext().getPackageManager().getPackageInstaller().getSessionInfo(id);"
         },
         {
-          "line": 536,
+          "line": 548,
           "text": "updateAutomatic=false;updateOwner=this;updateOpen=false;updateDue=true;"
         },
         {
-          "line": 548,
+          "line": 560,
           "text": "var pending=getContext().getPackageManager().getPackageInstaller().getSessionInfo(record.session);"
         },
         {
-          "line": 570,
+          "line": 582,
           "text": "if(!updateAutomatic)confirmUpdate();"
         },
         {
-          "line": 578,
+          "line": 590,
           "text": "private static final java.util.concurrent.atomic.AtomicBoolean updating=new java.util.concurrent.atomic.AtomicBoolean();"
         },
         {
-          "line": 584,
+          "line": 596,
           "text": "private static final java.util.concurrent.atomic.AtomicInteger updatesCommitted=new java.util.concurrent.atomic.AtomicInteger();"
         },
         {
-          "line": 589,
+          "line": 601,
           "text": "// Deletes the download a killed process left (up to UPDATE_MAX_BYTES), never one in flight on another bridge."
         },
         {
-          "line": 594,
+          "line": 606,
           "text": "private volatile javax.net.ssl.HttpsURLConnection updateActive;"
         },
         {
-          "line": 603,
+          "line": 615,
           "text": "* Software update (Settings; policy in settings-adapter.ts): the one configured manifest, app.config.json"
         },
         {
-          "line": 604,
+          "line": 616,
           "text": "* updateManifestUrl as BuildConfig. Resolves {manifest} for 200 and {} for 404, which means nothing is"
         },
         {
-          "line": 605,
+          "line": 617,
           "text": "* published or the release was withdrawn. Anything else rejects; the next start, resume or tap checks again."
         },
         {
-          "line": 616,
+          "line": 628,
           "text": "try(java.io.InputStream in=connection.getInputStream()){call.resolve(new JSObject().put(\"manifest\",new String(ai.eliza.plugins.agent.connection.ConnectionTransport.readBounded(in,6"
         },
         {
-          "line": 622,
+          "line": 634,
           "text": "* Manual Install update or an automatic idle-Home attempt. An automatic attempt requires API 31+ and existing"
         },
         {
-          "line": 626,
+          "line": 638,
           "text": "* versionCode, above the installed one. API 31+ automatic sessions request USER_ACTION_NOT_REQUIRED through"
         },
         {
-          "line": 627,
+          "line": 639,
           "text": "* Android's nonprivileged self-update API. Android may still require confirmation; for an automatic session"
         },
         {
-          "line": 638,
+          "line": 650,
           "text": "Object automaticValue=call.getData().opt(\"automatic\");"
         },
         {
-          "line": 639,
+          "line": 651,
           "text": "if(automaticValue!=null&&!(automaticValue instanceof Boolean)){call.reject(\"Update request is invalid\");return;}"
         },
         {
-          "line": 640,
+          "line": 652,
           "text": "final boolean automatic=Boolean.TRUE.equals(automaticValue);"
         },
         {
-          "line": 641,
+          "line": 653,
           "text": "if(automatic){"
         },
         {
-          "line": 642,
+          "line": 654,
           "text": "String status=automaticUpdateStatus(getContext());"
         },
         {
-          "line": 652,
+          "line": 664,
           "text": "final String apkUrl=call.getString(\"apkUrl\"),sha256=call.getString(\"sha256\");final long size=call.getData().optLong(\"sizeBytes\"),versionCode=call.getData().optLong(\"versionCode\");"
         },
         {
-          "line": 663,
+          "line": 675,
           "text": "PackageInstaller installer=getContext().getPackageManager().getPackageInstaller();"
         },
         {
-          "line": 669,
+          "line": 681,
           "text": "// another lock, and a later level is unread, as is a build that is not a release: it reports the level it branched from"
         },
         {
-          "line": 670,
+          "line": 682,
           "text": "// (CODENAME is REL only on a release). There it fences until the next boot, as does a session an earlier build bound without the mark."
         },
         {
-          "line": 676,
+          "line": 688,
           "text": "for(PackageInstaller.SessionInfo listed:installer.getMySessions()){"
         },
         {
-          "line": 683,
+          "line": 695,
           "text": "if(!automatic)reopenUpdateConfirmation(pending);"
         },
         {
-          "line": 692,
+          "line": 698,
+          "text": "if(automatic&&!automaticUpdateReady())throw new java.io.IOException(\"Automatic update deferred\");"
+        },
+        {
+          "line": 705,
           "text": "// Android would also accept a same-versionCode reinstall; only the offered, newer build of this package goes on."
         },
         {
-          "line": 695,
+          "line": 708,
           "text": "if(archive==null||!getContext().getPackageName().equals(archive.packageName)||archive.getLongVersionCode()!=versionCode||versionCode<=BuildConfig.VERSION_CODE)throw new java.io.IOE"
         },
         {
-          "line": 697,
+          "line": 710,
           "text": "// The release verifier requires READ_CONTACTS only in the launcher manifest."
         },
         {
-          "line": 704,
+          "line": 717,
           "text": "String binding=\"alpha-update://\"+getContext().getPackageName()+\"/\"+versionCode+\"/\"+sha256+\"/\"+signer+\"/\"+updateBoot()+\"/intent\"+(automatic?\"/automatic\":\"\");"
         },
         {
-          "line": 708,
+          "line": 721,
           "text": "if(automatic&&Build.VERSION.SDK_INT>=31)params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED);"
         },
         {
-          "line": 709,
+          "line": 722,
           "text": "int id=installer.createSession(params);"
         },
         {
-          "line": 711,
+          "line": 724,
           "text": "try(PackageInstaller.Session session=installer.openSession(id)){"
         },
         {
-          "line": 715,
+          "line": 727,
+          "text": "if(automatic&&!automaticUpdateReady())throw new java.io.IOException(\"Automatic update deferred\");"
+        },
+        {
+          "line": 729,
           "text": "synchronized(updateBarrier){preparation=new UpdateActivation(this,automatic);activation=preparation;participants=new java.util.ArrayList<>(updateBridges);}"
         },
         {
-          "line": 724,
+          "line": 738,
           "text": "pauseOwned=true;UpdatePause.acquire(preparation.id,id,versionCode,sha256,updateBoot());"
         },
         {
-          "line": 736,
+          "line": 741,
+          "text": "if(automatic&&!automaticUpdateReady())throw new java.io.IOException(\"Automatic update deferred\");"
+        },
+        {
+          "line": 751,
           "text": "updateAutomatic=automatic;"
         },
         {
-          "line": 744,
+          "line": 759,
           "text": "if(!commitAttempted)try{installer.abandonSession(id);}catch(RuntimeException cleanup){failed.addSuppressed(cleanup);}"
         }
       ],
@@ -12301,7 +12344,8 @@
       "models": [
         "BrowserSession",
         "DurableStore",
-        "CalendarPreservationConfirmation"
+        "CalendarPreservationConfirmation",
+        "BrowserAlbumStorage"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -12316,7 +12360,8 @@
         "NotesLifecycle",
         "GoogleAccessPublication",
         "BrowserReminderOrphan",
-        "BrowserHostedResultNotice"
+        "BrowserHostedResultNotice",
+        "BrowserAlbumStorage"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -13113,7 +13158,8 @@
       "models": [
         "BrowserSession",
         "DurableStore",
-        "GoogleAccessPublication"
+        "GoogleAccessPublication",
+        "BrowserAlbumStorage"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -18404,13 +18450,15 @@
     },
     {
       "path": "apps/app/src/prototype/browser-camera.ts",
-      "sha256": "6e410466c3bdc1ec4deda394c2716835bc3604b07aa0e969dc6f459f6038b6c5",
       "models": [
         "MediaLifecycle",
-        "CameraPreviewRetirement"
+        "CameraPreviewRetirement",
+        "BrowserAlbumStorage"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "1b8559b0afacfeac49f8e8cf5f12e8438ee1a5a3d5f94e91844a4cf373a15541",
       "stateAnchors": [
         {
           "line": 14,
@@ -18433,532 +18481,404 @@
           "text": "const store=request.result.objectStoreNames.contains('photos')?request.transaction!.objectStore('photos'):request.result.createObjectStore('photos',{keyPath:'id'});"
         },
         {
-          "line": 28,
+          "line": 36,
           "text": "const connection=await db();"
         },
         {
-          "line": 29,
+          "line": 37,
           "text": "return new Promise((resolve,reject)=>{const tx=connection.transaction('photos',mode);let value:T,error:Error|undefined;"
         },
         {
-          "line": 36,
-          "text": "try{const key=JSON.parse(value.slice(5));if(value.startsWith('date:')&&Array.isArray(key)&&key.length===2&&Number.isFinite(key[0])&&typeof key[1]==='string'&&key[1])return key as [number,string];}catc"
-        },
-        {
-          "line": 40,
+          "line": 48,
           "text": "const BUILT_IN_ALBUMS=['favorites','videos','camera','screenshots'];"
         },
         {
-          "line": 42,
+          "line": 50,
           "text": "const custom=options.album&&!BUILT_IN_ALBUMS.includes(options.album)?(await albumDocument.read<Album[]>(()=>[])).find(a=>a.id===options.album!.replace(/^custom:/,'')):undefined;"
         },
         {
-          "line": 44,
+          "line": 52,
           "text": "const members=new Set(custom?.memberIds||[]);"
         },
         {
-          "line": 45,
+          "line": 53,
           "text": "const boundary=options.before?pageBoundary(options.before):undefined;"
         },
         {
-          "line": 46,
+          "line": 54,
           "text": "return transaction<Row[]>('readonly',(store,set)=>{const result:Row[]=[];const request=store.index('chronological').openCursor(boundary?IDBKeyRange.upperBound(boundary,true):undefined,'prev');"
         },
         {
-          "line": 47,
+          "line": 55,
           "text": "request.onsuccess=()=>{const cursor=request.result;if(!cursor){set(result);return;}const row=cursor.value as Row;if(row.kind!=='image'&&row.kind!=='video'){cursor.continue();return;}"
         },
         {
-          "line": 53,
-          "text": "async function read(id:string){return transaction<Row>('readonly',(store,set,fail)=>{const r=store.get(id);r.onsuccess=()=>['image','video'].includes(r.result?.kind)?set(r.result):fail(Error('Photo no"
-        },
-        {
-          "line": 55,
+          "line": 63,
           "text": "return transaction<Row>('readwrite',(store,set,fail)=>{const r=store.get(input.id);r.onsuccess=()=>{const row=r.result as Row|undefined;"
         },
         {
-          "line": 57,
+          "line": 65,
           "text": "const updated={...row,...patch,mutationRevision:revision()};store.put(updated);set(updated);"
         },
         {
-          "line": 64,
+          "line": 72,
           "text": "const edits=new Map<string,EditSession>();"
         },
         {
-          "line": 65,
-          "text": "const filters:Record<string,string>={none:'none',vivid:'saturate(1.55) contrast(1.08)',warm:'sepia(.3) saturate(1.35) hue-rotate(-8deg)',cool:'saturate(1.1) hue-rotate(14deg) brightness(1.03)',mono:'g"
-        },
-        {
-          "line": 66,
+          "line": 74,
           "text": "const photoId=()=>Date.now().toString().padStart(13,'0')+Array.from(crypto.getRandomValues(new Uint8Array(12)),n=>String(n%10)).join('');"
         },
         {
-          "line": 69,
+          "line": 77,
           "text": "function session(id:string){const value=edits.get(id);if(!value?.active||Date.now()>value.expiresAt)throw Error('Reopen the photo editor.');return value;}"
         },
         {
-          "line": 74,
+          "line": 82,
           "text": "const image=new Image();image.src=value.source.image;await image.decode();session(value.id);"
         },
         {
-          "line": 76,
+          "line": 84,
           "text": "const crop=input.crop?1.3:1,sw=image.naturalWidth/crop,sh=image.naturalHeight/crop;"
         },
         {
-          "line": 77,
+          "line": 85,
           "text": "const rotated=input.rotation===90||input.rotation===270,scale=Math.min(1,2048/Math.max(sw,sh));"
         },
         {
-          "line": 78,
+          "line": 86,
           "text": "const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round((rotated?sh:sw)*scale));canvas.height=Math.max(1,Math.round((rotated?sw:sh)*scale));"
         },
         {
-          "line": 79,
+          "line": 87,
           "text": "const context=canvas.getContext('2d');if(!context)throw Error('Photo editing is unavailable.');"
         },
         {
-          "line": 80,
+          "line": 88,
           "text": "const nativeFilter='filter' in context;if(nativeFilter)context.filter=filters[input.filter];context.translate(canvas.width/2,canvas.height/2);context.rotate(input.rotation*Math.PI/180);"
         },
         {
-          "line": 83,
+          "line": 91,
           "text": "const encoded=canvas.toDataURL('image/jpeg',0.9);if(!encoded.startsWith('data:image/jpeg;base64,')||encoded.length>12_000_000)throw Error('Edited photo could not be encoded.');"
         },
         {
-          "line": 88,
+          "line": 96,
           "text": "for(const value of edits.values())if(Date.now()>value.expiresAt)await cancelPhotoEdit({sessionId:value.id});"
         },
         {
-          "line": 90,
+          "line": 98,
           "text": "const source=await read(input.id);if(source.trashed||source.mutationRevision!==input.revision)throw Error('Photo changed. Reopen it before editing.');"
         },
         {
-          "line": 91,
+          "line": 99,
           "text": "const id=revision(),value:EditSession={id,source,active:true,expiresAt:Date.now()+15*60*1000};edits.set(id,value);"
         },
         {
-          "line": 93,
+          "line": 101,
           "text": "const preview=await renderEdit(value,{rotation:0,crop:false,filter:'none'});"
         },
         {
-          "line": 94,
+          "line": 102,
           "text": "const record:EditRecord={id:editKey(id),kind:'edit-receipt',operationId:id,sourceId:source.id,sourceRevision:source.mutationRevision,copyId:photoId(),status:'prepared'};"
         },
         {
-          "line": 102,
+          "line": 110,
           "text": "return transaction<EditResult>('readwrite',(store,set)=>{const request=store.get(editKey(input.operationId));request.onsuccess=()=>{"
         },
         {
-          "line": 103,
+          "line": 111,
           "text": "const record=request.result as EditRecord|undefined;"
         },
         {
-          "line": 109,
-          "text": "async function cancelPhotoEdit(input:{sessionId:string}){const value=edits.get(input.sessionId);if(value)value.active=false;edits.delete(input.sessionId);await resultPhotoEdit({operationId:input.sessi"
-        },
-        {
-          "line": 111,
+          "line": 119,
           "text": "const replace=input.replace===true;"
         },
         {
-          "line": 114,
+          "line": 122,
           "text": "const encodedParameters=parameters(input)+(replace?':replace':''),key=editKey(input.sessionId),attempt=revision();"
         },
         {
-          "line": 115,
+          "line": 123,
           "text": "const claimed=await transaction<EditRecord>('readwrite',(store,set,fail)=>{const request=store.get(key);request.onsuccess=()=>{"
         },
         {
-          "line": 116,
+          "line": 124,
           "text": "const record=request.result as EditRecord|undefined;"
         },
         {
-          "line": 125,
+          "line": 133,
           "text": "const value=session(input.sessionId),rendered=await renderEdit(value,input);session(input.sessionId);"
         },
         {
-          "line": 126,
+          "line": 134,
           "text": "return await transaction<EditResult>('readwrite',(store,set)=>{const request=store.get(key);request.onsuccess=()=>{"
         },
         {
-          "line": 127,
+          "line": 135,
           "text": "const record=request.result as EditRecord;"
         },
         {
-          "line": 129,
+          "line": 137,
           "text": "const original=store.get(record.sourceId);original.onsuccess=()=>{"
         },
         {
-          "line": 130,
+          "line": 138,
           "text": "const source=original.result as Row|undefined;"
         },
         {
-          "line": 140,
-          "text": "await transaction<void>('readwrite',(store,set)=>{const request=store.get(key);request.onsuccess=()=>{const record=request.result as EditRecord|undefined;if(record?.status==='saving'&&record.attempt=="
-        },
-        {
-          "line": 145,
+          "line": 153,
           "text": "const mediaId=()=>Date.now().toString().padStart(13,'0')+Array.from(crypto.getRandomValues(new Uint8Array(12)),n=>String(n%10)).join('');"
         },
         {
-          "line": 146,
+          "line": 154,
           "text": "const prepared=new Map<string,{id:string;revision:string}[]>();"
         },
         {
-          "line": 149,
+          "line": 157,
           "text": "export const SHARE_LIMIT=100;"
         },
         {
-          "line": 157,
+          "line": 165,
           "text": "const value=input as {items?:unknown;all?:unknown}|null|undefined;"
         },
         {
-          "line": 163,
-          "text": "return transaction<Row[]>('readonly',(store,set,fail)=>{const result:Row[]=[];set(result);for(const item of items){const request=store.get(item.id);request.onsuccess=()=>{const row=request.result as R"
-        },
-        {
-          "line": 166,
+          "line": 174,
           "text": "const selected=await selectedMediaRows(items);"
         },
         {
-          "line": 169,
+          "line": 177,
           "text": "const source=row.path||row.image;"
         },
         {
-          "line": 171,
+          "line": 179,
           "text": "const response=await fetch(source),blob=await response.blob();"
         },
         {
-          "line": 172,
+          "line": 180,
           "text": "const extension=blob.type==='video/mp4'?'mp4':blob.type.startsWith('video/')?'webm':blob.type==='image/png'?'png':'jpg';"
         },
         {
-          "line": 178,
+          "line": 186,
           "text": "const items=selectedMedia(input.items,SHARE_LIMIT),files=await selectedMediaFiles(items);"
         },
         {
-          "line": 179,
+          "line": 187,
           "text": "const blob=files.length===1?files[0]:fileArchive(await Promise.all(files.map(async file=>({path:file.name,bytes:new Uint8Array(await file.arrayBuffer())}))));"
         },
         {
-          "line": 182,
+          "line": 190,
           "text": "const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=files.length===1?files[0].name:'Alpha photos.zip';document.body.append(link);"
         },
         {
-          "line": 186,
+          "line": 194,
           "text": "const key=editKey(input.operationId),edit={...input.edit},source=await read(input.id);signal.throwIfAborted();"
         },
         {
-          "line": 188,
+          "line": 196,
           "text": "const encoded=JSON.stringify([edit.start,edit.end,edit.rotation,edit.crop]);"
         },
         {
-          "line": 189,
-          "text": "const claimed=await transaction<EditRecord>('readwrite',(store,set,fail)=>{signal.throwIfAborted();const request=store.get(key);request.onsuccess=()=>{const old=request.result as EditRecord|undefined;"
-        },
-        {
-          "line": 193,
+          "line": 201,
           "text": "const rendered=await renderVideoEdit({path:source.path,duration:source.duration},edit,signal);signal.throwIfAborted();"
         },
         {
-          "line": 194,
-          "text": "return await transaction<EditResult>('readwrite',(store,set,fail)=>{const request=store.get(key);request.onsuccess=()=>{const record=request.result as EditRecord;if(record.status!=='saving'){set(outco"
-        },
-        {
-          "line": 195,
-          "text": "}catch(error){await transaction<void>('readwrite',(store,set)=>{const request=store.get(key);request.onsuccess=()=>{const record=request.result as EditRecord;if(record.status==='saving'){record.status"
-        },
-        {
-          "line": 197,
+          "line": 205,
           "text": "export const browserPhotoLibrary={"
         },
         {
-          "line": 200,
-          "text": "async list(options:{before?:string;trashed?:boolean;album?:string;limit?:number}={}){const result=await rows(options),page=Math.max(1,Math.min(40,Math.floor(options.limit??40)||40));return {items:resu"
-        },
-        {
-          "line": 202,
-          "text": "async summary(){const all=await rows({},true);return {favorites:all.filter(r=>!r.trashed&&r.favorite).length,videos:all.filter(r=>!r.trashed&&r.kind==='video').length,camera:all.filter(r=>!r.trashed)."
-        },
-        {
-          "line": 203,
-          "text": "async albums(){const live=new Set((await rows({},true)).filter(row=>!row.trashed).map(row=>row.id));return {items:(await albumDocument.read<Album[]>(()=>[])).map(album=>({...album,count:album.memberId"
-        },
-        {
-          "line": 206,
+          "line": 214,
           "text": "const items=selectedMedia(input.items,SHARE_LIMIT),files=await selectedMediaFiles(items);"
         },
         {
-          "line": 215,
+          "line": 223,
           "text": "const name=typeof input.name==='string'?input.name.trim():'';"
         },
         {
-          "line": 218,
+          "line": 227,
           "text": "let media:Row|undefined;"
         },
         {
-          "line": 223,
-          "text": "if(input.operation==='create'){const memberIds=media?[media.id]:[],album:Album={id:crypto.randomUUID(),name,revision:revision(),count:memberIds.length,memberIds};albums.push(album);return {status:'upd"
-        },
-        {
-          "line": 224,
+          "line": 233,
           "text": "const album=albums.find(a=>a.id===input.id);if(!album||album.revision!==input.revision)throw Error('Album changed. Reopen it.');"
         },
         {
-          "line": 235,
+          "line": 249,
           "text": "const items=selectedMedia(input.items),patch=input.operation==='favorite'||input.operation==='unfavorite'?{favorite:input.operation==='favorite'}:{trashed:input.operation==='trash'};"
         },
         {
-          "line": 237,
+          "line": 251,
           "text": "const result={status:'complete',outcomes:[] as {id:string;status:string;item?:Row}[]};set(result);"
         },
         {
-          "line": 238,
+          "line": 252,
           "text": "for(const item of items){const request=store.get(item.id);request.onsuccess=()=>{"
         },
         {
-          "line": 239,
+          "line": 253,
           "text": "const row=request.result as Row|undefined;"
         },
         {
-          "line": 241,
+          "line": 255,
           "text": "const unchanged=Object.entries(patch).every(([key,value])=>row[key as 'favorite'|'trashed']===value);"
         },
         {
-          "line": 242,
+          "line": 256,
           "text": "const updated=unchanged?row:{...row,...patch,mutationRevision:revision()};if(!unchanged)store.put(updated);"
         },
         {
-          "line": 247,
-          "text": "async share(input:{id:string;revision?:string},current:()=>boolean){const row=await read(input.id);return browserPhotoLibrary.shareMany({items:[{id:input.id,revision:input.revision??row.mutationRevisi"
-        },
-        {
-          "line": 248,
-          "text": "async prepareDeleteTrash(input:{items:SelectedMedia[]}|{all:true}){const wanted=trashSelection(input);const all=(await rows({},true)).filter(r=>r.trashed);if(wanted&&wanted.some(item=>!all.some(row=>r"
-        },
-        {
-          "line": 250,
+          "line": 264,
           "text": "async deletePreparedTrash(input:{confirmation:string}){const selected=prepared.get(input.confirmation);if(!selected)throw Error('Review the trash again.');prepared.delete(input.confirmation);"
         },
         {
-          "line": 251,
-          "text": "return transaction<{status:string;deletedIds:string[];skippedIds:string[];failedIds:string[]}>('readwrite',(store,set)=>{const result={status:'complete',deletedIds:[] as string[],skippedIds:[] as stri"
-        },
-        {
-          "line": 255,
-          "text": "signal.throwIfAborted();const row:Row={id:photoId(),kind:'image',image:image.image,width:image.width,height:image.height,date:Date.now(),revision:revision(),mutationRevision:revision(),favorite:false,"
-        },
-        {
-          "line": 258,
+          "line": 272,
           "text": "const unavailable=async()=>{throw Error('This operation is not available for browser photos. The original is unchanged.');};"
         },
         {
-          "line": 259,
+          "line": 273,
           "text": "export const browserLibrary=new Proxy(browserPhotoLibrary,{get(target,key){return Reflect.get(target,key)??unavailable;}});"
         },
         {
-          "line": 260,
+          "line": 274,
           "text": "const videoCapture=new BrowserVideoCapture();"
         },
         {
-          "line": 261,
+          "line": 275,
           "text": "let videoSession=0;"
         },
         {
-          "line": 262,
+          "line": 276,
           "text": "let videoSave:Promise<{path:string;duration:number;width:number;height:number;fileSize:number}>|undefined;"
         },
         {
-          "line": 263,
+          "line": 277,
           "text": "let preview:HTMLVideoElement|null=null,stream:MediaStream|null=null,generation=0;"
         },
         {
-          "line": 264,
+          "line": 278,
           "text": "let starting:AbortController|undefined;"
         },
         {
-          "line": 265,
+          "line": 279,
           "text": "let zoom=1,mirror=false;"
         },
         {
-          "line": 266,
+          "line": 280,
           "text": "const cameraFocus=new BrowserCameraFocus();"
         },
         {
-          "line": 267,
+          "line": 281,
           "text": "let screenLight:HTMLDivElement|undefined;"
         },
         {
-          "line": 269,
-          "text": "function setScreenLight(enabled:boolean){clearScreenLight();if(!enabled)return;const light=screenLight=document.createElement('div');light.dataset.alphaCameraLight='screen';light.setAttribute('aria-hi"
-        },
-        {
-          "line": 273,
+          "line": 287,
           "text": "export function mountBrowserCamera(){const frame=document.querySelector<HTMLElement>(finder);if(preview&&frame&&preview.parentElement!==frame)frame.prepend(preview);}"
         },
         {
-          "line": 274,
+          "line": 288,
           "text": "export const browserCamera={"
         },
         {
-          "line": 276,
+          "line": 290,
           "text": "void browserCamera.stopPreview();const token=++generation,controller=new AbortController();starting=controller;"
         },
         {
-          "line": 277,
+          "line": 291,
           "text": "let ownStream:MediaStream|null=null,ownVideo:HTMLVideoElement|null=null;"
         },
         {
-          "line": 282,
+          "line": 296,
           "text": "const frame=document.querySelector<HTMLElement>(finder);if(!frame)throw Error('Camera view is closed.');"
         },
         {
-          "line": 287,
+          "line": 301,
           "text": "const finish=(error?:unknown)=>{clearTimeout(timeout);controller.signal.removeEventListener('abort',abort);error?reject(error):resolve();};"
         },
         {
-          "line": 288,
+          "line": 302,
           "text": "const abort=()=>finish(new DOMException('Camera cancelled.','AbortError'));"
         },
         {
-          "line": 289,
+          "line": 303,
           "text": "const timeout=setTimeout(()=>finish(Error('Camera preview timed out.')),15000);"
         },
         {
-          "line": 295,
-          "text": "const settings=ownStream.getVideoTracks()[0].getSettings();return {width:ownVideo.videoWidth,height:ownVideo.videoHeight,deviceId:settings.deviceId??'',minZoom:1,maxZoom:options.direction==='front'?1:"
-        },
-        {
-          "line": 300,
+          "line": 314,
           "text": "async capturePhoto(options?:{saveToGallery?:boolean}){const token=generation,video=preview;if(!video||!stream||video.readyState<2)throw Error('Camera is not ready.');"
         },
         {
-          "line": 301,
+          "line": 315,
           "text": "const width=video.videoWidth,height=video.videoHeight;if(width<=0||height<=0||width*height>32_000_000)throw Error('Unsupported photo dimensions.');"
         },
         {
-          "line": 302,
+          "line": 316,
           "text": "const canvas=drawCameraFrame(video,{zoom,mirror});"
         },
         {
-          "line": 303,
+          "line": 317,
           "text": "const image=canvas.toDataURL('image/jpeg',0.85);if(!image.startsWith('data:image/jpeg;base64,'))throw Error('Photo encoding failed.');"
         },
         {
-          "line": 304,
+          "line": 318,
           "text": "const photo={base64:image.slice('data:image/jpeg;base64,'.length),format:'jpeg',width,height};if(token!==generation)throw Error('Camera view changed.');"
         },
         {
-          "line": 308,
+          "line": 322,
           "text": "const id=photoId();"
         },
         {
-          "line": 309,
-          "text": "const row:Row={id,kind:'image',image:'data:image/jpeg;base64,'+photo.base64,width:photo.width,height:photo.height,date:Date.now(),revision:revision(),mutationRevision:revision(),favorite:false,trashed"
-        },
-        {
-          "line": 316,
-          "text": "lightingLabel(enabled:boolean){const torch=stream?.getVideoTracks()[0]?.getCapabilities?.() as (MediaTrackCapabilities&{torch?:boolean})|undefined;return `${browserDevProfile&&!torch?.torch?'Screen li"
-        },
-        {
-          "line": 319,
+          "line": 333,
           "text": "const track=stream?.getVideoTracks()[0],token=generation,enabled=input.settings.flash==='on';if(!track)throw Error('Start camera first.');"
         },
         {
-          "line": 325,
-          "text": "async setFocusPoint(input:{x:number;y:number}){const frame=document.querySelector<HTMLElement>(finder),track=stream?.getVideoTracks()[0];if(!frame||!preview||!track)throw Error('Start camera first.');"
-        },
-        {
-          "line": 329,
+          "line": 343,
           "text": "const token=generation,session=videoSession;"
         },
         {
-          "line": 331,
+          "line": 345,
           "text": "const clip=await videoCapture.stop(),id=mediaId();"
         },
         {
-          "line": 332,
-          "text": "const path=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=()=>reject(reader.error);reader.readAsDataURL(clip"
-        },
-        {
-          "line": 333,
-          "text": "const row:Row={id:'v:'+id,kind:'video',path,duration:clip.duration,image:clip.image,width:clip.width,height:clip.height,date:Date.now(),revision:revision(),mutationRevision:revision(),favorite:false,t"
-        },
-        {
-          "line": 343,
+          "line": 357,
           "text": "const bitmap=await createImageBitmap(file);"
         },
         {
-          "line": 346,
-          "text": "const scale=Math.min(1,2048/Math.max(bitmap.width,bitmap.height)),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bi"
-        },
-        {
-          "line": 347,
-          "text": "const ctx=canvas.getContext('2d');if(!ctx)throw Error('Image processing is unavailable.');ctx.fillStyle='white';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(bitmap,0,0,canvas.width,canva"
-        },
-        {
-          "line": 348,
+          "line": 362,
           "text": "const image=canvas.toDataURL('image/jpeg',.9);signal.throwIfAborted();if(!image.startsWith('data:image/jpeg;base64,')||image.length>12_000_000)throw Error('This image could not be prepared.');"
         },
         {
-          "line": 354,
+          "line": 368,
           "text": "const controller=new AbortController(),previous=document.activeElement;let current:ImportedCameraImage|undefined,selection=0,closed=false,attempted=false;"
         },
         {
-          "line": 355,
+          "line": 369,
           "text": "const dialog=document.createElement('dialog');dialog.setAttribute('aria-label','Choose camera image');dialog.className='scan-dialog';"
         },
         {
-          "line": 356,
+          "line": 370,
           "text": "const heading=document.createElement('h2');heading.textContent='Choose an image';"
         },
         {
-          "line": 357,
-          "text": "const description=document.createElement('p');description.textContent='Choose a local JPEG, PNG or WebP. Scan runs locally. Save to Photos creates a JPEG copy up to 2,048 pixels; your original file st"
-        },
-        {
-          "line": 358,
-          "text": "const label=document.createElement('label');label.textContent='Image file';const input=document.createElement('input');input.type='file';input.accept='image/jpeg,image/png,image/webp';input.setAttribu"
-        },
-        {
-          "line": 359,
+          "line": 373,
           "text": "const preview=document.createElement('img');preview.alt='Selected image preview';preview.hidden=true;preview.style.cssText='width:100%;max-height:220px;object-fit:contain';"
         },
         {
-          "line": 360,
-          "text": "const status=document.createElement('p');status.setAttribute('role','status');status.setAttribute('aria-label','Image import status');status.textContent='Nothing is saved or scanned until you choose a"
-        },
-        {
-          "line": 361,
+          "line": 375,
           "text": "const actions=document.createElement('div');actions.className='scan-dialog-actions';"
         },
         {
-          "line": 362,
+          "line": 376,
           "text": "const button=(text:string)=>{const b=document.createElement('button');b.textContent=text;b.type='button';actions.append(b);return b;};"
         },
         {
-          "line": 363,
+          "line": 377,
           "text": "const store=button('Save to Photos'),read=button('Scan text'),close=button('Cancel');store.disabled=read.disabled=true;store.className='primary';"
         },
         {
-          "line": 364,
-          "text": "const dispose=()=>{if(closed)return;closed=true;selection++;controller.abort();current=undefined;preview.removeAttribute('src');input.value='';dialog.remove();window.removeEventListener('alpha-back',b"
-        },
-        {
-          "line": 365,
+          "line": 379,
           "text": "const back=(event:Event)=>{event.preventDefault();event.stopImmediatePropagation();dispose();},visibility=()=>{if(document.hidden)dispose();};"
         },
         {
-          "line": 368,
-          "text": "input.onchange=()=>{if(closed||attempted)return;const file=input.files?.[0];if(!file)return;const token=++selection;current=undefined;store.disabled=read.disabled=true;preview.hidden=true;preview.remo"
-        },
-        {
-          "line": 370,
+          "line": 384,
           "text": "read.onclick=()=>{if(closed||attempted||!current)return;const image=current.original;dispose();scan(image);};"
-        },
-        {
-          "line": 371,
-          "text": "const content=document.createElement('div');content.className='scan-dialog-content';content.tabIndex=0;content.setAttribute('role','region');content.setAttribute('aria-label','Review details');content"
         }
       ]
     },
@@ -20134,7 +20054,8 @@
         "CanonicalCalendarDraftHandoff",
         "CameraPreviewRetirement",
         "ChatAttachments",
-        "PhotosOwnedAlbumDialog"
+        "PhotosOwnedAlbumDialog",
+        "BrowserAlbumStorage"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -24813,7 +24734,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "f952be1d936ccb677e4d98f9c9da22ad6734ca66d33c100c529b81548ab7ede1",
+      "sha256": "5008c5a98147e06dae2c70ad076cffa179a693171e2c629d6fc89639d46ea543",
       "stateAnchors": [
         {
           "line": 27,
@@ -25060,7 +24981,7 @@
           "text": "const open=!!choice&&index===msgs.length-1&&!done.has(id)&&current();"
         }
       ],
-      "integrationReview": "Domain allocation retained after merging the audit fixes. The refreshed source hash and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations."
+      "integrationReview": "Domain allocation retained after merging the audit fixes. The refreshed source hash and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations. 2026-11-09: suppress only duplicate navigation metadata when it equals remaining-distance status. Distinct arrival/background notices remain. Four-trace mounted Maps comparison and five existing accessibility scenarios passed on the parent composition; current-main replay follows. No action or permission transition changed."
     },
     {
       "path": "apps/app/src/prototype/maps-chat-adapter.ts",
@@ -32462,12 +32383,13 @@
         "NoticesAndCaches",
         "NotificationCollection",
         "CanonicalNotificationTapAdmission",
-        "ShadeNoticeQuestionAdmission"
+        "ShadeNoticeQuestionAdmission",
+        "ShadeRowCustody"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "54f0fe9f96b24849f26308e796192efdb3c32630712a3720ed4047bb566933e5",
+      "sha256": "d381759f115103759258b42e50bda4846e7ad2d88333085059ef548c2da45f50",
       "stateAnchors": [
         {
           "line": 10,
@@ -32510,43 +32432,31 @@
           "text": "const targetView=mapped&&isMvpView(mapped)?mapped:undefined;"
         },
         {
-          "line": 110,
-          "text": "if(this.alphaNoticesBusy||!this.alphaNoticesLive||document.hidden)return;this.alphaNoticesBusy=true;const epoch=this.alphaNoticeEpoch;"
-        },
-        {
-          "line": 122,
+          "line": 145,
           "text": "const out=render.call(this),self=this;"
         },
         {
-          "line": 127,
-          "text": "const shadeN=(this.alphaNotices||[]).map((n:Notice)=>{"
-        },
-        {
-          "line": 128,
-          "text": "const swipe=this.sw(()=>{if(n.clearable)void action(()=>native.dismiss({id:n.id,revision:n.revision,source:n.source}));else this.toast('This is an ongoing notification.');},{axis:'x'});"
-        },
-        {
-          "line": 129,
+          "line": 169,
           "text": "const select=()=>{this.alphaNoticeSelection=ownNotificationSelection(n);};"
         },
         {
-          "line": 134,
+          "line": 174,
           "text": "const ask=()=>{"
         },
         {
-          "line": 138,
+          "line": 178,
           "text": "const reviewed={id:n.id,revision:n.revision,source:n.source},excerpt=noticeExcerpt(n);"
         },
         {
-          "line": 141,
+          "line": 181,
           "text": "const refused=()=>{self.toast('This notification changed or is no longer shown. Nothing was added to your conversation.');void self.refreshAlphaNotices();};"
         },
         {
-          "line": 151,
+          "line": 191,
           "text": "const epoch=self.alphaNoticeEpoch;"
         },
         {
-          "line": 152,
+          "line": 192,
           "text": "const fresh=(await native.list()).items,same=fresh.find((row:Notice)=>row.id===reviewed.id&&row.source===reviewed.source);"
         }
       ]
@@ -32661,9 +32571,9 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "f718ef2e3a262826e177090ad31b319d472cd10a42ee0da4ca661355268493ea",
+      "sha256": "e9e52df7bc41f3d176f7c784db75727bec8de5a0bce41efd793cc9f1e28a1e5f",
       "stateAnchors": [],
-      "integrationReview": "2026-11-09: tested native below-host presentation keeps page size and identity through chat, blocks page input beneath host controls, and fences stale backdrop cleanup. TypeScript and isolated renderer pass; exact Android/Pixel acceptance remains open. 2026-11-09: shared overlay bounds, retained dismiss controls and alarm reading order validated in browser layout and interaction checks; storage and handoff transitions are unchanged. Reviewed integration source. Domain allocation is retained; source-hash refresh does not establish semantic refinement. See targeted validation and remaining obligations."
+      "integrationReview": "2026-11-09: landscape Maps guidance uses the same left-to-right flex order as portrait. The change removes grid placement only; no interaction, storage, request, focus, or lifecycle transition changes. Five existing accessibility checks cover portrait, landscape and 200 percent text; the landscape search/start/mute/enable flow also passes. Existing model allocations and unresolved refinement limits are unchanged. 2026-11-09: tested native below-host presentation keeps page size and identity through chat, blocks page input beneath host controls, and fences stale backdrop cleanup. TypeScript and isolated renderer pass; exact Android/Pixel acceptance remains open. 2026-11-09: shared overlay bounds, retained dismiss controls and alarm reading order validated in browser layout and interaction checks; storage and handoff transitions are unchanged. Reviewed integration source. Domain allocation is retained; source-hash refresh does not establish semantic refinement. See targeted validation and remaining obligations."
     },
     {
       "path": "apps/app/src/prototype/photo-library-adapter.ts",
@@ -34229,7 +34139,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "c87370b568c30d7a9f4f3f21e0f2de4c2604559aa9595b427456ad648538c52f",
+      "sha256": "dac0adc7e4ea003ef335d221d1052d940109abf9a5f4e756fd1d2310094b3fa3",
       "stateAnchors": [
         {
           "line": 112,
@@ -34305,178 +34215,182 @@
         },
         {
           "line": 189,
-          "text": "export function automaticUpdateIdle(shell: {screen?:unknown;view?:unknown;voice?:unknown;typing?:unknown;chat?:unknown;drawer?:unknown;shade?:unknown}, connection: {busy?:unknown;o"
+          "text": "export function automaticUpdateIdle(shell: {screen?:unknown;view?:unknown;voice?:unknown;typing?:unknown;chat?:unknown;drawer?:unknown;shade?:unknown;homeEdit?:unknown;homeAdd?:unk"
         },
         {
-          "line": 207,
+          "line": 192,
+          "text": "!shell.homeEdit && !shell.homeAdd && !shell.drawerMenu &&"
+        },
+        {
+          "line": 208,
           "text": "}"
         },
         {
-          "line": 212,
+          "line": 213,
           "text": "export function hasAppearancePreview(query: URLSearchParams): boolean {"
         },
         {
-          "line": 213,
+          "line": 214,
           "text": "return testMocksEnabled && query.has('theme');"
         },
         {
-          "line": 226,
+          "line": 227,
           "text": "/** The last manifest a check was answered with, and when, so a restart offers it without checking again; and the check in flight. */"
         },
         {
-          "line": 227,
+          "line": 228,
           "text": "let lastUpdate: {checkedAt: number; manifest: unknown} | undefined, updateCheck: Promise<boolean> | undefined;"
         },
         {
-          "line": 232,
+          "line": 233,
           "text": "if (value && typeof value === 'object' && Number.isFinite(value.checkedAt)) return lastUpdate = {checkedAt: value.checkedAt, manifest: value.manifest};"
         },
         {
-          "line": 234,
+          "line": 235,
           "text": "return lastUpdate = {checkedAt: Number.NaN, manifest: null};"
         },
         {
-          "line": 237,
+          "line": 238,
           "text": "* At most one answered automatic check per interval and one at a time; `force` is the owner's"
         },
         {
-          "line": 243,
+          "line": 244,
           "text": "updateCheck = device.checkForUpdate().then(({ manifest }) => {"
         },
         {
-          "line": 244,
+          "line": 245,
           "text": "lastUpdate = { checkedAt: Date.now(), manifest: typeof manifest === 'string' ? JSON.parse(manifest) : null };"
         },
         {
-          "line": 271,
+          "line": 272,
           "text": "let automaticUpdates: ReturnType<typeof createAppUpdateScheduler> | undefined;"
         },
         {
-          "line": 272,
+          "line": 273,
           "text": "const automaticUpdateActive = () => automaticUpdates?.setActive(!document.hidden);"
         },
         {
-          "line": 273,
+          "line": 274,
           "text": "async function pollAutomaticUpdate(current: () => boolean) {"
         },
         {
-          "line": 277,
+          "line": 278,
           "text": "if (updateBusy || !automaticUpdateIdle(owner?.S?.() ?? {},connectionController.getSnapshot(),"
         },
         {
-          "line": 282,
+          "line": 283,
           "text": "if (pending.pending || installed.appAutomaticUpdates !== 'supported') return;"
         },
         {
-          "line": 283,
+          "line": 284,
           "text": "const update = parseUpdateManifest(savedUpdate().manifest, {versionCode: installed.appVersionCode,"
         },
         {
-          "line": 289,
+          "line": 290,
           "text": "sizeBytes:update.sizeBytes,versionCode:update.versionCode,automatic:true});"
         },
         {
-          "line": 365,
+          "line": 366,
           "text": "/** Explicit, confirmed disconnect followed by a read-back; never retried automatically. */"
         },
         {
-          "line": 409,
+          "line": 410,
           "text": "app: native ? { version: value.appVersion, versionCode: value.versionCode, variant: value.variant, buildType: value.buildType, testMocks: value.testMocks } : { version: buildVersio"
         },
         {
-          "line": 489,
+          "line": 490,
           "text": "automaticUpdates = createAppUpdateScheduler({run:pollAutomaticUpdate,intervalMs:UPDATE_CHECK_INTERVAL_MS});"
         },
         {
-          "line": 490,
+          "line": 491,
           "text": "document.addEventListener('visibilitychange',automaticUpdateActive);"
         },
         {
-          "line": 491,
+          "line": 492,
           "text": "automaticUpdateActive();"
         },
         {
-          "line": 494,
+          "line": 495,
           "text": "if(!hasAppearancePreview(new URLSearchParams(location.search))){"
         },
         {
-          "line": 495,
+          "line": 496,
           "text": "// A read from storage or the system scheme carries a marker, so componentDidUpdate never writes it back."
         },
         {
-          "line": 496,
+          "line": 497,
           "text": "const apply=()=>{const theme=resolveAppearance(readAppearanceChoice());this.setState({theme,appearanceStorageRead:{theme}});};"
         },
         {
-          "line": 497,
+          "line": 498,
           "text": "if(!Capacitor.isNativePlatform()){"
         },
         {
-          "line": 499,
+          "line": 500,
           "text": "this.appearanceResumeListener=apply;"
         },
         {
-          "line": 502,
+          "line": 503,
           "text": "apply();"
         },
         {
-          "line": 517,
+          "line": 518,
           "text": "this.deviceResume = DailyApps.addListener('appResumed', () => { void refresh(); void refreshCapabilities(); void checkForUpdate(false)?.then(changed); automaticUpdateActive(); }).c"
         },
         {
-          "line": 518,
+          "line": 519,
           "text": "};"
         },
         {
-          "line": 524,
+          "line": 525,
           "text": "// The marker travels with React state, so queued external reads cannot echo an older theme."
         },
         {
-          "line": 525,
+          "line": 526,
           "text": "const external=this.state?.appearanceStorageRead;"
         },
         {
-          "line": 529,
+          "line": 530,
           "text": "catch { this.toast('Theme changed for this session, but could not be saved.'); }"
         },
         {
-          "line": 533,
+          "line": 534,
           "text": "automaticUpdates?.dispose(); automaticUpdates = undefined;"
         },
         {
-          "line": 534,
+          "line": 535,
           "text": "document.removeEventListener('visibilitychange',automaticUpdateActive);"
         },
         {
-          "line": 536,
+          "line": 537,
           "text": "window.removeEventListener('alpha:settings-page',this.settingsNavigation);"
         },
         {
-          "line": 728,
+          "line": 729,
           "text": "// Install update only for the version the last manifest offers this install, and an explicit check. No error or \"up to date\" claim."
         },
         {
-          "line": 729,
+          "line": 730,
           "text": "const update=parseUpdateManifest(savedUpdate().manifest,{versionCode:facts.appVersionCode,launcher,signerSha256:facts.appSigner});"
         },
         {
-          "line": 731,
+          "line": 732,
           "text": "...(update?[{...action(updateBusy==='install'?'Downloading update…':'Install update',()=>void updateAction('install',()=>device.installUpdate({apkUrl:update.apkUrl,sha256:update.sh"
         },
         {
-          "line": 944,
+          "line": 945,
           "text": "if(row.label==='Theme'&&row.kSeg){"
         },
         {
-          "line": 946,
+          "line": 947,
           "text": "const stored=readAppearanceChoice(),choice:AppearanceChoice=resolveAppearance(stored)===api.theme?stored:api.theme==='dark'?'dark':'light';"
         },
         {
-          "line": 949,
+          "line": 950,
           "text": "try{localStorage.setItem(APPEARANCE_KEY,next);}"
         },
         {
-          "line": 952,
+          "line": 953,
           "text": "owner?.setState({theme,appearanceStorageRead:{theme}});"
         }
       ]
@@ -35144,18 +35058,20 @@
         "WorkflowRequestRecoveryAdmission",
         "ScheduledTaskControls",
         "WorkflowClockAdmission",
-        "PhotosOwnedAlbumDialog"
+        "PhotosOwnedAlbumDialog",
+        "ShadeRowCustody"
       ],
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "1c94732bcaf76e4a09ba7a4945dcc81332b59a282f0c27c121f7fa478029a309",
+      "sha256": "8aabc9bdc9bfc07acb68ab3e3d0e948ee096cd2d216cb4fd244d62298f75f482",
       "stateAnchors": [
         {
           "line": 3359,
           "text": "<sc-if value=\"{{workflows.automation.editingSchedule}}\"><sc-if value=\"{{workflows.automation.scheduleClockEditable}}\"><label class=\"schedule-instructions\">Time ({{workflows.automation.e"
         }
-      ]
+      ],
+      "integrationReview": " 2026-11-09: suppress only duplicate navigation metadata when it equals remaining-distance status. Distinct arrival/background notices remain. Four-trace mounted Maps comparison and five existing accessibility scenarios passed on the parent composition; current-main replay follows. No action or permission transition changed."
     },
     {
       "path": "apps/app/src/prototype/use-in-email-review.ts",
@@ -276544,7 +276460,8 @@
       "models": [
         "BrowserSession",
         "BrowserSiteState",
-        "DurableStore"
+        "DurableStore",
+        "BrowserAlbumStorage"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -620703,6 +620620,145 @@
         }
       ],
       "reviewNotes": "Reviewed OTA admission/publication or platform-probe support. Focused executable tests establish their declared contracts; this allocation does not claim complete transition refinement."
+    },
+    {
+      "path": "scripts/ci/qualified-app-update.py",
+      "models": [
+        "PilotApkUpdate"
+      ],
+      "scope": "release-support",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "sha256": "d65cce259047d62ad4665f67b61b396a61882122fcd76139cf1b55086a7e7790",
+      "stateAnchors": [
+        {
+          "line": 35,
+          "text": "def module(name, file):"
+        },
+        {
+          "line": 46,
+          "text": "def require(value, message):"
+        },
+        {
+          "line": 51,
+          "text": "def sha(data):"
+        },
+        {
+          "line": 55,
+          "text": "def file_sha(file):"
+        },
+        {
+          "line": 60,
+          "text": "def pairs(rows):"
+        },
+        {
+          "line": 68,
+          "text": "def decode(data):"
+        },
+        {
+          "line": 73,
+          "text": "def encoded(record, field, limit):"
+        },
+        {
+          "line": 82,
+          "text": "def validate(record):"
+        },
+        {
+          "line": 131,
+          "text": "def gh_json(endpoint):"
+        },
+        {
+          "line": 137,
+          "text": "def gh_download(endpoint, destination, size, digest):"
+        },
+        {
+          "line": 150,
+          "text": "def preflight(record, workflow_commit, work, api=gh_json, download=gh_download):"
+        },
+        {
+          "line": 186,
+          "text": "def signed_download(plan, receipt, destination):"
+        },
+        {
+          "line": 211,
+          "text": "def write_file(root, name, content):"
+        },
+        {
+          "line": 223,
+          "text": "def stage(record, plan, work, product, fetch_unsigned=STORAGE.download, fetch_signed=signed_download):"
+        },
+        {
+          "line": 276,
+          "text": "def main():"
+        }
+      ],
+      "reviewNotes": "Reviewed exact producer/signing-run/private-object admission support. Focused Python transport/identity failure tests execute this path; allocation does not establish Python transition refinement."
+    },
+    {
+      "path": "scripts/ci/admit-cloud-signing-input.py",
+      "models": [
+        "PilotApkUpdate"
+      ],
+      "scope": "release-support",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "sha256": "d9f86a2ab48544e4071bee904adf03b813f408ea3d26c81df15ee109e9616352",
+      "stateAnchors": [
+        {
+          "line": 18,
+          "text": "def require(condition, message):"
+        },
+        {
+          "line": 23,
+          "text": "def digest(data):"
+        },
+        {
+          "line": 27,
+          "text": "def cloud_only(record):"
+        },
+        {
+          "line": 32,
+          "text": "def admit(archive, pin, stage=None):"
+        }
+      ],
+      "reviewNotes": "Reviewed exact producer/signing-run/private-object admission support. Focused Python transport/identity failure tests execute this path; allocation does not establish Python transition refinement."
+    },
+    {
+      "path": "scripts/ci/private-apk-storage.py",
+      "models": [
+        "PilotApkUpdate"
+      ],
+      "scope": "release-support",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "sha256": "4c8de2828e1d42258e262969ee48fbd01cd4a1554b45ec306441652bbd7b39d2",
+      "stateAnchors": [
+        {
+          "line": 16,
+          "text": "def require(value, message):"
+        },
+        {
+          "line": 21,
+          "text": "def validate(plan):"
+        },
+        {
+          "line": 39,
+          "text": "def connection():"
+        },
+        {
+          "line": 47,
+          "text": "def read_json(conn, method, route, headers, body=None):"
+        },
+        {
+          "line": 56,
+          "text": "def download(plan, destination):"
+        },
+        {
+          "line": 82,
+          "text": "def upload(plan, source):"
+        }
+      ],
+      "reviewNotes": "Reviewed exact producer/signing-run/private-object admission support. Focused Python transport/identity failure tests execute this path; allocation does not establish Python transition refinement."
     }
   ],
   "configurationInputs": [
@@ -621601,7 +621657,7 @@
       "models": [
         "Application"
       ],
-      "sha256": "4e35f236971f31eb67b0c41591bed5106d5b803deb9e0bf370c22a4bdd26b2e9",
+      "sha256": "f4df4f23ef9a34725e2d42595cfc1dff0cd1ac52be89bdcc5f165c9c1034d910",
       "integrationReview": "Reviewed integration input; current source identity does not establish runtime behavior or source-model refinement."
     },
     {
@@ -621742,7 +621798,7 @@
         "MountedUpdateAdmission",
         "StartupUpdateAdmission"
       ],
-      "sha256": "ba502dabbe2be69f7cca70530e0bdbd58d8f4ffe64148c3473bc9034f77746a2"
+      "sha256": "caf5c7078e1d8b8e100970f3b473e7f2e7bccfd0c5643c3d55817d758d1cbe4d"
     },
     {
       "path": "patches/eliza/app-update-resume-client-manifest.json",
@@ -621751,7 +621807,14 @@
         "MountedUpdateAdmission",
         "StartupUpdateAdmission"
       ],
-      "sha256": "cf806d370ccab4e31b15de7755ad6a64cca439433f5ec90dd32de494825a8df8"
+      "sha256": "22b8dab47efbd4fc8263baabb7fcdf28758de48a83d9831b334066145303599b"
+    },
+    {
+      "path": ".github/workflows/publish-qualified-app-update.yml",
+      "models": [
+        "PilotApkUpdate"
+      ],
+      "sha256": "b547bf62df688b2dccb89d3ccf4777a8a49972bd8c01f46a9cec8e5f5873af22"
     }
   ],
   "runtimeAssets": [

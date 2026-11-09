@@ -1917,10 +1917,11 @@ public final class UpdateFlowTest {
   check(owner.activity.started.equals(List.of(confirm)),"a manual attempt still opens Android's requested confirmation");
  }
  private static void automaticUpdatesRequireForegroundUnlockedMainAndKnownImageCallState(File cache)throws Exception{
-  for(String condition:List.of("assistant","background","focus","locked","user-locked","image-call","image-call-unknown","image-call-missing")){
+  for(String condition:List.of("non-main","assistant","background","focus","locked","user-locked","image-call","image-call-unknown","image-call-missing")){
    Context context=installing(cache);AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);AlphaLocalAgentPlugin.stops=0;connections.clear();
    switch(condition){
-    case "assistant":owner.activity=new Activity();break;
+    case "non-main":owner.activity=new Activity();break;
+    case "assistant":owner.activity=new MainActivity(){@Override protected boolean isAssistantSurface(){return true;}};break;
     case "background":owner.activity.state=Lifecycle.State.STARTED;break;
     case "focus":owner.activity.focused=false;break;
     case "locked":owner.activity.keyguard.locked=true;break;
@@ -1929,6 +1930,7 @@ public final class UpdateFlowTest {
     case "image-call-unknown":context.imageAdmitted=true;context.calls.unavailable=true;break;
     case "image-call-missing":context.imageAdmitted=true;context.calls=null;break;
    }
+   if(condition.equals("assistant"))check(owner.activity instanceof MainActivity&&owner.activity.hasWindowFocus()&&owner.activity.getLifecycle().getCurrentState()==Lifecycle.State.RESUMED,"the assistant fixture is a focused, resumed MainActivity subclass, as the installed assistant surfaces are");
    check(automatic(owner).rejected.get()==1,"automatic admission defers active or unknown use: "+condition);
    check(connections.isEmpty()&&context.packages.installer.sessions.isEmpty()&&AlphaLocalAgentPlugin.stops==0&&AlphaDevicePlugin.UpdatePause.store().read()==null,"deferred automatic work cannot download, stage, pause or commit: "+condition);
    if(condition.equals("image-call"))check(tap(owner).resolved.get()==1&&context.packages.installer.committed.size()==1,"the explicit manual path retains its existing behavior");

@@ -1,2 +1,2 @@
 package ai.elizaresearch.alphaphone;
-public final class MainActivity extends android.app.Activity {}
+public class MainActivity extends android.app.Activity {protected boolean isAssistantSurface(){return false;}}

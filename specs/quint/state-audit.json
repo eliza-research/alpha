@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "b1817660a0347ae19551b9ee296410fe55f02d59",
-  "ledgerSha256": "e73eb3d35ada9de206298351bd88527ad68ea3766c5a60dcbaa00ed6601dc8f8",
+  "ledgerSha256": "caa2ffbeb85a1b4bd1b0e28affc757ed8b22ebcb014f1737eaa1fe1dfe226400",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -22,17 +22,17 @@
     "The ledger supplies pinned source bytes. Effective client/native/runtime patch outputs require their separately authenticated source mappings."
   ],
   "counts": {
-    "files": 5779,
+    "files": 5782,
     "testSupportFiles": 297,
     "testSupportCandidates": 11402,
     "parsedFiles": 5689,
-    "languageReview": 90,
+    "languageReview": 93,
     "parseErrors": 0,
-    "candidates": 67807,
-    "writeSites": 67385,
+    "candidates": 67810,
+    "writeSites": 67387,
     "writeAssociations": 60429,
     "asynchronous": 8395,
-    "unassignedWrites": 10385
+    "unassignedWrites": 10387
   },
   "files": [
     {
@@ -18264,7 +18264,7 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java",
-      "sha256": "5cbc8021d014680111892621060cc419a068148407b781d7bd1f66cccc15c668",
+      "sha256": "bea8e921170b08f2e35131d03a4c8425ae001d955d6bff9e6c9f822418cb5b3a",
       "allocatedModels": [
         "Application",
         "AccessibleToastLifetime",
@@ -18529,260 +18529,266 @@
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.appSigner@262",
-          "line": 262,
+          "owner": "AlphaDevicePlugin.automaticUpdateReady@262",
+          "line": 263,
+          "bindings": 3,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaDevicePlugin.appSigner@274",
+          "line": 274,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.signingRoot@265",
-          "line": 265,
+          "owner": "AlphaDevicePlugin.signingRoot@277",
+          "line": 277,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.updateBinding@278",
-          "line": 278,
+          "owner": "AlphaDevicePlugin.updateBinding@290",
+          "line": 290,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "AlphaDevicePlugin.UpdatePause",
-          "line": 286,
+          "line": 298,
           "bindings": 5,
           "writes": 6
         },
         {
-          "owner": "AlphaDevicePlugin.UpdatePause.configure@291",
-          "line": 291,
+          "owner": "AlphaDevicePlugin.UpdatePause.configure@303",
+          "line": 303,
           "bindings": 3,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.UpdatePause.configure@291.lambda@295",
-          "line": 296,
+          "owner": "AlphaDevicePlugin.UpdatePause.configure@303.lambda@307",
+          "line": 308,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.UpdatePause.digest@305",
-          "line": 305,
+          "owner": "AlphaDevicePlugin.UpdatePause.digest@317",
+          "line": 317,
           "bindings": 5,
           "writes": 1
         },
         {
-          "owner": "AlphaDevicePlugin.UpdatePause.acquire@310",
-          "line": 310,
+          "owner": "AlphaDevicePlugin.UpdatePause.acquire@322",
+          "line": 322,
           "bindings": 5,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.UpdatePause.stop@314",
-          "line": 317,
+          "owner": "AlphaDevicePlugin.UpdatePause.stop@326",
+          "line": 329,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.UpdatePause.committing@323",
-          "line": 323,
+          "owner": "AlphaDevicePlugin.UpdatePause.committing@335",
+          "line": 335,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.UpdatePause.binds@324",
-          "line": 324,
+          "owner": "AlphaDevicePlugin.UpdatePause.binds@336",
+          "line": 336,
           "bindings": 3,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.UpdatePause.reconcile@329",
-          "line": 330,
+          "owner": "AlphaDevicePlugin.UpdatePause.reconcile@341",
+          "line": 342,
           "bindings": 7,
           "writes": 2
         },
         {
           "owner": "AlphaDevicePlugin.UpdateActivation",
-          "line": 355,
+          "line": 367,
           "bindings": 8,
           "writes": 3
         },
         {
-          "owner": "AlphaDevicePlugin.UpdateActivation.<init>@362",
-          "line": 362,
+          "owner": "AlphaDevicePlugin.UpdateActivation.<init>@374",
+          "line": 374,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "AlphaDevicePlugin.UpdateResume",
-          "line": 366,
+          "line": 378,
           "bindings": 3,
           "writes": 3
         },
         {
-          "owner": "AlphaDevicePlugin.UpdateResume.<init>@368",
-          "line": 368,
+          "owner": "AlphaDevicePlugin.UpdateResume.<init>@380",
+          "line": 380,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.preparation@379",
-          "line": 379,
+          "owner": "AlphaDevicePlugin.preparation@391",
+          "line": 391,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.registerUpdateBridge@380",
-          "line": 381,
+          "owner": "AlphaDevicePlugin.registerUpdateBridge@392",
+          "line": 393,
           "bindings": 1,
           "writes": 3
         },
         {
-          "owner": "AlphaDevicePlugin.retireUpdateBridge@393",
-          "line": 397,
+          "owner": "AlphaDevicePlugin.retireUpdateBridge@405",
+          "line": 409,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "AlphaDevicePlugin.activateUpdate@402",
-          "line": 402,
+          "owner": "AlphaDevicePlugin.activateUpdate@414",
+          "line": 414,
           "bindings": 4,
           "writes": 6
         },
         {
-          "owner": "AlphaDevicePlugin.settleUpdate@418",
-          "line": 418,
+          "owner": "AlphaDevicePlugin.settleUpdate@430",
+          "line": 430,
           "bindings": 6,
           "writes": 1
         },
         {
-          "owner": "AlphaDevicePlugin.settleUpdate@418.lambda@430",
-          "line": 430,
+          "owner": "AlphaDevicePlugin.settleUpdate@430.lambda@442",
+          "line": 442,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.readUpdateState@438",
-          "line": 440,
+          "owner": "AlphaDevicePlugin.readUpdateState@450",
+          "line": 452,
           "bindings": 6,
           "writes": 4
         },
         {
-          "owner": "AlphaDevicePlugin.updateState@461",
-          "line": 461,
+          "owner": "AlphaDevicePlugin.updateState@473",
+          "line": 473,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.updateState@461.lambda@462",
-          "line": 464,
+          "owner": "AlphaDevicePlugin.updateState@473.lambda@474",
+          "line": 476,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.reconcileUpdate@467",
-          "line": 468,
+          "owner": "AlphaDevicePlugin.reconcileUpdate@479",
+          "line": 480,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.reconcileUpdate@471",
-          "line": 471,
+          "owner": "AlphaDevicePlugin.reconcileUpdate@483",
+          "line": 483,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.reconcileUpdate@471.lambda@472",
-          "line": 472,
+          "owner": "AlphaDevicePlugin.reconcileUpdate@483.lambda@484",
+          "line": 484,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.Anonymous@494.onReceive@495",
-          "line": 495,
+          "owner": "AlphaDevicePlugin.Anonymous@506.onReceive@507",
+          "line": 507,
           "bindings": 6,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.pastConfirmation@517",
-          "line": 517,
+          "owner": "AlphaDevicePlugin.pastConfirmation@529",
+          "line": 529,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.reopenUpdateConfirmation@521",
-          "line": 521,
+          "owner": "AlphaDevicePlugin.reopenUpdateConfirmation@533",
+          "line": 533,
           "bindings": 5,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.reopenUpdateConfirmation@521.lambda@528",
-          "line": 533,
+          "owner": "AlphaDevicePlugin.reopenUpdateConfirmation@533.lambda@540",
+          "line": 545,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.continueUpdate@542",
-          "line": 542,
+          "owner": "AlphaDevicePlugin.continueUpdate@554",
+          "line": 554,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.continueUpdate@542.lambda@543",
-          "line": 546,
+          "owner": "AlphaDevicePlugin.continueUpdate@554.lambda@555",
+          "line": 558,
           "bindings": 3,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.confirmUpdate@558",
-          "line": 561,
+          "owner": "AlphaDevicePlugin.confirmUpdate@570",
+          "line": 573,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.handleOnResume@564",
-          "line": 569,
+          "owner": "AlphaDevicePlugin.handleOnResume@576",
+          "line": 581,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.updateConnection@596",
-          "line": 596,
+          "owner": "AlphaDevicePlugin.updateConnection@608",
+          "line": 608,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.checkForUpdate@607",
-          "line": 607,
+          "owner": "AlphaDevicePlugin.checkForUpdate@619",
+          "line": 619,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.checkForUpdate@607.lambda@608",
-          "line": 611,
+          "owner": "AlphaDevicePlugin.checkForUpdate@619.lambda@620",
+          "line": 623,
           "bindings": 4,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.installUpdate@637",
-          "line": 637,
+          "owner": "AlphaDevicePlugin.installUpdate@649",
+          "line": 649,
           "bindings": 3,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.installUpdate@637.lambda@646",
-          "line": 648,
+          "owner": "AlphaDevicePlugin.installUpdate@649.lambda@658",
+          "line": 660,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.installUpdate@637.lambda@654",
-          "line": 658,
+          "owner": "AlphaDevicePlugin.installUpdate@649.lambda@666",
+          "line": 670,
           "bindings": 27,
           "writes": 6
         },
         {
-          "owner": "AlphaDevicePlugin.handleOnDestroy@763",
-          "line": 763,
+          "owner": "AlphaDevicePlugin.handleOnDestroy@778",
+          "line": 778,
           "bindings": 2,
           "writes": 1
         }
@@ -30742,7 +30748,8 @@
       "allocatedModels": [
         "BrowserSession",
         "DurableStore",
-        "CalendarPreservationConfirmation"
+        "CalendarPreservationConfirmation",
+        "BrowserAlbumStorage"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -30767,7 +30774,8 @@
         "NotesLifecycle",
         "GoogleAccessPublication",
         "BrowserReminderOrphan",
-        "BrowserHostedResultNotice"
+        "BrowserHostedResultNotice",
+        "BrowserAlbumStorage"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -31415,7 +31423,8 @@
       "allocatedModels": [
         "BrowserSession",
         "DurableStore",
-        "GoogleAccessPublication"
+        "GoogleAccessPublication",
+        "BrowserAlbumStorage"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -33858,11 +33867,13 @@
     },
     {
       "path": "apps/app/src/prototype/browser-camera.ts",
-      "sha256": "6e410466c3bdc1ec4deda394c2716835bc3604b07aa0e969dc6f459f6038b6c5",
+      "sha256": "1b8559b0afacfeac49f8e8cf5f12e8438ee1a5a3d5f94e91844a4cf373a15541",
       "allocatedModels": [
         "MediaLifecycle",
-        "CameraPreviewRetirement"
+        "CameraPreviewRetirement",
+        "BrowserAlbumStorage"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -33879,200 +33890,200 @@
           "writes": 5
         },
         {
-          "owner": "transaction.ArrowFunction@29",
-          "line": 29,
+          "owner": "runPhotoTransaction.ArrowFunction@37",
+          "line": 37,
           "bindings": 3,
           "writes": 8
         },
         {
           "owner": "rows",
-          "line": 44,
+          "line": 52,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "rows.ArrowFunction@46",
-          "line": 46,
+          "owner": "rows.ArrowFunction@54",
+          "line": 54,
           "bindings": 2,
           "writes": 2
         },
         {
-          "owner": "read.ArrowFunction@53",
-          "line": 53,
+          "owner": "read.ArrowFunction@61",
+          "line": 61,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "change.ArrowFunction@55",
-          "line": 55,
+          "owner": "change.ArrowFunction@63",
+          "line": 63,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "renderEdit",
-          "line": 74,
+          "line": 82,
           "bindings": 3,
           "writes": 4
         },
         {
           "owner": "beginPhotoEdit",
-          "line": 88,
+          "line": 96,
           "bindings": 2,
           "writes": 2
         },
         {
-          "owner": "resultPhotoEdit.ArrowFunction@102",
-          "line": 102,
+          "owner": "resultPhotoEdit.ArrowFunction@110",
+          "line": 110,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "resultPhotoEdit.ArrowFunction@102.ArrowFunction@102",
-          "line": 103,
+          "owner": "resultPhotoEdit.ArrowFunction@110.ArrowFunction@110",
+          "line": 111,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "cancelPhotoEdit",
-          "line": 109,
+          "line": 117,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "savePhotoEdit.ArrowFunction@115",
-          "line": 115,
+          "owner": "savePhotoEdit.ArrowFunction@123",
+          "line": 123,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "savePhotoEdit.ArrowFunction@115.ArrowFunction@115",
-          "line": 116,
+          "owner": "savePhotoEdit.ArrowFunction@123.ArrowFunction@123",
+          "line": 124,
           "bindings": 1,
           "writes": 4
         },
         {
-          "owner": "savePhotoEdit.ArrowFunction@126",
-          "line": 126,
+          "owner": "savePhotoEdit.ArrowFunction@134",
+          "line": 134,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "savePhotoEdit.ArrowFunction@126.ArrowFunction@126",
-          "line": 127,
+          "owner": "savePhotoEdit.ArrowFunction@134.ArrowFunction@134",
+          "line": 135,
           "bindings": 2,
           "writes": 3
         },
         {
-          "owner": "savePhotoEdit.ArrowFunction@140",
-          "line": 140,
+          "owner": "savePhotoEdit.ArrowFunction@148",
+          "line": 148,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "savePhotoEdit.ArrowFunction@140.ArrowFunction@140",
-          "line": 140,
+          "owner": "savePhotoEdit.ArrowFunction@148.ArrowFunction@148",
+          "line": 148,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "selectedMediaRows.ArrowFunction@163",
-          "line": 163,
+          "owner": "selectedMediaRows.ArrowFunction@171",
+          "line": 171,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "saveBrowserMedia",
-          "line": 182,
+          "line": 190,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "saveVideoCopy.ArrowFunction@189",
-          "line": 189,
+          "owner": "saveVideoCopy.ArrowFunction@197",
+          "line": 197,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "saveVideoCopy.ArrowFunction@194",
-          "line": 194,
+          "owner": "saveVideoCopy.ArrowFunction@202",
+          "line": 202,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "saveVideoCopy.ArrowFunction@194.ArrowFunction@194",
-          "line": 194,
+          "owner": "saveVideoCopy.ArrowFunction@202.ArrowFunction@202",
+          "line": 202,
           "bindings": 2,
           "writes": 3
         },
         {
-          "owner": "saveVideoCopy.ArrowFunction@195",
-          "line": 195,
+          "owner": "saveVideoCopy.ArrowFunction@203",
+          "line": 203,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "saveVideoCopy.ArrowFunction@195.ArrowFunction@195",
-          "line": 195,
+          "owner": "saveVideoCopy.ArrowFunction@203.ArrowFunction@203",
+          "line": 203,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "albums",
-          "line": 203,
+          "line": 211,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "changeAlbum.ArrowFunction@217",
-          "line": 218,
+          "owner": "changeAlbum.commit.ArrowFunction@226",
+          "line": 227,
           "bindings": 3,
           "writes": 11
         },
         {
-          "owner": "changeMany.ArrowFunction@236",
-          "line": 237,
-          "bindings": 2,
-          "writes": 3
-        },
-        {
-          "owner": "deletePreparedTrash.ArrowFunction@251",
+          "owner": "changeMany.ArrowFunction@250",
           "line": 251,
           "bindings": 2,
           "writes": 3
         },
         {
+          "owner": "deletePreparedTrash.ArrowFunction@265",
+          "line": 265,
+          "bindings": 2,
+          "writes": 3
+        },
+        {
           "owner": "setScreenLight",
-          "line": 269,
+          "line": 283,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "startPreview",
-          "line": 276,
+          "line": 290,
           "bindings": 3,
           "writes": 7
         },
         {
-          "owner": "stopRecording.ArrowFunction@330.ArrowFunction@332",
-          "line": 332,
+          "owner": "stopRecording.ArrowFunction@344.ArrowFunction@346",
+          "line": 346,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "prepare",
-          "line": 346,
+          "line": 360,
           "bindings": 2,
           "writes": 3
         },
         {
           "owner": "openCameraImageImport",
-          "line": 354,
+          "line": 368,
           "bindings": 17,
           "writes": 47
         },
         {
           "owner": "openCameraImageImport.button",
-          "line": 362,
+          "line": 376,
           "bindings": 1,
           "writes": 2
         }
@@ -34406,7 +34417,8 @@
         "CanonicalCalendarDraftHandoff",
         "CameraPreviewRetirement",
         "ChatAttachments",
-        "PhotosOwnedAlbumDialog"
+        "PhotosOwnedAlbumDialog",
+        "BrowserAlbumStorage"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -35712,7 +35724,7 @@
     },
     {
       "path": "apps/app/src/prototype/maps-adapter.ts",
-      "sha256": "f952be1d936ccb677e4d98f9c9da22ad6734ca66d33c100c529b81548ab7ede1",
+      "sha256": "5008c5a98147e06dae2c70ad076cffa179a693171e2c629d6fc89639d46ea543",
       "allocatedModels": [
         "Maps",
         "MapsNavigation",
@@ -39342,12 +39354,13 @@
     },
     {
       "path": "apps/app/src/prototype/notifications-adapter.ts",
-      "sha256": "54f0fe9f96b24849f26308e796192efdb3c32630712a3720ed4047bb566933e5",
+      "sha256": "d381759f115103759258b42e50bda4846e7ad2d88333085059ef548c2da45f50",
       "allocatedModels": [
         "NoticesAndCaches",
         "NotificationCollection",
         "CanonicalNotificationTapAdmission",
-        "ShadeNoticeQuestionAdmission"
+        "ShadeNoticeQuestionAdmission",
+        "ShadeRowCustody"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -39378,15 +39391,15 @@
           "writes": 7
         },
         {
-          "owner": "installNotificationsAdapter.FunctionExpression@121",
-          "line": 122,
+          "owner": "installNotificationsAdapter.FunctionExpression@144",
+          "line": 145,
           "bindings": 1,
           "writes": 3
         }
       ],
       "parseErrors": [],
       "asynchronous": 17,
-      "unassignedWrites": 35
+      "unassignedWrites": 37
     },
     {
       "path": "apps/app/src/prototype/own-notice-question.ts",
@@ -39449,7 +39462,7 @@
     },
     {
       "path": "apps/app/src/prototype/phone.css",
-      "sha256": "f718ef2e3a262826e177090ad31b319d472cd10a42ee0da4ca661355268493ea",
+      "sha256": "e9e52df7bc41f3d176f7c784db75727bec8de5a0bce41efd793cc9f1e28a1e5f",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -39962,7 +39975,7 @@
     },
     {
       "path": "apps/app/src/prototype/settings-adapter.ts",
-      "sha256": "c87370b568c30d7a9f4f3f21e0f2de4c2604559aa9595b427456ad648538c52f",
+      "sha256": "dac0adc7e4ea003ef335d221d1052d940109abf9a5f4e756fd1d2310094b3fa3",
       "allocatedModels": [
         "PreferencesAndPresentation",
         "SettingsNav",
@@ -39989,43 +40002,43 @@
         },
         {
           "owner": "installSettingsAdapter",
-          "line": 253,
+          "line": 254,
           "bindings": 35,
           "writes": 109
         },
         {
           "owner": "installSettingsAdapter.refreshResidentDiagnostics",
-          "line": 312,
+          "line": 313,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installSettingsAdapter.refreshCapabilities",
-          "line": 328,
+          "line": 329,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installSettingsAdapter.exportDiagnostics",
-          "line": 438,
+          "line": 439,
           "bindings": 1,
           "writes": 3
         },
         {
-          "owner": "installSettingsAdapter.FunctionExpression@481",
-          "line": 509,
+          "owner": "installSettingsAdapter.FunctionExpression@482",
+          "line": 510,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installSettingsAdapter.ArrowFunction@561",
-          "line": 566,
+          "owner": "installSettingsAdapter.ArrowFunction@562",
+          "line": 567,
           "bindings": 37,
           "writes": 638
         },
         {
-          "owner": "installSettingsAdapter.ArrowFunction@561.ArrowFunction@928",
-          "line": 930,
+          "owner": "installSettingsAdapter.ArrowFunction@562.ArrowFunction@929",
+          "line": 931,
           "bindings": 1,
           "writes": 1
         }
@@ -40278,7 +40291,7 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "1c94732bcaf76e4a09ba7a4945dcc81332b59a282f0c27c121f7fa478029a309",
+      "sha256": "8aabc9bdc9bfc07acb68ab3e3d0e948ee096cd2d216cb4fd244d62298f75f482",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -40295,7 +40308,8 @@
         "WorkflowRequestRecoveryAdmission",
         "ScheduledTaskControls",
         "WorkflowClockAdmission",
-        "PhotosOwnedAlbumDialog"
+        "PhotosOwnedAlbumDialog",
+        "ShadeRowCustody"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -112673,7 +112687,8 @@
       "allocatedModels": [
         "BrowserSession",
         "BrowserSiteState",
-        "DurableStore"
+        "DurableStore",
+        "BrowserAlbumStorage"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -221806,10 +221821,52 @@
       "parseErrors": [],
       "asynchronous": 0,
       "unassignedWrites": 0
+    },
+    {
+      "path": "scripts/ci/qualified-app-update.py",
+      "sha256": "d65cce259047d62ad4665f67b61b396a61882122fcd76139cf1b55086a7e7790",
+      "allocatedModels": [
+        "PilotApkUpdate"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "scripts/ci/admit-cloud-signing-input.py",
+      "sha256": "d9f86a2ab48544e4071bee904adf03b813f408ea3d26c81df15ee109e9616352",
+      "allocatedModels": [
+        "PilotApkUpdate"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "scripts/ci/private-apk-storage.py",
+      "sha256": "4c8de2828e1d42258e262969ee48fbd01cd4a1554b45ec306441652bbd7b39d2",
+      "allocatedModels": [
+        "PilotApkUpdate"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
     }
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "9ffa2fc95278d2fa8def816e93f629926561328cabd2b1387643a9690b21dc68"
+    "sha256": "cefe5e8b1a4c8648f8aaa7455d48641159d4f139bb578aefd4381e8ddea7f397"
   }
 }
