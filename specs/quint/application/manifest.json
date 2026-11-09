@@ -719,6 +719,31 @@
     ]
   },
   {
+    "path": "specs/quint/application/EmailSuggestionReview.qnt",
+    "module": "EmailSuggestionReview",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "replacementRetiresControlsTest",
+      "refreshedReviewRequiresNewControlTest",
+      "lateConfirmAfterChatClosesTest",
+      "retiredOpenerCannotAdoptReplyTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/use-in-email-review.ts",
+      "vendor/eliza/plugins/plugin-inbox/src/mailbox/use-in-email.ts"
+    ],
+    "stateMapping": {
+      "env": "Synthetic session, reply, front surface and Inbox destination readback.",
+      "review/controls/serial": "Current review snapshot and retained rendered actions. Identities are abstract and checked through the action they admit.",
+      "inserts/used/toasts": "Local insertion port, unique review retirement and conversation refusal."
+    },
+    "abstractions": [
+      "Representative reply, account and target revisions. Mounted focus, concrete draft persistence and provider execution require separate evidence."
+    ]
+  },
+  {
     "path": "specs/quint/application/SharePanelAdmission.qnt",
     "module": "SharePanelAdmission",
     "init": "init",

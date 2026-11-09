@@ -37,6 +37,7 @@ import {checkReminderOpenIntent} from './reminder-open-intent.mjs';
 import {checkFirstSendDraftMigration} from './first-send-draft-migration.mjs';
 import {checkShadeNoticeQuestionAdmission} from './shade-notice-question-admission.mjs';
 import {checkWorkflowClockAdmission} from './workflow-clock-admission.mjs';
+import {checkEmailSuggestionReview} from './email-suggestion-review.mjs';
 import {checkSharePanelAdmission} from './share-panel-admission.mjs';
 import {checkWorkflowRequestRecoveryAdmission} from './workflow-request-recovery-admission.mjs';
 import {checkAppearancePreferenceAdmission} from './appearance-preference-admission.mjs';
@@ -103,6 +104,7 @@ const adapters = [checkChatAttachments, application, shellNavigation, startupPer
   checkCameraPreviewRetirement,
   checkNotesRecorderMediaAdmission, checkRetainedReminderTapAdmission, checkReminderOpenIntent, checkFirstSendDraftMigration,
   checkShadeNoticeQuestionAdmission, checkWorkflowClockAdmission,
+  checkEmailSuggestionReview,
   checkSharePanelAdmission,
   checkWorkflowRequestRecoveryAdmission,
   checkAppearancePreferenceAdmission,

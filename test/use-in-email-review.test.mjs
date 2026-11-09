@@ -4,49 +4,9 @@
 // destination refuses the insert. Sending is not reachable from this module at all.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import vm from 'node:vm';
-import { readFile } from 'node:fs/promises';
-import {stripTypeScriptTypes} from 'node:module';
+import {bootEmailReview as boot} from './fixtures/use-in-email-review.mjs';
 
-const source = async () => {
-  let text = await readFile(new URL('../apps/app/src/prototype/use-in-email-review.ts', import.meta.url), 'utf8');
-  text = text.replace(/^import .*;\n/gm, '').replace(/^export (?=function |const )/gm, '');
-  // The review wording and limits are the shared @elizaos/plugin-inbox/mailbox module at the pin.
-  let shared = await readFile(new URL('../.eliza/client-features/plugins/plugin-inbox/src/mailbox/use-in-email.ts', import.meta.url), 'utf8');
-  shared = shared.replace(/^import .*;\n/gm, '').replace(/^export (?=function |const )/gm, '');
-  return '{' + stripTypeScriptTypes(shared, { mode: 'strip' }) + stripTypeScriptTypes(text, { mode: 'strip' }) + '\nglobalThis.installUseInEmailReview=installUseInEmailReview;globalThis.describeEmailTarget=describeEmailTarget;globalThis.USE_IN_EMAIL_ATTACHMENT_POLICY=USE_IN_EMAIL_ATTACHMENT_POLICY;}';
-};
 const plain = value => JSON.parse(JSON.stringify(value));
-
-async function boot() {
-  const world = { session: { sessionId: 'agent-1', agentId: 'a', ownerId: 'o', origin: 'https://agent.invalid' }, cloud: 'cloud-1', chooser: false, hidden: false };
-  const inserted = [], toasts = [];
-  // The stub Inbox: one destination whose token changes whenever `revision` changes.
-  const inbox = { revision: 1, ready: true, append: false, room: 64000,
-    emailTarget() { return this.ready ? { ready: true, kind: 'reply', append: this.append, reply: true, subject: 'Re: Plan', to: ['sender@example.invalid'], from: 'Sender', room: this.room, accountId: 'grant-a', account: 'owner@example.invalid', token: 'token-' + this.revision }
-      : { ready: false, reason: 'Restore or discard the saved local draft in Inbox first. The suggestion was not added.', token: 'blocked', accountId: 'grant-a', account: 'owner@example.invalid' }; },
-    useInEmail(text, expected) { if (!this.ready || expected.token !== 'token-' + this.revision) return false; inserted.push({ text, append: expected.append === true }); return true; } };
-  class Shell {
-    constructor() { this.state = { view: 'inbox', chat: 'sheet', msgs: [] }; this.live = true; }
-    S() { return this.state; }
-    setState(patch) { Object.assign(this.state, typeof patch === 'function' ? patch(this.state) : patch); }
-    toast(text) { toasts.push(text); }
-    // The message-actions layer below marks every finished text message as having a menu.
-    renderVals() { return { msgs: this.state.msgs.map(m => ({ id: m.id, text: m.text, ...(m.streaming || m.interrupted ? {} : { messageActionsRole: 'button' }) })) }; }
-    componentWillUnmount() {}
-  }
-  const sandbox = { createInlineModal: () => ({ ref() {} }), CSS: { escape: v => v }, Date, JSON,
-    document: { get hidden() { return world.hidden; }, querySelector: () => null },
-    connectionController: { getSnapshot: () => ({ session: world.session, open: world.chooser }), getCloudClient: () => world.cloud ? { sessionId: world.cloud } : null } };
-  vm.createContext(sandbox); vm.runInContext(await source(), sandbox);
-  const views = { inbox };
-  sandbox.installUseInEmailReview(Shell, views);
-  const shell = new Shell();
-  const reply = { id: 'reply-1', from: 'agent', text: 'Thanks. Tuesday at 10 works for me.', card: null };
-  shell.state.msgs = [{ id: 'user-1', from: 'user', text: 'Help me write a reply' }, reply,
-    { id: 'card-1', from: 'agent', text: 'Approve this action', card: { type: 'generic' } }, { id: 'stream-1', from: 'agent', text: 'Still typ', card: null, streaming: true }];
-  return { world, inbox, inserted, toasts, shell, views, sandbox, reply, render: () => shell.renderVals(), row: id => shell.renderVals().msgs.find(m => m.id === id) };
-}
 
 test('only finished plain agent replies offer Use in email, and only over Inbox', async () => {
   const t = await boot();
@@ -102,6 +62,63 @@ test('after a Cloud account change, confirming again inserts into the refreshed 
   t.render().emailUse.confirm();
   assert.deepEqual(plain(t.inserted), [{ text: t.reply.text, append: false }]);
   assert.equal(t.render().emailUseOpen, false);
+});
+
+test('a replaced review cannot confirm or close its successor', async () => {
+  const t = await boot();
+  t.row('reply-1').useInEmail();
+  const retired = t.render().emailUse;
+  t.inbox.revision++;
+  t.row('reply-1').useInEmail();
+  retired.confirm();
+  retired.close();
+  assert.equal(t.inserted.length, 0);
+  assert.equal(t.render().emailUseOpen, true);
+  t.render().emailUse.confirm();
+  assert.equal(t.inserted.length, 1);
+});
+
+test('a repeated callback cannot confirm a refreshed destination before it is rendered', async () => {
+  const t = await boot();
+  t.row('reply-1').useInEmail();
+  const retired = t.render().emailUse;
+  t.inbox.revision++;
+  retired.confirm();
+  retired.confirm();
+  assert.equal(t.inserted.length, 0);
+  assert.match(t.render().emailUse.notice, /changed since you opened this review/);
+  t.render().emailUse.confirm();
+  assert.equal(t.inserted.length, 1);
+});
+
+test('a confirmation delivered after chat closes cannot insert before the next render', async () => {
+  const t = await boot();
+  t.row('reply-1').useInEmail();
+  const review = t.render().emailUse;
+  t.shell.state.chat = 'hidden';
+  review.confirm();
+  assert.equal(t.inserted.length, 0);
+  assert.equal(t.render().emailUseOpen, false);
+});
+
+test('a retained opener belongs to the rendered agent session', async () => {
+  const t = await boot();
+  const oldAction = t.row('reply-1').useInEmail;
+  t.world.session = { ...t.world.session, sessionId: 'agent-2' };
+  oldAction();
+  assert.equal(t.render().emailUseOpen, false);
+  t.row('reply-1').useInEmail();
+  assert.equal(t.render().emailUseOpen, true);
+});
+
+test('an opener cannot adopt a reply edited in place since rendering', async () => {
+  const t = await boot();
+  const oldAction = t.row('reply-1').useInEmail;
+  t.reply.text = 'Updated reply';
+  oldAction();
+  assert.equal(t.render().emailUseOpen, false);
+  t.row('reply-1').useInEmail();
+  assert.equal(t.render().emailUse.text, 'Updated reply');
 });
 
 test('a blocked destination cannot be confirmed', async () => {
