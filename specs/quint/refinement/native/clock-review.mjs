@@ -36,9 +36,9 @@ export function clockReviewSourceTraces(scenarios) {
 export async function checkNativeClockReview(extraSources = []) {
   const sources=[plugin,...compiled,fileURLToPath(import.meta.url),join(directory,harness),join(directory,'Trace.java'),
     join(directory,'java.mjs'),join(directory,'clock-review-platform.mjs'),'scripts/upstream-native-source.mjs',
-    'upstream.lock.json','patches/eliza/native-manifest.json','test/fixtures/jvm-tools.mjs',...(jsonJar?[jsonJar]:[]),...extraSources];
+    'upstream.lock.json','android/upstream-native-sources.json','test/fixtures/jvm-tools.mjs',...(jsonJar?[jsonJar]:[]),...extraSources];
   const driverHashes=captureInputs(sources);
-  const catalog=JSON.parse(readFileSync(join(root,'patches/eliza/native-manifest.json'),'utf8'));
+  const catalog=JSON.parse(readFileSync(join(root,'android/upstream-native-sources.json'),'utf8'));
   const targets=new Set(catalog.patches.flatMap(patch=>patch.targets.map(target=>target.path)));
   const upstream=upstreamNativeSource(root);
   for(const path of upstreamPaths){

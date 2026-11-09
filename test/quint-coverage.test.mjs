@@ -149,7 +149,7 @@ test('source discovery follows consumed shared modules and rejects a stale clien
     write('upstream.lock.json', {commit: 'fixture', appSource: 'packages/app'});
     write('.eliza/client-features/.source.json', {baseCommit: 'fixture', sourceFiles: {'packages/ui/src/state.ts': 'fixture'}});
     write('android/consumer-host.json', {profile: {modules: [{source: {root: 'upstream', path: 'plugins/fixture/android'}}]}, residentHost: {helpers: ['packages/runtime/Owner.java']}});
-    write('patches/eliza/native-manifest.json', {modules: [], patches: []});
+    write('android/upstream-native-sources.json', {modules: [], patches: []});
     for (const family of ['application', 'services', 'native', 'legacy']) {
       write(`specs/quint/${family}/manifest.json`, family === 'services'
         ? [{sources: ['vendor/eliza/plugins/worker/src/state.ts']}] : []);

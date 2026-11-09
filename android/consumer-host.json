@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "description": "Alpha's Android host descriptor. The upstream generator (vendor/eliza/packages/app/scripts/mobile/android/consumer-host.mjs) owns the Gradle setup, toolchain, variants, signing and version policy and writes the build files into android/ (node scripts/android-host.mjs). This file supplies only Alpha's identity inputs, modules, dependencies, admission and installed-data compatibility names. References use the consumer, upstream (vendor/eliza) and dependencies (node_modules) roots; patchedNative names the authenticated staging of patches/eliza/native-manifest.json.",
+  "description": "Alpha's Android host descriptor. The upstream generator (vendor/eliza/packages/app/scripts/mobile/android/consumer-host.mjs) owns the Gradle setup, toolchain, variants, signing and version policy and writes the build files into android/ (node scripts/android-host.mjs). This file supplies only Alpha's identity inputs, modules, dependencies, admission and installed-data compatibility names. References use the consumer, upstream (vendor/eliza) and dependencies (node_modules) roots; patchedNative names the authenticated staging of android/upstream-native-sources.json.",
   "profile": {
     "schema": 1,
     "sdk": { "min": 29, "target": 36, "compile": 36 },
@@ -116,7 +116,7 @@
       { "root": "consumer", "path": "android/consumer-host.json" },
       { "root": "consumer", "path": "app.config.json" },
       { "root": "consumer", "path": "upstream.lock.json" },
-      { "root": "consumer", "path": "patches/eliza/native-manifest.json" },
+      { "root": "consumer", "path": "android/upstream-native-sources.json" },
       { "root": "consumer", "path": "scripts/prepare-patched-native.mjs" },
       { "root": "consumer", "path": "scripts/android-host.mjs" }
     ]

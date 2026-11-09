@@ -11,7 +11,8 @@ const root=path.resolve(import.meta.dirname,'..');
 test('shared output warmup patch is admitted and closes on first audio, cancellation and lifecycle retirement',t=>{
  const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-warmup-patch-'));
  t.after(()=>fs.rmSync(temporary,{recursive:true,force:true}));
- materializeNativePatches({source:upstreamNativeSource(root),manifest:JSON.parse(fs.readFileSync(path.join(root,'patches/eliza/native-manifest.json'))),patchRoot:path.join(root,'patches/eliza'),temporary});
+ const source=upstreamNativeSource(root);
+ materializeNativePatches({source,manifest:{...JSON.parse(fs.readFileSync(path.join(root,'android/upstream-native-sources.json'))),baseCommit:source.pin},patchRoot:path.join(root,'patches/eliza'),temporary});
  const speech=path.join(temporary,'plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice');
  const bridge=fs.readFileSync(path.join(speech,'LocalSpeechBridgePlugin.java'),'utf8');
  assert.match(bridge,/@PluginMethod public void warmSpeechOutput\(PluginCall call\)/);

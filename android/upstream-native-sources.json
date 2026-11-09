@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "modules": [
+    "packages/app/platforms/android/app/src/main/elizavoice-jni",
+    "packages/app/platforms/android/sense",
+    "packages/auth/android",
+    "plugins/plugin-local-inference/native/android",
+    "plugins/plugin-native-action-journal/android",
+    "plugins/plugin-native-calendar/android",
+    "plugins/plugin-native-camera/android",
+    "plugins/plugin-native-filesystem/android",
+    "plugins/plugin-native-media/android",
+    "plugins/plugin-native-messages/android",
+    "plugins/plugin-native-notifications/android",
+    "plugins/plugin-native-reminders/android",
+    "plugins/plugin-native-secure-store/android",
+    "plugins/plugin-native-secure-store/android-nativeonly",
+    "plugins/plugin-native-system/android"
+  ],
+  "patches": []
+}

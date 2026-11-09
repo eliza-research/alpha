@@ -111,7 +111,7 @@ export function sharedSourcePaths() {
   const client = readJson(join(repositoryRoot, '.eliza/client-features/.source.json'));
   if (client.baseCommit !== pin.commit) throw Error('Prepare client sources for the current upstream pin before checking Quint coverage');
   const host = readJson(join(repositoryRoot, 'android/consumer-host.json'));
-  const patches = readJson(join(repositoryRoot, 'patches/eliza/native-manifest.json'));
+  const patches = readJson(join(repositoryRoot, 'android/upstream-native-sources.json'));
   const prefixes = new Set([
     ...Object.keys(client.sourceFiles),
     ...host.profile.modules.filter(module => ['upstream', 'patchedNative'].includes(module.source.root)).map(module => module.source.path),

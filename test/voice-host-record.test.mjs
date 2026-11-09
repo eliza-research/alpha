@@ -66,14 +66,12 @@ test('only a voice record for the current SDK can admit the native profile', () 
   }
 });
 
-test('current voice source binding includes every reviewed shared speech patch', () => {
-  const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'patches/eliza/native-manifest.json'), 'utf8'));
-  const patches = manifest.patches.filter(row => row.module === 'plugins/plugin-local-inference/native/android');
+test('historical voice source binding records its shared speech patches', () => {
   const binding = committed.sourceAdmission.sourceIntegration;
   assert.equal(binding.admittedAt, committed.pin);
-  assert.deepEqual(binding.speechPatches, patches);
+  assert.ok(binding.speechPatches.every(row => row.module === 'plugins/plugin-local-inference/native/android'));
   assert.deepEqual(committed.sourceAdmission.developComparison.explicitSpeechPatchFiles,
-    patches.map(row => `patches/eliza/${row.file}`));
+    binding.speechPatches.map(row => `patches/eliza/${row.file}`));
   assert.equal(binding.nativeInputsUnchanged, false);
   assert.equal(binding.nativeQualificationTransferred, false);
   assert.equal(committed.qualified, false);

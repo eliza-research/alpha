@@ -19,8 +19,7 @@ const compiled=['SmsTelephony','SmsTelephonyConfiguration','SmsSendJournal'];
 const product=['AlphaTelephony','AlphaTelephonyPlugin','AlphaSmsSendReceiver'].map(name=>app+name+'.java');
 const paths=[...members,...compiled].map(name=>shared+name+'.java');
 const launcherManifest='android/app/src/launcher/AndroidManifest.xml';
-const patchManifest='patches/eliza/native-manifest.json';
-const patch='patches/eliza/sms-reviewed-binding.patch';
+const patchManifest='android/upstream-native-sources.json';
 const harness='SmsDispatchTraces.java';
 
 function driverInputs(temporary, sourceRoot) {
@@ -53,7 +52,7 @@ export async function checkNativeSmsDispatch(extraSources = []) {
     const inputs=driverInputs(temporary,prepared.root);
     const generatedSources=[...paths.map(path=>join(prepared.root,path)),nativeReceipt,...inputs.files];
     const sources=[...product,...paths.map(path=>'vendor/eliza/'+path),launcherManifest,'android/consumer-host.json',
-      patchManifest,patch,app+'AlphaImageCapability.java',join(directory,harness),join(directory,'Trace.java'),
+      patchManifest,app+'AlphaImageCapability.java',join(directory,harness),join(directory,'Trace.java'),
       join(directory,'java.mjs'),join(directory,'sms-dispatch-platform.mjs'),fileURLToPath(import.meta.url),
       'test/fixtures/jvm-tools.mjs','test/fixtures/native-source.mjs','upstream.lock.json','scripts/upstream-native-source.mjs',
       'scripts/prepare-patched-native.mjs',...(jsonJar?[jsonJar]:[]),...generatedSources,...extraSources];

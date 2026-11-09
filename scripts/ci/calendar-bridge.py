@@ -232,7 +232,7 @@ def main():
         java_home / 'release', root / 'scripts/ci/calendar-bridge.init.gradle',
         root / 'scripts/ci/calendar-bridge.py', root / '.nvmrc',
         root / 'android/.eliza-consumer-profile.json', root / 'android/consumer-host.json',
-        root / 'upstream.lock.json', root / 'patches/eliza/native-manifest.json']
+        root / 'upstream.lock.json', root / 'android/upstream-native-sources.json']
     fixture = driver.parent / 'bridge-runtime'
     for relative, expected in OWNING_SHA256.items():
         require(digest(root / 'vendor/eliza' / relative) == expected, 'Canonical owning source changed')

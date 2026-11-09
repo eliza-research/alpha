@@ -5,6 +5,7 @@ import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {upstreamNativeSource,sha} from './upstream-native-source.mjs';
 const ROOT=fileURLToPath(new URL('../',import.meta.url));
+export const NATIVE_SOURCE_MANIFEST='android/upstream-native-sources.json';
 const HEX=/^[a-f0-9]{64}$/;
 const AUTH_ANDROID_MODULE='packages/auth/android';
 const BROWSER_ANDROID_MODULE='plugins/plugin-native-browser-surface/android';
@@ -55,8 +56,10 @@ export function verifyNativePatchReceipt(raw,prepared){let receipt;try{receipt=J
 export function preparePatchedNative({root=ROOT,manifestFile='native-manifest.json'}={}){
  root=path.resolve(root);
  if(manifestFile!=='native-manifest.json')throw Error('Unknown native patch slot');
- const source=upstreamNativeSource(root),patchRoot=path.join(root,'patches/eliza'),manifestBytes=fs.readFileSync(path.join(patchRoot,manifestFile)),manifest=JSON.parse(manifestBytes);
- const key=sha(Buffer.concat([manifestBytes,fs.readFileSync(fileURLToPath(import.meta.url))]));
+ const source=upstreamNativeSource(root),patchRoot=path.join(root,'patches/eliza'),manifestBytes=fs.readFileSync(path.join(root,NATIVE_SOURCE_MANIFEST)),configuration=JSON.parse(manifestBytes);
+ if(configuration.schema!==1||!Array.isArray(configuration.modules)||!Array.isArray(configuration.patches)||configuration.patches.length!==0)throw Error('Expected pinned native source modules');
+ const manifest={...configuration,baseCommit:source.pin};
+ const key=sha(Buffer.concat([Buffer.from(source.pin),manifestBytes,fs.readFileSync(fileURLToPath(import.meta.url))]));
  const parent=path.join(root,'.eliza/patched-native'),destination=path.join(parent,key);
  for(let current=parent;current!==root;current=path.dirname(current))if(fs.existsSync(current)&&fs.lstatSync(current).isSymbolicLink())throw Error('Symlink in native staging parent');
  const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-native-patches-'));
