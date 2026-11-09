@@ -195,7 +195,7 @@ final class AlphaCanonicalNotifications {
   foreground.current();
   // Compare-and-clear atomically: acknowledging A must never erase a newer tap B.
   synchronized(AlphaCanonicalNotifications.class){
-   if(active!=a||pendingTap==null||!token.equals(pendingTap.optString("token"))||pendingTap.getLong("expiresAt")<System.currentTimeMillis())throw new SecurityException("Notification tap changed");
+   if(active!=a||pendingTap==null||!token.equals(pendingTap.optString("token"))||pendingTap.getLong("expiresAt")<System.currentTimeMillis()||!a.identity.getString("subjectUserId").equals(pendingTap.getString("ownerId"))||!a.identity.getString("agentId").equals(pendingTap.getString("agentId")))throw new SecurityException("Notification tap changed");
    pending=new JSONObject(pendingTap.toString());pendingTap=null;
   }
   JSONObject response=AlphaLocalAgentPlugin.markNotificationRead(a.session,pending.getString("notificationId"));a.check();

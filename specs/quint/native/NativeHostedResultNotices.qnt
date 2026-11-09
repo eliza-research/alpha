@@ -8,6 +8,7 @@ module NativeHostedResultNotices {
     digests: int -> int,
     posted: Set[int],
     postCount: int -> int,
+    dispatchGenerations: int -> int,
     pending: int,
     question: bool,
     token: int,
@@ -34,6 +35,7 @@ module NativeHostedResultNotices {
     digests: routes.mapBy(_key => 0),
     posted: Set(),
     postCount: routes.mapBy(_key => 0),
+    dispatchGenerations: routes.mapBy(_key => 0),
     pending: 0, question: false, token: 0, issued: 0, outcome: "none"
   }
 
@@ -53,9 +55,8 @@ module NativeHostedResultNotices {
     Set("complete", "permission", "security", "before-post", "after-post", "before-write", "repair-write").contains(mode),
     if (not(matches(key))) s' = { ...s, outcome: "owner-changed" }
     else if (not(hasRetained(key))) s' = { ...s, outcome: "rejected" }
-    else if (s.phases.get(key) != "none") {
-      if (s.digests.get(key) != s.retained.get(key)) s' = { ...s, outcome: "rejected" }
-      else if (s.phases.get(key) == "dispatching") {
+    else if (s.phases.get(key) != "none" and s.digests.get(key) == s.retained.get(key)) {
+      if (s.phases.get(key) == "dispatching") {
         val result = if (s.posted.contains(key)) "posted" else "uncertain"
         if (mode.in(Set("before-write", "repair-write"))) s' = { ...s, outcome: "rejected" }
         else s' = { ...s, phases: s.phases.set(key, result), outcome: result }
@@ -71,6 +72,7 @@ module NativeHostedResultNotices {
       else {
         ...s,
         phases: removed.fold(s.phases.set(key, phase), (rows, prior) => rows.set(prior, "superseded")),
+        dispatchGenerations: s.dispatchGenerations.set(key, s.dispatchGenerations.get(key) + 1),
         digests: s.digests.set(key, s.retained.get(key)),
         posted: s.posted.exclude(removed).union(if (effect) Set(key) else Set()),
         postCount: if (effect) s.postCount.set(key, s.postCount.get(key) + 1) else s.postCount,
@@ -150,7 +152,8 @@ module NativeHostedResultNotices {
   val ExactReadOwner = readKey == 0 or matches(readKey)
   val PendingHasRoute = if (s.pending == 0) s.token == 0 and not(s.question)
     else s.phases.get(s.pending) != "none" and s.token == s.issued and s.token > 0
-  val NoReplayPost = routes.forall(key => s.postCount.get(key) <= 1)
+  // An unchanged digest never creates another dispatch; a reconciled new digest starts a new generation.
+  val NoReplayPost = routes.forall(key => s.postCount.get(key) <= s.dispatchGenerations.get(key))
   val DigestPrecedesEffect = s.posted.forall(key => s.digests.get(key).in(Set(1, 2)) and s.phases.get(key) != "none")
   val ReadRetentionIsExact = if (readRetained) s.retained.get(readKey) == s.digests.get(readKey) else true
   val safety = ExactReadOwner and PendingHasRoute and NoReplayPost and DigestPrecedesEffect and ReadRetentionIsExact
@@ -206,7 +209,8 @@ module NativeHostedResultNotices {
 
   run retainedBytesChangeDisablesExactReadTest = posted.then(capture(1, true, true))
     .then(retain(1, 2)).expect(readKey == 1 and not(readRetained))
-    .then(publish(1, "complete")).expect(s.outcome == "rejected" and s.postCount.get(1) == 1)
+    .then(publish(1, "complete")).expect(s.outcome == "posted" and s.postCount.get(1) == 2 and readRetained)
+    .then(publish(1, "complete")).expect(s.postCount.get(1) == 2)
 
   run consumeCanLeaveOpenedRowAndPendingTest = posted.then(capture(1, false, true))
     .then(consume(1, "pending")).expect(readToken == 1 and s.phases.get(1) == "opened")

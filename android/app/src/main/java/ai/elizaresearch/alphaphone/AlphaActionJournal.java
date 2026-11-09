@@ -23,6 +23,10 @@ final class AlphaActionJournal {
    // Passive history never expands every retained private read payload. Explicit
    // receipt recovery calls get() for one exact journal entry at a time.
    JSONObject result=entry.optJSONObject("result");if(result!=null&&result.has("readResult")){JSONObject summary=new JSONObject(result.toString());summary.remove("readResult");summary.put("readResultRetained",true);entry.put("result",summary);}if(result!=null&&result.optJSONObject("calendarResult")!=null&&result.getJSONObject("calendarResult").has("fields")){JSONObject summary=new JSONObject(result.toString());summary.getJSONObject("calendarResult").remove("fields");summary.put("calendarReadRetained",true);entry.put("result",summary);}if(result!=null&&result.optJSONObject("notesResult")!=null){JSONObject summary=new JSONObject(result.toString()),note=summary.getJSONObject("notesResult");if(note.has("fields")){note.remove("fields");summary.put("notesReadRetained",true);entry.put("result",summary);}else if(note.optJSONObject("record")!=null&&note.getJSONObject("record").has("fields")){note.getJSONObject("record").remove("fields");summary.put("notesReadRetained",true);entry.put("result",summary);}}if(result!=null&&result.optJSONObject("mapsResult")!=null){JSONObject summary=new JSONObject(result.toString());summary.remove("mapsResult");summary.put("mapsReadRetained",true);entry.put("result",summary);}
+     JSONObject projected=entry.optJSONObject("result"),reminder=projected==null?null:projected.optJSONObject("reminderResult");
+     if(reminder!=null&&"reminder_read_selected".equals(reminder.optString("kind"))&&reminder.has("fields")){
+      reminder.remove("fields");projected.put("reminderReadRetained",true);
+     }
      return entry;
     }
    });

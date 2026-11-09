@@ -158,7 +158,7 @@ export function writeStateAudit(root) {
     limitations: [
       'Candidate extraction does not establish state-machine coverage or implementation refinement.',
       'Bindings use syntactic owner/name matching. Aliases, computed mutation, external library state and closure escapes require source review.',
-      'Kotlin, data files and parse diagnostics remain explicit review work. Const containers and readonly fields may retain mutable contents.',
+      'CSS conditions, Kotlin, data files and parse diagnostics remain explicit review work. Const containers and readonly fields may retain mutable contents.',
       'Test-support path classification is a review aid. Other source paths can also contain verification code or inactive runtime branches.',
       'The ledger supplies pinned source bytes. Effective client/native/runtime patch outputs require their separately authenticated source mappings.',
     ],

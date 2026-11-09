@@ -23,7 +23,7 @@ final class AlphaHostedResultsPlugin extends Plugin {
 ${exact(bridge,' static final String CHANNEL=', ' private void channel()')}
 ${exact(bridge,' private void sourceForeground()', ' @PluginMethod public void nativeSourceIdentity')}
 ${exact(bridge,' @PluginMethod public void pendingSourceRenewal(', ' @Override public void load()')}
-${exact(bridge,' @Override protected void handleOnNewIntent(', ' @PluginMethod public void publishResult(')}
+${exact(bridge,' @Override protected void handleOnNewIntent(', ' /** The page reports')}
 ${exact(bridge,' @Override protected void handleOnDestroy()', '\n}')}
 }`,
     'ai/elizaresearch/alphaphone/FixtureRenewalPorts.java':`package ai.elizaresearch.alphaphone;
@@ -130,6 +130,7 @@ public final class NotificationChannel {
 import android.content.Context;
 import java.util.*;
 public final class Notification {
+ public static final int GROUP_ALERT_SUMMARY=1;
  public static final int VISIBILITY_PRIVATE=1;
  public static final String CATEGORY_STATUS="status",CATEGORY_REMINDER="reminder";
  public String channel,title,text,category;
@@ -158,6 +159,8 @@ public final class Notification {
   public Builder setContentIntent(PendingIntent value){n.tap=value;return this;}
   public Builder addAction(Action value){n.actions.add(value);return this;}
   public Builder setOnlyAlertOnce(boolean value){n.onlyOnce=value;return this;}
+  public Builder setGroup(String group){return this;}
+  public Builder setGroupAlertBehavior(int behavior){return this;}
   public Builder setAutoCancel(boolean value){n.autoCancel=value;return this;}
   public Builder setTimeoutAfter(long value){n.timeout=value;return this;}
   public Builder setCategory(String value){n.category=value;return this;}
@@ -213,6 +216,7 @@ public class Plugin {
  }
  protected void handleOnNewIntent(Intent intent){}
  protected void handleOnResume(){}
+ protected void handleOnPause(){}
  protected void handleOnDestroy(){activity.destroyed=true;}
 }`,
     'com/getcapacitor/annotation/PluginAnnotation.java':'package com.getcapacitor.annotation;public @interface PluginAnnotation {}',

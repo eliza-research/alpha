@@ -26,7 +26,7 @@ module CanonicalNotificationTap {
     s' = {...s, active: actor, lastActor: actor, owner: owner, agent: agent, authorized: true}
   }
   action detach(retire: bool): bool = s' = {...s, active: 0, owner: 0, agent: 0, authorized: false,
-    pending: if (retire) noDelivery else s.pending}
+    pending: if (retire) noDelivery else s.pending, waiting: if (retire) noTap else s.waiting}
   action authorize(ok: bool): bool = all {s.active != 0, s' = {...s, authorized: ok}}
   action foreground(visible: bool): bool = s' = {...s, visible: visible}
   action destroyBridge = all {s.bridge, s' = {...s, bridge: false}}
@@ -87,6 +87,7 @@ module CanonicalNotificationTap {
     s.call.phase == "checked",
     val matches = onScreen and s.active == s.call.actor and s.pending.token != 0
       and s.pending.token == s.call.token and s.now <= s.pending.expires
+      and s.pending.owner == s.owner and s.pending.agent == s.agent
     s' = if (matches) {...s, pending: noDelivery, posted: s.posted.union(Set(s.call.token)),
       call: {...s.call, phase: "posted"}} else {...s, call: {...s.call, phase: "rejected"}}
   }

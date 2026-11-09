@@ -768,3 +768,35 @@ PendingIntent on API 34 and later. No installed package, Activity, capture or
 device Settings are used. Android caller identity disclosure, component
 availability, permission enforcement, task placement and unlock scheduling
 remain platform obligations.
+
+### Native action journal recovery
+
+`NativeActionRecovery` covers the product action journal's exact
+notification, Calendar deletion and reminder receipt recovery and passive
+history projection. The fixture runs the actual product recovery methods
+on the pinned shared worker and journal. It also runs the shared
+notification receipt ledger and exact reminder receipt lookup and hashing.
+It checks that recovery can record success from matching evidence only
+when the journal has a recorded attempt. Notification receipt promotion and action journal
+settlement can commit separately, including a storage error reported after
+either commit. Missing, conflicting, pending and exact retained evidence
+are observed alongside legacy unknown rows and retired bridges.
+
+The as-built replay in commit `00a4872aea` observed a synthetic reminder
+receipt settling an applying row under a different owner and proposal
+binding when the caller supplied that binding and the operation matched.
+It also observed passive history returning selected-reminder title, body
+and schedule fields. The repaired recovery verifies the selected
+journal's scope, proposal and recomputed binding before consulting
+the reminder receipt. Settled rows still return their retained receipt
+without another lookup. An unresolved row without binding metadata
+remains available for exact read but cannot settle through recovery.
+
+Passive history now reports `reminderReadRetained` with the selected
+reminder's retained identity and summary. Exact `get` still returns the
+complete stored receipt. The replay checks that history leaves durable
+bytes unchanged and that a reminder creation retains its original result.
+
+The ports provide one selected journal row, storage interruption, deletion
+receipt evidence and notification active-list matches. No notification,
+reminder, deletion, provider or Android device action executes.

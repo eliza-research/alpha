@@ -108,9 +108,10 @@ final class JSObject extends JSONObject {
  JSObject(){}
  JSObject(String text){super(text);}
 }
-final class JSArray extends org.json.JSONArray {
- JSArray(org.json.JSONArray value){super(value.toString());}
- @SuppressWarnings("unchecked") public <E> java.util.List<E> toList(){return (java.util.List<E>)(java.util.List<?>)super.toList();}
+final class JSArray {
+ private final org.json.JSONArray value;
+ JSArray(org.json.JSONArray value){this.value=value;}
+ @SuppressWarnings("unchecked") public <E> java.util.List<E> toList(){return (java.util.List<E>)(java.util.List<?>)value.toList();}
 }
 final class PluginCall {
  final JSObject data;

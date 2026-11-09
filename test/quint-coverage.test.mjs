@@ -110,6 +110,8 @@ test('source discovery follows consumed shared modules and rejects a stale clien
         ? [{sources: ['vendor/eliza/plugins/worker/src/state.ts']}] : []);
     }
     write('backend/.generated/runtime.js', '/* emitted runtime bundle */');
+    write('apps/app/src/visibility.css', '[data-active-view="home"] { display: block; }');
+    write('vendor/eliza/plugins/fixture/android/src/main/visibility.css', 'section { display: block; }');
     write('vendor/eliza/plugins/worker/src/state.ts', 'export let queued = false;');
     const graph = {schema:1,sourcePin:'fixture',classification:'observed-product-android-bundle-inputs',producer:{sourceTreeVerifiedBeforeAndAfter:true,inputHashesUnchanged:true},files:{'plugins/worker/src/state.ts':{tracked:true,sha256:sha256('export let queued = false;')}}};
     write('specs/quint/refinement/services/runtime-bundle-inputs.json', graph);
@@ -129,7 +131,10 @@ test('source discovery follows consumed shared modules and rejects a stale clien
     ]);
     const authored = spawnSync(process.execPath, ['--input-type=module', '-e', "import {sourcePaths} from './scripts/quint-lib.mjs'; console.log(JSON.stringify(sourcePaths()));"], {cwd: root, encoding: 'utf8'});
     assert.equal(authored.status, 0, authored.stderr);
-    assert.ok(!JSON.parse(authored.stdout).includes('backend/.generated/runtime.js'));
+    const paths = JSON.parse(authored.stdout);
+    assert.ok(paths.includes('apps/app/src/visibility.css'));
+    assert.ok(!paths.includes('backend/.generated/runtime.js'));
+    assert.ok(!paths.includes('vendor/eliza/plugins/fixture/android/src/main/visibility.css'));
     write('vendor/eliza/plugins/fixture/android/src/main/java/Added.java', 'class Added {}');
     assert.ok(JSON.parse(run().stdout).includes('vendor/eliza/plugins/fixture/android/src/main/java/Added.java'));
     write('specs/quint/refinement/services/runtime-bundle-inputs.json', {...graph,sourcePin:'obsolete'});

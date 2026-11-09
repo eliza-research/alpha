@@ -44,7 +44,9 @@ public final class AlphaActionJournalPlugin extends ActionJournalPlugin {
   if(!Set.of("reminder_create","reminder_read_selected","reminder_update","reminder_complete","reminder_snooze","reminder_cancel").contains(operation.optString("type")))throw new IllegalArgumentException();
   if("terminal".equals(entry.optString("phase"))&&!"unknown".equals(entry.optString("status")))return response(entry);
   if(!"applying".equals(entry.optString("phase"))&&!"unknown".equals(entry.optString("status")))throw new IllegalStateException();
-  JSONObject receipt=AlphaReminders.engine(getContext()).operationReceipt(entry.getString("operationId"),call.getString("bindingHash"),operation);
+  String binding=call.getString("bindingHash");
+  if(!scope.equals(entry.getString("scope"))||!id.equals(entry.getString("proposalId"))||!NoticeRecovery.binding(entry,scope,id).equals(binding))throw new IllegalStateException("Reminder recovery binding changed");
+  JSONObject receipt=AlphaReminders.engine(getContext()).operationReceipt(entry.getString("operationId"),binding,operation);
   if(!"succeeded".equals(receipt.optString("status")))return response(entry);
   entry.put("phase","terminal").put("status","succeeded").put("summary","Recovered the original saved reminder receipt. No action was repeated.").put("finishedAt",System.currentTimeMillis())
    .put("result",new JSONObject().put("operationId",entry.getString("operationId")).put("reminderResult",receipt.getJSONObject("result")));

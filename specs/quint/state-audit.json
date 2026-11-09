@@ -9,30 +9,30 @@
     "scripts/QuintJavaStateAudit.java": "2fc3a4b95281d0d7fc69d351b276051089814aef42ba2833eade6d4796e822bf",
     "scripts/quint-java-state-audit.mjs": "fd7baaa3fbcff6e3b42b79022ee488aeb6ff0aabd6a168a22b4cb1c8cb3abf0f"
   },
-  "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
+  "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "617dbe6dfa72c96984036e4632a2be5a26ea08ad7a5d9378c96a0dc8b6797f0d",
+  "ledgerSha256": "08583b33ddda7970f06fb2c432db326446c84b3a54911dc091077cf5574982e8",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
     "Bindings use syntactic owner/name matching. Aliases, computed mutation, external library state and closure escapes require source review.",
-    "Kotlin, data files and parse diagnostics remain explicit review work. Const containers and readonly fields may retain mutable contents.",
+    "CSS conditions, Kotlin, data files and parse diagnostics remain explicit review work. Const containers and readonly fields may retain mutable contents.",
     "Test-support path classification is a review aid. Other source paths can also contain verification code or inactive runtime branches.",
     "The ledger supplies pinned source bytes. Effective client/native/runtime patch outputs require their separately authenticated source mappings."
   ],
   "counts": {
-    "files": 5684,
+    "files": 5700,
     "testSupportFiles": 287,
     "testSupportCandidates": 11480,
-    "parsedFiles": 5629,
-    "languageReview": 55,
+    "parsedFiles": 5630,
+    "languageReview": 70,
     "parseErrors": 0,
-    "candidates": 67131,
-    "writeSites": 66567,
-    "writeAssociations": 59746,
+    "candidates": 67174,
+    "writeSites": 66638,
+    "writeAssociations": 59785,
     "asynchronous": 8301,
-    "unassignedWrites": 10189
+    "unassignedWrites": 10221
   },
   "files": [
     {
@@ -16689,10 +16689,11 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaActionJournal.java",
-      "sha256": "48b5f531109d9b65125048609e386c3ea31aac33f2d54189dc3af21702051e18",
+      "sha256": "f7cdc4ec367f8ecabf53562b6deedf5eda4b86fec1145a2f289acb335d2777b3",
       "allocatedModels": [
         "WorkflowExecution",
-        "NativeClockReview"
+        "NativeClockReview",
+        "NativeActionRecovery"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -16731,12 +16732,12 @@
         {
           "owner": "AlphaActionJournal.get@13.Anonymous@19.listView@21",
           "line": 21,
-          "bindings": 8,
-          "writes": 34
+          "bindings": 10,
+          "writes": 36
         },
         {
-          "owner": "AlphaActionJournal.checkResult@32",
-          "line": 32,
+          "owner": "AlphaActionJournal.checkResult@36",
+          "line": 36,
           "bindings": 22,
           "writes": 0
         }
@@ -16747,11 +16748,13 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaActionJournalPlugin.java",
-      "sha256": "167d6b90f79481010ddf9f88ae17bd53cb7f2b6bfcda93b84e5f0ba3a0eca629",
+      "sha256": "e1ccef19c3f1fcf2bd673b68ce0eb2a48c4db01ec479c7b710d2ba6de7e081f8",
       "allocatedModels": [
         "WorkflowExecution",
-        "NativeClockReview"
+        "NativeClockReview",
+        "NativeActionRecovery"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -16824,132 +16827,132 @@
         {
           "owner": "AlphaActionJournalPlugin.recoverReminder@41.lambda@41",
           "line": 41,
-          "bindings": 6,
+          "bindings": 7,
           "writes": 1
         },
         {
-          "owner": "AlphaActionJournalPlugin.recoverReminder@41.lambda@41.lambda@51",
-          "line": 51,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "AlphaActionJournalPlugin",
+          "owner": "AlphaActionJournalPlugin.recoverReminder@41.lambda@41.lambda@53",
           "line": 53,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaActionJournalPlugin.clockUi@54",
-          "line": 54,
+          "owner": "AlphaActionJournalPlugin",
+          "line": 55,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaActionJournalPlugin.clockUi@56",
+          "line": 56,
           "bindings": 4,
           "writes": 2
         },
         {
-          "owner": "AlphaActionJournalPlugin.clockEntry@62",
-          "line": 62,
+          "owner": "AlphaActionJournalPlugin.clockEntry@64",
+          "line": 64,
           "bindings": 9,
           "writes": 0
         },
         {
-          "owner": "AlphaActionJournalPlugin.clockReply@73",
-          "line": 73,
+          "owner": "AlphaActionJournalPlugin.clockReply@75",
+          "line": 75,
           "bindings": 3,
           "writes": 1
         },
         {
-          "owner": "AlphaActionJournalPlugin.clockMarker@76",
-          "line": 76,
+          "owner": "AlphaActionJournalPlugin.clockMarker@78",
+          "line": 78,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "AlphaActionJournalPlugin.clockWork@82",
-          "line": 82,
+          "owner": "AlphaActionJournalPlugin.clockWork@84",
+          "line": 84,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "AlphaActionJournalPlugin.reviewClock@85",
-          "line": 85,
+          "owner": "AlphaActionJournalPlugin.reviewClock@87",
+          "line": 87,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaActionJournalPlugin.reviewClock@85.lambda@86",
-          "line": 87,
+          "owner": "AlphaActionJournalPlugin.reviewClock@87.lambda@88",
+          "line": 89,
           "bindings": 13,
           "writes": 8
         },
         {
-          "owner": "AlphaActionJournalPlugin.reviewClock@85.lambda@86.lambda@94",
-          "line": 94,
+          "owner": "AlphaActionJournalPlugin.reviewClock@87.lambda@88.lambda@96",
+          "line": 96,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaActionJournalPlugin.reviewClock@85.lambda@86.lambda@99",
-          "line": 99,
+          "owner": "AlphaActionJournalPlugin.reviewClock@87.lambda@88.lambda@101",
+          "line": 101,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaActionJournalPlugin.reviewClock@85.lambda@86.lambda@101.lambda@102",
-          "line": 102,
+          "owner": "AlphaActionJournalPlugin.reviewClock@87.lambda@88.lambda@103.lambda@104",
+          "line": 104,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaActionJournalPlugin.reviewClock@85.lambda@86.lambda@101.lambda@102.lambda@102",
-          "line": 102,
+          "owner": "AlphaActionJournalPlugin.reviewClock@87.lambda@88.lambda@103.lambda@104.lambda@104",
+          "line": 104,
           "bindings": 5,
           "writes": 4
         },
         {
-          "owner": "AlphaActionJournalPlugin.reviewClock@85.lambda@86.lambda@101.lambda@102.lambda@102.lambda@105",
-          "line": 105,
+          "owner": "AlphaActionJournalPlugin.reviewClock@87.lambda@88.lambda@103.lambda@104.lambda@104.lambda@107",
+          "line": 107,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaActionJournalPlugin.cancelClock@111",
-          "line": 111,
+          "owner": "AlphaActionJournalPlugin.cancelClock@113",
+          "line": 113,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaActionJournalPlugin.cancelClock@111.lambda@111",
-          "line": 111,
+          "owner": "AlphaActionJournalPlugin.cancelClock@113.lambda@113",
+          "line": 113,
           "bindings": 7,
           "writes": 3
         },
         {
-          "owner": "AlphaActionJournalPlugin.cancelClock@111.lambda@111.lambda@116",
-          "line": 116,
+          "owner": "AlphaActionJournalPlugin.cancelClock@113.lambda@113.lambda@118",
+          "line": 118,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaActionJournalPlugin.confirmClock@119",
-          "line": 119,
+          "owner": "AlphaActionJournalPlugin.confirmClock@121",
+          "line": 121,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaActionJournalPlugin.confirmClock@119.lambda@122",
-          "line": 122,
+          "owner": "AlphaActionJournalPlugin.confirmClock@121.lambda@124",
+          "line": 124,
           "bindings": 10,
           "writes": 2
         },
         {
-          "owner": "AlphaActionJournalPlugin.confirmClock@119.lambda@122.lambda@129",
-          "line": 129,
+          "owner": "AlphaActionJournalPlugin.confirmClock@121.lambda@124.lambda@131",
+          "line": 131,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaActionJournalPlugin.confirmClock@119.lambda@122.lambda@131",
-          "line": 131,
+          "owner": "AlphaActionJournalPlugin.confirmClock@121.lambda@124.lambda@133",
+          "line": 133,
           "bindings": 1,
           "writes": 0
         }
@@ -27439,7 +27442,8 @@
       "allocatedModels": [
         "NoticesAndCaches",
         "WorkflowExecution",
-        "WorkflowNoticeDelivery"
+        "WorkflowNoticeDelivery",
+        "NativeActionRecovery"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -29361,6 +29365,21 @@
       "unassignedWrites": 2
     },
     {
+      "path": "apps/app/src/browser/calendar-editor.css",
+      "sha256": "ae6c471d0a5c0618323f245bd69743fdfe03fcb6c1a92012d1f43324e28395dc",
+      "allocatedModels": [
+        "CalendarPresentation",
+        "CanonicalCalendarEditorClose"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
       "path": "apps/app/src/browser/calendar-editor.ts",
       "sha256": "c1c8d36fd8a6e3371cfa752b7ccbda2c60bd720adeb868ce7148129ad0e3b1a5",
       "allocatedModels": [
@@ -29400,6 +29419,20 @@
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "apps/app/src/browser/calendar-meeting.css",
+      "sha256": "f671693addc21437d764b94bf4b0b7449402cef76daeda4c2e56c18f0433ff1b",
+      "allocatedModels": [
+        "CalendarPresentation"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
       "owners": [],
       "parseErrors": [],
       "asynchronous": 0,
@@ -29493,6 +29526,20 @@
           "writes": 2
         }
       ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "apps/app/src/browser/calendar-response.css",
+      "sha256": "2ad0061f90fcc9d6e22d09e7cbe8d9964d16d65607286056d659d8892f0d9720",
+      "allocatedModels": [
+        "CalendarPresentation"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
+      "owners": [],
       "parseErrors": [],
       "asynchronous": 0,
       "unassignedWrites": 0
@@ -30346,6 +30393,21 @@
       "unassignedWrites": 1
     },
     {
+      "path": "apps/app/src/browser/device-controls.css",
+      "sha256": "7ea9125951766b186eb87de899e78d325e5301a21667ccc9eb6a7ee45261bd7e",
+      "allocatedModels": [
+        "DeviceActions",
+        "PreferencesAndPresentation"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
       "path": "apps/app/src/browser/device-controls.tsx",
       "sha256": "1843855a88eaea78e6058dfbb187bbb0152ebfe8455fce25f6b512bc901100a5",
       "allocatedModels": [
@@ -30982,6 +31044,21 @@
       "unassignedWrites": 0
     },
     {
+      "path": "apps/app/src/browser/mail-attachments.css",
+      "sha256": "5f91b7af9e3f2ab46bb6b2174f0af978ed3f35177e2672f9e589c9bd7e8c89d2",
+      "allocatedModels": [
+        "FilesAndSharing",
+        "ReviewedCopies"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
       "path": "apps/app/src/browser/mail-attachments.ts",
       "sha256": "2ca8cefa97fafdbdd32df11f80539ef6bb23e31853418870247e40d1c62e3fa5",
       "allocatedModels": [
@@ -31459,6 +31536,21 @@
       "unassignedWrites": 0
     },
     {
+      "path": "apps/app/src/browser/review.css",
+      "sha256": "69f35c33bb5e83ddde25dea543671a6637407d8bc31df0d7b03788d358f74118",
+      "allocatedModels": [
+        "BrowserReadingState",
+        "FilesAndSharing"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
       "path": "apps/app/src/browser/review.ts",
       "sha256": "868471b75eb5596ac756480dc5d1e2f8a12c79e03d80c51893429115370df37d",
       "allocatedModels": [
@@ -31547,6 +31639,21 @@
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "apps/app/src/browser/selected-document-viewer.css",
+      "sha256": "2595cf758bfb3a09f1266f81e13e182902adef415dbc6707f4d2ec2f2478969d",
+      "allocatedModels": [
+        "FilesAndSharing",
+        "FilesPreview"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
       "owners": [],
       "parseErrors": [],
       "asynchronous": 0,
@@ -33522,6 +33629,20 @@
       "parseErrors": [],
       "asynchronous": 12,
       "unassignedWrites": 7
+    },
+    {
+      "path": "apps/app/src/prototype/automations.css",
+      "sha256": "4eaffea25299c2af04464e5c69ac6e413edf79f33570a09ae2ff711ec8c29f99",
+      "allocatedModels": [
+        "WorkflowExecution"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
     },
     {
       "path": "apps/app/src/prototype/browser-adapter.ts",
@@ -39103,6 +39224,25 @@
       "unassignedWrites": 7
     },
     {
+      "path": "apps/app/src/prototype/phone.css",
+      "sha256": "8b2d45353806eeee536c9471560c6ee3df63d183db06ebd680ec3826472ac1b5",
+      "allocatedModels": [
+        "ShellNavigation",
+        "PreferencesAndPresentation",
+        "Maps",
+        "DockClearanceOwnership",
+        "HomeLayout",
+        "ChatInput"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
       "path": "apps/app/src/prototype/photo-library-adapter.ts",
       "sha256": "9c1b669a1f15a1d9d7e4ad4023c2854f721a3e5502dfd85974a3c900741551bc",
       "allocatedModels": [
@@ -39142,6 +39282,21 @@
           "writes": 1
         }
       ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "apps/app/src/prototype/prototype.css",
+      "sha256": "68785d9399fb21cc8f08e3dc323cd9f7e47d234e76c9a07cd4bc93b8e9872310",
+      "allocatedModels": [
+        "PreferencesAndPresentation",
+        "AssistantConversation"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
+      "owners": [],
       "parseErrors": [],
       "asynchronous": 0,
       "unassignedWrites": 0
@@ -39257,6 +39412,22 @@
       "parseErrors": [],
       "asynchronous": 12,
       "unassignedWrites": 3
+    },
+    {
+      "path": "apps/app/src/prototype/scan-dialog.css",
+      "sha256": "a8864125abc68005780b7678e92ecebeea78ee868c2ff0aa5e42f04254168a45",
+      "allocatedModels": [
+        "ScanDocument",
+        "MediaLifecycle",
+        "CameraSession"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
     },
     {
       "path": "apps/app/src/prototype/scan-document.ts",
@@ -41358,6 +41529,21 @@
       "unassignedWrites": 0
     },
     {
+      "path": "apps/app/src/runtime/cloud-membership-ui.css",
+      "sha256": "d2155680ba49292e285beb39e0d8e3765870f3e588a8b858a0e7bc18cfc99c2b",
+      "allocatedModels": [
+        "IdentitySession",
+        "ServiceAuthorization"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
       "path": "apps/app/src/runtime/cloud-membership-ui.tsx",
       "sha256": "ccea3c289765ae04f658aa6dbd03ef5fd5138d7d309bb571bc8a1b450160d910",
       "allocatedModels": [
@@ -41667,6 +41853,22 @@
       "parseErrors": [],
       "asynchronous": 29,
       "unassignedWrites": 1
+    },
+    {
+      "path": "apps/app/src/runtime/connection-ui.css",
+      "sha256": "cffc4c8c55ef1f7d0a30df4b02c400e6ae0ea0a133ee4191e6acc1cdfee65745",
+      "allocatedModels": [
+        "Application",
+        "IdentitySession",
+        "ServiceAuthorization"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
     },
     {
       "path": "apps/app/src/runtime/connection-ui.tsx",
@@ -42172,6 +42374,20 @@
           "writes": 1
         }
       ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "apps/app/src/runtime/deletion-undo.css",
+      "sha256": "95423567541e15fdc5b24927702ffb9e3c12e29a9173f3c6d380346d30dd08ba",
+      "allocatedModels": [
+        "DeletionJournal"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
+      "owners": [],
       "parseErrors": [],
       "asynchronous": 0,
       "unassignedWrites": 0
@@ -45218,6 +45434,21 @@
       "unassignedWrites": 0
     },
     {
+      "path": "apps/app/src/startup-permissions.css",
+      "sha256": "ea654be2027657818e6a441081a9c178a5e92b67a094b37ffbe1a1645c9c3a8b",
+      "allocatedModels": [
+        "StartupPermissions",
+        "PermissionWalkthrough"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
       "path": "apps/app/src/startup-permissions.tsx",
       "sha256": "d3998558ae59344fe67b5319249a07fad1aac273ebfd6c0a4f027971989c706d",
       "allocatedModels": [
@@ -45785,7 +46016,8 @@
         "DevelopmentRuntimeLoader",
         "CombinedAgentLauncher",
         "ReviewedWorkflowLauncher",
-        "CoreConnectorCustody"
+        "CoreConnectorCustody",
+        "MobileBundleAdmission"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -46087,6 +46319,69 @@
       "parseErrors": [],
       "asynchronous": 0,
       "unassignedWrites": 3
+    },
+    {
+      "path": "vendor/eliza/packages/agent/scripts/build-mobile-bundle.ts",
+      "sha256": "8194667dca284bf957795c0bfa91094d67673981cfad47fd3ec2cb7f31c8af4a",
+      "allocatedModels": [
+        "MobileBundleAdmission"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "<module>",
+          "line": 83,
+          "bindings": 30,
+          "writes": 29
+        },
+        {
+          "owner": "findPgliteDist",
+          "line": 184,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "findPgliteDist.ArrowFunction@203",
+          "line": 212,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "setup",
+          "line": 575,
+          "bindings": 4,
+          "writes": 1
+        },
+        {
+          "owner": "findEthersCommonJsIndex",
+          "line": 807,
+          "bindings": 1,
+          "writes": 2
+        },
+        {
+          "owner": "findViemPackageRoot",
+          "line": 860,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "findInstalledPackageRoot",
+          "line": 933,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "setup.ArrowFunction@1385",
+          "line": 1392,
+          "bindings": 1,
+          "writes": 1
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 32
     },
     {
       "path": "vendor/eliza/packages/agent/scripts/mobile-stubs/argon2.ts",
@@ -165480,7 +165775,8 @@
       "sha256": "4902e0d10862fad375d87e70f15782017b685726c069b54e25350368b6cdd346",
       "allocatedModels": [
         "DurableStore",
-        "NativeClockReview"
+        "NativeClockReview",
+        "NativeActionRecovery"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -165692,7 +165988,8 @@
       "sha256": "783f9add42e344e6b00e6be534387cf87bf0eba8f363f100cd54df81a51baf04",
       "allocatedModels": [
         "DurableStore",
-        "NativeClockReview"
+        "NativeClockReview",
+        "NativeActionRecovery"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -166276,7 +166573,8 @@
       "allocatedModels": [
         "DeletionJournal",
         "DurableStore",
-        "ResetRecovery"
+        "ResetRecovery",
+        "NativeActionRecovery"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -184309,7 +184607,8 @@
         "DeviceActions",
         "NoticesAndCaches",
         "NotificationCollection",
-        "WorkflowNoticeDelivery"
+        "WorkflowNoticeDelivery",
+        "NativeActionRecovery"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -184590,7 +184889,8 @@
       "allocatedModels": [
         "DeviceActions",
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "NativeActionRecovery"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -188309,7 +188609,8 @@
         "DurableStore",
         "NoticesAndCaches",
         "NotificationCollection",
-        "NativeReminderDelivery"
+        "NativeReminderDelivery",
+        "NativeActionRecovery"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -218685,6 +218986,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "117b5d170de9f7ddb574d32cda6425798c4c108491bcd92bc74a76451a067117"
+    "sha256": "d76d4b295c6880da4d9620c6647799a7d8d03494d5a6609d474bab96858946ea"
   }
 }

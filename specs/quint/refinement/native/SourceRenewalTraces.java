@@ -94,10 +94,10 @@ public static void beforeNotify(String tag,Notification notice){
   check(tag.startsWith(prefix),"Exact redacted renewal tag");
   String key=tag.substring(prefix.length());int id=f.idOf(key);
   check(f.disk().getJSONObject(key).getString("phase").equals("dispatching"),"Notification attempt follows durable dispatch reservation");
-  check(notice.channel.equals("alpha-hosted-results")&&notice.title.equals("Scheduled brief source expires soon")&&
-   notice.text.equals("Renew it in Alpha Phone to keep your brief reading it.")&&notice.category.equals("reminder")&&
+  check(notice.channel.equals("alpha-hosted-results")&&notice.title.equals("A brief source expires soon")&&
+   notice.text.equals("Renew it to keep your brief updated.")&&notice.category.equals("reminder")&&
    notice.visibility==Notification.VISIBILITY_PRIVATE&&notice.icon==1&&notice.onlyOnce&&notice.autoCancel&&notice.timeout==EXPIRY-now&&
-   notice.publicNotice.title.equals("Alpha Phone")&&notice.publicNotice.text.equals("Open Alpha Phone to review."),"Redacted notice, timeout and lifecycle flags");
+   notice.publicNotice.title.equals("Alpha Phone")&&notice.publicNotice.text.equals("Tap to open."),"Redacted notice, timeout and lifecycle flags");
   check(notice.actions.size()==2&&notice.actions.get(0).title().equals("Renew")&&notice.actions.get(0).tap()==notice.tap&&
    notice.actions.get(1).title().equals("Ask Alpha")&&notice.actions.get(1).authenticated(),"Exact two notice actions and question authentication");
   checkRoute(notice.tap,key,HostedNoticePoster.RENEW_ACTION);

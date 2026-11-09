@@ -8,6 +8,6 @@ test('the actual native canonical tap slots and bridge refine custody and acknow
   assert.equal(receipt.passed, true);
   assert.equal(receipt.driverInputsBound, true);
   assert.equal(receipt.traces, 9);
-  assert.equal(receipt.checkpoints, 173);
+  assert.equal(receipt.checkpoints, 176);
   assert.ok(receipt.observedFields.includes('s.posted'));
 });
