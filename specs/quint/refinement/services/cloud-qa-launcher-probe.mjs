@@ -83,7 +83,8 @@ Object.assign(process.env, {
   ...(defaultSource ? {} : {ALPHA_ELIZA_SOURCE: source}),
 });
 const kinds = {'personal-profile': 'personal', 'wrong-route': 'wrongRoute', 'invalid-token': 'badToken',
-  'saved-profile': 'saved', 'receipt-write': 'saved', 'linked-log': 'linkedLog'};
+  'saved-profile': 'saved', 'receipt-write': 'saved', 'linked-log': 'linkedLog',
+  'hardlinked-log': 'hardlinkedLog', 'fifo-log': 'fifoLog'};
 const kind = kinds[scenario] ?? 'fresh';
 const priorReceipt = ['saved-profile', 'receipt-write'].includes(scenario);
 if (kind === 'personal') write(join(profile, 'history'), 'unrelated synthetic contents');
@@ -93,10 +94,13 @@ else if (kind !== 'fresh') {
   json(config, {cloud: {enabled: true}, serviceRouting: {llmText: kind === 'wrongRoute' ? {...route, smallModel: 'different'} : route},
     plugins: {entries: {'personal-assistant': {enabled: false}}}});
   if (priorReceipt) json(receipt, {pid: 5, purpose: 'isolated-staging-cloud-qa'});
-  if (kind === 'linkedLog') {
+  if (kind === 'linkedLog' || kind === 'hardlinkedLog') {
     write(otherLog, 'untouched fixture bytes', 0o644);
-    fs.symlinkSync(otherLog, log);
-  }
+    if (kind === 'linkedLog') fs.symlinkSync(otherLog, log);
+    else fs.linkSync(otherLog, log);
+  } else if (kind === 'fifoLog') {
+    execFileSync('mkfifo', [log], {cwd: scratch, timeout: 5000, stdio: 'pipe'});
+  } else if (scenario === 'saved-profile') write(log, 'prior log bytes', 0o644);
 }
 const baseListeners = process.listenerCount('SIGTERM');
 const state = {kind, phase: 'checking', source: 'none', entry: false, logOpen: false,
@@ -112,7 +116,7 @@ const getReceipt = () => !file(receipt) ? 'none' : read(receipt).pid === 5 ? 'pr
 const observe = () => {
   const snapshot = {...state, profile: directory(profile), marker: file(marker), token: file(token), route: inspectRoute(),
     supervised: process.listenerCount('SIGTERM') > baseListeners, receipt: getReceipt(),
-    foreignLogModeChanged: kind === 'linkedLog' && privateMode(otherLog) !== 0o644,
+    foreignLogModeChanged: file(otherLog) && privateMode(otherLog) !== 0o644,
     tempClean: !directory(profile) || !fs.readdirSync(profile).some(name => name.startsWith('process.json.') && name.endsWith('.tmp'))};
   return Object.fromEntries(Object.entries(snapshot).map(([name, value]) => ['s.'+name, value]));
 };
@@ -129,7 +133,7 @@ const exitOutcomes = {
   'missing-model': ['model', /exact reviewed/], 'personal-profile': ['personal', /existing non-QA/],
   'missing-entry': ['entry', /source entrypoint is missing/], 'wrong-route': ['route', /profile routing differs/],
   'invalid-token': ['token', /INVALID_RUNTIME_TOKEN/], 'no-pid': ['spawn', /RUNTIME_PROCESS_FAILED/],
-  'linked-log': ['spawn', /RUNTIME_PROCESS_FAILED/],
+  'linked-log': ['log', /ELOOP/], 'hardlinked-log': ['log', /single-link regular file/], 'fifo-log': ['log', /ENXIO/],
   'revision-read': ['revision', /Fixture revision read refused/], 'receipt-write': ['write', /Fixture receipt rename refused/],
   'pending-signal': ['cancelled', /RUNTIME_LAUNCH_CANCELLED/],
 };
@@ -189,10 +193,18 @@ globalThis.cloudQaPorts = {
     openSync(name, flags, mode) {
       assert.equal(name, log);
       readProfile();
+      const {O_WRONLY,O_APPEND,O_CREAT,O_NOFOLLOW,O_NONBLOCK} = fs.constants;
+      assert.equal(flags, O_WRONLY|O_APPEND|O_CREAT|O_NOFOLLOW|O_NONBLOCK);
       logFd = fs.openSync(name, flags, mode);
-      Object.assign(state, {phase: 'log', logOpen: true});
-      point('The accepted staging route opens one log descriptor', action('openLog'));
       return logFd;
+    },
+    fchmodSync(fd, mode) {
+      assert.equal(fd, logFd);
+      const stat = fs.fstatSync(fd);
+      assert.ok(stat.isFile() && stat.nlink === 1);
+      fs.fchmodSync(fd, mode);
+      Object.assign(state, {phase: 'log', logOpen: true});
+      point('The accepted staging route owns a regular log descriptor', action('openLog'));
     },
     closeSync(fd) {
       assert.equal(fd, logFd);
@@ -267,7 +279,7 @@ globalThis.cloudQaPorts = {
     for (const name of ['OPENAI_API_KEY','ANTHROPIC_API_KEY','CEREBRAS_API_KEY','VITE_ELIZAOS_CLOUD_API_KEY'])
       assert.ok(!Object.hasOwn(env, name));
     assert.equal(privateMode(log), 0o600);
-    const noPid = ['no-pid', 'linked-log'].includes(scenario);
+    const noPid = scenario === 'no-pid';
     child = new EventEmitter();
     if (!noPid) child.pid = 43210;
     child.kill = signal => {
@@ -318,10 +330,20 @@ process.once('exit', code => {
   if (initialToken !== null) assert.equal(fs.readFileSync(token, 'utf8'), initialToken);
   if (initialConfig !== null) assert.equal(fs.readFileSync(config, 'utf8'), initialConfig);
   if (kind === 'personal') assert.equal(fs.readFileSync(join(profile,'history'),'utf8'), 'unrelated synthetic contents');
-  if (scenario === 'linked-log') {
-    assert.ok(fs.lstatSync(log).isSymbolicLink());
-    assert.equal(privateMode(otherLog), 0o600);
+  if (result === 'log') assert.equal(child, undefined);
+  if (file(otherLog)) {
+    if (kind === 'linkedLog') assert.ok(fs.lstatSync(log).isSymbolicLink());
+    else {
+      assert.equal(fs.statSync(otherLog).ino, fs.statSync(log).ino);
+      assert.equal(fs.statSync(log).nlink, 2);
+    }
+    assert.equal(privateMode(otherLog), 0o644);
     assert.equal(fs.readFileSync(otherLog, 'utf8'), 'untouched fixture bytes');
+  }
+  if (kind === 'fifoLog') assert.ok(fs.lstatSync(log).isFIFO());
+  if (scenario === 'saved-profile') {
+    assert.equal(fs.readFileSync(log, 'utf8'), 'prior log bytes');
+    assert.equal(privateMode(log), 0o600);
   }
   Object.assign(state, {phase: 'done', result, exitCode: code});
   point('Launcher exit closes its log and reports the source result', action('finish', result, code));

@@ -12,7 +12,7 @@ const probe = join(import.meta.dirname, 'cloud-qa-launcher-probe.mjs');
 const scenarios = [
   'relative-profile', 'protected-port', 'key-mode', 'missing-model', 'personal-profile', 'missing-entry',
   'wrong-route', 'invalid-token', 'fresh-default', 'saved-profile', 'exit-seven', 'no-pid',
-  'revision-read', 'receipt-write', 'pending-signal', 'running-signal', 'linked-log',
+  'revision-read', 'receipt-write', 'pending-signal', 'running-signal', 'linked-log', 'hardlinked-log', 'fifo-log',
 ];
 
 function runScenario(name) {
@@ -55,6 +55,6 @@ export async function checkCloudQaLauncher(extraSources = []) {
     'The exact product launcher, authority config, core argument preparation and pinned private profile, atomic writer and runtime supervisor execute against private synthetic files.',
     'The child process is a closed EventEmitter with explicit spawn, error, stop and close events. The source supervisor and launcher signal listeners remain exact. No runtime entry or service executes.',
     'Receipt failures and held rename are selected fixture schedules. A published receipt records the launch attempt, and may remain after close. It does not establish readiness, identity verification or model execution.',
-    'Single invocation and a representative prior profile/receipt only. Kernel signals, forced kill timeout, simultaneous profile ownership, OS port availability and Cloud or Android acceptance remain separate.',
+    'Log custody checks selected symlink, hardlink, FIFO and regular-file layouts with physical scratch paths. Single invocation and a representative prior profile/receipt only. Kernel signals, forced kill timeout, simultaneous profile ownership, OS port availability and Cloud or Android acceptance remain separate.',
   ]});
 }

@@ -7,7 +7,8 @@ module CloudQaLauncher {
     result: str, exitCode: int, tempClean: bool, foreignLogModeChanged: bool,
   }
   var s: State
-  pure val Kinds = Set("fresh", "personal", "saved", "wrongRoute", "badToken", "linkedLog")
+  pure val InvalidLogs = Set("linkedLog", "hardlinkedLog", "fifoLog")
+  pure val Kinds = Set("fresh", "personal", "saved", "wrongRoute", "badToken").union(InvalidLogs)
   pure val PreflightRefusals = Set("port", "key", "model", "personal", "path")
   pure val Signals = Set("SIGINT", "SIGTERM")
   pure val Codes = Set(0, 7, -1)
@@ -37,12 +38,12 @@ module CloudQaLauncher {
       route: if (s.kind == "wrongRoute") "wrong" else "staging"},
   }
   action openLog: bool = all {
-    s.phase == "profile", s.route == "staging", s.kind != "badToken",
+    s.phase == "profile", s.route == "staging", s.kind != "badToken", not(InvalidLogs.contains(s.kind)),
     s' = {...s, phase: "log", logOpen: true},
   }
   action requestChild(pid: bool): bool = all {
     s.phase == "log",
-    s' = {...s, phase: "requested", child: "requested", pid: pid, foreignLogModeChanged: s.kind == "linkedLog"},
+    s' = {...s, phase: "requested", child: "requested", pid: pid},
   }
   action ownChild: bool = all {
     s.phase == "requested", s.child == "requested", not(s.supervised),
@@ -109,8 +110,10 @@ module CloudQaLauncher {
   val SettledOwnsNoLiveChild = s.phase == "done" implies
     not(s.supervised) and not(s.logOpen) and s.child.in(Set("none", "closed")) and s.tempClean
   val FailedRecordKeepsPriorReceipt = s.fault != "none" implies s.receipt != "current"
+  val InvalidLogDoesNotAdmitChild = InvalidLogs.contains(s.kind) implies
+    not(s.logOpen) and s.child == "none" and not(s.foreignLogModeChanged)
   val safety = OwnedChildKeepsLog and ReceiptRequiresSpawn and AdmittedChildRequiresStagingProfile
-    and SettledOwnsNoLiveChild and FailedRecordKeepsPriorReceipt
+    and SettledOwnsNoLiveChild and FailedRecordKeepsPriorReceipt and InvalidLogDoesNotAdmitChild
 
   action step = any {
     { nondet source = Set("default", "explicit").oneOf()
@@ -153,8 +156,13 @@ module CloudQaLauncher {
     .then(prepareProfile).then(openLog).then(requestChild(true)).then(ownChild).then(beginRecord).then(stageReceipt)
     .then(requestStop("SIGINT", true)).then(closeChild(-1, "SIGINT")).then(publishReceipt)
     .then(finish("cancelled", 1)).expect(s.receipt == "current" and safety)
-  run linkedLogCanChangeAnotherFileModeTest = startState("linkedLog", false).then(checkEntry("explicit", true))
-    .then(prepareProfile).then(openLog).then(requestChild(false)).then(ownChild)
-    .then(requestStop("SIGTERM", false)).then(closeChild(-1, "none")).then(finish("spawn", 1))
-    .expect(s.foreignLogModeChanged and safety)
+  run linkedLogRefusesBeforeChildOrModeChangeTest = startState("linkedLog", false).then(checkEntry("explicit", true))
+    .then(prepareProfile).then(finish("log", 1))
+    .expect(s.child == "none" and not(s.foreignLogModeChanged) and safety)
+  run hardlinkedLogRefusesBeforeChildOrModeChangeTest = startState("hardlinkedLog", false).then(checkEntry("explicit", true))
+    .then(prepareProfile).then(finish("log", 1))
+    .expect(s.child == "none" and not(s.foreignLogModeChanged) and safety)
+  run fifoLogRefusesBeforeChildTest = startState("fifoLog", false).then(checkEntry("explicit", true))
+    .then(prepareProfile).then(finish("log", 1))
+    .expect(s.child == "none" and safety)
 }

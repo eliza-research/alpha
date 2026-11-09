@@ -2041,14 +2041,17 @@
         "noPidErrorReleasesLogWithoutReceiptTest",
         "failedRecordPreservesPriorReceiptAfterReapTest",
         "cancelledPendingRecordCanStillPublishHistoricalReceiptTest",
-        "linkedLogCanChangeAnotherFileModeTest"
+        "linkedLogRefusesBeforeChildOrModeChangeTest",
+        "hardlinkedLogRefusesBeforeChildOrModeChangeTest",
+        "fifoLogRefusesBeforeChildTest"
       ],
       "invariants": [
         "OwnedChildKeepsLog",
         "ReceiptRequiresSpawn",
         "AdmittedChildRequiresStagingProfile",
         "SettledOwnsNoLiveChild",
-        "FailedRecordKeepsPriorReceipt"
+        "FailedRecordKeepsPriorReceipt",
+        "InvalidLogDoesNotAdmitChild"
       ],
       "sources": [
         "scripts/start-cloud-qa.mjs",
@@ -2063,7 +2066,7 @@
         "source/entry": "Selected explicit or default fixture SDK and actual entry check",
         "logOpen/child/pid/supervised/stop/cancelled": "Product-owned descriptor and actual shared supervisor over the closed child port",
         "receipt/fault/tempClean/result/exitCode": "Real staged and published receipt bytes, controlled source faults and launcher exit",
-        "foreignLogModeChanged": "Observed distinct synthetic file mode under an existing linked log path"
+        "foreignLogModeChanged": "Observed preservation of a distinct synthetic file under a linked log path"
       },
       "abstractions": [
         "One invocation and one optional previous receipt. A historical process receipt can survive cancellation, child exit and retry.",
