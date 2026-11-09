@@ -54,8 +54,8 @@ module NativeCalendarSyncEnable {
     val current=s.lease and s.claimedEpoch==s.epoch
     val exactCas=s.held=="before" or s.heldExpected==s.durable
     val completed={...s,dialog:false,held:"none",heldExpected:"none",claimedEpoch:-1,
-      compareAttempts:s.compareAttempts+1,enableResult:if (current and exactCas) "ready" else "context-changed"}
-    s'=if (exactCas) persist(completed,"enabled",s.claimedEpoch) else completed
+      compareAttempts:s.compareAttempts+(if (current) 1 else 0),enableResult:if (current and exactCas) "ready" else "context-changed"}
+    s'=if (current and exactCas) persist(completed,"enabled",s.claimedEpoch) else completed
   }
   action readStatus = all {
     s.prepareResult=="ready",s.held=="none",
@@ -69,7 +69,7 @@ module NativeCalendarSyncEnable {
     s.deletionAllowed==(s.durable=="enabled")
   val CommittedConsentHasOwner = (s.durable=="enabled")== (s.enabledEpoch>=0)
   val PausedConsentNotResurrected = s.pauseResult!="paused" or s.durable!="enabled" or s.enabledEpoch==s.epoch
-  val safety = all {LeaseOwnsEpoch,HeldOwnsPendingReply,BothGatesUseCommittedConsent,CommittedConsentHasOwner}
+  val safety = all {LeaseOwnsEpoch,HeldOwnsPendingReply,BothGatesUseCommittedConsent,CommittedConsentHasOwner,PausedConsentNotResurrected}
   action step = any {
     seedDisabled,prepare,queueEnable,show,{nondet p=Set("before","after").oneOf();holdEnable(p)},
     {nondet count=Set(0,2,8).oneOf();setPauseRefusals(count)},pause,finishEnable,readStatus,s'=s
@@ -80,17 +80,24 @@ module NativeCalendarSyncEnable {
   run pauseAfterCommittedEnableRevokesTest = init.then(prepare).then(queueEnable).then(show)
     .then(holdEnable("before")).then(finishEnable).then(pause)
     .expect(s.pauseResult=="paused" and not(s.lease or s.cloudWriteAllowed or s.deletionAllowed))
-  run asBuiltPauseBeforeReadResurrectsTest = init.then(prepare).then(queueEnable).then(show)
+  run pauseBeforeReadRetiresOldEnableTest = init.then(prepare).then(queueEnable).then(show)
     .then(holdEnable("before")).then(pause).then(finishEnable)
-    .expect(not(PausedConsentNotResurrected) and s.enableResult=="context-changed" and s.cloudWriteAllowed and s.deletionAllowed)
-  run asBuiltSameDisabledBytesResurrectTest = init.then(seedDisabled).then(prepare).then(queueEnable).then(show)
+    .expect(PausedConsentNotResurrected and s.enableResult=="context-changed" and not(s.cloudWriteAllowed or s.deletionAllowed))
+  run pauseRetiresEnableWithSameDisabledBytesTest = init.then(seedDisabled).then(prepare).then(queueEnable).then(show)
     .then(holdEnable("after")).then(pause).then(finishEnable)
-    .expect(not(PausedConsentNotResurrected) and s.writes==List("paused","enabled"))
-  run changedCasSnapshotRefusesStaleEnableTest = init.then(prepare).then(queueEnable).then(show)
+    .expect(PausedConsentNotResurrected and s.writes==List("paused") and s.compareAttempts==1)
+  run changedCasSnapshotAlsoRetiresOldEnableTest = init.then(prepare).then(queueEnable).then(show)
     .then(holdEnable("after")).then(pause).then(finishEnable)
     .expect(s.durable=="paused" and s.enableResult=="context-changed")
   run pauseRetriesExactCasTest = init.then(prepare).then(setPauseRefusals(2)).then(pause)
     .expect(s.pauseResult=="paused" and s.compareAttempts==3 and s.writes==List("paused"))
   run pauseCasExhaustionIsUnavailableTest = init.then(prepare).then(setPauseRefusals(8)).then(pause)
     .expect(s.pauseResult=="unavailable" and not(s.lease) and s.durable=="absent" and s.compareAttempts==8)
+  run freshExplicitReviewCanEnableAfterPauseTest = init.then(prepare).then(queueEnable).then(show)
+    .then(holdEnable("before")).then(pause).then(finishEnable).then(prepare).then(queueEnable).then(show)
+    .then(holdEnable("before")).then(finishEnable)
+    .expect(PausedConsentNotResurrected and s.writes==List("paused","enabled") and s.enabledEpoch==1)
+  run pauseCasExhaustionRetainsPriorConsentTest = init.then(prepare).then(queueEnable).then(show)
+    .then(holdEnable("before")).then(finishEnable).then(setPauseRefusals(8)).then(pause)
+    .expect(s.pauseResult=="unavailable" and not(s.lease) and s.durable=="enabled" and s.compareAttempts==9)
 }

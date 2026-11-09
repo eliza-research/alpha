@@ -129,6 +129,7 @@ public final class CalendarSyncEnableTraces {
   switch(name) {
    case "enable-current" -> {finishEnable();readStatus();}
    case "pause-after-enable" -> {finishEnable();pause();readStatus();}
+   case "pause-exhausted-enabled" -> {finishEnable();setPauseRefusals(8);pause();readStatus();}
    case "pause-before-read","pause-after-read","pause-after-read-unchanged" -> {pause();finishEnable();readStatus();}
    case "pause-retry" -> {setPauseRefusals(2);pause();finishEnable();readStatus();}
    case "pause-exhausted" -> {setPauseRefusals(8);pause();finishEnable();readStatus();}

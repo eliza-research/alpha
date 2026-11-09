@@ -9,7 +9,7 @@ import {jsonJar} from '../../../../test/fixtures/jvm-tools.mjs';
 const model='NativeCalendarSyncEnable';
 const harness='CalendarSyncEnableTraces.java';
 const scenarios=['enable-current','pause-after-enable','pause-before-read','pause-after-read',
-  'pause-after-read-unchanged','pause-retry','pause-exhausted','fresh-after-pause'];
+  'pause-after-read-unchanged','pause-retry','pause-exhausted','pause-exhausted-enabled','fresh-after-pause'];
 
 export function generateCalendarSyncEnableTraces(extraSources=[],selected=scenarios){
   const fixture=calendarSyncEnablePlatform();

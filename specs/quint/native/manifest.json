@@ -2697,17 +2697,20 @@
       "tests": [
         "currentEnablePersistsExactConsentTest",
         "pauseAfterCommittedEnableRevokesTest",
-        "asBuiltPauseBeforeReadResurrectsTest",
-        "asBuiltSameDisabledBytesResurrectTest",
-        "changedCasSnapshotRefusesStaleEnableTest",
+        "pauseBeforeReadRetiresOldEnableTest",
+        "pauseRetiresEnableWithSameDisabledBytesTest",
+        "changedCasSnapshotAlsoRetiresOldEnableTest",
         "pauseRetriesExactCasTest",
-        "pauseCasExhaustionIsUnavailableTest"
+        "pauseCasExhaustionIsUnavailableTest",
+        "freshExplicitReviewCanEnableAfterPauseTest",
+        "pauseCasExhaustionRetainsPriorConsentTest"
       ],
       "invariants": [
         "LeaseOwnsEpoch",
         "HeldOwnsPendingReply",
         "BothGatesUseCommittedConsent",
-        "CommittedConsentHasOwner"
+        "CommittedConsentHasOwner",
+        "PausedConsentNotResurrected"
       ],
       "sources": [
         "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncBridge.java",
@@ -2735,7 +2738,7 @@
       "abstractions": [
         "One bridge, one exact owner/destination, pre-marked local source with no events and one held consent worker. Synthetic platform and credential store, no provider writes.",
         "Saved bytes are partitioned into absent, unchanged disabled, and enabled classes for this schedule. Enabled operation provenance is observed via accepted store writes.",
-        "Baseline deliberately permits retired consent CAS after successful pause. PausedConsentNotResurrected records the divergence."
+        "One bridge monitor orders enabled CAS against local lease retirement. A successful durable pause fences the old enable, and an exhausted pause CAS reports unavailable without fabricating durable revocation."
       ],
       "bounds": {
         "maxSamples": 1000,

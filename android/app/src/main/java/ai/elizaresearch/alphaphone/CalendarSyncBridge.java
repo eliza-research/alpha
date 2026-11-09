@@ -56,6 +56,11 @@ final class CalendarSyncBridge {
   String encoded=data.toString();if(encoded.getBytes(java.nio.charset.StandardCharsets.UTF_8).length>(revoking?4:3)*1024*1024)throw new IllegalStateException("Calendar sync receipt history needs review");
   if(!revisions.containsKey(data)||!store.compareExchangeCredentialSlot(SLOT,revisions.get(data),encoded))throw new IllegalStateException("Calendar sync journal changed");revisions.put(data,encoded);
  }
+ // The final enabled write and lease retirement must have one order, even when pause leaves the same raw journal bytes.
+ private synchronized void saveEnabled(Context context,JSONObject data)throws Exception{
+  if(retired||context!=lease||context.epoch!=epoch)throw new SecurityException("Calendar review changed");
+  save(data);
+ }
  private static String digest(Object value)throws Exception{return HostedResultNotices.hash(value.toString());}
  private static boolean same(Object left,Object right)throws Exception{return DeferredDeletionJournal.same(left,right);}
  private static String scope(Context context)throws Exception{
@@ -120,8 +125,8 @@ final class CalendarSyncBridge {
  }
  private JSObject projection(Context context)throws Exception{return JSObject.fromJSONObject(new JSONObject().put("status","ready").put("lease",context.id).put("binding",context.binding).put("destination",context.destination).put("events",context.events).put("enabled",enabled(context)));}
  void call(PluginCall call){String kind=call.getString("kind","");
- if(kind.equals("pause")){epoch++;lease=null;if(dialog!=null)dialog.dismiss();try{boolean saved=false;for(int attempt=0;attempt<8&&!saved;attempt++){JSONObject data=saved();data.put("enabled",false);try{save(data,true);saved=true;}catch(IllegalStateException conflict){if(attempt==7)throw conflict;}}call.resolve(status("paused"));}catch(Exception unavailable){call.resolve(status("unavailable"));}return;}
- if(kind.equals("cancel")){epoch++;lease=null;if(dialog!=null)dialog.dismiss();call.resolve(status("cancelled"));return;}final long requestedEpoch=epoch;try{worker.execute(()->{
+ if(kind.equals("pause")){pause();try{boolean saved=false;for(int attempt=0;attempt<8&&!saved;attempt++){JSONObject data=saved();data.put("enabled",false);try{save(data,true);saved=true;}catch(IllegalStateException conflict){if(attempt==7)throw conflict;}}call.resolve(status("paused"));}catch(Exception unavailable){call.resolve(status("unavailable"));}return;}
+ if(kind.equals("cancel")){pause();call.resolve(status("cancelled"));return;}final long requestedEpoch=epoch;try{worker.execute(()->{
   try{
    if(requestedEpoch!=epoch||retired){call.resolve(status("cancelled"));return;}
    if(kind.equals("prepare")&&!granted()){call.resolve(status("permission-required"));return;}
@@ -174,7 +179,7 @@ final class CalendarSyncBridge {
     plugin.getContext().getContentResolver().applyBatch(CalendarContract.AUTHORITY,operations);
    }
    check(current,false);read(current,Long.MAX_VALUE,false);
-   JSONObject data=saved();data.put("enabled",true).put("binding",current.binding).put("identity",current.owner.getJSONObject("identity")).put("credentialId",current.credentialId);save(data);
+   JSONObject data=saved();data.put("enabled",true).put("binding",current.binding).put("identity",current.owner.getJSONObject("identity")).put("credentialId",current.credentialId);saveEnabled(current,data);
    current.events=events(current);call.resolve(projection(current));
   }catch(LocalAgentProviderAdmission.CloudReadFailure failure){call.resolve(status(cloudFailure(failure)));}catch(Exception changed){call.resolve(status("context-changed"));}
  }
@@ -218,10 +223,10 @@ final class CalendarSyncBridge {
   CalendarSyncSnapshot after=CalendarSyncSnapshot.read(context.getContentResolver(),snapshot.calendarId,snapshot.eventId,AlphaCalendarPlugin.CONFIGURATION.accountName,AlphaCalendarPlugin.CONFIGURATION.localCalendarName,snapshot.generation);
   return new JSONObject().put("status",after.missing||after.deleted?"deleted":"unknown");
  }catch(android.content.OperationApplicationException conflict){return status("conflict");}catch(Exception failure){return status(dispatched?"unknown":"conflict");}}
- void pause(){epoch++;lease=null;if(dialog!=null)dialog.dismiss();}
+ void pause(){synchronized(this){epoch++;lease=null;}if(dialog!=null)dialog.dismiss();}
  static String deletionRefusal(android.content.Context context,JSONObject owner,JSONObject target){try{
   String raw=new AlphaCredentialStore(context).readCredentialSlot(SLOT);if(raw==null)return "sync-paused";JSONObject data=new JSONObject(raw);
   return data.getBoolean("enabled")&&same(data.getJSONObject("identity"),owner.getJSONObject("identity"))&&same(data.getJSONObject("binding"),target.getJSONObject("binding"))?null:"sync-paused";
  }catch(Exception unavailable){return "sync-unavailable";}}
- void destroy(){retired=true;pause();if(observing)plugin.getContext().getContentResolver().unregisterContentObserver(observer);worker.shutdown();}
+ void destroy(){synchronized(this){retired=true;}pause();if(observing)plugin.getContext().getContentResolver().unregisterContentObserver(observer);worker.shutdown();}
 }
