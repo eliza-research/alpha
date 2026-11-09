@@ -64,15 +64,28 @@ final class ClockAgentReview {
  /** Reserve the review before its journal marker is written; false while another review of it is open. */
  static synchronized boolean claim(Object owner,String id){if(open.containsKey(id))return false;open.put(id,new Open(owner));return true;}
  static synchronized void release(Object owner,String id){Open review=open.get(id);if(review!=null&&review.owner==owner)open.remove(id);}
- private static synchronized Decision settle(String id){Open review=open.remove(id);return review==null?null:review.decision;}
+ /** A callback can outlive its dialog and cannot claim its replacement. */
+ private static void choose(String id,Open expected,boolean accepted){
+  Decision decision;
+  synchronized(ClockAgentReview.class){
+   if(open.get(id)!=expected)return;
+   open.remove(id);decision=expected.decision;
+  }
+  if(decision!=null)decision.selected(accepted);
+ }
  static void show(Activity activity,Object owner,String id,JSONObject operation,Decision decision)throws Exception{
   validate(operation);foreground(activity);zone(operation);String action=operation.getString("action");String text;
   // Opening Clock changes no alarm, so the page sends show straight to confirmClock without this dialog.
   if("show".equals(action))throw new IllegalArgumentException();
   if("set".equals(action))text=String.format(java.util.Locale.ROOT,"Send %02d:%02d (%s)%s, label “%s”, to Clock? Clock may set this right away. Alpha can’t confirm the alarm.",operation.getInt("hour"),operation.getInt("minute"),operation.getString("timeZone"),repeatText(operation),operation.getString("label"));
   else text="Open Clock and choose the intended alarm yourself to "+action+" it. Alpha will not "+action+" any alarm."+("snooze".equals(action)?" Choose the duration in Clock; the requested "+operation.getInt("snoozeMinutes")+" minutes is not applied automatically.":"");
-  AlertDialog dialog=new AlertDialog.Builder(activity).setTitle("Open Clock?").setMessage(text).setPositiveButton("Continue to Clock",(d,w)->{if(settle(id)!=null)decision.selected(true);}).setNegativeButton("Cancel",(d,w)->{if(settle(id)!=null)decision.selected(false);}).setOnCancelListener(d->{if(settle(id)!=null)decision.selected(false);}).create();
-  synchronized(ClockAgentReview.class){Open review=open.get(id);if(review==null||review.owner!=owner)throw new IllegalStateException();review.dialog=dialog;review.decision=decision;}
+  Open review;
+  synchronized(ClockAgentReview.class){review=open.get(id);if(review==null||review.owner!=owner)throw new IllegalStateException();}
+  AlertDialog dialog=new AlertDialog.Builder(activity).setTitle("Open Clock?").setMessage(text)
+   .setPositiveButton("Continue to Clock",(d,w)->choose(id,review,true))
+   .setNegativeButton("Cancel",(d,w)->choose(id,review,false))
+   .setOnCancelListener(d->choose(id,review,false)).create();
+  synchronized(ClockAgentReview.class){if(open.get(id)!=review)throw new IllegalStateException();review.dialog=dialog;review.decision=decision;}
   dialog.show();
  }
  private static String repeatText(JSONObject operation){java.util.List<Integer> days=ClockDays.agent(operation.opt("days"));return days==null?(operation.has("days")?", one time":""):", repeating "+ClockDays.names(days);}

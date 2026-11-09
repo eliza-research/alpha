@@ -23,6 +23,10 @@ final class AlphaActionJournal {
    // Passive history never expands every retained private read payload. Explicit
    // receipt recovery calls get() for one exact journal entry at a time.
    JSONObject result=entry.optJSONObject("result");if(result!=null&&result.has("readResult")){JSONObject summary=new JSONObject(result.toString());summary.remove("readResult");summary.put("readResultRetained",true);entry.put("result",summary);}if(result!=null&&result.optJSONObject("calendarResult")!=null&&result.getJSONObject("calendarResult").has("fields")){JSONObject summary=new JSONObject(result.toString());summary.getJSONObject("calendarResult").remove("fields");summary.put("calendarReadRetained",true);entry.put("result",summary);}if(result!=null&&result.optJSONObject("notesResult")!=null){JSONObject summary=new JSONObject(result.toString()),note=summary.getJSONObject("notesResult");if(note.has("fields")){note.remove("fields");summary.put("notesReadRetained",true);entry.put("result",summary);}else if(note.optJSONObject("record")!=null&&note.getJSONObject("record").has("fields")){note.getJSONObject("record").remove("fields");summary.put("notesReadRetained",true);entry.put("result",summary);}}if(result!=null&&result.optJSONObject("mapsResult")!=null){JSONObject summary=new JSONObject(result.toString());summary.remove("mapsResult");summary.put("mapsReadRetained",true);entry.put("result",summary);}
+     JSONObject projected=entry.optJSONObject("result"),reminder=projected==null?null:projected.optJSONObject("reminderResult");
+     if(reminder!=null&&"reminder_read_selected".equals(reminder.optString("kind"))&&reminder.has("fields")){
+      reminder.remove("fields");projected.put("reminderReadRetained",true);
+     }
      return entry;
     }
    });
@@ -47,6 +51,15 @@ final class AlphaActionJournal {
      if(clock.length()!=3||!"clock-handoff".equals(clock.optString("kind"))||!operation.optString("action").equals(clock.optString("action"))||!Set.of("opened","unavailable","denied","failed","unknown").contains(outcome))throw new IllegalArgumentException();
      String expected="opened".equals(outcome)?"succeeded":"unknown".equals(outcome)?"unknown":"failed";
      if(!expected.equals(status))throw new IllegalArgumentException();
+     // Unknown is also a conservative renderer fallback. Preserve exact legacy terminal
+     // replays, whose summary and result remain subject to ActionJournal's idempotence check.
+     boolean replay="terminal".equals(entry.optString("phase"))&&status.equals(entry.optString("status"))&&sameJson(result,entry.optJSONObject("result"));
+     if(!"unknown".equals(outcome)&&!replay){
+      JSONObject review=entry.optJSONObject("clockReview");
+      if(review==null||!Set.of("finished","cancelled").contains(review.optString("phase"))
+       ||!entry.getString("attemptId").equals(review.optString("attemptId"))||!entry.getString("operationHash").equals(review.optString("operationHash"))
+       ||!sameJson(clock,review.optJSONObject("result")))throw new IllegalArgumentException("Clock result does not match the native receipt");
+     }
     }
    }else if("maps_read_selected".equals(type)){
     if(result.length()!=(result.has("mapsResult")?2:1)||!entry.getString("operationId").equals(result.optString("operationId")))throw new IllegalArgumentException();

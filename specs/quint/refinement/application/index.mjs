@@ -19,12 +19,74 @@ import {filesPreview} from './files-preview.mjs';
 import {runPermissionChoicesRefinement} from './permission-choices.mjs';
 import {checkCanonicalNotesController} from './canonical-notes-controller.mjs';
 import {checkCanonicalNotesDraft} from './canonical-notes-draft.mjs';
+import {checkCanonicalNotesFeedback} from './canonical-notes-feedback.mjs';
+import {checkCanonicalNotesMutation} from './canonical-notes-mutation.mjs';
+import {checkCanonicalNotesView} from './canonical-notes-view.mjs';
+import {checkCanonicalCalendarDraft} from './canonical-calendar-draft.mjs';
+import {checkAgentCalendarRefresh} from './agent-calendar-refresh.mjs';
+import {checkAgentCalendarMutation} from './agent-calendar-mutation.mjs';
+import {checkAgentCalendarEventReturn} from './agent-calendar-event-return.mjs';
+import {checkMapsEventReturn} from './maps-event-return.mjs';
+import {checkMapsRerouteOwnership} from './maps-reroute-ownership.mjs';
+import {checkCloudConnectionNotices} from './cloud-connection-notices.mjs';
+import {checkAgentCalendarSyncControl} from './agent-calendar-sync-control.mjs';
+import {checkGoogleCalendarLinkFlow} from './google-calendar-link-flow.mjs';
+import {checkGoogleCalendarDisconnect} from './google-calendar-disconnect.mjs';
+import {checkGoogleCalendarLinkPublication} from './google-calendar-link-publication.mjs';
+import {checkGoogleCalendarAccessChoice} from './google-calendar-access-choice.mjs';
+import {checkCalendarPreservationConfirmation} from './calendar-preservation-confirmation.mjs';
+import {checkCanonicalCalendarEditorClose} from './canonical-calendar-editor-close.mjs';
+import {checkCanonicalCalendarDraftHandoff} from './canonical-calendar-draft-handoff.mjs';
+import {checkCameraPreviewRetirement} from './camera-preview-retirement.mjs';
+import {checkFilesBrowserController} from './files-browser-coordinator.mjs';
+import {checkFilesFilter} from './files-filter.mjs';
+import {checkGoogleConsentAdmission} from './google-consent-admission.mjs';
+import {checkGoogleAccessPublication} from './google-access-publication.mjs';
+import {checkPhotosWindow} from './photos-window.mjs';
+import {checkPhotosTrash} from './photos-trash.mjs';
+import {checkBrowserDeletionPoll} from './browser-deletion-poll.mjs';
+import {checkBrowserJournalRetention} from './browser-journal-retention.mjs';
+import {checkBrowserReminderOrphan} from './browser-reminder-orphan.mjs';
+import {checkBrowserOwnerReminderRead} from './browser-owner-reminder-read.mjs';
+import {checkBrowserOwnerReminderAction} from './browser-owner-reminder-action.mjs';
+import {checkBrowserHostedResultNotice} from './browser-hosted-result-notice.mjs';
+import {checkHostedNoticeQuestion} from './hosted-notice-question.mjs';
+import {checkRendererHostedInbox} from './renderer-hosted-inbox.mjs';
+import {checkHostedBackgroundAdmission} from './hosted-background-admission.mjs';
+import {checkHostedDigestRefresh} from './hosted-digest-refresh.mjs';
+import {checkHostedDigestMutation} from './hosted-digest-mutation.mjs';
+import {checkSourceRenewalQuestion} from './source-renewal-question.mjs';
+import {checkBrowserFilesTrash} from './browser-files-trash.mjs';
+import {checkRendererDigestQueue} from './renderer-digest-queue.mjs';
+import {checkRetainedHomeBrief} from './retained-home-brief.mjs';
+import {checkHomeFailureNotice} from './home-failure-notice.mjs';
+import {checkHomeGesture} from './home-gesture.mjs';
+import {checkDrawerInteraction} from './drawer-interaction.mjs';
+import {checkLauncherOwnership} from './launcher-ownership.mjs';
+import {checkLauncherObserver} from './launcher-observer.mjs';
+import {checkLauncherFavorites} from './launcher-favorites.mjs';
+import {checkAccessibleToastLifetime} from './accessible-toast-lifetime.mjs';
+import {checkModalToastForwarding} from './modal-toast-forwarding.mjs';
+import {checkScreenFocusOwnership} from './screen-focus-ownership.mjs';
+import {checkDockClearanceOwnership} from './dock-clearance-ownership.mjs';
+import {checkMountedUpdateAdmission} from './mounted-update-admission.mjs';
+import {checkStartupUpdateAdmission} from './startup-update-admission.mjs';
+import {checkCanonicalNotificationTapAdmission} from './canonical-notification-tap-admission.mjs';
+import {checkResidentLiveness} from './resident-liveness.mjs';
 
 const adapters = [application, shellNavigation, startupPermissions, assistantConversation, notesLifecycle,
   browserSession, credentialVault, developmentSurfaces, filesAndSharing, preferences, durableStore,
   permissionWalkthrough, developmentDevice, permanentVoiceDeletion, developmentHost, filesTree,
   calendarPresentation, draftDispatch, notificationCollection, callbackLanding,
-  runStartupPermissionsCoordinatorRefinement, checkVaultCoordinator, checkNotesCoordinator, listFocus, checkRecoveryUI, checkShellCoordinator, checkNativeViewSubscription, filesPreview, runPermissionChoicesRefinement, checkCanonicalNotesController, checkCanonicalNotesDraft];
+  checkBrowserHostedResultNotice, checkHostedNoticeQuestion, checkRendererHostedInbox, checkHostedBackgroundAdmission,
+  checkRendererDigestQueue, checkHostedDigestRefresh, checkHostedDigestMutation, checkSourceRenewalQuestion, checkBrowserFilesTrash,
+  checkRetainedHomeBrief,
+  checkCalendarPreservationConfirmation,
+  checkCanonicalCalendarEditorClose,
+  checkCanonicalCalendarDraftHandoff,
+  checkCameraPreviewRetirement,
+  runStartupPermissionsCoordinatorRefinement, checkVaultCoordinator, checkNotesCoordinator, listFocus, checkRecoveryUI, checkShellCoordinator, checkNativeViewSubscription, filesPreview, runPermissionChoicesRefinement, checkCanonicalNotesController, checkCanonicalNotesDraft,
+  checkCanonicalNotesFeedback, checkCanonicalNotesMutation, checkCanonicalNotesView, checkCanonicalCalendarDraft, checkAgentCalendarRefresh, checkAgentCalendarMutation, checkAgentCalendarEventReturn, checkMapsEventReturn, checkMapsRerouteOwnership, checkCloudConnectionNotices, checkAgentCalendarSyncControl, checkGoogleCalendarLinkFlow, checkGoogleCalendarDisconnect, checkGoogleCalendarLinkPublication, checkGoogleCalendarAccessChoice, checkFilesBrowserController, checkFilesFilter, checkPhotosWindow, checkPhotosTrash, checkGoogleConsentAdmission, checkGoogleAccessPublication, checkBrowserDeletionPoll, checkBrowserJournalRetention, checkBrowserReminderOrphan, checkBrowserOwnerReminderRead, checkBrowserOwnerReminderAction, checkHomeFailureNotice, checkHomeGesture, checkDrawerInteraction, checkLauncherOwnership, checkLauncherObserver, checkLauncherFavorites, checkAccessibleToastLifetime, checkModalToastForwarding, checkScreenFocusOwnership, checkDockClearanceOwnership, checkMountedUpdateAdmission, checkStartupUpdateAdmission, checkCanonicalNotificationTapAdmission, checkResidentLiveness];
 
 /** Component traces, with remaining obligations kept explicit for the aggregate report. */
 export async function runApplicationRefinement() {

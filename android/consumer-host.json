@@ -35,7 +35,7 @@
       { "name": "eliza-notifications", "source": { "root": "patchedNative", "path": "plugins/plugin-native-notifications/android" }, "relocateBuild": true },
       { "name": "eliza-owned-media", "source": { "root": "patchedNative", "path": "plugins/plugin-native-media/android" }, "relocateBuild": true },
       { "name": "eliza-contacts", "source": { "root": "upstream", "path": "plugins/plugin-native-contacts/android" } },
-      { "name": "eliza-messages", "source": { "root": "upstream", "path": "plugins/plugin-native-messages/android" } },
+      { "name": "eliza-messages", "source": { "root": "patchedNative", "path": "plugins/plugin-native-messages/android" }, "relocateBuild": true },
       { "name": "eliza-phone", "source": { "root": "upstream", "path": "plugins/plugin-native-phone/android" } },
       { "name": "eliza-action-journal", "source": { "root": "patchedNative", "path": "plugins/plugin-native-action-journal/android" }, "relocateBuild": true },
       { "name": "local-speech", "source": { "root": "consumer", "path": "android/local-speech" } },

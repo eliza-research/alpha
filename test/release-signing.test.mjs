@@ -108,11 +108,12 @@ test("a release is distributable only when every term holds", () => {
     assert.equal(releaseDistributable({ ...DISTRIBUTABLE, ...change }), false, name);
 });
 
-test("verify-apks sets distributable only through releaseDistributable and fails a signing admission failure", () => {
+test("verify-apks gates both profiles on public distribution and uses releaseDistributable for native", () => {
   const source = fs.readFileSync("scripts/verify-apks.mjs", "utf8");
-  // One assignment, through the tested predicate, so a later overwrite of the row is caught here.
+  // One assignment, so a later overwrite of the row is caught here.
   assert.deepEqual(source.match(/\.distributable\s*=[^=]/g), [".distributable = "]);
-  assert.match(source, /row\.distributable = releaseDistributable\(\{ testMocks, signed: row\.signed, releaseAdmission: row\.releaseAdmission, runtime,\n\s+runtimeNotices: row\.runtimeNotices, voiceHost: row\.voiceHost, licenceBlockers: row\.licenceBlockers \}\);/);
+  assert.match(source, /const releaseReady = runtimeProfile === 'native'\s+\? releaseDistributable\(\{testMocks, signed: row\.signed, releaseAdmission: row\.releaseAdmission,\s+runtime, runtimeNotices: row\.runtimeNotices, voiceHost: row\.voiceHost, licenceBlockers: row\.licenceBlockers\}\)/);
+  assert.match(source, /row\.distributable = releaseReady && updateChannel\.kind === 'public';/);
   assert.match(source, /Release signing admission failed/);
   assert.match(source, /entry\?\.name === BUN_ENTRY/);
 });
@@ -181,7 +182,7 @@ test("the https autoVerify filters are the two returns on the configured host an
   assert.doesNotMatch(manifest, /scheme="https"[^>]*cloud-delegation/, "no https Cloud delegation filter: only the custom scheme has a handler");
   assert.match(gradle, /project\.findProperty\('ELIZAOS_APP_LINK_HOST'\) \?: envValue\('ELIZAOS_APP_LINK_HOST'\)/);
   assert.match(gradle, /\? cloudWebHost : appLinkHostRaw\.toString\(\)\.trim\(\)/);
-  assert.match(gradle, /if \(appLinkHost != cloudWebHost\)/);
+  assert.match(gradle, /if \(appLinkHost && appLinkHost != cloudWebHost\)/);
   assert.match(gradle, /manifestPlaceholders\.put\('appLinkHost', appLinkHost\)/);
   assert.doesNotMatch(gradle, /app-links|addStaticManifestFile|autoVerify/, "no configuration-time manifest overlay");
   assert.doesNotMatch(gradle, /ALPHA_APP_LINK/);

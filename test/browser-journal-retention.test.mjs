@@ -42,6 +42,83 @@ test('501 agent calendar deletions all queue and settle; claims follow their kep
  assert.deepEqual(await calendar.executeAgent({operationId:'delete-500',operation:{type:'calendar_delete',target:{sourceId:'local',sourceRevision,eventId:'event-500',revision:'0'.repeat(61)+'500'}},journalIdentity:{scope:'scope',proposalId:'proposal-500'}}),{status:'unknown'});
 });
 
+test('Calendar retention drops claims whose deletion is absent even when the key is inherited',async()=>{
+ resetDocuments();const calendar=new BrowserCalendar(),{sourceRevision}=await calendar.prepareAgentSource();
+ await calendarDocument.edit(()=>null,data=>{
+  data.events.push({id:'reviewed',calendarId:'local',title:'Reviewed event',body:'',location:'',begin:start,end:start+HOUR,revision:hash,timeZone:'UTC',repeat:'none'});
+  const terminal=Array.from({length:128},(_,i)=>{
+   const id=i===0?'constructor':'previous-'+i;
+   return [id,{id,phase:'deleted',deadline:{createdElapsed:i}}];
+  });
+  data.deletions=Object.fromEntries(terminal);
+  data.deleteClaims=Object.fromEntries([['constructor','old'],['toString','dangling'],['__proto__','dangling'],['previous-127','kept']]);
+ });
+ const result=await calendar.executeAgent({operationId:'queued',operation:{type:'calendar_delete',target:{sourceId:'local',sourceRevision,eventId:'reviewed',revision:hash}},journalIdentity:{scope:'scope',proposalId:'proposal'}});
+ assert.equal(result.status,'queued');
+ const {deletions,deleteClaims}=await read(calendarDocument);
+ assert.equal(Object.hasOwn(deletions,'constructor'),false);
+ assert.deepEqual(Object.keys(deleteClaims),['previous-127','queued']);
+});
+
+test('reviewed Calendar and Reminder deletions persist an own entry for every admitted identity',async()=>{
+ const {documents}=resetDocuments(),calendar=new BrowserCalendar(),daily=new BrowserDaily({}),id='__proto__';
+ const saved=await calendar.save({creationId:crypto.randomUUID(),calendarId:'local',title:'Reviewed event',begin:start,end:start+HOUR});
+ const {sourceRevision,events}=await read(calendarDocument),row=events.find(event=>event.id===saved.id);
+ const request={operationId:id,operation:{type:'calendar_delete',target:{sourceId:'local',sourceRevision,eventId:row.id,revision:row.revision}},journalIdentity:{scope:'scope',proposalId:'proposal'}};
+ assert.equal((await calendar.executeAgent(request)).status,'queued');
+ const calendarData=await read(calendarDocument);
+ assert.ok(Object.hasOwn(calendarData.deletions,id)&&Object.hasOwn(calendarData.deleteClaims,id));
+ assert.equal((await calendar.deletionReceipt(id)).phase,'queued');
+ const calendarWrites=documents.writes;
+ assert.deepEqual(await calendar.executeAgent(request),{status:'unknown'});
+ assert.equal(documents.writes,calendarWrites);
+
+ await daily.scheduleReminder({id:'reviewed',title:'Reviewed reminder',at:Date.now()+86400000});
+ const target=await daily.selectedReminder({id:'reviewed'}),stage=()=>daily.stageDeletion(target,'agent:test',id,'review-binding');
+ assert.equal((await stage()).phase,'queued');
+ const reminderData=await read(reminderDocument);
+ assert.ok(Object.hasOwn(reminderData.deletions,id)&&Object.hasOwn(reminderData.deleteClaims,id));
+ assert.equal(reminderData.reminders[0].pendingDeletion,id);
+ assert.equal((await daily.deletionReceipt(id)).entry.phase,'queued');
+ const reminderWrites=documents.writes;
+ await assert.rejects(stage,/already used/);
+ assert.equal(documents.writes,reminderWrites);
+});
+
+test('Calendar and Reminder journal receipts can bind prototype-shaped operation identities',async()=>{
+ resetDocuments();const calendar=new BrowserCalendar(),daily=new BrowserDaily({}),{sourceRevision}=await calendar.prepareAgentSource();
+ const calendarOp={type:'calendar_create',source:{sourceId:'local',sourceRevision},fields:{title:'Reviewed event',description:'',location:'',start:new Date(start).toISOString(),end:new Date(start+HOUR).toISOString(),timeZone:'UTC'}};
+ await daily.scheduleReminder({id:'reviewed',title:'Reviewed reminder',at:Date.now()+86400000});
+ for(const id of ['constructor','__proto__','toString']){
+  const reminderOp={type:'reminder_update',target:await daily.selectedReminder({id:'reviewed'}),fields:{title:'Reviewed '+id,body:''}};
+  const calendarRequest={operationId:id,operation:calendarOp},reminderRequest={operationId:id,bindingHash:hash,operation:reminderOp};
+  const calendarResult=await calendar.executeAgent(calendarRequest),reminderResult=await daily.operateReminder(reminderRequest);
+  assert.equal(calendarResult.status,'applied');assert.equal(reminderResult.status,'succeeded');
+  assert.deepEqual(await calendar.executeAgent(calendarRequest),calendarResult);
+  assert.deepEqual(await daily.reminderOperationReceipt(reminderRequest),reminderResult);
+ }
+ const keys=['constructor','__proto__','toString'];
+ assert.deepEqual(Object.keys((await read(calendarDocument)).receipts),keys);
+ assert.deepEqual(Object.keys((await read(reminderDocument)).receipts),keys);
+});
+
+test('Calendar cannot acknowledge an inherited creation receipt',async()=>{
+ const {documents}=resetDocuments(),calendar=new BrowserCalendar(),creationId=crypto.randomUUID();
+ await calendar.save({creationId,calendarId:'local',title:'Pending event',begin:start,end:start+HOUR});
+ const before=await calendarDocument.readRaw(),writes=documents.writes;
+ const property=Object.getOwnPropertyDescriptor(Object.prototype,'acknowledged');
+ try{
+  await assert.rejects(calendar.acknowledgeCreation({creationId:'__proto__'}),/Creation receipt unavailable/);
+  assert.deepEqual(Object.getOwnPropertyDescriptor(Object.prototype,'acknowledged'),property);
+  assert.equal(await calendarDocument.readRaw(),before);
+  assert.equal(documents.writes,writes);
+  assert.deepEqual(await calendar.acknowledgeCreation({creationId}),{status:'acknowledged'});
+ }finally{
+  if(property)Object.defineProperty(Object.prototype,'acknowledged',property);
+  else delete Object.prototype.acknowledged;
+ }
+});
+
 test('agent calendar receipts are bounded and next-event reads are not journaled',async()=>{
  const harness=resetDocuments(),calendar=new BrowserCalendar(),{sourceRevision}=await calendar.prepareAgentSource();
  for(let i=0;i<260;i++){

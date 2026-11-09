@@ -12,6 +12,9 @@ repository-wide allocation and source hashes are recorded in `../coverage.json`.
 | `PermissionWalkthrough` | `StartupPermissions.allow`, `advance`, `finish`, `savedProgress` | Seven independent permission maps, owner/sequence fences, read-only reactivation, targeted Settings review, durable choices and historical completed records |
 | `AssistantConversation` | `AlphaClient.run`, `send`, `approve`, `cancel`, `replaceAssistantDraft` | One foreground request and one proposal identity, consumption before dispatch, automatic-workflow survival across ordinary navigation, sensitive-view cancellation, compare-and-exchange composer draft |
 | `NotesLifecycle` | Legacy `editNotesTrash`/`planNotesTrash`, canonical `NotesController`, `NotesEditor`, `NotesSnapshotState`, `CanonicalNotesUi` and the Notes folder document | Separate legacy Trash/CAS and canonical owner/read/write generations, dirty-draft preservation, queued edits, uncertain writes, current selection, stable folder identity and deleted-folder projection |
+| `CanonicalNotesFeedback` | Canonical Notes UI, controller and editor callbacks | Read errors, save review and uncertain mutation outcomes |
+| `CanonicalNotesMutation` | Prepared shared Notes editor and the Alpha host binding | Save-before-delete, queued edits, restore and owner fencing |
+| `CanonicalNotesView` | Canonical Notes UI collection and navigation | Draft projection, Trash, owner visibility and navigation waiters |
 | `DurableStore` | `BrowserDomainDocument.load`, `edit`, `capture`, `restore`, `reset` | One document transaction, two distinct revisions, preserved legacy bytes, corrupt metadata, explicit recovery and persistence failure |
 | `BrowserSession` | `browsingSnapshot`, `restoreBrowsing`, native `BrowserSessionStore` | Two normal tabs and one private tab, history privacy, pristine restore, navigation epoch. URL parsing, cookie machinery and actual WebView execution retain their implementation contracts |
 | `CredentialVault` | `passwordSurfaceOpen`, `refresh`, `locked`, `clearSecrets`, native origin-bound autofill | One ephemeral secret, lock/foreground/generation, origin review, damaged-vault confirmed fresh-unlock reset and immutable test-only transfer admission. Native encryption and authentication are external inputs |
@@ -21,10 +24,31 @@ repository-wide allocation and source hashes are recorded in `../coverage.json`.
 | `PermanentVoiceDeletion` | `planInterruptedPermanentDeletion`, `leasedDeletionRow`, `claimDeletion`, `changeAudioDeletion` | Separate note and recording effects, exact ownership, external references, shared-lock/renderer-lease admission, restore versus erase and interrupted recovery |
 | `DraftDispatch` | `AssistantDraftController.hold`, `release`, `commit`, `open` | Text retained through dispatch, newer typing, per-conversation queues, reopened pending drafts and failed durable clears. `A+B` represents the ordered newline concatenation |
 | `FilesTree` | Current volume browser, `files-storage`, `files-agent-contract`, `StorageBrowser` and `StorageCatalog` | Categories query storage, collisions keep both files, Trash retains origins, refresh prunes missing selections, agent moves check reviewed identity and permanent deletion requires review |
+| `FilesBrowserController` | Prepared shared Files browser installed by the Alpha host | Folder read generations, access and volume readback, agent share admission and stale completion |
+| `FilesFilter` | Prepared Files browser agent runner and shared matching | Filter admission, access readback, query ownership, result counts and cancellation |
+| `PhotosWindow` | Native catalog reads in the Alpha Photos adapter and shared window helper | Paginated window merge, reload coalescing and hidden/disposed read fencing |
+| `PhotosTrash` | Native Trash reads in the Alpha Photos adapter | Coalesced pagination, resume reload and stale completion fencing |
 | `CalendarPresentation` | `calendar-views`, `calendar-month-focus`, Google Calendar selection | Selected month/day, menu/delete/search Back order, query-range generations, visible calendars and captured edit identity |
+| `CanonicalCalendarDraft` | Canonical Calendar editor and shared durable draft | Bound slot ownership, stale reads/writes, held clears, same-account replacement and recovery |
+| `AgentCalendarRefresh` | Current Agent Calendar read controller | Range and session fencing, coalesced readback, legacy gate and next-event freshness |
+| `AgentCalendarMutation` | Current Agent Calendar write controller | Edit admission, preservation and owner checks, exact dispatch and deferred refresh |
+| `AgentCalendarSyncControl` | Current Agent Calendar linked control client | Captured review, selected source version, current draft and owner fence, exact control dispatch and linked-event read |
+| `AgentCalendarEventReturn` | Canonical Calendar selection, origin and exact readback | Captured event and source revisions, independent reads, same-epoch re-selection and owner fencing |
+| `MapsEventReturn` | Maps renderer and Calendar origin helpers | Visit-owned attempts, visible pagehide and leave retirement, exact Calendar navigation and notices |
+| `GoogleConsentAdmission` | Mounted Google connections panel and shared Gmail grant rules | Verified account readback, preserved Gmail tier, stale permission continuation and revoke readback |
+| `GoogleCalendarLinkFlow` | Current Connect Google Calendar orchestration | Verified account, select/resume, pending and conflict readback, latest review ownership and exact operation key |
+| `GoogleCalendarLinkPublication` | Mounted Google account panel for Calendar | Independent read and link ownership, host admission, exact current notice and retained review |
+| `GoogleCalendarAccessChoice` | Mounted Google Calendar access prompt | Exact verified read and intent, stale Ask and Allow receipts, current consent and link admission |
+| `GoogleCalendarDisconnect` | Current Calendar-aware Google disconnect helper | Exact pause admission and readback, independently authorized revoke, callback retirement and bounded cleanup |
 | `NotificationCollection` | `notification-store`, `notifications-adapter`, `AlphaNotificationListener` | Opt-in external collection, package/signature/preview consent, lock privacy, history expiry, policy epoch and independent app/channel delivery settings |
 | `FilesAndSharing` | `reviewFileEmail`, `reviewMailAttachment`, `mediaCopyIntent`, share adapters | One exact source, owner and draft identity, initially unchecked selection, reread before local insertion, cancellation and revoked grant. Send has its own Inbox model |
 | `PreferencesAndPresentation` | `keyboardFreeHeight`, `canvasGeometry`, `surfaceLayout`, `publishSurfaceLayout`, shell preferences | Representative portrait/wide geometry, keyboard exclusion, large-text fallback, preference readback, draft/selection continuity and one system shade |
+| `HomeFailureNotice` | Home host and the shared installed launcher | Launch and inventory failure notices, surface ownership and duplicate suppression |
+| `LauncherOwnership` | Shared launcher and system bridge | Inventory and default read generations, exact component/profile handoff and retired launch fencing |
+| `LauncherObserver` | Shared launcher watcher and system bridge | Package and document events, refresh debounce, late listener settlement and idempotent retirement |
+| `LauncherFavorites` | Shared mobile launcher and Alpha view registry | Ordered favorites, legacy migration, storage refusal, external choice ownership and visible reordering |
+| `HomeGesture` | Alpha Home adapter and shared launcher | Pointer ownership, held and dragged activation, keyboard focus and edit-layer retirement |
+| `DrawerInteraction` | Mounted Alpha Apps drawer | Current press, query and menu identity, focus restoration and exact App Info handoff |
 | `CallbackLanding` | Static delegation-return page | Query multiplicity, state shape, result exclusivity, size/description limits, early URL scrubbing and exact app-link exposure |
 | `ListFocus` | `createKeyedListFocus`, current Notes/Photos bindings | Two captures and roots, semantic identity, focus movement, discarded renders and current visibility |
 | `RendererFailureUI` | `RootErrorBoundary`, global startup recovery and shared crash classification | One recovery surface, fixed diagnostic classes, modal retirement and explicit reload |
@@ -78,3 +102,5 @@ The other modules decompose domain state so each can be explored independently.
 The complete Cartesian product of all domain variables is not enumerated by
 these checks. The inventory records domain allocation, not a proof that every
 source variable or every possible implementation behavior refines its model.
+
+`AccessibleToastLifetime` checks native timeout refresh ownership and the shell's toast timer replacement and expiration.

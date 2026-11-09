@@ -5,28 +5,33 @@ import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
 import {prepareGoogleWorkspaceReturn,watchGoogleWorkspaceReturn,sameGoogleWorkspaceBinding} from '../apps/app/src/runtime/google-workspace-return.ts';
 import {watchGoogleConnectionReturn,sameGoogleConnectionReturnBinding} from '../apps/app/src/runtime/google-connection-return.ts';
+import {GMAIL_MODIFY_CAPABILITIES,GMAIL_READ_CAPABILITY,gmailGrantTier} from '../apps/app/src/runtime/gmail-grants.ts';
 
 const ui=readFileSync(process.env.ALPHA_GOOGLE_RETURN_UI_SOURCE||'apps/app/src/runtime/google-connection-ui.tsx','utf8');
 const accountsSource=stripTypeScriptTypes(readFileSync('apps/app/src/runtime/google-accounts.ts','utf8'),{mode:'strip'}).replace(/^import[^;]+;\n/gm,'').replace(/^export /gm,'');
 const createGoogleAccounts=vm.runInNewContext(accountsSource+';createGoogleAccounts',{DOMException,Event});
-const loadCode=stripTypeScriptTypes(ui.slice(ui.indexOf(' async function load()'),ui.indexOf('\n useEffect(()=>{if(!open)return;void load();')),{mode:'strip'});
+const admissionCode=stripTypeScriptTypes(ui.slice(ui.indexOf('const unverifiedAccounts='),ui.indexOf('/** Browser Cloud stage only:')),{mode:'strip'});
+const loadCode=stripTypeScriptTypes(ui.slice(ui.indexOf(' function accountRead()'),ui.indexOf('\n useEffect(()=>{if(!open)return;void load();')),{mode:'strip'});
 const connectCode=stripTypeScriptTypes(ui.slice(ui.indexOf(' async function connect('),ui.indexOf(' async function disconnect(')),{mode:'strip'});
 function deferred(){let resolve;const promise=new Promise(r=>{resolve=r;});return {promise,resolve};}
-function fixture({heldStatus=false,heldOpen=false,heldRetry=false,panelClosed=false,accountRows}={}){
+function fixture({heldStatus=false,heldOpen=false,heldRetry=false,panelClosed=false,accountRows,verifiedRows}={}){
  let foreground=true,panelOpen=!panelClosed,revision=0,nativeListener,removed=0,visibility,focus;
  const registration=deferred(),status=deferred(),opening=deferred(),retry=deferred(),published=[],notices=[],scopeCalls=[];
  let reads=0,initiations=0,opens=0,waits=0,statusSignal,loadPromise;
  const client={environment:'production',async gmailAccounts(signal){reads++;statusSignal=signal;return heldStatus?status.promise:typeof accountRows==='function'?accountRows(reads):accountRows??[{connected:true,label:'Synthetic account',grantedCapabilities:['google.gmail.triage']}];},async initiateGoogle(signal,calendar,gmail){signal.throwIfAborted();initiations++;scopeCalls.push([calendar,gmail]);return 'https://accounts.google.com/o/oauth2/v2/auth';}};
  const binding={client,environment:'production',userId:'owner',organizationId:'tenant',sessionId:'session',credentialId:'credential'};
  let current={...binding};const active={current:null};
+ // Open-panel cases begin after an initial verified read. The counters below
+ // measure new reads triggered by the return lifecycle.
+ const verifiedAccounts={current:panelClosed?null:{binding,rows:verifiedRows??[]}};
  const liveCloud=()=>current?{client:current.client,sessionId:current.sessionId,credentialId:current.credentialId}:null;
- const globals={identity:"synthetic",AbortController,DOMException,returnedWorkspace:{current:null},returnedWorkspaceOwner:{current:null},disconnectNotice:{current:null},sameGoogleWorkspaceBinding,prepareGoogleWorkspaceReturn,watchGoogleWorkspaceReturn,googleWorkspaceReturnPort:undefined,currentWorkspaceBinding:()=>current,createGoogleAccounts,sameGoogleConnectionReturnBinding,active,binding,cloud:liveCloud(),key:{environment:'production',userId:'owner',organizationId:'tenant'},serviceName:'Cloud',googleConnectionController:{getSnapshot:()=>panelOpen,close:()=>{panelOpen=false;},open:()=>{panelOpen=true;},calendar:()=>null},connectionController:{getCloudClient:liveCloud,rejectCloudSession(){throw Error('Unexpected sign-in mutation');},openCloudAccount(){throw Error('Unexpected sign-in');}},currentGoogleConnectionReturnBinding:()=>current,
+ const globals={identity:"synthetic",AbortController,DOMException,returnedWorkspace:{current:null},returnedWorkspaceOwner:{current:null},disconnectNotice:{current:null},sameGoogleWorkspaceBinding,prepareGoogleWorkspaceReturn,watchGoogleWorkspaceReturn,googleWorkspaceReturnPort:undefined,currentWorkspaceBinding:()=>current,createGoogleAccounts,sameGoogleConnectionReturnBinding,gmailGrantTier,verifiedAccounts,active,binding,cloud:liveCloud(),key:{environment:'production',userId:'owner',organizationId:'tenant'},serviceName:'Cloud',googleConnectionController:{getSnapshot:()=>panelOpen,close:()=>{panelOpen=false;},open:()=>{panelOpen=true;},calendar:()=>null},connectionController:{getCloudClient:liveCloud,rejectCloudSession(){throw Error('Unexpected sign-in mutation');},openCloudAccount(){throw Error('Unexpected sign-in');}},currentGoogleConnectionReturnBinding:()=>current,
   setRevision:update=>{revision=update(revision);loadPromise=globals.load();},setAccounts:rows=>published.push(rows),setConfirm(){},setBusy(){},setNotice:text=>notices.push(text),
   openConnectionBrowser:async()=>{opens++;return heldOpen?opening.promise:undefined;},returnWatch:{current:null},
   setTimeout(callback,delay){assert.equal(delay,350);waits++;if(heldRetry)void retry.promise.then(callback);else queueMicrotask(callback);},
   clearTimeout(){},
  };
- vm.createContext(globals);vm.runInContext(loadCode+'\n'+connectCode+';globalThis.load=load;globalThis.connect=connect;',globals);
+ vm.createContext(globals);vm.runInContext(admissionCode+'\n'+loadCode+'\n'+connectCode+';globalThis.load=load;globalThis.connect=connect;',globals);
  const watcher=watchGoogleConnectionReturn({binding,current:()=>current,foreground:()=>foreground,refresh:()=>{revision++;active.current?.abort();loadPromise=globals.load();},
   onVisibilityChange:listener=>{visibility=listener;return()=>{visibility=undefined;};},onFocus:listener=>{focus=listener;return()=>{focus=undefined;};},
   onNativeResume:listener=>{nativeListener=listener;return registration.promise;},
@@ -70,8 +75,9 @@ test('cleanup removes a native listener whose registration resolves after the pa
 test('ordinary cleanup removes a resolved native listener exactly once',async()=>{
  const f=fixture();await f.registered();f.close();f.close();assert.equal(f.removed,1);
 });
-test('permission requests are forwarded unchanged and no return starts another OAuth request',async()=>{
- const f=fixture();await f.globals.connect('modify','write');assert.equal(JSON.stringify(f.scopeCalls),JSON.stringify([['write','modify']]));f.background();f.foreground();await f.loadPromise;assert.equal(f.initiations,1);f.close();
+test('the verified Gmail tier is forwarded and no return starts another OAuth request',async()=>{
+ const f=fixture({verifiedRows:[{connected:true,connectionId:'verified',grantedCapabilities:[GMAIL_READ_CAPABILITY,...GMAIL_MODIFY_CAPABILITIES]}]});
+ await f.globals.connect('read','write');assert.equal(JSON.stringify(f.scopeCalls),JSON.stringify([['write','modify']]));f.background();f.foreground();await f.loadPromise;assert.equal(f.initiations,1);f.close();
 });
 test('a failed external open cancels only its own pending return',async()=>{
  const f=fixture();f.globals.openConnectionBrowser=async()=>{throw new DOMException('Cancelled','AbortError');};f.globals.connectionController.rejectCloudSession=()=>{};await f.globals.connect();f.background();f.foreground();assert.equal(f.reads,0);f.close();
@@ -85,11 +91,15 @@ test('a stale panel binding cannot initiate a new Google authorization',async()=
  const f=fixture();f.change({organizationId:'new-tenant'});await f.globals.connect();assert.equal(f.initiations,0);assert.equal(f.opens,0);f.close();
 });
 test('a binding change while an authorization URL is pending cannot arm or open the browser',async()=>{
- const f=fixture(),authorization=deferred();f.client.initiateGoogle=()=>authorization.promise;const connecting=f.globals.connect();await Promise.resolve();f.change({organizationId:'new-tenant'});authorization.resolve('https://accounts.google.com/o/oauth2/v2/auth');await connecting;assert.equal(f.opens,0);f.background();f.foreground();assert.equal(f.reads,0);f.close();
+ const f=fixture(),authorization=deferred(),requested=deferred();
+ f.client.initiateGoogle=()=>{requested.resolve();return authorization.promise;};
+ const connecting=f.globals.connect();await requested.promise;f.change({organizationId:'new-tenant'});authorization.resolve('https://accounts.google.com/o/oauth2/v2/auth');await connecting;assert.equal(f.opens,0);f.background();f.foreground();assert.equal(f.reads,0);f.close();
 });
 
 test('a still-referenced watcher from the prior panel generation cannot initiate under a freshly rendered binding',async()=>{
- const f=fixture();f.change({organizationId:'new-tenant'});f.globals.binding={...f.binding,organizationId:'new-tenant'};await f.globals.connect();assert.equal(f.initiations,0);assert.equal(f.opens,0);f.close();
+ const f=fixture();f.change({organizationId:'new-tenant'});f.globals.binding={...f.binding,organizationId:'new-tenant'};
+ f.globals.verifiedAccounts.current={binding:f.globals.binding,rows:[]};
+ await f.globals.connect();assert.equal(f.initiations,0);assert.equal(f.opens,0);f.close();
 });
 
 function mountActualLifecycle(){

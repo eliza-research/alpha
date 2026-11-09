@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 /** Prepared launcher only: explicit frozen source + private profile; no automatic migration/cutover. */
+import {combinedCoreRuntime} from './core-state-patch.mjs';
+import {superviseLauncherChild} from './launcher-child.mjs';
 import {admitSpeech} from './host-speech-admission.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -47,6 +49,18 @@ const token=fs.readFileSync(tokenPath,'utf8').trim(),key=fs.readFileSync(keyPath
 const logPath=path.join(profile,'server.log');if(fs.existsSync(logPath))privatePath(logPath);const log=fs.openSync(logPath,'a',0o600);
 const base=Object.fromEntries(['PATH','TMPDIR','LANG','SHELL','USER','LOGNAME','HOME'].filter(k=>process.env[k]).map(k=>[k,process.env[k]]));
 const env={...base,PATH:runtimePath,...voice,...AGENT_CHARACTER_ENVIRONMENT,ELIZA_HEADLESS:'1',ELIZA_REQUIRE_LOCAL_AUTH:'1',ELIZA_API_BIND:'127.0.0.1',ELIZA_ALLOWED_HOSTS:'10.0.2.2',ELIZA_API_PORT:String(port),ELIZA_API_EXPOSE_PORT:'1',ELIZA_STATE_DIR:profile,ELIZA_CONFIG_PATH:config,ELIZA_API_TOKEN:token,CEREBRAS_API_KEY:key,...modelEnvironment,ELIZAOS_CLOUD_USE_INFERENCE:'false'};
-const child=spawn(bunBin,['--conditions=eliza-source','--tsconfig-override',path.join(realSource,'tsconfig.json'),entry],{cwd:profile,env,stdio:['ignore',log,log]});
-const metadata={pid:child.pid,port,nodeVersion:'26.13.0',bunVersion:'1.4.2',nodeBinarySha256:sha(fs.readFileSync(nodeBin)),bunBinarySha256:sha(fs.readFileSync(bunBin)),source:realSource,revision:actual.revision,contentSha256:actual.contentSha256,startedAt:new Date().toISOString()};fs.writeFileSync(path.join(profile,'process.json'),JSON.stringify(metadata,null,2),{mode:0o600});console.log(JSON.stringify(metadata));
-for(const signal of ['SIGINT','SIGTERM'])process.on(signal,()=>child.kill(signal));child.on('error',()=>{console.error('Combined runtime launch failed; inspect owner-only log');process.exitCode=1;});child.on('exit',code=>{fs.closeSync(log);process.exitCode=code??1;});
+let retireFailedHandoff;
+try {
+ const core=combinedCoreRuntime(repo,realSource,manifestPath,actual,['--conditions=eliza-source','--tsconfig-override',path.join(realSource,'tsconfig.json'),entry]);
+ const child=spawn(bunBin,core.args,{cwd:profile,env:{...env,...core.environment},stdio:['ignore',log,log]});
+ retireFailedHandoff=superviseLauncherChild(child,()=>fs.closeSync(log),()=>{
+  console.error('Combined runtime launch failed; inspect owner-only log');
+ });
+ const metadata={coreState:core.status,pid:child.pid,port,nodeVersion:'26.13.0',bunVersion:'1.4.2',nodeBinarySha256:sha(fs.readFileSync(nodeBin)),bunBinarySha256:sha(fs.readFileSync(bunBin)),source:realSource,revision:actual.revision,contentSha256:actual.contentSha256,startedAt:new Date().toISOString()};
+ fs.writeFileSync(path.join(profile,'process.json'),JSON.stringify(metadata,null,2),{mode:0o600});
+ console.log(JSON.stringify(metadata));
+} catch(error) {
+ if (retireFailedHandoff) await retireFailedHandoff();
+ else fs.closeSync(log);
+ throw error;
+}

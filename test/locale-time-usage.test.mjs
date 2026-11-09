@@ -14,8 +14,7 @@ const src = join(root, 'apps/app/src');
 const pending = new Set([
   'browser/calendar.ts', 'browser/clock.ts', 'browser/incoming-simulation.ts', 'browser/simulated-workflows.ts',
   'prototype/automations-adapter.ts', 'prototype/calendar-adapter.ts', 'prototype/calendar-approval-review.ts',
-  'prototype/phone-adapter.ts',
-  'prototype/reminder-adapter.ts', 'prototype/settings-adapter.ts', 'prototype/sms-adapter.ts',
+  'prototype/reminder-adapter.ts', 'prototype/settings-adapter.ts',
   'runtime/cloud-voice.ts', 'runtime/hosted-live-source-ui.tsx', 'runtime/reminder-creations.ts',
 ]);
 

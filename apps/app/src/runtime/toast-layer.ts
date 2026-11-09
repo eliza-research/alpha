@@ -24,7 +24,18 @@ let installed: (() => void) | null = null;
 export function installToastLayer(): () => void {
   if (installed) return installed;
   let frame = 0, undo: HTMLButtonElement | null = null;
-  const modals = () => Array.from(document.querySelectorAll<HTMLDialogElement>('dialog[open]')).filter(dialog => dialog.matches(':modal'));
+  const modalOrder = new Set<HTMLDialogElement>();
+  const modals = () => {
+    for (const dialog of modalOrder) if (!dialog.isConnected || !dialog.matches('dialog[open]:modal')) modalOrder.delete(dialog);
+    for (const dialog of document.querySelectorAll<HTMLDialogElement>('dialog[open]:modal')) modalOrder.add(dialog);
+    return [...modalOrder];
+  };
+  modals();
+  const focused = document.activeElement?.closest<HTMLDialogElement>('dialog[open]:modal');
+  if (focused) {
+    modalOrder.delete(focused);
+    modalOrder.add(focused);
+  }
   const host = (dialog: HTMLDialogElement) => {
     let region = Array.from(dialog.children).find((child): child is HTMLElement => child instanceof HTMLElement && child.hasAttribute(HOST));
     if (region) return region;
@@ -74,15 +85,29 @@ export function installToastLayer(): () => void {
     }
   };
   const schedule = () => { if (!frame) frame = requestAnimationFrame(sync); };
-  const changes = new MutationObserver(schedule);
-  changes.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['open'] });
+  const changes = new MutationObserver(records => {
+    // Dialogs enter the browser top layer in open order, which can differ from document order.
+    for (const record of records) {
+      const dialog = record.target;
+      if (record.attributeName === 'open' && record.oldValue === null &&
+          dialog instanceof HTMLDialogElement && dialog.matches('dialog[open]:modal')) {
+        modalOrder.delete(dialog);
+        modalOrder.add(dialog);
+      }
+    }
+    schedule();
+  });
+  changes.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true,
+    attributeFilter: ['open'], attributeOldValue: true });
   window.addEventListener('resize', schedule);
   sync();
-  installed = () => {
+  const uninstall = () => {
+    if (installed !== uninstall) return;
     installed = null;
     changes.disconnect(); window.removeEventListener('resize', schedule);
     if (frame) cancelAnimationFrame(frame);
     for (const region of document.querySelectorAll(`[${HOST}]`)) region.remove();
   };
-  return installed;
+  installed = uninstall;
+  return uninstall;
 }

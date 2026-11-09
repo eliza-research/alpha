@@ -13,7 +13,6 @@ export function sharedRecordingPlatform(){
  // Host org.json adds a float put overload absent from Android org.json. Widen this sink only.
  files['com/getcapacitor/Plugin.java']=files['com/getcapacitor/Plugin.java'].replace('String event,JSObject value','String event,org.json.JSONObject value');
  files['com/getcapacitor/PluginCall.java']=files['com/getcapacitor/PluginCall.java'].replace(' public final JSObject data;',' public final JSObject data;\n private static int sequence;\n private final String callback="callback-"+(++sequence);\n public String getCallbackId(){return callback;}\n public Integer getInt(String key,Integer fallback){return data.getInteger(key,fallback);}');
- files['android/media/MediaRecorder.java']=files['android/media/MediaRecorder.java'].replace('public void release(){released=true;}', 'public void release(){if(ai.elizaresearch.alphaphone.SharedRecordingPorts.failRelease){ai.elizaresearch.alphaphone.SharedRecordingPorts.failRelease=false;throw new IllegalStateException("release fixture");}released=true;}');
  Object.assign(files,{
   'android/content/ComponentCallbacks2.java':'package android.content;public interface ComponentCallbacks2 {int TRIM_MEMORY_UI_HIDDEN=20,TRIM_MEMORY_RUNNING_LOW=10;void onConfigurationChanged(android.content.res.Configuration value);void onLowMemory();void onTrimMemory(int level);}',
   'android/content/res/Configuration.java':'package android.content.res;public class Configuration {}',

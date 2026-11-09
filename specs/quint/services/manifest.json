@@ -1255,6 +1255,659 @@
         "One running service during initialization, one room owner, one diagnostic task and three ordinary callers.",
         "Full host shutdown, provider cancellation and dynamic plugin registration remain open."
       ]
+    },
+    {
+      "path": "specs/quint/services/TaskServiceLifecycle.qnt",
+      "module": "TaskServiceLifecycle",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "vendor/eliza/packages/core/src/services/task.ts",
+        "vendor/eliza/packages/core/src/services/task-scheduler.ts",
+        "vendor/eliza/packages/core/src/runtime.ts",
+        "vendor/eliza/plugins/plugin-sql/src/base.ts",
+        "vendor/eliza/plugins/plugin-sql/src/stores/task-wake.ts",
+        "patches/eliza/task-service-stop.patch",
+        "scripts/core-state-patch.mjs"
+      ],
+      "tests": [
+        "stoppedManualAdmissionTest",
+        "readFinishesAfterStopTest",
+        "stoppedTimerTest",
+        "overlappingOwnersTest",
+        "blockingTickTest",
+        "nonblockingTickTest",
+        "stopDrainsEveryOwnerTest",
+        "exclusiveManualInvocationsTest",
+        "emptyTimerDisarmsTest",
+        "failedTimerRearmsTest",
+        "orphanGraceTest",
+        "orphanQuarantineTest",
+        "failedQuarantineDoesNotInventPersistenceTest",
+        "orphanHealsNextTickTest",
+        "deletedRowKeepsExecutionOwnerTest",
+        "pendingOldReadCannotEnterRestartTest"
+      ],
+      "invariants": [
+        "CountedExecutionOwnership",
+        "NoTimerAfterStop",
+        "CurrentExecutionGeneration",
+        "StopCompletionIsQuiescent",
+        "TypeOK"
+      ],
+      "abstractions": [
+        "One persisted task, three invocation identities, two service generations and at most two failure-count classes.",
+        "Actual runtime/SQL source campaign observes task-row flags, tracked owners, one-shot timer, local mode, active tick and stop completion. External worker outcomes, clock and injected storage refusal are controlled.",
+        "Precise wake revisions/time arithmetic, multi-task ordering, multiple scheduler instances and daemon host ownership remain separate obligations."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "seed": "123"
+      }
+    },
+    {
+      "path": "specs/quint/services/CanonicalNotesStore.qnt",
+      "module": "CanonicalNotesStore",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "vendor/eliza/plugins/plugin-notes/src/store.ts",
+        "vendor/eliza/plugins/plugin-notes/src/service.ts",
+        "vendor/eliza/plugins/plugin-notes/src/interact.ts",
+        "vendor/eliza/plugins/plugin-notes/src/types.ts",
+        "vendor/eliza/plugins/plugin-notes/src/validation.ts",
+        ".eliza/client-features/plugins/plugin-notes/src/client/notes-api.ts",
+        "patches/eliza/notes-state-runtime.patch"
+      ],
+      "tests": [
+        "canonicalReplayTest",
+        "tiedClockEditTest",
+        "backwardsClockEditTest",
+        "legacyTimestampFallbackTest",
+        "legacyTieUsesRawOrderTest",
+        "mixedLegacyEditTest",
+        "rawRestoreMembershipTest",
+        "lostAckPreservesStaleCacheTest",
+        "staleWriterRejectedTest",
+        "restartLoadsUnknownCommitTest",
+        "staleRevisionRejectedTest",
+        "projectionFailurePreservesDocumentTest",
+        "delayedReplyKeepsOwnCommitTest",
+        "firstEmptyClearAddsTrashTest",
+        "repeatEmptyClearPreservesRevisionTest",
+        "stoppedStoreCannotAdmitTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "RawMembershipDisjoint",
+        "VisibleContentUnique",
+        "ReplyIdentityPresent",
+        "ConfirmedRevisionBounded",
+        "NewerOrderWins"
+      ],
+      "abstractions": [
+        "Two plain physical notes and two content classes; collection revisions zero through eight; wall-clock values zero through two.",
+        "Raw Trash/active membership, visible representative, private logical revision and exact committed reply are distinct. Restore returns raw membership.",
+        "One serialized cache and controlled independent encrypted-port writer. Cryptographic storage, unlimited data, full authorization and filesystem crash recovery remain separate obligations."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "seed": "123"
+      }
+    },
+    {
+      "path": "specs/quint/services/CoreTurnControllers.qnt",
+      "module": "CoreTurnControllers",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "separateRegistriesTest",
+        "sameRoomSelfExclusionTest",
+        "newestSignalTest",
+        "abortAllIncludesSelfTest",
+        "cancelledWorkCanReturnTest",
+        "cancellationReasonRetainedTest",
+        "observerRemovalTest",
+        "closedTurnStartsAbortedTest",
+        "reclosePreservesEarlierReasonTest"
+      ],
+      "sources": [
+        "vendor/eliza/packages/core/src/runtime/turn-controller.ts",
+        "vendor/eliza/packages/core/src/runtime/turn-aborted-error.ts",
+        "patches/eliza/turn-controller-isolation.patch",
+        "patches/eliza/core-state-manifest.json"
+      ],
+      "stateMapping": {
+        "active/results/registry/room/order/roomOrder": "Actual registry maps, controller identities and returned handler promises",
+        "aborted/reasons": "Actual AbortSignal state and TurnAbortedError reason",
+        "listening/events": "Registered lifecycle observers and delivered event order",
+        "signal/queryRegistry/queryRoom/abortable": "Queries through public lookup and admission APIs within real asynchronous contexts",
+        "changed/abortedRooms": "Public per-room and runtime cancellation results",
+        "closedReason": "Actual registry close reason and inherited cancellation on later turn start"
+      },
+      "abstractions": [
+        "Two registries, two rooms and three one-use turn identities. Controlled handlers may return or reject after cancellation.",
+        "Wall-clock timestamps and duration values are omitted. Arbitrary reentrant listeners, detached callbacks after turn settlement and provider cooperation remain separate obligations."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "seed": "123"
+      }
+    },
+    {
+      "path": "specs/quint/services/TaskSchedulerRuntime.qnt",
+      "module": "TaskSchedulerRuntime",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "vendor/eliza/packages/core/src/services/task-scheduler.ts",
+        "vendor/eliza/packages/core/src/services/task.ts",
+        "patches/eliza/task-service-stop.patch",
+        "scripts/core-state-patch.mjs"
+      ],
+      "tests": [
+        "mixedScopeBatchesInOrderTest",
+        "changedRegistrationRetiresQueuedGroupTest",
+        "restartSkipsDetachedBusyServiceTest",
+        "oldProcessDisposalKeepsReplacementTest",
+        "disposedQueuedProcessNeverEntersTest",
+        "stoppingDaemonKeepsProcessTimerTest"
+      ],
+      "invariants": [
+        "SharedTimerOwned",
+        "AttachedTickCurrent",
+        "BusyOwnersExact",
+        "CurrentRegistrationsOwnAgents",
+        "DeliveredRowsInCohort",
+        "NoStaleDispatch",
+        "ProcessOwnerPreserved",
+        "RetiredProcessCannotStart"
+      ],
+      "abstractions": [
+        "Two agent IDs, three TaskService identities, two adapter identities, three in-flight slots, up to five scheduler mutations and six registration generations.",
+        "Six task row classes cover valid agent IDs, missing and foreign ownership. Per-owner report/process counts saturate at forty.",
+        "Two process names with three instance identities. Transient empty-tick attachment and microtask settlement are projected at stable boundaries. Current shared daemon is opt-in."
+      ],
+      "bounds": {
+        "maxSamples": 500,
+        "maxSteps": 40,
+        "seed": "123"
+      }
+    },
+    {
+      "path": "specs/quint/services/PilotApkUpdate.qnt",
+      "module": "PilotApkUpdate",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "scripts/pilot-update.mjs",
+        "scripts/android-instrumentation.mjs",
+        "scripts/provision-unit.mjs",
+        "scripts/owner/pilot-rotation-journal.mjs",
+        "scripts/owner/pilot-rotation.mjs",
+        "scripts/owner/VerifyApkRotation.java",
+        "vendor/eliza/packages/os/scripts/android/apk-release-record.mjs"
+      ],
+      "tests": [
+        "normalUpdateRestoresHomeBeforeStartTest",
+        "partialHandoffNeverDispatchesTest",
+        "homeTakeoverBlocksDispatchTest",
+        "ambiguousRotationRetainsIntentTest",
+        "verifiedRotationSurvivesRestartRefusalTest",
+        "runningIntegrityOrUnprovenHomePreventsStartTest",
+        "packageOnlyReadbackCanVerifyOrdinaryUpdateTest"
+      ],
+      "invariants": [
+        "LockOwnsUpdate",
+        "DispatchHasReadback",
+        "RotationHasDurableInventory",
+        "VerificationHasReturnedInstall",
+        "CompletedJournalHasEvidence",
+        "RestoreOnlyOwnedHome",
+        "RestartHasCleanBoundary",
+        "PassedHasStartupEvidence"
+      ],
+      "abstractions": [
+        "One admitted APK replacement on one selected Android user, with ordinary and reviewed-rotation modes.",
+        "HOME is Alpha, selected stock or an unproven holder/activity pair. The installer reply, verification evidence, HOME cleanup, agent probe and rotation journal are distinct.",
+        "Model witnesses package-only or inventory readback, a lock and a one-shot journal. Actual Android effects, signing admission and host crashes remain separate boundaries."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 60,
+        "seed": "123"
+      }
+    },
+    {
+      "path": "specs/quint/services/EmbeddingStoreIdentity.qnt",
+      "module": "EmbeddingStoreIdentity",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "sameWidthSwapRequiresAcknowledgementTest",
+        "providerSwapPreservesKnownModelTest",
+        "cacheReadFailureKeepsPriorColumnTest",
+        "ambiguousCommitFencesAndRetryDoesNotRewriteTest",
+        "falseWriteResponseCannotPublishPinTest",
+        "resizedColumnStaysFencedAfterAdapterFailureTest",
+        "joinedProbeAndClearFailureTest"
+      ],
+      "invariants": [
+        "persistedPin",
+        "disabledWarning",
+        "enabledPinMatchesColumn",
+        "unconfirmedTransitionDisablesGeneration"
+      ],
+      "sources": [
+        "vendor/eliza/packages/core/src/runtime/embeddings.ts",
+        "patches/eliza/embedding-store-identity.patch",
+        "vendor/eliza/packages/core/src/runtime.ts",
+        "vendor/eliza/packages/core/src/runtime/model-dispatch.ts",
+        "vendor/eliza/plugins/plugin-sql/src/base.ts"
+      ],
+      "stateMapping": {
+        "stored/pin/column": "Observed cache identity, runtime provider pin and adapter width",
+        "disabled/warned/fenced": "Actual generation status, one-time warning and unconfirmed store transition fence",
+        "probe/calls/joined": "Actual single-flight promise and provider calls",
+        "writes/clearFailures/outcome": "Port commits, reconciliation errors and real probe settlement",
+        "selected": "Adapter width selected with the single-flight probe still awaiting a settled result",
+        "committed": "The cache write took effect while the runtime awaited its reply"
+      },
+      "abstractions": [
+        "Up to five probes with a single join per probe. Two provider identities, untagged vectors, two model labels plus absent metadata, and two width classes. The PGlite schedules use 384 and 768 dimensions.",
+        "Controlled provider answers and injected adapter failures use both component ports and temporary PGlite. A durable cache write with a lost reply is distinct from a refused write. Named vector spaces, concurrent runtimes and background re-embedding remain separate."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 4
+      }
+    },
+    {
+      "path": "specs/quint/services/FactWriteScope.qnt",
+      "module": "FactWriteScope",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "newest119RowsStillPermitReuseTest",
+        "newest120RowsEvictOldMatchTest",
+        "independentRuntimeLanesCanBothMissTest",
+        "differentRoomsHaveIndependentOwnersTest",
+        "sameRuntimeRoomSuccessorWaitsTest",
+        "refusalReleasesFifoLaneAndRetryReusesSuccessorTest"
+      ],
+      "invariants": [
+        "OneOwnerPerRuntimeRoom",
+        "ReadsAndRepliesStayInRoom",
+        "UniquePhysicalIdsPerRoom",
+        "NoRejectedInsert",
+        "LookupUsesAtMost120Candidates"
+      ],
+      "sources": [
+        "vendor/eliza/packages/core/src/runtime.ts",
+        "vendor/eliza/packages/core/src/runtime/data-mutations.ts",
+        "vendor/eliza/packages/core/src/runtime/fact-write-dedupe.ts",
+        "vendor/eliza/plugins/plugin-sql/src/base.ts"
+      ],
+      "stateMapping": {
+        "rooms/ranks": "Real equivalent SQL rows, evidence, rank in the full room lookup and intervening unrelated rows",
+        "requests": "Actual runtime and room ownership, captured candidate and lookup count, mutation admission and public returned row ID or rejection",
+        "next": "Bounded source invocation sequence, with distinct timestamps"
+      },
+      "abstractions": [
+        "Two runtime objects share one PGlite adapter and one agent. Two rooms, up to four attempts and one active normalized text and entity per room.",
+        "Ranks retain the exact 120-row cutoff while 119 or 120 newer unrelated rows are summarized. Known precommit refusal is distinguished from successful persistence. Same-ID writes, ambiguous commits, evaluator hooks and cross-process storage are separate."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 60,
+        "maxVerifyDepth": 4
+      }
+    },
+    {
+      "path": "specs/quint/services/NativeGoogleAccessFile.qnt",
+      "module": "NativeGoogleAccessFile",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "missingCanonicalRecordDoesNotRecoverSidecarsTest",
+        "invalidAndLinkedRecordsDenyBothSwitchesTest",
+        "replacementPreservesAlreadyOpenedReaderTest",
+        "nextAdmissionSeesRevocationWhileEarlierVerificationWaitsTest",
+        "lookupContinuesWithUnavailableRecordTest",
+        "rejectedDirectoryReplaceCanRecoverAfterRemovalTest"
+      ],
+      "invariants": [
+        "UnavailableRecordIsOff",
+        "SnapshotOnlyLivesInOpenReader",
+        "LookupDoesNotRequireWriteAccess"
+      ],
+      "sources": [
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/GoogleAgentAccessFile.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java",
+        "backend/native-google-agent-host.ts",
+        "backend/managed-google-agent-host.ts",
+        "backend/managed-google-agent-broker.ts"
+      ],
+      "stateMapping": {
+        "file/access/sidecars": "Canonical file type and bits, with observed sibling artifacts",
+        "writes/refusals": "Actual JVM writer outcomes",
+        "readerOpen/snapshot/lastRead": "Actual Node descriptor, captured bytes and host read results",
+        "hostGeneration/requests": "Real loopback host restart, scoped verification port and changes-off response"
+      },
+      "abstractions": [
+        "One private canonical POSIX path, up to five successful replacements, three refused writes and one host recreation. Temporary or backup siblings never supply the record.",
+        "Two private request slots. A read held at open keeps a coherent inode across replacement. Provider effects, Android power loss and mutable path ancestors remain separate."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 60,
+        "maxVerifyDepth": 4
+      }
+    },
+    {
+      "path": "specs/quint/services/NamedEmbeddingProvenance.qnt",
+      "module": "NamedEmbeddingProvenance",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "delayedCasRefusalTest",
+        "delayedTextRollbackTest",
+        "heldCasLosesToTextEditTest",
+        "delayedResizeRefusalTest",
+        "namedQueriesRequireMarkerTest",
+        "pendingActivationKeepsTextOnlyTest",
+        "staleCasPreservesRowTest"
+      ],
+      "invariants": [
+        "NamedRowUsesPinnedWidth",
+        "NamedRowRequiresExactMarker",
+        "VectorRequiresMemory"
+      ],
+      "sources": [
+        "vendor/eliza/plugins/plugin-sql/src/base.ts",
+        "vendor/eliza/plugins/plugin-sql/src/embedding-space.ts",
+        "vendor/eliza/plugins/plugin-sql/src/pglite/adapter.ts",
+        "vendor/eliza/packages/core/src/embedding-vector-space.ts",
+        "vendor/eliza/packages/core/src/runtime/embeddings.ts",
+        "vendor/eliza/packages/core/src/runtime/model-dispatch.ts",
+        "vendor/eliza/packages/core/src/runtime/data-mutations.ts",
+        "vendor/eliza/packages/agent/src/api/conversation-routes.ts",
+        "vendor/eliza/plugins/plugin-assistant/src/features/advanced-capabilities/experience/service.ts",
+        "patches/eliza/named-embedding-provenance.patch"
+      ],
+      "stateMapping": {
+        "space/width": "Live adapter activation and vector column at SQL construction",
+        "text/rowSpace/rowWidth": "PGlite readback of source text, row label and populated column",
+        "rowInput": "Marker class at the observed committed vector write",
+        "pending": "One real asynchronous adapter call held at its database port with captured arguments",
+        "result": "Observed write, stale CAS, search result or typed refusal"
+      },
+      "abstractions": [
+        "One adapter, one target memory or document fragment, one held adapter call, two widths, and finite exact marker/shape/source classes. The fixture uses real PGlite transactions and an in-process synthetic provider. Legacy malformed width/value normalization and simultaneous independent writers are outside the finite campaign.",
+        "The patch fences new vector admissions. Existing named rows are retained with their stored labels and require separate provenance or migration evidence. The translated CoreEmbeddingDimension model and historical counterexamples retain their own semantics."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 4
+      }
+    },
+    {
+      "path": "specs/quint/services/DevelopmentRuntimeLoader.qnt",
+      "module": "DevelopmentRuntimeLoader",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "flagAndPinRefusalsTest",
+        "transformFailureLeavesOnlyArtifactTest",
+        "receiptWriteFailureSkipsStateTest",
+        "stateFailureSkipsImportTest",
+        "loadedArtifactUsesBoundSaltTest",
+        "rebuildReusesLoadedModuleTest",
+        "rejectedEvaluationSurvivesValidRebuildTest"
+      ],
+      "invariants": [
+        "BuildRequiresAdmission",
+        "ReceiptFollowsTransform",
+        "SaltBelongsToPrivateState",
+        "ImportRequiresReceiptAndSalt",
+        "StableModuleCache"
+      ],
+      "sources": [
+        "backend/loader.ts",
+        "scripts/pinned-upstream-source.mjs",
+        "scripts/core-state-patch.mjs",
+        "vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs",
+        "vendor/eliza/packages/app/scripts/lib/consumer-source-resolver.mjs"
+      ],
+      "stateMapping": {
+        "phase/attempts/enabled/builds": "Serial invocation, opt-in and real build entry after the pin and registry checks",
+        "resolved/transformed/artifact/receipt": "Actual resolver and patch hook outcomes, generated module bytes and persisted source-map membership",
+        "stateDir/salt/saltBound/saltVersions": "Private scratch directory, durable file presence, exact environment readback and observed salt equality classes",
+        "cache/evaluations/returned/outcome": "Actual synthetic module evaluations, ESM return identity and typed invocation refusal"
+      },
+      "abstractions": [
+        "Two serial attempts in one process, two synthetic export versions, one private data directory, and one fixed generated artifact URL. Host fixture errors are finite classes. Real compiler dependency closure and process startup after the returned module are separate.",
+        "Output bytes can persist after a receipt refusal. Rebuilding the fixed URL can retain an earlier evaluated module or rejection in-process. The current-artifact equality expectation is separately observed, outside baseline safety."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 8
+      }
+    },
+    {
+      "path": "specs/quint/services/CombinedAgentLauncher.qnt",
+      "module": "CombinedAgentLauncher",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "busyPortDoesNotSpawnTest",
+        "validateOnlyExistingMarkerTest",
+        "coreRefusalFollowsPrivateLogTest",
+        "launchReceiptBeforeChildBootTest",
+        "launchErrorReceiptHasNoPidTest",
+        "receiptFailureReapsBeforeRejectionTest",
+        "forcedCleanupReapsStubbornChildTest",
+        "signalExitPropagatesFailureTest"
+      ],
+      "invariants": [
+        "SpawnRequiresPreparedProfile",
+        "MetadataDescribesSpawn",
+        "ValidateDoesNotLaunch",
+        "SupervisionPrecedesPublication",
+        "ForwardingRequiresOwnedChild",
+        "ClosedChildReleasesOwnership",
+        "ChildCustodyAfterLaunch"
+      ],
+      "sources": [
+        "scripts/start-combined-agent.mjs",
+        "scripts/combined-agent-source.mjs",
+        "scripts/host-speech-admission.mjs",
+        "scripts/agent-identity.mjs",
+        "scripts/agent-model.mjs",
+        "scripts/core-state-patch.mjs",
+        "scripts/launcher-child.mjs"
+      ],
+      "stateMapping": {
+        "checks/port": "Exact version calls and synthetic fixed-port probe completion",
+        "profile/marker/config/identity/token/logOpen": "Real private scratch files and launcher-owned log descriptor",
+        "core/spawnRequested/pid/metadata/metadataPid": "Resolved source overlay, actual returned synthetic child and process receipt",
+        "outcome/exitCode": "Observed source refusal or process result",
+        "supervised/booted/childExited/childFailed/childClosed/forwarded": "Actual handler lifetime, child IPC, parent signal forwarding and terminal child events",
+        "receiptFailed/cleanupSignal": "Observed write refusal and the launcher signal to its exact returned child"
+      },
+      "abstractions": [
+        "One launcher process, one returned child, at most one forwarded signal, two synthetic core modes, finite version and profile refusals. The port probe is a synthetic availability check, separate from later child socket ownership.",
+        "Metadata records spawn, including a request with no PID. Supervision is installed before publication. Receipt rejection waits for child close and releases the private log. Child boot is an IPC observation independent of endpoint readiness."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 15
+      }
+    },
+    {
+      "path": "specs/quint/services/ReviewedWorkflowLauncher.qnt",
+      "module": "ReviewedWorkflowLauncher",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "dependencyRefusalTest",
+        "missingEntryRetainsTokenTest",
+        "invalidRoutingKeepsMigratedIdentityTest",
+        "cleanPinnedEntryTest",
+        "otherRevisionCanLeaveReceiptTest",
+        "gitReadFailurePreventsSpawnTest",
+        "receiptFailureClosesChildTest"
+      ],
+      "invariants": [
+        "EntryCheckFollowsToken",
+        "SpawnRequiresPrivateProfile",
+        "ReceiptDescribesRequestedChild",
+        "PatchedEntryRequiresAdmittedRevision",
+        "ChildCustodyAfterReceiptFailure",
+        "ClosedChildReleasesLog"
+      ],
+      "sources": [
+        "scripts/start-reviewed-workflow-agent.mjs",
+        "scripts/local-agent-source.mjs",
+        "scripts/agent-identity.mjs",
+        "scripts/agent-model.mjs",
+        "scripts/agent-embeddings.mjs",
+        "scripts/core-state-preload.mjs",
+        "scripts/core-state-patch.mjs",
+        "scripts/launcher-child.mjs"
+      ],
+      "stateMapping": {
+        "source/deps/profile/token/entryChecked/entry": "Actual path admission, directory and entry checks, private profile and durable token",
+        "config/identity/text/embeddings/features/logOpen": "Actual profile bytes and private launch descriptor",
+        "booted/childClosed/preloadEntry/forwarded/outcome/exitCode": "Synthetic process observations and actual optional authenticated preload",
+        "gitRevision/child/childPid/metadata/pid/revision/supervised": "Actual pre-spawn HEAD capture, returned synthetic child, installed handlers and persisted process receipt",
+        "receiptFailed/cleanupSignal": "Actual metadata refusal and signals to the returned child"
+      },
+      "abstractions": [
+        "One invocation and child, fixed synthetic source bytes during each launch, two source selection modes, finite preflight outcomes. Real workflow readiness and compiled backend execution have separate scope.",
+        "Current source captures HEAD before spawn and holds child custody through receipt publication. Authenticated preload can reject after metadata publication."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 13
+      }
+    },
+    {
+      "path": "specs/quint/services/CoreConnectorCustody.qnt",
+      "module": "CoreConnectorCustody",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "lateReturnedStartDoesNotReopenRouteTest",
+        "detachedOldStampCannotTakeReplacementTest",
+        "earlyRivalRetainsBothExactClaimsTest",
+        "unscopedHostPublicationSurvivesOldStopTest",
+        "disposeSettlesBeforeWithdrawalTest",
+        "sharedClassUsesSeparateRuntimeStampsTest"
+      ],
+      "invariants": [
+        "PublicRoutesHaveExactLiveOwner",
+        "PublicRoutesKeepGenerationProvenance",
+        "ExactKeyHasAtMostOneClaim",
+        "StartStampStaysLocal",
+        "WithdrawnServiceDoesNotPublish",
+        "StopIsSingleFlight"
+      ],
+      "sources": [
+        "vendor/eliza/packages/core/src/plugin-lifecycle.ts",
+        "vendor/eliza/packages/core/src/runtime/connector-registry.ts",
+        "vendor/eliza/packages/core/src/runtime/connector-registration.ts",
+        "vendor/eliza/packages/core/src/runtime/service-lifecycle.ts",
+        "vendor/eliza/packages/core/src/runtime.ts",
+        "patches/eliza/plugin-connector-custody.patch",
+        "patches/eliza/core-state-manifest.json",
+        "scripts/core-state-patch.mjs"
+      ],
+      "stateMapping": {
+        "lanes.owner/lanes.rival/lanes.claims": "Actual public plugin ownership record and exact account/default/message/post/legacy claims",
+        "lanes.routes": "Public connector descriptors and synthetic dispatch readback. Hidden owner stamps are checked through these effects.",
+        "lanes.capture/lanes.retired": "Abstract exact runtime and ownership object identity at registration/service start and withdrawal",
+        "lanes.disposing/lanes.phase/lanes.stops/lanes.detached/lanes.continuation": "Held actual disposal, service admission/publication, stop invocation, and detached continuation progress",
+        "isolation": "Same class object registered in two separate runtime instances"
+      },
+      "abstractions": [
+        "One first plugin generation, one same-name replacement, one rival, one default and one named account, five exact keys and one service per runtime. The isolation profile uses two runtimes with a shared class identity.",
+        "Synchronous fixture publication across message, post and legacy APIs forms one action. Explicit direct unregistration, unscoped asynchronous callbacks and arbitrary plugin effects remain separate."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 6
+      }
+    },
+    {
+      "path": "specs/quint/services/MobileBundleAdmission.qnt",
+      "module": "MobileBundleAdmission",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "freshReceiptAdmissionTest",
+        "bundleChangeRequiresFreshReceiptTest",
+        "producerPolicyAndReceiptAreSeparateTest",
+        "connectorTransformRequiredOnIssueAndVerifyTest",
+        "malformedReceiptReadbackTest",
+        "candidateAndPersistedReceiptCanDivergeTest"
+      ],
+      "invariants": [
+        "AdmitRequiresCurrentExactReceipt",
+        "AdmitRequiresReviewedInputs",
+        "AdmitRequiresExistingBundle",
+        "CandidateRecordsExactTransforms"
+      ],
+      "sources": [
+        "scripts/mobile-uuid-adapter.mjs",
+        "scripts/core-state-patch.mjs",
+        "scripts/build-mobile-agent.mjs",
+        "scripts/mobile-bundle-smoke.mjs",
+        "patches/eliza/mobile-uuid-build.json",
+        "patches/eliza/core-state-manifest.json",
+        "patches/eliza/plugin-connector-custody.patch",
+        "upstream.lock.json",
+        "vendor/eliza/bun.lock",
+        "vendor/eliza/packages/agent/scripts/build-mobile-bundle.ts"
+      ],
+      "stateMapping": {
+        "files": "Exact reviewed policy and producer, adapter, source stamp and selected bundle digest equality classes",
+        "fault/uuid/core": "Fixture input mutations and exact observed UUID/core onLoad transform records, including the required connector target",
+        "candidate/stored": "Actual helper return and independent receipt slot bytes, with format and binding faults",
+        "outcome": "Actual input, issue or readback result category at each synthetic checkpoint"
+      },
+      "abstractions": [
+        "One selected directory, one synthetic input fault at a time, two coherent producer/policy and valid file identity variants. UUID and reviewed core hook records are materialized against exact copied inputs.",
+        "Admission compares smoke claim fields and complete receipt identity. Smoke execution, actual staging copy timing, interruption and installed runtime remain separate."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 6
+      }
     }
   ]
 }

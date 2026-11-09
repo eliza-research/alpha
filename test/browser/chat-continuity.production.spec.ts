@@ -388,6 +388,19 @@ test('a new message after Stop retires the pending check and stale notice; nothi
   await noResend(page, foreign, 2);
 });
 
+test('a refused new message after Stop keeps the earlier unknown outcome', async ({ page }) => {
+  const foreign = await connected(page, { clock: true });
+  await heldSend(page, 'First question');
+  await stopReply(page);
+  await page.evaluate(() => Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false }));
+  await composer(page).fill('Second question');
+  await composer(page).press('Enter');
+  await expect(conversation(page).getByText(LOAD_TO_SEE, { exact: true })).toHaveCount(1);
+  await expect(composer(page)).toHaveValue('Second question');
+  expect(await harness(page, f => f.posts)).toEqual(['First question']);
+  await noResend(page, foreign, 1);
+});
+
 test('a new conversation after Stop retires the check; the stopped reply never replaces the new chat', async ({ page }) => {
   test.setTimeout(120_000);
   const foreign = await connected(page, { clock: true });

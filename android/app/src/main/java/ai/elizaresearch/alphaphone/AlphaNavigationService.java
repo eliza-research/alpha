@@ -13,6 +13,9 @@ import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.os.Build;
 import android.os.IBinder;
+import android.net.Uri;
+import java.util.UUID;
+import java.util.function.BooleanSupplier;
 
 /**
  * Keeps an explicitly started Maps navigation session alive while the screen is off.
@@ -29,26 +32,41 @@ public final class AlphaNavigationService extends Service {
  static final String ACTION_START = "ai.elizaresearch.alphaphone.navigation.START";
  static final String ACTION_UPDATE = "ai.elizaresearch.alphaphone.navigation.UPDATE";
  static final String ACTION_STOP = "ai.elizaresearch.alphaphone.navigation.STOP";
- static final String EXTRA_SESSION = "session", EXTRA_TITLE = "title", EXTRA_TEXT = "text", EXTRA_REASON = "reason";
+ static final String EXTRA_SESSION = "session", EXTRA_AUTHORITY = "authority", EXTRA_REASON = "reason";
  static final String SESSION_PATTERN = "[A-Za-z0-9_-]{8,80}";
 
- /** Receives the single terminal stop of each session; registered by the Maps bridge. */
+ /** Receives the single terminal stop of a session; the Maps bridge that started it owns it. */
  interface StopListener { void stopped(String session, String reason); }
 
+ private static final class Session {
+  final String id;
+  final StopListener owner;
+  final ComponentName rootComponent;
+  final String authority = UUID.randomUUID().toString();
+  String title, text;
+  Session(String id, StopListener owner, ComponentName rootComponent, String title, String text) {
+   this.id = id;
+   this.owner = owner;
+   this.rootComponent = rootComponent;
+   this.title = bounded(title);
+   this.text = bounded(text);
+  }
+  boolean matches(Intent command) {
+   return id.equals(command.getStringExtra(EXTRA_SESSION)) && authority.equals(command.getStringExtra(EXTRA_AUTHORITY));
+  }
+ }
+
  private static final Object lock = new Object();
- private static String activeSession;
- private static StopListener listener;
+ private static Session active;
  private static int stopCount;
  private static String lastStopReason = "";
  private static String lastTitle = "", lastText = "";
 
- static void setStopListener(StopListener value) { synchronized (lock) { listener = value; } }
- static void clearStopListener(StopListener value) { synchronized (lock) { if (listener == value) listener = null; } }
- static String activeSession() { synchronized (lock) { return activeSession; } }
+ static String activeSession() { synchronized (lock) { return active == null ? null : active.id; } }
 
  /** Instrumentation-visible state: active session, total terminal stops and last reason. */
  static String[] snapshot() {
-  synchronized (lock) { return new String[]{activeSession == null ? "" : activeSession, String.valueOf(stopCount), lastStopReason, lastTitle, lastText}; }
+  synchronized (lock) { return new String[]{active == null ? "" : active.id, String.valueOf(stopCount), lastStopReason, lastTitle, lastText}; }
  }
 
  /** True when this build declares the service; a build without the manifest entry stays foreground-only. */
@@ -64,39 +82,91 @@ public final class AlphaNavigationService extends Service {
    || context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
  }
 
- static void start(Context context, String session, String title, String text) {
-  synchronized (lock) { activeSession = session; lastTitle = bounded(title); lastText = bounded(text); }
-  context.startForegroundService(intent(context, ACTION_START, session).putExtra(EXTRA_TITLE, title).putExtra(EXTRA_TEXT, text));
- }
-
- static boolean update(Context context, String session, String title, String text) {
-  synchronized (lock) { if (activeSession == null || !activeSession.equals(session)) return false; lastTitle = bounded(title); lastText = bounded(text); }
-  context.startService(intent(context, ACTION_UPDATE, session).putExtra(EXTRA_TITLE, title).putExtra(EXTRA_TEXT, text));
-  return true;
- }
-
- /** Ends the session if it is still active. Returns false when it already stopped.
-  * The service is told through a command rather than stopService: a start that is still
-  * queued must reach startForeground first, or the platform treats the start as broken. */
- static boolean stop(Context context, String session, String reason) {
-  if (!finish(session, reason)) return false;
-  try { context.startService(intent(context, ACTION_STOP, session).putExtra(EXTRA_REASON, reason)); }
-  catch (RuntimeException backgroundRestricted) { context.stopService(new Intent(context, AlphaNavigationService.class)); }
-  return true;
- }
-
- private static boolean finish(String session, String reason) {
-  StopListener target;
+ static boolean start(Context context, String id, String title, String text, StopListener owner, ComponentName rootComponent, BooleanSupplier admitted) {
+  final Session session;
+  final Session replaced;
   synchronized (lock) {
-   if (activeSession == null || (session != null && !activeSession.equals(session))) return false;
-   session = activeSession; activeSession = null; stopCount++; lastStopReason = reason; target = listener;
+   if (!admitted.getAsBoolean()) return false;
+   replaced = retireLocked("replaced");
+   session = new Session(id, owner, rootComponent, title, text);
+   active = session;
+   lastTitle = session.title;
+   lastText = session.text;
   }
-  if (target != null) target.stopped(session, reason);
+  try {
+   if (replaced != null) dispatchStop(context, replaced, "replaced");
+   synchronized (lock) {
+    if (active != session || !admitted.getAsBoolean()) return false;
+   }
+   context.startForegroundService(intent(context, ACTION_START, session));
+  } catch (RuntimeException refused) {
+   final Session retired;
+   synchronized (lock) {
+    retired = active == session ? retireLocked("refused") : null;
+   }
+   if (retired != null) dispatchStop(context, retired, "refused");
+   throw refused;
+  }
+  synchronized (lock) { return active == session && admitted.getAsBoolean(); }
+ }
+
+ static boolean update(Context context, String id, String title, String text, StopListener owner) {
+  final Session session;
+  synchronized (lock) {
+   if (active == null || active.owner != owner || !active.id.equals(id)) return false;
+   session = active;
+   session.title = lastTitle = bounded(title);
+   session.text = lastText = bounded(text);
+  }
+  context.startService(intent(context, ACTION_UPDATE, session));
   return true;
  }
 
- private static Intent intent(Context context, String action, String session) {
-  return new Intent(context, AlphaNavigationService.class).setAction(action).putExtra(EXTRA_SESSION, session);
+ /** Retires only this bridge owner's session. A null id is used by renderer destruction. */
+ static boolean stop(Context context, String id, StopListener owner, String reason) {
+  final Session session;
+  synchronized (lock) {
+   if (active == null || active.owner != owner || (id != null && !active.id.equals(id))) return false;
+   session = retireLocked(reason);
+  }
+  dispatchStop(context, session, reason);
+  return true;
+ }
+
+ /** Caller holds lock. Delivery occurs outside it, against the retired session's exact listener. */
+ private static Session retireLocked(String reason) {
+  Session retired = active;
+  if (retired != null) {
+   active = null;
+   stopCount++;
+   lastStopReason = reason;
+  }
+  return retired;
+ }
+
+ private static void notifyStopped(Session retired, String reason) {
+  if (retired != null) retired.owner.stopped(retired.id, reason);
+ }
+
+ private static void dispatchStop(Context context, Session retired, String reason) {
+  try {
+   notifyStopped(retired, reason);
+  } finally {
+   try { context.startService(intent(context, ACTION_STOP, retired).putExtra(EXTRA_REASON, reason)); }
+   catch (RuntimeException backgroundRestricted) {
+    // An exact STOP command is preferred. Android's unscoped stopService is safe only
+    // while the service has no successor, including a successor still awaiting START.
+    synchronized (lock) {
+     if (active == null) context.stopService(new Intent(context, AlphaNavigationService.class));
+    }
+   }
+  }
+ }
+
+ private static Intent intent(Context context, String action, Session session) {
+  Intent command = new Intent(context, AlphaNavigationService.class).setAction(action);
+  if (session != null) command.putExtra(EXTRA_SESSION, session.id).putExtra(EXTRA_AUTHORITY, session.authority);
+  return command;
  }
 
  private static String bounded(String value) {
@@ -106,63 +176,72 @@ public final class AlphaNavigationService extends Service {
  }
 
  /** The session this service instance last entered the foreground for. */
- private String owned;
+ private Session owned;
 
  @Override public IBinder onBind(Intent intent) { return null; }
 
  @Override public int onStartCommand(Intent intent, int flags, int startId) {
   String action = intent == null ? null : intent.getAction();
-  String session = intent == null ? null : intent.getStringExtra(EXTRA_SESSION);
-  if (ACTION_STOP.equals(action)) {
-   // Notification Stop: the renderer hears it through the bridge listener once. An app stop
-   // already finished the session; a stop of a replaced session leaves its successor running.
-   finish(session, intent.getStringExtra(EXTRA_REASON) == null ? "notification" : intent.getStringExtra(EXTRA_REASON));
-   if (activeSession() == null) end(startId);
-   return START_NOT_STICKY;
+  Session retired = null;
+  String reason = "refused";
+  synchronized (lock) {
+   if (ACTION_STOP.equals(action)) {
+    if (active != null && active.matches(intent)) {
+     reason = intent.getStringExtra(EXTRA_REASON) == null ? "notification" : intent.getStringExtra(EXTRA_REASON);
+     retired = retireLocked(reason);
+    }
+    endIfIdle(startId);
+   } else {
+    boolean live = active != null && intent != null && active.matches(intent);
+    if (ACTION_START.equals(action) || (ACTION_UPDATE.equals(action) && live)) {
+     // A queued START must satisfy Android even after its owner retired. Publish the
+     // current session's instruction if one exists, never the stale command's data.
+     try {
+      Notification notification = notification(active);
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
+      else startForeground(NOTIFICATION_ID, notification);
+      owned = active;
+     } catch (RuntimeException refused) {
+      if (live) retired = retireLocked(reason);
+     }
+    }
+    endIfIdle(startId);
+   }
   }
-  String current = activeSession();
-  boolean live = session != null && session.equals(current) && (ACTION_START.equals(action) || ACTION_UPDATE.equals(action));
-  if (!live && !ACTION_START.equals(action)) {
-   // A stale or replayed update never revives a stopped session.
-   if (current == null) end(startId);
-   return START_NOT_STICKY;
-  }
-  // A start command always enters the foreground first (the platform requires it), then a
-  // session that already stopped ends immediately.
-  Notification notification = notification(bounded(intent.getStringExtra(EXTRA_TITLE)), bounded(intent.getStringExtra(EXTRA_TEXT)), session == null ? "" : session);
-  try {
-   if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
-   else startForeground(NOTIFICATION_ID, notification);
-  } catch (RuntimeException refused) {
-   // Missing location permission or a background start restriction: no silent continuation.
-   finish(session, "refused");
-   end(startId);
-   return START_NOT_STICKY;
-  }
-  if (live) owned = session; else end(startId);
+  notifyStopped(retired, reason);
   return START_NOT_STICKY;
  }
 
  @Override public void onTaskRemoved(Intent rootIntent) {
-  finish(null, "task-removed");
-  end(-1);
+  final Session retired;
+  // Android reports a task from this package, which can belong to a different Activity.
+  ComponentName removedRoot = rootIntent == null ? null : rootIntent.getComponent();
+  synchronized (lock) {
+   retired = owned != null && active == owned && removedRoot != null && removedRoot.equals(owned.rootComponent)
+    ? retireLocked("task-removed") : null;
+   endIfIdle(-1);
+  }
+  notifyStopped(retired, "task-removed");
   super.onTaskRemoved(rootIntent);
  }
 
  @Override public void onDestroy() {
-  // The system can destroy the service without a command; report that stop as well. Only the
-  // session this instance served: a destroy that trails a stop must not end its successor.
-  if (owned != null) finish(owned, "destroyed");
+  final Session retired;
+  synchronized (lock) {
+   retired = owned != null && active == owned ? retireLocked("destroyed") : null;
+  }
+  notifyStopped(retired, "destroyed");
   super.onDestroy();
  }
 
- /** Leaves the foreground and stops unless a newer command (a new Start) has arrived since. */
- private void end(int startId) {
+ /** Caller holds lock. A queued command for another owner cannot remove its foreground. */
+ private void endIfIdle(int startId) {
+  if (active != null) return;
   stopForeground(STOP_FOREGROUND_REMOVE);
   if (startId < 0) stopSelf(); else stopSelf(startId);
  }
 
- private Notification notification(String title, String text, String session) {
+ private Notification notification(Session session) {
   NotificationManager manager = getSystemService(NotificationManager.class);
   if (manager.getNotificationChannel(CHANNEL) == null) {
    NotificationChannel channel = new NotificationChannel(CHANNEL, "Maps navigation", NotificationManager.IMPORTANCE_LOW);
@@ -173,18 +252,24 @@ public final class AlphaNavigationService extends Service {
   }
   Intent open = new Intent(this, MainActivity.class).setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
   PendingIntent content = PendingIntent.getActivity(this, 0, open, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-  PendingIntent stop = PendingIntent.getService(this, 1, intent(this, ACTION_STOP, session).putExtra(EXTRA_REASON, "notification"), PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-  return new Notification.Builder(this, CHANNEL)
+  Notification.Builder notification = new Notification.Builder(this, CHANNEL)
    .setSmallIcon(android.R.drawable.ic_menu_directions)
-   .setContentTitle(title.isEmpty() ? "Navigation" : title)
-   .setContentText(text)
+   .setContentTitle(session == null || session.title.isEmpty() ? "Navigation" : session.title)
+   .setContentText(session == null ? "" : session.text)
    .setContentIntent(content)
    .setOngoing(true)
    .setOnlyAlertOnce(true)
    .setShowWhen(false)
    .setCategory(Notification.CATEGORY_NAVIGATION)
-   .setVisibility(Notification.VISIBILITY_PUBLIC)
-   .addAction(new Notification.Action.Builder(null, "Stop", stop).build())
-   .build();
+   .setVisibility(Notification.VISIBILITY_PUBLIC);
+  if (session != null) {
+   // Extras do not distinguish PendingIntents. Keep an older notification's Stop
+   // tied to its own admission even if another renderer reuses a public session id.
+   Intent stopIntent = intent(this, ACTION_STOP, session).putExtra(EXTRA_REASON, "notification")
+    .setData(Uri.parse("alphaphone-navigation:" + session.authority));
+   PendingIntent stop = PendingIntent.getService(this, 1, stopIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+   notification.addAction(new Notification.Action.Builder(null, "Stop", stop).build());
+  }
+  return notification.build();
  }
 }

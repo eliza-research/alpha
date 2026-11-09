@@ -11,7 +11,7 @@ import type { Reminder, ClockRequest } from '../daily';
 import { revision } from './revision';
 import {notificationState} from './notification-store';
 import {reminderDocument} from './reminder-store';
-import {retireJournal,trimDeletionJournal,settleExpiredDeletions} from './journal-retention';
+import {journalEntry,retireJournal,trimDeletionJournal,settleExpiredDeletions,writeJournalEntry} from './journal-retention';
 type State=ReminderDeletionState&{receipts?:Record<string,{binding:string;result:ReminderResult|ReminderCreateResult;at?:number}>};
 const initial=():State=>({sourceRevision:revision(),reminders:[]});
 async function notificationsAllowed(){const state=await notificationState();return state.appEnabled&&state.channels.reminders!==false;}
@@ -34,14 +34,14 @@ export class BrowserDaily extends WebPlugin {
   async stageDeletion(expected:ReminderTarget,owner:string,id?:string,binding?:string,journalBinding?:{scope:string;proposalId:string;operationHash:string}){return reminderDocument.edit(initial,data=>{
     if(!browserDeletionOwnerCurrent(owner))throw Error('Deletion owner changed during review.');
     const row=data.reminders.find(r=>r.id===expected.reminderId);if(!row||Object.entries(target(data,row)).some(([key,value])=>expected[key as keyof ReminderTarget]!==value))throw Error('Reminder changed. Review it again.');
-    if(binding&&id){if(data.deleteClaims?.[id])throw Error('Deletion operation already used.');trimDeletionJournal(data);if(Object.keys(data.deleteClaims||{}).length>=500)throw Error('Action deletion history requires review.');}
+    if(binding&&id){if(journalEntry(data.deleteClaims,id))throw Error('Deletion operation already used.');trimDeletionJournal(data);if(Object.keys(data.deleteClaims||{}).length>=500)throw Error('Action deletion history requires review.');}
     // The claim is kept only while its deletion entry is, so it is added after staging.
-    const staged=stageReminderDeletion(data,row,owner,id,binding);if(binding&&id)(data.deleteClaims??={})[id]=binding;if(journalBinding)data.deletions![staged.id].journalBinding=journalBinding;return staged;
+    const staged=stageReminderDeletion(data,row,owner,id,binding);if(binding&&id)writeJournalEntry(data.deleteClaims??={},id,binding);if(journalBinding)data.deletions![staged.id].journalBinding=journalBinding;return staged;
   });}
-  async deletionReceipt(id:string){const data=await reminderDocument.read(initial);return {entry:data.deletions?.[id]||null,row:data.reminders.find(r=>r.pendingDeletion===id||r.id===data.deletions?.[id]?.target.row.id)};}
+  async deletionReceipt(id:string){const data=await reminderDocument.read(initial),entry=journalEntry(data.deletions,id);return {entry:entry||null,row:data.reminders.find(r=>r.pendingDeletion===id||r.id===entry?.target.row.id)};}
   async pendingDeletions(){const data=await reminderDocument.read(initial),clock=rendererDeletionClock();return Object.values(data.deletions||{}).filter(e=>!e.acknowledged&&['queued','paused','unknown','dispatching'].includes(e.phase)&&browserDeletionOwnerVisible(e.owner)).map(e=>({...e,kind:'reminder',window:e.phase==='queued'?deletionWindow(e.deadline,clock):undefined}));}
   async settleDeletions(){await settleExpiredDeletions(reminderDocument,initial,data=>settleReminderDeletions(data,browserDeletionOwnerCurrent));}
-  async dismissDeletion(id:string){return reminderDocument.edit(initial,data=>{const entry=data.deletions?.[id];if(!entry||!browserDeletionOwnerVisible(entry.owner)||!['unknown','dispatching'].includes(entry.phase))throw Error('Uncertain deletion is unavailable.');entry.acknowledged=true;return {status:'acknowledged'};});}
+  async dismissDeletion(id:string){return reminderDocument.edit(initial,data=>{const entry=journalEntry(data.deletions,id);if(!entry||!browserDeletionOwnerVisible(entry.owner)||!['unknown','dispatching'].includes(entry.phase))throw Error('Uncertain deletion is unavailable.');entry.acknowledged=true;return {status:'acknowledged'};});}
   async undoDeletion(id:string){return reminderDocument.edit(initial,data=>undoReminderDeletion(data,id,browserDeletionOwnerVisible));}
   async notifyReminder(id:string,occurrenceId:string){await this.notifyListeners('reminderOpened',{id,occurrenceId});}
   async surfaceInfo(){return {developmentBuild:devSurfacesEnabled,assistant:false,reminderCreationVersion:1 as const,reminderTimingVersion:2 as const,topInset:0,bottomInset:0};}
@@ -68,14 +68,14 @@ export class BrowserDaily extends WebPlugin {
 
   async selectedReminder(input:{id:string}):Promise<ReminderTarget>{const data=await reminderDocument.read(initial),row=data.reminders.find(r=>r.id===input.id);if(!row)throw Error('Reminder no longer exists.');return target(data,row);}
   async reminderOperationReceipt(input:{operationId:string;bindingHash:string;operation:ReminderOperation|ReminderCreateOperation}) {
-    const operation=isReminderCreate(input.operation)?validateReminderCreate(input.operation):validateReminderOperation(input.operation),binding=operationBinding(input,operation),receipt=(await reminderDocument.read(initial)).receipts?.[input.operationId];
+    const operation=isReminderCreate(input.operation)?validateReminderCreate(input.operation):validateReminderOperation(input.operation),binding=operationBinding(input,operation),receipt=journalEntry((await reminderDocument.read(initial)).receipts,input.operationId);
     if(!receipt)return {status:'unknown'};if(receipt.binding!==binding)throw Error('Reminder receipt binding changed.');return {status:'succeeded',result:receipt.result};
   }
   async operateReminder(input:{operationId:string;bindingHash:string;operation:ReminderOperation|ReminderCreateOperation}) {
     const operation=isReminderCreate(input.operation)?validateReminderCreate(input.operation):validateReminderOperation(input.operation),binding=operationBinding(input,operation);
     if(operation.type==='reminder_cancel')throw Error('Use the reviewed deletion window.');
     const run=async(data:State)=>{
-      const receipt=data.receipts?.[input.operationId];if(receipt){if(receipt.binding!==binding)throw Error('Reminder receipt binding changed.');return {status:'succeeded',result:receipt.result};}
+      const receipt=journalEntry(data.receipts,input.operationId);if(receipt){if(receipt.binding!==binding)throw Error('Reminder receipt binding changed.');return {status:'succeeded',result:receipt.result};}
       if(document.hidden)throw Error('Return to Alpha to review the reminder.');
       if(operation.type!=='reminder_read_selected')retireJournal(data.receipts,()=>true);
       if(isReminderCreate(operation)){
@@ -86,7 +86,7 @@ export class BrowserDaily extends WebPlugin {
         const row:DeletableReminder={id:input.operationId,title,body,at:schedule.at,dueAt:schedule.dueAt,alertMinutes:schedule.alertMinutes,...(schedule.recurrence?{recurrence:schedule.recurrence}:{}),mode:schedule.alertMinutes===null?'none':'inexact',status:schedule.alertMinutes===null?'pending':await scheduledStatus(),createdAt:Date.now(),occurrenceId:crypto.randomUUID(),revision:revision(),history:[]};
         const result=validateReminderCreateResult(operation,{version:1,kind:operation.type,sourceId:'browser-reminders',reminderId:row.id,occurrenceId:row.occurrenceId,revision:row.revision,status:row.status,at:row.at,dueAt:row.dueAt,alertMinutes:row.alertMinutes,fields:operation.fields},input.operationId);
         if(document.hidden)throw Error('Return to Alpha to review the reminder.');
-        data.reminders.push(row);(data.receipts??={})[input.operationId]={binding,result,at:Date.now()};return {status:'succeeded',result};
+        data.reminders.push(row);writeJournalEntry(data.receipts??={},input.operationId,{binding,result,at:Date.now()});return {status:'succeeded',result};
       }
       const row=data.reminders.find(r=>r.id===operation.target.reminderId);
       if(!row||operation.target.timingVersion!==target(data,row).timingVersion||Object.entries(target(data,row)).some(([k,v])=>operation.target[k as keyof ReminderTarget]!==v))throw Error('Reminder changed. Review it again.');
@@ -99,7 +99,7 @@ export class BrowserDaily extends WebPlugin {
       const result:ReminderResult={...reminderTiming(row),version:1,kind:operation.type,sourceId:'browser-reminders',reminderId:row.id,occurrenceId:row.occurrenceId!,revision:row.revision,status:row.status,at:row.at};
       if(operation.type==='reminder_read_selected')result.fields={title:row.title,body:row.body,schedule:{at:row.alertMinutes===undefined?row.at:row.dueAt!-(row.alertMinutes??0)*60000,recurrence:row.recurrence||null,...reminderTiming(row)}};
       if(document.hidden)throw Error('Return to Alpha to review the reminder.');
-      if(operation.type!=='reminder_read_selected')(data.receipts??={})[input.operationId]={binding,result,at:Date.now()};
+      if(operation.type!=='reminder_read_selected')writeJournalEntry(data.receipts??={},input.operationId,{binding,result,at:Date.now()});
       return {status:'succeeded',result};
     };
     // A read has no outcome to recover, so it is not journaled and never writes the document.

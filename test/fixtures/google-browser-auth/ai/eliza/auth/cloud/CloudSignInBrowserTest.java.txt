@@ -15,7 +15,7 @@ public class CloudSignInBrowserTest extends BrowserPluginBase {
  static class SignInFailure extends Exception { final String code; SignInFailure(String code) { this.code=code; } }
  static class Attempt {
   final CloudSignInEnvironment environment=TestRegistration.PRODUCTION; final Runnable credentialGuard;
-  boolean cancelled, browserLaunched, browserPaused, callbackReceived, returnHint, busy; String browserState,pendingRecord; long expiresAt;
+  boolean cancelled, browserLaunched, browserPaused, callbackReceived, returnHint, returnClaimed, busy; String browserState,pendingRecord; long expiresAt;
   Attempt(Runnable guard) { credentialGuard=guard; }
  }
  static class Uri { static Uri parse(String value) { return new Uri(value); } final String value; Uri(String value) { this.value=value; } }

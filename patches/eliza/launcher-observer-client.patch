@@ -1,0 +1,9 @@
+--- a/plugins/plugin-native-system/src/client/launcher.ts
++++ b/plugins/plugin-native-system/src/client/launcher.ts
+@@ -665,0 +666 @@
++    if (!active) return;
+@@ -669,0 +671 @@
++    pending = null;
+@@ -678 +680 @@
+-          handle.remove();
++          return handle.remove();

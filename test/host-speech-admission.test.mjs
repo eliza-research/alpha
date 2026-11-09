@@ -7,6 +7,7 @@ import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {verifiedFile,speechAssets} from '../scripts/host-speech-admission.mjs';
 import {sourceManifest} from '../scripts/combined-agent-source.mjs';
+import {verifyEmbeddingInputs} from '../scripts/stage-embedding-host.mjs';
 import {mkdirSync} from 'node:fs';
 test('admission verifies exact bytes and reviewed digest, rejecting links and oversized assets',t=>{
  const root=mkdtempSync(join(tmpdir(),'alpha-speech-admission-'));t.after(()=>rmSync(root,{recursive:true,force:true}));
@@ -36,7 +37,12 @@ test('reviewed engine source keeps current embedding and voice qualification sep
  assert.equal(actual,reviewed);
  const qualification=JSON.parse(readFileSync(new URL('../android/embedding-host/qualified-host.json',import.meta.url),'utf8'));
  const pin=JSON.parse(readFileSync(new URL('../upstream.lock.json',import.meta.url),'utf8')).commit;
- assert.equal(qualification.requalification?.required,true);assert.equal(qualification.requalification.atPin,pin);
+ assert.equal(qualification.pin,pin);
+ assert.equal(qualification.forkPin,reviewed);
+ assert.equal(qualification.requalification,undefined);
+ const receipt=readFileSync(new URL('../docs/evidence/embedding-host-4787d51a14/QUALIFICATION-99b49439ce.json',import.meta.url));
+ assert.equal(createHash('sha256').update(receipt).digest('hex'),qualification.qualificationReceiptSha256);
+ verifyEmbeddingInputs(process.cwd(),qualification,{requireProducerInputs:true});
  const voice=JSON.parse(readFileSync(new URL('../android/voice-host/qualified-voice-host.json',import.meta.url),'utf8'));
  assert.equal(voice.qualified,false);assert.equal(voice.evidence.userAccepted,false);
 });

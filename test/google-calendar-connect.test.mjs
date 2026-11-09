@@ -4,11 +4,8 @@
 // the agent port and Cloud client are synthetic. No Google, OAuth, provider write, backfill or disconnect runs.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
-import {createRequire} from 'node:module';
-import vm from 'node:vm';
-import {JSDOM} from 'jsdom';
-import {buildSync,transformSync} from 'esbuild';
+import {buildSync} from 'esbuild';
+import {mountGoogleAccountPanel} from './fixtures/google-account-panel.mjs';
 import {tsImport} from 'tsx/esm/api';
 const load=path=>tsImport(new URL(path,import.meta.url).href,{parentURL:import.meta.url});
 const {AgentCalendar}=await load('../apps/app/src/runtime/agent-calendar.ts');
@@ -274,59 +271,7 @@ test('retention precedes a failed revoke; a stale pause request or no captured r
  f.calendar.retire();
 });
 
-/** The actual Google accounts panel. Only the Cloud account list, consent URL and browser open are synthetic. */
-async function panel(rows,{calendarEdits=true,gmailChanges=true,unreadable=false,saveFails=false,browser=false,host='current'}={}){
- const dom=new JSDOM('<div class="os" style="--bg:#121212;--fg:#fff;--acct:#95a0ff;--acc:#0000ff"></div><div id="root"></div>',{url:'https://alpha.invalid'});
- let hidden=false;Object.defineProperty(dom.window.document,'hidden',{configurable:true,get:()=>hidden});
- const saved={window:globalThis.window,document:globalThis.document,HTMLElement:globalThis.HTMLElement,IS_REACT_ACT_ENVIRONMENT:globalThis.IS_REACT_ACT_ENVIRONMENT};
- Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
- const require=createRequire(import.meta.url),React=require('react'),{createRoot}=require('react-dom/client');
- const access={gmailChanges,calendarEdits},p={rows,access,unreadable,revision:0,consents:[],opens:0,lists:0,accessChanges:[],policy:[],onPolicy:null,disconnects:[],onDisconnect:null};
- let cloud={client:{},sessionId:'cloud-session',credentialId:'cloud-credential'};
- const snapshot={cloudAccount:{environment:'production',userId:'22222222-2222-4222-8222-222222222222',organizationId:'33333333-3333-4333-8333-333333333333'}};
- const live=binding=>{if(binding.credentialId!==cloud.credentialId)throw new DOMException('The Cloud account changed.','AbortError');};
- const modules={
-  './cloud-protocol':{cloudServiceName},'./google-connection-return':connectionReturn,'./google-workspace-return':workspaceReturn,'./gmail-grants':gmailGrants,
-  '../daily':{DailyApps:{addListener:async()=>({remove(){}})}},'../native':{isAndroid:false},
-  // The browser Cloud stage's same-origin bridge: 'current' answers like Codex's proposed host, 'missing' like today's host.
-  './browser-cloud-resident':{browserCloudResidentEnabled:browser,browserResidentCall:async(...call)=>{p.policy.push(call);p.onPolicy?.();if(host==='missing')throw Error('Cloud resident binding unavailable');return host==='wrong'?{}:{calendarEdits:call[2]};}},
-  './gmail-background':{gmailBackgroundStatus:async()=>({}),gmailBackgroundMessage:()=>'',GMAIL_BACKGROUND_CHANGED:'alpha:test-gmail-background'},
-  './modal-inert':{holdPhoneInert:()=>()=>{}},
-  './connection-ui':{connectionController:{subscribe:()=>()=>{},getSnapshot:()=>snapshot,getCloudClient:()=>cloud,rejectCloudSession:()=>{},openCloudAccount:()=>{throw Error('Unexpected sign-in');}}},
-  // The actual Calendar link and disconnect lifecycle; only the Cloud account calls are synthetic.
-  './google-accounts':{GOOGLE_ACCOUNTS_CHANGED:'alpha:test-google-accounts',googleDisconnectConfirmation:()=>'',googleDisconnectMessage:outcome=>`Disconnect ${outcome}.`,linkGoogleCalendar:calendarLink.linkGoogleCalendar,googleCalendarDisconnectLifecycle:calendarLink.googleCalendarDisconnectLifecycle,createGoogleAccounts:(binding,current,changed,calendar)=>({
-   list:async()=>{live(binding);p.lists++;if(p.listFails)throw Error('Cloud is unavailable');return structuredClone(p.rows);},
-   connect:async(signal,calendarPermission,gmailPermission)=>{live(binding);p.consents.push([calendarPermission,gmailPermission]);return 'https://accounts.google.com/o/oauth2/v2/auth';},
-   // No Cloud disconnect runs: only what the panel hands the callsite is recorded.
-   disconnect:async connectionId=>{live(binding);p.disconnects.push({connectionId,calendar});return {...(p.disconnectResult??{outcome:'disconnected',accounts:[]}),calendarLifecycle:p.onDisconnect?.(calendar,connectionId)??{calendarPause:'unavailable',callbackRetirement:'confirmed',providerDrain:'unavailable',pauseRequest:null}};},
-  })},
-  './google-calendar-selection':{clearGoogleCalendarSelectionForConnection:()=>{}},
-  './native-connection':{openConnectionBrowser:async()=>{p.opens++;},googleWorkspaceReturnPort:undefined},
-  // Like 3800a178e's google-agent-access: a fresh capture with a revision receipt, and a guarded save that rechecks it.
-  './google-agent-access':{googleAgentAccess:()=>({...access}),publishGoogleAgentAccess:async()=>{},captureGoogleCalendarAccess:async()=>p.unreadable?undefined:{calendarEdits:access.calendarEdits,receipt:{revision:p.revision}},setGoogleAgentAccess:async(change,guard)=>{if(saveFails)throw Error('Settings could not be saved');if(guard&&(!guard.current()||access.calendarEdits!==guard.expectedCalendarEdits||guard.receipt.revision!==p.revision))throw Error('Calendar choice changed. Review it again.');p.accessChanges.push({...change});Object.assign(access,change);p.revision++;p.unreadable=false;dom.window.dispatchEvent(new dom.window.Event('alpha:device-settings'));}},
- };
- const compiled=transformSync(readFileSync(new URL('../apps/app/src/runtime/google-connection-ui.tsx',import.meta.url),'utf8'),{loader:'tsx',jsx:'automatic',format:'cjs',target:'es2022'}).code;
- const module={exports:{}};
- vm.runInContext(compiled,vm.createContext({module,exports:module.exports,require:name=>name==='react'||name==='react/jsx-runtime'?require(name):modules[name]??(()=>{throw Error('Unexpected import '+name);})(),window:dom.window,document:dom.window.document,getComputedStyle:dom.window.getComputedStyle,HTMLElement:dom.window.HTMLElement,AbortController,DOMException,Event:dom.window.Event}));
- const {GoogleConnectionsPanel,googleConnectionController}=module.exports;
- const root=createRoot(dom.window.document.getElementById('root'));
- const tick=()=>new Promise(resolve=>setTimeout(resolve,5));
- const act=async(action)=>React.act(async()=>{await action?.();for(let i=0;i<4;i++)await tick();});
- Object.assign(p,{controller:googleConnectionController,act,
-  button:name=>[...dom.window.document.querySelectorAll('button')].find(button=>button.textContent===name||button.getAttribute('aria-label')===name),
-  toggle:name=>dom.window.document.querySelector(`input[role="switch"][aria-label="${name}"]`),
-  status:()=>dom.window.document.querySelector('[role="status"]')?.textContent??'',
-  text:()=>dom.window.document.querySelector('[role="dialog"]')?.textContent??'',
-  until:async(check,label)=>{for(let i=0;i<100&&!check();i++)await act();assert.ok(check(),label);},
-  changeCloud:()=>{cloud={...cloud,credentialId:'other-credential'};},
-  dispatch:name=>act(()=>dom.window.dispatchEvent(new dom.window.Event(name))),
-  /** Google's consent screen took the app to the background; coming back is the only return signal. */
-  returnFromGoogle:()=>act(()=>{for(const state of [true,false]){hidden=state;dom.window.document.dispatchEvent(new dom.window.Event('visibilitychange'));}}),
-  close:async()=>{await act(()=>googleConnectionController.close());await act(()=>root.unmount());dom.window.close();for(const [key,value] of Object.entries(saved)){if(value===undefined)delete globalThis[key];else globalThis[key]=value;}},
- });
- await act(()=>root.render(React.createElement(GoogleConnectionsPanel)));
- return p;
-}
+const panel=(rows,options,link=calendarLink)=>mountGoogleAccountPanel(rows,options,{cloudServiceName,connectionReturn,workspaceReturn,gmailGrants,calendarLink:link});
 
 test('the Calendar intent asks Google once for Gmail read plus Calendar read and write, then links after the readback',async()=>{
  const f=await agent(),p=await panel([]);
@@ -449,7 +394,7 @@ test('a panel opened from Calendar passes its disconnect lifecycle and keeps an 
   await p.act(()=>p.button('Disconnect Google account owner@example.test').click());await p.act(()=>p.button('Confirm disconnect Google account').click());
   const [{calendar}]=p.disconnects;
   assert.deepEqual(calendar.capture().control,{revision:2,paused:false,destination:{connectorAccountId:GRANT,providerCalendarId:OWNER},pendingDispatch:null},'the review the link read back');
-  assert.match(p.status(),/^Disconnect disconnected\. Calendar sync pause was not confirmed\. Ask your agent to check Calendar sync/);
+  assert.match(p.status(),/^Disconnect disconnected\. Calendar sync pause was not confirmed\. Review Calendar sync; saved events are unchanged\./);
   assert.equal(p.controller.calendar().retained.get('pause-key').status,'unknown','the unknown pause stays retained');
   await p.act(()=>p.controller.close());p.onDisconnect=null;await p.act(()=>p.controller.open());
   await p.act(()=>p.button('Disconnect Google account owner@example.test').click());await p.act(()=>p.button('Confirm disconnect Google account').click());
@@ -467,6 +412,23 @@ test('Connect Google Calendar starts no consent until this load verified the acc
   p.listFails=false;await p.act(()=>p.button('Check Google connections').click());
   await p.act(()=>p.button('Connect Google Calendar').click());assert.deepEqual(p.consents,[['write','send']]);
  }finally{await p.close();f.calendar.retire();}
+});
+
+test('a failed replacement account read retires consent waiting on Calendar access',async()=>{
+ const f=await agent(),p=await panel([account(OWNER,[...READ,'google.gmail.send'])]);
+ const capture=deferred();let waiting=false;
+ try{
+  await p.act(()=>p.controller.openCalendar(f.scope));
+  p.onCapture=()=>{waiting=true;return capture.promise;};
+  await p.act(()=>p.button('Connect Google Calendar').click());
+  await p.until(()=>waiting,'the consent is waiting on the Calendar permission read');
+  p.listFails=true;await p.dispatch('alpha:test-google-accounts');
+  assert.match(p.status(),/could not be verified/);
+  await p.act(()=>capture.resolve());
+  assert.deepEqual(p.consents,[],'a verified row from an older load cannot authorize consent');
+  assert.equal(p.opens,0);
+  assert.match(p.status(),/could not be verified/);
+ }finally{capture.resolve();await p.close();f.calendar.retire();}
 });
 
 test('after a disconnect with no account readback, Connect Google Calendar starts no consent',async()=>{
@@ -514,4 +476,140 @@ test('a Cloud account change during the link stops before the next control write
   await p.act(()=>p.button('Sync Calendar with Google').click());await p.until(()=>p.button('Sync Calendar with Google')?.disabled===false);
   assert.deepEqual(operations(f),['select']);assert.doesNotMatch(p.status(),/syncs with/);
  }finally{await p.close();f.calendar.retire();}
+});
+
+async function heldLinkPanel(options = {}) {
+  const links = [];
+  const p = await panel([account(OWNER, WRITE)], {...options, observeAdmission: true}, {
+    ...calendarLink,
+    linkGoogleCalendar(scope, rows, signal) {
+      const task = {...deferred(), scope, rows, signal};
+      links.push(task);
+      return task.promise;
+    },
+  });
+  await p.act(() => p.controller.openCalendar({calendar: {}, current: () => true, canChange: () => true}));
+  const clickLink = () => p.act(() => {
+    const button = p.button('Sync Calendar with Google');
+    assert.ok(button && !button.disabled);
+    button.click();
+  });
+  return {p, links, clickLink, close: async () => {
+    await p.act(() => p.controller.close());
+    await p.act(() => {
+      for (const task of links) task.resolve({outcome: 'not-linked', message: 'Fixture retired'});
+    });
+    await p.close();
+  }};
+}
+
+test('a retired Calendar link cannot overwrite the replacement Cloud review in the same intent', async () => {
+  const f = await heldLinkPanel();
+  try {
+    const intent = f.p.controller.calendar();
+    await f.clickLink();
+    await f.p.act(f.p.replaceCloud);
+    assert.equal(f.links[0].signal.aborted, true);
+    assert.equal(f.p.controller.calendar(), intent);
+    await f.clickLink();
+    const current = {binding: 'current', control: {revision: 2}, sources: [], visibleLocalEventIds: []};
+    await f.p.act(() => f.links[1].resolve({outcome: 'synced', message: 'Current owner synced', review: current}));
+    assert.equal(intent.review, current);
+    const retired = {...current, binding: 'retired', control: {revision: 1}};
+    await f.p.act(() => f.links[0].resolve({outcome: 'unconfirmed', message: 'Retired link result', review: retired}));
+    assert.equal(f.p.status(), 'Current owner synced');
+    assert.equal(intent.review, current, 'the retained review keeps the replacement result identity');
+  } finally {await f.close();}
+});
+
+test('a retired Calendar link cannot clear the replacement account read busy state', async () => {
+  const f = await heldLinkPanel(), currentList = deferred();
+  try {
+    await f.clickLink();
+    f.p.onList = () => currentList.promise;
+    await f.p.act(f.p.replaceCloud);
+    assert.equal(f.links[0].signal.aborted, true);
+    assert.equal(f.p.inspectAdmission().busy, true);
+    await f.p.act(() => f.links[0].resolve({outcome: 'not-linked', message: 'Retired link result'}));
+    assert.equal(f.p.inspectAdmission().busy, true);
+    assert.equal(f.p.button('Check Google connections').disabled, true);
+    await f.p.act(() => currentList.resolve([account(OWNER, WRITE)]));
+    assert.equal(f.p.inspectAdmission().busy, false);
+  } finally {
+    currentList.resolve([account(OWNER, WRITE)]);
+    await f.close();
+  }
+});
+
+test('a retired Calendar host permission result cannot start the link helper', async () => {
+  const f = await heldLinkPanel({browser: true});
+  try {
+    f.p.onPolicy = f.p.changeCloud;
+    await f.clickLink();
+    assert.equal(f.p.policy.length, 1);
+    assert.equal(f.links.length, 0);
+  } finally {await f.close();}
+});
+
+const replacementAccount = grants => account(SECOND, grants, '22222222-2222-4222-8222-222222222222');
+const allowChoice = p => p.button('Allow Calendar changes');
+
+test('a retired Calendar access choice cannot authorize a replacement read-only account', async () => {
+  const f = await heldLinkPanel({calendarEdits: false});
+  try {
+    await f.clickLink();
+    assert.ok(allowChoice(f.p));
+    f.p.rows = [replacementAccount(READ)];
+    await f.p.act(f.p.replaceCloud);
+    assert.ok(f.p.button('Connect Google Calendar'));
+    assert.equal(!!allowChoice(f.p), false, 'the retired write-grant choice is withdrawn');
+    assert.deepEqual(f.p.accessChanges, []);
+    assert.equal(f.links.length, 0);
+
+    await f.p.act(() => f.p.button('Connect Google Calendar').click());
+    assert.ok(allowChoice(f.p), 'the current read-only account can request its own consent');
+    assert.equal(f.links.length, 0);
+    assert.deepEqual(f.p.accessChanges, []);
+
+    f.p.rows = [replacementAccount(WRITE)];
+    await f.p.dispatch('alpha:test-google-accounts');
+    assert.equal(!!allowChoice(f.p), false, 'even this owner needs a choice from the latest exact review');
+    await f.clickLink();
+    await f.p.act(() => allowChoice(f.p).click());
+    assert.equal(f.links.length, 1);
+    assert.deepEqual(f.links[0].rows.map(row => row.connectionId), [replacementAccount(WRITE).connectionId]);
+    await f.p.act(() => f.links[0].resolve({outcome: 'synced', message: 'Replacement account synced'}));
+    assert.equal(f.p.status(), 'Replacement account synced');
+  } finally {await f.close();}
+});
+
+test('a newer same-owner account read retires an Allow tap waiting on the device receipt', async () => {
+  const f = await heldLinkPanel({calendarEdits: false}), capture = deferred();
+  try {
+    await f.clickLink();
+    f.p.onCapture = () => capture.promise;
+    await f.p.act(() => allowChoice(f.p).click());
+    f.p.rows = [account(OWNER, READ)];
+    await f.p.dispatch('alpha:test-google-accounts');
+    f.p.onCapture = null;
+    await f.p.act(() => capture.resolve());
+    assert.deepEqual(f.p.accessChanges, [], 'the retired Allow tap cannot persist native access');
+    assert.equal(f.links.length, 0);
+    assert.ok(f.p.button('Connect Google Calendar'));
+  } finally {capture.resolve(); await f.close();}
+});
+
+test('a held access read cannot display a choice for a replacement Cloud binding', async () => {
+  const f = await heldLinkPanel({calendarEdits: false}), capture = deferred();
+  try {
+    f.p.onCapture = () => capture.promise;
+    await f.clickLink();
+    f.p.rows = [replacementAccount(READ)];
+    await f.p.act(f.p.replaceCloud);
+    f.p.onCapture = null;
+    await f.p.act(() => capture.resolve());
+    assert.equal(!!allowChoice(f.p), false);
+    assert.deepEqual(f.p.accessChanges, []);
+    assert.equal(f.links.length, 0);
+  } finally {capture.resolve(); await f.close();}
 });

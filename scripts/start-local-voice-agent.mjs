@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import {coreRuntimeArguments} from './core-state-patch.mjs';
 // Runs the patched upstream host with explicit local voice assets in an isolated profile.
 import {admitSpeech} from './host-speech-admission.mjs';
 import fs from 'node:fs';
@@ -47,7 +48,7 @@ Object.assign(env, admitSpeech('tts'));
 if(process.env.ELIZA_ASR_ENABLED==='1')Object.assign(env,admitSpeech('asr'));
 Object.assign(env, localEmbeddingEnvironment({...process.env,...env}));
 for (const key of ['ELIZAOS_CLOUD_API_KEY','OPENAI_API_KEY','ANTHROPIC_API_KEY']) delete env[key];
-const child = spawn(options.bun || 'bun', ['--conditions=eliza-source', entry], {cwd:profile, env, stdio:['ignore',log,log]});
+const child = spawn(options.bun || 'bun', coreRuntimeArguments(root,source,['--conditions=eliza-source',entry]), {cwd:profile, env:{...env,ALPHA_CORE_STATE_SOURCE:source}, stdio:['ignore',log,log]});
 const metadata = {pid:child.pid, port, profile, source, revision:execFileSync('git',['rev-parse','HEAD'],{cwd:source,encoding:'utf8'}).trim(), startedAt:new Date().toISOString()};
 fs.writeFileSync(path.join(profile,'process.json'), JSON.stringify(metadata,null,2), {mode:0o600});
 console.log(JSON.stringify({...metadata, log:path.join(profile,'server.log')}));

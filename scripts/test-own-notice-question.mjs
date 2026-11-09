@@ -23,6 +23,18 @@ function fixture(){let modal,current=true,recheck=true,consumed=0,released=0,clo
  const f=fixture();const abort=f.open();abort();await tick();assert.equal(f.state().released,0);assert.equal(f.state().consumed,0);assert.deepEqual(f.state().drafts,[]);
 }
 {
- const f=fixture();f.options.notice.source='third-party';assert.equal(f.open(),undefined);assert.equal(f.modal(),undefined);
+ const f=fixture();f.stale();f.open();f.modal().closed(false);f.modal().compose('Changed source');await tick();assert.deepEqual(f.state().reports,['This notification changed.']);
+}
+{
+ const f=fixture();let finish;f.options.consume=()=>new Promise(resolve=>{finish=resolve;});const abort=f.open();f.modal().closed(false);f.modal().compose('Spent tap');await tick();abort();finish();await tick();assert.deepEqual(f.state().drafts,['Spent tap']);assert.deepEqual(f.state().reports,[]);assert.equal(f.state().closed,1);
+}
+{
+ const f=fixture();let finish;f.options.consume=()=>new Promise(resolve=>{finish=resolve;});f.open();f.modal().closed(false);f.modal().compose('Lost question');await tick();f.change();finish();await tick();assert.deepEqual(f.state().drafts,[]);assert.deepEqual(f.state().reports,['The question could not be kept. Open the notification again.']);
+}
+{
+ const f=fixture();let release;f.options.recheck=()=>new Promise(resolve=>{release=resolve;});const abort=f.open();f.modal().closed(false);f.modal().compose('Canceled during recheck');await tick();abort();release(true);await tick();assert.equal(f.state().consumed,0);assert.deepEqual(f.state().drafts,[]);assert.equal(f.state().closed,1);
+}
+{
+ const f=fixture();f.options.notice.source='third-party';assert.equal(f.open(),undefined);assert.equal(f.modal(),undefined);assert.deepEqual(f.state().reports,['This notification is unavailable for review.']);
 }
 console.log('PASS own-notice question review, reusable cancellation, source and owner fences');

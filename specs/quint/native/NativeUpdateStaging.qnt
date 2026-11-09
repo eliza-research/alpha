@@ -1,0 +1,187 @@
+// Bounded Settings offer and Android cache-file custody before activation.
+// A target is one exact reviewed URL/digest/size/version tuple. Four bytes
+// represent a synthetic APK. PackageInstaller.commit is beyond this model.
+module NativeUpdateStaging {
+  type State = {
+    clock: int,
+    checkedAt: int,
+    cached: int,
+    storedAt: int,
+    stored: int,
+    checking: bool,
+    owner: int,
+    target: int,
+    phase: str,
+    file: str,
+    bytes: int,
+    session: str,
+    stagedBytes: int,
+    connected: bool,
+    fetches: int,
+    created: int,
+    abandoned: int,
+    outcome: str
+  }
+  var s: State
+
+  val offers = Set(1, 2)
+  val bridgeIds = Set(1, 2, 3)
+  val validOffer = if (offers.contains(s.cached)) s.cached else 0
+  val checkDue = not(s.clock >= s.checkedAt and s.checkedAt >= 0 and s.clock - s.checkedAt < 24)
+
+  action init = s' = {
+    clock: 0, checkedAt: -1, cached: 0, storedAt: -1, stored: 0, checking: false,
+    owner: 0, target: 0, phase: "idle", file: "absent", bytes: 0, session: "none",
+    stagedBytes: 0, connected: false, fetches: 0, created: 0, abandoned: 0, outcome: "none"
+  }
+
+  action clockAt(hour: int): bool = all {
+    Set(0, 23, 24, 48).contains(hour),
+    s' = { ...s, clock: hour }
+  }
+  action requestCheck(force: bool): bool = all {
+    not(s.checking),
+    force or checkDue,
+    s' = { ...s, checking: true }
+  }
+  action answerCheck(answer: str, saved: bool): bool = all {
+    s.checking,
+    Set("offer1", "offer2", "invalid", "withdrawn", "malformed", "transport").contains(answer),
+    val result = if (answer == "offer1") 1 else if (answer == "offer2") 2
+      else if (answer == "invalid") -1 else 0
+    s' = if (Set("malformed", "transport").contains(answer)) { ...s, checking: false }
+      else { ...s, checking: false, cached: result, checkedAt: s.clock,
+        stored: if (saved) result else s.stored, storedAt: if (saved) s.clock else s.storedAt }
+  }
+  action reopenSettings = all {
+    not(s.checking),
+    s' = { ...s, cached: s.stored, checkedAt: s.storedAt }
+  }
+
+  action findOrphan(bytes: int): bool = all {
+    s.phase == "idle",
+    s.file == "absent",
+    bytes.in(0.to(4)),
+    s' = { ...s, file: "orphan", bytes: bytes }
+  }
+  action loadBridge(deleted: bool): bool =
+    s' = if (s.phase == "idle" and deleted) { ...s, file: "absent", bytes: 0 } else s
+
+  action tap(bridge: int, permitted: bool): bool = all {
+    bridgeIds.contains(bridge),
+    validOffer != 0,
+    s.session != "left",
+    if (not(permitted)) s' = { ...s, outcome: "settings" }
+    else if (s.owner != 0) all {
+      bridge != s.owner,
+      s' = { ...s, outcome: "quiet" }
+    }
+    else all {
+      s.fetches < 2,
+      s' = { ...s, owner: bridge, target: validOffer, phase: "copying",
+        file: "partial", bytes: 0, connected: true, fetches: s.fetches + 1, outcome: "none" }
+    }
+  }
+
+  action chunk(count: int): bool = all {
+    s.phase == "copying",
+    count.in(1.to(4)),
+    s.bytes + count <= 4,
+    s' = { ...s, bytes: s.bytes + count }
+  }
+  // copyVerified checks the deadline after non-EOF reads only.
+  action verify(digestMatches: bool, lateEof: bool): bool = all {
+    s.phase == "copying",
+    s.bytes == 4,
+    digestMatches,
+    s' = { ...s, phase: "verified", file: "verified", connected: false }
+  }
+  action stage(archiveMatches: bool): bool = all {
+    s.phase == "verified",
+    archiveMatches,
+    s' = { ...s, phase: "staged", session: "staged", stagedBytes: s.bytes, created: s.created + 1 }
+  }
+  action retireBridge(bridge: int): bool = all {
+    bridgeIds.contains(bridge),
+    s.owner != 0,
+    s' = if (bridge == s.owner) { ...s, phase: "retiring", connected: false } else s
+  }
+  action settle(reason: str, deleted: bool, abandoned: bool): bool = all {
+    s.owner != 0,
+    if (reason == "download") s.phase == "copying"
+    else if (reason == "archive") s.phase == "verified"
+    else if (reason == "barrier") s.phase == "staged"
+    else reason == "retired" and s.phase == "retiring",
+    val left = s.session == "staged" and not(abandoned)
+    s' = { ...s, owner: 0, target: 0, phase: "idle", connected: false,
+      file: if (deleted) "absent" else "orphan", bytes: if (deleted) 0 else s.bytes,
+      session: if (left) "left" else "none", stagedBytes: if (left) s.stagedBytes else 0,
+      abandoned: s.abandoned + (if (s.session == "staged" and abandoned) 1 else 0),
+      outcome: reason }
+  }
+
+  val CacheCustody = (s.owner == 0) == (s.phase == "idle") and
+    (s.owner == 0 or (offers.contains(s.target) and s.file != "orphan" and s.file != "absent"))
+  val NoUnverifiedStaging = s.session == "none" or
+    (s.stagedBytes == 4 and (s.session == "left" or s.file == "verified"))
+  val CleanupBound = s.abandoned <= s.created and s.created <= s.fetches
+  val ConnectionCustody = s.connected implies s.phase == "copying" and s.owner != 0
+  val safety = CacheCustody and NoUnverifiedStaging and CleanupBound and ConnectionCustody
+
+  action step = any {
+    nondet hour = Set(0, 23, 24, 48).oneOf()
+    clockAt(hour),
+    requestCheck(false), requestCheck(true),
+    nondet answer = Set("offer1", "offer2", "invalid", "withdrawn", "malformed", "transport").oneOf()
+    nondet saved = Bool.oneOf()
+    answerCheck(answer, saved),
+    reopenSettings,
+    findOrphan(4), loadBridge(true), loadBridge(false),
+    nondet bridge = bridgeIds.oneOf()
+    nondet permit = Bool.oneOf()
+    tap(bridge, permit),
+    nondet count = 1.to(4).oneOf()
+    chunk(count),
+    verify(true, false), verify(true, true), stage(true),
+    nondet bridge = bridgeIds.oneOf()
+    retireBridge(bridge),
+    nondet reason = Set("download", "archive", "barrier", "retired").oneOf()
+    nondet deleted = Bool.oneOf()
+    nondet abandoned = Bool.oneOf()
+    settle(reason, deleted, abandoned),
+    s' = s
+  }
+
+  action offered = init.then(requestCheck(false)).then(answerCheck("offer1", true))
+
+  run failedRefreshRetainsOldOfferTest = offered.then(clockAt(24))
+    .then(requestCheck(false)).then(answerCheck("transport", false))
+    .expect(checkDue and validOffer == 1 and s.checkedAt == 0)
+    .then(requestCheck(false)).then(answerCheck("withdrawn", true))
+    .expect(not(checkDue) and validOffer == 0)
+
+  run replacementDoesNotChangeCapturedTupleTest = offered.then(tap(1, true)).then(chunk(2))
+    .then(requestCheck(true)).then(answerCheck("offer2", true))
+    .expect(validOffer == 2 and s.target == 1 and s.bytes == 2)
+    .then(chunk(2)).then(verify(true, false)).then(stage(true)).expect(safety)
+
+  run lateEofCanVerifyExactBytesTest = offered.then(tap(1, true)).then(chunk(4))
+    .then(verify(true, true)).expect(s.phase == "verified" and s.bytes == 4)
+
+  run busyPeerCannotSweepOwnedFileTest = offered.then(tap(1, true)).then(chunk(2))
+    .then(tap(2, true)).then(loadBridge(true)).then(retireBridge(2))
+    .expect(s.owner == 1 and s.bytes == 2 and s.connected and s.fetches == 1)
+
+  run retiredOwnerClosesAndCleansTest = offered.then(tap(1, true)).then(chunk(2))
+    .then(retireBridge(1)).then(settle("retired", true, true))
+    .expect(s.file == "absent" and s.session == "none" and s.owner == 0)
+
+  run failedCacheDeleteLeavesUnownedFileTest = offered.then(tap(1, true)).then(chunk(4))
+    .then(verify(true, false)).then(settle("archive", false, true))
+    .expect(s.file == "orphan" and s.owner == 0)
+    .then(loadBridge(false)).then(loadBridge(true)).expect(s.file == "absent")
+
+  run failedAbandonKeepsUncommittedCopyTest = offered.then(tap(1, true)).then(chunk(4))
+    .then(verify(true, false)).then(stage(true)).then(settle("barrier", true, false))
+    .expect(s.session == "left" and s.stagedBytes == 4 and s.file == "absent")
+}

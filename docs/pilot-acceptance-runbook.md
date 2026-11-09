@@ -48,12 +48,23 @@ at the current source. A provisioning record is not acceptance of any journey be
 
 `node scripts/pilot-update.mjs --serial <serial> --alias unit-a --apk-manifest <new build>/apk-manifest.json`
 updates that unit in place: the pulled installed APK and the new APK must have the same
-apksigner certificate and the new versionCode must be greater; the app is stopped, its
-data domains are read back as per-file SHA-256 inventories, `adb install -r` runs, and the
-uid, first-install time and every domain must be unchanged (the app is not started in
-between). A readback walk that fails, or that finds no app data to compare, fails the update. Android allows that data readback only for debuggable builds, so on a release
-unit the update record states that only package identity was read back. The result is
-appended to the unit record. Rollback is not offered; the rollback design remains blocked.
+apksigner certificate and the new versionCode must be greater. If Alpha holds HOME, the
+tool temporarily selects a stock launcher. Use `--stock-home <package/activity>` if there
+is more than one candidate. The tool checks that the app stays stopped around both
+readbacks and `adb install -r`. The package uid, first-install time and data inventories
+must agree. A failed or empty inventory fails the update. Debug rehearsals use `run-as`
+and per-file SHA-256. Release builds with the DUMP-protected integrity provider use
+per-file HMAC-SHA-256 with one nonce for both reads. Older builds without the provider
+get a package-identity check only, recorded as such.
+
+After readback, the tool checks that Alpha's integrity process has stopped and that the
+original HOME role and resolved activity have been restored before explicitly starting the
+verified replacement. The unit record includes install verification, HOME restoration and
+agent startup observations. An unproven HOME restoration includes a recovery command.
+The explicit `--rotation-lineage <public proof file>` path admits only the reviewed
+APK pair, device and lineage. Its durable intent precedes install. Use the read-only
+`--reconcile-rotation --serial <serial>` command for an unknown result. It does not
+authorize another attempt. Rollback remains blocked.
 
 Once a release is installed on the units, the release owner records it as the last release:
 `node scripts/record-release.mjs --apk-manifest <release build>/apk-manifest.json` prints the

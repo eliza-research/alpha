@@ -122,6 +122,15 @@ html:not(.standalone-app) [data-alpha-layer="home"][data-alpha-home-fits="true"]
 .note-source-actions { display:flex; flex-wrap:wrap; gap:8px; margin:4px 24px; flex-shrink:0; }
 .note-source-actions:empty { display:none; }
 .note-source-actions .note-source-trigger { flex:1; margin:0; }
+.note-transcript-action, .note-transcript-progress { margin-top:12px; min-height:44px; font:inherit; }
+.note-transcript-action { align-self:flex-start; padding:0 14px; border-radius:22px; background:var(--s2); color:var(--fg); }
+.note-transcript-action:disabled { color:var(--mut); }
+.note-transcript-progress { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.note-transcript-progress [role="status"] { display:inline-flex; align-items:center; gap:8px; color:var(--mut); }
+.note-transcript-progress i { width:14px; height:14px; border:2px solid var(--line); border-top-color:var(--acct); border-radius:50%; animation:note-transcribing 1s linear infinite; }
+.note-transcript-progress button { min-height:44px; padding:0 10px; color:var(--acct); font:inherit; }
+@keyframes note-transcribing { to { transform:rotate(1turn); } }
+@media (prefers-reduced-motion:reduce) { .note-transcript-progress i { animation:none; } }
 .note-source-trigger { flex-shrink:0; min-height:44px; margin:4px 24px; padding:8px 12px; border-radius:16px; background:var(--s2); text-align:left; font:inherit; }
 .note-source-dialog { width:min(480px,calc(100vw - 24px),calc(var(--phone-width,100vw) - 24px)); max-height:min(calc(100dvh - 24px),calc(var(--phone-height,100dvh) - 24px)); box-sizing:border-box; padding:20px; border:0; border-radius:20px; background:var(--source-bg,Canvas); color:var(--source-fg,CanvasText); font:16px 'Public Sans',system-ui,sans-serif; font-size:calc(16px * var(--browser-text-scale,1)); overflow:hidden; }
 .note-source-dialog[open] { display:flex; flex-direction:column; gap:12px; }
@@ -393,6 +402,63 @@ html:not(.alpha-landscape) .alpha-phone [data-screen]:not([data-alpha-chat-half=
 .alpha-landscape [data-alpha-maps-sheet]{left:auto!important;width:min(440px,50%);border-radius:28px 0 0 0!important}
 .alpha-landscape [data-alpha-maps-directions]{right:auto!important;width:calc(50% - 24px);box-sizing:border-box;max-height:calc(100% - 64px);overflow-y:auto}
 
+/* Guidance controls float above the measured assistant dock in portrait. */
+html:not(.alpha-landscape) [data-alpha-maps-guidance="true"] {
+  --alpha-maps-guidance-bottom:calc(var(--alpha-dock-clearance,102px) + 8px);
+}
+/* When text grows, put the status and credits in flow with the guidance bar.
+   Their existing reading order also keeps each target above its neighbor. */
+html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] {
+  box-sizing:border-box; justify-content:flex-end; row-gap:8px; padding-bottom:var(--alpha-maps-guidance-bottom);
+}
+html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > :is(.alpha-map-credits,[data-alpha-maps-guidance-controls]),
+html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] [data-alpha-maps-status] {
+  position:relative!important; inset:auto!important; flex:none;
+}
+html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] [data-alpha-maps-status] { margin-inline:20px; }
+html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > .alpha-map-credits { margin-inline:12px 76px; }
+html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > [data-alpha-maps-guidance-controls] { margin-inline:12px; }
+
+/* Keep the guidance controls and credits in flow on the clear side of the
+   landscape assistant. Status and maneuvers share the space above the right dock. */
+.alpha-landscape [data-alpha-maps-guidance="true"] {
+  box-sizing:border-box; justify-content:flex-end; row-gap:8px;
+  padding:0 calc(var(--alpha-dock-width) + 12px) 12px 12px;
+}
+.alpha-landscape [data-alpha-maps-guidance="true"] > [data-alpha-maps-guidance-head] {
+  display:flex!important; position:absolute; top:12px; right:12px;
+  left:calc(100% - var(--alpha-dock-width) + 12px);
+  max-height:calc(100% - var(--alpha-dock-clearance,82px) - 20px);
+  flex-direction:column; gap:8px; overflow-y:auto; z-index:5;
+}
+.alpha-landscape [data-alpha-maps-guidance="true"] > [data-alpha-maps-guidance-head] > div {
+  position:relative!important; inset:auto!important; width:auto; height:auto!important;
+  max-height:none!important; flex:none; padding:8px 12px!important;
+}
+.alpha-landscape [data-alpha-maps-guidance="true"] > :is(.alpha-map-credits,[data-alpha-maps-guidance-controls]) {
+  position:relative!important; inset:auto!important; width:auto; flex:none;
+}
+.alpha-landscape [data-alpha-maps-guidance-controls] {
+  display:grid!important; gap:4px 8px!important; padding:8px 10px!important;
+  grid-template-columns:48px minmax(0,1fr) 48px 48px;
+  grid-template-areas:"time time meta meta" "remaining remaining remaining remaining" "end reroute ask voice";
+}
+.alpha-landscape [data-alpha-maps-guidance-controls] > div { display:contents; }
+.alpha-landscape [data-alpha-maps-guidance-controls] > div > * { margin-top:0!important; }
+.alpha-landscape [data-alpha-maps-guidance-controls] > div > .serif { grid-area:time; font-size:24px!important; overflow-wrap:anywhere; }
+.alpha-landscape [data-alpha-maps-guidance-controls] > div > .serif + div { grid-area:meta; }
+.alpha-landscape [data-alpha-maps-guidance-controls] > div > [role="status"] { grid-area:remaining; }
+.alpha-landscape [data-alpha-maps-guidance-controls] > div > button { grid-area:reroute; }
+.alpha-landscape [data-alpha-maps-guidance-controls] > button { width:48px!important; height:48px!important; }
+.alpha-landscape [data-alpha-maps-guidance-controls] > button:first-child { grid-area:end; }
+.alpha-landscape [data-alpha-maps-guidance-controls] > button:nth-last-child(2) { grid-area:ask; }
+.alpha-landscape [data-alpha-maps-guidance-controls] > button:last-child { grid-area:voice; }
+.alpha-landscape [data-alpha-maps-guidance="true"] > .alpha-map-credits:has(details[open]) { z-index:6; }
+.alpha-landscape [data-alpha-maps-guidance="true"] .alpha-map-info {
+  top:0; right:44px; bottom:auto; width:min(320px,calc(100% - 52px)); max-height:160px;
+  box-sizing:border-box; overflow:auto;
+}
+
 /* Keep portrait capture controls above the assistant on short windows. */
 html:not(.alpha-landscape) [data-alpha-camera="capture"]{top:min(712px,calc(100% - var(--alpha-dock-clearance,102px) - 106px))!important}
 html:not(.alpha-landscape) [data-alpha-camera="modes"]{top:min(656px,calc(100% - var(--alpha-dock-clearance,102px) - 162px))!important}
@@ -431,6 +497,14 @@ html.alpha-text-xl:not(.alpha-landscape) [data-alpha-camera="modes"] button{heig
 /* Browser menu rows grow with their label and wrap it; a fixed 50px row let large text spill
  * over the next row. The menu itself already scrolls. */
 [data-alpha-browser-menu]>button{height:auto!important;min-height:50px;flex-shrink:0;text-align:left}
+.alpha-camera-tools { position:absolute; top:min(601px,calc(100% - var(--alpha-dock-clearance,102px) - 217px)); right:16px; z-index:3; color:var(--alpha-white); }
+.alpha-camera-tools[open] { z-index:51; }
+.alpha-camera-tools summary { display:grid; place-items:center; width:44px; height:44px; border-radius:22px; list-style:none; background:rgba(0,0,0,.62); cursor:pointer; }
+.alpha-camera-tools summary::-webkit-details-marker { display:none; }
+.alpha-camera-tools > div { position:absolute; right:0; bottom:calc(100% + 8px); display:grid; width:max-content; padding:4px; border-radius:16px; background:var(--bg); color:var(--fg); }
+.alpha-camera-tools button { min-height:44px; padding:0 12px; text-align:start; font:inherit; }
+.alpha-landscape .alpha-camera-tools { top:auto; bottom:112px; right:calc(var(--alpha-camera-rail) + 16px); }
+
 /* The photo editor is a fixed portrait stack (preview, tools, filters). Where the screen is
  * shorter than the stack (landscape) it scrolls, so Rotate, Crop and the filters stay reachable. */
 [data-alpha-subview="photos-edit"]{overflow-y:auto;overscroll-behavior:contain}
@@ -678,3 +752,21 @@ button[aria-label$=" on or off"][aria-pressed]::before { content:""; position:ab
 .home-date-line { min-height:180px; flex-shrink:0; box-sizing:border-box; padding:0 24px 6px; display:flex; flex-direction:column; justify-content:flex-end; align-items:flex-start; gap:14px; }
 .home-date-text { font-size:40px; line-height:1.08; letter-spacing:-.01em; overflow-wrap:anywhere; }
 .home-date-setup { min-height:48px; padding:0 18px; border-radius:24px; background:var(--s2); color:var(--fg); font-size:15px; font-weight:600; }
+
+.note-transcript-chip { display:inline-flex; align-items:center; align-self:flex-start; gap:12px; max-width:calc(100% - 32px); margin:0 16px 6px; padding:2px 2px 2px 14px; border:1px solid var(--line); border-radius:16px; background:var(--bg); color:var(--fg); }
+.note-transcript-chip-label { display:grid; min-width:0; line-height:1.25; }
+.note-transcript-chip-label small { color:var(--mut); font-size:12px; }
+.note-transcript-chip-label strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14px; font-weight:600; }
+.note-transcript-chip button { display:grid; place-items:center; flex:none; width:44px; height:44px; border-radius:50%; color:var(--fg); }
+.note-transcript-remove-icon { display:grid; place-items:center; width:26px; height:26px; border-radius:50%; background:var(--s2); }
+.note-transcript-remove-icon::before { content:""; width:16px; height:16px; background:currentColor; mask:url('/icons/lucide/x.svg') center/contain no-repeat; }
+
+/* Keep full Settings labels and values readable when system text zoom multiplies the app size. */
+.alpha-text-xl [data-alpha-settings-nav] { flex-wrap:wrap; }
+.alpha-text-xl [data-alpha-settings-nav-content] { flex-basis:100%; order:1; grid-template-columns:minmax(0,1fr)!important; gap:4px!important; }
+.alpha-text-xl [data-alpha-settings-nav-content] > span { margin-left:0!important; text-align:left!important; }
+.alpha-text-xl [data-alpha-settings-nav-chevron] { margin-left:auto; }
+.alpha-text-xl [data-alpha-settings-text-sample] { width:auto!important; min-width:32px; }
+/* Recording controls each need a full line at large text; their labels are never clipped by the screen. */
+.alpha-text-xl [data-alpha-recorder-actions] { flex-direction:column; align-items:stretch!important; }
+.alpha-text-xl [data-alpha-recorder-actions] > button { flex:none!important; width:100%; min-width:0; box-sizing:border-box; }

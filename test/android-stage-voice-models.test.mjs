@@ -1,53 +1,49 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
-import {stageAppEngines} from '../scripts/android-stage-voice-models.mjs';
+import {stageVoiceModels} from '../scripts/android-stage-voice-models.mjs';
+import {fixtureProduct} from './fixtures/voice-host-product.mjs';
 
-// The app linkage check needs libelizainference.so in the app's jniLibs for every selected ABI.
-// The embedding host supplies arm64-v8a; staging copies the other ABIs from the voice build record.
-// Fixture bytes only: no real engine is read here.
+// The current stager publishes verified engine/STL libraries for the selected ABI.
+// Fixture bytes only: no real engine, model or embedding host is used here.
 const sha = value => createHash('sha256').update(value).digest('hex');
-const appLib = abi => `android/app/src/main/jniLibs/${abi}/libelizainference.so`;
+const native = '.eliza/paradee-voice/native';
+const host = 'android/app/src/main/jniLibs';
+const engine = 'libelizainference.so';
 
-function fixture(t) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-app-engine-'));
-  t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
-  const native = path.join(dir, '.eliza/paradee-voice/native');
-  const files = [];
-  for (const abi of ['arm64-v8a', 'x86_64']) {
-    const relative = `jniLibs/${abi}/libelizainference.so`, content = `engine ${abi}`;
-    fs.mkdirSync(path.dirname(path.join(native, relative)), {recursive: true});
-    fs.writeFileSync(path.join(native, relative), content);
-    files.push({path: relative, bytes: Buffer.byteLength(content), sha256: sha(content)});
+test('staging publishes recorded x86_64 voice libraries only when x86_64 is selected', t => {
+  const {dir, from, record} = fixtureProduct(t);
+  const options = {from: [from], abis: ['x86_64']};
+  const result = stageVoiceModels(dir, options);
+  const libraries = record.abis.find(row => row.abi === 'x86_64').libraries;
+  assert.deepEqual(result.staged.filter(file => file.startsWith('jniLibs/')), [`jniLibs/x86_64/${engine}`]);
+  for (const library of libraries) {
+    const bytes = fs.readFileSync(path.join(dir, host, 'x86_64', library.name));
+    assert.equal(bytes.length, library.bytes);
+    assert.equal(sha(bytes), library.sha256);
   }
-  fs.writeFileSync(path.join(native, 'build-record.json'), JSON.stringify({abis: ['arm64-v8a', 'x86_64'], files}));
-  fs.mkdirSync(path.join(dir, 'android/embedding-host'), {recursive: true});
-  fs.writeFileSync(path.join(dir, 'android/embedding-host/qualified-host.json'), JSON.stringify({abi: 'arm64-v8a'}));
-  return {dir, native, files};
-}
-
-test('staging writes the recorded x86_64 engine into the app jniLibs and never arm64-v8a', t => {
-  const {dir, files} = fixture(t);
-  assert.deepEqual(stageAppEngines(dir, {abis: ['arm64-v8a', 'x86_64']}), [appLib('x86_64')]);
-  assert.equal(sha(fs.readFileSync(path.join(dir, appLib('x86_64')))), files.find(row => row.path.includes('x86_64')).sha256);
-  assert.equal(fs.existsSync(path.join(dir, appLib('arm64-v8a'))), false, 'the qualified embedding host supplies arm64-v8a');
-  // Staging again with the same bytes is a no-op; arm64-v8a alone stages nothing.
-  assert.deepEqual(stageAppEngines(dir, {abis: ['arm64-v8a', 'x86_64']}), [appLib('x86_64')]);
-  assert.deepEqual(stageAppEngines(dir, {abis: ['arm64-v8a']}), []);
+  assert.equal(fs.existsSync(path.join(dir, host, 'arm64-v8a')), false);
+  assert.equal(fs.existsSync(path.join(dir, native, 'jniLibs/arm64-v8a')), false);
+  const build = JSON.parse(fs.readFileSync(path.join(dir, native, 'build-record.json'), 'utf8'));
+  assert.deepEqual(build.abis, ['x86_64']);
+  assert.deepEqual(stageVoiceModels(dir, options), result, 'same recorded output is idempotent');
 });
 
-test('staging refuses a voice output or an app library that does not match the record', t => {
-  const {dir, native} = fixture(t);
-  fs.writeFileSync(path.join(native, 'jniLibs/x86_64/libelizainference.so'), 'engine x86_64 changed');
-  assert.throws(() => stageAppEngines(dir, {abis: ['x86_64']}), /does not match the voice build record/);
-  assert.equal(fs.existsSync(path.join(dir, appLib('x86_64'))), false);
+test('staging refuses a changed voice output or conflicting app library before publication', t => {
+  const changed = fixtureProduct(t);
+  const relative = `jniLibs/x86_64/${engine}`;
+  fs.writeFileSync(path.join(changed.from, relative), 'engine x86_64 changed');
+  assert.throws(() => stageVoiceModels(changed.dir, {from: [changed.from], abis: ['x86_64']}), /does not match the pinned libelizainference\.so/);
+  assert.equal(fs.existsSync(path.join(changed.dir, native)), false);
+  assert.equal(fs.existsSync(path.join(changed.dir, host, 'x86_64', engine)), false);
 
-  const other = fixture(t);
-  fs.mkdirSync(path.dirname(path.join(other.dir, appLib('x86_64'))), {recursive: true});
-  fs.writeFileSync(path.join(other.dir, appLib('x86_64')), 'hand-copied engine');
-  assert.throws(() => stageAppEngines(other.dir, {abis: ['x86_64']}), /already exists with other bytes/);
-  assert.equal(fs.readFileSync(path.join(other.dir, appLib('x86_64')), 'utf8'), 'hand-copied engine');
+  const other = fixtureProduct(t);
+  const target = path.join(other.dir, host, 'x86_64', engine);
+  fs.mkdirSync(path.dirname(target), {recursive: true});
+  fs.writeFileSync(target, 'hand-copied engine');
+  assert.throws(() => stageVoiceModels(other.dir, {from: [other.from], abis: ['x86_64']}), /already exists with other bytes/);
+  assert.equal(fs.readFileSync(target, 'utf8'), 'hand-copied engine');
+  assert.equal(fs.existsSync(path.join(other.dir, native)), false);
 });

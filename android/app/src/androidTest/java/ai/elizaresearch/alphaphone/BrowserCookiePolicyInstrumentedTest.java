@@ -81,6 +81,7 @@ public final class BrowserCookiePolicyInstrumentedTest {
     assertNotEquals("Browser profile is never privileged host",WebViewCompat.getProfile(activity.getBridge().getWebView()).getName(),profile);
     assertEquals("Host policy unchanged",hostPolicy[0],CookieManager.getInstance().acceptThirdPartyCookies(activity.getBridge().getWebView()));
    }catch(Exception failure){throw new AssertionError(failure);}});
+   Throwable primary=null;
    try{
    frame(first.get(),token,true);
    assertEquals("Embedded cookie write follows policy",String.valueOf(!priv),evaluate(first.get(),"window.result.cookie.includes('alpha_"+token+"=present')"));
@@ -100,11 +101,14 @@ public final class BrowserCookiePolicyInstrumentedTest {
     String hostCookies=WebViewCompat.getProfile(activity.getBridge().getWebView()).getCookieManager().getCookie("https://embed.invalid/");
     assertFalse("No browser cookie leaked into host",hostCookies!=null&&hostCookies.contains("alpha_"+token+"="));
    });
-   }finally{
+   }catch(Exception|AssertionError failure){primary=failure;throw failure;}
+   finally{
    // Exact fixture cookie cleanup, never clear unrelated normal browsing data.
+   try{
    CountDownLatch removed=new CountDownLatch(1);
    BoundedActivityScenario.main(()->WebViewCompat.getProfile(first.get()).getCookieManager().setCookie("https://embed.invalid/","alpha_"+token+"=; Secure; SameSite=None; Path=/; Max-Age=0",ok->removed.countDown()));
    assertTrue("Fixture cookie cleanup finished",removed.await(10,TimeUnit.SECONDS));
+   }catch(Exception|AssertionError cleanup){if(primary!=null)primary.addSuppressed(cleanup);else throw cleanup;}
    }
   }
  }

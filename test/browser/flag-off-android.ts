@@ -259,7 +259,7 @@ export async function flagOffAndroid(page: Page, options: FlagOffOptions = {}) {
         ...(options.document ? [{ name: 'AlphaMailAttachments', methods: promise(['readSelected', 'retainSourceReference', 'openSourceReference', 'cancel']) }] : []),
         // Files browser with all-files access (AlphaFilesPlugin storage* methods): the document sits in Documents/.
         ...(options.document ? [{ name: 'AlphaFiles', methods: withListeners(['storageState', 'storageRequestAccess', 'storageList', 'storageCategory', 'storageQuery', 'storageTrashList', 'storageSelect', 'storageWatch', 'storageUnwatch']) }] : []),
-        { name: 'Agent', methods: withListeners(['getStatus', 'start', 'stop', 'configureCloudProvider', 'clearProvider', 'request', 'providerStatus', 'requestStream', 'cancelStream']) },
+        { name: 'Agent', methods: withListeners(['getStatus', 'start', 'stop', 'configureCloudProvider', 'clearProvider', 'request', 'providerStatus', 'requestStream', 'cancelStream', 'setGoogleAgentAccess']) },
         { name: 'AlphaConnection', methods: withListeners(['secureRead', 'secureWrite', 'secureRemove', 'secureCompareExchange', 'request', 'cancel', 'openExternal']) },
         { name: 'AlphaActionJournal', methods: promise(['list', 'get']) },
         { name: 'AlphaNotifications', methods: promise(['status', 'crossAppStatus']) },
@@ -349,6 +349,11 @@ export async function flagOffAndroid(page: Page, options: FlagOffOptions = {}) {
           if (method === 'clearSourceRenewal') { d.renewals.push('clear:' + (input.selection?.sourceId ?? input.sourceId)); return {}; }
         }
         if (plugin === 'Agent') {
+          if (method === 'setGoogleAgentAccess') {
+            if (typeof input?.gmailChanges !== 'boolean' || typeof input?.calendarEdits !== 'boolean') throw Error('Invalid Google access.');
+            f.googleAgentAccess = { gmailChanges: input.gmailChanges, calendarEdits: input.calendarEdits };
+            return {};
+          }
           if (method === 'getStatus') return { packaged: true, state: 'stopped', serviceActive: false, socketListening: false };
           // The native provider slot (never renderer-readable): bound by configureCloudProvider, removed by clearProvider.
           if (method === 'providerStatus') return slots['native:local-agent-provider'] ? { provider: 'elizacloud', configured: true, model: 'cerebras/qwen-3.8-27b' } : { provider: 'elizacloud', configured: false };

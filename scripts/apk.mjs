@@ -16,6 +16,7 @@ export const DEVELOPMENT_CLASSES = Object.freeze([
   "SyntheticAutofillService",
   "DevelopmentAgentPlugin",
   "DevelopmentVoiceCapture",
+  "DevelopmentChatContract",
 ]);
 // Components a distribution APK may export. Each one must be guarded by the
 // listed permission (null: a deliberate public entry point).

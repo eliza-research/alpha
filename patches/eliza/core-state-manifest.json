@@ -1,0 +1,108 @@
+{
+  "schema": 1,
+  "baseCommit": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
+  "patches": [
+    {
+      "file": "task-service-stop.patch",
+      "sha256": "d3b80ffb0dad32e3a17b50dbbb0d4c0dfb3f60b0f2a35f577be4612aa2f9db1e",
+      "targets": [
+        {
+          "path": "packages/core/src/services/task.ts",
+          "beforeSha256": "c72514809e0f6a3a5c592ed3d0d0015319ca4dbfb8fd9e949fa06c1982c35fc3",
+          "afterSha256": "24b1b783a903cb4c8d284dd3f375f18a3fe720c65f0430bada7cebb236cf1f3f"
+        }
+      ]
+    },
+    {
+      "file": "notes-state-runtime.patch",
+      "sha256": "5f62c6742a0c8f85f47aec6a629a1454d7cc74c5060d75a72b5c3d77a43dda18",
+      "targets": [
+        {
+          "path": "plugins/plugin-notes/src/service.ts",
+          "beforeSha256": "2f41aa310c64b2747017ebd4b69386ee087337ed752a1b722f86d93fc4bc8e8b",
+          "afterSha256": "e2bd7c43e7d0841788d9efd7056a2b6e01d431687004f18f7f523c4f7cb76346"
+        },
+        {
+          "path": "plugins/plugin-notes/src/store.ts",
+          "beforeSha256": "e0078a48cdd9f91a850121972cec6bb27deaaadd856bb05e047368cb58aa709e",
+          "afterSha256": "e9e33bf24ba4622d7bbdb2964b8e55920f0dbf6c906900e61ccfffc42b84ec5c"
+        },
+        {
+          "path": "plugins/plugin-notes/src/types.ts",
+          "beforeSha256": "366a583d1b4fe3a49161df9654671e60ec79701b3e17730464465e978f703a45",
+          "afterSha256": "2acf6a0332c0880844bdb948a87c49eb6b8a29ce5566ea695dbc5a411daae23c"
+        },
+        {
+          "path": "plugins/plugin-notes/src/validation.ts",
+          "beforeSha256": "3b2d9d3c8e61390f3b283270a55f9e09ca527d6d4767e0b9ff778a6f3cbdc384",
+          "afterSha256": "af7030186a7e4483c2674af9c30514e8a5c5587303c7a734b4943db44375f85a"
+        }
+      ]
+    },
+    {
+      "file": "turn-controller-isolation.patch",
+      "sha256": "d587459e0123599d17f886fcc855eb90ce7ec20b286a42ce47a02a1ab1bd110b",
+      "targets": [
+        {
+          "path": "packages/core/src/runtime/turn-controller.ts",
+          "beforeSha256": "c04907565ac8c7f483b2e4c6db29d6bf007f85f7a15fdae447bd2c1f82fed46b",
+          "afterSha256": "a69049036ad8848609ac9113090dd16dd45517a5ab03d62d506e1c17156f8111"
+        }
+      ]
+    },
+    {
+      "file": "room-queue-admission.patch",
+      "sha256": "343e39a3c756e3679b8a1e577352638119e0f17b1d0535023cbd1720fdddedde",
+      "targets": [
+        {
+          "path": "packages/core/src/runtime/room-handler-queue.ts",
+          "beforeSha256": "f5a31f3276827e90448df4198ae559135d32604132d2775948df9d5b2e496fac",
+          "afterSha256": "cd8f23f09c191aa9ebe3048e688a46a4a81b730405351a1cf809f4c8e214fce1"
+        }
+      ]
+    },
+    {
+      "file": "embedding-store-identity.patch",
+      "sha256": "358327f35c37bd5862ec6dcaa7657c4db545a548e4d5de63cf8efd8120f01d1e",
+      "targets": [
+        {
+          "path": "packages/core/src/runtime/embeddings.ts",
+          "beforeSha256": "36605cc23b7e423f5dd0edd8cef4e7a7f91cb85860c864af9781b5fbd0f71176",
+          "afterSha256": "e3acd82d9bc623f12253356fd63172d29c895a714c4345a809d5e9b8f807e7a9"
+        }
+      ]
+    },
+    {
+      "file": "named-embedding-provenance.patch",
+      "sha256": "8e874337cbcebe3e3fb69112db3b36c881ca0bc9737399818a06bb9fabf67f70",
+      "targets": [
+        {
+          "path": "plugins/plugin-sql/src/base.ts",
+          "beforeSha256": "7330514fd585fcb0389fbae0e3eaf802d4f2620dc74829ca522945ea836297ac",
+          "afterSha256": "ea949cb8deb34d8548e46e96a2c038a9e97a88c6bb0ff84eead4ddf9a6ba6a4c"
+        },
+        {
+          "path": "packages/agent/src/api/conversation-routes.ts",
+          "beforeSha256": "80dfd6c361678650f5ed94542d0e8db66a0418c0b630e3f4775b684ba06c2cf6",
+          "afterSha256": "d0b6102bde8d6c0ab0fa559cf8667f50b3ab5b75b0833554376b30142a1451ac"
+        },
+        {
+          "path": "plugins/plugin-assistant/src/features/advanced-capabilities/experience/service.ts",
+          "beforeSha256": "92e23a48cdb670b2aa02f4c441bedd0abf26122268ee23cdd01f28d974ec2c17",
+          "afterSha256": "183053f31c514ab444823e2d3966619f920af3fed212e884d0f23802585e9f47"
+        }
+      ]
+    },
+    {
+      "file": "plugin-connector-custody.patch",
+      "sha256": "a0f840fa8572fae33dc3958769c4bd9a951e6f18d04c2345979147134a1473b2",
+      "targets": [
+        {
+          "path": "packages/core/src/plugin-lifecycle.ts",
+          "beforeSha256": "954a7a185c6bb467831a221abd60fb2bec7683e3f5e615408c9ccbece1ccd8be",
+          "afterSha256": "208a5acb62404a722969aa3e11f76edbe6dffd44e66f6f62914148e2a8ed3435"
+        }
+      ]
+    }
+  ]
+}

@@ -34,16 +34,17 @@ const markers=[...new Set(credentials.map(c=>c.marker))];
 // RELEASE content-class probes: synthetic values shaped like what Alpha can put in front of the
 // agent. Each must reach the provider only as a placeholder. The selected note, mail and file
 // blocks stand in for context the owner attached; each carries a secret-shaped value of its own.
+// Every listed marker of a class is checked, so a class with two secrets fails if either leaks.
 const contentClasses=[
- {name:'password vault entry',text:'Saved login for synthetic.example.invalid: username jane, password "VaultTailQ4xR9!"',marker:'VaultTailQ4xR9!'},
- {name:'TOTP code',text:'Your one-time verification code is 480216. It expires in 30 seconds.',marker:'480216'},
- {name:'recovery codes',text:'Recovery codes: RCVY-4K9M-2P7X RCVY-8D3N-5T1V RCVY-6H2J-9Q4W',marker:'RCVY-4K9M-2P7X'},
- {name:'API key',text:'API key: sk-synthetic-2b7f3c9d4e1a6b8c0d2e4f6a8b0c1d3e',marker:'sk-synthetic-2b7f3c9d4e1a6b8c0d2e4f6a8b0c1d3e'},
- {name:'selected note',text:'Selected note "Accounts": the bank PIN is 7319 and the passphrase is "NoteTail Kp2 Vw8"',marker:'NoteTail Kp2 Vw8'},
- {name:'selected mail',text:'Selected mail from billing@example.invalid: your account password was reset to "MailTailM3nB7"',marker:'MailTailM3nB7'},
- {name:'selected file',text:'Selected file credentials.txt: DB_PASSWORD=FileTailZ5cL1',marker:'FileTailZ5cL1'},
+ {name:'password vault entry',text:'Saved login for synthetic.example.invalid: username jane, password "VaultTailQ4xR9!"',markers:['VaultTailQ4xR9!']},
+ {name:'TOTP code',text:'Your one-time verification code is 480216. It expires in 30 seconds.',markers:['480216']},
+ {name:'recovery codes',text:'Recovery codes: RCVY-4K9M-2P7X RCVY-8D3N-5T1V RCVY-6H2J-9Q4W',markers:['RCVY-4K9M-2P7X']},
+ {name:'API key',text:'API key: sk-synthetic-2b7f3c9d4e1a6b8c0d2e4f6a8b0c1d3e',markers:['sk-synthetic-2b7f3c9d4e1a6b8c0d2e4f6a8b0c1d3e']},
+ {name:'selected note',text:'Selected note "Accounts": the bank PIN is 7319 and the passphrase is "NoteTail Kp2 Vw8"',markers:['NoteTail Kp2 Vw8','7319']},
+ {name:'selected mail',text:'Selected mail from billing@example.invalid: your account password was reset to "MailTailM3nB7"',markers:['MailTailM3nB7']},
+ {name:'selected file',text:'Selected file credentials.txt: DB_PASSWORD=FileTailZ5cL1',markers:['FileTailZ5cL1']},
 ];
-const classMarkers=contentClasses.map(c=>c.marker);
+const classMarkers=contentClasses.map(c=>c.markers);
 // Record booleans only; never provider headers, credentials, or request bodies.
 const preload=path.join(fixture,'wire.mjs');
 fs.writeFileSync(preload,`import {appendFileSync} from 'node:fs';
@@ -53,7 +54,7 @@ globalThis.fetch=async function(input,init){
  if(new URL(url).hostname==='api.cerebras.ai'){
   const body=typeof init?.body==='string'?init.body:input instanceof Request?await input.clone().text():'';
   const record={captured:body.length>0,rawEmail:body.includes(${JSON.stringify(email)}),rawPhone:body.includes(${JSON.stringify(phone)}),rawCredential:${JSON.stringify(markers)}.some(value=>body.includes(value)),
-   rawContentClasses:${JSON.stringify(classMarkers)}.map((value,index)=>body.includes(value)?index:-1).filter(index=>index>=0),placeholder:/__ELIZA_(SECRET|CONTACT)_/.test(body)};
+   rawContentClasses:${JSON.stringify(classMarkers)}.map((values,index)=>values.some(value=>body.includes(value))?index:-1).filter(index=>index>=0),placeholder:/__ELIZA_(SECRET|CONTACT)_/.test(body)};
   appendFileSync(${JSON.stringify(wireFile)},JSON.stringify(record)+'\\n',{mode:0o600});
  }
  return original.call(this,input,init);
@@ -93,7 +94,7 @@ async function stop(){
 }
 const interrupted=()=>{void stop().finally(()=>process.exit(130));};process.once('SIGINT',interrupted);process.once('SIGTERM',interrupted);
 const report={checkedAt:new Date().toISOString(),source:lock.commit,scope:'Synthetic real-provider host requests; no browser UI or Android acceptance',cases:[],passed:false};
-const safe=text=>![...markers,...classMarkers].some(value=>text.includes(value))&&!/__ELIZA_(SECRET|CONTACT)_/.test(text);
+const safe=text=>![...markers,...classMarkers.flat()].some(value=>text.includes(value))&&!/__ELIZA_(SECRET|CONTACT)_/.test(text);
 const restored=text=>text.includes(email)&&text.includes(phone);
 try{
  await start();const firstOwner=owner,firstPid=runtimePid;

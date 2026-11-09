@@ -4,7 +4,7 @@
   "patches": [
     {
       "file": "google-browser-sign-in.patch",
-      "sha256": "8ccfd85f31e0ecefc2f30ae90512216ec0932e5493ef6dae2b8e8f5f58670838",
+      "sha256": "a858770391c5bb20558b3f4a29a8ad40861aca95e5917fba8b1c7c656371018e",
       "module": "packages/auth/android",
       "targets": [
         {
@@ -25,7 +25,7 @@
         {
           "path": "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java",
           "beforeSha256": "0c2ba91faf22459538bd852cb305507ac2b17982afbe6bdc6e8465526a1ba1d4",
-          "afterSha256": "4c8a465e0e20103a7c9d47255ecad15aef020711f417ac6a32d4cf4fe7869c2f"
+          "afterSha256": "4baa995efb9ae7a34f462b9c4150ffe7df03d096bcb6134b24c186fb80a63ac1"
         },
         {
           "path": "packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java",
@@ -68,13 +68,13 @@
     },
     {
       "file": "local-speech-streaming.patch",
-      "sha256": "52ccde026068ea0ced6da8e842e138e0edd83c7ce7e9955c51a7bceb405ae68d",
+      "sha256": "257d852292311f4b0887d082f799904508868e412739c453e8a1574cf34756ac",
       "module": "plugins/plugin-local-inference/native/android",
       "targets": [
         {
           "path": "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java",
           "beforeSha256": "8422e7d80cec830aba661d648372ae11bae817be7ff92e8e3b6d7bf02b889b1e",
-          "afterSha256": "e8651689bde94fdb66f69ab865c28bc23ee2ca48e3d1cc27da2246879558705b"
+          "afterSha256": "bcc9a6546abe39c49c37af04504e028b66725043c934308b5ea81d69edebdddc"
         },
         {
           "path": "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechOutputWarmup.java",
@@ -176,13 +176,13 @@
     },
     {
       "file": "notes-recording-segments.patch",
-      "sha256": "95d81ef889e2c3e526f2b18fb638134855ebcc5508fb2a463b41c2753bee7ae9",
+      "sha256": "85594aa49afa1de1d8b95948572c401e3290d7d4e7b6058bda12481e11d63580",
       "module": "plugins/plugin-local-inference/native/android",
       "targets": [
         {
           "path": "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalVoiceRecording.java",
           "beforeSha256": "23d29b041ee00f6d759d16c23ff223a867567f8e5de113dd2512f960bed0dda2",
-          "afterSha256": "313f5e69f006fb658eb57ab3393898cbea32f273d3a9b6c509e3e2bab76971b2"
+          "afterSha256": "32294b88fa75e08cc6a094c6ce1b883b06f8d70c14c5980667ab097d718a79b7"
         }
       ]
     },
@@ -275,10 +275,71 @@
           "afterSha256": "a06d439e7682c35b5744c83ac31c474e128473b16655c864a8a003e6bc2a8e1d"
         }
       ]
+    },
+    {
+      "file": "speech-pipe-settlement.patch",
+      "sha256": "482fccdf0cc427722e22ba2c68e16dbbd1856ef7f68cdea73b0d4617777e7bb0",
+      "module": "plugins/plugin-local-inference/native/android",
+      "targets": [
+        {
+          "path": "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveSegmentPipe.java",
+          "beforeSha256": "01838880e19df9f5b12ed0741d808ac8cb17627a23eb841a4a5c98a5089ce7f9",
+          "afterSha256": "dddb7789528de0bf2cbb716f8be9c74fd748667756e05c0c843017cb8176de4c"
+        }
+      ]
+    },
+    {
+      "file": "indicator-provider-generation.patch",
+      "sha256": "930773aa46cb0cc44157feb8daf70cd16df4349eba69582c0a96d6e3f7ab64b1",
+      "module": "packages/app/platforms/android/sense",
+      "targets": [
+        {
+          "path": "packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/IndicatorLeaseProvider.java",
+          "beforeSha256": "cd9ceb69a92c76ca7eb06ae8bb92b34db461e251f366dfad7036066f219bf373",
+          "afterSha256": "46d5b4779ce49a784bba12b8b37830783f1cd994a6e0c2c49ff2e52b0e680855"
+        }
+      ]
+    },
+    {
+      "file": "listener-service-cleanup.patch",
+      "sha256": "fab44bf6ca71b9cf872a8b4c830ca1e0b79740b064f1d81d1b5749e9379dfc8e",
+      "module": "packages/app/platforms/android/sense",
+      "targets": [
+        {
+          "path": "packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListeningService.java",
+          "beforeSha256": "53254aa2bc75047a7893347d7bbac5c2e46d2d095474385ff4c22d814b6820db",
+          "afterSha256": "671b3cfaa916334e211f17f489615a1a29c2561d55b95fab3d70bb525ef0cde2"
+        }
+      ]
+    },
+    {
+      "file": "recognizer-retired-callback.patch",
+      "sha256": "4e2ed9bade0ad8c426f243cf74af7d671aaaef3958af4fdaec408cf7506ed612",
+      "module": "plugins/plugin-local-inference/native/android",
+      "targets": [
+        {
+          "path": "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/OnDeviceRecognizer.java",
+          "beforeSha256": "00dd3c480904e57d577591b19ccdfafca132077eaa0a77b31528745dd36ea27e",
+          "afterSha256": "5e30a5d8bb04ad83b1369c0fc6ac8c95e00ecacde199d92f80eec1f487fc1894"
+        }
+      ]
+    },
+    {
+      "file": "sms-reviewed-binding.patch",
+      "sha256": "1a0f97e4ff2a5e7c5c4a0c9410939e51fb1305c3ae68de6ed703856bb3c603c8",
+      "module": "plugins/plugin-native-messages/android",
+      "targets": [
+        {
+          "path": "plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/TelephonyPlugin.java",
+          "beforeSha256": "f317d127515d4676ce262f7d94118057206acc6d7ee0ee0e0f5e4309d12e8a56",
+          "afterSha256": "34385713fdbdf4e17c9f16c3a154a2534b497e67de3fd6d03369b0d03720c3c9"
+        }
+      ]
     }
   ],
   "modules": [
     "packages/app/platforms/android/app/src/main/elizavoice-jni",
+    "packages/app/platforms/android/sense",
     "packages/auth/android",
     "plugins/plugin-local-inference/native/android",
     "plugins/plugin-native-action-journal/android",
@@ -286,6 +347,7 @@
     "plugins/plugin-native-camera/android",
     "plugins/plugin-native-filesystem/android",
     "plugins/plugin-native-media/android",
+    "plugins/plugin-native-messages/android",
     "plugins/plugin-native-notifications/android",
     "plugins/plugin-native-reminders/android",
     "plugins/plugin-native-secure-store/android",

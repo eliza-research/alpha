@@ -32,7 +32,8 @@ public final class VoiceDraftTraces {
    "issued",NoteRecordingPorts.recorders.size(),"file",file!=null,"size",bytes==0?0:bytes>LocalVoiceRecording.MAX_BYTES?2:1,
    "now",NoteRecordingPorts.now,"startedAt",Trace.read(draft,"startedAt"),"duration",draft.durationMs(),
    "timer",NoteRecordingPorts.timers.containsKey(Trace.read(draft,"deadline")),"limit",latest==null?0:latest.maxDuration,
-   "event",last==null?"none":last.getString("status"),"eventId",last==null?0:identity(last.optString("recordingId",null)),"events",events.length(),
+   "interrupted",Trace.read(draft,"interrupted"),
+   "event",last==null?"none":last.optString("interrupted",last.getString("status")),"eventId",last==null?0:identity(last.optString("recordingId",null)),"events",events.length(),
    "selected",selected,"externalConfigured",externalConfigured,"externalReady",externalReady);
  }
  static String start(int value,int limit,boolean success)throws Exception {
@@ -72,7 +73,27 @@ public final class VoiceDraftTraces {
   String id=start(1,mode.equals("long")?59000:29000,!mode.equals("open-failure"));
   if(id==null){System.out.println(trace.value);return;}
   MediaRecorder capture=(MediaRecorder)Trace.read(draft,"recorder");
-  if(mode.equals("cancel")){draft.cancel();trace.step("cancel",observe());}
+  if(mode.startsWith("interrupt-")){
+   File file=(File)Trace.read(draft,"file");Runnable deadline=(Runnable)Trace.read(draft,"deadline");
+   boolean released=!mode.equals("interrupt-release-failure");NoteRecordingPorts.failRelease=!released;
+   draft.interrupt("call-active");trace.step("interrupt",observe(),released);
+   JSONObject terminal=events.getJSONObject(0);
+   if(!"failed".equals(terminal.getString("status"))||terminal.has("durationMs")||!id.equals(terminal.getString("recordingId"))||file.exists()==released)
+    throw new AssertionError("Call cleanup or terminal event did not match the exact owned draft");
+   draft.interrupt("call-active");trace.step("interrupt",observe(),true);
+   deadline.run();trace.step("deadline",observe(),1);
+   capture.fail();trace.step("microphoneError",observe(),1);
+   capture.emit(MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED);trace.step("automatic",observe(),1,true,true);
+   choose(id,1);
+   if(!released){
+    boolean refused=false;try{draft.metrics(id);}catch(IllegalStateException expected){refused=true;}
+    if(!refused)throw new AssertionError("Interrupted recorder still reports microphone metrics");
+    trace.value.getJSONArray("steps").put(new JSONObject().put("label","interrupted metrics refused")
+     .put("action",Trace.action("metrics",1).put("reject",true)).put("expect",observe()));
+    draft.cancel();trace.step("cancel",observe());if(file.exists())throw new AssertionError("Retry did not delete the interrupted draft");
+   }
+   start(2,29000,true);
+  }else if(mode.equals("cancel")){draft.cancel();trace.step("cancel",observe());}
   else if(mode.equals("discard-wrong")){draft.discard("foreign");trace.step("discard",observe(),2);draft.discard(id);trace.step("discard",observe(),1);}
   else if(mode.equals("mic-error")){capture.fail();trace.step("microphoneError",observe(),1);}
   else if(mode.equals("deadline")){advance(29000);NoteRecordingPorts.runTimers();trace.step("deadline",observe(),1);}

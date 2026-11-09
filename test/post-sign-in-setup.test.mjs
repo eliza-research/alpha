@@ -177,9 +177,11 @@ test('access setup is not held behind background work, only behind a foreground 
 
 test('Settings reports agent lifecycle separately from the available AI route',()=>{
   const settings=readFileSync(new URL('../apps/app/src/prototype/settings-adapter.ts',import.meta.url),'utf8');
+  const status=/const agentStatus = ([^\n]+);/.exec(settings)?.[1];
   const rows=/const agentRows=(\[info\('Agent'[^\n]+);/.exec(settings)?.[1];
-  assert.ok(rows,'the current Connection help status rows are present');
-  const render=connection=>new Function('connection','serviceName','info',`return ${rows};`)(connection,'Eliza Cloud',(label,value)=>[label,value]);
+  assert.ok(status&&rows,'the current Connection help status rows are present');
+  const render=connection=>new Function('connection','runtimeLocation','serviceName','info',
+    `const agentStatus = ${status}; return ${rows};`)(connection,'Browser','Eliza Cloud',(label,value)=>[label,value]);
   const values=connection=>render(connection).map(row=>row[1]);
   assert.deepEqual(values({session:null,kind:'starting',cloudAccount:{userId:'owner'},residentInference:null}),['Starting…','Starting…']);
   assert.deepEqual(values({session:{},kind:'resident',cloudAccount:{userId:'owner'},residentInference:'cloud'}),['Running on this device','Eliza Cloud']);

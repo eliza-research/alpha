@@ -73,7 +73,7 @@ async function reviewNoticesAndForeground(){
  await assert.rejects(client().pending(home,signal()),/another identity/);
  listed=[make('note-delete',{type:'notes_delete',target})];
  assert.equal((await client().pending(home,signal()))[0].reviewDestination,'notes');
- assert.equal((await client().pendingReview({...home,sensitive:true},signal()))[0].notice,'Delete selected note: Unlock the phone to review this action.');
+ assert.equal((await client().pendingReview({...home,sensitive:true},signal()))[0].notice,'Move selected note to Trash: Unlock the phone to review this action.');
  // Foreground availability: Home or Calendar, after approval, outside workflow bindings.
  listed=[make('free-busy',tuesday),make('named',{type:'notes_named',action:'delete',name:'Groceries'}),make('search',{type:'notes_search',query:{kind:'content',text:'passport'}})];
  const settings={view:'settings',revision:5,sensitive:false,timeZone:'America/New_York'};

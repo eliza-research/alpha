@@ -146,8 +146,8 @@ Gmail attachments and PDF file creation remain available.
 | `android/sense` | Product identity wrappers for the upstream Sense listener; shared implementation and SystemUI policy live in `vendor/eliza/packages/app/platforms/android/sense` and `vendor/eliza/packages/os/android/sense` ([ADR 0001](adr/0001-privileged-listener.md)); never in the standalone or launcher APK |
 | `app.config.json` | Package ID, display name, version and orientation |
 | `config/alpha-product.json` | Versioned product record of the shared mobile shell (`@elizaos/ui/mobile-shell`, schema `elizaos.mobile-product` v1): identity, theme and stylesheet aliases, icons, view order and labels, older view ids migrated once, and installed storage names (the launcher favorites record with its `alpha:` prefix and `alpha-apps` default policy, and the other names the app keeps reading). Home, the app grid, the view registry and navigation state (open view, Back stack, drawer and the assistant's pill, composer, sheet or full detent) render from the upstream shell with this record; runtime code such as agent navigation reads the React-free `@elizaos/ui/mobile-shell/core` entry |
-| `backend` | Development runtime composition, character and permitted model/actions |
-| `vendor/eliza` | Pinned shared platform source; never modified by consumer builds |
+| `backend` | Development runtime composition, character and permitted model/actions; `native-google-agent-host.ts` and its imports (`managed-google-*`, `native-cloud-runtime`, `native-google-cloud-port`) are the production native Google host, bundled as `google-host.mjs` |
+| `vendor/eliza` | Pinned shared platform source; never modified by consumer builds (temporary exception: the pinned voice builder's untracked `.cache/elizavoice-android`, see [fused speech](fused-speech.md)) |
 | `scripts` | Consumer build orchestration and product acceptance scenarios |
 | `design` | Requirements and visual references, not executable instructions |
 
@@ -551,7 +551,8 @@ Trash, review and reload) bound by `canonical-notes-ui.ts`; the device-local Old
 keeps its own store, Trash and recorder. The shared `NotesWorkspace` component is not rendered.
 Both sources share the view refresh layout (design/view-refresh-2026-11/PLAN.md section 3): a header
 with Record (`notes-record`) and New note only, a folder chip row (All, folders, +, and Recently deleted
-while it has items), a one-column list with a Pinned section, and Back · Checklist · Share · ⋯ on a note.
+while it has items), a one-column list with a Pinned section, and Back · Checklist · More on a note. More includes Share, which opens the existing
+reviewed sharing panel for the selected note; choosing a destination remains explicit.
 Folders are one device slot (`notes-folders:v1:device`, `runtime/notes-folders.ts`); a note names its
 folder by `folderId` (agent notes in their format data), and a reference to a deleted folder reads as no
 folder. Record opens the unlimited Notes recorder (`prototype/note-recorder.ts` over
@@ -593,12 +594,14 @@ notes today, so the plugin stays as the product's binding to the shared store.
 
 Selected documents, attachments and PDFs follow the same split. `plugin-native-media` owns the
 selected-document registry and its bridge contract (`SelectedDocuments`,
-`SelectedDocumentCalls`), the folder tree (`DocumentFolderTree`), the temporary viewer copy
-(`ReviewedFileHandoff`), verified export (`DocumentExport`, `DocumentDestinations`) and isolated
+`SelectedDocumentCalls`), the folder tree (`DocumentFolderTree`), viewer URI admission and grant
+revocation (`ReviewedFileHandoff`), verified export (`DocumentExport`, `DocumentDestinations`) and isolated
 PDF rendering (`IsolatedPdfRenderService`, `IsolatedPdfViewerActivity`, `PdfPageLimits`).
 Alpha keeps the installed identities: `DailyApps` method names and the `selected-documents`
 registry, `AlphaFiles`' `alpha-files-tree`, the `<package>.mailattachments` provider and its
-`mail-attachments` cache path, and the `.IsolatedPdfService` (`:isolated_pdf`) and
+`mail-attachments` cache path. `ReviewedCopies` owns concurrent temporary copies for Alpha's
+main and assistant bridges. Each can revoke its own grants, and the process's first sweep can
+remove abandoned files without deleting a live peer copy. Alpha also owns the `.IsolatedPdfService` (`:isolated_pdf`) and
 `.AlphaMailPdfActivity` components, which are thin subclasses that only add Alpha's colours,
 messages and the development-only watchdog fixture.
 

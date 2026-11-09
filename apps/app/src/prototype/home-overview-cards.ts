@@ -77,7 +77,7 @@ export function homeBriefCard(out: Bag): ReactElement | null {
   return createElement(OverviewBriefCard, {
     title: retained?String(out.homeBriefTitle || 'Your brief'):'Your brief', status: retained?String(out.homeBriefStatus || 'No brief yet'):'No brief yet', failed,
     label: retained?String(out.homeBriefLabel || 'Open your brief'):'Open your brief', onActivate: typeof out.goBrief === 'function' ? out.goBrief : undefined,
-    icon: maskIcon('sparkles', 'var(--acct)'),
+    icon: maskIcon('file-text', 'var(--acct)'),
     classNames: {card: 'home-brief-card', head: 'home-brief-head', title: 'home-brief-title', status: 'home-brief-status'},
     dataAttributes: {'data-alpha-home-brief': '', 'data-alpha-home-brief-failed': flag(failed)},
   });

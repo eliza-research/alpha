@@ -75,6 +75,7 @@ test('brief card keeps an empty shell and renders retained data with its failure
   assert.match(out.ran,/class="home-brief-head"><span data-overview-part="heading">Latest brief<\/span>/);
   assert.match(out.ran,/class="home-brief-title">Two meetings today\.<\/span><span data-overview-part="status" class="home-brief-status">Alpha · Ran 7:02 AM</);
   assert.ok(out.failed.includes('data-alpha-home-brief-failed="true"'));
+  assert.ok(out.ran.includes('/icons/lucide/file-text.svg')&&!out.ran.includes('sparkles'),'the brief icon is not a sparkle mark');
 });
 
 test('the retained brief is fenced to the bound connection scope', () => {

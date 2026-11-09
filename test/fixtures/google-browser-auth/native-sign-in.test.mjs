@@ -13,6 +13,7 @@ import {
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
+import { between, chainMethods, injectMethods } from "./chain-methods.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const main = join(root, "src/main/java/ai/eliza/auth/cloud");
@@ -21,12 +22,6 @@ const read = (file) => readFileSync(file, "utf8");
 const plugin = read(join(main, "CloudSignInPlugin.java"));
 const binary = (name) =>
   process.env.JAVA_HOME ? join(process.env.JAVA_HOME, "bin", name) : name;
-const between = (text, start, end) => {
-  const from = text.indexOf(start),
-    to = text.indexOf(end, from + start.length);
-  assert.ok(from >= 0 && to > from, `${start} … ${end} located`);
-  return text.slice(from, to);
-};
 /** Pure sources: everything except the Android plugin and the Credential Manager wrapper. */
 const pure = readdirSync(main)
   .filter(
@@ -60,14 +55,7 @@ function runJvm(sources, mainClass, args = []) {
 }
 /** Injects exact plugin methods into a harness, dropping `private` so the harness can call them. */
 function harness(template, methods) {
-  let source = read(join(tests, template));
-  for (const [name, body] of Object.entries(methods)) {
-    assert.ok(body, name);
-    source = source.replace(
-      `/* ${name} */`,
-      body.replace(/^ private (static )?/gm, " $1"),
-    );
-  }
+  const source = injectMethods(read(join(tests, template)), methods);
   const directory = mkdtempSync(join(tmpdir(), "eliza-cloud-sign-in-src-"));
   const file = join(directory, template.replace(/\.txt$/, ""));
   writeFileSync(file, source);
@@ -175,101 +163,14 @@ test("native Google responses map to a fixed classification and a bounded diagno
 });
 
 test("exact native verify/connect/token/ack chain keeps failures explicit and custody native (plain JVM)", () => {
-  const { file, directory } = harness("CloudSignInChainTest.java.txt", {
-    ACTUAL_CREDENTIAL_IDENTITY: between(
-      plugin,
-      " @PluginMethod public void credentialIdentity(",
-      " /**\n  * Called once when an explicit attempt",
-    ).replace("@PluginMethod ", ""),
-    ACTUAL_CALLER_REQUEST: between(
-      plugin,
-      " private static String callerRequestId(",
-      " @PluginMethod public void startGoogle(",
-    ),
-    ACTUAL_CANCEL: between(
-      plugin,
-      " @PluginMethod public void cancel(",
-      " /** Post-authentication consent",
-    ).replace("@PluginMethod ", ""),
-    ACTUAL_START_CODE: between(
-      plugin,
-      " @PluginMethod public void startEmail(",
-      " /** Check registration and tenant SMS policy",
-    ).replaceAll("@PluginMethod ", ""),
-    ACTUAL_CALLBACK: between(
-      plugin,
-      " private boolean captureCallback(",
-      " /** Retire only the captured record",
-    ),
-    ACTUAL_BROWSER_LIFECYCLE: between(
-      plugin,
-      " @Override protected void handleOnPause()",
-      " @Override protected void handleOnDestroy()",
-    ),
-    ACTUAL_BURN: between(
-      plugin,
-      " private void burnUnclaimedPending(Attempt owner)",
-      " // ── Email code and MFA:",
-    ),
-    ACTUAL_VERIFY:
-      between(
-        plugin,
-        " private void verify(PluginCall call, boolean mfa)",
-        " private void release(",
-      ) +
-      between(
-        plugin,
-        " private void completeOrRequireMfa(",
-        " // ── Shared tail:",
-      ),
-    ACTUAL_RELEASE: between(
-      plugin,
-      " private void release(",
-      " /** A retained MFA event",
-    ),
-    ACTUAL_COMPLETE: between(
-      plugin,
-      " private void complete(",
-      " /** The saved key",
-    ),
-    ACTUAL_PREVIOUS_TOKEN: between(
-      plugin,
-      " private static String previousToken(",
-      " /** Bounded retry",
-    ),
-    ACTUAL_ACK: between(
-      plugin,
-      " private boolean acknowledge(",
-      " /** A key stored before",
-    ),
-    ACTUAL_RESUME_ACKS: between(
-      plugin,
-      " private void resumeAcknowledgements()",
-      " // ── Outcomes and transport",
-    ),
-    ACTUAL_DESTROY: between(
-      plugin,
-      " @Override protected void handleOnDestroy()",
-      " private void run(Runnable task)",
-    ),
-    ACTUAL_OUTCOMES: between(
-      plugin,
-      " private void finish(",
-      " /** Cloud refusing",
-    ),
-    ACTUAL_INSTANT: between(
-      plugin,
-      " private static long instant(",
-      " private Response post(",
-    ),
-  });
+  const { file, directory } = harness("CloudSignInChainTest.java.txt", chainMethods(plugin));
   try {
     assert.match(
       runJvm(
         [...pure, ...support, file],
         "ai.eliza.auth.cloud.CloudSignInChainTest",
       ),
-      /^PASS native sign-in chain \(62 scenarios; no browser facilities\)/,
+      /^PASS native sign-in chain \(64 scenarios; no browser facilities\)/,
     );
   } finally {
     rmSync(directory, { recursive: true, force: true });

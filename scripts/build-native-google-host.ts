@@ -1,15 +1,17 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {isBuiltin} from 'node:module';
+import {coreStateBuildPlugin,coreStateBuildRecord,coreStateRequiredTargets} from './core-state-patch.mjs';
 
 const [root,sdk,file,metadataFile]=process.argv.slice(2);
 if(!root||!sdk||!file||!metadataFile)throw Error('Native host build paths are required');
+const core=coreStateBuildPlugin(root,sdk);
 const result=await Bun.build({
  entrypoints:[path.join(root,'backend/native-google-agent-host.ts')],
  target:'bun',format:'esm',minify:{syntax:true},conditions:['eliza-source'],
  tsconfig:path.join(sdk,'tsconfig.json'),metafile:true,
  define:{'import.meta.env':'{"VITE_ELIZA_DEV_ALLOW_TEST_MOCKS":"0"}'},
- plugins:[{name:'pinned-native-server-sdk',setup(builder){
+ plugins:[core.plugin,{name:'pinned-native-server-sdk',setup(builder){
   builder.onResolve({filter:/^[^./]/},args=>{
    if(isBuiltin(args.path)||args.path.startsWith('bun:'))return;
    const vendor=path.join(root,'vendor/eliza'),fromVendor=path.relative(vendor,args.importer),fromSdk=path.relative(sdk,args.importer);
@@ -33,4 +35,4 @@ for(const [name,value] of Object.entries(result.metafile.inputs)){
  if(!relative||relative.startsWith('..')||path.isAbsolute(relative))throw Error('Native host source graph escaped the product');
  inputs[relative.split(path.sep).join('/')]=value;
 }
-fs.writeFileSync(metadataFile,JSON.stringify({...result.metafile,inputs},null,2)+'\n');
+fs.writeFileSync(metadataFile,JSON.stringify({...result.metafile,inputs,coreState:coreStateBuildRecord(root,core.transforms,coreStateRequiredTargets(Object.keys(inputs)))},null,2)+'\n');

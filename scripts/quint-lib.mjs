@@ -1,15 +1,30 @@
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { CORE_STATE_MANIFEST, coreStateRequiredTargets, verifyCoreStateBuildRecord } from './core-state-patch.mjs';
 
 export const repositoryRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
 export const quintRoot = join(repositoryRoot, 'specs/quint');
 export const sourceRoots = ['apps/app/src', 'apps/app/public', 'backend', 'android'];
 export const runtimeScriptPaths = ['scripts/browser-cloud-dev-bridge.ts', 'scripts/cloud-resident-host.mjs',
   'scripts/cloud-email-code.ts', 'scripts/dev-agent.mjs', 'scripts/dev-cloud.mjs', 'scripts/dev-local.mjs',
-  'scripts/start-local-agent.mjs', 'scripts/start-local-voice-agent.mjs', 'scripts/start-local-remote.mjs'];
+  'scripts/start-local-agent.mjs', 'scripts/start-local-voice-agent.mjs', 'scripts/start-local-remote.mjs',
+  'scripts/core-state-patch.mjs', 'scripts/core-state-preload.mjs', 'scripts/start-reviewed-workflow-agent.mjs',
+  'scripts/start-cloud-qa.mjs', 'scripts/start-combined-agent.mjs', 'scripts/launcher-child.mjs',
+  'scripts/local-agent-dev-bridge.ts', 'scripts/local-agent-dev-storage.ts',
+  'scripts/prepare-local-agent.mjs', 'scripts/local-agent-source.mjs', 'scripts/copy-file-clone.mjs',
+  'scripts/prepare-client-features.mjs', 'scripts/prepare-patched-native.mjs',
+  'scripts/build-workflow-worker.ts', 'scripts/prepared-workflow-worker.mjs',
+  'scripts/workflow-worker-artifact.mjs', 'scripts/stage-workflow-worker.mjs',
+  'scripts/native-google-host-artifact.mjs', 'scripts/build-native-google-host.ts',
+  'scripts/build-mobile-agent.mjs', 'scripts/mobile-uuid-adapter.mjs', 'scripts/mobile-bundle-smoke.mjs',
+  'scripts/stage-local-agent-runtime.mjs', 'scripts/stage-local-agent-sources.mjs',
+  'scripts/agent-bundle-dependencies.mjs', 'scripts/runtime-profile.mjs',
+  'scripts/build-embedding-host.mjs', 'scripts/prepare-embedding-host.mjs',
+  'scripts/stage-embedding-host.mjs', 'scripts/voice-host.mjs',
+  'scripts/android-build-preflight.mjs', 'scripts/build-android.mjs'];
 export const runtimeAssetPaths = ['apps/app/index.html'];
 const omittedDirectories = new Set(['node_modules', 'build', '.generated', '.gradle', '.cxx', '.kotlin', 'assets', 'jniLibs', 'capacitor-cordova-android-plugins']);
 const sourceExtensions = new Set(['.ts', '.tsx', '.js', '.java', '.kt', '.cpp', '.h', '.c', '.html', '.mjs', '.jsx', '.cc', '.hpp', '.rs', '.swift']);
@@ -35,6 +50,24 @@ function runtimeBundleSourcePaths(pin) {
       || !graph.files || Array.isArray(graph.files) || Object.keys(graph.files).length === 0
       || !graph.producer?.sourceTreeVerifiedBeforeAndAfter || !graph.producer?.inputHashesUnchanged) {
     throw Error('Refresh the authenticated runtime bundle inventory for the current upstream pin');
+  }
+  for (const [path, digest] of Object.entries(graph.producer.inputHashes || {})) {
+    if (path.startsWith('/') || path.includes('\\') || path.split('/').some(part => !part || part === '.' || part === '..')
+        || !/^[a-f0-9]{64}$/.test(digest) || sha256(readFileSync(join(repositoryRoot, path))) !== digest) {
+      throw Error(`Runtime bundle producer input changed ${path}`);
+    }
+  }
+  if (existsSync(join(repositoryRoot, CORE_STATE_MANIFEST))) {
+    const core = graph.producer.coreState;
+    verifyCoreStateBuildRecord(repositoryRoot, core, coreStateRequiredTargets(Object.keys(graph.files)));
+    const transforms = new Map(core.transforms.map(row => [row.path, row]));
+    for (const [path, input] of Object.entries(graph.files)) {
+      const transform = transforms.get(path);
+      if (transform ? input.sha256 !== transform.sourceSha256 || input.effectiveSourceSha256 !== transform.outputSha256
+        : input.effectiveSourceSha256 !== undefined) {
+        throw Error(`Runtime bundle effective source differs from its core transformation ${path}`);
+      }
+    }
   }
   const inputs = new Map();
   const include = (path, digest) => {
@@ -105,7 +138,9 @@ export function sharedSourcePaths() {
 }
 
 export const sourcePaths = () => [...new Set([
-  ...sourceRoots.flatMap(root => filesWithin(join(repositoryRoot, root), path => sourceExtensions.has(extname(path)))).map(relativePath),
+  // Product CSS controls mounted visibility, focus affordances and pointer ownership.
+  ...sourceRoots.flatMap(root => filesWithin(join(repositoryRoot, root),
+    path => sourceExtensions.has(extname(path)) || extname(path) === '.css')).map(relativePath),
   ...runtimeScriptPaths, ...runtimeAssetPaths, ...sharedSourcePaths(),
 ])].sort();
 export const readJson = path => JSON.parse(readFileSync(path, 'utf8'));

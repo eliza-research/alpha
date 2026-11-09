@@ -1,0 +1,9 @@
+# Original interactive task model and current reducer
+
+The selected source campaign compiles the exact pinned reducer and runs real `createInteractiveTask` and `transitionInteractiveTask` against frozen synthetic inputs. It projects the full original task state and both history flags. The source checks also inspect the reducer's revision, epoch, evidence and event envelope, including monotonic journal time during a backwards wall clock. [CoreInteractiveTask](../CoreInteractiveTask.qnt)
+
+The replay covers origin extension and withdrawal, exact proposal and dispatch ownership, unknown results and readback, pause, recovery, cancellation, and terminal revocation. An original guard that refuses a transition is checked as a disabled Quint action. A more detailed source guard, such as wrong owner, stale revision or lease expiry, is checked in the reducer and projects to unchanged state.
+
+The current reducer also accepts trusted `rebind` for an active task. The exact source trace begins with a prepared operation and a current observation. Rebind keeps the task active, advances the epoch, clears the observation and cancels that operation. The original model has no rebind action. Its pinned exhaustive graph contains the predecessor and excludes the exact resulting projection. A separate mismatch receipt retains the unchanged-model replay and its failed observation. The original model and its TLC inputs remain byte-identical.
+
+The selected traces run directly without generated proof files. The independent [exhaustive graph check](check-interactive-task-refinement.mjs) compares a fresh TLC-generated graph with the pinned upstream graph and exercises the upstream reducer-conformance suite. Both campaigns use synthetic tasks. CAS storage, actuator checks and installed browser behavior require separate evidence.

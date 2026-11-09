@@ -28,5 +28,17 @@ final class ConnectionRoutes {
  static boolean externalCliLogin(String host,String path,boolean testMocks){return POLICY.externalCliLogin(host,path,testMocks);}
  static boolean admittedHeader(String name,boolean testMocks){return CloudConnectionPolicy.admittedHeader(name,testMocks);}
  static boolean mapsRequestIdentity(String name,String value,String path,String method){return CloudConnectionPolicy.mapsRequestIdentity(name,value,path,method);}
+ /**
+  * Syntax-only bound on a declared device capability list (test-mocks remote and development Cloud agents). The agent
+  * validates the header itself (device-action-routes) and the value carries no authority, so any well-formed name passes,
+  * as on the resident path; a value allowlist here only drifted from what the renderer negotiates.
+  */
+ static boolean deviceCapabilities(String value){
+  if(value==null||value.isEmpty()||value.length()>2048)return false;
+  String[] parts=value.split(",",-1);
+  if(parts.length>32)return false;
+  for(String part:parts)if(!part.trim().matches("[a-z0-9][a-z0-9.-]{0,63}"))return false;
+  return true;
+ }
  static boolean cloudSelfRevocation(String scheme,String host,int port,String rawPath,String rawQuery,String method,boolean hasBody,boolean testMocks){return POLICY.cloudSelfRevocation(scheme,host,port,rawPath,rawQuery,method,hasBody,testMocks);}
 }

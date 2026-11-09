@@ -102,7 +102,13 @@ public class MediaRecorder {
   public void pause(){paused=true;}
   public void resume(){paused=false;}
   public void stop(){if(ai.elizaresearch.alphaphone.NoteRecordingPorts.failStop){ai.elizaresearch.alphaphone.NoteRecordingPorts.failStop=false;throw new IllegalStateException("short fixture");}}
-  public void release(){released=true;}
+  public void release(){
+    if(ai.elizaresearch.alphaphone.NoteRecordingPorts.failRelease){
+      ai.elizaresearch.alphaphone.NoteRecordingPorts.failRelease=false;
+      throw new IllegalStateException("release fixture");
+    }
+    released=true;
+  }
   public int getMaxAmplitude(){return 8192;}
   public void emit(int what)throws IOException{
     if(what==MEDIA_RECORDER_INFO_NEXT_OUTPUT_FILE_STARTED){if(next==null)throw new IOException("no next output");output=next;next=null;bytes();}

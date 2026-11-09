@@ -144,17 +144,27 @@ checks.
 
 ## Additional native protocol detail
 
-`NavigationProgress` adds the maneuver cursor and navigation retry state to the
-service-level route model. A sparse geometric projection cannot skip the next
-instruction. It advances only when the current maneuver is closer than 40 m.
-Arrival requires distance below 25 m and accuracy no worse than 30 m. Fresh
-navigation fixes require precise permission, accuracy at most 50 m, age at most
-30 seconds and a timestamp at most five seconds in the future. Failed reroutes
-retain the followed route and use 10, 20, 40 and then 60 second retries. The retry
-loop rechecks the latest fix, cancels on arrival and stops scheduling after route
-recovery. The controller must first leave ready/error before a new reroute result
-is accepted. Native Stop, task removal, late start and replacement-session
-callbacks retain separate session identities.
+`NavigationProgress` follows the current shared Maps screen, route controller and
+background-navigation owner. Maneuver guidance advances only inside 40 m, and
+arrival requires distance below 25 m and accuracy no worse than 30 m. A stored
+fix can age without another callback. Explicit reroute rechecks its freshness,
+and a provider error ends guidance. End retires guidance while allowing the
+already requested route to finish in directions. Release aborts that request.
+Late background replies clean up their exact session, including a second stop
+command after a retired native Start finally succeeds. Dragging disables follow
+until recentering or Start. A hidden watch whose pending background startup
+is refused releases immediately unless a permission prompt still owns the
+screen. A refusal from an older session cannot release its replacement.
+
+`NativeNavigationOwnership` follows the Java Maps bridge and foreground service.
+A renderer can retire only its session. Commands and notification Stop actions
+carry an internal authority that survives a reused public route ID. Delayed START
+commands meet the foreground-service boundary without replacing the current
+instruction or removing a successor. The JVM campaign controls Android delivery
+and rejection. A task-removal callback must name the Activity component that started
+the live lease, including a resolved HOME root. This check treats roots that
+share a component alike. Android supplies the root intent without a task ID.
+Installed notification and task-delivery behavior remain separate.
 
 `ListenerLeaseRecovery` models the actual lease and recovery mechanisms behind
 `AlwaysOnListener` policy inputs. Lease acquire, acknowledgement, monotonic expiry,
@@ -284,8 +294,509 @@ Microphone, codec, foreground-service eligibility and device acceptance remain s
 ## Shared recording and live capture
 
 `SharedRecordingAdmission` follows the complete shared bridge's draft capture entry points,
-permission epochs, late call checks and cancellation barriers. `NativeLiveCapture` follows
+permission epochs, late call checks and cancellation barriers. A call retires the draft before
+release. If release throws, its recorder stays unavailable until cancellation retries cleanup.
+`NativeLiveCapture` follows
 reservations, physical-source startup, publication, interrupted final events and teardown.
 Both run current patched shared Java with controlled Android audio and permission inputs.
 Protected-screen state is fixed inactive in these projections. Provider piping, physical
 audio and installed Android scheduling require their separate acceptance checks.
+
+`NativeAsrPipe` covers the shared `LiveSegmentPipe` worker, readiness and close
+futures, eight-batch queue, serialized JSON copies, per-frame and per-VAD cutoff,
+provider ownership checks and transcript/error replies. Frame and VAD timestamps
+use independent membership bits. NaN cutoff remains NaN and therefore forwards
+no timed items. A canceled warm request can still complete readiness successfully;
+the capture controller must apply its own current-ticket guard.
+
+The source campaign suspends at actual provider posts and compares completed
+source operations, including future settlement. Transient instruction-level
+ordering between the private `finished` flag and `closed.complete` is inside one
+completion observation. Rejected-worker settlement now runs even when cancellation or the
+failure listener throws. ASR_FAILED remains a recoverable per-response outcome;
+transport failures close the pipe. These bounded checks use one worker start and
+at most three posted batches/transcript results. Controller composition and
+physical/native transport remain separate obligations.
+
+`NativePipedCapture` checks the real join between shared bridge admission,
+`LiveCaptureController`, `LiveVoiceCapture` and `LiveSegmentPipe`. Fourteen source
+schedules cover provider warmup before microphone opening, late warmup after
+pause/destruction, call entry while opening, provider retirement, recoverable
+ASR failures, metadata-only renderer frame events and acknowledged/unconfirmed
+pipe closure. A failed pipe can remain referenced by its controller until an
+explicit Stop cleans it up, even after its physical source stopped.
+
+The model uses one initially valid owner-bound pipe, two frame events and two
+transcript results. The provider and physical AudioRecord are controlled ports.
+The detailed pipe queue/response state has its own `NativeAsrPipe` projection;
+these coordinator observations add the ordering between that pipe and capture.
+
+`NativeCaptureFrames` covers the actual `LiveVoiceCapture` loop's input/output
+state. Its observed history contains the detector inputs that were consumed;
+a pure model fold derives VAD counters, the ten-window pre-roll, three-window
+emission cadence and unflushed frames. Actual emitted packets carry distinct PCM
+window markers, so packet membership and ordering are checked independently of
+the model calculation. Stop flushes pending speech frames; a read failure drops
+that unreported tail. The private running flag remains set after a read error
+until Stop, even though the source and detector have closed.
+
+Normal, interrupted and failed cleanup paths observe the actual short, float
+and byte buffers and detached source ownership. The campaign includes partial
+reads, exact threshold windows, non-finite and absent detector output, both
+cleanup failures and the previous cleanup regression. Physical inference and
+microphone timing remain external inputs.
+
+`NativeIndicatorProvider` covers the real `IndicatorLeaseProvider.call` boundary
+and the `IndicatorLease` fields it changes. The generation counter and active
+Binder death recipient are admitted under the same monitor. The source regression
+holds that monitor while two real public calls arrive, then compares the actual
+lease generation with the generation captured by the linked callback. The old
+source mismatched in 31 of 32 recorded schedules. The patched source matched in
+all 32 schedules; bounded symbolic checking covers the finite transition model.
+
+Twenty-seven source schedules cover failed caller authority, missing arguments,
+lease replacement, old death callbacks after unlink failure, reuse of a Binder,
+already-dead tokens, stale renewal/revocation, expiry, reboot and nine visibility
+report classes. A revoked lease retains its registered death link until a later
+acquisition. The model preserves that source behavior. Three lease generations
+and three Binder identities bound the campaign. The actual listener convergence
+method, operating-system Binder behavior, platform signing and SystemUI visibility
+remain external acceptance obligations.
+
+The Sense module is now included in authenticated native staging, and its shared
+consumer Gradle script obtains `src/main` from that staging. The standalone and
+launcher host descriptors include the same product listener project. Assertions
+check this configuration for its debug/release builds. These checks do not
+constitute an APK build or installed AOSP acceptance.
+
+`NativeListenerStore` observes the actual shared `ListenerStore`,
+`ListeningEpoch` and `CrashLoopBreaker`. Separate memory and durable preference
+records preserve the outcome when a commit changes memory but fails to persist,
+or durably writes and then throws. The failed-write latch gates consent getters
+until a successful reset. Reset retires old consent generations and still
+requires a new explicit opt-in. Restart observations execute a fresh JVM against
+the stored fixture file, including a retained open-session marker after a failed
+close. Persisted consent alone remains insufficient in that new process.
+
+The model also covers timed and indefinite pauses across boot changes, epoch
+retirement, explicit clearing of speech/indicator/crash stops, all eight retained
+crash entries, malformed legacy history, permission-revoked starts and package
+updates. Store calls are checked at serialized method boundaries with controlled
+SharedPreferences outcomes. Concurrent arbitrary preference writers, real
+filesystem power loss and whole-service stop acceptance remain external to this
+component campaign.
+
+`NativeListenerService` executes the shared `Listener`, `ListeningService`,
+`ListenerStore`, lease and policy together for service creation, capture startup,
+ASR allocation, pause, disable and destruction. Its source regression showed that
+an `AudioRecord.release()` exception escaped destruction before audio callbacks,
+the ASR engine, executor and superclass lifecycle were cleaned up.
+`listener-service-cleanup.patch` now completes those lifecycle steps, retains an
+unreleased record, preserves its durable open marker and refuses a replacement
+capture while that handle remains. A later Stop can retry the release. When the durable open-session marker is
+refused, the service now keeps recognition inactive and does not load a new
+ASR engine. The memory-only marker and the durable marker are observed
+separately.
+
+Fourteen source schedules observe all thirty-four lifecycle fields. They include
+successful and failed release, a failed stop plus failed release, retry, attempted
+replacement, late service start, and ASR allocation completing after destruction.
+Physical recording and confirmed resource release are separate observations. A
+failed stop and release can leave the synthetic AudioRecord active; the model
+preserves that uncertainty while checking callback and executor retirement.
+
+The component uses one explicitly opted-in service instance, a fresh visible
+lease and at most two recording allocations. Notification visibility, AudioRecord
+and ASR allocation are controlled platform ports. Arbitrary recording/playback
+callback interleavings, frame content and installed Android scheduling remain
+separate from these lifecycle traces.
+
+`NativeSpeechWarmup` covers the silent speech-output writer added by the
+current product streaming patch. It observes the actual writer, late factory
+return, play and write failure, close while blocked, duplicate close, and
+release attempts. The injected clock crosses the 15 second boundary exactly.
+An abort/release attempt is separate from confirmation that a physical track
+has closed. Full bridge admission and the installed audio path are outside this
+component projection.
+
+`NativeRecognizerAvailability` covers the shared per-language cache. It
+observes entries, real probe tickets, held concurrent probes, late answers,
+cache lookups and demotion deadlines. Authoritative and unanswered results have
+different replacement rules. Timed demotion and global/per-language retirement
+are kept distinct. Android's recognizer support service and installed speech
+models remain external inputs to this campaign.
+
+`NativeOnDeviceRecognizer` covers one actual `OnDeviceRecognizer` session
+with a controlled Android recognizer and PCM pipe. It observes input backlog,
+queue ownership, EOF, early results, timeouts, stop-before-open, finished-state
+refusals, and released recognizer/pipe handles. The exact 64 second backlog
+boundary distinguishes accepted audio from refused input. A held main callback
+separates a cancellation request from cleanup acknowledgement.
+
+The unpatched source let a retired language-error callback demote the installed
+language even when the terminal answer rejected that callback. The authenticated
+repair makes language demotion part of the first accepted answer, under the
+same monitor that admits cancellation. An active missing-language error still
+demotes. The source campaign covers both old callback windows and the current
+error control. Installed recognition, real Binder ordering, and unrestricted
+audio histories remain platform and refinement obligations.
+
+`NativeListenerInput` exercises actual listener recording, mode and playback
+callbacks through the capture loop, SpeechGate, recognition executor, WakePhrase
+and main-thread wake action. Synthetic PCM batches cross the minimum speech
+length and playback guard exactly. The source driver holds a native read across
+epoch retirement. Its first frame stays owned by the previous epoch, and the
+next current utterance can be recognized. Playback, call and destroy retire
+pending recognition or wake actions. The lock screen blocks assistant
+invocation while allowing the capability-reducing spoken pause.
+
+The component projects one capture and recognition worker at a time, up to three
+recorder allocations, one queued wake action, and fixed speech/silence frame
+sequences. It observes cleared frame and transferred ASR sample buffers.
+General adaptive floor/pre-roll histories, unrestricted callback schedules and
+installed Android audio and assistant invocation remain separate obligations.
+
+`NativeSpeechGate` models the listener's separate adaptive noise floor and
+PCM buffering. Its source projection reads the real circular pre-roll slots,
+opening and closing counters, exact utterance sample order, and zeroed unused
+storage. It covers the 15-frame minimum, 35-frame silence hangover and 400-frame
+maximum, including truncation of a trailing silence run at that maximum. Reset
+clears PCM while retaining the learned noise floor. Synthetic frame classes
+straddle the absolute speech threshold and exercise steady-noise adaptation.
+
+The model bounds PCM to eight constant-amplitude inputs and compares rounded
+millidecibels with a two-millidecibel tolerance. The source passes the actual
+classifier result and measured floor at each frame. The model checks their
+threshold and update relation, then derives the expected buffer state. Complete
+floating-point coverage and installed microphone behavior remain separate.
+
+`NativeSpeechOutputPreparation` follows the staged lead-trim buffer and first-write report
+through exact threshold boundaries, a full 727-sample production pre-roll, input zeroing,
+post-onset pass-through and callback/write faults. Its symbolic run uses short representative
+chunks and a three-sample pre-roll. The production-sized scenario executes the actual helper
+and compares exact retained and returned sample classes.
+
+`BatchCaptureCompletion` follows the renderer's recorded conversation capture. It models
+early callbacks keyed by native draft identity, start acknowledgment, sampling, explicit
+stop, cancellation and cleanup uncertainty. A call event prevents selection of that draft
+for transcription, even when it arrives before the native start acknowledgment.
+
+## Process-local update activation
+
+`NativeUpdateActivation` checks the exact `AlphaDevicePlugin` update barrier.
+Registration grows a pending barrier, and a new bridge after readiness
+invalidates it before seal. Exact activation and bridge receipts admit each
+ACK once. A refusal, retirement or malformed receipt cannot authorize the
+resident stop. A bridge that joins after seal sees the pause and can reach the
+existing Android confirmation.
+
+The baseline in `cb1deb29c4` records six source schedules. It reproduced a
+post-seal bridge receiving the sole cancellation resume flag after opening
+confirmation, even though that bridge did not capture a mounted reconnect
+callback. It also reproduced a terminal audience still naming a bridge that
+had retired. The corrected barrier captures eligible mounted ACKs at seal.
+On cancellation it selects the live eligible confirmation owner or the exact
+eligible initiating bridge. Startup and older ACKs can prepare without granting
+resume. Retirement clears the selected audience without transferring it, and
+repeat settlement of the current terminal identity does not nominate anyone.
+
+Eight JVM schedules execute the actual updater methods with a fixture download,
+resident-stop port and PackageInstaller port. The prepared renderer adapters
+separately check the mounted and startup request shapes. The durable journal,
+physical installation, installed WebView callback delivery and full
+cross-process recovery have separate evidence requirements.
+
+### Activation and durable pause composition
+
+`NativeUpdateComposition` imports the native activation and durable pause
+transition relations. A JVM campaign drives the real updater, pinned journal,
+and exact service-lease policy through one attempt. The test controls the
+installer port and resident stop observation, then reads the actual PAUSING
+and COMMITTING records, owner UUID, lease and renderer state. The source
+scenarios cover a draft refusal, exact canceled release, and directory-sync
+failure after a visible terminal rename. The third scenario requires a
+nonprivileged POSIX host that honors the injected directory read denial.
+
+A refused preparation leaves no pause. After an exact canceled release, the
+mounted initiator can receive reconnect while the startup-only bridge keeps
+Android confirmation ownership. After the ambiguous tombstone, renderer
+readback is idle and the journal gate admits startup. The exact resident
+shutdown lease still fences a launch, and neither a terminal cancellation nor
+reconnect authority publishes. Retrying that same empty journal leaves the
+lease held. The model covers these bounded schedules through source readback.
+Installed Android and physical filesystem recovery remain separate.
+
+### APK offer and pre-activation staging
+
+`NativeUpdateStaging` follows the Settings manifest cache and the native
+download before the update activation barrier. The JVM serves synthetic
+responses through the pinned bounded transport. Exact Settings review selects
+the tuple that the same source driver passes to the installer. Readback covers
+the partial cache file, verified SHA-256, archive admission and exact bytes
+copied to the synthetic installer sink. Each staged attempt ends at a refused
+preparation. Installed session delivery remains a separate boundary.
+
+The one-day clock controls a refresh. A failed check retains an otherwise
+compatible cached offer, and an answered withdrawal removes it. A late
+non-EOF read is rejected before its bytes are written. A late EOF can finish
+verification if all exact bytes were already read. The process guard protects
+the active cache file from peer taps and sweeps. An unsuccessful file deletion
+can leave an orphan for a later idle bridge to sweep. A refused Android
+abandonment can likewise leave the copied uncommitted session listed.
+
+### Hosted inbox retention and receipts
+
+`NativeHostedInbox` follows `HostedDelivery.sync` through the single-flight
+operation and `HostedInbox.sync` through row, index and notice persistence.
+The resident credential expires independently of the cached history. History
+has an ordered 100-row cap and survives the matching scope reopening. The JVM
+checks exact per-scope client UUIDs, GET and ACK paths, cursor and run ID.
+
+The native receipt can acknowledge a row still listed or awaiting removal.
+The source writes both the row and its index or journal entry before
+requesting the receipt. A provider acceptance already recorded at the
+synthetic IPC boundary can survive generation retirement. The retired
+worker cannot mark the replacement current or commit its late result.
+Pending notice and removal journals recover independently. The campaign
+covers an already-visible post followed by a failed journal clear.
+
+Two scopes, three tracked rows, a seeded historical suffix and held
+synthetic IPC requests bound the model and source schedules. Actual server
+cursor behavior, encrypted storage and WorkManager execution are separate
+boundaries.
+
+### Android reminder delivery
+
+`NativeReminderDelivery` follows the product receiver and the pinned reminder
+engine through an inexact alarm, private notification, exact occurrence action,
+and restore. The model distinguishes alarm custody, the visible notice, the
+durable reminder, and a reviewed creation receipt. It tracks a boot marker's
+durable value separately from its in-process value after a failed commit.
+
+The Android effect can precede the saved posted phase. A refused commit
+quarantines the current envelope and can leave a visible notice against a
+scheduled record. The tap then resolves as unretained after process restart.
+If the posted bytes reached disk before the failure report, restart can recover
+the exact route. A reviewed receipt also survives unknown Android effects.
+Exact operation replay returns the stored receipt without arming again.
+
+The host runs the actual Java engine, store, envelope, tap and receiver over
+controlled Android ports. The checked JSON compile API comes from Android.
+Execution uses Android JSON when available and a verified Maven JSON fallback
+for these bounded schedules. The evidence covers one reminder, UTC daily
+recurrence and the observed failure windows. Installed alarms, other recurrence
+rules, and general Android notification or reboot behavior are separate.
+
+### Native Clock review and handoff
+
+`NativeClockReview` tracks the product Clock dialog, the exact journal-bound
+approval token and the one handoff to a resolved external Clock. The durable
+marker consumes the token before launch. A missing receipt or an ambiguous
+Activity error never authorizes an automatic second launch. A successful
+launch reports only `opened`. Android DeskClock owns alarm scheduling, ringing
+and manual acknowledgement.
+
+A dialog callback now settles only its captured claim. The as-built source
+trace demonstrated that a retired callback could strand its replacement.
+A new typed outcome also requires the exact stored native result for the
+current attempt and operation. Unknown remains a conservative result,
+and exact legacy terminal readback remains idempotent. The as-built traces
+retain the original fabricated-`opened` acceptance. The JVM executes the
+product bridge methods and pinned journal and handoff classes over
+controlled ports.
+
+### Native reviewed SMS dispatch and receipts
+
+`NativeSmsDispatch` models the Alpha plugin's reviewed tuple, SIM checks,
+journaled radio handoff and immutable callback boundary. The two bridge
+instances share the same native journal. The model tracks live and durable
+record evidence separately when a save reports failure. A boot or process
+restart can therefore change readback without another radio attempt.
+
+The controlled provider ports execute the actual outbox insert and exact-row
+settlement paths. A delivery report needs a uniquely attributed provider row
+and a successful sent callback. A multipart provider status cannot identify
+delivery for an individual part. Carrier delivery and Android role or
+PendingIntent enforcement remain installed-platform obligations.
+
+Two concurrent reviews can share an operation ID before either decides. The
+as-built replay in commit `d35e4bf839` shows the second dialog receiving a
+conflicting tuple's receipt after a single radio call. The staged shared
+TelephonyPlugin now revalidates the saved binding during positive recovery.
+An exact retry returns the original receipt and a conflicting retry is
+rejected. After capacity pruning, a late exact review reports `expired`,
+while a conflicting review reports `invalid`. The source replay drives
+both outcomes through the retained dialog, then reloads the tombstone.
+
+### Native reviewed MMS dispatch
+
+`NativeMmsDispatch` follows the inherited Alpha wrapper through MMS review,
+PDU encoding, durable dispatch admission, outbox storage, and callback
+settlement. The source driver compares the exact decoded attachment bytes
+at review and at radio handoff. It observes temporary PDU cleanup, provider
+rollback after partial storage, and uncertain radio or durable callback
+outcomes. The Android role, bitmap decoder, provider and carrier are controlled
+ports in this campaign.
+
+The as-built replay in commit `96addfb521` records the MMS positive recovery
+returning a row by operation ID after dispatch rejects a reused ID. That
+could return a receipt for another attachment or an SMS wire receipt. Each
+schedule still makes only the original radio handoff.
+
+The authenticated shared patch requires the exact MMS binding and record
+kind for recovery. It returns the prior receipt for the exact reviewed
+tuple. The source replay rejects changed body, recipients, SIM or attachment
+bytes, including an ID retained by SMS. It also checks that a pruned exact
+review reports `expired` and a conflicting review reports `invalid`, with
+the newly staged PDU cleaned in both cases.
+
+### Android text scale and accessibility readback
+
+`NativeTextScaleLifecycle` follows the installed appearance preference and
+the zoom of two Activity-owned WebViews. The JVM executes `MainActivity`
+and the exact appearance members of `AlphaDevicePlugin` to observe creation,
+configuration changes, resume, queued writes and a retired Activity. A saved
+preference affects each peer view when that view next reapplies it. The
+source schedules also distinguish a reported commit failure before a visible
+change from one after a visible change that a process restart discards.
+
+`recommendedTimeout` performs a synchronous read of Android's current
+AccessibilityManager. The JVM checks argument bounds, API and service
+availability, and the exact text/controls mask. The method owns no native
+observer. `AccessibleToastLifetime` covers the separate renderer refresh
+and timer ownership. Installed font metrics, preference durability, and
+accessibility service behavior remain platform obligations.
+
+### Native renderer problem journal
+
+`NativeCrashJournal` follows the native bridge's append, read and clear
+requests through separate diagnostics executors and the shared no-backup
+log. An executor drains already accepted work after destruction and
+rejects a later call. The source replays cover the 50-row cap, age
+boundaries, corrupt and oversized input, class-only writes, and controlled
+failure reports before and after atomic replacement.
+
+Clear retains the greatest exit timestamp already collected. A history
+read held before clear can still import an unseen exit from that snapshot.
+A later platform addition is outside the captured read. The as-built
+replay in commit `600c3730a6` recorded a synthetic extra field in a raw
+native reply. The bridge now applies the existing row allowlist and checks
+that each original timestamp is a numeric JavaScript-safe integer. The
+source replay verifies that the extra remains on disk and that valid
+neighboring rows still appear in the reply.
+`RendererRecovery`, `CrashLoopBreaker` and `RendererFailureUI` cover
+separate recovery, listener and renderer boundaries.
+
+The JVM uses private synthetic records and a controlled Android history
+and atomic-file port. It exercises no device logs, sharing or external
+opening. Android process history and cross-process durability remain
+installed-platform obligations.
+
+### Native Android Settings handoff
+
+`NativeSettingsHandoff` follows the exact Alpha Device bridge through the
+UI queue and the shared Android page allowlist. It distinguishes explicit
+Settings home from a specific page and an allowlisted broader fallback.
+Both package variants exercise the ordered intent attempts, exact package
+scope, task flags, and resolved page and specificity. The neighboring
+password-provider Settings path uses a different fallback condition.
+The trusted picker falls back to Settings home only after a missing
+Activity handler.
+
+The synthetic absent-host case records a synchronous throw from targeted
+Settings and password setup, while the explicit system path rejects the
+call. Capacitor's installed Activity constructor binds a fixed context.
+The synthetic retirement replay observes the queued attempt reaching the
+Activity port. This establishes the app's dispatch behavior, while Android
+acceptance, task placement and Settings effects remain external.
+`PermissionChoices` and `StartupPermissions` cover renderer permission
+flow, and `RendererRecovery` covers the native renderer escape buttons.
+
+### Native hosted source renewal
+
+`NativeSourceRenewal` follows the source grant's exact identity through
+arming, durable dispatch reservation, redacted alerts, two opaque tap
+routes, and the latest pending review. The JVM executes the product host,
+ledger, poster and renewal bridge members. It checks the notification
+shape, both tap identities, cancellation and the empty retained wakeup.
+Only a foreground read of an exact current grant can return pending
+metadata.
+
+The as-built replay in commit `63f860a9e2` recorded a posted row after
+notification admission changed between checks and the poster skipped the
+alert. The poster now reports whether its notify call returned. A skipped
+post leaves the row armed, or dispatching if the reset save fails. A
+later eligible post can retry the exact tag. Clear and owner withdrawal
+still cancel the alert and routes before saving, so a reported save
+refusal can leave a posted row after cancellation.
+
+The ports supply synthetic grants, journal outcomes, alert registration,
+and copied intents. No Android Activity is launched. WorkManager timing,
+resident provider behavior and installed notification enforcement remain
+separate.
+
+### Native assistant entry
+
+`NativeAssistantEntry` follows explicit assistant and protected Power Activity
+entry, package-wide Sense invocation custody, legacy renderer hints and the
+Quick Settings tile. The closed JVM compiles the product Activities and tile
+with the pinned shared Sense and tile sources. The fixture executes the exact
+product Power pin and legacy readback members with controlled credential and
+permission inputs. It observes sanitized intents, event count, the actual
+private invocation and grant records, and the exact tile launch request.
+
+The baseline in commit `8d5b94f635` reproduces a trusted cold listener or
+System UI receipt becoming a plain assistant receipt. Installed Capacitor
+assigns the bridge and calls virtual `onNewIntent(getIntent())`, recording a
+second origin after the initial Android caller observation. The repaired
+Activity forwards only the exact current sanitized object during the scoped
+load call without recording a second origin. The bridge still receives the
+intent and renderer event. A copied intent during load and a public
+same-object delivery after load take the ordinary delivery path.
+
+The exact owner can adopt a cold receipt through the inclusive 15-second
+window. A different owner, a late bind, or an initially locked device cannot
+use it for a voice origin. Warm API 35 caller delivery still requires the
+exact foreground binding. Legacy readback supplies a navigation hint. Cold
+Power remains a separate one-shot grant that can be spent or invalidated by
+its own Activity, native credential replacement, focus loss, pause or
+destruction.
+
+The tile fixture checks inactive presentation, canceled and delivered unlock
+callbacks, direct Intent dispatch before API 34, and the explicit immutable
+PendingIntent on API 34 and later. No installed package, Activity, capture or
+device Settings are used. Android caller identity disclosure, component
+availability, permission enforcement, task placement and unlock scheduling
+remain platform obligations.
+
+### Native action journal recovery
+
+`NativeActionRecovery` covers the product action journal's exact
+notification, Calendar deletion and reminder receipt recovery and passive
+history projection. The fixture runs the actual product recovery methods
+on the pinned shared worker and journal. It also runs the shared
+notification receipt ledger and exact reminder receipt lookup and hashing.
+It checks that recovery can record success from matching evidence only
+when the journal has a recorded attempt. Notification receipt promotion and action journal
+settlement can commit separately, including a storage error reported after
+either commit. Missing, conflicting, pending and exact retained evidence
+are observed alongside legacy unknown rows and retired bridges.
+
+The as-built replay in commit `00a4872aea` observed a synthetic reminder
+receipt settling an applying row under a different owner and proposal
+binding when the caller supplied that binding and the operation matched.
+It also observed passive history returning selected-reminder title, body
+and schedule fields. The repaired recovery verifies the selected
+journal's scope, proposal and recomputed binding before consulting
+the reminder receipt. Settled rows still return their retained receipt
+without another lookup. An unresolved row without binding metadata
+remains available for exact read but cannot settle through recovery.
+
+Passive history now reports `reminderReadRetained` with the selected
+reminder's retained identity and summary. Exact `get` still returns the
+complete stored receipt. The replay checks that history leaves durable
+bytes unchanged and that a reminder creation retains its original result.
+
+The ports provide one selected journal row, storage interruption, deletion
+receipt evidence and notification active-list matches. No notification,
+reminder, deletion, provider or Android device action executes.

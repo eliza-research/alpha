@@ -3,25 +3,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { createHmac } from "node:crypto";
+import os from "node:os";
+import path from "node:path";
+import { ALPHA, STOCK, APK, BEFORE, DATA, NONCE, exported, hmac, fakeUnit, timing } from "./fixtures/pilot-update.mjs";
 import { compareDomains, integrityQuery, INTEGRITY_AUTHORITY, parseIntegrityExport } from "../scripts/pilot-update.mjs";
-
-const NONCE = "ab".repeat(32);
-const hmac = (value, nonce = NONCE) => createHmac("sha256", Buffer.from(nonce, "ascii")).update(value).digest("hex");
-/** What the provider returns: one row per file and an end row with the count, as `content query` prints them. */
-function exported(files, nonce = NONCE) {
-  const rows = Object.entries(files).sort(([a], [b]) => a.localeCompare(b)).map(([relative, bytes]) => {
-    const domain = relative.includes("/") ? relative.slice(0, relative.indexOf("/")) : ".";
-    return `domain=${domain}, key=${hmac(`path:${relative}`, nonce)}, digest=${hmac(bytes, nonce)}`;
-  });
-  rows.push(`domain=#end, key=${rows.length}, digest=${hmac(`count:${rows.length}`, nonce)}`);
-  return rows.map((row, index) => `Row: ${index} ${row}`).join("\n") + "\n";
-}
-
-const DATA = {
-  "files/notes/document.json": "{\"notes\":[1]}", "no_backup/connection-credentials/slot.bin": "sealed",
-  "databases/androidx.work.workdb": "work", "shared_prefs/alpha.xml": "<map/>", "root-file": "x",
-};
+import { beginPilotRotation, claimPilotInstall, inspectPilotRotation } from "../scripts/owner/pilot-rotation-journal.mjs";
 
 test("the export query is the read-only provider URI with a nonce, quoted for the device shell", () => {
   assert.equal(INTEGRITY_AUTHORITY, "ai.elizaresearch.alphaphone.integrity");
@@ -83,40 +69,6 @@ test("the provider is a registered, read-only, DUMP-protected release component,
   assert.ok(!fs.existsSync("android/app/src/testMocks/java/ai/elizaresearch/alphaphone/release"), "no test-mocks variant of the export");
 });
 
-// The update window on a scripted adb: the order of device commands, not device evidence.
-const ALPHA = "ai.elizaresearch.alphaphone";
-const STOCK = "com.android.launcher3/.uioverrides.QuickstepLauncher";
-const APK = { file: "/tmp/new.apk", sha256: "c".repeat(64), versionCode: 2 };
-const BEFORE = { versionCode: 1, userId: "10100", firstInstallTime: "2026-10-01 10:00:00" };
-function fakeUnit({ alphaHome = true, runningAt = null, agentLog = "I ElizaAgent: Detached agent health check passed." } = {}) {
-  const state = { holder: alphaHome ? ALPHA : "com.android.launcher3", activity: alphaHome ? `${ALPHA}/.MainActivity` : STOCK, pids: "", calls: [] };
-  const adb = (args, { allowFailure = false } = {}) => {
-    const line = args.join(" ");
-    state.calls.push(line);
-    if (line.includes("get-role-holders")) return state.holder;
-    if (line.includes("resolve-activity")) return state.activity;
-    if (line === "shell am get-current-user") return "0";
-    if (line.includes("query-activities")) return `3 activities found:\n  Activity #0:\n    priority=0\n    ${ALPHA}/.MainActivity\n  Activity #1:\n    ${STOCK}\n  Activity #2:\n    com.android.settings/.FallbackHome\n`;
-    if (line.includes("add-role-holder")) { state.holder = args.at(-1); return ""; }
-    if (line.includes("set-home-activity")) { state.activity = args.at(-1); return ""; }
-    if (line === `shell pidof ${ALPHA}`) { if (!state.pids && !allowFailure) throw new Error("pidof failed"); return state.pids; }
-    if (line === `shell am force-stop ${ALPHA}`) { state.pids = ""; return ""; }
-    if (line.includes("run-as")) return "run-as: package not debuggable";
-    if (line.includes("content query")) { if (runningAt === "post-update" && state.calls.some(call => call.startsWith("install"))) state.pids = "4321"; return exported(DATA, /nonce=(\w+)/.exec(line)[1]); }
-    if (line.startsWith("install -r")) { if (runningAt === "post-update") state.pids = "4321"; return "Success"; }
-    if (line === `shell dumpsys package ${ALPHA}`) return `versionCode=2 minSdk=31\n  userId=10100\n  firstInstallTime=2026-10-01 10:00:00\n`;
-    if (line === `shell pm path ${ALPHA}`) return "package:/data/app/alpha/base.apk";
-    if (line.startsWith("shell sha256sum")) return `${APK.sha256}  /data/app/alpha/base.apk`;
-    if (line === "shell date +%s") return "1700000000";
-    if (line.startsWith("shell am start")) { state.pids = "1234"; return ""; }
-    if (line.startsWith("shell logcat")) return agentLog;
-    if (line.startsWith("shell dumpsys activity services")) return "";
-    throw new Error(`unexpected adb ${line}`);
-  };
-  if (runningAt === "pre-update") { const original = adb; return { state, adb: (args, options) => (args.join(" ") === `shell am force-stop ${ALPHA}` ? (state.calls.push(args.join(" ")), state.pids = "999", "") : original(args, options)) }; }
-  return { state, adb };
-}
-const timing = { sleep: () => {}, agentAttempts: 2 };
 const { planHome, updateUnit } = await import("../scripts/pilot-update.mjs");
 const indexOf = (calls, predicate, from = 0) => calls.findIndex((call, index) => index >= from && predicate(call));
 const lastIndexOf = (calls, predicate) => calls.findLastIndex(predicate);
@@ -195,6 +147,8 @@ test("an agent that is refused or never reports running after the restart fails 
   const crashed = updateUnit({ adb: crashing.adb, apk: APK, before: BEFORE, home: planHome(crashing.adb), timing });
   assert.equal(crashed.agentRestart.state, "not-running");
   assert.equal(crashed.passed, false);
+  const regressed = fakeUnit({ agentLog: "I ElizaAgent: Agent health restored.\nW ElizaAgent: Agent process exited early (pid=1 code=1 alive=10ms)." });
+  assert.equal(updateUnit({ adb: regressed.adb, apk: APK, before: BEFORE, timing }).agentRestart.state, "not-running");
   const none = fakeUnit({ agentLog: "" });
   const cloud = updateUnit({ adb: none.adb, apk: APK, before: BEFORE, home: planHome(none.adb), timing });
   assert.equal(cloud.agentRestart.state, "not-verified", "no on-device agent is configured: recorded, not claimed");
@@ -210,4 +164,112 @@ test("HOME that cannot be put back fails the update and records the recovery com
   assert.equal(update.agentRestart, null, "Alpha is not started while HOME is unproven");
   assert.match(update.home.recovery, /cmd role add-role-holder --user 0 android\.app\.role\.HOME ai\.elizaresearch\.alphaphone/);
   assert.notEqual(state.holder, ALPHA);
+});
+
+test("a role change without the stock HOME activity refuses readback and restores Alpha", () => {
+  const { state, adb } = fakeUnit();
+  const home = planHome(adb);
+  const partial = args => args.includes("set-home-activity") && args.at(-1) === STOCK ? "" : adb(args);
+  const update = updateUnit({ adb: partial, apk: APK, before: BEFORE, home, timing });
+  assert.equal(update.passed, false);
+  assert.equal(update.installAttempted, false);
+  assert.match(update.failures.join("\n"), /Stock HOME was not held/);
+  assert.equal(update.home.restoration.restored, true);
+  assert.ok(!state.calls.some(call => /content query|^install/.test(call)));
+});
+
+test("a process that starts during either readback prevents verification", () => {
+  for (const runningAt of ["pre-export", "post-export"]) {
+    const { state, adb } = fakeUnit({ runningAt });
+    const update = updateUnit({ adb, apk: APK, before: BEFORE, home: planHome(adb), timing });
+    assert.equal(update.installAttempted, runningAt === "post-export");
+    assert.equal(update.installVerified, false);
+    assert.equal(update.agentRestart, null);
+    assert.equal(state.holder, ALPHA);
+  }
+});
+
+test("HOME changing to Alpha during readback also blocks a unit that started on stock HOME", () => {
+  const { state, adb } = fakeUnit({ alphaHome: false });
+  const raced = args => {
+    const result = adb(args);
+    if (args.includes("content")) {
+      state.holder = ALPHA;
+      state.activity = `${ALPHA}/.MainActivity`;
+    }
+    return result;
+  };
+  const update = updateUnit({ adb: raced, apk: APK, before: BEFORE, timing });
+  assert.equal(update.installAttempted, false);
+  assert.match(update.failures.join("\n"), /Stock HOME was not held/);
+  assert.ok(!state.calls.some(call => call.includes("add-role-holder")), "leave a HOME change this update does not own alone");
+});
+
+test("an unavailable process listing cannot prove quiescence", () => {
+  const { state, adb } = fakeUnit();
+  const update = updateUnit({ adb: args => args.includes("ps") ? "" : adb(args), apk: APK, before: BEFORE, timing });
+  assert.equal(update.installAttempted, false);
+  assert.match(update.failures.join("\n"), /Cannot read the Android process list/);
+  assert.equal(state.holder, ALPHA);
+});
+
+test("final process readback must prove the integrity process stopped before restart", () => {
+  const { state, adb } = fakeUnit();
+  const stuck = args => {
+    const result = adb(args);
+    if (args.join(" ") === `shell am force-stop ${ALPHA}` && state.calls.some(call => call.startsWith("install"))) state.integrity = true;
+    return result;
+  };
+  const update = updateUnit({ adb: stuck, apk: APK, before: BEFORE, home: planHome(adb), timing });
+  assert.equal(update.installVerified, true);
+  assert.equal(update.passed, false);
+  assert.match(update.failures.join("\n"), /processes remained/);
+  assert.equal(update.agentRestart, null);
+  assert.equal(update.home.restoration.restored, true);
+  assert.ok(!state.calls.some(call => call.startsWith("shell am start")));
+});
+
+test("rotation intent is durable at dispatch and survives an ambiguous installer outcome", t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "alpha-pilot-update-fixture-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const directory = path.join(root, "journal");
+  const id = "a".repeat(64);
+  const { state, adb } = fakeUnit();
+  const release = claimPilotInstall(directory, id, root);
+  try {
+    const update = updateUnit({ adb: args => {
+      if (args[0] === "install") {
+        assert.equal(inspectPilotRotation(directory, id).state, "unknown");
+        assert.equal(state.holder, "com.android.launcher3");
+        throw new Error("installer response lost");
+      }
+      return adb(args);
+    }, apk: APK, before: BEFORE, home: planHome(adb), timing,
+    prepareInstall: domains => {
+      assert.ok(Object.keys(domains.files).length);
+      assert.equal(inspectPilotRotation(directory, id).state, "none");
+      return () => beginPilotRotation(directory, id, { replacementApkSha256: APK.sha256 });
+    } });
+    assert.equal(update.installAttempted, true);
+    assert.equal(update.installed, false);
+    assert.equal(update.installVerified, false);
+    assert.equal(update.agentRestart, null);
+    assert.match(update.failures.join("\n"), /installer response lost/);
+    assert.equal(state.holder, ALPHA);
+  } finally { release(); }
+  assert.equal(inspectPilotRotation(directory, id).state, "unknown");
+});
+
+test("readback is checked again after rotation validation, before consuming its intent", () => {
+  const { state, adb } = fakeUnit();
+  let recorded = false;
+  const update = updateUnit({ adb, apk: APK, before: BEFORE, home: planHome(adb), timing,
+    prepareInstall: () => {
+      state.pids = "777";
+      return () => { recorded = true; };
+    } });
+  assert.equal(recorded, false);
+  assert.equal(update.installAttempted, false);
+  assert.equal(update.home.restoration.restored, true);
+  assert.match(update.failures.join("\n"), /running before the pre-update readback/);
 });

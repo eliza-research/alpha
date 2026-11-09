@@ -67,10 +67,10 @@ test('Home and view changes set the detent the destination rests in, unless one 
   s.openView('browser',null,null,{keepState:true});assert.deepEqual(at(s),{view:'browser',chat:'input',stack:[]});
 });
 
-test('Back over Home\'s drawer stops voice first, then lowers the conversation, then closes the drawer', () => {
+test('Back closes the Home drawer before stopping voice and lowering the conversation', () => {
   const s=shell({chat:'full',drawer:true,drawerQ:'ma',voice:'listening'});
-  s.back();assert.deepEqual([s.state.voice,s.state.drawer,s.state.chat],['off',true,'full']);
-  s.back();assert.deepEqual([s.state.drawer,s.state.chat],[true,'sheet']);
-  s.back();assert.deepEqual([s.state.drawer,s.state.chat],[true,'input']);
-  s.back();assert.deepEqual([s.state.drawer,s.state.drawerQ,s.state.chat],[false,'','input']);
+  s.back();assert.deepEqual([s.state.drawer,s.state.drawerQ,s.state.voice,s.state.chat],[false,'','listening','full']);
+  s.back();assert.deepEqual([s.state.voice,s.state.chat],['off','full']);
+  s.back();assert.equal(s.state.chat,'sheet');
+  s.back();assert.equal(s.state.chat,'input');
 });

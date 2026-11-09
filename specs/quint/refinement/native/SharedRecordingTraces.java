@@ -78,7 +78,8 @@ public final class SharedRecordingTraces {
    "waiters",new JSONObject().put("quintCollection","set").put("values",waiting),
    "cancelQueued",cancelTask!=null&&NoteBridgePorts.queue.contains(cancelTask),"barrierQueued",barrierTask!=null&&NoteBridgePorts.queue.contains(barrierTask),
    "captureOwner",recording==null?0:recordingOwners.get(recording),"captureOpen",Trace.read(capture(),"recorder")!=null,
-   "starts",NoteBridgePorts.starts,"event",event==null?"none":event.getString("status"),"events",NoteBridgePorts.events.length(),
+   "captureInterrupted",Trace.read(capture(),"interrupted"),
+   "starts",NoteBridgePorts.starts,"event",event==null?"none":event.optString("interrupted",event.getString("status")),"events",NoteBridgePorts.events.length(),
    "lastAccepted",lastAccepted,"lastEpoch",lastEpoch,"lastCurrent",lastCurrent,"lastForeground",lastForeground,
    "lastDestroyed",lastDestroyed,"lastCall",lastCall,"lastDraining",lastDraining);
  }
@@ -102,9 +103,18 @@ public final class SharedRecordingTraces {
   if(action.equals("pauseHost"))bridge.pauseHost();else if(action.equals("resumeHost"))bridge.resumeHost();else bridge.closeHost();
   trace.step(action,observe());
  }
- static void interrupt()throws Exception {
-  Method callback=LocalSpeechBridgePlugin.class.getDeclaredMethod("callStarted");callback.setAccessible(true);callback.invoke(bridge);
-  trace.step("interruptForCall",observe());
+ static void interrupt(boolean released)throws Exception {
+  Method callback=LocalSpeechBridgePlugin.class.getDeclaredMethod("callStarted");callback.setAccessible(true);
+  String id=calls.get(1).result.getString("recordingId");
+  File file=(File)Trace.read(capture(),"file");
+  int events=NoteBridgePorts.events.length();
+  NoteRecordingPorts.failRelease=!released;callback.invoke(bridge);
+  JSONObject event=NoteBridgePorts.events.getJSONObject(0).getJSONObject("value");
+  if(!"failed".equals(event.getString("status"))||!"call-active".equals(event.getString("interrupted"))||
+     !id.equals(event.getString("recordingId"))||event.has("durationMs")||capture().selected(id)!=null)
+   throw new AssertionError("Call published selectable audio or an unbound terminal event");
+  if(events==0&&(file==null||file.exists()==released))throw new AssertionError("Call cleanup state disagrees with release");
+  trace.step("interruptForCall",observe(),released);
  }
  static void cancel(int id)throws Exception {
   ArrayList<Runnable> before=new ArrayList<>(NoteBridgePorts.queue);PluginCall call=new PluginCall(new JSObject());calls.put(id,call);bridge.cancelRecording(call);
@@ -113,7 +123,7 @@ public final class SharedRecordingTraces {
  }
  static void runCancel(boolean captureOk,boolean accepts)throws Exception {
   if(!accepts&&!workers().isShutdown())for(int n=0;n<4;n++)workers().execute(()->{});
-  SharedRecordingPorts.failRelease=!captureOk;NoteBridgePorts.queue.remove(cancelTask);ArrayList<Runnable> before=new ArrayList<>(NoteBridgePorts.queue);cancelTask.run();
+  NoteRecordingPorts.failRelease=!captureOk;NoteBridgePorts.queue.remove(cancelTask);ArrayList<Runnable> before=new ArrayList<>(NoteBridgePorts.queue);cancelTask.run();
   if(captureOk&&accepts){
    workerRelease.countDown();workers().submit(()->{}).get(5,TimeUnit.SECONDS);
    for(Runnable task:NoteBridgePorts.queue)if(!before.contains(task))barrierTask=task;
@@ -123,10 +133,13 @@ public final class SharedRecordingTraces {
  }
  static void finish()throws Exception {NoteBridgePorts.queue.remove(barrierTask);barrierTask.run();trace.step("finishBarrier",observe());}
  static void timeout(int id)throws Exception {Runnable task=waiters().get(calls.get(id));task.run();trace.step("timeout",observe(),id);}
- static void stop()throws Exception {
+ static void stop(boolean accepted)throws Exception {
   PluginCall call=new PluginCall(new JSObject());ArrayList<Runnable> before=new ArrayList<>(NoteBridgePorts.queue);bridge.stopRecording(call);
   for(Runnable task:new ArrayList<>(NoteBridgePorts.queue))if(!before.contains(task)){NoteBridgePorts.queue.remove(task);task.run();}
-  trace.step("stopDraft",observe());
+  if((call.rejected==null)!=accepted||call.settled!=1)throw new AssertionError("Unexpected stop result");
+  if(accepted)trace.step("stopDraft",observe());
+  else trace.value.getJSONArray("steps").put(new JSONObject().put("label","interrupted stop refused")
+   .put("action",Trace.action("stopDraft").put("reject",true)).put("expect",observe()));
  }
  static void run(String path,String mode)throws Exception {
   NoteRecordingPorts.root=new File(path,mode);NoteRecordingPorts.root.mkdirs();bridge=new Bridge();bridge.load();NoteBridgePorts.hold=true;
@@ -171,15 +184,19 @@ public final class SharedRecordingTraces {
     if(mode.equals("queued-destroy"))host("closeHost");
     start(1,!mode.equals("open-failure"));
     if(mode.equals("pause-active"))host("pauseHost");
-    if(mode.equals("call-active")){phone(true);interrupt();}
+    if(mode.equals("call-active")){phone(true);interrupt(true);interrupt(true);}
+    if(mode.equals("call-release-failure")){
+     phone(true);interrupt(false);interrupt(true);phone(false);stop(false);
+     cancel(3);runCancel(true,true);finish();request(2);start(2,true);
+    }
     if(mode.equals("destroy-active"))host("closeHost");
-    if(mode.equals("stop"))stop();
+    if(mode.equals("stop"))stop(true);
     if(mode.equals("second-start")){request(2);start(2,true);}
    }
    for(PluginCall call:calls.values())if(call.settled>1)throw new AssertionError("Call settled twice");
    System.out.println(trace.value);
   }finally{
-   SharedRecordingPorts.failRelease=false;workerRelease.countDown();NoteBridgePorts.hold=false;
+   NoteRecordingPorts.failRelease=false;workerRelease.countDown();NoteBridgePorts.hold=false;
    if(!(boolean)Trace.read(bridge,"destroyed"))bridge.closeHost();
    workers().awaitTermination(5,TimeUnit.SECONDS);
   }

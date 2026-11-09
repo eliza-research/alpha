@@ -22,6 +22,9 @@
  * It never fails verification of a developer build.
  * App Links: each row records `appLinks` ({present, hosts}), the https autoVerify filters in
  * the packaged manifest. Default builds declare the configured production web host.
+ * Every http/https VIEW filter in the merged manifest must be in an exact allowed set
+ * (webViewFiltersAllowed below; the staging return only in test-mocks debug APKs); an extra or
+ * missing filter fails verification.
  * --test-mocks: the separate artifacts/test-mocks/ build, which is never
  * distributable. This is APK-build evidence only; it does not install or run
  * anything.
@@ -43,7 +46,7 @@ import { BUN_ENTRY } from "./generate-licenses.mjs";
 import { fontLicenceCheck, fontLicenceLine } from "./font-license-blockers.mjs";
 import { licenceFlagLines, licenceFlagRecords } from "./licence-policy.mjs";
 import { packagedGzipProblems } from "./android-gzip-assets.mjs";
-import { appLinkFilters, requiredAppLinkProblems } from "./render-assetlinks.mjs";
+import { appLinkFilters, requiredAppLinkProblems, webViewFilterProblems } from "./render-assetlinks.mjs";
 import { readVoiceHost, voiceBundleAdmission } from "./voice-host.mjs";
 import { apkPermissions, checkListenerPermissions, checkListenerSpeechBundle, listenerPackage } from "./aosp-listener.mjs";
 import { listenerApkRow, listenerManifestSection, readListenerRecord } from "./listener-qualification.mjs";
@@ -84,7 +87,18 @@ if(cloudEvidenceArgs.length){
 }
 
 const identity = JSON.parse(fs.readFileSync("app.config.json"));
-const callbackHost = new URL(JSON.parse(fs.readFileSync("config/cloud-deployment.json", "utf8")).production.web).hostname;
+const cloudDeployment = JSON.parse(fs.readFileSync("config/cloud-deployment.json", "utf8"));
+const callbackHost = new URL(cloudDeployment.production.web).hostname;
+// The only web VIEW filters any APK may carry: the main manifest's two returns on the production web
+// host (android/app/product.gradle supplies appLinkHost), plus the staging sign-in return in the
+// test-mocks overlay, which is attached to debug variants only.
+// Add a new app link here deliberately.
+const mainActivity = `${identity.appId}.MainActivity`;
+const webViewFiltersAllowed = mode => [
+  `${mainActivity} https://${callbackHost}/alphaphone/auth/callback`,
+  `${mainActivity} https://${callbackHost}/alphaphone/gmail/callback`,
+  ...(testMocks && mode === "debug" ? [`${mainActivity} https://${new URL(cloudDeployment.staging.web).hostname}/alphaphone/auth/callback`] : []),
+];
 const buildRecordFile = path.join(directory, "build-config.json");
 const buildRecord = fs.existsSync(buildRecordFile) ? JSON.parse(fs.readFileSync(buildRecordFile, "utf8")) : null;
 const updateChannel=validateUpdateChannel(buildRecord?.updateChannel);
@@ -124,13 +138,15 @@ for (const variant of ["standalone", "launcher"])
     if (d.debuggable !== (mode === "debug"))
       throw new Error(`Wrong debug flag: ${file}`);
     const { facts, problems } = distributionProblems(d, { mode, testMocks });
+    const tree = parseXmlTree(d.xml);
     try{
-      const compiled=apkUpdateChannel(parseXmlTree(d.xml));
+      const compiled=apkUpdateChannel(tree);
       if(compiled.kind!==updateChannel.kind||compiled.manifestUrlSha256!==updateChannel.manifestUrlSha256)problems.push('Compiled APK update channel differs from build evidence');
     }catch{problems.push('Compiled APK update channel could not be verified');}
-    problems.push(...requiredAppLinkProblems(parseXmlTree(d.xml), {
+    problems.push(...requiredAppLinkProblems(tree, {
       host: callbackHost, path: '/alphaphone/auth/callback', activity: `${identity.appId}.MainActivity`,
     }));
+    problems.push(...webViewFilterProblems(tree, webViewFiltersAllowed(mode)));
     // Shared web bundle audit on the exact packaged payload.
     const payload = extractWebPayload(file);
     let flags;

@@ -1,4 +1,8 @@
-"""Optional hosted-only crash projection. Raw crash data never leaves memory."""
+"""Optional hosted-only crash projection. Raw crash data never leaves memory.
+
+Writes <variant>-<phase>-crash-projection.json, bound to the recovery proof's pid, uid and
+timestamps. resident_uid_crash_audit.py writes the broader native-crash record for the owned
+app UID; both exist because this one needs a recovery proof and that one does not."""
 import os,re,selectors,subprocess,time
 from decimal import Decimal
 

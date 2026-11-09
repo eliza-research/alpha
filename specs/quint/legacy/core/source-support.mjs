@@ -1,0 +1,47 @@
+import assert from 'node:assert/strict';
+import {execFileSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
+import {readFileSync} from 'node:fs';
+import {createRequire} from 'node:module';
+import {resolve} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {build} from 'esbuild';
+import {captureInputs} from '../../refinement/check-traces.mjs';
+
+export const root = fileURLToPath(new URL('../../../../', import.meta.url));
+export const tick = () => new Promise(resolve => setImmediate(resolve));
+export function deferred() {
+  let resolve, reject;
+  const promise = new Promise((accept, refuse) => {resolve = accept; reject = refuse;});
+  return {promise, resolve, reject};
+}
+export async function bundleVendorCore(vendorPath, exports, driverSources, plugins = []) {
+  const vendor = resolve(root, vendorPath ?? 'vendor/eliza');
+  const revision = execFileSync('git', ['-C', vendor, 'rev-parse', 'HEAD'], {encoding: 'utf8'}).trim();
+  const bundled = await build({absWorkingDir: vendor, nodePaths: [resolve(root, 'node_modules')],
+    stdin: {contents: exports, resolveDir: vendor}, bundle: true, platform: 'node', format: 'cjs', write: false,
+    metafile: true, logLevel: 'silent', plugins});
+  const vendorFiles = Object.keys(bundled.metafile.inputs).filter(path => !path.startsWith('<')).map(path => resolve(vendor, path));
+  const sources = [...new Set([...vendorFiles, fileURLToPath(import.meta.url), ...driverSources])];
+  const driverHashes = captureInputs(sources);
+  for (const path of vendorFiles.filter(path => path.startsWith(vendor + '/') && !path.includes('/node_modules/'))) {
+    const relative = path.slice(vendor.length + 1);
+    const blob = execFileSync('git', ['-C', vendor, 'cat-file', 'blob', `${revision}:${relative}`]);
+    assert.equal(driverHashes[path], createHash('sha256').update(blob).digest('hex'), `${relative} is the exact upstream blob`);
+  }
+  return {sources, driverHashes, revision, instantiate(observe) {
+    const module = {exports: {}};
+    new Function('require', 'module', 'exports', '__quint', bundled.outputFiles[0].text)(createRequire(import.meta.url), module, module.exports, observe);
+    return module.exports;
+  }};
+}
+export function observeFile(builder, filename, edits, readSource = path => readFileSync(path, 'utf8')) {
+  builder.onLoad({filter: new RegExp(`/${filename.replaceAll('.', '\\.')}$`)}, ({path}) => {
+    let source = readSource(path);
+    for (const [before, after] of edits) {
+      assert.equal(source.split(before).length, 2, `One observer seam in ${filename} for ${before}`);
+      source = source.replace(before, after);
+    }
+    return {loader: 'ts', contents: source};
+  });
+}

@@ -45,7 +45,7 @@ test('Notes create, edit, reload and delete to Recently deleted', async ({ page 
   await page.getByRole('button', { name: 'New note', exact: true }).click();
   await page.getByRole('textbox', { name: 'Title', exact: true }).fill('Browser audit note');
   await page.getByRole('textbox', { name: 'Note', exact: true }).fill('A real local draft.\nSecond line.');
-  // Editor toolbar: Back · Checklist · Share · ⋯; Read aloud and Dictate are not on it.
+  // Editor toolbar: Back · Checklist · More (Share is in More); Read aloud and Dictate are not on it.
   await expect(page.getByRole('button', { name: 'Dictate', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Read aloud', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Back to notes', exact: true }).click();
@@ -117,7 +117,8 @@ for (const [label, text] of [['unicode CRLF', 'Local 🧪 file\r\nExact bytes\n'
   await page.getByRole('button',{name:'Import text note',exact:true}).click();
   await (await chooser).setFiles({ name:'Owned browser note.txt', mimeType:'text/plain', buffer:Buffer.from(text) });
   await expect(page.getByRole('textbox',{name:'Note',exact:true})).toHaveValue(text.replaceAll('\r\n','\n'));
-  await page.getByRole('button',{name:'Share note',exact:true}).click();
+  await page.getByRole('button',{name:'More',exact:true}).click();
+  await page.getByRole('dialog',{name:'Note actions',exact:true}).getByRole('button',{name:'Share note',exact:true}).click();
   const download = page.waitForEvent('download');
   await page.getByRole('button',{name:'Save locally',exact:true}).click();
   const result=await download;
@@ -241,12 +242,15 @@ test('MVP Notes sharing keeps email and export without a deferred SMS dead end',
   await page.getByRole('button',{name:'New note',exact:true}).click();
   await page.getByRole('textbox',{name:'Title',exact:true}).fill('MVP share scope');
   await page.getByRole('textbox',{name:'Note',exact:true}).fill('Local test note');
-  await page.getByRole('button',{name:'Share note',exact:true}).click();
+  await page.getByRole('button',{name:'More',exact:true}).click();
+  await page.getByRole('dialog',{name:'Note actions',exact:true}).getByRole('button',{name:'Share note',exact:true}).click();
   await expect(page.getByRole('button',{name:'Share to email',exact:true})).toBeVisible();
   await expect(page.getByRole('button',{name:'Save locally',exact:true})).toBeVisible();
   await expect(page.getByRole('button',{name:'Share externally',exact:true})).toBeVisible();
   await expect(page.getByRole('button',{name:'Share in Messages',exact:true})).toHaveCount(0);
   await page.getByRole('button',{name:'Cancel',exact:true}).click();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog',{name:'Note actions',exact:true})).toHaveCount(0);
   await expect(page.getByRole('textbox',{name:'Note',exact:true})).toHaveValue('Local test note');
 });
 test('the notes:rec deep link no longer opens the old simulated clip recorder', async ({ page }) => {

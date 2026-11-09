@@ -12,7 +12,7 @@ import java.util.Map;
 public final class NoteRecordingPorts {
  public static File root;
  public static long now=100;
- public static boolean failJournal,failOpen,failStop,failJoin,failForeground,failConstructor;
+ public static boolean failJournal,failOpen,failStop,failRelease,failJoin,failForeground,failConstructor;
  public static int journalWrites,stopServiceCalls,latestDeliveredStartId;
  public static boolean failServiceLaunch,newerStartPending,holdPosts;
  public static final ArrayList<Runnable> posts=new ArrayList<>();

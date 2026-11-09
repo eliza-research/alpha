@@ -1,4 +1,5 @@
 import { externalVoiceInvocationEnabled } from '../runtime/voice-entry-policy';
+import { accessibilityTimeoutScale } from '../runtime/accessibility-timeout';
 import iconCatalog from '../icon-catalog.json';
 /* Seeds, scripted replies and fixture images. Production builds resolve this
    specifier to ./fixtures.empty.js (same names, empty values). */
@@ -3156,7 +3157,7 @@ registerView("notes", {
     if (isEdit) {
       ed = Object.assign({}, common, {
         isText: n.kind === "text", isList: n.kind === "list",
-        done: common.close, doneDisabled: false, saveStatus: "",
+        saveStatus: "",
         body: n.body || "",
         onBody: function (e) { notesUpd(api, n.id, { body: e.target.value }); },
         listCss: n.kind === "list" ? "color: var(--acct)" : "", listLabel: n.kind === "list" ? "Turn into text" : "Turn into checklist",
@@ -5143,7 +5144,8 @@ class Component extends DCLogic {
     opts = opts || {}; var self = this;
     this.undoFn = opts.undo || null;
     this.setState({ toast: msg, toastUndo: !!opts.undo }); this.clear("t");
-    this.later(function () { self.undoFn = null; self.setState({ toast: "", toastUndo: false }); }, opts.undo ? 5000 : 1900, "t");
+    this.later(function () { self.undoFn = null; self.setState({ toast: "", toastUndo: false }); },
+      (opts.undo ? 5000 : 1900) * accessibilityTimeoutScale(), "t");
   }
 
   /* ---- per-app state ---- */

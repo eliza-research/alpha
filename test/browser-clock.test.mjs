@@ -39,3 +39,27 @@ test('a future alarm saved while notifications were off is scheduled once they a
  const [alarm]=await alarms();assert.equal(alarm.status,'scheduled');
  const settled=harness.documents.writes;await daily.listReminders();assert.equal(harness.documents.writes,settled);
 });
+
+test('Clock keeps a pending alarm visible but rechecks its suspension after lock acquisition', async t => {
+ const {withObservedReminderClock}=await import('./fixtures/browser-reminder-clock.mjs');
+ resetDocuments();
+ const daily=new BrowserDaily({}),start=Date.now(),id='alarm_pending';
+ t.mock.method(Date,'now',()=>start);
+ await daily.scheduleReminder({id,title:'Pending alarm',at:start+1});
+ t.mock.method(Date,'now',()=>start+2);
+ assert.equal((await daily.listReminders()).reminders[0].status,'posted');
+ await withObservedReminderClock(BrowserClock,daily,async observed=>{
+  await observed.poll();
+  assert.equal(observed.queued(),1);
+  const target=await daily.selectedReminder({id});
+  const deletion=await daily.stageDeletion(target,'agent:test','paired-alarm');
+  await observed.grantWithoutSound();
+  await observed.poll();
+  assert.equal(observed.queued(),0);
+  assert.equal(observed.clock.rows[0].pendingDeletion,deletion.id);
+  assert.equal((await daily.undoDeletion(deletion.id)).phase,'undone');
+  await observed.poll();
+  void observed.grant();
+  await observed.waitForSound();
+ });
+});

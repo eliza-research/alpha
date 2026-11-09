@@ -8,6 +8,7 @@ import {mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {localAgentStorage} from '../../scripts/local-agent-dev-storage';
+import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 
 export type HostedServer={origin:string;close():Promise<void>};
 export async function startHostedServer():Promise<HostedServer>{
@@ -42,7 +43,12 @@ export async function hostedFixture(page:any,origin:string,options:{more?:Return
   await route.fulfill({json:{status:200,body:JSON.stringify(body)}});
  });
  await page.addInitScript(()=>{if(!localStorage.getItem('alpha.connection.selection.v1'))localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));});
- await page.goto(origin+'/?mode=dev&tools=1');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent',exact:true}).click();/* P-43: the stored offline choice reads as the resident, which connects at start; (re)start it explicitly. */await page.getByRole('button',{name:/^(Start|Restart) local agent$/}).click();await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);// The first sync and its acknowledgement follow the connection; allow for a loaded host.
+ await page.goto(origin+'/?mode=dev&tools=1');
+ await page.getByRole('button',{name:'Settings',exact:true}).click();
+ await openConnectionDiagnostics(page);
+ // The stored offline choice reads as the resident, which connects at start.
+ await page.getByRole('button',{name:/^(Start|Restart) local agent$/}).click();
+ await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
  await expect.poll(()=>f.acked,{timeout:30000}).toBe(Math.max(f.result.cursor,...f.more.map(result=>result.cursor)));
  return {f,cleanup:async()=>{f.hold=false;f.release?.();try{if(!page.isClosed())await page.unrouteAll({behavior:'ignoreErrors'});}finally{await page.close().catch(()=>{});await rm(storage,{recursive:true,force:true});}}};
 }

@@ -1,0 +1,17 @@
+--- a/packages/core/src/runtime/room-handler-queue.ts
++++ b/packages/core/src/runtime/room-handler-queue.ts
+@@ -316 +315,0 @@
+-		this.emit({ type: "enqueued", roomId, queueDepth: queuePosition + 1 });
+@@ -318 +317,4 @@
+-			const result = await queue.enqueue(fn, options?.signal);
++			// Reserve the slot before diagnostics can synchronously submit more work.
++			const pending = queue.enqueue(fn, options?.signal);
++			this.emit({ type: "enqueued", roomId, queueDepth: queuePosition + 1 });
++			const result = await pending;
+@@ -663 +665,5 @@
+-				this.onListenerError?.(error, event);
++				try {
++					this.onListenerError?.(error, event);
++				} catch {
++					// error-policy:J7 Diagnostics cannot change an admitted turn's outcome.
++				}

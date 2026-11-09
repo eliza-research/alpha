@@ -16,6 +16,7 @@ import {ALLOWLIST, COMMERCIAL_FONT, FONT_LICENSES, HELD_OUTSIDE_REPOSITORY, NO_F
 import {FONT_BLOCKER, FONT_BLOCKER_REFERENCE, FONT_FLAG, FONT_HELD_FLAG, RESOLVED_BY_OWNER_STATEMENT, fontLicenceCheck, fontLicenceFindings, fontLicenceLine, fontLicenseBlockers, readOwnerStatedFontHashes, readUnverifiedFontHashes} from '../scripts/font-license-blockers.mjs';
 import {UNRESOLVED_FONT_LICENCE_BLOCKS_DISTRIBUTION, classifyLicence} from '../scripts/licence-policy.mjs';
 import {releaseBlockers} from '../scripts/release-blockers.mjs';
+import {releaseDistributable} from '../scripts/release-distributable.mjs';
 
 const DENTON = 'apps/app/public/denton-300.woff2';
 const dentonBytes = fs.readFileSync(path.join(ROOT, DENTON));
@@ -176,16 +177,20 @@ test('verify-apks records licence flags and keeps font blockers and private QA o
   assert.match(source, /fontCheck = fontLicenceCheck\(payload\.public\);/);
   assert.match(source, /const licenceBlockers = fontCheck\.blockers;/);
   assert.match(source, /fontLicenceCheck: \{ check: fontCheck\.check, status: fontCheck\.status, blocksDistribution: fontCheck\.blocksDistribution, items: fontCheck\.items, resolved: fontCheck\.resolved \},/);
-  assert.match(source, /row\.runtimeNotices === true &&\n\s+speechQualified &&\n\s+row\.licenceBlockers\.length === 0 && updateChannel\.kind==='public';/);
   // Flags are recorded per APK and printed; they are not part of the distributable expression or of any failure.
   assert.match(source, /licenceFlags = licenceFlagRecords\(entries\);/);
   assert.match(source, /for \(const line of flagLines\) console\.warn\(line\);/);
-  const distributable = /row\.distributable = ([\s\S]*?);\n/.exec(source)[1];
-  const admits = new Function('testMocks', 'row', 'runtime', 'speechQualified', 'updateChannel', `return ${distributable};`);
-  const row = {signed:true,releaseAdmission:{signerMatches:true,blockers:[],failures:[]},runtimeNotices:true,licenceBlockers:[]};
-  assert.equal(admits(false,row,{distributable:true},true,{kind:'public'}),true);
-  assert.equal(admits(false,row,{distributable:true},true,{kind:'private-qa'}),false,'private QA is never distributable');
-  assert.equal(admits(false,{...row,licenceBlockers:['unresolved-font-licence']},{distributable:true},true,{kind:'public'}),false);
+  const distributable = /const releaseReady = [\s\S]*?row\.distributable = [^;]+;/.exec(source)[0];
+  const admits = new Function('runtimeProfile', 'testMocks', 'row', 'runtime', 'speechQualified', 'updateChannel', 'releaseDistributable',
+    `${distributable}\nreturn row.distributable;`);
+  const row = {signed: true, releaseAdmission: {signerMatches: true, blockers: [], failures: []},
+    runtimeNotices: true, voiceHost: {packaged: true, asr: true, qualified: true}, licenceBlockers: []};
+  for (const profile of ['native', 'cloud']) {
+    const check = (facts, kind) => admits(profile, false, {...facts}, {distributable: true}, true, {kind}, releaseDistributable);
+    assert.equal(check(row, 'public'), true);
+    assert.equal(check(row, 'private-qa'), false, 'private QA is never distributable');
+    assert.equal(check({...row, licenceBlockers: ['unresolved-font-licence']}, 'public'), false);
+  }
   assert.doesNotMatch(distributable, /licenceFlags|fontLicenceCheck/);
   assert.doesNotMatch(source, /problems\.push\([^)]*licence/i);
   assert.doesNotMatch(source, /failures\.push\([^)]*licence/i);

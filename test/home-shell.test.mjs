@@ -25,7 +25,6 @@ function shellClass(opened,toasts=[]){
     openView(key){opened.push(key);}
     back(){if(this.state.drawer)this.setState(this.shellNavigate({type:'back'}));}
     goHome(){this.setState(this.shellNavigate({type:'home'}));}
-    toast(){}
     shellNavigate(action){const next=navigateMobileShell({view:null,stack:[],drawer:!!this.state.drawer,drawerQuery:this.state.drawerQ||''},action);return {view:next.view,stack:[...next.stack],drawer:next.drawer,drawerQ:next.drawerQuery};}
     renderVals(){return {isOn:true,isView:false,homeHidden:false};}
   };
@@ -194,6 +193,82 @@ test('Home edit mode: long press enters it, − removes, drag and arrows rearran
   } finally { home.componentWillUnmount(); globalThis.requestAnimationFrame=previousFrame; if(previous===undefined)delete globalThis.document;else globalThis.document=previous; }
 });
 
+test('Home gestures keep their pointer and retire when another layer covers Home', async () => {
+  const previous = {document:globalThis.document, setTimeout:globalThis.setTimeout, clearTimeout:globalThis.clearTimeout};
+  const holds = new Map(), captures = [];
+  let covered = false, hovered, saved = ['alpha:notes','alpha:inbox'];
+  const homeLayer = {hasAttribute: name => name === 'inert' && covered};
+  globalThis.document = Object.assign(new EventTarget(), {hidden:false, querySelector:()=>null, elementsFromPoint:()=>hovered ? [hovered] : []});
+  globalThis.setTimeout = (callback, delay, ...args) => {
+    if (delay !== 450) return previous.setTimeout(callback, delay, ...args);
+    const handle = {};
+    holds.set(handle, callback);
+    return handle;
+  };
+  globalThis.clearTimeout = handle => {if (!holds.delete(handle)) previous.clearTimeout(handle);};
+  const Shell = shellClass([]);
+  const shell = installHomeShell(Shell,{},{list:async()=>({apps}),launch:async()=>{}},
+    {appInventory:'simulated',follow:false,favorites:{read:()=>saved,write:keys=>{saved=[...keys];}}});
+  let home = new Shell();
+  const tile = key => {
+    const element = {isConnected:true, querySelector:()=>({getAttribute:()=>key}), getBoundingClientRect:()=>({width:64}),
+      offsetWidth:64, style:{}, setAttribute(){}, removeAttribute(){}};
+    element.closest = selector => selector==='[data-mobile-shell-tile]' ? element : selector==='[data-mobile-shell-home]' ? homeLayer : null;
+    return element;
+  };
+  const notes = tile('alpha:notes'), inbox = tile('alpha:inbox');
+  const event = (target, pointerId, clientX=0) => ({target,pointerId,clientX,clientY:0,button:0,
+    currentTarget:{setPointerCapture:id=>captures.push(id)}, preventDefault(){}, stopPropagation(){}});
+  const grid = () => home.renderVals().homeShell.props.gridProps;
+  const fireHold = () => {
+    assert.equal(holds.size,1);
+    const [handle, callback] = holds.entries().next().value;
+    holds.delete(handle);
+    callback();
+  };
+  home.renderVals(); home.componentDidMount();
+  try {
+    await shell.launcher.load();
+    grid().onPointerDown(event(notes,1));
+    grid().onPointerDown(event(inbox,2));
+    grid().onPointerMove(event(inbox,2,40));
+    grid().onPointerUp(event(inbox,2,40));
+    grid().onPointerCancel(event(inbox,2));
+    fireHold();
+    assert.equal(home.state.homeEdit,true,'only the owning pointer can cancel its hold');
+    home.renderVals().homeEdit.done();
+    grid().onPointerDown(event(notes,1));
+    const staleHold = holds.values().next().value;
+    home.openAllApps();
+    assert.equal(holds.size,0,'opening Apps retires the hold');
+    staleHold();
+    assert.equal(home.state.drawer,true);
+    assert.equal(home.state.homeEdit,false);
+    home.back();
+    grid().onPointerDown(event(notes,1));
+    covered = true;
+    fireHold();
+    assert.equal(home.state.homeEdit,false,'the committed covered Home cannot enter edit mode');
+    covered = false;
+    grid().onContextMenu(event(notes,1));
+    hovered = inbox;
+    grid().onPointerDown(event(notes,1));
+    grid().onPointerMove(event(notes,2,40));
+    grid().onPointerUp(event(notes,2,40));
+    assert.deepEqual(captures,[]);
+    assert.deepEqual(saved,['alpha:notes','alpha:inbox']);
+    grid().onPointerMove(event(notes,1,40));
+    grid().onPointerUp(event(notes,1,40));
+    assert.deepEqual(captures,[1]);
+    assert.deepEqual(saved,['alpha:inbox','alpha:notes']);
+    home.componentWillUnmount();
+    home = new Shell(); home.renderVals(); home.componentDidMount();
+    let swallowed = false;
+    grid().onClickCapture({...event(notes,1),detail:0,preventDefault(){swallowed=true;}});
+    assert.equal(swallowed,false,'an earlier owner cannot swallow keyboard activation after remount');
+  } finally {home.componentWillUnmount(); Object.assign(globalThis,previous);}
+});
+
 test('default Alpha Home performs no installed-app scan until the drawer opens', async () => {
   const previous=globalThis.document;
   globalThis.document=Object.assign(new EventTarget(),{hidden:false});
@@ -215,7 +290,7 @@ test('with the drawer closed, Home toasts a failed launch and a failed app read 
   let saved=[...PRODUCT,'com.android.settings'],listing='ok';const toasts=[];
   const Shell=shellClass([],toasts);
   const shell=installHomeShell(Shell,{},{list:async()=>{if(listing==='fail')throw new Error('offline');return {apps};},launch:async()=>{throw new Error('Work apps are paused.');}},
-    {favorites:{read:()=>saved,write:keys=>{saved=[...keys];}}});
+    {appInventory:'simulated',favorites:{read:()=>saved,write:keys=>{saved=[...keys];}}});
   const home=new Shell();home.renderVals();home.componentDidMount();
   try {
     home.openAllApps();await new Promise(setImmediate);
@@ -231,7 +306,7 @@ test('with the drawer closed, Home toasts a failed launch and a failed app read 
     listing='fail';
     await shell.launcher.refresh();await shell.launcher.refresh();
     assert.equal(shell.launcher.snapshot().status,'failed');
-    assert.deepEqual(toasts.slice(1),["Apps couldn't load. Open All apps to try again."]);
+    assert.deepEqual(toasts.slice(1),["Apps couldn't load. Open Apps to try again."]);
     // A failed launch whose follow-up read also fails reports only the launch.
     listing='ok';await shell.launcher.refresh();toasts.length=0;listing='fail';
     await shell.launcher.launch(shell.launcher.snapshot().apps.find(app=>app.packageName==='com.android.settings'));
@@ -256,6 +331,21 @@ test('installed favorites with older Alpha view ids are migrated to canonical id
   assert.deepEqual(installHomeShell(shellClass([]),{},{list:async()=>({apps}),launch:async()=>{}},{storage}).migration,{status:'unchanged'});
   shell.launcher.toggleFavorite({packageName:'alpha:notes',label:'Notes'});
   assert.deepEqual(JSON.parse(store.get('alpha.launcher.favorites.v1')),{version:2,keys:['com.android.settings','alpha:automations'],defaultPolicy:'alpha-apps'});
+});
+
+test('a refused favorites migration keeps the legacy view accessible on Home', () => {
+  const key='alpha.launcher.favorites.v1';
+  const raw=JSON.stringify({version:2,keys:['alpha:workflows'],defaultPolicy:'alpha-apps'});
+  const storage=()=>({
+    getItem: name => name===key ? raw : null,
+    setItem() {throw Error('fixture favorites write refused');},
+  });
+  const Shell=shellClass([]);
+  const shell=installHomeShell(Shell,{},{list:async()=>({apps}),launch:async()=>{}},{storage});
+  assert.equal(shell.migration.status,'failed');
+  assert.deepEqual(shell.launcher.snapshot().favorites,['alpha:automations']);
+  assert.ok(tiles(renderToStaticMarkup(new Shell().renderVals().homeShell)).includes('Workflows'));
+  assert.equal(storage().getItem(key),raw);
 });
 
 test('Home has its built-in tiles without an installed app inventory', () => {

@@ -17,7 +17,7 @@ const fixtureActivity = [/Drafted a reply to Maya/, /Filed Jordan's term sheet/,
 const forbidden = [/Redaction on/, /Identifiers replaced/, /Pre-egress redaction is not connected/];
 
 type Scenario = 'resident' | 'remote' | 'offline';
-async function nativeStub(page: Page, scenario: Scenario, options: { strayKeyInStatus?: boolean; proposals?: boolean; locationAccess?: 'approximate' | 'precise'; providerStatus?: { provider: string; model: string } } = {}) {
+async function nativeStub(page: Page, scenario: Scenario, options: { strayKeyInStatus?: boolean; proposals?: boolean; locationAccess?: 'approximate' | 'precise'; providerStatus?: { provider: string; model: string; voiceConfigured?: boolean } } = {}) {
   await installResidentAgentPlugin(page);
   await page.addInitScript(({ scenario, key, remote, strayKeyInStatus, proposals, locationAccess, providerStatus }) => {
     const w = window as any;
@@ -32,7 +32,7 @@ async function nativeStub(page: Page, scenario: Scenario, options: { strayKeyInS
       }
     } catch { /* storage-blocked runs are covered elsewhere */ }
     // The native credential slot holds the provider key; only providerStatus may describe it.
-    const provider = { key, name: providerStatus?.provider ?? 'cerebras', model: providerStatus?.model ?? 'qwen-3.8-27b' };
+    const provider = { key, name: providerStatus?.provider ?? 'cerebras', model: providerStatus?.model ?? 'qwen-3.8-27b', voiceConfigured: providerStatus?.voiceConfigured === true };
     w.privacyFixture = { calls: [] as unknown[], unexpected: [] as string[] };
     const agent = w.residentAgent = w.createResidentAgentPlugin({ owner: () => 'fixture-owner', agentId: 'fixture-agent' });
     const methods = (names: string[]) => names.map(name => ({ name, rtype: 'promise' }));

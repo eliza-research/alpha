@@ -10,6 +10,8 @@ There are two reusable upstream mechanisms: the mounted-view interaction transpo
 
 ## Existing mechanisms and precise boundaries
 
+Historical (2026-09-29). This table records the mechanisms reviewed before device actions were built. Phone actions now run through the shared device-action coordinator in `plugin-assistant`; see `docs/agent-view-coverage.md` for the current families, review policy and `VIEWS` navigation states.
+
 | Mechanism | Current source and contract | Reuse and missing work |
 | --- | --- | --- |
 | Conversation REST | `packages/agent/src/api/conversation-routes.ts`; `packages/ui/src/api/client-chat.ts`. POST `/api/conversations/:id/messages` returns assistant text and optional action-result summaries. | Those results describe server-side work. They are not pending phone proposals and cannot authorize client effects. |

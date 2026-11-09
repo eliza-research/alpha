@@ -214,7 +214,6 @@ test("receivers and callbacks a plugin registers are released when it is destroy
     if (/registerComponentCallbacks\(/.test(code)) assert.ok(/unregisterComponentCallbacks\(/.test(code), `${name}: registers component callbacks and never unregisters them`);
     // An activity listening on its own bridge shares that bridge's lifetime; a plugin does not own it.
     if (/addWebViewListener\(/.test(code) && /extends Plugin\b/.test(code)) assert.ok(/removeWebViewListener\(/.test(code), `${name}: adds a WebView listener and never removes it`);
-    if (/setStopListener\(/.test(code) && /extends Plugin/.test(code)) assert.ok(/clearStopListener\(/.test(code), `${name}: sets a navigation stop listener and never clears it`);
   }
 });
 
@@ -337,9 +336,12 @@ test("background navigation cannot be started by a call that arrives after its r
   const start = maps.slice(maps.indexOf("@PluginMethod public void startNavigation(PluginCall call){"), maps.indexOf("@PluginMethod public void updateNavigation(PluginCall call){"));
   const refused = 'if(destroyed){call.reject("Background navigation is unavailable: Alpha closed","unavailable");return;}';
   assert.ok(start.indexOf(refused) > 0 && start.indexOf(refused) < start.indexOf("AlphaNavigationService.start("), "refused before the service is started");
-  assert.match(start, /AlphaNavigationService\.start\([^\n]*\n[^\n]*\n\s*if\(destroyed\)\{AlphaNavigationService\.stop\(getContext\(\),session,"renderer-closed"\);call\.reject\(/, "a start that raced destruction retires its own session");
+  assert.match(start, /AlphaNavigationService\.start\([^\n]*navigationStops,\s*activity==null\?null:activity\.getComponentName\(\),\(\)->!destroyed\)/,
+    "the service checks the renderer fence inside atomic admission");
   const destroy = maps.slice(maps.indexOf("@Override protected void handleOnDestroy(){"));
-  assert.ok(destroy.indexOf("destroyed=true;") > 0 && destroy.indexOf("destroyed=true;") < destroy.indexOf("AlphaNavigationService.activeSession()"), "the flag is set before the active session is read and stopped");
+  const retire = 'AlphaNavigationService.stop(getContext(),null,navigationStops,"renderer-closed")';
+  assert.ok(destroy.indexOf("destroyed=true;") > 0 && destroy.indexOf(retire) > destroy.indexOf("destroyed=true;"),
+    "destruction marks the bridge closed before retiring its exact service ownership");
 });
 
 // Kotlin shared plugins are outside the Java scanner above. Inventory every plugin method

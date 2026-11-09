@@ -9,7 +9,7 @@ public final class AlphaMailFileProvider extends androidx.core.content.FileProvi
   if(!"r".equals(mode)||getContext()==null||uri.getPathSegments().size()!=2||!"mail-attachments".equals(uri.getPathSegments().get(0)))throw new FileNotFoundException("Read-only reviewed attachment required");
   String name=uri.getLastPathSegment();if(name==null||name.contains("/")||name.contains("\\"))throw new FileNotFoundException();
   File file=new File(new File(getContext().getCacheDir(),"mail-attachments"),name);long age=System.currentTimeMillis()-file.lastModified();
-  if(!file.isFile()||age<0||age>15*60*1000){file.delete();throw new FileNotFoundException("Reviewed attachment expired");}
+  if(!file.isFile()||age<0||age>ReviewedCopies.GRANT_MILLIS){file.delete();throw new FileNotFoundException("Reviewed attachment expired");}
   return super.openFile(uri,mode);
  }
 }

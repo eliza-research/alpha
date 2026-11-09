@@ -71,6 +71,10 @@ test('an existing chat draft is never replaced by a Calendar review',async()=>{
  const cleanup=dom();let shell;try{const setup=adapterFixture();shell=setup.shell;shell.st.draft='Keep my current words';shell.renderVals().msgs[0].calendarReviews[0].open();await tick();assert.equal(setup.fixture.reads,0);assert.equal(setup.fixture.sent.length,0);assert.equal(shell.st.draft,'Keep my current words');assert.equal(document.querySelector('dialog'),null);}finally{shell?.componentWillUnmount();delete globalThis.calendarReviewAdapterFixture;cleanup();}
 });
 
+test('an open message edit keeps its draft and no Calendar decision is sent or marked',async()=>{
+ const cleanup=dom();let shell;try{const setup=adapterFixture();shell=setup.shell;shell.messageEditTarget={messageId:'m'};shell.renderVals().msgs[0].calendarReviews[0].open();await tick();assert.equal(setup.fixture.reads,0);assert.equal(setup.fixture.sent.length,0);assert.deepEqual(setup.fixture.toasts,['Finish or cancel the message you are editing first.']);assert.equal(shell.renderVals().msgs[0].calendarReviews[0].status,'Check current status');}finally{shell?.componentWillUnmount();delete globalThis.calendarReviewAdapterFixture;cleanup();}
+});
+
 test('private content prevents status reads and decision messages',async()=>{
  const cleanup=dom();let shell;try{const setup=adapterFixture();shell=setup.shell;setup.fixture.context.sensitive=true;shell.renderVals().msgs[0].calendarReviews[0].open();await tick();assert.equal(setup.fixture.reads,0);assert.equal(setup.fixture.sent.length,0);assert.equal(document.querySelector('dialog'),null);}finally{shell?.componentWillUnmount();delete globalThis.calendarReviewAdapterFixture;cleanup();}
 });

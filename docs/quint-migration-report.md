@@ -301,3 +301,37 @@ Shared dependencies marked `state-audit-required` have a domain allocation and
 drift check while detailed field and transition correspondence remains unproved.
 Fresh expanded-model and source gates remain required before this integration is
 qualified.
+
+## Current SDK source-owner inventory
+
+The integrated `99b4943` snapshot admits 5,681 source inputs, including 4,841
+shared inputs, and registers 179 Quint models. The syntax audit parses 5,626
+JavaScript, TypeScript and Java files without syntax errors. The source-owner
+summary records 67,110 candidate bindings, 66,537 write sites, 8,298
+asynchronous registrations and 10,188
+write sites without a syntactically matched declaration. Test-support paths
+account for 287 files and 11,480 candidate bindings.
+
+The syntax audit identifies candidates by declaration, owner and write site.
+It includes local bindings and definitions that may be bundled without being
+activated. Scope, lifetime, aliases, authorization and externally persisted
+state still require semantic review. The remaining 55 language and data inputs
+are explicit review rows. The source summary is committed, and the detailed
+report regenerates under `test-results/quint-state-audit/details.json`.
+
+Of the 4,886 provisional review rows, 4,841 belong to shared source.
+The remaining 45 cover 36 application paths and nine development-runtime
+paths. The application rows consist of ten Android owners, 24 renderer
+owners and two backend files. These rows can already have bounded source
+receipts. Closing a row requires a semantic decision about each remaining
+binding, write and callback under the relevant owner and environment.
+
+The core conversion now registers all 16 upstream modules and all 31 original
+profiles. The product's four retained design models and 22 configurations have
+registered Quint translations. The original design files remain available for
+comparison. A tracked-file admission test checks that every TLA+ and TLC
+configuration path at the current product and upstream pins is represented.
+The nested native engine at `6337fd4c4bd071c17235986344d552d4036e177b`
+contains no tracked TLA+ or TLC configuration files and no further gitlinks.
+The source-tree scan also found no additional embedded TLA+ module headers,
+PlusCal blocks, or fenced TLA+ code.

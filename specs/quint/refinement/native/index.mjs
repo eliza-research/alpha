@@ -1,10 +1,10 @@
 import {fileURLToPath} from 'node:url';
-import {readdirSync, readFileSync} from 'node:fs';
+import {readdirSync} from 'node:fs';
 import {join} from 'node:path';
 import {checkTraces, captureInputs} from '../check-traces.mjs';
 import {app, sense, voice, directory, javaTraces, root} from './java.mjs';
 import {loadModels} from '../../../../scripts/quint-lib.mjs';
-import {captureRendererImplementation, voiceTraces, navigationTraces} from './renderer.mjs';
+import {captureRendererImplementation, voiceTraces} from './renderer.mjs';
 import {residentLifecycleTraces} from './local-agent.mjs';
 import {checkResetOrchestration} from './reset-orchestration.mjs';
 import {checkDeletionCoordinator} from './deletion-coordinator.mjs';
@@ -18,6 +18,43 @@ import {checkCredentialLeasePolicies} from './credential-leases.mjs';
 import {checkRendererCoordinator} from './renderer-coordinator.mjs';
 import {checkSharedRecording} from './shared-recording.mjs';
 import {checkLiveCapture} from './live-capture.mjs';
+
+import {modelStateInventory, unobservedStateFields} from '../model-state.mjs';
+import {checkAsrPipe} from './asr-pipe.mjs';
+import {checkPipedCapture} from './piped-capture.mjs';
+import {checkCaptureFrames} from './capture-frames.mjs';
+import {checkIndicatorProvider} from './indicator-provider.mjs';
+import {checkListenerStore} from './listener-store.mjs';
+import {checkListenerService} from './listener-service.mjs';
+import {checkSpeechWarmup} from './speech-warmup.mjs';
+import {checkRecognizerAvailability} from './recognizer-availability.mjs';
+import {checkOnDeviceRecognizer} from './on-device-recognizer.mjs';
+import {checkListenerInput} from './listener-input.mjs';
+import {checkSpeechGate} from './speech-gate.mjs';
+import {checkSpeechOutputPreparation} from './speech-output-preparation.mjs';
+import {checkBatchCaptureCompletion} from './batch-capture-completion.mjs';
+import {checkReviewedCopies, reviewedCopiesObligations} from './reviewed-copies.mjs';
+import {checkNavigationProgress} from './navigation-progress.mjs';
+import {checkNativeNavigationOwnership} from './navigation-service.mjs';
+import {checkGoogleBrowserReturnClaim} from './google-browser-return-claim.mjs';
+import {checkRuntimeUpdatePause} from './runtime-update-pause.mjs';
+import {checkNativeUpdateComposition} from './update-composition.mjs';
+import {checkNativeUpdateStaging} from './update-staging.mjs';
+import {runNativeUpdateActivationRefinement} from './update-barrier.mjs';
+import {checkCanonicalNotificationTap} from './canonical-notification-tap.mjs';
+import {checkWorkflowNoticeDelivery} from './workflow-notice-delivery.mjs';
+import {checkNativeHostedResultNotices} from './hosted-result-notices.mjs';
+import {checkNativeHostedInbox} from './hosted-inbox.mjs';
+import {checkNativeReminderDelivery} from './reminder-delivery.mjs';
+import {checkNativeClockReview} from './clock-review.mjs';
+import {checkNativeSmsDispatch} from './sms-dispatch.mjs';
+import {checkNativeMmsDispatch} from './mms-dispatch.mjs';
+import {checkNativeTextScaleLifecycle} from './text-scale-lifecycle.mjs';
+import {checkNativeCrashJournal} from './crash-journal.mjs';
+import {checkNativeSettingsHandoff} from './settings-handoff.mjs';
+import {checkNativeSourceRenewal} from './source-renewal.mjs';
+import {checkNativeAssistantEntry} from './assistant-entry.mjs';
+import {checkNativeActionRecovery} from './action-recovery.mjs';
 
 export async function runNativeRefinement() {
   const models = ['VadSegmentation', 'RendererRecovery', 'ResidentScheduling'];
@@ -92,15 +129,14 @@ export async function runNativeRefinement() {
       ]}));
   }
   const renderer = await captureRendererImplementation([fileURLToPath(import.meta.url)]);
-  for (const [model, generate] of [
-    ['VoiceSession', voiceTraces], ['NavigationProgress', navigationTraces],
-  ]) {
-    const modelTraces = await generate(renderer.implementation);
-    results.push(await checkTraces({model, id: `${model}-native`, scope: 'bounded-component', traces: modelTraces,
-      sources: renderer.sources, driverHashes: renderer.driverHashes,
-      assumptions: ['Actual TypeScript and its transitive shared implementation execute with controlled capture/reply/playback/timer inputs.',
-        'Voice traces bound two sentences and one submitted turn. Navigation projects fix admission and guidance helpers; the adapter closure and native service remain external.']}));
-  }
+  const modelTraces = await voiceTraces(renderer.implementation);
+  results.push(await checkTraces({model: 'VoiceSession', id: 'VoiceSession-native', scope: 'bounded-component', traces: modelTraces,
+    sources: renderer.sources, driverHashes: renderer.driverHashes,
+    assumptions: ['Actual TypeScript and its transitive shared implementation execute with controlled capture/reply/playback/timer inputs.',
+      'Voice traces bound two sentences and one submitted turn.']}));
+  results.push(await checkNavigationProgress([fileURLToPath(import.meta.url)]));
+  results.push(await checkNativeNavigationOwnership([fileURLToPath(import.meta.url)]));
+  results.push(await checkGoogleBrowserReturnClaim([fileURLToPath(import.meta.url)]));
   const lifecycle = await residentLifecycleTraces([fileURLToPath(import.meta.url)]);
   results.push(await checkTraces({model: 'ResidentRuntime', id: 'ResidentRuntime-lifecycle-native', scope: 'bounded-component',
     ...lifecycle, assumptions: [
@@ -122,12 +158,74 @@ export async function runNativeRefinement() {
   results.push(await checkRendererCoordinator([fileURLToPath(import.meta.url)]));
   results.push(await checkSharedRecording([fileURLToPath(import.meta.url)]));
   results.push(await checkLiveCapture([fileURLToPath(import.meta.url)]));
+  const nativeInputs = [fileURLToPath(import.meta.url), join(root, 'specs/quint/refinement/model-state.mjs')];
+  for (const check of [checkAsrPipe, checkPipedCapture, checkCaptureFrames, checkIndicatorProvider, checkListenerStore, checkListenerService, checkSpeechWarmup, checkRecognizerAvailability, checkOnDeviceRecognizer, checkListenerInput, checkSpeechGate, checkSpeechOutputPreparation, checkBatchCaptureCompletion, checkReviewedCopies]) {
+    results.push(await check(nativeInputs));
+  }
+  const updatePause = await checkRuntimeUpdatePause(nativeInputs);
+  results.push(updatePause.receipt);
+  const updateActivation = await runNativeUpdateActivationRefinement(nativeInputs);
+  results.push(...updateActivation.receipts);
+  const updateComposition = await checkNativeUpdateComposition(nativeInputs);
+  results.push(updateComposition.receipt);
+  const updateStaging = await checkNativeUpdateStaging(nativeInputs);
+  results.push(updateStaging.receipt);
+  const notificationTap = await checkCanonicalNotificationTap(nativeInputs);
+  results.push(notificationTap.receipt);
+  const noticeDelivery = await checkWorkflowNoticeDelivery(nativeInputs);
+  results.push(noticeDelivery.receipt);
+  const hostedResults = await checkNativeHostedResultNotices(nativeInputs);
+  results.push(hostedResults.receipt);
+  const hostedInbox = await checkNativeHostedInbox(nativeInputs);
+  results.push(hostedInbox.receipt);
+  const reminderDelivery = await checkNativeReminderDelivery(nativeInputs);
+  results.push(reminderDelivery.receipt);
+  const clockReview = await checkNativeClockReview(nativeInputs);
+  results.push(clockReview.receipt);
+  const smsDispatch = await checkNativeSmsDispatch(nativeInputs);
+  results.push(smsDispatch.receipt);
+  const mmsDispatch = await checkNativeMmsDispatch(nativeInputs);
+  results.push(mmsDispatch.receipt);
+  const textScale = await checkNativeTextScaleLifecycle(nativeInputs);
+  results.push(textScale.receipt);
+  const crashJournal = await checkNativeCrashJournal(nativeInputs);
+  results.push(crashJournal.receipt);
+  const settingsHandoff = await checkNativeSettingsHandoff(nativeInputs);
+  results.push(settingsHandoff.receipt);
+  const sourceRenewal = await checkNativeSourceRenewal(nativeInputs);
+  results.push(sourceRenewal.receipt);
+  const assistantEntry = await checkNativeAssistantEntry(nativeInputs);
+  results.push(assistantEntry.receipt);
+  const actionRecovery = await checkNativeActionRecovery(nativeInputs);
+  results.push(actionRecovery.receipt);
   const obligations = [
+    ...updatePause.obligations,
+    ...updateActivation.obligations,
+    ...updateComposition.obligations,
+    ...updateStaging.obligations,
+    ...notificationTap.obligations,
+    ...noticeDelivery.obligations,
+    ...hostedResults.obligations,
+    ...hostedInbox.obligations,
+    ...reminderDelivery.obligations,
+    ...clockReview.obligations,
+    ...smsDispatch.obligations,
+    ...mmsDispatch.obligations,
+    ...textScale.obligations,
+    ...crashJournal.obligations,
+    ...settingsHandoff.obligations,
+    ...sourceRenewal.obligations,
+    ...assistantEntry.obligations,
+    ...actionRecovery.obligations,
+    {model: 'GoogleBrowserReturnClaim', obligation: 'Installed callback delivery and durable credential custody',
+      reason: 'The authenticated Java claim and grace functions execute under controlled queues, storage and HTTPS. Installed lifecycle, secure-store durability and intra-worker schedules remain separate.'},
+    ...reviewedCopiesObligations,
     {model: 'RendererRecovery', obligation: 'Android lifecycle, task selection and HOME-role delivery', reason: 'Actual MainActivity recovery and handoff execute under controlled Android ports. Physical renderer death, background lifecycle and OS task delivery require platform checks.', requires: ['Android Activity/WebView harness']},
     {model: 'ResidentScheduling', obligation: 'Plugin lifecycle and OS broadcasts', reason: 'Current adapter proves the pure admission table and same-lock callbacks.', requires: ['Android service integration']},
     {model: 'VadSegmentation', obligation: 'PCM model output and capture pre-roll', reason: 'The gate consumes probabilities; capture/model execution is external.', requires: ['native capture integration']},
     {model: 'ResidentRuntime', obligation: 'Installed native service and retained recovery records', reason: 'Actual AlphaLocalAgentPlugin lifecycle and credential retirement execute under controlled Android, storage and service ports. Kernel/Binder behavior and encrypted persistence remain external.'},
     {model: 'VoiceSession', obligation: 'Dictation, semantic endpoints, review resume and full barge-in interleavings', reason: 'One-turn/two-sentence actual controller traces cover mute, stop and account retirement with controlled ports.'},
+    {model: 'BatchCaptureCompletion', obligation: 'Installed callback ordering and unresolved cleanup', reason: 'The actual capture helper executes held starts, early callback ownership and cleanup faults at settled checkpoints. Android delivery and arbitrary interleavings within pending detach/cleanup remain external.'},
     {model: 'SpeechResources', obligation: 'Combined native microphone/engine/focus lifecycle', reason: 'Capture reservation, PCM queue and focus helpers execute independently. Explicit-stop tail and native pipe ownership remain separate.'},
     {model: 'AlwaysOnListener', obligation: 'Consent store, ListeningEpoch and ListeningService integration', reason: 'Pairwise policy and indicator-loss cases execute without microphone, Android permissions or physical visibility.'},
     {model: 'ResetRecovery', obligation: 'Device credentials, physical durability and externally observed erasure', reason: 'The patched shared coordinator and Alpha startup execute with controlled listener/Android/storage ports, including actual file locks. Android credentials, power-loss durability and package erasure remain external.'},
@@ -136,8 +234,21 @@ export async function runNativeRefinement() {
     {model: 'DeviceActions', obligation: 'AOSP image/role, Contacts, Reminders and Clock', reason: 'Only the real SMS journal executes in these traces. Carrier outcomes are fixture inputs.'},
     {model: 'ApplicationComposition', obligation: 'Cross-domain implementation orchestration', reason: 'Root integration driver owns this combined scope. Standalone native receipts do not establish composition.'},
     {model: 'ControllerComposition', obligation: 'Cross-controller implementation orchestration', reason: 'The dedicated composition campaign executes these shared-controller schedules. Standalone native receipts do not establish composition.'},
-    {model: 'NavigationProgress', obligation: 'Maneuver cursor, reroute timers and background service', reason: 'Fix admission and guidance helpers execute. The maps-adapter closure and Android service are outside the current projection.'},
-    {model: 'ListenerLeaseRecovery', obligation: 'Persistent crash latch, consent and capture integration', reason: 'Actual lease and crash helpers execute. Store commit, process consent and microphone lifecycle remain separate.'},
+    {model: 'NavigationProgress', obligation: 'Physical location and installed background service', reason: 'The actual shared screen, route controller and background bridge run with controlled coordinates, route replies and native effects. NativeNavigationOwnership covers the Java service separately. Physical GPS, unrestricted geometries and intermediate asynchronous cleanup remain external.'},
+    {model: 'NativeNavigationOwnership', obligation: 'Installed Android task, notification and service acceptance', reason: 'The full Java bridge and service execute controlled command and foreground outcomes. The task-root component is checked. Binder, same-component task attribution, service restart and installed PendingIntent dispatch remain Android platform obligations.'},
+    {model: 'ListenerLeaseRecovery', obligation: 'Cross-component crash, consent and capture orchestration', reason: 'Lease and crash helpers execute here. NativeListenerStore and NativeListenerService supply separate persisted-settings and service-lifecycle projections.'},
+    {model: 'NativeAsrPipe', obligation: 'Real provider transport and unbounded frame traffic', reason: 'Actual worker settlement and pipe state run with controlled provider responses. NativePipedCapture checks the controller join.'},
+    {model: 'NativePipedCapture', obligation: 'Physical capture, installed provider delivery and unrestricted schedules', reason: 'Actual bridge/controller/pipe/capture run together with controlled ports. Frame-buffer behavior has a separate source projection.'},
+    {model: 'NativeCaptureFrames', obligation: 'Physical microphone and arbitrary PCM histories', reason: 'Actual capture buffering and cleanup execute with controlled PCM and detector results.'},
+    {model: 'NativeIndicatorProvider', obligation: 'Installed Binder authority and SystemUI visibility', reason: 'Actual provider/lease and controlled death/identity ports execute. SystemUI geometry and service convergence require installed evidence.'},
+    {model: 'NativeListenerStore', obligation: 'Android durability, arbitrary preference writers and service acceptance', reason: 'Actual store executes with separate in-memory and persistent fixture state, including fresh-JVM restart.'},
+    {model: 'NativeListenerService', obligation: 'Installed resource release and arbitrary audio/recognition callbacks', reason: 'Actual service lifecycle, store and lease execute. Unconfirmed physical release remains a distinct observed outcome.'},
+    {model: 'NativeListenerInput', obligation: 'Unrestricted PCM, scheduling and real assistant invocation', reason: 'Actual capture loop, speech gate and recognition/wake callbacks execute fixed synthetic PCM batches and controlled provider replies. General noise-floor/pre-roll histories and installed behavior remain separate.'},
+    {model: 'NativeSpeechGate', obligation: 'Arbitrary PCM and full floating-point refinement', reason: 'Actual adaptive floor, ring and utterance buffers are observed using fixed representative PCM frames and a millidecibel tolerance.'},
+    {model: 'NativeSpeechOutputPreparation', obligation: 'Full bridge and installed audio timing', reason: 'Actual lead trimming and first-write reporting are exercised under a single writer with controlled PCM and output. Arbitrary PCM histories, concurrent writes and hardware presentation remain outside this projection.'},
+    {model: 'NativeSpeechWarmup', obligation: 'Bridge admission and installed AudioTrack behavior', reason: 'The actual silent output writer runs with controlled factory, clock and output primitives. Shared bridge publication and physical audibility are separate.'},
+    {model: 'NativeOnDeviceRecognizer', obligation: 'Android Binder recognizer, device speech and arbitrary session schedules', reason: 'Actual session, pipe/worker ownership and stale callback fencing run with controlled Android provider/pipe primitives.'},
+    {model: 'NativeRecognizerAvailability', obligation: 'Android recognizer support and installed model delivery', reason: 'Actual per-language cache and concurrent probes execute with controlled answer/clock inputs. Full Android speech sessions remain separate.'},
     {model: 'StreamingPlayback', obligation: 'All writer interleavings, actual AudioTrack and audibility', reason: 'Five writer traces cover completion, partial writes, failed open/write and canceled opening. Detailed failure-code mapping is unobserved.'},
     {model: 'VoiceIpcAssembly', obligation: 'Deadline scheduling races and actual owner/binding admission', reason: 'Eight actual exchanges check return/cleanup. Static deadline scheduling and local assembly state need a deterministic observer seam.'},
     {model: 'ListenerLeaseProducer', obligation: 'Controller measurement and real SystemUI/Binder identity', reason: 'Actual lease delivery consumes fixture snapshots. Controller/view geometry and real identity checks remain external.'},
@@ -147,13 +258,10 @@ export async function runNativeRefinement() {
     const related = results.filter(receipt => receipt.model === model);
     const coveredActions = new Set(related.flatMap(receipt => Object.keys(receipt.actions)));
     const coveredFields = new Set(related.flatMap(receipt => receipt.observedFields));
-    const text = readFileSync(join(root, modelPaths.get(model)), 'utf8');
-    const missing = [...text.matchAll(/\baction\s+(\w+)/g)].map(match => match[1])
-      .filter(name => !['init', 'check', 'step', 'initFor', 'counterInit', 'budgetInit'].includes(name) && !coveredActions.has(name));
+    const inventory = modelStateInventory(join(root, modelPaths.get(model)), model);
+    const missing = inventory.actions.filter(name => !['init', 'check', 'step', 'initFor', 'counterInit', 'budgetInit'].includes(name) && !coveredActions.has(name));
     if (missing.length) obligations.push({model, obligation: 'Unexecuted model transitions', reason: missing.join(', ')});
-    const state = text.match(/type\s+(?:State|Gate|Recovery|Navigation)\s*=\s*\{([\s\S]*?)\n  \}/)?.[1] || '';
-    const fields = [...state.matchAll(/\b([A-Za-z]\w*)\s*:/g)].map(match => match[1]);
-    const unobserved = fields.filter(field => ![...coveredFields].some(path => path === `s.${field}` || path.startsWith(`s.${field}.`)));
+    const unobserved = unobservedStateFields(inventory, [...coveredFields]);
     if (unobserved.length) obligations.push({model, obligation: 'Unobserved model fields', reason: unobserved.join(', ')});
   }
   return {receipts: results, obligations};

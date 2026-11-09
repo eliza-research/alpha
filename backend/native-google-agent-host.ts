@@ -3,7 +3,8 @@ import type {CloudEnvironment} from '../apps/app/src/runtime/cloud-protocol.ts';
 export {nativeCloudRuntime} from './native-cloud-runtime.ts';
 import {createServer} from 'node:http';
 import {timingSafeEqual} from 'node:crypto';
-import {readFileSync} from 'node:fs';
+import {closeSync,constants,fstatSync,lstatSync,openSync,readFileSync} from 'node:fs';
+import {dirname} from 'node:path';
 import {createManagedGoogleAgentHost,type ManagedGoogleAgentPort,type GoogleAgentAccess} from './managed-google-agent-host.ts';
 import {createManagedGoogleAgentBroker} from './managed-google-agent-broker.ts';
 import {createNativeGoogleCloudPort,type NativeGoogleBinding} from './native-google-cloud-port.ts';
@@ -14,9 +15,16 @@ export function savedGoogleAgentAccess(file=process.env.ALPHA_GOOGLE_AGENT_ACCES
  const off={gmailChanges:false,calendarEdits:false};
  if(!file)return off;
  try{
-  const saved=JSON.parse(readFileSync(file,'utf8'));
-  if(saved?.version!==1||typeof saved.gmailChanges!=='boolean'||typeof saved.calendarEdits!=='boolean')return off;
-  return {gmailChanges:saved.gmailChanges,calendarEdits:saved.calendarEdits};
+  // Match the writer's private directory and reject special targets without
+  // blocking. Read the opened inode so an atomic replacement cannot splice it.
+  if(!lstatSync(dirname(file)).isDirectory())return off;
+  const fd=openSync(file,constants.O_RDONLY|constants.O_NOFOLLOW|constants.O_NONBLOCK);
+  try{
+   if(!fstatSync(fd).isFile())return off;
+   const saved=JSON.parse(readFileSync(fd,'utf8'));
+   if(saved?.version!==1||typeof saved.gmailChanges!=='boolean'||typeof saved.calendarEdits!=='boolean')return off;
+   return {gmailChanges:saved.gmailChanges,calendarEdits:saved.calendarEdits};
+  }finally{closeSync(fd);}
  }catch{return off;}
 }
 

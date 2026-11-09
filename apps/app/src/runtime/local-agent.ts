@@ -63,6 +63,12 @@ export async function localAgentPackaged():Promise<boolean> {
   if(!Capacitor.isNativePlatform())return browserLocalAgentEnabled;
   try{return (await native.getStatus?.())?.packaged===true;}catch{return false;}
 }
+/** Read the installed resident's boot state through the native status port. */
+export async function localAgentBootStatus():Promise<{state?:string;reason?:string}|undefined> {
+  if(!Capacitor.isNativePlatform()||!localAgentAvailable())return;
+  const status=await native.getStatus?.();
+  return status?.packaged===true?{state:status.state,reason:status.reason}:undefined;
+}
 /** An updater cancellation may restart only after native confirms the resident stopped. */
 export async function localAgentStopped():Promise<boolean> {
   if(!Capacitor.isNativePlatform()||!localAgentAvailable())return false;

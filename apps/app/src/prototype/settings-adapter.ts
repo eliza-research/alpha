@@ -735,8 +735,9 @@ export function installSettingsAdapter(Component: any, views: Bag) {
             agentRows.push(info('Status',residentRecoveryCopy(connection.residentRecoveryReason,connection.residentRecovery)));
             if(connection.residentRecoveryReason==='ipc-recovery-retention-limit'&&!connection.busy)
               agentRows.push(action('Restart Alpha',()=>void connectionController.restartRecovery()));
-            // The Status row says to restart the phone. No Retry: these refusals exist to stop repeated starts.
-            else if(connection.residentRecoveryReason!=='ipc-recovery-retention-limit')
+            else if(connection.residentRecoveryReason==='runtime-identity-unavailable'&&!connection.busy)
+              agentRows.push(action('Try again',()=>void connectionController.retryStartup()));
+            if(connection.residentRecoveryReason!=='ipc-recovery-retention-limit')
               agentRows.push({...diagnosticsRow(),sub:'If Alpha still can’t start. Contains no notes, keys or account IDs.'});
             if(developerTools)agentRows.push(action('Details',()=>api.set({page:'agent-recovery-details'})));
           }else if(!connection.busy)agentRows.push(action(connection.session?'Reconnect agent':'Retry',()=>void connectionController.startLocal()));

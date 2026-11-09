@@ -62,8 +62,19 @@ async function runIdentityCompositionRefinement(extraSources = []) {
       const page = await browser.newPage();
       page.setDefaultTimeout(30000);
       const foreign = await fenceNetwork(page);
-      await flagOffAndroid(page);
-      await residentStub(page, {nativeSignIn: true, accounts});
+      // The serialized TypeScript callbacks share esbuild's name helper.
+      // Run the native bridge initializer before its resident extension.
+      const initializers = [];
+      const fixturePage = {addInitScript(script, argument) {
+        if (typeof script !== 'function') throw Error('Expected a fixture callback');
+        initializers.push(`(${script.toString()})(${JSON.stringify(argument) ?? 'undefined'});`);
+      }};
+      await flagOffAndroid(fixturePage);
+      await residentStub(fixturePage, {nativeSignIn: true, accounts});
+      await page.addInitScript(`(() => {
+        const __name = (value, name) => Object.defineProperty(value, 'name', {value: name, configurable: true});
+        ${initializers.join('\n')}
+      })();`);
       const errors = [];
       page.on('pageerror', error => errors.push(error.message));
       await page.goto(origin + '/quint-composition');

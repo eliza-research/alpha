@@ -1,0 +1,47 @@
+--- a/packages/core/src/services/task.ts
++++ b/packages/core/src/services/task.ts
+@@ -199,2 +199,2 @@
+-	/** Tracks task IDs currently being executed to prevent overlapping runs. WHY: blocking tasks must not run again until current run finishes. */
+-	private executingTasks: Set<string> = new Set();
++	/** Count overlapping invocations so exclusivity sees every active owner. */
++	private executingTasks = new Map<string, number>();
+@@ -257,0 +258 @@
++		if (this.stopped) return;
+@@ -831,0 +833,15 @@
++	private assertAcceptingExecution(): void {
++		if (this.stopped) {
++			throw new ElizaError("Task service has stopped accepting execution", {
++				code: "TASK_SERVICE_STOPPED",
++				severity: "ephemeral",
++			});
++		}
++	}
++
++	private releaseExecution(taskId: string): void {
++		const remaining = this.executingTasks.get(taskId)! - 1;
++		if (remaining > 0) this.executingTasks.set(taskId, remaining);
++		else this.executingTasks.delete(taskId);
++	}
++
+@@ -842,0 +859 @@
++		this.assertAcceptingExecution();
+@@ -886 +903 @@
+-		this.executingTasks.add(task.id);
++		this.executingTasks.set(task.id, (this.executingTasks.get(task.id) ?? 0) + 1);
+@@ -895 +912 @@
+-				this.executingTasks.delete(task.id);
++				this.releaseExecution(task.id);
+@@ -898,2 +915,2 @@
+-			if (!current) {
+-				this.executingTasks.delete(task.id);
++			if (!current || this.stopped) {
++				this.releaseExecution(task.id);
+@@ -1114 +1131 @@
+-			this.executingTasks.delete(task.id);
++			this.releaseExecution(task.id);
+@@ -1148,0 +1166 @@
++		if (this.stopped) return;
+@@ -1151,0 +1170 @@
++		if (this.stopped) return;
+@@ -1179,0 +1199 @@
++		this.assertAcceptingExecution();

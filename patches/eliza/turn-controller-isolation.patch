@@ -1,0 +1,19 @@
+--- a/packages/core/src/runtime/turn-controller.ts
++++ b/packages/core/src/runtime/turn-controller.ts
+@@ -46,2 +45,0 @@
+-const currentTurnStorage = new AsyncLocalStorage<ActiveTurn>();
+-
+@@ -48,0 +47 @@
++	private readonly currentTurnStorage = new AsyncLocalStorage<ActiveTurn>();
+@@ -81 +80 @@
+-			const result = await currentTurnStorage.run(turn, () =>
++			const result = await this.currentTurnStorage.run(turn, () =>
+@@ -130 +129 @@
+-		const self = currentTurnStorage.getStore();
++		const self = this.currentTurnStorage.getStore();
+@@ -185 +184 @@
+-		const self = currentTurnStorage.getStore();
++		const self = this.currentTurnStorage.getStore();
+@@ -207 +206 @@
+-		const self = currentTurnStorage.getStore();
++		const self = this.currentTurnStorage.getStore();

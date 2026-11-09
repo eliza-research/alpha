@@ -1,0 +1,594 @@
+[
+  {
+    "path": "specs/quint/legacy/CorePluginLifecycle.qnt",
+    "module": "CorePluginLifecycle",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "eagerStartRetiresDuringUnloadTest",
+      "secondUnloadJoinsWithoutDisposingTwiceTest"
+    ],
+    "temporal": [
+      "CheckedTemporal"
+    ],
+    "configurations": [
+      {
+        "name": "inflight",
+        "module": "CorePluginLifecycle",
+        "init": "init",
+        "step": "step",
+        "rawStep": "rawStep",
+        "invariant": "safety",
+        "temporal": "CheckedTemporal",
+        "tests": [
+          "eagerStartRetiresDuringUnloadTest",
+          "secondUnloadJoinsWithoutDisposingTwiceTest"
+        ],
+        "invariants": [
+          "TypeOK",
+          "TeardownExclusive",
+          "StopAtMostOnce",
+          "NoOrphanInstance",
+          "StopStopsAll",
+          "ConnectorOwnedByLast",
+          "NoOrphanConnector",
+          "RegisterHonest"
+        ],
+        "properties": [
+          "Terminates"
+        ],
+        "checkDeadlock": true,
+        "constantAssignments": [
+          "NumClasses = 2",
+          "Unloaders = {u1, u2}",
+          "Loaders = {l1}",
+          "Registrars = {}",
+          "Stoppers = {t1}",
+          "Rivals = {b1}",
+          "StartsInFlight = TRUE",
+          "InitMayFail = TRUE",
+          "StopMayFail = TRUE",
+          "StartMayFail = TRUE",
+          "None = None"
+        ]
+      },
+      {
+        "name": "register",
+        "module": "CorePluginLifecycleRegister",
+        "init": "init",
+        "step": "step",
+        "rawStep": "rawStep",
+        "invariant": "safety",
+        "temporal": "CheckedTemporal",
+        "tests": [
+          "registrationJoinsOwnerResultTest"
+        ],
+        "invariants": [
+          "TypeOK",
+          "TeardownExclusive",
+          "StopAtMostOnce",
+          "NoOrphanInstance",
+          "StopStopsAll",
+          "ConnectorOwnedByLast",
+          "NoOrphanConnector",
+          "RegisterHonest"
+        ],
+        "properties": [
+          "Terminates"
+        ],
+        "checkDeadlock": true,
+        "constantAssignments": [
+          "NumClasses = 0",
+          "Unloaders = {}",
+          "Loaders = {}",
+          "Registrars = {r1, r2}",
+          "Stoppers = {}",
+          "Rivals = {}",
+          "StartsInFlight = FALSE",
+          "InitMayFail = TRUE",
+          "StopMayFail = FALSE",
+          "StartMayFail = FALSE",
+          "None = None"
+        ]
+      },
+      {
+        "name": "services",
+        "module": "CorePluginLifecycleServices",
+        "init": "init",
+        "step": "step",
+        "rawStep": "rawStep",
+        "invariant": "safety",
+        "temporal": "CheckedTemporal",
+        "tests": [
+          "laterConnectorSurvivesUnloadTest"
+        ],
+        "invariants": [
+          "TypeOK",
+          "TeardownExclusive",
+          "StopAtMostOnce",
+          "NoOrphanInstance",
+          "StopStopsAll",
+          "ConnectorOwnedByLast",
+          "NoOrphanConnector",
+          "RegisterHonest"
+        ],
+        "properties": [
+          "Terminates"
+        ],
+        "checkDeadlock": true,
+        "constantAssignments": [
+          "NumClasses = 2",
+          "Unloaders = {u1, u2}",
+          "Loaders = {l1, l2}",
+          "Registrars = {}",
+          "Stoppers = {t1}",
+          "Rivals = {b1}",
+          "StartsInFlight = FALSE",
+          "InitMayFail = TRUE",
+          "StopMayFail = TRUE",
+          "StartMayFail = TRUE",
+          "None = None"
+        ]
+      }
+    ],
+    "sources": [],
+    "upstreamSources": [
+      {
+        "path": "packages/core/tla/PluginLifecycle.tla",
+        "revision": "4787d51a142c63c98371c832997184c53f7218d3",
+        "sha256": "a2b18a27d89fae7d9f5a213ce9983ba7fe2b9807e0111d1ea5cdf75a79509501"
+      }
+    ],
+    "classification": "upstream-design-conversion",
+    "abstractions": [
+      "Actor model values are disjoint integer identities. The source CHOOSE over finite numeric instance IDs is interpreted by choosing the least member. Frames preserve all unchanged source variables.",
+      "This is a literal upstream design translation. Source-executing implementation refinement is separately recorded."
+    ]
+  },
+  {
+    "path": "specs/quint/legacy/CoreRuntimeLifecycle.qnt",
+    "module": "CoreRuntimeLifecycle",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "leaseEntersAbortedAfterCloseTest",
+      "timeoutAndRetryKeepSinglePrepareTest"
+    ],
+    "temporal": [
+      "CheckedTemporal"
+    ],
+    "configurations": [
+      {
+        "name": "stop",
+        "module": "CoreRuntimeLifecycle",
+        "init": "init",
+        "step": "step",
+        "rawStep": "rawStep",
+        "invariant": "safety",
+        "temporal": "CheckedTemporal",
+        "tests": [
+          "leaseEntersAbortedAfterCloseTest",
+          "timeoutAndRetryKeepSinglePrepareTest"
+        ],
+        "invariants": [
+          "TypeOK",
+          "PrepareStopOnce",
+          "SingleAttempt",
+          "TurnsAbortedAfterStop",
+          "NoStartOnFailedInit",
+          "NoLiveAfterStopped",
+          "StoppedIsQuiet",
+          "StrictMeansQuiescent"
+        ],
+        "properties": [
+          "NoAdmissionAfterClose",
+          "StopperReturns",
+          "TurnsFinish",
+          "EagerStartSettles"
+        ],
+        "checkDeadlock": true,
+        "constantAssignments": [
+          "Turns = {t1, t2}",
+          "Stoppers = {s1, s2}",
+          "MaxAttempts = 2",
+          "None = None"
+        ]
+      }
+    ],
+    "sources": [],
+    "upstreamSources": [
+      {
+        "path": "packages/core/tla/RuntimeLifecycle.tla",
+        "revision": "4787d51a142c63c98371c832997184c53f7218d3",
+        "sha256": "869f97937724184d25b3edc179433564c4bf34b0a438cb88e915502b23e7463c"
+      }
+    ],
+    "classification": "upstream-design-conversion",
+    "abstractions": [
+      "Turn and stopper identities are disjoint. One monotonic monitor encodes the exact NoAdmissionAfterClose queue-length transition predicate without changing any source transition.",
+      "This is a literal upstream design translation. Source-executing implementation refinement is separately recorded."
+    ]
+  },
+  {
+    "path": "specs/quint/legacy/CoreServiceLifecycleDesign.qnt",
+    "module": "CoreServiceLifecycleDesign",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "lateStartIsStoppedOnceTest",
+      "unloadLastClassClearsStatusTest"
+    ],
+    "temporal": [
+      "CheckedTemporal"
+    ],
+    "configurations": [
+      {
+        "name": "liveness",
+        "module": "CoreServiceLifecycleDesign",
+        "init": "init",
+        "step": "step",
+        "rawStep": "rawStep",
+        "invariant": "safety",
+        "temporal": "CheckedTemporal",
+        "tests": [
+          "lateStartIsStoppedOnceTest",
+          "unloadLastClassClearsStatusTest"
+        ],
+        "invariants": [
+          "TypeOK",
+          "OneLivePerClass",
+          "StopAtMostOnce",
+          "NoLatePublish",
+          "NoOrphan",
+          "StatusConsistent",
+          "NoStatusWithoutClasses",
+          "StoppedNotReachable"
+        ],
+        "properties": [
+          "StopReachesAll",
+          "CallersReturn"
+        ],
+        "checkDeadlock": true,
+        "constantAssignments": [
+          "Classes = {A, B}",
+          "LateClasses = {B}",
+          "Owned = {A}",
+          "Callers = {e1, e2}",
+          "MaxInst = 3",
+          "MaxRetries = 0",
+          "None = None"
+        ]
+      },
+      {
+        "name": "siblings",
+        "module": "CoreServiceLifecycleDesignSiblings",
+        "init": "init",
+        "step": "step",
+        "rawStep": "rawStep",
+        "invariant": "safety",
+        "tests": [
+          "failedClassLeavesSiblingAvailableTest"
+        ],
+        "invariants": [
+          "TypeOK",
+          "OneLivePerClass",
+          "StopAtMostOnce",
+          "NoLatePublish",
+          "NoOrphan",
+          "StatusConsistent",
+          "NoStatusWithoutClasses",
+          "StoppedNotReachable"
+        ],
+        "properties": [],
+        "checkDeadlock": true,
+        "constantAssignments": [
+          "Classes = {A, B}",
+          "LateClasses = {B}",
+          "Owned = {A}",
+          "Callers = {e1, e2}",
+          "MaxInst = 4",
+          "MaxRetries = 1",
+          "None = None"
+        ]
+      }
+    ],
+    "sources": [],
+    "upstreamSources": [
+      {
+        "path": "packages/core/tla/ServiceLifecycle.tla",
+        "revision": "4787d51a142c63c98371c832997184c53f7218d3",
+        "sha256": "78d2bfc7f37c7631de1e748b4400c34a2da4ad99f9b484c41b5dbd0e46b83ff3"
+      }
+    ],
+    "classification": "upstream-design-conversion",
+    "abstractions": [
+      "Class and caller model values are disjoint integers. The owned-class choice is a singleton in both configurations. All class attempts, caller wait sets, publication and single-flight stop operations retain their own state.",
+      "This is a literal upstream design translation. Source-executing implementation refinement is separately recorded."
+    ]
+  },
+  {
+    "path": "specs/quint/legacy/CoreTaskScheduler.qnt",
+    "module": "CoreTaskScheduler",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "registrationDirtyTakenTest",
+      "detachedQueryCannotDispatchTest"
+    ],
+    "temporal": [
+      "CheckedTemporal"
+    ],
+    "configurations": [
+      {
+        "name": "live",
+        "module": "CoreTaskScheduler",
+        "init": "init",
+        "step": "step",
+        "rawStep": "rawStep",
+        "invariant": "safety",
+        "temporal": "CheckedTemporal",
+        "tests": [
+          "registrationDirtyTakenTest",
+          "detachedQueryCannotDispatchTest"
+        ],
+        "invariants": [
+          "TypeOK",
+          "NoStaleDispatch",
+          "OneRunTickPerService",
+          "AttachedTickCurrent",
+          "TakenClearsDirty"
+        ],
+        "properties": [
+          "DirtyServed",
+          "TickSettles"
+        ],
+        "checkDeadlock": true,
+        "constantAssignments": [
+          "Services = {s1, s2}",
+          "Adapters = {a1, a2}",
+          "Ticks = {k1, k2, k3}",
+          "MaxRestarts = 2",
+          "MaxRegs = 2",
+          "QueryCanFail = FALSE",
+          "None = None"
+        ]
+      },
+      {
+        "name": "restart",
+        "module": "CoreTaskSchedulerRestart",
+        "init": "init",
+        "step": "step",
+        "rawStep": "rawStep",
+        "invariant": "safety",
+        "tests": [
+          "stoppingOldServicePreservesReplacementTest"
+        ],
+        "invariants": [
+          "TypeOK",
+          "NoStaleDispatch",
+          "OneRunTickPerService",
+          "AttachedTickCurrent",
+          "TakenClearsDirty"
+        ],
+        "properties": [],
+        "checkDeadlock": true,
+        "constantAssignments": [
+          "Services = {s1, s2}",
+          "Adapters = {a1, a2}",
+          "Ticks = {k1, k2, k3}",
+          "MaxRestarts = 2",
+          "MaxRegs = 2",
+          "QueryCanFail = TRUE",
+          "None = None"
+        ]
+      }
+    ],
+    "sources": [],
+    "upstreamSources": [
+      {
+        "path": "packages/core/tla/TaskScheduler.tla",
+        "revision": "4787d51a142c63c98371c832997184c53f7218d3",
+        "sha256": "ea5d5a5e135bf03f9fa25c1aca423c6284e516b054cfeb73d7d2a9f81e59f4dd"
+      }
+    ],
+    "classification": "upstream-design-conversion",
+    "abstractions": [
+      "The absent registry sentinel is the id-zero entry. Distinct model values encode service, adapter and tick IDs. Query outcomes preserve stale retirement and optional failure; the live configuration keeps both fairness implications.",
+      "This is a literal upstream design translation. Source-executing implementation refinement is separately recorded."
+    ]
+  },
+  {
+    "path": "specs/quint/legacy/CoreTaskService.qnt",
+    "module": "CoreTaskService",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "staleOneShotSnapshotDoesNotRerunTest",
+      "preservedOneShotRemainsEligibleTest"
+    ],
+    "temporal": [
+      "CheckedTemporal"
+    ],
+    "configurations": [
+      {
+        "name": "daemonOneshot",
+        "module": "CoreTaskService",
+        "init": "init",
+        "step": "step",
+        "rawStep": "rawStep",
+        "invariant": "safety",
+        "temporal": "CheckedTemporal",
+        "tests": [
+          "staleOneShotSnapshotDoesNotRerunTest",
+          "preservedOneShotRemainsEligibleTest"
+        ],
+        "invariants": [
+          "TypeOK",
+          "OneShotAtMostOnce",
+          "OneShotDeletedAfterRun",
+          "BlockingNoOverlap",
+          "ClaimHeld",
+          "NoLostWake",
+          "PausedNotSelected",
+          "DirtyArmed"
+        ],
+        "properties": [
+          "RunnerFinishes",
+          "WriteSeen",
+          "WakeServed"
+        ],
+        "checkDeadlock": true,
+        "constantAssignments": [
+          "Mode = \"daemon\"",
+          "Kind = \"oneshot\"",
+          "Blocking = TRUE",
+          "Tm = Tm",
+          "DueRunners = {d1}",
+          "DaemonRunners = {k1}",
+          "ByIdRunners = {}",
+          "MaxRequests = 0",
+          "MaxPauses = 1",
+          "None = None"
+        ]
+      },
+      {
+        "name": "daemonRepeat",
+        "module": "CoreTaskServiceDaemonRepeat",
+        "init": "init",
+        "step": "step",
+        "rawStep": "rawStep",
+        "invariant": "safety",
+        "temporal": "CheckedTemporal",
+        "tests": [
+          "daemonCannotOverlapBlockingOwnerTest"
+        ],
+        "invariants": [
+          "TypeOK",
+          "OneShotAtMostOnce",
+          "OneShotDeletedAfterRun",
+          "BlockingNoOverlap",
+          "ClaimHeld",
+          "NoLostWake",
+          "PausedNotSelected",
+          "DirtyArmed"
+        ],
+        "properties": [
+          "RunnerFinishes",
+          "WriteSeen",
+          "WakeServed"
+        ],
+        "checkDeadlock": true,
+        "constantAssignments": [
+          "Mode = \"daemon\"",
+          "Kind = \"repeat\"",
+          "Blocking = TRUE",
+          "Tm = Tm",
+          "DueRunners = {d1}",
+          "DaemonRunners = {k1}",
+          "ByIdRunners = {b1}",
+          "MaxRequests = 1",
+          "MaxPauses = 1",
+          "None = None"
+        ]
+      },
+      {
+        "name": "localOneshot",
+        "module": "CoreTaskServiceLocalOneshot",
+        "init": "init",
+        "step": "step",
+        "rawStep": "rawStep",
+        "invariant": "safety",
+        "temporal": "CheckedTemporal",
+        "tests": [
+          "timerDefersWhileHostTickOwnsQueryTest"
+        ],
+        "invariants": [
+          "TypeOK",
+          "OneShotAtMostOnce",
+          "OneShotDeletedAfterRun",
+          "BlockingNoOverlap",
+          "ClaimHeld",
+          "NoLostWake",
+          "PausedNotSelected",
+          "DirtyArmed"
+        ],
+        "properties": [
+          "RunnerFinishes",
+          "WriteSeen",
+          "WakeServed"
+        ],
+        "checkDeadlock": true,
+        "constantAssignments": [
+          "Mode = \"local\"",
+          "Kind = \"oneshot\"",
+          "Blocking = TRUE",
+          "Tm = Tm",
+          "DueRunners = {d1}",
+          "DaemonRunners = {}",
+          "ByIdRunners = {b1}",
+          "MaxRequests = 0",
+          "MaxPauses = 2",
+          "None = None"
+        ]
+      },
+      {
+        "name": "localRepeat",
+        "module": "CoreTaskServiceLocalRepeat",
+        "init": "init",
+        "step": "step",
+        "rawStep": "rawStep",
+        "invariant": "safety",
+        "temporal": "CheckedTemporal",
+        "tests": [
+          "wakeRequestArmsLocalTimerTest"
+        ],
+        "invariants": [
+          "TypeOK",
+          "OneShotAtMostOnce",
+          "OneShotDeletedAfterRun",
+          "BlockingNoOverlap",
+          "ClaimHeld",
+          "NoLostWake",
+          "PausedNotSelected",
+          "DirtyArmed"
+        ],
+        "properties": [
+          "RunnerFinishes",
+          "WriteSeen",
+          "WakeServed"
+        ],
+        "checkDeadlock": true,
+        "constantAssignments": [
+          "Mode = \"local\"",
+          "Kind = \"repeat\"",
+          "Blocking = TRUE",
+          "Tm = Tm",
+          "DueRunners = {}",
+          "DaemonRunners = {}",
+          "ByIdRunners = {b1}",
+          "MaxRequests = 1",
+          "MaxPauses = 1",
+          "None = None"
+        ]
+      }
+    ],
+    "sources": [],
+    "upstreamSources": [
+      {
+        "path": "packages/core/tla/TaskService.tla",
+        "revision": "4787d51a142c63c98371c832997184c53f7218d3",
+        "sha256": "344e588b49a77e8a44b6c7b8cabdc2c068e4b9e30a310b25d592eb3d2eabef34"
+      }
+    ],
+    "classification": "upstream-design-conversion",
+    "abstractions": [
+      "An absent row snapshot has revision -1, outside the original snapshot domain, and the absent outcome has a distinct string. Original Set ownership, wake rules and strong host-runner fairness are preserved. Current implementation repair and counted ownership are verified by TaskServiceLifecycle separately.",
+      "This is a literal upstream design translation. Source-executing implementation refinement is separately recorded."
+    ]
+  }
+]

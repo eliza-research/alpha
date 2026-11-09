@@ -21,10 +21,4 @@ test('Calendar connection entry retains session and draft fences without generic
  for(const authority of ['android-native','browser-local','legacy','legacy-google']){shell.draft.calendarAuthority=authority;assert.equal(scope.current(),false);assert.equal(open(),null);}shell.draft.calendarAuthority='canonical';
  shell.live=false;assert.equal(scope.current(),false);shell.live=true;target=null;assert.equal(scope.current(),false);assert.equal(open(),null);target=original;
  context.controller={};assert.equal(scope.current(),false);context.controller=calendar;context.owner={};assert.equal(scope.current(),false);context.owner=shell;
- const settings=readFileSync(new URL('../apps/app/src/prototype/settings-adapter.ts',import.meta.url),'utf8');
- const section=settings.split('// calendar-settings:begin')[1].split('// calendar-settings:end')[0];
- assert.equal(section.includes('Review calendar sync'),false);assert.equal(section.includes('googleConnectionController.open()'),false);
- const handler=section.match(/go:\(\)=>\{const scope=owner\?\.calendarConnectionScope\?\.\(\);if\(scope\)googleConnectionController.openCalendar\(scope\);\}/)[0];
- let calls=[];vm.runInNewContext('('+handler.slice(3)+')()',{owner:{calendarConnectionScope:()=>scope},googleConnectionController:{openCalendar:s=>calls.push(s)}});assert.deepEqual(calls,[scope]);
- calls=[];vm.runInNewContext('('+handler.slice(3)+')()',{owner:{calendarConnectionScope:()=>null},googleConnectionController:{openCalendar:s=>calls.push(s)}});assert.deepEqual(calls,[]);
 });

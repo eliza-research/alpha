@@ -3,20 +3,39 @@ import {dirname, join, resolve, basename} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {tsImport} from 'tsx/esm/api';
 import {repositoryRoot, loadModels, sha256} from './quint-lib.mjs';
+import {verifyRefinementReceiptInputs} from '../specs/quint/refinement/check-traces.mjs';
 import {modelStateInventory, unobservedStateFields} from '../specs/quint/refinement/model-state.mjs';
 
 const args = process.argv.slice(2);
-const families = ['application', 'services', 'native', 'composition'];
+const runners = {
+  application: 'runApplicationRefinement',
+  services: 'runServicesRefinement',
+  native: 'runNativeRefinement',
+  composition: 'runCompositionRefinement',
+  legacy: 'runLegacyRefinement',
+};
+const families = Object.keys(runners);
 const requested = args.find(arg => arg.startsWith('--families='))?.slice(11).split(',') || families;
 const output = resolve(repositoryRoot, args.find(arg => arg.startsWith('--out='))?.slice(6) || 'test-results/quint-refinement/summary.json');
 for (const arg of args) if (!arg.startsWith('--families=') && !arg.startsWith('--out=') && arg !== '--require-complete') throw Error(`Unknown option ${arg}`);
 for (const family of requested) if (!families.includes(family)) throw Error(`Unknown family ${family}`);
-const models = loadModels().filter(model => model.family !== 'legacy');
-const reportingInputs = ['scripts/check-quint-refinement.mjs', 'specs/quint/refinement/model-state.mjs', 'package-lock.json'];
+const models = loadModels();
+const reportingInputs = ['scripts/check-quint-refinement.mjs', 'specs/quint/refinement/model-state.mjs',
+  'specs/quint/refinement/legacy/index.mjs', 'specs/quint/refinement/check-traces.mjs', 'package-lock.json'];
 const report = {schemaVersion: 1, startedAt: new Date().toISOString(), evidence: 'implementation trace refinement with explicit projections',
   reportingInputHashes: Object.fromEntries(reportingInputs.map(path => [path, sha256(readFileSync(join(repositoryRoot, path)))])),
   modelCount: models.length, families: [], models: [], obligations: [], checksPassed: false, completeApplicationRefinement: false};
 let failed = false;
+function diagnostic(error) {
+  const lines = [];
+  let cause = error;
+  for (let depth = 0; depth < 4; depth++) {
+    lines.push(cause instanceof Error ? cause.stack ?? cause.message : String(cause));
+    if (!(cause instanceof Error) || cause.cause === undefined) break;
+    cause = cause.cause;
+  }
+  return lines.join('\nCaused by: ').replace(/data:text\/javascript;base64,[\w+/=]+(?:#tsx-namespace=[\w-]+)?/g, '[bundled source]');
+}
 for (const family of requested) {
   const modulePath = join(repositoryRoot, 'specs/quint/refinement', family, 'index.mjs');
   if (!existsSync(modulePath)) {
@@ -26,21 +45,23 @@ for (const family of requested) {
     continue;
   }
   try {
-    // Service adapters import parameter-property TypeScript. Browser fixture
-    // functions retain Node's plain stripping so serialized callbacks have no
-    // out-of-scope transform helpers.
-    const module = family === 'services'
+    // Services and historical core adapters import parameter-property TypeScript.
+    // Serialized browser fixtures supply any helpers from that transform locally.
+    const module = family === 'services' || family === 'legacy'
       ? await tsImport(pathToFileURL(modulePath).href, import.meta.url)
       : await import(pathToFileURL(modulePath).href);
-    const run = module[{application: 'runApplicationRefinement', services: 'runServicesRefinement', native: 'runNativeRefinement', composition: 'runCompositionRefinement'}[family]];
+    const run = module[runners[family]];
     if (typeof run !== 'function') throw Error(`Missing runner for ${family}`);
     const result = await run();
     if (!Array.isArray(result.receipts) || !Array.isArray(result.obligations)) throw Error(`Invalid adapter report for ${family}`);
-    report.families.push({family, status: 'checked', receipts: result.receipts});
+    const failures = result.failures?.map(({campaign, error}) => ({campaign, error: diagnostic(error)})) ?? [];
+    if (failures.length) failed = true;
+    report.families.push({family, status: failures.length ? 'failed' : 'checked', receipts: result.receipts,
+      ...(failures.length ? {failures} : {})});
     report.obligations.push(...result.obligations);
   } catch (error) {
     failed = true;
-    report.families.push({family, status: 'failed', error: error instanceof Error ? error.stack : String(error)});
+    report.families.push({family, status: 'failed', error: diagnostic(error)});
   }
 }
 for (const model of models) {
@@ -50,8 +71,7 @@ for (const model of models) {
   const currentHash = sha256(readFileSync(join(repositoryRoot, model.path)));
   const current = receipts.filter(receipt => receipt.passed && receipt.inputsUnchanged && receipt.driverInputsBound &&
     receipt.sourceHashesAfter?.[join(repositoryRoot, model.path)] === currentHash &&
-    Object.entries(receipt.sourceHashesAfter).every(([path, expected]) =>
-      existsSync(path) && sha256(readFileSync(path)) === expected));
+    verifyRefinementReceiptInputs(receipt));
   const inventory = modelStateInventory(join(repositoryRoot, model.path), model.module);
   const entry = {model: model.module, family: model.family, modelSha256: currentHash,
     status: current.length ? 'trace-checked' : 'unverified',
@@ -68,11 +88,14 @@ for (const model of models) {
   entry.unexercisedModelActions = inventory.actions.filter(action =>
     !['init', 'step', 'check'].includes(action) && !entry.modelActions.includes(action) && !entry.modelInitializers.includes(action));
   report.models.push(entry);
-  if (!current.length) report.obligations.push({model: model.module, obligation: 'implementation transition relation', reason: 'No passing source-bound adapter receipt for this model revision.'});
+  if (!current.length && (model.family !== 'legacy' || requested.includes('legacy')))
+    report.obligations.push({model: model.module, obligation: 'implementation transition relation', reason: 'No passing source-bound adapter receipt for this model revision in the selected campaigns.'});
 }
 report.traceCheckedModels = report.models.filter(model => model.status === 'trace-checked').length;
 report.campaignCoverageComplete = report.traceCheckedModels === report.modelCount;
-if (families.every(family => requested.includes(family)) && !report.campaignCoverageComplete) failed = true;
+const runtimeFamilies = families.filter(family => family !== 'legacy');
+report.runtimeCampaignCoverageComplete = report.models.every(model => model.family === 'legacy' || model.status === 'trace-checked');
+if (runtimeFamilies.every(family => requested.includes(family)) && !report.runtimeCampaignCoverageComplete) failed = true;
 report.reportingInputsUnchanged = reportingInputs.every(path => report.reportingInputHashes[path] === sha256(readFileSync(join(repositoryRoot, path))));
 if (!report.reportingInputsUnchanged) failed = true;
 report.unobservedStateFieldCount = report.models.reduce((count, model) => count + model.unobservedStateFields.length, 0);
@@ -81,6 +104,6 @@ report.finishedAt = new Date().toISOString();
 report.obligations.push({obligation: 'unbounded implementation refinement', reason: 'Concrete trace campaigns establish their recorded finite/bounded projections. A universal simulation-relation proof requires separately discharged source semantics and environment assumptions.'});
 mkdirSync(dirname(output), {recursive: true});
 writeFileSync(output, JSON.stringify(report, null, 2) + '\n');
-console.log(`${report.traceCheckedModels}/${report.modelCount} runtime models have current source-bound trace evidence.`);
+console.log(`${report.traceCheckedModels}/${report.modelCount} registered models have current source-bound trace evidence from these campaigns.`);
 console.log(`${report.obligations.length} explicit refinement obligations remain. Report ${output}`);
 process.exitCode = failed ? 1 : args.includes('--require-complete') ? 2 : 0;

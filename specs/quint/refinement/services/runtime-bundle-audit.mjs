@@ -6,11 +6,13 @@ import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import {preparedSourceEnv, sourceDirectory, verifySource} from '../../../../scripts/local-agent-source.mjs';
+import {CORE_STATE_INPUTS, coreStatePatch} from '../../../../scripts/core-state-patch.mjs';
+import {verifyMobileBuildReceipt} from '../../../../scripts/mobile-uuid-adapter.mjs';
 import {writeRuntimeBundleGraph} from './runtime-bundle-graph.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
 const source = sourceDirectory(root, {ALPHA_LOCAL_AGENT_SOURCE_DIR: path.resolve(process.argv[2] ?? '')});
-const output = path.join(root, 'test-results/quint-runtime-bundle');
+const output = path.join(root, 'test-results/quint-runtime-bundle-core-state');
 const pin = JSON.parse(fs.readFileSync(path.join(root, 'upstream.lock.json'), 'utf8')).commit;
 const policy = JSON.parse(fs.readFileSync(path.join(root, 'patches/eliza/mobile-uuid-build.json'), 'utf8'));
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -19,7 +21,8 @@ verifySource(source, pin);
 fs.mkdirSync(output, {recursive: true});
 const inputFiles = [fileURLToPath(import.meta.url), 'specs/quint/refinement/services/runtime-bundle-graph.mjs', 'upstream.lock.json', 'patches/eliza/mobile-uuid-build.json',
   'scripts/build-mobile-agent.mjs', 'scripts/mobile-uuid-adapter.mjs', 'scripts/mobile-bundle-smoke.mjs',
-  'scripts/local-agent-source.mjs'].map(file => path.resolve(root, file));
+  'scripts/local-agent-source.mjs', ...CORE_STATE_INPUTS].map(file => path.resolve(root, file));
+const core = coreStatePatch(root, source);
 const before = Object.fromEntries(inputFiles.map(file => [file, hash(fs.readFileSync(file))]));
 const tracked = new Map(execFileSync('git', ['ls-tree', '-r', '-z', pin], {cwd: source, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024})
   .split('\0').filter(Boolean).map(row => {const at = row.indexOf('\t'); return [row.slice(at + 1), row.slice(0, at).split(' ')[2]];}));
@@ -60,7 +63,10 @@ try {
         const bytes = fs.readFileSync(canonical);
         const gitObject = createHash('sha1').update(Buffer.from(`blob ${bytes.length}\0`)).update(bytes).digest('hex');
         if (tracked.has(relative) && tracked.get(relative) !== gitObject) throw Error(`Compiled first-party input differs from pinned Git bytes: ${relative}`);
-        firstParty.push({input, path: relative, sha256: hash(bytes), bytesInOutput: emitted.get(input) ?? 0,
+        const transformed = core.files.get(relative);
+        if (transformed && hash(bytes) !== transformed.beforeSha256) throw Error('Core input differs from patch preimage');
+        firstParty.push({input, path: relative, sha256: hash(bytes),
+          ...(transformed ? {effectiveSourceSha256: transformed.afterSha256, transformation: 'authenticated-core-state'} : {}), bytesInOutput: emitted.get(input) ?? 0,
           tracked: tracked.has(relative), ...(tracked.has(relative) ? {gitObject} : {})});
       }
       evidence.builds.push({success: result.success, entrypoints: options.entrypoints,
@@ -73,6 +79,7 @@ try {
   process.argv = [process.execPath, path.join(root, 'scripts/build-mobile-agent.mjs'), source, '--target=android'];
   await import(pathToFileURL(path.join(root, 'scripts/build-mobile-agent.mjs')).href);
   verifySource(source, pin);
+  evidence.coreState = verifyMobileBuildReceipt(root, source).coreState;
   evidence.bundleSha256 = hash(fs.readFileSync(path.join(source, 'packages/agent/dist-mobile/agent-bundle.js')));
   evidence.passed = true;
 } catch (error) {

@@ -65,11 +65,13 @@ export function installViewFocus(doc: Document = document): () => void {
   changes.observe(doc.documentElement, { attributes: true, attributeFilter: ['data-active-view'] });
   const home = () => focus.screenChanged();
   view.addEventListener('launcher-home', home);
-  installed = () => {
+  const uninstall = () => {
+    if (installed !== uninstall) return;
     installed = null;
     changes.disconnect();
     view.removeEventListener('launcher-home', home);
     focus.dispose();
   };
-  return installed;
+  installed = uninstall;
+  return uninstall;
 }

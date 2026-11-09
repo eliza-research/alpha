@@ -864,5 +864,1627 @@
       "Two canonical records, five draft token identities, four versions and finite text/format classes. Current save snapshots and queued newer edits retain independent identity.",
       "Delete/restore and UI selection continuations remain separate obligations. Captured save locals are observed through a read-only build-time WeakMap."
     ]
+  },
+  {
+    "path": "specs/quint/application/CanonicalNotesFeedback.qnt",
+    "module": "CanonicalNotesFeedback",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "acceptedReadClearsReadFailureTest",
+      "dirtyReadFailureRetainedTest",
+      "uncertainReadbackKeepsReviewTest",
+      "explicitDiscardReclassifiesReadFailureTest",
+      "ownedCommitClearsUncertaintyTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/canonical-notes-ui.ts",
+      "apps/app/src/prototype/canonical-notes-controller.ts",
+      ".eliza/client-features/plugins/plugin-notes/src/client/notes-editor.ts",
+      ".eliza/client-features/plugins/plugin-notes/src/client/notes-controller.ts"
+    ],
+    "abstractions": [
+      "Finite UI feedback event machine for phase, review reason and failure origin, with an interaction-failure history monitor. Actual controller/editor callbacks drive source traces.",
+      "Collection rendering, navigation waits, dictation/recording and Calendar handoffs remain separate state machines."
+    ]
+  },
+  {
+    "path": "specs/quint/application/CanonicalNotesMutation.qnt",
+    "module": "CanonicalNotesMutation",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "dirtyDeleteSavesFirstTest",
+      "changedTokenCancelsDeleteTest",
+      "queuedSaveBlocksDeleteTest",
+      "restoreRevisionTest",
+      "emptyCanonicalRecordCanDeleteTest",
+      "lostOwnerCannotPublishTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/canonical-notes-editor.ts",
+      ".eliza/client-features/plugins/plugin-notes/src/client/notes-editor.ts",
+      ".eliza/client-features/plugins/plugin-notes/src/client/notes-controller.ts",
+      ".eliza/client-features/plugins/plugin-notes/src/client/notes-api.ts"
+    ],
+    "abstractions": [
+      "Two record identities, five editor tokens and four edit versions/revisions. One remove/restore continuation, rejected concurrent probes and independent save queue use settled promise macrosteps.",
+      "Server response membership is controlled input. Provider mutation, revision allocation, durability, arbitrary reentrant hooks and multiple simultaneous remove continuations remain separate obligations."
+    ]
+  },
+  {
+    "path": "specs/quint/application/CanonicalNotesView.qnt",
+    "module": "CanonicalNotesView",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "newDraftOverlaysFirstTest",
+      "canonicalDraftReplacesInPlaceTest",
+      "localHandlesNeverReachRowsTest",
+      "ownerLossMasksRetainedRowsTest",
+      "phaseDrainsNavigationWaitersTest",
+      "retirementClearsProjectionTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/canonical-notes-ui.ts",
+      "apps/app/src/prototype/canonical-notes-controller.ts",
+      ".eliza/client-features/plugins/plugin-notes/src/client/notes-editor.ts",
+      ".eliza/client-features/plugins/plugin-notes/src/client/notes-controller.ts"
+    ],
+    "abstractions": [
+      "Source-bound projection of base and draft rows, current-owner public visibility, synthetic draft identities, Trash collection and navigation waiter admission/drain.",
+      "Canonical snapshot and editor callback inputs have separate controller/draft models. Row payload uses bounded text, kind, pin, folder and local-handle classes. Recorder, dictation, Calendar handoff and full competing navigation policies remain obligations."
+    ]
+  },
+  {
+    "path": "specs/quint/application/FilesBrowserController.qnt",
+    "module": "FilesBrowserController",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "staleDenialKeepsCurrentListingTest",
+      "staleGrantCannotReviveAccessTest",
+      "retiredListingCannotPublishTest",
+      "staleAgentReadDoesNotShareTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/selection-adapter.ts",
+      ".eliza/client-features/plugins/plugin-files/src/browser/files-browser-adapter.ts",
+      ".eliza/client-features/plugins/plugin-files/src/browser/storage-model.ts",
+      ".eliza/client-features/plugins/plugin-files/src/browser/files-agent-contract.ts",
+      "patches/eliza/files-list-identity-client.patch",
+      "patches/eliza/files-list-identity-client-manifest.json"
+    ],
+    "abstractions": [
+      "Installed folder reader, current access/volume readback and registered agent share admission over deferred storage ports. Two folders, three entries, two volumes and six state-read identities.",
+      "Category/Trash aggregation, filters, selection, preview, mutation dialogs, native watch ownership and durable provider effects remain explicit extensions."
+    ]
+  },
+  {
+    "path": "specs/quint/application/PhotosWindow.qnt",
+    "module": "PhotosWindow",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "hiddenFirstAccessCannotReadTest",
+      "hiddenPageCannotPublishTest",
+      "coalescedRefreshStartsAgainTest",
+      "moreMergesExistingIdentityTest",
+      "disposedAccessSettlesTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/camera-adapter.ts",
+      ".eliza/client-features/packages/ui/src/mobile-shell/photos-view.ts"
+    ],
+    "abstractions": [
+      "Native Photos catalog access/window request epochs, serialized/coalesced reads, pagination/reload window and hidden/disposed completion fencing. Three media identities and bounded provider page classes.",
+      "Album, Trash, counts, selection/viewer, thumbnail, reviews and provider persistence remain explicit obligations. Browser media follows a separate lifecycle."
+    ]
+  },
+  {
+    "path": "specs/quint/application/PhotosTrash.qnt",
+    "module": "PhotosTrash",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "resumeReloadsClearedTrashTest",
+      "hiddenReplyCannotRepopulateTest",
+      "resumedPendingReadQueuesCurrentTest",
+      "oldHiddenFailureIsQuietTest",
+      "disposedReplyDoesNotPublishTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/camera-adapter.ts",
+      ".eliza/client-features/packages/ui/src/mobile-shell/photos-view.ts"
+    ],
+    "abstractions": [
+      "Native Photos Trash read lifecycle with coalesced requests, current epochs, hidden loaded-marker invalidation and resume. Three media identities and four request identities.",
+      "Deletion/restore effects, selection, native retention and browser Trash are separate obligations."
+    ]
+  },
+  {
+    "path": "specs/quint/application/FilesFilter.qnt",
+    "module": "FilesFilter",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "oldFailureCannotEraseNewRowsTest",
+      "deniedReadbackCannotQueryTest",
+      "clearedQueryCannotPublishTest",
+      "cancelledQueryCannotPublishTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/selection-adapter.ts",
+      ".eliza/client-features/plugins/plugin-files/src/browser/files-browser-adapter.ts",
+      ".eliza/client-features/plugins/plugin-files/src/browser/storage-model.ts",
+      ".eliza/client-features/plugins/plugin-files/src/browser/files-agent-contract.ts",
+      "patches/eliza/files-list-identity-client.patch",
+      "patches/eliza/files-list-identity-client-manifest.json"
+    ],
+    "abstractions": [
+      "Installed agent filter operations from a mounted Browse view, with separate access and query generations, current filter ownership, cancellation and filtered result ordering.",
+      "Three operation identities, two text classes and four unique row identities. Reload after mount, category/Trash list transactions, file mutations and provider query implementation remain separate obligations."
+    ]
+  },
+  {
+    "path": "specs/quint/application/GoogleConsentAdmission.qnt",
+    "module": "GoogleConsentAdmission",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "unknownListBlocksConsentTest",
+      "modifyTierSurvivesAddAccountTest",
+      "failedReadbackRetiresAwaitedConsentTest",
+      "unknownRevokeReadbackBlocksConsentTest",
+      "staleOwnerCannotRestoreReadTest",
+      "explicitAllowOpensCurrentTierTest",
+      "newerReadWithdrawsSavedOffChoiceTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/google-connection-ui.tsx",
+      "apps/app/src/runtime/google-accounts.ts",
+      "apps/app/src/runtime/google-connection-return.ts",
+      "apps/app/src/runtime/google-agent-access.ts",
+      "apps/app/src/runtime/gmail-grants.ts",
+      ".eliza/client-features/plugins/plugin-inbox/src/mailbox/grants.ts"
+    ],
+    "abstractions": [
+      "Mounted Google panel with owner-bound account list generations, revoke readback, preserved Gmail tier, Calendar permission continuation and consent dispatch.",
+      "Two Cloud bindings, six reads, three grant classes and four consent attempts. One held permission continuation, controlled provider and browser ports. Linked Calendar writes and native callback durability remain separate."
+    ]
+  },
+  {
+    "path": "specs/quint/application/BrowserDeletionPoll.qnt",
+    "module": "BrowserDeletionPoll",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "youngerPollSkipsWriteTest",
+      "competingPollLeavesCommittedRevisionTest",
+      "failedPollLeavesWorkForAnotherTest"
+    ],
+    "invariants": [
+      "oneCommit",
+      "expiredAdmission"
+    ],
+    "sources": [
+      "apps/app/src/browser/journal-retention.ts",
+      "apps/app/src/browser/calendar.ts",
+      "apps/app/src/browser/daily.ts",
+      "apps/app/src/browser/calendar-store.ts",
+      "apps/app/src/browser/reminder-store.ts"
+    ],
+    "stateMapping": {
+      "row": "Real Calendar or Reminder deletion phase read from the committed document",
+      "expired": "Controlled renderer monotonic deadline state",
+      "commits": "CAS revisions since the queued deletion was seeded",
+      "phase": "Observed entry into, or completion of, the serialized document edit"
+    },
+    "abstractions": [
+      "Two overlapping polls on a single owned queued deletion. Expiration is a controlled monotonic step.",
+      "Injected edit rejection precedes durable CAS. Larger batches, restart and ownership changes are separate projections."
+    ],
+    "bounds": {
+      "maxSamples": 1000,
+      "maxSteps": 80,
+      "maxVerifyDepth": 5
+    }
+  },
+  {
+    "path": "specs/quint/application/ResidentLiveness.qnt",
+    "module": "ResidentLiveness",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "rateLimitedNativeReadsTest",
+      "retiredReadCannotRestartSuccessorTest",
+      "restartCompletionOwnedByEpochTest",
+      "busyRecoveryQueuesRebindTest"
+    ],
+    "invariants": [
+      "ownedReads",
+      "boundedRestart",
+      "boundedRate"
+    ],
+    "sources": [
+      "apps/app/src/runtime/connection-ui.tsx",
+      "apps/app/src/runtime/resident-recovery.ts",
+      "apps/app/src/runtime/local-agent.ts"
+    ],
+    "stateMapping": {
+      "epoch/active/busy": "Actual controller closure owner and operation slot at the observed boundary",
+      "clock/last/reading/reads": "Controlled clock and actual admitted status requests",
+      "starting/starts/queued": "Actual calls to restart and queued rebind ports",
+      "notice": "Actual source publication of safe boot-reason copy"
+    },
+    "abstractions": [
+      "Five epochs and five five-second ticks. At most one pending restart and one native status read.",
+      "Controlled native and connection ports, including reply, loss, refusal and replacement. Installed lifecycle remains a separate test."
+    ],
+    "bounds": {
+      "maxSamples": 1000,
+      "maxSteps": 80,
+      "maxVerifyDepth": 4
+    }
+  },
+  {
+    "path": "specs/quint/application/HomeFailureNotice.qnt",
+    "module": "HomeFailureNotice",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "failedInventoryReportsOnceTest",
+      "followupReadDoesNotDuplicateLaunchTest",
+      "drawerAndOtherViewsOwnTheirErrorsTest",
+      "recoveryPermitsNewInventoryNoticeTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/home-shell.ts",
+      ".eliza/client-features/packages/ui/src/mobile-shell/mobile-launcher.ts",
+      ".eliza/client-features/plugins/plugin-native-system/src/client/launcher.ts"
+    ],
+    "abstractions": [
+      "Installed Home notice projection for shared launcher snapshot changes, exact error equality, inventory identity and failure notice deduplication.",
+      "Starts after a settled inventory. Surface and shared launcher snapshots are inputs. Native launch effects, inventory generation and favorites durability are separate obligations."
+    ]
+  },
+  {
+    "path": "specs/quint/application/LauncherOwnership.qnt",
+    "module": "LauncherOwnership",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "listWaitsForDefaultTest",
+      "staleReadCannotReplaceAppsOrDialTest",
+      "staleLaunchCannotClearNewOwnerTest",
+      "failedDialRefreshesBothReadsTest"
+    ],
+    "sources": [
+      ".eliza/client-features/plugins/plugin-native-system/src/client/launcher.ts",
+      ".eliza/client-features/packages/ui/src/mobile-shell/mobile-launcher.ts",
+      "apps/app/src/prototype/home-shell.ts"
+    ],
+    "abstractions": [
+      "Shared installed launcher inventory/default read generation and native handoff lifetime. Package/activity/profile identities remain distinct; default launch dispatches the dial role.",
+      "Three app identities, two dial readback classes, eight generations and four launch calls. Builtins, favorites migration and watch scheduling remain separate."
+    ]
+  },
+  {
+    "path": "specs/quint/application/LauncherObserver.qnt",
+    "module": "LauncherObserver",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "repeatedSignalsShareTimerTest",
+      "stopBeforeSubscriptionReplyRemovesOnceTest",
+      "stopDisarmsTimerTest",
+      "failedRemovalRetiresObserverTest"
+    ],
+    "sources": [
+      ".eliza/client-features/plugins/plugin-native-system/src/client/launcher.ts",
+      ".eliza/client-features/packages/ui/src/mobile-shell/mobile-launcher.ts",
+      "apps/app/src/prototype/home-shell.ts",
+      "patches/eliza/launcher-observer-client.patch",
+      "patches/eliza/launcher-observer-client-manifest.json"
+    ],
+    "abstractions": [
+      "Actual launcher package listener registration, document notifications, 120ms debounce and idempotent retirement with late or failed native removal.",
+      "One observer and one package subscription, up to four refreshes. Timer ordering and native replies are controlled ports. Inventory and actual Android removal remain separate."
+    ]
+  },
+  {
+    "path": "specs/quint/application/BrowserJournalRetention.qnt",
+    "module": "BrowserJournalRetention",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "sources": [
+      "apps/app/src/browser/journal-retention.ts",
+      "apps/app/src/browser/calendar.ts",
+      "apps/app/src/browser/daily.ts",
+      "apps/app/src/browser/calendar-store.ts",
+      "apps/app/src/browser/reminder-store.ts",
+      "apps/app/src/browser/calendar-deletions.ts",
+      "apps/app/src/browser/reminder-deletions.ts"
+    ],
+    "tests": [
+      "receiptsAtCountKeepStableLegacyOrderTest",
+      "exactAgeKeepsOnlyThroughBoundaryTest",
+      "countAndAgeUseSameOriginalCohortTest",
+      "writeMayAppendAfterExactReceiptBoundTest",
+      "acknowledgedCreationKeepsTimestampUntilNextTrimTest",
+      "trimSettledAndDanglingClaimsTest",
+      "exactly127SettledAndPendingKeepOrderTest"
+    ],
+    "invariants": [
+      "UniqueIdentities",
+      "DefiniteBoundAfterTrim",
+      "AgeBoundAfterTrim",
+      "PendingSurvivesRetention",
+      "SettledBoundAndClaims"
+    ],
+    "abstractions": [
+      "Exact production bounds use up to 205 initial receipts, 136 deletion rows and 140 claims, finite wall/elapsed timestamps, one clock advance and ordered record identities.",
+      "Missing timestamp is age-exempt and sorts at zero. Pending rows and post-trim append are modeled separately from the bounded definite/settled cohort.",
+      "Valid current and legacy rows, including dangling claims, are modeled. Deleted row recovery, polling, malformed data and physical browser transaction scheduling are separate."
+    ],
+    "bounds": {
+      "maxSamples": 300,
+      "maxSteps": 35,
+      "seed": "123"
+    }
+  },
+  {
+    "path": "specs/quint/application/GoogleAccessPublication.qnt",
+    "module": "GoogleAccessPublication",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "lostPublicationCorrectsBeforeSuccessorTest",
+      "guardedStaleChoiceDoesNotReachHostTest",
+      "rollbackFailurePublishesCanonicalChoiceTest",
+      "twoFailedRepliesCanLeaveUncertaintyTest"
+    ],
+    "invariants": [
+      "exactOwner",
+      "pendingCustody"
+    ],
+    "sources": [
+      "apps/app/src/runtime/google-agent-access.ts",
+      "apps/app/src/browser/device-preferences.ts",
+      "apps/app/src/browser/preference-documents.ts",
+      "apps/app/src/browser/domain-document.ts"
+    ],
+    "stateMapping": {
+      "saved/previous/revision": "Actual canonical preferences and prior booleans under the lock",
+      "host/calls": "Observed native publication attempts and fixture host commits",
+      "queue/owner/phase": "Exclusive lock admission and actual native call phase",
+      "choices/results": "Canonical revision-bound user intent and actual operation outcome"
+    },
+    "abstractions": [
+      "Two one-use requests over two owner switches. A controlled Web Locks port grants FIFO ownership.",
+      "Controlled durable writes distinguish refusal before commit and lost reply after commit. A corrective failure can leave divergence."
+    ],
+    "bounds": {
+      "maxSamples": 1000,
+      "maxSteps": 80,
+      "maxVerifyDepth": 4
+    }
+  },
+  {
+    "path": "specs/quint/application/LauncherFavorites.qnt",
+    "module": "LauncherFavorites",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "refusedMigrationKeepsCanonicalFavoriteTest",
+      "explicitEmptyNeverReceivesDefaultsTest",
+      "oldDefaultRetainsRollbackRecordTest",
+      "externalChoiceWinsHeldDefaultLoadTest",
+      "hiddenSlotsSurviveVisibleMoveTest",
+      "rejectedExplicitEditPreservesDurableAndVisibleTest"
+    ],
+    "sources": [
+      ".eliza/client-features/plugins/plugin-native-system/src/client/launcher.ts",
+      ".eliza/client-features/packages/ui/src/mobile-shell/mobile-launcher.ts",
+      ".eliza/client-features/packages/ui/src/mobile-shell/view-id-migration.ts",
+      ".eliza/client-features/packages/ui/src/mobile-shell/view-registry.ts",
+      "apps/app/src/product/alpha-product.ts",
+      "config/alpha-product.json",
+      "patches/eliza/launcher-legacy-view-key-client.patch",
+      "patches/eliza/launcher-legacy-view-key-client-manifest.json"
+    ],
+    "abstractions": [
+      "Actual ordered favorites storage, legacy view-ID and default-policy migration, unavailable storage, held-load external writes, profile identity and visible-only reorder.",
+      "Two product views and a legacy alias, three installed app keys and one uninstalled key. One held inventory request and a separate recreation. Full storage durability, general load overlap and pointer gestures have separate obligations."
+    ]
+  },
+  {
+    "path": "specs/quint/application/AccessibleToastLifetime.qnt",
+    "module": "AccessibleToastLifetime",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "staleBootCannotReplaceResumeTest",
+      "resetInvalidatesPendingNativeReadTest",
+      "failedReadKeepsLastGoodScaleTest",
+      "refreshAffectsOnlyNewToastsTest"
+    ],
+    "invariants": [
+      "requestOwnership",
+      "toastOwnership"
+    ],
+    "sources": [
+      "apps/app/src/runtime/accessibility-timeout.ts",
+      "apps/app/src/prototype/model.js",
+      "apps/app/src/main.tsx",
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java"
+    ],
+    "stateMapping": {
+      "scale/latest": "Last known timeout percentage and exact current native read token",
+      "started/pending": "Observed native read calls and unresolved replies",
+      "message/undo/duration": "Shell message identity, retained Undo and its scheduled timeout"
+    },
+    "abstractions": [
+      "Three native read identities with sampled timeout percentages and explicit rejection.",
+      "One active shell toast. Modal presentation, Undo action selection and real platform scheduling are separate."
+    ],
+    "bounds": {
+      "maxSamples": 1000,
+      "maxSteps": 80,
+      "maxVerifyDepth": 4
+    }
+  },
+  {
+    "path": "specs/quint/application/ModalToastForwarding.qnt",
+    "module": "ModalToastForwarding",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "newestDialogOwnsToastTest",
+      "reopenedOlderDialogMovesAboveNewerTest",
+      "staleUninstallerCannotClearReplacementTest",
+      "oneVisibleUndoForwardsToPageTest"
+    ],
+    "invariants": [
+      "liveRegionOwner",
+      "exactInstallation"
+    ],
+    "sources": [
+      "apps/app/src/runtime/toast-layer.ts",
+      "apps/app/src/main.tsx",
+      "apps/app/src/prototype/template.html"
+    ],
+    "stateMapping": {
+      "installed/generation": "Exact installed observer cleanup and observed installation count",
+      "dialogs": "Fixture modal opening order, observed through the owner receiving visible feedback",
+      "sourceMessage/sourceUndo": "Actual page message and Undo availability",
+      "regions/target/visible/undo/clicks": "Rendered live regions, visible feedback and forwarded click count"
+    },
+    "abstractions": [
+      "Two modal identities and two distinct toast messages. Observations follow observer/frame settlement.",
+      "Browser focus fallback for preexisting modal stacks and assistive technology behavior are separate."
+    ],
+    "bounds": {
+      "maxSamples": 1000,
+      "maxSteps": 80,
+      "maxVerifyDepth": 4
+    }
+  },
+  {
+    "path": "specs/quint/application/HomeGesture.qnt",
+    "module": "HomeGesture",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "unrelatedPointerCannotCancelHoldTest",
+      "drawerRetiresHeldTimeoutTest",
+      "coveredHomeDropsHeldTimeoutTest",
+      "wrongPointerCannotDropTest",
+      "remountDoesNotSwallowEarlierClickTest"
+    ],
+    "invariants": [
+      "UniqueFavorites",
+      "SingleGesture",
+      "RetiredOwnsNothing",
+      "EditingOwnsDrag"
+    ],
+    "sources": [
+      "apps/app/src/prototype/home-shell.ts",
+      ".eliza/client-features/packages/ui/src/mobile-shell/MobileHomeScreen.tsx",
+      ".eliza/client-features/packages/ui/src/mobile-shell/InstalledAppsGridDrawer.tsx",
+      ".eliza/client-features/packages/ui/src/mobile-shell/navigation.ts",
+      ".eliza/client-features/plugins/plugin-native-system/src/client/launcher.ts"
+    ],
+    "abstractions": [
+      "Mounted Home long press, drag, click swallowing, keyboard focus and edit-sheet layering, including stale timer and owner retirement.",
+      "Two pointers, three favorite keys, one keyboard frame and controlled geometry/storage ports. A completed drop is one macrostep. Multiple successful writes are observed at completion; partial storage failure and real touch delivery have separate scope."
+    ]
+  },
+  {
+    "path": "specs/quint/application/ScreenFocusOwnership.qnt",
+    "module": "ScreenFocusOwnership",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "firstScreenLeavesFocusUntouchedTest",
+      "resizeCannotNarrowPendingNavigationTest",
+      "voluntaryBlurRemainsUnfocusedOnResizeTest",
+      "realFocusAndNativeModalKeepOwnershipTest",
+      "lateNameAndDrawerCanReceiveFocusTest",
+      "oldUninstallerCannotRemoveReplacementTest"
+    ],
+    "invariants": [
+      "exactObserver",
+      "pendingOwner"
+    ],
+    "sources": [
+      "apps/app/src/runtime/view-focus.ts",
+      "apps/app/src/main.tsx",
+      "vendor/eliza/packages/ui/src/accessibility/screen-focus.ts",
+      "patches/eliza/screen-focus-priority-client.patch",
+      "patches/eliza/screen-focus-priority-client-manifest.json"
+    ],
+    "stateMapping": {
+      "installed/generation": "Exact Alpha installer handle and replacement count",
+      "screen/active/held": "Host view, DOM active element and actual last focus event",
+      "composer/title/region/drawer/selfFocus": "Current exposed fixture controls and surfaces",
+      "phase/cause/remaining": "Actual scheduled callback, condition type and retry budget",
+      "resizeOwner": "Captured focus element in the resize closure, checked through behavior"
+    },
+    "abstractions": [
+      "One document, two screens plus startup, and one eligible inline modal per opening.",
+      "Controlled frame queue and DOM geometry. The exact closed-over resize element is not read directly."
+    ],
+    "bounds": {
+      "maxSamples": 1000,
+      "maxSteps": 80,
+      "maxVerifyDepth": 4
+    }
+  },
+  {
+    "path": "specs/quint/application/DrawerInteraction.qnt",
+    "module": "DrawerInteraction",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "unrelatedPointerKeepsHoldTest",
+      "removedMenuCannotReopenTest",
+      "oldHoldCannotRetargetReplacementTest",
+      "appInfoClosesMenuAndRestoresExactTileTest",
+      "lateInfoRejectionReportsAfterDrawerClosesTest"
+    ],
+    "invariants": [
+      "OwnsVisibleMenu",
+      "OwnsVisiblePress",
+      "CurrentSuppression",
+      "ExactAppInfo"
+    ],
+    "sources": [
+      "apps/app/src/prototype/home-shell.ts",
+      ".eliza/client-features/packages/ui/src/mobile-shell/InstalledAppsGridDrawer.tsx",
+      ".eliza/client-features/packages/ui/src/mobile-shell/navigation.ts",
+      ".eliza/client-features/plugins/plugin-native-system/src/client/launcher.ts",
+      "patches/eliza/launcher-drawer-ownership-client.patch",
+      "patches/eliza/launcher-drawer-ownership-client-manifest.json"
+    ],
+    "abstractions": [
+      "Mounted installed drawer long press, search, current menu, keyboard focus, home pin, and exact synthetic App Info handoff with late replies.",
+      "Two package/activity/profile identities and pointer IDs, four query classes, one mounted host, one timer and one outstanding App Info. Current committed DOM is observed. Physical input, Android screens and concurrent handoffs remain external."
+    ]
+  },
+  {
+    "path": "specs/quint/application/DockClearanceOwnership.qnt",
+    "module": "DockClearanceOwnership",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "chatModeSelectsHeaderWithoutResizingTest",
+      "retiredDockKeepsLastFootprintTest",
+      "screenRestorationMeasuresCurrentLayoutTest",
+      "staleCleanupCannotEraseReplacementMeasurementsTest"
+    ],
+    "invariants": [
+      "exactInstaller",
+      "visibleHeader",
+      "safeInsets"
+    ],
+    "sources": [
+      "apps/app/src/runtime/dock-clearance.ts",
+      "apps/app/src/main.tsx",
+      "apps/app/src/prototype/template.html",
+      "vendor/eliza/packages/ui/src/components/shell/dock-clearance.ts"
+    ],
+    "stateMapping": {
+      "installed/generation": "Actual paired observer cleanup and installation count",
+      "screen/scale/conversation/half": "Current synthetic layout owner, measured scale and conversation mode",
+      "dock/appBottom/chatBottom": "Controlled layout measurements from the actual fixture DOM",
+      "clearance/rest/header": "Published product CSS custom properties"
+    },
+    "abstractions": [
+      "One screen and one dock with two layouts. Frame and observer callbacks settle before observation.",
+      "Physical insets, assistive focus scrolling and arbitrary CSS transitions have separate evidence."
+    ],
+    "bounds": {
+      "maxSamples": 1000,
+      "maxSteps": 80,
+      "maxVerifyDepth": 4
+    }
+  },
+  {
+    "path": "specs/quint/application/MountedUpdateAdmission.qnt",
+    "module": "MountedUpdateAdmission",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "staleReadAndPreparationCannotRetireSuccessorTest",
+      "onlyExactCancelCanReconnectTest",
+      "pauseCoalescesContinueTest",
+      "refusalExplainedOnlyAtExactFailureTest"
+    ],
+    "invariants": [
+      "owner",
+      "continuation",
+      "exactAcknowledgement"
+    ],
+    "sources": [
+      "apps/app/src/main.tsx",
+      "vendor/eliza/packages/ui/src/state/app-update-gate.ts",
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java"
+    ],
+    "stateMapping": {
+      "active/bridge/phase/acknowledged": "Actual private renderer activation and bridge ownership",
+      "panel/canContinue/continuing/navigationBlocked": "Mounted dialog, navigation and synthetic native continuation",
+      "pending/positive/negative": "All five shell flush owners and exact native readiness attempts",
+      "reconnect/localRefusal/restarts/notices/continues": "Actual retained callbacks and external method invocations"
+    },
+    "abstractions": [
+      "Two unique Android activation IDs; callback ports and modal behavior are controlled.",
+      "The exact draft flush orchestration executes. Installed PackageInstaller and individual stores are separate."
+    ],
+    "bounds": {
+      "maxSamples": 1000,
+      "maxSteps": 80,
+      "maxVerifyDepth": 4
+    }
+  },
+  {
+    "path": "specs/quint/application/StartupUpdateAdmission.qnt",
+    "module": "StartupUpdateAdmission",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "idleCanReleaseWithoutPendingStartupTest",
+      "uncertainReadAndWrongBridgeHoldStartupTest",
+      "pausedContinueIsSingleFlightTest",
+      "sameBridgeReplacesThePendingActivationTest"
+    ],
+    "invariants": [
+      "exactBridge",
+      "mountCustody",
+      "continuation"
+    ],
+    "sources": [
+      "apps/app/src/main.tsx",
+      "vendor/eliza/packages/ui/src/state/app-update-gate.ts",
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java"
+    ],
+    "stateMapping": {
+      "pending/bridge/acknowledged/ready": "Actual startup owner, retained readiness and native acknowledgements",
+      "panel/canContinue/continuing/continues": "Visible startup confirmation and exact single-flight native continuation",
+      "released": "The actual startup mount hold resolves"
+    },
+    "abstractions": [
+      "Two unique activation IDs and two native bridge identities.",
+      "Observations follow completed or rejected native replies. Lost replies that never settle and installed system callbacks are separate."
+    ],
+    "bounds": {
+      "maxSamples": 1000,
+      "maxSteps": 80,
+      "maxVerifyDepth": 4
+    }
+  },
+  {
+    "path": "specs/quint/application/CanonicalCalendarDraft.qnt",
+    "module": "CanonicalCalendarDraft",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "previousAccountBytesStayInOriginalSlotTest",
+      "oldReadCannotFillNextAccountTest",
+      "queuedEditStaysWithCapturedOwnerTest",
+      "lateClearKeepsOriginalAccountDraftTest",
+      "foreignStoredFrameCannotBeOfferedTest",
+      "earlierLifetimeCannotDiscardNewDraftTest"
+    ],
+    "invariants": [
+      "OwnsEditor",
+      "CurrentLease",
+      "ForeignUnavailable",
+      "OwnsWrites"
+    ],
+    "sources": [
+      "apps/app/src/prototype/canonical-calendar-drafts.ts",
+      "apps/app/src/runtime/canonical-calendar-draft.ts",
+      "apps/app/src/runtime/calendar-form-draft.ts",
+      "apps/app/src/prototype/assistant-draft-controller.ts",
+      ".eliza/client-features/packages/ui/src/state/durable-draft-controller.ts",
+      ".eliza/client-features/packages/ui/src/state/durable-draft.ts"
+    ],
+    "abstractions": [
+      "Canonical Calendar editor owner transition, opaque lifetime, durable slot reads/writes, consumed records, stale controls and recovery.",
+      "Two owner identities, six lifetimes, synthetic title classes, one held read and write per owner. Pending operations bind to actual lifetime observations. Provider dispatch, reminder destination conversion, arbitrary invalid fields and native storage durability remain external."
+    ]
+  },
+  {
+    "path": "specs/quint/application/BrowserReminderOrphan.qnt",
+    "module": "BrowserReminderOrphan",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "orphanImportsWithoutCreatingDeletionAuthorityTest",
+      "orphanCannotBeRestagedTest",
+      "orphanCannotBeUndoneTest",
+      "ordinaryChangesKeepOrphanUntilExplicitReplacementTest",
+      "aGenuinePairBlocksReplacementTest",
+      "explicitClockCancelLeavesOrphanWithoutReceiptTest",
+      "aPendingAlarmCannotAcquireSoundOnLockGrantTest"
+    ],
+    "invariants": [
+      "PairedAuthorityOwnsMarker",
+      "AClaimRequiresAnOwnJournalEntry",
+      "ClockLockAndAudioOwnershipAreSeparate"
+    ],
+    "sources": [
+      "apps/app/src/browser/daily.ts",
+      "apps/app/src/browser/clock.ts",
+      "apps/app/src/browser/reminder-store.ts",
+      "apps/app/src/browser/reminder-deletions.ts",
+      "apps/app/src/browser/domain-document.ts",
+      "apps/app/src/browser/deletion-recovery.ts",
+      "apps/app/src/browser/journal-retention.ts"
+    ],
+    "stateMapping": {
+      "row/peer": "Actual Reminder domain rows, bounded wall time and exact revision/occurrence equality classes",
+      "legacy/canonical": "Exact legacy bytes retained and canonical migration snapshot",
+      "journal/claim/receipts": "Own deletion authority and ordinary mutation receipts",
+      "clock": "Actual Clock row projection, held lock callback and synthetic audio state"
+    },
+    "abstractions": [
+      "One v1 one-off reminder or alarm, one unrelated row, one own deletion and three ordinary mutation IDs. Review expiry and destructive recovery are outside this component.",
+      "Legacy orphan and genuine own-key deletion share the same opaque identity. Wall time advances independently of the held deletion clock. Host fixture uses controlled CAS, notification and audio ports."
+    ],
+    "bounds": {
+      "maxSamples": 1000,
+      "maxSteps": 60,
+      "maxVerifyDepth": 4
+    }
+  },
+  {
+    "path": "specs/quint/application/AgentCalendarRefresh.qnt",
+    "module": "AgentCalendarRefresh",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "sameWindowTransportKeepsOldFeedTest",
+      "wrongWindowDoesNotKeepOldFeedTest",
+      "repeatQueuesOneTrailingReadTest",
+      "staleOwnerCannotReplaceCurrentTest",
+      "unreadableLegacyStopsCanonicalReadsTest"
+    ],
+    "invariants": [
+      "OwnsActiveRead",
+      "VerifiedNext",
+      "ResponseIdentity",
+      "Bounded"
+    ],
+    "sources": [
+      "apps/app/src/runtime/agent-calendar.ts",
+      "apps/app/src/runtime/agent-calendar-client.ts",
+      "apps/app/src/runtime/agent-calendar-view.ts",
+      "apps/app/src/prototype/agent-calendar-adapter.ts"
+    ],
+    "abstractions": [
+      "Actual owner/session and range refresh, held legacy preservation gate, independently settled feed/source/next reads, trailing same-query reads, and presentation freshness.",
+      "Two owners, sessions and windows and eight epochs. Observe real abort and private active controller state. Calendar write deferral, provider replay, Maps return, linked selection and live transport have separate scope."
+    ]
+  },
+  {
+    "path": "specs/quint/application/CanonicalNotificationTapAdmission.qnt",
+    "module": "CanonicalNotificationTapAdmission",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "pendingRenderCoalescesRepeatedWakeTest",
+      "busyAfterReadLeavesTapInNativeCustodyTest",
+      "retiredReadCannotActInNewMountTest",
+      "exactRestoreAllowsItsOwnBusyButRespectsUserNavigationTest",
+      "replacedNativeTokenCannotBeConsumedByOldCommitTest"
+    ],
+    "invariants": [
+      "exactLifetime",
+      "nativeOwnership",
+      "heldCommit"
+    ],
+    "sources": [
+      "apps/app/src/prototype/notifications-adapter.ts",
+      "apps/app/src/main.tsx",
+      "apps/app/src/runtime/connection-ui.tsx",
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCanonicalNotifications.java",
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNotificationsPlugin.java"
+    ],
+    "stateMapping": {
+      "generation/live/phase/drain": "Actual mount closure and renderer read, restore and commit activity",
+      "busy/protected/session/context/view/chat/exactHistory": "Active connection, user navigation and exact restoration eligibility",
+      "pending/captured/published/originSession/originContext/originView": "Exact synthetic native custody and captured renderer origin",
+      "reads/opens/attempts/acknowledged": "Observed renderer and controlled native port invocations"
+    },
+    "abstractions": [
+      "Two unique tokens and two mount generations. The synthetic native port captures and compare-and-clears exact tokens.",
+      "Installed foreground and expiry are separate. Protection reasons share one admission predicate."
+    ],
+    "bounds": {
+      "maxSamples": 1000,
+      "maxSteps": 80,
+      "maxVerifyDepth": 4
+    }
+  },
+  {
+    "path": "specs/quint/application/AgentCalendarMutation.qnt",
+    "module": "AgentCalendarMutation",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "latestDeferredWindowStartsAfterWriteTest",
+      "changedPreservationNeverDispatchesTest",
+      "recurringAndDispositionAdmissionTest",
+      "retiredResultCannotClearSuccessorMutationTest",
+      "sameOwnerNewSessionRefusesOldBindingTest"
+    ],
+    "invariants": [
+      "SingleActive",
+      "DeferredOwnsMutation",
+      "DistinctDispatch",
+      "Bounded"
+    ],
+    "sources": [
+      "apps/app/src/runtime/agent-calendar.ts",
+      "apps/app/src/runtime/agent-calendar-client.ts",
+      "apps/app/src/prototype/agent-calendar-adapter.ts",
+      ".eliza/client-features/plugins/plugin-calendar/src/components/event-editor-policy.ts"
+    ],
+    "abstractions": [
+      "Actual create/update/delete admission, exact preservation read, captured owner/session and dispatch fields, synthetic provider completion, and latest deferred refresh.",
+      "Two owner/session identities and windows, eight epochs and six attempts. One active mutation, plus retired replies, and one visible event partition. Native provider effects, idempotency/replay, linked control and Maps readback remain external."
+    ]
+  },
+  {
+    "path": "specs/quint/application/AgentCalendarEventReturn.qnt",
+    "module": "AgentCalendarEventReturn",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "exactReadbackWaitsForBothRepliesTest",
+      "sameEpochSelectionChangeRefusesReadbackTest",
+      "oldEpochCannotReturnWhileNewAttemptSucceedsTest",
+      "hiddenDuplicateSourceCannotCreateOriginTest",
+      "transportRefusalPrecedesDelayedCancellationCheckTest"
+    ],
+    "invariants": [
+      "FoundRequiresReadback",
+      "PendingOwnsTwoReads",
+      "SelectionProjection",
+      "Bounded"
+    ],
+    "sources": [
+      "apps/app/src/runtime/agent-calendar.ts",
+      "apps/app/src/runtime/agent-calendar-client.ts",
+      "apps/app/src/runtime/abort-signal.ts",
+      "apps/app/src/runtime/maps-event-return.ts",
+      ".eliza/client-features/plugins/plugin-calendar/src/api/calendar-api.ts"
+    ],
+    "abstractions": [
+      "Canonical event selection and Maps origin capture, exact Calendar feed and source requests through the actual API, current binding and same-epoch selection checks.",
+      "Two owner/session/scope classes, eight epochs, four attempts and finite provider response classes. Mounted Maps navigation and native Calendar returns, remote effects and linked provider control have separate scope."
+    ]
+  },
+  {
+    "path": "specs/quint/application/CloudConnectionNotices.qnt",
+    "module": "CloudConnectionNotices",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "simultaneousNoticesSuspendAndReturnTest",
+      "dismissPlanKeepsExactSignInTest",
+      "dismissSignInKeepsExactPlanTest"
+    ],
+    "invariants": [
+      "ExactDismissal",
+      "SettingsOwnership",
+      "RenderOrder"
+    ],
+    "sources": [
+      "apps/app/src/runtime/connection-ui.tsx",
+      "apps/app/src/runtime/connection-ui.css",
+      "apps/app/src/browser/display.ts"
+    ],
+    "abstractions": [
+      "The mounted chooser projects a running resident with a needs-plan admission and a near-expiry sign-in. Each notice owns one dismissal and Settings suppresses publication while retaining its mounted card.",
+      "Two viewport and text-scale classes. A closed Chromium replay checks actual geometry, action hit ownership, scrolling and both dismissal orders. Account replacement, renewal, billing and installed WebView behavior remain separate."
+    ]
+  },
+  {
+    "path": "specs/quint/application/MapsRerouteOwnership.qnt",
+    "module": "MapsRerouteOwnership",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "samePublicIdCanBeNewRouteTest",
+      "exactLiveRefusalTest",
+      "lateSuccessCannotReturnReplacementTest",
+      "lateRefusalCannotReturnReplacementTest",
+      "endKeepsAdmittedReviewRouteTest"
+    ],
+    "invariants": [
+      "GuidanceOwnsWatch",
+      "ExactPublication",
+      "ExactAgentSettlement"
+    ],
+    "sources": [
+      "apps/app/src/prototype/maps-adapter.ts",
+      "apps/app/src/prototype/template.html",
+      "apps/app/src/maps/state.ts",
+      "apps/app/src/maps/screen.ts",
+      "apps/app/src/maps/device-navigation.ts",
+      "apps/app/src/maps/agent-navigation.ts",
+      "vendor/eliza/plugins/plugin-maps/src/client/state.ts",
+      "vendor/eliza/plugins/plugin-maps/src/client/maps-screen.ts",
+      "vendor/eliza/plugins/plugin-maps/src/client/device-navigation.ts",
+      "vendor/eliza/plugins/plugin-maps/src/client/agent-navigation.ts",
+      "patches/eliza/maps-reroute-state-client.patch",
+      "patches/eliza/maps-reroute-state-client-manifest.json",
+      "patches/eliza/maps-reroute-maps-screen-client.patch",
+      "patches/eliza/maps-reroute-maps-screen-client-manifest.json",
+      "patches/eliza/maps-reroute-device-navigation-client.patch",
+      "patches/eliza/maps-reroute-device-navigation-client-manifest.json"
+    ],
+    "stateMapping": {
+      "session/guidanceSession/guidanceRoute/rerouting/fixReady": "Mounted MapsScreenController navigation lifecycle and active guidance",
+      "phase/route/origin/requestOrigins/pending/aborted": "Exact admitted transport bodies, held replies, abort signals, and current MapsController route",
+      "agent/agentSession/settledFor": "Actual resident Maps navigation port request and result plus the screen's exact reroute publication authority",
+      "watches": "Browser geolocation port's live watch count"
+    },
+    "abstractions": [
+      "One mounted Maps component, three fixture route origins, up to three route requests, one agent reroute and a replacement guidance session. Public route IDs may repeat across accepted requests.",
+      "Actual template controls, provider controller and registered resident agent run with closed Cloud transport and precise synthetic geolocation. Reply checkpoints include agent settlement. Android task attribution, installed providers and unrestricted interleavings are external."
+    ]
+  },
+  {
+    "path": "specs/quint/application/MapsEventReturn.qnt",
+    "module": "MapsEventReturn",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "newVisitKeepsOwnershipAfterLatePriorReplyTest",
+      "visiblePagehideRetiresBeforePageshowTest",
+      "nativeLatePermissionDoesNotReplaceLatestNoticeTest",
+      "staleHandlerCannotIssueNativeReadTest",
+      "navigationRejectsReadbackWithoutDroppingOriginTest"
+    ],
+    "invariants": [
+      "CurrentAttemptOwns",
+      "ExactReturn",
+      "UnwindsOnce",
+      "Bounded"
+    ],
+    "sources": [
+      "apps/app/src/prototype/maps-adapter.ts",
+      "apps/app/src/runtime/maps-event-return.ts"
+    ],
+    "abstractions": [
+      "Current Maps render binding for a canonical or native Calendar origin, visit-scoped dispatch ownership, visibility/leave retirement and exact Calendar return effects.",
+      "Two event identities, six captured origin objects and five return attempts. Screen, native and provider effects arrive through controlled ports. Browser regressions separately mount the real shell."
+    ]
+  },
+  {
+    "path": "specs/quint/application/BrowserOwnerReminderRead.qnt",
+    "module": "BrowserOwnerReminderRead",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "ownerReplacementWaitsForRetiredTransportTest",
+      "cacheBoundaryAndRefreshTest",
+      "closeAndReopenShadeDiscardsLateReplyTest",
+      "busyAndPrivacyRetirePublicationTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/owner-reminder-notification-port.ts",
+      "apps/app/src/runtime/owner-reminder-notification-protocol.ts",
+      "apps/app/src/runtime/abort-signal.ts"
+    ],
+    "abstractions": [
+      "Actual browser owner-reminder passive list admission, exact owner binding, abort, five-second cache and 24-read budget.",
+      "One held transport, two synthetic owners and one canonical reminder row per reply. Explicit mark-read, reconciliation and mounted browser consumption are separate."
+    ]
+  },
+  {
+    "path": "specs/quint/application/AgentCalendarSyncControl.qnt",
+    "module": "AgentCalendarSyncControl",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "resumeRevalidatesExactSourceVersionTest",
+      "draftFenceWithdrawnWhileSourceReadsTest",
+      "selectSendsCapturedRevisionAndExactDestinationTest",
+      "retiredReviewCannotAdmitNewScopeTest",
+      "listCancelsIndependentlyOfControlMutationTest"
+    ],
+    "invariants": [
+      "ActiveOwnsEpoch",
+      "DispatchMatchesReview",
+      "ExactSending",
+      "Bounded"
+    ],
+    "sources": [
+      "apps/app/src/runtime/agent-calendar.ts",
+      "apps/app/src/runtime/agent-calendar-client.ts",
+      ".eliza/client-features/plugins/plugin-calendar/src/api/calendar-api.ts"
+    ],
+    "abstractions": [
+      "Current renderer review, selection, resume, pause, recovery and linked event readback. Capture the exact owner/session/scope, control revision and selected source version, and observe draft and preservation fences.",
+      "Two owner/session/scope classes, two destinations, eight epochs and seven attempts. Calendar settings modal, Google grant/link orchestration, provider idempotency and remote effects remain separate."
+    ]
+  },
+  {
+    "path": "specs/quint/application/BrowserOwnerReminderAction.qnt",
+    "module": "BrowserOwnerReminderAction",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "lostAcknowledgementNeedsReadbackTest",
+      "deliberateShadeCloseDoesNotCancelAnOpenTest",
+      "ownerReplacementRetiresLateMutationReplyTest",
+      "observedCallbackUsesCurrentUiTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/owner-reminder-notification-port.ts",
+      "apps/app/src/runtime/owner-reminder-notification-protocol.ts",
+      "apps/app/src/runtime/abort-signal.ts"
+    ],
+    "abstractions": [
+      "Exact reviewed notification, action admission, policy and open callbacks, mark-read and ambiguity reconciliation.",
+      "Two owner identities, two UI callback objects, one active explicit operation and one canonical reminder per reply. No mounted shade, history or actual server writes."
+    ]
+  },
+  {
+    "path": "specs/quint/application/GoogleCalendarLinkFlow.qnt",
+    "module": "GoogleCalendarLinkFlow",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "selectResumeAndFinalReadbackTest",
+      "pendingDispatchNeedsChangedReadbackTest",
+      "priorReviewClearsOnlyAtSendTest",
+      "cancellationWhileWaitingMakesNoReadTest",
+      "changedControlRevisionDoesNotResumeTest"
+    ],
+    "invariants": [
+      "ReviewBudget",
+      "NoGrantNoRequest",
+      "ReadbackRequired",
+      "RetainedReview"
+    ],
+    "sources": [
+      "apps/app/src/runtime/google-accounts.ts",
+      "apps/app/src/runtime/agent-calendar.ts"
+    ],
+    "abstractions": [
+      "Current Google Calendar setup from verified grants through bounded review, select, resume and final readback. Preserve exact destination, captured control revision, stable key and most recent readback.",
+      "Two owners and account identities, three destinations, three reviews and at most two writes. AgentCalendar control is a controlled interface in this campaign. Mounted caller and installed provider obligations remain separate."
+    ]
+  },
+  {
+    "path": "specs/quint/application/BrowserHostedResultNotice.qnt",
+    "module": "BrowserHostedResultNotice",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "exactReplayAndDigestChangeTest",
+      "latestExactTokenControlsSettlementTest",
+      "retiredOwnerCannotSettleBrowserTokenTest",
+      "queuedSettlementCannotTransferToSameScopeReplacementTest"
+    ],
+    "sources": [
+      "apps/app/src/browser/hosted-results.ts",
+      "apps/app/src/browser/domain-document.ts",
+      "apps/app/src/browser/notice-action.ts",
+      "apps/app/src/browser/revision.ts",
+      "apps/app/src/browser/screen-locked.ts",
+      "apps/app/src/runtime/hosted-result-notices.ts"
+    ],
+    "abstractions": [
+      "Exact owner, retained result digest and card revision, redacted browser ledger and current tap token.",
+      "Three result identities, two owner scopes, one publication in flight and serialized browser document ports. IndexedDB and mounted renderer settlement are separate."
+    ]
+  },
+  {
+    "path": "specs/quint/application/GoogleCalendarDisconnect.qnt",
+    "module": "GoogleCalendarDisconnect",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "revokeStartsBeforeBothCleanupRepliesTest",
+      "staleCalendarLeaseCannotVetoIndependentPrivacyTest",
+      "confirmedPauseLosesRetiredCalendarGenerationTest",
+      "finiteTimeoutCannotPublishLateCleanupTest",
+      "privacyRetirementSuppressesCompletedCleanupTest",
+      "failedRevokeDoesNotWaitForCleanupTest"
+    ],
+    "invariants": [
+      "CleanupBudget",
+      "RevokeDoesNotWaitForCleanup",
+      "ExactPause",
+      "NoProviderDrainClaim"
+    ],
+    "sources": [
+      "apps/app/src/runtime/google-accounts.ts"
+    ],
+    "abstractions": [
+      "Current Calendar-aware Google disconnect helper. Exact captured lease, source, pause revision and key, independent Cloud privacy revoke and separate callback retirement.",
+      "One connection, bounded cleanup observers and controlled result order. The mounted callsite, native access publication, actual provider drain, remote effects and persistence remain separate."
+    ]
+  },
+  {
+    "path": "specs/quint/application/HostedNoticeQuestion.qnt",
+    "module": "HostedNoticeQuestion",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "closedReviewLeavesNoticePendingTest",
+      "exactRecheckBeforeConsumptionTest",
+      "consumptionCanOutliveAnInterruptedReviewTest",
+      "resolverDropsOverlapAndCanRetryTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/hosted-notice-question.ts",
+      "apps/app/src/browser/content-question.ts",
+      "apps/app/src/prototype/context-selection.ts",
+      "apps/app/src/runtime/hosted-digests.ts",
+      ".eliza/client-features/plugins/plugin-native-browser-surface/src/page-reading.ts",
+      ".eliza/client-features/plugins/plugin-workflow/src/client/hosted-digests.ts"
+    ],
+    "abstractions": [
+      "Actual hosted question review and shared text/digest rules, exact retained token readback, draft publication after acknowledgement and overlap refusal.",
+      "One reviewed native question and bounded synthetic owner, composer and notice settlement. Physical DOM input and mounted panel/provider interactions are separate."
+    ]
+  },
+  {
+    "path": "specs/quint/application/GoogleCalendarLinkPublication.qnt",
+    "module": "GoogleCalendarLinkPublication",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "staleSameIntentResultCannotReplaceLatestReviewTest",
+      "staleFinallyKeepsReplacementReadBusyTest",
+      "staleHostPermissionCannotStartHelperTest",
+      "retiredIntentCannotPublishLateResultTest",
+      "needsGrantKeepsCurrentRetainedReviewTest",
+      "hostRefusalEndsAuthorizationAfterVerifiedReturnTest"
+    ],
+    "invariants": [
+      "LinkOwnsBusy",
+      "SeparateAccountRead",
+      "Bounded",
+      "HelperOnce"
+    ],
+    "sources": [
+      "apps/app/src/runtime/google-connection-ui.tsx",
+      "apps/app/src/runtime/google-connection-return.ts",
+      "apps/app/src/runtime/modal-inert.ts"
+    ],
+    "abstractions": [
+      "Current mounted Google Calendar intent, separate account/link busy owners, verified account continuation, browser-host permission and exact current result publication.",
+      "Three Cloud bindings, four intents, six reads and five attempts. Chromium mounts real React and inert scope over controlled access, account, host, browser and link interfaces. Persistence, native access publication and provider effects remain separate."
+    ]
+  },
+  {
+    "path": "specs/quint/application/RendererHostedInbox.qnt",
+    "module": "RendererHostedInbox",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "orphanReadBackBeforeAcknowledgementTest",
+      "staleProviderBodyCannotReplaceHistoryTest",
+      "refusedNoticeRetainsRetryTest",
+      "retirementAfterAckDispatchKeepsDurableResultTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/digest-inbox.ts",
+      "apps/app/src/runtime/hosted-digests.ts",
+      ".eliza/client-features/plugins/plugin-workflow/src/client/hosted-digests.ts"
+    ],
+    "abstractions": [
+      "Actual browser and Android renderer-fallback inbox, ordered result/index/notice writes, replay, pending-removal recovery and exact provider acknowledgement.",
+      "Two result identities, one row per provider page and one in-flight sync. Real storage, capacity and same-scope queue interleavings are separate."
+    ]
+  },
+  {
+    "path": "specs/quint/application/HostedDigestMutation.qnt",
+    "module": "HostedDigestMutation",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "retiredJournalClearDoesNotRefreshReplacementTest",
+      "oldCleanupKeepsNewSaveBusyTest",
+      "lateRejectionCannotPublishToReplacementTest",
+      "unconfirmedRemoteKeepsExactRetryTest",
+      "discardClearsOnlyAnUnsentReviewTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/hosted-digest-ui.tsx",
+      "apps/app/src/runtime/hosted-digests.ts",
+      ".eliza/client-features/plugins/plugin-workflow/src/client/hosted-digests.ts"
+    ],
+    "abstractions": [
+      "Actual mounted digest journal review, dispatch, cleanup and publication across two exact session bindings, including a legacy record without a phase.",
+      "One held mutation or discard per binding and exact synthetic slot storage. Initial history and reads form one setup step. Native consent, renewal rebind and real provider settlement are separate."
+    ]
+  },
+  {
+    "path": "specs/quint/application/HostedDigestRefresh.qnt",
+    "module": "HostedDigestRefresh",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "retiredPromotionCannotLabelReplacementTest",
+      "retiredPollStatusCannotDispatchReplacementReadTest",
+      "sameSessionPromotionKeepsFullFollowUpTest",
+      "visibilityRetiresHeldResultAndResumesTest",
+      "lateHistoryCannotPublishForReplacementTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/hosted-digest-ui.tsx",
+      "apps/app/src/runtime/hosted-digests.ts",
+      ".eliza/client-features/plugins/plugin-workflow/src/client/hosted-digests.ts"
+    ],
+    "abstractions": [
+      "Mounted browser digest binding, history, visibility, exact pending poll and refresh ownership, single-flight promotion and retained Home attribution.",
+      "Two distinct sessions, bounded result replies and a successful capability port. The model holds status and inbox replies separately. Android setup and digest mutations are separate."
+    ]
+  },
+  {
+    "path": "specs/quint/application/HostedBackgroundAdmission.qnt",
+    "module": "HostedBackgroundAdmission",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "pauseTargetsOnlyTheExactSessionTest",
+      "cancelledReservationNeverConfiguresTest",
+      "browserSetupDoesNotReserveNativeStateTest",
+      "failedCancelReplyRemainsObservableTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/hosted-background.ts"
+    ],
+    "abstractions": [
+      "Renderer native setup reservation, exact attempt and session cancellation, port reply settlement and external abort listener cleanup.",
+      "Two attempt slots and two sessions. Held begin and configure replies expose retirement before each boundary. Cancellation microtasks are coalesced. Durable worker and inbox history are separate."
+    ]
+  },
+  {
+    "path": "specs/quint/application/RendererDigestQueue.qnt",
+    "module": "RendererDigestQueue",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "abortedQueueEntryDoesNotDispatchTest",
+      "fallbackRunsIndependentlyOfTheWebScopeTest",
+      "failedPredecessorReleasesTheScopeTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/digest-inbox.ts",
+      ".eliza/client-features/plugins/plugin-workflow/src/client/hosted-digests.ts"
+    ],
+    "abstractions": [
+      "Exact scope queue ownership across actual inbox instances, cancellation, refusal, release, and FIFO admission.",
+      "Four callers, two exact effective scopes and one empty provider page per dispatch. Durable result retention has a separate model."
+    ]
+  },
+  {
+    "path": "specs/quint/application/GoogleCalendarAccessChoice.qnt",
+    "module": "GoogleCalendarAccessChoice",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "replacementReadOnlyRetiresOldWriteChoiceTest",
+      "freshReplacementWriteReviewAdmitsItsOwnChoiceTest",
+      "newerSameOwnerReadRetiresHeldAllowTest",
+      "retiredIntentCannotShowHeldPermissionChoiceTest",
+      "freshReadOnlyAllowContinuesConsentTest"
+    ],
+    "invariants": [
+      "ExactChoice",
+      "VerifiedDispatch",
+      "Bounded"
+    ],
+    "sources": [
+      "apps/app/src/runtime/google-connection-ui.tsx",
+      "apps/app/src/runtime/google-connection-return.ts"
+    ],
+    "abstractions": [
+      "Exact verified account read and Calendar intent for a pending Allow Calendar changes prompt and its guarded persistence and continuation.",
+      "Two Cloud bindings, four intents, six reads and six access captures. Controlled native access receipts, Calendar helper and browser consent. Post-consent return, physical persistence and provider effects remain separate."
+    ]
+  },
+  {
+    "path": "specs/quint/application/RetainedHomeBrief.qnt",
+    "module": "RetainedHomeBrief",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "latePreviousScopeCannotReplaceCurrentBriefTest",
+      "nonRunningOccurrencesDoNotBecomeABriefTest",
+      "sourcePublicationUsesCopiedObserverSetTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/hosted-digests.ts",
+      ".eliza/client-features/plugins/plugin-workflow/src/client/hosted-digests.ts"
+    ],
+    "abstractions": [
+      "Actual retained brief selection, scope, result replacement, clipping and observer publication.",
+      "Two owners, seven result profiles and three observers. Exact caller generation and mounted Home rendering have separate evidence."
+    ]
+  },
+  {
+    "path": "specs/quint/application/CalendarPreservationConfirmation.qnt",
+    "module": "CalendarPreservationConfirmation",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "sameOwnerReplacementBeforeDispatchTest",
+      "reentryAndOldFinallyTest",
+      "committedMarkerSurvivesRetirementTest",
+      "currentExactMarkerPublishesTest",
+      "changedInventoryRequiresFreshReviewTest",
+      "pageHideRetiresHeldApprovalTest"
+    ],
+    "invariants": [
+      "ActiveReviewOwnsVisit",
+      "MarkerHasDispatch",
+      "PublishedHasCurrentReadback"
+    ],
+    "sources": [
+      "apps/app/src/prototype/agent-calendar-adapter.ts",
+      "apps/app/src/prototype/settings-adapter.ts",
+      "apps/app/src/prototype/model.js",
+      "apps/app/src/prototype/template.html",
+      "apps/app/src/runtime/agent-calendar.ts",
+      "apps/app/src/runtime/legacy-calendar-preservation.ts",
+      "apps/app/src/browser/calendar-store.ts",
+      "apps/app/src/browser/documents.ts"
+    ],
+    "abstractions": [
+      "Exact mounted Settings review, live port and pending confirmation, with separate marker capture, expected receipt, CAS commit and UI settlement.",
+      "Two owners, four port lifetimes and attempts, two real inventory equality classes. Chromium IndexedDB and closed record transport. Installed provider and arbitrary device loss are separate."
+    ]
+  },
+  {
+    "path": "specs/quint/application/CanonicalCalendarEditorClose.qnt",
+    "module": "CanonicalCalendarEditorClose",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "pickerBackThenFormBackKeepsDraftTest",
+      "closeInvalidFormKeepsTheLastValidCopyTest",
+      "declinedDiscardThenConsumedDraftUnblocksSettingsTest",
+      "editBackKeepsItsEventDetailTest",
+      "exactRetainedEditBlocksSameOrDifferentEventTest",
+      "replacedOwnerCannotResumeOldVisibleDraftTest"
+    ],
+    "invariants": [
+      "ExactDraftOwner",
+      "NoClosedValidationLatch",
+      "PickerBelongsToEditor"
+    ],
+    "sources": [
+      "apps/app/src/prototype/canonical-calendar-drafts.ts",
+      "apps/app/src/prototype/agent-calendar-adapter.ts",
+      "apps/app/src/prototype/model.js",
+      "apps/app/src/prototype/template.html",
+      "apps/app/src/prototype/subview-accessibility.ts",
+      "apps/app/src/runtime/canonical-calendar-draft.ts",
+      "apps/app/src/runtime/assistant-draft-store.ts"
+    ],
+    "abstractions": [
+      "Mounted Calendar picker and editor Back, exact detail and draft identity, deliberate discard and owner retirement, and Settings scope after discard.",
+      "Two owners, two synthetic service event targets and four form identities. Actual IndexedDB over a closed Calendar record transport. Provider saves and other draft destinations are separate."
+    ]
+  },
+  {
+    "path": "specs/quint/application/CanonicalCalendarDraftHandoff.qnt",
+    "module": "CanonicalCalendarDraftHandoff",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "noteAndReminderUseSeparateDraftAdmissionTest",
+      "scanRefusalKeepsReviewAndRetainedDraftTest",
+      "deliberateClearAdmitsFreshScanTest",
+      "pendingConsumeDoesNotAdmitNoteTest",
+      "openingReplacementSlotDoesNotAdmitIncomingDraftTest",
+      "unavailableCanonicalSourceRetainsOriginTest"
+    ],
+    "invariants": [
+      "OriginReviewIsScoped",
+      "CanonicalEditorUsesSlot",
+      "LoadingSlotHasNoOldDraft"
+    ],
+    "sources": [
+      "apps/app/src/prototype/agent-calendar-adapter.ts",
+      "apps/app/src/prototype/canonical-calendar-drafts.ts",
+      "apps/app/src/prototype/canonical-notes-ui.ts",
+      "apps/app/src/prototype/camera-adapter.ts",
+      "apps/app/src/prototype/scan-review.ts",
+      "apps/app/src/prototype/scan-event-review.ts",
+      "apps/app/src/runtime/assistant-draft-store.ts"
+    ],
+    "abstractions": [
+      "Exact mounted Note and scanned-event draft admission to the canonical Calendar editor, retaining earlier drafts and separate reminder authority.",
+      "Two owners and selected slot open, retain, consume and ready phases. Chromium IndexedDB, closed Calendar transport, synthetic image and camera port. Native capture and provider writes remain separate."
+    ]
+  },
+  {
+    "path": "specs/quint/application/CameraPreviewRetirement.qnt",
+    "module": "CameraPreviewRetirement",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "pendingLeaveBeforeHomeFencesPreviewTest",
+      "readyLeaveReleasesItsExactTrackTest",
+      "retiredStreamCannotReplaceTheFreshPreviewTest"
+    ],
+    "invariants": [
+      "RetirementStopsAdmission",
+      "CurrentRequestOwnsPreview",
+      "VisibleTrackMatchesRequest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/camera-adapter.ts",
+      "apps/app/src/prototype/browser-camera.ts",
+      "apps/app/src/prototype/model.js",
+      "apps/app/src/prototype/template.html",
+      ".eliza/client-features/plugins/plugin-native-camera/src/session.ts"
+    ],
+    "abstractions": [
+      "Mounted pre-commit Camera leave and committed Home, preview-release latch, exact pending request owner, retired stream disposal and deliberate fresh reentry.",
+      "Two browser visits and controlled canvas MediaStreams. Native permissions, conversation and media writes are separate."
+    ]
+  },
+  {
+    "path": "specs/quint/application/SourceRenewalQuestion.qnt",
+    "module": "SourceRenewalQuestion",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "composeCurrentExactQuestionTest",
+      "retiredSettlementDoesNotReportTest",
+      "unavailableComposerPreservesTapTest",
+      "wrongSourceNeverOpensTest",
+      "interruptedQuestionPreservesTapTest",
+      "explicitDismissalDiscardsExactTapTest",
+      "rejectedNativeSettlementKeepsTapTest"
+    ],
+    "invariants": [
+      "DialogOwnedByCurrent",
+      "FailureOwnedByCurrent",
+      "DraftRequiresSettlement",
+      "StagesAreDisjoint"
+    ],
+    "sources": [
+      "apps/app/src/runtime/hosted-digest-ui.tsx",
+      "apps/app/src/runtime/source-renewal-question.ts",
+      "apps/app/src/runtime/hosted-notice-question.ts",
+      "apps/app/src/browser/content-question.ts"
+    ],
+    "abstractions": [
+      "Mounted notification Ask review, exact reread, native settlement, composer admission and publication within two digest binding lifetimes.",
+      "Controlled Android bridge, native tap slot and composer. Source renewal mutation and native posting are separate."
+    ]
+  },
+  {
+    "path": "specs/quint/application/BrowserFilesTrash.qnt",
+    "module": "BrowserFilesTrash",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "heldTrashProtectsPeerListTest",
+      "heldRestorePreservesPeerMarkerTest",
+      "rejectedJournalWriteReleasesQueueTest",
+      "confirmedOldMarkerSparedNewIncarnationTest",
+      "retentionErasesOnlyExpiredMarkerTest",
+      "failedTrashKeepsLiveRowTest",
+      "failedRestoreKeepsExactMarkerTest"
+    ],
+    "invariants": [
+      "ExclusiveCustody",
+      "ExactTrashMarker",
+      "ListedItemsUseExactRecords",
+      "KeysStayWithinAllocation",
+      "PreparedPlacementKeepsSource"
+    ],
+    "sources": [
+      "apps/app/src/browser/files.ts",
+      "vendor/eliza/plugins/plugin-files/src/browser/storage-volume.ts",
+      "vendor/eliza/plugins/plugin-files/src/browser/storage-model.ts",
+      "vendor/eliza/plugins/plugin-files/src/browser/files.ts",
+      "patches/eliza/files-storage-query-client.patch",
+      "patches/eliza/files-storage-placement-client.patch"
+    ],
+    "stateMapping": {
+      "mode/active/queued/prepared": "Actual Node exclusive lock and same-realm fallback with source requests held at library ports",
+      "rows/keys/journal/allocated": "Physical parent and destination name, exact marker identities and persisted journal bytes",
+      "expired/visible/status/count": "Controlled retention boundary and actual list, move, restore and confirmed-delete results"
+    },
+    "abstractions": [
+      "Two volume instances, one namespace, two files, three marker allocations and one waiting request. Controlled real-source library and journal ports expose rejection and release. Exact reviewed Empty uses one marker.",
+      "Placement checks the original revision and changes parent and name atomically. The journal and file transaction are separate. Cross-tab scheduling, interruption and larger batches remain separate."
+    ],
+    "bounds": {
+      "maxSamples": 1000,
+      "maxSteps": 80,
+      "maxVerifyDepth": 8
+    }
   }
 ]

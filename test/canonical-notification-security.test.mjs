@@ -69,3 +69,35 @@ test('actual acknowledgment body retains an undispatched tap and never revives a
  }} `;
  assert.match(run([['ActualAcknowledgmentTest.java',java]],'ai.elizaresearch.alphaphone.ActualAcknowledgmentTest'),/^PASS actual native acknowledgment state/);
 });
+
+test('actual tap capture expires five minutes after the tap, not after the first connection',()=>{
+ const actor=readFileSync(nativeSource('AlphaCanonicalNotifications.java'),'utf8');
+ const start=actor.indexOf(' static void captureTap('),end=actor.indexOf(' static JSONObject pending()',start);assert.ok(start>=0&&end>start);
+ const clock=`package android.os;public class SystemClock{public static long now;public static long elapsedRealtime(){return now;}}`;
+ const context=`package android.content;public class Context{}`;
+ const intent=`package android.content;import java.util.*;public class Intent{public static final String ACTION_MAIN="main";final Map<String,String> extras=new HashMap<>();public Intent(){}public Intent(Intent o){extras.putAll(o.extras);}
+  public Intent putExtra(String k,String v){extras.put(k,v);return this;}public boolean hasExtra(String k){return extras.containsKey(k);}public String getStringExtra(String k){return extras.get(k);}public void removeExtra(String k){extras.remove(k);}public Intent setData(Object d){return this;}public Intent setAction(String a){return this;}}`;
+ const java=`package ai.elizaresearch.alphaphone;import android.content.*;import android.os.SystemClock;import org.json.*;
+ class NativeNotificationProjector {static boolean onOpened(Context c,Intent tap,String owner){return true;}}
+ class NativeNotificationRoute {static String view(String link){return link==null?null:"chat";}}
+ class AlphaNotificationsPlugin {static int ready;static void canonicalTapReady(){ready++;}}
+ class AlphaCanonicalNotifications {static final java.util.concurrent.Executor SERIAL=Runnable::run;static final long TAP_WINDOW_MS=300000;static Intent waitingTap;static long waitingTapAt;static JSONObject pendingTap;static AlphaCanonicalNotifications active;
+  final Context context=new Context();final String owner="owner";final JSONObject identity;AlphaCanonicalNotifications()throws Exception{identity=new JSONObject().put("subjectUserId","user").put("agentId","agent");}
+  void check(){if(active!=this)throw new SecurityException("Retired");}
+ ${actor.slice(start,end)}
+  static void consumeNow(){active.consumeWaitingTap();}
+ }
+ public class TapAgeTest {static int checks;static void check(boolean ok){if(!ok)throw new AssertionError("check "+checks);checks++;}
+  static Intent tap(){return new Intent().putExtra("elizaNativeNotificationOwner","owner").putExtra("notificationId","n1").putExtra("deepLink","alpha://chat");}
+  public static void main(String[]args)throws Exception{
+   SystemClock.now=1000000;AlphaCanonicalNotifications.captureTap(null,tap());check(AlphaCanonicalNotifications.waitingTap!=null);
+   SystemClock.now+=360000;AlphaCanonicalNotifications.active=new AlphaCanonicalNotifications();AlphaCanonicalNotifications.consumeNow();
+   check(AlphaCanonicalNotifications.waitingTap==null);check(AlphaCanonicalNotifications.pendingTap==null);check(AlphaNotificationsPlugin.ready==0);
+   AlphaCanonicalNotifications.active=null;AlphaCanonicalNotifications.captureTap(null,tap());
+   SystemClock.now+=60000;AlphaCanonicalNotifications.active=new AlphaCanonicalNotifications();long before=System.currentTimeMillis();AlphaCanonicalNotifications.consumeNow();
+   check(AlphaCanonicalNotifications.waitingTap==null);check(AlphaNotificationsPlugin.ready==1);check("chat".equals(AlphaCanonicalNotifications.pendingTap.getString("view")));
+   long expires=AlphaCanonicalNotifications.pendingTap.getLong("expiresAt");check(expires>=before+240000&&expires<=System.currentTimeMillis()+240000);
+   System.out.println("PASS tap age window "+checks);
+  }}`;
+ assert.match(run([['SystemClock.java',clock],['Context.java',context],['Intent.java',intent],['TapAgeTest.java',java]],'ai.elizaresearch.alphaphone.TapAgeTest'),/^PASS tap age window 8/);
+});

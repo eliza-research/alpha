@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { auditPage, auditReadingOrder, auditTabOrder, auditTree, exposedTabStopBudget, format } from './accessibility-audit';
+import { auditPage, auditReadingOrder, auditTabOrder, auditTree, exposedTabStopBudget, format, blocking } from './accessibility-audit';
 import { LIVE_STATES, type State } from './accessibility-states';
 
 import {flagOffAndroid, residentHome, fenceNetwork} from './flag-off-android';
@@ -44,7 +44,6 @@ const PRODUCTION_APPS_STATE: State = {
   },
 };
 const STATES = [...LIVE_STATES, PRODUCTION_APPS_STATE];
-const blocking = (lines: string[]) => lines.filter(line => !line.startsWith('text-truncated:'));
 
 for (const state of STATES) {
   test(`production names, roles, focus, contrast and clipping: ${state.name}`, async ({ page }) => {

@@ -5,6 +5,7 @@ import path from 'node:path';
 import os from 'node:os';
 import {prepareClientFeatures} from './prepare-client-features.mjs';
 import {sourceDirectory,verifySource} from './local-agent-source.mjs';
+import {CORE_STATE_INPUTS,verifyCoreStateBuildRecord,coreStateRequiredTargets} from './core-state-patch.mjs';
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 const safe=name=>typeof name==='string'&&!path.isAbsolute(name)&&name.split('/').every(part=>part&&part!=='.'&&part!=='..');
 export function verifyNativeGoogleHostArtifact(root,directory){
@@ -15,6 +16,7 @@ export function verifyNativeGoogleHostArtifact(root,directory){
   const file=path.join(root,name),stat=fs.lstatSync(file);
   if(!stat.isFile()||stat.isSymbolicLink()||hash(fs.readFileSync(file))!==digest)throw Error('Native Google host source changed; build a fresh host artifact');
  }
+ verifyCoreStateBuildRecord(root,host.coreState,coreStateRequiredTargets(Object.keys(host.inputs)));
  const file=path.join(directory,host.module),stat=fs.lstatSync(file);
  if(!stat.isFile()||stat.isSymbolicLink()||hash(fs.readFileSync(file))!==manifest.files[host.module])throw Error('Native Google host bytes changed');
  return host;
@@ -31,7 +33,7 @@ export function addNativeGoogleHostArtifact(root,directory){
   verifySource(sdk,pin);
   execFileSync(bun,['--conditions=eliza-source','scripts/build-native-google-host.ts',root,sdk,file,meta],{cwd:root,stdio:'pipe'});
   verifySource(sdk,pin);
-  const metadata=JSON.parse(fs.readFileSync(meta,'utf8')),names=new Set([...Object.keys(metadata.inputs),'package.json','tsconfig.json','vendor/eliza/tsconfig.json',path.relative(root,path.join(sdk,'tsconfig.json')),'scripts/build-native-google-host.ts','scripts/local-agent-source.mjs','upstream.lock.json','scripts/native-google-host-artifact.mjs','scripts/prepare-client-features.mjs','scripts/client-speech-patch.mjs']);
+  const metadata=JSON.parse(fs.readFileSync(meta,'utf8')),names=new Set([...Object.keys(metadata.inputs),...CORE_STATE_INPUTS,'package.json','tsconfig.json','vendor/eliza/tsconfig.json',path.relative(root,path.join(sdk,'tsconfig.json')),'scripts/build-native-google-host.ts','scripts/local-agent-source.mjs','upstream.lock.json','scripts/native-google-host-artifact.mjs','scripts/prepare-client-features.mjs','scripts/client-speech-patch.mjs']);
   for(const name of ['patches/eliza/cloud-speech-client-manifest.json','patches/eliza/cloud-speech-client.patch'])if(fs.existsSync(path.join(root,name)))names.add(name);
   const inputs={};for(const name of [...names].sort()){
    if(!safe(name))throw Error('Native Google build input escaped product source');
@@ -40,7 +42,7 @@ export function addNativeGoogleHostArtifact(root,directory){
   }
   const manifestFile=path.join(directory,'manifest.json'),manifest=JSON.parse(fs.readFileSync(manifestFile,'utf8'));
   manifest.files['google-host.mjs']=hash(fs.readFileSync(file));
-  manifest.nativeGoogleHost={version:1,module:'google-host.mjs',bunVersion:'1.4.2',inputs};
+  manifest.nativeGoogleHost={version:1,module:'google-host.mjs',bunVersion:'1.4.2',inputs,coreState:metadata.coreState};
   fs.writeFileSync(manifestFile,JSON.stringify(manifest,null,2)+'\n');
   return verifyNativeGoogleHostArtifact(root,directory);
  }finally{fs.rmSync(temporary,{recursive:true,force:true});}
