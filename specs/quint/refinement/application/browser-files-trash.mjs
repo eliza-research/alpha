@@ -8,6 +8,7 @@ import {captureInputs, checkTraces, qmap, qset} from '../check-traces.mjs';
 const root = resolve(import.meta.dirname, '../../../..');
 const source = 'plugins/plugin-files/src/browser/storage-volume.ts';
 const model = 'plugins/plugin-files/src/browser/storage-model.ts';
+const librarySource = 'plugins/plugin-files/src/browser/files.ts';
 const generated = '.eliza/client-features/';
 const namespace = {trashFolder: '.Trash-alpha', trashKey: 'alpha.files.trash.v1'};
 const lockName = 'browser-files-trash:'+namespace.trashKey;
@@ -24,7 +25,7 @@ function fixture(Volume, context) {
   for (const file of files) rows.set(String(file), {id: String(file), parentId: 'download', name: names.get(file),
     directory: false, revision: '1', mimeType: 'application/pdf', size: file});
   const handles = new Map(), requests = [], expired = new Set();
-  let now = startTime, raw = null, held, refuseMove, failWrite = false, result = null, visible = [];
+  let now = startTime, raw = null, held, refusePlacement, failWrite = false, result = null, visible = [];
   const mark = value => {
     assert.ok(handles.has(value), 'The exact marker was observed in a durable journal write');
     return handles.get(value);
@@ -65,12 +66,12 @@ function fixture(Volume, context) {
         revision: '1', mimeType: '', size: 0});
     },
     async rename(input) {atPort(); mutate(input, row => ({...row, name: input.name}));},
-    async move(input) {
+    async place(input) {
       const request = atPort();
-      if (request && rows.get(input.id)?.name.startsWith('.moving-')) request.staged = true;
-      await gate('move', request, input.id);
-      if (refuseMove === input.id) throw Error('Controlled move refusal');
-      mutate(input, row => ({...row, parentId: input.destinationId}));
+      if (request) request.prepared = true;
+      await gate('place', request, input.id);
+      if (refusePlacement === input.id) throw Error('Controlled placement refusal');
+      mutate(input, row => ({...row, parentId: input.destinationId, name: input.name}));
     },
     async delete(input) {
       atPort();
@@ -96,7 +97,6 @@ function fixture(Volume, context) {
   function classify(row) {
     if (!row) return 'gone';
     assert.ok(['download', 'trash-folder'].includes(row.parentId));
-    if (row.name.startsWith('.moving-')) return row.parentId === 'download' ? 'staging-live' : 'staging-trash';
     return row.parentId === 'download' ? 'live' : 'trash';
   }
   function observe(mode) {
@@ -120,12 +120,11 @@ function fixture(Volume, context) {
       if (state === 'live') assert.equal(row.name, names.get(file));
     }
     return {
-      's.mode': mode, 's.active': request(active[0]), 's.queued': request(queued[0]), 's.staged': !!active[0]?.staged,
+      's.mode': mode, 's.active': request(active[0]), 's.queued': request(queued[0]), 's.prepared': !!active[0]?.prepared,
       's.rows': qmap(states), 's.keys': qmap(states.map(([file, state]) => [file, state === 'trash' ? mark(rows.get(String(file)).name) : 0])),
       's.journal': qmap(markers.map(marker => [marker, mapped.get(marker) ?? 0])),
       's.allocated': handles.size, 's.expired': qset(expired), 's.visible': qset(visible),
       's.status': result?.status ?? 'idle', 's.count': result?.count ?? 0,
-      AllRowsReachVisiblePlace: states.every(([, state]) => !state.startsWith('staging-')),
     };
   }
   function call(owner, kind, subject, options = {}) {
@@ -176,7 +175,7 @@ function fixture(Volume, context) {
       return {arrived: arrived.promise, release: release.resolve};
     },
     failWrite() {failWrite = true;},
-    refuseMove(file) {refuseMove = String(file);},
+    refusePlacement(file) {refusePlacement = file === undefined ? undefined : String(file);},
     time(value, marker) {
       now = value;
       if (marker) {expired.add(marker); result = {status: 'clock'};}
@@ -190,8 +189,8 @@ function schedule(mode, f, name) {
 }
 const begin = (owner, kind, subject = 0) => action('begin', owner, kind, subject);
 const queue = (owner, kind, subject = 0) => action('queue', owner, kind, subject);
-const trash = (owner, file, ok = true) => [begin(owner, 'trash', file), action('stageTrash'), action('finishTrash', ok)];
-const restore = (owner, marker, ok = true) => [begin(owner, 'restore', marker), action('stageRestore'), action('finishRestore', ok)];
+const trash = (owner, file, ok = true) => [begin(owner, 'trash', file), action('prepareTrash'), action('finishTrash', ok)];
+const restore = (owner, marker, ok = true) => [begin(owner, 'restore', marker), action('prepareRestore'), action('finishRestore', ok)];
 const listed = owner => [begin(owner, 'list'), action('finishList')];
 const empty = (owner, marker, confirmed = true) => [begin(owner, 'empty', marker), action('finishEmpty', confirmed)];
 
@@ -208,14 +207,14 @@ async function verifyHeld(mode, lockManager, ticket, settled) {
 }
 
 async function heldTrashAndList(f, t, mode, locks) {
-  const gate = f.hold('move', 1, id => id === '1');
+  const gate = f.hold('place', 1, id => id === '1');
   const moving = f.call(1, 'trash', 1);
   try {
     await gate.arrived;
-    t.point('The marker is durable before the file crosses into Trash', [begin(1, 'trash', 1), action('stageTrash')]);
+    t.point('The marker is durable before the file crosses into Trash', [begin(1, 'trash', 1), action('prepareTrash')]);
     const listing = f.call(2, 'list', 0);
     await verifyHeld(mode, locks, listing, moving);
-    t.point('A same-namespace peer list cannot enter while the file is staged',
+    t.point('A same-namespace peer list cannot enter while the placement is pending',
       [queue(2, 'list'), {...begin(2, 'list'), reject: true}]);
     gate.release();
     const {outcomes: [moved]} = await f.record(moving, 'trashed');
@@ -232,11 +231,11 @@ async function heldTrashAndList(f, t, mode, locks) {
 async function heldRestoreAndTrash(f, t, mode, locks) {
   await f.record(f.call(1, 'trash', 1), 'trashed');
   t.point('First marker enters Trash', trash(1, 1));
-  const gate = f.hold('move', 1, id => id === '1');
+  const gate = f.hold('place', 1, id => id === '1');
   const returning = f.call(1, 'restore', 1);
   try {
     await gate.arrived;
-    t.point('Restore retains the marker while its exact row is staged', [begin(1, 'restore', 1), action('stageRestore')]);
+    t.point('Restore retains the marker while its exact row remains in Trash', [begin(1, 'restore', 1), action('prepareRestore')]);
     const moving = f.call(2, 'trash', 2);
     await verifyHeld(mode, locks, moving, returning);
     t.point('The second Trash waits behind the first Restore',
@@ -258,11 +257,11 @@ async function heldTrashAndEmpty(f, t, mode, locks) {
   const {items} = await f.record(f.call(1, 'list', 0), 'listed');
   assert.deepEqual(items.map(item => item.id), [first.to]);
   t.point('Owner sees only the first exact marker', listed(1));
-  const gate = f.hold('move', 1, id => id === '2');
+  const gate = f.hold('place', 1, id => id === '2');
   const moving = f.call(1, 'trash', 2);
   try {
     await gate.arrived;
-    t.point('The second item is held before its marker appears in Trash', [begin(1, 'trash', 2), action('stageTrash')]);
+    t.point('The second item is held before its marker appears in Trash', [begin(1, 'trash', 2), action('prepareTrash')]);
     const deleting = f.call(2, 'empty', f.mark(items[0].id), {confirmed: true});
     await verifyHeld(mode, locks, deleting, moving);
     t.point('Confirmed Empty waits with the old reviewed marker', queue(2, 'empty', 1));
@@ -321,28 +320,31 @@ async function staleMarkerAndRetention(f, t) {
   t.point('The boundary list removes only the expired marker and its exact row', listed(2));
 }
 
-async function failedMoves(f, t) {
+async function failedPlacements(f, t) {
   await f.record(f.call(1, 'trash', 1), 'trashed');
   t.point('First file reaches Trash before the refusal schedule', trash(1, 1));
-  f.refuseMove(1);
+  f.refusePlacement(1);
   await f.record(f.call(1, 'restore', 1), 'failed');
-  t.point('Failed Restore leaves the hidden staged row and its dangling marker', restore(1, 1, false));
-  await f.record(f.call(2, 'restore', 1), 'missing');
-  t.point('A new Restore cannot reclaim the dangling marker', [begin(2, 'restore', 1), action('missingRestore')]);
-  assert.deepEqual((await f.record(f.call(2, 'list', 0), 'listed')).items, []);
-  t.point('Later list prunes the dangling marker and exposes no staging row', listed(2));
-  f.refuseMove(2);
+  t.point('Failed Restore leaves the same physical row and exact marker in Trash', restore(1, 1, false));
+  assert.equal((await f.record(f.call(2, 'list', 0), 'listed')).items.length, 1);
+  t.point('Later list still exposes the exact recoverable file', listed(2));
+  f.refusePlacement();
+  await f.record(f.call(2, 'restore', 1), 'restored');
+  t.point('The same marker supports a fresh Restore', restore(2, 1));
+  f.refusePlacement(2);
   await f.record(f.call(2, 'trash', 2), 'failed');
-  t.point('Failed Trash rolls back its journal marker but leaves the staged name', trash(2, 2, false));
-  assert.deepEqual((await f.volumes[0].list('Download')).entries, []);
-  t.point('Ordinary Downloads also hides the staged name', null);
+  t.point('Failed Trash clears the provisional marker and leaves the live row unchanged', trash(2, 2, false));
+  assert.deepEqual((await f.volumes[0].list('Download')).entries.map(row => row.name).sort(), [...names.values()]);
+  t.point('Ordinary Downloads still exposes both original names', null);
 }
 
 export async function checkBrowserFilesTrash(extraSources = []) {
   checkClientFeatures();
-  const sources = [generated+source, generated+model, 'vendor/eliza/'+source, 'vendor/eliza/'+model,
+  const sources = [generated+source, generated+model, generated+librarySource, generated+'.source.json',
+    'vendor/eliza/'+source, 'vendor/eliza/'+model, 'vendor/eliza/'+librarySource,
     'apps/app/src/browser/files.ts', 'upstream.lock.json', 'scripts/prepare-client-features.mjs',
     'patches/eliza/files-storage-query-client.patch', 'patches/eliza/files-storage-query-client-manifest.json',
+    'patches/eliza/files-storage-placement-client.patch', 'patches/eliza/files-storage-placement-client-manifest.json',
     fileURLToPath(import.meta.url), ...extraSources];
   const driverHashes = captureInputs(sources);
   const {BrowserStorageVolume} = await import(pathToFileURL(resolve(root, generated+source)).href);
@@ -362,7 +364,7 @@ export async function checkBrowserFilesTrash(extraSources = []) {
       }}} : {};
       Object.defineProperty(globalThis, 'navigator', {configurable: true, value: navigator});
       for (const run of [heldTrashAndList, heldRestoreAndTrash, heldTrashAndEmpty, rejectedWrite,
-        staleMarkerAndRetention, failedMoves]) {
+        staleMarkerAndRetention, failedPlacements]) {
         const f = fixture(BrowserStorageVolume, context);
         const t = schedule(mode, f, run.name);
         await run(f, t, mode, nativeLocks);
@@ -378,6 +380,6 @@ export async function checkBrowserFilesTrash(extraSources = []) {
       'The prepared patched BrowserStorageVolume and its storage rules execute directly. Two actual volume instances share the same in-memory CAS library and exact journal bytes.',
       'Node Web Locks supplies the exclusive request path. The second branch removes Web Locks and executes the source fallback in one realm. Deferred library calls expose the held source custody. Browser tabs, IndexedDB behavior and process interruption remain separate.',
       'UUIDs are mapped to allocation order. The fixture checks exact raw marker identity, original name, parent, MIME, size and listing payload. Rows and marker IDs use two files and three marker slots. Empty selects one reviewed marker.',
-      'Source rejection after temporary rename can leave hidden staging rows. The compared safety concerns journal custody and exact marker exposure. AllRowsReachVisiblePlace is a separate source observation.',
+      'Held placement uses the precommit library port. Its success or definite refusal and the subsequent journal update settle in one model action. The actual IndexedDB transaction is tested separately. Ambiguous or interrupted journal publication is outside this projection.',
     ]});
 }

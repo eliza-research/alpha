@@ -120,6 +120,7 @@ assert.equal(stamp.baseCommit,JSON.parse(fs.readFileSync('upstream.lock.json','u
   ['launcherDrawerOwnershipPatch','packages/ui/src/mobile-shell/InstalledAppsGridDrawer.tsx'],
   ['filesListIdentityPatch','plugins/plugin-files/src/browser/files-browser-adapter.ts'],
   ['filesStorageQueryPatch','plugins/plugin-files/src/browser/storage-volume.ts'],
+  ['filesStoragePlacementPatch','plugins/plugin-files/src/browser/files.ts'],
   ['photosWindowPatch','packages/ui/src/mobile-shell/photos-view.ts'],
   ['photosLibraryPresentationPatch','plugins/plugin-assistant/src/services/device-actions/photo-library-contract.ts'],
  ]){

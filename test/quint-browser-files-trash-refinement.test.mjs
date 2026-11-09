@@ -11,6 +11,8 @@ test('Files Trash lock, exact marker custody and recovery compare with the prepa
   for (const mode of ['web', 'fallback']) {
     const traces = receipt.traceInputs.filter(trace => trace.name.startsWith(mode+' '));
     assert.equal(traces.length, 6);
-    assert.equal(traces.find(trace => trace.name.endsWith('failedMoves')).steps.at(-1).expect.AllRowsReachVisiblePlace, false);
+    const placements = traces.find(trace => trace.name.endsWith('failedPlacements'));
+    assert.equal(placements.steps.at(-1).expect['s.status'], 'failed');
+    assert.deepEqual(placements.steps.at(-1).expect['s.rows'].entries, [[1, 'live'], [2, 'live']]);
   }
 });

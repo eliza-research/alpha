@@ -1,7 +1,7 @@
 // Same-namespace BrowserStorageVolume journal custody and exact marker identity.
 module BrowserFilesTrash {
   type Request = {owner: int, kind: str, subject: int}
-  type State = {mode: str, active: Request, queued: Request, staged: bool, rows: int -> str,
+  type State = {mode: str, active: Request, queued: Request, prepared: bool, rows: int -> str,
     keys: int -> int, journal: int -> int, allocated: int, expired: Set[int],
     visible: Set[int], status: str, count: int}
   var s: State
@@ -17,7 +17,7 @@ module BrowserFilesTrash {
 
   action start(mode: str): bool = all {
     Modes.contains(mode),
-    s' = {mode: mode, active: Idle, queued: Idle, staged: false, rows: Files.mapBy(_ => "live"),
+    s' = {mode: mode, active: Idle, queued: Idle, prepared: false, rows: Files.mapBy(_ => "live"),
       keys: Files.mapBy(_ => 0), journal: Markers.mapBy(_ => 0), allocated: 0,
       expired: Set(), visible: Set(), status: "idle", count: 0}
   }
@@ -37,25 +37,24 @@ module BrowserFilesTrash {
     s' = {...s, queued: {owner: owner, kind: kind, subject: subject}}
   }
 
-  action stageTrash = {
+  action prepareTrash = {
     val file = s.active.subject
     val marker = s.allocated + 1
     all {
-      s.active.kind == "trash", not(s.staged), Markers.contains(marker), s.rows.get(file) == "live",
-      s' = {...s, staged: true, allocated: marker, journal: s.journal.set(marker, file),
-        rows: s.rows.set(file, "staging-live")},
+      s.active.kind == "trash", not(s.prepared), Markers.contains(marker), s.rows.get(file) == "live",
+      s' = {...s, prepared: true, allocated: marker, journal: s.journal.set(marker, file)},
     }
   }
   action abortTrashWrite = all {
-    s.active.kind == "trash", not(s.staged), s.rows.get(s.active.subject) == "live",
+    s.active.kind == "trash", not(s.prepared), s.rows.get(s.active.subject) == "live",
     s' = {...s, active: Idle, status: "rejected", count: 0}
   }
   action finishTrash(ok: bool): bool = {
     val file = s.active.subject
     val marker = s.allocated
     all {
-      s.active.kind == "trash", s.staged, s.rows.get(file) == "staging-live",
-      s' = {...s, active: Idle, staged: false, status: if (ok) "trashed" else "failed", count: 0,
+      s.active.kind == "trash", s.prepared, s.rows.get(file) == "live",
+      s' = {...s, active: Idle, prepared: false, status: if (ok) "trashed" else "failed", count: 0,
         rows: if (ok) s.rows.set(file, "trash") else s.rows,
         keys: if (ok) s.keys.set(file, marker) else s.keys,
         journal: if (ok) s.journal else s.journal.set(marker, 0)},
@@ -65,29 +64,29 @@ module BrowserFilesTrash {
   pure def exactRows(state: State): Set[int] = Markers.filter(marker => Files.exists(file =>
     state.rows.get(file) == "trash" and state.keys.get(file) == marker and state.journal.get(marker) == file))
   val exact = exactRows(s)
-  action stageRestore = {
+  action prepareRestore = {
     val marker = s.active.subject
     all {
-      s.active.kind == "restore", not(s.staged), exact.contains(marker),
-      val file = s.journal.get(marker)
-      s' = {...s, staged: true, rows: s.rows.set(file, "staging-trash"), keys: s.keys.set(file, 0)},
+      s.active.kind == "restore", not(s.prepared), exact.contains(marker),
+      s' = {...s, prepared: true},
     }
   }
   action finishRestore(ok: bool): bool = {
     val marker = s.active.subject
     all {
-      s.active.kind == "restore", s.staged, Markers.contains(marker), Files.contains(s.journal.get(marker)),
+      s.active.kind == "restore", s.prepared, Markers.contains(marker), Files.contains(s.journal.get(marker)),
       val file = s.journal.get(marker)
       all {
-        s.rows.get(file) == "staging-trash",
-        s' = {...s, active: Idle, staged: false, status: if (ok) "restored" else "failed", count: 0,
+        exact.contains(marker),
+        s' = {...s, active: Idle, prepared: false, status: if (ok) "restored" else "failed", count: 0,
           rows: if (ok) s.rows.set(file, "live") else s.rows,
+          keys: if (ok) s.keys.set(file, 0) else s.keys,
           journal: if (ok) s.journal.set(marker, 0) else s.journal},
       },
     }
   }
   action missingRestore = all {
-    s.active.kind == "restore", not(s.staged), not(exact.contains(s.active.subject)),
+    s.active.kind == "restore", not(s.prepared), not(exact.contains(s.active.subject)),
     s' = {...s, active: Idle, status: "missing", count: 0}
   }
 
@@ -124,7 +123,7 @@ module BrowserFilesTrash {
       nondet kind = Set("trash", "restore", "list", "empty").oneOf()
       nondet subject = 0.to(3).oneOf()
       any {begin(owner, kind, subject), queue(owner, kind, subject)} },
-    stageTrash, abortTrashWrite, stageRestore, missingRestore, finishList,
+    prepareTrash, abortTrashWrite, prepareRestore, missingRestore, finishList,
     { nondet ok = Bool.oneOf()
       any {finishTrash(ok), finishRestore(ok), finishEmpty(ok)} },
     { nondet marker = Markers.oneOf()
@@ -138,36 +137,38 @@ module BrowserFilesTrash {
   val ListedItemsUseExactRecords = (s.active == Idle and s.status == "listed") implies
     s.visible == exact.exclude(s.expired)
   val KeysStayWithinAllocation = Files.forall(file => 0.to(s.allocated).contains(s.keys.get(file)))
-  val StagingBelongsToCurrentRequest = s.staged implies Set("trash", "restore").contains(s.active.kind)
+  val PreparedPlacementKeepsSource = s.prepared implies
+    ((s.active.kind == "trash" and Files.contains(s.active.subject) and s.rows.get(s.active.subject) == "live") or
+     (s.active.kind == "restore" and exact.contains(s.active.subject)))
   val safety = ExclusiveCustody and ExactTrashMarker and ListedItemsUseExactRecords and KeysStayWithinAllocation
-    and StagingBelongsToCurrentRequest
-  val AllRowsReachVisiblePlace = Files.forall(file => not(Set("staging-live", "staging-trash").contains(s.rows.get(file))))
+    and PreparedPlacementKeepsSource
 
-  action trashedFirst = begin(1, "trash", 1).then(stageTrash).then(finishTrash(true))
+  action trashedFirst = begin(1, "trash", 1).then(prepareTrash).then(finishTrash(true))
 
-  run heldTrashProtectsPeerListTest = start("web").then(begin(1, "trash", 1)).then(stageTrash)
+  run heldTrashProtectsPeerListTest = start("web").then(begin(1, "trash", 1)).then(prepareTrash)
     .then(queue(2, "list", 0)).then(finishTrash(true)).then(begin(2, "list", 0)).then(finishList)
     .expect(s.visible == Set(1) and safety)
   run heldRestorePreservesPeerMarkerTest = start("fallback").then(trashedFirst)
-    .then(begin(1, "restore", 1)).then(stageRestore).then(queue(2, "trash", 2)).then(finishRestore(true))
-    .then(begin(2, "trash", 2)).then(stageTrash).then(finishTrash(true))
+    .then(begin(1, "restore", 1)).then(prepareRestore).then(queue(2, "trash", 2)).then(finishRestore(true))
+    .then(begin(2, "trash", 2)).then(prepareTrash).then(finishTrash(true))
     .expect(s.rows.get(1) == "live" and s.journal.get(2) == 2 and safety)
   run rejectedJournalWriteReleasesQueueTest = start("fallback").then(begin(1, "trash", 1))
     .then(queue(2, "list", 0)).then(abortTrashWrite).then(begin(2, "list", 0)).then(finishList)
     .expect(s.rows.get(1) == "live" and s.visible == Set() and safety)
   run confirmedOldMarkerSparedNewIncarnationTest = start("web").then(trashedFirst)
-    .then(begin(1, "restore", 1)).then(stageRestore).then(finishRestore(true)).then(trashedFirst)
+    .then(begin(1, "restore", 1)).then(prepareRestore).then(finishRestore(true)).then(trashedFirst)
     .then(begin(2, "empty", 1)).then(finishEmpty(true))
     .expect(s.count == 0 and s.keys.get(1) == 2 and safety)
   run retentionErasesOnlyExpiredMarkerTest = start("web").then(trashedFirst).then(expireMarker(1))
     .then(begin(2, "list", 0)).then(finishList)
     .expect(s.rows.get(1) == "gone" and s.visible == Set() and safety)
-  run failedRestoreDoesNotRebindMarkerTest = start("web").then(trashedFirst)
-    .then(begin(1, "restore", 1)).then(stageRestore).then(finishRestore(false))
-    .then(begin(2, "restore", 1)).then(missingRestore)
-    .expect(s.rows.get(1) == "staging-trash" and s.journal.get(1) == 1 and safety)
-    .then(begin(2, "list", 0)).then(finishList).expect(s.journal.get(1) == 0 and s.visible == Set() and safety)
-  run moveFailureLeavesHiddenStagingTest = start("fallback").then(begin(1, "trash", 1))
-    .then(stageTrash).then(finishTrash(false))
-    .expect(not(AllRowsReachVisiblePlace) and s.journal.get(1) == 0 and safety)
+  run failedRestoreKeepsExactMarkerTest = start("web").then(trashedFirst)
+    .then(begin(1, "restore", 1)).then(prepareRestore).then(finishRestore(false))
+    .expect(s.rows.get(1) == "trash" and s.journal.get(1) == 1 and safety)
+    .then(begin(2, "list", 0)).then(finishList).expect(s.visible == Set(1) and safety)
+    .then(begin(2, "restore", 1)).then(prepareRestore).then(finishRestore(true))
+    .expect(s.rows.get(1) == "live" and s.journal.get(1) == 0 and safety)
+  run failedTrashKeepsLiveRowTest = start("fallback").then(begin(1, "trash", 1))
+    .then(prepareTrash).then(finishTrash(false))
+    .expect(s.rows.get(1) == "live" and s.journal.get(1) == 0 and safety)
 }

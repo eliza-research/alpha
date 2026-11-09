@@ -2381,30 +2381,32 @@
       "rejectedJournalWriteReleasesQueueTest",
       "confirmedOldMarkerSparedNewIncarnationTest",
       "retentionErasesOnlyExpiredMarkerTest",
-      "moveFailureLeavesHiddenStagingTest",
-      "failedRestoreDoesNotRebindMarkerTest"
+      "failedTrashKeepsLiveRowTest",
+      "failedRestoreKeepsExactMarkerTest"
     ],
     "invariants": [
       "ExclusiveCustody",
       "ExactTrashMarker",
       "ListedItemsUseExactRecords",
       "KeysStayWithinAllocation",
-      "StagingBelongsToCurrentRequest"
+      "PreparedPlacementKeepsSource"
     ],
     "sources": [
       "apps/app/src/browser/files.ts",
       "vendor/eliza/plugins/plugin-files/src/browser/storage-volume.ts",
       "vendor/eliza/plugins/plugin-files/src/browser/storage-model.ts",
-      "patches/eliza/files-storage-query-client.patch"
+      "vendor/eliza/plugins/plugin-files/src/browser/files.ts",
+      "patches/eliza/files-storage-query-client.patch",
+      "patches/eliza/files-storage-placement-client.patch"
     ],
     "stateMapping": {
-      "mode/active/queued/staged": "Actual Node exclusive lock and same-realm fallback with source requests held at library ports",
-      "rows/keys/journal/allocated": "Physical parent and staging name, exact marker identities and persisted journal bytes",
+      "mode/active/queued/prepared": "Actual Node exclusive lock and same-realm fallback with source requests held at library ports",
+      "rows/keys/journal/allocated": "Physical parent and destination name, exact marker identities and persisted journal bytes",
       "expired/visible/status/count": "Controlled retention boundary and actual list, move, restore and confirmed-delete results"
     },
     "abstractions": [
       "Two volume instances, one namespace, two files, three marker allocations and one waiting request. Controlled real-source library and journal ports expose rejection and release. Exact reviewed Empty uses one marker.",
-      "Temporary rename and underlying move are separate operations. Move refusal can leave hidden staging rows. Cross-tab IndexedDB, interruption and larger batches remain separate."
+      "Placement checks the original revision and changes parent and name atomically. The journal and file transaction are separate. Cross-tab scheduling, interruption and larger batches remain separate."
     ],
     "bounds": {
       "maxSamples": 1000,

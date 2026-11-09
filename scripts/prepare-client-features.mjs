@@ -315,6 +315,7 @@ export const CLIENT_FEATURE_PATCHES = [
   ['appUpdateResumePatch', 'app-update-resume-client', 'packages/ui/src/state/app-update-gate.ts'],
   ['filesListIdentityPatch', 'files-list-identity-client', 'plugins/plugin-files/src/browser/files-browser-adapter.ts'],
   ['filesStorageQueryPatch', 'files-storage-query-client', 'plugins/plugin-files/src/browser/storage-volume.ts'],
+  ['filesStoragePlacementPatch', 'files-storage-placement-client', 'plugins/plugin-files/src/browser/files.ts'],
   ['photosWindowPatch', 'photos-window-client', 'packages/ui/src/mobile-shell/photos-view.ts'],
   ['photosLibraryPresentationPatch', 'photos-library-presentation-client', 'plugins/plugin-assistant/src/services/device-actions/photo-library-contract.ts'],
   ['calendarSemanticPatch', 'calendar-semantic-client', 'packages/contracts/src/calendar-linked-sync.ts'],

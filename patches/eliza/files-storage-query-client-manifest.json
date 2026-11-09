@@ -3,6 +3,6 @@
   "baseCommit": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
   "path": "plugins/plugin-files/src/browser/storage-volume.ts",
   "beforeSha256": "c628a2bee4616748d3d8941fd5bc1ecb2a3bfadca4734e27b7ef95c90b33d18a",
-  "afterSha256": "29923472503386d2fdc3ccdc778b0410c1f924722fa4f3701af12f51f1cdab88",
-  "patchSha256": "e7c5766ca8ad68e734f63c756a8643fb4ffda4a59b1ef868758da60e0e0b0dbf"
+  "afterSha256": "f259f2d6dc8a66f9bb5de43d0a9dc69c36d9504166cbe6900c4398fb406def7c",
+  "patchSha256": "d0a5320cd534a8ec6040dbf0694f2cdf145363e2a80101ce159e5c30c4d9abb8"
 }
