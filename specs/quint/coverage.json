@@ -10367,7 +10367,7 @@
         },
         {
           "line": 271,
-          "text": "const when=reviewed.allDay?new Date(reviewed.begin).toLocaleDateString(undefined,{timeZone:'UTC',weekday:'short',year:'numeric',month:'short',day:'numeric'})+' \u00b7 All day':`${new Date(reviewed.begin).t"
+          "text": "const when=reviewed.allDay?new Date(reviewed.begin).toLocaleDateString(undefined,{timeZone:'UTC',weekday:'short',year:'numeric',month:'short',day:'numeric'})+' · All day':`${new Date(reviewed.begin).t"
         },
         {
           "line": 273,
@@ -11313,7 +11313,7 @@
       "stateAnchors": [
         {
           "line": 6,
-          "text": "export const developmentName=(profile:DevelopmentProfile)=>`${profile==='local'?'On-device':profile==='cloud'?'Cloud':'Remote'} agent \u00b7 development`;"
+          "text": "export const developmentName=(profile:DevelopmentProfile)=>`${profile==='local'?'On-device':profile==='cloud'?'Cloud':'Remote'} agent · development`;"
         },
         {
           "line": 8,
@@ -12963,7 +12963,7 @@
         },
         {
           "line": 17,
-          "text": "const explanation=document.createElement('p');explanation.textContent='Review or paste the text you want to hear. Speech runs on this device through your local agent\u2019s on-device voice; the text is use"
+          "text": "const explanation=document.createElement('p');explanation.textContent='Review or paste the text you want to hear. Speech runs on this device through your local agent’s on-device voice; the text is use"
         },
         {
           "line": 18,
@@ -13031,7 +13031,7 @@
         },
         {
           "line": 44,
-          "text": "const current=++generation;field.disabled=true;read.disabled=true;stop.disabled=false;status.textContent='Preparing local speech\u2026';const owner=new AbortController();speech=owner;"
+          "text": "const current=++generation;field.disabled=true;read.disabled=true;stop.disabled=false;status.textContent='Preparing local speech…';const owner=new AbortController();speech=owner;"
         }
       ]
     },
@@ -14808,7 +14808,7 @@
         },
         {
           "line": 327,
-          "text": "}}/>}{testMocksEnabled && mock && <div className=\"mock-mode-banner\" role=\"status\"><span>Mock mode \u00b7 simulated data and actions</span><button onClick={() => { void connectionController.offline().then(("
+          "text": "}}/>}{testMocksEnabled && mock && <div className=\"mock-mode-banner\" role=\"status\"><span>Mock mode · simulated data and actions</span><button onClick={() => { void connectionController.offline().then(("
         },
         {
           "line": 332,
@@ -17131,7 +17131,7 @@
         },
         {
           "line": 1745,
-          "text": "const recoveryText=message==='The agent request failed. Check connection and action history before sending another request.'?'Sorry, I couldn\u2019t finish that reply.':message;"
+          "text": "const recoveryText=message==='The agent request failed. Check connection and action history before sending another request.'?'Sorry, I couldn’t finish that reply.':message;"
         },
         {
           "line": 1751,
@@ -17458,7 +17458,7 @@
         },
         {
           "line": 130,
-          "text": "const target=port();if(!target?.current()){api.toast(agentPendingText(undefined,'Calendar is unavailable for this agent connection. Check Settings \u203a Agent connection.'));return;}"
+          "text": "const target=port();if(!target?.current()){api.toast(agentPendingText(undefined,'Calendar is unavailable for this agent connection. Check Settings › Agent connection.'));return;}"
         },
         {
           "line": 131,
@@ -17538,7 +17538,7 @@
         },
         {
           "line": 173,
-          "text": "const cals=legacy?[{id:'legacy',name:'Saved app calendar \u00b7 Read only',sub:'Kept on this device',color:'mut',on:true}]:sourceRows();"
+          "text": "const cals=legacy?[{id:'legacy',name:'Saved app calendar · Read only',sub:'Kept on this device',color:'mut',on:true}]:sourceRows();"
         },
         {
           "line": 176,
@@ -18016,7 +18016,7 @@
         },
         {
           "line": 163,
-          "text": "editing:!!editor,fields,moreFields,whenFields,promptSaveNote:!editor?.row?'Saves paused. Enable it when you\u2019re ready. Phone access needs a separate review.':editor.row.enabled?'Changes keep its existi"
+          "text": "editing:!!editor,fields,moreFields,whenFields,promptSaveNote:!editor?.row?'Saves paused. Enable it when you’re ready. Phone access needs a separate review.':editor.row.enabled?'Changes keep its existi"
         },
         {
           "line": 164,
@@ -18024,7 +18024,7 @@
         },
         {
           "line": 165,
-          "text": "review:!!review,reviewLabel:review?.label||'',reviewPrompt:`${review?.label||''} on the currently connected agent? The agent\u2019s existing permissions and scheduling rules still apply.`,reviewDetails:det"
+          "text": "review:!!review,reviewLabel:review?.label||'',reviewPrompt:`${review?.label||''} on the currently connected agent? The agent’s existing permissions and scheduling rules still apply.`,reviewDetails:det"
         },
         {
           "line": 168,
@@ -19946,7 +19946,7 @@
         },
         {
           "line": 51,
-          "text": "out.discardEditDraft=()=>{if(state.form||!window.confirm('Discard these unsaved edits? Saved events and reminders won\u2019t change.'))return;const text=shell.calendarEditDraftText;void controller.consume("
+          "text": "out.discardEditDraft=()=>{if(state.form||!window.confirm('Discard these unsaved edits? Saved events and reminders won’t change.'))return;const text=shell.calendarEditDraftText;void controller.consume("
         },
         {
           "line": 53,
@@ -20025,7 +20025,7 @@
         },
         {
           "line": 51,
-          "text": "const form=state.form;if(!active||!window.confirm('Discard this draft? Saved events and reminders won\u2019t change.'))return;"
+          "text": "const form=state.form;if(!active||!window.confirm('Discard this draft? Saved events and reminders won’t change.'))return;"
         },
         {
           "line": 52,
@@ -20400,7 +20400,7 @@
       "stateAnchors": [
         {
           "line": 11,
-          "text": "const UNAVAILABLE='Notes is unavailable for this agent connection. Check Settings \u203a Agent connection.';"
+          "text": "const UNAVAILABLE='Notes is unavailable for this agent connection. Check Settings › Agent connection.';"
         },
         {
           "line": 13,
@@ -21280,7 +21280,7 @@
         },
         {
           "line": 16,
-          "text": "let owner:any,rows:Bag[]=[],status='Choose Contacts access to see this profile\u2019s address book.',readable=false,loading=false,more=false,limit=50,epoch=0,active=false;"
+          "text": "let owner:any,rows:Bag[]=[],status='Choose Contacts access to see this profile’s address book.',readable=false,loading=false,more=false,limit=50,epoch=0,active=false;"
         },
         {
           "line": 17,
@@ -22018,7 +22018,7 @@
         },
         {
           "line": 73,
-          "text": "const words=(value:string)=>value.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').split(/[^a-z0-9]+/).filter(Boolean);"
+          "text": "const words=(value:string)=>value.toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g,'').split(/[^a-z0-9]+/).filter(Boolean);"
         },
         {
           "line": 89,
@@ -22404,7 +22404,7 @@
         },
         {
           "line": 321,
-          "text": "export const MAPS_SAVED = { home: \"home\", work: \"lumen\", workLabel: \"Work\", workName: \"Work \u00b7 Lumen studio\", initial: [\"tartine\"], preset: \"tartine\", sharePerson: \"maya\", shareDest: { priya: \"tartine\""
+          "text": "export const MAPS_SAVED = { home: \"home\", work: \"lumen\", workLabel: \"Work\", workName: \"Work · Lumen studio\", initial: [\"tartine\"], preset: \"tartine\", sharePerson: \"maya\", shareDest: { priya: \"tartine\""
         },
         {
           "line": 323,
@@ -23138,7 +23138,7 @@
         },
         {
           "line": 281,
-          "text": "const pending=homeLoad;if(pending){status='Checking Gmail connection\u2026';publish();await pending.task;}"
+          "text": "const pending=homeLoad;if(pending){status='Checking Gmail connection…';publish();await pending.task;}"
         },
         {
           "line": 283,
@@ -23478,7 +23478,7 @@
         },
         {
           "line": 650,
-          "text": "await work('Loading selected attachment\u2026',async({client},signal,valid)=>{const file=await client.gmailAttachment(accountId,source.message.id,attachment.partId,source.historyId!,signal).catch(error=>{t"
+          "text": "await work('Loading selected attachment…',async({client},signal,valid)=>{const file=await client.gmailAttachment(accountId,source.message.id,attachment.partId,source.historyId!,signal).catch(error=>{t"
         },
         {
           "line": 660,
@@ -23486,7 +23486,7 @@
         },
         {
           "line": 661,
-          "text": "await work('Loading attachment\u2026',async({client},signal,valid)=>{const file=await client.gmailOpaqueAttachment(accountId,source.message.id,attachment.partId,source.historyId!,signal).catch(error=>{thro"
+          "text": "await work('Loading attachment…',async({client},signal,valid)=>{const file=await client.gmailOpaqueAttachment(accountId,source.message.id,attachment.partId,source.historyId!,signal).catch(error=>{thro"
         },
         {
           "line": 662,
@@ -23510,7 +23510,7 @@
         },
         {
           "line": 690,
-          "text": "const warning = linkTextMismatch(link) ? `\\n\\nWarning: the email shows \u201c${link.text}\u201d, but the link goes to ${url.hostname}.` : '';"
+          "text": "const warning = linkTextMismatch(link) ? `\\n\\nWarning: the email shows “${link.text}”, but the link goes to ${url.hostname}.` : '';"
         },
         {
           "line": 692,
@@ -23750,7 +23750,7 @@
         },
         {
           "line": 896,
-          "text": "body: activeBody.loading?'Loading message\u2026':activeBody.bodyText || '(Empty message)', loading:!!activeBody.loading,canLoadThread:!thread&&!activeBody.loading&&!!provider.capabilities()?.threads,loadTh"
+          "text": "body: activeBody.loading?'Loading message…':activeBody.bodyText || '(Empty message)', loading:!!activeBody.loading,canLoadThread:!thread&&!activeBody.loading&&!!provider.capabilities()?.threads,loadTh"
         },
         {
           "line": 902,
@@ -24310,7 +24310,7 @@
         },
         {
           "line": 160,
-          "text": "const controller = new AbortController(), state: Reading = { id, text, controller, message: 'Waiting for the previous audio to stop\u2026' };"
+          "text": "const controller = new AbortController(), state: Reading = { id, text, controller, message: 'Waiting for the previous audio to stop…' };"
         },
         {
           "line": 161,
@@ -24489,7 +24489,7 @@
         },
         {
           "line": 40,
-          "text": "const clean = (text: string) => text.replace(/[\u202f\u00a0]/g, ' ');"
+          "text": "const clean = (text: string) => text.replace(/[  ]/g, ' ');"
         },
         {
           "line": 42,
@@ -25063,7 +25063,7 @@
         },
         {
           "line": 241,
-          "text": "if (st.incoming) { var ip = pnWho(api, st.incoming); return { label: (st.ring === \"screen\" ? api.name + \" \u00b7 \" : \"Incoming \u00b7 \") + (ip ? pnFirst(ip) : \"Unknown\"), icon: \"phone\", color: \"var(--alpha-call"
+          "text": "if (st.incoming) { var ip = pnWho(api, st.incoming); return { label: (st.ring === \"screen\" ? api.name + \" · \" : \"Incoming · \") + (ip ? pnFirst(ip) : \"Unknown\"), icon: \"phone\", color: \"var(--alpha-call"
         },
         {
           "line": 246,
@@ -25291,7 +25291,7 @@
         },
         {
           "line": 391,
-          "text": "var status = !live ? \"Calling\u2026\" : (st.hold ? \"On hold \u00b7 \" : \"\") + pnClock(el);"
+          "text": "var status = !live ? \"Calling…\" : (st.hold ? \"On hold · \" : \"\") + pnClock(el);"
         },
         {
           "line": 392,
@@ -26215,7 +26215,7 @@
         },
         {
           "line": 1171,
-          "text": "var words = e.title.toLowerCase().replace(/[\u00b7]/g, \" \").split(/\\s+/).filter(function (w) { return w.length > 2; });"
+          "text": "var words = e.title.toLowerCase().replace(/[·]/g, \" \").split(/\\s+/).filter(function (w) { return w.length > 2; });"
         },
         {
           "line": 1172,
@@ -26319,7 +26319,7 @@
         },
         {
           "line": 1266,
-          "text": "var title = who.length ? kind + \" \u00b7 \" + who.map(function (id) { return calPerson(api, id).name.split(\" \")[0]; }).join(\", \") : kind;"
+          "text": "var title = who.length ? kind + \" · \" + who.map(function (id) { return calPerson(api, id).name.split(\" \")[0]; }).join(\", \") : kind;"
         },
         {
           "line": 1267,
@@ -27119,7 +27119,7 @@
         },
         {
           "line": 1855,
-          "text": "var CAM_ZOOM = [[\".5\", 1], [\"1\u00d7\", 1.35], [\"2\", 2], [\"5\", 3.4]];"
+          "text": "var CAM_ZOOM = [[\".5\", 1], [\"1×\", 1.35], [\"2\", 2], [\"5\", 3.4]];"
         },
         {
           "line": 1856,
@@ -27491,7 +27491,7 @@
         },
         {
           "line": 2202,
-          "text": "var name = nm ? cap(nm) : r.label.replace(/ \u00b7 /g, \" \");"
+          "text": "var name = nm ? cap(nm) : r.label.replace(/ · /g, \" \");"
         },
         {
           "line": 2203,
@@ -28443,7 +28443,7 @@
         },
         {
           "line": 2989,
-          "text": "var body = parts.map(function (l) { return \"\u00b7 \" + l; }).join(\"\\n\");"
+          "text": "var body = parts.map(function (l) { return \"· \" + l; }).join(\"\\n\");"
         },
         {
           "line": 2990,
@@ -28499,7 +28499,7 @@
         },
         {
           "line": 3053,
-          "text": "var title = text.length <= 44 ? cap(text) : cap(text.split(/\\s+/).slice(0, 5).join(\" \")) + \"\u2026\";"
+          "text": "var title = text.length <= 44 ? cap(text) : cap(text.split(/\\s+/).slice(0, 5).join(\" \")) + \"…\";"
         },
         {
           "line": 3054,
@@ -28551,7 +28551,7 @@
         },
         {
           "line": 3100,
-          "text": "setTimeout(function () { NT.pend = false; var s = api.get(\"notes\"); if (s.record) { api.set({ record: false }); api.toast(\"Recording isn\u2019t available in this preview.\"); } else if (s.compose) notesNew("
+          "text": "setTimeout(function () { NT.pend = false; var s = api.get(\"notes\"); if (s.record) { api.set({ record: false }); api.toast(\"Recording isn’t available in this preview.\"); } else if (s.compose) notesNew("
         },
         {
           "line": 3102,
@@ -28859,7 +28859,7 @@
         },
         {
           "line": 3417,
-          "text": "if (/\\bbirthday\\b/.test(t)) { var b = ctBday(p.birthday, api.now.getTime()); return b ? { text: f + \"'s birthday is \" + b.replace(\" \u00b7 \", \", \") + \".\", card: card(\"contactsGift\", b) } : { text: \"No birt"
+          "text": "if (/\\bbirthday\\b/.test(t)) { var b = ctBday(p.birthday, api.now.getTime()); return b ? { text: f + \"'s birthday is \" + b.replace(\" · \", \", \") + \".\", card: card(\"contactsGift\", b) } : { text: \"No birt"
         },
         {
           "line": 3419,
@@ -29111,7 +29111,7 @@
         },
         {
           "line": 3676,
-          "text": "var note = { id: id, kind: \"voice\", title: \"Landlord\", when: \"Yesterday \u00b7 6:20 PM\", dur: f.dur, pinned: false,"
+          "text": "var note = { id: id, kind: \"voice\", title: \"Landlord\", when: \"Yesterday · 6:20 PM\", dur: f.dur, pinned: false,"
         },
         {
           "line": 3687,
@@ -30155,11 +30155,11 @@
         },
         {
           "line": 4713,
-          "text": "var lvlText = function (a) { var on = ST_TYPES.filter(function (x) { return a[x[0]]; }).map(function (x) { return x[1]; }); return on.length ? on.join(\" \u00b7 \") : \"Not syncing\"; };"
+          "text": "var lvlText = function (a) { var on = ST_TYPES.filter(function (x) { return a[x[0]]; }).map(function (x) { return x[1]; }); return on.length ? on.join(\" · \") : \"Not syncing\"; };"
         },
         {
           "line": 4714,
-          "text": "var persona = ST_VOICES[ch.voice] + \" \u00b7 \" + (ch.brev < 40 ? \"Brief\" : (ch.brev > 65 ? \"Detailed\" : \"Balanced\")) + \" \u00b7 \" + (ch.tone > 55 ? \"Casual\" : \"Formal\");"
+          "text": "var persona = ST_VOICES[ch.voice] + \" · \" + (ch.brev < 40 ? \"Brief\" : (ch.brev > 65 ? \"Detailed\" : \"Balanced\")) + \" · \" + (ch.tone > 55 ? \"Casual\" : \"Formal\");"
         },
         {
           "line": 4717,
@@ -30315,7 +30315,7 @@
         },
         {
           "line": 4922,
-          "text": "var gr = [{ plain: true, rows: rows }, { plain: true, rows: [stRow(\"kBtn\", { label: busy ? \"Signing in\u2026\" : \"Sign in\", primary: true, dis: !ok || busy, css: ok ? \"background:var(--acc);color:var(--alph"
+          "text": "var gr = [{ plain: true, rows: rows }, { plain: true, rows: [stRow(\"kBtn\", { label: busy ? \"Signing in…\" : \"Sign in\", primary: true, dis: !ok || busy, css: ok ? \"background:var(--acc);color:var(--alph"
         },
         {
           "line": 4933,
@@ -30931,7 +30931,7 @@
         },
         {
           "line": 5582,
-          "text": "var vShow = S.voice === \"speaking\" ? S.vcap : (S.vtext || \"\u2026\");"
+          "text": "var vShow = S.voice === \"speaking\" ? S.vcap : (S.vtext || \"…\");"
         },
         {
           "line": 5584,
@@ -31194,7 +31194,7 @@
         },
         {
           "line": 134,
-          "text": "const unavailable = (api: Bag, message = 'This isn\u2019t available on this phone.') => () => notify(api, message);"
+          "text": "const unavailable = (api: Bag, message = 'This isn’t available on this phone.') => () => notify(api, message);"
         },
         {
           "line": 139,
@@ -31918,7 +31918,7 @@
         },
         {
           "line": 65,
-          "text": "const paint=()=>{linked.hidden=!source?.reference;name.textContent=source?.name||'No source linked';detail.textContent=source?`${typeLabel[source.mimeType]??'File'} \u00b7 ${sizeLabel(source.size)}`:'';lin"
+          "text": "const paint=()=>{linked.hidden=!source?.reference;name.textContent=source?.name||'No source linked';detail.textContent=source?`${typeLabel[source.mimeType]??'File'} · ${sizeLabel(source.size)}`:'';lin"
         },
         {
           "line": 66,
@@ -31938,7 +31938,7 @@
         },
         {
           "line": 78,
-          "text": "if(busy||!current())return;busy=true;status.textContent='Choose a file\u2026';paint();let selectionId:string|undefined;"
+          "text": "if(busy||!current())return;busy=true;status.textContent='Choose a file…';paint();let selectionId:string|undefined;"
         },
         {
           "line": 80,
@@ -31978,7 +31978,7 @@
         },
         {
           "line": 108,
-          "text": "linked.onclick=async()=>{if(busy||!current()||!source?.reference)return;busy=true;opened=true;paint();status.textContent='Opening verified source\u2026';try{const result=await attachments.openSourceReferen"
+          "text": "linked.onclick=async()=>{if(busy||!current()||!source?.reference)return;busy=true;opened=true;paint();status.textContent='Opening verified source…';try{const result=await attachments.openSourceReferen"
         }
       ]
     },
@@ -32234,7 +32234,7 @@
         },
         {
           "line": 79,
-          "text": "const where=operation.folder===null?'no folder':`\u201c${operation.folder}\u201d`;"
+          "text": "const where=operation.folder===null?'no folder':`“${operation.folder}”`;"
         },
         {
           "line": 81,
@@ -32468,7 +32468,7 @@
         },
         {
           "line": 45,
-          "text": "const change=remove?paragraph('The note moves to Trash and is erased after 3 days unless you restore it.'):paragraph(`New title: \u201c${operation.fields.title}\u201d\\n${operation.fields.body}`);change.style.wh"
+          "text": "const change=remove?paragraph('The note moves to Trash and is erased after 3 days unless you restore it.'):paragraph(`New title: “${operation.fields.title}”\\n${operation.fields.body}`);change.style.wh"
         },
         {
           "line": 46,
@@ -33883,7 +33883,7 @@
         },
         {
           "line": 8,
-          "text": "const zone=document.createElement('p');zone.textContent='Local time \u00b7 '+Intl.DateTimeFormat().resolvedOptions().timeZone;"
+          "text": "const zone=document.createElement('p');zone.textContent='Local time · '+Intl.DateTimeFormat().resolvedOptions().timeZone;"
         },
         {
           "line": 9,
@@ -33935,7 +33935,7 @@
         },
         {
           "line": 26,
-          "text": "const hint=suggested.recurrence;repeat.label.hidden=!hint;repeat.value.checked=false;if(hint){repeat.text.textContent=`Repeat ${repeatLabel[hint.repeat]} (suggested from \u201c${hint.evidence}\u201d)`;repeat.va"
+          "text": "const hint=suggested.recurrence;repeat.label.hidden=!hint;repeat.value.checked=false;if(hint){repeat.text.textContent=`Repeat ${repeatLabel[hint.repeat]} (suggested from “${hint.evidence}”)`;repeat.va"
         },
         {
           "line": 28,
@@ -34013,7 +34013,7 @@
         },
         {
           "line": 21,
-          "text": "event.preventDefault();busy=true;const token=generation;status.textContent='Opening browser\u2026';"
+          "text": "event.preventDefault();busy=true;const token=generation;status.textContent='Opening browser…';"
         }
       ]
     },
@@ -34128,7 +34128,7 @@
         },
         {
           "line": 23,
-          "text": "const status=document.createElement('p');status.setAttribute('role','status');status.setAttribute('aria-label','Scan status');status.textContent='Starting local scan\u2026';"
+          "text": "const status=document.createElement('p');status.setAttribute('role','status');status.setAttribute('aria-label','Scan status');status.textContent='Starting local scan…';"
         },
         {
           "line": 24,
@@ -34156,7 +34156,7 @@
         },
         {
           "line": 30,
-          "text": "if(source==='unsaved'&&keep){const kept=button('Keep photo');let keeping=false;kept.onclick=()=>{if(keeping||closed)return;keeping=true;kept.disabled=true;status.textContent='Saving photo to Photos\u2026';"
+          "text": "if(source==='unsaved'&&keep){const kept=button('Keep photo');let keeping=false;kept.onclick=()=>{if(keeping||closed)return;keeping=true;kept.disabled=true;status.textContent='Saving photo to Photos…';"
         },
         {
           "line": 33,
@@ -34212,7 +34212,7 @@
         },
         {
           "line": 53,
-          "text": "pdf.onclick=()=>{if(pdfAttempted)return;pdfAttempted=true;pdf.disabled=true;pdfStatus.textContent='Preparing photo PDF\u2026';void exportScanPdf(image,controller.signal,'Alpha scan '+new Date().toISOString"
+          "text": "pdf.onclick=()=>{if(pdfAttempted)return;pdfAttempted=true;pdf.disabled=true;pdfStatus.textContent='Preparing photo PDF…';void exportScanPdf(image,controller.signal,'Alpha scan '+new Date().toISOString"
         },
         {
           "line": 55,
@@ -34280,7 +34280,7 @@
         },
         {
           "line": 25,
-          "text": "const lines=initial?.[index]??(await recognizeLocalText(image,controller.signal,p=>{if(!closed)status.textContent=`Page ${index+1} \u00b7 ${Math.round(p.progress*100)}% \u00b7 ${p.status}`;},true)).lines!;contr"
+          "text": "const lines=initial?.[index]??(await recognizeLocalText(image,controller.signal,p=>{if(!closed)status.textContent=`Page ${index+1} · ${Math.round(p.progress*100)}% · ${p.status}`;},true)).lines!;contr"
         },
         {
           "line": 26,
@@ -34513,7 +34513,7 @@
         },
         {
           "line": 127,
-          "text": "closeQuestion=reviewContentQuestion({name:selected.pdf?name+' \u00b7 page '+(selected.pdf.page+1):name,text:selected.text??'',current:()=>current===selected&&api.get(module).open===marker&&!document.hidden"
+          "text": "closeQuestion=reviewContentQuestion({name:selected.pdf?name+' · page '+(selected.pdf.page+1):name,text:selected.text??'',current:()=>current===selected&&api.get(module).open===marker&&!document.hidden"
         },
         {
           "line": 129,
@@ -34751,7 +34751,7 @@
         },
         {
           "line": 86,
-          "text": "return {nativeManaged:true,nativePrototype:false,nativeStatus:session.state.message,nativeRows:session.state.rows.map(row=>({...row,address:row.addresses.join(', '),direction:`${row.direction} \u00b7 ${row"
+          "text": "return {nativeManaged:true,nativePrototype:false,nativeStatus:session.state.message,nativeRows:session.state.rows.map(row=>({...row,address:row.addresses.join(', '),direction:`${row.direction} · ${row"
         },
         {
           "line": 87,
@@ -35005,7 +35005,7 @@
         },
         {
           "line": 178,
-          "text": "const bounded = (text: string) => text.length > LIMIT ? text.slice(0, LIMIT - 1).trimEnd() + '\u2026' : text;"
+          "text": "const bounded = (text: string) => text.length > LIMIT ? text.slice(0, LIMIT - 1).trimEnd() + '…' : text;"
         },
         {
           "line": 179,
@@ -35100,7 +35100,7 @@
         },
         {
           "line": 12,
-          "text": "const title=document.createElement('input');title.setAttribute('aria-label','Summary note title');title.maxLength=200;title.value=('Summary \u00b7 '+source.name).slice(0,200);"
+          "text": "const title=document.createElement('input');title.setAttribute('aria-label','Summary note title');title.maxLength=200;title.value=('Summary · '+source.name).slice(0,200);"
         },
         {
           "line": 13,
@@ -35120,7 +35120,7 @@
         },
         {
           "line": 18,
-          "text": "if(recording){save.textContent='Save recording summary';const label=document.createElement('label');label.textContent='Action items \u00b7 one per line';label.append(actions);content.append(label);}"
+          "text": "if(recording){save.textContent='Save recording summary';const label=document.createElement('label');label.textContent='Action items · one per line';label.append(actions);content.append(label);}"
         },
         {
           "line": 20,
@@ -36153,7 +36153,7 @@
         },
         {
           "line": 90,
-          "text": "active=true;busy=true;unreceipted=false;resendReview=false;draft=null;catalog=null;storage=null;requested=null;targetName=workflow?.name??'';status='Loading this agent\u2019s workflow capabilities\u2026';const "
+          "text": "active=true;busy=true;unreceipted=false;resendReview=false;draft=null;catalog=null;storage=null;requested=null;targetName=workflow?.name??'';status='Loading this agent’s workflow capabilities…';const "
         },
         {
           "line": 91,
@@ -36289,7 +36289,7 @@
         },
         {
           "line": 177,
-          "text": "const capabilities=catalog;controller=new AbortController();const signal=controller.signal;busy=true;generating=true;generated=null;status='Generating a draft for you to review\u2026';publish();"
+          "text": "const capabilities=catalog;controller=new AbortController();const signal=controller.signal;busy=true;generating=true;generated=null;status='Generating a draft for you to review…';publish();"
         },
         {
           "line": 178,
@@ -38534,7 +38534,7 @@
         },
         {
           "line": 227,
-          "text": "for(const source of result.sources){const option=document.createElement('option');option.value=calendarSourceKey(source);option.textContent=`${source.accountEmail??'Google account'} \u00b7 ${source.summary"
+          "text": "for(const source of result.sources){const option=document.createElement('option');option.value=calendarSourceKey(source);option.textContent=`${source.accountEmail??'Google account'} · ${source.summary"
         },
         {
           "line": 232,
@@ -38913,7 +38913,7 @@
         },
         {
           "line": 36,
-          "text": "const planName=active?plan.planName:plan?.kind==='expired'?plan.planName:noPlan?'No active subscription':checking?'Checking subscription\u2026':'Subscription not confirmed';"
+          "text": "const planName=active?plan.planName:plan?.kind==='expired'?plan.planName:noPlan?'No active subscription':checking?'Checking subscription…':'Subscription not confirmed';"
         },
         {
           "line": 37,
@@ -39340,11 +39340,11 @@
       "stateAnchors": [
         {
           "line": 19,
-          "text": "export const SIGN_IN_SENDING = 'Sending your code\u2026';"
+          "text": "export const SIGN_IN_SENDING = 'Sending your code…';"
         },
         {
           "line": 20,
-          "text": "export const SIGN_IN_SIGNING_IN = 'Signing in\u2026';"
+          "text": "export const SIGN_IN_SIGNING_IN = 'Signing in…';"
         },
         {
           "line": 21,
@@ -39436,7 +39436,7 @@
         },
         {
           "line": 84,
-          "text": "const title = view.step === 'choose' ? 'Welcome to Alpha.' : view.step === 'google' ? 'Finish in your browser.' : passkey ? 'Can\u2019t finish sign-in' : 'Check your code.';"
+          "text": "const title = view.step === 'choose' ? 'Welcome to Alpha.' : view.step === 'google' ? 'Finish in your browser.' : passkey ? 'Can’t finish sign-in' : 'Check your code.';"
         },
         {
           "line": 85,
@@ -39452,7 +39452,7 @@
         },
         {
           "line": 90,
-          "text": "const sendLabel = (method: 'email' | 'phone', idle: string) => sending && pending === method ? 'Sending code\u2026' : idle;"
+          "text": "const sendLabel = (method: 'email' | 'phone', idle: string) => sending && pending === method ? 'Sending code…' : idle;"
         }
       ]
     },
@@ -39605,7 +39605,7 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "4b22ff6e9118983c161cb1d0228b7b21a5619870e718bb16283a541e5de2403d",
+      "sha256": "0b4e4422e90808339d07ed9e48255d9678ce4dfa92b250ff09ffd1514127f0d3",
       "stateAnchors": [],
       "integrationReview": "Reviewed integration source. Domain allocation is retained; source-hash refresh does not establish semantic refinement. See targeted validation and remaining obligations."
     },
@@ -39624,7 +39624,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "17c31f1780b450a2c6768a493fcd2a568fed73157e18271f523d3c5e77f2ee98",
+      "sha256": "7ddc6888f1d0244d80025b5714396e2816683d0d7c233fd9f3cebcbd605cd9fd",
       "stateAnchors": [],
       "integrationReview": "Domain allocation retained after merged fixes. Source identity and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations."
     },
@@ -40410,7 +40410,7 @@
         },
         {
           "line": 83,
-          "text": "const timing = `${formatDeviceRecordDateTime(fields.start, fields.timeZone)} \u2013 ${formatDeviceRecordDateTime(fields.end, fields.timeZone)} (${fields.timeZone})`;"
+          "text": "const timing = `${formatDeviceRecordDateTime(fields.start, fields.timeZone)} – ${formatDeviceRecordDateTime(fields.end, fields.timeZone)} (${fields.timeZone})`;"
         },
         {
           "line": 129,
@@ -43262,7 +43262,7 @@
         },
         {
           "line": 18,
-          "text": "const currency: Record<string, string> = { $: 'dollar', '\u00a3': 'pound', '\u20ac': 'euro' };"
+          "text": "const currency: Record<string, string> = { $: 'dollar', '£': 'pound', '€': 'euro' };"
         },
         {
           "line": 26,
@@ -44515,7 +44515,7 @@
         },
         {
           "line": 56,
-          "text": "const quoted=(value:string)=>`\u201c${value}\u201d`;"
+          "text": "const quoted=(value:string)=>`“${value}”`;"
         }
       ]
     },
@@ -44719,7 +44719,7 @@
         },
         {
           "line": 55,
-          "text": "if(note.kind==='list')text=(Array.isArray(note.items)?note.items:[]).map(item=>{const it=item as {t?:unknown;done?:unknown};return typeof it?.t==='string'?(it.done?'\u2611 ':'\u2610 ')+it.t:'';}).filter(Boolean"
+          "text": "if(note.kind==='list')text=(Array.isArray(note.items)?note.items:[]).map(item=>{const it=item as {t?:unknown;done?:unknown};return typeof it?.t==='string'?(it.done?'☑ ':'☐ ')+it.t:'';}).filter(Boolean"
         },
         {
           "line": 62,
@@ -45535,7 +45535,7 @@
         },
         {
           "line": 12,
-          "text": "export const RESIDENT_RECOVERY_PENDING='Alpha couldn\u2019t start. Open Settings \u203a Agent connection.';"
+          "text": "export const RESIDENT_RECOVERY_PENDING='Alpha couldn’t start. Open Settings › Agent connection.';"
         },
         {
           "line": 28,
@@ -47223,7 +47223,7 @@
         },
         {
           "line": 256,
-          "text": "const aiNotice=connection.residentPlanNotice==='needs-plan'?'AI needs an active Cloud plan. Manage it in Settings.':connection.residentInference==='unknown'?'AI connection isn\u2019t confirmed yet.':connec"
+          "text": "const aiNotice=connection.residentPlanNotice==='needs-plan'?'AI needs an active Cloud plan. Manage it in Settings.':connection.residentInference==='unknown'?'AI connection isn’t confirmed yet.':connec"
         },
         {
           "line": 257,
@@ -47231,7 +47231,7 @@
         },
         {
           "line": 258,
-          "text": "const title=(connection.residentInference==='cloud'||connection.residentInference==='direct')&&!aiNotice&&!connection.error&&!revokeNotice&&!progressError?'You\u2019re all set':'Setup finished';"
+          "text": "const title=(connection.residentInference==='cloud'||connection.residentInference==='direct')&&!aiNotice&&!connection.error&&!revokeNotice&&!progressError?'You’re all set':'Setup finished';"
         },
         {
           "line": 268,
@@ -47239,7 +47239,7 @@
         },
         {
           "line": 269,
-          "text": "const primary = busy ? 'Checking\u2026' : target && native && (state === 'ready' || state === 'settings') ? 'Open Android settings' : target && !native && state === 'ready' ? 'Done' : state === 'ready' ? '"
+          "text": "const primary = busy ? 'Checking…' : target && native && (state === 'ready' || state === 'settings') ? 'Open Android settings' : target && !native && state === 'ready' ? 'Done' : state === 'ready' ? '"
         }
       ]
     },
@@ -47406,7 +47406,7 @@
         },
         {
           "line": 19,
-          "text": "const permissionText:Record<string,string>={'google.gmail.mailbox':'Gmail mailbox changes need permission. Enable Gmail changes in Settings \u2192 Connections.','google.gmail.send':'Sending Gmail needs per"
+          "text": "const permissionText:Record<string,string>={'google.gmail.mailbox':'Gmail mailbox changes need permission. Enable Gmail changes in Settings → Connections.','google.gmail.send':'Sending Gmail needs per"
         },
         {
           "line": 28,
@@ -47418,7 +47418,7 @@
         },
         {
           "line": 31,
-          "text": "const allowed=(kind:keyof GoogleAgentAccess)=>{if(access()[kind]!==true)throw new GoogleAgentRefusal('changes-off',kind==='gmailChanges'?'Gmail changes are turned off in Settings \u203a Google accounts. Go"
+          "text": "const allowed=(kind:keyof GoogleAgentAccess)=>{if(access()[kind]!==true)throw new GoogleAgentRefusal('changes-off',kind==='gmailChanges'?'Gmail changes are turned off in Settings › Google accounts. Go"
         },
         {
           "line": 32,
@@ -47522,7 +47522,7 @@
         },
         {
           "line": 90,
-          "text": "const needed=()=>new GoogleAgentRefusal('permission-needed',permissionText[capability]??'Gmail reads need permission. Reconnect Gmail in Settings \u2192 Connections.');"
+          "text": "const needed=()=>new GoogleAgentRefusal('permission-needed',permissionText[capability]??'Gmail reads need permission. Reconnect Gmail in Settings → Connections.');"
         },
         {
           "line": 91,
@@ -49110,8 +49110,9 @@
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
-      "sha256": "06d7e30ee87463d542ed419a38b230c4d88893c009fa0aab078d7dcfed863e71",
-      "stateAnchors": []
+      "sha256": "b1cf1b54d803d75a9dd091e8aa130e78f30af90ea897208f9672d378fa0b4b37",
+      "stateAnchors": [],
+      "integrationReview": "Reviewed integration source. Domain allocation is retained; source-hash refresh does not establish semantic refinement. See targeted validation and remaining obligations."
     },
     {
       "path": "scripts/core-state-patch.mjs",
@@ -49593,8 +49594,9 @@
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
-      "sha256": "321abaf05f9e8cbf6e4ba642ec7ebf45a6c693331a637210610a1f7723662daa",
-      "stateAnchors": []
+      "sha256": "bd5c0ae286c2802fed48f8e51150d4f2de75fb4c8563cfdcdd4d1347fb888c5f",
+      "stateAnchors": [],
+      "integrationReview": "Reviewed integration source. Domain allocation is retained; source-hash refresh does not establish semantic refinement. See targeted validation and remaining obligations."
     },
     {
       "path": "scripts/mobile-bundle-smoke.mjs",
@@ -49644,8 +49646,9 @@
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
-      "sha256": "3501fc1c8c31dd82b117749bbd4e2945cbae1357615f217fb5722632995b1f0e",
-      "stateAnchors": []
+      "sha256": "95929125edde207ea6948e5da90bf47ec8c1652c2f634781265493d98f2fc19f",
+      "stateAnchors": [],
+      "integrationReview": "Reviewed integration source. Domain allocation is retained; source-hash refresh does not establish semantic refinement. See targeted validation and remaining obligations."
     },
     {
       "path": "scripts/prepare-embedding-host.mjs",
@@ -49681,8 +49684,9 @@
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
-      "sha256": "f0ea56c6f9d031b3bdc96a49b56ff49f42fcac5b207ed7bfcea44edd29396070",
-      "stateAnchors": []
+      "sha256": "5308ee484c0ca5a880ff9f4ef63b286dae5c2112de9e67970387cdc6762178c1",
+      "stateAnchors": [],
+      "integrationReview": "Reviewed integration source. Domain allocation is retained; source-hash refresh does not establish semantic refinement. See targeted validation and remaining obligations."
     },
     {
       "path": "scripts/prepared-workflow-worker.mjs",
@@ -50982,7 +50986,7 @@
         },
         {
           "line": 160,
-          "text": "const text = `Which account should I link \u2014 ${names}?`;"
+          "text": "const text = `Which account should I link — ${names}?`;"
         },
         {
           "line": 167,
@@ -51640,7 +51644,7 @@
         },
         {
           "line": 371,
-          "text": "const restartText = reason ? `Restarting\u2026 (${reason})` : \"Restarting\u2026\";"
+          "text": "const restartText = reason ? `Restarting… (${reason})` : \"Restarting…\";"
         },
         {
           "line": 375,
@@ -53888,7 +53892,7 @@
         },
         {
           "line": 105,
-          "text": "// idempotent \u2014 report the in-progress state and let the client poll"
+          "text": "// idempotent — report the in-progress state and let the client poll"
         },
         {
           "line": 133,
@@ -55286,7 +55290,7 @@
         },
         {
           "line": 281,
-          "text": "const out = Buffer.from(bytes); // copy \u2014 the store's original is immutable"
+          "text": "const out = Buffer.from(bytes); // copy — the store's original is immutable"
         },
         {
           "line": 282,
@@ -56920,7 +56924,7 @@
         },
         {
           "line": 722,
-          "text": "// payload \u2014 let it flow to the visible text path, which handles it."
+          "text": "// payload — let it flow to the visible text path, which handles it."
         },
         {
           "line": 727,
@@ -69503,7 +69507,7 @@
         },
         {
           "line": 28,
-          "text": "const MAX_DECODE_PIXELS = 16_777_216; // 16 Mi px \u2192 \u226464 MiB RGBA"
+          "text": "const MAX_DECODE_PIXELS = 16_777_216; // 16 Mi px → ≤64 MiB RGBA"
         },
         {
           "line": 65,
@@ -71227,7 +71231,7 @@
         },
         {
           "line": 94,
-          "text": "// Chat providers \u2192 the env-var family the corresponding model plugin reads."
+          "text": "// Chat providers → the env-var family the corresponding model plugin reads."
         },
         {
           "line": 101,
@@ -85032,7 +85036,7 @@
       "stateAnchors": [
         {
           "line": 45,
-          "text": "// from the env var before any user code runs, so we skip \u2014 calling it again"
+          "text": "// from the env var before any user code runs, so we skip — calling it again"
         },
         {
           "line": 58,
@@ -88429,7 +88433,7 @@
         },
         {
           "line": 173,
-          "text": "const emoji = entry.metadata?.emoji ?? \"\ud83d\udd17\";"
+          "text": "const emoji = entry.metadata?.emoji ?? \"🔗\";"
         }
       ]
     },
@@ -92933,7 +92937,7 @@
         },
         {
           "line": 138,
-          "text": "\"Connectors let Eliza work with your other apps and platforms \u2014 Discord, Telegram, Slack, X, WhatsApp, and more \u2014 so it can read and send messages there on your behalf. You add them in Settings.\","
+          "text": "\"Connectors let Eliza work with your other apps and platforms — Discord, Telegram, Slack, X, WhatsApp, and more — so it can read and send messages there on your behalf. You add them in Settings.\","
         }
       ]
     },
@@ -95682,7 +95686,7 @@
         },
         {
           "line": 6550,
-          "text": "// Log the error and continue the prompt loop \u2014 don't let a single"
+          "text": "// Log the error and continue the prompt loop — don't let a single"
         },
         {
           "line": 6589,
@@ -115071,7 +115075,7 @@
         },
         {
           "line": 77,
-          "text": "const MAX_PBKDF2_ITERATIONS = 1_200_000; // 2\u00d7 the default \u2014 reject anything higher on import"
+          "text": "const MAX_PBKDF2_ITERATIONS = 1_200_000; // 2× the default — reject anything higher on import"
         },
         {
           "line": 78,
@@ -130299,7 +130303,7 @@
         },
         {
           "line": 345,
-          "text": "// needs enough audio \u2014 run it and let the value flow; too-short turns just"
+          "text": "// needs enough audio — run it and let the value flow; too-short turns just"
         },
         {
           "line": 350,
@@ -142563,7 +142567,7 @@
         },
         {
           "line": 35,
-          "text": "const bytes = new Uint8Array(32); // 32 bytes \u2192 43 base64url chars"
+          "text": "const bytes = new Uint8Array(32); // 32 bytes → 43 base64url chars"
         },
         {
           "line": 41,
@@ -146204,7 +146208,7 @@
         },
         {
           "line": 380,
-          "text": "// No shorthand \u2192 the OP_SESSION_* var cannot be named. A session token"
+          "text": "// No shorthand → the OP_SESSION_* var cannot be named. A session token"
         },
         {
           "line": 393,
@@ -149695,7 +149699,7 @@
         },
         {
           "line": 93,
-          "text": "const SPAN_WORDS = /^((?:\\s+[\\p{L}\\p{N}'\u2019]+)+)(\\s+|\\s*,\\s*)$/u;"
+          "text": "const SPAN_WORDS = /^((?:\\s+[\\p{L}\\p{N}'’]+)+)(\\s+|\\s*,\\s*)$/u;"
         },
         {
           "line": 94,
@@ -149731,7 +149735,7 @@
         },
         {
           "line": 113,
-          "text": "const BARE_END = /(?:^|[\\s.!?,;:(])(?:don['\u2019]?t|do\\s+not|never)[\\s.!?)]*$/i;"
+          "text": "const BARE_END = /(?:^|[\\s.!?,;:(])(?:don['’]?t|do\\s+not|never)[\\s.!?)]*$/i;"
         },
         {
           "line": 115,
@@ -149759,7 +149763,7 @@
         },
         {
           "line": 139,
-          "text": "const quoted = /^([\"'\u201c\u2018])(.+)([\"'\u201d\u2019])[.,!?]*$/u.exec(target);"
+          "text": "const quoted = /^([\"'“‘])(.+)([\"'”’])[.,!?]*$/u.exec(target);"
         },
         {
           "line": 146,
@@ -149851,7 +149855,7 @@
         },
         {
           "line": 310,
-          "text": "const lead = word[0].replace(/^[(\"'\u201c\u2018\u00ab<[]+/u, \"\");"
+          "text": "const lead = word[0].replace(/^[(\"'“‘«<[]+/u, \"\");"
         },
         {
           "line": 311,
@@ -149963,7 +149967,7 @@
         },
         {
           "line": 470,
-          "text": "const word = /[\\p{L}'\u2019]+$/u.exec(text.slice(0, end));"
+          "text": "const word = /[\\p{L}'’]+$/u.exec(text.slice(0, end));"
         },
         {
           "line": 484,
@@ -159490,11 +159494,11 @@
         },
         {
           "line": 52,
-          "text": "const asked = String.raw`(?<!\\b(?:[Ww]hether|[Ww]hen|[Ww]here|[Hh]ow|[Ww]hat|[Ww]hich|[Ww]ho|[Ww]hom)\\s+(?:[\\w'\u2019-]+\\s+){0,3})`;"
+          "text": "const asked = String.raw`(?<!\\b(?:[Ww]hether|[Ww]hen|[Ww]here|[Hh]ow|[Ww]hat|[Ww]hich|[Ww]ho|[Ww]hom)\\s+(?:[\\w'’-]+\\s+){0,3})`;"
         },
         {
           "line": 55,
-          "text": "const polite = String.raw`[Kk]indly|[Jj]ust|[Nn]ow|[Yy]ou|[Ll]et['\u2019]?s|[Gg]o|[Bb]itte|[Ff]avou?r|[Pp]lait|[Pp]lz|[Pp]ls`;"
+          "text": "const polite = String.raw`[Kk]indly|[Jj]ust|[Nn]ow|[Yy]ou|[Ll]et['’]?s|[Gg]o|[Bb]itte|[Ff]avou?r|[Pp]lait|[Pp]lz|[Pp]ls`;"
         },
         {
           "line": 56,
@@ -161365,7 +161369,7 @@
         },
         {
           "line": 159,
-          "text": "const required = spec.required.length > 0 ? spec.required.join(\", \") : \"\u2014\";"
+          "text": "const required = spec.required.length > 0 ? spec.required.join(\", \") : \"—\";"
         },
         {
           "line": 160,
@@ -169253,7 +169257,7 @@
         },
         {
           "line": 101,
-          "text": "const NEGATION_WORD = String.raw`\\b(?:not|no|never|isn't|isn\u2019t|aren't|aren\u2019t|won't|won\u2019t|doesn't|doesn\u2019t|don't|don\u2019t)\\b`;"
+          "text": "const NEGATION_WORD = String.raw`\\b(?:not|no|never|isn't|isn’t|aren't|aren’t|won't|won’t|doesn't|doesn’t|don't|don’t)\\b`;"
         },
         {
           "line": 102,
@@ -181347,11 +181351,11 @@
       "stateAnchors": [
         {
           "line": 23,
-          "text": "const ZH_HANS_RANGE = /[\u4e00-\u9fff]/;"
+          "text": "const ZH_HANS_RANGE = /[一-鿿]/;"
         },
         {
           "line": 24,
-          "text": "const JAPANESE_KANA_RANGE = /[\u3040-\u30ff]/;"
+          "text": "const JAPANESE_KANA_RANGE = /[぀-ヿ]/;"
         },
         {
           "line": 26,
@@ -181363,11 +181367,11 @@
         },
         {
           "line": 86,
-          "text": "const SPANISH_DIACRITICS = /[\u00f1\u00bf\u00a1\u00e1\u00e9\u00ed\u00f3\u00fa\u00fc\u00d1\u00c1\u00c9\u00cd\u00d3\u00da\u00dc]/;"
+          "text": "const SPANISH_DIACRITICS = /[ñ¿¡áéíóúüÑÁÉÍÓÚÜ]/;"
         },
         {
           "line": 87,
-          "text": "const FRENCH_DIACRITICS = /[\u00e0\u00e2\u00e4\u00e6\u00e7\u00e9\u00e8\u00ea\u00eb\u00ee\u00ef\u00f4\u0153\u00f9\u00fb\u00fc\u00ff\u00c0\u00c2\u00c4\u00c6\u00c7\u00c9\u00c8\u00ca\u00cb\u00ce\u00cf\u00d4\u0152\u00d9\u00db\u00dc\u0178]/;"
+          "text": "const FRENCH_DIACRITICS = /[àâäæçéèêëîïôœùûüÿÀÂÄÆÇÉÈÊËÎÏÔŒÙÛÜŸ]/;"
         },
         {
           "line": 96,
@@ -183518,7 +183522,7 @@
         },
         {
           "line": 119,
-          "text": "const suffix = ctx ? ` \u2014 ${redact(ctx)}` : \"\";"
+          "text": "const suffix = ctx ? ` — ${redact(ctx)}` : \"\";"
         },
         {
           "line": 129,
@@ -183590,7 +183594,7 @@
         },
         {
           "line": 120,
-          "text": "* \u2014 let the caller fall through to its plain-text handling)."
+          "text": "* — let the caller fall through to its plain-text handling)."
         },
         {
           "line": 126,
@@ -186214,7 +186218,7 @@
       "stateAnchors": [
         {
           "line": 135,
-          "text": "* Default `undefined` \u2014 no perf cost in production unless the env var is"
+          "text": "* Default `undefined` — no perf cost in production unless the env var is"
         },
         {
           "line": 352,
@@ -192119,7 +192123,7 @@
       "stateAnchors": [
         {
           "line": 103,
-          "text": "* `image`/`file` let a secret be captured as an upload \u2014 e.g. photograph a"
+          "text": "* `image`/`file` let a secret be captured as an upload — e.g. photograph a"
         },
         {
           "line": 220,
@@ -196446,7 +196450,7 @@
         },
         {
           "line": 77,
-          "text": "const opensSentence = before === \"\" || /[.!?\u3002\uff01\uff1f\\n]$/u.test(before);"
+          "text": "const opensSentence = before === \"\" || /[.!?。！？\\n]$/u.test(before);"
         },
         {
           "line": 81,
@@ -201541,7 +201545,7 @@
         },
         {
           "line": 500,
-          "text": "const label = [resolved.name, resolved.address].filter(Boolean).join(\" \u2014 \");"
+          "text": "const label = [resolved.name, resolved.address].filter(Boolean).join(\" — \");"
         },
         {
           "line": 531,
@@ -205153,7 +205157,7 @@
         },
         {
           "line": 73,
-          "text": "const singleLine = text.replace(/\\r?\\n/g, \"\u21b5 \").replace(/\\s+/g, \" \").trim();"
+          "text": "const singleLine = text.replace(/\\r?\\n/g, \"↵ \").replace(/\\s+/g, \" \").trim();"
         },
         {
           "line": 74,
@@ -209526,7 +209530,7 @@
       "stateAnchors": [
         {
           "line": 14,
-          "text": "*   - {@link isSelfEditPathDenied} \u2014 refuses to let the self-edit flow modify"
+          "text": "*   - {@link isSelfEditPathDenied} — refuses to let the self-edit flow modify"
         },
         {
           "line": 26,
@@ -219635,7 +219639,7 @@
         },
         {
           "line": 380,
-          "text": "// the post \u2014 don't claim success; let the store's glass fallback deliver."
+          "text": "// the post — don't claim success; let the store's glass fallback deliver."
         },
         {
           "line": 383,
@@ -220474,7 +220478,7 @@
       "stateAnchors": [
         {
           "line": 31,
-          "text": "* That Enter must never send \u2014 let it fall through to"
+          "text": "* That Enter must never send — let it fall through to"
         },
         {
           "line": 70,
@@ -223242,7 +223246,7 @@
         },
         {
           "line": 45,
-          "text": "* Read each env var by its literal name \u2014 Vite inlines custom `VITE_*` vars only"
+          "text": "* Read each env var by its literal name — Vite inlines custom `VITE_*` vars only"
         },
         {
           "line": 61,
@@ -230550,7 +230554,7 @@
         },
         {
           "line": 216,
-          "text": "* from the origin (#17579 \u2014 previously a single global key let a token"
+          "text": "* from the origin (#17579 — previously a single global key let a token"
         },
         {
           "line": 227,
@@ -232232,7 +232236,7 @@
       "stateAnchors": [
         {
           "line": 14,
-          "text": "*  - `config` \u2014 `local-config` modes render the plugin's env-var form (bot"
+          "text": "*  - `config` — `local-config` modes render the plugin's env-var form (bot"
         },
         {
           "line": 69,
@@ -233360,7 +233364,7 @@
         },
         {
           "line": 116,
-          "text": "let openLtAt = -1; // dangling '<' with no later '>' (clean \u21d2 -1 at fromCut)"
+          "text": "let openLtAt = -1; // dangling '<' with no later '>' (clean ⇒ -1 at fromCut)"
         },
         {
           "line": 121,
@@ -234084,7 +234088,7 @@
         },
         {
           "line": 192,
-          "text": "const value = statusText ?? \"Setting up\u2026\";"
+          "text": "const value = statusText ?? \"Setting up…\";"
         }
       ]
     },
@@ -235835,7 +235839,7 @@
         },
         {
           "line": 170,
-          "text": "/** The model hint for a mode (undefined \u21d2 let the host pick its default). */"
+          "text": "/** The model hint for a mode (undefined ⇒ let the host pick its default). */"
         },
         {
           "line": 186,
@@ -249950,7 +249954,7 @@
         },
         {
           "line": 402,
-          "text": "// Haptics are a nicety \u2014 never let them throw into the gesture path."
+          "text": "// Haptics are a nicety — never let them throw into the gesture path."
         },
         {
           "line": 405,
@@ -251282,7 +251286,7 @@
         },
         {
           "line": 2817,
-          "text": "// calc (not a JS-measured number): the host seeds that var on native \u2014 and"
+          "text": "// calc (not a JS-measured number): the host seeds that var on native — and"
         },
         {
           "line": 2820,
@@ -251702,7 +251706,7 @@
         },
         {
           "line": 4035,
-          "text": "// sits above the chat: let ITS Escape handling win \u2014 collapsing here"
+          "text": "// sits above the chat: let ITS Escape handling win — collapsing here"
         },
         {
           "line": 4071,
@@ -255287,7 +255291,7 @@
         },
         {
           "line": 723,
-          "text": "// let taps fall through to the composer textarea below it \u2014 otherwise its"
+          "text": "// let taps fall through to the composer textarea below it — otherwise its"
         }
       ]
     },
@@ -262281,7 +262285,7 @@
       "stateAnchors": [
         {
           "line": 151,
-          "text": "* Env var alias pairs for brand compatibility (e.g. ELIZA_* \u2194 ELIZA_*)."
+          "text": "* Env var alias pairs for brand compatibility (e.g. ELIZA_* ↔ ELIZA_*)."
         },
         {
           "line": 169,
@@ -264273,7 +264277,7 @@
         },
         {
           "line": 73,
-          "text": "const pct = displayPercent != null ? ` \u2014 ${displayPercent}%` : \"\";"
+          "text": "const pct = displayPercent != null ? ` — ${displayPercent}%` : \"\";"
         },
         {
           "line": 74,
@@ -273613,7 +273617,7 @@
         },
         {
           "line": 27,
-          "text": "const loading = <span role=\"status\">Loading wallets\u2026</span>;"
+          "text": "const loading = <span role=\"status\">Loading wallets…</span>;"
         },
         {
           "line": 57,
@@ -275467,7 +275471,7 @@
       "stateAnchors": [
         {
           "line": 38,
-          "text": "const clean = (text: string) => text.replace(/[\u202f\u00a0]/g, \" \");"
+          "text": "const clean = (text: string) => text.replace(/[  ]/g, \" \");"
         },
         {
           "line": 39,
@@ -276956,7 +276960,7 @@
         },
         {
           "line": 254,
-          "text": "// standalone/native ONLY \u2014 elsewhere (desktop/web/Android) the var is a hard 0"
+          "text": "// standalone/native ONLY — elsewhere (desktop/web/Android) the var is a hard 0"
         },
         {
           "line": 281,
@@ -292398,7 +292402,7 @@
       "stateAnchors": [
         {
           "line": 13,
-          "text": "* navigation \u2014 and scopes the DOM class/CSS-var vectors to the shell-owned"
+          "text": "* navigation — and scopes the DOM class/CSS-var vectors to the shell-owned"
         },
         {
           "line": 82,
@@ -293030,7 +293034,7 @@
       "stateAnchors": [
         {
           "line": 10,
-          "text": "* sessionStorage survives reloads \u2014 a permanent flag would let the FIRST"
+          "text": "* sessionStorage survives reloads — a permanent flag would let the FIRST"
         },
         {
           "line": 19,
@@ -293996,7 +294000,7 @@
         },
         {
           "line": 123,
-          "text": "const { fallback = \"\u2014\" } = options;"
+          "text": "const { fallback = \"—\" } = options;"
         },
         {
           "line": 124,
@@ -294008,7 +294012,7 @@
         },
         {
           "line": 147,
-          "text": "const { fallback = \"\u2014\", locale, timeZone } = options;"
+          "text": "const { fallback = \"—\", locale, timeZone } = options;"
         },
         {
           "line": 148,
@@ -294016,7 +294020,7 @@
         },
         {
           "line": 163,
-          "text": "const { fallback = \"\u2014\", locale } = options;"
+          "text": "const { fallback = \"—\", locale } = options;"
         },
         {
           "line": 164,
@@ -294024,7 +294028,7 @@
         },
         {
           "line": 176,
-          "text": "const { fallback = \"\u2014\", t } = options;"
+          "text": "const { fallback = \"—\", t } = options;"
         },
         {
           "line": 182,
@@ -294364,7 +294368,7 @@
         },
         {
           "line": 492,
-          "text": "*  - `{ kind: \"passthrough\" }` \u2014 nothing to intercept; let the textarea handle"
+          "text": "*  - `{ kind: \"passthrough\" }` — nothing to intercept; let the textarea handle"
         },
         {
           "line": 537,
@@ -294803,7 +294807,7 @@
         },
         {
           "line": 45,
-          "text": "const emptyLabel = options?.emptyLabel ?? \"\u2014\";"
+          "text": "const emptyLabel = options?.emptyLabel ?? \"—\";"
         },
         {
           "line": 58,
@@ -294871,7 +294875,7 @@
         },
         {
           "line": 67,
-          "text": "const singleLine = text.replace(/\\r?\\n/g, \"\u21b5 \").replace(/\\s+/g, \" \").trim();"
+          "text": "const singleLine = text.replace(/\\r?\\n/g, \"↵ \").replace(/\\s+/g, \" \").trim();"
         },
         {
           "line": 68,
@@ -302657,7 +302661,7 @@
         },
         {
           "line": 69,
-          "text": "const TERMINATOR_REGEX = /[.!?\u2026\u3002\uff01\uff1f]/u;"
+          "text": "const TERMINATOR_REGEX = /[.!?…。！？]/u;"
         },
         {
           "line": 71,
@@ -302741,7 +302745,7 @@
         },
         {
           "line": 297,
-          "text": "const trimMatch = /^[\\s\u200b]+/u.exec(text);"
+          "text": "const trimMatch = /^[\\s​]+/u.exec(text);"
         },
         {
           "line": 298,
@@ -306370,7 +306374,7 @@
         },
         {
           "line": 67,
-          "text": "const emoji = response.status === 429 ? \"\ud83d\udeab\" : \"\ud83d\udcca\";"
+          "text": "const emoji = response.status === 429 ? \"🚫\" : \"📊\";"
         },
         {
           "line": 72,
@@ -307980,11 +307984,11 @@
         },
         {
           "line": 1701,
-          "text": "const ts = item.timestamp ? ` \u00b7 ${item.timestamp.slice(0, 19)}` : \"\";"
+          "text": "const ts = item.timestamp ? ` · ${item.timestamp.slice(0, 19)}` : \"\";"
         },
         {
           "line": 1702,
-          "text": "const detail = item.detail ? ` \u2014 ${item.detail}` : \"\";"
+          "text": "const detail = item.detail ? ` — ${item.detail}` : \"\";"
         },
         {
           "line": 1706,
@@ -318259,7 +318263,7 @@
         },
         {
           "line": 631,
-          "text": "const text = \"Which trait should I change \u2014 verbosity, tone, or formality?\";"
+          "text": "const text = \"Which trait should I change — verbosity, tone, or formality?\";"
         },
         {
           "line": 636,
@@ -318267,7 +318271,7 @@
         },
         {
           "line": 642,
-          "text": "const text = `I can't set ${trait} to ${describeUserReference(value, \"that value\")} \u2014 that's not one of the options.`;"
+          "text": "const text = `I can't set ${trait} to ${describeUserReference(value, \"that value\")} — that's not one of the options.`;"
         },
         {
           "line": 647,
@@ -318283,7 +318287,7 @@
         },
         {
           "line": 699,
-          "text": "const text = \"Which trait should I clear \u2014 verbosity, tone, or formality?\";"
+          "text": "const text = \"Which trait should I clear — verbosity, tone, or formality?\";"
         },
         {
           "line": 703,
@@ -318343,7 +318347,7 @@
         },
         {
           "line": 912,
-          "text": "const text = \"Got it \u2014 I'll keep that in mind for our chats.\";"
+          "text": "const text = \"Got it — I'll keep that in mind for our chats.\";"
         },
         {
           "line": 926,
@@ -318383,7 +318387,7 @@
         },
         {
           "line": 1017,
-          "text": "const text = `I don't have a profile named ${describeUserReference(name, \"that profile\")} saved \u2014 ask me to list the profiles.`;"
+          "text": "const text = `I don't have a profile named ${describeUserReference(name, \"that profile\")} saved — ask me to list the profiles.`;"
         },
         {
           "line": 1021,
@@ -318575,7 +318579,7 @@
         },
         {
           "line": 73,
-          "text": "const QUOTED_MESSAGE = /^(?:\"[\\s\\S]*\"|\u201c[\\s\\S]*\u201d|'[\\s\\S]*')$/u;"
+          "text": "const QUOTED_MESSAGE = /^(?:\"[\\s\\S]*\"|“[\\s\\S]*”|'[\\s\\S]*')$/u;"
         },
         {
           "line": 74,
@@ -318583,7 +318587,7 @@
         },
         {
           "line": 76,
-          "text": "const LEADING_REQUEST_WORD = /^(?:please|kindly)\\b\\s*(?:(?:[,;:]|\u2014|--+)\\s*)?/i;"
+          "text": "const LEADING_REQUEST_WORD = /^(?:please|kindly)\\b\\s*(?:(?:[,;:]|—|--+)\\s*)?/i;"
         },
         {
           "line": 77,
@@ -318623,7 +318627,7 @@
         },
         {
           "line": 99,
-          "text": "const NEGATED_IMPERATIVE_START = /^(?:don['\u2019]t|do\\s+not)\\b/i;"
+          "text": "const NEGATED_IMPERATIVE_START = /^(?:don['’]t|do\\s+not)\\b/i;"
         },
         {
           "line": 100,
@@ -318655,11 +318659,11 @@
         },
         {
           "line": 123,
-          "text": "const CESSATION_PREFIX = String.raw`(?:never|stop|quit|cease|don['\u2019]t|do\\s+not|no\\s+longer)`;"
+          "text": "const CESSATION_PREFIX = String.raw`(?:never|stop|quit|cease|don['’]t|do\\s+not|no\\s+longer)`;"
         },
         {
           "line": 127,
-          "text": "const COMMUNICATION_CESSATION_VERB = `(?:answer(?:ing)?|respond(?:ing)?|repl(?:y|ying)|speak(?:ing)?|talk(?:ing)?|messag(?:e|ing)|text(?:ing)?|ping(?:ing)?|dm(?:['\u2019]?ing)?)`;"
+          "text": "const COMMUNICATION_CESSATION_VERB = `(?:answer(?:ing)?|respond(?:ing)?|repl(?:y|ying)|speak(?:ing)?|talk(?:ing)?|messag(?:e|ing)|text(?:ing)?|ping(?:ing)?|dm(?:['’]?ing)?)`;"
         },
         {
           "line": 128,
@@ -323593,7 +323597,7 @@
         },
         {
           "line": 110,
-          "text": "const desc = opt.description ? ` \u2014 ${opt.description}` : \"\";"
+          "text": "const desc = opt.description ? ` — ${opt.description}` : \"\";"
         },
         {
           "line": 122,
@@ -331959,7 +331963,7 @@
         },
         {
           "line": 222,
-          "text": "const text = `I've drafted the reply on ${record.source} \u2014 it's waiting for approval before it goes out.`;"
+          "text": "const text = `I've drafted the reply on ${record.source} — it's waiting for approval before it goes out.`;"
         },
         {
           "line": 252,
@@ -332099,7 +332103,7 @@
         },
         {
           "line": 137,
-          "text": "const prompt = `A user asked the agent to send an outbound message. Extract the parts of the request \u2014 this must work in any language, so do not rely on English keywords."
+          "text": "const prompt = `A user asked the agent to send an outbound message. Extract the parts of the request — this must work in any language, so do not rely on English keywords."
         },
         {
           "line": 149,
@@ -332251,7 +332255,7 @@
         },
         {
           "line": 420,
-          "text": "const text = `Here's what I'm about to send: ${previewOutboundDraft(existing)} \u2014 want me to send it?`;"
+          "text": "const text = `Here's what I'm about to send: ${previewOutboundDraft(existing)} — want me to send it?`;"
         },
         {
           "line": 445,
@@ -343036,7 +343040,7 @@
         },
         {
           "line": 110,
-          "text": "// launching the application itself (APP) \u2014 hint both and let the planner"
+          "text": "// launching the application itself (APP) — hint both and let the planner"
         },
         {
           "line": 112,
@@ -345489,7 +345493,7 @@
         },
         {
           "line": 2384,
-          "text": "/^(?:checking|fetching|gathering|reading|scanning|looking (?:up|into)|working on it|on it|one (?:moment|sec(?:ond)?)|give me a (?:sec(?:ond)?|moment)|let me (?!know\\b)[a-z]+)[.\u2026!\\s]*$/i;"
+          "text": "/^(?:checking|fetching|gathering|reading|scanning|looking (?:up|into)|working on it|on it|one (?:moment|sec(?:ond)?)|give me a (?:sec(?:ond)?|moment)|let me (?!know\\b)[a-z]+)[.…!\\s]*$/i;"
         },
         {
           "line": 2385,
@@ -347591,7 +347595,7 @@
         },
         {
           "line": 594,
-          "text": "const message = \"I couldn\u2019t verify that change from the recorded results.\";"
+          "text": "const message = \"I couldn’t verify that change from the recorded results.\";"
         },
         {
           "line": 595,
@@ -351779,7 +351783,7 @@
         },
         {
           "line": 12423,
-          "text": "\"calling|checking|fetching|gathering|looking (?:up|into)|running|using|spawning|starting|working on|one moment|let me|i(?:'|\u2019)ll|i will\";"
+          "text": "\"calling|checking|fetching|gathering|looking (?:up|into)|running|using|spawning|starting|working on|one moment|let me|i(?:'|’)ll|i will\";"
         },
         {
           "line": 12428,
@@ -355331,7 +355335,7 @@
         },
         {
           "line": 835,
-          "text": "const quoted = (value: string) => `\u201c${value}\u201d`;"
+          "text": "const quoted = (value: string) => `“${value}”`;"
         },
         {
           "line": 841,
@@ -357318,7 +357322,7 @@
         },
         {
           "line": 195,
-          "text": "const quoted = (value: string) => `\u201c${value}\u201d`;"
+          "text": "const quoted = (value: string) => `“${value}”`;"
         },
         {
           "line": 196,
@@ -363557,7 +363561,7 @@
         },
         {
           "line": 239,
-          "text": "// capture (formerly 80 chars) let a computed tail (\"\u2026 and then fetches the"
+          "text": "// capture (formerly 80 chars) let a computed tail (\"… and then fetches the"
         },
         {
           "line": 241,
@@ -368276,7 +368280,7 @@
         },
         {
           "line": 1287,
-          "text": "// survived collection, let the turn plan \u2014 the trigger path serves it."
+          "text": "// survived collection, let the turn plan — the trigger path serves it."
         },
         {
           "line": 1288,
@@ -369700,7 +369704,7 @@
         },
         {
           "line": 303,
-          "text": "// the user just read \u2014 drop the fallback and let the tool's words stand."
+          "text": "// the user just read — drop the fallback and let the tool's words stand."
         },
         {
           "line": 304,
@@ -370883,7 +370887,7 @@
         },
         {
           "line": 105,
-          "text": "const GENERIC_COMPLETION_OPENER_PATTERN = /^[\\s.!?\u2026\u2013\u2014-]*done\\b/i;"
+          "text": "const GENERIC_COMPLETION_OPENER_PATTERN = /^[\\s.!?…–—-]*done\\b/i;"
         },
         {
           "line": 125,
@@ -370919,15 +370923,15 @@
         },
         {
           "line": 235,
-          "text": "const MULTILINGUAL_SENTENCE_TERMINATOR = /[.!?\u3002\uff01\uff1f\\n]/u;"
+          "text": "const MULTILINGUAL_SENTENCE_TERMINATOR = /[.!?。！？\\n]/u;"
         },
         {
           "line": 248,
-          "text": "const MULTILINGUAL_CLAUSE_TAG_BOUNDARY = /[,\uff0c\u3001;\uff1b\u2014\u2013:\uff1a\u2026-]/gu;"
+          "text": "const MULTILINGUAL_CLAUSE_TAG_BOUNDARY = /[,，、;；—–:：…-]/gu;"
         },
         {
           "line": 253,
-          "text": "const MULTILINGUAL_QUESTION_MARK = /[?\uff1f\u00bf]/gu;"
+          "text": "const MULTILINGUAL_QUESTION_MARK = /[?？¿]/gu;"
         },
         {
           "line": 255,
@@ -371335,7 +371339,7 @@
         },
         {
           "line": 1102,
-          "text": "const sentences = words.slice(assent ? \"sure! \".length : 0).split(/[.!\u2026]+ /u);"
+          "text": "const sentences = words.slice(assent ? \"sure! \".length : 0).split(/[.!…]+ /u);"
         }
       ]
     },
@@ -373849,7 +373853,7 @@
         },
         {
           "line": 48,
-          "text": "const routeDelimiters = [...inner.matchAll(/\\([^()\\r\\n]+\\)\\s\u2014\\s*/gu)];"
+          "text": "const routeDelimiters = [...inner.matchAll(/\\([^()\\r\\n]+\\)\\s—\\s*/gu)];"
         },
         {
           "line": 49,
@@ -373905,7 +373909,7 @@
         },
         {
           "line": 78,
-          "text": "const zone = token.replace(/[.!?\"'\u201c\u201d\u2018\u2019]+$/g, \"\");"
+          "text": "const zone = token.replace(/[.!?\"'“”‘’]+$/g, \"\");"
         },
         {
           "line": 87,
@@ -392661,7 +392665,7 @@
         },
         {
           "line": 76,
-          "text": "const HAN_WEEKDAY_PREFIX = /^(?:\u5468|\u9031|\u661f\u671f|\u793c\u62dc|\u79ae\u62dc)/u;"
+          "text": "const HAN_WEEKDAY_PREFIX = /^(?:周|週|星期|礼拜|禮拜)/u;"
         },
         {
           "line": 78,
@@ -392669,11 +392673,11 @@
         },
         {
           "line": 81,
-          "text": "const HAN_SUNDAY_COMPOUND_AFTER = \"(?![\u7a0b\u671f\u5b50\u5e38\u8bb0\u8a18\u5386\u66c6])\";"
+          "text": "const HAN_SUNDAY_COMPOUND_AFTER = \"(?![程期子常记記历曆])\";"
         },
         {
           "line": 83,
-          "text": "const HAN_NUMBERED_DAY_COUNT_AFTER = \"(?![\u5929\u6b21\u4e2a\u500b\u5e74\u6708\u5468\u9031\u904d\u56de])\";"
+          "text": "const HAN_NUMBERED_DAY_COUNT_AFTER = \"(?![天次个個年月周週遍回])\";"
         },
         {
           "line": 86,
@@ -392781,7 +392785,7 @@
         },
         {
           "line": 215,
-          "text": "// wall-clock time range, not a date \u2014 let the weekday branch below win"
+          "text": "// wall-clock time range, not a date — let the weekday branch below win"
         },
         {
           "line": 217,
@@ -397395,7 +397399,7 @@
         },
         {
           "line": 88,
-          "text": "const quotedTitle = [`\"${query}\"`, `\u201c${query}\u201d`, `'${query}'`].some("
+          "text": "const quotedTitle = [`\"${query}\"`, `“${query}”`, `'${query}'`].some("
         },
         {
           "line": 92,
@@ -403244,19 +403248,19 @@
         },
         {
           "line": 368,
-          "text": "const top = `${c1}\u2554${\"\u2550\".repeat(78)}\u2557${R}`;"
+          "text": "const top = `${c1}╔${\"═\".repeat(78)}╗${R}`;"
         },
         {
           "line": 369,
-          "text": "const mid = `${c1}\u2560${\"\u2550\".repeat(78)}\u2563${R}`;"
+          "text": "const mid = `${c1}╠${\"═\".repeat(78)}╣${R}`;"
         },
         {
           "line": 370,
-          "text": "const bot = `${c1}\u255a${\"\u2550\".repeat(78)}\u255d${R}`;"
+          "text": "const bot = `${c1}╚${\"═\".repeat(78)}╝${R}`;"
         },
         {
           "line": 371,
-          "text": "const row = (s: string) => `${c1}\u2551${R}${line(s)}${c1}\u2551${R}`;"
+          "text": "const row = (s: string) => `${c1}║${R}${line(s)}${c1}║${R}`;"
         },
         {
           "line": 373,
@@ -404946,7 +404950,7 @@
         },
         {
           "line": 1217,
-          "text": "const status = newState.fullyBackfilled ? \"\u2713 complete\" : \"\u21bb partial\";"
+          "text": "const status = newState.fullyBackfilled ? \"✓ complete\" : \"↻ partial\";"
         }
       ]
     },
@@ -413186,15 +413190,15 @@
       "stateAnchors": [
         {
           "line": 29,
-          "text": "const EMOJI_QUEUED = \"\u23f3\";"
+          "text": "const EMOJI_QUEUED = \"⏳\";"
         },
         {
           "line": 30,
-          "text": "const EMOJI_THINKING = \"\ud83e\udd14\";"
+          "text": "const EMOJI_THINKING = \"🤔\";"
         },
         {
           "line": 31,
-          "text": "const EMOJI_ERROR = \"\u274c\";"
+          "text": "const EMOJI_ERROR = \"❌\";"
         },
         {
           "line": 42,
@@ -415721,7 +415725,7 @@
         },
         {
           "line": 41,
-          "text": "const quoted = text.match(/\"([^\"]{1,64})\"|'([^']{1,64})'|\u201c([^\u201d]{1,64})\u201d/);"
+          "text": "const quoted = text.match(/\"([^\"]{1,64})\"|'([^']{1,64})'|“([^”]{1,64})”/);"
         },
         {
           "line": 42,
@@ -415741,7 +415745,7 @@
         },
         {
           "line": 79,
-          "text": "const reserved = `Key names starting with \"${RESERVED_PREFIX}\" are reserved for provisioner-managed keys \u2014 pick another name.`;"
+          "text": "const reserved = `Key names starting with \"${RESERVED_PREFIX}\" are reserved for provisioner-managed keys — pick another name.`;"
         },
         {
           "line": 90,
@@ -423996,7 +424000,7 @@
         },
         {
           "line": 528,
-          "text": "return; // logged out / stopped \u2014 let the loop die"
+          "text": "return; // logged out / stopped — let the loop die"
         },
         {
           "line": 530,
@@ -428368,7 +428372,7 @@
         },
         {
           "line": 84,
-          "text": "const range = text.split(/\\s*(?:[-\u2013\u2014]|\\s+to\\s+)\\s*/i);"
+          "text": "const range = text.split(/\\s*(?:[-–—]|\\s+to\\s+)\\s*/i);"
         },
         {
           "line": 86,
@@ -429420,7 +429424,7 @@
         },
         {
           "line": 324,
-          "text": "let text = `Logged check-in for \"${goal.title}\"${progress ? ` \u2014 ${progress.replace(/_/g, \" \")}` : \"\"}.`;"
+          "text": "let text = `Logged check-in for \"${goal.title}\"${progress ? ` — ${progress.replace(/_/g, \" \")}` : \"\"}.`;"
         },
         {
           "line": 344,
@@ -436811,7 +436815,7 @@
         },
         {
           "line": 968,
-          "text": "const fallback = `${metric} \u2014 ${windowLabel}: ${aggregate.label} ${aggregate.value.toFixed("
+          "text": "const fallback = `${metric} — ${windowLabel}: ${aggregate.label} ${aggregate.value.toFixed("
         },
         {
           "line": 987,
@@ -438278,7 +438282,7 @@
         },
         {
           "line": 750,
-          "text": "// must NOT let the swallowed failure masquerade as `sleepHours: 0` \u2014 that"
+          "text": "// must NOT let the swallowed failure masquerade as `sleepHours: 0` — that"
         },
         {
           "line": 775,
@@ -448768,7 +448772,7 @@
         },
         {
           "line": 121,
-          "text": "const tag = entry.classification === \"urgent\" ? \" \u26a0\ufe0f\" : \"\";"
+          "text": "const tag = entry.classification === \"urgent\" ? \" ⚠️\" : \"\";"
         },
         {
           "line": 125,
@@ -453414,7 +453418,7 @@
         },
         {
           "line": 263,
-          "text": "const out = `Got it \u2014 I'll remember ${name}'s voice from now on.`;"
+          "text": "const out = `Got it — I'll remember ${name}'s voice from now on.`;"
         },
         {
           "line": 285,
@@ -469014,7 +469018,7 @@
         },
         {
           "line": 23,
-          "text": "const MAX_GGUF_HEADER_BYTES = 1 << 20; // 1 MiB \u2014 `general.architecture` is one of the first KV entries."
+          "text": "const MAX_GGUF_HEADER_BYTES = 1 << 20; // 1 MiB — `general.architecture` is one of the first KV entries."
         },
         {
           "line": 42,
@@ -469293,7 +469297,7 @@
         },
         {
           "line": 76,
-          "text": "* silently \u2014 silent unavailability would let the runtime fall back to"
+          "text": "* silently — silent unavailability would let the runtime fall back to"
         },
         {
           "line": 122,
@@ -470529,7 +470533,7 @@
         },
         {
           "line": 407,
-          "text": "// ASR never confirmed a word \u2014 the Silero VAD let through"
+          "text": "// ASR never confirmed a word — the Silero VAD let through"
         }
       ]
     },
@@ -474778,7 +474782,7 @@
         },
         {
           "line": 177,
-          "text": "// EIO, EMFILE) means we could not look at all \u2014 do not let callers"
+          "text": "// EIO, EMFILE) means we could not look at all — do not let callers"
         }
       ]
     },
@@ -476030,7 +476034,7 @@
         },
         {
           "line": 193,
-          "text": "const DEFAULT_FRAME_MS = 32; // 512 samples @ 16 kHz \u2014 matches Silero's window."
+          "text": "const DEFAULT_FRAME_MS = 32; // 512 samples @ 16 kHz — matches Silero's window."
         },
         {
           "line": 208,
@@ -482207,7 +482211,7 @@
         },
         {
           "line": 623,
-          "text": "* Returns 0.5 when no classifier is configured (uncertain \u2014 let tiers 1+2 decide)."
+          "text": "* Returns 0.5 when no classifier is configured (uncertain — let tiers 1+2 decide)."
         },
         {
           "line": 659,
@@ -482503,7 +482507,7 @@
         },
         {
           "line": 457,
-          "text": "// support \u2014 let GgmlWakeWordModel.load surface the structured"
+          "text": "// support — let GgmlWakeWordModel.load surface the structured"
         },
         {
           "line": 494,
@@ -513021,11 +513025,11 @@
       "stateAnchors": [
         {
           "line": 6,
-          "text": "const LIST_MARKER = /^(\\s*)(?:(\\d+)([.)]\\s+)|([-*+\u2022]\\s+)?(\\[[ xX]\\]\\s+)?)/;"
+          "text": "const LIST_MARKER = /^(\\s*)(?:(\\d+)([.)]\\s+)|([-*+•]\\s+)?(\\[[ xX]\\]\\s+)?)/;"
         },
         {
           "line": 7,
-          "text": "const LAST_LIST_DELIMITER = /([,;\uff0c\uff1b\u3001\u060c\u061b])(\\s*)[^,;\uff0c\uff1b\u3001\u060c\u061b]*$/;"
+          "text": "const LAST_LIST_DELIMITER = /([,;，；、،؛])(\\s*)[^,;，；、،؛]*$/;"
         },
         {
           "line": 13,
@@ -523892,7 +523896,7 @@
         },
         {
           "line": 1162,
-          "text": "const fallback = `Updated meeting preferences (${updated.preferredStartLocal}\u2013${updated.preferredEndLocal} ${updated.timeZone}, default ${updated.defaultDurationMinutes} min, travel buffer ${updated.t"
+          "text": "const fallback = `Updated meeting preferences (${updated.preferredStartLocal}–${updated.preferredEndLocal} ${updated.timeZone}, default ${updated.defaultDurationMinutes} min, travel buffer ${updated.t"
         },
         {
           "line": 1217,
@@ -524300,7 +524304,7 @@
         },
         {
           "line": 42,
-          "text": "const DIRECTIVE_GAP = \"[^,.!?;:\u3002\uff01\uff1f\uff1b\uff0c\u3001]*\";"
+          "text": "const DIRECTIVE_GAP = \"[^,.!?;:。！？；，、]*\";"
         },
         {
           "line": 44,
@@ -524696,7 +524700,7 @@
         },
         {
           "line": 924,
-          "text": "const parts = [`Saved \u2014 \"${goal.title}\".`];"
+          "text": "const parts = [`Saved — \"${goal.title}\".`];"
         },
         {
           "line": 925,
@@ -525524,7 +525528,7 @@
         },
         {
           "line": 2780,
-          "text": "const CLOCK_CLAUSE_BOUNDARY_RE = /[.;!?\\n\u2014\u2013]|\\bbut\\b/gi;"
+          "text": "const CLOCK_CLAUSE_BOUNDARY_RE = /[.;!?\\n—–]|\\bbut\\b/gi;"
         },
         {
           "line": 2783,
@@ -526364,7 +526368,7 @@
         },
         {
           "line": 5025,
-          "text": "const fallback = `Okay \u2014 I removed \"${retracted.definition.title}\". Nothing is saved for it now.`;"
+          "text": "const fallback = `Okay — I removed \"${retracted.definition.title}\". Nothing is saved for it now.`;"
         },
         {
           "line": 5026,
@@ -526712,7 +526716,7 @@
         },
         {
           "line": 6031,
-          "text": "const alreadyText = `\"${duplicateOf.definition.title}\" is already saved as ${summarizeCadence(duplicateOf.definition.cadence, duplicateOf.definition.timezone)} \u2014 nothing new was created.`;"
+          "text": "const alreadyText = `\"${duplicateOf.definition.title}\" is already saved as ${summarizeCadence(duplicateOf.definition.cadence, duplicateOf.definition.timezone)} — nothing new was created.`;"
         },
         {
           "line": 6045,
@@ -526872,7 +526876,7 @@
         },
         {
           "line": 6531,
-          "text": "const text = `\"${created.goal.title}\" is already saved as a goal \u2014 nothing new was created.`;"
+          "text": "const text = `\"${created.goal.title}\" is already saved as a goal — nothing new was created.`;"
         },
         {
           "line": 6543,
@@ -528476,7 +528480,7 @@
         },
         {
           "line": 1905,
-          "text": "const text = `Approved the call to ${payload.to}, but Twilio is not configured (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER) \u2014 the call was not placed.`;"
+          "text": "const text = `Approved the call to ${payload.to}, but Twilio is not configured (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER) — the call was not placed.`;"
         },
         {
           "line": 1918,
@@ -528508,7 +528512,7 @@
         },
         {
           "line": 1987,
-          "text": "const text = `Approved the signature request for \"${payload.documentName}\", but DocumentRequest ${payload.documentId} no longer exists (the document store does not survive restarts) \u2014 nothing was disp"
+          "text": "const text = `Approved the signature request for \"${payload.documentName}\", but DocumentRequest ${payload.documentId} no longer exists (the document store does not survive restarts) — nothing was disp"
         },
         {
           "line": 2000,
@@ -528532,15 +528536,15 @@
         },
         {
           "line": 2058,
-          "text": "const text = `Approved request ${args.request.id}, but no executor exists for action \"${args.request.action}\" \u2014 nothing was executed.`;"
+          "text": "const text = `Approved request ${args.request.id}, but no executor exists for action \"${args.request.action}\" — nothing was executed.`;"
         },
         {
           "line": 2078,
-          "text": "const text = `Request ${request.id} already completed successfully \u2014 nothing was executed again.`;"
+          "text": "const text = `Request ${request.id} already completed successfully — nothing was executed again.`;"
         },
         {
           "line": 2097,
-          "text": "const text = `Request ${request.id} was already rejected \u2014 nothing was dispatched.`;"
+          "text": "const text = `Request ${request.id} was already rejected — nothing was dispatched.`;"
         },
         {
           "line": 2116,
@@ -528548,7 +528552,7 @@
         },
         {
           "line": 2142,
-          "text": "const text = `Request ${request.id} is already \"${request.state}\" \u2014 I did not ${intent} it, and nothing was executed.`;"
+          "text": "const text = `Request ${request.id} is already \"${request.state}\" — I did not ${intent} it, and nothing was executed.`;"
         },
         {
           "line": 2228,
@@ -528716,7 +528720,7 @@
         },
         {
           "line": 2678,
-          "text": "const text = `Request ${latest.id} kept changing state while I was resolving it \u2014 nothing was executed.`;"
+          "text": "const text = `Request ${latest.id} kept changing state while I was resolving it — nothing was executed.`;"
         },
         {
           "line": 2692,
@@ -532604,7 +532608,7 @@
         },
         {
           "line": 218,
-          "text": "\"Send a workout reminder for the afternoon. Direct, not pleading; one short sentence. Recent reminder outcomes are in context \u2014 let them shape tone (e.g. softer after a skip streak) without restating "
+          "text": "\"Send a workout reminder for the afternoon. Direct, not pleading; one short sentence. Recent reminder outcomes are in context — let them shape tone (e.g. softer after a skip streak) without restating "
         },
         {
           "line": 249,
@@ -536456,7 +536460,7 @@
         },
         {
           "line": 414,
-          "text": "const range = `${displayTime(event.startAt, args.timeZone)}\u2013${displayTime(event.endAt, args.timeZone)}`;"
+          "text": "const range = `${displayTime(event.startAt, args.timeZone)}–${displayTime(event.endAt, args.timeZone)}`;"
         },
         {
           "line": 415,
@@ -548496,11 +548500,11 @@
       "stateAnchors": [
         {
           "line": 25,
-          "text": "* design \u2014 let the caller normalize) or `null` when the regex misses."
+          "text": "* design — let the caller normalize) or `null` when the regex misses."
         },
         {
           "line": 34,
-          "text": "const NAME_TOKEN_PATTERN = \"(?!I['\u2019](?:m|ve|ll|d)\\\\b)[A-Z][A-Za-z'.-]{1,40}\";"
+          "text": "const NAME_TOKEN_PATTERN = \"(?!I['’](?:m|ve|ll|d)\\\\b)[A-Z][A-Za-z'.-]{1,40}\";"
         },
         {
           "line": 35,
@@ -548572,7 +548576,7 @@
         },
         {
           "line": 219,
-          "text": "const ORG_PHRASE = \"[A-Za-z][A-Za-z0-9&'\u2019. -]{1,60}\";"
+          "text": "const ORG_PHRASE = \"[A-Za-z][A-Za-z0-9&'’. -]{1,60}\";"
         },
         {
           "line": 221,
@@ -575190,7 +575194,7 @@
         },
         {
           "line": 207,
-          "text": "const title = event.title.replace(/[\u2010\u2013\u2014]/gu, \"-\");"
+          "text": "const title = event.title.replace(/[‐–—]/gu, \"-\");"
         },
         {
           "line": 208,
@@ -592043,7 +592047,7 @@
         },
         {
           "line": 29,
-          "text": "const NEGATION_TOKEN_PATTERN = /\\b(?:do\\s+not|don['\u2019]?t|dont|never)\\b/gi;"
+          "text": "const NEGATION_TOKEN_PATTERN = /\\b(?:do\\s+not|don['’]?t|dont|never)\\b/gi;"
         },
         {
           "line": 30,
@@ -592123,7 +592127,7 @@
         },
         {
           "line": 204,
-          "text": "const COMMAND_SEPARATOR = \"(?:[,.;:!?\u2014\u2013-]+|\u2026)\";"
+          "text": "const COMMAND_SEPARATOR = \"(?:[,.;:!?—–-]+|…)\";"
         },
         {
           "line": 206,
@@ -596642,7 +596646,7 @@
         },
         {
           "line": 65,
-          "text": "const ACCENT_FROM = \"\u00e0\u00e1\u00e2\u00e3\u00e4\u00e5\u0101\u0103\u0105\u00e8\u00e9\u00ea\u00eb\u0113\u0115\u0117\u0119\u011b\u00ec\u00ed\u00ee\u00ef\u0129\u012b\u012d\u012f\u00f2\u00f3\u00f4\u00f5\u00f6\u00f8\u014d\u014f\u0151\u00f9\u00fa\u00fb\u00fc\u0169\u016b\u016d\u016f\u0171\u00f1\u00e7\u0107\u010d\u0161\u017e\u00fd\u00ff\";"
+          "text": "const ACCENT_FROM = \"àáâãäåāăąèéêëēĕėęěìíîïĩīĭįòóôõöøōŏőùúûüũūŭůűñçćčšžýÿ\";"
         },
         {
           "line": 66,
@@ -596650,7 +596654,7 @@
         },
         {
           "line": 67,
-          "text": "const STRIP_CHARS = \"'\u2019`\";"
+          "text": "const STRIP_CHARS = \"'’`\";"
         },
         {
           "line": 70,
@@ -600320,7 +600324,7 @@
       "stateAnchors": [
         {
           "line": 2,
-          "text": "* Drizzle schema for `pairing_requests` \u2014 short-lived DM pairing codes that let a"
+          "text": "* Drizzle schema for `pairing_requests` — short-lived DM pairing codes that let a"
         },
         {
           "line": 16,
@@ -609721,7 +609725,7 @@
         },
         {
           "line": 81,
-          "text": "const FUSED_CONTEXT_MARKER = \"Detected context \u2014 pre-extracted from this image\";"
+          "text": "const FUSED_CONTEXT_MARKER = \"Detected context — pre-extracted from this image\";"
         },
         {
           "line": 92,
@@ -611566,7 +611570,7 @@
         },
         {
           "line": 593,
-          "text": "// residual \u2014 a whole-total re-baseline here would let an attacker-timed"
+          "text": "// residual — a whole-total re-baseline here would let an attacker-timed"
         },
         {
           "line": 595,
@@ -612231,7 +612235,7 @@
         },
         {
           "line": 330,
-          "text": "const suffix = pauses ? ' \u2014 paused' : ' \u2014 renew to resume';"
+          "text": "const suffix = pauses ? ' — paused' : ' — renew to resume';"
         },
         {
           "line": 340,
@@ -613270,7 +613274,7 @@
         },
         {
           "line": 55,
-          "text": "const statusEmoji = workflow.active ? '\u2705' : '\u23f8\ufe0f';"
+          "text": "const statusEmoji = workflow.active ? '✅' : '⏸️';"
         },
         {
           "line": 61,
@@ -619012,7 +619016,7 @@
         "CoreServiceLifecycle",
         "ApplicationComposition"
       ],
-      "sha256": "17e0c981c5674dfd020a16ecbe922ae6c924924ef33ec751cf329aa069fbe1af"
+      "sha256": "f0d1a839c16a594282c196c67cbbba2abc4496b6ff0f77f04bdf1ebf69b03f70"
     },
     {
       "path": "upstream.lock.json",
