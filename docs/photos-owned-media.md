@@ -240,3 +240,5 @@ for canonical volume-qualified identities and bounded refresh. Earlier foreign-m
 campaign evidence belongs to #437's catalog; it does not qualify the newly reconciled
 agent album. Exact-source APK, installed bridge, permission downgrade, reboot,
 large personal libraries, battery and physical-device acceptance remain separate.
+
+For the manual CSS filter pixel reference, run `ALPHA_BROWSER_MODULES=/absolute/path/to/node_modules node scripts/test-photo-filter-png-reference.mjs` with existing `playwright`, `pngjs` and Chromium installations. It compares seven filter presets against independent sRGB calculations over a synthetic PNG chart and writes source/rendered PNGs, expected pixels and a summary to `test-results/photo-filter-png-reference` (or `ALPHA_FILTER_RESULTS`). This is browser reference evidence; it does not run the app or establish Android filter equivalence.
