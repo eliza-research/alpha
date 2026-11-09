@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "80fbb1d25937585b24fd85132d623d5391c8ca07",
-  "ledgerSha256": "9f6e99a856682e8350303ca571fdfb0f44240b1ffa35e428b75c067b5f321a16",
+  "ledgerSha256": "e52ecbc20a475587d1ffd0d70caf989514d843d11201fa69f53a1cb375a94427",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -33094,7 +33094,7 @@
     },
     {
       "path": "apps/app/src/prototype/agent-adapter.ts",
-      "sha256": "9ba397e7e8fd99b9ed888acb7def72ae2c79c32a51149f4bbb23644eab29357a",
+      "sha256": "b4b3c2e4fdc864ec97ff80709eb120412db60482faea6911a956908cb5f8d498",
       "allocatedModels": [
         "Application",
         "AssistantConversation",
@@ -220873,6 +220873,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "5adf8b67aefffa0f32d8b3e18327cb942a0d1c5168a7088771454261ceaaf304"
+    "sha256": "20a440831174da489190b2f8c3e9fe37f0a5d1419ad0987180a28fa4c6cd1ef4"
   }
 }

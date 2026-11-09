@@ -1641,7 +1641,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     const sourceDraft=fromComposer&&this.reviewedSourceDraft?.draft===text?sourceOf(this.reviewedSourceDraft.source):undefined;
     context(this);
     const transcript=fromComposer?this.transcriptAttachment:null;
-    const mail=fromComposer?this.mailAttachment:null;
+    const mail=fromComposer?(this.mailAttachment??null):null;
     let mailText='';
     try{if(mail)mailText=await mail.validate();}catch(error){this.toast(error instanceof Error?error.message:'Reopen the email before sending.');return;}
     if(mail&&(this.mailAttachment??null)!==mail)return;

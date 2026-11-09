@@ -15678,7 +15678,7 @@
     },
     {
       "path": "apps/app/src/prototype/agent-adapter.ts",
-      "sha256": "9ba397e7e8fd99b9ed888acb7def72ae2c79c32a51149f4bbb23644eab29357a",
+      "sha256": "b4b3c2e4fdc864ec97ff80709eb120412db60482faea6911a956908cb5f8d498",
       "models": [
         "Application",
         "AssistantConversation",
