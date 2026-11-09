@@ -1,7 +1,7 @@
 import {holdPhoneInert} from './modal-inert';
 
 /** Focus ownership for a phone-positioned modal and its pointer-only backdrop. */
-export function createInlineModal(close:()=>void,returnFocus?:()=>HTMLElement|null) {
+export function createInlineModal(close:()=>void,returnFocus?:()=>HTMLElement|null,options:{coverAssistant?:boolean}={}) {
  let mounted:HTMLElement|null=null, dispose:(()=>void)|undefined;
  const ref=(container:HTMLElement|null):void=>{
   if(container===mounted)return;
@@ -15,7 +15,7 @@ export function createInlineModal(close:()=>void,returnFocus?:()=>HTMLElement|nu
   const phone=container.closest<HTMLElement>('.os');
   while(branch!==phone&&branch.parentElement){
    // The toast region stays live: a status message raised from inside the modal must still be announced.
-   for(const sibling of branch.parentElement.children)if(sibling!==branch&&sibling instanceof HTMLElement&&!sibling.inert&&!sibling.matches('[data-alpha-toast],[data-alpha-layer="pill"],[data-alpha-layer="composer"],[data-alpha-layer="conversation"]'))backgrounds.push(sibling);
+   for(const sibling of branch.parentElement.children)if(sibling!==branch&&sibling instanceof HTMLElement&&!sibling.inert&&!sibling.matches('[data-alpha-toast]')&&(options.coverAssistant||!sibling.matches('[data-alpha-layer="pill"],[data-alpha-layer="composer"],[data-alpha-layer="conversation"]')))backgrounds.push(sibling);
    branch=branch.parentElement;
   }
   const ownsFocus=()=>container.isConnected&&!container.closest('[inert]')&&!Array.from(document.querySelectorAll('dialog[open]')).some(native=>native!==dialog);
@@ -32,7 +32,7 @@ export function createInlineModal(close:()=>void,returnFocus?:()=>HTMLElement|nu
    else if(!event.shiftKey&&(active===last||!dialog.contains(active))){event.preventDefault();first.focus();}
   };
   const back=(event:Event)=>{if(!ownsFocus())return;event.preventDefault();event.stopImmediatePropagation();close();};
-  const assistantTarget=(target:EventTarget|null)=>target instanceof Element&&!!target.closest('[data-alpha-layer="pill"],[data-alpha-layer="composer"],[data-alpha-layer="conversation"]');
+  const assistantTarget=(target:EventTarget|null)=>!options.coverAssistant&&target instanceof Element&&!!target.closest('[data-alpha-layer="pill"],[data-alpha-layer="composer"],[data-alpha-layer="conversation"]');
   const assistantPress=(event:PointerEvent)=>{if(ownsFocus()&&assistantTarget(event.target))close();};
   const contain=()=>{if(ownsFocus()&&!dialog.contains(document.activeElement)&&!assistantTarget(document.activeElement))focus();};
   document.addEventListener('pointerdown',assistantPress,true);

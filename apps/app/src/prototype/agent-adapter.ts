@@ -1,4 +1,4 @@
-import {createInlineModal} from '../runtime/inline-modal';
+import {createImagePreview} from '../runtime/image-preview';
 import type {VerifiedSession} from '../runtime/alpha-client';
 import {browserDocuments} from '../browser/documents';
 import {projectNoteForModel,type StickyNote} from '../../../../.eliza/client-features/plugins/plugin-notes/src/types.ts';
@@ -1377,7 +1377,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
   p.renderVals = function () {
     const out = originalVals.call(this);
     const composeTarget=this.messageEditTarget||this.messageReplyTarget;
-    this.chatImageModal??=createInlineModal(()=>{this.chatImagePreview=null;this.setState({});});
+    this.chatImageModal??=createImagePreview(()=>{this.chatImagePreview=null;this.setState({});});
     out.chatImagePreview=out.isOn&&!this.S().secure?this.chatImagePreview||'':'';
     out.chatImagePreviewRef=this.chatImageModal.ref;
     out.closeChatImagePreview=()=>{this.chatImagePreview=null;this.setState({});};

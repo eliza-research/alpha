@@ -1,5 +1,5 @@
 module ModalScrimOwnership {
-  pure val covers = Set("inline", "native", "native-only")
+  pure val covers = Set("inline", "image", "native", "native-only")
   pure val pointers = Set(1, 2, 7)
   type State = { chat: str, press: str, pointer: int, generation: int,
     modal: str, inputFocused: bool, draft: bool, activations: int }
@@ -9,7 +9,7 @@ module ModalScrimOwnership {
 
   val covered = s.modal.in(covers)
   val capture = s.press == "moved"
-  val inlineInert = s.modal == "inline"
+  val inlineInert = s.modal.in(Set("inline", "image"))
   val phoneInert = s.modal == "native"
   val topLayer = s.modal.in(Set("native", "native-only"))
   val cssPointer = s.chat == "input" and not(inlineInert)
@@ -73,4 +73,7 @@ module ModalScrimOwnership {
   run oldDeadlineCannotSettleANewPressTest = init.then(down(7)).then(up(7)).then(open("inline")).then(close)
     .then(down(7)).then(up(7)).then(deadline(1)).expect(safety and s.press == "released")
     .then(deadline(2)).expect(safety and s.chat == "hidden")
+  run imagePreviewCoversComposerAndKeepsDraftTest = init.then(down(1)).then(open("image"))
+    .expect(safety and inlineInert and not(cssPointer) and s.draft)
+    .then(up(1)).then(close).then(click(1)).expect(safety and s.chat == "input" and s.draft)
 }

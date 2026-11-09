@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "80fbb1d25937585b24fd85132d623d5391c8ca07",
-  "ledgerSha256": "feec1dbd0750887e770daa69aa494aa0131779580c6924d6a3d8db3350b0297d",
+  "ledgerSha256": "95aea5d36e2fdf77db29292607f465f9343f70db1325a639c266fbb02e0bc700",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -22,16 +22,16 @@
     "The ledger supplies pinned source bytes. Effective client/native/runtime patch outputs require their separately authenticated source mappings."
   ],
   "counts": {
-    "files": 5752,
+    "files": 5753,
     "testSupportFiles": 296,
     "testSupportCandidates": 11377,
-    "parsedFiles": 5662,
+    "parsedFiles": 5663,
     "languageReview": 90,
     "parseErrors": 0,
-    "candidates": 67479,
-    "writeSites": 67066,
-    "writeAssociations": 60131,
-    "asynchronous": 8345,
+    "candidates": 67496,
+    "writeSites": 67108,
+    "writeAssociations": 60173,
+    "asynchronous": 8361,
     "unassignedWrites": 10341
   },
   "files": [
@@ -33094,7 +33094,7 @@
     },
     {
       "path": "apps/app/src/prototype/agent-adapter.ts",
-      "sha256": "ba69bd17a0571aea778e4b5bbbb417b049d28d1697a5a1ec63cbfff79287a786",
+      "sha256": "d6d5d67d9a238182d4c104cec2d37393ecea906c9c5659f00302a31e5804931f",
       "allocatedModels": [
         "Application",
         "AssistantConversation",
@@ -39141,7 +39141,7 @@
     },
     {
       "path": "apps/app/src/prototype/phone.css",
-      "sha256": "e9e52df7bc41f3d176f7c784db75727bec8de5a0bce41efd793cc9f1e28a1e5f",
+      "sha256": "f6f1f94522158dc0e906c52b085e55088eabd7174c10d2f9e71dc1f3e09d2e1a",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -43194,6 +43194,52 @@
       "unassignedWrites": 0
     },
     {
+      "path": "apps/app/src/runtime/image-preview.ts",
+      "sha256": "7ff5c26313203405044e023cbfc342e0a87d849d7f2c939d09c00c03b4a36781",
+      "allocatedModels": [
+        "ModalScrimOwnership",
+        "ChatAttachments"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "createImagePreview",
+          "line": 6,
+          "bindings": 2,
+          "writes": 3
+        },
+        {
+          "owner": "createImagePreview.ref",
+          "line": 11,
+          "bindings": 12,
+          "writes": 33
+        },
+        {
+          "owner": "createImagePreview.ref.move",
+          "line": 31,
+          "bindings": 1,
+          "writes": 3
+        },
+        {
+          "owner": "createImagePreview.ref.up",
+          "line": 47,
+          "bindings": 1,
+          "writes": 2
+        },
+        {
+          "owner": "createImagePreview.ref.cancel",
+          "line": 49,
+          "bindings": 1,
+          "writes": 1
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 16,
+      "unassignedWrites": 0
+    },
+    {
       "path": "apps/app/src/runtime/image-sms.ts",
       "sha256": "d873efc3fe5087997a2651ea7807cd68b06850b2545c26b7a149302fe983394e",
       "allocatedModels": [
@@ -43283,11 +43329,12 @@
     },
     {
       "path": "apps/app/src/runtime/inline-modal.ts",
-      "sha256": "c4831ba061fa5f9c18b0c7b655f0a31fdd4631dcb9f6c51414bd28d2ce35dad2",
+      "sha256": "ec313b1d338f9d4ec8beb12ec2b6b02fa837bb59db75d3100dbbbd80926420b8",
       "allocatedModels": [
         "ShellNavigation",
         "ModalScrimOwnership"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -45295,6 +45342,33 @@
       "parseErrors": [],
       "asynchronous": 1,
       "unassignedWrites": 1
+    },
+    {
+      "path": "apps/app/src/runtime/workflow-request-recovery.ts",
+      "sha256": "364edc8dc60eff1f89affba210e2f22d1c35f18c4db32dcd23c82eebdde0e413",
+      "allocatedModels": [
+        "WorkflowRequestRecoveryAdmission"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "createWorkflowRequestRecovery",
+          "line": 12,
+          "bindings": 1,
+          "writes": 2
+        },
+        {
+          "owner": "createWorkflowRequestRecovery.retire",
+          "line": 14,
+          "bindings": 1,
+          "writes": 1
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
     },
     {
       "path": "apps/app/src/startup-browser-permissions.ts",
@@ -67016,6 +67090,57 @@
       "parseErrors": [],
       "asynchronous": 0,
       "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/packages/app/scripts/mobile/android/consumer-host.mjs",
+      "sha256": "4241d3cf14ac6e5b919537ed84943d6a630c614c00f6f19b5a253977f8be178e",
+      "allocatedModels": [
+        "AndroidBrowserModuleStage"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "<module>",
+          "line": 35,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "fields",
+          "line": 63,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "generateAndroidConsumerHost",
+          "line": 139,
+          "bindings": 16,
+          "writes": 19
+        },
+        {
+          "owner": "generateAndroidConsumerHost.input",
+          "line": 232,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "generateAndroidConsumerHost.ArrowFunction@389",
+          "line": 390,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "AndroidConsumerHostError",
+          "line": 44,
+          "bindings": 1,
+          "writes": 1
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 7
     },
     {
       "path": "vendor/eliza/packages/app/scripts/mobile/android/resident-host-sources.mjs",
@@ -220732,88 +220857,10 @@
       "parseErrors": [],
       "asynchronous": 0,
       "unassignedWrites": 2
-    },
-    {
-      "path": "apps/app/src/runtime/workflow-request-recovery.ts",
-      "sha256": "364edc8dc60eff1f89affba210e2f22d1c35f18c4db32dcd23c82eebdde0e413",
-      "allocatedModels": [
-        "WorkflowRequestRecoveryAdmission"
-      ],
-      "sourceReview": "state-audit-required",
-      "sourcePathClass": "other-source-path",
-      "classification": "syntactic-candidates",
-      "owners": [
-        {
-          "owner": "createWorkflowRequestRecovery",
-          "line": 12,
-          "bindings": 1,
-          "writes": 2
-        },
-        {
-          "owner": "createWorkflowRequestRecovery.retire",
-          "line": 14,
-          "bindings": 1,
-          "writes": 1
-        }
-      ],
-      "parseErrors": [],
-      "asynchronous": 0,
-      "unassignedWrites": 0
-    },
-    {
-      "path": "vendor/eliza/packages/app/scripts/mobile/android/consumer-host.mjs",
-      "sha256": "4241d3cf14ac6e5b919537ed84943d6a630c614c00f6f19b5a253977f8be178e",
-      "allocatedModels": [
-        "AndroidBrowserModuleStage"
-      ],
-      "sourceReview": "state-audit-required",
-      "sourcePathClass": "other-source-path",
-      "classification": "syntactic-candidates",
-      "owners": [
-        {
-          "owner": "<module>",
-          "line": 35,
-          "bindings": 2,
-          "writes": 0
-        },
-        {
-          "owner": "fields",
-          "line": 63,
-          "bindings": 1,
-          "writes": 1
-        },
-        {
-          "owner": "generateAndroidConsumerHost",
-          "line": 139,
-          "bindings": 16,
-          "writes": 19
-        },
-        {
-          "owner": "generateAndroidConsumerHost.input",
-          "line": 232,
-          "bindings": 1,
-          "writes": 1
-        },
-        {
-          "owner": "generateAndroidConsumerHost.ArrowFunction@389",
-          "line": 390,
-          "bindings": 1,
-          "writes": 1
-        },
-        {
-          "owner": "AndroidConsumerHostError",
-          "line": 44,
-          "bindings": 1,
-          "writes": 1
-        }
-      ],
-      "parseErrors": [],
-      "asynchronous": 0,
-      "unassignedWrites": 7
     }
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "40759cfba657496bd901b1b1f2f06abf459245d3d387ec7ea7ba4c332a6bda70"
+    "sha256": "e0ee3c37a563232763db5fe35baf52de845db5f7906f5e0682169a26c44e81eb"
   }
 }

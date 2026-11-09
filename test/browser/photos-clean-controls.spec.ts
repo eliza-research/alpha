@@ -5,9 +5,9 @@ test('Camera cover, menu selection, info swipe and photo chat share use the save
  await page.goto('/?mode=dev');
  await page.evaluate(async()=>{
   const {importBrowserPhoto}=await import('/src/prototype/browser-camera.ts');
-  const canvas=document.createElement('canvas');canvas.width=100;canvas.height=100;
-  const context=canvas.getContext('2d')!;context.fillStyle='green';context.fillRect(0,0,100,100);
-  await importBrowserPhoto({original:new File(['fixture'],'sample.png'),image:canvas.toDataURL('image/png'),width:100,height:100},new AbortController().signal);
+  const canvas=document.createElement('canvas');canvas.width=1000;canvas.height=800;
+  const context=canvas.getContext('2d')!;context.fillStyle='green';context.fillRect(0,0,1000,800);
+  await importBrowserPhoto({original:new File(['fixture'],'sample.png'),image:canvas.toDataURL('image/png'),width:1000,height:800},new AbortController().signal);
  });
  await page.getByRole('button',{name:'Photos',exact:true}).click();
  await expect(page.getByRole('button',{name:'Select photos',exact:true})).toBeHidden();
@@ -34,10 +34,40 @@ test('Camera cover, menu selection, info swipe and photo chat share use the save
  await page.getByRole('button',{name:'Ask Alpha about this photo',exact:true}).click();
  await expect(page.getByRole('dialog',{name:'Ask about selected content'})).toHaveCount(0);
  await expect(page.getByAltText('Captured photo')).toBeVisible();
+ await page.getByRole('textbox',{name:'Message Alpha',exact:true}).fill('Keep this draft');
  await page.getByRole('button',{name:'Preview attached photo',exact:true}).click();
- await expect(page.getByRole('dialog',{name:'Image preview',exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Close image preview',exact:true}).click();
+ const preview=page.getByRole('dialog',{name:'Image preview',exact:true}),image=page.getByAltText('Attached image preview');
+ await expect(preview).toBeVisible();
+ const coverage=await page.locator('.chat-image-preview').evaluate(el=>{
+  const screen=el.closest('[data-screen]')!.getBoundingClientRect(),box=el.getBoundingClientRect();
+  const bottom=document.elementFromPoint(screen.x+screen.width/2,screen.bottom-10);
+  return {height:box.height,screenHeight:screen.height,bottom:!!bottom?.closest('.chat-image-preview'),background:getComputedStyle(el).backgroundColor,composerInert:!!document.querySelector('[data-alpha-layer="conversation"][inert]')};
+ });
+ expect(coverage.height).toBeCloseTo(coverage.screenHeight,0);expect(coverage.bottom).toBe(true);expect(coverage.background).toBe('rgb(0, 0, 0)');expect(coverage.composerInert).toBe(true);
+ await image.dblclick();
+ await expect.poll(()=>image.evaluate(el=>new DOMMatrixReadOnly(getComputedStyle(el).transform).a)).toBe(2);
+ const imageBox=(await image.boundingBox())!;
+ await page.mouse.move(imageBox.x+imageBox.width/2,imageBox.y+imageBox.height/2);await page.mouse.down();await page.mouse.move(imageBox.x+imageBox.width/2+40,imageBox.y+imageBox.height/2,{steps:5});await page.mouse.up();
+ expect(await image.evaluate(el=>new DOMMatrixReadOnly(getComputedStyle(el).transform).e)).toBeGreaterThan(0);
+ await image.dblclick();
+ await expect.poll(()=>image.evaluate(el=>new DOMMatrixReadOnly(getComputedStyle(el).transform).a)).toBe(1);
+ const previewBox=(await preview.boundingBox())!;await page.mouse.click(previewBox.x+5,previewBox.y+80);
  await expect(page.getByRole('dialog',{name:'Image preview',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('textbox',{name:'Message Alpha',exact:true})).toHaveValue('Keep this draft');
+ await page.getByRole('button',{name:'Preview attached photo',exact:true}).click();
+ const touch=await page.context().newCDPSession(page),pinchBox=(await image.boundingBox())!,cx=pinchBox.x+pinchBox.width/2,cy=pinchBox.y+pinchBox.height/2;
+ await touch.send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:2});
+ await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:cx-35,y:cy,id:1},{x:cx+35,y:cy,id:2}]});
+ await touch.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:cx-70,y:cy,id:1},{x:cx+70,y:cy,id:2}]});
+ await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+ await expect.poll(()=>image.evaluate(el=>new DOMMatrixReadOnly(getComputedStyle(el).transform).a)).toBeGreaterThan(1);
+ await touch.detach();
+ await page.setViewportSize({width:915,height:412});
+ await expect(page.locator('html')).toHaveClass(/browser-desktop/);
+ const wide=await page.locator('.chat-image-preview').evaluate(el=>{const box=el.getBoundingClientRect(),screen=el.closest('[data-screen]')!.getBoundingClientRect();return {height:box.height,screenHeight:screen.height,coversBottom:!!document.elementFromPoint(screen.x+screen.width/2,screen.bottom-8)?.closest('.chat-image-preview')};});
+ expect(wide.height).toBeCloseTo(wide.screenHeight,0);expect(wide.coversBottom).toBe(true);
+ await page.getByRole('button',{name:'Close image preview',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'Message Alpha',exact:true})).toHaveValue('Keep this draft');
 });
 
 test('custom albums can be created, filled, renamed and removed without deleting their photos',async({page})=>{

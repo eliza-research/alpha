@@ -28,9 +28,19 @@
     "init": "init",
     "step": "step",
     "invariant": "safety",
-    "tests": ["exactSuccessCachesOneReceiptTest", "staleClaimSettlesNegativeTest", "lostClaimWaitsForGenuineTimeoutTest",
-      "lostPositiveNeverSendsOppositeReceiptTest", "supersededClaimReleasesNextObservationTest", "failedCacheRequiresExplicitRetryTest"],
-    "invariants": ["RepliesFollowClaim", "HistoryFollowsHostCommit", "AcceptedObservationHasHostCommit"],
+    "tests": [
+      "exactSuccessCachesOneReceiptTest",
+      "staleClaimSettlesNegativeTest",
+      "lostClaimWaitsForGenuineTimeoutTest",
+      "lostPositiveNeverSendsOppositeReceiptTest",
+      "supersededClaimReleasesNextObservationTest",
+      "failedCacheRequiresExplicitRetryTest"
+    ],
+    "invariants": [
+      "RepliesFollowClaim",
+      "HistoryFollowsHostCommit",
+      "AcceptedObservationHasHostCommit"
+    ],
     "sources": [
       "apps/app/src/runtime/view-navigation.ts",
       "vendor/eliza/packages/core/src/events.ts",
@@ -361,7 +371,13 @@
       "failedListCannotDispatchReviewedActionTest",
       "retiredReplyDoesNotReleaseTest"
     ],
-    "invariants": ["SentWithExactIntent", "PendingRemainsJournaled", "UnconfirmedStaysLocked", "TerminalHasReopenOnly", "FailedSourceDisablesControls"],
+    "invariants": [
+      "SentWithExactIntent",
+      "PendingRemainsJournaled",
+      "UnconfirmedStaysLocked",
+      "TerminalHasReopenOnly",
+      "FailedSourceDisablesControls"
+    ],
     "sources": [
       "apps/app/src/prototype/automations-adapter.ts",
       "apps/app/src/prototype/template.html",
@@ -395,7 +411,13 @@
       "failedWritePreservesStoredChoiceTest",
       "retiredListenersIgnoreEventsTest"
     ],
-    "invariants": ["ListenerAdmission", "PreviewBoot", "ReadMarkerIdentity", "Presentation", "BoundedWrites"],
+    "invariants": [
+      "ListenerAdmission",
+      "PreviewBoot",
+      "ReadMarkerIdentity",
+      "Presentation",
+      "BoundedWrites"
+    ],
     "sources": [
       "apps/app/src/main.tsx",
       "apps/app/src/prototype/settings-adapter.ts",
@@ -641,7 +663,11 @@
       "changedSourceConflictsWithClearReceiptTest",
       "destinationReplacementAfterDispatchRemainsIndependentTest"
     ],
-    "invariants": ["ClearDispatchWasAuthorized", "ClearUsesExactSourceReceipt", "ConfirmedClearIsRevisioned"],
+    "invariants": [
+      "ClearDispatchWasAuthorized",
+      "ClearUsesExactSourceReceipt",
+      "ConfirmedClearIsRevisioned"
+    ],
     "sources": [
       "apps/app/src/prototype/agent-adapter.ts",
       "apps/app/src/runtime/assistant-draft-store.ts",
@@ -697,7 +723,12 @@
       "departureWhileSavingKeepsCompletionSilentTest",
       "reportOnlyCurrentFailureTest"
     ],
-    "invariants": ["ClosedReviewWasOffered", "ActiveReviewIsNotClosed", "AllCallbacksBelongToAnOfferedReview", "RetiredOffersAreClosed"],
+    "invariants": [
+      "ClosedReviewWasOffered",
+      "ActiveReviewIsNotClosed",
+      "AllCallbacksBelongToAnOfferedReview",
+      "RetiredOffersAreClosed"
+    ],
     "sources": [
       "apps/app/src/runtime/workflow-request-recovery.ts",
       "apps/app/src/runtime/workflow-intents.ts",
@@ -752,8 +783,15 @@
       "hiddenRequestAndCancellationCannotDispatchTest",
       "exactDestinationFailureNeverFallsBackTest"
     ],
-    "invariants": ["ActivePanelIsUnsettled", "EffectFollowsExactClose", "EachPanelDispatchesOnce", "NoticeBelongsToStaleSelection"],
-    "sources": ["apps/app/src/runtime/share-panel.ts"],
+    "invariants": [
+      "ActivePanelIsUnsettled",
+      "EffectFollowsExactClose",
+      "EachPanelDispatchesOnce",
+      "NoticeBelongsToStaleSelection"
+    ],
+    "sources": [
+      "apps/app/src/runtime/share-panel.ts"
+    ],
     "stateMapping": {
       "seen/active/hidden/invalid/emails": "Caller inputs and the actual mounted chooser and enabled destinations",
       "settled/effects/notice/alerts": "Actual promises, destination callback invocations, stale status and visible failure alert"
@@ -776,7 +814,12 @@
       "foregroundAndLockRetireReadTest",
       "currentReadKeepsUnavailableReportTest"
     ],
-    "invariants": ["DialogHasExactLease", "CurrentOwnerIsActive", "RetiredReadHasNoEffect", "ComposedNoticeWasReviewed"],
+    "invariants": [
+      "DialogHasExactLease",
+      "CurrentOwnerIsActive",
+      "RetiredReadHasNoEffect",
+      "ComposedNoticeWasReviewed"
+    ],
     "sources": [
       "apps/app/src/prototype/notifications-adapter.ts",
       "apps/app/src/prototype/context-selection.ts",
@@ -799,21 +842,39 @@
     "init": "init",
     "step": "step",
     "invariant": "safety",
-    "tests": ["exactWorkflowsVisitTest", "contextReturnsOnCloseTest", "departureRetiresOpeningTest",
-      "requestedMockModeRetiresOpeningTest", "hiddenVisitRetiresOpeningTest",
-      "dispatchedReceiptSettlesAfterDepartureTest", "browserOpensShowWithoutDraftTest"],
-    "invariants": ["WorkflowsOwnsClockDraft", "ReviewNeedsVisibleIdleDraft", "DispatchHasOpeningReceipt",
-      "RetiredOpeningCannotDispatch", "BrowserShowCannotWriteAlarmReceipt"],
-    "sources": ["apps/app/src/prototype/clock-adapter.ts", "apps/app/src/prototype/agent-adapter.ts",
-      "apps/app/src/prototype/template.html", "apps/app/src/prototype/model.js", "apps/app/src/main.tsx",
-      "apps/app/src/runtime/clock-handoff-history.ts"],
+    "tests": [
+      "exactWorkflowsVisitTest",
+      "contextReturnsOnCloseTest",
+      "departureRetiresOpeningTest",
+      "requestedMockModeRetiresOpeningTest",
+      "hiddenVisitRetiresOpeningTest",
+      "dispatchedReceiptSettlesAfterDepartureTest",
+      "browserOpensShowWithoutDraftTest"
+    ],
+    "invariants": [
+      "WorkflowsOwnsClockDraft",
+      "ReviewNeedsVisibleIdleDraft",
+      "DispatchHasOpeningReceipt",
+      "RetiredOpeningCannotDispatch",
+      "BrowserShowCannotWriteAlarmReceipt"
+    ],
+    "sources": [
+      "apps/app/src/prototype/clock-adapter.ts",
+      "apps/app/src/prototype/agent-adapter.ts",
+      "apps/app/src/prototype/template.html",
+      "apps/app/src/prototype/model.js",
+      "apps/app/src/main.tsx",
+      "apps/app/src/runtime/clock-handoff-history.ts"
+    ],
     "stateMapping": {
       "view/shown/review/selection": "Committed Workflows or Home, actual Clock render model and agent context input",
       "hidden/mock/opener/retired": "Synthetic visibility and mode, retained entry callback and opening request custody",
       "phase/record/handoffs/shows": "Exact controlled opening write, persisted shared envelope and synthetic Clock calls"
     },
-    "abstractions": ["Two bounded handoffs or browser show calls. The opening receipt and Clock result are separately controlled.",
-      "Template action bindings and shell leave execute in a closed fixture. Physical focus, full renderer transitions, real Android intents and browser alarm behavior are separate."]
+    "abstractions": [
+      "Two bounded handoffs or browser show calls. The opening receipt and Clock result are separately controlled.",
+      "Template action bindings and shell leave execute in a closed fixture. Physical focus, full renderer transitions, real Android intents and browser alarm behavior are separate."
+    ]
   },
   {
     "path": "specs/quint/application/NotificationCollection.qnt",
@@ -2028,7 +2089,10 @@
       "expiredTapKeepsTheCacheTest",
       "differentOccurrenceOnlyOpensCalendarTest"
     ],
-    "invariants": ["DeliveryOwnsCurrentVisit", "VisitAndReadAreIndependent"],
+    "invariants": [
+      "DeliveryOwnsCurrentVisit",
+      "VisitAndReadAreIndependent"
+    ],
     "sources": [
       "apps/app/src/prototype/reminder-adapter.ts",
       "apps/app/src/prototype/automations-adapter.ts",
@@ -2058,7 +2122,11 @@
       "changedVisitRefusesSameDetailTest",
       "nativeReplacementKeepsNewTokenTest"
     ],
-    "invariants": ["ProtectedCommitKeepsCustody", "CommitOwnsPublishedVisit", "ConsumesExactToken"],
+    "invariants": [
+      "ProtectedCommitKeepsCustody",
+      "CommitOwnsPublishedVisit",
+      "ConsumesExactToken"
+    ],
     "sources": [
       "apps/app/src/prototype/reminder-adapter.ts",
       "apps/app/src/runtime/reminder-creations.ts",
@@ -2190,7 +2258,8 @@
       "actualNativeModalRetiresDelayedReleaseTest",
       "sameTaskModalDoesNotRestoreOldPressTest",
       "nonmodalAndUninterruptedCompatibilityTest",
-      "oldDeadlineCannotSettleANewPressTest"
+      "oldDeadlineCannotSettleANewPressTest",
+      "imagePreviewCoversComposerAndKeepsDraftTest"
     ],
     "invariants": [
       "ExactPress",
@@ -2203,11 +2272,13 @@
       "apps/app/src/runtime/inline-modal.ts",
       "apps/app/src/runtime/modal-inert.ts",
       "apps/app/src/prototype/phone.css",
-      "apps/app/src/prototype/template.html"
+      "apps/app/src/prototype/template.html",
+      "apps/app/src/runtime/image-preview.ts"
     ],
     "abstractions": [
       "Raised input scrim with two press generations, bounded pointer identities, one inline or native modal and representative held, moved and released paths. A nonmodal dialog does not take modal ownership.",
-      "Actual source adapters and browser pointer capture execute over a controlled shell. Half-sheet gestures, full product mounting for other modal families, and installed Android pointer delivery are separate."
+      "Actual source adapters and browser pointer capture execute over a controlled shell. Half-sheet gestures, full product mounting for other modal families, and installed Android pointer delivery are separate.",
+      "Full-screen image previews include the assistant in inert background ownership; visual zoom and pan are covered by browser pointer tests."
     ]
   },
   {
@@ -2975,8 +3046,15 @@
       "ownerSwitchClearsVisibleLegacyBeforeNewProbeTest",
       "hideAndSuspendRetireVisibleProbeTest"
     ],
-    "invariants": ["ActiveProbeHasExactOwner", "DraftReadsFollowDeviceCollection", "LegacyRetirementClearsBeforeCanonical"],
-    "sources": ["apps/app/src/prototype/agent-adapter.ts", "apps/app/src/prototype/legacy-notes-access.ts"],
+    "invariants": [
+      "ActiveProbeHasExactOwner",
+      "DraftReadsFollowDeviceCollection",
+      "LegacyRetirementClearsBeforeCanonical"
+    ],
+    "sources": [
+      "apps/app/src/prototype/agent-adapter.ts",
+      "apps/app/src/prototype/legacy-notes-access.ts"
+    ],
     "stateMapping": {
       "device/visible/hidden/suspended/owner": "Platform and controlled owner and view observations supplied to the real presence code",
       "mode/epoch/legacyOwner/probeOwner/probeEpoch/active/started": "Exact renderer Notes source and current read ownership",
@@ -3003,8 +3081,16 @@
       "ownerChangeDropsHeldFingerprintTest",
       "unretainedEditRefusesCanonicalReturnTest"
     ],
-    "invariants": ["NoRetiredSuccess", "LegacySelectionHasExactOwner", "EditableRowsHaveCurrentStore", "CanonicalReturnClearsLegacyView"],
-    "sources": ["apps/app/src/prototype/agent-adapter.ts", "apps/app/src/prototype/legacy-notes-access.ts"],
+    "invariants": [
+      "NoRetiredSuccess",
+      "LegacySelectionHasExactOwner",
+      "EditableRowsHaveCurrentStore",
+      "CanonicalReturnClearsLegacyView"
+    ],
+    "sources": [
+      "apps/app/src/prototype/agent-adapter.ts",
+      "apps/app/src/prototype/legacy-notes-access.ts"
+    ],
     "stateMapping": {
       "device/owner/mode/epoch/legacyOwner/canonical/refreshes": "Actual renderer source ownership and refresh call to the controlled canonical coordinator",
       "last/task/retention/pending/finished/retired": "Selection calls and results, held retention/read ports, and observed aborts",
@@ -3014,7 +3100,11 @@
       "Actual renderer selection and read-only admission against closed store projections. Two owners, three selections and two retained-draft task identities.",
       "The source binding, closed collection and draft results and source-scoped boolean are observed. Device storage, queued React commits, recording, presence probing, Trash, retention writes and canonical store behavior remain separate."
     ],
-    "bounds": {"maxSamples": 1000, "maxSteps": 80, "maxVerifyDepth": 8}
+    "bounds": {
+      "maxSamples": 1000,
+      "maxSteps": 80,
+      "maxVerifyDepth": 8
+    }
   },
   {
     "path": "specs/quint/application/NotesTrashReadPublication.qnt",

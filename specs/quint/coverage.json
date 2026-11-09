@@ -15678,7 +15678,7 @@
     },
     {
       "path": "apps/app/src/prototype/agent-adapter.ts",
-      "sha256": "ba69bd17a0571aea778e4b5bbbb417b049d28d1697a5a1ec63cbfff79287a786",
+      "sha256": "d6d5d67d9a238182d4c104cec2d37393ecea906c9c5659f00302a31e5804931f",
       "models": [
         "Application",
         "AssistantConversation",
@@ -16058,7 +16058,7 @@
           "text": "let draft:NotesDraft|null=null;"
         },
         {
-          "line": 620,
+          "line": 262,
           "text": "const s = shell.S();"
         },
         {
@@ -16154,7 +16154,7 @@
           "text": "const connection = connectionController.getSnapshot();"
         },
         {
-          "line": 821,
+          "line": 249,
           "text": "const after = connectionController.getSnapshot();"
         },
         {
@@ -16170,7 +16170,7 @@
           "text": "const ownerSession=connectionController.getSnapshot().session;"
         },
         {
-          "line": 880,
+          "line": 830,
           "text": "const client=createAospTelephony(registerPlugin<AlphaTelephonyPlugin>('AlphaTelephony'),true);"
         },
         {
@@ -16546,7 +16546,7 @@
           "text": "const draft=this.composerDraft?.state;"
         },
         {
-          "line": 1402,
+          "line": 805,
           "text": "const connection=connectionController.getSnapshot();"
         },
         {
@@ -16762,7 +16762,7 @@
           "text": "const showStatus=(event:Event)=>{if(this.live&&!streamed&&this.sendAttempt===attempt)this.setState({turnStatus:(event as CustomEvent<string>).detail});};"
         },
         {
-          "line": 1706,
+          "line": 1566,
           "text": "const identity=reply.messageBinding;"
         },
         {
@@ -16930,7 +16930,8 @@
           "text": "const failed=Boolean((activeShell?.notesStorageFailed&&document.documentElement.dataset.notesStorageState!=='opening')||activeShell?.notesStore?.needsRecovery);"
         }
       ],
-      "reviewStatus": "state-audit-required"
+      "reviewStatus": "state-audit-required",
+      "integrationReview": "2026-11-09 image preview covers the assistant as an opaque modal. Default inline dialogs retain existing assistant behavior. Image zoom/pan stays local to the viewer and is discarded on close; draft and attachment are retained. ModalScrimOwnership image scenario and browser pointer/layout tests qualify this scope."
     },
     {
       "path": "apps/app/src/prototype/agent-calendar-adapter.ts",
@@ -32066,9 +32067,9 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "e9e52df7bc41f3d176f7c784db75727bec8de5a0bce41efd793cc9f1e28a1e5f",
+      "sha256": "f6f1f94522158dc0e906c52b085e55088eabd7174c10d2f9e71dc1f3e09d2e1a",
       "stateAnchors": [],
-      "integrationReview": "2026-11-09: landscape Maps guidance uses the same left-to-right flex order as portrait. The change removes grid placement only; no interaction, storage, request, focus, or lifecycle transition changes. Five existing accessibility checks cover portrait, landscape and 200 percent text; the landscape search/start/mute/enable flow also passes. Existing model allocations and unresolved refinement limits are unchanged. 2026-11-09: tested native below-host presentation keeps page size and identity through chat, blocks page input beneath host controls, and fences stale backdrop cleanup. TypeScript and isolated renderer pass; exact Android/Pixel acceptance remains open. 2026-11-09: shared overlay bounds, retained dismiss controls and alarm reading order validated in browser layout and interaction checks; storage and handoff transitions are unchanged. Reviewed integration source. Domain allocation is retained; source-hash refresh does not establish semantic refinement. See targeted validation and remaining obligations."
+      "integrationReview": "2026-11-09 image preview covers the assistant as an opaque modal. Default inline dialogs retain existing assistant behavior. Image zoom/pan stays local to the viewer and is discarded on close; draft and attachment are retained. ModalScrimOwnership image scenario and browser pointer/layout tests qualify this scope."
     },
     {
       "path": "apps/app/src/prototype/photo-library-adapter.ts",
@@ -41490,6 +41491,19 @@
       "integrationReview": "Domain allocation retained after merging the audit fixes. The refreshed source hash and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations."
     },
     {
+      "path": "apps/app/src/runtime/image-preview.ts",
+      "sha256": "7ff5c26313203405044e023cbfc342e0a87d849d7f2c939d09c00c03b4a36781",
+      "models": [
+        "ModalScrimOwnership",
+        "ChatAttachments"
+      ],
+      "scope": "application",
+      "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "stateAnchors": [],
+      "integrationReview": "Full-screen image-only pointer/zoom state. Reuses inline modal focus and inert ownership. DOM zoom does not mutate image or chat data; geometry/pointer integration remains a browser-test obligation."
+    },
+    {
       "path": "apps/app/src/runtime/image-sms.ts",
       "sha256": "d873efc3fe5087997a2651ea7807cd68b06850b2545c26b7a149302fe983394e",
       "models": [
@@ -41578,7 +41592,7 @@
     },
     {
       "path": "apps/app/src/runtime/inline-modal.ts",
-      "sha256": "c4831ba061fa5f9c18b0c7b655f0a31fdd4631dcb9f6c51414bd28d2ce35dad2",
+      "sha256": "ec313b1d338f9d4ec8beb12ec2b6b02fa837bb59db75d3100dbbbd80926420b8",
       "models": [
         "ShellNavigation",
         "ModalScrimOwnership"
@@ -41671,7 +41685,8 @@
           "text": "const changed=()=>{if(displaced())stop();};"
         }
       ],
-      "integrationReview": "2026-11-09: Alarm presentation uses the existing inline modal owner and assistantFromSheet transition; save, delete, expiry and foreground alarm ownership are unchanged. Browser tests cover retained records, keyboard return and assistant access. State-audit and source-to-model refinement remain separate."
+      "integrationReview": "2026-11-09 image preview covers the assistant as an opaque modal. Default inline dialogs retain existing assistant behavior. Image zoom/pan stays local to the viewer and is discarded on close; draft and attachment are retained. ModalScrimOwnership image scenario and browser pointer/layout tests qualify this scope.",
+      "reviewStatus": "state-audit-required"
     },
     {
       "path": "apps/app/src/runtime/legacy-calendar-preservation.ts",
@@ -45726,6 +45741,74 @@
         {
           "line": 27,
           "text": "const checked=await validateWorkflowReadResult(operation,result);"
+        }
+      ]
+    },
+    {
+      "path": "apps/app/src/runtime/workflow-request-recovery.ts",
+      "models": [
+        "WorkflowRequestRecoveryAdmission"
+      ],
+      "scope": "application",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "sha256": "364edc8dc60eff1f89affba210e2f22d1c35f18c4db32dcd23c82eebdde0e413",
+      "stateAnchors": [
+        {
+          "line": 12,
+          "text": "let owner: AbortController | undefined;"
+        },
+        {
+          "line": 13,
+          "text": "const retire = () => {"
+        },
+        {
+          "line": 15,
+          "text": "owner = undefined;"
+        },
+        {
+          "line": 16,
+          "text": "previous?.abort();"
+        },
+        {
+          "line": 22,
+          "text": "const controller = owner = new AbortController();"
+        },
+        {
+          "line": 23,
+          "text": "const current = () => owner === controller && request.current();"
+        },
+        {
+          "line": 24,
+          "text": "const check = (signal?: AbortSignal) => {"
+        },
+        {
+          "line": 30,
+          "text": "const domain = await request.store.recoveryDocument();"
+        },
+        {
+          "line": 32,
+          "text": "const show = await loadDialog();"
+        },
+        {
+          "line": 35,
+          "text": "capture(signal) {"
+        },
+        {
+          "line": 37,
+          "text": "return domain.capture(signal);"
+        },
+        {
+          "line": 39,
+          "text": "async reset(expected, signal) {"
+        },
+        {
+          "line": 42,
+          "text": "if (current()) request.changed();"
+        },
+        {
+          "line": 48,
+          "text": "if (current()) request.unavailable();"
         }
       ]
     },
@@ -131385,6 +131468,17 @@
           "text": "if (!allowedGenerated(file))"
         }
       ]
+    },
+    {
+      "path": "vendor/eliza/packages/app/scripts/mobile/android/consumer-host.mjs",
+      "models": [
+        "AndroidBrowserModuleStage"
+      ],
+      "scope": "shared-upstream",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "sha256": "4241d3cf14ac6e5b919537ed84943d6a630c614c00f6f19b5a253977f8be178e",
+      "stateAnchors": []
     },
     {
       "path": "vendor/eliza/packages/app/scripts/mobile/android/resident-host-sources.mjs",
@@ -617873,85 +617967,6 @@
       "treatment": "configuration-and-publication-audit",
       "reviewStatus": "state-audit-required",
       "sha256": "f646ded3903339759197c4d36bfacd7ed7d5017b5d50e8e70a4cf4a999798735",
-      "stateAnchors": []
-    },
-    {
-      "path": "apps/app/src/runtime/workflow-request-recovery.ts",
-      "models": [
-        "WorkflowRequestRecoveryAdmission"
-      ],
-      "scope": "application",
-      "treatment": "domain-contract-or-support",
-      "reviewStatus": "state-audit-required",
-      "sha256": "364edc8dc60eff1f89affba210e2f22d1c35f18c4db32dcd23c82eebdde0e413",
-      "stateAnchors": [
-        {
-          "line": 12,
-          "text": "let owner: AbortController | undefined;"
-        },
-        {
-          "line": 13,
-          "text": "const retire = () => {"
-        },
-        {
-          "line": 15,
-          "text": "owner = undefined;"
-        },
-        {
-          "line": 16,
-          "text": "previous?.abort();"
-        },
-        {
-          "line": 22,
-          "text": "const controller = owner = new AbortController();"
-        },
-        {
-          "line": 23,
-          "text": "const current = () => owner === controller && request.current();"
-        },
-        {
-          "line": 24,
-          "text": "const check = (signal?: AbortSignal) => {"
-        },
-        {
-          "line": 30,
-          "text": "const domain = await request.store.recoveryDocument();"
-        },
-        {
-          "line": 32,
-          "text": "const show = await loadDialog();"
-        },
-        {
-          "line": 35,
-          "text": "capture(signal) {"
-        },
-        {
-          "line": 37,
-          "text": "return domain.capture(signal);"
-        },
-        {
-          "line": 39,
-          "text": "async reset(expected, signal) {"
-        },
-        {
-          "line": 42,
-          "text": "if (current()) request.changed();"
-        },
-        {
-          "line": 48,
-          "text": "if (current()) request.unavailable();"
-        }
-      ]
-    },
-    {
-      "path": "vendor/eliza/packages/app/scripts/mobile/android/consumer-host.mjs",
-      "models": [
-        "AndroidBrowserModuleStage"
-      ],
-      "scope": "shared-upstream",
-      "treatment": "domain-contract-or-support",
-      "reviewStatus": "state-audit-required",
-      "sha256": "4241d3cf14ac6e5b919537ed84943d6a630c614c00f6f19b5a253977f8be178e",
       "stateAnchors": []
     }
   ],
