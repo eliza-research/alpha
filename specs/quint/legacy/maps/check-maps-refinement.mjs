@@ -422,7 +422,7 @@ export async function mountClosedMaps(extraSources, runs, holdRouteReplies = fal
     for (const run of runs) {
       const page = await browser.newPage({viewport: {width: 412, height: 915}, hasTouch: true, reducedMotion: 'reduce'});
       page.setDefaultTimeout(40000);
-      const foreign = [], errors = [];
+      const foreign = [], errors = [], moduleFailures = [];
       await page.route('**/*', route => {
         const request = route.request(), url = new URL(request.url());
         if (['data:', 'blob:'].includes(url.protocol)) return route.continue();
@@ -444,6 +444,11 @@ export async function mountClosedMaps(extraSources, runs, holdRouteReplies = fal
         return socket.close();
       });
       page.on('pageerror', error => errors.push(error.message));
+      page.on('response', response => {
+        const url = new URL(response.url());
+        if (url.origin === base && response.status() >= 400 && moduleFailures.length < 12)
+          moduleFailures.push(response.status()+' '+url.pathname);
+      });
       await page.addInitScript(() => {
         localStorage.setItem('alpha.connection.selection.v1', JSON.stringify({kind: 'offline'}));
         const f = window.closedMapsGeo = {next: 1, watches: new Map()};
@@ -468,7 +473,15 @@ export async function mountClosedMaps(extraSources, runs, holdRouteReplies = fal
         assert.deepEqual(foreign, [], 'Only the closed Maps ports may answer');
         assert.deepEqual(errors, [], 'Mounted Maps reports no uncaught errors');
       } catch (error) {
-        throw new Error('Mounted Maps '+run.name+' schedule failed: '+error.message, {cause: error});
+        const mounted = await page.evaluate(() => ({
+          document: document.readyState,
+          rootChildren: document.getElementById('root')?.childElementCount ?? 0,
+          view: document.documentElement.dataset.activeView ?? '',
+          fixtureInstalled: !!window.closedMapsGeo,
+          inspectorInstalled: typeof window.inspectHistoricalMaps === 'function',
+        })).catch(() => null);
+        throw new Error('Mounted Maps '+run.name+' schedule failed: '+error.message+
+          '\n'+JSON.stringify({mounted, pageErrors: errors.slice(0, 6), moduleFailures}), {cause: error});
       } finally {await page.close();}
     }
     assert.deepEqual([...loaded].sort(), [...watched].sort());
