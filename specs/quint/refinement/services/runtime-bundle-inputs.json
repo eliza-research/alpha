@@ -1,15 +1,15 @@
 {
   "schema": 1,
   "classification": "observed-product-android-bundle-inputs",
-  "sourcePin": "b1817660a0347ae19551b9ee296410fe55f02d59",
+  "sourcePin": "80fbb1d25937585b24fd85132d623d5391c8ca07",
   "producer": {
     "script": "scripts/build-mobile-agent.mjs",
     "observer": "specs/quint/refinement/services/runtime-bundle-audit.mjs",
     "inputHashes": {
       "specs/quint/refinement/services/runtime-bundle-audit.mjs": "ec158ce9212e0e32f304ef8b4adcf894870215c7e47983430d062b73fbec3d62",
       "specs/quint/refinement/services/runtime-bundle-graph.mjs": "1434a50f98b533fb6abd1178a1de0995214435b5dbf466ed118190deeebeaa77",
-      "upstream.lock.json": "a5e200ab85930ea76d129ef7f15ba9c500a44c2b301bf1a4b8965aea298672c6",
-      "patches/eliza/mobile-uuid-build.json": "63dfaff4278f4f11069728ff0b1578ff48491a91856c511733b373c13b33aabd",
+      "upstream.lock.json": "cf901d2ed910fd0e8eff2c97a0f4b0774c8f591b4c82d9ff46155ea4f5672f40",
+      "patches/eliza/mobile-uuid-build.json": "8ffea906cc99af93eec156f574fa2af3ae8819668f6dabc735a3e3d55792e63f",
       "scripts/build-mobile-agent.mjs": "a806e8eada974f400afe18e00e5cf275d3519ab00462615076e3d4124639a288",
       "scripts/mobile-uuid-adapter.mjs": "5b2f99180a222f743367959b7ba0360d9d30597ba80d91ea126830074d190258",
       "scripts/mobile-bundle-smoke.mjs": "2e4f7ef05ae6f09285c2a6141876c14b5f30539c926a46864bf8862ae8d3b7bd",
@@ -17,7 +17,7 @@
       "scripts/core-state-patch.mjs": "331e2ce0df2c43a1f34969bc12b54d51292134320599e4a765e77b5129853171",
       "scripts/core-state-preload.mjs": "c5368c9075aa8c7660bee01338185fbe673c9b8dd6889dd1ab01d195efa17c10",
       "scripts/combined-agent-source.mjs": "a2f4d279f3f98ff078f3aedd6b9dc2dc5c3396ecdc7fb7f09b0da7e0c085062e",
-      "patches/eliza/core-state-manifest.json": "05810aff930cb207ead617b5667950dc04df8c1f94203f4090baf3e41e6e75b4",
+      "patches/eliza/core-state-manifest.json": "b2ff3a9e4898544b7fe8538fdc3b7a15e7fedbc58d9f7a43fe2c3d96e4d1148c",
       "patches/eliza/task-service-stop.patch": "d3b80ffb0dad32e3a17b50dbbb0d4c0dfb3f60b0f2a35f577be4612aa2f9db1e",
       "patches/eliza/notes-state-runtime.patch": "5f62c6742a0c8f85f47aec6a629a1454d7cc74c5060d75a72b5c3d77a43dda18",
       "patches/eliza/turn-controller-isolation.patch": "d587459e0123599d17f886fcc855eb90ce7ec20b286a42ce47a02a1ab1bd110b",
@@ -28,13 +28,13 @@
     },
     "coreState": {
       "version": 1,
-      "baseCommit": "b1817660a0347ae19551b9ee296410fe55f02d59",
-      "manifestSha256": "05810aff930cb207ead617b5667950dc04df8c1f94203f4090baf3e41e6e75b4",
+      "baseCommit": "80fbb1d25937585b24fd85132d623d5391c8ca07",
+      "manifestSha256": "b2ff3a9e4898544b7fe8538fdc3b7a15e7fedbc58d9f7a43fe2c3d96e4d1148c",
       "inputHashes": {
         "scripts/core-state-patch.mjs": "331e2ce0df2c43a1f34969bc12b54d51292134320599e4a765e77b5129853171",
         "scripts/core-state-preload.mjs": "c5368c9075aa8c7660bee01338185fbe673c9b8dd6889dd1ab01d195efa17c10",
         "scripts/combined-agent-source.mjs": "a2f4d279f3f98ff078f3aedd6b9dc2dc5c3396ecdc7fb7f09b0da7e0c085062e",
-        "patches/eliza/core-state-manifest.json": "05810aff930cb207ead617b5667950dc04df8c1f94203f4090baf3e41e6e75b4",
+        "patches/eliza/core-state-manifest.json": "b2ff3a9e4898544b7fe8538fdc3b7a15e7fedbc58d9f7a43fe2c3d96e4d1148c",
         "patches/eliza/task-service-stop.patch": "d3b80ffb0dad32e3a17b50dbbb0d4c0dfb3f60b0f2a35f577be4612aa2f9db1e",
         "patches/eliza/notes-state-runtime.patch": "5f62c6742a0c8f85f47aec6a629a1454d7cc74c5060d75a72b5c3d77a43dda18",
         "patches/eliza/turn-controller-isolation.patch": "d587459e0123599d17f886fcc855eb90ce7ec20b286a42ce47a02a1ab1bd110b",
@@ -190,11 +190,11 @@
       "version": "1.4.2",
       "revision": "744846f844374847c902b5e7fd59b4342a51ef99"
     },
-    "bundleSha256": "f7279e9bb631e083a4de4c3f19805ff92f25f08ac913c829fe3b5d8ab8d2a5de",
+    "bundleSha256": "c2f460034fd2b671a25c1d4abd84928a867d22b1c2493ae62b9c43bdeebb1f7c",
     "sourceTreeVerifiedBeforeAndAfter": true,
     "inputHashesUnchanged": true,
-    "rawMetafileSha256": "3bfc7ad13d195449ab80c06cc9394ab86e438f6e7e62512d1180adf9600244da",
-    "producerObservationSha256": "e6307facbab2befe0c7e250cb74cb0e63dacb741131ddd9b6f7724b65fcc3c26"
+    "rawMetafileSha256": "1992f3e7b221966571415f9c6adca26d0a1567a2c70e46192c84e1e6ccc9d2aa",
+    "producerObservationSha256": "fd3be2cb574e7004dfa5b79801f6ae9eba70a69e78db2d6ed4b2002d532a1b1f"
   },
   "counts": {
     "parsed": 9988,
@@ -2138,10 +2138,10 @@
       ]
     },
     "packages/agent/src/api/device-action-routes.ts": {
-      "sha256": "302a0902a4b9152ea9cd4ed682dd6efad70a654cf9b8d2487075fe0c8365563d",
+      "sha256": "de1a53602b9883f154cfc837c8c71bf7f7d0c36e26a4c5e42ffa87c34e541827",
       "bytesInOutput": 11366,
       "tracked": true,
-      "gitObject": "d3689f3b346532c933456fcf63e8574540ac1dfe",
+      "gitObject": "9cdaed36abca669ae7080022c18310284262f5a4",
       "imports": [
         {
           "target": "packages/contracts/dist/index.js",
@@ -9363,10 +9363,10 @@
       ]
     },
     "packages/agent/src/runtime/eliza.ts": {
-      "sha256": "5e162eb952b0faa8ae54962371a8ad86491f9234e865ffd73bc37fcf079e446c",
-      "bytesInOutput": 124899,
+      "sha256": "09f397d620c3f21cc4cee3e4b7c94bfce3f2bca3b70a15a972e3a0f51232b1ba",
+      "bytesInOutput": 124956,
       "tracked": true,
-      "gitObject": "b9e9c5846451962987f5820dbc23a7c15f3e621e",
+      "gitObject": "a54d02a95064b2a9303c58a891d9d63ab452e1f6",
       "imports": [
         {
           "target": "crypto",
@@ -62704,7 +62704,7 @@
           "scope": "first-party"
         },
         {
-          "target": "node_modules/.bun/viem@2.56.9+c486653617c72b4e/node_modules/viem/_cjs/index.js",
+          "target": "node_modules/.bun/viem@2.56.9+4abcc4e29caa1bf7/node_modules/viem/_cjs/index.js",
           "kind": "dynamic-import",
           "scope": "virtual-or-unresolved"
         }
@@ -73683,10 +73683,10 @@
       ]
     },
     "plugins/plugin-assistant/src/index.ts": {
-      "sha256": "24068deb5edc669dd887582ba656f8f831423e7bf3658928258f992df9d7c04f",
+      "sha256": "e2bcfb74fca32c81828d04f540371d61a89ea744ee4afea251f04669ff67884c",
       "bytesInOutput": 3370,
       "tracked": true,
-      "gitObject": "f16c4cefbcfd444c734c887b45e47d0dcc808e43",
+      "gitObject": "aabb0fde6225c9fa8bcb75220b4af9aad40414b1",
       "imports": [
         {
           "target": "plugins/plugin-assistant/src/features/basic-capabilities/index.ts",
@@ -74129,17 +74129,17 @@
           "scope": "first-party"
         },
         {
+          "target": "plugins/plugin-assistant/src/services/device-actions/files-browser-contract.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
           "target": "plugins/plugin-assistant/src/services/device-actions/reminder-local-time.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
         {
           "target": "plugins/plugin-assistant/src/services/device-actions/service.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "plugins/plugin-assistant/src/services/device-actions/files-browser-contract.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -75135,10 +75135,10 @@
       "imports": []
     },
     "plugins/plugin-assistant/src/services/device-actions/action.ts": {
-      "sha256": "ae15113fdd143979eefee68490a6d0e5602070269f7fa7208eaefc235c8b9569",
+      "sha256": "3c66a38a3d34221f569be9d971f2e2c827cd6855802b3ae4d0362642709d8c58",
       "bytesInOutput": 37906,
       "tracked": true,
-      "gitObject": "f2470cd5973a3ef385e130e621161e1490f0c473",
+      "gitObject": "9a1c7156c675edb4bbd451a15e70bb597842e7e5",
       "imports": [
         {
           "target": "crypto",
@@ -75186,12 +75186,12 @@
           "scope": "first-party"
         },
         {
-          "target": "plugins/plugin-assistant/src/services/device-actions/files-browser-contract.ts",
+          "target": "plugins/plugin-assistant/src/services/device-actions/effect-receipts.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
         {
-          "target": "plugins/plugin-assistant/src/services/device-actions/effect-receipts.ts",
+          "target": "plugins/plugin-assistant/src/services/device-actions/files-browser-contract.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -75330,10 +75330,10 @@
       "imports": []
     },
     "plugins/plugin-assistant/src/services/device-actions/contract.ts": {
-      "sha256": "d6d5c80b3ab2ea4bc75cc8f78fef355b77e414578c89e4db416a8d706428ae1e",
+      "sha256": "0b5770447ff4daae3d920ff7cbd76c4c40fe82fef994a183f38f111431e10ba2",
       "bytesInOutput": 8782,
       "tracked": true,
-      "gitObject": "64d4ce6adc1ce8621bcddce4af49bc16f10802ac",
+      "gitObject": "9e30f82b2f961e3cd4b57c0312ec0492059ed242",
       "imports": [
         {
           "target": "packages/contracts/dist/native-notes-query.js",
@@ -75352,6 +75352,11 @@
         },
         {
           "target": "plugins/plugin-assistant/src/services/device-actions/clock-contract.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "plugins/plugin-assistant/src/services/device-actions/files-browser-contract.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -75387,11 +75392,6 @@
         },
         {
           "target": "plugins/plugin-assistant/src/services/device-actions/sms-contract.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "plugins/plugin-assistant/src/services/device-actions/files-browser-contract.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -75443,10 +75443,10 @@
       "imports": []
     },
     "plugins/plugin-assistant/src/services/device-actions/effect-receipts.ts": {
-      "sha256": "a380ed36d32669a0fb24f6b63219d53c2497a637df240f946994247dd162beef",
-      "bytesInOutput": 5984,
+      "sha256": "978edab3a7721f6400f020d29c175a92ade1885db0f1a1a8f84306dc3e2fe8f7",
+      "bytesInOutput": 6117,
       "tracked": true,
-      "gitObject": "c8a2870be961901b81deaa65b29b08b1b4c2a47c",
+      "gitObject": "b5a371742d396a26495c54decd474bcaab25f2d2",
       "imports": [
         {
           "target": "crypto",
@@ -75486,10 +75486,10 @@
       ]
     },
     "plugins/plugin-assistant/src/services/device-actions/files-browser-contract.ts": {
-      "sha256": "6d049c680a74e2a3144ff9421dcf872a00de1bfcc0f63ae94081d5b1c797162d",
+      "sha256": "2218953ec5d259fe93a50e6cf46a462fd586f10f5fe436f3a4c0dcbd4502c387",
       "bytesInOutput": 5638,
       "tracked": true,
-      "gitObject": "f66489665a187f1e346044e6a4cfebb431bfff30",
+      "gitObject": "2e6e566643328e14f81911ea98034f4030cf5322",
       "imports": []
     },
     "plugins/plugin-assistant/src/services/device-actions/foreground-review-contract.ts": {
@@ -75814,10 +75814,10 @@
       ]
     },
     "plugins/plugin-assistant/src/services/device-actions/service.ts": {
-      "sha256": "69d3f89e688343e9cdc0b737f371530c7ff8bc9e7d78006353f2ba14a251557b",
+      "sha256": "c441f5ade5db0a52a1df5d7c98cd8e8a2aebc80c4aff1c2fc5b70fc35cc43162",
       "bytesInOutput": 94317,
       "tracked": true,
-      "gitObject": "7f3a8df8f7aa1e90379c3558822898b6a6322c83",
+      "gitObject": "a277c2d436eaf42c47e3d28c09577d6d73a8d8f2",
       "imports": [
         {
           "target": "async_hooks",
@@ -75890,17 +75890,17 @@
           "scope": "first-party"
         },
         {
-          "target": "plugins/plugin-assistant/src/services/device-actions/files-browser-contract.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
           "target": "plugins/plugin-assistant/src/services/device-actions/contract.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
         {
           "target": "plugins/plugin-assistant/src/services/device-actions/effect-receipts.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "plugins/plugin-assistant/src/services/device-actions/files-browser-contract.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -85108,7 +85108,7 @@
           "scope": "first-party"
         },
         {
-          "target": "node_modules/.bun/viem@2.56.9+c486653617c72b4e/node_modules/viem/_cjs/accounts/index.js",
+          "target": "node_modules/.bun/viem@2.56.9+4abcc4e29caa1bf7/node_modules/viem/_cjs/accounts/index.js",
           "kind": "import-statement",
           "scope": "bundled-dependency"
         },
@@ -85397,7 +85397,7 @@
     },
     "plugins/plugin-elizacloud/src/index.node.ts": {
       "sha256": "1278c00afda6c8c9b9eefe833648255c4e4c1f86ad9aa762fed5df835c0d6b84",
-      "bytesInOutput": 4170,
+      "bytesInOutput": 4224,
       "tracked": true,
       "gitObject": "c39fef0bf9062ace725205a16a9c2da1b96ca14b",
       "imports": [
@@ -85499,10 +85499,10 @@
       ]
     },
     "plugins/plugin-elizacloud/src/index.ts": {
-      "sha256": "08f3c55efe80cbfebef954debc38417db4b88805993dfff46e844160d2479a7e",
-      "bytesInOutput": 12210,
+      "sha256": "5c7724ce160c28568e659536bf577dc52ad5185e3e71cc6e00caae87f9742c66",
+      "bytesInOutput": 12724,
       "tracked": true,
-      "gitObject": "a3b9139b8d1dfc9224b22f5910f5d7d12f00ada8",
+      "gitObject": "ca89cc58c1dd694f3547f178a4f64662c76e0339",
       "imports": [
         {
           "target": "plugins/plugin-elizacloud/src/db/delegation-records.ts",
@@ -96600,7 +96600,7 @@
     },
     "plugins/plugin-local-inference/src/services/voice/wake-word.ts": {
       "sha256": "d29607d0602c1712a59e3060da29d39554987e8c35a30003c5ddd035c2a36a24",
-      "bytesInOutput": 6715,
+      "bytesInOutput": 6734,
       "tracked": true,
       "gitObject": "1a0c32165c499612ac599f2b1778b52bcff83ab8",
       "imports": [
@@ -120139,7 +120139,7 @@
     },
     "plugins/plugin-vision/src/vision-worker-manager.ts": {
       "sha256": "227585cb5446d878cc936fb22ccae10c222f76637e389a30b57c5a2d1863b971",
-      "bytesInOutput": 8843,
+      "bytesInOutput": 8862,
       "tracked": true,
       "gitObject": "963484a67214e88aff052f9cd81f4d0d6fa806d1",
       "imports": [

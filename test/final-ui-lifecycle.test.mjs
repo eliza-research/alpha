@@ -52,13 +52,14 @@ test('keyboard hide and background retire composer focus without changing the dr
  hidden=true;shell.dockHiddenWatch();assert.equal(shell.chatInputFocused,false);assert.equal(shell.chatScrimPress,undefined);assert.equal(shell.draft,'Keep this draft');
 });
 
-test('About exposes the existing Connection help controller and Back returns to About',()=>{
+test('About omits Connection help while the retained controller keeps its Back target',()=>{
  const s=read('prototype/settings-adapter.ts'),body=between(s,'    const connectionHelpRow =','    const licensesRow =');
  const calls=[],api={set:patch=>calls.push(patch.page)},connectionController={open:()=>calls.push('connection')};
  const row=native=>vm.runInNewContext(ts(body)+';connectionHelpRow()',{connection:{name:'Alpha'},Capacitor:{isNativePlatform:()=>native},testMocksEnabled:false,api,connectionController});
  assert.equal(row(true).label,'Connection help');row(true).go();assert.deepEqual(calls,['agent-connection']);
  row(false).go();assert.deepEqual(calls,['agent-connection','connection']);
- assert.match(s,/group\(\[licensesRow\(\),connectionHelpRow\(\)\]\)/);
+ assert.match(s,/group\(\[licensesRow\(\)\]\)/);
+ assert.doesNotMatch(s,/group\(\[licensesRow\(\),connectionHelpRow\(\)\]\)/);
  const back=between(s,'  const categoryNames:','  definition.render ='),definition={back:()=>false};
  vm.runInNewContext(ts(back),{definition,PASSWORD_PAGES:[],leavePasswordManager(){},leavePasswordEntry(){}});
  assert.equal(definition.back({page:'agent-connection'},{set:patch=>calls.push(patch.page)}),true);

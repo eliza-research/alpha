@@ -83,7 +83,7 @@ test('every subview of a retained view is opened by a state that asserts it is t
   for (const steps of [
     ['Settings', 'General'], ['Settings', 'General', 'Display'],
     ['Settings', 'General', 'Notifications'], ['Settings', 'Privacy'],
-    ['Settings', 'Privacy', 'App permissions'], ['Settings', 'About'], ['Settings', 'About', 'Connection help'],
+    ['Settings', 'Privacy', 'App permissions'], ['Settings', 'About'],
     ['Settings', 'Apps'], ['Settings', 'Apps', 'Calendar'],
     ['Settings', 'Apps', 'Passwords'],
     ['Settings', 'Apps', 'Workflows', 'Scheduled summaries'],
