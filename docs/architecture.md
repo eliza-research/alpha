@@ -19,7 +19,7 @@ records the migration order and the gaps that prevent a completion claim.
 ### Shell host pieces and their upstream targets
 
 The shared mobile shell (`@elizaos/ui/mobile-shell`) renders Home, its app grid, the view
-registry and navigation from `config/alpha-product.json`. Alpha uses the shared installed-app
+registry and navigation from `apps/app/src/product/alpha-product-registration.ts`. Alpha uses the shared installed-app
 grid drawer and supplies its classes, icons, menu state and Home edit mode in `prototype/home-shell.ts`.
 The grid lists installed Android apps only (view refresh 2026-11, PLAN section 5).
 Shared Home edit hooks remain a migration target. App info is
@@ -53,7 +53,7 @@ revision in `upstream.lock.json` and `vendor/eliza`.
 
 ## Cloud deployment configuration
 
-`config/cloud-deployment.json` owns the public production and staging API, web,
+`scripts/cloud-deployment-policy.mjs` owns the public production and staging API, web,
 services origins, tenant identifiers, entitlement audiences and optional public service names. A deployment
 without a name displays its API hostname until its public metadata loads. Names
 do not change credential authority or its storage namespace. `entitlementAudience`
@@ -61,7 +61,7 @@ selects the signed plan contract the client verifies; its default is
 `cloud-subscription`. The Eliza records explicitly retain `eliza-alpha-phone`
 for compatibility with the deployed signer. Eliza Cloud remains the default. Run
 `node scripts/cloud-deployment.mjs` after changing it; renderer and Android builds
-reject stale generated TypeScript or Java. The current configuration accepts
+reject stale generated TypeScript, Java or Gradle. The current configuration accepts
 canonical HTTPS origins on the default port, without base paths or credentials.
 
 Alpha retains its own package/client ID and `/alphaphone/auth/callback` return
@@ -145,7 +145,7 @@ Gmail attachments and PDF file creation remain available.
 | `android` | Product identity, Activity, permissions, resources and standalone/HOME packaging. `android/consumer-host.json` is the descriptor the pinned upstream consumer-host generator turns into the git-ignored Gradle host; `android/app/product.gradle` holds Gradle-time product admission |
 | `android/sense` | Product identity wrappers for the upstream Sense listener; shared implementation and SystemUI policy live in `vendor/eliza/packages/app/platforms/android/sense` and `vendor/eliza/packages/os/android/sense` ([ADR 0001](adr/0001-privileged-listener.md)); never in the standalone or launcher APK |
 | `app.config.json` | Package ID, display name, version and orientation |
-| `config/alpha-product.json` | Versioned product record of the shared mobile shell (`@elizaos/ui/mobile-shell`, schema `elizaos.mobile-product` v1): identity, theme and stylesheet aliases, icons, view order and labels, older view ids migrated once, and installed storage names (the launcher favorites record with its `alpha:` prefix and `alpha-apps` default policy, and the other names the app keeps reading). Home, the app grid, the view registry and navigation state (open view, Back stack, drawer and the assistant's pill, composer, sheet or full detent) render from the upstream shell with this record; runtime code such as agent navigation reads the React-free `@elizaos/ui/mobile-shell/core` entry |
+| `apps/app/src/product/alpha-product-registration.ts` | Versioned product record of the shared mobile shell (`@elizaos/ui/mobile-shell`, schema `elizaos.mobile-product` v1): identity, theme and stylesheet aliases, icons, view order and labels, older view ids migrated once, and installed storage names (the launcher favorites record with its `alpha:` prefix and `alpha-apps` default policy, and the other names the app keeps reading). Home, the app grid, the view registry and navigation state (open view, Back stack, drawer and the assistant's pill, composer, sheet or full detent) render from the upstream shell with this record; runtime code such as agent navigation reads the React-free `@elizaos/ui/mobile-shell/core` entry |
 | `backend` | Development runtime composition, character and permitted model/actions; `native-google-agent-host.ts` and its imports (`managed-google-*`, `native-cloud-runtime`, `native-google-cloud-port`) are the production native Google host, bundled as `google-host.mjs` |
 | `vendor/eliza` | Pinned shared platform source; never modified by consumer builds (temporary exception: the pinned voice builder's untracked `.cache/elizavoice-android`, see [fused speech](fused-speech.md)) |
 | `scripts` | Consumer build orchestration and product acceptance scenarios |
@@ -296,7 +296,7 @@ The production AlphaConnection boundary admits exact managed-service origin and 
 builds) is development infrastructure, not evidence of a resident runtime or
 production authentication.
 
-The route set, transport bounds, delegation-return admission and request registry behind AlphaConnection, and the provider slot binding, launch order (provider admission, then the native profile's embedding route) and attach admission behind the resident Agent bridge, are the shared `plugin-native-agent` `connection` and `runtime` policies. Renderer secure-slot admission (native-only namespaces, the compare-and-exchange allow-list and the credential slots) is the shared `SecureSlotPolicy`, and the last-intent-wins credential fence that orders Cloud sign-in, renderer credential writes and resident rebinds is the shared `CredentialIntentFence`, guarded by the resident lifecycle lock. Alpha supplies its plugin names, Cloud hosts (`CloudDeployment`), link scheme, slot names (`RendererCredentialSlots`) and the packaged `config/owner-routes.json`; the Capacitor plugins keep the Android plumbing and the resident lifecycle locks.
+The route set, transport bounds, delegation-return admission and request registry behind AlphaConnection, and the provider slot binding, launch order (provider admission, then the native profile's embedding route) and attach admission behind the resident Agent bridge, are the shared `plugin-native-agent` `connection` and `runtime` policies. Renderer secure-slot admission (native-only namespaces, the compare-and-exchange allow-list and the credential slots) is the shared `SecureSlotPolicy`, and the last-intent-wins credential fence that orders Cloud sign-in, renderer credential writes and resident rebinds is the shared `CredentialIntentFence`, guarded by the resident lifecycle lock. Alpha supplies its plugin names, Cloud hosts (`CloudDeployment`), link scheme, slot names (`RendererCredentialSlots`) and the packaged owner-route table from `apps/app/src/product/owner-route-table.ts`; the Capacitor plugins keep the Android plumbing and the resident lifecycle locks.
 
 ### Eliza Cloud sign-in ownership (in-app, 2026-10-14)
 
@@ -337,7 +337,8 @@ There is no automatic Eliza Cloud website sign-in fallback.
   session, codes and PKCE verifiers and makes every sign-in request, using fixed URLs on the Cloud API
   origin (`CloudSignInRoutes`; the renderer transport admits none of them):
   - Email: the six-digit code endpoints of elizaOS/eliza #36260, kept in one adapter
-    (`CloudEmailCode`, `config/cloud-email-code.json`): `POST /steward/auth/email/code/send`, then
+    (upstream `CloudEmailCode`, with browser development parity in `scripts/cloud-email-code.ts`):
+    `POST /steward/auth/email/code/send`, then
     the code typed into Alpha goes to `POST /steward/auth/email/code/verify` with a PKCE verifier.
     No magic link is requested. Five wrong codes end an attempt; one code send per 30 seconds per
     phone, or longer when Cloud asks.

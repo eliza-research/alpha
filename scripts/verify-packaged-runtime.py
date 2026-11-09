@@ -243,7 +243,10 @@ def verify(apk, release=False, runtime_profile="native", local_embeddings=False)
                 bundle_dependencies.get('bundleSha256') != checks['assets/agent/agent-bundle.js'] or
                 not isinstance(bundle_dependencies.get('packages'), list) or not bundle_dependencies['packages']):
             raise ValueError('Packaged agent dependency inventory does not match bundle')
-        check('assets/agent/native-view-declarations.json', staged / 'native-view-declarations.json', file_hash(ROOT / 'config/native-view-declarations.json'))
+        declarations = subprocess.check_output(
+            [os.environ.get('ALPHA_NODE', 'node'), ROOT / 'scripts/native-view-policy.mjs'], timeout=30)
+        check('assets/agent/native-view-declarations.json', staged / 'native-view-declarations.json',
+              hashlib.sha256(declarations).hexdigest())
         worker_manifest = json.loads((staged / 'workflow-worker/manifest.json').read_text())
         worker_files = worker_manifest.get('files')
         if worker_manifest.get('version') != 1 or not isinstance(worker_files, dict) or not worker_files:

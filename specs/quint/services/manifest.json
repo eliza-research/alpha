@@ -2003,7 +2003,7 @@
         "backend/native-cloud-runtime.ts",
         "backend/native-google-agent-host.ts",
         "backend/native-google-cloud-port.ts",
-        "config/alpha-product.json",
+        "apps/app/src/product/alpha-product-registration.ts",
         "package.json",
         "upstream.lock.json",
         "vendor/eliza/packages/voice/src/native-cloud-speech.ts",
@@ -2133,8 +2133,7 @@
         "scripts/core-state-preload.mjs",
         "scripts/cloud-sdk-authority.mjs",
         "scripts/native-view-policy.mjs",
-        "config/cloud-deployment.json",
-        "config/native-view-declarations.json",
+        "scripts/cloud-deployment-policy.mjs",
         "vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs"
       ],
       "stateMapping": {

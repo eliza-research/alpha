@@ -25,7 +25,7 @@ export const credentialScenarios = [
 export function generateCredentialCoordinatorTraces(scenario, extraSources = []) {
   const fixture = credentialCoordinatorPlatform();
   const sources = [...credentialCoordinatorSources,
-    "config/owner-routes.json",
+    "apps/app/src/product/owner-route-table.ts",
     ...['CredentialCoordinatorPorts.java', 'CredentialCoordinatorTraces.java', 'CredentialResidentTraces.java',
       'ResidentTestPorts.java', 'resident-platform.mjs', 'resident-coordinator.mjs',
       'credential-coordinator-platform.mjs', 'Trace.java', 'java.mjs'].map(name => `${directory}/${name}`),

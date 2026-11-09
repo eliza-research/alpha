@@ -95,12 +95,13 @@ test('the sign-in App Link is on the configured Cloud host; staging lives in the
  assert.deepEqual(assetlinks[0].relation,['delegate_permission/common.handle_all_urls']);
 });
 
-test('one email code adapter: shared native constants, the bridge config and the shared route allowlist agree',()=>{
- const config=JSON.parse(read('config/cloud-email-code.json')),adapter=read(shared+'CloudEmailCode.java'),routes=read(shared+'CloudSignInRoutes.java');
- assert.match(adapter,new RegExp(`SEND_PATH = "${config.sendPath}"`));assert.match(adapter,new RegExp(`VERIFY_PATH = "${config.verifyPath}"`));
+test('shared native email code routes and the browser adapter agree',async()=>{
+ const {CLOUD_EMAIL_CODE}=await import('../scripts/cloud-email-code.ts');
+ const adapter=read(shared+'CloudEmailCode.java'),routes=read(shared+'CloudSignInRoutes.java');
+ assert.match(adapter,new RegExp(`SEND_PATH = "${CLOUD_EMAIL_CODE.sendPath}"`));assert.match(adapter,new RegExp(`VERIFY_PATH = "${CLOUD_EMAIL_CODE.verifyPath}"`));
  assert.match(routes,/CloudEmailCode\.SEND_PATH, CloudEmailCode\.VERIFY_PATH/);
- assert.equal(config.tenants,undefined);assert.equal(config.client,'ai.elizaresearch.alphaphone');
- assert.ok(read(native+'AlphaCloudSignInPlugin.java').includes(`.clientId("${config.client}")`),'the bridge and the native registration name the same client');
+ assert.equal(CLOUD_EMAIL_CODE.client,'ai.elizaresearch.alphaphone');
+ assert.ok(read(native+'AlphaCloudSignInPlugin.java').includes(`.clientId("${CLOUD_EMAIL_CODE.client}")`),'the bridge and the native registration name the same client');
  for(const field of ['"email"','"tenantId"','"client"','"pkce"','"codeChallenge"','"codeChallengeMethod"','"code"','"codeVerifier"'])assert.ok(adapter.includes(field),field);
  const bridge=read('scripts/browser-cloud-dev-bridge.ts');
  assert.match(bridge,/CLOUD_EMAIL_CODE\.sendPath,emailCodeSendBody\(/);assert.match(bridge,/CLOUD_EMAIL_CODE\.verifyPath,emailCodeVerifyBody\(/);

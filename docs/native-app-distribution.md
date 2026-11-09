@@ -108,7 +108,7 @@ The target is a phone, not tablet; the hardware target is now Pixel 10a on Andro
 
 ## Reproducible offline AOSP staging
 
-The checked-in [pinned candidate manifest](../config/native-apps.json) records the three official native apps above. The [staging script](../scripts/stage-native-apps.mjs) accepts an operator-supplied directory containing those exact approved APK filenames; it never downloads artifacts or follows mutable release URLs. It uses the project's Android SDK build-tools 36.0.0 and JDK configuration from `scripts/toolchain.mjs`.
+The [staging script](../scripts/stage-native-apps.mjs) pins the three official native apps above. It accepts an operator-supplied directory containing those exact approved APK filenames and performs all checks offline. It uses the project's Android SDK build-tools 36.0.0 and JDK configuration from `scripts/toolchain.mjs`.
 
 ```sh
 node scripts/stage-native-apps.mjs \

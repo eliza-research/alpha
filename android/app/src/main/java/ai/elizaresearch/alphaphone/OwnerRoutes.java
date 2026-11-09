@@ -2,8 +2,7 @@ package ai.elizaresearch.alphaphone;
 
 import ai.eliza.plugins.agent.connection.OwnerRoutePolicy;
 
-/** Alpha's packaged owner-route table (config/owner-routes.json, the owner-routes.json asset); the renderer reads the same
- * table through owner-route-policy.ts. The interpreter is the shared plugin-native-agent OwnerRoutePolicy. */
+/** Alpha's generated owner-routes.json asset, from the same owner-route table the renderer uses. The interpreter is the shared plugin-native-agent OwnerRoutePolicy. */
 final class OwnerRoutes {
  interface Assets extends OwnerRoutePolicy.Assets {}
  static final String ASSET="owner-routes.json";

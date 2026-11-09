@@ -1,5 +1,5 @@
+import {ALPHA_PRODUCT_REGISTRATION as record} from '../../apps/app/src/product/alpha-product-registration.ts';
 import {test,expect} from '@playwright/test';
-import {readFileSync} from 'node:fs';
 import {returnToApps} from './app-navigation';
 for(const theme of ['light','dark'])test(`canonical launcher, dock and Files assets: ${theme}`,async({page},info)=>{
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
@@ -15,13 +15,12 @@ for(const theme of ['light','dark'])test(`canonical launcher, dock and Files ass
  }
  // Every shared Home tile names the published glyph it draws (data-mobile-shell-tile-icon); its
  // accessible name stays the label. The count covers every product tile and Apps.
- const record=JSON.parse(readFileSync(new URL('../../config/alpha-product.json',import.meta.url),'utf8'));
  const homeTiles=await page.getByRole('region',{name:'Home',exact:true}).locator('[data-mobile-shell-tile]').evaluateAll(tiles=>tiles.map(tile=>({name:tile.getAttribute('aria-label'),icon:tile.getAttribute('data-mobile-shell-tile-icon'),mask:getComputedStyle(tile.querySelector('[data-mobile-shell-tile-face] > span[aria-hidden="true"]')||tile).maskImage,image:!!tile.querySelector('img')})));
  expect(homeTiles.length,'shared Home tiles').toBeGreaterThan(1);
  const glyphs=new Set([...Object.values(record.icons.views),record.icons.allApps]);
  for(const tile of homeTiles){
   if(tile.image){expect(tile.icon,tile.name+' platform icon carries no glyph id').toBeNull();continue;}
-  expect(glyphs.has(tile.icon),tile.name+' names a published glyph: '+tile.icon).toBe(true);
+  expect(glyphs.has(tile.icon ?? ''),tile.name+' names a published glyph: '+tile.icon).toBe(true);
   expect(tile.mask,tile.name+' draws the glyph it names').toMatch(new RegExp('/icons/lucide/'+tile.icon+'\\.svg"?\\)$'));
  }
  expect(homeTiles.find(tile=>tile.name==='Apps')?.icon).toBe(record.icons.allApps);

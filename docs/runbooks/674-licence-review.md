@@ -235,7 +235,7 @@ APK-build evidence. It does not prove anything about emulator, image, device or 
      `0d9fd4b9`, the eliza pin, the npm tarballs); or both.
    - Recommendation: both. Ask counsel what "relink" means for a statically linked Bun.
    - What changes: an engineering task to publish the mirror. The offer text goes in
-     `config/source-offer.json` (`{"offer": "..."}`); the Bun notice ships it, and until it is
+     `licenses/source-offer.json` (`{"offer": "..."}`); the Bun notice ships it, and until it is
      recorded `scripts/owner/licence-review.mjs` reports it as a distribution blocker.
 5. **Phonon-2 training-data terms (CHiME-6 CC-BY-SA-4.0, SPGISpeech Kensho terms).**
    - Options: accept, with attribution as shipped; ask counsel; or switch the ASR slot model.

@@ -8,6 +8,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import {OWNER_ROUTE_TABLE} from '../apps/app/src/product/owner-route-table.ts';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 
@@ -80,9 +81,8 @@ function alphaAgentPathLiterals() {
 }
 
 function ownerRouteTable() {
-  const table = JSON.parse(fs.readFileSync('config/owner-routes.json', 'utf8'));
   const routes = [];
-  for (const group of Object.values(table.groups))
+  for (const group of Object.values(OWNER_ROUTE_TABLE.groups))
     for (const route of group.routes)
       for (const method of route.methods)
         for (const raw of route.paths) routes.push([method, raw.split('?')[0].replaceAll('{id}', 'id-1')]);
@@ -119,7 +119,7 @@ test('no route Alpha issues to its agent is behind the owner-only gate', () => {
   const model = gateModel(gateSource());
   const refused = [];
   for (const [method, pathname] of ownerRouteTable())
-    if (ownerOnly(model, method, pathname)) refused.push(`${method} ${pathname} (config/owner-routes.json)`);
+    if (ownerOnly(model, method, pathname)) refused.push(`${method} ${pathname} (apps/app/src/product/owner-route-table.ts)`);
   const literals = alphaAgentPathLiterals();
   assert.ok(literals.size > 20, 'Alpha agent path literals were not found');
   // A literal carries no method: check it as a write, which the gate treats most strictly.

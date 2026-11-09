@@ -13,7 +13,7 @@
  * --debug-fingerprint given. Writes artifacts/assetlinks.json by default. The file holds no secret.
  *
  * Alpha's return host is the Eliza Cloud web host (ELIZAOS_APP_LINK_HOST must equal
- * config/cloud-deployment.json production.web), whose assetlinks.json Cloud builds only from the
+ * scripts/cloud-deployment-policy.mjs production.web), whose assetlinks.json Cloud builds only from the
  * operator variable ELIZA_ANDROID_ASSET_LINKS_JSON: one {package_name, sha256_cert_fingerprints,
  * relations?} entry per app, and any malformed entry or duplicate package publishes [] for every
  * app. --cloud-config prints that variable's value with Alpha's entry carrying the release

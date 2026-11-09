@@ -5,14 +5,14 @@ import path from 'node:path';
 import os from 'node:os';
 import {execFileSync} from 'node:child_process';
 import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
+import {loginSurfaceInventory as inventory} from './support/login-surfaces.mjs';
 
 // Issue #404 (P-20): every eligible login surface in Alpha supports password-manager fill,
 // website fills bind to the committed HTTPS origin, app fills to verified app identity, and
-// secrets never reach observations, transcripts or logs. config/login-surfaces.json is the
+// secrets never reach observations, transcripts or logs. test/support/login-surfaces.mjs is the
 // inventory; these source guards keep a new login field from landing unregistered or unwired.
 // They do not establish device behaviour: see remainingGates in the inventory.
 const read = file => fs.readFileSync(file, 'utf8');
-const inventory = JSON.parse(read('config/login-surfaces.json'));
 // The native tab host is shared (plugin-native-browser-surface); Alpha's plugin only names it.
 const plugin = read('vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserTabHostPlugin.java');
 // The browser's login adapters are staged into the app from the reviewed pin (plugin-native-browser-surface).
@@ -272,7 +272,7 @@ function unregisteredHits(files, detectors) {
   return hits;
 }
 
-test('every renderer credential field is registered in config/login-surfaces.json', () => {
+test('every renderer credential field is registered in test/support/login-surfaces.mjs', () => {
   const files = walk('apps/app/src', file => /\.(ts|tsx|js|jsx|mjs|cjs|html|css)$/.test(file) && !/\.test\./.test(file));
   assert.deepEqual(unregisteredHits(files, RENDERER_DETECTORS), [], 'register each new credential field (and wire its fill route if eligible)');
 });

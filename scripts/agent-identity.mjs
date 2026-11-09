@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import {ALPHA_PRODUCT_REGISTRATION} from '../apps/app/src/product/alpha-product-registration.ts';
 import {writePrivateRuntimeJson} from '../vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs';
 // The product record is the one identity source: the shell reads identity.characterName for its
 // header and composer, and the host receives the same name through upstream's local character
@@ -8,8 +9,8 @@ import {writePrivateRuntimeJson} from '../vendor/eliza/packages/agent/native-hos
 // never replace the persisted identityName used for agent and default conversation IDs. No system prompt
 // is supplied: the bundled default preset keeps its style and its "{{name}}, made by Eliza Research"
 // origin line, which build-character-config renders with this name.
-const {identity}=JSON.parse(fs.readFileSync(new URL('../config/alpha-product.json',import.meta.url),'utf8'));
-for(const key of ['characterName','appName'])if(typeof identity?.[key]!=='string'||!identity[key].trim())throw Error(`config/alpha-product.json identity.${key} required`);
+const {identity}=ALPHA_PRODUCT_REGISTRATION;
+for(const key of ['characterName','appName'])if(typeof identity?.[key]!=='string'||!identity[key].trim())throw Error(`apps/app/src/product/alpha-product-registration.ts identity.${key} required`);
 export const AGENT_CHARACTER=Object.freeze({name:identity.characterName,bio:[`The assistant built into ${identity.appName} for writing, research, decisions and practical follow-through.`]});
 export const AGENT_CHARACTER_ENVIRONMENT=Object.freeze({ELIZA_AGENT_CHARACTER_JSON:JSON.stringify(AGENT_CHARACTER)});
 

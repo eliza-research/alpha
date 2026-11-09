@@ -523,7 +523,7 @@ nothing.
 | `licenses/font-licenses.json` | The owner-statement record for "Denton typeface", by exact hash |
 | `apps/app/public/licenses/` | Generated notice entry flagged `proprietary-licence-held-outside-repo` |
 | `scripts/generate-licenses.mjs` | Reads every font under `apps/app/public`; no Denton-specific code |
-| `config/alpha-product.json` | The product theme's display stack (Denton/Fraunces/Georgia), read by the shared mobile shell's Home and All apps |
+| `apps/app/src/product/alpha-product-registration.ts` | The product theme's display stack (Denton/Fraunces/Georgia), read by the shared mobile shell's Home and All apps |
 | `scripts/prototype-capture.mjs` line 111 | Records `document.fonts.check('300 30px Denton')` in capture output |
 | `test/licenses.test.mjs`, `test/font-license.test.mjs` | Use Denton as the proprietary-font example |
 
@@ -711,7 +711,7 @@ The Bun lock and normalized input hash changed. The old raw/normalized input equ
 
 The shared Notes consumer changes the npm lockfile, so the audit was regenerated. The fresh audit identified Undici 8.11.2 under the development-only jsdom dependency. The lockfile now resolves 8.12.3 within jsdom's existing `^8.11.2` range. The upstream patched threshold is 8.12.2 for [GHSA-4qv8-2p9j-2685](https://github.com/advisories/GHSA-4qv8-2p9j-2685), [GHSA-f72v-6w45-q472](https://github.com/advisories/GHSA-f72v-6w45-q472), and [GHSA-xjj6-f33q-929c](https://github.com/advisories/GHSA-xjj6-f33q-929c). The new audit contains the same three moderate findings covered by the existing Capacitor/xcode/uuid disposition and no high or critical findings. No exception or review deadline was expanded.
 The shared installed-app launcher receives Alpha's existing Denton/Fraunces/Georgia
-font stack from the product theme in `config/alpha-product.json`. This adds no font file
+font stack from the product theme in `apps/app/src/product/alpha-product-registration.ts`. This adds no font file
 or download: `prototype.css` remains the sole Denton loading rule. The owner-stated
 commercial license record and the open/system fallback stack are unchanged.
 
