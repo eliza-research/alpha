@@ -109,7 +109,7 @@ function setup(number, simpleCore = false) {
     for (const row of host?.coreState.transforms ?? []) {
       const name = path.relative(root, path.join(sdk, row.path));
       assert.equal(host.inputs[name], row.sourceSha256, 'Public receipt binds the pinned source consumed by the compiler');
-      assert.notEqual(row.sourceSha256, row.outputSha256);
+      assert.equal(row.sourceSha256, row.outputSha256, 'Core source reaches the compiler without an overlay');
     }
     const module = fs.existsSync(modulePath) ? classify(moduleHashes, digest(fs.readFileSync(modulePath))) : 0;
     for (const [name, hash] of Object.entries(generic.files)) {
@@ -291,7 +291,7 @@ scenario('fresh artifact builds, reads back and preserves ordinary worker bytes'
   point('verified host receipt is rechecked against file and current source', 'verify', 'accepted');
   point('product input advances independently of the SDK', 'setSource', 2);
   point('old receipt refuses changed product input', 'verify', 'source');
-  point('fresh build and declared connector transform bind the current bytes', 'build', 'ok', true, 'accepted');
+  point('fresh build and declared connector input bind the current bytes', 'build', 'ok', true, 'accepted');
   point('current host is admitted after rebuild', 'verify', 'accepted');
 });
 scenario('coherent drift while compiling refuses mismatched source publication', point => {

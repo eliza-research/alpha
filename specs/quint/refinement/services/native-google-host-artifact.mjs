@@ -52,8 +52,8 @@ export async function checkNativeGoogleHostArtifact(extraSources = []) {
   return checkTraces({model: 'NativeGoogleHostArtifact', sources, driverHashes, traces, scope: 'bounded-orchestration',
     assumptions: [
       'The actual native Google host artifact producer wrapper, TypeScript builder, immutable SDK verification and worker/host readback execute with a synthetic Git SDK and private worker output. Client projection, compiler output and version are controlled ports.',
-      'The compiler port invokes actual resolver, source capture and selected core interception callbacks. Output embeds the digest of the bytes those callbacks returned, while the actual wrapper validates the exact source binding and candidate.',
-      'One product input, two file identities, one selected worker output and one representative optional core transform. The other generic worker inputs remain fixed.',
+      'The compiler port invokes actual resolver, source capture and selected core observation callbacks. Output embeds the digest of the bytes those callbacks returned, while the actual wrapper validates the exact source binding and candidate.',
+      'One product input, two file identities, one selected worker output and one representative optional core input. The other generic worker inputs remain fixed.',
       'Build outcomes group actual port events and definite serial publication refusals. The old pair is checked by exact bytes and mode. Concurrent writers, crash recovery, full product compiler graph, Android staging and installed host execution remain separate.',
     ]});
 }
