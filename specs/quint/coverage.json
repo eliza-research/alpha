@@ -18223,7 +18223,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "b1482eff202f327ad043aecb5aecb6717921bf90dfe5eb7e7ac4203f42ac2977",
+      "sha256": "1b8559b0afacfeac49f8e8cf5f12e8438ee1a5a3d5f94e91844a4cf373a15541",
       "stateAnchors": [
         {
           "line": 14,
@@ -18254,10 +18254,6 @@
           "text": "return new Promise((resolve,reject)=>{const tx=connection.transaction('photos',mode);let value:T,error:Error|undefined;"
         },
         {
-          "line": 44,
-          "text": "try{const key=JSON.parse(value.slice(5));if(value.startsWith('date:')&&Array.isArray(key)&&key.length===2&&Number.isFinite(key[0])&&typeof key[1]==='string'&&key[1])return key as [number,string];}catc"
-        },
-        {
           "line": 48,
           "text": "const BUILT_IN_ALBUMS=['favorites','videos','camera','screenshots'];"
         },
@@ -18282,10 +18278,6 @@
           "text": "request.onsuccess=()=>{const cursor=request.result;if(!cursor){set(result);return;}const row=cursor.value as Row;if(row.kind!=='image'&&row.kind!=='video'){cursor.continue();return;}"
         },
         {
-          "line": 61,
-          "text": "async function read(id:string){return transaction<Row>('readonly',(store,set,fail)=>{const r=store.get(id);r.onsuccess=()=>['image','video'].includes(r.result?.kind)?set(r.result):fail(Error('Photo no"
-        },
-        {
           "line": 63,
           "text": "return transaction<Row>('readwrite',(store,set,fail)=>{const r=store.get(input.id);r.onsuccess=()=>{const row=r.result as Row|undefined;"
         },
@@ -18296,10 +18288,6 @@
         {
           "line": 72,
           "text": "const edits=new Map<string,EditSession>();"
-        },
-        {
-          "line": 73,
-          "text": "const filters:Record<string,string>={none:'none',vivid:'saturate(1.55) contrast(1.08)',warm:'sepia(.3) saturate(1.35) hue-rotate(-8deg)',cool:'saturate(1.1) hue-rotate(14deg) brightness(1.03)',mono:'g"
         },
         {
           "line": 74,
@@ -18366,10 +18354,6 @@
           "text": "const record=request.result as EditRecord|undefined;"
         },
         {
-          "line": 117,
-          "text": "async function cancelPhotoEdit(input:{sessionId:string}){const value=edits.get(input.sessionId);if(value)value.active=false;edits.delete(input.sessionId);await resultPhotoEdit({operationId:input.sessi"
-        },
-        {
           "line": 119,
           "text": "const replace=input.replace===true;"
         },
@@ -18406,10 +18390,6 @@
           "text": "const source=original.result as Row|undefined;"
         },
         {
-          "line": 148,
-          "text": "await transaction<void>('readwrite',(store,set)=>{const request=store.get(key);request.onsuccess=()=>{const record=request.result as EditRecord|undefined;if(record?.status==='saving'&&record.attempt=="
-        },
-        {
           "line": 153,
           "text": "const mediaId=()=>Date.now().toString().padStart(13,'0')+Array.from(crypto.getRandomValues(new Uint8Array(12)),n=>String(n%10)).join('');"
         },
@@ -18424,10 +18404,6 @@
         {
           "line": 165,
           "text": "const value=input as {items?:unknown;all?:unknown}|null|undefined;"
-        },
-        {
-          "line": 171,
-          "text": "return transaction<Row[]>('readonly',(store,set,fail)=>{const result:Row[]=[];set(result);for(const item of items){const request=store.get(item.id);request.onsuccess=()=>{const row=request.result as R"
         },
         {
           "line": 174,
@@ -18466,36 +18442,12 @@
           "text": "const encoded=JSON.stringify([edit.start,edit.end,edit.rotation,edit.crop]);"
         },
         {
-          "line": 197,
-          "text": "const claimed=await transaction<EditRecord>('readwrite',(store,set,fail)=>{signal.throwIfAborted();const request=store.get(key);request.onsuccess=()=>{const old=request.result as EditRecord|undefined;"
-        },
-        {
           "line": 201,
           "text": "const rendered=await renderVideoEdit({path:source.path,duration:source.duration},edit,signal);signal.throwIfAborted();"
         },
         {
-          "line": 202,
-          "text": "return await transaction<EditResult>('readwrite',(store,set,fail)=>{const request=store.get(key);request.onsuccess=()=>{const record=request.result as EditRecord;if(record.status!=='saving'){set(outco"
-        },
-        {
-          "line": 203,
-          "text": "}catch(error){await transaction<void>('readwrite',(store,set)=>{const request=store.get(key);request.onsuccess=()=>{const record=request.result as EditRecord;if(record.status==='saving'){record.status"
-        },
-        {
           "line": 205,
           "text": "export const browserPhotoLibrary={"
-        },
-        {
-          "line": 208,
-          "text": "async list(options:{before?:string;trashed?:boolean;album?:string;limit?:number}={}){const result=await rows(options),page=Math.max(1,Math.min(40,Math.floor(options.limit??40)||40));return {items:resu"
-        },
-        {
-          "line": 210,
-          "text": "async summary(){const all=await rows({},true);return {favorites:all.filter(r=>!r.trashed&&r.favorite).length,videos:all.filter(r=>!r.trashed&&r.kind==='video').length,camera:all.filter(r=>!r.trashed)."
-        },
-        {
-          "line": 211,
-          "text": "async albums(){const live=new Set((await rows({},true)).filter(row=>!row.trashed).map(row=>row.id));return {items:(await albumDocument.read<Album[]>(()=>[])).map(album=>({...album,count:album.memberId"
         },
         {
           "line": 214,
@@ -18510,268 +18462,188 @@
           "text": "let media:Row|undefined;"
         },
         {
-          "line": 232,
-          "text": "if(input.operation==='create'){const memberIds=media?[media.id]:[],album:Album={id:crypto.randomUUID(),name,revision:revision(),count:memberIds.length,memberIds};albums.push(album);return {status:'upd"
-        },
-        {
           "line": 233,
           "text": "const album=albums.find(a=>a.id===input.id);if(!album||album.revision!==input.revision)throw Error('Album changed. Reopen it.');"
         },
         {
-          "line": 246,
+          "line": 249,
           "text": "const items=selectedMedia(input.items),patch=input.operation==='favorite'||input.operation==='unfavorite'?{favorite:input.operation==='favorite'}:{trashed:input.operation==='trash'};"
         },
         {
-          "line": 248,
+          "line": 251,
           "text": "const result={status:'complete',outcomes:[] as {id:string;status:string;item?:Row}[]};set(result);"
         },
         {
-          "line": 249,
+          "line": 252,
           "text": "for(const item of items){const request=store.get(item.id);request.onsuccess=()=>{"
         },
         {
-          "line": 250,
+          "line": 253,
           "text": "const row=request.result as Row|undefined;"
         },
         {
-          "line": 252,
+          "line": 255,
           "text": "const unchanged=Object.entries(patch).every(([key,value])=>row[key as 'favorite'|'trashed']===value);"
         },
         {
-          "line": 253,
+          "line": 256,
           "text": "const updated=unchanged?row:{...row,...patch,mutationRevision:revision()};if(!unchanged)store.put(updated);"
         },
         {
-          "line": 258,
-          "text": "async share(input:{id:string;revision?:string},current:()=>boolean){const row=await read(input.id);return browserPhotoLibrary.shareMany({items:[{id:input.id,revision:input.revision??row.mutationRevisi"
-        },
-        {
-          "line": 259,
-          "text": "async prepareDeleteTrash(input:{items:SelectedMedia[]}|{all:true}){const wanted=trashSelection(input);const all=(await rows({},true)).filter(r=>r.trashed);if(wanted&&wanted.some(item=>!all.some(row=>r"
-        },
-        {
-          "line": 261,
+          "line": 264,
           "text": "async deletePreparedTrash(input:{confirmation:string}){const selected=prepared.get(input.confirmation);if(!selected)throw Error('Review the trash again.');prepared.delete(input.confirmation);"
         },
         {
-          "line": 262,
-          "text": "return transaction<{status:string;deletedIds:string[];skippedIds:string[];failedIds:string[]}>('readwrite',(store,set)=>{const result={status:'complete',deletedIds:[] as string[],skippedIds:[] as stri"
-        },
-        {
-          "line": 266,
-          "text": "signal.throwIfAborted();const row:Row={id:photoId(),kind:'image',image:image.image,width:image.width,height:image.height,date:Date.now(),revision:revision(),mutationRevision:revision(),favorite:false,"
-        },
-        {
-          "line": 269,
+          "line": 272,
           "text": "const unavailable=async()=>{throw Error('This operation is not available for browser photos. The original is unchanged.');};"
         },
         {
-          "line": 270,
+          "line": 273,
           "text": "export const browserLibrary=new Proxy(browserPhotoLibrary,{get(target,key){return Reflect.get(target,key)??unavailable;}});"
         },
         {
-          "line": 271,
+          "line": 274,
           "text": "const videoCapture=new BrowserVideoCapture();"
         },
         {
-          "line": 272,
+          "line": 275,
           "text": "let videoSession=0;"
         },
         {
-          "line": 273,
+          "line": 276,
           "text": "let videoSave:Promise<{path:string;duration:number;width:number;height:number;fileSize:number}>|undefined;"
         },
         {
-          "line": 274,
+          "line": 277,
           "text": "let preview:HTMLVideoElement|null=null,stream:MediaStream|null=null,generation=0;"
         },
         {
-          "line": 275,
+          "line": 278,
           "text": "let starting:AbortController|undefined;"
         },
         {
-          "line": 276,
+          "line": 279,
           "text": "let zoom=1,mirror=false;"
         },
         {
-          "line": 277,
+          "line": 280,
           "text": "const cameraFocus=new BrowserCameraFocus();"
         },
         {
-          "line": 278,
+          "line": 281,
           "text": "let screenLight:HTMLDivElement|undefined;"
         },
         {
-          "line": 280,
-          "text": "function setScreenLight(enabled:boolean){clearScreenLight();if(!enabled)return;const light=screenLight=document.createElement('div');light.dataset.alphaCameraLight='screen';light.setAttribute('aria-hi"
-        },
-        {
-          "line": 284,
+          "line": 287,
           "text": "export function mountBrowserCamera(){const frame=document.querySelector<HTMLElement>(finder);if(preview&&frame&&preview.parentElement!==frame)frame.prepend(preview);}"
         },
         {
-          "line": 285,
+          "line": 288,
           "text": "export const browserCamera={"
         },
         {
-          "line": 287,
+          "line": 290,
           "text": "void browserCamera.stopPreview();const token=++generation,controller=new AbortController();starting=controller;"
         },
         {
-          "line": 288,
+          "line": 291,
           "text": "let ownStream:MediaStream|null=null,ownVideo:HTMLVideoElement|null=null;"
         },
         {
-          "line": 293,
+          "line": 296,
           "text": "const frame=document.querySelector<HTMLElement>(finder);if(!frame)throw Error('Camera view is closed.');"
         },
         {
-          "line": 298,
+          "line": 301,
           "text": "const finish=(error?:unknown)=>{clearTimeout(timeout);controller.signal.removeEventListener('abort',abort);error?reject(error):resolve();};"
         },
         {
-          "line": 299,
+          "line": 302,
           "text": "const abort=()=>finish(new DOMException('Camera cancelled.','AbortError'));"
         },
         {
-          "line": 300,
+          "line": 303,
           "text": "const timeout=setTimeout(()=>finish(Error('Camera preview timed out.')),15000);"
         },
         {
-          "line": 306,
-          "text": "const settings=ownStream.getVideoTracks()[0].getSettings();return {width:ownVideo.videoWidth,height:ownVideo.videoHeight,deviceId:settings.deviceId??'',minZoom:1,maxZoom:options.direction==='front'?1:"
-        },
-        {
-          "line": 311,
+          "line": 314,
           "text": "async capturePhoto(options?:{saveToGallery?:boolean}){const token=generation,video=preview;if(!video||!stream||video.readyState<2)throw Error('Camera is not ready.');"
         },
         {
-          "line": 312,
+          "line": 315,
           "text": "const width=video.videoWidth,height=video.videoHeight;if(width<=0||height<=0||width*height>32_000_000)throw Error('Unsupported photo dimensions.');"
         },
         {
-          "line": 313,
+          "line": 316,
           "text": "const canvas=drawCameraFrame(video,{zoom,mirror});"
         },
         {
-          "line": 314,
+          "line": 317,
           "text": "const image=canvas.toDataURL('image/jpeg',0.85);if(!image.startsWith('data:image/jpeg;base64,'))throw Error('Photo encoding failed.');"
         },
         {
-          "line": 315,
+          "line": 318,
           "text": "const photo={base64:image.slice('data:image/jpeg;base64,'.length),format:'jpeg',width,height};if(token!==generation)throw Error('Camera view changed.');"
         },
         {
-          "line": 319,
+          "line": 322,
           "text": "const id=photoId();"
         },
         {
-          "line": 320,
-          "text": "const row:Row={id,kind:'image',image:'data:image/jpeg;base64,'+photo.base64,width:photo.width,height:photo.height,date:Date.now(),revision:revision(),mutationRevision:revision(),favorite:false,trashed"
-        },
-        {
-          "line": 327,
-          "text": "lightingLabel(enabled:boolean){const torch=stream?.getVideoTracks()[0]?.getCapabilities?.() as (MediaTrackCapabilities&{torch?:boolean})|undefined;return `${browserDevProfile&&!torch?.torch?'Screen li"
-        },
-        {
-          "line": 330,
+          "line": 333,
           "text": "const track=stream?.getVideoTracks()[0],token=generation,enabled=input.settings.flash==='on';if(!track)throw Error('Start camera first.');"
         },
         {
-          "line": 336,
-          "text": "async setFocusPoint(input:{x:number;y:number}){const frame=document.querySelector<HTMLElement>(finder),track=stream?.getVideoTracks()[0];if(!frame||!preview||!track)throw Error('Start camera first.');"
-        },
-        {
-          "line": 340,
+          "line": 343,
           "text": "const token=generation,session=videoSession;"
         },
         {
-          "line": 342,
+          "line": 345,
           "text": "const clip=await videoCapture.stop(),id=mediaId();"
         },
         {
-          "line": 343,
-          "text": "const path=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=()=>reject(reader.error);reader.readAsDataURL(clip"
-        },
-        {
-          "line": 344,
-          "text": "const row:Row={id:'v:'+id,kind:'video',path,duration:clip.duration,image:clip.image,width:clip.width,height:clip.height,date:Date.now(),revision:revision(),mutationRevision:revision(),favorite:false,t"
-        },
-        {
-          "line": 354,
+          "line": 357,
           "text": "const bitmap=await createImageBitmap(file);"
         },
         {
-          "line": 357,
-          "text": "const scale=Math.min(1,2048/Math.max(bitmap.width,bitmap.height)),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bi"
-        },
-        {
-          "line": 358,
-          "text": "const ctx=canvas.getContext('2d');if(!ctx)throw Error('Image processing is unavailable.');ctx.fillStyle='white';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(bitmap,0,0,canvas.width,canva"
-        },
-        {
-          "line": 359,
+          "line": 362,
           "text": "const image=canvas.toDataURL('image/jpeg',.9);signal.throwIfAborted();if(!image.startsWith('data:image/jpeg;base64,')||image.length>12_000_000)throw Error('This image could not be prepared.');"
         },
         {
-          "line": 365,
+          "line": 368,
           "text": "const controller=new AbortController(),previous=document.activeElement;let current:ImportedCameraImage|undefined,selection=0,closed=false,attempted=false;"
         },
         {
-          "line": 366,
+          "line": 369,
           "text": "const dialog=document.createElement('dialog');dialog.setAttribute('aria-label','Choose camera image');dialog.className='scan-dialog';"
         },
         {
-          "line": 367,
+          "line": 370,
           "text": "const heading=document.createElement('h2');heading.textContent='Choose an image';"
         },
         {
-          "line": 368,
-          "text": "const description=document.createElement('p');description.textContent='Choose a local JPEG, PNG or WebP. Scan runs locally. Save to Photos creates a JPEG copy up to 2,048 pixels; your original file st"
-        },
-        {
-          "line": 369,
-          "text": "const label=document.createElement('label');label.textContent='Image file';const input=document.createElement('input');input.type='file';input.accept='image/jpeg,image/png,image/webp';input.setAttribu"
-        },
-        {
-          "line": 370,
+          "line": 373,
           "text": "const preview=document.createElement('img');preview.alt='Selected image preview';preview.hidden=true;preview.style.cssText='width:100%;max-height:220px;object-fit:contain';"
         },
         {
-          "line": 371,
-          "text": "const status=document.createElement('p');status.setAttribute('role','status');status.setAttribute('aria-label','Image import status');status.textContent='Nothing is saved or scanned until you choose a"
-        },
-        {
-          "line": 372,
+          "line": 375,
           "text": "const actions=document.createElement('div');actions.className='scan-dialog-actions';"
         },
         {
-          "line": 373,
+          "line": 376,
           "text": "const button=(text:string)=>{const b=document.createElement('button');b.textContent=text;b.type='button';actions.append(b);return b;};"
         },
         {
-          "line": 374,
+          "line": 377,
           "text": "const store=button('Save to Photos'),read=button('Scan text'),close=button('Cancel');store.disabled=read.disabled=true;store.className='primary';"
         },
         {
-          "line": 375,
-          "text": "const dispose=()=>{if(closed)return;closed=true;selection++;controller.abort();current=undefined;preview.removeAttribute('src');input.value='';dialog.remove();window.removeEventListener('alpha-back',b"
-        },
-        {
-          "line": 376,
+          "line": 379,
           "text": "const back=(event:Event)=>{event.preventDefault();event.stopImmediatePropagation();dispose();},visibility=()=>{if(document.hidden)dispose();};"
         },
         {
-          "line": 379,
-          "text": "input.onchange=()=>{if(closed||attempted)return;const file=input.files?.[0];if(!file)return;const token=++selection;current=undefined;store.disabled=read.disabled=true;preview.hidden=true;preview.remo"
-        },
-        {
-          "line": 381,
+          "line": 384,
           "text": "read.onclick=()=>{if(closed||attempted||!current)return;const image=current.original;dispose();scan(image);};"
-        },
-        {
-          "line": 382,
-          "text": "const content=document.createElement('div');content.className='scan-dialog-content';content.tabIndex=0;content.setAttribute('role','region');content.setAttribute('aria-label','Review details');content"
         }
       ]
     },
@@ -24627,7 +24499,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "f952be1d936ccb677e4d98f9c9da22ad6734ca66d33c100c529b81548ab7ede1",
+      "sha256": "5008c5a98147e06dae2c70ad076cffa179a693171e2c629d6fc89639d46ea543",
       "stateAnchors": [
         {
           "line": 27,
@@ -24874,7 +24746,7 @@
           "text": "const open=!!choice&&index===msgs.length-1&&!done.has(id)&&current();"
         }
       ],
-      "integrationReview": "Domain allocation retained after merging the audit fixes. The refreshed source hash and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations."
+      "integrationReview": "Domain allocation retained after merging the audit fixes. The refreshed source hash and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations. 2026-11-09: suppress only duplicate navigation metadata when it equals remaining-distance status. Distinct arrival/background notices remain. Four-trace mounted Maps comparison and five existing accessibility scenarios passed on the parent composition; current-main replay follows. No action or permission transition changed."
     },
     {
       "path": "apps/app/src/prototype/maps-chat-adapter.ts",
@@ -34776,13 +34648,14 @@
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "1c94732bcaf76e4a09ba7a4945dcc81332b59a282f0c27c121f7fa478029a309",
+      "sha256": "8aabc9bdc9bfc07acb68ab3e3d0e948ee096cd2d216cb4fd244d62298f75f482",
       "stateAnchors": [
         {
           "line": 3359,
           "text": "<sc-if value=\"{{workflows.automation.editingSchedule}}\"><sc-if value=\"{{workflows.automation.scheduleClockEditable}}\"><label class=\"schedule-instructions\">Time ({{workflows.automation.e"
         }
-      ]
+      ],
+      "integrationReview": " 2026-11-09: suppress only duplicate navigation metadata when it equals remaining-distance status. Distinct arrival/background notices remain. Four-trace mounted Maps comparison and five existing accessibility scenarios passed on the parent composition; current-main replay follows. No action or permission transition changed."
     },
     {
       "path": "apps/app/src/prototype/use-in-email-review.ts",

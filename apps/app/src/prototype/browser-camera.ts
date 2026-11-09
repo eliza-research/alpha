@@ -236,8 +236,11 @@ export const browserPhotoLibrary={
    else {album.memberIds=album.memberIds.filter(id=>id!==media!.id);if(input.operation==='add')album.memberIds.push(media!.id);}
    album.revision=revision();album.count=album.memberIds.length;return {status:'updated',id:album.id,revision:album.revision};
   });
+  if(!withMedia)return commit();
   // Keep the selected media revision current through the separate album document CAS.
-  return withMedia?withPhotoMutation(commit):commit();
+  const locks=navigator.locks;
+  if(!locks?.request)throw Error('Photo album membership changes require Web Locks in this browser.');
+  return locks.request(photoMutationLock,commit);
  },
  async setFavorite(input:{id:string;revision:string;favorite:boolean}){return change(input,{favorite:input.favorite});},
  async setTrashed(input:{id:string;revision:string;trashed:boolean}){return {...await change(input,{trashed:input.trashed}),status:'updated'};},

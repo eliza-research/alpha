@@ -103,6 +103,31 @@ export async function checkBrowserAlbumStorage(extraSources = []) {
   finally {await browser.close();}
 }
 
+export async function checkBrowserAlbumWithoutLocks() {
+  const browser = await chromium.launch();
+  try {
+    await withBrowserAlbumStorage(browser, async ({first, invoke, photo, outcome, capture}) => {
+      const media = await invoke(first, 'seed');
+      const album = await photo(first, 'changeAlbum', {operation: 'create', name: 'Album'});
+      const before = await capture(first);
+      await first.evaluate(() => Object.defineProperty(navigator, 'locks', {value: undefined}));
+      const selected = {mediaId: media.id, mediaRevision: media.mutationRevision};
+      const target = {id: album.id, revision: album.revision, ...selected};
+      for (const input of [
+        {operation: 'create', name: 'Another album', ...selected},
+        {operation: 'add', ...target},
+        {operation: 'remove', ...target},
+      ]) {
+        const result = await outcome(first, 'changeAlbum', input);
+        assert.match(result.error, /require Web Locks/);
+      }
+      assert.deepEqual(await capture(first), before, 'Refusal preserves the exact album document');
+      const updated = await photo(first, 'setFavorite', {id: media.id, revision: media.mutationRevision, favorite: true});
+      assert.equal(updated.favorite, true, 'Photo-only IndexedDB writes still work');
+    });
+  } finally {await browser.close();}
+}
+
 async function runBrowserAlbumStorage(browser, extraSources) {
   const renderer = await compilePhotosWindow([windowDriver]);
   const traces = [];

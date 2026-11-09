@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "b1817660a0347ae19551b9ee296410fe55f02d59",
-  "ledgerSha256": "7f2b417cce14edf75afb2f2f2a7ee7de758c047f195835b61c4906621cd69197",
+  "ledgerSha256": "ff62d2aab0c4a87e7fb2304d5848636fde735c9d9a9afd88b99ff4a006c399f8",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -33854,7 +33854,7 @@
     },
     {
       "path": "apps/app/src/prototype/browser-camera.ts",
-      "sha256": "b1482eff202f327ad043aecb5aecb6717921bf90dfe5eb7e7ac4203f42ac2977",
+      "sha256": "1b8559b0afacfeac49f8e8cf5f12e8438ee1a5a3d5f94e91844a4cf373a15541",
       "allocatedModels": [
         "MediaLifecycle",
         "CameraPreviewRetirement",
@@ -34027,50 +34027,50 @@
           "writes": 11
         },
         {
-          "owner": "changeMany.ArrowFunction@247",
-          "line": 248,
+          "owner": "changeMany.ArrowFunction@250",
+          "line": 251,
           "bindings": 2,
           "writes": 3
         },
         {
-          "owner": "deletePreparedTrash.ArrowFunction@262",
-          "line": 262,
+          "owner": "deletePreparedTrash.ArrowFunction@265",
+          "line": 265,
           "bindings": 2,
           "writes": 3
         },
         {
           "owner": "setScreenLight",
-          "line": 280,
+          "line": 283,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "startPreview",
-          "line": 287,
+          "line": 290,
           "bindings": 3,
           "writes": 7
         },
         {
-          "owner": "stopRecording.ArrowFunction@341.ArrowFunction@343",
-          "line": 343,
+          "owner": "stopRecording.ArrowFunction@344.ArrowFunction@346",
+          "line": 346,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "prepare",
-          "line": 357,
+          "line": 360,
           "bindings": 2,
           "writes": 3
         },
         {
           "owner": "openCameraImageImport",
-          "line": 365,
+          "line": 368,
           "bindings": 17,
           "writes": 47
         },
         {
           "owner": "openCameraImageImport.button",
-          "line": 373,
+          "line": 376,
           "bindings": 1,
           "writes": 2
         }
@@ -35711,7 +35711,7 @@
     },
     {
       "path": "apps/app/src/prototype/maps-adapter.ts",
-      "sha256": "f952be1d936ccb677e4d98f9c9da22ad6734ca66d33c100c529b81548ab7ede1",
+      "sha256": "5008c5a98147e06dae2c70ad076cffa179a693171e2c629d6fc89639d46ea543",
       "allocatedModels": [
         "Maps",
         "MapsNavigation",
@@ -40277,7 +40277,7 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "1c94732bcaf76e4a09ba7a4945dcc81332b59a282f0c27c121f7fa478029a309",
+      "sha256": "8aabc9bdc9bfc07acb68ab3e3d0e948ee096cd2d216cb4fd244d62298f75f482",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -221631,6 +221631,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "48e9bb59b3c29024d854d7b022799a62636ebf4cd382bbeda04686d10e699469"
+    "sha256": "79b67e7ec566bad3b45826da7d5fe0d75fc300f3b8606896438c4ba25eedc077"
   }
 }
