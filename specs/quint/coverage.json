@@ -52,6 +52,15 @@
     "scripts/voice-host.mjs",
     "scripts/android-build-preflight.mjs",
     "scripts/build-android.mjs",
+    "scripts/android-host.mjs",
+    "scripts/android-gzip-assets.mjs",
+    "scripts/stage-aosp.mjs",
+    "scripts/audit-production-bundle.mjs",
+    "scripts/generate-licenses.mjs",
+    "scripts/cloud-deployment.mjs",
+    "scripts/with-test-mocks.mjs",
+    "capacitor.config.ts",
+    "vite.config.ts",
     "scripts/apk.mjs",
     "scripts/source-snapshot.mjs",
     "scripts/verify-apks.mjs",
@@ -48304,6 +48313,18 @@
       ]
     },
     {
+      "path": "capacitor.config.ts",
+      "models": [
+        "MobileBundleAdmission",
+        "NativeViewSubscription"
+      ],
+      "scope": "build-and-runtime",
+      "treatment": "configuration-and-publication-audit",
+      "reviewStatus": "state-audit-required",
+      "sha256": "f0479865460ce5bf5e2e50ff8cd158a6ab20796a5496e1fe4ec7c3b40486e227",
+      "stateAnchors": []
+    },
+    {
       "path": "scripts/agent-bundle-dependencies.mjs",
       "models": [
         "MobileBundleAdmission",
@@ -48328,6 +48349,31 @@
       "stateAnchors": []
     },
     {
+      "path": "scripts/android-gzip-assets.mjs",
+      "models": [
+        "MobileBundleAdmission",
+        "WorkflowWorkerStaging"
+      ],
+      "scope": "build-and-runtime",
+      "treatment": "configuration-and-publication-audit",
+      "reviewStatus": "state-audit-required",
+      "sha256": "713a46033f082c27ad4335d08506e9e5d5a1db40ca02303d2fe582bb79b468e5",
+      "stateAnchors": []
+    },
+    {
+      "path": "scripts/android-host.mjs",
+      "models": [
+        "MobileBundleAdmission",
+        "NativeViewSubscription",
+        "ResidentRuntime"
+      ],
+      "scope": "build-and-runtime",
+      "treatment": "configuration-and-publication-audit",
+      "reviewStatus": "state-audit-required",
+      "sha256": "519f5023bff0d6655d57e558945ce0165ca520e17e9c30f23c16e9749128ef94",
+      "stateAnchors": []
+    },
+    {
       "path": "scripts/apk.mjs",
       "models": [
         "Application"
@@ -48336,6 +48382,18 @@
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
       "sha256": "1536f16768a33c741f00301517a35625e223b92f61332cd84e9a8f493cdef380",
+      "stateAnchors": []
+    },
+    {
+      "path": "scripts/audit-production-bundle.mjs",
+      "models": [
+        "DevelopmentSurfaces",
+        "MobileBundleAdmission"
+      ],
+      "scope": "build-and-runtime",
+      "treatment": "configuration-and-publication-audit",
+      "reviewStatus": "state-audit-required",
+      "sha256": "1405ace51db62ea0a918c5e70cba1470b338ae7c9cd897e88896488020969c31",
       "stateAnchors": []
     },
     {
@@ -49114,6 +49172,18 @@
       "stateAnchors": []
     },
     {
+      "path": "scripts/cloud-deployment.mjs",
+      "models": [
+        "ServiceAuthorization",
+        "BrowserCloudRequestCustody"
+      ],
+      "scope": "build-and-runtime",
+      "treatment": "configuration-and-publication-audit",
+      "reviewStatus": "state-audit-required",
+      "sha256": "c3a9ddc001aad5affcdd084bf3b84dc91b63017b934f65b5459088dbfb8684f6",
+      "stateAnchors": []
+    },
+    {
       "path": "scripts/cloud-email-code.ts",
       "sha256": "1a2a7b898eb1eb216cc532f72d3d66c66ff9f2d7c45c1c5b0319770c3637f146",
       "models": [
@@ -49572,6 +49642,17 @@
       ]
     },
     {
+      "path": "scripts/generate-licenses.mjs",
+      "models": [
+        "MobileBundleAdmission"
+      ],
+      "scope": "build-and-runtime",
+      "treatment": "configuration-and-publication-audit",
+      "reviewStatus": "state-audit-required",
+      "sha256": "26b30559b83c3a6c7c63b03281fb441f102611e3ab61786a80074ec0038fc9c2",
+      "stateAnchors": []
+    },
+    {
       "path": "scripts/gmail-agent-mailbox-host.ts",
       "models": [
         "NativeGoogleHostArtifact"
@@ -49843,6 +49924,20 @@
       "stateAnchors": []
     },
     {
+      "path": "scripts/stage-aosp.mjs",
+      "models": [
+        "MobileBundleAdmission",
+        "LauncherOwnership",
+        "AlwaysOnListener",
+        "ResidentRuntime"
+      ],
+      "scope": "build-and-runtime",
+      "treatment": "configuration-and-publication-audit",
+      "reviewStatus": "state-audit-required",
+      "sha256": "64be96d6c9bb8c92760a17737a51b0395e179bd80bbcc9eac9b7803a7cc1d693",
+      "stateAnchors": []
+    },
+    {
       "path": "scripts/stage-embedding-host.mjs",
       "models": [
         "EmbeddingStoreIdentity",
@@ -50026,6 +50121,18 @@
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
       "sha256": "71f29af327b7905d23669988dd2df0795ec7f9fec3bfc4d42cb5fa8fd83a2ac9",
+      "stateAnchors": []
+    },
+    {
+      "path": "scripts/with-test-mocks.mjs",
+      "models": [
+        "DevelopmentSurfaces",
+        "DevelopmentHost"
+      ],
+      "scope": "build-and-runtime",
+      "treatment": "configuration-and-publication-audit",
+      "reviewStatus": "state-audit-required",
+      "sha256": "d460b9b705f3a55a3addff97f742da602e988bf2fb1b009cbea80e5ead07d9b0",
       "stateAnchors": []
     },
     {
@@ -618289,6 +618396,19 @@
           "text": "const sent = await service.sendDirectMessageForAccount(accountId, {"
         }
       ]
+    },
+    {
+      "path": "vite.config.ts",
+      "models": [
+        "DevelopmentSurfaces",
+        "DevelopmentHost",
+        "BrowserCloudRequestCustody"
+      ],
+      "scope": "build-and-runtime",
+      "treatment": "configuration-and-publication-audit",
+      "reviewStatus": "state-audit-required",
+      "sha256": "3df051169be3a388ed557ea45afd0cde28dc8072741ff62fca34e33f9946779d",
+      "stateAnchors": []
     }
   ],
   "configurationInputs": [
@@ -619185,7 +619305,7 @@
       "models": [
         "Application"
       ],
-      "sha256": "905f0129e28866a86cd6c117f1249ff9ca0518b3f50920916662356bbd9014fd",
+      "sha256": "83d8cb20f5335c8893a54cbeedffb064544201dc7e210882e4f0864452773eb6",
       "integrationReview": "Reviewed integration input; current source identity does not establish runtime behavior or source-model refinement."
     },
     {

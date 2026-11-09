@@ -26,6 +26,9 @@ export const runtimeScriptPaths = ['scripts/browser-cloud-dev-bridge.ts', 'scrip
   'scripts/build-embedding-host.mjs', 'scripts/prepare-embedding-host.mjs',
   'scripts/stage-embedding-host.mjs', 'scripts/voice-host.mjs',
   'scripts/android-build-preflight.mjs', 'scripts/build-android.mjs',
+  'scripts/android-host.mjs', 'scripts/android-gzip-assets.mjs', 'scripts/stage-aosp.mjs',
+  'scripts/audit-production-bundle.mjs', 'scripts/generate-licenses.mjs',
+  'scripts/cloud-deployment.mjs', 'scripts/with-test-mocks.mjs', 'capacitor.config.ts', 'vite.config.ts',
   'scripts/apk.mjs', 'scripts/source-snapshot.mjs', 'scripts/verify-apks.mjs', 'scripts/verify-packaged-runtime.py'];
 export const runtimeAssetPaths = ['apps/app/index.html'];
 const omittedDirectories = new Set(['node_modules', 'build', '.generated', '.gradle', '.cxx', '.kotlin', 'assets', 'jniLibs', 'capacitor-cordova-android-plugins']);

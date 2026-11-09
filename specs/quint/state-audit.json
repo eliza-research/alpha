@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "45c53af7e7d6748424653459de819c2a0f347af3d02b44d7374930c093758972",
+  "ledgerSha256": "c20d67bb32fb800c9f0acd8482b585bbe1c7234c404acb01d22ca47c6ef82736",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -22,17 +22,17 @@
     "The ledger supplies pinned source bytes. Effective client/native/runtime patch outputs require their separately authenticated source mappings."
   ],
   "counts": {
-    "files": 5731,
+    "files": 5740,
     "testSupportFiles": 285,
     "testSupportCandidates": 11383,
-    "parsedFiles": 5660,
+    "parsedFiles": 5669,
     "languageReview": 71,
     "parseErrors": 0,
-    "candidates": 67344,
-    "writeSites": 66918,
-    "writeAssociations": 60046,
-    "asynchronous": 8358,
-    "unassignedWrites": 10274
+    "candidates": 67424,
+    "writeSites": 67093,
+    "writeAssociations": 60157,
+    "asynchronous": 8361,
+    "unassignedWrites": 10345
   },
   "files": [
     {
@@ -46002,6 +46002,28 @@
       "unassignedWrites": 0
     },
     {
+      "path": "capacitor.config.ts",
+      "sha256": "f0479865460ce5bf5e2e50ff8cd158a6ab20796a5496e1fe4ec7c3b40486e227",
+      "allocatedModels": [
+        "MobileBundleAdmission",
+        "NativeViewSubscription"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "<module>",
+          "line": 3,
+          "bindings": 1,
+          "writes": 0
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
       "path": "scripts/agent-bundle-dependencies.mjs",
       "sha256": "c6d59a969fe138b867801a81c7c5a8425da9c7d8a3b6d7dd609c68291a5d67cc",
       "allocatedModels": [
@@ -46075,6 +46097,63 @@
       "unassignedWrites": 5
     },
     {
+      "path": "scripts/android-gzip-assets.mjs",
+      "sha256": "713a46033f082c27ad4335d08506e9e5d5a1db40ca02303d2fe582bb79b468e5",
+      "allocatedModels": [
+        "MobileBundleAdmission",
+        "WorkflowWorkerStaging"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "protectGzipAssets",
+          "line": 25,
+          "bindings": 1,
+          "writes": 2
+        },
+        {
+          "owner": "packagedGzipProblems",
+          "line": 50,
+          "bindings": 1,
+          "writes": 2
+        },
+        {
+          "owner": "<module>",
+          "line": 67,
+          "bindings": 1,
+          "writes": 2
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 2
+    },
+    {
+      "path": "scripts/android-host.mjs",
+      "sha256": "519f5023bff0d6655d57e558945ce0165ca520e17e9c30f23c16e9749128ef94",
+      "allocatedModels": [
+        "MobileBundleAdmission",
+        "NativeViewSubscription",
+        "ResidentRuntime"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "hostProfile",
+          "line": 57,
+          "bindings": 1,
+          "writes": 2
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 1
+    },
+    {
       "path": "scripts/apk.mjs",
       "sha256": "1536f16768a33c741f00301517a35625e223b92f61332cd84e9a8f493cdef380",
       "allocatedModels": [
@@ -46106,6 +46185,34 @@
       "parseErrors": [],
       "asynchronous": 0,
       "unassignedWrites": 1
+    },
+    {
+      "path": "scripts/audit-production-bundle.mjs",
+      "sha256": "1405ace51db62ea0a918c5e70cba1470b338ae7c9cd897e88896488020969c31",
+      "allocatedModels": [
+        "DevelopmentSurfaces",
+        "MobileBundleAdmission"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "engineFindings",
+          "line": 81,
+          "bindings": 1,
+          "writes": 3
+        },
+        {
+          "owner": "auditWebBundle",
+          "line": 124,
+          "bindings": 2,
+          "writes": 10
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 4
     },
     {
       "path": "scripts/browser-cloud-dev-bridge.ts",
@@ -46348,6 +46455,40 @@
       "unassignedWrites": 0
     },
     {
+      "path": "scripts/cloud-deployment.mjs",
+      "sha256": "c3a9ddc001aad5affcdd084bf3b84dc91b63017b934f65b5459088dbfb8684f6",
+      "allocatedModels": [
+        "ServiceAuthorization",
+        "BrowserCloudRequestCustody"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "<module>",
+          "line": 9,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "validateCloudDeployment",
+          "line": 21,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "deploymentOutputs",
+          "line": 38,
+          "bindings": 2,
+          "writes": 4
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 4
+    },
+    {
       "path": "scripts/cloud-email-code.ts",
       "sha256": "1a2a7b898eb1eb216cc532f72d3d66c66ff9f2d7c45c1c5b0319770c3637f146",
       "allocatedModels": [
@@ -46588,6 +46729,171 @@
       "parseErrors": [],
       "asynchronous": 6,
       "unassignedWrites": 2
+    },
+    {
+      "path": "scripts/generate-licenses.mjs",
+      "sha256": "26b30559b83c3a6c7c63b03281fb441f102611e3ab61786a80074ec0038fc9c2",
+      "allocatedModels": [
+        "MobileBundleAdmission"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "<module>",
+          "line": 55,
+          "bindings": 4,
+          "writes": 0
+        },
+        {
+          "owner": "declarationOnlyPackage",
+          "line": 113,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "productionLockPackages",
+          "line": 134,
+          "bindings": 1,
+          "writes": 2
+        },
+        {
+          "owner": "loadTemplates.canonical",
+          "line": 160,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "packageNotice",
+          "line": 242,
+          "bindings": 4,
+          "writes": 13
+        },
+        {
+          "owner": "sfntNameTable",
+          "line": 301,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "woff2NameTable",
+          "line": 314,
+          "bindings": 5,
+          "writes": 8
+        },
+        {
+          "owner": "woff2NameTable.base128",
+          "line": 316,
+          "bindings": 2,
+          "writes": 2
+        },
+        {
+          "owner": "fontNames",
+          "line": 351,
+          "bindings": 4,
+          "writes": 6
+        },
+        {
+          "owner": "listFonts",
+          "line": 375,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "npmEntries",
+          "line": 390,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "fontEntries",
+          "line": 455,
+          "bindings": 9,
+          "writes": 13
+        },
+        {
+          "owner": "parseGradleTree",
+          "line": 528,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "androidDependencyFingerprint",
+          "line": 560,
+          "bindings": 3,
+          "writes": 5
+        },
+        {
+          "owner": "refreshAndroidClasspath",
+          "line": 595,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "androidEntries",
+          "line": 612,
+          "bindings": 2,
+          "writes": 2
+        },
+        {
+          "owner": "voiceHostEntries",
+          "line": 671,
+          "bindings": 2,
+          "writes": 2
+        },
+        {
+          "owner": "runtimeEntries",
+          "line": 737,
+          "bindings": 9,
+          "writes": 9
+        },
+        {
+          "owner": "runtimeEntries.add",
+          "line": 750,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "applyReasons",
+          "line": 834,
+          "bindings": 3,
+          "writes": 3
+        },
+        {
+          "owner": "collectNotices",
+          "line": 853,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "finishEntry",
+          "line": 878,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "reviewedPackagedEntries.readInput",
+          "line": 943,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "reviewedPackagedEntries",
+          "line": 960,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "verifyCommittedNotices",
+          "line": 976,
+          "bindings": 1,
+          "writes": 1
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 52
     },
     {
       "path": "scripts/gmail-agent-mailbox-host.ts",
@@ -47056,6 +47362,42 @@
       "unassignedWrites": 1
     },
     {
+      "path": "scripts/stage-aosp.mjs",
+      "sha256": "64be96d6c9bb8c92760a17737a51b0395e179bd80bbcc9eac9b7803a7cc1d693",
+      "allocatedModels": [
+        "MobileBundleAdmission",
+        "LauncherOwnership",
+        "AlwaysOnListener",
+        "ResidentRuntime"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "aospProductLockProblems",
+          "line": 34,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "admitListener",
+          "line": 92,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "main",
+          "line": 121,
+          "bindings": 4,
+          "writes": 5
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 6
+    },
+    {
       "path": "scripts/stage-embedding-host.mjs",
       "sha256": "e19b5da9a836a643befafe2aa4825fd419e375361315cb3d332af7a312725e3b",
       "allocatedModels": [
@@ -47350,6 +47692,21 @@
       "parseErrors": [],
       "asynchronous": 0,
       "unassignedWrites": 5
+    },
+    {
+      "path": "scripts/with-test-mocks.mjs",
+      "sha256": "d460b9b705f3a55a3addff97f742da602e988bf2fb1b009cbea80e5ead07d9b0",
+      "allocatedModels": [
+        "DevelopmentSurfaces",
+        "DevelopmentHost"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 3,
+      "unassignedWrites": 0
     },
     {
       "path": "scripts/workflow-worker-artifact.mjs",
@@ -219974,10 +220331,33 @@
       "parseErrors": [],
       "asynchronous": 0,
       "unassignedWrites": 1
+    },
+    {
+      "path": "vite.config.ts",
+      "sha256": "3df051169be3a388ed557ea45afd0cde28dc8072741ff62fca34e33f9946779d",
+      "allocatedModels": [
+        "DevelopmentSurfaces",
+        "DevelopmentHost",
+        "BrowserCloudRequestCustody"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "<module>",
+          "line": 27,
+          "bindings": 1,
+          "writes": 0
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 2
     }
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "91d3973244e8063e98f1b0474e615991108778b6e00275939e378160a78557d2"
+    "sha256": "d913688f49acd2303032aa0e0d55c135d25353efcef9f4a4c76b5d5238a29626"
   }
 }

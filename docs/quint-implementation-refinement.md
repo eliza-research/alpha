@@ -1069,3 +1069,13 @@ pre-execution and post-execution source hashes. Its first checker process
 ended without output. Running the checker again on those exact observations
 passed all 34 checkpoints and 12 fields. Future receipts retain checker exit
 status or signal separately from source/model mismatches.
+
+The archived view-refresh sources retain their original 22 TLC
+configurations and historical results. Their active entry points now use
+the four Quint modules. The product and SDK TLA+ files remain available as
+translation evidence, and the pinned SDK checkout remains unchanged.
+
+The source ledger also enumerates the Vite and Capacitor inputs, Android
+host and asset staging, AOSP staging, Cloud deployment generation, the
+production bundle audit, test-mock selection and packaged license emission.
+These are provisional allocations for build and publication state.
