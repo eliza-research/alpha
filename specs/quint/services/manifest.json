@@ -1741,7 +1741,8 @@
         "scripts/host-speech-admission.mjs",
         "scripts/agent-identity.mjs",
         "scripts/agent-model.mjs",
-        "scripts/core-state-patch.mjs"
+        "scripts/core-state-patch.mjs",
+        "scripts/launcher-child.mjs"
       ],
       "stateMapping": {
         "checks/port": "Exact version calls and synthetic fixed-port probe completion",
@@ -1773,14 +1774,16 @@
         "invalidRoutingKeepsMigratedIdentityTest",
         "cleanPinnedEntryTest",
         "otherRevisionCanLeaveReceiptTest",
-        "postSpawnGitFailureLeavesChildTest",
-        "postSpawnWriteFailureLeavesChildTest"
+        "gitReadFailurePreventsSpawnTest",
+        "receiptFailureClosesChildTest"
       ],
       "invariants": [
         "EntryCheckFollowsToken",
         "SpawnRequiresPrivateProfile",
         "ReceiptDescribesRequestedChild",
-        "PatchedEntryRequiresPinnedReceipt"
+        "PatchedEntryRequiresAdmittedRevision",
+        "ChildCustodyAfterReceiptFailure",
+        "ClosedChildReleasesLog"
       ],
       "sources": [
         "scripts/start-reviewed-workflow-agent.mjs",
@@ -1789,22 +1792,24 @@
         "scripts/agent-model.mjs",
         "scripts/agent-embeddings.mjs",
         "scripts/core-state-preload.mjs",
-        "scripts/core-state-patch.mjs"
+        "scripts/core-state-patch.mjs",
+        "scripts/launcher-child.mjs"
       ],
       "stateMapping": {
         "source/deps/profile/token/entryChecked/entry": "Actual path admission, directory and entry checks, private profile and durable token",
         "config/identity/text/embeddings/features/logOpen": "Actual profile bytes and private launch descriptor",
-        "child/childPid/metadata/pid/revision/supervised": "Returned synthetic child, actual process receipt and handler ordering",
-        "booted/childClosed/preloadEntry/forwarded/outcome/exitCode": "Synthetic process observations and actual optional authenticated preload"
+        "booted/childClosed/preloadEntry/forwarded/outcome/exitCode": "Synthetic process observations and actual optional authenticated preload",
+        "gitRevision/child/childPid/metadata/pid/revision/supervised": "Actual pre-spawn HEAD capture, returned synthetic child, installed handlers and persisted process receipt",
+        "receiptFailed/cleanupSignal": "Actual metadata refusal and signals to the returned child"
       },
       "abstractions": [
         "One invocation and child, fixed synthetic source bytes during each launch, two source selection modes, finite preflight outcomes. Real workflow readiness and compiled backend execution have separate scope.",
-        "Current source publishes receipt before supervision. Post-spawn Git read and file-write failure can leave the child responsive. Preload can reject after metadata publication."
+        "Current source captures HEAD before spawn and holds child custody through receipt publication. Authenticated preload can reject after metadata publication."
       ],
       "bounds": {
         "maxSamples": 1000,
         "maxSteps": 80,
-        "maxVerifyDepth": 11
+        "maxVerifyDepth": 13
       }
     }
   ]

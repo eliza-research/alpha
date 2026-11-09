@@ -15,17 +15,20 @@ port starts only an owned synthetic child. The driver asserts the actual
 loopback, authentication, selected source and environment wiring, and records
 state and return values without fixture credentials. The optional Bun runs
 execute the actual authenticated preload on a tiny synthetic entry. The
-accepted entry loads one authenticated patch. A different HEAD and an edited
+accepted entry loads one authenticated patch. The launcher campaign observes
+that entry at child settlement. A different HEAD and an edited
 tracked file both refuse entry. Both can leave a process receipt, and the dirty
 checkout's receipt still names the pinned HEAD.
 
-The launcher publishes its receipt before attaching supervision. A synthetic
-failure of its post-spawn Git revision read and an actual EISDIR at
-`process.json` each leave a responsive child before the harness reaps its own
-fixture. `ChildCustodyAfterReceiptFailure` captures the observed false
-expectation separately from baseline safety. An ordinary spawn error leaves a
-receipt without a PID. Child exit and signal forwarding are source-observed.
-The baseline launcher keeps its log descriptor until process exit.
+The launcher captures the actual Git revision before spawning and uses that
+revision in its process receipt. A refused revision read closes the private
+log before spawn. Both reviewed workflow and combined launchers use the same
+child supervisor. It attaches handlers before publication and reaps the exact
+returned child before the original receipt write error propagates. Ordinary
+spawn failure still leaves metadata without a PID. SIGINT, SIGTERM and
+numeric child exit are observed, and child close releases the log and handlers.
+The two earlier lost-custody schedules are preserved in the
+[baseline record](reviewed-workflow-launcher-baseline.md).
 
 `CombinedAgentLauncher` covers a different launcher with frozen-source
 admission, fixed-port probing, and reviewed speech assets. `DevelopmentHost`

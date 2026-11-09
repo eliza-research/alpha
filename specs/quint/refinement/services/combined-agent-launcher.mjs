@@ -18,7 +18,7 @@ const scenarios = [
 function sourceInputs(extraSources) {
   const {patches} = JSON.parse(readFileSync(join(root, manifest), 'utf8'));
   return [
-    'scripts/start-combined-agent.mjs', 'scripts/combined-agent-source.mjs',
+    'scripts/launcher-child.mjs', 'scripts/start-combined-agent.mjs', 'scripts/combined-agent-source.mjs',
     'scripts/host-speech-admission.mjs', 'scripts/host-speech-assets.json', 'scripts/agent-model.mjs',
     'scripts/agent-identity.mjs', 'config/alpha-product.json',
     'scripts/core-state-patch.mjs', 'scripts/core-state-preload.mjs',

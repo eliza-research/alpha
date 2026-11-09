@@ -10,6 +10,7 @@ import {writeCoreStateFixture} from '../../../../test/fixtures/core-state-root.m
 const repository = resolve(import.meta.dirname, '../../../..');
 const launcher = 'scripts/start-reviewed-workflow-agent.mjs';
 const support = [
+  'scripts/launcher-child.mjs',
   'scripts/agent-model.mjs', 'scripts/agent-identity.mjs', 'scripts/agent-embeddings.mjs', 'config/alpha-product.json',
   'vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs',
   'vendor/eliza/packages/agent/native-host/private-runtime-json.mjs',
@@ -93,7 +94,6 @@ const refusals = {
   'git-metadata': /Closed metadata revision read failed/,
   'write-metadata': /EISDIR/,
 };
-const receiptFailure = scenario => ['git-metadata', 'write-metadata'].includes(scenario);
 
 async function drive(scratch, scenario, realBun) {
   assert.equal(scratch, process.env.TMPDIR);
@@ -108,7 +108,8 @@ async function drive(scratch, scenario, realBun) {
   const entry = pathToFileURL(join(f.repo, launcher)).href;
   const trace = {name: scenario, init: action('startState', isDirectory(f.profile), isFile(f.config)), expect: null, steps: []};
   const observation = {source: 'none', deps: false, entryChecked: false, selectedEntry: false, logFd: undefined, child: undefined,
-    booted: false, childClosed: false, forwarded: 'none', outcome: 'running', exitCode: -1};
+    gitRevision: 'none', receiptFailed: false, cleanupSignal: 'none', booted: false,
+    childClosed: false, forwarded: 'none', outcome: 'running', exitCode: -1};
   const listeners = process.listenerCount('SIGTERM');
   const saved = () => isFile(f.config) ? JSON.parse(fs.readFileSync(f.config, 'utf8')) : null;
   function profile() {
@@ -129,11 +130,13 @@ async function drive(scratch, scenario, realBun) {
       's.identity': p.identity, 's.text': p.text, 's.embeddings': p.embedding, 's.features': p.features,
       's.logOpen': observation.logFd !== undefined, 's.child': !!observation.child, 's.childPid': !!observation.child?.pid,
       's.metadata': !!metadata, 's.pid': !!metadata?.pid,
-      's.revision': !metadata ? 'none' : metadata.revision === f.selected ? 'pinned' : 'other',
+      's.gitRevision': observation.gitRevision, 's.revision': !metadata ? 'none' : metadata.revision === f.selected ? 'pinned' : 'other',
       's.supervised': supervised, 's.booted': observation.booted, 's.childClosed': observation.childClosed,
-      's.preloadEntry': isFile(f.invoked), 's.forwarded': observation.forwarded,
+      's.preloadEntry': observation.childClosed && isFile(f.invoked), 's.forwarded': observation.forwarded,
+      's.receiptFailed': observation.receiptFailed, 's.cleanupSignal': observation.cleanupSignal,
       's.outcome': observation.outcome, 's.exitCode': observation.exitCode,
-      ChildCustodyAfterReceiptFailure: !receiptFailure(observation.outcome) || !observation.child || supervised || observation.childClosed,
+      ChildCustodyAfterReceiptFailure: !observation.receiptFailed ||
+        (observation.outcome === 'running' ? supervised || observation.childClosed : observation.childClosed),
     };
   }
   const point = (label, next) => trace.steps.push({label, action: next, expect: observe()});
@@ -187,10 +190,22 @@ process.send({kind:'boot'});
         point('Private identity and routing are accepted before opening the log', [admitProfile(), action('openLog')]);
         return observation.logFd;
       },
+      closeSync(descriptor) {
+        assert.equal(descriptor, observation.logFd);
+        fs.closeSync(descriptor);
+        observation.logFd = undefined;
+      },
       writeFileSync(path, bytes, options) {
         if (path !== f.metadata) return fs.writeFileSync(path, bytes, options);
         if (scenario === 'write-metadata') fs.mkdirSync(f.metadata, {mode: 0o700});
-        fs.writeFileSync(path, bytes, options);
+        try {fs.writeFileSync(path, bytes, options);}
+        catch (error) {
+          assert.equal(scenario, 'write-metadata');
+          assert.equal(error.code, 'EISDIR');
+          observation.receiptFailed = true;
+          point('Receipt write refuses after the exact child is supervised', action('receiptFailure'));
+          throw error;
+        }
         const value = JSON.parse(fs.readFileSync(path, 'utf8'));
         assert.equal(value.pid, observation.child.pid);
         assert.equal(value.profile, f.profile);
@@ -207,9 +222,12 @@ process.send({kind:'boot'});
       assert.equal(command, 'git');
       assert.deepEqual(args, ['rev-parse', 'HEAD']);
       assert.deepEqual(options, {cwd: f.source, encoding: 'utf8'});
-      assert.ok(observation.child);
+      assert.equal(observation.child, undefined);
       if (scenario === 'git-metadata') throw Error('Closed metadata revision read failed');
-      return f.git(...args)+'\n';
+      const revision = f.git(...args);
+      observation.gitRevision = revision === f.selected ? 'pinned' : 'other';
+      point('Launcher captures the actual Git revision before requesting a child', action('readRevision', observation.gitRevision));
+      return revision+'\n';
     },
     spawn(command, args, options) {
       assert.equal(command, f.tool);
@@ -240,30 +258,37 @@ process.send({kind:'boot'});
       child.on('exit', (code, signal) => {exit = {code, signal};});
       child.on('close', () => queueMicrotask(() => {
         observation.childClosed = true;
-        if (!receiptFailure(scenario)) {
-          assert.equal(process.exitCode, launchError ? 1 : exit.code ?? 1);
-          const expected = scenario === 'actual-pinned' || !realBun;
-          if (realBun) {
-            assert.equal(isFile(f.invoked), expected);
-            assert.equal(exit.code, expected ? 0 : 1);
-            if (!expected) assert.match(fs.readFileSync(f.log, 'utf8'), /Prepared runtime base commit changed|Unexpected runtime source change/);
-          }
-          if (scenario === 'signal-term') assert.equal(exit.signal, 'SIGTERM');
-          Object.assign(observation, {outcome: launchError ? 'spawn-error' : 'child-exit', exitCode: process.exitCode});
-          point('The observed child result settles the launcher', action('settleChild', observation.outcome,
-            observation.exitCode, isFile(f.invoked)));
+        assert.equal(observation.logFd, undefined);
+        assert.equal(process.exitCode, launchError ? 1 : exit.code ?? 1);
+        const expected = scenario === 'actual-pinned' || !realBun;
+        if (realBun) {
+          assert.equal(isFile(f.invoked), expected);
+          assert.equal(exit.code, expected ? 0 : 1);
+          if (!expected) assert.match(fs.readFileSync(f.log, 'utf8'), /Prepared runtime base commit changed|Unexpected runtime source change/);
         }
+        if (scenario.startsWith('signal-')) assert.equal(exit.signal, observation.forwarded);
+        if (observation.receiptFailed) assert.equal(exit.signal, 'SIGTERM');
+        const outcome = launchError ? 'spawn-error' : 'child-exit';
+        observation.exitCode = process.exitCode;
+        if (!observation.receiptFailed) observation.outcome = outcome;
+        point('Child settlement closes the log and removes its signal handlers',
+          action('settleChild', outcome, observation.exitCode, isFile(f.invoked)));
         settledResolve();
       }));
       const on = child.on, kill = child.kill;
       child.on = function(event, handler) {
         const result = on.call(this, event, handler);
-        if (event === 'exit') point('Source attaches signal handlers after publishing metadata', action('supervise'));
+        if (event === 'exit') point('Source attaches signal handlers before publishing metadata', action('supervise'));
         return result;
       };
       child.kill = function(signal) {
-        observation.forwarded = signal;
-        point('Only the returned synthetic child receives the parent signal', action('forward', signal));
+        if (observation.receiptFailed) {
+          observation.cleanupSignal = signal;
+          point('Only the exact returned synthetic child receives failed-handoff cleanup', action('cleanupSignal', signal));
+        } else {
+          observation.forwarded = signal;
+          point('Only the returned synthetic child receives the parent signal', action('forward', signal));
+        }
         return kill.call(this, signal);
       };
       return child;
@@ -286,27 +311,23 @@ export const execFileSync = (...args) => globalThis.reviewedWorkflowPorts.execFi
     assert.match(error.message, refusals[scenario]);
     process.exitCode = 1;
     Object.assign(observation, {outcome: scenario, exitCode: 1});
-    if (receiptFailure(scenario)) {
-      await boot;
-      observation.booted = true;
-      point('Receipt failure leaves the synthetic child responsive before harness cleanup', action('receiptFailure', scenario));
-      observation.child.send({kind: 'finish', code: 0});
-      await settled;
+    if (scenario === 'write-metadata') {
+      assert.ok(observation.childClosed);
+      assert.equal(observation.logFd, undefined);
+      point('The original receipt error returns after the exact child closes', action('rejectReceipt'));
     } else if (scenario === 'routing') {
       point('Identity is durable even though the retained text route is refused', [admitProfile(), action('refuse', scenario)]);
     } else point('Source refuses the selected fixture condition', action('refuse', scenario));
     return;
   } finally {
     hooks.deregister();
-    // Source owns no explicit close path in this baseline. Cleanup after the
-    // report keeps observations separate from the fixture's descriptor custody.
     process.once('exit', () => {if (observation.logFd !== undefined) fs.closeSync(observation.logFd);});
   }
   if (!realBun && scenario !== 'spawn-error') {
     await boot;
     observation.booted = true;
     point('Synthetic child acknowledges execution after the receipt', action('childBoot'));
-    if (scenario === 'signal-term') assert.equal(process.emit('SIGTERM'), true);
+    if (scenario.startsWith('signal-')) assert.equal(process.emit(scenario === 'signal-int' ? 'SIGINT' : 'SIGTERM'), true);
     else observation.child.send({kind: 'finish', code: scenario === 'exit-seven' ? 7 : 0});
   }
   await settled;

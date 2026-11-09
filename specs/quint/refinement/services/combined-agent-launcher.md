@@ -28,6 +28,7 @@ accepts an existing marker file before parsing its contents. The normal
 launch separately rejects the same wrong marker. A spawn failure can leave
 metadata without a PID. The child close event releases the log and handlers.
 
+The combined and reviewed workflow launchers share the child supervisor.
 An obstructed `process.json` write fails under supervision. The launcher sends
 SIGTERM to its returned child and waits for its close event before rejecting.
 A synthetic child that ignores SIGTERM receives the bounded SIGKILL fallback.

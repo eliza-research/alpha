@@ -11,14 +11,14 @@ const probe = join(import.meta.dirname, 'reviewed-workflow-launcher-probe.mjs');
 const manifest = 'patches/eliza/core-state-manifest.json';
 const cases = [
   'relative-default', 'missing-deps', 'invalid-port', 'input-mode', 'unreviewed-profile', 'missing-entry',
-  'routing', 'embedding-path', 'default-source', 'existing-profile', 'spawn-error', 'signal-term',
+  'routing', 'embedding-path', 'default-source', 'existing-profile', 'spawn-error', 'signal-int', 'signal-term',
   'exit-seven', 'git-metadata', 'write-metadata',
 ];
 
 function sourceInputs(extraSources) {
   const {patches} = JSON.parse(readFileSync(join(root, manifest), 'utf8'));
   return [
-    'scripts/start-reviewed-workflow-agent.mjs', 'scripts/agent-embeddings.mjs', 'scripts/agent-identity.mjs',
+    'scripts/launcher-child.mjs', 'scripts/start-reviewed-workflow-agent.mjs', 'scripts/agent-embeddings.mjs', 'scripts/agent-identity.mjs',
     'scripts/agent-model.mjs', 'config/alpha-product.json', 'scripts/local-agent-source.mjs',
     'scripts/copy-file-clone.mjs', 'scripts/core-state-preload.mjs', 'scripts/core-state-patch.mjs',
     'scripts/combined-agent-source.mjs', manifest, 'upstream.lock.json',
@@ -63,6 +63,6 @@ export async function checkReviewedWorkflowLauncher(extraSources = [], bun) {
       'The exact launcher, source and profile helpers run in a disposable synthetic Git workspace and private home. Module hooks observe real filesystem operations and substitute a closed spawn port. All state files and child inputs belong to the fixture.',
       'The opt-in Bun traces execute the actual core preload and a synthetic entry that checks one reviewed transformation. Each checkout is stable from the start of the launcher through child admission. Real workflows and provider behavior are separate.',
       'Fresh and saved profile cases observe identity, text routing, embeddings and the two optional plugin settings. Endpoint readiness remains a separate acceptance check.',
-      'Receipt failure is an observed baseline departure from the child custody expectation. The fixture reaps only its synthetic child after observation.',
+      'Revision read refusal closes the log before spawn. Receipt write refusal retains the supervised child until it closes. The shared supervisor escalation is exercised by the CombinedAgentLauncher fixture.',
     ]});
 }

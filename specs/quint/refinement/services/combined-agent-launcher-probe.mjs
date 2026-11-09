@@ -12,6 +12,7 @@ import {writeCoreStateFixture} from '../../../../test/fixtures/core-state-root.m
 const root = resolve(import.meta.dirname, '../../../..');
 const launcher = 'scripts/start-combined-agent.mjs';
 const support = [
+  'scripts/launcher-child.mjs',
   'scripts/combined-agent-source.mjs', 'scripts/host-speech-admission.mjs', 'scripts/agent-model.mjs',
   'scripts/agent-identity.mjs', 'config/alpha-product.json',
   'vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs',

@@ -7,7 +7,7 @@ test('reviewed workflow launcher compares private admission and child handoff', 
   const bun = process.env.ALPHA_QUINT_BUN;
   const receipt = await checkReviewedWorkflowLauncher([fileURLToPath(import.meta.url)], bun);
   assert.equal(receipt.model, 'ReviewedWorkflowLauncher');
-  assert.equal(receipt.traces, bun ? 18 : 15);
+  assert.equal(receipt.traces, bun ? 19 : 16);
   assert.ok(receipt.passed && receipt.driverInputsBound && receipt.inputsUnchanged);
   const last = name => receipt.traceInputs.find(trace => trace.name === name).steps.at(-1).expect;
   assert.equal(last('default-source')['s.features'], 'disabled');
@@ -15,12 +15,20 @@ test('reviewed workflow launcher compares private admission and child handoff', 
   assert.equal(last('existing-profile')['s.embeddings'], false);
   assert.equal(last('missing-entry')['s.token'], true);
   assert.equal(last('routing')['s.identity'], true);
-  for (const name of ['git-metadata', 'write-metadata']) {
-    const outcome = last(name);
-    assert.equal(outcome['s.booted'], true);
-    assert.equal(outcome['s.metadata'], false);
-    assert.equal(outcome.ChildCustodyAfterReceiptFailure, false);
-  }
+  const revision = last('git-metadata');
+  assert.equal(revision['s.child'], false);
+  assert.equal(revision['s.logOpen'], false);
+  const write = last('write-metadata');
+  assert.equal(write['s.metadata'], false);
+  assert.equal(write['s.childClosed'], true);
+  assert.equal(write['s.logOpen'], false);
+  assert.equal(write['s.cleanupSignal'], 'SIGTERM');
+  assert.equal(write.ChildCustodyAfterReceiptFailure, true);
+  assert.equal(last('spawn-error')['s.pid'], false);
+  assert.equal(last('spawn-error')['s.exitCode'], 1);
+  assert.equal(last('signal-int')['s.forwarded'], 'SIGINT');
+  assert.equal(last('signal-term')['s.forwarded'], 'SIGTERM');
+  assert.equal(last('exit-seven')['s.exitCode'], 7);
   if (bun) {
     assert.equal(last('actual-pinned')['s.preloadEntry'], true);
     assert.equal(last('actual-wrong-pin')['s.revision'], 'other');
