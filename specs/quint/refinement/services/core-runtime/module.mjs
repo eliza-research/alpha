@@ -48,7 +48,7 @@ async function loadCoreSource(contents, extraSources) {
   const sources = [...compiled.keys(), fileURLToPath(import.meta.url), 'package-lock.json', 'upstream.lock.json', ...CORE_STATE_INPUTS, ...extraSources];
   const driverHashes = captureInputs(sources);
   for (const [path, digest] of compiled) assert.equal(driverHashes[resolve(path)], digest, 'Core source changed during compilation');
-  for (const [path, digest] of Object.entries(prepared.receipt.inputHashes)) assert.equal(driverHashes[resolve(path)], digest, 'Core patch input changed before capture');
+  for (const [path, digest] of Object.entries(prepared.receipt.inputHashes)) assert.equal(driverHashes[resolve(path)], digest, 'Core source input changed before capture');
   const coreState = coreStateBuildRecord(root, transforms, coreStateRequiredTargets([...compiled.keys()]));
   const compiledHashes = Object.fromEntries([...compiled].map(([path, sourceSha256]) => [path, {sourceSha256, effectiveSha256: effective.get(path)}]));
   const module = await import('data:text/javascript;base64,' + Buffer.from(result.outputFiles[0].text).toString('base64'));

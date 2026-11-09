@@ -108,7 +108,7 @@ function setup(number, simpleCore = false) {
     const exactCore = host?.coreState.transforms.some(row => row.path === PLUGIN_CONNECTOR_TARGET) ?? false;
     for (const row of host?.coreState.transforms ?? []) {
       const name = path.relative(root, path.join(sdk, row.path));
-      assert.equal(host.inputs[name], row.sourceSha256, 'Public receipt binds the raw transform preimage');
+      assert.equal(host.inputs[name], row.sourceSha256, 'Public receipt binds the pinned source consumed by the compiler');
       assert.notEqual(row.sourceSha256, row.outputSha256);
     }
     const module = fs.existsSync(modulePath) ? classify(moduleHashes, digest(fs.readFileSync(modulePath))) : 0;

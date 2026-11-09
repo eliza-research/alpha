@@ -64,7 +64,7 @@ try {
         const gitObject = createHash('sha1').update(Buffer.from(`blob ${bytes.length}\0`)).update(bytes).digest('hex');
         if (tracked.has(relative) && tracked.get(relative) !== gitObject) throw Error(`Compiled first-party input differs from pinned Git bytes: ${relative}`);
         const transformed = core.files.get(relative);
-        if (transformed && hash(bytes) !== transformed.beforeSha256) throw Error('Core input differs from patch preimage');
+        if (transformed && hash(bytes) !== transformed.beforeSha256) throw Error('Observed core input differs from the pinned source');
         firstParty.push({input, path: relative, sha256: hash(bytes),
           ...(transformed ? {effectiveSourceSha256: transformed.afterSha256, transformation: 'authenticated-core-state'} : {}), bytesInOutput: emitted.get(input) ?? 0,
           tracked: tracked.has(relative), ...(tracked.has(relative) ? {gitObject} : {})});

@@ -32,10 +32,10 @@ function readRegular(root, name) {
   const file = path.resolve(root, name);
   if (!file.startsWith(path.resolve(root) + path.sep)) throw Error('Core source input escaped its root');
   for (let current = file; current !== path.resolve(root); current = path.dirname(current)) {
-    if (fs.lstatSync(current).isSymbolicLink()) throw Error('Linked core patch input');
+    if (fs.lstatSync(current).isSymbolicLink()) throw Error('Linked core source input');
   }
   const stat = fs.statSync(file);
-  if (!stat.isFile() || stat.size > 2 * 1024 * 1024) throw Error('Invalid core patch input');
+  if (!stat.isFile() || stat.size > 2 * 1024 * 1024) throw Error('Invalid core source input');
   return fs.readFileSync(file);
 }
 

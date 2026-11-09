@@ -41,7 +41,7 @@ if(!result.success)throw new AggregateError(result.logs,'Native host compilation
 const output=result.outputs.find(item=>item.kind==='entry-point');
 if(!output||!result.metafile)throw Error('Native host compiler did not produce its module and source graph');
 
-// The core hook supplies effective source to Bun and separately authenticates its raw input.
+// The core hook supplies the authenticated source bytes directly to Bun.
 for(const row of core.transforms)consumed.set(path.resolve(sdk,row.path),row.sourceSha256);
 const graph=new Map<string,{input:(typeof result.metafile.inputs)[string],digest:string}>();
 for(const [name,value] of Object.entries(result.metafile.inputs)){
