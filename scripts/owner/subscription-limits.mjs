@@ -22,6 +22,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { CLOUD_DEPLOYMENT } from "../cloud-deployment-policy.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 export const RECORDED_CATALOG = "docs/runbooks/drafts/665-recorded-catalog-v1.json";
@@ -163,7 +164,7 @@ export async function main(argv, { fetchImpl = globalThis.fetch, log = console.l
   const [command, ...rest] = argv;
   if (command === "catalog") {
     const environment = option(rest, "--environment") ?? "production";
-    const deployment = readJson(path.join(root, "config/cloud-deployment.json"))[environment];
+    const deployment = CLOUD_DEPLOYMENT[environment];
     if (!deployment) { error(USAGE); return 2; }
     const recorded = readJson(option(rest, "--recorded") ?? path.join(root, RECORDED_CATALOG));
     const live = await fetchCatalog(deployment.api, fetchImpl);

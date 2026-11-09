@@ -109,7 +109,7 @@
     "generatedSources": [{ "sourceSet": "main", "kind": "java", "path": "generated/local-agent/java" }],
     "assetFiles": [
       { "source": { "root": "patchedNative", "path": ".source.json" }, "name": "native-patches.json" },
-      { "source": { "root": "consumer", "path": "config/owner-routes.json" }, "name": "owner-routes.json" }
+      { "source": { "root": "consumer", "path": ".eliza/generated-android/owner-routes.json" }, "name": "owner-routes.json" }
     ],
     "appScripts": [{ "root": "consumer", "path": "android/app/product.gradle" }],
     "generationInputs": [
@@ -118,7 +118,9 @@
       { "root": "consumer", "path": "upstream.lock.json" },
       { "root": "consumer", "path": "patches/eliza/native-manifest.json" },
       { "root": "consumer", "path": "scripts/prepare-patched-native.mjs" },
-      { "root": "consumer", "path": "scripts/android-host.mjs" }
+      { "root": "consumer", "path": "scripts/android-host.mjs" },
+      { "root": "consumer", "path": "apps/app/src/product/owner-route-table.ts" },
+      { "root": "consumer", "path": ".eliza/generated-android/owner-routes.json" }
     ]
   },
   "residentHost": {

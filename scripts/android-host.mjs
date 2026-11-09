@@ -17,9 +17,11 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {generateAndroidConsumerHost} from '../vendor/eliza/packages/app/scripts/mobile/android/consumer-host.mjs';
 import {preparePatchedNative} from './prepare-patched-native.mjs';
+import {serializeOwnerRouteTable} from '../apps/app/src/product/owner-route-table.ts';
 
 export const HOST_DESCRIPTOR = 'android/consumer-host.json';
 export const PATCHED_NATIVE_ROOT = 'patchedNative';
+const OWNER_ROUTE_ASSET = '.eliza/generated-android/owner-routes.json';
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 
 /** The committed descriptor; only Alpha-owned data, no Gradle. */
@@ -64,9 +66,25 @@ export function hostProfile(root = ROOT, {patchedNativeRoot, canonical = false} 
  return {...mapReferences(profile, map), manifestPlaceholders: {appOrientation: app.orientation}};
 }
 
-/** Every option the upstream generator receives for this checkout. Stages patched native source. */
+/** Write the generated table outside the authored tree, ready for the host's asset staging task. */
+export function stageOwnerRouteAsset(root) {
+ const file = path.join(root, OWNER_ROUTE_ASSET);
+ fs.mkdirSync(path.dirname(file), {recursive: true});
+ const temporary = fs.mkdtempSync(path.join(path.dirname(file), '.owner-routes-'));
+ try {
+  const staged = path.join(temporary, 'owner-routes.json');
+  fs.writeFileSync(staged, serializeOwnerRouteTable());
+  fs.renameSync(staged, file);
+ } finally {
+  fs.rmSync(temporary, {recursive: true, force: true});
+ }
+ return file;
+}
+
+/** Every option the upstream generator receives for this checkout. Stages patched native source and generated assets. */
 export function hostOptions(root = ROOT) {
  const patched = preparePatchedNative({root});
+ stageOwnerRouteAsset(root);
  return {
   consumerRoot: root,
   upstreamRoot: path.join(root, 'vendor/eliza'),

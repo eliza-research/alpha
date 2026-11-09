@@ -1,13 +1,13 @@
+import {ALPHA_PRODUCT_REGISTRATION as record} from '../apps/app/src/product/alpha-product-registration.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-// Every colour of the prototype renderer comes from the product record (config/alpha-product.json):
+// Every colour of the prototype renderer comes from the product record (apps/app/src/product/alpha-product-registration.ts):
 // the theme tokens and aliases, and its palette of fixed product colours, all emitted as CSS custom
 // properties by the shared shell's mobileShellThemeVariables. A new colour is added to the record's
 // palette and referenced as var(--alpha-...); a hex literal in these files fails here.
 const FILES = ['template.html', 'model.js', 'phone.css', 'scan-dialog.css'].map(name => `apps/app/src/prototype/${name}`);
-const record = JSON.parse(readFileSync('config/alpha-product.json', 'utf8'));
 const palette = record.theme.palette ?? {};
 const HEX = /#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})\b/g;
 
@@ -26,7 +26,7 @@ test('the prototype files hold no hex colour literal', () => {
     const source = code(file, readFileSync(file, 'utf8'));
     for (const match of source.matchAll(HEX)) found.push(`${file}:${source.slice(0, match.index).split('\n').length} ${match[0]}`);
   }
-  assert.deepEqual(found, [], `Add the colour to theme.palette in config/alpha-product.json and use var(--alpha-...):\n${found.join('\n')}`);
+  assert.deepEqual(found, [], `Add the colour to theme.palette in apps/app/src/product/alpha-product-registration.ts and use var(--alpha-...):\n${found.join('\n')}`);
 });
 
 test('every palette property the prototype uses is in the record, and every palette entry is used', () => {

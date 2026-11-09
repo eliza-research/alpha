@@ -28,6 +28,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { CLOUD_DEPLOYMENT } from "../cloud-deployment-policy.mjs";
 
 const ROOT = fileURLToPath(new URL("../../", import.meta.url));
 export const CLOUD_MAPPING_SOURCE = "packages/cloud/shared/src/lib/services/agent-google-connector/shared.ts";
@@ -210,7 +211,7 @@ async function main(argv) {
   }
   if (mode === "probe") {
     const environment = value("--environment") ?? "production";
-    const deployment = JSON.parse(fs.readFileSync(path.join(ROOT, "config/cloud-deployment.json"), "utf8"))[environment];
+    const deployment = CLOUD_DEPLOYMENT[environment];
     if (!deployment) { console.error(`Unknown environment ${environment}`); return 2; }
     const result = await probeServiceDocument(deployment.api);
     if (flag("--json")) console.log(JSON.stringify(result, null, 2));

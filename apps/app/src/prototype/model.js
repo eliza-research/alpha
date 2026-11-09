@@ -5493,7 +5493,7 @@ class Component extends DCLogic {
     var S = this.S(); var P = this.props || {}; var self = this;
     var fs = S.fs == null ? !!P.phoneOnly : S.fs;
     var theme = S.theme || P.theme || "light"; if (theme !== "dark") theme = "light";
-    // The product record (config/alpha-product.json) supplies every color and font.
+    // The product record (apps/app/src/product/alpha-product-registration.ts) supplies every color and font.
     var VM = alphaThemeVariables(theme);
     var vars = Object.keys(VM).map(function (k) { return k + ":" + VM[k]; }).join(";");
     var rootRef = function (el) {

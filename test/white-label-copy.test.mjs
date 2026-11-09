@@ -8,7 +8,7 @@ import {build} from 'esbuild';
 import {pathToFileURL} from 'node:url';
 
 const root=path.resolve(import.meta.dirname,'..');
-// The Cloud service name comes only from config/cloud-deployment.json (the generated files);
+// The Cloud service name comes only from the generated Cloud deployment policy;
 // Alpha's runtime and native sources must not hard-code another product's name in user copy.
 const sources=[['apps/app/src/runtime',/\.(ts|tsx)$/],['android/app/src/main/java/ai/elizaresearch/alphaphone',/\.java$/]];
 const generated=new Set(['apps/app/src/runtime/cloud-deployment.generated.ts','android/app/src/main/java/ai/elizaresearch/alphaphone/CloudDeployment.java']);

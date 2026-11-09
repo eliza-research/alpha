@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // Alpha's functional feature manifest, emitted by the shared mobile-shell emitter
-// (@elizaos/ui/mobile-shell/core mobileFeatureManifest) from config/alpha-product.json, and its
+// (@elizaos/ui/mobile-shell/core mobileFeatureManifest) from apps/app/src/product/alpha-product-registration.ts, and its
 // parity against Eliza's reference registration. Alpha and Eliza may differ only by identity and
 // theme; every remaining functional difference and every Alpha-owned behavioural module is listed
-// in config/feature-parity.json, which may only shrink (test/feature-parity.test.mjs).
+// in test/support/feature-parity.mjs, which may only shrink (test/feature-parity.test.mjs).
 //
 //   node scripts/feature-manifest.mjs            print Alpha's manifest
 //   node scripts/feature-manifest.mjs --parity   print the differences and modules as they are now
@@ -26,8 +26,8 @@ export function alphaBehaviouralModules(cwd = root) {
 
 export async function featureParity(cwd = root) {
   const core = await tsImport(pathToFileURL(path.join(cwd, CORE)).href, import.meta.url);
-  const record = JSON.parse(fs.readFileSync(path.join(cwd, 'config/alpha-product.json'), 'utf8'));
-  const alpha = core.mobileFeatureManifest(core.defineMobileProductRegistration(record));
+  const {ALPHA_PRODUCT_REGISTRATION} = await import(pathToFileURL(path.join(cwd, 'apps/app/src/product/alpha-product-registration.ts')).href);
+  const alpha = core.mobileFeatureManifest(core.defineMobileProductRegistration(ALPHA_PRODUCT_REGISTRATION));
   const eliza = core.mobileFeatureManifest(core.ELIZA_MOBILE_PRODUCT);
   return {
     alpha, eliza,

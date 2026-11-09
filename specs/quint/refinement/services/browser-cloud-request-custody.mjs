@@ -23,7 +23,7 @@ export async function checkBrowserCloudRequestCustody(extraSources = []) {
     platform: 'node', format: 'esm', write: false, metafile: true}).metafile.inputs;
   const sources = [...new Set([
     ...Object.keys(graph), bridge, probe, fileURLToPath(import.meta.url),
-    'config/cloud-email-code.json', 'config/cloud-deployment.json', 'config/native-view-declarations.json',
+    'scripts/cloud-deployment-policy.mjs', 'scripts/native-view-policy.mjs',
     'package.json', 'package-lock.json', 'tsconfig.json', ...extraSources,
   ])];
   const driverHashes = captureInputs(sources);

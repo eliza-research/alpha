@@ -38,16 +38,20 @@ export const UNRESOLVED_FONT_LICENCE_BLOCKS_DISTRIBUTION = false;
  * for how long>"}`. When it is present the Bun notice ships it; when it is absent the notice
  * names only the source addresses and the licence review reports SOURCE_OFFER_MISSING.
  */
-export const SOURCE_OFFER_FILE = 'config/source-offer.json';
+export const SOURCE_OFFER_FILE = 'licenses/source-offer.json';
 export const SOURCE_OFFER_MISSING = 'written source offer for Bun LGPL components not recorded';
 
 /** The recorded offer text, null when none is recorded; a malformed record throws. */
 export function readSourceOffer(root) {
-  const file = path.join(root, SOURCE_OFFER_FILE);
-  if (!fs.existsSync(file)) return null;
-  const offer = JSON.parse(fs.readFileSync(file, 'utf8'))?.offer;
-  if (typeof offer !== 'string' || !offer.trim()) throw new Error(`${SOURCE_OFFER_FILE} has no "offer" text`);
-  return offer.trim();
+  // Accept an offer already recorded by a release operator at the previous location.
+  for (const name of [SOURCE_OFFER_FILE, 'config/source-offer.json']) {
+    const file = path.join(root, name);
+    if (!fs.existsSync(file)) continue;
+    const offer = JSON.parse(fs.readFileSync(file, 'utf8'))?.offer;
+    if (typeof offer !== 'string' || !offer.trim()) throw new Error(`${name} has no "offer" text`);
+    return offer.trim();
+  }
+  return null;
 }
 
 export const UNKNOWN = 'UNKNOWN';

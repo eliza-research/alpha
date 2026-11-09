@@ -86,7 +86,7 @@ test('an upgraded install keeps its Home favorites saved under older view ids', 
   expect(errors).toEqual([]);
 });
 
-// The palette (config/alpha-product.json theme.palette) is read outside the phone too: html/body
+// The palette (apps/app/src/product/alpha-product-registration.ts theme.palette) is read outside the phone too: html/body
 // and the review dialogs appended to document.body. Without it there, a primary button's
 // var(--alpha-white) text would fall back to the inherited colour.
 test('the product palette reaches the document root and dialogs outside the phone', async ({ page }) => {

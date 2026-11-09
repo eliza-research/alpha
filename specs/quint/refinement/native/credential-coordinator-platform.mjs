@@ -1,3 +1,4 @@
+import {serializeOwnerRouteTable} from '../../../../apps/app/src/product/owner-route-table.ts';
 import {writeFileSync, mkdirSync, readFileSync} from 'node:fs';
 import {root} from './java.mjs';
 import {dirname, join} from 'node:path';
@@ -10,7 +11,7 @@ export function credentialCoordinatorPlatform() {
   delete files['ai/elizaresearch/alphaphone/AlphaCredentialStore.java'];
   delete files['ai/elizaresearch/alphaphone/AlphaConnectionPlugin.java'];
   delete files['ai/elizaresearch/alphaphone/OwnerRoutes.java'];
-  const routes=JSON.stringify(readFileSync(join(root,'config/owner-routes.json'),'utf8'));
+  const routes=JSON.stringify(serializeOwnerRouteTable());
   files['android/content/res/AssetManager.java']=files['android/content/res/AssetManager.java'].replace(
     'if (name.equals("agent/agent-bundle.js")',
     'if(name.equals("owner-routes.json"))return new ByteArrayInputStream('+routes+'.getBytes(java.nio.charset.StandardCharsets.UTF_8));\n    if (name.equals("agent/agent-bundle.js")');

@@ -169,7 +169,7 @@ test('a PACKAGED runtime lists Bun with its LGPL notice and every bundled agent 
 
 test('a recorded written source offer ships in the Bun notice; a malformed record fails generation', t => {
   const { root, agent, source } = stagedRuntime(t);
-  const offerFile = path.join(root, 'config/source-offer.json');
+  const offerFile = path.join(root, 'licenses/source-offer.json');
   fs.mkdirSync(path.dirname(offerFile), { recursive: true });
   fs.writeFileSync(offerFile, JSON.stringify({ offer: 'Example written offer text.' }));
   const errors = [];
@@ -179,7 +179,7 @@ test('a recorded written source offer ships in the Bun notice; a malformed recor
   fs.writeFileSync(offerFile, JSON.stringify({ offer: ' ' }));
   const malformed = [];
   runtimeEntries(root, templates, malformed, { agentDir: agent, sourceDir: source });
-  assert.match(malformed.join('\n'), /config\/source-offer\.json has no "offer" text/);
+  assert.match(malformed.join('\n'), /licenses\/source-offer\.json has no "offer" text/);
 });
 
 test('copyleft, unknown, undeclared and text-less runtime packages are listed and flagged, never an error', t => {
