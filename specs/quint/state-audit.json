@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "b1817660a0347ae19551b9ee296410fe55f02d59",
-  "ledgerSha256": "3eabb69b7efc7edf1cd7e1a8679e658375bb79d8e9f612b1054dbbe98739e0eb",
+  "ledgerSha256": "94e4e7f5673258952671e4d57a328896243912e58ca321168f375081a23bb35e",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -29,10 +29,10 @@
     "languageReview": 93,
     "parseErrors": 0,
     "candidates": 67539,
-    "writeSites": 67136,
+    "writeSites": 67137,
     "writeAssociations": 60191,
     "asynchronous": 8353,
-    "unassignedWrites": 10353
+    "unassignedWrites": 10354
   },
   "files": [
     {
@@ -18226,7 +18226,7 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java",
-      "sha256": "bea8e921170b08f2e35131d03a4c8425ae001d955d6bff9e6c9f822418cb5b3a",
+      "sha256": "beec81e67179e6ee8efedf522f4a0ebf3f068ccaf4bb46c94034ccc4ce13de0e",
       "allocatedModels": [
         "Application",
         "AccessibleToastLifetime",
@@ -18737,27 +18737,27 @@
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.installUpdate@649.lambda@658",
-          "line": 660,
+          "owner": "AlphaDevicePlugin.installUpdate@649.lambda@661",
+          "line": 663,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.installUpdate@649.lambda@666",
-          "line": 670,
+          "owner": "AlphaDevicePlugin.installUpdate@649.lambda@669",
+          "line": 673,
           "bindings": 27,
           "writes": 6
         },
         {
-          "owner": "AlphaDevicePlugin.handleOnDestroy@778",
-          "line": 778,
+          "owner": "AlphaDevicePlugin.handleOnDestroy@781",
+          "line": 781,
           "bindings": 2,
           "writes": 1
         }
       ],
       "parseErrors": [],
       "asynchronous": 9,
-      "unassignedWrites": 22
+      "unassignedWrites": 23
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java",
@@ -221043,6 +221043,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "eeca56df9ce8c35c72a534433c9c5c8df534a87e5bd8884dfbc4d0aaef89d1f2"
+    "sha256": "0d3464a335b3210b1f012e912333c5342ed351a72cd9f6e2c959f6f0f25153d9"
   }
 }

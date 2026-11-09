@@ -6226,7 +6226,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "bea8e921170b08f2e35131d03a4c8425ae001d955d6bff9e6c9f822418cb5b3a",
+      "sha256": "beec81e67179e6ee8efedf522f4a0ebf3f068ccaf4bb46c94034ccc4ce13de0e",
       "stateAnchors": [
         {
           "line": 30,
@@ -6509,83 +6509,87 @@
           "text": "String status=automaticUpdateStatus(getContext());"
         },
         {
-          "line": 664,
+          "line": 660,
+          "text": "if(automatic){call.resolve(new JSObject().put(\"status\",\"permission-required\"));return;}"
+        },
+        {
+          "line": 667,
           "text": "final String apkUrl=call.getString(\"apkUrl\"),sha256=call.getString(\"sha256\");final long size=call.getData().optLong(\"sizeBytes\"),versionCode=call.getData().optLong(\"versionCode\");"
         },
         {
-          "line": 675,
+          "line": 678,
           "text": "PackageInstaller installer=getContext().getPackageManager().getPackageInstaller();"
         },
         {
-          "line": 681,
+          "line": 684,
           "text": "// another lock, and a later level is unread, as is a build that is not a release: it reports the level it branched from"
         },
         {
-          "line": 682,
+          "line": 685,
           "text": "// (CODENAME is REL only on a release). There it fences until the next boot, as does a session an earlier build bound without the mark."
         },
         {
-          "line": 688,
+          "line": 691,
           "text": "for(PackageInstaller.SessionInfo listed:installer.getMySessions()){"
         },
         {
-          "line": 695,
+          "line": 698,
           "text": "if(!automatic)reopenUpdateConfirmation(pending);"
         },
         {
-          "line": 698,
+          "line": 701,
           "text": "if(automatic&&!automaticUpdateReady())throw new java.io.IOException(\"Automatic update deferred\");"
-        },
-        {
-          "line": 705,
-          "text": "// Android would also accept a same-versionCode reinstall; only the offered, newer build of this package goes on."
         },
         {
           "line": 708,
+          "text": "// Android would also accept a same-versionCode reinstall; only the offered, newer build of this package goes on."
+        },
+        {
+          "line": 711,
           "text": "if(archive==null||!getContext().getPackageName().equals(archive.packageName)||archive.getLongVersionCode()!=versionCode||versionCode<=BuildConfig.VERSION_CODE)throw new java.io.IOE"
         },
         {
-          "line": 710,
+          "line": 713,
           "text": "// The release verifier requires READ_CONTACTS only in the launcher manifest."
         },
         {
-          "line": 717,
+          "line": 720,
           "text": "String binding=\"alpha-update://\"+getContext().getPackageName()+\"/\"+versionCode+\"/\"+sha256+\"/\"+signer+\"/\"+updateBoot()+\"/intent\"+(automatic?\"/automatic\":\"\");"
         },
         {
-          "line": 721,
+          "line": 724,
           "text": "if(automatic&&Build.VERSION.SDK_INT>=31)params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED);"
         },
         {
-          "line": 722,
+          "line": 725,
           "text": "int id=installer.createSession(params);"
         },
         {
-          "line": 724,
+          "line": 727,
           "text": "try(PackageInstaller.Session session=installer.openSession(id)){"
         },
         {
-          "line": 727,
+          "line": 730,
           "text": "if(automatic&&!automaticUpdateReady())throw new java.io.IOException(\"Automatic update deferred\");"
         },
         {
-          "line": 729,
+          "line": 732,
           "text": "synchronized(updateBarrier){preparation=new UpdateActivation(this,automatic);activation=preparation;participants=new java.util.ArrayList<>(updateBridges);}"
         },
         {
-          "line": 738,
+          "line": 741,
           "text": "pauseOwned=true;UpdatePause.acquire(preparation.id,id,versionCode,sha256,updateBoot());"
         },
         {
-          "line": 741,
+          "line": 744,
           "text": "if(automatic&&!automaticUpdateReady())throw new java.io.IOException(\"Automatic update deferred\");"
         },
         {
-          "line": 751,
+          "line": 754,
           "text": "updateAutomatic=automatic;"
         },
         {
-          "line": 759,
+          "line": 762,
           "text": "if(!commitAttempted)try{installer.abandonSession(id);}catch(RuntimeException cleanup){failed.addSuppressed(cleanup);}"
         }
       ],
