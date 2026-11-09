@@ -188,6 +188,19 @@ delivery path until a native producer bridge is separately qualified.
 
 ## Acceptance on the phone host
 
+The historical [November 9 software verification](evidence/launcher-ota-verification-20261109.json)
+records consumer `17dacc127beb7febf5520b078f4d647f3ed9a755` with SDK
+`9add52f6b83efa77241fb72ae769729121944cac`: its full repository run, four Cloud
+APK builds, explicit environment skips and remaining phone-host gates. The
+[formal receipt](evidence/launcher-ota-formal-validation-20261109.json) keeps its
+exact source inputs and safety bounds, and the
+[uploaded walkthrough](https://github.com/eliza-research/alphaphone/releases/tag/pr853-evidence-17dacc127beb)
+shows simulated native IPC cancellation and draft restoration only. The prior
+[`e359d8d9` Cloud APK report](evidence/launcher-ota-cloud-apk-build-e359d8d9-20261109.json)
+is retained with its original bytes. These reports do not advance the current SDK
+pin or qualify the DAE bundle, current APKs, native speech/JNI, installed-device
+behavior or user acceptance.
+
 The isolated API 36 PackageInstaller fixture can be rerun on an owned disposable
 emulator with SDK 36 build tools and JDK 21:
 
