@@ -39,6 +39,7 @@ import {checkShadeNoticeQuestionAdmission} from './shade-notice-question-admissi
 import {checkSharePanelAdmission} from './share-panel-admission.mjs';
 import {checkWorkflowRequestRecoveryAdmission} from './workflow-request-recovery-admission.mjs';
 import {checkAppearancePreferenceAdmission} from './appearance-preference-admission.mjs';
+import {checkNotesTrashReadPublication} from './notes-trash-read-publication.mjs';
 import {checkAgentCalendarSyncControl} from './agent-calendar-sync-control.mjs';
 import {checkGoogleCalendarLinkFlow} from './google-calendar-link-flow.mjs';
 import {checkGoogleCalendarDisconnect} from './google-calendar-disconnect.mjs';
@@ -100,6 +101,7 @@ const adapters = [checkChatAttachments, application, shellNavigation, startupPer
   checkSharePanelAdmission,
   checkWorkflowRequestRecoveryAdmission,
   checkAppearancePreferenceAdmission,
+  checkNotesTrashReadPublication,
   runStartupPermissionsCoordinatorRefinement, checkVaultCoordinator, checkNotesCoordinator, listFocus, checkRecoveryUI, checkShellCoordinator, checkNativeViewSubscription, filesPreview, runPermissionChoicesRefinement, checkCanonicalNotesController, checkCanonicalNotesDraft,
   checkCanonicalNotesFeedback, checkCanonicalNotesMutation, checkCanonicalNotesView, checkCanonicalCalendarDraft, checkAgentCalendarRefresh, checkAgentCalendarMutation, checkAgentCalendarEventReturn, checkMapsEventReturn, checkMapsRerouteOwnership, checkCloudConnectionNotices, checkModalScrimOwnership, checkAgentCalendarSyncControl, checkGoogleCalendarLinkFlow, checkGoogleCalendarDisconnect, checkGoogleCalendarLinkPublication, checkGoogleCalendarAccessChoice, checkFilesBrowserController, checkFilesFilter, checkPhotosWindow, checkPhotosTrash, checkGoogleConsentAdmission, checkGoogleAccessPublication, checkBrowserDeletionPoll, checkBrowserJournalRetention, checkBrowserReminderOrphan, checkBrowserOwnerReminderRead, checkBrowserOwnerReminderAction, checkHomeFailureNotice, checkHomeGesture, checkDrawerInteraction, checkLauncherOwnership, checkLauncherObserver, checkLauncherFavorites, checkAccessibleToastLifetime, checkModalToastForwarding, checkScreenFocusOwnership, checkDockClearanceOwnership, checkMountedUpdateAdmission, checkStartupUpdateAdmission, checkCanonicalNotificationTapAdmission, checkResidentLiveness];
 

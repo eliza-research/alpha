@@ -2793,5 +2793,45 @@
       "Finite representative identities and successful storage writes only. Models are contract checks, not complete implementation refinement or cross-device persistence proof.",
       "Source review recorded in specs/quint/ui-return-review-20261109.md."
     ]
+  },
+  {
+    "path": "specs/quint/application/NotesTrashReadPublication.qnt",
+    "module": "NotesTrashReadPublication",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "canonicalDoesNotReadTest",
+      "newerResultCannotBeReplacedTest",
+      "pendingSuccessorAlreadyOwnsReadTest",
+      "canonicalSwitchDropsHeldSuccessTest",
+      "sourceReturnDoesNotReviveHeldErrorTest",
+      "currentFailureAndEmptyReadTest",
+      "unmountDropsHeldReadAndListenerTest"
+    ],
+    "invariants": [
+      "ExactPublication",
+      "ConsistentReadCount",
+      "ReadErrorHidesRows"
+    ],
+    "sources": [
+      "apps/app/src/prototype/notes-trash-adapter.ts",
+      "apps/app/src/prototype/agent-adapter.ts",
+      "apps/app/src/main.tsx"
+    ],
+    "stateMapping": {
+      "live/mode/epoch": "Shell lifetime and selected Notes source generation supplied by controlled host transitions",
+      "started/pending": "Actual Trash read port calls, bound to their admitted source epochs",
+      "rows/error/writes/lastWrite": "Exact Trash row and error patches observed at the shell call after each read settles"
+    },
+    "abstractions": [
+      "One mounted legacy/canonical shell, three read identities, bounded source changes and one unmount. Execute the real adapter and Trash change listener with controlled read and shell ports.",
+      "The source mode and generation transitions use the agent-adapter contract. React commit timing, durable storage, maintenance, restore, erase and canonical Notes remain separate."
+    ],
+    "bounds": {
+      "maxSamples": 1000,
+      "maxSteps": 80,
+      "maxVerifyDepth": 8
+    }
   }
 ]
