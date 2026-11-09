@@ -1263,3 +1263,11 @@ fire receipts for another task. It distinguishes an unavailable schedule
 source from an authoritative missing row, including partial failure in
 another source. Server scheduling, browser persistence and actual dispatch
 remain separate from these closed renderer and protocol traces.
+
+`PreviousNotesAvailability` checks eight schedules and 40 checkpoints.
+The current probe owns the visible availability result even when an owner
+leaves and returns with the same identity. A retired native collection
+read cannot start a draft-slot read. Owner retirement clears the retained
+view before calling the canonical refresh. The replay uses actual probe
+code with read-only ports and a synthetic already-selected legacy view.
+Record opening, platform delivery and installed storage remain separate.

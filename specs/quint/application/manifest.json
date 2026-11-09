@@ -2852,6 +2852,31 @@
     ]
   },
   {
+    "path": "specs/quint/application/PreviousNotesAvailability.qnt",
+    "module": "PreviousNotesAvailability",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "ownerABADoesNotReviveOldProbeTest",
+      "viewRetirementDoesNotReadNativeDraftTest",
+      "nativeDraftPresenceRequiresCurrentCollectionTest",
+      "ownerSwitchClearsVisibleLegacyBeforeNewProbeTest",
+      "hideAndSuspendRetireVisibleProbeTest"
+    ],
+    "invariants": ["ActiveProbeHasExactOwner", "DraftReadsFollowDeviceCollection", "LegacyRetirementClearsBeforeCanonical"],
+    "sources": ["apps/app/src/prototype/agent-adapter.ts", "apps/app/src/prototype/legacy-notes-access.ts"],
+    "stateMapping": {
+      "device/visible/hidden/suspended/owner": "Platform and controlled owner and view observations supplied to the real presence code",
+      "mode/epoch/legacyOwner/probeOwner/probeEpoch/active/started": "Exact renderer Notes source and current read ownership",
+      "pending/draftReads/availability/paints/cleared/canonical": "Observed read ports, published availability, record retirement and canonical refresh"
+    },
+    "abstractions": [
+      "Two owners and three pending read identities. Browser and native presence use closed storage ports.",
+      "The selected legacy view is an input. Record opening, React commits, legacy key parsing, and device persistence require separate evidence."
+    ]
+  },
+  {
     "path": "specs/quint/application/NotesTrashReadPublication.qnt",
     "module": "NotesTrashReadPublication",
     "init": "init",

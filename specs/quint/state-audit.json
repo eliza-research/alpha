@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "b1817660a0347ae19551b9ee296410fe55f02d59",
-  "ledgerSha256": "1f28b721913427413b581b4f38e10b605856b408a6a799cb6118663eef66a1ea",
+  "ledgerSha256": "939048b085b313e687315d82f311ad64b553445d1d65ae3c216936d9a32d2be1",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -33365,7 +33365,8 @@
         "ChatAttachments",
         "FirstSendDraftMigration",
         "WorkflowClockAdmission",
-        "NotesTrashReadPublication"
+        "NotesTrashReadPublication",
+        "PreviousNotesAvailability"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -35478,7 +35479,8 @@
       "path": "apps/app/src/prototype/legacy-notes-access.ts",
       "sha256": "beec749de9b332757e3acabaf32804144ee7cfe1b37835e46c36a41ac01c6946",
       "allocatedModels": [
-        "NotesLifecycle"
+        "NotesLifecycle",
+        "PreviousNotesAvailability"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -221444,6 +221446,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "d3e9bd0c674ef74a3ba92e48a50898808d9b6d86095da3cd37a2439a557cc94d"
+    "sha256": "4163b205ad637dbcc6693d48e49242a6645df0ec3649046cee6ad13fc353cf67"
   }
 }

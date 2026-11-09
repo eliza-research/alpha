@@ -15734,7 +15734,8 @@
         "ChatAttachments",
         "FirstSendDraftMigration",
         "WorkflowClockAdmission",
-        "NotesTrashReadPublication"
+        "NotesTrashReadPublication",
+        "PreviousNotesAvailability"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -16052,6 +16053,42 @@
           "text": "const paint=()=>{if(shell.live&&shell.canonicalNotesUi===binding)shell.setState({},()=>context(shell));};"
         },
         {
+          "line": 539,
+          "text": "function previousNotesOwnerKey():string {"
+        },
+        {
+          "line": 541,
+          "text": "return JSON.stringify([snapshot.session??null,snapshot.cloudAccount?.userId??null,snapshot.cloudAccount?.organizationId??null,canonicalNotesKey(connectionController.getAppRecordClient()"
+        },
+        {
+          "line": 543,
+          "text": "function syncPreviousNotesAvailability(shell:Shell):void {"
+        },
+        {
+          "line": 546,
+          "text": "shell.previousNotesProbe?.abort();"
+        },
+        {
+          "line": 549,
+          "text": "shell.notesOpenAbort?.abort();notesRecovery?.abort();shell.notesSourceEpoch=(shell.notesSourceEpoch??0)+1;"
+        },
+        {
+          "line": 550,
+          "text": "shell.notesSourceMode='canonical';shell.notesLegacySource=null;shell.notesSelection=null;shell.notesSelectionKey=null;"
+        },
+        {
+          "line": 551,
+          "text": "shell.notesStore=null;shell.notesRaw=null;shell.notesStorageFailed=true;"
+        },
+        {
+          "line": 552,
+          "text": "originalSet.call(shell,'notes',{list:[],open:null,trash:[],trashOpen:false});"
+        },
+        {
+          "line": 553,
+          "text": "syncCanonicalNotes(shell);"
+        },
+        {
           "line": 555,
           "text": "const active=shell.live&&!document.hidden&&!shell.pageSuspended&&shell.S().view==='notes';"
         },
@@ -16060,12 +16097,24 @@
           "text": "const key=active?JSON.stringify([owner,shell.notesSourceEpoch]):null;"
         },
         {
+          "line": 558,
+          "text": "shell.previousNotesProbe?.abort();shell.previousNotesProbeKey=key;shell.previousNotesAvailability=null;"
+        },
+        {
           "line": 560,
           "text": "const controller=new AbortController();shell.previousNotesProbe=controller;"
         },
         {
+          "line": 561,
+          "text": "const current=()=>shell.live&&!document.hidden&&!shell.pageSuspended&&shell.S().view==='notes'&&shell.notesSourceMode==='canonical'&&shell.previousNotesProbe===controller&&previousNotes"
+        },
+        {
           "line": 562,
           "text": "const probe=isAndroid?devicePreviousNotesAvailability(secureConnectionStore,controller.signal,current):browserPreviousNotesAvailability(browserNotesPort,controller.signal,current);"
+        },
+        {
+          "line": 563,
+          "text": "void probe.then(availability=>{if(current()){shell.previousNotesAvailability=availability;shell.setState({});}}).catch(()=>{});"
         },
         {
           "line": 566,
@@ -23837,7 +23886,8 @@
     {
       "path": "apps/app/src/prototype/legacy-notes-access.ts",
       "models": [
-        "NotesLifecycle"
+        "NotesLifecycle",
+        "PreviousNotesAvailability"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -23848,12 +23898,32 @@
           "text": "const noLegacyKeys=(storage:Pick<Storage,'getItem'>)=>LEGACY_NOTES_SOURCE_KEYS.every(key=>storage.getItem(key)===null);"
         },
         {
+          "line": 19,
+          "text": "export async function previousNotesAvailability(read:(check:()=>void)=>Promise<boolean>,signal:AbortSignal,current:()=>boolean):Promise<LegacyNotesAvailability>{"
+        },
+        {
           "line": 20,
           "text": "const check=()=>{signal.throwIfAborted();if(!current())throw new DOMException('Notes source changed.','AbortError');};"
         },
         {
+          "line": 21,
+          "text": "check();"
+        },
+        {
           "line": 22,
           "text": "try{const present=await read(check);check();return present?'present':'absent';}"
+        },
+        {
+          "line": 25,
+          "text": "export function browserPreviousNotesAvailability(port:NotesDocumentPort,signal:AbortSignal,current:()=>boolean,storage:Pick<Storage,'getItem'>=localStorage){"
+        },
+        {
+          "line": 28,
+          "text": "export function devicePreviousNotesAvailability(vault:{readRaw(key:string):Promise<string|null>},signal:AbortSignal,current:()=>boolean,storage:Pick<Storage,'getItem'>=localStorage){"
+        },
+        {
+          "line": 30,
+          "text": "if(!noLegacyKeys(storage))return true;"
         },
         {
           "line": 31,
