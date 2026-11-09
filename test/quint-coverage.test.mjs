@@ -144,7 +144,7 @@ test('source discovery follows consumed shared modules and rejects a stale clien
   try {
     for (const path of sourceRoots) mkdirSync(join(root, path), {recursive: true});
     mkdirSync(join(root, 'scripts'), {recursive: true});
-    for (const name of ['quint-lib.mjs', 'core-state-patch.mjs']) copyFileSync(join(repositoryRoot, 'scripts', name), join(root, 'scripts', name));
+    for (const name of ['quint-lib.mjs', 'core-state-patch.mjs', 'build-policy-source.mjs']) copyFileSync(join(repositoryRoot, 'scripts', name), join(root, 'scripts', name));
     write('upstream.lock.json', {commit: 'fixture', appSource: 'packages/app'});
     write('.eliza/client-features/.source.json', {baseCommit: 'fixture', sourceFiles: {'packages/ui/src/state.ts': 'fixture'}});
     write('android/consumer-host.json', {profile: {modules: [{source: {root: 'upstream', path: 'plugins/fixture/android'}}]}, residentHost: {helpers: ['packages/runtime/Owner.java']}});

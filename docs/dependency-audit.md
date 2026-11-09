@@ -1,6 +1,10 @@
 # Dependency and artifact supply chain
 
-## Current source and built static review — November 9
+## Current source-lock review — November 9
+
+SDK `ac18377c5a9e4eb7afeac1c62a026ad3be95733e` has a fresh npm bulk query reproducing the same 3,694 registry versions and all 103 findings as SDK `86ab55fd81`. The dependency lock is byte-identical; all exception objects, review deadlines and pending fixes remain unchanged. This four-file identity follow-up grants no new artifact, security or release qualification. See the [source-lock review](security/resident-source-review-ac18377c-2026-11-09.json).
+
+## Built static review at SDK 86ab55fd81 — November 9
 
 SDK `86ab55fd81f68a2c5dd4fd32e1c1431723648c58` has a fresh npm bulk audit of
 3,694 exact registry versions: 103 findings (12 low, 44 moderate, 46 high and one
@@ -10,7 +14,7 @@ All 84 exception objects, their original review deadlines and all 12 pending
 upstream fixes remain unchanged. The full-lock audit still exits nonzero for
 the pending findings.
 
-The normal producer built the current workflow worker and native Google host.
+The normal producer at SDK `86ab55fd81` built its workflow worker and native Google host.
 Authenticated agent/worker inventories contain 457 unique registry versions;
 only the existing moderate UUID advisory matches this built subset. Fresh token
 analysis of the exact emitted agent bytes found no live callers of the affected
