@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "8148bc3d15c830d72fd40c26984f09f82fc69d9fc50e36436fe36a5866fdbbe2",
+  "ledgerSha256": "7f192f0fa9dfca152ce2f09c1e6245aac7163910d5b43c07ca87466b97f909e4",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -29,10 +29,10 @@
     "languageReview": 71,
     "parseErrors": 0,
     "candidates": 67428,
-    "writeSites": 67092,
-    "writeAssociations": 60155,
-    "asynchronous": 8361,
-    "unassignedWrites": 10346
+    "writeSites": 67096,
+    "writeAssociations": 60157,
+    "asynchronous": 8360,
+    "unassignedWrites": 10348
   },
   "files": [
     {
@@ -29973,7 +29973,8 @@
         "BrowserReadingState",
         "BrowserSession",
         "HostedNoticeQuestion",
-        "SourceRenewalQuestion"
+        "SourceRenewalQuestion",
+        "ShadeNoticeQuestionAdmission"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -32808,7 +32809,8 @@
         "DockClearanceOwnership",
         "MountedUpdateAdmission",
         "StartupUpdateAdmission",
-        "CanonicalNotificationTapAdmission"
+        "CanonicalNotificationTapAdmission",
+        "ShadeNoticeQuestionAdmission"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -34818,7 +34820,8 @@
       "allocatedModels": [
         "FilesTree",
         "ShellNavigation",
-        "HostedNoticeQuestion"
+        "HostedNoticeQuestion",
+        "ShadeNoticeQuestionAdmission"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -39247,11 +39250,12 @@
     },
     {
       "path": "apps/app/src/prototype/notifications-adapter.ts",
-      "sha256": "90c26ad311249e7c3f2d5423bee5b70b9f803bdd88041322046ee0547abdd46d",
+      "sha256": "54f0fe9f96b24849f26308e796192efdb3c32630712a3720ed4047bb566933e5",
       "allocatedModels": [
         "NoticesAndCaches",
         "NotificationCollection",
-        "CanonicalNotificationTapAdmission"
+        "CanonicalNotificationTapAdmission",
+        "ShadeNoticeQuestionAdmission"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -39279,18 +39283,18 @@
           "owner": "installNotificationsAdapter",
           "line": 92,
           "bindings": 1,
-          "writes": 6
+          "writes": 7
         },
         {
-          "owner": "installNotificationsAdapter.FunctionExpression@113",
-          "line": 114,
+          "owner": "installNotificationsAdapter.FunctionExpression@121",
+          "line": 122,
           "bindings": 1,
-          "writes": 2
+          "writes": 3
         }
       ],
       "parseErrors": [],
-      "asynchronous": 18,
-      "unassignedWrites": 33
+      "asynchronous": 17,
+      "unassignedWrites": 35
     },
     {
       "path": "apps/app/src/prototype/own-notice-question.ts",
@@ -46684,7 +46688,8 @@
       "allocatedModels": [
         "Application",
         "ReviewedWorkflowLauncher",
-        "NativeGoogleHostArtifact"
+        "NativeGoogleHostArtifact",
+        "CloudQaLauncher"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -220408,6 +220413,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "61a46b5b3e5123e56dbbe8406d549cb4e43f94fce4d598862653124324b3a65f"
+    "sha256": "070cce29c4db252d13780aca5a0e242d6967b20057f9910f22c56da94f0d64c3"
   }
 }

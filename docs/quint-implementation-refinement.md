@@ -1163,3 +1163,17 @@ TypeScript and the 409-file mock-disabled production bundle audit.
 The native Calendar apply admission boundary around Calendar sync pause
 remains open. The scoped deletion ticket and enable replays cover their own
 state and effects.
+
+`ShadeNoticeQuestionAdmission` checks 12 closed JSDOM schedules and 59
+checkpoints. The selected review owns its final list read after its own
+dialog closes. A successor, committed shade departure, lock or visibility
+loss retires that lease. Stale completion stays silent. Current revision,
+excerpt and list failures keep their existing messages. This replay covers
+the simulated shade. Installed Android delivery and uncommitted transition
+ordering remain separate.
+
+The extended `CloudQaLauncher` replay checks 22 schedules and 175
+checkpoints. It records the reviewed pin, synthetic child preload admission
+and the Git revision observed by the parent receipt separately. An admitted
+child can have a different recorded revision, and a matching receipt can
+precede preload rejection. The production schema remains the same.

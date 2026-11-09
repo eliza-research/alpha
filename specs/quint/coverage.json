@@ -10760,7 +10760,8 @@
         "BrowserReadingState",
         "BrowserSession",
         "HostedNoticeQuestion",
-        "SourceRenewalQuestion"
+        "SourceRenewalQuestion",
+        "ShadeNoticeQuestionAdmission"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -14604,7 +14605,8 @@
         "DockClearanceOwnership",
         "MountedUpdateAdmission",
         "StartupUpdateAdmission",
-        "CanonicalNotificationTapAdmission"
+        "CanonicalNotificationTapAdmission",
+        "ShadeNoticeQuestionAdmission"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -21370,7 +21372,8 @@
       "models": [
         "FilesTree",
         "ShellNavigation",
-        "HostedNoticeQuestion"
+        "HostedNoticeQuestion",
+        "ShadeNoticeQuestionAdmission"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -32756,12 +32759,13 @@
       "models": [
         "NoticesAndCaches",
         "NotificationCollection",
-        "CanonicalNotificationTapAdmission"
+        "CanonicalNotificationTapAdmission",
+        "ShadeNoticeQuestionAdmission"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "90c26ad311249e7c3f2d5423bee5b70b9f803bdd88041322046ee0547abdd46d",
+      "sha256": "54f0fe9f96b24849f26308e796192efdb3c32630712a3720ed4047bb566933e5",
       "stateAnchors": [
         {
           "line": 10,
@@ -32816,71 +32820,55 @@
           "text": "const targetView=mapped&&isMvpView(mapped)?mapped:undefined;"
         },
         {
-          "line": 92,
-          "text": "const p=Component.prototype, render=p.renderVals, mount=p.componentDidMount, unmount=p.componentWillUnmount;"
-        },
-        {
-          "line": 102,
+          "line": 110,
           "text": "if(this.alphaNoticesBusy||!this.alphaNoticesLive||document.hidden)return;this.alphaNoticesBusy=true;const epoch=this.alphaNoticeEpoch;"
         },
         {
-          "line": 103,
+          "line": 111,
           "text": "try{const result=await native.list();if(!this.alphaNoticesLive||document.hidden||epoch!==this.alphaNoticeEpoch)return;if(result.calendarStatus==='unavailable'){if(!this.alphaCalendarAlertError)this.to"
         },
         {
-          "line": 112,
+          "line": 120,
           "text": "p.notificationSelection=function(){if(!this.S().shade||document.hidden){this.alphaNoticeSelection=undefined;return undefined;}const chosen=this.alphaNoticeSelection;return chosen?{...chosen}:undefined"
         },
         {
-          "line": 114,
+          "line": 122,
           "text": "const out=render.call(this),self=this;"
         },
         {
-          "line": 118,
-          "text": "const reviewEnded=()=>{const now=self.S();return !now.shade||now.screen==='lock'||now.screen==='off';};"
-        },
-        {
-          "line": 121,
+          "line": 126,
           "text": "const action=async(task:()=>Promise<void>)=>{try{await task();await self.refreshAlphaNotices();}catch{if(self.alphaNoticesLive&&!document.hidden){self.toast('The notification changed or could not be u"
         },
         {
-          "line": 122,
+          "line": 127,
           "text": "const shadeN=(this.alphaNotices||[]).map((n:Notice)=>{"
         },
         {
-          "line": 123,
+          "line": 128,
           "text": "const swipe=this.sw(()=>{if(n.clearable)void action(()=>native.dismiss({id:n.id,revision:n.revision,source:n.source}));else this.toast('This is an ongoing notification.');},{axis:'x'});"
         },
         {
-          "line": 124,
+          "line": 129,
           "text": "const select=()=>{this.alphaNoticeSelection=ownNotificationSelection(n);};"
         },
         {
-          "line": 129,
+          "line": 134,
           "text": "const ask=()=>{"
         },
         {
-          "line": 132,
+          "line": 138,
           "text": "const reviewed={id:n.id,revision:n.revision,source:n.source},excerpt=noticeExcerpt(n);"
         },
         {
-          "line": 133,
-          "text": "const live=()=>self.alphaNoticesLive&&!document.hidden&&!!self.S().shade&&noticeCurrent(reviewed,self.alphaNotices);"
-        },
-        {
-          "line": 134,
+          "line": 141,
           "text": "const refused=()=>{self.toast('This notification changed or is no longer shown. Nothing was added to your conversation.');void self.refreshAlphaNotices();};"
         },
         {
-          "line": 137,
-          "text": "const epoch=self.alphaNoticeEpoch;"
-        },
-        {
-          "line": 139,
+          "line": 152,
           "text": "const fresh=(await native.list()).items,same=fresh.find((row:Notice)=>row.id===reviewed.id&&row.source===reviewed.source);"
         },
         {
-          "line": 147,
+          "line": 162,
           "text": "return {...out,shadeN,clearAll:()=>{const items=(this.alphaNotices||[]).filter((n:Notice)=>n.clearable).map((n:Notice)=>({id:n.id,revision:n.revision,source:n.source}));void action(async()=>{const res"
         }
       ]
@@ -49299,7 +49287,8 @@
       "models": [
         "Application",
         "ReviewedWorkflowLauncher",
-        "NativeGoogleHostArtifact"
+        "NativeGoogleHostArtifact",
+        "CloudQaLauncher"
       ],
       "scope": "development-runtime",
       "treatment": "domain-contract-or-support",
@@ -619238,7 +619227,8 @@
         "CanonicalNotesStore",
         "CoreTurnControllers",
         "ReviewedWorkflowLauncher",
-        "NativeGoogleHostArtifact"
+        "NativeGoogleHostArtifact",
+        "CloudQaLauncher"
       ],
       "sha256": "c5368c9075aa8c7660bee01338185fbe673c9b8dd6889dd1ab01d195efa17c10"
     },
