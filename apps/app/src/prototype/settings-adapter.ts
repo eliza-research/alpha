@@ -186,8 +186,8 @@ export function updateCheckDue(checkedAt: number, now: number): boolean {
   return !(now >= checkedAt && now - checkedAt < UPDATE_CHECK_INTERVAL_MS);
 }
 /** Field updates wait for Home, outside voice, edits and foreground reviews. */
-export function automaticUpdateIdle(shell: {screen?:unknown;view?:unknown;voice?:unknown;typing?:unknown;chat?:unknown;drawer?:unknown;shade?:unknown;homeEdit?:unknown;homeAdd?:unknown;drawerMenu?:unknown}, connection: {busy?:unknown;open?:unknown}, editor: boolean): boolean {
-  return shell.screen === 'home' && !shell.view && shell.voice === 'off' && !shell.typing &&
+export function automaticUpdateIdle(shell: {screen?:unknown;view?:unknown;voice?:unknown;typing?:unknown;chat?:unknown;drawer?:unknown;shade?:unknown;homeEdit?:unknown;homeAdd?:unknown;drawerMenu?:unknown}, connection: {busy?:unknown;open?:unknown}, editor: boolean, voiceActive: boolean): boolean {
+  return voiceActive === false && shell.screen === 'home' && !shell.view && shell.voice === 'off' && !shell.typing &&
     (shell.chat === 'input' || shell.chat === 'hidden') && !shell.drawer && !shell.shade &&
     !shell.homeEdit && !shell.homeAdd && !shell.drawerMenu &&
     !connection.busy && !connection.open && !editor;
@@ -275,11 +275,14 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     if (await checkForUpdate(false) === false) throw Error('Update check unavailable');
     if (!current()) return;
     changed();
-    if (updateBusy || !automaticUpdateIdle(owner?.S?.() ?? {},connectionController.getSnapshot(),
-        !!document.querySelector('input:focus,textarea:focus,[contenteditable="true"]:focus,[data-alpha-chat-recorder],[data-alpha-subview="notes-recorder"]')))
+    const idle = () => automaticUpdateIdle(owner?.S?.() ?? {},connectionController.getSnapshot(),
+      !!document.querySelector('input:focus,textarea:focus,[contenteditable="true"]:focus,[data-alpha-chat-recorder],[data-alpha-subview="notes-recorder"]'),
+      owner?.voiceConversationActive?.() !== false);
+    if (updateBusy || !idle())
       throw Error('Current activity must finish');
     const [installed, build, pending] = await Promise.all([device.snapshot(), system.getBuildInfo(), device.updateState()]);
     if (!current()) return;
+    if (updateBusy || !idle()) throw Error('Current activity must finish');
     if (pending.pending || installed.appAutomaticUpdates !== 'supported') return;
     const update = parseUpdateManifest(savedUpdate().manifest, {versionCode: installed.appVersionCode,
       launcher: build.launcher, signerSha256: installed.appSigner});

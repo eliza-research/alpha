@@ -6226,7 +6226,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "beec81e67179e6ee8efedf522f4a0ebf3f068ccaf4bb46c94034ccc4ce13de0e",
+      "sha256": "660867841e5fd6cb20dad5fb1d68b2a3f62e703c13bc7acc09d527a146c14796",
       "stateAnchors": [
         {
           "line": 30,
@@ -6301,295 +6301,299 @@
           "text": "if(calls==null||calls.isInCall())return false;"
         },
         {
-          "line": 273,
+          "line": 271,
+          "text": "}catch(SecurityException denied){return false;}"
+        },
+        {
+          "line": 274,
           "text": "/** SHA-256 of the original certificate of Alpha's one signer (apksigner's digest), which key rotation never changes: an update manifest offers an APK only to installs of that sign"
         },
         {
-          "line": 283,
+          "line": 284,
           "text": "* A session's binding: package, versionCode, SHA-256, signer and boot. It is the session's referrer, so it sits in the record Android"
         },
         {
-          "line": 285,
+          "line": 286,
           "text": "* A build that states its commit intent ends it with /intent; automatic attempts add /automatic so a later"
         },
         {
-          "line": 288,
+          "line": 289,
           "text": "private static final java.util.regex.Pattern UPDATE_BINDING=java.util.regex.Pattern.compile(\"alpha-update://([^/]+)/([1-9][0-9]{0,17})/[0-9a-f]{64}/([0-9a-f]{64})/([0-9]+)(/intent)"
         },
         {
-          "line": 338,
+          "line": 339,
           "text": "return session!=null&&(expected.equals(String.valueOf(session.getReferrerUri()))||(expected+\"/automatic\").equals(String.valueOf(session.getReferrerUri())));"
         },
         {
-          "line": 342,
+          "line": 343,
           "text": "var record=store().read();if(record==null||record.id.equals(liveOwner))return null;"
         },
         {
-          "line": 343,
+          "line": 344,
           "text": "PackageInstaller installer=context.getPackageManager().getPackageInstaller();"
         },
         {
-          "line": 344,
+          "line": 345,
           "text": "PackageInstaller.SessionInfo session=installer.getSessionInfo(record.session);"
         },
         {
-          "line": 345,
+          "line": 346,
           "text": "var observation=ai.eliza.plugins.agent.updater.RuntimeUpdatePause.Session.PENDING;"
         },
         {
-          "line": 358,
+          "line": 359,
           "text": "var installed=context.getPackageManager().getPackageInfo(context.getPackageName(),0);"
         },
         {
-          "line": 361,
+          "line": 362,
           "text": "if(shutdownRequest>=0){AlphaLocalAgentPlugin.releaseUpdateShutdown(shutdownRequest);shutdownRequest=-1;}"
         },
         {
-          "line": 368,
+          "line": 369,
           "text": "final boolean automatic;"
         },
         {
-          "line": 374,
+          "line": 375,
           "text": "UpdateActivation(AlphaDevicePlugin owner,boolean automatic){this.owner=owner;this.automatic=automatic;waiting.addAll(updateBridges);}"
         },
         {
-          "line": 385,
+          "line": 386,
           "text": "private static final Object updateBarrier=new Object();"
         },
         {
-          "line": 386,
+          "line": 387,
           "text": "private static final java.util.Set<AlphaDevicePlugin> updateBridges=new java.util.HashSet<>();"
         },
         {
-          "line": 387,
+          "line": 388,
           "text": "private final String updateBridgeId=java.util.UUID.randomUUID().toString();"
         },
         {
-          "line": 388,
+          "line": 389,
           "text": "private static volatile UpdateActivation activation;"
         },
         {
-          "line": 391,
+          "line": 392,
           "text": "private JSObject preparation(UpdateActivation pending){return new JSObject().put(\"activationId\",pending.id).put(\"bridgeId\",updateBridgeId).put(\"automatic\",pending.automatic).put(\"p"
         },
         {
-          "line": 397,
+          "line": 398,
           "text": "// A completed barrier cannot grow. Its installer must retry preparation;"
         },
         {
-          "line": 460,
+          "line": 461,
           "text": "var session=getContext().getPackageManager().getPackageInstaller().getSessionInfo(record.session);"
         },
         {
-          "line": 487,
+          "line": 488,
           "text": "private final java.util.concurrent.ExecutorService updateWorker=java.util.concurrent.Executors.newSingleThreadExecutor();"
         },
         {
-          "line": 489,
+          "line": 490,
           "text": "private static volatile int updateSession;"
         },
         {
-          "line": 494,
+          "line": 495,
           "text": "private static volatile Intent updateConfirm;"
         },
         {
-          "line": 496,
+          "line": 497,
           "text": "private static volatile boolean updateDue;"
         },
         {
-          "line": 498,
+          "line": 499,
           "text": "private static volatile boolean updateOpen;"
         },
         {
-          "line": 499,
+          "line": 500,
           "text": "/** Automatic attempts never open Android's optional confirmation without an explicit Continue/Install tap. */"
         },
         {
-          "line": 500,
+          "line": 501,
           "text": "private static volatile boolean updateAutomatic;"
         },
         {
-          "line": 502,
+          "line": 503,
           "text": "private static volatile long updateAsked;"
         },
         {
-          "line": 504,
+          "line": 505,
           "text": "private static volatile AlphaDevicePlugin updateOwner;"
         },
         {
-          "line": 506,
+          "line": 507,
           "text": "private final android.content.BroadcastReceiver updateStatus=new android.content.BroadcastReceiver(){"
         },
         {
-          "line": 513,
+          "line": 514,
           "text": "if(binding!=null&&binding.group(4).equals(String.valueOf(updateBoot()))){updateAutomatic=binding.group(6)!=null;updateOwner=AlphaDevicePlugin.this;updateSession=id;}"
         },
         {
-          "line": 518,
+          "line": 519,
           "text": "if(inFront()&&!updateAutomatic)confirmUpdate();"
         },
         {
-          "line": 545,
+          "line": 546,
           "text": "var current=getContext().getPackageManager().getPackageInstaller().getSessionInfo(id);"
         },
         {
-          "line": 548,
+          "line": 549,
           "text": "updateAutomatic=false;updateOwner=this;updateOpen=false;updateDue=true;"
         },
         {
-          "line": 560,
+          "line": 561,
           "text": "var pending=getContext().getPackageManager().getPackageInstaller().getSessionInfo(record.session);"
         },
         {
-          "line": 582,
+          "line": 583,
           "text": "if(!updateAutomatic)confirmUpdate();"
         },
         {
-          "line": 590,
+          "line": 591,
           "text": "private static final java.util.concurrent.atomic.AtomicBoolean updating=new java.util.concurrent.atomic.AtomicBoolean();"
         },
         {
-          "line": 596,
+          "line": 597,
           "text": "private static final java.util.concurrent.atomic.AtomicInteger updatesCommitted=new java.util.concurrent.atomic.AtomicInteger();"
         },
         {
-          "line": 601,
+          "line": 602,
           "text": "// Deletes the download a killed process left (up to UPDATE_MAX_BYTES), never one in flight on another bridge."
         },
         {
-          "line": 606,
+          "line": 607,
           "text": "private volatile javax.net.ssl.HttpsURLConnection updateActive;"
         },
         {
-          "line": 615,
+          "line": 616,
           "text": "* Software update (Settings; policy in settings-adapter.ts): the one configured manifest, app.config.json"
         },
         {
-          "line": 616,
+          "line": 617,
           "text": "* updateManifestUrl as BuildConfig. Resolves {manifest} for 200 and {} for 404, which means nothing is"
         },
         {
-          "line": 617,
+          "line": 618,
           "text": "* published or the release was withdrawn. Anything else rejects; the next start, resume or tap checks again."
         },
         {
-          "line": 628,
+          "line": 629,
           "text": "try(java.io.InputStream in=connection.getInputStream()){call.resolve(new JSObject().put(\"manifest\",new String(ai.eliza.plugins.agent.connection.ConnectionTransport.readBounded(in,6"
         },
         {
-          "line": 634,
+          "line": 635,
           "text": "* Manual Install update or an automatic idle-Home attempt. An automatic attempt requires API 31+ and existing"
         },
         {
-          "line": 638,
+          "line": 639,
           "text": "* versionCode, above the installed one. API 31+ automatic sessions request USER_ACTION_NOT_REQUIRED through"
         },
         {
-          "line": 639,
+          "line": 640,
           "text": "* Android's nonprivileged self-update API. Android may still require confirmation; for an automatic session"
         },
         {
-          "line": 650,
+          "line": 651,
           "text": "Object automaticValue=call.getData().opt(\"automatic\");"
         },
         {
-          "line": 651,
+          "line": 652,
           "text": "if(automaticValue!=null&&!(automaticValue instanceof Boolean)){call.reject(\"Update request is invalid\");return;}"
         },
         {
-          "line": 652,
+          "line": 653,
           "text": "final boolean automatic=Boolean.TRUE.equals(automaticValue);"
         },
         {
-          "line": 653,
+          "line": 654,
           "text": "if(automatic){"
         },
         {
-          "line": 654,
+          "line": 655,
           "text": "String status=automaticUpdateStatus(getContext());"
         },
         {
-          "line": 660,
+          "line": 661,
           "text": "if(automatic){call.resolve(new JSObject().put(\"status\",\"permission-required\"));return;}"
         },
         {
-          "line": 667,
+          "line": 668,
           "text": "final String apkUrl=call.getString(\"apkUrl\"),sha256=call.getString(\"sha256\");final long size=call.getData().optLong(\"sizeBytes\"),versionCode=call.getData().optLong(\"versionCode\");"
         },
         {
-          "line": 678,
+          "line": 679,
           "text": "PackageInstaller installer=getContext().getPackageManager().getPackageInstaller();"
         },
         {
-          "line": 684,
+          "line": 685,
           "text": "// another lock, and a later level is unread, as is a build that is not a release: it reports the level it branched from"
         },
         {
-          "line": 685,
+          "line": 686,
           "text": "// (CODENAME is REL only on a release). There it fences until the next boot, as does a session an earlier build bound without the mark."
         },
         {
-          "line": 691,
+          "line": 692,
           "text": "for(PackageInstaller.SessionInfo listed:installer.getMySessions()){"
         },
         {
-          "line": 698,
+          "line": 699,
           "text": "if(!automatic)reopenUpdateConfirmation(pending);"
         },
         {
-          "line": 701,
+          "line": 702,
           "text": "if(automatic&&!automaticUpdateReady())throw new java.io.IOException(\"Automatic update deferred\");"
         },
         {
-          "line": 708,
+          "line": 709,
           "text": "// Android would also accept a same-versionCode reinstall; only the offered, newer build of this package goes on."
         },
         {
-          "line": 711,
+          "line": 712,
           "text": "if(archive==null||!getContext().getPackageName().equals(archive.packageName)||archive.getLongVersionCode()!=versionCode||versionCode<=BuildConfig.VERSION_CODE)throw new java.io.IOE"
         },
         {
-          "line": 713,
+          "line": 714,
           "text": "// The release verifier requires READ_CONTACTS only in the launcher manifest."
         },
         {
-          "line": 720,
+          "line": 721,
           "text": "String binding=\"alpha-update://\"+getContext().getPackageName()+\"/\"+versionCode+\"/\"+sha256+\"/\"+signer+\"/\"+updateBoot()+\"/intent\"+(automatic?\"/automatic\":\"\");"
         },
         {
-          "line": 724,
+          "line": 725,
           "text": "if(automatic&&Build.VERSION.SDK_INT>=31)params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED);"
         },
         {
-          "line": 725,
+          "line": 726,
           "text": "int id=installer.createSession(params);"
         },
         {
-          "line": 727,
+          "line": 728,
           "text": "try(PackageInstaller.Session session=installer.openSession(id)){"
         },
         {
-          "line": 730,
+          "line": 731,
           "text": "if(automatic&&!automaticUpdateReady())throw new java.io.IOException(\"Automatic update deferred\");"
         },
         {
-          "line": 732,
+          "line": 733,
           "text": "synchronized(updateBarrier){preparation=new UpdateActivation(this,automatic);activation=preparation;participants=new java.util.ArrayList<>(updateBridges);}"
         },
         {
-          "line": 741,
+          "line": 742,
           "text": "pauseOwned=true;UpdatePause.acquire(preparation.id,id,versionCode,sha256,updateBoot());"
         },
         {
-          "line": 744,
+          "line": 745,
           "text": "if(automatic&&!automaticUpdateReady())throw new java.io.IOException(\"Automatic update deferred\");"
         },
         {
-          "line": 754,
+          "line": 755,
           "text": "updateAutomatic=automatic;"
         },
         {
-          "line": 762,
+          "line": 763,
           "text": "if(!commitAttempted)try{installer.abandonSession(id);}catch(RuntimeException cleanup){failed.addSuppressed(cleanup);}"
         }
       ],
@@ -14749,7 +14753,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "85b619de8b5e407651f234ab050091b5d800b49bea670e2044a29d97b087d24f",
+      "sha256": "0329a2ec6ac2a54e245ae3aa7a2260b7b5c8996cf4dbe0dcfb17d50bd7a015ff",
       "stateAnchors": [
         {
           "line": 65,
@@ -14981,54 +14985,66 @@
         },
         {
           "line": 337,
+          "text": "const voiceActive = () => owner?.voiceConversationActive?.() !== false;"
+        },
+        {
+          "line": 338,
           "text": "const idle = () => automaticUpdateIdle(owner.S(),connectionController.getSnapshot(),"
         },
         {
           "line": 339,
-          "text": "const current = () => activationCurrent() && shell === owner && owner?.live === true && (!automatic || !editingAtFreeze && idle());"
+          "text": "!!document.querySelector('input:focus,textarea:focus,[contenteditable=\"true\"]:focus,[data-alpha-chat-recorder],[data-alpha-subview=\"notes-recorder\"]'),voiceActive());"
         },
         {
-          "line": 343,
-          "text": "const reconnect = connectionController.captureAppUpdateReconnect();"
+          "line": 340,
+          "text": "const current = () => activationCurrent() && shell === owner && owner?.live === true && !voiceActive() && (!automatic || !editingAtFreeze && idle());"
         },
         {
           "line": 344,
+          "text": "const reconnect = connectionController.captureAppUpdateReconnect();"
+        },
+        {
+          "line": 345,
           "text": "const flush = ["
         },
         {
-          "line": 353,
+          "line": 354,
           "text": "let nativeAppUpdateGate: Promise<void> | undefined;"
         },
         {
-          "line": 354,
+          "line": 355,
           "text": "const appUpdatePresentation = {"
         },
         {
-          "line": 360,
+          "line": 361,
           "text": "const capacitor = Capacitor as typeof Capacitor & {PluginHeaders?:unknown};"
         },
         {
-          "line": 363,
+          "line": 364,
           "text": "const device = registerPlugin<Parameters<typeof watchMountedAppUpdates>[0]>('AlphaDevice');"
         },
         {
-          "line": 400,
+          "line": 401,
           "text": "const { pauseLiveActivityForMock } = await import('./runtime/mock-admission');"
         },
         {
-          "line": 401,
+          "line": 402,
           "text": "const root=document.getElementById('root')!;"
         },
         {
-          "line": 408,
+          "line": 409,
           "text": "const retry=document.createElement('button');retry.textContent='Retry mock mode';"
         },
         {
-          "line": 417,
+          "line": 418,
           "text": "const notice = 'Wake listening could not be confirmed off. Turn it off in Android settings.';"
         },
         {
-          "line": 425,
+          "line": 422,
+          "text": "if (externalVoiceInvocationEnabled && isAndroid && assistantSurface) installListenerInvocation(() => shell, { authority: () => { const port=connectionController.getAppRecordClient("
+        },
+        {
+          "line": 426,
           "text": "const notice = (event as CustomEvent<unknown>).detail;"
         }
       ]
@@ -33895,7 +33911,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "dac0adc7e4ea003ef335d221d1052d940109abf9a5f4e756fd1d2310094b3fa3",
+      "sha256": "1b5b7eb1cb6b1c858cc668a575d163976dd347539358efa7e6b53d8acf59f6dc",
       "stateAnchors": [
         {
           "line": 112,
@@ -33974,6 +33990,10 @@
           "text": "export function automaticUpdateIdle(shell: {screen?:unknown;view?:unknown;voice?:unknown;typing?:unknown;chat?:unknown;drawer?:unknown;shade?:unknown;homeEdit?:unknown;homeAdd?:unk"
         },
         {
+          "line": 190,
+          "text": "return voiceActive === false && shell.screen === 'home' && !shell.view && shell.voice === 'off' && !shell.typing &&"
+        },
+        {
           "line": 192,
           "text": "!shell.homeEdit && !shell.homeAdd && !shell.drawerMenu &&"
         },
@@ -34030,123 +34050,123 @@
           "text": "async function pollAutomaticUpdate(current: () => boolean) {"
         },
         {
-          "line": 278,
-          "text": "if (updateBusy || !automaticUpdateIdle(owner?.S?.() ?? {},connectionController.getSnapshot(),"
+          "line": 280,
+          "text": "owner?.voiceConversationActive?.() !== false);"
         },
         {
-          "line": 283,
+          "line": 286,
           "text": "if (pending.pending || installed.appAutomaticUpdates !== 'supported') return;"
         },
         {
-          "line": 284,
+          "line": 287,
           "text": "const update = parseUpdateManifest(savedUpdate().manifest, {versionCode: installed.appVersionCode,"
         },
         {
-          "line": 290,
+          "line": 293,
           "text": "sizeBytes:update.sizeBytes,versionCode:update.versionCode,automatic:true});"
         },
         {
-          "line": 366,
+          "line": 369,
           "text": "/** Explicit, confirmed disconnect followed by a read-back; never retried automatically. */"
         },
         {
-          "line": 410,
+          "line": 413,
           "text": "app: native ? { version: value.appVersion, versionCode: value.versionCode, variant: value.variant, buildType: value.buildType, testMocks: value.testMocks } : { version: buildVersio"
         },
         {
-          "line": 490,
+          "line": 493,
           "text": "automaticUpdates = createAppUpdateScheduler({run:pollAutomaticUpdate,intervalMs:UPDATE_CHECK_INTERVAL_MS});"
         },
         {
-          "line": 491,
+          "line": 494,
           "text": "document.addEventListener('visibilitychange',automaticUpdateActive);"
         },
         {
-          "line": 492,
+          "line": 495,
           "text": "automaticUpdateActive();"
         },
         {
-          "line": 495,
+          "line": 498,
           "text": "if(!hasAppearancePreview(new URLSearchParams(location.search))){"
         },
         {
-          "line": 496,
+          "line": 499,
           "text": "// A read from storage or the system scheme carries a marker, so componentDidUpdate never writes it back."
         },
         {
-          "line": 497,
+          "line": 500,
           "text": "const apply=()=>{const theme=resolveAppearance(readAppearanceChoice());this.setState({theme,appearanceStorageRead:{theme}});};"
         },
         {
-          "line": 498,
+          "line": 501,
           "text": "if(!Capacitor.isNativePlatform()){"
         },
         {
-          "line": 500,
+          "line": 503,
           "text": "this.appearanceResumeListener=apply;"
         },
         {
-          "line": 503,
+          "line": 506,
           "text": "apply();"
         },
         {
-          "line": 518,
+          "line": 521,
           "text": "this.deviceResume = DailyApps.addListener('appResumed', () => { void refresh(); void refreshCapabilities(); void checkForUpdate(false)?.then(changed); automaticUpdateActive(); }).c"
         },
         {
-          "line": 519,
+          "line": 522,
           "text": "};"
         },
         {
-          "line": 525,
+          "line": 528,
           "text": "// The marker travels with React state, so queued external reads cannot echo an older theme."
         },
         {
-          "line": 526,
+          "line": 529,
           "text": "const external=this.state?.appearanceStorageRead;"
         },
         {
-          "line": 530,
+          "line": 533,
           "text": "catch { this.toast('Theme changed for this session, but could not be saved.'); }"
         },
         {
-          "line": 534,
+          "line": 537,
           "text": "automaticUpdates?.dispose(); automaticUpdates = undefined;"
         },
         {
-          "line": 535,
+          "line": 538,
           "text": "document.removeEventListener('visibilitychange',automaticUpdateActive);"
         },
         {
-          "line": 537,
+          "line": 540,
           "text": "window.removeEventListener('alpha:settings-page',this.settingsNavigation);"
         },
         {
-          "line": 729,
+          "line": 732,
           "text": "// Install update only for the version the last manifest offers this install, and an explicit check. No error or \"up to date\" claim."
         },
         {
-          "line": 730,
+          "line": 733,
           "text": "const update=parseUpdateManifest(savedUpdate().manifest,{versionCode:facts.appVersionCode,launcher,signerSha256:facts.appSigner});"
         },
         {
-          "line": 732,
+          "line": 735,
           "text": "...(update?[{...action(updateBusy==='install'?'Downloading update…':'Install update',()=>void updateAction('install',()=>device.installUpdate({apkUrl:update.apkUrl,sha256:update.sh"
         },
         {
-          "line": 945,
+          "line": 948,
           "text": "if(row.label==='Theme'&&row.kSeg){"
         },
         {
-          "line": 947,
+          "line": 950,
           "text": "const stored=readAppearanceChoice(),choice:AppearanceChoice=resolveAppearance(stored)===api.theme?stored:api.theme==='dark'?'dark':'light';"
         },
         {
-          "line": 950,
+          "line": 953,
           "text": "try{localStorage.setItem(APPEARANCE_KEY,next);}"
         },
         {
-          "line": 953,
+          "line": 956,
           "text": "owner?.setState({theme,appearanceStorageRead:{theme}});"
         }
       ]

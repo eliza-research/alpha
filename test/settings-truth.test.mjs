@@ -74,12 +74,14 @@ test('the automatic update check is due fifteen minutes after the last answer',(
 });
 test('unattended installation waits for idle Home and never interrupts foreground work',()=>{
  const home={screen:'home',view:null,voice:'off',typing:false,chat:'input',drawer:false,shade:false};
- assert.equal(m.automaticUpdateIdle(home,{},false),true);
+ assert.equal(m.automaticUpdateIdle(home,{},false,false),true);
  for(const change of [{screen:'lock'},{view:'notes'},{view:'workflows'},{voice:'listening'},{typing:true},{chat:'sheet'},{chat:'full'},{drawer:true},{shade:true},{homeEdit:true},{homeAdd:true},{drawerMenu:{packageName:'example'}}])
-  assert.equal(m.automaticUpdateIdle({...home,...change},{},false),false,JSON.stringify(change));
- for(const connection of [{busy:true},{open:true}])assert.equal(m.automaticUpdateIdle(home,connection,false),false);
- assert.equal(m.automaticUpdateIdle(home,{},true),false);
- assert.equal(m.automaticUpdateIdle({}, {},false),false);
+  assert.equal(m.automaticUpdateIdle({...home,...change},{},false,false),false,JSON.stringify(change));
+ for(const connection of [{busy:true},{open:true}])assert.equal(m.automaticUpdateIdle(home,connection,false,false),false);
+ assert.equal(m.automaticUpdateIdle(home,{},true,false),false);
+ assert.equal(m.automaticUpdateIdle({}, {},false,false),false);
+ assert.equal(m.automaticUpdateIdle({...home,chat:'hidden'}, {},false,true),false,'compact voice is active even when the legacy voice flag is off');
+ assert.equal(m.automaticUpdateIdle(home,{},false,undefined),false,'unknown voice ownership is not idle');
 });
 test('dead-end and negative Settings rows are gone from the adapter',()=>{
  for(const row of ["info('Other connectors'","info('Personality settings'","info('Runtime'","info('Display only'","info('Delivery timing'","'Last change'"])assert.ok(!source.includes(row),row);

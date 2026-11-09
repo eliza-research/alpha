@@ -35,7 +35,7 @@ async function fixture(name, code) {
   };
   window.HTMLDialogElement.prototype.close = function () { this.removeAttribute('open'); };
   const currentActivation = () => activations.indexOf(context.inspect().active?.activationId ?? '');
-  const owner = {live: true,S:()=>({screen:'home',view:null,voice:'off',typing:busy,chat:'input'})};
+  const owner = {live: true,S:()=>({screen:'home',view:null,voice:'off',typing:busy,chat:'input'}),voiceConversationActive:()=>false};
   for (const name of draftOwners) {
     owner['flush' + name + 'ForAppUpdate'] = current => {
       assert.equal(current(), true);
