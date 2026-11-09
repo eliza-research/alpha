@@ -254,8 +254,7 @@
       "apps/app/src/build-flags.ts",
       "apps/app/src/runtime/mock-admission.ts",
       "apps/app/src/browser/dev-profile.ts",
-      "apps/app/src/browser/device-controls.tsx",
-      "apps/app/src/runtime/development-transport.ts"
+      "apps/app/src/browser/device-controls.tsx"
     ],
     "abstractions": [
       "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",
@@ -464,10 +463,8 @@
     "sources": [
       "scripts/browser-cloud-dev-bridge.ts",
       "scripts/cloud-resident-host.mjs",
-      "scripts/dev-agent.mjs",
       "scripts/dev-cloud.mjs",
       "scripts/dev-local.mjs",
-      "scripts/start-local-agent.mjs",
       "scripts/start-local-voice-agent.mjs",
       "scripts/start-local-remote.mjs",
       "scripts/cloud-email-code.ts"

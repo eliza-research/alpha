@@ -190,11 +190,9 @@ When it is off (the default for `npm run build`, `npm run android:sync`,
 distribution APKs: standalone and launcher, debug and release), the build does not
 contain or expose mock mode, prototype fixture data or fixture images, the "mock"
 connection choice, the flag-only `?mode=mock`, `?fixture=1`, `?mode=dev` and `?start=`
-entry points, developer device controls, the simulated apps, the local development agent
-(`10.0.2.2:2138`) option, the Cloud Staging environment, the DevelopmentAgent fallback
-transport or the debug-only native hooks (synthetic autofill service, development
-agent and voice plugins, cleartext network configuration and fixture-package
-permissions/queries). Upgraded installs that had saved the old mock selection start at
+entry points, developer device controls, simulated apps, the Cloud Staging environment
+or debug-only native hooks (synthetic autofill service, cleartext network configuration
+and fixture-package permissions/queries). Upgraded installs that had saved the old mock selection start at
 the connection chooser instead; a saved Cloud Staging service is treated as signed out;
 paused notification collection resumes only through an explicit connection choice.
 
@@ -494,8 +492,8 @@ npm run android:build -- --test-mocks   # writes only to artifacts/test-mocks/; 
 `npm run android:build` removes `ELIZA_DEV_ALLOW_TEST_MOCKS` and
 `VITE_ELIZA_DEV_ALLOW_TEST_MOCKS` from its child environment unless `--test-mocks` is
 passed, so a value exported in your shell cannot leak mocks into distribution APKs.
-Native instrumentation that depends on the debug-only hooks (development agent bridge,
-synthetic autofill, development voice capture, cleartext host access) needs the
+Native instrumentation that depends on debug-only hooks such as synthetic autofill
+or cleartext host access needs the
 `artifacts/test-mocks/` APKs.
 
 Release signing and version use the upstream elizaOS names:

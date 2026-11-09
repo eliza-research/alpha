@@ -12,10 +12,8 @@
     "scripts/browser-cloud-dev-bridge.ts",
     "scripts/cloud-resident-host.mjs",
     "scripts/cloud-email-code.ts",
-    "scripts/dev-agent.mjs",
     "scripts/dev-cloud.mjs",
     "scripts/dev-local.mjs",
-    "scripts/start-local-agent.mjs",
     "scripts/start-local-voice-agent.mjs",
     "scripts/start-local-remote.mjs",
     "scripts/core-state-patch.mjs",
@@ -2079,25 +2077,6 @@
         {
           "line": 257,
           "text": "begin(scenario, \"(async()=>{const target=await Capacitor.Plugins.DailyApps.selectedReminder({id:\"+JSONObject.quote(id)+\"});return Capacitor.Plugins.AlphaDeletions.reviewReminder({target});})()\");"
-        }
-      ]
-    },
-    {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/DevelopmentAgentInstrumentedTest.java",
-      "sha256": "705611ddf338c675a67c2d29444482592837bc5f0028f0232219245be3e9f341",
-      "models": [
-        "Application"
-      ],
-      "scope": "test-support",
-      "treatment": "test-harness",
-      "stateAnchors": [
-        {
-          "line": 20,
-          "text": "private String evaluate(BoundedActivityScenario<MainActivity> scenario, String js) throws Exception {"
-        },
-        {
-          "line": 23,
-          "text": "private JSONObject call(BoundedActivityScenario<MainActivity> scenario, String expression) throws Exception {"
         }
       ]
     },
@@ -7894,7 +7873,7 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/MainActivity.java",
-      "sha256": "f35ee61299955a4f3a6d12fc160c4376176229fbb87c6dc9c727b3e33407ec67",
+      "sha256": "0bb102b12c71d50e362cb3a9acb0b2af6d356d59c4c6503be9dd585e4c72ce37",
       "models": [
         "Application",
         "RendererRecovery",
@@ -8723,112 +8702,6 @@
           "text": "JSONArray rect=new JSONArray(browser.child(\"(()=>{const r=document.querySelector('#alpha-user').getBoundingClientRect();return [r.x+r.width/2,r.y+r.height/2,innerWidth]})()\"));"
         }
       ]
-    },
-    {
-      "path": "android/app/src/testMocks/java/ai/elizaresearch/alphaphone/DevelopmentAgentPlugin.java",
-      "sha256": "1a3388850a6291b7f4e9625552f31d30a6289ccbbdb52478de6e29e2ea431334",
-      "models": [
-        "DevelopmentSurfaces"
-      ],
-      "scope": "development-only",
-      "treatment": "state-and-transition-projection",
-      "stateAnchors": [
-        {
-          "line": 32,
-          "text": "private DevelopmentVoiceCapture voice;"
-        },
-        {
-          "line": 33,
-          "text": "private final java.util.concurrent.atomic.AtomicLong voiceEpoch = new java.util.concurrent.atomic.AtomicLong();"
-        },
-        {
-          "line": 34,
-          "text": "private final ConcurrentHashMap<String,Long> pendingMicrophone = new ConcurrentHashMap<>();"
-        },
-        {
-          "line": 35,
-          "text": "private final java.util.concurrent.atomic.AtomicReference<String> voiceRequestId = new java.util.concurrent.atomic.AtomicReference<>();"
-        },
-        {
-          "line": 106,
-          "text": "private static final String ORIGIN = \"http://127.0.0.1:47831\";"
-        },
-        {
-          "line": 107,
-          "text": "private static final int MAX_RESPONSE = 256 * 1024;"
-        },
-        {
-          "line": 108,
-          "text": "private final ThreadPoolExecutor workers = new ThreadPoolExecutor(2, 2, 0, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(4));"
-        },
-        {
-          "line": 109,
-          "text": "private final ConcurrentHashMap<String, Request> requests = new ConcurrentHashMap<>();"
-        }
-      ],
-      "reviewStatus": "state-audit-required",
-      "integrationReview": "Domain allocation retained after merging the audit fixes. The refreshed source hash and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations."
-    },
-    {
-      "path": "android/app/src/testMocks/java/ai/elizaresearch/alphaphone/DevelopmentChatContract.java",
-      "sha256": "c1357eede3476e2b7b4bf6f04d9c21ef14e106bd0ea75e3927fbc79a1e875fff",
-      "models": [
-        "DevelopmentSurfaces"
-      ],
-      "scope": "development-only",
-      "treatment": "domain-contract-or-support",
-      "stateAnchors": [],
-      "reviewStatus": "state-audit-required",
-      "integrationReview": "Allocated to its existing domain after extraction from the previously listed adapter. Allocation is not a source-model proof; new boundaries and transitions require source-bound refinement."
-    },
-    {
-      "path": "android/app/src/testMocks/java/ai/elizaresearch/alphaphone/DevelopmentVoiceCapture.java",
-      "sha256": "3ac28cebeb08f216a7a3f779c72dda82cfea9683a9105f6d4c908438b07f967a",
-      "models": [
-        "DevelopmentSurfaces"
-      ],
-      "scope": "development-only",
-      "treatment": "state-and-transition-projection",
-      "stateAnchors": [
-        {
-          "line": 16,
-          "text": "private final Context context;"
-        },
-        {
-          "line": 17,
-          "text": "private final Consumer<JSObject> events;"
-        },
-        {
-          "line": 18,
-          "text": "private final Handler handler = new Handler(Looper.getMainLooper());"
-        },
-        {
-          "line": 19,
-          "text": "private MediaRecorder recorder;"
-        },
-        {
-          "line": 20,
-          "text": "private File file;"
-        },
-        {
-          "line": 21,
-          "text": "private String id;"
-        },
-        {
-          "line": 22,
-          "text": "private long startedAt;"
-        },
-        {
-          "line": 23,
-          "text": "private long durationMs;"
-        },
-        {
-          "line": 24,
-          "text": "private Runnable deadline;"
-        }
-      ],
-      "reviewStatus": "state-audit-required",
-      "integrationReview": "Domain allocation retained after merging the audit fixes. The refreshed source hash and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations."
     },
     {
       "path": "android/app/src/testMocks/java/ai/elizaresearch/alphaphone/SyntheticAutofillService.java",
@@ -13038,7 +12911,7 @@
     },
     {
       "path": "apps/app/src/browser/register.ts",
-      "sha256": "f49028e0f9415bcf20edda89a3fe6639ab36563ce38437a2d4aaff491b753696",
+      "sha256": "a1e0e68dee61ca24dc008eac41c40a0b8002c5552ca9ff0b8a1ba9214d18d674",
       "models": [
         "BrowserSession"
       ],
@@ -13046,31 +12919,31 @@
       "treatment": "domain-contract-or-support",
       "stateAnchors": [
         {
-          "line": 21,
+          "line": 20,
           "text": "const voice = new BrowserVoice();"
         },
         {
-          "line": 26,
+          "line": 23,
           "text": "const device = new BrowserDevice();"
         },
         {
-          "line": 29,
+          "line": 26,
           "text": "const files = new BrowserFiles();"
         },
         {
-          "line": 32,
+          "line": 29,
           "text": "const daily = new BrowserDaily(files);"
         },
         {
-          "line": 34,
+          "line": 31,
           "text": "const calendar=new BrowserCalendar();"
         },
         {
-          "line": 36,
+          "line": 33,
           "text": "const notifications=new BrowserNotifications(daily,calendar);"
         },
         {
-          "line": 42,
+          "line": 39,
           "text": "const browserSurface = new BrowserSurface();"
         }
       ]
@@ -15723,7 +15596,7 @@
     },
     {
       "path": "apps/app/src/prototype/agent-adapter.ts",
-      "sha256": "8bf683a65a4010137a8fb9df9abb543ef90272155445bc07963d16527777e332",
+      "sha256": "758ab90f377245a7ce340860aff51ae531f76b7ac329ecc6abf45f894b33ebe1",
       "models": [
         "Application",
         "AssistantConversation",
@@ -15735,1259 +15608,1239 @@
       "treatment": "state-and-transition-projection",
       "stateAnchors": [
         {
-          "line": 77,
+          "line": 76,
           "text": "const alphaDevice = registerPlugin<{ snapshot(): Promise<Record<string, unknown>>; openSettings(input: { page: string }): Promise<{ status: string; specific?: boolean }> }>('AlphaDevice');"
         },
         {
-          "line": 78,
+          "line": 77,
           "text": "const elizaSystem = registerPlugin<{ setFlashlight(input: { enabled: boolean }): Promise<{ available: boolean; enabled: boolean }> }>('ElizaSystem');"
         },
         {
-          "line": 91,
+          "line": 90,
           "text": "let pageLeaving=false;"
         },
         {
-          "line": 105,
+          "line": 104,
           "text": "let identity:unknown;try{identity=JSON.parse(key);}catch{return {};}"
         },
         {
-          "line": 107,
+          "line": 106,
           "text": "const slot=JSON.stringify([...identity.slice(0,3),null]),draft=shell.composerDraft;"
         },
         {
-          "line": 116,
+          "line": 115,
           "text": "let saved;try{saved=await(await assistantDraftStore(slot)).read(signal);}catch{return {};}"
         },
         {
-          "line": 129,
+          "line": 128,
           "text": "const writes:Set<Promise<void>>=shell.firstSendSlotWrites??=new Set();"
         },
         {
-          "line": 130,
+          "line": 129,
           "text": "const task=(async()=>{"
         },
         {
-          "line": 132,
+          "line": 131,
           "text": "const from=await assistantDraftStore(slot),to=await assistantDraftStore(conversation);"
         },
         {
-          "line": 133,
+          "line": 132,
           "text": "for(const delay of [0,150,600,1500]){"
         },
         {
-          "line": 139,
+          "line": 138,
           "text": "const saved=await from.read();"
         },
         {
-          "line": 165,
+          "line": 164,
           "text": "const from=JSON.parse(slot),to=JSON.parse(key);"
         },
         {
-          "line": 170,
+          "line": 169,
           "text": "const draft=shell.composerDraft;draft.release();"
         },
         {
-          "line": 171,
+          "line": 170,
           "text": "const key=draft.binding;"
         },
         {
-          "line": 206,
+          "line": 205,
           "text": "const attempt:SendAttempt|null=shell.sendAttempt??null;if(attempt)attempt.transportCalled=true;"
         },
         {
-          "line": 207,
+          "line": 206,
           "text": "const task=run().catch(error=>{if(attempt&&isPreDispatchError(error))attempt.preDispatch=true;throw error;});"
         },
         {
-          "line": 239,
+          "line": 238,
           "text": "const REFUSED_BEFORE_OUTPUT=new Set(['insufficient_credits','missing_capability','no_provider','provider_issue','rate_limited']);"
         },
         {
-          "line": 242,
+          "line": 241,
           "text": "const notices=reply&&typeof reply==='object'?(reply as {notices?:unknown}).notices:undefined;"
         },
         {
-          "line": 250,
+          "line": 249,
           "text": "const after=connectionController.getSnapshot();"
         },
         {
-          "line": 255,
+          "line": 254,
           "text": "const p = Component.prototype;"
         },
         {
-          "line": 256,
+          "line": 255,
           "text": "let activeShell:Shell|null=null,notesRecovery:AbortController|null=null;"
         },
         {
-          "line": 263,
+          "line": 262,
           "text": "const s=shell.S();"
         },
         {
-          "line": 266,
+          "line": 265,
           "text": "const notesLeave=views.notes.onLeave;"
         },
         {
-          "line": 268,
+          "line": 267,
           "text": "const originalMount = p.componentDidMount;"
         },
         {
-          "line": 269,
+          "line": 268,
           "text": "const originalUpdate = p.componentDidUpdate;"
         },
         {
-          "line": 270,
+          "line": 269,
           "text": "const originalUnmount = p.componentWillUnmount;"
         },
         {
-          "line": 271,
+          "line": 270,
           "text": "const originalSet = p.vset;"
         },
         {
-          "line": 272,
+          "line": 271,
           "text": "const originalApi = p.api;"
         },
         {
-          "line": 273,
+          "line": 272,
           "text": "const originalVals = p.renderVals;"
         },
         {
-          "line": 274,
+          "line": 273,
           "text": "const messageReviews=new BrowserReviews();"
         },
         {
-          "line": 275,
+          "line": 274,
           "text": "const notesRender = views.notes.render;"
         },
         {
-          "line": 280,
+          "line": 279,
           "text": "for(const input of document.querySelectorAll<HTMLTextAreaElement>('textarea[data-alpha-composer]')){"
         },
         {
-          "line": 284,
+          "line": 283,
           "text": "const notesDataset=(name:'notesStorageState'|'notesDraftState',value:string)=>{document.documentElement.dataset[name]=value;};"
         },
         {
-          "line": 293,
+          "line": 292,
           "text": "let records:Shell[];try{records=JSON.parse(JSON.stringify(list));}catch{return;}"
         },
         {
-          "line": 294,
+          "line": 293,
           "text": "const savedRaw=typeof shell.notesRaw==='string'?shell.notesRaw:'';"
         },
         {
-          "line": 296,
+          "line": 295,
           "text": "let saved:Shell[]=[];try{const parsed=JSON.parse(savedRaw).records;if(Array.isArray(parsed))saved=parsed;}catch{/* no saved collection */}"
         },
         {
-          "line": 307,
+          "line": 306,
           "text": "let draft:NotesDraft|null;"
         },
         {
-          "line": 314,
+          "line": 313,
           "text": "const current=shell.notesStore.list,next=applyNotesDraft(current,draft),conflicts=notesDraftConflicts(current,draft);"
         },
         {
-          "line": 317,
+          "line": 316,
           "text": "const conflicted=()=>{"
         },
         {
-          "line": 342,
+          "line": 341,
           "text": "const raw=shell.notesAgentRaw,store=shell.notesStore,epoch=shell.notesSourceEpoch;"
         },
         {
-          "line": 350,
+          "line": 349,
           "text": "const collection=!!shell.notesOpenFailed,captures=new WeakMap<object,{saved:string|null;draft:string|null}>();"
         },
         {
-          "line": 355,
+          "line": 354,
           "text": "const saved=await secureConnectionStore.readRaw(SECURE_NOTES_SLOT),draft=await secureConnectionStore.readRaw(SECURE_NOTES_DRAFT_SLOT);abort?.throwIfAborted();"
         },
         {
-          "line": 356,
+          "line": 355,
           "text": "const legacy=Object.fromEntries(LEGACY_NOTES_SOURCE_KEYS.map(key=>[key,localStorage.getItem(key)]));"
         },
         {
-          "line": 357,
+          "line": 356,
           "text": "const raw=JSON.stringify({saved,draft,legacy,editor:shell.vget('notes').list}),snapshot={revision:crypto.randomUUID(),raw};captures.set(snapshot,{saved,draft});"
         },
         {
-          "line": 361,
+          "line": 360,
           "text": "abort?.throwIfAborted();const snapshot=expected.snapshot,captured=snapshot&&captures.get(snapshot);"
         },
         {
-          "line": 363,
+          "line": 362,
           "text": "const [slot,value]=collection?[SECURE_NOTES_SLOT,captured.saved]:[SECURE_NOTES_DRAFT_SLOT,captured.draft];"
         },
         {
-          "line": 375,
+          "line": 374,
           "text": "const read=proposal.readReply;if(!read||shell.readReplyLeases?.has(proposal.id))return;"
         },
         {
-          "line": 376,
+          "line": 375,
           "text": "const origin=read.origin;"
         },
         {
-          "line": 382,
+          "line": 381,
           "text": "const home=proposal.reviewDestination==='home',notes=proposal.reviewDestination==='notes',calendar=proposal.reviewDestination==='calendar';"
         },
         {
-          "line": 386,
+          "line": 385,
           "text": "for(const [proposalId,lease] of this.readReplyLeases||[]){"
         },
         {
-          "line": 395,
+          "line": 394,
           "text": "const hint=receipt.readReply,lease=hint&&shell.readReplyLeases?.get(hint.proposalId);"
         },
         {
-          "line": 400,
+          "line": 399,
           "text": "const reply=await connectionController.completeReadReply(hint,lease.binding,lease.controller.signal);current();"
         },
         {
-          "line": 414,
+          "line": 413,
           "text": "const connection=connectionController.getSnapshot(),currentContext=alphaClient.getState().context;"
         },
         {
-          "line": 417,
+          "line": 416,
           "text": "const key=blocked?null:JSON.stringify([connection.session,connection.history?.revision,currentContext]);"
         },
         {
-          "line": 423,
+          "line": 422,
           "text": "const controller=shell.pendingActionRecoveryAbort=new AbortController();"
         },
         {
-          "line": 425,
+          "line": 424,
           "text": "const current=()=>bound()&&shell.pendingActionRecoveryKey===key;"
         },
         {
-          "line": 426,
+          "line": 425,
           "text": "const scheduleExpiry=()=>{"
         },
         {
-          "line": 447,
+          "line": 446,
           "text": "for(const proposal of proposals)if(proposal.readReply)retainReadReply(shell,proposal);"
         },
         {
-          "line": 450,
+          "line": 449,
           "text": "const pending=new Map(proposals.map(proposal=>[proposal.id,proposal]));"
         },
         {
-          "line": 451,
+          "line": 450,
           "text": "const msgs=previous.msgs.map((message:Shell)=>{"
         },
         {
-          "line": 452,
+          "line": 451,
           "text": "const card=message.card;"
         },
         {
-          "line": 454,
+          "line": 453,
           "text": "const proposal=pending.get(card.proposalId);"
         },
         {
-          "line": 464,
+          "line": 463,
           "text": "const existing=new Set(msgs.map((message:Shell)=>message.card?.proposalId));"
         },
         {
-          "line": 479,
+          "line": 478,
           "text": "const snapshot=connectionController.getSnapshot(),notice=snapshot.replyNotice||'',before=shell.stoppedReplyNotice||'';"
         },
         {
-          "line": 480,
+          "line": 479,
           "text": "const replaced=shell.stoppedReplyHistory!==history||shell.stoppedReplySession!==snapshot.session?.sessionId;"
         },
         {
-          "line": 485,
+          "line": 484,
           "text": "const pending=notice===STOPPED_REPLY_NOTICE||notice===STOPPED_CANCELLED_NOTICE,sessionId=snapshot.session?.sessionId;"
         },
         {
-          "line": 490,
+          "line": 489,
           "text": "const reported=!notice&&!replaced&&!!before&&before!==STOPPED_REPLY_NOTICE&&before!==STOPPED_CANCELLED_NOTICE;"
         },
         {
-          "line": 492,
+          "line": 491,
           "text": "const msgs=previous.msgs||[],at=msgs.findIndex((message:Shell)=>message.stoppedReplyNotice);"
         },
         {
-          "line": 495,
+          "line": 494,
           "text": "const bubble={id:notice?'stopped-reply-notice':crypto.randomUUID(),from:'agent',text,interrupted:true,...(notice?{stoppedReplyNotice:true}:{}),"
         },
         {
-          "line": 502,
+          "line": 501,
           "text": "const view=alphaViewKey(target);"
         },
         {
-          "line": 509,
+          "line": 508,
           "text": "const attempt={...navigation.attempt,current:()=>{navigation.attempt.current();current?.();}};"
         },
         {
-          "line": 510,
+          "line": 509,
           "text": "const delivered=await navigation.client.deliver(results,attempt,(view,check)=>{"
         },
         {
-          "line": 511,
+          "line": 510,
           "text": "const commit=(chat?:string,onCommitted?:(value:import('../runtime/alpha-client').ContextEnvelope)=>void)=>new Promise<boolean>((resolve,reject)=>{"
         },
         {
-          "line": 516,
+          "line": 515,
           "text": "const chat=shell.S().chat;"
         },
         {
-          "line": 528,
+          "line": 527,
           "text": "const port=connectionController.getAppRecordClient(),key=canonicalNotesKey(port);"
         },
         {
-          "line": 530,
+          "line": 529,
           "text": "const previous=shell.canonicalNotesUi;shell.canonicalNotesUi=null;shell.canonicalNotesKey=key;previous?.retire();"
         },
         {
-          "line": 533,
+          "line": 532,
           "text": "let binding:CanonicalNotesUi;"
         },
         {
-          "line": 534,
+          "line": 533,
           "text": "const paint=()=>{if(shell.live&&shell.canonicalNotesUi===binding)shell.setState({},()=>context(shell));};"
         },
         {
-          "line": 555,
+          "line": 554,
           "text": "const active=shell.live&&!document.hidden&&!shell.pageSuspended&&shell.S().view==='notes';"
         },
         {
-          "line": 556,
+          "line": 555,
           "text": "const key=active?JSON.stringify([owner,shell.notesSourceEpoch]):null;"
         },
         {
-          "line": 560,
+          "line": 559,
           "text": "const controller=new AbortController();shell.previousNotesProbe=controller;"
         },
         {
-          "line": 562,
+          "line": 561,
           "text": "const probe=isAndroid?devicePreviousNotesAvailability(secureConnectionStore,controller.signal,current):browserPreviousNotesAvailability(browserNotesPort,controller.signal,current);"
         },
         {
-          "line": 566,
+          "line": 565,
           "text": "const first=store.list[0],target=first?await store.target(first.id):null;"
         },
         {
-          "line": 570,
+          "line": 569,
           "text": "const revision=await notesDraftBase(store.raw);if(!current())throw new DOMException('Notes source changed.','AbortError');"
         },
         {
-          "line": 576,
+          "line": 575,
           "text": "const draftTask=shell.notesDraftTask,openingEpoch=shell.notesSourceEpoch;"
         },
         {
-          "line": 583,
+          "line": 582,
           "text": "let saved:unknown=null;try{saved=JSON.parse(shell.notesRaw).records;}catch{/* no saved collection */}"
         },
         {
-          "line": 587,
+          "line": 586,
           "text": "const previous=shell.canonicalNotesUi;shell.canonicalNotesUi=null;shell.canonicalNotesKey=null;previous?.retire();"
         },
         {
-          "line": 594,
+          "line": 593,
           "text": "const epoch=shell.notesSourceEpoch,signal=shell.notesOpenAbort.signal,current=()=>shell.live&&shell.notesSourceMode==='legacy'&&shell.notesSourceEpoch===epoch&&previousNotesOwnerKey()===owner;"
         },
         {
-          "line": 597,
+          "line": 596,
           "text": "const store=isAndroid?await openExistingDeviceNotes(secureConnectionStore,localStorage,signal,current):await openExistingBrowserNotes(browserNotesPort,signal,current);"
         },
         {
-          "line": 598,
+          "line": 597,
           "text": "if(!current())return;const observation=await previousNotesObservation(store,current);if(!current())return;shell.notesStore=store;shell.notesRaw=store.raw;shell.notesLegacySource=observation;"
         },
         {
-          "line": 602,
+          "line": 601,
           "text": "let draft:NotesDraft|null=null;"
         },
         {
-          "line": 621,
+          "line": 620,
           "text": "const s = shell.S();"
         },
         {
-          "line": 622,
+          "line": 621,
           "text": "const view = s.view || 'home';"
         },
         {
-          "line": 624,
+          "line": 623,
           "text": "const notes = view === 'notes' ? shell.vget('notes') : null;"
         },
         {
-          "line": 625,
+          "line": 624,
           "text": "const selected = notes?.list?.find((note: Shell) => note.id === notes.open)?.id;"
         },
         {
-          "line": 626,
+          "line": 625,
           "text": "const selectedRecord=notes?.list?.find((note:Shell)=>note.id===selected);"
         },
         {
-          "line": 627,
+          "line": 626,
           "text": "const selectedKey=shell.notesSourceMode==='canonical'?null:selectedRecord?JSON.stringify(selectedRecord):null;"
         },
         {
-          "line": 636,
+          "line": 635,
           "text": "const previousNotesScope=view==='notes'&&shell.notesSourceMode==='legacy'?(shell.notesLegacySource??{kind:'legacy-app-notes-source',id:'previous-notes',accountId:'device-local-legacy'}):undefined;"
         },
         {
-          "line": 637,
+          "line": 636,
           "text": "let providerSelection = view === 'browser' ? shell.browserSelection?.() : undefined;"
         },
         {
-          "line": 641,
+          "line": 640,
           "text": "const state = shell.vget('photos');"
         },
         {
-          "line": 645,
+          "line": 644,
           "text": "const state = shell.vget('inbox');"
         },
         {
-          "line": 652,
+          "line": 651,
           "text": "const state = shell.vget(view);"
         },
         {
-          "line": 667,
+          "line": 666,
           "text": "const calendarDay=view==='calendar'?shell.calendarDayObservation?.():undefined;"
         },
         {
-          "line": 698,
+          "line": 697,
           "text": "const connection=connectionController.getSnapshot(),session=connection.session?.sessionId;"
         },
         {
-          "line": 699,
+          "line": 698,
           "text": "let draftBindingAfterPaint=false;"
         },
         {
-          "line": 701,
+          "line": 700,
           "text": "const preserveStartupDraft=!this.connectionSession&&!!session&&!connection.startupResolved&&typeof this.startupDraft==='string'&&this.startupDraft===String(this.S().draft||'');"
         },
         {
-          "line": 716,
+          "line": 715,
           "text": "const history = connectionController.getSnapshot().history;"
         },
         {
-          "line": 737,
+          "line": 736,
           "text": "const delivery=connectionController.getSnapshot().conversationDelivery;"
         },
         {
-          "line": 740,
+          "line": 739,
           "text": "const currentSession=connectionController.getSnapshot().session;"
         },
         {
-          "line": 754,
+          "line": 753,
           "text": "const store=this.notesStore,epoch=this.notesSourceEpoch,current=()=>this.live&&this.notesSourceMode==='legacy'&&this.notesSourceEpoch===epoch&&this.notesStore===store;"
         },
         {
-          "line": 757,
+          "line": 756,
           "text": "const update=reconcileNotesEditor(this.notesRaw,this.vget('notes').list,this.notesStore.raw,this.notesStore.list);"
         },
         {
-          "line": 763,
+          "line": 762,
           "text": "const open=this.vget('notes').open,gone=update.list&&open!=null&&!update.list.some((note:Shell)=>note.id===open);"
         },
         {
-          "line": 779,
+          "line": 778,
           "text": "const dialog = Array.from(document.querySelectorAll<HTMLDialogElement>('dialog[open]')).at(-1);"
         },
         {
-          "line": 782,
+          "line": 781,
           "text": "const panel=modalPanels().at(-1);"
         },
         {
-          "line": 806,
+          "line": 805,
           "text": "const connection = connectionController.getSnapshot();"
         },
         {
-          "line": 822,
+          "line": 821,
           "text": "const after = connectionController.getSnapshot();"
         },
         {
-          "line": 831,
-          "text": "const preference = localStorage.getItem('alpha.connection.selection.v1');"
-        },
-        {
-          "line": 842,
-          "text": "const { createDevelopmentTransport } = await import('../runtime/development-transport');"
-        },
-        {
-          "line": 843,
-          "text": "const transport = await createDevelopmentTransport(async operation => {"
-        },
-        {
-          "line": 846,
-          "text": "const target = operation.view;"
-        },
-        {
-          "line": 855,
-          "text": "if (this.live) { const send=transport.send.bind(transport);transport.send=input=>trackDispatch(this,()=>send(input));alphaClient.attachVerifiedTransport(transport); }"
-        },
-        {
-          "line": 862,
+          "line": 832,
           "text": "const result=await DailyApps.reminderOperationReceipt({operation,operationId,bindingHash});signal.throwIfAborted();"
         },
         {
-          "line": 893,
+          "line": 863,
           "text": "const identities=await files.reviewedIdentities(paths,signal);"
         },
         {
-          "line": 902,
+          "line": 872,
           "text": "const ownerSession=connectionController.getSnapshot().session;"
         },
         {
-          "line": 910,
+          "line": 880,
           "text": "const client=createAospTelephony(registerPlugin<AlphaTelephonyPlugin>('AlphaTelephony'),true);"
         },
         {
-          "line": 913,
+          "line": 883,
           "text": "const handoff=await client.dial(operation.target.number);"
         },
         {
-          "line": 914,
+          "line": 884,
           "text": "const dialResult:PhoneDialResult={kind:'phone-dial',status:handoff.status,handler:handoff.status==='handed-off'?handoff.handler:null,contact:false};"
         },
         {
-          "line": 919,
+          "line": 889,
           "text": "const plugin=registerPlugin<AlphaTelephonyPlugin>('AlphaTelephony'),client=createAospTelephony(plugin,true);"
         },
         {
-          "line": 922,
+          "line": 892,
           "text": "const status=await client.status();current();"
         },
         {
-          "line": 923,
+          "line": 893,
           "text": "const selectedSim=status.subscriptions?.find(sim=>sim.id===operation.subscriptionId);"
         },
         {
-          "line": 925,
+          "line": 895,
           "text": "const cancel=()=>{void plugin.cancelSmsReview({operationId}).catch(()=>{});};"
         },
         {
-          "line": 934,
+          "line": 904,
           "text": "const clockSession=connectionController.getSnapshot().session;const clockEnrollment=JSON.stringify(connectionController.getWorkflowDeviceTarget());"
         },
         {
-          "line": 935,
+          "line": 905,
           "text": "const {type,...request}=operation;"
         },
         {
-          "line": 936,
+          "line": 906,
           "text": "const result=browserDevProfile?await DailyApps.clockHandoff({...request,reviewed:true}):null;"
         },
         {
-          "line": 939,
+          "line": 909,
           "text": "const status=clockResult.status==='opened'?'succeeded':clockResult.status==='unknown'?'unknown':'failed';"
         },
         {
-          "line": 943,
+          "line": 913,
           "text": "const mapsResult=readMapsSelection(operation);signal.throwIfAborted();context(this);"
         },
         {
-          "line": 956,
+          "line": 926,
           "text": "const photosView:unknown=operation;"
         },
         {
-          "line": 961,
+          "line": 931,
           "text": "let photosViewResult;"
         },
         {
-          "line": 976,
+          "line": 946,
           "text": "let photoLibraryResult;"
         },
         {
-          "line": 988,
+          "line": 958,
           "text": "const cancel=()=>{void calendar.cancelAgent({operationId}).catch(()=>{});};signal.addEventListener('abort',cancel,{once:true});"
         },
         {
-          "line": 989,
+          "line": 959,
           "text": "let result:{status:string;result?:unknown};try{signal.throwIfAborted();result=await calendar.executeAgent({operation,operationId,journalIdentity});}finally{signal.removeEventListener('abort',cancel);}"
         },
         {
-          "line": 992,
+          "line": 962,
           "text": "const calendarResult=validateCalendarResult(operation,result.result);"
         },
         {
-          "line": 1007,
+          "line": 977,
           "text": "const organize:unknown=operation;"
         },
         {
-          "line": 1019,
+          "line": 989,
           "text": "const execute=()=>this.notesStore.execute(operation,operationId,signal,current);"
         },
         {
-          "line": 1022,
+          "line": 992,
           "text": "const notesResult=operation.type!=='notes_delete'?await execute():await withNotesDeletionLock(async()=>{"
         },
         {
-          "line": 1023,
+          "line": 993,
           "text": "current();const list=this.notesStore.list,index=list.findIndex((n:Shell)=>n.id===operation.target.noteId);"
         },
         {
-          "line": 1025,
+          "line": 995,
           "text": "const target=await this.notesStore.target(operation.target.noteId);"
         },
         {
-          "line": 1027,
+          "line": 997,
           "text": "const note=list[index],voice=this.api('notes')?.trashVoiceNoteWithRecording;"
         },
         {
-          "line": 1030,
+          "line": 1000,
           "text": "const result=note.kind==='voice'&&note.audio&&typeof voice==='function'?await voice(note,target,operationId,index,execute):"
         },
         {
-          "line": 1037,
+          "line": 1007,
           "text": "const uncertain=error instanceof NotesCommitUncertain;"
         },
         {
-          "line": 1052,
+          "line": 1022,
           "text": "const calendar=registerPlugin<{readAgenda(input:unknown):Promise<{status:string;events:unknown[]}>}>('AlphaCalendar');"
         },
         {
-          "line": 1053,
+          "line": 1023,
           "text": "const result=await calendar.readAgenda({operationId,source:agendaSource,operation});current();"
         },
         {
-          "line": 1055,
+          "line": 1025,
           "text": "const events=await Promise.all(result.events.map(async(event:any)=>({...event,revision:await workflowSha([event.id,event.calendarId,event.title,event.start,event.end,event.allDay])})));"
         },
         {
-          "line": 1060,
+          "line": 1030,
           "text": "const {reminders}=await DailyApps.listReminders();current();"
         },
         {
-          "line": 1068,
+          "line": 1038,
           "text": "const notes=this.canonicalNotesUi;if(!notes?.current)return {status:'failed',summary:'Notes is unavailable. Review the selected notes again.'};"
         },
         {
-          "line": 1069,
+          "line": 1039,
           "text": "const rows=(notes.notes() as StickyNote[]).slice(),snapshot=[];"
         },
         {
-          "line": 1071,
+          "line": 1041,
           "text": "const before=selectedText();"
         },
         {
-          "line": 1083,
+          "line": 1053,
           "text": "const result=await calendar.readWorkflowRange({calendarIds:operation.calendarIds,start:operation.start,end:operation.end,timeZone:operation.timeZone,maximumEvents:operation.maximumEvents});current();"
         },
         {
-          "line": 1085,
+          "line": 1055,
           "text": "const events=await Promise.all(result.events.map(async event=>({...event,revision:await workflowSha([event.id,event.calendarId,event.title,event.start,event.end,event.allDay])})));"
         },
         {
-          "line": 1094,
+          "line": 1064,
           "text": "const result=await notices.postWorkflow({operationId,bindingHash,title:operation.title,body:operation.body,route:workflowRoute});"
         },
         {
-          "line": 1096,
+          "line": 1066,
           "text": "const status=result.status==='succeeded'?'succeeded':result.status==='failed'?'failed':'unknown';"
         },
         {
-          "line": 1100,
+          "line": 1070,
           "text": "const speechAbort=new AbortController(),stop=()=>speechAbort.abort();signal.addEventListener('abort',stop,{once:true});window.addEventListener('alpha:stop-workflow-speech',stop);"
         },
         {
-          "line": 1102,
+          "line": 1072,
           "text": "const unsubscribe=alphaClient.subscribe(()=>{try{currentSpeech();}catch(error){speechAbort.abort(error);}});"
         },
         {
-          "line": 1108,
+          "line": 1078,
           "text": "const existing = this.vget('notes').list.find((note: Shell) => note.id === operationId);"
         },
         {
-          "line": 1110,
+          "line": 1080,
           "text": "const note = { id: operationId, kind: 'text', title: operation.title, body: operation.body, pinned: false, when: 'Now', createdAt:Date.now(), modifiedAt:Date.now() };"
         },
         {
-          "line": 1111,
+          "line": 1081,
           "text": "const saved = await this.vset('notes', { list: [note, ...this.vget('notes').list] }, {keepSelection:true});"
         },
         {
-          "line": 1115,
+          "line": 1085,
           "text": "const support=await DailyApps.surfaceInfo();signal.throwIfAborted();"
         },
         {
-          "line": 1120,
+          "line": 1090,
           "text": "const reminderResult=validateReminderCreateResult(operation,result.result,operationId);"
         },
         {
-          "line": 1125,
+          "line": 1095,
           "text": "const target=await DailyApps.selectedReminder({id:operation.target.reminderId});signal.throwIfAborted();"
         },
         {
-          "line": 1132,
+          "line": 1102,
           "text": "const queued=await deletions.reviewAgentReminder({operationId,bindingHash,operation,journalIdentity});"
         },
         {
-          "line": 1141,
+          "line": 1111,
           "text": "const reminderResult=validateReminderResult(operation,result.result);"
         },
         {
-          "line": 1145,
+          "line": 1115,
           "text": "const at = Date.parse(operation.dueAt);"
         },
         {
-          "line": 1147,
+          "line": 1117,
           "text": "const result = await DailyApps.scheduleReminder({ id: operationId, title: operation.title, body: '', at });"
         },
         {
-          "line": 1160,
+          "line": 1130,
           "text": "const browserSession=connectionController.getSnapshot().session;"
         },
         {
-          "line": 1161,
+          "line": 1131,
           "text": "const present=await this.browserNavigateApproved(operation.url, signal, true);"
         },
         {
-          "line": 1163,
+          "line": 1133,
           "text": "const show=()=>{"
         },
         {
-          "line": 1171,
+          "line": 1141,
           "text": "const stop=alphaClient.subscribe(()=>{if(alphaClient.getState().pending)return;stop();setTimeout(()=>{try{show();}catch{/* A retired tab keeps its journaled receipt. */}},0);});"
         },
         {
-          "line": 1177,
+          "line": 1147,
           "text": "const opening = this.draftBindingTask;"
         },
         {
-          "line": 1179,
+          "line": 1149,
           "text": "const writes: Set<Promise<void>> = new Set(this.firstSendSlotWrites);"
         },
         {
-          "line": 1181,
+          "line": 1151,
           "text": "const exact = () => current() && this.draftBindingTask === opening &&"
         },
         {
-          "line": 1187,
+          "line": 1157,
           "text": "const ready = this.notesReady;"
         },
         {
-          "line": 1188,
+          "line": 1158,
           "text": "const draft = this.notesDraftTask;"
         },
         {
-          "line": 1189,
+          "line": 1159,
           "text": "const canonical = this.canonicalNotesUi;"
         },
         {
-          "line": 1190,
+          "line": 1160,
           "text": "const store = this.notesStore;"
         },
         {
-          "line": 1191,
+          "line": 1161,
           "text": "const exact = () => current() && this.notesReady === ready && this.notesDraftTask === draft &&"
         },
         {
-          "line": 1204,
+          "line": 1174,
           "text": "const notes=this.canonicalNotesUi;this.canonicalNotesUi=null;notes?.retire();this.notesSourceEpoch=(this.notesSourceEpoch??0)+1;"
         },
         {
-          "line": 1239,
+          "line": 1209,
           "text": "const pending=this.notesStore.replace(patch.list);"
         },
         {
-          "line": 1240,
+          "line": 1210,
           "text": "const committedRaw=this.notesLocalRaw=this.notesStore.raw;"
         },
         {
-          "line": 1250,
+          "line": 1220,
           "text": "const deferred=this.notesDraftDeferred;if(deferred&&!this.notesPending){this.notesDraftDeferred=null;setTimeout(()=>{if(this.live)void resumeNotesDraft(this,deferred);},0);}"
         },
         {
-          "line": 1254,
+          "line": 1224,
           "text": "const full=error instanceof NotesStorageFull||isStorageFull(error);if(full)this.notesStorageFull=true;"
         },
         {
-          "line": 1277,
+          "line": 1247,
           "text": "const api = originalApi.call(this, key);"
         },
         {
-          "line": 1289,
+          "line": 1259,
           "text": "signal.throwIfAborted();let unsubscribe=()=>{};"
         },
         {
-          "line": 1290,
+          "line": 1260,
           "text": "const finish=(error?:Error)=>{unsubscribe();signal.removeEventListener('abort',cancel);error?reject(error):resolve();};"
         },
         {
-          "line": 1291,
+          "line": 1261,
           "text": "const cancel=()=>finish(new DOMException('Workflow cancelled','AbortError'));"
         },
         {
-          "line": 1292,
+          "line": 1262,
           "text": "const check=()=>{const state=alphaClient.getState();if(state.context.sensitive)finish(Error('Return to the device before generating a workflow result.'));else if(!state.pending)finish();};"
         },
         {
-          "line": 1300,
+          "line": 1270,
           "text": "const expectedSession=alphaClient.getState().session||connectionController.getSnapshot().session,expectedRevision=alphaClient.getState().context.revision;"
         },
         {
-          "line": 1311,
+          "line": 1281,
           "text": "const list=this.notesStore.list;"
         },
         {
-          "line": 1313,
+          "line": 1283,
           "text": "const text=input.text||'';"
         },
         {
-          "line": 1315,
+          "line": 1285,
           "text": "const existing=list.find((note:Shell)=>note.id===input.operationId);"
         },
         {
-          "line": 1317,
+          "line": 1287,
           "text": "const note={id:input.operationId,kind:'text',title:'Workflow note',body:text,pinned:false,when:'Today',createdAt:Date.now(),workflowStep:input.operationId};"
         },
         {
-          "line": 1328,
+          "line": 1298,
           "text": "const current=connectionController.getSnapshot().session;"
         },
         {
-          "line": 1363,
+          "line": 1333,
           "text": "const mark=(card:Shell)=>shell.live&&shell.setState((previous:Shell)=>({msgs:previous.msgs.map((m:Shell)=>m.id===message.id&&m.card?{...m,card:{...m.card,...card}}:m)}));"
         },
         {
-          "line": 1365,
+          "line": 1335,
           "text": "const ready=()=>['cloud','direct'].includes(String(connectionController.getSnapshot().residentInference));"
         },
         {
-          "line": 1366,
+          "line": 1336,
           "text": "const available=await new Promise<boolean>(resolve=>{"
         },
         {
-          "line": 1367,
+          "line": 1337,
           "text": "let stop=()=>{};const timer=setTimeout(()=>{stop();resolve(ready());},10_000);"
         },
         {
-          "line": 1371,
+          "line": 1341,
           "text": "const cloud=selectedCloudName();"
         },
         {
-          "line": 1379,
+          "line": 1349,
           "text": "p.canReplyMessage=function(message:Shell){const target=messageTarget(message);return !!target&&!this.S().typing&&!this.draftSendPending&&connectionController.messageTargetCurrent(target);};"
         },
         {
-          "line": 1385,
+          "line": 1355,
           "text": "const origin=document.querySelector<HTMLTextAreaElement>('textarea[data-alpha-composer]:not([disabled])');"
         },
         {
-          "line": 1387,
+          "line": 1357,
           "text": "const before=shell.S(),binding=typedSendBinding(),previousFocus=document.activeElement,events=new AbortController();"
         },
         {
-          "line": 1388,
+          "line": 1358,
           "text": "let eligible=true,unsubscribe=()=>{};"
         },
         {
-          "line": 1389,
+          "line": 1359,
           "text": "const retire=()=>{eligible=false;events.abort();unsubscribe();};"
         },
         {
-          "line": 1395,
+          "line": 1365,
           "text": "const restore=()=>{"
         },
         {
-          "line": 1396,
+          "line": 1366,
           "text": "const now=shell.S(),active=document.activeElement,selected=connectionController.getSnapshot();"
         },
         {
-          "line": 1397,
+          "line": 1367,
           "text": "const current=eligible&&shell.live&&!document.hidden&&!selected.open&&(!selected.busy||selected.backgroundWork===true)&&typedSendBinding()===binding&&now.view===before.view&&now.screen===before.screen"
         },
         {
-          "line": 1401,
+          "line": 1371,
           "text": "const input=document.querySelector<HTMLTextAreaElement>('textarea[data-alpha-composer]:not([disabled])');"
         },
         {
-          "line": 1408,
+          "line": 1378,
           "text": "const out = originalVals.call(this);"
         },
         {
-          "line": 1409,
+          "line": 1379,
           "text": "const composeTarget=this.messageEditTarget||this.messageReplyTarget;"
         },
         {
-          "line": 1429,
+          "line": 1399,
           "text": "const draft=this.composerDraft?.state;"
         },
         {
-          "line": 1432,
+          "line": 1402,
           "text": "const connection=connectionController.getSnapshot();"
         },
         {
-          "line": 1435,
+          "line": 1405,
           "text": "const residentPending=residentAlwaysPresent&&!connection.session&&connection.kind==='recovering'?agentPendingText(connection):'';"
         },
         {
-          "line": 1438,
+          "line": 1408,
           "text": "const onDraft=out.onDraft;"
         },
         {
-          "line": 1440,
+          "line": 1410,
           "text": "const connection=connectionController.getSnapshot(),current=String(this.S().draft||'');"
         },
         {
-          "line": 1453,
+          "line": 1423,
           "text": "const live:Shell[]=this.S().msgs||[];"
         },
         {
-          "line": 1455,
+          "line": 1425,
           "text": "const shownNotices=collapseSystemNotices(live);"
         },
         {
-          "line": 1460,
+          "line": 1430,
           "text": "const c=m.c||{};"
         },
         {
-          "line": 1464,
+          "line": 1434,
           "text": "const message=live.find(item=>item.card===c);if(!message)return m;"
         },
         {
-          "line": 1465,
+          "line": 1435,
           "text": "const ic=out.ic||{},busy=!!this.decliningProposal||!!this.pendingActionApproval;"
         },
         {
-          "line": 1475,
+          "line": 1445,
           "text": "const parsed=workflowReplyText(m.text);if(parsed.text===m.text)return m;"
         },
         {
-          "line": 1481,
+          "line": 1451,
           "text": "const turn=!!this.S().typing;"
         },
         {
-          "line": 1486,
+          "line": 1456,
           "text": "const style = out.sbColor === 'var(--alpha-white)' ? SystemBarsStyle.Dark : SystemBarsStyle.Light;"
         },
         {
-          "line": 1493,
+          "line": 1463,
           "text": "const facts:TileFacts=this.S().q?.tileFacts||{};"
         },
         {
-          "line": 1516,
+          "line": 1486,
           "text": "const result = await elizaSystem.setFlashlight({ enabled: this.flashlightOn !== true });"
         },
         {
-          "line": 1529,
+          "line": 1499,
           "text": "const page = key ? tileSettingsPages[key] : undefined;"
         },
         {
-          "line": 1531,
+          "line": 1501,
           "text": "try { if (!page) throw Error('No settings page'); const notice = broaderPageNotice(page, await alphaDevice.openSettings({ page })); if (notice) this.toast(notice); }"
         },
         {
-          "line": 1547,
+          "line": 1517,
           "text": "mark?.('conversation-selection');const binding=await connectionController.prepareVoiceConversation(signal);signal.throwIfAborted();"
         },
         {
-          "line": 1557,
+          "line": 1527,
           "text": "input.assertCurrent();const target=alphaViewKey(input.viewId);"
         },
         {
-          "line": 1559,
+          "line": 1529,
           "text": "const current=()=>{input.assertCurrent();if(!this.live||document.hidden||!connectionController.voiceConversationCurrent(input.binding))throw Error('The voice conversation changed.');};"
         },
         {
-          "line": 1560,
+          "line": 1530,
           "text": "let delivered=false;try{"
         },
         {
-          "line": 1561,
+          "line": 1531,
           "text": "const prepared=Object.hasOwn(input,'navigationPrepared')||Object.hasOwn(input,'navigationBinding')||Object.hasOwn(input,'completedActionHandoffId');"
         },
         {
-          "line": 1563,
+          "line": 1533,
           "text": "const capture=connectionController.captureViewNavigation(this.voiceConversationContext(input.binding));"
         },
         {
-          "line": 1572,
+          "line": 1542,
           "text": "const {text,turnId,signal,binding}=input;let acceptedContext=input.context;"
         },
         {
-          "line": 1574,
+          "line": 1544,
           "text": "const current=()=>{signal.throwIfAborted();input.assertCurrent();context(this);if(!belongs())throw Error('The voice conversation changed.');};"
         },
         {
-          "line": 1577,
+          "line": 1547,
           "text": "const navigation=connectionController.captureViewNavigation(input.context),userId=crypto.randomUUID(),streamId=crypto.randomUUID();let streamed=false;"
         },
         {
-          "line": 1589,
+          "line": 1559,
           "text": "let provisionalSeen=false;"
         },
         {
-          "line": 1596,
+          "line": 1566,
           "text": "current();const identity=reply.messageBinding;"
         },
         {
-          "line": 1602,
+          "line": 1572,
           "text": "const userMessageId=reply.userMessageId;"
         },
         {
-          "line": 1609,
+          "line": 1579,
           "text": "const delivered=await deliverChatNavigation(this,navigation,reply.actionResults,current,input.navigation);"
         },
         {
-          "line": 1610,
+          "line": 1580,
           "text": "const nextContext=input.navigation?.finish(delivered);if(nextContext)acceptedContext=nextContext;"
         },
         {
-          "line": 1613,
+          "line": 1583,
           "text": "const results=await connectionController.continueRequestedCamera(reply.userMessageId,signal);"
         },
         {
-          "line": 1614,
+          "line": 1584,
           "text": "for(const result of results)this.agentSay(result.summary,undefined,{id:`device-receipt:${result.proposalId}`,deviceReceipt:true});"
         },
         {
-          "line": 1618,
+          "line": 1588,
           "text": "for(const proposal of reply.proposals||[]){retainReadReply(this,proposal,identity,reply.userMessageId);this.agentSay(proposal.description,proposalCard(proposal),undefined,belongs);}"
         },
         {
-          "line": 1624,
+          "line": 1594,
           "text": "let pendingNotice=false;"
         },
         {
-          "line": 1632,
+          "line": 1602,
           "text": "const review=!!reply.proposals?.length||pendingNotice;"
         },
         {
-          "line": 1641,
+          "line": 1611,
           "text": "const before=this.S(),reply=this.messageReplyTarget,edit=this.messageEditTarget;"
         },
         {
-          "line": 1643,
+          "line": 1613,
           "text": "if(this.stopVoiceConversation)context(this);const expectedContext=JSON.stringify(alphaClient.getState().context);"
         },
         {
-          "line": 1644,
+          "line": 1614,
           "text": "const binding=this.stopVoiceConversation?sendBinding():undefined,draft=String(before.draft||''),view=before.view;"
         },
         {
-          "line": 1646,
+          "line": 1616,
           "text": "let s = this.S(); const text = String(argument ?? s.draft);"
         },
         {
-          "line": 1650,
+          "line": 1620,
           "text": "const fromComposer=argument===undefined;"
         },
         {
-          "line": 1654,
+          "line": 1624,
           "text": "const editTarget:ConversationMessageTarget|undefined=this.messageEditTarget,replyTarget:ConversationMessageTarget|undefined=fromComposer?this.messageReplyTarget:undefined,editView=s.view;"
         },
         {
-          "line": 1668,
+          "line": 1638,
           "text": "const sourceDraft=fromComposer&&this.reviewedSourceDraft?.draft===text?sourceOf(this.reviewedSourceDraft.source):undefined;"
         },
         {
-          "line": 1674,
+          "line": 1644,
           "text": "const revision=alphaClient.getState().context.revision,connection=connectionController.getSnapshot(),sessionId=connection.session?.sessionId,conversationId=connection.history?.conversationId;"
         },
         {
-          "line": 1676,
+          "line": 1646,
           "text": "const heldText=String(s.draft||'');let heldKey:string|undefined;"
         },
         {
-          "line": 1682,
+          "line": 1652,
           "text": "const reviewedSource=fromComposer?this.reviewedSourceDraft:null;if(fromComposer)this.reviewedSourceDraft=null;"
         },
         {
-          "line": 1684,
+          "line": 1654,
           "text": "const sameChat=()=>connectionController.getSnapshot().session?.sessionId===sessionId;"
         },
         {
-          "line": 1685,
+          "line": 1655,
           "text": "const attempt:SendAttempt=this.sendAttempt={transportCalled:false,preDispatch:false,streamed:false};"
         },
         {
-          "line": 1686,
+          "line": 1656,
           "text": "const userId=crypto.randomUUID(),streamedId=crypto.randomUUID();let streamed=false;"
         },
         {
-          "line": 1693,
+          "line": 1663,
           "text": "const replaceStream=(value:string,streaming=true)=>this.setState((previous:Shell)=>({msgs:previous.msgs.map((message:Shell)=>message.id===streamedId?{...message,text:value,streaming}:message)}));"
         },
         {
-          "line": 1694,
+          "line": 1664,
           "text": "let streamFrame=0,latestStream:string|undefined;"
         },
         {
-          "line": 1698,
+          "line": 1668,
           "text": "let navigation:ReturnType<typeof connectionController.captureViewNavigation>|undefined,readyNavigation:readonly unknown[]|undefined;"
         },
         {
-          "line": 1699,
+          "line": 1669,
           "text": "const deliverNavigation=(results:readonly unknown[]|undefined)=>deliverChatNavigation(this,navigation,results);"
         },
         {
-          "line": 1706,
+          "line": 1676,
           "text": "const sourceSession=connectionController.getSnapshot().session;"
         },
         {
-          "line": 1712,
+          "line": 1682,
           "text": "const showStatus=(event:Event)=>{if(this.live&&!streamed&&this.sendAttempt===attempt)this.setState({turnStatus:(event as CustomEvent<string>).detail});};"
         },
         {
-          "line": 1731,
+          "line": 1701,
           "text": "const identity=reply.messageBinding;"
         },
         {
-          "line": 1736,
+          "line": 1706,
           "text": "const planCard=planActionCard(reply.planAction);"
         },
         {
-          "line": 1752,
+          "line": 1722,
           "text": "let cameraOpened=false,cameraReceipts=0;"
         },
         {
-          "line": 1754,
+          "line": 1724,
           "text": "for (const proposal of reply.proposals || []) {retainReadReply(this,proposal,identity,reply.userMessageId);this.agentSay(proposal.description,proposalCard(proposal));}"
         },
         {
-          "line": 1760,
+          "line": 1730,
           "text": "const delivered=await deliverNavigation(reply.actionResults);"
         },
         {
-          "line": 1763,
+          "line": 1733,
           "text": "const results=await connectionController.continueRequestedCamera(reply.userMessageId,new AbortController().signal);"
         },
         {
-          "line": 1765,
+          "line": 1735,
           "text": "for(const result of results)if(this.live)this.agentSay(result.summary,undefined,{id:`device-receipt:${result.proposalId}`,deviceReceipt:true});"
         },
         {
-          "line": 1769,
+          "line": 1739,
           "text": "const cameraReview=cameraOpened&&alphaClient.getState().context.view==='camera'&&this.S().msgs.some((m:Shell)=>m.card?.proposalId&&!m.card.done);"
         },
         {
-          "line": 1776,
+          "line": 1746,
           "text": "if(identity&&completedActions?.length)this.setState({},()=>{if(this.live&&sameChat())for(const receipt of completedActions)publishCommittedDeviceChanges(receipt,alphaClient,identity.session);});"
         },
         {
-          "line": 1778,
+          "line": 1748,
           "text": "let opened=false;"
         },
         {
-          "line": 1780,
+          "line": 1750,
           "text": "const message=opened?'The screen opened, but the conversation response was interrupted. Check history before sending again.':e instanceof Error?e.message:'The agent could not complete this request.';"
         },
         {
-          "line": 1793,
+          "line": 1763,
           "text": "const recorded=e&&typeof e==='object'?e as {userMessageId?:unknown;messageBinding?:unknown}:{};"
         },
         {
-          "line": 1796,
+          "line": 1766,
           "text": "const reconciling=!!connectionController.getSnapshot().replyNotice&&e instanceof AlphaClientError&&e.code==='cancelled';"
         },
         {
-          "line": 1805,
+          "line": 1775,
           "text": "const failureKind=(e as {failureKind?:unknown}).failureKind as string,limit=(e as {serviceLimit?:unknown}).serviceLimit;"
         },
         {
-          "line": 1808,
+          "line": 1778,
           "text": "const planCard=planActionCard((e as {planAction?:unknown}).planAction)??managePlan;"
         },
         {
-          "line": 1810,
+          "line": 1780,
           "text": "const beforeOutput=limit!==undefined||REFUSED_BEFORE_OUTPUT.has(failureKind);"
         },
         {
-          "line": 1817,
+          "line": 1787,
           "text": "const recoveryText=message==='The agent request failed. Check connection and action history before sending another request.'?'Sorry, I couldn’t finish that reply.':message;"
         },
         {
-          "line": 1823,
+          "line": 1793,
           "text": "const noticeBinding=recorded.messageBinding&&typeof recorded.messageBinding==='object'?recorded.messageBinding as {conversationId?:unknown;session?:unknown}:null;"
         },
         {
-          "line": 1825,
+          "line": 1795,
           "text": "if(noticeCurrent())for(const [index,notice] of replyNotices(e).entries()){"
         },
         {
-          "line": 1836,
+          "line": 1806,
           "text": "const delivered=(previous.msgs||[]).find((message:Shell)=>message.id===identity.id);"
         },
         {
-          "line": 1839,
+          "line": 1809,
           "text": "const chat = previous.chat === 'full' ? 'full' : 'sheet';"
         },
         {
-          "line": 1851,
+          "line": 1821,
           "text": "const sessionId=connectionController.getSnapshot().session?.sessionId;"
         },
         {
-          "line": 1853,
+          "line": 1823,
           "text": "let result:{ok:boolean;message:string};"
         },
         {
-          "line": 1877,
+          "line": 1847,
           "text": "let id:unknown;"
         },
         {
-          "line": 1885,
+          "line": 1855,
           "text": "const review=card.sourceSummary,recording=recordingSourceOf(review.source);"
         },
         {
-          "line": 1886,
+          "line": 1856,
           "text": "const recordingNote=recording&&this.vget('notes').list.find((n:Shell)=>n.id===recording.noteId);"
         },
         {
-          "line": 1887,
+          "line": 1857,
           "text": "const expectedRecording=recordingNote&&JSON.stringify(recordingNote);"
         },
         {
-          "line": 1893,
+          "line": 1863,
           "text": "const update=(title:string,sub:string)=>{if(this.live)this.setState({msgs:this.S().msgs.map((m:Shell)=>m.id===message.id?{...m,card:{...m.card,done:true,title,sub}}:m)});};"
         },
         {
-          "line": 1895,
+          "line": 1865,
           "text": "const canonical=this.notesSourceMode!=='legacy'&&!recording?this.canonicalNotesUi:null;"
         },
         {
-          "line": 1899,
+          "line": 1869,
           "text": "const saved=await canonical.saveCard(fields.title?fields.title+(fields.body?'\\n'+fields.body:''):fields.body,this.api('notes'));"
         },
         {
-          "line": 1905,
+          "line": 1875,
           "text": "const existing=this.vget('notes').list;"
         },
         {
-          "line": 1931,
+          "line": 1901,
           "text": "const expectedTarget=notesTarget(card.reviewNoteTarget);"
         },
         {
-          "line": 1932,
+          "line": 1902,
           "text": "const store=this.notesStore,expectedContext=JSON.stringify(alphaClient.getState().context),expectedSession=JSON.stringify(session);"
         },
         {
-          "line": 1937,
+          "line": 1907,
           "text": "current();const target=await store.target(expectedTarget.noteId);current();"
         },
         {
-          "line": 1944,
+          "line": 1914,
           "text": "const approval=this.pendingActionApproval=new AbortController();"
         },
         {
-          "line": 1947,
+          "line": 1917,
           "text": "const sessionId = session?.sessionId;"
         },
         {
-          "line": 1948,
+          "line": 1918,
           "text": "const beforeView = this.S().view;"
         },
         {
-          "line": 1949,
+          "line": 1919,
           "text": "let receipt;"
         },
         {
-          "line": 1950,
+          "line": 1920,
           "text": "const readLease=this.readReplyLeases?.get(card.proposalId);"
         },
         {
-          "line": 1980,
+          "line": 1950,
           "text": "const result = await DailyApps.perform({ action: 'voice' });"
         },
         {
-          "line": 1987,
+          "line": 1957,
           "text": "const out = notesRender({ ...state, record: false }, api);"
         },
         {
-          "line": 1992,
+          "line": 1962,
           "text": "const failed=Boolean((activeShell?.notesStorageFailed&&document.documentElement.dataset.notesStorageState!=='opening')||activeShell?.notesStore?.needsRecovery);"
         }
       ],
@@ -34537,10 +34390,10 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "e948a4fe801399c43cb12fac24a94e6d5bc30fcb1a49f04adf954e845d2bed80",
+      "sha256": "c3b4c1dbf292304f05ec6024866fe71e16070a3b63339c378eb01eacf30f695d",
       "stateAnchors": [
         {
-          "line": 1104,
+          "line": 1105,
           "text": "window.dispatchEvent(new CustomEvent(STARTUP_PERMISSIONS_REOPEN, {detail:{permission:'microphone'}}));"
         }
       ],
@@ -38542,7 +38395,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "a66bbbcffd88bc5138fd37f3475d2753aa9b45d95e8c37d2cef37d8b3aa122e4",
+      "sha256": "c49f5cf1e8986a52842d8a272617c16e1e788017483eaebf7076b68db85cb41c",
       "stateAnchors": [],
       "integrationReview": "2026-11-09 UI and browser-return delta reviewed against existing domain models and new ChatAttachments/BrowserGoogleReturn contracts; see ui-return-review-20261109.md. Source-model refinement and device acceptance remain separate. Domain allocation retained after merged fixes. Source identity and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations."
     },
@@ -39107,103 +38960,6 @@
           "text": "export const developmentCloudRealtimeVoiceEnabled=import.meta.env!==undefined&&import.meta.env.DEV===true&&(browserCloudResidentEnabled||import.meta.env.VITE_ELIZA_DEV_ALLOW_TEST_MOCKS==='1')&&!Capaci"
         }
       ]
-    },
-    {
-      "path": "apps/app/src/runtime/development-transport.ts",
-      "sha256": "b3c9b901ca1b3ca9444d2749b0b1d328ae4e934a0b9674491b11bccf5dadd1e6",
-      "models": [
-        "DevelopmentSurfaces"
-      ],
-      "scope": "development-only",
-      "treatment": "domain-contract-or-support",
-      "stateAnchors": [
-        {
-          "line": 39,
-          "text": "const DevelopmentAgent = registerPlugin<{"
-        },
-        {
-          "line": 48,
-          "text": "const allowedViews = new Set<AlphaView>(DEVELOPMENT_PROPOSAL_VIEWS);"
-        },
-        {
-          "line": 81,
-          "text": "const status = await developmentAgentStatus();"
-        },
-        {
-          "line": 94,
-          "text": "const origin = new URL(status.providerOrigin);"
-        },
-        {
-          "line": 97,
-          "text": "const active = new Set<string>();"
-        },
-        {
-          "line": 98,
-          "text": "const pending = new Map<"
-        },
-        {
-          "line": 113,
-          "text": "const cancel = () => {"
-        },
-        {
-          "line": 118,
-          "text": "const result = await DevelopmentAgent.chat({"
-        },
-        {
-          "line": 131,
-          "text": "const proposals: ActionProposal[] = [];"
-        },
-        {
-          "line": 132,
-          "text": "for (const wire of result.proposals) {"
-        },
-        {
-          "line": 133,
-          "text": "const operation = validateOperation(wire.operation);"
-        },
-        {
-          "line": 146,
-          "text": "const handoff=findViewActionHandoff([wire.navigation]);"
-        },
-        {
-          "line": 147,
-          "text": "const view=handoff?.viewId==='chat'?'home':handoff?.viewId==='automations'?'workflows':handoff?.viewId;"
-        },
-        {
-          "line": 150,
-          "text": "const record:{title:string;body:string;at?:number}=operation.type==='reminder_create'?{title:operation.fields.title,body:operation.fields.body,at:operation.fields.schedule.at}:operation.type==='open_v"
-        },
-        {
-          "line": 152,
-          "text": "const proposal: ActionProposal = {"
-        },
-        {
-          "line": 170,
-          "text": "const stored = pending.get(proposal.id);"
-        },
-        {
-          "line": 180,
-          "text": "const operation=validateOperation({ ...stored.operation });"
-        },
-        {
-          "line": 183,
-          "text": "const result = await dispatch(operation);"
-        },
-        {
-          "line": 197,
-          "text": "for (const requestId of active)"
-        }
-      ]
-    },
-    {
-      "path": "apps/app/src/runtime/development-view-contract.ts",
-      "sha256": "492d7e0c82389216c4801018a3c226eea851fd10808e9eb60e05019587758f93",
-      "models": [
-        "DevelopmentSurfaces"
-      ],
-      "scope": "development-only",
-      "treatment": "domain-contract-or-support",
-      "stateAnchors": []
     },
     {
       "path": "apps/app/src/runtime/device-actions.ts",
@@ -46136,18 +45892,6 @@
       ]
     },
     {
-      "path": "backend/loader.ts",
-      "models": [
-        "ResidentRuntime",
-        "DevelopmentRuntimeLoader"
-      ],
-      "scope": "application",
-      "treatment": "domain-contract-or-support",
-      "reviewStatus": "state-audit-required",
-      "sha256": "183bf250d4f6b6db5a4e672bb60993ebaebef62dfa0eee21bc0d5e1dc76f2150",
-      "stateAnchors": []
-    },
-    {
       "path": "backend/managed-google-agent-broker.ts",
       "sha256": "7063562ae9f4305828afb1252ce3d9d9868b6a28ae7ff4d308adcc1741409965",
       "models": [
@@ -46761,367 +46505,6 @@
         {
           "line": 44,
           "text": "const data=await boundedServiceJson(response);current();input.signal.throwIfAborted();"
-        }
-      ]
-    },
-    {
-      "path": "backend/proposal-action.ts",
-      "sha256": "53d294ae0792e4683f7ae30b03aae3f70bda872251939154fe12febb84787c89",
-      "models": [
-        "WorkflowExecution"
-      ],
-      "scope": "application",
-      "treatment": "state-and-transition-projection",
-      "stateAnchors": [
-        {
-          "line": 12,
-          "text": "export const turns=new AsyncLocalStorage<{revision:number;proposals:any[];signal:AbortSignal}>();"
-        },
-        {
-          "line": 15,
-          "text": "const turn=turns.getStore();"
-        },
-        {
-          "line": 19,
-          "text": "const types=new Map([['DEVICE_NOTE_CREATE','create_note'],['DEVICE_REMINDER_CREATE','reminder_create']]);"
-        },
-        {
-          "line": 20,
-          "text": "export const proposalActions:Action[]=deviceActionTools.filter(action=>types.has(action.name)).map(action=>({"
-        },
-        {
-          "line": 26,
-          "text": "const turn=current(),checked=validateActionParams(action,options?.parameters);"
-        },
-        {
-          "line": 28,
-          "text": "const parameters=checked.params;"
-        },
-        {
-          "line": 29,
-          "text": "const operation=validateDeviceOperation(resolveReadableReminderOperation(parameters.operation));"
-        },
-        {
-          "line": 32,
-          "text": "const title=operation.type==='create_note'?operation.title:operation.type==='reminder_create'?operation.fields.title:'';"
-        },
-        {
-          "line": 33,
-          "text": "const body=operation.type==='create_note'?operation.body:operation.type==='reminder_create'?operation.fields.body:'';"
-        },
-        {
-          "line": 34,
-          "text": "const proposal={id:randomUUID(),title:'Preview '+(operation.type==='create_note'?'note: ':'reminder: ')+title,description:'Development simulation. Review the exact operation; no note will be saved and"
-        },
-        {
-          "line": 41,
-          "text": "const views=createViewsAction(async({view,clientId,handoffId,completedAction,signal,isAuthorized})=>{"
-        },
-        {
-          "line": 46,
-          "text": "export const navigationAction:Action={...views,handler:async(...args)=>{"
-        },
-        {
-          "line": 47,
-          "text": "const turn=current(),result=await views.handler!(...args);"
-        },
-        {
-          "line": 48,
-          "text": "const navigation={...result,actionName:'VIEWS'},handoff=findViewActionHandoff([navigation]);"
-        },
-        {
-          "line": 50,
-          "text": "const view=handoff.viewId==='chat'?'home':handoff.viewId==='automations'?'workflows':handoff.viewId;"
-        },
-        {
-          "line": 58,
-          "text": "const installation=beginViewInstallation(runtime,'development-navigation');"
-        },
-        {
-          "line": 60,
-          "text": "const id=local==='home'?'chat':local==='workflows'?'automations':local;"
-        },
-        {
-          "line": 68,
-          "text": "const diagnosticActions=[...proposalActions,navigationAction];"
-        },
-        {
-          "line": 73,
-          "text": "const scope={revision:context?.revision??0,proposals:[] as any[],signal},message=messageFor(text,context),results=[];"
-        },
-        {
-          "line": 75,
-          "text": "for(const call of calls.slice(0,4)){"
-        },
-        {
-          "line": 76,
-          "text": "const action=diagnosticActions.find(action=>action.name===call.function?.name);if(!action)continue;"
-        },
-        {
-          "line": 77,
-          "text": "let parameters;try{parameters=JSON.parse(call.function?.arguments??'');}catch{continue;}"
-        },
-        {
-          "line": 78,
-          "text": "try{const result=await action.handler!(runtime,message,undefined,{parameters});if(result?.success&&result.text)results.push(result.text);}catch{signal.throwIfAborted();}"
-        },
-        {
-          "line": 90,
-          "text": "const agentId=randomUUID(),ownerId=randomUUID(),roomId=randomUUID(),worldId=randomUUID();"
-        },
-        {
-          "line": 91,
-          "text": "const runtime={agentId,getRoom:async()=>({worldId}),getWorld:async()=>({id:worldId,metadata:{roles:{[ownerId]:'OWNER'},ownership:{ownerId}}}),getSetting:()=>undefined,getEntityById:async()=>null,repor"
-        },
-        {
-          "line": 92,
-          "text": "let closed=false;const dispose=installDevelopmentViews(runtime);"
-        },
-        {
-          "line": 93,
-          "text": "const session=createDevelopmentPreparationSession(runtime,(text,context)=>({id:randomUUID(),agentId,entityId:ownerId,roomId,content:{text,metadata:{viewClientId:roomId,viewDelivery:'completed-action',"
-        }
-      ]
-    },
-    {
-      "path": "backend/runtime.ts",
-      "sha256": "473697be9f99a5e6e6c89746504fe572426eaedebb52312514cbea62970263b5",
-      "models": [
-        "Application",
-        "ResidentRuntime"
-      ],
-      "scope": "application",
-      "treatment": "state-and-transition-projection",
-      "stateAnchors": [
-        {
-          "line": 19,
-          "text": "const identityFile=resolve(dataDir,'identity.json');let ids:any;"
-        },
-        {
-          "line": 26,
-          "text": "const unsupportedEmbeddingTypes=new Set<string>([ModelType.TEXT_EMBEDDING,ModelType.TEXT_EMBEDDING_BATCH]);"
-        },
-        {
-          "line": 27,
-          "text": "const textProvider={...openai,"
-        },
-        {
-          "line": 31,
-          "text": "const assistant=createAssistantPlugin();"
-        },
-        {
-          "line": 34,
-          "text": "const runtime=new AgentRuntime({character:createCharacter({id:ids.agent,name:'Alpha Development',bio:['You are a local-development Alpha assistant. Remember the current conversation. When asked to cre"
-        },
-        {
-          "line": 35,
-          "text": "let closed=false,busy=false;let uninstallViews:(()=>void)|undefined;"
-        },
-        {
-          "line": 36,
-          "text": "const close=async()=>{if(closed)return;closed=true;try{uninstallViews?.();await runtime.stop();}finally{await runtime.close();}};"
-        },
-        {
-          "line": 38,
-          "text": "const assertNoEmbeddingProvider=()=>{"
-        },
-        {
-          "line": 50,
-          "text": "const world=await runtime.getWorld(ids.world);if(!world)throw new Error('Missing development world');"
-        },
-        {
-          "line": 58,
-          "text": "const messageFor=(text:string,context?:{view:string;revision:number;selectedObject?:{kind:string;id:string;revision?:string}})=>{"
-        },
-        {
-          "line": 59,
-          "text": "const observation=context?parseClientTurnObservation({view:context.view,revision:context.revision,sensitive:false,...(context.selectedObject?{selectedObject:{...context.selectedObject}}:{})}):undefine"
-        },
-        {
-          "line": 71,
-          "text": "const message=messageFor(text,context);"
-        },
-        {
-          "line": 72,
-          "text": "const scope={revision:context?.revision||0,proposals:[] as any[],signal};"
-        },
-        {
-          "line": 73,
-          "text": "const result=await turns.run(scope,()=>runtime.messageService!.handleMessage(runtime,message,undefined,{abortSignal:signal}));"
-        }
-      ]
-    },
-    {
-      "path": "backend/test-actions.mjs",
-      "models": [
-        "DevelopmentHost"
-      ],
-      "scope": "product-state-and-contract",
-      "treatment": "domain-contract-or-support",
-      "sha256": "4c5380d28c311aef8a8c2ca53f829f879fdf882aa10c9c9eebfd6b40c59c1467",
-      "stateAnchors": [
-        {
-          "line": 11,
-          "text": "const root=fileURLToPath(new URL('../',import.meta.url)),dir=await mkdtemp(path.join(tmpdir(),'canonical-development-actions-'));"
-        },
-        {
-          "line": 14,
-          "text": "const fixture=path.join(dir,'fixture.ts'),runner=path.join(dir,'build.ts');"
-        },
-        {
-          "line": 20,
-          "text": "const runtime={agentId:'44444444-4444-4444-8444-444444444444',getRoom:async()=>({worldId:'world'}),getWorld:async()=>({id:'world',metadata:{roles:{'11111111-1111-4111-8111-111111111111':'OWNER'},owner"
-        },
-        {
-          "line": 21,
-          "text": "const message={id:'33333333-3333-4333-8333-333333333333',entityId:'11111111-1111-4111-8111-111111111111',roomId:'22222222-2222-4222-8222-222222222222',content:{text:'Create a preview',metadata:{viewCl"
-        },
-        {
-          "line": 22,
-          "text": "const scope=()=>({revision:4,proposals:[],signal:new AbortController().signal});"
-        },
-        {
-          "line": 23,
-          "text": "const invoke=(action,turn,parameters)=>turns.run(turn,()=>action.handler(runtime,message,undefined,{parameters}));"
-        },
-        {
-          "line": 25,
-          "text": "for(const action of proposalActions)assert.deepEqual(action.parameters,deviceActionTools.find(a=>a.name===action.name).parameters);"
-        },
-        {
-          "line": 26,
-          "text": "const [note,reminder]=proposalActions;"
-        },
-        {
-          "line": 28,
-          "text": "let turn=scope();assert.equal((await invoke(note,turn,{operation:{type:'create_note',title:'Preview',body:'Exact body'},operationKey:'note-1',reason:'Requested preview'})).success,false);assert.equal("
-        },
-        {
-          "line": 31,
-          "text": "const reminderParams=(localDate,localTime,timeZone)=>({operation:{type:'reminder_create',fields:{title:'Preview reminder',body:'Exact reminder',schedule:{localDate,localTime,timeZone,alertMinutes:0,re"
-        },
-        {
-          "line": 32,
-          "text": "for(const params of [reminderParams('2030-11-03','01:30','America/Los_Angeles'),reminderParams('2030-03-10','02:30','America/Los_Angeles'),reminderParams('2030-05-01','14:00','Unknown/Zone')]){turn=sc"
-        },
-        {
-          "line": 35,
-          "text": "const dispose=installDevelopmentViews(runtime);"
-        },
-        {
-          "line": 36,
-          "text": "try{turn=scope();const result=await invoke(navigationAction,turn,{action:'show',view:'Calendar'});assert.equal(result.success,true);assert.equal(turn.proposals.length,1);const handoff=findViewActionHa"
-        },
-        {
-          "line": 39,
-          "text": "await writeFile(runner,`import {createConsumerSourceResolver} from ${JSON.stringify(path.join(root,'vendor/eliza/packages/app/scripts/lib/consumer-source-resolver.mjs'))};const {plugin}=createConsumer"
-        },
-        {
-          "line": 40,
-          "text": "const build=spawnSync(process.env.ALPHA_BUN||'bun',[runner],{cwd:root,encoding:'utf8',timeout:90000,maxBuffer:8*1024*1024});assert.equal(build.status,0,build.stdout+build.stderr);"
-        },
-        {
-          "line": 41,
-          "text": "const run=spawnSync(process.env.ALPHA_BUN||'bun',[path.join(dir,'fixture.js')],{cwd:root,encoding:'utf8',timeout:30000,maxBuffer:8*1024*1024});assert.equal(run.status,0,run.stdout+run.stderr);console."
-        }
-      ]
-    },
-    {
-      "path": "backend/test-runtime.ts",
-      "sha256": "f925d691495f82421948d485d947d7edfeb9883d23d812d996db34a3975d1aee",
-      "models": [
-        "Application"
-      ],
-      "scope": "application",
-      "treatment": "state-and-transition-projection",
-      "stateAnchors": [
-        {
-          "line": 7,
-          "text": "const phase=process.argv.find(arg=>arg.startsWith('--phase='))?.slice(8);"
-        },
-        {
-          "line": 10,
-          "text": "const {loadPinnedRuntime}=await import('./loader');"
-        },
-        {
-          "line": 11,
-          "text": "const {module,head,dataDir}=await loadPinnedRuntime();"
-        },
-        {
-          "line": 14,
-          "text": "const dataDir=await mkdtemp(join(tmpdir(),'alpha-eliza-live-'));"
-        },
-        {
-          "line": 15,
-          "text": "const reports=[];"
-        },
-        {
-          "line": 16,
-          "text": "for(const mode of ['seed','recover','proposal']){"
-        },
-        {
-          "line": 17,
-          "text": "const proc=Bun.spawn([process.execPath,import.meta.filename,'--phase='+mode],{env:{...process.env,ALPHA_ELIZA_DATA_DIR:dataDir},stdout:'ignore',stderr:'ignore'});"
-        },
-        {
-          "line": 18,
-          "text": "const exit=await proc.exited;"
-        },
-        {
-          "line": 22,
-          "text": "const out=resolve(import.meta.dir,'../test-results');await mkdir(out,{recursive:true});"
-        },
-        {
-          "line": 27,
-          "text": "const backend=await module.createRuntimeBackend({head,dataDir});"
-        },
-        {
-          "line": 30,
-          "text": "const proofPath=resolve(dataDir,'test-proof.json');"
-        },
-        {
-          "line": 31,
-          "text": "const reports:any[]=[];"
-        },
-        {
-          "line": 33,
-          "text": "const proof='ALPHA-'+randomUUID();await writeFile(proofPath,JSON.stringify({proof}),{mode:0o600});"
-        },
-        {
-          "line": 34,
-          "text": "const first=await backend.chat('Remember this parcel reference for our conversation: '+proof+'. Reply with only the reference.',AbortSignal.timeout(90000));"
-        },
-        {
-          "line": 36,
-          "text": "const second=await backend.chat('What parcel reference did I just ask you to remember? Reply with only the reference.',AbortSignal.timeout(90000));"
-        },
-        {
-          "line": 40,
-          "text": "const {proof}=JSON.parse(await readFile(proofPath,'utf8'));"
-        },
-        {
-          "line": 41,
-          "text": "const restored=await backend.chat('What is the parcel reference I asked you to remember earlier in this conversation? Reply with only the reference.',AbortSignal.timeout(90000));"
-        },
-        {
-          "line": 44,
-          "text": "const controller=new AbortController(),start=Date.now();const timer=setTimeout(()=>controller.abort(),150);"
-        },
-        {
-          "line": 45,
-          "text": "let cancelled:any, cancellationError:unknown;"
-        },
-        {
-          "line": 53,
-          "text": "const navigation=await backend.chat('Open the calendar view in Alpha Phone.',AbortSignal.timeout(90000),{view:'notes',revision:8});"
-        },
-        {
-          "line": 56,
-          "text": "const at=Math.ceil((Date.now()+3600000)/60000)*60000,local=new Date(at).toISOString().slice(0,16);"
-        },
-        {
-          "line": 57,
-          "text": "const reminder=await backend.chat('Prepare a one-time reminder with exact title Runtime reminder acceptance, exact body Check the native receipt, at local time '+local+' in time zone UTC. Use DEVICE_R"
         }
       ]
     },
@@ -47912,7 +47295,6 @@
       "models": [
         "TaskServiceLifecycle",
         "TaskSchedulerRuntime",
-        "DevelopmentRuntimeLoader",
         "CombinedAgentLauncher",
         "ReviewedWorkflowLauncher",
         "CoreConnectorCustody",
@@ -47938,226 +47320,6 @@
       "reviewStatus": "state-audit-required",
       "sha256": "c5368c9075aa8c7660bee01338185fbe673c9b8dd6889dd1ab01d195efa17c10",
       "stateAnchors": []
-    },
-    {
-      "path": "scripts/dev-agent.mjs",
-      "sha256": "57a417641be376ae7eab9fe72bad2434d9eedd1dac0ab86b63664c39f92925b5",
-      "models": [
-        "DevelopmentHost",
-        "DevelopmentSurfaces"
-      ],
-      "scope": "development-runtime",
-      "treatment": "state-and-transition-projection",
-      "stateAnchors": [
-        {
-          "line": 13,
-          "text": "const key = process.env.CEREBRAS_API_KEY;"
-        },
-        {
-          "line": 14,
-          "text": "const base = process.env.CEREBRAS_BASE_URL?.replace(/\\/$/, \"\");"
-        },
-        {
-          "line": 17,
-          "text": "const provider = new URL(base);"
-        },
-        {
-          "line": 26,
-          "text": "const requestHeaders = {"
-        },
-        {
-          "line": 30,
-          "text": "let models;"
-        },
-        {
-          "line": 32,
-          "text": "const response = await fetch(`${base}/models`, {"
-        },
-        {
-          "line": 46,
-          "text": "const preferred = process.env.ALPHA_DEV_MODEL || AGENT_MODEL;"
-        },
-        {
-          "line": 47,
-          "text": "const model = models?.includes(preferred) ? preferred : null;"
-        },
-        {
-          "line": 50,
-          "text": "const backendMode=process.env.ALPHA_AGENT_BACKEND || \"direct-diagnostic\";"
-        },
-        {
-          "line": 53,
-          "text": "const {loadPinnedRuntime}=await import(\"../backend/loader.ts\");"
-        },
-        {
-          "line": 54,
-          "text": "const {module,head,dataDir}=await loadPinnedRuntime();"
-        },
-        {
-          "line": 55,
-          "text": "const runtimeBackend=backendMode===\"eliza\"?await module.createRuntimeBackend({head,dataDir,model}):module.createDirectDevelopmentBackend();"
-        },
-        {
-          "line": 56,
-          "text": "const token = randomBytes(32).toString(\"hex\");"
-        },
-        {
-          "line": 57,
-          "text": "const sessionId = randomUUID();"
-        },
-        {
-          "line": 58,
-          "text": "const directory = join(tmpdir(), `alphaphone-dev-agent-${sessionId}`);"
-        },
-        {
-          "line": 60,
-          "text": "const tokenPath = join(directory, \"development-agent-token\");"
-        },
-        {
-          "line": 64,
-          "text": "const views = new Set([...DEVELOPMENT_PROPOSAL_VIEWS, \"assistant\", \"apps\", \"passwords\"]);"
-        },
-        {
-          "line": 65,
-          "text": "const tools = runtimeBackend.tools;"
-        },
-        {
-          "line": 66,
-          "text": "const active = new Map();"
-        },
-        {
-          "line": 67,
-          "text": "const used = new Set();"
-        },
-        {
-          "line": 68,
-          "text": "const identifier = (value) =>"
-        },
-        {
-          "line": 73,
-          "text": "const json = (response, status, value) => {"
-        },
-        {
-          "line": 83,
-          "text": "const supplied = request.headers.authorization;"
-        },
-        {
-          "line": 85,
-          "text": "const bytes = Buffer.from(supplied),"
-        },
-        {
-          "line": 89,
-          "text": "const server = http.createServer(async (request, response) => {"
-        },
-        {
-          "line": 107,
-          "text": "const requestId = request.headers[\"x-request-id\"];"
-        },
-        {
-          "line": 108,
-          "text": "const mime = request.headers[\"content-type\"]?.split(\";\")[0];"
-        },
-        {
-          "line": 113,
-          "text": "const controller = new AbortController(); active.set(requestId,controller);"
-        },
-        {
-          "line": 114,
-          "text": "const timer = setTimeout(()=>controller.abort(),120000);"
-        },
-        {
-          "line": 115,
-          "text": "const disconnected = ()=>{if(!response.writableEnded)controller.abort();}; response.on(\"close\",disconnected);"
-        },
-        {
-          "line": 117,
-          "text": "let total=0;const chunks=[];"
-        },
-        {
-          "line": 118,
-          "text": "for await (const chunk of request) { total+=chunk.length; if(total>MAX_AUDIO_BYTES){json(response,413,{error:\"audio-too-large\"});return;}chunks.push(chunk); }"
-        },
-        {
-          "line": 119,
-          "text": "const result=await transcribeLocal(Buffer.concat(chunks),mime,controller.signal);"
-        },
-        {
-          "line": 133,
-          "text": "let body;"
-        },
-        {
-          "line": 135,
-          "text": "let total = 0;"
-        },
-        {
-          "line": 136,
-          "text": "const chunks = [];"
-        },
-        {
-          "line": 137,
-          "text": "for await (const chunk of request) {"
-        },
-        {
-          "line": 150,
-          "text": "const { requestId, text, context } = body || {};"
-        },
-        {
-          "line": 174,
-          "text": "const safeContext = { view: context.view, revision: context.revision };"
-        },
-        {
-          "line": 176,
-          "text": "const item = context.selectedObject;"
-        },
-        {
-          "line": 192,
-          "text": "const controller = new AbortController();"
-        },
-        {
-          "line": 194,
-          "text": "const timer = setTimeout(() => controller.abort(), 45000);"
-        },
-        {
-          "line": 195,
-          "text": "const disconnected = () => {"
-        },
-        {
-          "line": 201,
-          "text": "const result=await runtimeBackend.chat(text,controller.signal,safeContext);"
-        },
-        {
-          "line": 206,
-          "text": "const upstream = await fetch(`${base}/chat/completions`, {"
-        },
-        {
-          "line": 232,
-          "text": "const payload = await upstream.json();"
-        },
-        {
-          "line": 233,
-          "text": "const message = payload.choices?.[0]?.message;"
-        },
-        {
-          "line": 234,
-          "text": "const prepared = await runtimeBackend.prepareActions(Array.isArray(message?.tool_calls)?message.tool_calls:[],text,controller.signal,safeContext);"
-        },
-        {
-          "line": 235,
-          "text": "const proposals=prepared.proposals;"
-        },
-        {
-          "line": 236,
-          "text": "const reply ="
-        },
-        {
-          "line": 278,
-          "text": "const stop = () => {"
-        },
-        {
-          "line": 280,
-          "text": "for (const controller of active.values()) controller.abort();"
-        }
-      ]
     },
     {
       "path": "scripts/dev-cloud.mjs",
@@ -48815,17 +47977,6 @@
         }
       ],
       "integrationReview": "Domain allocation retained after merged fixes. Source identity and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations."
-    },
-    {
-      "path": "scripts/start-local-agent.mjs",
-      "sha256": "5d2648ea8dc55c128a150903845f5996334d4daf29b7c57afb38f1f50f40ab90",
-      "models": [
-        "DevelopmentHost",
-        "ResidentRuntime"
-      ],
-      "scope": "development-runtime",
-      "treatment": "domain-contract-or-support",
-      "stateAnchors": []
     },
     {
       "path": "scripts/start-local-remote.mjs",
@@ -132394,20 +131545,8 @@
       "stateAnchors": []
     },
     {
-      "path": "vendor/eliza/packages/app/scripts/lib/consumer-source-resolver.mjs",
-      "models": [
-        "DevelopmentRuntimeLoader"
-      ],
-      "scope": "shared-upstream",
-      "treatment": "domain-contract-or-support",
-      "reviewStatus": "state-audit-required",
-      "sha256": "79743fd6f2ed6a8b20e50d4bc2dfcc9d9d0975be512863bebc7622ca1ebb92fd",
-      "stateAnchors": []
-    },
-    {
       "path": "vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs",
       "models": [
-        "DevelopmentRuntimeLoader",
         "NativeGoogleHostArtifact",
         "PreparedSourceStamp",
         "ResidentJavaSourceStage"
@@ -619449,7 +618588,6 @@
         "CanonicalNotesStore",
         "CoreTurnControllers",
         "TaskSchedulerRuntime",
-        "DevelopmentRuntimeLoader",
         "CombinedAgentLauncher",
         "ReviewedWorkflowLauncher",
         "CoreConnectorCustody",
@@ -619669,7 +618807,7 @@
       "models": [
         "NativeGoogleHostArtifact"
       ],
-      "sha256": "85b9bf41beca44d16e8c394042689b2909abf2bf366bf4434ad8b033190ea859"
+      "sha256": "ae9b4e87fd0f7396787985b4a2a3d269a2fb609c1281261ad8f6b3a7807f3856"
     },
     {
       "path": "package-lock.json",

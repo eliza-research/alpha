@@ -385,8 +385,7 @@
         "apps/app/src/browser/workflow-trigger-runtime.ts",
         "apps/app/src/browser/workflow-triggers.ts",
         "apps/app/src/prototype/workflow-authoring.ts",
-        "apps/app/src/prototype/workflow-adapter.ts",
-        "backend/proposal-action.ts"
+        "apps/app/src/prototype/workflow-adapter.ts"
       ],
       "stateMapping": {
         "version/reviewedVersion/phase": "normalized authoring, validation and exact-version save/run",
@@ -1663,51 +1662,6 @@
         "maxSamples": 1000,
         "maxSteps": 80,
         "maxVerifyDepth": 4
-      }
-    },
-    {
-      "path": "specs/quint/services/DevelopmentRuntimeLoader.qnt",
-      "module": "DevelopmentRuntimeLoader",
-      "init": "init",
-      "step": "step",
-      "invariant": "safety",
-      "tests": [
-        "flagAndPinRefusalsTest",
-        "transformFailureLeavesOnlyArtifactTest",
-        "receiptWriteFailureSkipsStateTest",
-        "stateFailureSkipsImportTest",
-        "loadedArtifactUsesBoundSaltTest",
-        "rebuildReusesLoadedModuleTest",
-        "rejectedEvaluationSurvivesValidRebuildTest"
-      ],
-      "invariants": [
-        "BuildRequiresAdmission",
-        "ReceiptFollowsTransform",
-        "SaltBelongsToPrivateState",
-        "ImportRequiresReceiptAndSalt",
-        "StableModuleCache"
-      ],
-      "sources": [
-        "backend/loader.ts",
-        "scripts/pinned-upstream-source.mjs",
-        "scripts/core-state-patch.mjs",
-        "vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs",
-        "vendor/eliza/packages/app/scripts/lib/consumer-source-resolver.mjs"
-      ],
-      "stateMapping": {
-        "phase/attempts/enabled/builds": "Serial invocation, opt-in and real build entry after the pin and registry checks",
-        "resolved/transformed/artifact/receipt": "Actual resolver and patch hook outcomes, generated module bytes and persisted source-map membership",
-        "stateDir/salt/saltBound/saltVersions": "Private scratch directory, durable file presence, exact environment readback and observed salt equality classes",
-        "cache/evaluations/returned/outcome": "Actual synthetic module evaluations, ESM return identity and typed invocation refusal"
-      },
-      "abstractions": [
-        "Two serial attempts in one process, two synthetic export versions, one private data directory, and one fixed generated artifact URL. Host fixture errors are finite classes. Real compiler dependency closure and process startup after the returned module are separate.",
-        "Output bytes can persist after a receipt refusal. Rebuilding the fixed URL can retain an earlier evaluated module or rejection in-process. The current-artifact equality expectation is separately observed, outside baseline safety."
-      ],
-      "bounds": {
-        "maxSamples": 1000,
-        "maxSteps": 80,
-        "maxVerifyDepth": 8
       }
     },
     {
