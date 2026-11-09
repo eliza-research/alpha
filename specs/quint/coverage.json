@@ -15656,7 +15656,7 @@
     },
     {
       "path": "apps/app/src/prototype/agent-adapter.ts",
-      "sha256": "ba69bd17a0571aea778e4b5bbbb417b049d28d1697a5a1ec63cbfff79287a786",
+      "sha256": "abd9ec348137cd2fcb6c5f470fa6dc5a1f3fcce1083187df0414acefd7ce2308",
       "models": [
         "Application",
         "AssistantConversation",
@@ -17535,7 +17535,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "e0f14dbf070ec814130e49729ddd82cb3a41b8454608a06128799dc479a40e04",
+      "sha256": "d8eddb116d668166ccadb1ce7aad8f1c1d2ff484368a2e9bc7b458699797c26e",
       "stateAnchors": [
         {
           "line": 19,
@@ -19555,7 +19555,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "ff7aa68cca00e79ea01307bbe1b7a6516774be6dcf75c1ed8b284fe2fd920c69",
+      "sha256": "4930d99c2bc8c0f38c9a5a39166069f9d9af083401751f8d8f8070fff9ce9f30",
       "stateAnchors": [
         {
           "line": 31,
@@ -20765,7 +20765,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "3c8ed25e07cd7cab53f235875b974f21caf2c55e37bc7da431f788be0b08b424",
+      "sha256": "b37f2b0fb32da9973ae4c96050c2d11f3c59af0caeb3e95d3415be90d599e5a8",
       "stateAnchors": [
         {
           "line": 8,
@@ -24229,7 +24229,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "5008c5a98147e06dae2c70ad076cffa179a693171e2c629d6fc89639d46ea543",
+      "sha256": "8fa1d2468330bcbf37f74df094df62ecb443bc53f4919457234e63a95b04e4c0",
       "stateAnchors": [
         {
           "line": 27,
@@ -32066,7 +32066,7 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "e9e52df7bc41f3d176f7c784db75727bec8de5a0bce41efd793cc9f1e28a1e5f",
+      "sha256": "3c5b9b882805c34374051fffd7eeaf6b7ed00cb99aede7d1b74b3d4838f31019",
       "stateAnchors": [],
       "integrationReview": "2026-11-09: landscape Maps guidance uses the same left-to-right flex order as portrait. The change removes grid placement only; no interaction, storage, request, focus, or lifecycle transition changes. Five existing accessibility checks cover portrait, landscape and 200 percent text; the landscape search/start/mute/enable flow also passes. Existing model allocations and unresolved refinement limits are unchanged. 2026-11-09: tested native below-host presentation keeps page size and identity through chat, blocks page input beneath host controls, and fences stale backdrop cleanup. TypeScript and isolated renderer pass; exact Android/Pixel acceptance remains open. 2026-11-09: shared overlay bounds, retained dismiss controls and alarm reading order validated in browser layout and interaction checks; storage and handoff transitions are unchanged. Reviewed integration source. Domain allocation is retained; source-hash refresh does not establish semantic refinement. See targeted validation and remaining obligations."
     },
@@ -33633,7 +33633,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "f30de9846f5ab69fc1b778dd42a52ccf53de626fc83e76c546feb751f208e3b1",
+      "sha256": "afa72a50abdd6f978f379ade3896c23d9d5cfdea085583935f7bf34f5ba49d4b",
       "stateAnchors": [
         {
           "line": 204,
@@ -34378,7 +34378,7 @@
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "8aabc9bdc9bfc07acb68ab3e3d0e948ee096cd2d216cb4fd244d62298f75f482",
+      "sha256": "546ae37828d255e20cfbccf874f8890a971d2d440bca664f9360c967f1cbcc98",
       "stateAnchors": [
         {
           "line": 3359,
@@ -38649,7 +38649,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "c49f5cf1e8986a52842d8a272617c16e1e788017483eaebf7076b68db85cb41c",
+      "sha256": "1b0c263b43f27edb41ef812b58cf307cbf155cc4053b6da40e9c38dfbe785b21",
       "stateAnchors": [],
       "integrationReview": "2026-11-09 UI and browser-return delta reviewed against existing domain models and new ChatAttachments/BrowserGoogleReturn contracts; see ui-return-review-20261109.md. Source-model refinement and device acceptance remain separate. Domain allocation retained after merged fixes. Source identity and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations."
     },
@@ -40665,7 +40665,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "9e9bf2d5586a8f06145680033648db4279eb2fcd6f821a23ecfe17d9ee96f361",
+      "sha256": "998b86964facaa14168055ad21bb05431ef29e29c59f8e4ebe047601bb8ca0a5",
       "stateAnchors": [],
       "integrationReview": "2026-11-09 UI and browser-return delta reviewed against existing domain models and new ChatAttachments/BrowserGoogleReturn contracts; see ui-return-review-20261109.md. Source-model refinement and device acceptance remain separate."
     },

@@ -496,7 +496,7 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
     html.style.setProperty('--alpha-browser-clear-bottom',`${Math.max(0,(rect.y+rect.height-(box?.top||0))/scale)}px`);
     html.setAttribute('data-alpha-browser-underlay',session);
   }
-  const browserChromeSelector='[data-alpha-layer="composer"],[data-alpha-layer="pill"] > *,[data-alpha-layer="conversation"],.alpha-plan-notice,[data-alpha-toast] > *,[data-screen] > button[aria-label="Home"]';
+  const browserChromeSelector='[data-alpha-layer="composer"],[data-alpha-layer="pill"] > *,[data-alpha-layer="conversation"],.alpha-plan-notice,[data-alpha-toast] > *,[data-screen] > button[aria-label="Home"],[role="search"][aria-label="Find in page"]';
   function browserHostRects(page:Bag){
     if(nativeUnderAssistant())return [{x:page.x,y:page.y,width:page.width,height:page.height,cornerRadius:0}];
     return [...document.querySelectorAll<HTMLElement>(browserChromeSelector)].flatMap(element=>{
