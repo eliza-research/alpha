@@ -920,3 +920,19 @@ artifact in its backup. A failed backup cleanup can report failure
 after the new target was published. The fixtures use private scratch
 directories. Installed extraction and process interruption retain
 separate evidence.
+
+`NativeGmailBackground` replays 24 staged JVM schedules and 245
+checkpoints. The baseline let a held configuration commit after
+withdrawal of its grant. It also let an already captured tap consume
+after the grant's remote revocation. The authenticated repair retires
+the matching pending grant and preserves unrelated saved and pending
+state. Consumption rechecks the exact tap and authorization before
+publication. Local question cancellation remains available offline.
+The campaign uses synthetic transport, storage, scheduling and notice
+ports. Installed delivery and scheduler timing remain open.
+
+The 200-model standard Android build produced both variants and reached
+the independent APK verifier. That verifier still had the prior core
+patch allowlist and rejected the connector transform. The corrected
+policy requires the exact connector patch and checks its independent
+target list against the reviewed manifest in the focused test.

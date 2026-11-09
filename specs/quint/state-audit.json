@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "500af54fb8401d05f135420c1f9306785aff071c8e6b35f43c0fb88d637a54dd",
+  "ledgerSha256": "d9a0e3a08c892b596fd559c9dffd1d876e0dec7dc2e5223b87c119ffed216ce7",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -22,17 +22,17 @@
     "The ledger supplies pinned source bytes. Effective client/native/runtime patch outputs require their separately authenticated source mappings."
   ],
   "counts": {
-    "files": 5725,
+    "files": 5729,
     "testSupportFiles": 287,
     "testSupportCandidates": 11480,
-    "parsedFiles": 5655,
-    "languageReview": 70,
+    "parsedFiles": 5658,
+    "languageReview": 71,
     "parseErrors": 0,
-    "candidates": 67294,
-    "writeSites": 66854,
-    "writeAssociations": 59954,
+    "candidates": 67323,
+    "writeSites": 66907,
+    "writeAssociations": 60025,
     "asynchronous": 8332,
-    "unassignedWrites": 10282
+    "unassignedWrites": 10285
   },
   "files": [
     {
@@ -17904,7 +17904,8 @@
       "sha256": "cd9da4c865178edc3c1733eed909d75d36eff969891c03c9ff068517b59f29e8",
       "allocatedModels": [
         "IdentitySession",
-        "NativeCredentialMutation"
+        "NativeCredentialMutation",
+        "NativeGmailBackground"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -19222,10 +19223,12 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaGmailPlugin.java",
-      "sha256": "8fdf0813436cb0a9b51d2e7324a770a7a6c8f67a876c1dbd8834e2373dc48888",
+      "sha256": "75d50e45f90c22e405030aaa7ee1b527d7b91d0a634f8d028395768afa0dc5e6",
       "allocatedModels": [
-        "InboxDelivery"
+        "InboxDelivery",
+        "NativeGmailBackground"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -23815,7 +23818,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/CloudDeployment.java",
       "sha256": "c42767d8d5c6226f8398e5d22fa3aa007b0c26811d8ad44fabc4bf164cb561dc",
       "allocatedModels": [
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "NativeGmailBackground"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -24229,7 +24233,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/GmailBackground.java",
       "sha256": "9364b0153e0f3b70eaaf5d10d618233e23112b3bfcf0e7f55bf8101c2e48bdeb",
       "allocatedModels": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "NativeGmailBackground"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -24279,7 +24284,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/GmailDeliveryWorker.java",
       "sha256": "82921c44d47eba2c06b367dcc9c42ba94c438cada353cc778fb0d877f299377e",
       "allocatedModels": [
-        "InboxDelivery"
+        "InboxDelivery",
+        "NativeGmailBackground"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -25444,7 +25450,8 @@
       "allocatedModels": [
         "ApplicationComposition",
         "NativeCredentialMutation",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "NativeGmailBackground"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -45925,6 +45932,40 @@
       "unassignedWrites": 5
     },
     {
+      "path": "scripts/apk.mjs",
+      "sha256": "d0ef480d7ab88c5b14ea71fafa124411856a338cc5e5c01cd5b019bf07d347cd",
+      "allocatedModels": [
+        "MobileBundleAdmission",
+        "ResidentRuntime"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "distributionProblems",
+          "line": 75,
+          "bindings": 1,
+          "writes": 4
+        },
+        {
+          "owner": "legacyStorageProblems",
+          "line": 117,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "verifyOwnerRouteTable",
+          "line": 150,
+          "bindings": 1,
+          "writes": 1
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 1
+    },
+    {
       "path": "scripts/browser-cloud-dev-bridge.ts",
       "sha256": "b780537b54035955e6c7112ee05af2b6b38d251b8ba42cb4e6ff5711d37d3d7d",
       "allocatedModels": [
@@ -46760,6 +46801,28 @@
       "unassignedWrites": 2
     },
     {
+      "path": "scripts/source-snapshot.mjs",
+      "sha256": "477ba7a2848b76c4f2b74743f5970858c4f87a279507ac2fa00b5220d76f951e",
+      "allocatedModels": [
+        "MobileBundleAdmission",
+        "ResidentRuntime"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "<module>",
+          "line": 5,
+          "bindings": 2,
+          "writes": 5
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 1
+    },
+    {
       "path": "scripts/stage-embedding-host.mjs",
       "sha256": "e19b5da9a836a643befafe2aa4825fd419e375361315cb3d332af7a312725e3b",
       "allocatedModels": [
@@ -46969,6 +47032,49 @@
       "parseErrors": [],
       "asynchronous": 0,
       "unassignedWrites": 3
+    },
+    {
+      "path": "scripts/verify-apks.mjs",
+      "sha256": "f73652907059717ac18f9fb2b11d2ebe1daee3aba3737a832c073a29ca6812e8",
+      "allocatedModels": [
+        "MobileBundleAdmission",
+        "ResidentRuntime"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "<module>",
+          "line": 77,
+          "bindings": 23,
+          "writes": 55
+        },
+        {
+          "owner": "listenerFacts",
+          "line": 281,
+          "bindings": 1,
+          "writes": 5
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 1
+    },
+    {
+      "path": "scripts/verify-packaged-runtime.py",
+      "sha256": "a812a2508ff230207f3663f44994bbc1fcffea4f5fcc232e07171ca94b6df41b",
+      "allocatedModels": [
+        "MobileBundleAdmission",
+        "ResidentRuntime"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
     },
     {
       "path": "scripts/voice-host.mjs",
@@ -184795,7 +184901,8 @@
       "allocatedModels": [
         "DeviceActions",
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "NativeGmailBackground"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -185010,7 +185117,8 @@
       "allocatedModels": [
         "DeviceActions",
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "NativeGmailBackground"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -219706,6 +219814,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "4957b3e1ff4a9485cc3f11395738f6a976e1261f48a4a33bef7b0c0c2c061344"
+    "sha256": "a4bd74527d28880c8cae4844028f4e1c7c525b9eb01309a3259b2f4c40e09795"
   }
 }

@@ -49,7 +49,11 @@
     "scripts/stage-embedding-host.mjs",
     "scripts/voice-host.mjs",
     "scripts/android-build-preflight.mjs",
-    "scripts/build-android.mjs"
+    "scripts/build-android.mjs",
+    "scripts/apk.mjs",
+    "scripts/source-snapshot.mjs",
+    "scripts/verify-apks.mjs",
+    "scripts/verify-packaged-runtime.py"
   ],
   "excludedDirectories": [
     ".cxx",
@@ -6487,7 +6491,8 @@
       "sha256": "cd9da4c865178edc3c1733eed909d75d36eff969891c03c9ff068517b59f29e8",
       "models": [
         "IdentitySession",
-        "NativeCredentialMutation"
+        "NativeCredentialMutation",
+        "NativeGmailBackground"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -6710,12 +6715,14 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaGmailPlugin.java",
-      "sha256": "8fdf0813436cb0a9b51d2e7324a770a7a6c8f67a876c1dbd8834e2373dc48888",
       "models": [
-        "InboxDelivery"
+        "InboxDelivery",
+        "NativeGmailBackground"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "75d50e45f90c22e405030aaa7ee1b527d7b91d0a634f8d028395768afa0dc5e6",
       "stateAnchors": [
         {
           "line": 14,
@@ -7774,7 +7781,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/CloudDeployment.java",
       "sha256": "c42767d8d5c6226f8398e5d22fa3aa007b0c26811d8ad44fabc4bf164cb561dc",
       "models": [
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "NativeGmailBackground"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -7869,7 +7877,8 @@
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/GmailBackground.java",
       "models": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "NativeGmailBackground"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -7885,7 +7894,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/GmailDeliveryWorker.java",
       "sha256": "82921c44d47eba2c06b367dcc9c42ba94c438cada353cc778fb0d877f299377e",
       "models": [
-        "InboxDelivery"
+        "InboxDelivery",
+        "NativeGmailBackground"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -8217,7 +8227,8 @@
       "models": [
         "ApplicationComposition",
         "NativeCredentialMutation",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "NativeGmailBackground"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -48868,6 +48879,18 @@
       "stateAnchors": []
     },
     {
+      "path": "scripts/apk.mjs",
+      "models": [
+        "MobileBundleAdmission",
+        "ResidentRuntime"
+      ],
+      "scope": "development-runtime",
+      "treatment": "runtime-preparation-and-admission",
+      "reviewStatus": "state-audit-required",
+      "sha256": "d0ef480d7ab88c5b14ea71fafa124411856a338cc5e5c01cd5b019bf07d347cd",
+      "stateAnchors": []
+    },
+    {
       "path": "scripts/browser-cloud-dev-bridge.ts",
       "sha256": "b780537b54035955e6c7112ee05af2b6b38d251b8ba42cb4e6ff5711d37d3d7d",
       "models": [
@@ -50291,6 +50314,18 @@
       "stateAnchors": []
     },
     {
+      "path": "scripts/source-snapshot.mjs",
+      "models": [
+        "MobileBundleAdmission",
+        "ResidentRuntime"
+      ],
+      "scope": "development-runtime",
+      "treatment": "runtime-preparation-and-admission",
+      "reviewStatus": "state-audit-required",
+      "sha256": "477ba7a2848b76c4f2b74743f5970858c4f87a279507ac2fa00b5220d76f951e",
+      "stateAnchors": []
+    },
+    {
       "path": "scripts/stage-embedding-host.mjs",
       "models": [
         "EmbeddingStoreIdentity",
@@ -50434,6 +50469,30 @@
           "text": "if (retireFailedHandoff) await retireFailedHandoff();"
         }
       ]
+    },
+    {
+      "path": "scripts/verify-apks.mjs",
+      "models": [
+        "MobileBundleAdmission",
+        "ResidentRuntime"
+      ],
+      "scope": "development-runtime",
+      "treatment": "runtime-preparation-and-admission",
+      "reviewStatus": "state-audit-required",
+      "sha256": "f73652907059717ac18f9fb2b11d2ebe1daee3aba3737a832c073a29ca6812e8",
+      "stateAnchors": []
+    },
+    {
+      "path": "scripts/verify-packaged-runtime.py",
+      "models": [
+        "MobileBundleAdmission",
+        "ResidentRuntime"
+      ],
+      "scope": "development-runtime",
+      "treatment": "runtime-preparation-and-admission",
+      "reviewStatus": "state-audit-required",
+      "sha256": "a812a2508ff230207f3663f44994bbc1fcffea4f5fcc232e07171ca94b6df41b",
+      "stateAnchors": []
     },
     {
       "path": "scripts/voice-host.mjs",
@@ -505326,7 +505385,8 @@
       "models": [
         "DeviceActions",
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "NativeGmailBackground"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -505356,7 +505416,8 @@
       "models": [
         "DeviceActions",
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "NativeGmailBackground"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -619138,7 +619199,7 @@
         "NativeSmsDispatch",
         "NativeMmsDispatch"
       ],
-      "sha256": "df0c167ef389466f9e9e83384d2da3af4072b999e06a8518f81728843aecac1c"
+      "sha256": "faf549fba3d83dd006c6fd10be946d0aaebb894f659d9537f747f51ec3bfa949"
     },
     {
       "path": "android/consumer-host.json",
@@ -619751,7 +619812,7 @@
       "models": [
         "Application"
       ],
-      "sha256": "14daa2cc76676be09f1f5c4cba6b22ba158883c8c9ebc9fc9f05b8095ff9376d"
+      "sha256": "d5a4cb2a443f4ace00a59ccb970d71c1296f216916643692cfd9d40077c530b9"
     },
     {
       "path": "specs/quint/legacy/core/source-inventory.json",
@@ -619971,6 +620032,13 @@
         "MobileBundleAdmission"
       ],
       "sha256": "a0f840fa8572fae33dc3958769c4bd9a951e6f18d04c2345979147134a1473b2"
+    },
+    {
+      "path": "patches/eliza/gmail-background-retirement.patch",
+      "models": [
+        "NativeGmailBackground"
+      ],
+      "sha256": "65947131687f81fb580a75c406c90c44092408418fc85bebd10b65eb3c144671"
     }
   ],
   "runtimeAssets": [
