@@ -12,6 +12,7 @@ function fixture({credential={credentialId:'cloud-A',credentialReference:'ref-A'
  const calls=[],selected={},session={};
  const box={active:selected,state:{session,providerStatus:{selected:true,provider:'cerebras'}},epoch:1,appRequests:new Set(),AbortController,DOMException,setTimeout,clearTimeout,service:null,
   ownProviderSelected:()=>box.state.providerStatus.selected,residentEnvironment:()=> 'production',makeCloud:environment=>({environment}),
+  update:patch=>Object.assign(box.state,patch),
   cloudCredentialStore:{read:async()=>{calls.push('credential');return credential;}},
   verifyService:async(client,signal,expected)=>{calls.push({client,expected});signal.throwIfAborted();if(verify)await verify(box,signal);signal.throwIfAborted();box.service={identity:{credentialId:expected.credentialId}};box.state.cloudAccount={userId:'owner-A'};},
   detachService:()=>{calls.push('detach');box.service=null;box.state.cloudAccount=null;}};
@@ -19,6 +20,12 @@ function fixture({credential={credentialId:'cloud-A',credentialReference:'ref-A'
 }
 test('own inference restores a saved Cloud service using the exact credential without changing the provider',async()=>{
  const {box,calls}=fixture();await box.run();assert.equal(box.state.cloudAccount.userId,'owner-A');assert.equal(box.state.providerStatus.provider,'cerebras');assert.deepEqual(JSON.parse(JSON.stringify(calls[1])),{client:{environment:'production'},expected:{credentialId:'cloud-A',credentialReference:'ref-A'}});assert.equal(box.appRequests.size,0);
+});
+test('optional Cloud restore reports pending until its owner check settles',async()=>{
+ let release;const waiting=new Promise(resolve=>{release=resolve;});const {box}=fixture({verify:async()=>waiting});
+ const pending=box.run();assert.equal(box.state.cloudServiceRestoring,true);
+ assert.equal(box.state.providerStatus.provider,'cerebras');
+ release();await pending;assert.equal(box.state.cloudServiceRestoring,false);
 });
 test('no saved Cloud account or a pending recovery does not start optional authentication',async()=>{
  const empty=fixture({credential:null});await empty.box.run();assert.deepEqual(empty.calls,['credential']);

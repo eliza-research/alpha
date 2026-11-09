@@ -154,6 +154,8 @@ export interface ConnectionSnapshot {
   /** The phone reports no network. The resident's hosted inference needs it; local apps do not. */
   inferenceOffline?: boolean;
   cloudAccount: CloudServiceSession | null;
+  /** Optional Cloud account restoration is pending while own-key inference stays usable. */
+  cloudServiceRestoring?: boolean;
   /** Fresh interactive sign-in owns setup/Ready; quiet account restoration does not replay it. */
   setupRevision?: number;
   /** Alpha's own Eliza Cloud sign-in screen. Never holds a code, session or credential. */
@@ -1383,6 +1385,7 @@ async function restoreOwnProviderCloudServices():Promise<void>{
   if(!selected||!session||!ownProviderSelected()||state.residentRecoveryReason)return;
   ownCloudServiceRestore?.abort();
   const controller=ownCloudServiceRestore=new AbortController();appRequests.add(controller);
+  update({cloudServiceRestoring:true});
   const previousService=service;
   const timer=setTimeout(()=>controller.abort(new DOMException('Cloud service check timed out','AbortError')),10000);
   const current=()=>ownCloudServiceRestore===controller&&epoch===generation&&active===selected&&state.session===session&&ownProviderSelected();
@@ -1398,7 +1401,7 @@ async function restoreOwnProviderCloudServices():Promise<void>{
     // Keep the saved credential for an explicit retry. An older request cannot
     // clear a newer account; direct inference remains selected throughout.
     if(current()&&!controller.signal.aborted&&service&&service===previousService&&service.identity.credentialId===credentialId&&service.credentialReference===credentialReference)detachService();
-  }finally{clearTimeout(timer);appRequests.delete(controller);if(ownCloudServiceRestore===controller)ownCloudServiceRestore=null;}
+  }finally{clearTimeout(timer);appRequests.delete(controller);if(ownCloudServiceRestore===controller){ownCloudServiceRestore=null;update({cloudServiceRestoring:false});}}
 }
 /** `admitted`: the admission a sign-in just made for this start (residentSignedIn); otherwise it is read here. */
 async function connectResident(signal: AbortSignal, admitted?: ResidentAdmission) {

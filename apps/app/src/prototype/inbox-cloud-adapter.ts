@@ -713,7 +713,7 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
     const out = homeRender.call(this), binding=connectionController.getCloudClient(),key=readKey();
     const restored=binding&&homePreview&&homePreview.sessionId===binding.sessionId&&homePreview.owner===homeSummaryOwner()&&(!selected||selected===homePreview.accountId&&key===homePreview.key)?homePreview:null,connected=readable().length>0||!!restored;
     // An unresolved startup has not established that email is disconnected.
-    const disconnected=connectionController.getSnapshot().startupResolved===true&&(!binding||accountsChecked&&!connected);
+    const disconnected=connectionController.getSnapshot().startupResolved===true&&!connectionController.getSnapshot().cloudServiceRestoring&&(!binding||accountsChecked&&!connected);
     const cached=key&&inboxPreview?.key===key&&inboxPreview.sessionId===binding?.sessionId&&inboxPreview.accountId===selected?inboxPreview:restored;
     const pending=phase==='busy'||phase==='scheduled';
     // Home's Connect Google (installHomeCardVisibility): only while signed in to Eliza Cloud, after the
@@ -794,6 +794,7 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
   view.render = (st: Bag, current: Bag) => {
     api = current;
     const binding = connectionController.getCloudClient();
+    const restoringCloud=!binding&&connectionController.getSnapshot().cloudServiceRestoring===true;
     if (phase === 'idle' && binding && current.isActive()) {
       if(restoreList()){if(Date.now()-listReadAt>=60000)queueMicrotask(()=>{if(api?.isActive()&&!operation)void refreshAccounts(true);});}
       else{phase = 'scheduled'; queueMicrotask(() => { if (api?.isActive()) void openMailbox(); });}
@@ -836,7 +837,7 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
       // Stays after the notice has passed, until the list is loaded again from its first page.
       ...(selected && newerMail && messages.length && loadedQuery === currentQuery() ? [chip('Load newer mail', () => void load())] : []),
       ...((readable().length > 1) ? readable().map(a => chip(a.label, () => selectAccount(a), a.connectionId === selected)) : []),
-    ] : [chip(`Connect ${serviceName()}`, () => connectionController.openCloudAccount())];
+    ] : restoringCloud?[]:[chip(`Connect ${serviceName()}`, () => connectionController.openCloudAccount())];
     const extraFolders = binding&&selected&&st.q==null?[
       {...chip('Starred',()=>setFolder('starred'),folder==='starred'),value:'starred'},
       {...chip('All mail',()=>setFolder('all'),folder==='all'),value:'all'},
@@ -889,7 +890,7 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
     const needsGmailConnection=!!binding&&accountsChecked&&accountsSession===binding.sessionId&&!selected&&!operation&&phase!=='scheduled'&&!failure;
     return {folderTitle:folder==='inbox'?'Inbox':folder==='sent'?'Sent':folder==='archive'?'Archive':extraFolders.find(row=>row.value===folder)?.label||'Inbox',folderChips:chips.filter(row=>['Inbox','Sent','Archive'].includes(row.label)),actionChips:chips.filter(row=>!['Inbox','Sent','Archive'].includes(row.label)),hasActionChips:chips.some(row=>!['Inbox','Sent','Archive'].includes(row.label)),extraFolders,hasExtraFolders:!!extraFolders.length,extraFolderCss:extraFolders.some(row=>row.on)?'width:112px;background:var(--fg);color:var(--bg)':'',extraFolderLabel:extraFolders.find(row=>row.on)?.label||'More',folderPicker:extraFolders.length?React.createElement(MailFolderPicker,{folders:extraFolders,menuId:'alpha-mail-folders',themeTokens:MAIL_MENU_TOKENS,selectedStyle:MAIL_MENU_SELECTED}):null, contextReviewOpen:!!contextReview,contextReview:contextReview?{source:`${contextQuestion?`Question: ${contextQuestion}\n\n`:''}From: ${contextReview.source.from}\nTo: ${contextReview.source.to.join(', ')}\nSubject: ${contextReview.source.subject}\n\n${contextReview.source.bodyText}`,destination:'Your agent on this phone',send:()=>void sendContext(),busy:contextBusy,close:()=>{contextReview=null;publish();}}:null,attachmentOpen:!!attachmentView,attachment:attachmentView?{...attachmentView,close:()=>{void attachmentNative.cancel().catch(()=>{});attachmentView=null;publish();}}:null,chips, rows, searching: st.q != null, notSearching: st.q == null, q: st.q || '', hasQ: false,
       openSearch: () => changeQuery(''), closeSearch: () => changeQuery(null), clearSearch:()=>{changeQuery('');queueMicrotask(()=>document.querySelector<HTMLInputElement>('.mail-search-input')?.focus());}, onQ: (e: Bag) => changeQuery(e.target.value), submitSearch:(event:Event)=>{event.preventDefault();const input=(event.currentTarget as HTMLFormElement).querySelector<HTMLInputElement>('input');if(!input?.value.trim())return;input.blur();void load();},
-      compose: () => void drafts.newEmail(), empty: rows.length === 0, emptyIcon: 'M4 6h16v12H4zM4 6l8 6 8-6', emptyText: pendingCompose && !selected && binding && !failure ? needsGmailConnection ? 'Shared content is ready for a new email. Connect Gmail to continue.' : 'Checking Gmail connection…' : status,
+      compose: () => void drafts.newEmail(), empty: rows.length === 0, emptyIcon: 'M4 6h16v12H4zM4 6l8 6 8-6', emptyText: restoringCloud ? 'Loading Inbox…' : pendingCompose && !selected && binding && !failure ? needsGmailConnection ? 'Shared content is ready for a new email. Connect Gmail to continue.' : 'Checking Gmail connection…' : status,
       hasMore: rows.length > 0 && (!!nextPageToken || (!!operation && loadingMore)), loadingMore: !!operation && loadingMore, loadMoreDisabled: !!operation, loadMoreLabel: operation && loadingMore ? 'Loading more…' : 'Load more', loadMore: () => void load(true),
       canRefresh: !!selected, refreshDisabled: !!operation, refresh: () => { const shown=cachedListShown; invalidateList(false); cachedListShown=shown; void provider.bind(selected); void load(); },
       cachedListShown, cachedListNotice: cachedListShown&&messages.length?(failure?'Saved mail · Could not update':phase==='busy'?'Updating mail…':''):'',
