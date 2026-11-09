@@ -32,6 +32,19 @@ and then 15 minutes. One owner runs at a time. Backgrounding invalidates pending
 renderer reads; disposal cancels its timer. This is foreground launcher upkeep,
 not an OS background scheduler or an independent recovery supervisor.
 
+The shared scheduler and mounted update gate are implemented in
+[Eliza PR 39166](https://github.com/elizaOS/eliza/pull/39166). The original OTA branch pinned the
+reviewed, source-identical commit `099e2d27ad7268fac0832c4a7e84cc707d2cf03e`; the
+[source comparison receipt](evidence/launcher-ota-upstream-source-20261109.json)
+and [Cloud APK build receipt](evidence/launcher-ota-cloud-apk-build-20261109.json)
+remain historical evidence: the APK receipt names product commit `e359d8d928`
+and upstream `b1817660a0`, while the source comparison names `099e2d27ad`.
+Neither describes the integrated package identity. The integrated
+Alpha Compute branch pins `86ab55fd81f68a2c5dd4fd32e1c1431723648c58` and carries
+the scheduler through the authenticated `app-update-resume-client` patch. Its
+manifest binds the exact source and output hashes. Earlier build evidence does
+not transfer native, APK or device qualification to this integration.
+
 Automatic installation requires Android 12/API 31 or newer and Android's existing
 **Install unknown apps → Alpha Phone** permission. Provision that permission once
 before distributing the batch. The automatic path never opens Android Settings or
@@ -138,6 +151,10 @@ flavor and runtime profile; the candidate has a strictly higher code. Store thei
 APK hashes, source pins and verification receipts. Use an owned test unit before
 the batch. The phone is on another machine; no physical-device acceptance has
 been observed from this workspace.
+
+Use the integrity readback helpers from `scripts/pilot-update.mjs` for the
+before/after receipts. That script's complete command uses `adb install -r`;
+running it instead of step 2 proves an ADB replacement, not the OTA path.
 
 1. Install the admitted baseline and select it as HOME. Enable install permission.
    Read back package, signer, code, source path and HOME. Save a local note, an

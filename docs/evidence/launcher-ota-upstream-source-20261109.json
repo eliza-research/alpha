@@ -1,0 +1,19 @@
+{
+  "schema": "alpha-launcher-ota-upstream-source-v1",
+  "date": "2026-11-09",
+  "priorPin": "5500c73b3d8ff8395999bbb620e7e3fc0ebb1df4",
+  "admittedPin": "099e2d27ad7268fac0832c4a7e84cc707d2cf03e",
+  "parent": "5500c73b3d8ff8395999bbb620e7e3fc0ebb1df4",
+  "upstreamRef": "codex/launcher-automatic-update-gate-5500",
+  "changedPaths": [
+    "packages/ui/quint/AutomaticAppUpdateSchedule.cases.json",
+    "packages/ui/quint/AutomaticAppUpdateSchedule.qnt",
+    "packages/ui/quint/check-app-update-schedule.mjs",
+    "packages/ui/src/state/__e2e__/app-update-gate.test.ts",
+    "packages/ui/src/state/app-update-gate.ts"
+  ],
+  "review": "Independent source review of gate, DOM/timer tests and bounded model; no consumer source overlay.",
+  "nativeBuildInputsUnchanged": true,
+  "nativeQualificationTransferred": false,
+  "scope": "Source comparison only; no APK, installation, voice, image or device qualification."
+}

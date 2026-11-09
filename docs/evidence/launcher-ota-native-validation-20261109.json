@@ -4,7 +4,7 @@
   "scope": "Native host source tests and separate Android platform fixture; no product APK, HOME, AOSP image, physical-device, real-service or user acceptance",
   "sources": {
     "android/app/src/main/AndroidManifest.xml": "f6a3389cb5359f4e899a43d32e05761a51b8981b33f83dd01621c21e9e1a4fd0",
-    "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java": "beec81e67179e6ee8efedf522f4a0ebf3f068ccaf4bb46c94034ccc4ce13de0e",
+    "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java": "660867841e5fd6cb20dad5fb1d68b2a3f62e703c13bc7acc09d527a146c14796",
     "android/app/src/main/java/ai/elizaresearch/alphaphone/PluginWorkers.java": "1348add936da232412999b23cfb48fbbc08a5243f2b4a8075626e7a855ac3007",
     "scripts/test-automatic-update-platform.mjs": "60b63165a578a3ab96b3220c6b5a09a134b05a141c9f4d51b484c3c33d309326",
     "test/app-update.test.mjs": "38ce28f6787fa383adc8236b89497a883b6ca052f3100f3988e10d0ad977a686",
@@ -61,8 +61,7 @@
       "foreground lost after download/staging or call begins/unknown after resident stop prevents commit and reconciles owned pause",
       "assistant and power-voice subclasses cannot initiate an automatic update outside the main surface",
       "install consent revoked between native reads never opens Settings automatically; explicit manual permission handoff remains available"
-    ],
-    "durationSecondsReported": 12.75
+    ]
   },
   "platform": {
     "outcome": "incomplete",
