@@ -34410,14 +34410,14 @@
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "546ae37828d255e20cfbccf874f8890a971d2d440bca664f9360c967f1cbcc98",
+      "sha256": "a76d18f5b0f25805fceef62dfb45efd168de6c54de4708e5067a857bcf37d8a4",
       "stateAnchors": [
         {
           "line": 3359,
           "text": "<sc-if value=\"{{workflows.automation.editingSchedule}}\"><sc-if value=\"{{workflows.automation.scheduleClockEditable}}\"><label class=\"schedule-instructions\">Time ({{workflows.automation.e"
         }
       ],
-      "integrationReview": "Reviewed reminder Reopen eligibility boolean and Clock repeat-day accessible-name binding against their owning adapters. Source identity does not extend the existing bounded models to every mounted template path."
+      "integrationReview": "Reviewed reminder Reopen eligibility boolean and Clock repeat-day accessible-name binding against their owning adapters. Source identity does not extend the existing bounded models to every mounted template path. Reviewed Read aloud visibility now uses two supported nested dc-lite guards, retaining both capability and page-content requirements; actual renderer truth-table and browser checks remain separate from the existing partial model allocations and Android reading/speech acceptance."
     },
     {
       "path": "apps/app/src/prototype/use-in-email-review.ts",

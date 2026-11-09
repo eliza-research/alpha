@@ -1,4 +1,4 @@
-// Source-shape guard (class S). It shows nothing about Android's behaviour.
+// Source and host-renderer guards. They show nothing about Android's behaviour.
 //
 // Page reading (Read aloud, Ask about page) runs its extraction script in a world the page's own
 // script cannot reach. A WebView provider without that capability (the SDK emulator's WebView 133
@@ -8,6 +8,11 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
+import {createRequire} from 'node:module';
+import {buildSync} from 'esbuild';
+import {JSDOM} from 'jsdom';
+import React from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
 
 const java = name => fs.readFileSync(`android/app/src/main/java/ai/alphacompute/alphaphone/${name}.java`, "utf8");
 // The isolated reading world, blob capture and downloads are staged into the app from the reviewed
@@ -122,7 +127,32 @@ test('Cloud native Browser hides local-only reading without disabling page quest
   const available=new Function('Capacitor','cloudRuntimeEnabled','return '+match[1])({isNativePlatform:()=>native},cloud);
   assert.equal(available,!(native&&cloud));
  }
- assert.match(template,/browser\.readAloudAvailable && browser\.pageContentAvailable/);
+ // Render the real menu guards through dc-lite: a source-shape assertion alone
+ // previously accepted an unsupported compound expression that hid the control.
+ const menuRows=template.split('\n').filter(row=>row.includes('aria-label="Read aloud"')||row.includes('aria-label="Ask about page"'));
+ assert.equal(menuRows.length,2,'both actual Browser menu controls are captured');
+ const dom=new JSDOM(menuRows.join('\n'));
+ try{
+  const guarded=label=>{
+   const button=dom.window.document.querySelector(`button[aria-label="${label}"]`);assert.ok(button,label);
+   let node=button;while(node.parentElement?.localName==='sc-if')node=node.parentElement;
+   return node.outerHTML;
+  };
+  const menu='<main class="os"><section data-screen>'+guarded('Read aloud')+guarded('Ask about page')+'</section></main>';
+  const renderer=fs.readFileSync('apps/app/src/prototype/dc-lite.js','utf8')
+   .replace("import {iconStyle} from '../icon-style';",'const iconStyle=()=>({});')
+   .replace('import templateHtml from "./template.html?raw";',`const templateHtml=${JSON.stringify(menu)};`);
+  const code=buildSync({stdin:{contents:renderer,resolveDir:process.cwd(),loader:'js'},bundle:true,write:false,platform:'node',format:'cjs',external:['react']}).outputFiles[0].text;
+  const module={exports:{}};new Function('require','module','exports','document',code)(createRequire(import.meta.url),module,module.exports,dom.window.document);
+  class Menu extends module.exports.DCLogic{renderVals(){return {browser:this.props.browser};}}
+  for(const readAloudAvailable of [false,true])for(const pageContentAvailable of [false,true]){
+   const rendered=new JSDOM(renderToStaticMarkup(React.createElement(Menu,{browser:{readAloudAvailable,pageContentAvailable}})));
+   try{
+    assert.equal(!!rendered.window.document.querySelector('button[aria-label="Read aloud"]'),readAloudAvailable&&pageContentAvailable);
+    assert.equal(!!rendered.window.document.querySelector('button[aria-label="Ask about page"]'),pageContentAvailable);
+   }finally{rendered.window.close();}
+  }
+ }finally{dom.window.close();}
  const read=adapter.slice(adapter.indexOf('async function readPage()'),adapter.indexOf('async function askPage()'));
  assert.ok(read.indexOf('if(Capacitor.isNativePlatform()&&cloudRuntimeEnabled)return;')<read.indexOf('createNativeReadingVoice()'));
  const runtime=fs.readFileSync('apps/app/src/runtime/native-reading-voice.ts','utf8');

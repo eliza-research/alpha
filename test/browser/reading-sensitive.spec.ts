@@ -4,12 +4,23 @@ import {test,expect} from '@playwright/test';
 const pageSourceModule='/@fs'+realpathSync('.eliza/client-features/plugins/plugin-native-browser-surface/src/page-source.ts');
 // The extraction script is the shared BrowserPageReading.EXTRACT text block at the pin; undo its escapes.
 const native=readFileSync('vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserPageReading.java','utf8').split('public static final String EXTRACT = """')[1].split('""";')[0].replaceAll('\\\\','\\');
-const cases=[['api-key','<article>API key: SYNTHETIC-ONLY</article>'],['access-token','<article>Access token: SYNTHETIC-ONLY</article>'],['refresh-token','<article>refresh_token: SYNTHETIC-ONLY</article>'],['vault','<article><h1>Password vault</h1><div>SYNTHETIC-ONLY</div></article>'],['otp','<main><span>Verification</span><span>code</span><div>001122</div></main>'],['recovery','<aside>Account recovery codes TEST-ONLY</aside><article>Garden journal</article>'],['hidden-field','<input type="password" hidden><article>Garden journal</article>'],['normalized','<article>Ｐａｓｓｗｏｒｄ: synthetic</article>'],['split-zero-width','<article>pass\u200Bword: synthetic</article>'],['bare-code','<article>001122</article>']]as const;
+const cases=[['api-key','<article>API key: SYNTHETIC-ONLY</article>'],['access-token','<article>Access token: SYNTHETIC-ONLY</article>'],['refresh-token','<article>refresh_token: SYNTHETIC-ONLY</article>'],['vault','<article><h1>Password vault</h1><div>SYNTHETIC-ONLY</div></article>'],['otp','<main><span>Verification</span><span>code</span><div>001122</div></main>'],['recovery','<article>Account recovery codes TEST-ONLY</article>'],['hidden-field','<input type="password" hidden><article>Garden journal</article>'],['normalized','<article>Ｐａｓｓｗｏｒｄ: synthetic</article>'],['split-zero-width','<article>pass\u200Bword: synthetic</article>'],['bare-code','<article>001122</article>']]as const;
 for(const [kind,body]of cases)test(`browser and native extraction refuse credential prose: ${kind}`,async({page,context})=>{
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));await page.goto('/?mode=dev');const url='https://public-fixture.test/article';await page.route(url,r=>r.fulfill({contentType:'text/html',headers:{'access-control-allow-origin':'*'},body}));
  await page.evaluate(async url=>{const {BrowserVoice}=await import('/src/browser/voice.ts');(window as any).speechCalls=[];BrowserVoice.prototype.synthesizeLocal=async function(input){(window as any).speechCalls.push(input.text);throw Error('No playback in fixture');};const {reviewBrowserReading}=await import('/src/browser/reading-review.ts');const controller=new AbortController();void reviewBrowserReading(url,controller.signal,()=>controller.signal.throwIfAborted());},url);
  await expect(page.getByRole('status',{name:'Reading status'})).toContainText('may contain credentials or verification codes');await expect(page.getByRole('textbox',{name:'Excerpt to read'})).toHaveValue('');await expect(page.getByRole('textbox',{name:'Excerpt to read'})).toBeDisabled();await expect(page.getByRole('button',{name:'Read locally',exact:true})).toBeDisabled();expect(await page.evaluate(()=>(window as any).speechCalls)).toEqual([]);
  const document=await context.newPage();await document.setContent(body);expect(await document.evaluate(script=>(0,eval)(script),native)).toEqual({blocked:true});await document.close();
+});
+test('credential prose outside the selected article never enters browser or native reading',async({page})=>{
+ const body='<aside>Account recovery codes TEST-ONLY</aside><article>Garden journal</article>';
+ await page.goto('/');
+ await page.route('https://public-fixture.test/article',r=>r.fulfill({contentType:'text/html',body}));
+ const extracted=await page.evaluate(async pageSourceModule=>{const {readPublicPageSource}=await import(pageSourceModule);return readPublicPageSource('https://public-fixture.test/article',new AbortController().signal);},pageSourceModule);
+ expect(extracted).toEqual({text:'Garden journal',truncated:false});
+ await page.setContent(body);
+ const result=await page.evaluate(script=>(0,eval)(script),native);
+ expect(result.text).toBe('Garden journal');
+ expect(JSON.stringify(result)).not.toContain('TEST-ONLY');
 });
 test('manual credential paste is refused before speech, normal article still reads',async({page})=>{
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));await page.goto('/');await page.route('https://public-fixture.test/**',r=>r.fulfill({contentType:'text/plain',headers:{'access-control-allow-origin':'*'},body:'A garden journal from 2027.'}));

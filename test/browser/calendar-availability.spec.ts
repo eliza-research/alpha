@@ -113,11 +113,12 @@ for (const mode of ['share', 'all-day', 'free', 'cancel-choice', 'cancel-result'
     const approve = page.getByText('Check availability', { exact: true });
 
     if (mode === 'other-zone' || mode === 'not-offered') {
-      // The pending action is named with the reason it cannot be reviewed; it is never approvable.
-      await expect(page.getByText(mode === 'other-zone' ? /Check availability: This availability check used a different time zone\. Ask again from this phone\./ : /An agent action could not be shown on this phone\. This action was not negotiated with this agent/).last()).toBeVisible();
+      // Unavailable and wrong-zone actions remain visible but never approvable.
+      await expect(page.getByText(mode === 'other-zone' ? /Check availability: This availability check used a different time zone\. Ask again from this phone\./ : "This action isn't available on this phone.",{exact:mode==='not-offered'}).last()).toBeVisible();
       await expect(approve).toHaveCount(0);
       const after = await fixture(page);
       expect(after.decisions).toBe(0); expect(after.receipts).toEqual([]); expect(after.journal).not.toContain('reserve');
+      if(mode==='not-offered')expect(after.claims).toBe(0);
       return;
     }
     await expect(page.getByText(/Only busy times are shared with the agent, not event titles or details/).last()).toBeVisible();

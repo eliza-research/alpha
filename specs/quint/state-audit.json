@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "dae11e0b7e3f40e5434fea21fd7c127e416f7016",
-  "ledgerSha256": "870c203926c48c3452f249cdf78a20b0c648c225947bfc50ce253437006d8c25",
+  "ledgerSha256": "3f4212b6395c0ed80f5460b0fa887f49eb8f69981120b89ccd0e796d161ed009",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -39982,7 +39982,7 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "546ae37828d255e20cfbccf874f8890a971d2d440bca664f9360c967f1cbcc98",
+      "sha256": "a76d18f5b0f25805fceef62dfb45efd168de6c54de4708e5067a857bcf37d8a4",
       "allocatedModels": [
         "CalendarPreservationConfirmation",
         "CameraPreviewRetirement",
@@ -225287,6 +225287,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "07e4d306d04b0bcbe6f3d556e9c18377227387df67f9b67b5af562c80d60bcf7"
+    "sha256": "6ec5e002dece5c57b3ef9aa05f77e4c606c3d7b88d75612e5eda2ac1db212454"
   }
 }
