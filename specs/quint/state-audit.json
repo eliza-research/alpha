@@ -11,8 +11,8 @@
   },
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
-  "sourcePin": "489efc0b0e53ccbf9554f6017ac0d7b94f7056e8",
-  "ledgerSha256": "76d870c81a7789e4c6305162e7667bc367023fa743e4ce13dec69ac742dddb2c",
+  "sourcePin": "dae11e0b7e3f40e5434fea21fd7c127e416f7016",
+  "ledgerSha256": "870c203926c48c3452f249cdf78a20b0c648c225947bfc50ce253437006d8c25",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -28,11 +28,11 @@
     "parsedFiles": 5709,
     "languageReview": 94,
     "parseErrors": 0,
-    "candidates": 69682,
+    "candidates": 69687,
     "writeSites": 68592,
-    "writeAssociations": 61535,
+    "writeAssociations": 61533,
     "asynchronous": 8571,
-    "unassignedWrites": 10510
+    "unassignedWrites": 10512
   },
   "files": [
     {
@@ -33110,7 +33110,7 @@
     },
     {
       "path": "apps/app/src/prototype/agent-adapter.ts",
-      "sha256": "ba69bd17a0571aea778e4b5bbbb417b049d28d1697a5a1ec63cbfff79287a786",
+      "sha256": "abd9ec348137cd2fcb6c5f470fa6dc5a1f3fcce1083187df0414acefd7ce2308",
       "allocatedModels": [
         "Application",
         "AssistantConversation",
@@ -33496,7 +33496,7 @@
     },
     {
       "path": "apps/app/src/prototype/browser-adapter.ts",
-      "sha256": "e0f14dbf070ec814130e49729ddd82cb3a41b8454608a06128799dc479a40e04",
+      "sha256": "d8eddb116d668166ccadb1ce7aad8f1c1d2ff484368a2e9bc7b458699797c26e",
       "allocatedModels": [
         "BrowserExternalHandoff",
         "BrowserSession",
@@ -34099,7 +34099,7 @@
     },
     {
       "path": "apps/app/src/prototype/camera-adapter.ts",
-      "sha256": "ff7aa68cca00e79ea01307bbe1b7a6516774be6dcf75c1ed8b284fe2fd920c69",
+      "sha256": "4930d99c2bc8c0f38c9a5a39166069f9d9af083401751f8d8f8070fff9ce9f30",
       "allocatedModels": [
         "BrowserAlbumStorage",
         "CameraPreviewRetirement",
@@ -34235,44 +34235,44 @@
           "writes": 4
         },
         {
-          "owner": "installPrototypeCameraAdapter.ArrowFunction@1159",
-          "line": 1161,
+          "owner": "installPrototypeCameraAdapter.ArrowFunction@1161",
+          "line": 1163,
           "bindings": 1,
           "writes": 33
         },
         {
           "owner": "installPrototypeCameraAdapter.attachGrid",
-          "line": 1244,
+          "line": 1246,
           "bindings": 2,
           "writes": 3
         },
         {
           "owner": "installPrototypeCameraAdapter.settleThumbnails",
-          "line": 1263,
+          "line": 1265,
           "bindings": 6,
           "writes": 1
         },
         {
           "owner": "installPrototypeCameraAdapter.loadCoverThumbnails",
-          "line": 1290,
+          "line": 1292,
           "bindings": 3,
           "writes": 1
         },
         {
           "owner": "installPrototypeCameraAdapter.run",
-          "line": 1319,
+          "line": 1321,
           "bindings": 2,
           "writes": 5
         },
         {
-          "owner": "installPrototypeCameraAdapter.ArrowFunction@1382",
-          "line": 1390,
+          "owner": "installPrototypeCameraAdapter.ArrowFunction@1384",
+          "line": 1392,
           "bindings": 7,
           "writes": 117
         },
         {
-          "owner": "installPrototypeCameraAdapter.ArrowFunction@1630",
-          "line": 1632,
+          "owner": "installPrototypeCameraAdapter.ArrowFunction@1632",
+          "line": 1634,
           "bindings": 1,
           "writes": 1
         }
@@ -34537,7 +34537,7 @@
     },
     {
       "path": "apps/app/src/prototype/clock-adapter.ts",
-      "sha256": "3c8ed25e07cd7cab53f235875b974f21caf2c55e37bc7da431f788be0b08b424",
+      "sha256": "b37f2b0fb32da9973ae4c96050c2d11f3c59af0caeb3e95d3415be90d599e5a8",
       "allocatedModels": [
         "DeviceActions",
         "WorkflowClockAdmission"
@@ -35415,7 +35415,7 @@
     },
     {
       "path": "apps/app/src/prototype/maps-adapter.ts",
-      "sha256": "5008c5a98147e06dae2c70ad076cffa179a693171e2c629d6fc89639d46ea543",
+      "sha256": "8fa1d2468330bcbf37f74df094df62ecb443bc53f4919457234e63a95b04e4c0",
       "allocatedModels": [
         "Maps",
         "MapsEventReturn",
@@ -35429,43 +35429,43 @@
       "owners": [
         {
           "owner": "installPrototypeMapsAdapter",
-          "line": 40,
+          "line": 42,
           "bindings": 16,
           "writes": 37
         },
         {
           "owner": "installPrototypeMapsAdapter.retireEventReturn",
-          "line": 101,
+          "line": 103,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installPrototypeMapsAdapter.returnToEvent",
-          "line": 112,
+          "line": 114,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "installMapsChatAdapter",
-          "line": 328,
+          "line": 330,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "installMapsChatAdapter.answers",
-          "line": 330,
+          "line": 332,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installMapsChatAdapter.answer",
-          "line": 332,
+          "line": 334,
           "bindings": 1,
           "writes": 3
         },
         {
-          "owner": "installMapsChatAdapter.FunctionExpression@340",
-          "line": 341,
+          "owner": "installMapsChatAdapter.FunctionExpression@342",
+          "line": 343,
           "bindings": 1,
           "writes": 1
         }
@@ -39153,7 +39153,7 @@
     },
     {
       "path": "apps/app/src/prototype/phone.css",
-      "sha256": "e9e52df7bc41f3d176f7c784db75727bec8de5a0bce41efd793cc9f1e28a1e5f",
+      "sha256": "3c5b9b882805c34374051fffd7eeaf6b7ed00cb99aede7d1b74b3d4838f31019",
       "allocatedModels": [
         "ChatInput",
         "DockClearanceOwnership",
@@ -39666,7 +39666,7 @@
     },
     {
       "path": "apps/app/src/prototype/settings-adapter.ts",
-      "sha256": "6426f56e312ffd7daa1bb8a7921119b7d8872f3e1f66f177177bc99d5ec45a7c",
+      "sha256": "c85044b36ae548a0beccafff269d303889e94e8e5b5a831ff4b7657d72df48cf",
       "allocatedModels": [
         "AppearancePreferenceAdmission",
         "AutomaticAppUpdateSchedule",
@@ -39982,7 +39982,7 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "8aabc9bdc9bfc07acb68ab3e3d0e948ee096cd2d216cb4fd244d62298f75f482",
+      "sha256": "546ae37828d255e20cfbccf874f8890a971d2d440bca664f9360c967f1cbcc98",
       "allocatedModels": [
         "CalendarPreservationConfirmation",
         "CameraPreviewRetirement",
@@ -41827,7 +41827,7 @@
     },
     {
       "path": "apps/app/src/runtime/connection-ui.tsx",
-      "sha256": "c49f5cf1e8986a52842d8a272617c16e1e788017483eaebf7076b68db85cb41c",
+      "sha256": "1b0c263b43f27edb41ef812b58cf307cbf155cc4053b6da40e9c38dfbe785b21",
       "allocatedModels": [
         "Application",
         "ApplicationComposition",
@@ -42899,7 +42899,7 @@
     },
     {
       "path": "apps/app/src/runtime/google-connection-ui.tsx",
-      "sha256": "9e9bf2d5586a8f06145680033648db4279eb2fcd6f821a23ecfe17d9ee96f361",
+      "sha256": "998b86964facaa14168055ad21bb05431ef29e29c59f8e4ebe047601bb8ca0a5",
       "allocatedModels": [
         "BrowserGoogleReturn",
         "GoogleAccounts",
@@ -46636,7 +46636,7 @@
     },
     {
       "path": "scripts/native-google-host-artifact.mjs",
-      "sha256": "642f4d6ce61e678366efbb6dc910a24aa64a5450c4e157e6f36853d694b8d6e2",
+      "sha256": "f662824d15e959a96ecebb00699f4da92549614d5403517764743dd04f381766",
       "allocatedModels": [
         "NativeGoogleAccessFile",
         "NativeGoogleHostArtifact",
@@ -46654,13 +46654,13 @@
         },
         {
           "owner": "fixedInputHashes",
-          "line": 38,
+          "line": 45,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "addNativeGoogleHostArtifact",
-          "line": 106,
+          "line": 113,
           "bindings": 1,
           "writes": 2
         }
@@ -46671,7 +46671,7 @@
     },
     {
       "path": "scripts/native-google-product-host.ts",
-      "sha256": "bfbe4eb1c5c3569fa0b42a7e0bbb2e66ed3245d9874ca47cff6d58ad6b6a9904",
+      "sha256": "adb06b7ccc2b77e92b007b84c0909e10491dc20937946bf0265c0d7a78e0f707",
       "allocatedModels": [
         "NativeGoogleAccessFile",
         "NativeGoogleHostArtifact",
@@ -46743,7 +46743,7 @@
     },
     {
       "path": "scripts/prepare-client-features.mjs",
-      "sha256": "27cdd66796a5164364aee9a7f1fdb96ae5484302ea853686b672591477a2e3a3",
+      "sha256": "9ea513f0e2cafa7df945f5155c21e61d22ecf9d97a36ac20b51a99b21f2921a8",
       "allocatedModels": [
         "Application",
         "BrowserFilesTrash",
@@ -46759,50 +46759,50 @@
       "owners": [
         {
           "owner": "inventory",
-          "line": 19,
+          "line": 17,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "<module>",
-          "line": 36,
+          "line": 34,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "comparator.upper",
-          "line": 335,
+          "line": 330,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "packageRoot",
-          "line": 351,
+          "line": 346,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "checkClientFeatureDependencies",
-          "line": 362,
+          "line": 357,
           "bindings": 3,
           "writes": 3
         },
         {
           "owner": "prepareClientFeatures",
-          "line": 391,
-          "bindings": 3,
-          "writes": 5
+          "line": 392,
+          "bindings": 2,
+          "writes": 3
         },
         {
           "owner": "prepareClientFeatures.current",
-          "line": 501,
+          "line": 474,
           "bindings": 1,
           "writes": 1
         }
       ],
       "parseErrors": [],
       "asynchronous": 0,
-      "unassignedWrites": 4
+      "unassignedWrites": 6
     },
     {
       "path": "scripts/prepare-embedding-host.mjs",
@@ -46851,7 +46851,7 @@
     },
     {
       "path": "scripts/prepare-patched-native.mjs",
-      "sha256": "bde29ae21c2b34287a075d99a85b91faa6e3fa4b00c936fbfa3d502e2ee45773",
+      "sha256": "4aa18b5b6c50a30bf88b1fd66f9bf5879156dffb0cdbf2a69f905e7f1ba7968f",
       "allocatedModels": [
         "AndroidBrowserModuleStage",
         "NativeMmsDispatch",
@@ -47009,7 +47009,7 @@
     },
     {
       "path": "scripts/source-snapshot.mjs",
-      "sha256": "385b22245f0055fed0a3abd305a645638cdbbcd86a647bf143d25c1cbeccfb81",
+      "sha256": "bc8fa9de8dabeb6ec59be9ead8d35f3faa7d713c1974ae43c5d6a6281b6feee7",
       "allocatedModels": [
         "Application",
         "MobileBundleAdmission",
@@ -68365,7 +68365,7 @@
     },
     {
       "path": "vendor/eliza/packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts",
-      "sha256": "b157fa2c9b3c0d4a3e9d6aca0fedc6dc9d4142c69721adbb8b370233d53dc5bc",
+      "sha256": "45f81315269621657a84d1a67a4769405c3ef5cee8cfda44ee911bb4fa36d2a2",
       "allocatedModels": [
         "NativeGoogleHostArtifact"
       ],
@@ -68381,43 +68381,43 @@
         },
         {
           "owner": "createManagedGoogleAgentHost",
-          "line": 127,
+          "line": 138,
           "bindings": 2,
           "writes": 6
         },
         {
           "owner": "createManagedGoogleAgentHost.sharedLookup",
-          "line": 162,
+          "line": 173,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "createManagedGoogleAgentHost.ownerAccounts",
-          "line": 198,
+          "line": 209,
           "bindings": 1,
           "writes": 6
         },
         {
           "owner": "createManagedGoogleAgentHost.verified",
-          "line": 347,
+          "line": 358,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "createManagedGoogleAgentHost.calendarFeed",
-          "line": 638,
+          "line": 649,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "createManagedGoogleAgentHost.list",
-          "line": 730,
+          "line": 741,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "createManagedGoogleAgentHost.list.ArrowFunction@746",
-          "line": 753,
+          "owner": "createManagedGoogleAgentHost.list.ArrowFunction@757",
+          "line": 764,
           "bindings": 2,
           "writes": 2
         },
@@ -68536,7 +68536,7 @@
     },
     {
       "path": "vendor/eliza/packages/app/src/runtime/managed-google-agent/native-google-agent-host.ts",
-      "sha256": "9c631b8cd11524b4ccf198d366cbdadcb690587dc8f907fe86bc5cbd0f1fdb73",
+      "sha256": "4ca6a44d1bc3bcce3b908258f4c3fe7bf0413b68ebc34861857bb3dff6ea059b",
       "allocatedModels": [
         "NativeGoogleAccessFile"
       ],
@@ -68552,7 +68552,7 @@
         },
         {
           "owner": "startManagedGoogleAgentHost",
-          "line": 120,
+          "line": 121,
           "bindings": 2,
           "writes": 3
         }
@@ -190474,7 +190474,7 @@
     },
     {
       "path": "vendor/eliza/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NoticeCoordinator.java",
-      "sha256": "960930412850fb8c9b7f28fc48bd33a86de0026c9cd1913facc95039cc12ea39",
+      "sha256": "9105c37aee0e5ebb02d3256a28bab3160d83666a96f0664740999f978f01697a",
       "allocatedModels": [
         "DeviceActions",
         "NoticesAndCaches",
@@ -190524,30 +190524,30 @@
         {
           "owner": "NoticeCoordinator.postApproval@36.lambda@36",
           "line": 38,
-          "bindings": 3,
+          "bindings": 5,
           "writes": 1
         },
         {
-          "owner": "NoticeCoordinator.withdrawApproval@52",
-          "line": 52,
+          "owner": "NoticeCoordinator.withdrawApproval@59",
+          "line": 59,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "NoticeCoordinator.withdrawOtherOwners@55",
-          "line": 55,
+          "owner": "NoticeCoordinator.withdrawOtherOwners@62",
+          "line": 62,
           "bindings": 6,
           "writes": 2
         },
         {
-          "owner": "NoticeCoordinator.resumeApproval@61",
-          "line": 61,
+          "owner": "NoticeCoordinator.resumeApproval@68",
+          "line": 68,
           "bindings": 5,
           "writes": 0
         },
         {
-          "owner": "NoticeCoordinator.resumeApproval@61.lambda@61",
-          "line": 63,
+          "owner": "NoticeCoordinator.resumeApproval@68.lambda@68",
+          "line": 70,
           "bindings": 3,
           "writes": 2
         }
@@ -190558,7 +190558,7 @@
     },
     {
       "path": "vendor/eliza/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NoticeDelivery.java",
-      "sha256": "2b4246f3a1e29752911bf70aed0bec4b2a0ab581406da553623603a1f7481c60",
+      "sha256": "cdb296ddcba2ce3005d6070925d8c727a3be4f213c9a3b579e3bc05b496794d9",
       "allocatedModels": [
         "DeviceActions",
         "NativeActionRecovery",
@@ -190801,12 +190801,12 @@
         {
           "owner": "NoticeDelivery.approvalStatus@187",
           "line": 187,
-          "bindings": 2,
+          "bindings": 6,
           "writes": 0
         },
         {
-          "owner": "NoticeDelivery.expireApprovals@189",
-          "line": 189,
+          "owner": "NoticeDelivery.expireApprovals@199",
+          "line": 199,
           "bindings": 6,
           "writes": 2
         }
@@ -225287,6 +225287,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "8e57e0b1220cf117277aa8134f2aeb1828a197548cc303a986cff372a95438b6"
+    "sha256": "07e4d306d04b0bcbe6f3d556e9c18377227387df67f9b67b5af562c80d60bcf7"
   }
 }

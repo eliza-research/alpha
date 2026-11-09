@@ -19,7 +19,7 @@ default-biography matcher in the earlier `ac18377c` candidate. A SHA-256
 fingerprint recognizes the exact retired stock biography; caller-edited profiles
 remain caller-owned.
 
-The current pin `489efc0b0e53ccbf9554f6017ac0d7b94f7056e8`
+The earlier reviewed pin `489efc0b0e53ccbf9554f6017ac0d7b94f7056e8`
 ([elizaOS/eliza#39181](https://github.com/elizaOS/eliza/pull/39181)) includes
 that reviewed repair and the consumer configuration refactor. Alpha owns its OS
 descriptor and browser sign-in registration. Shared code selects explicit
@@ -28,6 +28,16 @@ develop source also changes live-capture admission and cancellation and adds the
 resident producer's migrated PGlite snapshot. The dependency lock and recorded
 engine/model bytes are unchanged; native, device and user qualification do not
 transfer to this application.
+
+The current pin `dae11e0b7e3f40e5434fea21fd7c127e416f7016`
+([elizaOS/eliza#39180](https://github.com/elizaOS/eliza/pull/39180)) merges
+those sources with the reviewed notice-publication cleanup and Unicode-safe Gmail
+body bound. Shared code takes an optional caller-owned body limit; Alpha selects
+32,000 characters in its own host entrypoints. The consumer uses upstream behavior
+directly and carries no source patches. The dependency lock, recorded engine/model
+bytes and shared speech inputs are unchanged from `489efc0b`; historical built
+reviews retain their original pins. Current native, device and user qualification
+remain pending.
 
 The separately reviewed source `450087e00e6dc1c289aab0c3e424560b7040d163`
 retains the callback identity and exact stock-biography fingerprint, preserves
