@@ -1818,6 +1818,37 @@
     ]
   },
   {
+    "path": "specs/quint/application/ModalScrimOwnership.qnt",
+    "module": "ModalScrimOwnership",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "inlineCoverageReleasesCapturedPointerTest",
+      "actualNativeModalRetiresDelayedReleaseTest",
+      "sameTaskModalDoesNotRestoreOldPressTest",
+      "nonmodalAndUninterruptedCompatibilityTest",
+      "oldDeadlineCannotSettleANewPressTest"
+    ],
+    "invariants": [
+      "ExactPress",
+      "ModalOwns",
+      "NoEscapedActivation"
+    ],
+    "sources": [
+      "apps/app/src/prototype/chat-overlay-motion-adapter.ts",
+      "apps/app/src/prototype/calendar-month-focus.ts",
+      "apps/app/src/runtime/inline-modal.ts",
+      "apps/app/src/runtime/modal-inert.ts",
+      "apps/app/src/prototype/phone.css",
+      "apps/app/src/prototype/template.html"
+    ],
+    "abstractions": [
+      "Raised input scrim with two press generations, bounded pointer identities, one inline or native modal and representative held, moved and released paths. A nonmodal dialog does not take modal ownership.",
+      "Actual source adapters and browser pointer capture execute over a controlled shell. Half-sheet gestures, full product mounting for other modal families, and installed Android pointer delivery are separate."
+    ]
+  },
+  {
     "path": "specs/quint/application/CloudConnectionNotices.qnt",
     "module": "CloudConnectionNotices",
     "init": "init",

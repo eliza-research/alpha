@@ -20,6 +20,64 @@ const CLOSE_FADE_MS = 120;
 /** Android may deliver the click in a later gesture task after pointerup. */
 const SCRIM_CLICK_WAIT_MS = 350;
 type Shell = any;
+type ScrimPress = {
+	id: number;
+	x: number;
+	y: number;
+	moved: boolean;
+	dock?: {
+		owner: HTMLElement;
+		released: boolean;
+		timer?: ReturnType<typeof setTimeout>;
+		current(): boolean;
+		dispose(): void;
+	};
+};
+
+function clearScrimPress(shell: Shell) {
+	const press: ScrimPress | undefined = shell.chatScrimPress;
+	shell.chatScrimPress = undefined;
+	press?.dock?.dispose();
+}
+
+function watchDockScrimPress(shell: Shell, owner: HTMLElement, press: ScrimPress) {
+	const check = (records: MutationRecord[]) => {
+		if (shell.chatScrimPress !== press) return false;
+		// An inert removal records earlier coverage even if the dialog opened
+		// and closed before this observer or a late event could run.
+		const lost = records.some(record => record.attributeName === "inert" &&
+			record.oldValue !== null && (record.target as Element).contains(owner));
+		if (owner.isConnected && owner.dataset.alphaDockScrim === "true" &&
+			!owner.closest("[inert]") && !document.querySelector("dialog:modal") && !lost)
+			return true;
+		clearScrimPress(shell);
+		if (!document.activeElement?.matches("[data-alpha-composer]")) shell.chatInputFocused = false;
+		return false;
+	};
+	const observer = new MutationObserver(check);
+	// showModal focuses inside the top layer synchronously, including when the
+	// dialog closes in the same task. A nonmodal open does not take this lease.
+	const focus = () => { check(observer.takeRecords()); };
+	const dock: NonNullable<ScrimPress["dock"]> = {
+		owner,
+		released: false,
+		current: () => check(observer.takeRecords()),
+		dispose() {
+			observer.disconnect();
+			document.removeEventListener("focusin", focus, true);
+			clearTimeout(dock.timer);
+			if (owner.hasPointerCapture(press.id)) owner.releasePointerCapture(press.id);
+		},
+	};
+	observer.observe(document.documentElement, {
+		subtree: true,
+		attributeOldValue: true,
+		attributeFilter: ["inert", "open"],
+	});
+	document.addEventListener("focusin", focus, true);
+	return dock;
+}
+
 // chat-release:begin (dependency-free; exercised by test/chat-release.test.mjs)
 type Mode = "hidden" | "input" | "sheet" | "full";
 type Sample = { y: number; t: number };
@@ -365,7 +423,7 @@ export function installChatOverlayMotion(Component: Shell) {
 			const active = document.activeElement;
 			if (active instanceof HTMLElement && active.matches("[data-alpha-composer]")) active.blur();
 			this.chatInputFocused = false;
-			this.chatScrimPress = undefined;
+			clearScrimPress(this);
 		};
 		document.addEventListener("visibilitychange", this.dockHiddenWatch);
 	};
@@ -377,7 +435,7 @@ export function installChatOverlayMotion(Component: Shell) {
 		const previousView = args[1]?.view;
 		if ((s.chat !== "input" || (args[1] && previousView !== s.view)) && (this.chatInputFocused || this.chatScrimPress)) {
 			this.chatInputFocused = false;
-			this.chatScrimPress = undefined;
+			clearScrimPress(this);
 		}
 		if (
 			drag &&
@@ -394,7 +452,7 @@ export function installChatOverlayMotion(Component: Shell) {
 		}
 	};
 	p.componentWillUnmount = function () {
-		this.chatScrimPress = undefined;
+		clearScrimPress(this);
 		retire(this, false);
 		window.removeEventListener("resize", this.cancelChatMotion);
 		window.removeEventListener("blur", this.cancelChatMotion);
@@ -758,12 +816,25 @@ export function installChatOverlayMotion(Component: Shell) {
 			(shell.chatInputFocused || shell.rest() === "hidden");
 		out.dockScrim = dockScrim;
 		out.scrimZ = dockScrim ? 39 : 45;
-		out.scrimTap = () => {
-			shell.chatScrimPress = undefined;
+		const settleScrim = () => {
+			clearScrimPress(shell);
 			const active = document.activeElement;
 			if (dockScrim && active instanceof HTMLElement && active.matches("[data-alpha-composer]"))
 				active.blur();
 			out.closeChat();
+		};
+		out.scrimTap = (event: MouseEvent & {nativeEvent?: MouseEvent}) => {
+			if (dockScrim) {
+				const press: ScrimPress | undefined = shell.chatScrimPress;
+				// React forwards click as a mouse event even when the browser
+				// supplies a pointer ID on the native event.
+				const pointerId = ((event.nativeEvent ?? event) as Partial<PointerEvent>).pointerId;
+				if (!press?.dock?.released || press.dock.owner !== event.currentTarget ||
+					(typeof pointerId === "number" && pointerId > 0 && pointerId !== press.id) ||
+					!press.dock.current())
+					return;
+			}
+			settleScrim();
 		};
 		// An outside tap lowers the sheet or dock without activating what it uncovers.
 		// A drag has no click, so it collapses on release. Assistive technology can
@@ -772,6 +843,13 @@ export function installChatOverlayMotion(Component: Shell) {
 			dockScrim || s.chat === "sheet" && s.voice === "off" && !shell.props.assistantSurface
 				? "auto"
 				: "none";
+		const ownedPress = (event: PointerEvent) => {
+			const press: ScrimPress | undefined = shell.chatScrimPress;
+			if (press?.id !== event.pointerId) return undefined;
+			if (press.dock && (press.dock.owner !== event.currentTarget || !press.dock.current()))
+				return undefined;
+			return press;
+		};
 		out.scrimSw = {
 			down(event: PointerEvent) {
 				event.stopPropagation();
@@ -779,20 +857,27 @@ export function installChatOverlayMotion(Component: Shell) {
 				// otherwise uncover the app between pointer down and pointer up.
 				if (dockScrim) event.preventDefault();
 				if (event.isPrimary === false) return;
-				shell.chatScrimPress = {
+				clearScrimPress(shell);
+				const press: ScrimPress = {
 					id: event.pointerId,
 					x: event.clientX,
 					y: event.clientY,
 					moved: false,
 				};
+				shell.chatScrimPress = press;
+				if (dockScrim) {
+					press.dock = watchDockScrimPress(shell, event.currentTarget as HTMLElement, press);
+					press.dock.current();
+				}
 			},
 			// Captured only once it is a drag: a captured press never produces the tap's click,
 			// and a drag may end over the sheet.
 			move(event: PointerEvent) {
-				const press = shell.chatScrimPress;
+				const press = ownedPress(event);
 				if (
-					press?.id !== event.pointerId ||
+					!press ||
 					press.moved ||
+					press.dock?.released ||
 					Math.hypot(event.clientX - press.x, event.clientY - press.y) <
 						TAP_SLOP * geometry.scale
 				)
@@ -802,15 +887,22 @@ export function installChatOverlayMotion(Component: Shell) {
 			},
 			up(event: PointerEvent) {
 				event.stopPropagation();
-				const press = shell.chatScrimPress;
-				if (press?.id !== event.pointerId) return;
-				if (press.moved) out.scrimTap();
-				else setTimeout(() => {
-					if (shell.chatScrimPress === press) out.scrimTap();
-				}, SCRIM_CLICK_WAIT_MS);
+				const press = ownedPress(event);
+				if (!press || press.dock?.released) return;
+				if (press.moved) settleScrim();
+				else {
+					const timer = setTimeout(() => {
+						if (shell.chatScrimPress === press && (!press.dock || press.dock.current()))
+							settleScrim();
+					}, SCRIM_CLICK_WAIT_MS);
+					if (press.dock) {
+						press.dock.released = true;
+						press.dock.timer = timer;
+					}
+				}
 			},
 			cancel(event: PointerEvent) {
-				if (shell.chatScrimPress?.id === event.pointerId) out.scrimTap();
+				if (ownedPress(event)) settleScrim();
 			},
 		};
 		return out;
