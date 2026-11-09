@@ -12,13 +12,14 @@ const component=slice(model,'class Component extends DCLogic {','  componentDidM
 const dcConstructor=slice(dc,'    constructor(p)','    render()');
 const callback=stripTypeScriptTypes('(function(){const session=connectionController.getSnapshot().session?.sessionId;'+slice(adapter,'      const history = connectionController.getSnapshot().history;','      syncStoppedReplyNotice(')+'})',{mode:'strip'});
 const merge=stripTypeScriptTypes(slice(connection,'export function mergeConversationDelivery','const actionReceipts =').replace('export ',''),{mode:'strip'});
-function fixture(){
- let snapshot={session:{sessionId:'owner-a'},history:null,conversationDelivery:null};const pending=[];
- const box={systemNoticeKind,collapseSystemNotices,structuredClone,QUICK_SETTINGS:{wifi:false},ALPHA_PRODUCT:{identity:{characterName:'Alpha'}},Date,connectionController:{getSnapshot:()=>snapshot,getSelectedConversationId:()=> 'room'},alphaClient:{disconnect(){}},cancelMessageContext(){}};
+const attachments=stripTypeScriptTypes(slice(adapter,'function attachmentKey(', 'const preDispatchRefusals='),{mode:'strip'});
+function fixture({savedAttachment=null}={}){
+ let snapshot={session:{sessionId:'owner-a'},history:null,conversationDelivery:null};const pending=[],attachmentReads=[];
+ const box={browserDocuments:{async read(key){attachmentReads.push(JSON.parse(key));return savedAttachment?{raw:JSON.stringify(savedAttachment)}:null;}},systemNoticeKind,collapseSystemNotices,structuredClone,QUICK_SETTINGS:{wifi:false},ALPHA_PRODUCT:{identity:{characterName:'Alpha'}},Date,connectionController:{getSnapshot:()=>snapshot,getSelectedConversationId:()=> 'room'},alphaClient:{disconnect(){}},cancelMessageContext(){}};
  // Evaluate the actual shell constructor and history/delivery callback with queued React-style state updates.
- const context=vm.createContext({...box,pending});vm.runInContext('class ReactBase {constructor(props){this.props=props;}setState(update){pending.push(()=>{const patch=typeof update==="function"?update(this.state):update;if(patch)Object.assign(this.state,patch);});}} class DCLogic extends ReactBase {'+dcConstructor+'}'+base+component+';globalThis.Component=Component;'+merge+';globalThis.changed='+callback,context);
+ const context=vm.createContext({...box,pending});vm.runInContext('class ReactBase {constructor(props){this.props=props;}setState(update){pending.push(()=>{const patch=typeof update==="function"?update(this.state):update;if(patch)Object.assign(this.state,patch);});}} class DCLogic extends ReactBase {'+dcConstructor+'}'+base+component+';globalThis.Component=Component;'+attachments+merge+';globalThis.changed='+callback,context);
  const shell=new context.Component({});Object.assign(shell,{live:true,composerDraft:{retire(){}},closeSummaryReview(){}});
- return {shell,newShell:()=>new context.Component({}),setSnapshot:value=>snapshot=value,get snapshot(){return snapshot;},changed:()=>context.changed.call(shell),flush:()=>{while(pending.length)pending.shift()();}};
+ return {shell,attachmentReads,newShell:()=>new context.Component({}),setSnapshot:value=>snapshot=value,get snapshot(){return snapshot;},changed:()=>context.changed.call(shell),flush:()=>{while(pending.length)pending.shift()();}};
 }
 const history=(messages=[{id:'saved',text:'Saved reply'}])=>({sessionId:'owner-a',conversationId:'room',messages,automatic:true,deliveryRevisionAtStart:1});
 test('cold shell owns complete raw state before mount or a history subscription',()=>{const f=fixture();assert.ok(Array.isArray(f.shell.state.msgs));assert.equal(f.shell.state.draft,'');f.setSnapshot({...f.snapshot,history:history()});f.changed();f.flush();assert.equal(f.shell.state.msgs[0].id,'saved');});
@@ -30,3 +31,19 @@ test('shell defaults are isolated across instances',()=>{const f=fixture(),other
 test('queued delivery cannot cross an owner change',()=>{const f=fixture();f.setSnapshot({...f.snapshot,conversationDelivery:{sessionId:'owner-a',conversationId:'room',revision:1,messages:[{id:'old-owner'}]}});f.changed();f.setSnapshot({session:{sessionId:'owner-b'},history:null,conversationDelivery:null});f.flush();assert.equal(f.shell.state.msgs.length,0);});
 test('history does not import concurrent messages from another room',()=>{const f=fixture();f.shell.state.msgs=[{id:'foreign',conversationDeliveryRevision:2,messageBinding:{conversationId:'other'}}];f.setSnapshot({...f.snapshot,history:history()});f.changed();f.flush();assert.deepEqual(Array.from(f.shell.state.msgs,m=>m.id),['saved']);});
 test('explicit history selection retains its existing full-chat and draft-clear behavior',()=>{const f=fixture();f.shell.state.draft='old room draft';f.setSnapshot({...f.snapshot,history:{...history(),automatic:false}});f.changed();f.flush();assert.equal(f.shell.state.chat,'full');assert.equal(f.shell.state.draft,'');assert.equal(f.shell.state.msgs[0].id,'saved');});
+
+test('history restores a saved user attachment through the owner and room scoped document port',async()=>{
+ const attachment={transcriptAttachment:{title:'Saved transcript',text:'Reviewed words'}},f=fixture({savedAttachment:attachment});
+ const session={sessionId:'owner-a',origin:'https://owner.invalid',ownerId:'owner',agentId:'agent'};
+ f.setSnapshot({...f.snapshot,session,history:history([{id:'saved',clientMessageId:'client-message',from:'user',text:'Attached transcript'}])});
+ f.changed();f.flush();await new Promise(setImmediate);f.flush();
+ assert.deepEqual(f.attachmentReads,[['chat-attachment-v1',session.origin,session.ownerId,session.agentId,'room','client-message']]);
+ assert.equal(f.shell.state.msgs[0].transcriptAttachment.title,'Saved transcript');
+});
+test('asynchronous attachment restoration cannot replace messages after an owner change',async()=>{
+ const f=fixture({savedAttachment:{transcriptAttachment:{title:'Old owner transcript'}}});
+ f.setSnapshot({...f.snapshot,history:history([{id:'saved',from:'user',text:'Prior owner'}])});f.changed();f.flush();
+ f.setSnapshot({session:{sessionId:'owner-b'},history:null,conversationDelivery:null});f.shell.state.msgs=[{id:'saved',text:'Current owner'}];
+ await new Promise(setImmediate);f.flush();
+ assert.equal(f.shell.state.msgs[0].text,'Current owner');assert.equal(f.shell.state.msgs[0].transcriptAttachment,undefined);
+});
