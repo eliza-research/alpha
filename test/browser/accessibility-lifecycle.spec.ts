@@ -109,7 +109,7 @@ test.describe('repeated HOME across views', () => {
 test.describe('HOME while a popup, subview or field is open', () => {
   // Menus and sheets over a scrim own focus (subview-accessibility.ts); HOME must retire them, not
   // leave the page inert or focus behind them. Live screens: HOME is the product's own handler.
-  for (const steps of [['Browser', 'Menu'], ['Browser', 'Edit address'], ['Workflows', 'Clock alarms'], ['Workflows', 'New automation'], ['Settings', 'About']] as const) {
+  for (const steps of [['Browser', 'Menu'], ['Browser', 'Edit address'], ['Workflows', 'New automation', 'Clock alarms'], ['Workflows', 'New automation'], ['Settings', 'About']] as const) {
     test(`${steps.join(' > ')}: HOME retires it and Home is announced`, async ({ page }) => {
       // Two app openings, a popup and two audits: explicit, as the 200% sweeps run beside it.
       test.setTimeout(60_000);

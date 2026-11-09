@@ -10456,12 +10456,13 @@
       "path": "apps/app/src/browser/clock.ts",
       "models": [
         "DeviceActions",
-        "BrowserReminderOrphan"
+        "BrowserReminderOrphan",
+        "ShellNavigation"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "ef1d6dc9c7e72ebdeb64f7141b24f7f7e40ba9d653d61cf00c78dcd90d24c2a7",
+      "sha256": "d59815a84b0d969db84cc19aae4a06d78c47eaabbf8f01909ccab22273b04c65",
       "stateAnchors": [
         {
           "line": 46,
@@ -10544,7 +10545,7 @@
           "text": "save.onclick=()=>{if(!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(time.value)){this.status!.textContent='Choose an alarm time.';return;}const [hour,minute]=time.value.split(':').map(Number);void this.run(async()"
         }
       ],
-      "integrationReview": "2026-11-09 UI and browser-return delta reviewed against existing domain models and new ChatAttachments/BrowserGoogleReturn contracts; see ui-return-review-20261109.md. Source-model refinement and device acceptance remain separate."
+      "integrationReview": "2026-11-09: Alarm presentation uses the existing inline modal owner and assistantFromSheet transition; save, delete, expiry and foreground alarm ownership are unchanged. Browser tests cover retained records, keyboard return and assistant access. State-audit and source-to-model refinement remain separate."
     },
     {
       "path": "apps/app/src/browser/cloud-connection.ts",
@@ -34803,9 +34804,9 @@
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "f16ad7f8c3c0c2541f7eeb9942d9bcac3f96d5acc61270ccff8b1c09521d63a4",
+      "sha256": "a73d4f5559c93436651a3c301622309f5ad3f65c265218029c5ae5af12e4862a",
       "stateAnchors": [],
-      "integrationReview": "2026-11-09: Cloud now uses same canonical bounded recovery as Direct; readiness and failure visible without changing manual mute/Stop. 42 tests including actual SDK reconnection passed; live Cloud returned to Listening at 74s without another Talk click. Renewal latency remains open."
+      "integrationReview": "2026-11-09: Photos tools menu remains mounted independently of image import support; Select and New album retain existing handlers, and only Choose image requires importAvailable. Other template state mappings unchanged; existing state-audit obligations remain."
     },
     {
       "path": "apps/app/src/prototype/use-in-email-review.ts",
@@ -42204,7 +42205,7 @@
     },
     {
       "path": "apps/app/src/runtime/inline-modal.ts",
-      "sha256": "d7973391b03bbd35276b9b824cbe55fd9a15fbe53df58158dc7f545fed0dd71d",
+      "sha256": "c4831ba061fa5f9c18b0c7b655f0a31fdd4631dcb9f6c51414bd28d2ce35dad2",
       "models": [
         "ShellNavigation"
       ],
@@ -42304,7 +42305,7 @@
           "text": "const changed=()=>{if(displaced())stop();};"
         }
       ],
-      "integrationReview": "2026-11-09 UI and browser-return delta reviewed against existing domain models and new ChatAttachments/BrowserGoogleReturn contracts; see ui-return-review-20261109.md. Source-model refinement and device acceptance remain separate."
+      "integrationReview": "2026-11-09: Alarm presentation uses the existing inline modal owner and assistantFromSheet transition; save, delete, expiry and foreground alarm ownership are unchanged. Browser tests cover retained records, keyboard return and assistant access. State-audit and source-to-model refinement remain separate."
     },
     {
       "path": "apps/app/src/runtime/legacy-calendar-preservation.ts",

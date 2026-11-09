@@ -18,7 +18,7 @@ export function createInlineModal(close:()=>void,returnFocus?:()=>HTMLElement|nu
    for(const sibling of branch.parentElement.children)if(sibling!==branch&&sibling instanceof HTMLElement&&!sibling.inert&&!sibling.matches('[data-alpha-toast],[data-alpha-layer="pill"],[data-alpha-layer="composer"],[data-alpha-layer="conversation"]'))backgrounds.push(sibling);
    branch=branch.parentElement;
   }
-  const ownsFocus=()=>container.isConnected&&!container.closest('[inert]')&&!document.querySelector('dialog[open]');
+  const ownsFocus=()=>container.isConnected&&!container.closest('[inert]')&&!Array.from(document.querySelectorAll('dialog[open]')).some(native=>native!==dialog);
   const controls=()=>Array.from(dialog.querySelectorAll<HTMLElement>('button,input,textarea,select,a[href],[tabindex]')).filter(element=>!element.matches(':disabled,[tabindex="-1"]')&&!element.closest('[inert],[hidden]')&&element.getClientRects().length>0);
   const focus=()=>{(controls()[0]||dialog).focus({preventScroll:true});};
   dialog.tabIndex=-1;

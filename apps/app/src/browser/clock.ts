@@ -1,4 +1,5 @@
 import {layoutBrowserDialog} from './dialog-layout';
+import {createInlineModal} from '../runtime/inline-modal';
 import {browserScreenLocked} from './screen-locked';
 import type {BrowserDaily} from './daily';
 import type {BrowserNotifications} from './notifications';
@@ -61,7 +62,7 @@ export class BrowserClock {
   const title=document.createElement('h2');title.textContent='Alarms';title.style.cssText='font-size:24px;margin:0 0 8px';
   // C-14: a browser tab is not an alarm clock. allowed() rings only in a visible foreground page.
   const caveat=document.createElement('p');caveat.textContent='Alarms ring only while this page is open in the foreground.';caveat.style.cssText='font-size:14px;margin:0 0 16px;color:var(--mut,currentColor)';
-  const close=this.button('Back');close.onclick=()=>{this.stopSound();dialog.close();};
+  const close=this.button('');close.setAttribute('aria-label','Back');const backIcon=document.createElement('span');backIcon.setAttribute('aria-hidden','true');backIcon.style.cssText='display:block;width:24px;height:24px;background:currentColor;mask:url(/icons/lucide/chevron-left.svg) center/contain no-repeat';close.append(backIcon);close.onclick=()=>{this.stopSound();dialog.close();};
   const saved=document.createElement('section'),savedTitle=document.createElement('h3');savedTitle.textContent='Saved alarms';savedTitle.style.cssText='font-size:17px;margin:0 0 8px';
   this.rendered='';this.list=document.createElement('div');saved.append(savedTitle,this.list);
   const form=document.createElement('section'),formTitle=document.createElement('h3');formTitle.textContent='New alarm';formTitle.style.cssText='font-size:17px;margin:20px 0 8px';form.append(formTitle);
@@ -74,11 +75,10 @@ export class BrowserClock {
   for(const field of [time,label,snooze])field.style.cssText='box-sizing:border-box;width:100%;min-height:44px;margin:4px 0 0;padding:8px 10px;border:1px solid var(--line,#aaa);border-radius:10px;font:inherit;color:inherit;background:var(--s2,#eee)';
   const save=this.save=this.button('Save alarm');save.style.cssText+=';background:var(--acc,#0000ff);border-color:transparent;color:#fff';
   save.onclick=()=>{if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(time.value)){this.status!.textContent='Choose an alarm time.';return;}const [hour,minute]=time.value.split(':').map(Number);void this.run(async()=>{const result=await this.daily.clockHandoff({action:'set',hour,minute,label:label.value,reviewed:true});if(result.status!=='opened')throw Error(result.message);return result.message==='Alarm saved.'?'':result.message;});};
-  this.status=document.createElement('p');this.status.setAttribute('role','status');const header=document.createElement('header');header.className='alarm-page-header';header.append(close,title);dialog.append(header,caveat,saved,form,snoozeLabel,this.status);const previous=document.activeElement as HTMLElement|null;const back=(event:Event)=>{event.preventDefault();event.stopImmediatePropagation();this.stopSound();dialog.close();};window.addEventListener('alpha-back',back,true);dialog.oncancel=()=>this.stopSound();dialog.onclose=()=>{window.removeEventListener('alpha-back',back,true);dialog.remove();if(this.dialog===dialog){this.dialog=undefined;this.list=undefined;this.status=undefined;this.save=undefined;}previous?.focus();};layoutBrowserDialog(dialog,[save]);
+  this.status=document.createElement('p');this.status.setAttribute('role','status');const header=document.createElement('header');header.className='alarm-page-header';header.append(close,title);dialog.append(header,caveat,saved,form,snoozeLabel,this.status);const previous=document.activeElement as HTMLElement|null;const modal=createInlineModal(()=>{this.stopSound();dialog.close();},()=>previous);dialog.oncancel=()=>this.stopSound();dialog.onclose=()=>{modal.ref(null);dialog.remove();if(this.dialog===dialog){this.dialog=undefined;this.list=undefined;this.status=undefined;this.save=undefined;}if(!shell)previous?.focus();};layoutBrowserDialog(dialog,[save]);
   dialog.classList.add('alarm-page');
-  const fit=()=>{if(!shell)return;const r=shell.getBoundingClientRect();Object.assign(dialog.style,{left:r.left+'px',top:r.top+'px',width:r.width+'px',height:r.height+'px',borderRadius:getComputedStyle(shell).borderRadius});};
-  const observer=new ResizeObserver(fit);if(shell)observer.observe(shell);
-  window.addEventListener('resize',fit);dialog.addEventListener('close',()=>{observer.disconnect();window.removeEventListener('resize',fit);},{once:true});
-  document.body.append(dialog);fit();dialog.showModal();close.focus();this.render();void this.poll();
+  if(shell){dialog.setAttribute('role','dialog');Object.assign(dialog.style,{position:'absolute',inset:'0',width:'100%',height:'100%',zIndex:'35',borderRadius:'inherit',paddingBottom:'calc(var(--alpha-dock-reserve, 108px) + 20px)'});(shell.querySelector('[data-screen]')||shell).append(dialog);dialog.show();modal.ref(dialog);}
+  else{document.body.append(dialog);dialog.showModal();}
+  close.focus();this.render();void this.poll();
  }
 }

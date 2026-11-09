@@ -1616,13 +1616,11 @@
     <div data-alpha-app-header="main" style="display: flex; align-items: center; height: 56px; margin-top: 44px; padding: 0 8px 0 20px; gap: 2px; flex-shrink: 0">
     <sc-if value="{{showAppBack}}"><button class="app-header-back" aria-label="Back to apps" onClick="{{backToApps}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if>
       <h1 data-alpha-app-title class="serif" style="margin: 0; font-size: 32px; flex-grow: 1; letter-spacing: -.01em">{{photos.title}}</h1>
-      <sc-if value="{{photos.importAvailable}}">
         <details class="photo-import-menu"><summary aria-label="Photos tools"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.more}}"></path></svg></summary><div>
           <sc-if value="{{photos.libTab}}"><button aria-label="Select photos" onClick="{{photos.selStart}}">Select</button></sc-if>
           <sc-if value="{{photos.isAlb}}"><button aria-label="New album" onClick="{{photos.newAlbum}}">New album</button></sc-if>
-          <button onClick="{{photos.importImage}}">Choose image</button>
+          <sc-if value="{{photos.importAvailable}}"><button onClick="{{photos.importImage}}">Choose image</button></sc-if>
         </div></details>
-      </sc-if>
 
     </div>
     <div role="group" aria-label="Photos sections" class="photos-section-control">

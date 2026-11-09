@@ -51,7 +51,8 @@
       "apps/app/src/runtime/view-navigation.ts",
       "apps/app/src/prototype/subview-accessibility.ts",
       "apps/app/src/runtime/inline-modal.ts",
-      "apps/app/src/runtime/modal-inert.ts"
+      "apps/app/src/runtime/modal-inert.ts",
+      "apps/app/src/browser/clock.ts"
     ],
     "abstractions": [
       "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",
