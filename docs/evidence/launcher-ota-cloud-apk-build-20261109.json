@@ -1,13 +1,23 @@
 {
   "schema": "alpha-launcher-ota-apk-build-v1",
   "date": "2026-11-09",
-  "codeCommit": "e359d8d9282f818fb76ed51f4bb02b55a8b502ae",
-  "command": "ALPHA_ANDROID_LOW_DISK=1 npm run android:build -- --runtime-profile=cloud",
+  "codeCommit": "17dacc127beb7febf5520b078f4d647f3ed9a755",
+  "upstreamPin": "9add52f6b83efa77241fb72ae769729121944cac",
+  "command": "npm run agent:build-workflow-worker && npm run agent:stage-android -- --runtime-profile=cloud && npm run licenses:packaged-runtime && ALPHA_ANDROID_LOW_DISK=1 npm run android:build -- --runtime-profile=cloud",
   "outcome": "passed",
-  "scope": "Four APK builds, lint, production bundle and packaged runtime admission only; no installation, HOME, full image, real provider, physical device or user acceptance",
+  "scope": "Four Cloud-profile APK builds, aggregate lint, production bundle and packaged runtime/notices admission only; no installation, HOME, full image, provider, physical device or user acceptance.",
   "runtimeProfile": "cloud",
   "testMocks": false,
-  "apkManifestSha256": "459305f115b8facf1a5304debf6f7418262ed738f14cdf247b602b01bf5a09ea",
+  "apkManifestSha256": "e441f6bd45cee20b4686c3d8bba0ce05410d63ff327699554b6be9ea6315352b",
+  "execution": {
+    "sourceCommit": "17dacc127beb7febf5520b078f4d647f3ed9a755",
+    "upstreamPin": "9add52f6b83efa77241fb72ae769729121944cac",
+    "phase": "cloud-build",
+    "exitCode": 0,
+    "elapsedSeconds": 506.81932377815247,
+    "log": "/tmp/alpha-ota-final-17dacc127b-cloud-build.log",
+    "logSha256": "c165cdef68029cfcfbf4e9c031e53ae8e9ea51bb2f8b08d8fde55c5788bdf87e"
+  },
   "results": [
     {
       "file": "artifacts/standalone-debug.apk",
@@ -15,14 +25,14 @@
       "mode": "debug",
       "versionCode": 1,
       "versionName": "0.1.0",
-      "sha256": "6940a994e8d0084f0e0f3e745907a41ede1ccf7fcb2a28873c0f14076e5117bb",
+      "sha256": "12dcc3a87320d2bd01702f5be4891e30cc661629c3469871d53f0b0ccfbbf480",
       "signed": true,
       "testMocks": false,
       "bundleAudit": "passed",
       "runtime": "PACKAGED",
       "runtimeNotices": true,
       "distributable": null,
-      "sizeBytes": 230256451
+      "sizeBytes": 244202243
     },
     {
       "file": "artifacts/standalone-release-unsigned.apk",
@@ -30,14 +40,14 @@
       "mode": "release",
       "versionCode": 1,
       "versionName": "0.1.0",
-      "sha256": "81372863bb2bfdf768b746f4d5a3169144cd10d6917a94d26b18f78d3a755238",
+      "sha256": "3afd1e90ddee4f78dbef1a70e8cda99168b2e05c6145ed62b81f036125608a06",
       "signed": false,
       "testMocks": false,
       "bundleAudit": "passed",
       "runtime": "PACKAGED",
       "runtimeNotices": true,
       "distributable": false,
-      "sizeBytes": 162029831
+      "sizeBytes": 162089327
     },
     {
       "file": "artifacts/launcher-debug.apk",
@@ -45,14 +55,14 @@
       "mode": "debug",
       "versionCode": 1,
       "versionName": "0.1.0",
-      "sha256": "81d7c5d93676ec11254be49b6b6c31522a3bab0dddd6d1ab7bd66ac5aa0f00c3",
+      "sha256": "24198496687e96b490c0ac90d909b928b486c05e0a1e04ca8485657d99ef618c",
       "signed": true,
       "testMocks": false,
       "bundleAudit": "passed",
       "runtime": "PACKAGED",
       "runtimeNotices": true,
       "distributable": null,
-      "sizeBytes": 230263275
+      "sizeBytes": 244209067
     },
     {
       "file": "artifacts/launcher-release-unsigned.apk",
@@ -60,15 +70,15 @@
       "mode": "release",
       "versionCode": 1,
       "versionName": "0.1.0",
-      "sha256": "e4bba42750035868ace230ef0f093504852a169a05551ef5e53dab2cb2346d51",
+      "sha256": "6bcad136a9008d9d05902c42491e47ed7ba44050c20e8ff0d7a8f4daff65799b",
       "signed": false,
       "testMocks": false,
       "bundleAudit": "passed",
       "runtime": "PACKAGED",
       "runtimeNotices": true,
       "distributable": false,
-      "sizeBytes": 162034443
+      "sizeBytes": 162093967
     }
   ],
-  "releaseStatus": "Unsigned releases and missing exact-APK Cloud voice evidence remain non-distributable."
+  "releaseStatus": "Unsigned release APKs and missing exact-APK Cloud voice evidence remain non-distributable."
 }
