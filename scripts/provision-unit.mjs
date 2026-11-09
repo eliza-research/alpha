@@ -31,7 +31,7 @@ import { readReleaseSigner, releaseAdmission } from "./build-android.mjs";
 import { releaseBlockers } from "./release-blockers.mjs";
 import { androidEnv, tool } from "./toolchain.mjs";
 
-export const PACKAGE = "ai.elizaresearch.alphaphone";
+export const PACKAGE = "ai.alphacompute.alphaphone";
 const sha256 = bytes => createHash("sha256").update(bytes).digest("hex");
 
 export function parseUnitArgs(argv, { requireAlias = true } = {}) {

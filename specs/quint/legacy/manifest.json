@@ -150,7 +150,7 @@
     "historicalSourceLinks": {
       "revision": "875f5a8550935c5ca1797cea4ea38e7c7759ca54",
       "paths": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/CloudSignInFlow.java"
+        "android/app/src/main/java/ai/alphacompute/alphaphone/CloudSignInFlow.java"
       ]
     }
   },

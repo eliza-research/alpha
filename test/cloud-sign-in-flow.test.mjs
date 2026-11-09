@@ -17,14 +17,14 @@ import {javaBinary} from './fixtures/jvm-tools.mjs';
 const root=resolve(import.meta.dirname,'..');
 const read=file=>readFileSync(join(root,file),'utf8');
 const between=(text,start,end)=>{const from=text.indexOf(start),to=text.indexOf(end,from+start.length);assert.ok(from>=0&&to>from,`${start} … ${end} located`);return text.slice(from,to);};
-const native='android/app/src/main/java/ai/elizaresearch/alphaphone/';
+const native='android/app/src/main/java/ai/alphacompute/alphaphone/';
 const patched=preparePatchedNative({root});
 const shared=patched.root.slice(root.length+1)+'/packages/auth/android/src/main/java/ai/eliza/auth/cloud/';
 
 test('Alpha registers the shared native sign-in client with its own identity, deployments and installed names',()=>{
  const plugin=read(native+'AlphaCloudSignInPlugin.java');
  assert.match(plugin,/^@CapacitorPlugin\(name = "AlphaCloudSignIn"\)\npublic final class AlphaCloudSignInPlugin extends CloudSignInPlugin \{/m);
- for(const fragment of ['.clientId("ai.elizaresearch.alphaphone")','.deviceName("Alpha Phone")','.productName("Alpha Phone")','.googleClientId("alpha-phone")','.googleSignInMode("browser")','.logTag("AlphaCloudSignIn")',
+ for(const fragment of ['.clientId("ai.alphacompute.alphaphone")','.deviceName("Alpha Phone")','.productName("Alpha Phone")','.googleClientId("alpha-phone")','.googleSignInMode("browser")','.logTag("AlphaCloudSignIn")',
   '.readinessPreferences("alpha-cloud-signin-readiness-" + CloudDeployment.STORAGE_NAMESPACE)','.pendingSlot(PENDING_SLOT).receiptSlotPrefix("cloud-signin:v1:ack:").credentialSlotPrefix("cloud:")',
   'static final String PENDING_SLOT = "cloud-signin:v1:pending";','static final String CALLBACK_PATH = "/alphaphone/auth/callback";','static final CloudSignInConfig REGISTRATION = registration(BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS);'])
   assert.ok(plugin.includes(fragment),fragment);
@@ -52,7 +52,7 @@ test('Alpha registers the shared native sign-in client with its own identity, de
 test('Alpha callback contract vectors through the shared native parser',()=>{
  const contract=JSON.parse(read('test/fixtures/alphaphone-auth-callback-contract.json'));
  assert.equal(contract.contract,'alphaphone-auth-callback');assert.equal(contract.version,1);
- assert.equal(contract.package,'ai.elizaresearch.alphaphone');assert.equal(contract.callbackPath,'/alphaphone/auth/callback');
+ assert.equal(contract.package,'ai.alphacompute.alphaphone');assert.equal(contract.callbackPath,'/alphaphone/auth/callback');
  assert.ok(read(native+'AlphaCloudSignInPlugin.java').includes(`CALLBACK_PATH = "${contract.callbackPath}"`),'the registration returns to the contract path');
  assert.deepEqual(contract.hosts,{production:'eliza.app',staging:'staging.eliza.app'});
  for(const kind of ['success','error','return','reject'])assert.ok(contract.cases.some(row=>row.expect===kind),`vectors cover ${kind}`);
@@ -91,7 +91,7 @@ test('the sign-in App Link is on the configured Cloud host; staging lives in the
  assert.ok(main.includes('<intent><action android:name="android.support.customtabs.action.CustomTabsService"/></intent>'),'Custom Tabs providers are visible');
  assert.ok(mocks.includes(filter('${stagingCloudWebHost}'))&&mocks.includes('<activity android:name=".MainActivity" tools:node="merge">'),'the staging return merges into MainActivity in test-mocks builds');
  const assetlinks=JSON.parse(read('android/app/src/main/assetlinks.template.json'));
- assert.equal(assetlinks[0].target.package_name,'ai.elizaresearch.alphaphone');
+ assert.equal(assetlinks[0].target.package_name,'ai.alphacompute.alphaphone');
  assert.deepEqual(assetlinks[0].relation,['delegate_permission/common.handle_all_urls']);
 });
 
@@ -100,7 +100,7 @@ test('shared native email code routes and the browser adapter agree',async()=>{
  const adapter=read(shared+'CloudEmailCode.java'),routes=read(shared+'CloudSignInRoutes.java');
  assert.match(adapter,new RegExp(`SEND_PATH = "${CLOUD_EMAIL_CODE.sendPath}"`));assert.match(adapter,new RegExp(`VERIFY_PATH = "${CLOUD_EMAIL_CODE.verifyPath}"`));
  assert.match(routes,/CloudEmailCode\.SEND_PATH, CloudEmailCode\.VERIFY_PATH/);
- assert.equal(CLOUD_EMAIL_CODE.client,'ai.elizaresearch.alphaphone');
+ assert.equal(CLOUD_EMAIL_CODE.client,'ai.alphacompute.alphaphone');
  assert.ok(read(native+'AlphaCloudSignInPlugin.java').includes(`.clientId("${CLOUD_EMAIL_CODE.client}")`),'the bridge and the native registration name the same client');
  for(const field of ['"email"','"tenantId"','"client"','"pkce"','"codeChallenge"','"codeChallengeMethod"','"code"','"codeVerifier"'])assert.ok(adapter.includes(field),field);
  const bridge=read('scripts/browser-cloud-dev-bridge.ts');

@@ -1,4 +1,4 @@
-package ai.elizaresearch.alphaphone;
+package ai.alphacompute.alphaphone;
 
 import ai.eliza.plugins.agent.runtime.CredentialIntentFence;
 import ai.eliza.plugins.agent.runtime.CredentialRequestFence;

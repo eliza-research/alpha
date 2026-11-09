@@ -22,11 +22,11 @@
         "started": 2,
         "completed": 2,
         "classes": [
-          "ai.elizaresearch.alphaphone.ImageCapabilitiesInstrumentedTest"
+          "ai.alphacompute.alphaphone.ImageCapabilitiesInstrumentedTest"
         ],
         "cases": [
-          "ai.elizaresearch.alphaphone.ImageCapabilitiesInstrumentedTest#ordinaryApkCannotEnablePhoneContactsOrSmsWithDeveloperRoutes",
-          "ai.elizaresearch.alphaphone.ImageCapabilitiesInstrumentedTest#ordinaryApkRejectsTelephonyRolesAndOwnedDialerHandoffs"
+          "ai.alphacompute.alphaphone.ImageCapabilitiesInstrumentedTest#ordinaryApkCannotEnablePhoneContactsOrSmsWithDeveloperRoutes",
+          "ai.alphacompute.alphaphone.ImageCapabilitiesInstrumentedTest#ordinaryApkRejectsTelephonyRolesAndOwnedDialerHandoffs"
         ]
       },
       "userLifecycle": {
@@ -61,11 +61,11 @@
         "started": 2,
         "completed": 2,
         "classes": [
-          "ai.elizaresearch.alphaphone.ImageCapabilitiesInstrumentedTest"
+          "ai.alphacompute.alphaphone.ImageCapabilitiesInstrumentedTest"
         ],
         "cases": [
-          "ai.elizaresearch.alphaphone.ImageCapabilitiesInstrumentedTest#ordinaryApkCannotEnablePhoneContactsOrSmsWithDeveloperRoutes",
-          "ai.elizaresearch.alphaphone.ImageCapabilitiesInstrumentedTest#ordinaryApkRejectsTelephonyRolesAndOwnedDialerHandoffs"
+          "ai.alphacompute.alphaphone.ImageCapabilitiesInstrumentedTest#ordinaryApkCannotEnablePhoneContactsOrSmsWithDeveloperRoutes",
+          "ai.alphacompute.alphaphone.ImageCapabilitiesInstrumentedTest#ordinaryApkRejectsTelephonyRolesAndOwnedDialerHandoffs"
         ]
       },
       "userLifecycle": {

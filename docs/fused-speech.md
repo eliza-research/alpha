@@ -71,7 +71,7 @@ that bridge. `AlphaApplication` names the timing export `alpha-native-voice-timi
 names in the sections below refer to these shared classes.
 
 The app's own `ElizaVoiceNative` (embeddings and the host natives) is built from the same
-upstream `elizavoice-jni.cpp` with `-DELIZA_VOICE_JNI_CLASS=ai/elizaresearch/alphaphone/ElizaVoiceNative`
+upstream `elizavoice-jni.cpp` with `-DELIZA_VOICE_JNI_CLASS=ai/alphacompute/alphaphone/ElizaVoiceNative`
 and no source rewrite (`scripts/embedding-native-contract.mjs`). The paradee-voice library links
 the app's engine instead of packaging a second copy, so the two must be byte-identical
 (`node scripts/paradee-runtime.mjs --app-linkage`, Gradle `:app:verifyParadeeAppLinkage`).

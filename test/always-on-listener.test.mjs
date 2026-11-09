@@ -8,13 +8,13 @@ import {execFileSync} from 'node:child_process';
 import {javaBinary} from './fixtures/jvm-tools.mjs';
 test('Alpha public components still compile against the common listener and preserve stored identity',()=>{
  const root=path.resolve(import.meta.dirname,'..'),shared=path.join(root,'vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense');
- const component=path.join(root,'android/sense/src/main/java/ai/elizaresearch/alphaphone/sense');
+ const component=path.join(root,'android/sense/src/main/java/ai/alphacompute/alphaphone/sense');
  const product=JSON.parse(fs.readFileSync(path.join(root,'vendor/eliza/packages/os/android/products/pixel10a-alpha.json')));
- assert.equal(product.sense.componentPackage,'ai.elizaresearch.alphaphone.sense');assert.equal(product.sense.storageName,'listener-settings');assert.deepEqual(product.sense.wakeNames,['alpha']);
+ assert.equal(product.sense.componentPackage,'ai.alphacompute.alphaphone.sense');assert.equal(product.sense.storageName,'listener-settings');assert.deepEqual(product.sense.wakeNames,['alpha']);
  const temp=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-sense-compat-'));
  try {
   // Same fields consumer.gradle derives from the product profile.
-  const sense=product.sense,host='ai.elizaresearch.alphaphone';
+  const sense=product.sense,host='ai.alphacompute.alphaphone';
   const config=`package ai.eliza.sense; public final class BuildConfig { public static final String APPLICATION_ID=${JSON.stringify(`${host}.sense`)}, SENSE_HOST_PACKAGE=${JSON.stringify(host)}, SENSE_ASSIST_ACTIVITY=${JSON.stringify(sense.assistActivity)}, SENSE_APP_NAME=${JSON.stringify(sense.appName)}, SENSE_WAKE_LABEL=${JSON.stringify(sense.wakeNames[0])}, SENSE_WAKE_NAMES=${JSON.stringify(sense.wakeNames.join(','))}, SENSE_COMPONENT_PACKAGE=${JSON.stringify(sense.componentPackage)}, SENSE_STORAGE_NAME=${JSON.stringify(sense.storageName)}; }`;
   fs.writeFileSync(path.join(temp,'BuildConfig.java'),config);
   fs.writeFileSync(path.join(temp,'R.java'),'package ai.eliza.sense; public final class R { public static final class drawable { public static final int ic_listening=1; }}');
@@ -39,13 +39,13 @@ test('legacy AlphaListener is a thin alias of the shared native control bridge',
   };
   const files=Object.entries(stubs).map(([name,text])=>{const file=path.join(temp,name);fs.writeFileSync(file,text);return file;});
   const sdk=path.join(process.env.ANDROID_HOME??path.join(os.homedir(),'Android/Sdk'),'platforms/android-36/android.jar');
-  execFileSync(javaBinary('javac'),['--release','21','-cp',sdk,'-d',path.join(temp,'out'),...files,...['SenseInvocation','SenseListenerClient','SensePlugin'].map(name=>path.join(source,`${name}.java`)),path.join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaListenerPlugin.java')],{timeout:60000});
+  execFileSync(javaBinary('javac'),['--release','21','-cp',sdk,'-d',path.join(temp,'out'),...files,...['SenseInvocation','SenseListenerClient','SensePlugin'].map(name=>path.join(source,`${name}.java`)),path.join(root,'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaListenerPlugin.java')],{timeout:60000});
  } finally {fs.rmSync(temp,{recursive:true,force:true});}
 });
 test('a cold listener wake is bound to Alpha native owner state, never renderer input',()=>{
  const root=path.resolve(import.meta.dirname,'..'),strip=text=>text.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g,'');
- const app=strip(fs.readFileSync(path.join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaApplication.java'),'utf8'));
- const agent=strip(fs.readFileSync(path.join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java'),'utf8'));
+ const app=strip(fs.readFileSync(path.join(root,'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaApplication.java'),'utf8'));
+ const agent=strip(fs.readFileSync(path.join(root,'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java'),'utf8'));
  // Registered once in the main process, after the isolated/secondary-process return, before any activity records a wake.
  const admission=app.indexOf('admitOwner(()->AlphaLocalAgentPlugin.invocationOwner(this))'),mainOnly=app.indexOf('if(android.os.Process.isIsolated()||!getPackageName().equals(getProcessName()))return;');
  assert.ok(admission>mainOnly&&mainOnly>0,'admission is registered in the main process only');
@@ -55,7 +55,7 @@ test('a cold listener wake is bound to Alpha native owner state, never renderer 
  assert.match(shared,/COLD_WINDOW_MS = 15000/);
  assert.match(shared,/if \(!waitingOwner\.equals\(admittedOwner\(\)\)\) \{ clear\(\); return; \}/);
  // The assist surface still records only Android caller identity; no extra or deep link reaches it.
- const assist=strip(fs.readFileSync(path.join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaAssistActivity.java'),'utf8'));
+ const assist=strip(fs.readFileSync(path.join(root,'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaAssistActivity.java'),'utf8'));
  // An ordinary assist records the caller; a protected Power entry records no caller package.
  assert.match(assist,/new ai\.eliza\.plugins\.system\.SenseListenerClient\(this\);/);
  assert.match(assist,/sense\.recordInvocation\(isProtectedPowerEntry\(\) \? null : caller\);/);
@@ -67,7 +67,7 @@ test('press-and-hold power starts voice only through SystemUI identity that Andr
  const overlay=fs.readFileSync(path.join(root,'vendor/eliza/packages/os/android/sense/config.xml'),'utf8');
  assert.match(overlay,/<integer name="config_longPressOnPowerBehavior">5<\/integer>/);
  // Alpha records only Android's caller APIs: the launching package on create and ComponentCaller on new intents.
- const assist=strip(fs.readFileSync(path.join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaAssistActivity.java'),'utf8'));
+ const assist=strip(fs.readFileSync(path.join(root,'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaAssistActivity.java'),'utf8'));
  assert.match(assist,/state == null && Build\.VERSION\.SDK_INT >= Build\.VERSION_CODES\.UPSIDE_DOWN_CAKE \? getLaunchedFromPackage\(\) : null/);
  assert.match(assist,/newIntentCaller = caller == null \? null : caller\.getPackage\(\);/);
  // Shared Sense marks a system gesture only for the platform-signed system UI; the shared renderer policy starts voice for it.

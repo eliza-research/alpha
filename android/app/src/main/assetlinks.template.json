@@ -3,7 +3,7 @@
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "ai.elizaresearch.alphaphone",
+      "package_name": "ai.alphacompute.alphaphone",
       "sha256_cert_fingerprints": [
         "RELEASE_CERT_SHA256_PLACEHOLDER"
       ]

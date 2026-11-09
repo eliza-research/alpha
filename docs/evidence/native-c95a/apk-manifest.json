@@ -264,7 +264,7 @@
   "results": [
     {
       "file": "artifacts/standalone-debug.apk",
-      "packageName": "ai.elizaresearch.alphaphone",
+      "packageName": "ai.alphacompute.alphaphone",
       "home": false,
       "launcher": true,
       "debuggable": true,
@@ -278,10 +278,10 @@
       "signerSha256": "2242994d2d237f98d01927999157067df4e2495a8f980451ac3de5d40642584a",
       "exportedComponents": [
         "ai.eliza.plugins.passwords.ElizaPasswordAutofillService",
-        "ai.elizaresearch.alphaphone.AlphaAssistActivity",
-        "ai.elizaresearch.alphaphone.AlphaNotificationListener",
-        "ai.elizaresearch.alphaphone.MainActivity",
-        "ai.elizaresearch.alphaphone.release.DataIntegrityProvider",
+        "ai.alphacompute.alphaphone.AlphaAssistActivity",
+        "ai.alphacompute.alphaphone.AlphaNotificationListener",
+        "ai.alphacompute.alphaphone.MainActivity",
+        "ai.alphacompute.alphaphone.release.DataIntegrityProvider",
         "androidx.profileinstaller.ProfileInstallReceiver",
         "androidx.work.impl.background.systemjob.SystemJobService",
         "androidx.work.impl.diagnostics.DiagnosticsReceiver"
@@ -893,7 +893,7 @@
     },
     {
       "file": "artifacts/standalone-release-unsigned.apk",
-      "packageName": "ai.elizaresearch.alphaphone",
+      "packageName": "ai.alphacompute.alphaphone",
       "home": false,
       "launcher": true,
       "debuggable": false,
@@ -907,10 +907,10 @@
       "signerSha256": null,
       "exportedComponents": [
         "ai.eliza.plugins.passwords.ElizaPasswordAutofillService",
-        "ai.elizaresearch.alphaphone.AlphaAssistActivity",
-        "ai.elizaresearch.alphaphone.AlphaNotificationListener",
-        "ai.elizaresearch.alphaphone.MainActivity",
-        "ai.elizaresearch.alphaphone.release.DataIntegrityProvider",
+        "ai.alphacompute.alphaphone.AlphaAssistActivity",
+        "ai.alphacompute.alphaphone.AlphaNotificationListener",
+        "ai.alphacompute.alphaphone.MainActivity",
+        "ai.alphacompute.alphaphone.release.DataIntegrityProvider",
         "androidx.profileinstaller.ProfileInstallReceiver",
         "androidx.work.impl.background.systemjob.SystemJobService",
         "androidx.work.impl.diagnostics.DiagnosticsReceiver"
@@ -1531,7 +1531,7 @@
     },
     {
       "file": "artifacts/launcher-debug.apk",
-      "packageName": "ai.elizaresearch.alphaphone",
+      "packageName": "ai.alphacompute.alphaphone",
       "home": true,
       "launcher": true,
       "debuggable": true,
@@ -1545,10 +1545,10 @@
       "signerSha256": "2242994d2d237f98d01927999157067df4e2495a8f980451ac3de5d40642584a",
       "exportedComponents": [
         "ai.eliza.plugins.passwords.ElizaPasswordAutofillService",
-        "ai.elizaresearch.alphaphone.AlphaAssistActivity",
-        "ai.elizaresearch.alphaphone.AlphaNotificationListener",
-        "ai.elizaresearch.alphaphone.MainActivity",
-        "ai.elizaresearch.alphaphone.release.DataIntegrityProvider",
+        "ai.alphacompute.alphaphone.AlphaAssistActivity",
+        "ai.alphacompute.alphaphone.AlphaNotificationListener",
+        "ai.alphacompute.alphaphone.MainActivity",
+        "ai.alphacompute.alphaphone.release.DataIntegrityProvider",
         "androidx.profileinstaller.ProfileInstallReceiver",
         "androidx.work.impl.background.systemjob.SystemJobService",
         "androidx.work.impl.diagnostics.DiagnosticsReceiver"
@@ -2160,7 +2160,7 @@
     },
     {
       "file": "artifacts/launcher-release-unsigned.apk",
-      "packageName": "ai.elizaresearch.alphaphone",
+      "packageName": "ai.alphacompute.alphaphone",
       "home": true,
       "launcher": true,
       "debuggable": false,
@@ -2174,10 +2174,10 @@
       "signerSha256": null,
       "exportedComponents": [
         "ai.eliza.plugins.passwords.ElizaPasswordAutofillService",
-        "ai.elizaresearch.alphaphone.AlphaAssistActivity",
-        "ai.elizaresearch.alphaphone.AlphaNotificationListener",
-        "ai.elizaresearch.alphaphone.MainActivity",
-        "ai.elizaresearch.alphaphone.release.DataIntegrityProvider",
+        "ai.alphacompute.alphaphone.AlphaAssistActivity",
+        "ai.alphacompute.alphaphone.AlphaNotificationListener",
+        "ai.alphacompute.alphaphone.MainActivity",
+        "ai.alphacompute.alphaphone.release.DataIntegrityProvider",
         "androidx.profileinstaller.ProfileInstallReceiver",
         "androidx.work.impl.background.systemjob.SystemJobService",
         "androidx.work.impl.diagnostics.DiagnosticsReceiver"

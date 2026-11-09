@@ -29,7 +29,7 @@ test('closed and concurrently retired connection owners cannot supersede credent
    upstreamAgentRuntime('CredentialIntentFence.java'),
    join(root,'vendor/eliza/plugins/plugin-native-secure-store/android-nativeonly/src/main/java/ai/eliza/plugins/securestore/nativeonly/CredentialIntentFence.java'),
    upstreamConnection('SecureSlotPolicy.java'),nativeSource('RendererCredentialSlots.java'),
-   file('OwnerAdmissionTest.java',`package ai.elizaresearch.alphaphone;
+   file('OwnerAdmissionTest.java',`package ai.alphacompute.alphaphone;
 import java.util.concurrent.atomic.AtomicReference;
 import ai.eliza.plugins.agent.runtime.CredentialIntentFence;
 final class AlphaLocalAgentPlugin {
@@ -77,6 +77,6 @@ public final class OwnerAdmissionTest {
  }
 }`),
   ];
-  assert.match(runJvm(sources,'ai.elizaresearch.alphaphone.OwnerAdmissionTest'),/^PASS actual connection reservation/);
+  assert.match(runJvm(sources,'ai.alphacompute.alphaphone.OwnerAdmissionTest'),/^PASS actual connection reservation/);
  }finally{rmSync(directory,{recursive:true,force:true});}
 });

@@ -7,7 +7,7 @@ import {writePrivateRuntimeJson} from '../vendor/eliza/packages/agent/native-hos
 // override (vendor/eliza/packages/agent/src/runtime/sandbox-character.ts). ELIZA_AGENT_CHARACTER_JSON
 // merges onto the selected default agent and ui.assistant.name in memory. Its display name must
 // never replace the persisted identityName used for agent and default conversation IDs. No system prompt
-// is supplied: the bundled default preset keeps its style and its "{{name}}, made by Eliza Research"
+// is supplied: the bundled default preset keeps its style and its "{{name}}, made by Alpha Compute"
 // origin line, which build-character-config renders with this name.
 const {identity}=ALPHA_PRODUCT_REGISTRATION;
 for(const key of ['characterName','appName'])if(typeof identity?.[key]!=='string'||!identity[key].trim())throw Error(`apps/app/src/product/alpha-product-registration.ts identity.${key} required`);

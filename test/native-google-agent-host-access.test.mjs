@@ -24,7 +24,7 @@ const writes={
  dispatchSend:()=>({send:{operation:'dispatch',id:`alpha-gmail-send:${scope}:${randomUUID()}`,reviewDigest:'a'.repeat(64),...content}}),
  calendarWrite:()=>({calendar:{operation:'write-capabilities',grantId:`alpha-google:${scope}`,calendarId:'primary'}}),
 };
-const javaWrite=(dir,gmail,calendar)=>runJvm([nativeSource('GoogleAgentAccessFile.java'),fixture('GoogleAgentAccessFileTest.java')],'ai.elizaresearch.alphaphone.GoogleAgentAccessFileTest',{args:[dir,String(gmail),String(calendar)]});
+const javaWrite=(dir,gmail,calendar)=>runJvm([nativeSource('GoogleAgentAccessFile.java'),fixture('GoogleAgentAccessFileTest.java')],'ai.alphacompute.alphaphone.GoogleAgentAccessFileTest',{args:[dir,String(gmail),String(calendar)]});
 async function hostWith(file){
  const calls=[];
  const request=async url=>{

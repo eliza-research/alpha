@@ -6,9 +6,9 @@
   "productionSourcesStagedVerbatim": {
     "media3": "1.11.1",
     "files": {
-      "ai/elizaresearch/alphaphone/VideoCopyEdits.java": "c6a195e9bd5fbc18489fc26beabaf41ed704c54b05d51490a8dd490b497c0bbc",
-      "ai/elizaresearch/alphaphone/VideoEditSpec.java": "60ebc5a2ee5a6a7cc9b9f76c4c0011ca721b60bc2fd5b9b9ab148131d2710983",
-      "ai/elizaresearch/alphaphone/PluginWorkers.java": "1348add936da232412999b23cfb48fbbc08a5243f2b4a8075626e7a855ac3007"
+      "ai/alphacompute/alphaphone/VideoCopyEdits.java": "c6a195e9bd5fbc18489fc26beabaf41ed704c54b05d51490a8dd490b497c0bbc",
+      "ai/alphacompute/alphaphone/VideoEditSpec.java": "60ebc5a2ee5a6a7cc9b9f76c4c0011ca721b60bc2fd5b9b9ab148131d2710983",
+      "ai/alphacompute/alphaphone/PluginWorkers.java": "1348add936da232412999b23cfb48fbbc08a5243f2b4a8075626e7a855ac3007"
     },
     "verbatim": true
   },

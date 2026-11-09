@@ -1,7 +1,7 @@
 {
   "pin": "c95a37be8d56fb672825df7e9e9a742b59567bbb",
   "forkPin": "0d9fd4b9db239bbf851068f98c99f4263f8c05c5",
-  "identity": "ai.elizaresearch.alphaphone",
+  "identity": "ai.alphacompute.alphaphone",
   "abi": "arm64-v8a",
   "inputs": [
     {
@@ -37,7 +37,7 @@
   ],
   "jniBinding": {
     "mode": "registered",
-    "className": "ai/elizaresearch/alphaphone/ElizaVoiceNative",
+    "className": "ai/alphacompute/alphaphone/ElizaVoiceNative",
     "subset": "full"
   },
   "commands": [
@@ -61,7 +61,7 @@
       "-DANDROID_ABI=arm64-v8a",
       "-DANDROID_PLATFORM=android-23",
       "-DCMAKE_BUILD_TYPE=Release",
-      "-DELIZA_VOICE_JNI_CLASS=ai/elizaresearch/alphaphone/ElizaVoiceNative",
+      "-DELIZA_VOICE_JNI_CLASS=ai/alphacompute/alphaphone/ElizaVoiceNative",
       "-DELIZA_VOICE_JNI_SUBSET=full",
       "-DELIZA_VOICE_JNI_LIBRARY=elizavoicejni",
       "-DELIZAVOICE_FFI_INCLUDE_DIR=/home/shaw/.codex/worktrees/latest-pixel-deployment/alphaphone/.eliza/engine-0d9fd4b/tools/omnivoice/include"

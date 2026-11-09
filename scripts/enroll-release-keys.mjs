@@ -226,7 +226,7 @@ export function main(argv, { root = process.cwd(), log = console.log, error = co
   const identities = options.certificates ? applicationIdentities(options.certificates) : null;
   if (identities) {
     log(`\nApplication certificate (${APPLICATION_KEY}):`);
-    log(`  SHA-1 for the Google Android OAuth client of package ai.elizaresearch.alphaphone (H-12): ${identities.sha1}`);
+    log(`  SHA-1 for the Google Android OAuth client of package ai.alphacompute.alphaphone (H-12): ${identities.sha1}`);
     log(`  SHA-256 for ELIZA_ANDROID_ASSET_LINKS_JSON (H-13): ${identities.sha256}`);
   }
   const changed = rows.some(row => row.state === "set" || (row.state === "conflict" && options.replace));

@@ -1,4 +1,4 @@
-package ai.elizaresearch.alphaphone;
+package ai.alphacompute.alphaphone;
 
 import java.lang.reflect.Field;
 import org.json.JSONArray;

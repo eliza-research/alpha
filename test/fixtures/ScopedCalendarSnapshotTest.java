@@ -22,7 +22,7 @@ public final class ScopedCalendarSnapshotTest {
   public void applyBatch(String authority,ArrayList<ContentProviderOperation> operations){check(dispatched==null);dispatched=operations;}
  }
  /** The SQLite stand-in: the family, child and Instances selections run as SQL. */
- static final class Sqlite extends ai.elizaresearch.alphaphone.SqliteCalendarProvider {
+ static final class Sqlite extends ai.alphacompute.alphaphone.SqliteCalendarProvider {
   Sqlite(java.nio.file.Path directory){super(directory,EVENTS_SCHEMA);}
   public void applyBatch(String authority,ArrayList<ContentProviderOperation> operations){throw new AssertionError("Reads must not dispatch");}
  }

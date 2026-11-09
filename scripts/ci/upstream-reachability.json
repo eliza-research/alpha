@@ -1,168 +1,21 @@
 {
   "schema": 1,
-  "aheadBy": 38,
+  "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "1df8e6024b4c24696cfa0e46d2a38c61cdffa61d",
-  "behindBy": 423,
-  "head": "b1817660a0347ae19551b9ee296410fe55f02d59",
-  "mergeBase": "13fc7b637406372f68f05814e76267d690f144fd",
+  "baseCommit": "a82e2257c69a9bbbf671d3cfc422d3c1b78014b2",
+  "head": "dddd9a6c6f75c32146d512d92d86add9a8ccf9ea",
+  "recordedAt": "2026-11-09",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...dddd9a6c6f75c32146d512d92d86add9a8ccf9ea",
+  "status": "diverged",
+  "aheadBy": 1,
+  "behindBy": 782,
+  "mergeBase": "b1817660a0347ae19551b9ee296410fe55f02d59",
   "pinOnlyCommits": [
     {
-      "sha": "2f71806a6097db3e195343d17046343849355e8a",
-      "subject": "Expose owner-bound native turn timing in existing status"
-    },
-    {
-      "sha": "eb896e01e51970111ff45ecfb76bbc8fbd11f10b",
-      "subject": "Share mobile Photos, Files, and installed-apps contracts"
-    },
-    {
-      "sha": "2f78926c67de217b537426d6a6c4c5225894fe87",
-      "subject": "Keep Files traversal inside the selected storage volume"
-    },
-    {
-      "sha": "3b6bb8de0c619044b5375b3aba7cf63ef6850170",
-      "subject": "Type shared mobile Files and align shared source with repository checks"
-    },
-    {
-      "sha": "54b012dbad776574694e8757b9315a081ca0c983",
-      "subject": "Compose updater recovery and scoped Calendar on the shared mobile SDK"
-    },
-    {
-      "sha": "cb8ae55fa1ce589ce6e33d44af6a635bdc6f1b7c",
-      "subject": "Report exact Files usage when the browser cannot estimate storage"
-    },
-    {
-      "sha": "63f5bd055ec817a8e8d56b59ede1b7ac65b14a24",
-      "subject": "Keep the reviewed Maps admission error handling on the current mobile SDK"
-    },
-    {
-      "sha": "0893a8bb1541973b480b2d8d8c7b5cd395e33b6d",
-      "subject": "Preserve the Alpha release SDK ancestry in the reviewed mobile source"
-    },
-    {
-      "sha": "d69271fd0d9ab5ca218fa1e8b5d3ae7da60fe881",
-      "subject": "Preserve retained Pixel v44 SDK ancestry without changing reviewed source"
-    },
-    {
-      "sha": "e7c4c2e10cac71fd83746fb24bc21b9e24c45eea",
-      "subject": "Refuse case-distinct existing destinations in shared Files rename"
-    },
-    {
-      "sha": "77428481fbf9b6369c496d377e2dabeb90c6f703",
-      "subject": "Integrate current upstream Android voice language policy into the reviewed mobile SDK"
-    },
-    {
-      "sha": "aa9a50d96c6144e9d839ed65fd4f8a161514a570",
-      "subject": "Bind native reviewed Files mutations to the reviewed filesystem object"
-    },
-    {
-      "sha": "91c3c3d6e1c27264326e131792533b4b642a46a9",
-      "subject": "Carry reviewed Files identities from proposal display through storage mutation"
-    },
-    {
-      "sha": "e67a6ded3bada3399a8f6862d4ad44e2f56d377c",
-      "subject": "Negotiate reviewed Files capability on real device routes"
-    },
-    {
-      "sha": "f27a70da32057c030d0f4b1eb91caf1a9116ab63",
-      "subject": "Require the reviewed Files surface to stay in the foreground"
-    },
-    {
-      "sha": "9237023aee3856b7375f21a6dfde0f9b957929a5",
-      "subject": "Reject absolute paths in agent Files operations"
-    },
-    {
-      "sha": "6e8901312b927c6461691624739f36aa23737dc8",
-      "subject": "Share Photos window refresh and thumbnail retention rules"
-    },
-    {
-      "sha": "3cc7b939dc75cfb92375068711b97d6bbd8d25c3",
-      "subject": "Support Android 29 storage access in shared Files"
-    },
-    {
-      "sha": "0f004fdb8ca80956517663da5994200b7efb4b8e",
-      "subject": "Overlap independent Calendar discovery and preserve grant narrowing"
-    },
-    {
-      "sha": "c99822703d4af00afed97fe2cfd15a22799cf803",
-      "subject": "Retain saved scan drafts through autosave and export"
-    },
-    {
-      "sha": "006c761bbe1817a81ceefa6283b9f1a9b436a117",
-      "subject": "Share owner-bound workflow approval notice polling"
-    },
-    {
-      "sha": "4dae580daa50fa6f0f9a220c6ac1fa0942879b02",
-      "subject": "Include Apps grid and Photos public exports in UI build"
-    },
-    {
-      "sha": "b23a23c2ef4f83d15591c6368c00f1e9547f7743",
-      "subject": "Share native account checks without carrying messages across reset"
-    },
-    {
-      "sha": "77e3d490ac7c79a947617e2afa5acf2b8f6b184e",
-      "subject": "Restore keyboard navigation and focus in installed app menus"
-    },
-    {
-      "sha": "89e17ebdf439190d3ef9531ba61b403264fb37c3",
-      "subject": "Recover reviewed photo replacements from durable edit bytes"
-    },
-    {
-      "sha": "eb92e44e9315a1ce4ba0a1dbbfc1c64e27351e89",
-      "subject": "Preserve Shaw reviewed Photos batches in shared native owner"
-    },
-    {
-      "sha": "32b8cebf60e3994fa8b62a15759a99ffdbdcc943",
-      "subject": "Keep host-session provider keys independent of selected mode"
-    },
-    {
-      "sha": "50a1554d28506159708c3c6bccd404ec0ec1cc3a",
-      "subject": "Format provider key session with repository rules"
-    },
-    {
-      "sha": "d1cb3be9b3db23d02118bf49b47edef9e6a9049b",
-      "subject": "Retain independent Own keys across native provider selections"
-    },
-    {
-      "sha": "b7e02240ed3b4368acaeaf97c1cafe1c6cedc257",
-      "subject": "Fence native speech by explicit provider mode and credential retirement"
-    },
-    {
-      "sha": "cf5033e1a9e97fcb646916d9ae74914dd0376181",
-      "subject": "Document native key custody and confirm saved selection readback"
-    },
-    {
-      "sha": "fa7a5cd45c4b62b8d4ac7890b475a4b92c30588f",
-      "subject": "Keep saved native keys through legacy unbind adapters"
-    },
-    {
-      "sha": "db96bb0a0371dca92707867245bf0bb119b5b4f5",
-      "subject": "Refuse fresh microphone capture while a protected secret is shown"
-    },
-    {
-      "sha": "8ca237f44b95bdfb7317e80d1f4f4d61fac6a7ef",
-      "subject": "files: expose all files, toolbar actions and reversible sort"
-    },
-    {
-      "sha": "d666c44a22a5090faf768ca0516e1b80ff7a361b",
-      "subject": "files: label the primary root All files"
-    },
-    {
-      "sha": "32258f447e0b7bc0f4fbecf83e2c4f0bfb290349",
-      "subject": "media: prepare owned bounded windows of retained recordings"
-    },
-    {
-      "sha": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-      "subject": "media: keep recording windows independent of product names"
-    },
-    {
-      "sha": "b1817660a0347ae19551b9ee296410fe55f02d59",
-      "subject": "Apply reviewed Calendar search guidance to Alpha SDK pin"
+      "sha": "dddd9a6c6f75c32146d512d92d86add9a8ccf9ea",
+      "subject": "Rename company and Android namespaces to Alpha Compute"
     }
   ],
-  "repository": "elizaOS/eliza",
-  "status": "diverged",
-  "recordedAt": "2026-11-09",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...b1817660a0347ae19551b9ee296410fe55f02d59",
-  "pullRequests": []
+  "pullRequests": [],
+  "pendingPullRequest": "https://github.com/elizaOS/eliza/pull/39153"
 }

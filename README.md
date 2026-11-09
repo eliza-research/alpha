@@ -1,5 +1,8 @@
 # Alpha Phone (alphaphone)
 
+The [Alpha Compute identity change](docs/alpha-compute-identity.md) describes the
+Android namespace, installation and external registration requirements.
+
 ## Shared application direction — October 27
 
 The owner has requested one upstream Eliza mobile application and AOSP target,
@@ -525,7 +528,7 @@ is not a dependency list. A stale stamp requires fresh preparation and staging.
 A developer APK without runtime payload is reported as `NOT_PACKAGED`; this is
 not proof of resident runtime execution or device acceptance.
 
-The variants intentionally share `ai.elizaresearch.alphaphone` and replace one another.
+The variants intentionally share `ai.alphacompute.alphaphone` and replace one another.
 The other product uses a different package and can be installed alongside this one.
 Release APKs are unsigned unless the `ELIZAOS_*` signing variables are supplied; do not distribute
 debug-signed or test-mocks builds as production.

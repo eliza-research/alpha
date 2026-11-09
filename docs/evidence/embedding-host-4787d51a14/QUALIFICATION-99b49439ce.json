@@ -1,7 +1,7 @@
 {
   "pin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
   "forkPin": "6337fd4c4bd071c17235986344d552d4036e177b",
-  "identity": "ai.elizaresearch.alphaphone",
+  "identity": "ai.alphacompute.alphaphone",
   "abi": "arm64-v8a",
   "inputs": [
     {
@@ -95,7 +95,7 @@
   ],
   "jniBinding": {
     "mode": "registered",
-    "className": "ai/elizaresearch/alphaphone/ElizaVoiceNative",
+    "className": "ai/alphacompute/alphaphone/ElizaVoiceNative",
     "subset": "full"
   },
   "commands": [
@@ -111,7 +111,7 @@
       "-DANDROID_ABI=arm64-v8a",
       "-DANDROID_PLATFORM=android-23",
       "-DCMAKE_BUILD_TYPE=Release",
-      "-DELIZA_VOICE_JNI_CLASS=ai/elizaresearch/alphaphone/ElizaVoiceNative",
+      "-DELIZA_VOICE_JNI_CLASS=ai/alphacompute/alphaphone/ElizaVoiceNative",
       "-DELIZA_VOICE_JNI_SUBSET=full",
       "-DELIZA_VOICE_JNI_LIBRARY=elizavoicejni",
       "-DELIZAVOICE_FFI_INCLUDE_DIR=/home/shaw/.cache/alphaphone-speech-v2/alphaphone/vendor/eliza/plugins/plugin-local-inference/native/llama.cpp/tools/omnivoice/include"
@@ -167,7 +167,7 @@
     }
   ],
   "qualifiedAt": "2026-11-08T16:46:16Z",
-  "qualificationScope": "ARM64 embedding component only, admitted at eliza pin 99b49439ce (engine gitlink 6337fd4c4b). The three libraries are byte-identical to the 4787d51a14 build that ran on the Pixel (docs/evidence/embedding-host-4787d51a14/QUALIFICATION.json): the JNI bridge rebuilt at 99b49439ce gave the same 4244312b... bytes. The device run below used those exact bytes; it was not repeated at 99b49439ce. The full Alpha RegisterNatives JNI bridge (class ai/elizaresearch/alphaphone/ElizaVoiceNative, subset full) built here from the pin, linked at runtime to the reviewed voice engine 6337fd4c4b and NDK 28.2 libc++_shared, ran the pinned BGE-small 384 model on the Pixel 10a (arm64-v8a, API 37, Alpha userdebug image): two model open/close rounds, 384 finite dimensions, L2-normalized repeatability, semantic ranking (related 0.783 vs unrelated 0.268), Unicode and NUL handling all passed, with vectors identical to the 58df qualification. The JNI bridge and libc++_shared bytes equal the previous reviewed host (4244312b..., cd617628...); only libelizainference.so changed. Not the Alpha app, x86_64, voice hardware, release signing or user acceptance.",
+  "qualificationScope": "ARM64 embedding component only, admitted at eliza pin 99b49439ce (engine gitlink 6337fd4c4b). The three libraries are byte-identical to the 4787d51a14 build that ran on the Pixel (docs/evidence/embedding-host-4787d51a14/QUALIFICATION.json): the JNI bridge rebuilt at 99b49439ce gave the same 4244312b... bytes. The device run below used those exact bytes; it was not repeated at 99b49439ce. The full Alpha RegisterNatives JNI bridge (class ai/alphacompute/alphaphone/ElizaVoiceNative, subset full) built here from the pin, linked at runtime to the reviewed voice engine 6337fd4c4b and NDK 28.2 libc++_shared, ran the pinned BGE-small 384 model on the Pixel 10a (arm64-v8a, API 37, Alpha userdebug image): two model open/close rounds, 384 finite dimensions, L2-normalized repeatability, semantic ranking (related 0.783 vs unrelated 0.268), Unicode and NUL handling all passed, with vectors identical to the 58df qualification. The JNI bridge and libc++_shared bytes equal the previous reviewed host (4244312b..., cd617628...); only libelizainference.so changed. Not the Alpha app, x86_64, voice hardware, release signing or user acceptance.",
   "qualificationEvidence": {
     "harness": "docs/evidence/embedding-host-4787d51a14/harness (same EmbeddingQualificationTest as docs/evidence/native-58df/embedding-harness; Gradle jniLibs keepDebugSymbols added so the APK carries the exact unstripped bytes)",
     "device": {

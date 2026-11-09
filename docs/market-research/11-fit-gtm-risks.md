@@ -53,7 +53,7 @@ The repo's rule is to distinguish an APK build, an emulator test, a full AOSP im
 
 | Capability | Status | Highest evidence | Source |
 | --- | --- | --- | --- |
-| Independent package `ai.elizaresearch.alphaphone`, standalone and HOME-launcher flavors from one source | Verified | B + E (HOME role select/restore) | [README.md](../../README.md), [architecture.md ADR-03](../architecture.md) |
+| Independent package `ai.alphacompute.alphaphone`, standalone and HOME-launcher flavors from one source | Verified | B + E (HOME role select/restore) | [README.md](../../README.md), [architecture.md ADR-03](../architecture.md) |
 | Alpha visual system: 14 prototype modules, 60 named presets; MVP profile hides Phone, SMS, Contacts, Wallet | Verified (visual/mock); 10 retained MVP apps navigate | E (Build83 navigation/accessibility) | [prototype-screen-inventory.md](../prototype-screen-inventory.md), `apps/app/src/prototype/mvp-features.ts` |
 | AOSP vendor add-on (non-privileged, hash/signer-checked) | Generated only | B | [README.md §AOSP](../../README.md); image boot **not** done |
 | Physical Pixel image, signing, OTA/rollback | Planned | none | [decisions.md A-01, A-06](../decisions.md) |

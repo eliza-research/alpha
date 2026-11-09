@@ -25,7 +25,7 @@ import { fileURLToPath } from "node:url";
 import { recordedDebugSigners } from "../enroll-release-keys.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-export const PACKAGE = "ai.elizaresearch.alphaphone";
+export const PACKAGE = "ai.alphacompute.alphaphone";
 export const STEWARD_APP_CLIENT = "alpha-phone";
 export const CLIENT_ID = /^[0-9]{6,20}-[a-z0-9]{8,64}\.apps\.googleusercontent\.com$/;
 const USAGE = "Usage: node scripts/owner/google-native-client.mjs --certificate FILE [--configured-sha1 HEX] [--client-id ID] [--steward-client-ids FILE] [--debug-fingerprint HEX ...]";

@@ -46,7 +46,7 @@ Builds on [10 — always-on technical feasibility](10-always-on-tech-feasibility
    - The `isolated_compute_app` domain adds GPU access plus a vendor-extensible `isolated_compute_allowed_device` attribute, which is our NPU route.
    - HDS egress is a single size-limited result object. That is the right pattern for our egress gate.
 7. **Process architecture.**
-   - A new privileged `ai.elizaresearch.alphaphone.sense` package with **no `INTERNET` permission**, a custom SELinux domain `alpha_sense_app` with network `neverallow`s, a persistent mic FGS, and AP VAD.
+   - A new privileged `ai.alphacompute.alphaphone.sense` package with **no `INTERNET` permission**, a custom SELinux domain `alpha_sense_app` with network `neverallow`s, a persistent mic FGS, and AP VAD.
    - ASR and redaction run in an `isolatedProcess` child, CPU first, NPU later.
    - A single signature-protected egress binder hands **redacted text only** to the existing non-privileged Alpha app.
    - pKVM/Microdroid is not viable for the ASR path: it has no HALs, so no NPU/GPU, and device assignment needs a vendor VM DTBO that Pixel does not ship **(unverified)**. Use it only for the key/ledger.
@@ -78,7 +78,7 @@ From `vendor/eliza` (read-only, pinned) and `android/`:
 | Hardware targets | `pixel9a-tegu` (Android 15 r31, pinned) and `pixel11pro-grizzly` (`android-17.0.0_r1`, `cp2a`, generated via **GrapheneOS adevtool** `refs/heads/17` plus a stock kernel). **No Pixel 10 lock.** `decisionNote` flags this as an open owner decision. | `vendor/eliza/packages/os/android/hardware-targets.json`, `pixel11pro.lock.json` |
 | AVB | Lock uses `external/avb/test/data/testkey_rsa4096.pem`, authorized as `public-aosp-userdebug-test-key`. No release key yet. | `pixel11pro.lock.json` |
 | Pixel audio blobs (grizzly spec) | `android.hardware.audio.service-aidl.aoc`, `aocd`, `aoc.bin`, `libaoc.so`, the `aoc_*` kernel modules, many CHRE nanoapps (`/vendor/etc/chre/*.so`), `contexthub-service.generic`, `edgetpu` (`com.google.edgetpu.tachyon-service`, `darwinn` NNAPI). There is no separate sound-trigger VINTF fragment in the extracted list. | `vendor/eliza/packages/os/android/vendor-specs/grizzly-cd1a.260905.001.b1.yml` |
-| Alpha app | Package `ai.elizaresearch.alphaphone`. Flavors `standalone`/`launcher` (same ID). Has `RECORD_AUDIO`, `INTERNET`, an `IsolatedPdfService` with `isolatedProcess="true"` (an in-repo precedent), and an `ACTION_ASSIST` activity. Admitted to AOSP as a **non-privileged presigned** import. | `android/app/src/main/AndroidManifest.xml`, `android/app/build.gradle`, `docs/android-and-aosp.md` |
+| Alpha app | Package `ai.alphacompute.alphaphone`. Flavors `standalone`/`launcher` (same ID). Has `RECORD_AUDIO`, `INTERNET`, an `IsolatedPdfService` with `isolatedProcess="true"` (an in-repo precedent), and an `ACTION_ASSIST` activity. Admitted to AOSP as a **non-privileged presigned** import. | `android/app/src/main/AndroidManifest.xml`, `android/app/build.gradle`, `docs/android-and-aosp.md` |
 
 **Implications.**
 - Do not make the Capacitor/WebView Alpha app privileged. It has `INTERNET` and a large attack surface.
@@ -306,7 +306,7 @@ How the rules apply to our listener (S):
                                                     │ (read-only status)
  mic ─► audio HAL (AOC) ─► audioserver ─► AudioRecord (HOTWORD | VOICE_RECOGNITION)
                                                     │
- ┌─────────────── ai.elizaresearch.alphaphone.sense  (priv-app, persistent, NO INTERNET) ─────┐
+ ┌─────────────── ai.alphacompute.alphaphone.sense  (priv-app, persistent, NO INTERNET) ─────┐
  │ SELinux domain: alpha_sense_app   data: alpha_sense_app_data_file                          │
  │ ListeningService (FGS type=microphone, directBootAware)                                    │
  │   ├─ ConsentStore (DE storage)  ├─ PolicyGovernor (battery/thermal/schedule/calls)         │
@@ -321,7 +321,7 @@ How the rules apply to our listener (S):
  │     └─ delivers to subscriber                                                              │
  └──────────────────────────────────────────┬─────────────────────────────────────────────────┘
                                             │ ITranscriptSink (redacted only)
- ┌──────────────────── ai.elizaresearch.alphaphone (existing, NON-privileged, has INTERNET) ──┐
+ ┌──────────────────── ai.alphacompute.alphaphone (existing, NON-privileged, has INTERNET) ──┐
  │ Notes/agent UI, review, rehydration (local vault), cloud agent per user approval           │
  └────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -363,7 +363,7 @@ neverallow { domain -alpha_sense_app } alpha_sense_app:process ptrace;
 
 ```
 # system_ext/private/seapp_contexts
-user=_app seinfo=alphasense name=ai.elizaresearch.alphaphone.sense domain=alpha_sense_app type=alpha_sense_app_data_file levelFrom=all
+user=_app seinfo=alphasense name=ai.alphacompute.alphaphone.sense domain=alpha_sense_app type=alpha_sense_app_data_file levelFrom=all
 # system_ext/private/mac_permissions.xml (+ keys.conf tag @ALPHASENSE → release cert)
 <policy><signer signature="@ALPHASENSE"><seinfo value="alphasense"/></signer></policy>
 ```
@@ -377,16 +377,16 @@ Notes:
 ### 6.4 Egress gate contract
 
 ```
-// ai/elizaresearch/alphaphone/sense/ITranscriptSink.aidl (implemented by Alpha app)
+// ai/alphacompute/alphaphone/sense/ITranscriptSink.aidl (implemented by Alpha app)
 oneway void onSegment(in RedactedSegment s);       // size ≤ 8 KiB, no audio, no raw text
 oneway void onState(in ListeningState st);         // LISTENING|PAUSED_*|MUTED|OFF
-// ai/elizaresearch/alphaphone/sense/ISense.aidl (exported by sense; signature permission)
+// ai/alphacompute/alphaphone/sense/ISense.aidl (exported by sense; signature permission)
 void subscribe(ITranscriptSink sink);              // caller cert must equal Alpha release cert
 void pause(int reason, long untilMs); void resume();
 void deleteRange(long t0, long t1);                // user right-to-delete
 ```
 
-- Guard permission: `ai.elizaresearch.alphaphone.permission.SENSE_SUBSCRIBE` (`protectionLevel="signature"`). The gate also checks the caller's signing-cert digest explicitly against a pinned value, like `ChromiumBrowserIdentity`.
+- Guard permission: `ai.alphacompute.alphaphone.permission.SENSE_SUBSCRIBE` (`protectionLevel="signature"`). The gate also checks the caller's signing-cert digest explicitly against a pinned value, like `ChromiumBrowserIdentity`.
 - Everything is logged: segment count, bytes, labels, never content. This mirrors `DetectorSession`'s "Egressed …" logs and `HOTWORD_EVENT_EGRESS_SIZE` stats.
 
 ---
@@ -457,8 +457,8 @@ vendor/alphaphone/
   alphaphone_common.mk
   products/alphaphone_frankel_phone.mk          # inherit vendor/google_devices/frankel + eliza/common? (D1)
   apps/AlphaSense/Android.bp                    # android_app_import, privileged, own cert, system_ext
-  permissions/privapp-permissions-ai.elizaresearch.alphaphone.sense.xml
-  permissions/default-permissions-ai.elizaresearch.alphaphone.sense.xml
+  permissions/privapp-permissions-ai.alphacompute.alphaphone.sense.xml
+  permissions/default-permissions-ai.alphacompute.alphaphone.sense.xml
   sysconfig/alphaphone-sense.xml
   overlays/frameworks/base/core/res/res/values/config.xml
   overlays/frameworks/base/packages/SystemUI/res/values/config.xml   # chip config (new keys)
@@ -470,8 +470,8 @@ vendor/alphaphone/
 `alphaphone_common.mk` (sketch):
 ```make
 PRODUCT_PACKAGES += AlphaSense \
-    privapp-permissions-ai.elizaresearch.alphaphone.sense.xml \
-    default-permissions-ai.elizaresearch.alphaphone.sense.xml alphaphone-sense-sysconfig
+    privapp-permissions-ai.alphacompute.alphaphone.sense.xml \
+    default-permissions-ai.alphacompute.alphaphone.sense.xml alphaphone-sense-sysconfig
 PRODUCT_PACKAGE_OVERLAYS += vendor/alphaphone/overlays
 SYSTEM_EXT_PRIVATE_SEPOLICY_DIRS += vendor/alphaphone/sepolicy/system_ext/private
 PRODUCT_PRODUCT_PROPERTIES += ro.hotword.detection_service_required=true
@@ -481,7 +481,7 @@ PRODUCT_SYSTEM_EXT_PROPERTIES += persist.alphaphone.listening.default=off   # of
 ### 9.2 Sense app manifest (key parts)
 
 ```xml
-<manifest package="ai.elizaresearch.alphaphone.sense" android:sharedUserId="(none)">
+<manifest package="ai.alphacompute.alphaphone.sense" android:sharedUserId="(none)">
   <!-- NO android.permission.INTERNET, NO ACCESS_NETWORK_STATE -->
   <uses-permission android:name="android.permission.RECORD_AUDIO"/>
   <uses-permission android:name="android.permission.CAPTURE_AUDIO_HOTWORD"/>
@@ -491,7 +491,7 @@ PRODUCT_SYSTEM_EXT_PROPERTIES += persist.alphaphone.listening.default=off   # of
   <uses-permission android:name="android.permission.START_ACTIVITIES_FROM_BACKGROUND"/>
   <uses-permission android:name="android.permission.OBSERVE_SENSOR_PRIVACY"/>
   <uses-permission android:name="android.permission.READ_PHONE_STATE"/> <!-- call state for pause UX -->
-  <permission android:name="ai.elizaresearch.alphaphone.permission.SENSE_SUBSCRIBE"
+  <permission android:name="ai.alphacompute.alphaphone.permission.SENSE_SUBSCRIBE"
               android:protectionLevel="signature"/>
   <application android:persistent="true" android:directBootAware="true"
                android:allowBackup="false" android:debuggable="false"
@@ -501,7 +501,7 @@ PRODUCT_SYSTEM_EXT_PROPERTIES += persist.alphaphone.listening.default=off   # of
     <service android:name=".AsrRedactService" android:exported="false"
              android:isolatedProcess="true" android:process=":asr"/>
     <service android:name=".EgressGateService" android:exported="true"
-             android:permission="ai.elizaresearch.alphaphone.permission.SENSE_SUBSCRIBE"/>
+             android:permission="ai.alphacompute.alphaphone.permission.SENSE_SUBSCRIBE"/>
     <activity android:name=".ConsentActivity" android:exported="false"/>
   </application>
 </manifest>
@@ -510,9 +510,9 @@ PRODUCT_SYSTEM_EXT_PROPERTIES += persist.alphaphone.listening.default=off   # of
 ### 9.3 Permission and sysconfig XML
 
 ```xml
-<!-- /system_ext/etc/permissions/privapp-permissions-ai.elizaresearch.alphaphone.sense.xml -->
+<!-- /system_ext/etc/permissions/privapp-permissions-ai.alphacompute.alphaphone.sense.xml -->
 <permissions>
-  <privapp-permissions package="ai.elizaresearch.alphaphone.sense">
+  <privapp-permissions package="ai.alphacompute.alphaphone.sense">
     <permission name="android.permission.CAPTURE_AUDIO_HOTWORD"/>
     <permission name="android.permission.START_ACTIVITIES_FROM_BACKGROUND"/>
     <permission name="android.permission.OBSERVE_SENSOR_PRIVACY"/>
@@ -524,20 +524,20 @@ PRODUCT_SYSTEM_EXT_PROPERTIES += persist.alphaphone.listening.default=off   # of
 </permissions>
 
 <!-- default-permissions: granted at first boot but revocable; feature also needs in-app consent -->
-<exceptions><exception package="ai.elizaresearch.alphaphone.sense">
+<exceptions><exception package="ai.alphacompute.alphaphone.sense">
   <permission name="android.permission.RECORD_AUDIO" fixed="false"/>
   <permission name="android.permission.POST_NOTIFICATIONS" fixed="false"/>
 </exception></exceptions>
 
 <!-- /system_ext/etc/sysconfig/alphaphone-sense.xml -->
 <config>
-  <allow-in-power-save package="ai.elizaresearch.alphaphone.sense"/>
-  <bg-restriction-exemption package="ai.elizaresearch.alphaphone.sense"/>
-  <install-in-user-type package="ai.elizaresearch.alphaphone.sense">
+  <allow-in-power-save package="ai.alphacompute.alphaphone.sense"/>
+  <bg-restriction-exemption package="ai.alphacompute.alphaphone.sense"/>
+  <install-in-user-type package="ai.alphacompute.alphaphone.sense">
     <install-in user-type="FULL"/> <!-- verify: limit to system/primary user (V10) -->
   </install-in-user-type>
-  <allow-association target="ai.elizaresearch.alphaphone.sense" allowed="com.android.systemui"/>
-  <allow-association target="ai.elizaresearch.alphaphone.sense" allowed="ai.elizaresearch.alphaphone"/>
+  <allow-association target="ai.alphacompute.alphaphone.sense" allowed="com.android.systemui"/>
+  <allow-association target="ai.alphacompute.alphaphone.sense" allowed="ai.alphacompute.alphaphone"/>
 </config>
 ```
 
@@ -559,7 +559,7 @@ Whether to pre-grant `RECORD_AUDIO` at all is a product decision. The honest def
 
 | File | Change | Why |
 |---|---|---|
-| `core/java/android/permission/PermissionManager.java` | Keep `EXEMPTED_ROLES`, but filter out any package with the `ai.elizaresearch.alphaphone.*` prefix or our cert (belt-and-braces) | Prevents a future overlay mistake from hiding our indicator |
+| `core/java/android/permission/PermissionManager.java` | Keep `EXEMPTED_ROLES`, but filter out any package with the `ai.alphacompute.alphaphone.*` prefix or our cert (belt-and-braces) | Prevents a future overlay mistake from hiding our indicator |
 | `services/core/java/com/android/server/policy/AppOpsPolicy.java` | Optional alternative to the SystemUI op additions: stop `resolveSandboxedServiceOp` hiding indicators | Only if we adopt HDS in Phase 3 |
 | `services/core/java/com/android/server/am/ActiveServices.java` | **None expected** (persistent proc-state). Fallback: add the sense package to `mAllowListWhileInUsePermissionInFgs` via a config array | V3 |
 | `services/core/java/com/android/server/policy/PhoneWindowManager.java` | New `config_keyChordPowerVolumeUp` value `3 = toggle listening` (today 0 nothing / 1 mute toggle / 2 global actions), or a double-press-power behaviour | Physical pause gesture |

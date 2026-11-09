@@ -29,7 +29,7 @@ export function exactUpdateMembers(source) {
   const end = source.lastIndexOf('}');
   const handOff = /^ private static Intent handOff\(Intent intent\)\{[^\n]*$/m.exec(source)?.[0];
   assert.ok(start > 0 && end > start && handOff, 'Exact updater method slice exists');
-  return `package ai.elizaresearch.alphaphone;
+  return `package ai.alphacompute.alphaphone;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageInstaller;

@@ -1,4 +1,4 @@
-package ai.elizaresearch.alphaphone;
+package ai.alphacompute.alphaphone;
 
 import ai.eliza.plugins.actionjournal.deletion.DeferredDeletionCoordinator;
 import java.util.concurrent.TimeUnit;

@@ -11,7 +11,7 @@ const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 // The committed historical receipt owns this fixture even after the active
 // host is staged from a different engine revision.
 const reviewedBytes=fs.readFileSync(path.join(root,SDK_PROVENANCE_RECEIPT));
-const reviewedSha='78d598438eb62947532b02251565181e7c8f505fe453488deec605b10a65f20a';
+const reviewedSha='8507fdb0091220d18de344f477984944c0cfbb7954915dbe48b58e30cc6665bd';
 assert.equal(sha(reviewedBytes),reviewedSha);
 const reviewed=JSON.parse(reviewedBytes);
 const historical={

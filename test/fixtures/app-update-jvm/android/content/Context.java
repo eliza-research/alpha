@@ -12,7 +12,7 @@ public class Context {
  public android.content.pm.ApplicationInfo getApplicationInfo(){android.content.pm.ApplicationInfo info=new android.content.pm.ApplicationInfo();info.sourceDir=new java.io.File(data,"base.apk").getPath();return info;}
  public java.io.File getCacheDir(){return cache;}
  public android.content.pm.PackageManager getPackageManager(){return packages;}
- public String getPackageName(){return "ai.elizaresearch.alphaphone";}
+ public String getPackageName(){return "ai.alphacompute.alphaphone";}
  public ContentResolver getContentResolver(){return new ContentResolver();}
  public void unregisterReceiver(BroadcastReceiver receiver){receivers.remove(receiver);}
  public void broadcast(Intent intent){for(BroadcastReceiver receiver:receivers)receiver.onReceive(this,intent);}

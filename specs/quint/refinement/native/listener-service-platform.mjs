@@ -11,7 +11,7 @@ export function listenerServicePlatform(){
    public static final int MODE_PRIVATE=0;public Context createDeviceProtectedStorageContext(){return this;}public Context getApplicationContext(){return this;}
    public SharedPreferences getSharedPreferences(String name,int mode){return ai.eliza.sense.StorePorts.preferences;}
    public boolean stopService(Intent intent){ai.eliza.sense.StorePorts.stops++;return true;}public ComponentName startForegroundService(Intent intent){ai.eliza.sense.ServicePorts.starts++;return null;}
-   public ContentResolver getContentResolver(){return ai.eliza.sense.ServicePorts.resolver;}public String getPackageName(){return "ai.elizaresearch.alphaphone.sense";}
+   public ContentResolver getContentResolver(){return ai.eliza.sense.ServicePorts.resolver;}public String getPackageName(){return "ai.alphacompute.alphaphone.sense";}
    public android.content.pm.PackageManager getPackageManager(){return new android.content.pm.PackageManager();}
    public int checkSelfPermission(String permission){return ai.eliza.sense.ServicePorts.permission?0:-1;}
    public java.util.concurrent.Executor getMainExecutor(){return Runnable::run;}
@@ -81,7 +81,7 @@ export function listenerServicePlatform(){
    static boolean indicatorVisible(android.content.Context context){return ServicePorts.indicator;}static Object active(android.content.Context context,ListenerPolicy.State state){return new Object();}static void showStatus(android.content.Context context,ListenerPolicy.State state){ServicePorts.status=state.name();}
   }`,
   'ai/eliza/sense/AssistantInvocation.java':'package ai.eliza.sense;final class AssistantInvocation {static boolean start(android.content.Context context){ServicePorts.invocations++;return true;}}',
-  'ai/eliza/sense/BuildConfig.java':'package ai.eliza.sense;public class BuildConfig {public static final String SENSE_STORAGE_NAME="listener-settings",SENSE_COMPONENT_PACKAGE="ai.elizaresearch.alphaphone.sense",SENSE_HOST_PACKAGE="ai.elizaresearch.alphaphone",APPLICATION_ID="ai.elizaresearch.alphaphone.sense",SENSE_WAKE_NAMES="alpha";}',
+  'ai/eliza/sense/BuildConfig.java':'package ai.eliza.sense;public class BuildConfig {public static final String SENSE_STORAGE_NAME="listener-settings",SENSE_COMPONENT_PACKAGE="ai.alphacompute.alphaphone.sense",SENSE_HOST_PACKAGE="ai.alphacompute.alphaphone",APPLICATION_ID="ai.alphacompute.alphaphone.sense",SENSE_WAKE_NAMES="alpha";}',
  };
  for(const [name,text]of Object.entries(files)){const path=join(platform.directory,name);mkdirSync(dirname(path),{recursive:true});writeFileSync(path,text);if(!platform.paths.includes(path))platform.paths.push(path);}
  platform.paths=platform.paths.filter(path=>!path.endsWith('/ai/eliza/sense/Listener.java')&&!path.endsWith('/ai/eliza/sense/ListeningService.java'));

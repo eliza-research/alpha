@@ -125,9 +125,9 @@
   },
   "residentHost": {
     "sockets": {
-      "agent": "ai.elizaresearch.alphaphone.agent.v1",
-      "inference": "ai.elizaresearch.alphaphone.inference.v1",
-      "secureStore": "ai.elizaresearch.alphaphone.secure-store"
+      "agent": "ai.alphacompute.alphaphone.agent.v1",
+      "inference": "ai.alphacompute.alphaphone.inference.v1",
+      "secureStore": "ai.alphacompute.alphaphone.secure-store"
     },
     "classes": [
       "NativeNotificationInbox",

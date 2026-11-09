@@ -14,8 +14,8 @@ import {deferred} from './support.mjs';
 const model = 'NativeGoogleAccessFile';
 const root = fileURLToPath(new URL('../../../../', import.meta.url));
 const entry = 'scripts/native-google-product-host.ts';
-const bridge = 'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java';
-const writer = 'android/app/src/main/java/ai/elizaresearch/alphaphone/GoogleAgentAccessFile.java';
+const bridge = 'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java';
+const writer = 'android/app/src/main/java/ai/alphacompute/alphaphone/GoogleAgentAccessFile.java';
 const fixture = fileURLToPath(new URL('./NativeGoogleAccessFileTraces.java', import.meta.url));
 const fileName = 'alpha-google-agent-access.json';
 const envKey = 'ALPHA_GOOGLE_AGENT_ACCESS_FILE';
@@ -125,7 +125,7 @@ async function scenario(hostModule, classes, name, drive) {
     const record = (label, transition) => trace.steps.push({label, action: transition, expect: observe()});
     function publish(gmail, calendar, expected = 'applied') {
       const result = execFileSync(javaBinary('java'), ['-cp', classes,
-        'ai.elizaresearch.alphaphone.NativeGoogleAccessFileTraces', dir, String(gmail), String(calendar)],
+        'ai.alphacompute.alphaphone.NativeGoogleAccessFileTraces', dir, String(gmail), String(calendar)],
       {encoding: 'utf8', timeout: jvmTimeout}).trim();
       assert.equal(result, expected);
       if (result === 'applied') {

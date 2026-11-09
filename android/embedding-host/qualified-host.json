@@ -1,7 +1,7 @@
 {
   "pin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
   "forkPin": "6337fd4c4bd071c17235986344d552d4036e177b",
-  "identity": "ai.elizaresearch.alphaphone",
+  "identity": "ai.alphacompute.alphaphone",
   "abi": "arm64-v8a",
   "model": {
     "path": "android/app/src/main/assets/agent/models/bge-small-en-v1.5-f16.gguf",
@@ -28,7 +28,7 @@
       "alignment16KiB": true
     }
   ],
-  "qualificationReceiptSha256": "23a121b1eff8cbefde1b21ac8e30fc1959ed227c793f3d797aef6281685d7ba8",
+  "qualificationReceiptSha256": "5fc5b205fae572c52c3543ccbb70c7bde678bb5d36865e936376952dba6e01ea",
   "jniIdentityRelocated": true,
   "inputs": [
     {
@@ -122,7 +122,12 @@
   ],
   "jniBinding": {
     "mode": "registered",
-    "className": "ai/elizaresearch/alphaphone/ElizaVoiceNative",
+    "className": "ai/alphacompute/alphaphone/ElizaVoiceNative",
     "subset": "full"
+  },
+  "requalification": {
+    "required": true,
+    "atPin": "dddd9a6c6f75c32146d512d92d86add9a8ccf9ea",
+    "reason": "Android package/JNI class namespace changed; existing libraries and receipt do not qualify the new identity."
   }
 }
