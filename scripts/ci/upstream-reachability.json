@@ -2,14 +2,25 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "c51ea9cbfaec927220fa8bfa161f5c5a1a8c04c9",
-  "head": "5500c73b3d8ff8395999bbb620e7e3fc0ebb1df4",
+  "baseCommit": "2aec00f196ab780a66e96ed4cb880249c04d2096",
+  "head": "099e2d27ad7268fac0832c4a7e84cc707d2cf03e",
   "recordedAt": "2026-11-09",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...5500c73b3d8ff8395999bbb620e7e3fc0ebb1df4",
-  "status": "behind",
-  "aheadBy": 0,
-  "behindBy": 311,
+  "command": "gh api repos/elizaOS/eliza/compare/develop...099e2d27ad7268fac0832c4a7e84cc707d2cf03e",
+  "status": "diverged",
+  "aheadBy": 1,
+  "behindBy": 332,
   "mergeBase": "5500c73b3d8ff8395999bbb620e7e3fc0ebb1df4",
-  "pinOnlyCommits": [],
-  "pullRequests": []
+  "pinOnlyCommits": [
+    {
+      "sha": "099e2d27ad7268fac0832c4a7e84cc707d2cf03e",
+      "subject": "feat(ui): coordinate foreground app update attempts"
+    }
+  ],
+  "pullRequests": [],
+  "pendingPullRequest": {
+    "url": "https://github.com/elizaOS/eliza/pull/39166",
+    "head": "ad6ec5d5ad6afaa3cb5f384b930736058caf5029",
+    "retainedPin": "099e2d27ad7268fac0832c4a7e84cc707d2cf03e",
+    "note": "The rebased PR and retained pin contain byte-identical feature files; the retained pin stays on the previously admitted SDK baseline."
+  }
 }

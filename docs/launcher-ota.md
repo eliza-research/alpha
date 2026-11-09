@@ -32,6 +32,13 @@ and then 15 minutes. One owner runs at a time. Backgrounding invalidates pending
 renderer reads; disposal cancels its timer. This is foreground launcher upkeep,
 not an OS background scheduler or an independent recovery supervisor.
 
+The shared scheduler and mounted update gate are implemented in
+[Eliza PR 39166](https://github.com/elizaOS/eliza/pull/39166). Alpha pins the
+reviewed, source-identical commit `099e2d27ad7268fac0832c4a7e84cc707d2cf03e`
+on its admitted SDK baseline, without a consumer source overlay. The
+[source comparison receipt](evidence/launcher-ota-upstream-source-20261109.json)
+does not transfer native, APK or device qualification.
+
 Automatic installation requires Android 12/API 31 or newer and Android's existing
 **Install unknown apps → Alpha Phone** permission. Provision that permission once
 before distributing the batch. The automatic path never opens Android Settings or
