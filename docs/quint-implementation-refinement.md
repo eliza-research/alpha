@@ -1202,7 +1202,9 @@ collector cannot recover from termination of its own process.
 The strict command writes an atomic progress record next to its final JSON
 report. It binds the current registries, family drivers, source ledger and
 candidate audit, then records each finished family's receipt paths and
-failure count. A process interruption can leave a running progress record.
+failure count. While a component family runs, the record also preserves the
+receipt paths and failure count after each completed campaign. An interrupted
+process can leave a running progress record.
 The final report still revalidates source receipts and records the open
 application-wide proof obligation separately.
 
@@ -1367,3 +1369,10 @@ nonce admission and retirement through shared learning, abort and
 connection replacement. It covers a legacy peer and repeated comparison
 against the learned process. Real transport, broader concurrent turn
 schedules and any remote handling of the optional field remain separate.
+
+`NativeAppInfoHandoff` checks 12 schedules and 79 checkpoints against the
+actual Android bridge and authenticated launcher validation. It covers
+stale packages and profiles, disabled applications, malformed arguments
+and the exact component, user profile and flags sent to the closed
+launcher port. A real Android Settings launch and device policy remain
+separate.

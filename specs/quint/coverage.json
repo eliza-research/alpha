@@ -7048,11 +7048,41 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaSystemPlugin.java",
       "sha256": "9bec25631f4070e35568afd7b98603807ebc0cdf92df6a323580232a23c3e180",
       "models": [
-        "PreferencesAndPresentation"
+        "PreferencesAndPresentation",
+        "NativeAppInfoHandoff"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
-      "stateAnchors": []
+      "stateAnchors": [
+        {
+          "line": 39,
+          "text": "@PluginMethod public void openAppInfo(PluginCall call){"
+        },
+        {
+          "line": 42,
+          "text": "if(name==null||name.isEmpty()||name.equals(getContext().getPackageName())){call.reject(\"Choose an installed app\");return;}"
+        },
+        {
+          "line": 45,
+          "text": "try{getContext().getPackageManager().getApplicationInfo(name,PackageManager.MATCH_DISABLED_COMPONENTS);}"
+        },
+        {
+          "line": 47,
+          "text": "getContext().startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.fromParts(\"package\",name,null)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));"
+        },
+        {
+          "line": 53,
+          "text": "if(launcher==null||handle==null||handle.equals(Process.myUserHandle())||!launcher.getProfiles().contains(handle)){call.reject(\"This profile is no longer on the phone.\",SystemLauncherApps.PROFILE_UNAVA"
+        },
+        {
+          "line": 56,
+          "text": "launcher.startAppDetailsActivity(new ComponentName(name,activity==null||activity.isEmpty()?name:activity),handle,null,null);"
+        },
+        {
+          "line": 59,
+          "text": "catch(IllegalArgumentException invalid){call.reject(\"Choose an installed app\");}"
+        }
+      ]
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaTelephony.java",
@@ -18719,15 +18749,48 @@
     },
     {
       "path": "apps/app/src/prototype/browser-external-handoff.ts",
-      "sha256": "2e2456c626abdd38ce099fc0352c7a837fe09d613d2627806b304dd309207c1e",
       "models": [
-        "BrowserSession"
+        "BrowserSession",
+        "BrowserExternalHandoff"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
-      "stateAnchors": [],
       "reviewStatus": "state-audit-required",
-      "integrationReview": "Allocated to its existing domain after extraction from the previously listed adapter. Allocation is not a source-model proof; new boundaries and transitions require source-bound refinement."
+      "sha256": "a9e5211efeb3e717503008193ff2711d1d6982a51c61c564dd8eab8930f0fc3f",
+      "stateAnchors": [
+        {
+          "line": 24,
+          "text": "const id = state()?.cur, page = tabs.pageBinding(id, {https: true});"
+        },
+        {
+          "line": 27,
+          "text": "if (flags.disposed || document.hidden || shell()?.S().view !== 'browser' || !tabs.current(page, state()?.cur)) {"
+        },
+        {
+          "line": 36,
+          "text": "flags.confirming = true; flags.lastGeometry = ''; await update();"
+        },
+        {
+          "line": 37,
+          "text": "const approved = await reviews.confirm('external-browser', 'Leave private browsing?', `Open in another browser?\\n${page.url}\\n\\nIt may save this address and use its own sign-ins. Your Alpha sign-ins a"
+        },
+        {
+          "line": 43,
+          "text": "await update();"
+        },
+        {
+          "line": 44,
+          "text": "checkCurrentPage();"
+        },
+        {
+          "line": 45,
+          "text": "await Browser.openExternalBrowser({...tabs.guard(page),privateConfirmed:priv});"
+        },
+        {
+          "line": 47,
+          "text": "finally { flags.sharing=false; flags.confirming=false; flags.lastGeometry=''; await update(); }"
+        }
+      ]
     },
     {
       "path": "apps/app/src/prototype/calendar-adapter.ts",
@@ -34706,96 +34769,124 @@
     },
     {
       "path": "apps/app/src/prototype/use-in-email-review.ts",
-      "sha256": "bd5bd1b2787d34e16b1951a46654a305e819e116c74139972adb11e03c72f092",
       "models": [
-        "ShellNavigation"
+        "ShellNavigation",
+        "EmailSuggestionReview"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "00a8bfe1898027b6062a5cef403ff25c128cb207abbc338398d70c573ef2853a",
       "stateAnchors": [
         {
-          "line": 14,
+          "line": 15,
           "text": "const p = Component.prototype, original = p.renderVals, unmount = p.componentWillUnmount;"
         },
         {
-          "line": 15,
+          "line": 16,
           "text": "const reviews = new WeakMap<object, Review>(), modals = new WeakMap<object, ReturnType<typeof createInlineModal>>();"
         },
         {
-          "line": 16,
+          "line": 17,
           "text": "const refresh = (shell: Shell) => { if (shell.live !== false) shell.setState({ emailUseRevision: Date.now() }); };"
         },
         {
-          "line": 17,
+          "line": 18,
           "text": "const agentSession = () => JSON.stringify(connectionController.getSnapshot().session ?? null);"
         },
         {
-          "line": 18,
+          "line": 19,
           "text": "const cloudSession = () => connectionController.getCloudClient()?.sessionId || '';"
         },
         {
-          "line": 19,
+          "line": 20,
           "text": "const target = (): EmailTarget => typeof views.inbox?.emailTarget === 'function' ? views.inbox.emailTarget() : { ready: false, reason: 'Inbox is unavailable. Nothing was added.', token: '' };"
         },
         {
-          "line": 20,
+          "line": 21,
           "text": "const eligible = (entry: Shell) => !!entry && entry.from === 'agent' && !entry.card && !entry.streaming && !entry.interrupted && typeof entry.id === 'string' && typeof entry.text === 'string' && !!ent"
         },
         {
-          "line": 21,
+          "line": 22,
           "text": "const close = (shell: Shell) => { if (reviews.delete(shell)) refresh(shell); };"
         },
         {
-          "line": 23,
+          "line": 24,
           "text": "const unlocked = (state: Shell) => (state.screen ?? 'home') === 'home';"
         },
         {
-          "line": 24,
+          "line": 25,
+          "text": "const presenting = (state: Shell) => state.view === 'inbox' && unlocked(state) && ['sheet', 'full'].includes(state.chat);"
+        },
+        {
+          "line": 28,
+          "text": "return eligible(message) && message.text === entry.text;"
+        },
+        {
+          "line": 30,
           "text": "const fit = fitEmailTarget;"
         },
         {
           "line": 33,
-          "text": "const review = reviews.get(shell); if (!review || !review.target.ready) return;"
+          "text": "if (shell.live === false || !presenting(state) || session !== agentSession() || !replyCurrent(state, entry)) return;"
         },
         {
-          "line": 34,
-          "text": "const fail = (notice: string) => { review.target = fit(target(), review.text); review.notice = notice; refresh(shell); };"
+          "line": 40,
+          "text": "if (reviews.get(shell) !== review || !review.target.ready) return;"
         },
         {
-          "line": 36,
-          "text": "const message = (shell.S().msgs || []).find((row: Shell) => row.id === review.id);"
-        },
-        {
-          "line": 41,
-          "text": "const inserted = views.inbox.useInEmail?.(review.text, { token: review.target.token, append: review.target.append }) === true;"
+          "line": 43,
+          "text": "reviews.set(shell, { ...review, target: fit(target(), review.text), notice, cloud });"
         },
         {
           "line": 48,
-          "text": "const out = original.call(this), state = this.S(), source = state.msgs || [];"
+          "text": "if (!replyCurrent(state, review) || review.session !== agentSession()) { reviews.delete(shell); shell.toast?.('The conversation changed. Nothing was added to an email.'); refresh(shell); return; }"
         },
         {
           "line": 49,
-          "text": "const inInbox = state.view === 'inbox' && typeof views.inbox?.useInEmail === 'function';"
+          "text": "if (shell.live === false || !presenting(state)) { close(shell); return; }"
         },
         {
-          "line": 50,
-          "text": "let review = reviews.get(this);"
+          "line": 53,
+          "text": "if (review.cloud !== cloud) { fail('The Cloud account changed. Check the destination and confirm again. Nothing was added.', cloud); return; }"
         },
         {
           "line": 54,
-          "text": "const byId = new Map<unknown, Shell>(source.map((row: Shell) => [row.id, row]));"
-        },
-        {
-          "line": 56,
-          "text": "const entry = byId.get(message.id);"
+          "text": "const inserted = views.inbox.useInEmail?.(review.text, { token: review.target.token, append: review.target.append }) === true;"
         },
         {
           "line": 61,
+          "text": "const out = original.call(this), state = this.S(), source = state.msgs || [];"
+        },
+        {
+          "line": 62,
+          "text": "const inInbox = state.view === 'inbox' && typeof views.inbox?.useInEmail === 'function';"
+        },
+        {
+          "line": 64,
+          "text": "let review = reviews.get(this);"
+        },
+        {
+          "line": 66,
+          "text": "if (review && (!inInbox || !presenting(state) || !replyCurrent(state, review))) { reviews.delete(this); review = undefined; }"
+        },
+        {
+          "line": 68,
+          "text": "const byId = new Map<unknown, Shell>(source.map((row: Shell) => [row.id, row]));"
+        },
+        {
+          "line": 70,
+          "text": "const entry = byId.get(message.id);"
+        },
+        {
+          "line": 76,
           "text": "let modal = modals.get(this);"
+        },
+        {
+          "line": 80,
+          "text": "confirm: () => confirm(this, review), close: () => { if (reviews.get(this) === review) close(this); } } : null;"
         }
-      ],
-      "reviewStatus": "state-audit-required",
-      "integrationReview": "Domain allocation retained after merging the audit fixes. The refreshed source hash and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations."
+      ]
     },
     {
       "path": "apps/app/src/prototype/video-edit-review.ts",
@@ -37905,7 +37996,8 @@
     {
       "path": "apps/app/src/runtime/client-observation-support.ts",
       "models": [
-        "AssistantConversation"
+        "AssistantConversation",
+        "ClientObservationSupport"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -37924,6 +38016,10 @@
           "text": "const support=readClientTurnObservationPeerSupport(status,binding.serverInstanceId);"
         },
         {
+          "line": 25,
+          "text": "this.binding=key;this.support=support;return true;"
+        },
+        {
           "line": 28,
           "text": "const key=this.key(binding);return key!==undefined&&key===this.binding&&this.support?.optionalFields.includes('calendarDay')===true;"
         },
@@ -37936,6 +38032,34 @@
           "text": "private readonly cache=new ClientObservationSupportCache();"
         },
         {
+          "line": 40,
+          "text": "private readonly session:Readonly<Omit<ClientObservationBinding,'serverInstanceId'>>;"
+        },
+        {
+          "line": 43,
+          "text": "private retired=false;"
+        },
+        {
+          "line": 45,
+          "text": "clear(){this.retired=true;this.known=undefined;this.cache.clear();}"
+        },
+        {
+          "line": 46,
+          "text": "private check(signal:AbortSignal){signal.throwIfAborted();if(this.retired||!this.current())throw new DOMException('The observation session changed','AbortError');}"
+        },
+        {
+          "line": 51,
+          "text": "pending.catch(()=>{if(this.initial===pending&&!this.retired)this.initial=undefined;});"
+        },
+        {
+          "line": 59,
+          "text": "await new Promise<void>((resolve,reject)=>{"
+        },
+        {
+          "line": 70,
+          "text": "const status=await this.status(signal);this.check(signal);"
+        },
+        {
           "line": 71,
           "text": "const instance=status&&typeof status==='object'&&!Array.isArray(status)?normalizeRemoteAgentPairingInstanceId(Reflect.get(status,'serverInstanceId')):null;"
         },
@@ -37944,12 +38068,28 @@
           "text": "const binding={...this.session,serverInstanceId:instance};"
         },
         {
+          "line": 74,
+          "text": "if(this.cache.admit(status,binding))this.known=Object.freeze(binding);"
+        },
+        {
           "line": 79,
           "text": "const ordinary=contextForObservationSupport(context,this.cache,undefined);"
         },
         {
+          "line": 81,
+          "text": "await this.joined(signal);this.check(signal);"
+        },
+        {
           "line": 82,
           "text": "const binding=this.known;"
+        },
+        {
+          "line": 85,
+          "text": "const status=await this.status(signal);this.check(signal);"
+        },
+        {
+          "line": 86,
+          "text": "if(!this.cache.admit(status,binding)){this.known=undefined;return ordinary;}"
         }
       ],
       "reviewStatus": "state-audit-required",
@@ -38881,7 +39021,8 @@
         "CanonicalNotificationTapAdmission",
         "CloudConnectionNotices",
         "ChatAttachments",
-        "RetainedReminderTapAdmission"
+        "RetainedReminderTapAdmission",
+        "ClientObservationSupport"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -448347,7 +448488,8 @@
       "models": [
         "InboxCoordinator",
         "InboxDelivery",
-        "InboxProviderDrafts"
+        "InboxProviderDrafts",
+        "EmailSuggestionReview"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -491014,7 +491156,8 @@
       "path": "vendor/eliza/plugins/plugin-native-browser-surface/src/tab-host.ts",
       "models": [
         "BrowserSession",
-        "BrowserSiteState"
+        "BrowserSiteState",
+        "BrowserExternalHandoff"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -509233,7 +509376,8 @@
     {
       "path": "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SystemLauncherApps.java",
       "models": [
-        "ShellNavigation"
+        "ShellNavigation",
+        "NativeAppInfoHandoff"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -509307,6 +509451,14 @@
         {
           "line": 108,
           "text": "public final UserHandle user;"
+        },
+        {
+          "line": 245,
+          "text": "public static boolean malformedText(org.json.JSONObject request, String key) {"
+        },
+        {
+          "line": 246,
+          "text": "return request != null && request.has(key) && !request.isNull(key) && !(request.opt(key) instanceof String);"
         },
         {
           "line": 417,
@@ -619535,7 +619687,8 @@
         "NativeSettingsHandoff",
         "NativeAssistantEntry",
         "ResidentJavaSourceStage",
-        "AndroidBrowserModuleStage"
+        "AndroidBrowserModuleStage",
+        "NativeAppInfoHandoff"
       ],
       "sha256": "cf0146eab41d40b6c298d168f1bbb3e9329b0889bedfab966321dfe28f4eef39",
       "integrationReview": "specs/quint/pixel-native-review-20261109.md"

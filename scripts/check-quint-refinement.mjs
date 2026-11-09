@@ -51,11 +51,12 @@ function publish(path, value) {
   writeFileSync(temporary, JSON.stringify(value, null, 2) + '\n', {flag: 'wx'});
   renameSync(temporary, path);
 }
-function checkpoint(status) {
+function checkpoint(status, activeFamily) {
+  const currentFamilies = activeFamily ? [...report.families, activeFamily] : report.families;
   publish(`${output}.progress.json`, {schemaVersion: 1, status, startedAt: report.startedAt,
     finishedAt: report.finishedAt, reportingInputHashes: inputHashes, sourceInventory,
     modelCount: models.length, requestedFamilies: requested, checksPassed: report.checksPassed,
-    families: report.families.map(({family, status, receipts, failures, error}) => ({family, status,
+    families: currentFamilies.map(({family, status, receipts, failures, error}) => ({family, status,
       receiptPaths: receipts?.map(receipt => receipt.receiptPath).filter(Boolean) ?? [],
       failureCount: (failures?.length ?? 0) + Number(Boolean(error))}))});
 }
@@ -79,6 +80,9 @@ for (const family of requested) {
     checkpoint('running');
     continue;
   }
+  const onProgress = ({receipts = [], failures = []} = {}) =>
+    checkpoint('running', {family, status: 'running', receipts, failures});
+  onProgress();
   try {
     // Services and historical core adapters import parameter-property TypeScript.
     // Serialized browser fixtures supply any helpers from that transform locally.
@@ -87,7 +91,7 @@ for (const family of requested) {
       : await import(pathToFileURL(modulePath).href);
     const run = module[runners[family]];
     if (typeof run !== 'function') throw Error(`Missing runner for ${family}`);
-    const result = await run();
+    const result = await (family === 'composition' ? run() : run(onProgress));
     if (!Array.isArray(result.receipts) || !Array.isArray(result.obligations)) throw Error(`Invalid adapter report for ${family}`);
     const failures = result.failures?.map(({campaign, error}) => ({campaign, error: diagnostic(error)})) ?? [];
     if (failures.length) failed = true;

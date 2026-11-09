@@ -53,7 +53,7 @@ import {checkAndroidBuildInputReadiness} from './android-build-input-readiness.m
 import {checkLifeOpsScheduledTaskRoute} from './lifeops-scheduled-task-route.mjs';
 import {checkPersonalAssistantScheduledTaskCustody} from './personal-assistant-scheduled-task-custody.mjs';
 
-export async function runServicesRefinement() {
+export async function runServicesRefinement(onProgress) {
   const driver = fileURLToPath(import.meta.url);
   const direct = check => [check.name, () => check()];
   const withDriver = check => [check.name, () => check([driver])];
@@ -125,5 +125,5 @@ export async function runServicesRefinement() {
     {model: 'NativeCredentialMutation', obligation: 'Real shutdown, encryption and lock interleavings', reason: 'Actual credential-store classification, recheck, admission invalidation and preflight run against primitive storage/lifecycle ports. Those ports do not establish native shutdown or encrypted persistence.'},
     {model: 'PdfWorker', obligation: 'Kernel isolation, descriptor transfer, watchdog and memory kill', reason: 'Actual service request/render/cleanup/reply code executes against Android primitives. Host stubs cannot establish kernel or real PDF renderer behavior.', requires: ['IsolatedPdfInstrumentedTest on a disposable admitted installation']},
   ];
-  return collectRefinementCampaigns(campaigns, obligations);
+  return collectRefinementCampaigns(campaigns, obligations, onProgress);
 }

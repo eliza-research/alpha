@@ -121,11 +121,11 @@ const adapters = [checkChatAttachments, application, shellNavigation, startupPer
   checkCanonicalNotesFeedback, checkCanonicalNotesMutation, checkCanonicalNotesView, checkCanonicalCalendarDraft, checkAgentCalendarRefresh, checkAgentCalendarMutation, checkAgentCalendarEventReturn, checkMapsEventReturn, checkMapsRerouteOwnership, checkCloudConnectionNotices, checkModalScrimOwnership, checkAgentCalendarSyncControl, checkGoogleCalendarLinkFlow, checkGoogleCalendarDisconnect, checkGoogleCalendarLinkPublication, checkGoogleCalendarAccessChoice, checkFilesBrowserController, checkFilesFilter, checkPhotosWindow, checkPhotosTrash, checkGoogleConsentAdmission, checkGoogleAccessPublication, checkBrowserDeletionPoll, checkBrowserJournalRetention, checkBrowserReminderOrphan, checkBrowserOwnerReminderRead, checkBrowserOwnerReminderAction, checkHomeFailureNotice, checkHomeGesture, checkDrawerInteraction, checkLauncherOwnership, checkLauncherObserver, checkLauncherFavorites, checkAccessibleToastLifetime, checkModalToastForwarding, checkScreenFocusOwnership, checkDockClearanceOwnership, checkMountedUpdateAdmission, checkStartupUpdateAdmission, checkCanonicalNotificationTapAdmission, checkResidentLiveness];
 
 /** Component traces, with remaining obligations kept explicit for the aggregate report. */
-export async function runApplicationRefinement() {
-  return collectApplicationCampaigns(adapters);
+export async function runApplicationRefinement(onProgress) {
+  return collectApplicationCampaigns(adapters, onProgress);
 }
 
-export async function collectApplicationCampaigns(campaigns) {
+export async function collectApplicationCampaigns(campaigns, onProgress) {
   const receipts = [], obligations = [], failures = [];
   const manifest = JSON.parse(readFileSync(resolve(root, 'specs/quint/application/manifest.json'), 'utf8'));
   const entries = new Map((Array.isArray(manifest) ? manifest : manifest.models).map(entry => [entry.module, entry]));
@@ -150,6 +150,7 @@ export async function collectApplicationCampaigns(campaigns) {
     } catch (error) {
       failures.push({campaign: adapter.name, error});
     }
+    onProgress?.({receipts, failures});
   }
   return {receipts, obligations, failures};
 }

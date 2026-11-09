@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "b1817660a0347ae19551b9ee296410fe55f02d59",
-  "ledgerSha256": "87350658e9fc91d9d9100e06f589db7309c7eff4f2a1e4f8ec22631c380eac24",
+  "ledgerSha256": "1d041d5b090f4e39e6ddc16f8dbaf97203c21b70f0376bb477dbccad763a2e14",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -28,9 +28,9 @@
     "parsedFiles": 5679,
     "languageReview": 90,
     "parseErrors": 0,
-    "candidates": 67744,
-    "writeSites": 67314,
-    "writeAssociations": 60364,
+    "candidates": 67743,
+    "writeSites": 67312,
+    "writeAssociations": 60362,
     "asynchronous": 8387,
     "unassignedWrites": 10373
   },
@@ -22280,7 +22280,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaSystemPlugin.java",
       "sha256": "9bec25631f4070e35568afd7b98603807ebc0cdf92df6a323580232a23c3e180",
       "allocatedModels": [
-        "PreferencesAndPresentation"
+        "PreferencesAndPresentation",
+        "NativeAppInfoHandoff"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -34032,9 +34033,10 @@
     },
     {
       "path": "apps/app/src/prototype/browser-external-handoff.ts",
-      "sha256": "2e2456c626abdd38ce099fc0352c7a837fe09d613d2627806b304dd309207c1e",
+      "sha256": "a9e5211efeb3e717503008193ff2711d1d6982a51c61c564dd8eab8930f0fc3f",
       "allocatedModels": [
-        "BrowserSession"
+        "BrowserSession",
+        "BrowserExternalHandoff"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -40244,9 +40246,10 @@
     },
     {
       "path": "apps/app/src/prototype/use-in-email-review.ts",
-      "sha256": "bd5bd1b2787d34e16b1951a46654a305e819e116c74139972adb11e03c72f092",
+      "sha256": "00a8bfe1898027b6062a5cef403ff25c128cb207abbc338398d70c573ef2853a",
       "allocatedModels": [
-        "ShellNavigation"
+        "ShellNavigation",
+        "EmailSuggestionReview"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -40254,19 +40257,13 @@
       "owners": [
         {
           "owner": "installUseInEmailReview",
-          "line": 14,
+          "line": 15,
           "bindings": 3,
-          "writes": 10
+          "writes": 11
         },
         {
-          "owner": "installUseInEmailReview.confirm",
-          "line": 33,
-          "bindings": 1,
-          "writes": 3
-        },
-        {
-          "owner": "installUseInEmailReview.FunctionExpression@47",
-          "line": 48,
+          "owner": "installUseInEmailReview.FunctionExpression@60",
+          "line": 61,
           "bindings": 4,
           "writes": 6
         }
@@ -41600,7 +41597,8 @@
       "path": "apps/app/src/runtime/client-observation-support.ts",
       "sha256": "a394b8ba5689199cf63767e1f19d6ab8e71b552290f51cf609c68ad57b3cc2ec",
       "allocatedModels": [
-        "AssistantConversation"
+        "AssistantConversation",
+        "ClientObservationSupport"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -42084,7 +42082,8 @@
         "CanonicalNotificationTapAdmission",
         "CloudConnectionNotices",
         "ChatAttachments",
-        "RetainedReminderTapAdmission"
+        "RetainedReminderTapAdmission",
+        "ClientObservationSupport"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -152725,7 +152724,8 @@
       "allocatedModels": [
         "InboxCoordinator",
         "InboxDelivery",
-        "InboxProviderDrafts"
+        "InboxProviderDrafts",
+        "EmailSuggestionReview"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -174350,7 +174350,8 @@
       "sha256": "3d5d2d683bc86ea5f317feb20e69ae77e806008ea780a37b977eff4d7f8b2832",
       "allocatedModels": [
         "BrowserSession",
-        "BrowserSiteState"
+        "BrowserSiteState",
+        "BrowserExternalHandoff"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -195200,7 +195201,8 @@
       "path": "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SystemLauncherApps.java",
       "sha256": "efc6ae85566aa1209c549b9b3b20042ff450af95ef1ce59b0211749c77a6f64e",
       "allocatedModels": [
-        "ShellNavigation"
+        "ShellNavigation",
+        "NativeAppInfoHandoff"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -221527,6 +221529,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "02c8b76f8c75390194ac46d43a7c57cf28da28e3df57c94acd7998ea648d6ece"
+    "sha256": "89ceec2e481b912ba050f99bc82ed36477e50f82cfd3278deca3b6f9f31bd9a8"
   }
 }
