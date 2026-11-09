@@ -1,4 +1,4 @@
-package ai.elizaresearch.alphaphone;
+package ai.alphacompute.alphaphone;
 import java.io.File;
 import ai.eliza.plugins.securestore.nativeonly.JsonCredentialSlots;
 public final class ProviderConditionalClearTest {

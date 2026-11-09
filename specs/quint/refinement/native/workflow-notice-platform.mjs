@@ -14,7 +14,7 @@ export function workflowNoticePlatform(host, alpha) {
   const shared = name => member(host, new RegExp('^ protected [^\\n]+ '+name+'\\([^\\n]+', 'm'));
   const product = name => member(alpha, new RegExp('^ @Override protected [^\\n]+ '+name+'\\([^\\n]+', 'm'));
   return {
-    'ai/elizaresearch/alphaphone/AlphaNotificationsPlugin.java': `package ai.elizaresearch.alphaphone;
+    'ai/alphacompute/alphaphone/AlphaNotificationsPlugin.java': `package ai.alphacompute.alphaphone;
 import android.content.Context;
 import com.getcapacitor.*;
 import ai.eliza.plugins.notifications.*;
@@ -70,7 +70,7 @@ public class Context {
  public <T>T getSystemService(Class<T> type){return type.cast(manager);}
  public android.content.pm.PackageManager getPackageManager(){return packages;}
  public int checkSelfPermission(String permission){return 0;}
- public String getPackageName(){return "ai.elizaresearch.alphaphone";}
+ public String getPackageName(){return "ai.alphacompute.alphaphone";}
 }
 `,
     'android/content/pm/PackageManager.java': `package android.content.pm;

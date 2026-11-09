@@ -60,7 +60,7 @@
       "failed": [],
       "ignored": [],
       "status": "passed",
-      "class": "ai.elizaresearch.alphaphone.LocalSpeechBridgeInstrumentedTest",
+      "class": "ai.alphacompute.alphaphone.LocalSpeechBridgeInstrumentedTest",
       "listed": 1,
       "note": "needs the staged on-device voice outputs including the ASR slot pair"
     },
@@ -71,7 +71,7 @@
       "failed": [],
       "ignored": [],
       "status": "passed",
-      "class": "ai.elizaresearch.alphaphone.LocalSpeechBridgeInstrumentedTest",
+      "class": "ai.alphacompute.alphaphone.LocalSpeechBridgeInstrumentedTest",
       "listed": 1,
       "note": "needs the staged on-device voice outputs including the ASR slot pair"
     }

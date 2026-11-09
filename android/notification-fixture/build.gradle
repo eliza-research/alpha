@@ -1,9 +1,9 @@
 apply plugin: 'com.android.application'
 // Disposable, synthetic cross-UID witness. Never a dependency of :app.
 android {
- namespace 'ai.elizaresearch.notificationfixture'
+ namespace 'ai.alphacompute.notificationfixture'
  compileSdk rootProject.ext.compileSdkVersion
- defaultConfig { applicationId 'ai.elizaresearch.notificationfixture'; minSdk 30; targetSdk rootProject.ext.targetSdkVersion; versionCode 1; versionName 'fixture-1' }
+ defaultConfig { applicationId 'ai.alphacompute.notificationfixture'; minSdk 30; targetSdk rootProject.ext.targetSdkVersion; versionCode 1; versionName 'fixture-1' }
  flavorDimensions += 'selection'
  productFlavors {
   selected { dimension 'selection'; applicationIdSuffix '.selected' }

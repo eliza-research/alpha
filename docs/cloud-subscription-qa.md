@@ -21,7 +21,7 @@ the development chooser) against the environment you pick:
 | API and entitlement issuer | `https://api-staging.eliza.app` | `https://api.eliza.app` |
 | Sign-in (once ready) | In-app: email code, or Google in a Custom Tab via `https://api-staging.eliza.app/steward/auth/oauth/google/authorize` | In-app: email code, or Google via `https://api.eliza.app/steward/auth/oauth/google/authorize` |
 | Google return (verified App Link) | `https://staging.eliza.app/alphaphone/auth/callback` (test-mocks manifest only) | `https://eliza.app/alphaphone/auth/callback` |
-| Key | `eliza_mobile_` from `/api/v1/app-auth/mobile/token`, environment `staging`, client `ai.elizaresearch.alphaphone` | same, environment `production` |
+| Key | `eliza_mobile_` from `/api/v1/app-auth/mobile/token`, environment `staging`, client `ai.alphacompute.alphaphone` | same, environment `production` |
 | Hand-off (until the readiness probe passes; afterwards the **Browser sign-in (diagnostic)** button) | `https://staging.eliza.app/auth/cli-login` | `https://eliza.app/auth/cli-login` |
 | Choose a plan | `https://cloud-staging.eliza.app/cloud/billing` | `https://cloud.eliza.app/cloud/billing` |
 | Secure slot | `cloud:staging` | `cloud:production` |
@@ -60,8 +60,8 @@ Google sign-in needs the App Link to be verified for the installed signer. Stagi
 approve the host by hand:
 
 ```sh
-adb shell pm set-app-links-user-selection --user cur --package ai.elizaresearch.alphaphone true staging.eliza.app
-adb shell pm get-app-links ai.elizaresearch.alphaphone     # shows the verification state per host
+adb shell pm set-app-links-user-selection --user cur --package ai.alphacompute.alphaphone true staging.eliza.app
+adb shell pm get-app-links ai.alphacompute.alphaphone     # shows the verification state per host
 ```
 
 Email code sign-in does not depend on the App Link, but the readiness probe does: Alpha offers its
@@ -181,7 +181,7 @@ These are an APK-independent renderer and JVM check. They are not an emulator, d
 real-account result. Keep these evidence levels separate:
 
 - an APK build;
-- emulator App Link verification (`adb shell pm get-app-links ai.elizaresearch.alphaphone` shows
+- emulator App Link verification (`adb shell pm get-app-links ai.alphacompute.alphaphone` shows
   `verified` for `eliza.app` only once Cloud serves assetlinks for the installed signer);
 - an AOSP image;
 - the owner's real-account acceptance on a device.

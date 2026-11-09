@@ -235,7 +235,7 @@ gradle.projectsEvaluated {
             if (selected.options.bootstrapClasspath != null) cp.addAll(selected.options.bootstrapClasspath.files)
             def command = [cfg.node,cfg.driver,'--classes',selected.destinationDirectory.get().asFile.canonicalPath,
                 '--classpath',cp.collect { it.canonicalPath }.join(File.pathSeparator),'--json',cfg.json,
-                '--host','ai.elizaresearch.alphaphone.AlphaCalendarPlugin',
+                '--host','ai.alphacompute.alphaphone.AlphaCalendarPlugin',
                 '--journal','alpha-calendar-creations-v1','--prefix','alphaphone://calendar-creation/']
             write('inputs.json', [source:source, fixed:fixed(), normalJavaCompile:after,
                 command:command, bridgeClasspath:'normal compile classpath followed by normal bootstrap APIs'], 786432)
@@ -254,7 +254,7 @@ gradle.projectsEvaluated {
                 }.assertNormalExitValue()
             }
             if (Files.size(log) > 65536) throw new GradleException('Bridge log read bound exceeded')
-            def pass = 'PASS actual ai.elizaresearch.alphaphone.AlphaCalendarPlugin: denied/bounded list, option unknown/recovery/ack, exact namespace, cross-journal collision/corruption/no-rewrite and two-instance race, foreground external handoff'
+            def pass = 'PASS actual ai.alphacompute.alphaphone.AlphaCalendarPlugin: denied/bounded list, option unknown/recovery/ack, exact namespace, cross-journal collision/corruption/no-rewrite and two-instance race, foreground external handoff'
             if (Files.readAllLines(log).findAll { it == pass }.size() != 1) throw new GradleException('Owning bridge PASS missing/duplicate')
             binding(); def finalFixed = fixed()
             javaTasks.each { provider ->

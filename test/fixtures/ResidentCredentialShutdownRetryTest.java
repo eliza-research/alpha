@@ -1,4 +1,4 @@
-package ai.elizaresearch.alphaphone;
+package ai.alphacompute.alphaphone;
 public final class ResidentCredentialShutdownRetryTest {
  static void check(boolean value,String message){if(!value)throw new AssertionError(message);}
  static void fails(String name,ResidentCredentialShutdownRetry.Guard operation)throws Exception {

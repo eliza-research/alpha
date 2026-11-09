@@ -42,7 +42,7 @@ async function nativeStub(page:Page,options:Options={}){
     }
     if(plugin==='ElizaSystem'&&method==='getBuildInfo')return {launcher,version:'0.1.0'};
     if(plugin==='ElizaSystem'){
-     if(method==='getStatus')return {packageName:'ai.elizaresearch.alphaphone',roles:Object.entries(roles).map(([role,r])=>({role,androidRole:'android.app.role.'+role.toUpperCase(),available:true,held:r.held,holders:r.held?['ai.elizaresearch.alphaphone']:r.holders}))};
+     if(method==='getStatus')return {packageName:'ai.alphacompute.alphaphone',roles:Object.entries(roles).map(([role,r])=>({role,androidRole:'android.app.role.'+role.toUpperCase(),available:true,held:r.held,holders:r.held?['ai.alphacompute.alphaphone']:r.holders}))};
      // Android's own dialog decides; the fixture declines first when asked to.
      if(method==='requestRole'){if(declines>0){declines--;return {role:input.role,held:false,resultCode:0};}roles[input.role]={held:true,holders:[]};return {role:input.role,held:true,resultCode:-1};}
      if(method==='getDeviceSettings')return {volumes:[]};

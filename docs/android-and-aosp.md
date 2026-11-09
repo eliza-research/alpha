@@ -9,7 +9,7 @@
 
 ## Artifact identities
 
-Package: `ai.elizaresearch.alphaphone`. Version source: `app.config.json`, overridden by
+Package: `ai.alphacompute.alphaphone`. Version source: `app.config.json`, overridden by
 `ELIZAOS_VERSION_CODE` (positive integer) and `ELIZAOS_VERSION_NAME` when set. AOSP module: `AlphaPhone`.
 Standalone and launcher variants share data and signing identity within this product.
 Use `adb install -r` to replace them. Do not uninstall a real user's app to switch variants.
@@ -119,7 +119,7 @@ by setup. Pin app certificate and versionCode across APK and OS releases.
   "schemaVersion": 1,
   "brand": "alphaphone",
   "moduleName": "AlphaPhone",
-  "packageName": "ai.elizaresearch.alphaphone",
+  "packageName": "ai.alphacompute.alphaphone",
   "apkSha256": "64 lowercase hex characters from the signed APK",
   "certificateSha256": "64 lowercase hex characters from the approved signer"
 }
@@ -164,7 +164,7 @@ while readiness is unavailable; product builds have no browser sign-in hand-off 
 diagnostic only). If the link is not handed to Alpha, Cloud's fallback page brings Alpha
 forward without parameters and Alpha asks the owner to start again; no code is forwarded.
 
-Check verification with `adb shell pm get-app-links ai.elizaresearch.alphaphone` on an installed
+Check verification with `adb shell pm get-app-links ai.alphacompute.alphaphone` on an installed
 signed build ([runbook](pilot-acceptance-runbook.md#external-integration-runbooks)).
 
 An APK build, an emulator verification, the AOSP image and the owner's device acceptance are
@@ -206,7 +206,7 @@ update and recovery gates below.
    Eliza local-inference payload validator.
 5. The add-on keeps other launchers intact. Choose this app as default HOME through
    explicit device provisioning. In disposable userdebug validation,
-   `adb shell cmd package set-home-activity ai.elizaresearch.alphaphone/.MainActivity` demonstrates
+   `adb shell cmd package set-home-activity ai.alphacompute.alphaphone/.MainActivity` demonstrates
    selection; production must use the enrolled-device/default-role policy.
 6. Build the actual product with `source build/envsetup.sh`, its pinned `lunch` target
    and `m`. No generic lunch command can substitute for an approved hardware target.
@@ -358,7 +358,7 @@ installs them through the lineage.
 surfaces started it. A tap while one runs starts nothing beside it and never replaces what it staged;
 only a tap on the same surface, behind an attempt that failed before its commit, retries. The plugin downloads at most
 `sizeBytes` (2 GiB at most) to the app cache under a soft six-hour ceiling, checked as each read returns, so a read in flight can outlast it by up to the 60 s read timeout unless the surface closes first. It refuses any other length or SHA-256, and then reads the archive: it must be
-`ai.elizaresearch.alphaphone` at exactly the manifest's `versionCode`, above the installed one,
+`ai.alphacompute.alphaphone` at exactly the manifest's `versionCode`, above the installed one,
 because Android would otherwise accept a same-versionCode reinstall. Only then does it open a session for this
 package. A session a killed process left unsealed, short of its commit intent (below), holds nothing on release builds
 of Android 10, 11 and 13 to 17 and stays until Android expires it; on 12, 12L, a level not read here or a build that is

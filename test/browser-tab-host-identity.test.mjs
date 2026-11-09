@@ -71,6 +71,6 @@ test('instrumented tests reach browser host state through the shared BrowserTabH
   if(source.includes('getPlugin("AlphaBrowser")'))
    assert.doesNotMatch(source,/plugin\.getClass\(\)\.getDeclaredField\(/,`${file}: the plugin instance's class is AlphaBrowserPlugin, not the host`);
  }
- const features=fs.readFileSync('android/app/src/androidTest/java/ai/elizaresearch/alphaphone/BrowserWebFeaturesInstrumentedTest.java','utf8');
+ const features=fs.readFileSync('android/app/src/androidTest/java/ai/alphacompute/alphaphone/BrowserWebFeaturesInstrumentedTest.java','utf8');
  assert.match(features,/private Object field\(Object owner,String name\)throws Exception\{for\(Class<\?> type=owner\.getClass\(\);type!=null;type=type\.getSuperclass\(\)\)/,'the field helper walks to the shared host');
 });

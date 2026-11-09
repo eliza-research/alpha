@@ -94,12 +94,12 @@ test('relay renewal is offered-only and replaces one expiry; output bound belong
  }`),/^PASS/);
 });
 test('Alpha streaming and batch 429 parsing preserves sanitized retry facts and note recovery/save claims',{skip:jsonJarSkip},()=>{
- const host=fs.readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaVoiceCloudPlugin.java','utf8');
+ const host=fs.readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaVoiceCloudPlugin.java','utf8');
  assert.match(host,/claimCanonicalNoteSave/);assert.match(host,/"recovery"\.equals\(reason\)/);assert.match(host,/protected JSObject limitData\(int status,String retryAfter,String body\)/);
  const limits=method(host,'static CloudVoiceLimit limitOf(String'),jsonText=method(host,'private static String jsonText(');
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-limit-parity-'));try{
-  const f=path.join(dir,'LimitParityTest.java');fs.writeFileSync(f,`package ai.elizaresearch.alphaphone;import org.json.JSONObject;public class LimitParityTest{${limits}${jsonText}static void check(boolean b){if(!b)throw new AssertionError();}public static void main(String[]args){CloudVoiceLimit a=limitOf("42","{\\"error\\":{\\"code\\":\\"rate_limited\\",\\"retryAfterSeconds\\":3,\\"message\\":\\"PRIVATE\\"}}");check(a.retryAfterSeconds==3&&a.limitCode.equals("rate_limited"));a=limitOf("42","invalid");check(a.retryAfterSeconds==42&&a.limitCode==null);a=limitOf("42","{\\"error\\":{\\"code\\":123,\\"retryAfterSeconds\\":\\"3\\",\\"resetAt\\":null}}");check(a.retryAfterSeconds==42&&a.limitCode==null&&a.resetAt==null);System.out.println("PASS shared sanitized429parity");}}`);
-  assert.match(runJvm(['android/app/src/main/java/ai/elizaresearch/alphaphone/CloudVoiceLimit.java',f],'ai.elizaresearch.alphaphone.LimitParityTest',{json:true}),/^PASS/);
+  const f=path.join(dir,'LimitParityTest.java');fs.writeFileSync(f,`package ai.alphacompute.alphaphone;import org.json.JSONObject;public class LimitParityTest{${limits}${jsonText}static void check(boolean b){if(!b)throw new AssertionError();}public static void main(String[]args){CloudVoiceLimit a=limitOf("42","{\\"error\\":{\\"code\\":\\"rate_limited\\",\\"retryAfterSeconds\\":3,\\"message\\":\\"PRIVATE\\"}}");check(a.retryAfterSeconds==3&&a.limitCode.equals("rate_limited"));a=limitOf("42","invalid");check(a.retryAfterSeconds==42&&a.limitCode==null);a=limitOf("42","{\\"error\\":{\\"code\\":123,\\"retryAfterSeconds\\":\\"3\\",\\"resetAt\\":null}}");check(a.retryAfterSeconds==42&&a.limitCode==null&&a.resetAt==null);System.out.println("PASS shared sanitized429parity");}}`);
+  assert.match(runJvm(['android/app/src/main/java/ai/alphacompute/alphaphone/CloudVoiceLimit.java',f],'ai.alphacompute.alphaphone.LimitParityTest',{json:true}),/^PASS/);
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
 

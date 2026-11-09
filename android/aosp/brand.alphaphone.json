@@ -2,7 +2,7 @@
   "brand": "alphaphone",
   "appName": "Alpha Phone",
   "distroName": "Alpha Phone",
-  "packageName": "ai.elizaresearch.alphaphone",
+  "packageName": "ai.alphacompute.alphaphone",
   "classPrefix": "Alpha",
   "productName": "alphaphone_cf_x86_64_phone",
   "lunchTarget": "alphaphone_cf_x86_64_phone-trunk_staging-user",

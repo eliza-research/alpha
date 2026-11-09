@@ -36,7 +36,7 @@
     "lastAudioHz": 1320
   },
   "sourceClasses": [
-    "android/app/src/main/java/ai/elizaresearch/alphaphone/VideoCopyEdits.java",
-    "android/app/src/main/java/ai/elizaresearch/alphaphone/VideoEditSpec.java"
+    "android/app/src/main/java/ai/alphacompute/alphaphone/VideoCopyEdits.java",
+    "android/app/src/main/java/ai/alphacompute/alphaphone/VideoEditSpec.java"
   ]
 }

@@ -1,7 +1,7 @@
 import {test,expect} from '@playwright/test';
 import {readFileSync} from 'node:fs';
 // Exercise the exact harmless query dispatched by the native startup probe.
-const source=readFileSync(new URL('../../android/app/src/androidTest/java/ai/elizaresearch/alphaphone/StartupDocumentProbe.java',import.meta.url),'utf8');
+const source=readFileSync(new URL('../../android/app/src/androidTest/java/ai/alphacompute/alphaphone/StartupDocumentProbe.java',import.meta.url),'utf8');
 const match=source.match(/evaluateJavascript\(("(?:[^"\\]|\\.)*"),value/);
 if(!match)throw Error('Native startup readiness query was not found');
 const query=JSON.parse(match[1]);

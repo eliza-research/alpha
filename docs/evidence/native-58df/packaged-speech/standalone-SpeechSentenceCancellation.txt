@@ -1,15 +1,15 @@
-INSTRUMENTATION_STATUS: class=ai.elizaresearch.alphaphone.SpeechSentenceCancellationInstrumentedTest
+INSTRUMENTATION_STATUS: class=ai.alphacompute.alphaphone.SpeechSentenceCancellationInstrumentedTest
 INSTRUMENTATION_STATUS: current=1
 INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
 INSTRUMENTATION_STATUS: numtests=1
 INSTRUMENTATION_STATUS: stream=
-ai.elizaresearch.alphaphone.SpeechSentenceCancellationInstrumentedTest:
+ai.alphacompute.alphaphone.SpeechSentenceCancellationInstrumentedTest:
 INSTRUMENTATION_STATUS: test=nativeCancellationAndRecovery
 INSTRUMENTATION_STATUS_CODE: 1
 INSTRUMENTATION_STATUS: nativeCancelToReturnMs=10
 INSTRUMENTATION_STATUS: physicalAudibleStopMeasured=false
 INSTRUMENTATION_STATUS_CODE: 0
-INSTRUMENTATION_STATUS: class=ai.elizaresearch.alphaphone.SpeechSentenceCancellationInstrumentedTest
+INSTRUMENTATION_STATUS: class=ai.alphacompute.alphaphone.SpeechSentenceCancellationInstrumentedTest
 INSTRUMENTATION_STATUS: current=1
 INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
 INSTRUMENTATION_STATUS: numtests=1

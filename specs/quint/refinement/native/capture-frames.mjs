@@ -9,7 +9,7 @@ import {nativePatchInputs} from './current-sources.mjs';
 export const captureFrameScenarios=['stop-empty','silence','preroll','open-tail','close-edge','middle-reset','non-finite','missing-probability','partial-reads','read-failure','source-close-failure','detector-close-failure','interrupt'];
 export async function checkCaptureFrames(extraSources=[]){
  const platform=liveCapturePlatform();
- writeFileSync(join(platform.directory,'android/util/Base64.java'),'package android.util;public class Base64 {public static final int NO_WRAP=2;public static String encodeToString(byte[] bytes,int flags){ai.elizaresearch.alphaphone.CaptureFrameTraces.encodedBuffer=bytes;return java.util.Base64.getEncoder().encodeToString(bytes);}}');
+ writeFileSync(join(platform.directory,'android/util/Base64.java'),'package android.util;public class Base64 {public static final int NO_WRAP=2;public static String encodeToString(byte[] bytes,int flags){ai.alphacompute.alphaphone.CaptureFrameTraces.encodedBuffer=bytes;return java.util.Base64.getEncoder().encodeToString(bytes);}}');
  const compiled=liveCaptureSources(platform);
  const sources=[...compiled,...nativePatchInputs,directory+'/CaptureFrameTraces.java',directory+'/live-capture-platform.mjs',directory+'/live-capture.mjs',directory+'/shared-recording-platform.mjs',directory+'/shared-recording.mjs',directory+'/note-bridge-platform.mjs',directory+'/note-recording-platform.mjs',directory+'/Trace.java',directory+'/java.mjs',fileURLToPath(import.meta.url),...extraSources];
  try{

@@ -8,7 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {generateAndroidConsumerHost} from '../vendor/eliza/packages/app/scripts/mobile/android/consumer-host.mjs';
-import {RESIDENT_NOTIFICATION_CLASSES, residentHelperKind, residentHostIdentity} from '../vendor/eliza/packages/app/scripts/mobile/android/resident-host-sources.mjs';
+import {RESIDENT_NOTIFICATION_CLASSES, residentHelperKind, residentHostIdentity, rewriteResidentClass} from '../vendor/eliza/packages/app/scripts/mobile/android/resident-host-sources.mjs';
 import {HOST_DESCRIPTOR, PATCHED_NATIVE_ROOT, hostIdentity, hostProfile, mapReferences, readHostDescriptor, stageOwnerRouteAsset} from '../scripts/android-host.mjs';
 
 import {serializeOwnerRouteTable} from '../apps/app/src/product/owner-route-table.ts';
@@ -145,6 +145,12 @@ test('installed resident identities stay Alpha data-compatibility names', () => 
  const host = residentHostIdentity({packageName: identity.appId, ...descriptor.residentHost});
  assert.deepEqual(host.sockets, {agent: `${identity.appId}.agent.v1`, inference: `${identity.appId}.inference.v1`, secureStore: `${identity.appId}.secure-store`});
  assert.equal(host.notification.smallIcon, 'notification_icon');
+ // The earlier service always offered Stop in its native notification. Keep that policy explicit.
+ assert.equal(host.notification.primaryAction, 'stop');
+ const residentSource = fs.readFileSync(path.join(ROOT, 'vendor/eliza/packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaAgentService.java'), 'utf8');
+ const generatedResident = rewriteResidentClass('ElizaAgentService', residentSource, host);
+ assert.match(generatedResident, /NOTIFICATION_PRIMARY_ACTION = "stop";/);
+ for (const name of Object.values(host.notification.strings)) assert.ok(generatedResident.includes(`R.string.${name}`), name);
  assert.deepEqual(host.environmentHook, {className: 'AlphaLocalAgentPlugin', method: 'configureEnvironment', unavailableStatus: 'provider-unavailable'});
  assert.deepEqual(host.lifecycleHooks, {rootPublication: {className: 'AlphaLocalAgentPlugin', method: 'publishNotificationRoot'}, ready: {className: 'AlphaCanonicalNotifications', method: 'resumeExisting'}});
  assert.equal(host.notification.channelLabel, 'Alpha');

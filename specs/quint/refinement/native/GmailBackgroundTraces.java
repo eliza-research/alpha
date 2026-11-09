@@ -1,4 +1,4 @@
-package ai.elizaresearch.alphaphone;
+package ai.alphacompute.alphaphone;
 
 import ai.eliza.plugins.notifications.MailBackgroundDelivery;
 import ai.eliza.plugins.notifications.MailHistoryReconciliation;
@@ -82,7 +82,7 @@ public final class GmailBackgroundTraces {
  }
 
  public static void configurePoster(MailNoticePoster.Config config) {
-  if(!config.channel.equals("alpha-gmail")||!config.action.equals("ai.elizaresearch.alphaphone.OPEN_GMAIL_NOTICE")
+  if(!config.channel.equals("alpha-gmail")||!config.action.equals("ai.alphacompute.alphaphone.OPEN_GMAIL_NOTICE")
       ||!config.open.equals("alpha-gmail:")||!config.ask.equals("alpha-gmail-ask:")||!config.tag.equals("alpha-gmail-")
       ||!config.title.equals("New mail in Gmail")||!config.text.equals("Tap to open Inbox.")
       ||!config.publicTitle.equals("Alpha Phone")||!config.publicText.equals("Tap to open.")

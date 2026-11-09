@@ -1,6 +1,6 @@
 package ai.eliza.sense;
 
-import ai.elizaresearch.alphaphone.Trace;
+import ai.alphacompute.alphaphone.Trace;
 import java.nio.file.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;

@@ -23,10 +23,10 @@
         "started": 1,
         "completed": 1,
         "classes": [
-          "ai.elizaresearch.alphaphone.WorkflowApprovalNoticeInstrumentedTest"
+          "ai.alphacompute.alphaphone.WorkflowApprovalNoticeInstrumentedTest"
         ],
         "cases": [
-          "ai.elizaresearch.alphaphone.WorkflowApprovalNoticeInstrumentedTest#ownerChangeWithdrawsThePendingApprovalNoticeAndItsTapOpensNothing"
+          "ai.alphacompute.alphaphone.WorkflowApprovalNoticeInstrumentedTest#ownerChangeWithdrawsThePendingApprovalNoticeAndItsTapOpensNothing"
         ]
       },
       "userLifecycle": {
@@ -62,10 +62,10 @@
         "started": 1,
         "completed": 1,
         "classes": [
-          "ai.elizaresearch.alphaphone.WorkflowApprovalNoticeInstrumentedTest"
+          "ai.alphacompute.alphaphone.WorkflowApprovalNoticeInstrumentedTest"
         ],
         "cases": [
-          "ai.elizaresearch.alphaphone.WorkflowApprovalNoticeInstrumentedTest#ownerChangeWithdrawsThePendingApprovalNoticeAndItsTapOpensNothing"
+          "ai.alphacompute.alphaphone.WorkflowApprovalNoticeInstrumentedTest#ownerChangeWithdrawsThePendingApprovalNoticeAndItsTapOpensNothing"
         ]
       },
       "userLifecycle": {
@@ -102,10 +102,10 @@
         "started": 1,
         "completed": 1,
         "classes": [
-          "ai.elizaresearch.alphaphone.WorkflowApprovalNoticeProcessDeathInstrumentedTest"
+          "ai.alphacompute.alphaphone.WorkflowApprovalNoticeProcessDeathInstrumentedTest"
         ],
         "cases": [
-          "ai.elizaresearch.alphaphone.WorkflowApprovalNoticeProcessDeathInstrumentedTest#productionSignedOutColdStartWithdrawsPersistedSyntheticApproval"
+          "ai.alphacompute.alphaphone.WorkflowApprovalNoticeProcessDeathInstrumentedTest#productionSignedOutColdStartWithdrawsPersistedSyntheticApproval"
         ]
       },
       "userLifecycle": {
@@ -141,10 +141,10 @@
         "started": 1,
         "completed": 1,
         "classes": [
-          "ai.elizaresearch.alphaphone.WorkflowApprovalNoticeProcessDeathInstrumentedTest"
+          "ai.alphacompute.alphaphone.WorkflowApprovalNoticeProcessDeathInstrumentedTest"
         ],
         "cases": [
-          "ai.elizaresearch.alphaphone.WorkflowApprovalNoticeProcessDeathInstrumentedTest#productionSignedOutColdStartWithdrawsPersistedSyntheticApproval"
+          "ai.alphacompute.alphaphone.WorkflowApprovalNoticeProcessDeathInstrumentedTest#productionSignedOutColdStartWithdrawsPersistedSyntheticApproval"
         ]
       },
       "userLifecycle": {

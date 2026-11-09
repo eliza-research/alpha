@@ -324,7 +324,7 @@ There is no automatic Eliza Cloud website sign-in fallback.
 - **Readiness (`CloudSignInReadiness`, `CloudSignInPlugin.status`)**: readiness reports email, SMS and optional native Google separately, checked with a few short requests and cached (6 hours when a method is ready,
   10 minutes when none is; any error, timeout or unexpected answer is "not ready"):
   - `GET /api/v1/app-auth/mobile/config` confirms the registration for client
-    `ai.elizaresearch.alphaphone`, this environment and the return URL; without it no method is ready;
+    `ai.alphacompute.alphaphone`, this environment and the return URL; without it no method is ready;
   - `GET /steward/auth/providers` offers email (or SMS) without a captcha for `email_otp` (`sms_otp`),
     and the email code route exists (an empty-object POST is refused as invalid, not as unknown; no
     email is sent);
@@ -391,7 +391,7 @@ There is no automatic Eliza Cloud website sign-in fallback.
 - **Cloud (elizaOS/eliza `packages/cloud`, `packages/auth`, `packages/app`)** owns the accounts:
   - Steward links Google and email to the existing user by verified email.
   - Mobile App Auth mints the key, valid for 30 days.
-  - For in-app sign-in, Cloud must register `ai.elizaresearch.alphaphone` in
+  - For in-app sign-in, Cloud must register `ai.alphacompute.alphaphone` in
     `ELIZA_MOBILE_APP_AUTH_CLIENTS_JSON`, allowlist the return URL for tenant `elizacloud`, serve
     `/.well-known/assetlinks.json` on `eliza.app` with the release certificate
     (`scripts/render-assetlinks.mjs`), and deploy the email code routes. The APK automatically
@@ -427,7 +427,7 @@ the shared password plugin; see [password-provider-setup.md](password-provider-s
 unchanged; writers in separate Android processes are outside this contract. Renderer preferences
 hold nonsecret selections and identifiers. Backup remains disabled by the reset-only policy; no app-data transfer is planned.
 
-Standalone and launcher APKs share `ai.elizaresearch.alphaphone` and replace one
+Standalone and launcher APKs share `ai.alphacompute.alphaphone` and replace one
 another. Only the launcher variant declares HOME. Release outputs require
 controlled signing through the upstream `ELIZAOS_KEYSTORE_PATH`,
 `ELIZAOS_KEYSTORE_PASSWORD`, `ELIZAOS_KEY_ALIAS` and `ELIZAOS_KEY_PASSWORD` values;

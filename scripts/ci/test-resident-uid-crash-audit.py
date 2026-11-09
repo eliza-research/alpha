@@ -3,7 +3,7 @@ from unittest.mock import patch
 from resident_uid_crash_audit import collect_crashes
 
 def fixture(uid=1010123):
-    lines=['*** *** *** *** *** *** *** ***','Cmdline: /data/app/~~fixture/ai.elizaresearch.alphaphone-random/lib/x86_64/libeliza_ld_musl_x86_64_real.so PRIVATE_SENTINEL',
+    lines=['*** *** *** *** *** *** *** ***','Cmdline: /data/app/~~fixture/ai.alphacompute.alphaphone-random/lib/x86_64/libeliza_ld_musl_x86_64_real.so PRIVATE_SENTINEL',
            'pid: 1234, tid: 1235, name: worker  >>> PRIVATE_SENTINEL <<<',f'uid: {uid}',
            'signal 31 (SIGSYS), code 1 (SYS_SECCOMP), fault addr --------',
            'Cause: seccomp prevented call to disallowed x86_64 system call 21','Abort message: PRIVATE_SENTINEL']

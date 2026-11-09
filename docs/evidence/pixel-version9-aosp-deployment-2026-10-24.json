@@ -69,7 +69,7 @@
       "ro.boot.slot_suffix": "_a",
       "ro.boot.flash.locked": "0"
     },
-    "homeRoleHolder": "ai.elizaresearch.alphaphone",
+    "homeRoleHolder": "ai.alphacompute.alphaphone",
     "homeLaunchPassed": true,
     "selinux": "Enforcing",
     "systemArtifacts": {
@@ -90,7 +90,7 @@
       }
     },
     "installedLauncher": {
-      "path": "/data/app/~~1tXn79zCPz1GeChDRQq_mw==/ai.elizaresearch.alphaphone-2uHef2d0RbLSRQ54_AQPMw==/base.apk",
+      "path": "/data/app/~~1tXn79zCPz1GeChDRQq_mw==/ai.alphacompute.alphaphone-2uHef2d0RbLSRQ54_AQPMw==/base.apk",
       "sha256": "32e1dd4849178637786b11babf634a7f0ab585779c316617e2bb2ea1268eaae8",
       "versionCode": 9,
       "matchesBuiltArtifact": true
@@ -105,8 +105,8 @@
     "imageBootVerified": true,
     "deviceAcceptanceVerified": false,
     "resumedActivity": [
-      "Resumed: ActivityRecord{140842626 u0 ai.elizaresearch.alphaphone/.MainActivity t12}",
-      "ResumedActivity: ActivityRecord{140842626 u0 ai.elizaresearch.alphaphone/.MainActivity t12}"
+      "Resumed: ActivityRecord{140842626 u0 ai.alphacompute.alphaphone/.MainActivity t12}",
+      "ResumedActivity: ActivityRecord{140842626 u0 ai.alphacompute.alphaphone/.MainActivity t12}"
     ]
   },
   "imageArchiveSha256": "291f9f9cbc7f76c6ae87ac91960297c288cf9d63bb8e93ec80628d966b985270",

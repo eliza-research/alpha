@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
 
-const java = name => fs.readFileSync(`android/app/src/main/java/ai/elizaresearch/alphaphone/${name}.java`, "utf8");
+const java = name => fs.readFileSync(`android/app/src/main/java/ai/alphacompute/alphaphone/${name}.java`, "utf8");
 // The isolated reading world, blob capture and downloads are staged into the app from the reviewed
 // pin (plugin-native-browser-surface).
 const shared = name => fs.readFileSync(`vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/${name}.java`, "utf8");
@@ -50,7 +50,7 @@ test("the isolated-reading probe looks for the shared world's channel in the pag
   // the reading channel. A renamed channel would let that check pass without testing anything.
   const channel = /CHANNEL = "(__\w+)"/.exec(world)?.[1];
   assert.equal(channel, "__elizaBrowserReadWorld");
-  const probe = fs.readFileSync("android/app/src/androidTest/java/ai/elizaresearch/alphaphone/BrowserIsolatedReadingInstrumentedTest.java", "utf8");
+  const probe = fs.readFileSync("android/app/src/androidTest/java/ai/alphacompute/alphaphone/BrowserIsolatedReadingInstrumentedTest.java", "utf8");
   assert.ok(probe.includes(`typeof ${channel}==='undefined'`), "the page world is probed");
   assert.ok(probe.includes(`typeof frame.contentWindow.${channel}==='undefined'`), "a frame the page creates is probed");
   assert.doesNotMatch(probe, /__alphaBrowserReadWorld/, "no retired channel name");
@@ -61,7 +61,7 @@ test("the native side reports the capability and refuses a review with the unava
   assert.match(world, /this\.web = web;\s*if \(!supported\(\)\)\s*return;/, "no world, listener or script is created without the capability");
   assert.match(world, /public boolean available\(\) \{\s*return !closed && world != null;\s*\}/);
   // Alpha uses the shared world; it keeps no copy of its own.
-  assert.ok(!fs.existsSync("android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserReadingWorld.java"));
+  assert.ok(!fs.existsSync("android/app/src/main/java/ai/alphacompute/alphaphone/BrowserReadingWorld.java"));
   // The tab host and its reading are in the world's own package; Alpha's plugin extends that host.
   for (const source of [plugin, reading]) assert.match(source, /^package ai\.eliza\.plugins\.browsersurface;$/m);
   assert.match(alphaPlugin, /public class AlphaBrowserPlugin extends BrowserTabHostPlugin \{/);

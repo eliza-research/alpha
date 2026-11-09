@@ -103,7 +103,7 @@ def capture(serial,user,name,runid,proof):
         inventory=re.findall(r'UserInfo\{(\d+):([^:}]+):',read('shell','pm','list','users'))
         assert len(inventory)==2 and dict(inventory).get(user)==name and set(dict(inventory))=={'0',user}
         stage='package-uid'
-        actual=read('shell','run-as','ai.elizaresearch.alphaphone','--user',user,'id','-u').strip();assert actual==str(uid) and uid//100000==int(user)
+        actual=read('shell','run-as','ai.alphacompute.alphaphone','--user',user,'id','-u').strip();assert actual==str(uid) and uid//100000==int(user)
         stage='guest-clock'
         now=int(read('shell','date','+%s').strip())*1000+999;assert started<=now
         stage='crash-read'

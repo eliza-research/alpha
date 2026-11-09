@@ -10,7 +10,7 @@
   "selinux": "Enforcing",
   "alphaPackagePath": "package:/data/app/<install>/base.apk",
   "systemCopyPresent": "/product/app/AlphaPhone",
-  "resolvedHome": "ai.elizaresearch.alphaphone/.MainActivity",
+  "resolvedHome": "ai.alphacompute.alphaphone/.MainActivity",
   "launcherPostbootVerifierPassable": false,
   "reason": "CP2A.260605.016 eng userdebug test-keys image (release 17), a development build for the Cuttlefish product, not a release-candidate image; the installed Alpha APK is a /data/app override of the /product/app copy, which verify-cuttlefish-launcher.mjs refuses.",
   "actions": "Read-only getprop, getenforce, pm path and resolve-activity. No install, role change, reboot or data change.",

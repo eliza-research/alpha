@@ -81,7 +81,7 @@
       "file": "artifacts/sense-debug.apk",
       "mode": "debug",
       "sha256": "22780d3582b2eeb66766a104960967ee2911a53efeabee414344fe941a68c456",
-      "packageName": "ai.elizaresearch.alphaphone.sense",
+      "packageName": "ai.alphacompute.alphaphone.sense",
       "signed": true,
       "signerSha256": "2242994d2d237f98d01927999157067df4e2495a8f980451ac3de5d40642584a",
       "requestedPermissions": [
@@ -112,7 +112,7 @@
       "file": "artifacts/sense-release-unsigned.apk",
       "mode": "release",
       "sha256": "c3ddf7ef480e6ba916e50f9e8ccf6cc09fbedef0082c91f1b1a8a851d5671e53",
-      "packageName": "ai.elizaresearch.alphaphone.sense",
+      "packageName": "ai.alphacompute.alphaphone.sense",
       "signed": false,
       "signerSha256": null,
       "requestedPermissions": [

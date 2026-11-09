@@ -75,7 +75,7 @@ test("a fully populated fixture lock is complete; each unset, placeholder or for
   refuse(PRODUCT_DESCRIPTOR, { ...product, sourceLock: { file: "vendor/eliza/packages/os/android/sources/pixel10a-stallion.json", profile: "cuttlefish" } }, /separate product's lock; it is not admitted for the Cuttlefish product/);
   refuse(PRODUCT_DESCRIPTOR, { ...product, signer: { ...product.signer, platformCertificateSha256: "UNSET" } }, /platformCertificateSha256/);
   refuse("android/release-signer.json", { ...read("android/release-signer.json"), signerSha256: "unset" }, /signerSha256 is "unset"/);
-  refuse(product.brandConfig, { ...read(product.brandConfig), packageName: "ai.elizaos.app" }, /packageName ai\.elizaos\.app is not ai\.elizaresearch\.alphaphone/);
+  refuse(product.brandConfig, { ...read(product.brandConfig), packageName: "ai.elizaos.app" }, /packageName ai\.elizaos\.app is not ai\.alphacompute\.alphaphone/);
   // The upstream brand-config schema is applied through the pinned vendor loader.
   const { lunchTarget, ...brand } = read(product.brandConfig);
   refuse(product.brandConfig, brand, /missing required string field "lunchTarget"/);

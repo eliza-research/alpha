@@ -60,6 +60,8 @@ export function loadAndroidBrowserModuleFixture() {
 }
 
 function fixture({directory, descriptor, browser, browserFiles, wrapperInputs, expected, manifests}) {
+  // The host generator records canonical paths, including macOS's /var -> /private/var alias.
+  directory = fs.realpathSync(directory);
   const upstream = join(directory, sdk), output = join(directory, 'android');
   const manifestPath = join(directory, nativeManifest);
   const sourceProbe = modulePath + '/build.gradle';

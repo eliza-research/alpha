@@ -15,7 +15,7 @@
           "gate": "registration",
           "step": "H-11",
           "passed": true,
-          "detail": "ai.elizaresearch.alphaphone is registered for https://eliza.app/alphaphone/auth/callback with S256"
+          "detail": "ai.alphacompute.alphaphone is registered for https://eliza.app/alphaphone/auth/callback with S256"
         },
         {
           "gate": "email sign-in",
@@ -39,7 +39,7 @@
           "gate": "App Links",
           "step": "H-13",
           "passed": false,
-          "detail": "android/release-signer.json signerSha256 is \"unset\"; the release certificate is not recorded yet (docs/human-actions.md H-09); ai.elizaresearch.alphaphone is also granted to 22:42:99:4D:2D:23:7F:98:D0:19:27:99:91:57:06:7D:F4:E2:49:5A:8F:98:04:51:AC:3D:E5:D4:06:42:58:4A; ai.elizaresearch.alphaphone is also granted to ED:BF:CA:CB:1D:A6:89:00:8B:F4:E7:D6:75:17:6C:30:2D:EC:F8:31:61:A8:77:EB:8B:1D:E4:FF:AE:04:45:ED"
+          "detail": "android/release-signer.json signerSha256 is \"unset\"; the release certificate is not recorded yet (docs/human-actions.md H-09); ai.alphacompute.alphaphone is also granted to 22:42:99:4D:2D:23:7F:98:D0:19:27:99:91:57:06:7D:F4:E2:49:5A:8F:98:04:51:AC:3D:E5:D4:06:42:58:4A; ai.alphacompute.alphaphone is also granted to ED:BF:CA:CB:1D:A6:89:00:8B:F4:E7:D6:75:17:6C:30:2D:EC:F8:31:61:A8:77:EB:8B:1D:E4:FF:AE:04:45:ED"
         },
         {
           "gate": "callback page",
@@ -81,7 +81,7 @@
           "gate": "registration",
           "step": "H-11",
           "passed": true,
-          "detail": "ai.elizaresearch.alphaphone is registered for https://staging.eliza.app/alphaphone/auth/callback with S256"
+          "detail": "ai.alphacompute.alphaphone is registered for https://staging.eliza.app/alphaphone/auth/callback with S256"
         },
         {
           "gate": "email sign-in",
@@ -105,7 +105,7 @@
           "gate": "App Links",
           "step": "H-13",
           "passed": true,
-          "detail": "ai.elizaresearch.alphaphone is granted to B1:DE:6A:3E:D3:00:39:95:74:80:7F:0C:6F:63:C0:21:2B:62:63:E7:EC:28:AE:A2:25:3C:EB:20:B1:70:F4:7E (debug-signed test-mocks builds; pass --signer to require one)"
+          "detail": "ai.alphacompute.alphaphone is granted to B1:DE:6A:3E:D3:00:39:95:74:80:7F:0C:6F:63:C0:21:2B:62:63:E7:EC:28:AE:A2:25:3C:EB:20:B1:70:F4:7E (debug-signed test-mocks builds; pass --signer to require one)"
         },
         {
           "gate": "callback page",

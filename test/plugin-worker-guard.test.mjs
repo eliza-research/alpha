@@ -10,7 +10,7 @@ import {readFileSync} from 'node:fs';
 import {nativeSource,fixture,runJvm} from './fixtures/jvm-tools.mjs';
 
 test('the shared guard refuses work for a stopped, shut-down or full worker without throwing',()=>{
- assert.match(runJvm([nativeSource('PluginWorkers.java'),fixture('PluginWorkersTest.java')],'ai.elizaresearch.alphaphone.PluginWorkersTest'),/^PASS plugin workers/);
+ assert.match(runJvm([nativeSource('PluginWorkers.java'),fixture('PluginWorkersTest.java')],'ai.alphacompute.alphaphone.PluginWorkersTest'),/^PASS plugin workers/);
 });
 
 // Each plugin and the workers it owns or borrows. worker() is the upstream ActionJournalPlugin's

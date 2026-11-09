@@ -19,7 +19,7 @@
   "pendingOutput": {
     "rowId": 640,
     "volume": "external_primary",
-    "owner": "ai.elizaresearch.alphaphone",
+    "owner": "ai.alphacompute.alphaphone",
     "isPending": true,
     "generationModified": "6350",
     "published": false

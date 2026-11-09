@@ -1,4 +1,4 @@
-package ai.elizaresearch.alphaphone;
+package ai.alphacompute.alphaphone;
 import org.json.JSONObject;
 public final class PairedSpeechContractTest {
  interface Work{void run()throws Exception;}

@@ -252,7 +252,7 @@ staging values.
 - Who: Cloud operator.
 - Do: keep Alpha's entry in `ELIZA_MOBILE_APP_AUTH_CLIENTS_JSON` and its approved `apps` row,
   and after any registry change run the "Mobile App Auth Registration Admin" workflow (repair,
-  then diagnose) for client `ai.elizaresearch.alphaphone`. The registration that answered 503 on
+  then diagnose) for client `ai.alphacompute.alphaphone`. The registration that answered 503 on
   October 24 ([diagnosis](evidence/cloud-native-auth-diagnosis-2026-10-24.md)) answered for both
   environments, with S256, on October 27.
 - Seam: `node scripts/cloud-readiness.mjs registration` prints the entry.
@@ -266,7 +266,7 @@ staging values.
 - Do: Google binds an Android OAuth client to one package and signing certificate SHA-1, and
   Steward advertises native Google (`googleNative`) only for an app client listed in
   `STEWARD_GOOGLE_NATIVE_CLIENT_IDS`. After H-09, create an Android OAuth client for package
-  `ai.elizaresearch.alphaphone` with the release certificate SHA-1 and add its client ID under
+  `ai.alphacompute.alphaphone` with the release certificate SHA-1 and add its client ID under
   `alpha-phone` (the clients that exist today were created before any release key existed).
   Staging advertises no native Google: add an Android client for the debug signer used for
   test-mocks builds to the staging Steward if staging Google sign-in is wanted. Keep the tenant
@@ -292,7 +292,7 @@ staging values.
   `ELIZA_NATIVE_AUTH_CALLBACKS_JSON` entry: the hosted fallback page answers today.
 - Seam: `scripts/render-assetlinks.mjs`; builds declare the verified filters only with
   `ELIZAOS_APP_LINK_HOST=eliza.app` (H-10).
-- Verify: the `--check` command exits 0, then `adb shell pm get-app-links ai.elizaresearch.alphaphone`
+- Verify: the `--check` command exits 0, then `adb shell pm get-app-links ai.alphacompute.alphaphone`
   reports `eliza.app` verified on an installed release build.
 - Unblocks: verified returns for the browser sign-in fallback and the Cloud delegation filter.
 

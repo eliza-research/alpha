@@ -91,7 +91,7 @@ the operator's index of build, provisioning, release and support material is the
 
 ## Product boundaries
 
-Current source composition pin `b1817660a0` adds the reviewed Calendar read guidance to `99b49439ce`; it is recorded in `upstream.lock.json`. The new runtime, workflow worker and Google host have been built. Full combined verification, signing, disposable update retention and Pixel acceptance remain open. Earlier binary qualification retains its original pin and requires exact native-input comparison before reuse.
+Current source composition pin `dddd9a6c6f` applies the Alpha Compute company and Android namespace rename to reviewed SDK `b1817660a0`; it is recorded in `upstream.lock.json`. The resident runtime bundle has been rebuilt and inspected for the requested brand strings. Existing workflow-worker, Google-host, native-library and device evidence retains its original source and artifact identity. Full combined verification, signed distribution and Pixel acceptance remain open; the package/JNI identity change requires native requalification.
 
 Earlier source composition pin `99b49439ce` adds reversible Files sorting, All files and shared retained-recording windows to `db96bb0a03`; it is recorded in `upstream.lock.json`. Final combined verification, exact APK qualification, protected signing and disposable Settings retention remain separate gates before Pixel and human acceptance. Historical observations below retain their original source bindings.
 

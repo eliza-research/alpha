@@ -64,7 +64,7 @@ test('neither APK distribution declares a native Wallet, payment or NFC adapter'
   assert.doesNotMatch(text,/HostApduService|android\.nfc\.|PaymentsClient|com\.google\.android\.gms\.wallet|QuickAccessWallet|@CapacitorPlugin\(name="[^"]*(?:Wallet|Payment|Pay)"/,file);
  }
  // MainActivity registers no Wallet or payment bridge in any variant.
- const main=read('android/app/src/main/java/ai/elizaresearch/alphaphone/MainActivity.java');
+ const main=read('android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java');
  for(const match of main.matchAll(/registerPlugin\(([^)]*)\)/g))assert.doesNotMatch(match[1],/wallet|payment|pay\b|nfc/i);
 });
 

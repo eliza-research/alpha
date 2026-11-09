@@ -6,7 +6,7 @@ import {fileURLToPath} from 'node:url';
 
 export const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 export const directory = dirname(fileURLToPath(import.meta.url));
-export const app = 'android/app/src/main/java/ai/elizaresearch/alphaphone/';
+export const app = 'android/app/src/main/java/ai/alphacompute/alphaphone/';
 export const sense = 'vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/';
 export const voice = 'vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/';
 
@@ -43,7 +43,7 @@ export function javaTraceCampaign(harness, sources, argumentSets, mainClass) {
   try {
     run(executable('javac'), ['-cp', jar, '-d', temporary, join(directory, 'Trace.java'), join(directory, harness), ...sources.map(path => resolve(root, path))]);
     const java = executable('java');
-    const entry = mainClass || `ai.elizaresearch.alphaphone.${harness.replace(/\.java$/, '')}`;
+    const entry = mainClass || `ai.alphacompute.alphaphone.${harness.replace(/\.java$/, '')}`;
     return argumentSets.map(args => JSON.parse(run(java, ['-cp', `${temporary}:${jar}`, entry, ...args])));
   } finally {
     rmSync(temporary, {recursive: true, force: true});

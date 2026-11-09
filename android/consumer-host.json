@@ -125,9 +125,9 @@
   },
   "residentHost": {
     "sockets": {
-      "agent": "ai.elizaresearch.alphaphone.agent.v1",
-      "inference": "ai.elizaresearch.alphaphone.inference.v1",
-      "secureStore": "ai.elizaresearch.alphaphone.secure-store"
+      "agent": "ai.alphacompute.alphaphone.agent.v1",
+      "inference": "ai.alphacompute.alphaphone.inference.v1",
+      "secureStore": "ai.alphacompute.alphaphone.secure-store"
     },
     "classes": [
       "NativeNotificationInbox",
@@ -138,6 +138,7 @@
     ],
     "notification": {
       "smallIcon": "notification_icon",
+      "primaryAction": "stop",
       "color": "0xff0000ff",
       "channelLabel": "Alpha",
       "strings": {
@@ -151,7 +152,15 @@
         "missingFiles": "alpha_runtime_missing_files",
         "spawnFailed": "alpha_runtime_spawn_failed",
         "restartBlocked": "alpha_runtime_restart_blocked",
-        "runningDetail": "alpha_runtime_running_detail"
+        "runningDetail": "alpha_runtime_running_detail",
+        "startingDetail": "alpha_runtime_starting_detail",
+        "bootstrapDetail": "alpha_runtime_bootstrap_detail",
+        "crashedDetail": "alpha_runtime_crashed_detail",
+        "extractFailedDetail": "alpha_runtime_extract_failed_detail",
+        "spawnFailedDetail": "alpha_runtime_spawn_failed_detail",
+        "stopFailedDetail": "alpha_runtime_stop_failed_detail",
+        "missingFilesDetail": "alpha_runtime_missing_files_detail",
+        "genericDetail": "alpha_runtime_generic_detail"
       }
     },
     "environmentHook": { "className": "AlphaLocalAgentPlugin", "method": "configureEnvironment", "unavailableStatus": "provider-unavailable" },

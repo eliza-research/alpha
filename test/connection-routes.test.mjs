@@ -8,12 +8,12 @@ import {nativeSource,fixture,runJvm,upstreamConnection} from './fixtures/jvm-too
 // APK, run on Android, or contact Eliza Cloud or any agent.
 // The JDK is JAVA_HOME, else the Homebrew openjdk@21 on darwin when it is installed, else javac on PATH.
 test('native transport refuses production pairing and non-Cloud origins and admits DELETE only for Cloud self-revocation',()=>{
- assert.match(runJvm([nativeSource('CloudDeployment.java'),upstreamConnection('CloudConnectionPolicy.java'),nativeSource('ConnectionRoutes.java'),fixture('ConnectionRoutesTest.java')],'ai.elizaresearch.alphaphone.ConnectionRoutesTest'),/^PASS connection routes/);
+ assert.match(runJvm([nativeSource('CloudDeployment.java'),upstreamConnection('CloudConnectionPolicy.java'),nativeSource('ConnectionRoutes.java'),fixture('ConnectionRoutesTest.java')],'ai.alphacompute.alphaphone.ConnectionRoutesTest'),/^PASS connection routes/);
 });
 
 // Source-order check of the plugin that applies the policy; the policy itself is run on the JVM above.
 test('the transport applies the origin policy before any connection and never touches a credential slot',()=>{
- const source=readFileSync(resolve(import.meta.dirname,'../android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaConnectionPlugin.java'),'utf8');
+ const source=readFileSync(resolve(import.meta.dirname,'../android/app/src/main/java/ai/alphacompute/alphaphone/AlphaConnectionPlugin.java'),'utf8');
  const request=source.slice(source.indexOf('@PluginMethod public void request('),source.indexOf('@PluginMethod public void cancel('));
  const validated=request.indexOf('validatedUrl(call.getString("url"), true)');
  const guard=request.indexOf('if(!ConnectionRoutes.admittedOrigin(url.getScheme(),url.getHost(),url.getPort(),BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS))throw new IllegalArgumentException();');
@@ -30,7 +30,7 @@ test('the transport applies the origin policy before any connection and never to
 
 // Source check that openExternal decides its host from ConnectionRoutes (run on the JVM above).
 test('openExternal admits only the ConnectionRoutes hosts and reads the sign-in handoff from it',()=>{
- const source=readFileSync(resolve(import.meta.dirname,'../android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaConnectionPlugin.java'),'utf8');
+ const source=readFileSync(resolve(import.meta.dirname,'../android/app/src/main/java/ai/alphacompute/alphaphone/AlphaConnectionPlugin.java'),'utf8');
  const open=source.slice(source.indexOf('@PluginMethod public void openExternal('),source.indexOf('@Override protected void handleOnPause('));
  const guard=open.indexOf('if (!ConnectionRoutes.externalHost(url.getScheme(), url.getHost(), url.getPort(), BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS)) throw new IllegalArgumentException();');
  assert.ok(guard>0&&guard<open.indexOf('new Intent(Intent.ACTION_VIEW'),'the host rule precedes the intent');
@@ -46,18 +46,18 @@ test('Reset Alpha data records the reset, revokes Cloud keys best effort within 
  const authenticated=plugin.slice(plugin.indexOf('private void authenticated('));
  const record=authenticated.indexOf('reset.record(context);'),notice=authenticated.indexOf('showProgress(text);'),dispatch=authenticated.indexOf('reset.dispatchAfterBeforeDispatch(context, DataReset.INTERACTIVE_DEADLINE_MS');
  assert.ok(record>0&&notice>record&&dispatch>notice,'recorded before any network request, with a blocking notice over the revocation window');
- const registration=readFileSync(resolve(import.meta.dirname,'../android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDataReset.java'),'utf8');
+ const registration=readFileSync(resolve(import.meta.dirname,'../android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDataReset.java'),'utf8');
  assert.ok(registration.includes('.beforeDispatch(ResetBeforeDispatch.STEP)'),'the live and startup paths run the same before-dispatch step');
- const steps=readFileSync(resolve(import.meta.dirname,'../android/app/src/main/java/ai/elizaresearch/alphaphone/ResetBeforeDispatch.java'),'utf8');
+ const steps=readFileSync(resolve(import.meta.dirname,'../android/app/src/main/java/ai/alphacompute/alphaphone/ResetBeforeDispatch.java'),'utf8');
  assert.ok(steps.includes('CloudKeyRevocation.resetStep(()->AlphaCloudSignInPlugin.REGISTRATION,AlphaCredentialStore::readSlotBeforeAttach,transport)')&&steps.includes('create(CloudKeyRevocation::revoke)'),'the shared bounded revocation step over only the deployments this build admits');
  const shared=readFileSync(resolve(import.meta.dirname,'../vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudKeyRevocation.java'),'utf8');
  assert.match(shared,/transport\.revoke\(config, environment, token\)/,'revocation goes through the shared exact self-revocation policy');
  assert.match(shared,/Math\.min\(timeoutMs, RESET_BUDGET_CAP_MS\)/,'bounded by the caller budget and the 8 s cap');
- const application=readFileSync(resolve(import.meta.dirname,'../android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaApplication.java'),'utf8');
+ const application=readFileSync(resolve(import.meta.dirname,'../android/app/src/main/java/ai/alphacompute/alphaphone/AlphaApplication.java'),'utf8');
  assert.match(application,/AlphaDataReset\.RESET\.admitBeforeStartup\(base,getProcessName\(\)\);/,'interrupted reset revokes before bounded reset admission');
 });
 test('production own-key setup uses native secure configuration without a renderer secret store',()=>{
- const source=readFileSync(resolve(import.meta.dirname,'../android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java'),'utf8');
+ const source=readFileSync(resolve(import.meta.dirname,'../android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java'),'utf8');
  const method=source.slice(source.indexOf('@PluginMethod public void configureProvider('),source.indexOf('@PluginMethod public void clearProvider('));
  assert.match(method,/if\(!runtimePackaged\(\)\)/);
  assert.match(method,/NativeProviderSlot\.saveVerifiedProvider\(providerSlot\(store\),key,model,cartesia/);
@@ -68,7 +68,7 @@ test('production own-key setup uses native secure configuration without a render
  assert.match(configure,/native\.configureProvider/);
 });
 test('native transport labels subscription routes and no longer names the credit balance',()=>{
- const source=readFileSync(resolve(import.meta.dirname,'../android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaConnectionPlugin.java'),'utf8');
+ const source=readFileSync(resolve(import.meta.dirname,'../android/app/src/main/java/ai/alphacompute/alphaphone/AlphaConnectionPlugin.java'),'utf8');
  assert.doesNotMatch(source,/credits\/balance|BALANCE\b/);
  assert.match(source,/"\/api\/v1\/subscription\/redeem"\.equals\(path\)\)operation=RequestOperation\.REDEEM/);
 });

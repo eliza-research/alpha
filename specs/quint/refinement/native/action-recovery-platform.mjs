@@ -27,7 +27,7 @@ export function actionRecoveryPlatform() {
     const bridge=readFileSync(join(root,recoveryBridge),'utf8');
     const store=readFileSync(join(root,'vendor/eliza',reminderStore),'utf8');
     const files={
-      'ai/elizaresearch/alphaphone/AlphaActionJournalPlugin.java':
+      'ai/alphacompute/alphaphone/AlphaActionJournalPlugin.java':
         bridge.slice(0,bridge.indexOf(' private final android.os.Handler clockMain'))+'\n}\n',
       'android/content/Context.java':`package android.content;
 public final class Context {public Context getApplicationContext(){return this;}}`,
@@ -56,7 +56,7 @@ public final class PluginCall {
  public synchronized void reject(String reason){if(answered.getCount()==0)throw new AssertionError("Duplicate response");rejection=reason;answered.countDown();}
  public void await()throws Exception{if(!answered.await(4,TimeUnit.SECONDS))throw new AssertionError("Recovery call unanswered");}
 }`,
-      'ai/elizaresearch/alphaphone/RecoveryPorts.java':`package ai.elizaresearch.alphaphone;
+      'ai/alphacompute/alphaphone/RecoveryPorts.java':`package ai.alphacompute.alphaphone;
 import org.json.JSONObject;
 import android.content.Context;
 final class AlphaCredentialStore {
@@ -89,7 +89,7 @@ final class System {
  static long currentTimeMillis(){return 100;}
 }`,
       'ai/eliza/plugins/reminders/ReminderReceiptFixture.java':`package ai.eliza.plugins.reminders;
-import ai.elizaresearch.alphaphone.ActionRecoveryTraces;
+import ai.alphacompute.alphaphone.ActionRecoveryTraces;
 import android.content.Context;
 import java.util.ArrayList;
 import org.json.*;
@@ -113,7 +113,7 @@ final class ReminderEnvelope {
  }
 }`,
     };
-    assert.ok(files['ai/elizaresearch/alphaphone/AlphaActionJournalPlugin.java'].includes('recoverReminder(PluginCall call)'));
+    assert.ok(files['ai/alphacompute/alphaphone/AlphaActionJournalPlugin.java'].includes('recoverReminder(PluginCall call)'));
     const paths=Object.entries(files).map(([name,contents])=>{
       const path=join(directory,name);
       mkdirSync(dirname(path),{recursive:true});

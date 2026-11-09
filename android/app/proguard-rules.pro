@@ -26,19 +26,19 @@
 -keep class ai.eliza.plugins.browsersurface.** { *; }
 
 # Manifest components Android instantiates by class name.
--keep class ai.elizaresearch.alphaphone.MainActivity { *; }
--keep class ai.elizaresearch.alphaphone.AlphaAssistActivity { *; }
--keep class ai.elizaresearch.alphaphone.AlphaMailPdfActivity { *; }
--keep class ai.elizaresearch.alphaphone.ElizaAgentService { *; }
--keep class ai.elizaresearch.alphaphone.AlphaNotificationListener { *; }
--keep class ai.elizaresearch.alphaphone.ReminderReceiver { *; }
--keep class ai.elizaresearch.alphaphone.IsolatedPdfService { *; }
--keep class ai.elizaresearch.alphaphone.AlphaMailFileProvider { *; }
+-keep class ai.alphacompute.alphaphone.MainActivity { *; }
+-keep class ai.alphacompute.alphaphone.AlphaAssistActivity { *; }
+-keep class ai.alphacompute.alphaphone.AlphaMailPdfActivity { *; }
+-keep class ai.alphacompute.alphaphone.ElizaAgentService { *; }
+-keep class ai.alphacompute.alphaphone.AlphaNotificationListener { *; }
+-keep class ai.alphacompute.alphaphone.ReminderReceiver { *; }
+-keep class ai.alphacompute.alphaphone.IsolatedPdfService { *; }
+-keep class ai.alphacompute.alphaphone.AlphaMailFileProvider { *; }
 
 # WorkManager instantiates workers reflectively from persisted class names, so
 # names must stay stable across app updates.
--keep class ai.elizaresearch.alphaphone.HostedDeliveryWorker { *; }
--keep class ai.elizaresearch.alphaphone.ElizaTasksWorker { *; }
+-keep class ai.alphacompute.alphaphone.HostedDeliveryWorker { *; }
+-keep class ai.alphacompute.alphaphone.ElizaTasksWorker { *; }
 -keep class * extends androidx.work.ListenableWorker {
     public <init>(android.content.Context, androidx.work.WorkerParameters);
 }
@@ -46,11 +46,11 @@
 # Pinned local-agent runtime staged by scripts/stage-local-agent-sources.mjs.
 # JNI symbol names (libelizavoicejni) depend on the exact class and method names,
 # and the service resolves hidden platform APIs by reflection.
--keep class ai.elizaresearch.alphaphone.ElizaVoiceNative { *; }
--keep class ai.elizaresearch.alphaphone.ElizaBionicInferenceServer { *; }
--keep class ai.elizaresearch.alphaphone.BionicDecodeLoop { *; }
--keep class ai.elizaresearch.alphaphone.BionicDecodeLoop$* { *; }
--keep class ai.elizaresearch.alphaphone.BgeEmbeddingSession { *; }
+-keep class ai.alphacompute.alphaphone.ElizaVoiceNative { *; }
+-keep class ai.alphacompute.alphaphone.ElizaBionicInferenceServer { *; }
+-keep class ai.alphacompute.alphaphone.BionicDecodeLoop { *; }
+-keep class ai.alphacompute.alphaphone.BionicDecodeLoop$* { *; }
+-keep class ai.alphacompute.alphaphone.BgeEmbeddingSession { *; }
 -keepclasseswithmembernames,includedescriptorclasses class * {
     native <methods>;
 }

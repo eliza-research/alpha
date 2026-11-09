@@ -15,18 +15,18 @@ test('Android Calendar list returns at most 2,000 instances, reports a longer re
  const plugin=join(root,'vendor/eliza/plugins/plugin-native-calendar');
  try{
   // AlphaCalendarPlugin needs Capacitor; its configuration expression runs here unchanged.
-  const source=readFileSync(join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCalendarPlugin.java'),'utf8');
+  const source=readFileSync(join(root,'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCalendarPlugin.java'),'utf8');
   const configuration=/static final CalendarConfiguration CONFIGURATION=(new CalendarConfiguration\([^;]*\));/.exec(source)?.[1];
   assert.ok(configuration,'AlphaCalendarPlugin declares CONFIGURATION');
   const generated=join(temporary,'AlphaCalendarConfiguration.java');
-  writeFileSync(generated,`package ai.elizaresearch.alphaphone;\nimport ai.eliza.plugins.calendar.CalendarConfiguration;\nfinal class AlphaCalendarConfiguration{static final CalendarConfiguration CONFIGURATION=${configuration};}\n`);
+  writeFileSync(generated,`package ai.alphacompute.alphaphone;\nimport ai.eliza.plugins.calendar.CalendarConfiguration;\nfinal class AlphaCalendarConfiguration{static final CalendarConfiguration CONFIGURATION=${configuration};}\n`);
   execFileSync(javaBinary('javac'),['--release','11','-cp',jsonJar,'-d',temporary,
    join(plugin,'android/src/main/java/ai/eliza/plugins/calendar/CalendarConfiguration.java'),
    join(plugin,'android/src/main/java/ai/eliza/plugins/calendar/read/CalendarReadAccess.java'),
    ...['content/ContentResolver.java','content/ContentUris.java','database/Cursor.java'].map(name=>join(plugin,'test/jvm/android',name)),
    ...['content/Intent.java','net/Uri.java','provider/CalendarContract.java'].map(name=>join(plugin,'test/native-host/read-window/android',name)),
    generated,join(root,'test/fixtures/CalendarListWindowTest.java')],{timeout:180000,stdio:'pipe'});
-  const output=execFileSync(javaBinary('java'),['-cp',temporary+':'+jsonJar,'ai.elizaresearch.alphaphone.CalendarListWindowTest'],{encoding:'utf8',timeout:120000,stdio:'pipe'});
+  const output=execFileSync(javaBinary('java'),['-cp',temporary+':'+jsonJar,'ai.alphacompute.alphaphone.CalendarListWindowTest'],{encoding:'utf8',timeout:120000,stdio:'pipe'});
   assert.equal(output.trim(),'PASS calendar list window');
  }finally{rmSync(temporary,{recursive:true,force:true});}
 });

@@ -1,5 +1,5 @@
 /** Renderer interpreter for the Alpha owner-route table, also packaged for Android's OwnerRoutes. */
-import {OWNER_ROUTE_TABLE as table} from '../product/owner-route-table';
+import {OWNER_ROUTE_TABLE as table} from '../product/owner-route-table.ts';
 export type OwnerRouteGroup = keyof typeof table.groups;
 const unsafe = new RegExp(table.unsafe);
 // Validated and compiled once, at load: an {id} route needs its group's id pattern.
