@@ -691,3 +691,23 @@ The JVM uses private synthetic records and a controlled Android history
 and atomic-file port. It exercises no device logs, sharing or external
 opening. Android process history and cross-process durability remain
 installed-platform obligations.
+
+### Native Android Settings handoff
+
+`NativeSettingsHandoff` follows the exact Alpha Device bridge through the
+UI queue and the shared Android page allowlist. It distinguishes explicit
+Settings home from a specific page and an allowlisted broader fallback.
+Both package variants exercise the ordered intent attempts, exact package
+scope, task flags, and resolved page and specificity. The neighboring
+password-provider Settings path uses a different fallback condition.
+The trusted picker falls back to Settings home only after a missing
+Activity handler.
+
+The synthetic absent-host case records a synchronous throw from targeted
+Settings and password setup, while the explicit system path rejects the
+call. Capacitor's installed Activity constructor binds a fixed context.
+The synthetic retirement replay observes the queued attempt reaching the
+Activity port. This establishes the app's dispatch behavior, while Android
+acceptance, task placement and Settings effects remain external.
+`PermissionChoices` and `StartupPermissions` cover renderer permission
+flow, and `RendererRecovery` covers the native renderer escape buttons.
