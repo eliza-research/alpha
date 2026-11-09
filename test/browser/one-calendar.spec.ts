@@ -1,3 +1,4 @@
+import {chooseCalendarEventAction} from './helpers/browser-calendar';
 import {test,expect,type Page} from '@playwright/test';
 import {installOneCalendar} from './helpers/one-calendar';
 import {settled} from './helpers/settled';
@@ -121,12 +122,12 @@ for(const title of ['Dentist','Team standup'])test(`editable ${title} exposes it
  await page.locator('[data-alpha-home-calendar]').click();
  await page.getByRole('button',{name:'Back to calendar',exact:true}).click();
  await page.getByText(title,{exact:true}).first().click();
+ await page.getByLabel('Event actions',{exact:true}).click();
  await expect(page.getByRole('button',{name:'Edit event',exact:true})).toBeVisible();
  if(title==='Team standup'){
   await expect(page.getByRole('button',{name:'Delete event',exact:true})).toHaveCount(0);
-  await expect(page.getByText('Delete or decline this event in Google Calendar.',{exact:true})).toBeVisible();
  }else await expect(page.getByRole('button',{name:'Delete event',exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Edit event',exact:true}).click();
+ await chooseCalendarEventAction(page, 'Edit event');
  await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveValue(title);
  await expect(page.getByRole('button',{name:'Save event',exact:true})).toBeVisible();
  expect((await requests(page)).requests.every(request=>request.startsWith('GET '))).toBe(true);

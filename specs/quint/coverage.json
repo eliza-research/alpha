@@ -40852,7 +40852,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "143b65b7fa2ca36cd056d620818b1ed53cf2ca4f89b5083a4ce0c86e88b509e1",
+      "sha256": "f83b74acccf84c2479dd10b39b64cc0c865de38c7dea603128981517067168c0",
       "stateAnchors": [
         {
           "line": 25,
@@ -40868,7 +40868,7 @@
         },
         {
           "line": 31,
-          "text": "const APP_HEADERS = '[data-alpha-app-header],[data-alpha-layer=\"drawer\"] div:has(> h1),[role=\"dialog\"][aria-modal=\"true\"]:not([data-alpha-layer=\"drawer\"])';"
+          "text": "const APP_HEADERS = '[data-alpha-app-header],[data-alpha-layer=\"drawer\"] div:has(> h1),[role=\"dialog\"][aria-modal=\"true\"]:not([data-alpha-layer=\"drawer\"]),.photo-import-menu[open] > div';"
         },
         {
           "line": 32,
