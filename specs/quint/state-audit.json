@@ -12,7 +12,7 @@
   "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "332efbc1ed9f16cdc288cf764193c85d48990f2208585e044f60fad1ce075521",
+  "ledgerSha256": "c0e6852d567428aabfe6853b3b458ed5a225cbd5456db7002ed8bc3cb8bd8459",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -32684,7 +32684,8 @@
       "allocatedModels": [
         "Maps",
         "MapsNavigation",
-        "NavigationProgress"
+        "NavigationProgress",
+        "MapsRerouteOwnership"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -32799,7 +32800,8 @@
       "sha256": "473e6790cabc47666f893b8bd297880058230d087ddf74fbbea7411bddfbc6fe",
       "allocatedModels": [
         "MapsNavigation",
-        "NavigationProgress"
+        "NavigationProgress",
+        "MapsRerouteOwnership"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -32979,7 +32981,8 @@
       "sha256": "2a76f8a28e174becc55bc3fc82264ce1d046c081be2a2dacc569eaf53e5af5ba",
       "allocatedModels": [
         "MapsNavigation",
-        "NavigationProgress"
+        "NavigationProgress",
+        "MapsRerouteOwnership"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -33013,7 +33016,8 @@
       "sha256": "4e83fc8aa70ea95c4f6831a9789fce9520106f6ce19fe04a5a6baac104d07e96",
       "allocatedModels": [
         "MapsNavigation",
-        "NavigationProgress"
+        "NavigationProgress",
+        "MapsRerouteOwnership"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -35381,7 +35385,8 @@
         "Maps",
         "MapsNavigation",
         "NavigationProgress",
-        "MapsEventReturn"
+        "MapsEventReturn",
+        "MapsRerouteOwnership"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -39868,7 +39873,8 @@
         "DockClearanceOwnership",
         "CalendarPreservationConfirmation",
         "CanonicalCalendarEditorClose",
-        "CameraPreviewRetirement"
+        "CameraPreviewRetirement",
+        "MapsRerouteOwnership"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -145181,7 +145187,8 @@
         "BrowserSession",
         "BrowserSiteState",
         "FilesAndSharing",
-        "FilesTree"
+        "FilesTree",
+        "BrowserFilesTrash"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -164238,7 +164245,8 @@
         "AssistantConversation",
         "MapsNavigation",
         "NavigationProgress",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "MapsRerouteOwnership"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -164411,7 +164419,8 @@
       "sha256": "6a0e62a1412f0008d2fea235efaaab54a2ae718dfa251b75473c9eab6b8208bc",
       "allocatedModels": [
         "MapsNavigation",
-        "NavigationProgress"
+        "NavigationProgress",
+        "MapsRerouteOwnership"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -164583,7 +164592,8 @@
       "sha256": "f95910eac3111d6d3d35274447a4ffb61b12f419918f845568e396a0aa7cdb04",
       "allocatedModels": [
         "MapsNavigation",
-        "NavigationProgress"
+        "NavigationProgress",
+        "MapsRerouteOwnership"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -164903,7 +164913,8 @@
       "sha256": "8613932899024221627f944280db44f778d215cc2605c8ab9b9a8788cbf5d5d7",
       "allocatedModels": [
         "MapsNavigation",
-        "NavigationProgress"
+        "NavigationProgress",
+        "MapsRerouteOwnership"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -218659,6 +218670,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "7c90b5dd1adaa203fb95e66324f903e417c519346bafc2d6dbc4f7f8b6ed5078"
+    "sha256": "62a985879397b7a55d02b09d1bd91e597827f8654bb44f97ee989fb9fc35aa42"
   }
 }

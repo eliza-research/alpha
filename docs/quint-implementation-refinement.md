@@ -815,7 +815,30 @@ the journal write fails. Installed delivery and scheduling are separate.
 
 `BrowserFilesTrash` checks 12 schedules and 82 checkpoints over both
 locking paths. It observes queued operations, exact origin markers,
-restore, reviewed Empty and retention. A separate baseline records
-temporary names that survive a failed move or restore and can hide the
-original file. The fixture isolates library interleavings and journal
-writes. Browser process interruption remains open.
+restore, reviewed Empty and retention. The baseline records temporary
+names that survive a failed move or restore and can hide the original
+file. The authenticated Files repair moves and renames a row in one
+IndexedDB transaction under its reviewed revision. An actual Chromium
+fixture checks a missing destination, a stale source and a newly
+occupied restore name. The first two preserve the original file. The
+third preserves the exact Trash row and marker for a successful retry.
+Cross-tab scheduling, legacy hidden rows and interruption between the
+IndexedDB and journal writes remain open.
+
+`MapsRerouteOwnership` checks seven mounted schedules and 49 checkpoints.
+The baseline agent reply treated a reused provider route ID as a
+failure after the new route was installed. A reply from a retired
+guidance session could also report the replacement as its own.
+The repaired adapter compares the exact admitted route publication
+and guidance session. The renderer still keeps the current route when
+its provider refuses the reroute. Same-component Android task removal
+remains a separate installed-platform obligation.
+
+The strict 183-model run at `d4427bdd0c` completed the application,
+services, native and composition campaigns with current receipts for
+156 runtime models. A transformed initializer failed before historical
+SignIn could reach the email field. The initializer now carries its
+required helper in the same browser script, and the focused transformed
+SignIn regression passes. Independent historical campaigns now retain
+their receipts and exact failure diagnostics when another campaign
+fails.

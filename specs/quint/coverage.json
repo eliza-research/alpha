@@ -15125,7 +15125,8 @@
       "models": [
         "Maps",
         "MapsNavigation",
-        "NavigationProgress"
+        "NavigationProgress",
+        "MapsRerouteOwnership"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -15260,7 +15261,8 @@
       "sha256": "473e6790cabc47666f893b8bd297880058230d087ddf74fbbea7411bddfbc6fe",
       "models": [
         "MapsNavigation",
-        "NavigationProgress"
+        "NavigationProgress",
+        "MapsRerouteOwnership"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -15495,7 +15497,8 @@
       "path": "apps/app/src/maps/screen.ts",
       "models": [
         "MapsNavigation",
-        "NavigationProgress"
+        "NavigationProgress",
+        "MapsRerouteOwnership"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -15522,7 +15525,8 @@
       "sha256": "4e83fc8aa70ea95c4f6831a9789fce9520106f6ce19fe04a5a6baac104d07e96",
       "models": [
         "MapsNavigation",
-        "NavigationProgress"
+        "NavigationProgress",
+        "MapsRerouteOwnership"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -24942,7 +24946,8 @@
         "Maps",
         "MapsNavigation",
         "NavigationProgress",
-        "MapsEventReturn"
+        "MapsEventReturn",
+        "MapsRerouteOwnership"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -35635,7 +35640,8 @@
         "DockClearanceOwnership",
         "CalendarPreservationConfirmation",
         "CanonicalCalendarEditorClose",
-        "CameraPreviewRetirement"
+        "CameraPreviewRetirement",
+        "MapsRerouteOwnership"
       ],
       "scope": "application",
       "treatment": "stateless-presentation-contract",
@@ -427007,7 +427013,8 @@
         "BrowserSession",
         "BrowserSiteState",
         "FilesAndSharing",
-        "FilesTree"
+        "FilesTree",
+        "BrowserFilesTrash"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -483193,7 +483200,8 @@
         "AssistantConversation",
         "MapsNavigation",
         "NavigationProgress",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "MapsRerouteOwnership"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -483619,7 +483627,8 @@
       "path": "vendor/eliza/plugins/plugin-maps/src/client/device-navigation.ts",
       "models": [
         "MapsNavigation",
-        "NavigationProgress"
+        "NavigationProgress",
+        "MapsRerouteOwnership"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -484163,7 +484172,8 @@
       "path": "vendor/eliza/plugins/plugin-maps/src/client/maps-screen.ts",
       "models": [
         "MapsNavigation",
-        "NavigationProgress"
+        "NavigationProgress",
+        "MapsRerouteOwnership"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -485282,7 +485292,8 @@
       "path": "vendor/eliza/plugins/plugin-maps/src/client/state.ts",
       "models": [
         "MapsNavigation",
-        "NavigationProgress"
+        "NavigationProgress",
+        "MapsRerouteOwnership"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -618611,7 +618622,7 @@
         "CalendarLinkedSync",
         "InboxProviderDrafts"
       ],
-      "sha256": "b677f93cfc84a72d6b3ba70226f95748a999b3fab8221d7be64f4782b45e4df7"
+      "sha256": "3501fc1c8c31dd82b117749bbd4e2945cbae1357615f217fb5722632995b1f0e"
     },
     {
       "path": "patches/eliza/calendar-semantic-client-manifest.json",
@@ -618943,7 +618954,7 @@
         "FilesTree",
         "DeviceActions"
       ],
-      "sha256": "575cce2dead9a032819fdd9248200319a4425a9e4f1f4b3d99d188213bbd9401"
+      "sha256": "5c8857ccd844d99c8cab77b88d4117902194d589de501b529ea66cabb9a35229"
     },
     {
       "path": "patches/eliza/files-storage-query-client.patch",
@@ -618952,7 +618963,7 @@
         "DeviceActions",
         "BrowserFilesTrash"
       ],
-      "sha256": "e7c5766ca8ad68e734f63c756a8643fb4ffda4a59b1ef868758da60e0e0b0dbf"
+      "sha256": "d0a5320cd534a8ec6040dbf0694f2cdf145363e2a80101ce159e5c30c4d9abb8"
     },
     {
       "path": "patches/eliza/files-storage-view.patch",
@@ -619333,6 +619344,55 @@
         "NativeMmsDispatch"
       ],
       "sha256": "1a0f97e4ff2a5e7c5c4a0c9410939e51fb1305c3ae68de6ed703856bb3c603c8"
+    },
+    {
+      "path": "patches/eliza/maps-reroute-state-client.patch",
+      "models": [
+        "MapsRerouteOwnership"
+      ],
+      "sha256": "9272a43e0bfe87adc2eaa02db1750f04efdde19dfde373cdc3642311a8bfd17a"
+    },
+    {
+      "path": "patches/eliza/maps-reroute-state-client-manifest.json",
+      "models": [
+        "MapsRerouteOwnership"
+      ],
+      "sha256": "31bc2ee6934e9e10e722de5d2f82b4c99b7758072b99a320b4c0d7b36b3d3881"
+    },
+    {
+      "path": "patches/eliza/maps-reroute-maps-screen-client.patch",
+      "models": [
+        "MapsRerouteOwnership"
+      ],
+      "sha256": "258b3396e12e1b13f5c8d7a043acee40fd6aaf6f8e1cac6633cdc12afb230702"
+    },
+    {
+      "path": "patches/eliza/maps-reroute-maps-screen-client-manifest.json",
+      "models": [
+        "MapsRerouteOwnership"
+      ],
+      "sha256": "c43ba71f1c888d2e75e10f8da6dc11ed7fc50400b3f40b1f260f27add9c4a834"
+    },
+    {
+      "path": "patches/eliza/maps-reroute-device-navigation-client.patch",
+      "models": [
+        "MapsRerouteOwnership"
+      ],
+      "sha256": "3a3059f90fe76abb4a77dcf98f1ccbc888c68c1524462e27ec859894724d03cf"
+    },
+    {
+      "path": "patches/eliza/maps-reroute-device-navigation-client-manifest.json",
+      "models": [
+        "MapsRerouteOwnership"
+      ],
+      "sha256": "3e954e486b6e56cfc8e18dc5f9d138be013d654ac5fbd88659f696761dcb6b33"
+    },
+    {
+      "path": "patches/eliza/files-storage-placement-client.patch",
+      "models": [
+        "BrowserFilesTrash"
+      ],
+      "sha256": "eae0a81ce647710304a6b843daa41308550719348b88de8923b289805d4e70c4"
     }
   ],
   "runtimeAssets": [
