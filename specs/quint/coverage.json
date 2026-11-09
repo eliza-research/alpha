@@ -32469,9 +32469,9 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "f718ef2e3a262826e177090ad31b319d472cd10a42ee0da4ca661355268493ea",
+      "sha256": "e9e52df7bc41f3d176f7c784db75727bec8de5a0bce41efd793cc9f1e28a1e5f",
       "stateAnchors": [],
-      "integrationReview": "2026-11-09: tested native below-host presentation keeps page size and identity through chat, blocks page input beneath host controls, and fences stale backdrop cleanup. TypeScript and isolated renderer pass; exact Android/Pixel acceptance remains open. 2026-11-09: shared overlay bounds, retained dismiss controls and alarm reading order validated in browser layout and interaction checks; storage and handoff transitions are unchanged. Reviewed integration source. Domain allocation is retained; source-hash refresh does not establish semantic refinement. See targeted validation and remaining obligations."
+      "integrationReview": "2026-11-09: landscape Maps guidance uses the same left-to-right flex order as portrait. The change removes grid placement only; no interaction, storage, request, focus, or lifecycle transition changes. Five existing accessibility checks cover portrait, landscape and 200 percent text; the landscape search/start/mute/enable flow also passes. Existing model allocations and unresolved refinement limits are unchanged. 2026-11-09: tested native below-host presentation keeps page size and identity through chat, blocks page input beneath host controls, and fences stale backdrop cleanup. TypeScript and isolated renderer pass; exact Android/Pixel acceptance remains open. 2026-11-09: shared overlay bounds, retained dismiss controls and alarm reading order validated in browser layout and interaction checks; storage and handoff transitions are unchanged. Reviewed integration source. Domain allocation is retained; source-hash refresh does not establish semantic refinement. See targeted validation and remaining obligations."
     },
     {
       "path": "apps/app/src/prototype/photo-library-adapter.ts",
