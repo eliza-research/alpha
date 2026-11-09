@@ -29,17 +29,18 @@ async function main() {
   assert.equal(requestedRoot, root);
   assert.equal(process.cwd(), root);
   assert.equal(sdk, path.join(root, 'artifacts/sdk'));
-  assert.equal(file, path.join(root, 'artifacts/worker/google-host.mjs'));
-  assert.equal(path.dirname(path.dirname(meta)), process.env.TMPDIR);
-  assert.match(path.basename(path.dirname(meta)), /^alpha-google-host-build-/);
+  assert.equal(path.dirname(path.dirname(meta)), path.join(root, 'artifacts'));
+  assert.match(path.basename(path.dirname(meta)), /^\.native-google-host-build-/);
   assert.equal(path.basename(meta), 'meta.json');
+  assert.equal(file, path.join(path.dirname(meta), 'google-host.mjs'));
 
   const input = path.join(root, productInput);
+  const missing = path.join(root, 'unavailable-input.ts'), linked = path.join(root, 'linked-input.ts');
   const coreTarget = path.join(sdk, PLUGIN_CONNECTOR_TARGET);
   const sdkInput = path.join(sdk, 'tsconfig.json');
   const fixtureDependency = path.join(sdk, 'fixture-dependency.ts');
   const repository = path.resolve(import.meta.dirname, '../..');
-  const output = {kind: 'entry-point'};
+  const output = {kind: 'entry-point', async arrayBuffer() {return Uint8Array.from(Buffer.from(bytes)).buffer;}};
   let bytes;
   globalThis.Bun = {
     async build(options) {
@@ -50,26 +51,32 @@ async function main() {
       assert.equal(options.metafile, true);
       if (control.mode === 'compiler-refused') return {success: false, logs: [Error('fixture compiler refused')]};
       if (control.mode === 'no-output') return {success: true, outputs: [], metafile: {inputs: {}}};
-      bytes = fixtureModule(fs.readFileSync(input));
-      const selected = { [input]: {}, [fixtureDependency]: {} };
-      if (control.selectedCore) selected[coreTarget] = {};
+      const loads = [];
       for (const plugin of options.plugins) plugin.setup({
-        onLoad({filter}, load) {
-          if (control.selectedCore && control.mode !== 'missing-transform') {
-            assert.ok(filter.test(coreTarget));
-            assert.equal(load({path: coreTarget}).loader, 'ts');
-          }
-        },
+        onLoad({filter}, load) {loads.push({filter, load});},
         onResolve({filter}, resolve) {
           assert.ok(filter.test('@elizaos/fixture-dependency'));
           assert.equal(resolve({path: '@elizaos/fixture-dependency', importer: input}).path, fixtureDependency);
           assert.equal(resolve({path: 'node:fs', importer: input}), undefined);
         },
       });
+      const selected = {[input]: {}, [fixtureDependency]: {}};
+      if (control.selectedCore) selected[coreTarget] = {};
+      if (control.mode === 'missing-input') selected[missing] = {};
+      if (control.mode === 'linked-input') selected[linked] = {};
+      for (const file of Object.keys(selected)) {
+        const handlers = loads.filter(({filter}) => filter.test(file));
+        const index = file === coreTarget && control.mode === 'missing-transform' ? 1 : 0;
+        const actual = handlers[index].load({path: file, loader: 'ts'});
+        assert.equal(actual.loader, 'ts');
+        if (file === input) bytes = fixtureModule(actual.contents);
+      }
       if (control.mode === 'escape-graph') selected[path.join(root, '..', 'outside-input.ts')] = {};
-      if (control.mode === 'missing-input') selected[path.join(root, 'unavailable-input.ts')] = {};
-      if (control.mode === 'linked-input') selected[path.join(root, 'linked-input.ts')] = {};
+      if (control.mode === 'unbound-graph') selected[path.join(root, 'unavailable-input.ts')] = {};
+      if (control.mode === 'incomplete-graph') delete selected[fixtureDependency];
       if (control.mode === 'input-drift') fs.writeFileSync(input, fixtureSource(2));
+      if (control.mode === 'fixed-drift') fs.appendFileSync(path.join(root, 'scripts/client-speech-patch.mjs'), '\n');
+      if (control.mode === 'worker-drift') fs.writeFileSync(path.join(root, 'artifacts/worker/google-host.mjs'), fixtureModule(fixtureSource(2)));
       if (control.mode === 'sdk-drift') fs.appendFileSync(sdkInput, '\n');
       return {success: true, outputs: [output], metafile: {inputs: selected}};
     },
@@ -82,9 +89,14 @@ async function main() {
     async write(target, artifact) {
       assert.equal(target, file);
       assert.equal(artifact, output);
-      fs.writeFileSync(target, bytes);
+      fs.writeFileSync(target, control.mode === 'output-drift' ? bytes+'// synthetic corruption' : bytes);
       event('module');
       if (control.mode === 'metadata-refused') fs.mkdirSync(meta);
+      if (control.mode === 'missing-input') fs.unlinkSync(missing);
+      if (control.mode === 'linked-input') {
+        fs.unlinkSync(linked);
+        fs.symlinkSync('linked-target.ts', linked);
+      }
     },
   };
   process.argv = [process.execPath, path.join(repository, script), root, sdk, file, meta];

@@ -1947,16 +1947,23 @@
       "tests": [
         "completeBuildPublishesCurrentReceiptTest",
         "staleProductInputRefusesReadbackTest",
-        "lateFailureCanSplitPreviouslyUsablePairTest",
-        "compilerReceiptCanBindLaterProductBytesTest",
-        "sdkPostcheckRefusesAfterOutputTest",
-        "preflightRefusalKeepsPriorPairTest"
+        "refusedCandidateLeavesPriorPairTest",
+        "coherentCompilerInputDriftRefusesPublicationTest",
+        "sdkPostcheckRefusesAfterPrivateOutputTest",
+        "preflightRefusalKeepsPriorPairTest",
+        "refusedManifestRenameRestoresPriorModuleTest",
+        "refusedFirstManifestRenameRemovesCandidateTest",
+        "outputDigestDriftRefusesPublicationTest",
+        "concurrentPeerChangeAbortsPublicationTest"
       ],
       "invariants": [
         "AcceptedReadbackMatchesDeclared",
         "AcceptedBuildRequiresMetadata",
         "ProducerOrder",
-        "BuildScratchReleased"
+        "BuildScratchReleased",
+        "ReceiptBindsCompiledSource",
+        "FailedBuildPreservesPriorPair",
+        "PeerReplacementRetainsPriorReceipt"
       ],
       "sources": [
         "scripts/native-google-host-artifact.mjs",
@@ -1968,12 +1975,12 @@
       ],
       "stateMapping": {
         "source/sdkCurrent": "Exact physical synthetic product input and prepared SDK committed input bytes",
-        "host/receipt": "Actual producer-written module, additive worker manifest digest, product input digest and selected core record",
-        "attempt/outcome": "Actual projection/version/compiler/write/metadata events, temporary cleanup and helper result categories"
+        "host/receipt": "Published module, additive worker manifest digest, compiler input digest and raw selected core preimage",
+        "attempt/outcome": "Actual projection/version/compiler/private write/metadata events, prior exact pair, scratch cleanup and result categories"
       },
       "abstractions": [
         "One selected product input, two identities, one private generic worker artifact and optional representative core target. The actual producer wraps a synthetic compiler port.",
-        "Accepted readback checks current declared input and module bytes. Compiled-input drift and failure after module write remain explicit current source outcomes."
+        "Serial selected builds verify the private candidate against compiled input bindings before publication, retain the prior pair on a definite selected failure and reject a detected peer replacement. Cross-process writers, ambiguous interruption and installed Android staging are separate."
       ],
       "bounds": {
         "maxSamples": 1000,
