@@ -761,3 +761,15 @@ The digest save regression checks that a retired journal clear can settle
 without dispatching a new owner's refresh. Independent replacement saves
 keep their own busy state and exact durable slot. Late rejection text stays
 within its original binding.
+
+`HostedDigestMutation` checks eight mounted schedules and 67 checkpoints
+over that repair. It observes legacy, reviewed and dispatched pending
+records, exact retry, refusal and owner-keyed removal. One hidden stage
+map is compared through the actual requests and publications it produces.
+Native consent, renewal rebind and real provider settlement remain separate.
+
+`CombinedAgentLauncher` checks 21 schedules and 174 checkpoints. The
+baseline records a live child after a metadata-write failure. The repaired
+launcher installs ownership before writing the receipt and reaps only its
+own child before propagating that failure. Exact exit and signal paths,
+validation-only behavior and PID-less spawn-error receipts remain covered.

@@ -42319,7 +42319,8 @@
       "path": "apps/app/src/runtime/hosted-digest-ui.tsx",
       "models": [
         "NoticesAndCaches",
-        "HostedDigestRefresh"
+        "HostedDigestRefresh",
+        "HostedDigestMutation"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -42832,7 +42833,8 @@
         "HostedNoticeQuestion",
         "RendererHostedInbox",
         "RetainedHomeBrief",
-        "HostedDigestRefresh"
+        "HostedDigestRefresh",
+        "HostedDigestMutation"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -49723,7 +49725,7 @@
       "scope": "development-runtime",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "ec24f6c9e8a50f99e2a1702a86b9ad13b759850a412265b412f4258690f5375e",
+      "sha256": "4aa34fa49394ce91155a05aa726136b4b15e81d8da6880034ceb83d3b80eecd4",
       "stateAnchors": []
     },
     {

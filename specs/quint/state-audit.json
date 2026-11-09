@@ -12,7 +12,7 @@
   "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "bfd757b71f39f2dadef03b8c484189bb476b65f08de46b7536653cea1a9e309a",
+  "ledgerSha256": "ff4f7de8230de01f4474816cf8f9220da2005b3dc2861877526cd393e8961574",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -28,10 +28,10 @@
     "parsedFiles": 5628,
     "languageReview": 55,
     "parseErrors": 0,
-    "candidates": 67125,
-    "writeSites": 66559,
-    "writeAssociations": 59736,
-    "asynchronous": 8300,
+    "candidates": 67129,
+    "writeSites": 66562,
+    "writeAssociations": 59739,
+    "asynchronous": 8304,
     "unassignedWrites": 10191
   },
   "files": [
@@ -42893,7 +42893,8 @@
       "sha256": "6213425be96bf5b30f2aafc86459facb8ff5cfaf8b393dc0c11c049cd4c102b3",
       "allocatedModels": [
         "NoticesAndCaches",
-        "HostedDigestRefresh"
+        "HostedDigestRefresh",
+        "HostedDigestMutation"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -42972,7 +42973,8 @@
         "HostedNoticeQuestion",
         "RendererHostedInbox",
         "RetainedHomeBrief",
-        "HostedDigestRefresh"
+        "HostedDigestRefresh",
+        "HostedDigestMutation"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -45928,7 +45930,7 @@
     },
     {
       "path": "scripts/start-combined-agent.mjs",
-      "sha256": "ec24f6c9e8a50f99e2a1702a86b9ad13b759850a412265b412f4258690f5375e",
+      "sha256": "4aa34fa49394ce91155a05aa726136b4b15e81d8da6880034ceb83d3b80eecd4",
       "allocatedModels": [
         "Application",
         "CombinedAgentLauncher"
@@ -45940,12 +45942,12 @@
         {
           "owner": "<module>",
           "line": 31,
-          "bindings": 4,
-          "writes": 0
+          "bindings": 8,
+          "writes": 3
         }
       ],
       "parseErrors": [],
-      "asynchronous": 5,
+      "asynchronous": 9,
       "unassignedWrites": 4
     },
     {
@@ -218608,6 +218610,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "fa861e304a410fe719074a7f0c3d247b98f7875c5bc67d0732affb04afb6a47f"
+    "sha256": "a0b628c6553560778f42afb495de0210db998efd62f5f2801ef0169a47546c1e"
   }
 }
