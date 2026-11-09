@@ -1,0 +1,68 @@
+{
+  "schema": 1,
+  "baseCommit": "b1817660a0347ae19551b9ee296410fe55f02d59",
+  "sourceCommit": "e59d62f00e18bf30da0c8766f50211594b9c2d61",
+  "patches": [
+    {
+      "file": "managed-google-agent.patch",
+      "sha256": "13594c6d62f442957be5b465cbe2c46fb34a35dc12e484ccb066ca1645cb4e58",
+      "targets": [
+        {
+          "path": "packages/app/src/runtime/managed-google-agent/calendar-read-timing.ts",
+          "beforeSha256": null,
+          "afterSha256": "757a082dcff5aea0724cfe8bcdb011d5bfe0f9d26c21ce6c4cda4d3d6f9e5e26"
+        },
+        {
+          "path": "packages/app/src/runtime/managed-google-agent/gmail-agent-mailbox-host.ts",
+          "beforeSha256": null,
+          "afterSha256": "804a265a03d5d52b913bed6efc97ca21528123aa98f1424ddbb3e726618c3004"
+        },
+        {
+          "path": "packages/app/src/runtime/managed-google-agent/index.ts",
+          "beforeSha256": null,
+          "afterSha256": "03cde6b09044b99d80d5b01be80a662b290b167925b840db0f4041d6c89c92f4"
+        },
+        {
+          "path": "packages/app/src/runtime/managed-google-agent/managed-google-agent-broker.ts",
+          "beforeSha256": null,
+          "afterSha256": "e47963de440095f836360bd508d00df7ec1981f8f16d94c10a419f1af3edff8c"
+        },
+        {
+          "path": "packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts",
+          "beforeSha256": null,
+          "afterSha256": "4002afcaefdc347b2de013cb49523dc77545dd1cb896183d8d704678336ddc01"
+        },
+        {
+          "path": "packages/app/src/runtime/managed-google-agent/managed-google-calendar-read.ts",
+          "beforeSha256": null,
+          "afterSha256": "bad76db28c475778a98dcab5682d4bc321e75186639e37bdf71083e25916c55b"
+        },
+        {
+          "path": "packages/app/src/runtime/managed-google-agent/managed-google-client.ts",
+          "beforeSha256": null,
+          "afterSha256": "b508b32b1b98ef7c0521dec6c1ee15b341ae628d8b3c25fec405abc74e34fdab"
+        },
+        {
+          "path": "packages/app/src/runtime/managed-google-agent/managed-google-failure-stage.ts",
+          "beforeSha256": null,
+          "afterSha256": "e1c443bd01eced742ec0526553f1d12fcebd1c6268385f08fb1e9d233bd814e6"
+        },
+        {
+          "path": "packages/app/src/runtime/managed-google-agent/managed-google-route-policy.ts",
+          "beforeSha256": null,
+          "afterSha256": "68d3cc45ce4558ef94c144756da3933748eca575fa351b4f668b1f0253a5345c"
+        },
+        {
+          "path": "packages/app/src/runtime/managed-google-agent/native-google-agent-host.ts",
+          "beforeSha256": null,
+          "afterSha256": "9c631b8cd11524b4ccf198d366cbdadcb690587dc8f907fe86bc5cbd0f1fdb73"
+        },
+        {
+          "path": "packages/app/src/runtime/managed-google-agent/native-google-cloud-port.ts",
+          "beforeSha256": null,
+          "afterSha256": "cbfd0f67675663091044e74196ad4592e68bf691c38fab31fb933fefbf8bc053"
+        }
+      ]
+    }
+  ]
+}

@@ -37,7 +37,8 @@ const productFiles = [
   'scripts/prepare-client-features.mjs', 'scripts/client-speech-patch.mjs', 'package.json', 'tsconfig.json',
   'vendor/eliza/tsconfig.json',
 ];
-const optionalFiles = ['patches/eliza/cloud-speech-client-manifest.json', 'patches/eliza/cloud-speech-client.patch'];
+const optionalFiles = ['patches/eliza/cloud-speech-client-manifest.json', 'patches/eliza/cloud-speech-client.patch',
+    'patches/eliza/managed-google-agent-manifest.json', 'patches/eliza/managed-google-agent.patch'];
 const workerFiles = ['node_modules/smthrs/package.json', 'node_modules/zod/package.json',
   'node_modules/effect/package.json', 'node_modules/@smthrs/engine/package.json', 'dependencies.json', 'lib/worker.js'];
 
@@ -220,25 +221,27 @@ function setup(number, simpleCore = false) {
 
 function bunCompatibility(bun) {
   const {root, sdk, write} = setup('bun', true);
-  const inputFiles = {
-    'backend/typed.ts': 'export const value: number = 1;',
-    'backend/module.mts': 'export const value: number = 2;',
-    'backend/common.cts': 'export const value: number = 3;',
-    'backend/ordinary.js': 'export const value = 4;',
-    'backend/module.mjs': 'export const value = 5;',
-    'backend/common.cjs': 'module.exports = {value: 6};',
-    'backend/data.json': '{"value":7}',
-    'backend/component.tsx': 'export const value = <span />.value;',
-    'backend/component.jsx': 'export const value = <span />.value;',
-    'backend/text.txt': 'synthetic fixture text',
+  const fixtureModules = {
+    'typed.ts': 'export const value: number = 1;',
+    'module.mts': 'export const value: number = 2;',
+    'common.cts': 'export const value: number = 3;',
+    'ordinary.js': 'export const value = 4;',
+    'module.mjs': 'export const value = 5;',
+    'common.cjs': 'module.exports = {value: 6};',
+    'data.json': '{"value":7}',
+    'component.tsx': 'export const value = <span />.value;',
+    'component.jsx': 'export const value = <span />.value;',
+    'text.txt': 'synthetic fixture text',
   };
   // Use inert automatic-JSX substitutes from a closed package in this scratch tree.
   const jsxRoot = path.join(root, 'node_modules', 'fixture-jsx');
   const jsxPackage = path.join(jsxRoot, 'package.json'), jsxRuntime = path.join(jsxRoot, 'runtime.js');
   write(jsxPackage, '{"name":"fixture-jsx","exports":{"./jsx-runtime":"./runtime.js","./jsx-dev-runtime":"./runtime.js"}}');
   write(jsxRuntime, 'export const jsx = () => ({value: 8}); export const jsxDEV = jsx;');
-  for (const name of ['backend/component.tsx', 'backend/component.jsx'])
-    inputFiles[name] = '/** @jsxImportSource fixture-jsx */\n' + inputFiles[name];
+  for (const name of ['component.tsx', 'component.jsx'])
+    fixtureModules[name] = '/** @jsxImportSource fixture-jsx */\n' + fixtureModules[name];
+  const inputFiles = Object.fromEntries(Object.entries(fixtureModules)
+    .map(([name, bytes]) => [path.join(path.dirname(productInput), name), bytes]));
   for (const [name, bytes] of Object.entries(inputFiles)) write(path.join(root, name), bytes);
   const coreName = path.relative(root, path.join(sdk, PLUGIN_CONNECTOR_TARGET));
   const entry = [

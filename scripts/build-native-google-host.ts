@@ -6,7 +6,7 @@ import {coreStateBuildPlugin,coreStateBuildRecord,coreStateRequiredTargets} from
 
 const [root,sdk,file,metadataFile]=process.argv.slice(2);
 if(!root||!sdk||!file||!metadataFile)throw Error('Native host build paths are required');
-const entry=path.join(root,'backend/native-google-agent-host.ts');
+const entry=path.join(root,'scripts/native-google-product-host.ts');
 const core=coreStateBuildPlugin(root,sdk);
 const consumed=new Map<string,string>();
 const result=await Bun.build({
@@ -51,7 +51,7 @@ for(const [name,value] of Object.entries(result.metafile.inputs)){
  if(!digest||graph.has(key))throw Error('Native host source graph lacks exact input bytes: '+key);
  graph.set(key,{input:value,digest});
 }
-if(graph.size!==consumed.size||!graph.has('backend/native-google-agent-host.ts'))
+if(graph.size!==consumed.size||!graph.has('scripts/native-google-product-host.ts'))
  throw Error('Native host compiler input graph is incomplete');
 const inputs=Object.fromEntries([...graph].map(([name,row])=>[name,row.input]));
 const inputHashes=Object.fromEntries([...graph].map(([name,row])=>[name,row.digest]));

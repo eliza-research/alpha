@@ -42,15 +42,13 @@ path: it needs only `agent:prepare` and records release APKs without the payload
 `distributable: false`.
 
 `npm run android:build -- --test-mocks` passes `-PELIZA_DEV_ALLOW_TEST_MOCKS=1` and writes
-only to `artifacts/test-mocks/`. It attaches `android/app/src/testMocks` (DevelopmentAgent
-and voice plugins, synthetic autofill service, loopback cleartext config, fixture-package
-permission and queries) to debug variants and sets `BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS`;
+only to `artifacts/test-mocks/`. It attaches `android/app/src/testMocks` (synthetic autofill service, loopback
+cleartext config, fixture-package permission and queries) to debug variants and sets `BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS`;
 `DailyApps.surfaceInfo().developmentBuild` reports that field. Release variants never
 receive the source set. Without `--test-mocks` the build script removes both
 `ELIZA_DEV_ALLOW_TEST_MOCKS` and `VITE_ELIZA_DEV_ALLOW_TEST_MOCKS` from its child
 environment. Test-mocks APKs are never distribution or acceptance artifacts.
-Instrumentation cases that need a loopback HTTP fixture server or the DevelopmentAgent
-plugin assume `BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS`: flag-off distribution debug
+Instrumentation cases that need a loopback HTTP fixture server assume `BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS`: flag-off distribution debug
 APKs skip them. The CI job that ran them on test-mocks APKs was removed on October 8 with
 the other smoke suites, so they now run only in a direct instrumentation run of a
 test-mocks build on an owned disposable emulator.

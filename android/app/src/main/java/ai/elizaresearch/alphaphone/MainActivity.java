@@ -326,11 +326,6 @@ public class MainActivity extends BridgeActivity {
   // Dialer-role components follow the verified image; Android's role dialog stays the owner's choice.
   AlphaTelephonyRoles.sync(this);
   if (AlphaImageCapability.verified(this)) registerPlugin(AlphaTelephonyPlugin.class);
-  if (BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS) {
-   // Present only in debug builds made with -PELIZA_DEV_ALLOW_TEST_MOCKS=1 (src/testMocks).
-   try { registerPlugin(Class.forName("ai.elizaresearch.alphaphone.DevelopmentAgentPlugin").asSubclass(com.getcapacitor.Plugin.class)); }
-   catch (ClassNotFoundException ignored) { /* Test-mocks overlay not attached to this build. */ }
-  }
   AlphaCanonicalNotifications.captureTap(this,getIntent());
   super.onCreate(state);
   // Capacitor displays its no-WebView fallback without creating a bridge when

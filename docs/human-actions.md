@@ -542,7 +542,7 @@ distinct gates are recorded in `android/aosp/pixel10a-qualification-gates.json`
 
 - Who: each developer or operator who runs a development host or the resident instrumentation.
 - Do: keep a Cerebras key in the owner-only file `~/.config/alphaphone/cerebras-key` (mode 0600).
-  It serves `scripts/start-local-agent.mjs` and `scripts/android-resident-instrumentation.mjs`;
+  Local resident launchers and `scripts/android-resident-instrumentation.mjs` can read it;
   product phones refuse direct keys.
 - Seam: [local agent development](local-agent-development.md).
 - Verify: the scripts refuse a group- or world-readable file.

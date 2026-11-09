@@ -2,9 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 if(!process.versions.bun&&!process.execArgv.some(arg=>arg==='--import=tsx'||arg==='tsx')){const c=spawnSync(process.execPath,['--conditions=eliza-source','--import','tsx',process.argv[1]],{stdio:'inherit',timeout:60000});if(c.error)throw c.error;process.exit(c.status??1);}
-const {createCalendarReadTiming}=await import('../backend/calendar-read-timing.ts');
-const {createManagedGoogleAgentHost}=await import('../backend/managed-google-agent-host.ts');
-const {createNativeGoogleCloudPort}=await import('../backend/native-google-cloud-port.ts');
+const {createCalendarReadTiming}=await import('../.eliza/client-features/packages/app/src/runtime/managed-google-agent/calendar-read-timing.ts');
+const {createManagedGoogleAgentHost}=await import('./support/managed-google-agent.mjs');
+const {createNativeGoogleCloudPort}=await import('./support/managed-google-agent.mjs');
 const marker='NEVER_LOG_token_email_query_event_body';
 const user='11111111-1111-4111-8111-111111111111',org='22222222-2222-4222-8222-222222222222',grant='33333333-3333-4333-8333-333333333333';
 const input=path=>({url:'https://api.eliza.app'+path+'?secret='+marker,method:'GET',credentialReference:marker,signal:new AbortController().signal});

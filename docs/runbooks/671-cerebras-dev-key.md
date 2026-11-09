@@ -22,16 +22,11 @@ while preparing this; the status check uses `lstat` only.
 
    | Script | How the key is used | Output |
    | --- | --- | --- |
-   | `scripts/start-local-agent.mjs` (honours `ALPHA_CEREBRAS_KEY_FILE`) | child env `CEREBRAS_API_KEY` for `scripts/dev-agent.mjs` | fixed error text only |
    | `scripts/android-resident-instrumentation.mjs` | written over `adb` stdin into the app sandbox of a disposable secondary user (umask 077), removed with the user | prints `{runId, user, test, passed, proof, last 25 instrumentation lines}`; the fixture with the key is not printed |
    | `scripts/start-combined-agent.mjs` | child env; lstat, owner uid, no symlink, 0600 | metadata without the key |
    | `scripts/start-local-remote.mjs` (or `CEREBRAS_API_KEY` from the environment) | runtime settings | metadata without the key |
    | `scripts/start-local-voice-agent.mjs`, `scripts/start-reviewed-workflow-agent.mjs` | child env | metadata without the key; child output goes to an owner-only `server.log` |
    | `scripts/scan-archived-apks.py` | searches archived APKs for the key (raw, UTF-16, base64, hex) | PASS line only |
-
-   `npm run agent:dev` (`scripts/dev-agent.mjs`) does not read the file: it needs `CEREBRAS_API_KEY`
-   and `CEREBRAS_BASE_URL` in the environment (as `start-local-agent.mjs` provides). Its errors are
-   fixed texts.
 
    Residual risks (not leaks found, worth knowing): child runtimes receive the key in their
    environment and write their own output to owner-only `server.log` files, which this audit does not
@@ -65,7 +60,7 @@ while preparing this; the status check uses `lstat` only.
    is a separate reviewed PR; re-run `cerebras-key-status.mjs audit` after it (it will list the
    workflow, which is expected).
 3. **Evidence:** comment on #671 that the file or secret is provisioned (no value, no length, no
-   prefix), and record a resident instrumentation run or an `agent:dev` session that reached
+   prefix), and record a resident instrumentation run or a local resident session that reached
    inference (emulator or host evidence; it does not prove a production phone, which never uses this
    key).
 4. Optional hardening (separate PR, decision 2): add the `scan-bundle` patterns to

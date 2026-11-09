@@ -120,30 +120,11 @@ and [fused speech](fused-speech.md) (the libelizainference engine used on the ph
 
 ## Development runtime
 
-`backend/runtime.ts` composes the pinned runtime with Alpha's development character,
-allowed proposals and local conversation identity. It deliberately registers only
-the configured Cerebras text provider: no embedding handlers, fake vectors or
-semantic-recall claim. Conversation history remains stored. `backend/loader.ts`
-authenticates source before bundling through the upstream consumer resolver.
-
-```sh
-npm ci --prefix backend --ignore-scripts --legacy-peer-deps
-npm run agent:dev
-```
-
-Use an already authorized environment with `CEREBRAS_API_KEY` and
-`CEREBRAS_BASE_URL`; do not store credentials in the repository or APK. The host
-prints an owner-only temporary token file path. For an owned debug emulator,
-`node scripts/configure-dev-agent.mjs` provisions the debug bridge and port reverse.
-`npm run agent:diagnostic` selects the direct Cerebras request path. It uses the same pinned canonical tool schemas, validators and non-effecting preparation host as `agent:dev`; it does not send diagnostic turns through runtime conversation memory. Both commands explicitly enable `ELIZA_DEV_ALLOW_TEST_MOCKS=1` and require Bun. For the full local host and resident
-runtime, follow [local agent setup](local-agent-development.md).
-
-`bun run backend/test-runtime.ts` is separate live acceptance: it uses a private
-fixture for real model turns, new-process history, cancellation and proposal-only
-navigation and reminder actions. It no longer checks a note proposal: its development
-`create_note` action is not in the resident. Note and reminder review is a simulation: it never writes a note or schedules a notification. View navigation can open only a registered local view after review. `scripts/test-dev-agent.mjs` exercises the host protocol and checks that proposals are marked simulated. Neither proves Android UI execution. Local ASR's
-host-only and HTTP checks were in the retired `test-local-asr.mjs` (Whisper era, deleted on
-2026-10-14); the current ASR route contract is checked against the pinned upstream workers.
+Android development and instrumentation use the Android-resident Eliza agent.
+`npm run dev` launches the pinned resident runtime locally for browser development,
+and `npm run dev:cloud` uses that runtime with Eliza Cloud. Follow the
+[local agent setup](local-agent-development.md) for provider setup and validation.
+Renderer fixtures remain available through the explicit test-mocks switch.
 
 ## Verification boundaries
 

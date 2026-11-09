@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import os from 'node:os';
 import { upstreamNativeSource } from './upstream-native-source.mjs';
-import { clientSpeechPatch } from './client-speech-patch.mjs';
+import { clientSpeechPatch, clientManagedGooglePatch } from './client-speech-patch.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -173,6 +173,7 @@ export const CLIENT_FEATURE_PATHS = [
   'plugins/plugin-calendar/src/index.ts',
   'plugins/plugin-calendar/src/internal/time.ts',
   'plugins/plugin-calendar/src/service/managed-calendar-host.ts',
+  'plugins/plugin-assistant/src/utils/html-entities.ts',
   'plugins/plugin-notes/src/capabilities.ts',
   'plugins/plugin-notes/src/client/notes-api.ts',
   'plugins/plugin-notes/src/note-authored.ts',
@@ -402,9 +403,14 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
     log?.(`Client feature dependency exception: ${exception.package} ${exception.dependency} ${exception.range}, installed ${exception.installed}: ${exception.reason}`);
   const source = new Map(CLIENT_FEATURE_PATHS.flatMap(prefix => [...upstream.read(prefix)]));
   const sourceFiles = Object.fromEntries([...source].map(([name, file]) => [name, file.sha256]));
-  const speechPatch=clientSpeechPatch(root,upstream);
-  for(const [name,file] of speechPatch.files)source.set(name,file);
   const clientPatches = {};
+  for (const [key, patch] of [
+    ['speechPatch', clientSpeechPatch(root, upstream)],
+    ['managedGooglePatch', clientManagedGooglePatch(root, upstream)],
+  ]) {
+    for (const [name, file] of patch.files) source.set(name, file);
+    if (patch.receipt) clientPatches[key] = patch.receipt;
+  }
   for (const [key, prefix, name] of CLIENT_FEATURE_PATCHES) {
     const manifestFile = path.join(root, 'patches/eliza', prefix + '-manifest.json');
     if (!regularPath(manifestFile)) continue;
@@ -494,7 +500,7 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
   project('alpha-voice-core-protocol.ts','export {ElizaError} from "./packages/core/src/errors";\nexport {redactTrailingArgs} from "./packages/core/src/security/log-redaction";\nexport {parseViewInteractionClientId, AGENT_SURFACE_CAPABILITY_IDS} from "./packages/core/src/views/view-interact-protocol";\nexport {findViewActionHandoff, type ViewActionHandoff} from "./packages/core/src/views/view-action-handoff";\nexport type {PermissionState} from "./packages/core/src/types/permissions";\n');
   }
   const files = Object.fromEntries([...source].map(([name, file]) => [name, file.sha256]));
-  const provenance = { baseCommit: upstream.pin, sourceFiles, projectionVersion:projectVoice?12:0, ...(speechPatch.receipt?{speechPatch:speechPatch.receipt}:{}), ...clientPatches, files };
+  const provenance = { baseCommit: upstream.pin, sourceFiles, projectionVersion:projectVoice?12:0, ...clientPatches, files };
   const parent = path.join(root, '.eliza'), destination = path.join(parent, 'client-features');
   regularPath(parent, true);
   const stamp = path.join(destination, '.source.json');
@@ -510,7 +516,7 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
         }
         const previous = JSON.parse(fs.readFileSync(stamp));
         const actual = inventory(destination); delete actual['.source.json'];
-        return previous.baseCommit === upstream.pin && previous.projectionVersion === provenance.projectionVersion && JSON.stringify(previous.speechPatch ?? null) === JSON.stringify(provenance.speechPatch ?? null) && Object.entries(clientPatches).every(([key, value]) => JSON.stringify(previous[key] ?? null) === JSON.stringify(value)) && matches(previous.files || {}, files) && matches(actual, files);
+        return previous.baseCommit === upstream.pin && previous.projectionVersion === provenance.projectionVersion && Object.keys({...previous, ...clientPatches}).filter(key => key.endsWith('Patch')).every(key => JSON.stringify(previous[key] ?? null) === JSON.stringify(clientPatches[key] ?? null)) && matches(previous.files || {}, files) && matches(actual, files);
       } catch (error) { if (error.code !== 'ENOENT' || attempt >= 4) throw error; }
     }
   };
