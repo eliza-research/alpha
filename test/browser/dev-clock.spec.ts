@@ -1,7 +1,7 @@
 import {test,expect} from '@playwright/test';
 test.use({timezoneId:'UTC'});
 test.beforeEach(async({page})=>{await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));await page.clock.setFixedTime(new Date('2027-06-01T06:00Z'));await page.goto('/?mode=dev');});
-async function open(page:any){await page.getByRole('button',{name:'Calendar',exact:true}).click();await page.getByRole('button',{name:'Clock alarms',exact:true}).click();return page.getByRole('dialog',{name:'Clock alarms',exact:true});}
+async function open(page:any){await page.getByRole('button',{name:'Workflows',exact:true}).click();await page.getByRole('button',{name:'Clock alarms',exact:true}).click();return page.getByRole('dialog',{name:'Clock alarms',exact:true});}
 test('browser Clock sets, lists, reloads and deletes an alarm through rendered controls',async({page},info)=>{
  let d=await open(page);
  // C-14: browser alarms are not alarm-clock guarantees. The caveat stays visible with or without alarms.
@@ -47,7 +47,7 @@ test('a queued alarm deletion disables its controls until the failed write settl
 test('mock mode simulates a reviewed Clock request without any Clock handoff',async({page})=>{
  await page.goto('/?mode=mock');
  await page.evaluate(async()=>{const {BrowserDaily}=await import('/src/browser/daily.ts');const w=window as any;w.clockCalls=[];const original=BrowserDaily.prototype.clockHandoff;BrowserDaily.prototype.clockHandoff=function(input:any){w.clockCalls.push(input);return original.call(this,input);};});
- await page.getByRole('button',{name:'Calendar',exact:true}).click();await page.getByRole('button',{name:'Clock alarms',exact:true}).click();
+ await page.getByRole('button',{name:'Workflows',exact:true}).click();await page.getByRole('button',{name:'Clock alarms',exact:true}).click();
  const d=page.getByRole('dialog',{name:'Clock alarms',exact:true});await d.getByLabel('Alarm time',{exact:true}).fill('06:45');await d.getByLabel('Alarm label',{exact:true}).fill('Morning');
  await d.getByRole('button',{name:'Review Clock request',exact:true}).click();await expect(d).toContainText('06:45');
  await d.getByRole('button',{name:'Confirm Clock request',exact:true}).click();await expect(d).toContainText('Mock mode: Clock request simulated. No alarm was changed and no app was opened.');

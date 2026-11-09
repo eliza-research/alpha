@@ -128,6 +128,13 @@ export class AutomationsProtocol {
   const result=object(response),trigger=object(result.trigger);if(trigger.id!==id||trigger.enabled!==enabled)throw Error('Prompt state was not confirmed.');}
  async deletePrompt(id:string,signal:AbortSignal){if(object(await this.request('/api/triggers/'+automationId(id),'DELETE',undefined,signal)).ok!==true)throw Error('Prompt deletion was not confirmed.');}
  async runPrompt(id:string,signal:AbortSignal){const result=object(await this.request('/api/triggers/'+automationId(id)+'/execute','POST',{},signal)),run=object(result.result);if(result.ok!==true||!['success','error','skipped'].includes(run.status))throw Error('Prompt execution was not confirmed.');if(run.status!=='success')throw new AutomationOutcomeError(text(run.error)||'The prompt did not run. Check its execution history.');return result;}
+ async editSchedule(id:string,instructions:string,trigger:{kind:'cron';expression:string;tz:string}|undefined,signal:AbortSignal){
+  const promptInstructions=instructions.trim();
+  if(!promptInstructions)throw Error('Enter instructions for this schedule.');
+  const response=object(await this.request('/api/lifeops/scheduled-tasks/'+automationId(id)+'/edit','POST',{promptInstructions,...(trigger?{trigger}:{})},signal));
+  const task=object(response.task);
+  if(task.taskId!==id||task.promptInstructions!==promptInstructions||(trigger&&(task.trigger?.kind!==trigger.kind||task.trigger.expression!==trigger.expression||task.trigger.tz!==trigger.tz)))throw Error('Schedule edit was not confirmed.');
+ }
  async scheduledVerb(id:string,verb:ScheduledVerb,signal:AbortSignal):Promise<unknown>{
   const result=object(await this.request('/api/lifeops/scheduled-tasks/'+automationId(id)+'/'+verb,'POST',verb==='snooze'?{minutes:60}:{},signal));
   if(verb==='fire'){const fire=object(result.fire);if(!['fired','raced','skipped','dispatch_deferred','dispatch_failed'].includes(fire.kind))throw Error('Scheduled execution was not confirmed.');if(!['fired','raced'].includes(fire.kind))throw new AutomationOutcomeError(text(fire.reason)||text(fire.error)||'This item did not run. Read its current status before trying again.');}

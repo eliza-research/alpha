@@ -131,7 +131,7 @@ for (const mode of ['confirm','transcribed','zone','modal','unknown','receipt-lo
     if(mode==='zone')await page.evaluate(()=>{const original=Intl.DateTimeFormat.prototype.resolvedOptions;Intl.DateTimeFormat.prototype.resolvedOptions=function(){return {...original.call(this),timeZone:'Pacific/Honolulu'};};});
     if(mode==='modal'){
       await page.evaluate(()=>window.dispatchEvent(new Event('alpha-back',{cancelable:true})));
-      await page.getByRole('button',{name:'Calendar',exact:true}).click();await page.getByRole('button',{name:'Clock alarms',exact:true}).click();
+      await page.getByRole('button',{name:'Workflows',exact:true}).click();await page.getByRole('button',{name:'Clock alarms',exact:true}).click();
       const context=await page.evaluate(async()=> (await import('/src/runtime/alpha-client.ts')).alphaClient.getState().context);
       expect(context.selectedObject.kind).toBe('clock-draft');
       await page.getByLabel('Alarm label',{exact:true}).fill('Edited draft');
@@ -230,6 +230,6 @@ test('agent Clock handoff: browser development refuses a repeat instead of savin
   expect(outcome.message).not.toContain('Alarm saved.');
   // A one-time request through the same call still saves exactly one alarm.
   expect(await page.evaluate(async()=>{const {DailyApps}=await import('/src/daily.ts');const result=await DailyApps.clockHandoff({action:'set',hour:7,minute:0,label:'Once',reviewed:true});return [result.message,(await DailyApps.listReminders()).reminders.filter((row:any)=>row.id.startsWith('alarm_')).length];})).toEqual(['Alarm saved.',1]);
-  await page.getByRole('button',{name:'Calendar',exact:true}).click();await page.getByRole('button',{name:'Clock alarms',exact:true}).click();
+  await page.getByRole('button',{name:'Workflows',exact:true}).click();await page.getByRole('button',{name:'Clock alarms',exact:true}).click();
   const dialog=page.getByRole('dialog',{name:'Clock alarms',exact:true});await expect(dialog.getByText('Once',{exact:true})).toBeVisible();await expect(dialog.getByText('Weekday wake',{exact:true})).toHaveCount(0);
 });

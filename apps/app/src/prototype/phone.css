@@ -770,3 +770,14 @@ button[aria-label$=" on or off"][aria-pressed]::before { content:""; position:ab
 /* Recording controls each need a full line at large text; their labels are never clipped by the screen. */
 .alpha-text-xl [data-alpha-recorder-actions] { flex-direction:column; align-items:stretch!important; }
 .alpha-text-xl [data-alpha-recorder-actions] > button { flex:none!important; width:100%; min-width:0; box-sizing:border-box; }
+
+.schedule-controls { display:flex; align-items:center; gap:8px; }
+.schedule-controls > button,.schedule-controls summary { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:44px; border-radius:22px; cursor:pointer; }
+.schedule-controls > button { padding:0 16px; background:var(--fg); color:var(--bg); }
+.schedule-controls summary { width:44px; background:var(--s2); list-style:none; }
+.schedule-controls summary::-webkit-details-marker { display:none; }
+.schedule-controls details { position:relative; }
+.schedule-controls details > div { position:absolute; z-index:4; left:0; min-width:10em; padding:4px; background:var(--bg); box-shadow:0 4px 20px var(--shc); border:1px solid var(--line); border-radius:16px; }
+.schedule-controls details button { display:block; text-align:start; width:100%; min-height:44px; padding:4px 12px; }
+.schedule-instructions { display:grid; gap:6px; }
+.schedule-instructions textarea { min-height:6em; padding:12px; border-radius:12px; font:inherit; background:var(--s2);color:var(--fg); }

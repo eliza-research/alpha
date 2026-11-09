@@ -82,7 +82,7 @@ export function installWorkflowAdapter(Component:any,views:Bag){
  let phase='idle',status=agentAvailabilityNotice(),operation:AbortController|null=null,generation=0,reviewRun=false,reviewActivation=false,reviewCancel=false;
  const lockKey=(id:string)=>{const s=connectionController.getSnapshot().session;if(!s)throw new Error('Workflow account unavailable');return workflowIntentKey(s,id);};
  const locked=(id:string)=>intentStore?.locked(lockKey(id))??true;
- let intentStore:WorkflowIntentStore|null=null,recovery:AbortController|null=null;
+ let intentStore:WorkflowIntentStore|null=null;
  let suspended=false,listPhase:'idle'|'loading'|'ready'|'failed'='idle',listSession:string|null=null,listReadAt:number|null=null,homeVisit:string|null=null;
  // Retirement still cancels work, but must not render after document storage is revoked.
  const publish=()=>{if(!suspended&&!document.hidden)owner?.vset('workflows',{remoteWorkflowTick:Date.now()});};
@@ -93,7 +93,7 @@ export function installWorkflowAdapter(Component:any,views:Bag){
   await authoring.flushForAppUpdate(exact);
  };
  let noticeQuestion:(()=>void)|undefined;
- const clear=(keepList=false)=>{noticeQuestion?.();noticeQuestion=undefined;unadmitted=null;reviewResend=false;intentStore=null;recovery?.abort();recovery=null;authoring.close();phoneReview=null;phoneSteps=[];phoneConfirm=null;phoneStatus='';generation++;operation?.abort();operation=null;editor=null;removedList=false;lifecycleAvailable=false;lifecycleReview=false;unknownReview=false;reviewRerun=false;noSchedule=false;if(!keepList){flows=[];listPhase='idle';listSession=null;}homeVisit=null;detail=null;detailSession=null;runs=[];receipt=null;approvalReceipt=null;approvalReview=null;reviewRun=false;reviewActivation=false;reviewCancel=false;phase='idle';publish();};
+ const clear=(keepList=false)=>{noticeQuestion?.();noticeQuestion=undefined;unadmitted=null;reviewResend=false;intentStore=null;authoring.close();phoneReview=null;phoneSteps=[];phoneConfirm=null;phoneStatus='';generation++;operation?.abort();operation=null;editor=null;removedList=false;lifecycleAvailable=false;lifecycleReview=false;unknownReview=false;reviewRerun=false;noSchedule=false;if(!keepList){flows=[];listPhase='idle';listSession=null;}homeVisit=null;detail=null;detailSession=null;runs=[];receipt=null;approvalReceipt=null;approvalReview=null;reviewRun=false;reviewActivation=false;reviewCancel=false;phase='idle';publish();};
  async function work(task:(client:NonNullable<ReturnType<typeof connectionController.getWorkflowClient>>['client'],signal:AbortSignal,valid:()=>boolean,sessionId:string,intents:WorkflowIntentStore)=>Promise<void>){
   if(operation)return;const binding=connectionController.getWorkflowClient();if(!binding){showAgentStatus(owner);return;}
   const controller=new AbortController(),token=++generation;operation=controller;phase='busy';publish();const valid=()=>token===generation&&!controller.signal.aborted&&binding.sessionId===connectionController.getWorkflowClient()?.sessionId;
@@ -170,13 +170,6 @@ export function installWorkflowAdapter(Component:any,views:Bag){
   const captured=intentStore,epoch=generation;if(!captured)return;captured.invalidate();
   if(operation||suspended||document.hidden)return;
   void captured.load().catch(()=>captured.invalidate()).finally(()=>{if(intentStore===captured&&epoch===generation)publish();});
- };
- const recoverIntents=async()=>{
-  const captured=intentStore,epoch=generation;if(!captured||operation||Capacitor.isNativePlatform())return;
-  recovery?.abort();const controller=recovery=new AbortController();
-  try{const domain=await captured.recoveryDocument(),{openDomainRecovery}=await import('../browser/domain-recovery');if(controller.signal.aborted||captured!==intentStore||epoch!==generation)return;
-   openDomainRecovery({capture:signal=>domain.capture(signal),reset:async(expected,signal)=>{await domain.reset(expected,signal);refreshIntents();}},'workflow requests','Browser workflow request recovery','Download pending requests before resetting. An uncertain operation may already have run. Check execution history before repeating it. Reset clears only this agent account’s browser requests; it does not cancel executions, undo changes or revoke approvals. Close older Alpha tabs before continuing.',controller.signal);
-  }catch{if(!controller.signal.aborted&&captured===intentStore)api?.toast('Workflow request recovery unavailable. Saved requests remain retained.');}
  };
  const refresh=async()=>{
   if(operation)return;
@@ -398,7 +391,6 @@ export function installWorkflowAdapter(Component:any,views:Bag){
  const waitingSession=connectionController.getSnapshot().session?.sessionId;
  const cards:Bag[]=flows.map(f=>({name:f.name,short:f.description||'Agent workflow',statusLabel:f.removed?'Removed':poster.waiting(waitingSession,f.id)?'Waiting for you':f.active?'Active':'Paused',on:f.active,track:track(f.active),kx:kx(f.active),dim:'',failed:false,open:()=>void open(f.id),toggle:()=>{void open(f.id);current.toast('Open the workflow to review it before pausing.');}}));
  cards.unshift({name:phase==='busy'?'Loading workflows…':binding?status:(agentAvailabilityNotice(connectionController.getSnapshot(),'Agent connection required')||'Workflows'),short:binding?'Tap to refresh from this agent':residentAlwaysPresent||!testMocksEnabled?'Workflows appear when your agent is running':'Connect your remote agent to manage workflows',on:false,track:track(false),kx:kx(false),dim:'',failed:false,open:()=>binding?void refresh():connectionController.open(),toggle:()=>binding?void refresh():connectionController.open()});
- if(intentStore&&!Capacitor.isNativePlatform())cards.push({name:'Workflow request recovery',short:'Back up or reset this agent’s pending requests',on:false,track:track(false),kx:kx(false),dim:'',failed:false,open:()=>void recoverIntents(),toggle:()=>{}});
  if(lifecycleAvailable)cards.push({name:removedList?'Active workflows':'Removed workflows',short:removedList?'Return to current workflows':'Review removed workflows and retained execution history',on:false,track:track(false),kx:kx(false),dim:'',failed:false,open:()=>{if(operation)return;removedList=!removedList;detail=null;void refresh();},toggle:()=>{}});
  for(const id of operation||phase==='scheduled'?[]:pendingLifecycle())if(!flows.some(f=>f.id===id))cards.push({name:'Pending workflow change',short:'Tap to reconcile this exact removal or restore',on:false,track:track(false),kx:kx(false),dim:'',failed:false,open:()=>void open(id),toggle:()=>{}});
  if(Capacitor.isNativePlatform())cards.push({name:'Saved workflow notification',short:'Open the exact execution from a notification tap',on:false,track:track(false),kx:kx(false),dim:'',failed:false,open:()=>void checkNotice('user'),toggle:()=>{}});
