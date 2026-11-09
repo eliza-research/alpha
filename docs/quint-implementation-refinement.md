@@ -28,9 +28,11 @@ fails the full campaign when a runtime model has no passing current receipt.
 
 `complete-finite-helper` applies only to the enumerated helper domain stated in
 its receipt. `bounded-component` and `bounded-orchestration` preserve their
-schedule and projection limits. The aggregate records unobserved fields and
-unexercised actions as open obligations. `--require-complete` fails while the
-universal application refinement obligation remains open.
+schedule and projection limits. The aggregate lists unobserved fields and
+declared actions that the source campaigns never traversed. A rejected
+action records guard evidence separately from evidence of a transition.
+`--require-complete` fails while the universal application refinement
+obligation remains open.
 
 ## First checked source milestone
 

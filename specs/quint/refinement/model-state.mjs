@@ -84,3 +84,28 @@ export function modelStateInventory(modelPath,moduleName){
 export function unobservedStateFields(inventory,observations){
   return inventory.fields.filter(field=>!observations.some(observed=>field===observed||field.startsWith(observed+'.')));
 }
+
+export function traceActionCoverage(receipts) {
+  const initializers = new Set();
+  const transitions = new Set();
+  const rejections = new Set();
+  for (const receipt of receipts) {
+    for (const trace of receipt.traceInputs) {
+      initializers.add(trace.init?.name || 'init');
+      for (const step of trace.steps || []) {
+        if (!step.action) continue;
+        const actions = Array.isArray(step.action) ? step.action : [step.action];
+        for (const action of actions) {
+          const observed = action.reject ? rejections : transitions;
+          observed.add(action.name);
+        }
+      }
+    }
+  }
+  return {
+    modelInitializers: [...initializers].sort(),
+    modelActions: [...new Set([...transitions, ...rejections])].sort(),
+    modelTransitionActions: [...transitions].sort(),
+    modelRejectedActions: [...rejections].sort(),
+  };
+}
