@@ -1,14 +1,12 @@
-// The Files contract is part of the pinned SDK. The earlier proposed patch remains an archive.
+// Check the pinned Files SDK and the client copy used by Alpha Phone.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import {createHash} from 'node:crypto';
 import {tsImport} from 'tsx/esm/api';
 
 const root=path.resolve(import.meta.dirname,'..');
-const manifest=JSON.parse(fs.readFileSync(path.join(root,'patches/eliza/files-browser-agent.json'),'utf8'));
-const lock=JSON.parse(fs.readFileSync(path.join(root,'upstream.lock.json'),'utf8'));
+import {upstreamNativeSource} from '../scripts/upstream-native-source.mjs';
 const sharedDirectory='plugins/plugin-assistant/src/services/device-actions';
 const vendor=path.join(root,'vendor/eliza');
 const features=path.join(root,'.eliza/client-features');
@@ -16,17 +14,18 @@ const vendorReady=fs.existsSync(path.join(vendor,sharedDirectory,'action.ts'));
 const featuresReady=fs.existsSync(path.join(features,sharedDirectory,'files-browser-contract.ts'));
 
 test('the pinned Files contract gates the schema, registration and reviewed operations', {skip:!vendorReady&&'vendor/eliza not checked out'}, ()=>{
-  assert.equal(manifest.status,'integrated-in-pin');
-  assert.equal(manifest.baseCommit,lock.commit);
-  const [archive]=manifest.patches;
-  assert.equal(createHash('sha256').update(fs.readFileSync(path.join(root,'patches/eliza',archive.file))).digest('hex'),archive.sha256);
-  const read=name=>fs.readFileSync(path.join(vendor,sharedDirectory,name),'utf8');
+  const source=upstreamNativeSource(root);
+  const read=name=>{
+    const target=sharedDirectory+'/'+name;
+    return source.read(target).get(target).bytes.toString('utf8');
+  };
   assert.match(read('action.ts'),/\.\.\.FILES_OPERATION_SCHEMAS,/);
   assert.match(read('action.ts'),/capabilities\?\.includes\(FILES_CAPABILITY\)/);
   assert.match(read('contract.ts'),/if \(isFilesOperation\(\{ type \}\)\)\s+return capabilities\?\.includes\(FILES_CAPABILITY\) === true;/);
   assert.match(read('service.ts'),/\.\.\.FILES_OPERATION_TYPES,/);
   assert.match(read('service.ts'),/NOTES_SEARCH_CAPABILITY,\s+CALENDAR_AVAILABILITY_CAPABILITY,\s+FILES_CAPABILITY,/);
-  const route=fs.readFileSync(path.join(vendor,'packages/agent/src/api/device-action-routes.ts'),'utf8');
+  const routePath='packages/agent/src/api/device-action-routes.ts';
+  const route=source.read(routePath).get(routePath).bytes.toString('utf8');
   assert.equal((route.match(/CALENDAR_AVAILABILITY_CAPABILITY,\s+FILES_CAPABILITY,/g)||[]).length,2);
 });
 

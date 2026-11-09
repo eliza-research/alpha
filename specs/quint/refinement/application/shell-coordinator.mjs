@@ -21,7 +21,7 @@ export async function generateShellCoordinatorTraces(extraSources = []) {
     'scripts/quint-lib.mjs', 'test/browser/flag-off-android.ts', 'test/browser/resident-stub.ts',
     'test/browser/helpers/native-navigation-protocol.ts', 'upstream.lock.json',
     ...filesWithin(resolve(root, '.eliza/client-features'), path => /\.(?:ts|tsx|js|json|css|html)$/.test(path)).map(relativePath),
-    ...filesWithin(resolve(root, 'patches/eliza')).map(relativePath), 'scripts/prepare-client-features.mjs',
+    'upstream.lock.json', 'scripts/prepare-client-features.mjs',
     self, ...extraSources];
   const driverHashes = captureInputs(sources);
   const transformed = new Set();
