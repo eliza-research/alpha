@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "b1817660a0347ae19551b9ee296410fe55f02d59",
-  "ledgerSha256": "62f352be3ccadc0c8d14329134f07dcadc4b17ca3a4d94406044d352db0139de",
+  "ledgerSha256": "ccea26262cf7cf3c712392f50262dfce8fb4ba1222a1b7df1553f514b1dca246",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -22281,7 +22281,8 @@
       "sha256": "9bec25631f4070e35568afd7b98603807ebc0cdf92df6a323580232a23c3e180",
       "allocatedModels": [
         "PreferencesAndPresentation",
-        "NativeAppInfoHandoff"
+        "NativeAppInfoHandoff",
+        "AppInfoHandoffComposition"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -33235,7 +33236,8 @@
       "path": "apps/app/src/native.ts",
       "sha256": "542f12f9c9aec7b890b325249cba74d974dd31e9b6896444b5618c9dd476d052",
       "allocatedModels": [
-        "Application"
+        "Application",
+        "AppInfoHandoffComposition"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -33320,7 +33322,8 @@
       "path": "apps/app/src/platform-plugins.ts",
       "sha256": "0500bb5d20c28ae676185903b54eb20e0668ca63ace5a6beb52594f01f23720a",
       "allocatedModels": [
-        "Application"
+        "Application",
+        "AppInfoHandoffComposition"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -35210,7 +35213,8 @@
         "LauncherOwnership",
         "LauncherObserver",
         "HomeGesture",
-        "DrawerInteraction"
+        "DrawerInteraction",
+        "AppInfoHandoffComposition"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -111697,7 +111701,8 @@
       "allocatedModels": [
         "Application",
         "ShellNavigation",
-        "PreferencesAndPresentation"
+        "PreferencesAndPresentation",
+        "AppInfoHandoffComposition"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -195206,7 +195211,8 @@
       "sha256": "efc6ae85566aa1209c549b9b3b20042ff450af95ef1ce59b0211749c77a6f64e",
       "allocatedModels": [
         "ShellNavigation",
-        "NativeAppInfoHandoff"
+        "NativeAppInfoHandoff",
+        "AppInfoHandoffComposition"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -196552,7 +196558,8 @@
       "path": "vendor/eliza/plugins/plugin-native-system/src/client/launcher.ts",
       "sha256": "89625214c861f533e5c8526fd4f3b398e984e76e6136adae85d324877c82ab51",
       "allocatedModels": [
-        "ShellNavigation"
+        "ShellNavigation",
+        "AppInfoHandoffComposition"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -221533,6 +221540,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "cc02f6ad71bdca61828317086761b6c2b7896717fe7f96c0397cf3a6e37b4017"
+    "sha256": "4168acc675acab7de0c28cc392d6860f96967722d77e5d7a464dd87a614bcff2"
   }
 }

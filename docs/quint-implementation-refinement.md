@@ -1393,3 +1393,10 @@ at a closed bridge. Unsupported peers preserve ordinary context. Caller
 Stop and recognized connection replacement prevent dispatch. Silent
 process replacement after the fresh status comparison and remote request
 handling remain separate.
+
+`AppInfoHandoffComposition` checks 10 schedules and 76 checkpoints. The
+actual mounted drawer calls the Home handler and Capacitor proxy. A
+closed Android fixture forwards the captured request to the exact Java
+bridge, then returns its reply to the original renderer promise. The
+replay observes package inventory refresh, notices and drawer ownership.
+Installed Settings behavior and task placement remain separate.

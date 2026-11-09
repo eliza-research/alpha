@@ -7049,7 +7049,8 @@
       "sha256": "9bec25631f4070e35568afd7b98603807ebc0cdf92df6a323580232a23c3e180",
       "models": [
         "PreferencesAndPresentation",
-        "NativeAppInfoHandoff"
+        "NativeAppInfoHandoff",
+        "AppInfoHandoffComposition"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -15343,7 +15344,8 @@
       "path": "apps/app/src/native.ts",
       "sha256": "542f12f9c9aec7b890b325249cba74d974dd31e9b6896444b5618c9dd476d052",
       "models": [
-        "Application"
+        "Application",
+        "AppInfoHandoffComposition"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -15683,7 +15685,8 @@
       "path": "apps/app/src/platform-plugins.ts",
       "sha256": "0500bb5d20c28ae676185903b54eb20e0668ca63ace5a6beb52594f01f23720a",
       "models": [
-        "Application"
+        "Application",
+        "AppInfoHandoffComposition"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -22743,7 +22746,8 @@
         "LauncherOwnership",
         "LauncherObserver",
         "HomeGesture",
-        "DrawerInteraction"
+        "DrawerInteraction",
+        "AppInfoHandoffComposition"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -273479,7 +273483,8 @@
       "models": [
         "Application",
         "ShellNavigation",
-        "PreferencesAndPresentation"
+        "PreferencesAndPresentation",
+        "AppInfoHandoffComposition"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -509381,7 +509386,8 @@
       "path": "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SystemLauncherApps.java",
       "models": [
         "ShellNavigation",
-        "NativeAppInfoHandoff"
+        "NativeAppInfoHandoff",
+        "AppInfoHandoffComposition"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -510056,7 +510062,8 @@
     {
       "path": "vendor/eliza/plugins/plugin-native-system/src/client/launcher.ts",
       "models": [
-        "ShellNavigation"
+        "ShellNavigation",
+        "AppInfoHandoffComposition"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
