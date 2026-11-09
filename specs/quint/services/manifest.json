@@ -2028,6 +2028,52 @@
         "maxSteps": 80,
         "maxVerifyDepth": 7
       }
+    },
+    {
+      "path": "specs/quint/services/CloudQaLauncher.qnt",
+      "module": "CloudQaLauncher",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "successfulReceiptSurvivesChildExitTest",
+        "badSavedRouteDoesNotLaunchTest",
+        "noPidErrorReleasesLogWithoutReceiptTest",
+        "failedRecordPreservesPriorReceiptAfterReapTest",
+        "cancelledPendingRecordCanStillPublishHistoricalReceiptTest",
+        "linkedLogCanChangeAnotherFileModeTest"
+      ],
+      "invariants": [
+        "OwnedChildKeepsLog",
+        "ReceiptRequiresSpawn",
+        "AdmittedChildRequiresStagingProfile",
+        "SettledOwnsNoLiveChild",
+        "FailedRecordKeepsPriorReceipt"
+      ],
+      "sources": [
+        "scripts/start-cloud-qa.mjs",
+        "scripts/cloud-sdk-authority.mjs",
+        "scripts/native-view-policy.mjs",
+        "config/cloud-deployment.json",
+        "config/native-view-declarations.json",
+        "vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs"
+      ],
+      "stateMapping": {
+        "profile/marker/token/route": "Physical private files and parsed staging text route before a child request",
+        "source/entry": "Selected explicit or default fixture SDK and actual entry check",
+        "logOpen/child/pid/supervised/stop/cancelled": "Product-owned descriptor and actual shared supervisor over the closed child port",
+        "receipt/fault/tempClean/result/exitCode": "Real staged and published receipt bytes, controlled source faults and launcher exit",
+        "foreignLogModeChanged": "Observed distinct synthetic file mode under an existing linked log path"
+      },
+      "abstractions": [
+        "One invocation and one optional previous receipt. A historical process receipt can survive cancellation, child exit and retry.",
+        "Exact product launcher and pinned shared profile, receipt and supervision run with synthetic staging input and a closed child port. Kernel signals, port availability, readiness, concurrent owners and provider behavior are outside this model."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 50,
+        "maxVerifyDepth": 12
+      }
     }
   ]
 }
