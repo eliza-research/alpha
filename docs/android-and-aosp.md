@@ -574,7 +574,10 @@ that verify-apks recorded as distributable and signed by `android/release-signer
 provisioning would still admit, so run it before `lastRelease` records that versionCode. It copies
 the APK to `artifacts/app-stable/alpha-phone-<versionCode>.apk` and writes
 `artifacts/app-stable/alpha-update-stable.json` beside it. It uploads nothing. Upload the APK before
-the manifest that names it:
+the manifest that names it. For production delivery, use the guarded
+[`deliver-app-update.mjs` procedure](launcher-ota.md#publishing), which also checks
+anonymous HTTPS readback and the retained version floor. The lower-level commands
+below describe release-asset operations; they do not provide that qualification:
 
 ```sh
 # Once: the rolling release, never marked Latest.
@@ -589,8 +592,9 @@ gh release delete-asset app-stable alpha-update-stable.json --repo eliza-researc
 ```
 
 A check during the seconds `--clobber` takes between its delete and upload answers 404 and drops
-the offer until the next check. A phone offers the manifest it last read until its next daily
-check, so keep the previous APK at least a day. Field builds use the release key, distinct from
+the offer until the next check. A phone can retain its last offer while offline;
+active answered checks are normally 15 minutes apart. Keep versioned APKs as
+immutable recovery inputs. Field builds use the release key, distinct from
 developer keys (P-16, P-58); publishing a lab-key APK to the public `app-stable` release needs the
 owner's approval. The system copy in `/product/app/AlphaPhone` and these updates share versionCode
 order: an APK update lives in `/data` and outranks an OS image whose Alpha has a lower
