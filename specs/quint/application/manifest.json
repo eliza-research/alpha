@@ -1716,6 +1716,37 @@
     ]
   },
   {
+    "path": "specs/quint/application/ReminderOpenIntent.qnt",
+    "module": "ReminderOpenIntent",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "latestResumeStillOpensExactReminderTest",
+      "interveningVisitRetiresTapTest",
+      "directCalendarEntryKeepsTapTest",
+      "workflowsRowCapturesRequestedVisitTest",
+      "expiredTapKeepsTheCacheTest",
+      "differentOccurrenceOnlyOpensCalendarTest"
+    ],
+    "invariants": ["DeliveryOwnsCurrentVisit", "VisitAndReadAreIndependent"],
+    "sources": [
+      "apps/app/src/prototype/reminder-adapter.ts",
+      "apps/app/src/prototype/automations-adapter.ts",
+      "apps/app/src/prototype/model.js",
+      "apps/app/src/runtime/reminder-creations.ts"
+    ],
+    "stateMapping": {
+      "view/deferred/visit": "Shell port committed view, held Calendar commit, and the actual adapter navigation visit counter",
+      "refresh/reads/cache/stale/notice": "Actual refresh generation, held native list promises, row cache and refresh diagnostics",
+      "intent/now/foreground/delivery": "Actual captured reminder, occurrence, time and owning visit, controlled clock and visibility, and observed Calendar open"
+    },
+    "abstractions": [
+      "Legacy read-only reminder intent across three refreshes, one exact occurrence plus a changed occurrence, and bounded app or Home navigation.",
+      "Actual Workflows device-row branch opens Calendar before starting the read. Its Calendar commit is held by the shell port. Typed tap custody, Android delivery, mounted rendering, and provider effects are separate."
+    ]
+  },
+  {
     "path": "specs/quint/application/RetainedReminderTapAdmission.qnt",
     "module": "RetainedReminderTapAdmission",
     "init": "init",

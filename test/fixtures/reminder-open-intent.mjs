@@ -28,6 +28,7 @@ export async function reminderOpenIntentFixture(initial = 'home') {
   const reminder = {id: 'tapped', title: 'Tapped reminder', body: '', at: clock.now + 3_600_000,
     dueAt: clock.now + 3_600_000, alertMinutes: 0, status: 'scheduled', occurrenceId: 'one', target: {reminderId: 'tapped'}};
   let deferNavigation = false, queuedView = null;
+  let settlingVisit = -1, delivery = {kind: 'none', intentVisit: -1, viewVisit: -1};
   class FixedDate extends Date {
     constructor(...args) {super(...(args.length ? args : [clock.now]));}
     static now() {return clock.now;}
@@ -44,6 +45,11 @@ export async function reminderOpenIntentFixture(initial = 'home') {
     openView(view, patch) {
       calls.push({action: 'openView', view, current: this.view});
       opened.push({view, ...patch});
+      if (patch?.events) {
+        if (patch.open) assert.equal(patch.open, 'reminder:tapped');
+        delivery = {kind: patch.open ? 'detail' : 'calendar', intentVisit: settlingVisit,
+          viewVisit: (this.reminderOpenVisit ?? 0) - 1};
+      }
       if (deferNavigation) {deferNavigation = false;queuedView = view;}
       else this.view = view;
     }
@@ -58,6 +64,7 @@ export async function reminderOpenIntentFixture(initial = 'home') {
     dueOf, isUndatedReminder, overdueReminders, undatedTodos,
     DailyApps: {listReminders: () => new Promise((resolve, reject) => {
       const read = {state: 'held', ok(occurrenceId = 'one') {
+        settlingVisit = shell.pendingReminderOpen?.visit ?? -1;
         read.state = 'ok';resolve({reminders: [{...reminder, occurrenceId}]});
       }, fail() {read.state = 'failed';reject(Error('Secure store locked'));}};
       reads.push(read);
@@ -81,5 +88,20 @@ export async function reminderOpenIntentFixture(initial = 'home') {
       return lastRefresh;
     },
     commitNavigation() {assert.ok(queuedView);shell.view = queuedView;queuedView = null;},
+    observe() {
+      const intent = shell.pendingReminderOpen;
+      const message = toasts.at(-1);
+      if (message) assert.ok(["Couldn't open that reminder. Open Calendar to find it.",
+        'Reminders could not refresh. Previously loaded reminders may be out of date.'].includes(message));
+      return {view: shell.view, deferred: queuedView || '', visit: shell.reminderOpenVisit ?? 0,
+        refresh: shell.reminderRefreshGeneration ?? 0, reads: reads.map((read, i) => [i + 1, read.state]),
+        now: clock.now - reminderClockOrigin, foreground: !document.hidden,
+        intent: intent ? {id: intent.id, occurrence: intent.occurrenceId ?? '', at: intent.at - reminderClockOrigin,
+          view: intent.view, visit: intent.visit, followedCalendar: intent.followedCalendar} :
+          {id: '', occurrence: '', at: 0, view: '', visit: 0, followedCalendar: false},
+        cache: shell.reminderRows?.[0]?.occurrenceId ?? '', stale: !!calendar.reminderStale,
+        notice: !message ? '' : message.startsWith("Couldn't open") ? 'open-failed' : 'refresh-failed',
+        delivery: {...delivery}};
+    },
   };
 }
