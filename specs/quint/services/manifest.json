@@ -2096,7 +2096,10 @@
         "cancelledPendingRecordCanStillPublishHistoricalReceiptTest",
         "linkedLogRefusesBeforeChildOrModeChangeTest",
         "hardlinkedLogRefusesBeforeChildOrModeChangeTest",
-        "fifoLogRefusesBeforeChildTest"
+        "fifoLogRefusesBeforeChildTest",
+        "matchingPreloadAndParentObservationTest",
+        "receiptCanObserveDifferentHeadFromAdmittedChildTest",
+        "matchingParentReceiptCanPrecedePreloadRefusalTest"
       ],
       "invariants": [
         "OwnedChildKeepsLog",
@@ -2104,10 +2107,14 @@
         "AdmittedChildRequiresStagingProfile",
         "SettledOwnsNoLiveChild",
         "FailedRecordKeepsPriorReceipt",
-        "InvalidLogDoesNotAdmitChild"
+        "InvalidLogDoesNotAdmitChild",
+        "ReceiptCopiesParentHead",
+        "AdmittedChildBindsReviewedPin",
+        "RejectedPreloadHasNoAdmission"
       ],
       "sources": [
         "scripts/start-cloud-qa.mjs",
+        "scripts/core-state-preload.mjs",
         "scripts/cloud-sdk-authority.mjs",
         "scripts/native-view-policy.mjs",
         "config/cloud-deployment.json",
@@ -2119,10 +2126,12 @@
         "source/entry": "Selected explicit or default fixture SDK and actual entry check",
         "logOpen/child/pid/supervised/stop/cancelled": "Product-owned descriptor and actual shared supervisor over the closed child port",
         "receipt/fault/tempClean/result/exitCode": "Real staged and published receipt bytes, controlled source faults and launcher exit",
-        "foreignLogModeChanged": "Observed preservation of a distinct synthetic file under a linked log path"
+        "foreignLogModeChanged": "Observed preservation of a distinct synthetic file under a linked log path",
+        "requestedPin/preloadHead/admittedPin/preloadOutcome": "Parent manifest pin and separately observed exact child preload with controlled Git HEAD",
+        "parentHead/receiptHead": "Late launcher Git response and the revision actually published in the current receipt"
       },
       "abstractions": [
-        "One invocation and one optional previous receipt. A historical process receipt can survive cancellation, child exit and retry.",
+        "One invocation, one fixed policy pin, two independently observed HEAD values and one optional previous receipt. A historical process receipt can survive cancellation, child exit and retry. Its revision is the parent observation.",
         "Exact product launcher and pinned shared profile, receipt and supervision run with synthetic staging input and a closed child port. Kernel signals, port availability, readiness, concurrent owners and provider behavior are outside this model."
       ],
       "bounds": {

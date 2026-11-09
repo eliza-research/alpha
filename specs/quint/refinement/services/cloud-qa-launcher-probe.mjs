@@ -62,7 +62,15 @@ const git = (...arguments_) => execFileSync('git', ['-c', 'core.hooksPath=/dev/n
 }).trim();
 git('init', '-q'); git('add', '.');
 git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'Synthetic SDK');
-const revision = git('rev-parse', 'HEAD');
+const revision = git('rev-parse', 'HEAD'), alternate = 'f'.repeat(40);
+assert.notEqual(revision, alternate);
+function classifyRevision(value) {
+  if (value === revision) return 'reviewed';
+  assert.equal(value, alternate);
+  return 'other';
+}
+const earlyPreload = ['preload-matches-receipt','preload-admits-before-late-head'].includes(scenario);
+const latePreloadRefusal = scenario === 'preload-rejects-after-receipt';
 if (defaultSource) {
   const target = join(root, 'artifacts/local-agent-resident-'+revision);
   fs.renameSync(source, target);
@@ -105,7 +113,8 @@ else if (kind !== 'fresh') {
 const baseListeners = process.listenerCount('SIGTERM');
 const state = {kind, phase: 'checking', source: 'none', entry: false, logOpen: false,
   child: 'none', pid: false, fault: 'none', stop: 'none', cancelled: false, childCode: -1, childSignal: 'none',
-  result: 'running', exitCode: -1};
+  result: 'running', exitCode: -1, requestedPin: 'none', preloadHead: 'none', admittedPin: 'none',
+  preloadOutcome: 'unobserved', parentHead: 'none'};
 const inspectRoute = () => {
   if (!file(config)) return 'none';
   const saved = read(config);
@@ -116,6 +125,7 @@ const getReceipt = () => !file(receipt) ? 'none' : read(receipt).pid === 5 ? 'pr
 const observe = () => {
   const snapshot = {...state, profile: directory(profile), marker: file(marker), token: file(token), route: inspectRoute(),
     supervised: process.listenerCount('SIGTERM') > baseListeners, receipt: getReceipt(),
+    receiptHead: getReceipt() === 'current' ? classifyRevision(read(receipt).revision) : 'none',
     foreignLogModeChanged: file(otherLog) && privateMode(otherLog) !== 0o644,
     tempClean: !directory(profile) || !fs.readdirSync(profile).some(name => name.startsWith('process.json.') && name.endsWith('.tmp'))};
   return Object.fromEntries(Object.entries(snapshot).map(([name, value]) => ['s.'+name, value]));
@@ -124,7 +134,7 @@ const trace = {name: scenario, init: action('startState', kind, priorReceipt), e
 const point = (label, transition) => trace.steps.push({label, action: transition, expect: observe()});
 const initialToken = file(token) ? fs.readFileSync(token, 'utf8') : null;
 const initialConfig = file(config) ? fs.readFileSync(config, 'utf8') : null;
-let logFd, child;
+let logFd, child, runPreload, observedParentRevision, childGitHead, childObservedHead;
 const originalError = console.error, originalLog = console.log;
 const errors = [];
 console.error = message => errors.push(String(message));
@@ -170,18 +180,29 @@ function recordFault(fault) {
 
 console.log = line => {
   assert.deepEqual(JSON.parse(line), read(receipt));
-  if (scenario !== 'pending-signal') setImmediate(() => {
+  if (scenario !== 'pending-signal') setImmediate(async () => {
     state.phase = 'running';
     point('Source has handed off the receipt and is waiting for its child', action('activate'));
     if (scenario === 'running-signal') cancel('SIGTERM');
-    else closeChild(scenario === 'exit-seven' ? 7 : 0);
+    else if (latePreloadRefusal) {
+      await runPreload(alternate);
+      closeChild(1);
+    } else closeChild(scenario === 'exit-seven' ? 7 : 0);
   });
 };
 const launchUrl = pathToFileURL(join(root, launcher)).href;
 const sharedUrl = pathToFileURL(join(root, shared)).href;
+const coreUrl = pathToFileURL(join(root, 'scripts/core-state-patch.mjs')).href;
+const immutableUrl = pathToFileURL(join(root, 'vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs')).href;
 globalThis.cloudQaPorts = {
   fs: {
     ...fs,
+    readFileSync(name, ...options) {
+      const bytes = fs.readFileSync(name, ...options);
+      if (name === join(root, 'upstream.lock.json') && state.phase === 'log')
+        state.requestedPin = classifyRevision(JSON.parse(bytes).commit);
+      return bytes;
+    },
     existsSync(name) {
       const exists = fs.existsSync(name);
       if (name === entry) {
@@ -224,7 +245,22 @@ globalThis.cloudQaPorts = {
       point('Revision read refuses while the exact child is still owned', recordFault('revision'));
       throw Error('Fixture revision read refused');
     }
-    return git(...argv)+'\n';
+    observedParentRevision = scenario === 'preload-admits-before-late-head' ? alternate : git(...argv);
+    state.parentHead = classifyRevision(observedParentRevision);
+    point('The parent independently observes HEAD while recording the launched PID',
+      action('observeParentHead', state.parentHead));
+    return observedParentRevision+'\n';
+  },
+  preloadGit(program, argv, options) {
+    assert.equal(program, 'git');
+    assert.equal(options.cwd, source);
+    assert.ok(['rev-parse','ls-tree','diff','ls-files'].includes(argv[0]));
+    if (argv.join(' ') === 'rev-parse HEAD') {
+      assert.ok(childGitHead);
+      childObservedHead = childGitHead;
+      return childGitHead+'\n';
+    }
+    return execFileSync(program, argv, options);
   },
   async rename(from, to) {
     assert.equal(to, receipt);
@@ -237,7 +273,7 @@ globalThis.cloudQaPorts = {
     assert.equal(body.port, 47859);
     assert.equal(body.profile, profile);
     assert.equal(body.source, source);
-    assert.equal(body.revision, revision);
+    assert.equal(body.revision, observedParentRevision);
     assert.equal(body.environment, 'staging');
     assert.equal(body.identityVerified, false);
     assert.equal(body.modelCallsPerformedByLauncher, 0);
@@ -279,7 +315,39 @@ globalThis.cloudQaPorts = {
     for (const name of ['OPENAI_API_KEY','ANTHROPIC_API_KEY','CEREBRAS_API_KEY','VITE_ELIZAOS_CLOUD_API_KEY'])
       assert.ok(!Object.hasOwn(env, name));
     assert.equal(privateMode(log), 0o600);
+    assert.equal(state.requestedPin, 'reviewed');
     const noPid = scenario === 'no-pid';
+    runPreload = async observed => {
+      childGitHead = observed;
+      const originalBun = globalThis.Bun, originalSource = process.env.ALPHA_CORE_STATE_SOURCE;
+      process.env.ALPHA_CORE_STATE_SOURCE = env.ALPHA_CORE_STATE_SOURCE;
+      let pluginInstalled = false;
+      globalThis.Bun = {plugin(value) {
+        assert.equal(value.name, 'authenticated-core-state');
+        pluginInstalled = true;
+      }};
+      try {
+        await import(pathToFileURL(argv[1]).href);
+        assert.equal(observed, revision);
+        assert.equal(pluginInstalled, true);
+        state.preloadOutcome = 'admitted';
+        state.admittedPin = classifyRevision(childObservedHead);
+      } catch (error) {
+        assert.equal(observed, alternate);
+        assert.match(error.message, /Prepared runtime base commit changed/);
+        assert.equal(pluginInstalled, false);
+        state.preloadOutcome = 'rejected';
+      } finally {
+        if (originalBun === undefined) delete globalThis.Bun;
+        else globalThis.Bun = originalBun;
+        if (originalSource === undefined) delete process.env.ALPHA_CORE_STATE_SOURCE;
+        else process.env.ALPHA_CORE_STATE_SOURCE = originalSource;
+      }
+      assert.equal(childObservedHead, observed);
+      state.preloadHead = classifyRevision(childObservedHead);
+      point('The exact child preload validates its own HEAD and admits or refuses the pin',
+        action('observePreload', state.preloadHead));
+    };
     child = new EventEmitter();
     if (!noPid) child.pid = 43210;
     child.kill = signal => {
@@ -293,11 +361,14 @@ globalThis.cloudQaPorts = {
     };
     Object.assign(state, {phase: 'requested', child: 'requested', pid: !noPid});
     point('The launcher asks the shared owner for one closed synthetic child', action('requestChild', !noPid));
-    queueMicrotask(() => {
+    queueMicrotask(async () => {
       assert.equal(process.listenerCount('SIGTERM'), baseListeners + 1);
       point('The shared owner is listening before the child reports spawn or error', action('ownChild'));
       if (noPid) child.emit('error', Object.assign(Error('synthetic no PID'), {code: 'ENOENT'}));
-      else child.emit('spawn');
+      else {
+        if (earlyPreload) await runPreload(revision);
+        child.emit('spawn');
+      }
     });
     return child;
   },
@@ -310,10 +381,15 @@ export const spawn = (...args) => globalThis.cloudQaPorts.spawn(...args);
 export const rename = (...args) => globalThis.cloudQaPorts.rename(...args);
 export {open,readFile,unlink,writeFile} from 'node:fs/promises';
 `);
+const childGitModule = join(scratch, 'child-git-port.mjs');
+write(childGitModule, 'export const execFileSync = (...args) => globalThis.cloudQaPorts.preloadGit(...args);');
 registerHooks({resolve(specifier, context, next) {
+  if (context.parentURL === immutableUrl && specifier === 'node:child_process')
+    return {url: pathToFileURL(childGitModule).href, shortCircuit: true};
   const launcherPort = context.parentURL === launchUrl && ['node:fs','node:child_process'].includes(specifier);
   const sharedPort = context.parentURL === sharedUrl && ['node:child_process','node:fs/promises'].includes(specifier);
-  if (launcherPort || sharedPort) return {url: pathToFileURL(portModule).href, shortCircuit: true};
+  const corePort = context.parentURL === coreUrl && specifier === 'node:fs';
+  if (launcherPort || sharedPort || corePort) return {url: pathToFileURL(portModule).href, shortCircuit: true};
   return next(specifier, context);
 }});
 
@@ -321,7 +397,7 @@ process.once('exit', code => {
   console.error = originalError;
   console.log = originalLog;
   const [result, message] = exitOutcomes[scenario] ?? ['child', null];
-  assert.equal(code, message || scenario === 'running-signal' ? 1 : scenario === 'exit-seven' ? 7 : 0);
+  assert.equal(code, message || scenario === 'running-signal' || latePreloadRefusal ? 1 : scenario === 'exit-seven' ? 7 : 0);
   if (message) {assert.equal(errors.length, 1); assert.match(errors[0], message);}
   else assert.deepEqual(errors, []);
   if (['route','token'].includes(result)) readProfile();

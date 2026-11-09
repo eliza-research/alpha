@@ -13,6 +13,7 @@ const scenarios = [
   'relative-profile', 'protected-port', 'key-mode', 'missing-model', 'personal-profile', 'missing-entry',
   'wrong-route', 'invalid-token', 'fresh-default', 'saved-profile', 'exit-seven', 'no-pid',
   'revision-read', 'receipt-write', 'pending-signal', 'running-signal', 'linked-log', 'hardlinked-log', 'fifo-log',
+  'preload-matches-receipt', 'preload-admits-before-late-head', 'preload-rejects-after-receipt',
 ];
 
 function runScenario(name) {

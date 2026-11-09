@@ -5,13 +5,16 @@ module CloudQaLauncher {
     source: str, entry: bool, logOpen: bool, child: str, pid: bool, supervised: bool,
     receipt: str, fault: str, stop: str, cancelled: bool, childCode: int, childSignal: str,
     result: str, exitCode: int, tempClean: bool, foreignLogModeChanged: bool,
+    requestedPin: str, preloadHead: str, admittedPin: str, preloadOutcome: str,
+    parentHead: str, receiptHead: str,
   }
   var s: State
   pure val InvalidLogs = Set("linkedLog", "hardlinkedLog", "fifoLog")
   pure val Kinds = Set("fresh", "personal", "saved", "wrongRoute", "badToken").union(InvalidLogs)
   pure val PreflightRefusals = Set("port", "key", "model", "personal", "path")
   pure val Signals = Set("SIGINT", "SIGTERM")
-  pure val Codes = Set(0, 7, -1)
+  pure val Codes = Set(0, 1, 7, -1)
+  pure val Revisions = Set("reviewed", "other")
 
   action startState(kind: str, priorReceipt: bool): bool = all {
     Kinds.contains(kind), priorReceipt implies kind == "saved",
@@ -20,7 +23,9 @@ module CloudQaLauncher {
       route: if (kind == "wrongRoute") "wrong" else if (kind.in(Set("fresh", "personal"))) "none" else "staging",
       source: "none", entry: false, logOpen: false, child: "none", pid: false, supervised: false,
       receipt: if (priorReceipt) "prior" else "none", fault: "none", stop: "none", cancelled: false,
-      childCode: -1, childSignal: "none", result: "running", exitCode: -1, tempClean: true, foreignLogModeChanged: false},
+      childCode: -1, childSignal: "none", result: "running", exitCode: -1, tempClean: true, foreignLogModeChanged: false,
+      requestedPin: "none", preloadHead: "none", admittedPin: "none", preloadOutcome: "unobserved",
+      parentHead: "none", receiptHead: "none"},
   }
   action init = {
     nondet kind = Kinds.oneOf()
@@ -43,7 +48,7 @@ module CloudQaLauncher {
   }
   action requestChild(pid: bool): bool = all {
     s.phase == "log",
-    s' = {...s, phase: "requested", child: "requested", pid: pid},
+    s' = {...s, phase: "requested", child: "requested", pid: pid, requestedPin: "reviewed"},
   }
   action ownChild: bool = all {
     s.phase == "requested", s.child == "requested", not(s.supervised),
@@ -53,8 +58,19 @@ module CloudQaLauncher {
     s.phase == "requested", s.child == "requested", s.pid, s.supervised,
     s' = {...s, phase: "recording", child: "spawned"},
   }
+  action observePreload(revision: str): bool = all {
+    s.supervised, s.pid, s.child.in(Set("requested", "spawned")), s.preloadOutcome == "unobserved",
+    Revisions.contains(revision),
+    s' = {...s, preloadHead: revision,
+      admittedPin: if (revision == s.requestedPin) revision else "none",
+      preloadOutcome: if (revision == s.requestedPin) "admitted" else "rejected"},
+  }
+  action observeParentHead(revision: str): bool = all {
+    s.phase == "recording", s.parentHead == "none", s.fault == "none", Revisions.contains(revision),
+    s' = {...s, parentHead: revision},
+  }
   action stageReceipt: bool = all {
-    s.phase == "recording", s.fault == "none", s.tempClean,
+    s.phase == "recording", s.fault == "none", s.tempClean, Revisions.contains(s.parentHead),
     s' = {...s, tempClean: false},
   }
   action discardReceipt: bool = all {
@@ -63,11 +79,12 @@ module CloudQaLauncher {
   }
   action refuseRecord(fault: str): bool = all {
     s.phase == "recording", s.fault == "none", fault == (if (s.tempClean) "revision" else "write"),
+    fault == "revision" implies s.parentHead == "none",
     s' = {...s, fault: fault},
   }
   action publishReceipt: bool = all {
     s.phase == "recording", s.fault == "none", not(s.tempClean),
-    s' = {...s, phase: "published", receipt: "current", tempClean: true},
+    s' = {...s, phase: "published", receipt: "current", receiptHead: s.parentHead, tempClean: true},
   }
   action activate: bool = all {
     s.phase == "published", not(s.cancelled),
@@ -81,7 +98,8 @@ module CloudQaLauncher {
   action closeChild(code: int, signal: str): bool = all {
     s.child.in(Set("requested", "spawned")), s.supervised, Codes.contains(code),
     not(s.pid) implies (code == -1 and signal == "none"),
-    s.pid implies (if (s.stop == "none") code.in(Set(0, 7)) and signal == "none"
+    s.pid implies (if (s.stop == "none")
+      (if (s.preloadOutcome == "rejected") code == 1 else code.in(Set(0, 7))) and signal == "none"
       else code == -1 and signal == s.stop),
     s' = {...s, child: "closed", supervised: false, childCode: code, childSignal: signal},
   }
@@ -112,8 +130,18 @@ module CloudQaLauncher {
   val FailedRecordKeepsPriorReceipt = s.fault != "none" implies s.receipt != "current"
   val InvalidLogDoesNotAdmitChild = InvalidLogs.contains(s.kind) implies
     not(s.logOpen) and s.child == "none" and not(s.foreignLogModeChanged)
+  val ReceiptCopiesParentHead = s.receipt == "current" implies
+    Revisions.contains(s.parentHead) and s.receiptHead == s.parentHead
+  val AdmittedChildBindsReviewedPin = s.preloadOutcome == "admitted" implies
+    s.admittedPin == "reviewed" and s.admittedPin == s.preloadHead and s.admittedPin == s.requestedPin
+  val RejectedPreloadHasNoAdmission = s.preloadOutcome == "rejected" implies
+    s.preloadHead != s.requestedPin and s.admittedPin == "none"
+  // Equality with the separately observed child is a comparison, not a receipt guarantee.
+  val ReceiptMatchesAdmittedPin = s.receipt == "current" and s.preloadOutcome == "admitted"
+    and s.receiptHead == s.admittedPin
   val safety = OwnedChildKeepsLog and ReceiptRequiresSpawn and AdmittedChildRequiresStagingProfile
     and SettledOwnsNoLiveChild and FailedRecordKeepsPriorReceipt and InvalidLogDoesNotAdmitChild
+    and ReceiptCopiesParentHead and AdmittedChildBindsReviewedPin and RejectedPreloadHasNoAdmission
 
   action step = any {
     { nondet source = Set("default", "explicit").oneOf()
@@ -123,6 +151,10 @@ module CloudQaLauncher {
     { nondet pid = Bool.oneOf()
       requestChild(pid) },
     ownChild, beginRecord, stageReceipt, discardReceipt,
+    { nondet revision = Revisions.oneOf()
+      observePreload(revision) },
+    { nondet revision = Revisions.oneOf()
+      observeParentHead(revision) },
     { nondet fault = Set("revision", "write").oneOf()
       refuseRecord(fault) },
     publishReceipt, activate,
@@ -139,7 +171,7 @@ module CloudQaLauncher {
   }
 
   run successfulReceiptSurvivesChildExitTest = startState("fresh", false).then(checkEntry("default", true))
-    .then(prepareProfile).then(openLog).then(requestChild(true)).then(ownChild).then(beginRecord).then(stageReceipt)
+    .then(prepareProfile).then(openLog).then(requestChild(true)).then(ownChild).then(beginRecord).then(observeParentHead("reviewed")).then(stageReceipt)
     .then(publishReceipt).then(activate).then(closeChild(7, "none")).then(finish("child", 7))
     .expect(s.receipt == "current" and safety)
   run badSavedRouteDoesNotLaunchTest = startState("wrongRoute", false).then(checkEntry("explicit", true))
@@ -149,11 +181,11 @@ module CloudQaLauncher {
     .then(requestStop("SIGTERM", false)).then(closeChild(-1, "none")).then(finish("spawn", 1))
     .expect(s.receipt == "none" and safety)
   run failedRecordPreservesPriorReceiptAfterReapTest = startState("saved", true).then(checkEntry("explicit", true))
-    .then(prepareProfile).then(openLog).then(requestChild(true)).then(ownChild).then(beginRecord).then(stageReceipt)
+    .then(prepareProfile).then(openLog).then(requestChild(true)).then(ownChild).then(beginRecord).then(observeParentHead("reviewed")).then(stageReceipt)
     .then(refuseRecord("write")).then(discardReceipt).then(requestStop("SIGTERM", false)).then(closeChild(-1, "SIGTERM"))
     .then(finish("write", 1)).expect(s.receipt == "prior" and safety)
   run cancelledPendingRecordCanStillPublishHistoricalReceiptTest = startState("fresh", false).then(checkEntry("explicit", true))
-    .then(prepareProfile).then(openLog).then(requestChild(true)).then(ownChild).then(beginRecord).then(stageReceipt)
+    .then(prepareProfile).then(openLog).then(requestChild(true)).then(ownChild).then(beginRecord).then(observeParentHead("reviewed")).then(stageReceipt)
     .then(requestStop("SIGINT", true)).then(closeChild(-1, "SIGINT")).then(publishReceipt)
     .then(finish("cancelled", 1)).expect(s.receipt == "current" and safety)
   run linkedLogRefusesBeforeChildOrModeChangeTest = startState("linkedLog", false).then(checkEntry("explicit", true))
@@ -165,4 +197,18 @@ module CloudQaLauncher {
   run fifoLogRefusesBeforeChildTest = startState("fifoLog", false).then(checkEntry("explicit", true))
     .then(prepareProfile).then(finish("log", 1))
     .expect(s.child == "none" and safety)
+  action revisionLaunch = checkEntry("explicit", true).then(prepareProfile).then(openLog)
+    .then(requestChild(true)).then(ownChild)
+  run matchingPreloadAndParentObservationTest = startState("fresh", false).then(revisionLaunch)
+    .then(observePreload("reviewed")).then(beginRecord).then(observeParentHead("reviewed"))
+    .then(stageReceipt).then(publishReceipt).expect(ReceiptMatchesAdmittedPin and safety)
+  run receiptCanObserveDifferentHeadFromAdmittedChildTest = startState("fresh", false).then(revisionLaunch)
+    .then(observePreload("reviewed")).then(beginRecord).then(observeParentHead("other"))
+    .then(stageReceipt).then(publishReceipt).then(activate).then(closeChild(0, "none")).then(finish("child", 0))
+    .expect(s.admittedPin == "reviewed" and s.receiptHead == "other" and not(ReceiptMatchesAdmittedPin) and safety)
+  run matchingParentReceiptCanPrecedePreloadRefusalTest = startState("fresh", false).then(revisionLaunch)
+    .then(beginRecord).then(observeParentHead("reviewed")).then(stageReceipt).then(publishReceipt)
+    .expect(s.receiptHead == s.requestedPin and s.preloadOutcome == "unobserved")
+    .then(activate).then(observePreload("other")).then(closeChild(1, "none")).then(finish("child", 1))
+    .expect(s.receipt == "current" and s.admittedPin == "none" and safety)
 }

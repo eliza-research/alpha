@@ -11,3 +11,11 @@ The finite scope is one invocation, one selected child and one previous profile 
 ```sh
 node --test --test-concurrency=1 test/quint-cloud-qa-launcher.test.mjs test/cloud-qa-launcher.test.mjs
 ```
+
+## Revision observations
+
+The model keeps the reviewed pin read during parent argument preparation, the selected child preload's separately observed HEAD and admission, and the parent's later Git HEAD read as distinct values. The current receipt copies the last of these. The fixture executes the actual preload and immutable-workspace verifier against a disposable synthetic SDK. Its child and Bun plugin registration remain closed ports, and the fixture independently controls both Git HEAD observations.
+
+The 22-trace replay includes three revision schedules. A matching schedule observes the same reviewed pin at all three boundaries. A split schedule admits the reviewed pin and later records a different parent Git answer. A third schedule publishes a matching parent receipt while preload admission is still unobserved, then the child's separate check rejects a different HEAD and exits with code 1. The public receipt schema and launcher behavior are unchanged.
+
+The model holds the reviewed policy pin fixed. These schedules distinguish source observations in an attempted launch. Physical checkout races, changing the policy between parent and child, application module evaluation, readiness and owner verification remain separate. Repeated kernel signals and forced-kill timing also remain outside the selected child port.
