@@ -639,7 +639,7 @@ test("round-9 journeys and links: J01, J05, the note link and the Maps return ar
 });
 
 test("no registered instrumented class drives a control the view refresh removed", () => {
-  // The SAF folder chooser and Camera Scan mode are gone. The composed Camera tools retain image import.
+  // The SAF folder chooser and Camera Scan mode are gone. Image import belongs in Photos.
   const removed = ["Choose folder", "Scan mode"];
   for (const name of Object.keys(CLASS_REGISTRY)) {
     const java = sourceOf(name);
@@ -647,7 +647,7 @@ test("no registered instrumented class drives a control the view refresh removed
   }
   const template = fs.readFileSync("apps/app/src/prototype/template.html", "utf8");
   for (const label of removed) assert.equal(template.includes(label), false, `the renderer has no "${label}"`);
-  assert.match(template, /data-alpha-camera="tools"[\s\S]*camera\.importAvailable[\s\S]*camera\.importImage[\s\S]*Choose image/, "image import remains an explicit Camera tool");
+  assert.match(template, /Photos tools[\s\S]*photos\.importAvailable[\s\S]*photos\.importImage[\s\S]*Choose image/, "image import remains an explicit Photos tool");
 });
 
 test("documented campaign commands name current classes or explicitly retained historical entries", () => {
