@@ -101,7 +101,7 @@
 +  Tab t=tabs.get(call.getString("id")); if(t!=null) { float d=getContext().getResources().getDisplayMetrics().density;
 +   presentLayer(t,layer,host,branch);
 +   FrameLayout.LayoutParams p=new FrameLayout.LayoutParams(Math.max(0,Math.round(width*d)),Math.max(0,Math.round(height*d)));p.leftMargin=Math.round(x*d);p.topMargin=Math.round(y*d);
-+   t.frame.setLayoutParams(p);t.frame.setOcclusions(hostRects);t.frame.setHostRectsReceived(layer==SurfaceLayer.BELOW_HOST);
++   t.frame.setLayoutParams(p);t.frame.setOcclusions(hostRects);t.frame.setHostRectsReceived(layer==SurfaceLayer.BELOW_HOST&&!paused);
 +   t.frame.setVisibility(paused?View.GONE:View.VISIBLE);syncAutofill(t);
 +  } call.resolve();
   }); }

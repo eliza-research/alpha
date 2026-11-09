@@ -338,13 +338,13 @@
     },
     {
       "file": "browser-tab-underlay-native.patch",
-      "sha256": "4d11219fc3b181e274a45d97426af6c49161b11cc974f6ba094967a388a2efeb",
+      "sha256": "766476a1546b4b556e55e2e2dd63581b6c4c1d4510225568c93c312dd8d257e3",
       "module": "plugins/plugin-native-browser-surface/android",
       "targets": [
         {
           "path": "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserTabHostPlugin.java",
           "beforeSha256": "d0c69f56fba2a0eee08a25a5ff2325e1f19dcabec257f29b4f2dd9474b55f3a5",
-          "afterSha256": "37605b0a135dae17e8548635fb50f9fa385089c00923586c6a11ca79db03fb78"
+          "afterSha256": "69544d81f436606d5320a2cdbad29f659feea7c3d43ff5941c7e4dd4d5c41684"
         },
         {
           "path": "plugins/plugin-native-browser-surface/android/build.gradle",

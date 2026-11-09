@@ -164,7 +164,8 @@ test('a saved capture identity is its id and a local counter, never the library 
  const adapter=readFileSync('apps/app/src/prototype/camera-adapter.ts','utf8');
  assert.match(adapter,/const captureSelection=createCaptureRevisions\(\);/);
  // Opening, favoriting, and patching an open item after an external change publish its identity.
- assert.equal((adapter.match(/nativePhotoSelection: ?captureSelection\(/g)||[]).length,3);
+ const publications=[...adapter.matchAll(/nativePhotoSelection:\s*([^,}\n]+)/g)].map(match=>match[1].trim()).filter(value=>value!=='null');
+ assert.ok(publications.length>=3);assert.ok(publications.every(value=>value.startsWith('captureSelection(')),'every nonempty publication uses the opaque identity mapping');
  assert.doesNotMatch(adapter,/nativePhotoSelection: ?\{/,'every published photo identity goes through the local mapping');
 });
 test('location tiles ask the picker for a list of valid document types',()=>{
@@ -206,7 +207,7 @@ test('a photo another app rewrote in place is refused at send time',()=>{
  assert.match(photos,/private static String contentRevision\(Cursor row\) \{ return row\.getLong\(row\.getColumnIndexOrThrow\(MediaStore\.MediaColumns\.DATE_MODIFIED\)\) \+ ":" \+ row\.getLong\(4\) \+ \(Build\.VERSION\.SDK_INT >= 30 \? ":" \+ row\.getLong\(9\) : ""\); \}/);
  assert.match(photos,/result\[result\.length - 1\] = MediaStore\.MediaColumns\.DATE_MODIFIED;/);
  const camera=readFileSync('apps/app/src/prototype/camera-adapter.ts','utf8');
- assert.match(camera,/const unchanged=\(row:SavedPhoto\)=>captureUnchanged\(selected,row\);/,'the send-time re-read uses the content check');
+ assert.match(camera,/if\(!current\(\)\|\|!captureUnchanged\(selected,row\)\|\|row\.kind==='video'\|\|row\.trashed\)/,'the send-time re-read refuses stale content and deferred video interpretation');
 });
 test('hosted-result, digest and workflow notices are never reviewable; reminder and navigation rows are',()=>{
  const own={source:'own',id:'n1',revision:'r1',title:'Digest ready',text:'Mail from Dana'};

@@ -43,6 +43,7 @@ for (const transition of ['session', 'history']) test(`the shell retires the old
     alphaClient: {disconnect() {}}, cancelMessageContext() {}, clearMapsSelection() {},
     syncStoppedReplyNotice() {}, syncCanonicalNotes() {}, context() {},
     collapseSystemNotices: messages => messages, mergeConversationDelivery: messages => messages,
+    restoreAttachments: async messages => { assert.equal(messages.length,0,'this history-retirement fixture has no attachments');return messages; },
   };
   const install = new Function(...Object.keys(ports), stripTypeScriptTypes(source.slice(start, end), {mode: 'transform'}));
   install.call(shell, ...Object.values(ports));
