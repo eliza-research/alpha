@@ -38,8 +38,6 @@ const chatInputDifferences = {
     'The original current design guards the sheet. The mounted source also guards the raised dock input.'],
 };
 const pluginDifferences = {
-  PluginLateStartConnector: ['Late service start can register a connector after unload',
-    'The runtime stops the late instance but leaves its connector registered after ownership has been removed. The original design forbids that orphan.'],
   PluginRegistrationRollbackVisibility: ['Registration rollback removes public visibility before settlement',
     'During held disposal the runtime hides the plugin while both registrations are pending. The original action combines removal and settlement.'],
   PluginRuntimeStopLookup: ['Runtime shutdown clears the public service lookup',

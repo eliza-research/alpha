@@ -53,6 +53,7 @@ import {checkNativeTextScaleLifecycle} from './text-scale-lifecycle.mjs';
 import {checkNativeCrashJournal} from './crash-journal.mjs';
 import {checkNativeSettingsHandoff} from './settings-handoff.mjs';
 import {checkNativeSourceRenewal} from './source-renewal.mjs';
+import {checkNativeAssistantEntry} from './assistant-entry.mjs';
 
 export async function runNativeRefinement() {
   const models = ['VadSegmentation', 'RendererRecovery', 'ResidentScheduling'];
@@ -192,6 +193,8 @@ export async function runNativeRefinement() {
   results.push(settingsHandoff.receipt);
   const sourceRenewal = await checkNativeSourceRenewal(nativeInputs);
   results.push(sourceRenewal.receipt);
+  const assistantEntry = await checkNativeAssistantEntry(nativeInputs);
+  results.push(assistantEntry.receipt);
   const obligations = [
     ...updatePause.obligations,
     ...updateActivation.obligations,
@@ -209,6 +212,7 @@ export async function runNativeRefinement() {
     ...crashJournal.obligations,
     ...settingsHandoff.obligations,
     ...sourceRenewal.obligations,
+    ...assistantEntry.obligations,
     {model: 'GoogleBrowserReturnClaim', obligation: 'Installed callback delivery and durable credential custody',
       reason: 'The authenticated Java claim and grace functions execute under controlled queues, storage and HTTPS. Installed lifecycle, secure-store durability and intra-worker schedules remain separate.'},
     ...reviewedCopiesObligations,

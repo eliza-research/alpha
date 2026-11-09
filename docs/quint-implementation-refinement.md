@@ -707,11 +707,11 @@ provider effects use controlled ports.
 
 The historical Maps replay checks four mounted schedules and 29
 checkpoints. Six separate receipts cover offline status, origin entry,
-chat retention, arrival and failed reroute. The portrait guidance surface
-now clears the measured assistant dock at two viewport widths and two
-text scales. The mounted replay checks control and attribution hit targets
-and admits the exact reroute request by touch. The landscape overlap
-remains a separate obligation.
+chat retention, arrival and failed reroute. The guidance surface clears the
+measured assistant dock in portrait and landscape. The mounted replay
+checks two sizes per orientation and two text scales, including
+guidance controls, attribution, Map information and the right-docked
+assistant. A portrait tap admits the exact reroute request.
 
 `HostedDigestRefresh` checks nine mounted schedules and 73 checkpoints. A
 queued full refresh and a delayed poll status read keep their exact session
@@ -842,3 +842,21 @@ required helper in the same browser script, and the focused transformed
 SignIn regression passes. Independent historical campaigns now retain
 their receipts and exact failure diagnostics when another campaign
 fails.
+
+`NativeAssistantEntry` checks 35 closed JVM schedules and 259
+checkpoints. The baseline shows Capacitor's internal load callback
+replacing the verified cold invocation origin before readback. The
+repair keeps the origin for the exact sanitized intent passed through
+bridge load and preserves normal warm invocation handling. The replay
+checks listener, System UI, untrusted and Power cases, plus exact
+one-shot readback. Android caller delivery, task placement and live
+voice capture remain separate.
+
+The shared plugin runtime's baseline records late eager and lazy
+connectors after unload, including takeover of a rival or same-name
+replacement. The authenticated repair fences publication by the exact
+runtime and plugin ownership at withdrawal. Ten controlled runtime
+schedules check connector, post and send-handler publication, sibling
+keys, disposal ordering, nested registration and two isolated runtimes.
+The Android mobile producer observed the connector patch as its
+twelfth authenticated transform and passed the pre-provider turn smoke.
