@@ -5,7 +5,7 @@ import {installResidentAgentPlugin} from './resident-agent-plugin.ts';
 export const USER='22222222-2222-4222-8222-222222222222';
 export const CREDENTIAL='11111111-1111-4111-8111-111111111111';
 const b64=(bytes:Uint8Array)=>Buffer.from(bytes).toString('base64url');
-export async function signer(){
+async function signer(){
  const pair=await webcrypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},true,['sign','verify']);
  const jwk={...await webcrypto.subtle.exportKey('jwk',pair.publicKey),kid:'synthetic-key-1'};
  const sign=async(claims:Record<string,unknown>,kid='synthetic-key-1')=>{

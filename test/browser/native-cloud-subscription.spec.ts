@@ -3,7 +3,7 @@ import {openCloudPlanFromSettings} from './helpers/cloud-plan-settings';
 import {fenceNetwork,seedCompletedAccessSetup} from './flag-off-android';
 import {observeCloudNotices} from './helpers/cloud-connection-notices';
 import {test,expect,type Page} from '@playwright/test';
-import {CREDENTIAL,entitlements,installNativeCloudPlanPorts,signer,USER,type NativePlanFixture} from './helpers/native-cloud-plan-fixture';
+import {CREDENTIAL,entitlements,installNativeCloudPlanPorts,USER,type NativePlanFixture} from './helpers/native-cloud-plan-fixture';
 import {createServer,type ViteDevServer} from 'vite';
 import {resolve} from 'node:path';
 
