@@ -29,11 +29,15 @@ const calendarDay = {date: '2026-11-09', timeZone: 'UTC'};
 function controlledStatus() {
   let reads = 0;
   let pending;
+  let kind;
   return {
     get reads() { return reads; },
-    request(signal) {
+    get pendingKind() { return pending ? kind : undefined; },
+    get lastKind() { return kind; },
+    request(signal, readKind) {
       assert.equal(pending, undefined, 'the prior status call is settled');
       reads++;
+      kind = readKind;
       const request = deferred();
       const abort = () => request.reject(signal.reason);
       pending = request;
@@ -72,20 +76,38 @@ export async function checkClientObservationSupport(extraSources = []) {
   async function scenario(name, run) {
     const status = controlledStatus();
     let currentEpoch = binding.connectionEpoch;
-    const peer = new ClientObservationSupportSession(binding,
-      () => currentEpoch === binding.connectionEpoch, status.request);
-    let retired = false;
     let background = 'none';
     let turn = 'none';
     let offered = false;
+    let compared = false;
     let handshakeController;
     let turnController;
     let error;
-    const observe = () => ({
-      's.retired': retired, 's.connectionCurrent': currentEpoch === binding.connectionEpoch,
-      's.background': background, turnObservation: turn,
-      's.reads': status.reads, 's.offered': offered,
-    });
+    const peer = new ClientObservationSupportSession(binding, () => currentEpoch === binding.connectionEpoch,
+      signal => status.request(signal, supportedNow() ? 'compare'
+        : signal === handshakeController?.signal ? 'background' : 'turn'));
+    // TypeScript private properties are ordinary JavaScript fields. Observe the
+    // session's real learn/cache state without adding product instrumentation.
+    const cache = peer.cache;
+    const supportedNow = () => !!peer.known && cache.calendarDaySupported(peer.known);
+    const admit = cache.admit.bind(cache);
+    cache.admit = (response, candidate) => {
+      const accepted = admit(response, candidate);
+      if (status.lastKind === 'compare') compared = accepted && cache.calendarDaySupported(candidate);
+      return accepted;
+    };
+    const observe = () => {
+      const pending = status.pendingKind;
+      const learning = pending === 'background' || pending === 'turn';
+      return {
+        's.retired': peer.retired, 's.connectionCurrent': currentEpoch === binding.connectionEpoch,
+        's.background': background,
+        's.turn': turn === 'pending' ? (pending === 'compare' ? 'checking' : 'waiting') : turn,
+        's.learn': !peer.initial ? 'idle' : learning ? pending : 'done',
+        's.supported': supportedNow(), 's.compared': compared,
+        's.reads': status.reads, 's.offered': offered,
+      };
+    };
     const item = trace(name, observe());
     const mark = async (action, ...args) => {
       await tick();
@@ -107,6 +129,7 @@ export async function checkClientObservationSupport(extraSources = []) {
         const context = hasOptional ? {...ordinary, calendarDay: {...calendarDay}} : {...ordinary};
         turn = 'pending';
         offered = hasOptional;
+        compared = false;
         void peer.context(context, turnController.signal).then(result => {
           try {
             assert.deepEqual(result, result.calendarDay ? {...ordinary, calendarDay} : ordinary);
@@ -137,7 +160,6 @@ export async function checkClientObservationSupport(extraSources = []) {
       },
       async retire() {
         peer.clear();
-        retired = true;
         await mark('retire');
       },
       async invalidateConnection() {
@@ -173,6 +195,13 @@ export async function checkClientObservationSupport(extraSources = []) {
   await scenario('retiring during a handshake fences a late reply and future turns', async c => {
     await c.beginHandshake(); await c.beginTurn(true); await c.retire();
     await c.finishHandshake('supported'); await c.beginTurn(true);
+  });
+  await scenario('retirement retains the promise when a background learn aborts', async c => {
+    await c.beginHandshake(); await c.beginTurn(true); await c.retire(); await c.abortHandshake();
+    await c.beginTurn(false);
+  });
+  await scenario('retirement retains the promise when a turn-owned learn aborts', async c => {
+    await c.beginTurn(true); await c.retire(); await c.abortTurn(); await c.beginTurn(false);
   });
   await scenario('retiring during a comparison fences a late matching reply', async c => {
     await c.beginTurn(true); await c.finishHandshake('supported'); await c.retire();

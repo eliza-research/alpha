@@ -1372,12 +1372,13 @@ departure and a same-address recommit, and checks private approval and
 duplicate suppression. The bridge is closed. Android chooser delivery and
 external application behavior remain separate.
 
-`ClientObservationSupport` checks 19 schedules and 103 checkpoints in the
-actual optional-field handshake. The replay observes the status calls,
-nonce admission and retirement through shared learning, abort and
-connection replacement. It covers a legacy peer and repeated comparison
-against the learned process. Real transport, broader concurrent turn
-schedules and any remote handling of the optional field remain separate.
+`ClientObservationSupport` checks 21 schedules and 114 checkpoints in the
+actual optional-field handshake, observing all nine modeled fields. The
+replay observes the learned support cache and the status calls through
+shared learning, abort and connection replacement. A retired session
+retains its settled handshake promise. A replaced connection clears the
+failed promise if the session has yet to retire. Real transport, broader
+concurrent turn schedules and remote handling of the field remain separate.
 
 `NativeAppInfoHandoff` checks 12 schedules and 79 checkpoints against the
 actual Android bridge and authenticated launcher validation. It covers

@@ -3095,6 +3095,8 @@
       "CancelledSharedHandshakeRestartsUnderTurnSignalTest",
       "CancelledTurnDoesNotCancelSharedHandshakeTest",
       "RetirementFencesLateComparisonTest",
+      "RetiredLearnRemainsSettledTest",
+      "ReplacedLearnDropsFailedPromiseTest",
       "LegacyPeerPreservesOrdinaryContextTest",
       "ConnectionReplacementFencesLateComparisonTest"
     ],

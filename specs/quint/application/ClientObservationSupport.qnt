@@ -15,6 +15,7 @@ module ClientObservationSupport {
   val readingHandshake = s.learn == "background" or s.learn == "turn"
   val live = s.connectionCurrent and not(s.retired)
   val readBound = 5
+  val failedLearnState = if (s.retired) "done" else "idle"
 
   action beginHandshake = all {
     live, s.learn == "idle", s.reads < readBound,
@@ -43,7 +44,7 @@ module ClientObservationSupport {
     val check = accepts and s.turn == "waiting"
     val nextTurn = if (s.turn != "waiting") s.turn else if (not(live)) "aborted"
       else if (check) "checking" else "ordinary"
-    s' = {...s, learn: "done", supported: accepts, turn: nextTurn,
+    s' = {...s, learn: if (live) "done" else failedLearnState, supported: accepts, turn: nextTurn,
       background: if (s.learn != "background") s.background
         else if (not(live)) "aborted" else "resolved",
       reads: s.reads + (if (check) 1 else 0)},
@@ -53,14 +54,14 @@ module ClientObservationSupport {
     s.learn == "background",
     (live and s.turn == "waiting") implies s.reads < readBound,
     val retry = live and s.turn == "waiting"
-    s' = {...s, learn: if (retry) "turn" else "idle", background: "aborted",
+    s' = {...s, learn: if (retry) "turn" else failedLearnState, background: "aborted",
       turn: if (not(live) and s.turn == "waiting") "aborted" else s.turn,
       reads: s.reads + (if (retry) 1 else 0)},
   }
 
   action abortTurn = all {
     pendingTurn,
-    s' = {...s, turn: "aborted", learn: if (s.learn == "turn") "idle" else s.learn,
+    s' = {...s, turn: "aborted", learn: if (s.learn == "turn") failedLearnState else s.learn,
       supported: if (s.turn == "checking") false else s.supported},
   }
 
@@ -104,6 +105,14 @@ module ClientObservationSupport {
 
   run RetirementFencesLateComparisonTest = init.then(beginTurn(true)).then(finishHandshake("supported"))
     .then(retire).then(finishComparison("supported")).expect(s.turn == "aborted" and safety)
+
+  run RetiredLearnRemainsSettledTest = init.then(beginHandshake).then(beginTurn(true))
+    .then(retire).then(abortHandshake)
+    .expect(s.learn == "done" and s.background == "aborted" and s.turn == "aborted" and safety)
+
+  run ReplacedLearnDropsFailedPromiseTest = init.then(beginHandshake).then(beginTurn(true))
+    .then(invalidateConnection).then(finishHandshake("supported"))
+    .expect(s.learn == "idle" and s.background == "aborted" and s.turn == "aborted" and safety)
 
   run LegacyPeerPreservesOrdinaryContextTest = init.then(beginTurn(true)).then(finishHandshake("legacy"))
     .then(beginTurn(true)).expect(s.turn == "ordinary" and s.reads == 1 and safety)
