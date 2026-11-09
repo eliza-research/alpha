@@ -14596,7 +14596,6 @@
     },
     {
       "path": "apps/app/src/main.tsx",
-      "sha256": "6bd9f5e8eb3ac838ec92fa5bb7d050a801982632dfb66674f7cb170f2bf79ce1",
       "models": [
         "Application",
         "AccessibleToastLifetime",
@@ -14606,10 +14605,13 @@
         "MountedUpdateAdmission",
         "StartupUpdateAdmission",
         "CanonicalNotificationTapAdmission",
-        "ShadeNoticeQuestionAdmission"
+        "ShadeNoticeQuestionAdmission",
+        "AppearancePreferenceAdmission"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "040b43ceb5f45ef3c1407636978e382af38248abdd39d47eb0d831f47c1e24bf",
       "stateAnchors": [
         {
           "line": 92,
@@ -14654,6 +14656,18 @@
         {
           "line": 110,
           "text": "const initialTheme = (() => {"
+        },
+        {
+          "line": 111,
+          "text": "if (hasAppearancePreview(query) || fixture) return query.get('theme') === 'dark' ? 'dark' : 'light';"
+        },
+        {
+          "line": 112,
+          "text": "return resolveAppearance(readAppearanceChoice());"
+        },
+        {
+          "line": 113,
+          "text": "})();"
         },
         {
           "line": 115,
@@ -24955,7 +24969,8 @@
         "CanonicalCalendarEditorClose",
         "CameraPreviewRetirement",
         "RetainedReminderTapAdmission",
-        "ReminderOpenIntent"
+        "ReminderOpenIntent",
+        "AppearancePreferenceAdmission"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -34596,13 +34611,87 @@
         "PreferencesAndPresentation",
         "SettingsNav",
         "NativeUpdateStaging",
-        "CalendarPreservationConfirmation"
+        "CalendarPreservationConfirmation",
+        "AppearancePreferenceAdmission"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "06f4eedc5fd1d70fb76dbc1fd955170f131a4b7941cc5abc816a23a30d7390d2",
-      "stateAnchors": []
+      "sha256": "f30de9846f5ab69fc1b778dd42a52ccf53de626fc83e76c546feb751f208e3b1",
+      "stateAnchors": [
+        {
+          "line": 204,
+          "text": "export function hasAppearancePreview(query: URLSearchParams): boolean {"
+        },
+        {
+          "line": 205,
+          "text": "return testMocksEnabled && query.has('theme');"
+        },
+        {
+          "line": 206,
+          "text": "}"
+        },
+        {
+          "line": 459,
+          "text": "if(!hasAppearancePreview(new URLSearchParams(location.search))){"
+        },
+        {
+          "line": 460,
+          "text": "// A read from storage or the system scheme carries a marker, so componentDidUpdate never writes it back."
+        },
+        {
+          "line": 461,
+          "text": "const apply=()=>{const theme=resolveAppearance(readAppearanceChoice());this.setState({theme,appearanceStorageRead:{theme}});};"
+        },
+        {
+          "line": 462,
+          "text": "if(!Capacitor.isNativePlatform()){"
+        },
+        {
+          "line": 464,
+          "text": "this.appearanceResumeListener=apply;"
+        },
+        {
+          "line": 467,
+          "text": "apply();"
+        },
+        {
+          "line": 489,
+          "text": "// The marker travels with React state, so queued external reads cannot echo an older theme."
+        },
+        {
+          "line": 490,
+          "text": "const external=this.state?.appearanceStorageRead;"
+        },
+        {
+          "line": 494,
+          "text": "catch { this.toast('Theme changed for this session, but could not be saved.'); }"
+        },
+        {
+          "line": 496,
+          "text": "};"
+        },
+        {
+          "line": 499,
+          "text": "window.removeEventListener('alpha:settings-page',this.settingsNavigation);"
+        },
+        {
+          "line": 907,
+          "text": "if(row.label==='Theme'&&row.kSeg){"
+        },
+        {
+          "line": 909,
+          "text": "const stored=readAppearanceChoice(),choice:AppearanceChoice=resolveAppearance(stored)===api.theme?stored:api.theme==='dark'?'dark':'light';"
+        },
+        {
+          "line": 912,
+          "text": "try{localStorage.setItem(APPEARANCE_KEY,next);}"
+        },
+        {
+          "line": 915,
+          "text": "owner?.setState({theme,appearanceStorageRead:{theme}});"
+        }
+      ]
     },
     {
       "path": "apps/app/src/prototype/share-panel-adapter.ts",
@@ -49794,7 +49883,8 @@
         "ResidentRuntime",
         "ReviewedWorkflowLauncher",
         "NativeGoogleHostArtifact",
-        "PreparedSourceStamp"
+        "PreparedSourceStamp",
+        "ResidentJavaSourceStage"
       ],
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
@@ -50004,13 +50094,135 @@
       "path": "scripts/stage-local-agent-sources.mjs",
       "models": [
         "MobileBundleAdmission",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "ResidentJavaSourceStage"
       ],
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
-      "sha256": "9fb41560c3c21a2b7b54add5c562f5f6e0140ee7a9f3d23b38a7a212f09f6f18",
-      "stateAnchors": []
+      "sha256": "cb927eaaaaf0a8479d0d34b943ffaef964ee92b42fed0220dc8bf4a942f4135d",
+      "stateAnchors": [
+        {
+          "line": 8,
+          "text": "const pin=JSON.parse(fs.readFileSync(path.join(root,'upstream.lock.json'),'utf8')).commit;"
+        },
+        {
+          "line": 9,
+          "text": "if(execFileSync('git',['-C',upstream,'rev-parse','HEAD'],{encoding:'utf8'}).trim()!==pin)throw Error('Unexpected native runtime source pin');"
+        },
+        {
+          "line": 11,
+          "text": "if(!/^[a-z][a-z0-9]*(\\.[a-z][a-z0-9]*)+$/.test(identity))throw Error('Invalid application identity');"
+        },
+        {
+          "line": 13,
+          "text": "const runtimeSource=sourceDirectory(root);"
+        },
+        {
+          "line": 15,
+          "text": "verifySource(runtimeSource,pin);"
+        },
+        {
+          "line": 20,
+          "text": "const parent=path.join(root,'android/app/build/generated');"
+        },
+        {
+          "line": 21,
+          "text": "const published=path.join(parent,'local-agent');"
+        },
+        {
+          "line": 22,
+          "text": "fs.mkdirSync(parent,{recursive:true});"
+        },
+        {
+          "line": 23,
+          "text": "const transaction=fs.mkdtempSync(path.join(parent,'.local-agent-stage-'));"
+        },
+        {
+          "line": 24,
+          "text": "const candidate=path.join(transaction,'candidate');"
+        },
+        {
+          "line": 29,
+          "text": "const staged=stageResidentHostSources({"
+        },
+        {
+          "line": 30,
+          "text": "sourceRoot:runtimeSource,"
+        },
+        {
+          "line": 33,
+          "text": "packageName:identity,"
+        },
+        {
+          "line": 34,
+          "text": "sockets:residentHost.sockets,"
+        },
+        {
+          "line": 36,
+          "text": "environmentHook:residentHost.environmentHook,"
+        },
+        {
+          "line": 38,
+          "text": "},"
+        },
+        {
+          "line": 40,
+          "text": "helpers:residentHost.helpers,"
+        },
+        {
+          "line": 41,
+          "text": "});"
+        },
+        {
+          "line": 43,
+          "text": "path:row.path,"
+        },
+        {
+          "line": 44,
+          "text": "generatedPath:path.join(path.relative(root,published),path.relative(candidate,row.generatedFile)),"
+        },
+        {
+          "line": 45,
+          "text": "sourceSha256:row.sourceSha256,"
+        },
+        {
+          "line": 49,
+          "text": "fs.writeFileSync(path.join(candidate,'source-manifest.json'),JSON.stringify(manifest,null,2)+'\\n',{flag:'wx'});"
+        },
+        {
+          "line": 50,
+          "text": "// Under the serial Gradle producer, publish the tree and its receipt together."
+        },
+        {
+          "line": 51,
+          "text": "const existing=fs.lstatSync(published,{throwIfNoEntry:false});"
+        },
+        {
+          "line": 53,
+          "text": "if(!existing.isDirectory()||fs.readdirSync(published).some(name=>name!=='java'&&name!=='source-manifest.json'))"
+        },
+        {
+          "line": 55,
+          "text": "fs.renameSync(published,previous);"
+        },
+        {
+          "line": 58,
+          "text": "try{fs.renameSync(candidate,published);}"
+        },
+        {
+          "line": 62,
+          "text": "fs.renameSync(previous,published);"
+        },
+        {
+          "line": 65,
+          "text": "throw new AggregateError([error,restoreError],`Resident Java publication and restore failed. Previous output retained at ${previous}`);"
+        },
+        {
+          "line": 73,
+          "text": "if(!preservePrevious)fs.rmSync(transaction,{recursive:true,force:true,maxRetries:3,retryDelay:100});"
+        }
+      ]
     },
     {
       "path": "scripts/stage-workflow-worker.mjs",
@@ -133656,7 +133868,8 @@
       "models": [
         "DevelopmentRuntimeLoader",
         "NativeGoogleHostArtifact",
-        "PreparedSourceStamp"
+        "PreparedSourceStamp",
+        "ResidentJavaSourceStage"
       ],
       "scope": "shared-upstream",
       "treatment": "domain-contract-or-support",
@@ -133676,6 +133889,17 @@
           "text": "if (!allowedGenerated(file))"
         }
       ]
+    },
+    {
+      "path": "vendor/eliza/packages/app/scripts/mobile/android/resident-host-sources.mjs",
+      "models": [
+        "ResidentJavaSourceStage"
+      ],
+      "scope": "shared-upstream",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "sha256": "b04b9d5144c6f5be05dad9c84b09d9ce64ecf8face015ac6264d4d5d6f1097b1",
+      "stateAnchors": []
     },
     {
       "path": "vendor/eliza/packages/app/src/api/auth-pairing-routes.ts",
@@ -618506,7 +618730,8 @@
         "NativeMmsDispatch",
         "NativeCrashJournal",
         "NativeSettingsHandoff",
-        "NativeAssistantEntry"
+        "NativeAssistantEntry",
+        "ResidentJavaSourceStage"
       ],
       "sha256": "0bce8e83df6cf39ec58ebda94cdd0976c2558f346e8c0988e4fa904f6578d7cd"
     },
@@ -618523,7 +618748,8 @@
       "path": "app.config.json",
       "models": [
         "Application",
-        "PreferencesAndPresentation"
+        "PreferencesAndPresentation",
+        "ResidentJavaSourceStage"
       ],
       "sha256": "c31484ec76141dc78cf7dc28fa4c60d8c62885e31f27e18755e87f0c18119bb0"
     },
@@ -619266,7 +619492,8 @@
         "CoreTurnControllers",
         "ReviewedWorkflowLauncher",
         "NativeGoogleHostArtifact",
-        "PreparedSourceStamp"
+        "PreparedSourceStamp",
+        "ResidentJavaSourceStage"
       ],
       "sha256": "bd5c0ae286c2802fed48f8e51150d4f2de75fb4c8563cfdcdd4d1347fb888c5f",
       "integrationReview": "Retains the reviewed source boundary and authenticated patch catalog; integration also admits installed dependency ranges and bounded source-copy helpers. Configuration identity alone is not runtime/refinement evidence."
@@ -619424,7 +619651,8 @@
         "CanonicalNotesStore",
         "CoreTurnControllers",
         "MobileBundleAdmission",
-        "NativeGoogleHostArtifact"
+        "NativeGoogleHostArtifact",
+        "ResidentJavaSourceStage"
       ],
       "sha256": "62682bc4e49ea7c2f187a3b688f65289b4092c0438fd1cc210b5892ab306ee9d"
     },
@@ -619483,7 +619711,7 @@
     "apps/app/index.html"
   ],
   "sharedSourceDiscovery": {
-    "sharedSourceCount": 4841,
+    "sharedSourceCount": 4842,
     "producer": "specs/quint/refinement/services/runtime-bundle-inputs.json",
     "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
     "meaning": "Authenticated source identities and domain allocations. Runtime activation and implementation refinement require separate evidence."

@@ -1208,10 +1208,26 @@ selection changes, explicit choices, cancellation, failure reporting and
 seven retirement events. Installed destinations and arbitrary caller
 reentrancy remain separate.
 
+`AppearancePreferenceAdmission` checks 11 source schedules and 74
+checkpoints. Startup and Settings now use the same gate for a development
+theme preview. An ignored production query previously disabled native and
+browser System updates and browser storage readback. The closed replay also
+checks two queued reads, write echoes, write failure and teardown. Native
+platform delivery and arbitrary browser storage schedules remain separate.
+
+`ResidentJavaSourceStage` checks nine source schedules and 49 checkpoints.
+The wrapper now prepares the generated Java tree and its source manifest
+in a private candidate. A failed publication restores the prior pair. A
+failed restoration retains both generations in the transaction directory.
+The pinned generator runs unchanged. Concurrent readers, interruption
+between publication renames and actual Gradle consumption remain separate.
+
 The frozen 221-model `npm run verify` passed Quint and TypeScript, then
 finished the Node suite with 4,976 passing, 13 failing and six skipped.
 The Notes fixture's source markers are repaired, and all ten of its focused
 tests pass. The Calendar transport test passes with the prepared SDK inside
 its owning worktree. Nine isolated JVM checks pass, including the four
-tests that reported compiler aborts during the broad run. The broad result
-remains failed.
+tests that reported compiler aborts during the broad run. The original
+closed Camera recovery fixture also passes in isolation. The broad result
+remains failed. The Share model passes depth-eight symbolic verification
+and the common Share panel passes its Chromium fixture.
