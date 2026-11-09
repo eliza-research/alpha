@@ -1244,3 +1244,22 @@ using its current account's request store. Replacement, view departure
 and refresh retire the old review. The closed replay checks delayed
 document and dialog preparation, retained callbacks and reset completion.
 The separate mounted fixture covers the visible dialog and IndexedDB.
+
+`NotesTrashReadPublication` checks seven schedules and 41 checkpoints.
+Only the newest read from the current Previous Notes source epoch may
+publish rows or errors. The replay holds successful and failed responses
+through a successor read and a source switch. Durable storage, restore,
+erasure and React commit timing remain separate.
+
+`WorkflowClockAdmission` checks ten schedules and 78 checkpoints. The
+Clock opener belongs to the current Workflows visit, including a browser
+handoff that uses the direct show route. A flag-off renderer rechecks mock
+admission after saving the opening receipt and before dispatch. Installed
+Clock behavior and physical focus remain separate.
+
+`ScheduledTaskControls` checks 18 schedules and 114 checkpoints. The
+renderer keeps terminal manual tasks out of the active menu and rejects
+fire receipts for another task. It distinguishes an unavailable schedule
+source from an authoritative missing row, including partial failure in
+another source. Server scheduling, browser persistence and actual dispatch
+remain separate from these closed renderer and protocol traces.

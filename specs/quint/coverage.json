@@ -14551,7 +14551,9 @@
         "StartupUpdateAdmission",
         "CanonicalNotificationTapAdmission",
         "ShadeNoticeQuestionAdmission",
-        "AppearancePreferenceAdmission"
+        "AppearancePreferenceAdmission",
+        "WorkflowClockAdmission",
+        "NotesTrashReadPublication"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -15730,7 +15732,9 @@
         "AssistantConversation",
         "NotesLifecycle",
         "ChatAttachments",
-        "FirstSendDraftMigration"
+        "FirstSendDraftMigration",
+        "WorkflowClockAdmission",
+        "NotesTrashReadPublication"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -17292,13 +17296,18 @@
       "models": [
         "WorkflowExecution",
         "ReminderOpenIntent",
-        "WorkflowRequestRecoveryAdmission"
+        "WorkflowRequestRecoveryAdmission",
+        "ScheduledTaskControls"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "b235540fb8298068ab0422922ed435375f977a55c30838521001f0ce038e79f8",
+      "sha256": "87c366822ad3f38b743ec22393978f7f08de675547b19053b57114907fa2a2d6",
       "stateAnchors": [
+        {
+          "line": 6,
+          "text": "import {AutomationsProtocol,AutomationOutcomeError,automationIssue,automationLocalDateInput,automationWhen,mergeAutomationRows,scheduledTaskEnded,type AutomationRow,type AutomationIssue"
+        },
         {
           "line": 18,
           "text": "const dateInput=automationLocalDateInput;"
@@ -17385,162 +17394,210 @@
         },
         {
           "line": 61,
-          "text": "const publish=()=>{if(owner?.live&&!suspended&&!document.hidden)owner.vset('workflows',{automationTick:Date.now()});};"
+          "text": "const scheduleBlock=()=>!binding()?agentPendingText():loadedSession!==binding()?.sessionId||state!=='ready'?'Refresh scheduled items before changing one.':issues.find(issue=>issue.sourc"
         },
         {
           "line": 62,
-          "text": "const retire=(clear=false)=>{dismissFilters();recovery.retire();epoch++;controller?.abort();controller=null;detail=null;scheduleDraft=null;editor=null;creating=false;review=null;message"
+          "text": "const publish=()=>{if(owner?.live&&!suspended&&!document.hidden)owner.vset('workflows',{automationTick:Date.now()});};"
         },
         {
           "line": 63,
-          "text": "const requestKey=(id:string)=>{const owner=connectionController.getSnapshot().session;return owner?workflowIntentKey(owner,'automation:'+id):'offline:'+id;};"
+          "text": "const retire=(clear=false)=>{dismissFilters();recovery.retire();epoch++;controller?.abort();controller=null;detail=null;scheduleDraft=null;editor=null;creating=false;review=null;message"
         },
         {
           "line": 64,
-          "text": "const key=(row:AutomationRow)=>requestKey(row.key);"
+          "text": "const requestKey=(id:string)=>{const owner=connectionController.getSnapshot().session;return owner?workflowIntentKey(owner,'automation:'+id):'offline:'+id;};"
         },
         {
           "line": 65,
-          "text": "const locked=(row:AutomationRow)=>uncertain.has(key(row))||(!!binding()&&(intentStore?.locked(key(row))??true));"
+          "text": "const key=(row:AutomationRow)=>requestKey(row.key);"
         },
         {
           "line": 66,
-          "text": "const visible=()=>owner?.live&&!suspended&&owner.S().view==='workflows'&&!document.hidden&&!connectionController.getSnapshot().open;"
+          "text": "const locked=(row:AutomationRow)=>uncertain.has(key(row))||(!!binding()&&(intentStore?.locked(key(row))??true));"
         },
         {
           "line": 67,
-          "text": "const recoverRequests=()=>{"
+          "text": "const visible=()=>owner?.live&&!suspended&&owner.S().view==='workflows'&&!document.hidden&&!connectionController.getSnapshot().open;"
         },
         {
           "line": 68,
+          "text": "const recoverRequests=()=>{"
+        },
+        {
+          "line": 69,
           "text": "const store=intentStore, ticket=epoch, sessionId=connectionController.getSnapshot().session?.sessionId;"
         },
         {
-          "line": 72,
+          "line": 73,
           "text": "current:()=>!!visible()&&!controller&&epoch===ticket&&intentStore===store&&connectionController.getSnapshot().session?.sessionId===sessionId,"
         },
         {
-          "line": 73,
+          "line": 74,
           "text": "changed:()=>{store.invalidate();publish();},"
         },
         {
-          "line": 79,
+          "line": 80,
           "text": "const settled=(entries:Record<string,string>,fresh:AutomationRow[],complete:(source:AutomationIssue['source'])=>boolean)=>Object.entries(entries).filter(([id,raw])=>{"
         },
         {
-          "line": 80,
+          "line": 81,
           "text": "let intent:Bag;try{intent=JSON.parse(raw);}catch{return false;}"
         },
         {
-          "line": 82,
+          "line": 83,
           "text": "const body:Bag=intent.body&&typeof intent.body==='object'?intent.body:{},fields=Object.keys(body),row=fresh.find(row=>requestKey(row.key)===id);"
         },
         {
-          "line": 89,
+          "line": 90,
           "text": "recovery.retire();"
         },
         {
-          "line": 90,
+          "line": 91,
           "text": "const selected=binding(),ticket=++epoch,abort=controller=new AbortController();state='loading';if(homeCache)homeCache.stale=true;if(!preserveMessage)message='';publish();"
         },
         {
-          "line": 91,
+          "line": 92,
           "text": "const valid=()=>ticket===epoch&&!abort.signal.aborted&&visible()&&selected?.sessionId===binding()?.sessionId;"
         },
         {
-          "line": 93,
+          "line": 94,
           "text": "const ownerContext=connectionController.getSnapshot().session,store=ownerContext?new WorkflowIntentStore(ownerContext):null;"
         },
         {
-          "line": 96,
+          "line": 97,
           "text": "const next:AutomationRow[]=[],failures:AutomationIssue[]=[];"
         },
         {
-          "line": 99,
+          "line": 100,
           "text": "const fresh=mergeAutomationRows(next),complete=(source:AutomationIssue['source'])=>remote.status==='fulfilled'&&!remote.value.issues.some(issue=>issue.source===source);"
         },
         {
-          "line": 104,
+          "line": 105,
           "text": "const enabled=rows.filter(row=>row.enabled);"
         },
         {
-          "line": 113,
+          "line": 122,
           "text": "if(controller)return;const selected=binding();if(!selected){showAgentStatus(owner);return;}"
         },
         {
-          "line": 114,
+          "line": 123,
           "text": "const ownerContext=connectionController.getSnapshot().session;if(!ownerContext)return;"
         },
         {
-          "line": 115,
+          "line": 124,
           "text": "const intents=new WorkflowIntentStore(ownerContext),ticket=++epoch,abort=controller=new AbortController();let dispatched=false,retained:string|undefined,sent='';message='';publish();"
         },
         {
-          "line": 116,
+          "line": 125,
           "text": "const valid=()=>ticket===epoch&&!abort.signal.aborted&&visible()&&selected.sessionId===binding()?.sessionId;"
         },
         {
           "line": 126,
+          "text": "const client=new AutomationsProtocol(async(path,method,body,signal)=>{if(!valid())throw Error('Automation connection changed.');if(method!=='GET'){const blocked=path.startsWith('/api/li"
+        },
+        {
+          "line": 135,
           "text": "const ownerContext=connectionController.getSnapshot().session;if(!ownerContext)return;"
         },
         {
-          "line": 127,
+          "line": 136,
           "text": "const intents=new WorkflowIntentStore(ownerContext),ticket=++epoch,abort=controller=new AbortController();message='';publish();"
         },
         {
-          "line": 128,
+          "line": 137,
           "text": "try{const raw=await intents.read(id,abort.signal);if(raw!==null)await intents.acknowledge(id,raw,abort.signal);if(ticket===epoch)uncertain.delete(id);}"
         },
         {
-          "line": 134,
+          "line": 143,
           "text": "if(row.kind==='workflow'&&row.workflowId){detail=null;const out=render(owner.vget('workflows'),owner.api('workflows'));out.openWorkflow(row.workflowId);return;}"
         },
         {
-          "line": 146,
+          "line": 147,
+          "text": "function ask(label:string,row:AutomationRow,run:(client:AutomationsProtocol,signal:AbortSignal)=>Promise<unknown>){if(controller||locked(row))return;const blocked=row.kind==='schedule'?"
+        },
+        {
+          "line": 155,
           "text": "if(!editor||controller)return;const selected=editor,id=selected.row?key(selected.row):requestKey('new:'+selected.kind);"
         },
         {
-          "line": 149,
+          "line": 158,
           "text": "const blocked=selected.kind==='reminder'?reminderBlock():automationBlock();if(blocked){message=blocked;publish();return;}"
         },
         {
-          "line": 153,
+          "line": 162,
           "text": "const close=()=>{if(controller)return;editor=null;detail=null;creating=false;review=null;message='';publish();};"
         },
         {
-          "line": 154,
+          "line": 163,
           "text": "const newDeviceReminder=()=>{close();owner.openView('calendar');owner.newDeviceReminderDraft();};"
         },
         {
-          "line": 158,
+          "line": 167,
           "text": "const values=p.renderVals;"
         },
         {
-          "line": 161,
+          "line": 170,
           "text": "api=current;const workflow=render(value,current),currentSession=binding()?.sessionId||'offline';"
         },
         {
-          "line": 165,
+          "line": 174,
           "text": "const empty=state==='ready'&&!cards.length&&!issues.length;"
         },
         {
-          "line": 168,
+          "line": 175,
+          "text": "const managementCards=[...(workflow.managementCards||[])];"
+        },
+        {
+          "line": 176,
+          "text": "if(intentStore&&!Capacitor.isNativePlatform())managementCards.push({"
+        },
+        {
+          "line": 177,
           "text": "name:'Workflow request recovery',short:'Back up or reset this agent’s pending requests',open:recoverRequests,"
         },
         {
-          "line": 170,
+          "line": 179,
           "text": "const selected=editor?.row||detail,selectedLocked=!!selected&&locked(selected);"
         },
         {
-          "line": 171,
+          "line": 180,
+          "text": "const scheduleBlocked=detail?.kind==='schedule'&&!!scheduleBlock();"
+        },
+        {
+          "line": 181,
           "text": "const lockId=selected?key(selected):editor?requestKey('new:'+editor.kind):'',formLocked=!selected&&!!editor&&(uncertain.has(lockId)||!!intentStore?.locked(lockId));"
         },
         {
-          "line": 172,
+          "line": 182,
           "text": "const actions:Array<{label:string;run:()=>void;disabled:boolean}>=[];"
         },
         {
+          "line": 183,
+          "text": "const action=(label:string,fn:(client:AutomationsProtocol,signal:AbortSignal)=>Promise<unknown>)=>{if(detail)actions.push({label,run:()=>ask(label,detail!,fn),disabled:!!controller||sel"
+        },
+        {
+          "line": 187,
+          "text": "const ended=scheduled&&scheduledTaskEnded(scheduled.status);"
+        },
+        {
+          "line": 192,
+          "text": "actions.push({label:'Edit schedule',disabled:!!controller||selectedLocked||scheduleBlocked,run:()=>{if(controller||locked(scheduled)||scheduleBlock())return;scheduleDraft=scheduled.desc"
+        },
+        {
+          "line": 202,
+          "text": "filters:filters.map(name=>({name:filterNames[name],selected:name===typeFilter||name===statusFilter&&name!=='all',pick:()=>{if(name==='active'||name==='inactive')statusFilter=name;else t"
+        },
+        {
           "line": 209,
+          "text": "editingSchedule:!!scheduled&&scheduleDraft!==null,scheduleInstructions:scheduleDraft??'',scheduleSaveDisabled:!!controller||selectedLocked||scheduleBlocked,"
+        },
+        {
+          "line": 212,
+          "text": "saveScheduleEdit:()=>{if(!scheduled||!scheduleDraft?.trim()||locked(scheduled)||controller||scheduleBlock())return;const instructions=scheduleDraft.trim();if(scheduleClock&&!/^([01]\\d|2"
+        },
+        {
+          "line": 219,
           "text": "const mount=p.componentDidMount,unmount=p.componentWillUnmount;"
         }
       ]
@@ -20890,12 +20947,14 @@
     },
     {
       "path": "apps/app/src/prototype/clock-adapter.ts",
-      "sha256": "77b9c7c49f1ff59abfdcc24ec8e5a0c86d7c8404463b122dd859ae8de551e260",
       "models": [
-        "DeviceActions"
+        "DeviceActions",
+        "WorkflowClockAdmission"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "3c8ed25e07cd7cab53f235875b974f21caf2c55e37bc7da431f788be0b08b424",
       "stateAnchors": [
         {
           "line": 8,
@@ -20914,59 +20973,63 @@
           "text": "let owner:any,open=false,action:ClockRequest['action']='set',time='07:00',label='',snooze='10',days:ClockDay[]=[],review:ClockRequest|null=null,busy=false,message='',generation=0;"
         },
         {
-          "line": 18,
+          "line": 15,
+          "text": "let visit=0;"
+        },
+        {
+          "line": 19,
           "text": "let repeatSupported=false;"
         },
         {
-          "line": 21,
+          "line": 22,
           "text": "const mockRequested=()=>options.simulated||document.documentElement.dataset.connectionMode==='mock';"
         },
         {
-          "line": 22,
+          "line": 23,
           "text": "const simulated=()=>testMocksEnabled&&mockRequested();"
         },
         {
-          "line": 23,
+          "line": 24,
           "text": "const repeatAvailable=()=>simulated()||repeatSupported;"
         },
         {
-          "line": 24,
+          "line": 25,
           "text": "const blocked=()=>!testMocksEnabled&&mockRequested();"
         },
         {
-          "line": 26,
+          "line": 27,
           "text": "const history=createClockHandoffHistory(secureConnectionStore,()=>localStorage.getItem(clockHandoffLegacyKey));"
         },
         {
-          "line": 27,
+          "line": 28,
           "text": "let snapshot:ClockHandoffSnapshot|null=null,loading=false,historyGeneration=0;"
         },
         {
-          "line": 28,
+          "line": 29,
           "text": "const restore=async()=>{"
         },
         {
-          "line": 31,
+          "line": 32,
           "text": "const token=++historyGeneration,view=generation;snapshot=null;loading=true;publish();"
         },
         {
-          "line": 33,
+          "line": 34,
           "text": "const saved=await history.read();if(token!==historyGeneration||view!==generation)return;"
         },
         {
-          "line": 34,
+          "line": 35,
           "text": "snapshot=saved;const last=saved.record;"
         },
         {
-          "line": 39,
+          "line": 40,
           "text": "const close=()=>{if(!busy){open=false;review=null;publish();}};"
         },
         {
-          "line": 40,
+          "line": 41,
           "text": "const back=(event:Event)=>{if(!open)return;event.preventDefault();event.stopImmediatePropagation();close();};"
         },
         {
-          "line": 41,
+          "line": 42,
           "text": "const modal=createInlineModal(close,()=>document.querySelector<HTMLElement>('button[aria-label=\"Clock alarms\"]'));"
         },
         {
@@ -20975,54 +21038,69 @@
         },
         {
           "line": 44,
+          "text": "const retireVisit=()=>{open=false;++visit;retireReview();};"
+        },
+        {
+          "line": 46,
           "text": "const hidden=()=>{if(document.hidden)retireReview();else if(open&&!busy)void restore();};"
         },
         {
-          "line": 45,
+          "line": 47,
           "text": "const mount=p.componentDidMount,unmount=p.componentWillUnmount;"
         },
         {
-          "line": 48,
+          "line": 50,
           "text": "const change=(fn:()=>void)=>{if(busy)return;fn();review=null;publish();};"
         },
         {
-          "line": 49,
+          "line": 51,
           "text": "const build=():ClockRequest=>{"
         },
         {
-          "line": 53,
+          "line": 55,
           "text": "const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];"
         },
         {
-          "line": 55,
+          "line": 57,
           "text": "const dispatch=async(request:ClockRequest)=>{"
         },
         {
-          "line": 62,
+          "line": 64,
           "text": "const id=crypto.randomUUID(),token=generation,expected=snapshot;"
         },
         {
-          "line": 64,
+          "line": 66,
           "text": "let retained:ClockHandoffSnapshot;"
         },
         {
-          "line": 68,
-          "text": "let cancelled=token!==generation||document.hidden||simulated();"
+          "line": 69,
+          "text": "// Admission is asynchronous. A retired review must never dispatch after it completes."
         },
         {
           "line": 70,
+          "text": "let cancelled=token!==generation||document.hidden||mockRequested();"
+        },
+        {
+          "line": 72,
           "text": "let result:ClockResult;"
         },
         {
-          "line": 85,
+          "line": 87,
           "text": "const out=render(state,api);"
         },
         {
-          "line": 87,
+          "line": 88,
+          "text": "const renderedVisit=visit;"
+        },
+        {
+          "line": 90,
+          "text": "if(busy||document.hidden||renderedVisit!==visit||!api.isActive())return;"
+        },
+        {
+          "line": 97,
           "text": "const currentReview=review;"
         }
-      ],
-      "integrationReview": "2026-11-09 UI and browser-return delta reviewed against existing domain models and new ChatAttachments/BrowserGoogleReturn contracts; see ui-return-review-20261109.md. Source-model refinement and device acceptance remain separate."
+      ]
     },
     {
       "path": "apps/app/src/prototype/contacts-adapter.ts",
@@ -24681,7 +24759,8 @@
         "CameraPreviewRetirement",
         "RetainedReminderTapAdmission",
         "ReminderOpenIntent",
-        "AppearancePreferenceAdmission"
+        "AppearancePreferenceAdmission",
+        "WorkflowClockAdmission"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -31744,12 +31823,14 @@
     },
     {
       "path": "apps/app/src/prototype/notes-trash-adapter.ts",
-      "sha256": "cc2ea41af468bde106a6edbadc0f980867ee56bc6487c94afe6b410208112b49",
       "models": [
-        "NotesLifecycle"
+        "NotesLifecycle",
+        "NotesTrashReadPublication"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "61482de078a799503ffa56f4675ea121484863b064797d72efb6e5a6f5816a31",
       "stateAnchors": [
         {
           "line": 16,
@@ -31772,139 +31853,163 @@
           "text": "let busy=false,maintaining:Promise<unknown>|null=null;"
         },
         {
-          "line": 35,
-          "text": "let refused:{note:Bag;snapshot:string;index:number}|null=null;"
+          "line": 34,
+          "text": "const latestRead=new WeakMap<Shell,symbol>();"
         },
         {
           "line": 36,
+          "text": "let refused:{note:Bag;snapshot:string;index:number}|null=null;"
+        },
+        {
+          "line": 37,
           "text": "const noteTitle=(note:Bag)=>note.title||kindLabel[note.kind]||'Note';"
         },
         {
-          "line": 38,
+          "line": 39,
           "text": "const ready=(shell:Shell)=>shell.live&&shell.notesStore&&!shell.notesStorageFailed&&!shell.notesPending;"
         },
         {
-          "line": 39,
+          "line": 40,
           "text": "const voice=(shell:Shell)=>shell.api('notes') as Bag;"
         },
         {
-          "line": 43,
+          "line": 44,
           "text": "const hook=voice(shell).purgeTrashedVoice;"
         },
         {
-          "line": 48,
-          "text": "try{const doc=await readNotesTrash();if(shell.live)shell.vset('notes',{trash:sortedNotesTrash(doc),trashError:''});}"
+          "line": 49,
+          "text": "const request=Symbol(),epoch=shell.notesSourceEpoch;"
         },
         {
-          "line": 58,
+          "line": 50,
+          "text": "latestRead.set(shell,request);"
+        },
+        {
+          "line": 51,
+          "text": "const current=()=>shell.live&&shell.notesSourceMode==='legacy'&&shell.notesSourceEpoch===epoch&&latestRead.get(shell)===request;"
+        },
+        {
+          "line": 62,
           "text": "try{const recover=voice(shell).recoverVoiceDeletions;if(typeof recover==='function')void Promise.resolve(recover()).catch(()=>{/* The row stays under review. */});}catch{/* Unavailable. */}"
         },
         {
-          "line": 59,
+          "line": 63,
           "text": "const result=await maintainNotesTrash({policy:notesTrashPolicy,read:readNotesTrash,edit:editNotesTrash,liveNoteIds:savedNoteIds,withLock:work=>withNotesDeletionLock(work),purge:entry=>purge(shell,entr"
         },
         {
-          "line": 77,
+          "line": 81,
           "text": "onResume:listener=>{const handle=DailyApps.addListener('appResumed',listener).catch(()=>null);return ()=>void handle.then(value=>value?.remove()).catch(()=>{});},"
         },
         {
-          "line": 82,
+          "line": 86,
           "text": "const actionsFor=(shell:Shell)=>createNotesTrashActions<NoteRecord,NotesTarget>({"
         },
         {
-          "line": 98,
+          "line": 102,
           "text": "if(reason==='restore'){const folders=await readNotesFolders().then(doc=>doc.folders,()=>null);if(folders)list=list.map(note=>restoredNoteFolder(note,folders));}"
         },
         {
-          "line": 103,
+          "line": 107,
           "text": "const unavailableMessage=(shell:Shell)=>shell.notesPending&&!shell.notesStorageFailed?'Still saving. Try again in a moment.':'Notes storage needs attention. Try again after it recovers.';"
         },
         {
-          "line": 106,
+          "line": 110,
           "text": "const outcome=await actionsFor(shell).moveToTrash(collection(shell),note as NoteRecord,index,()=>shell.notesStore.target(note.id));"
         },
         {
-          "line": 127,
+          "line": 131,
           "text": "const entry=(await readNotesTrash().catch(()=>null))?.entries.find(x=>x.id===id);"
         },
         {
-          "line": 128,
+          "line": 132,
           "text": "const outcome=await actionsFor(shell).restore(collection(shell),id);"
         },
         {
-          "line": 131,
+          "line": 135,
           "text": "const hook=voice(shell).restoreTrashedVoice;"
         },
         {
-          "line": 135,
+          "line": 139,
           "text": "const title=entry?.note.title||kindLabel[entry?.note.kind as string]||'Note';"
         },
         {
-          "line": 146,
+          "line": 150,
           "text": "// A failed save can hold a restored copy in the unsaved draft; erasing now would let it return."
         },
         {
-          "line": 150,
+          "line": 154,
           "text": "const outcome=await actionsFor(shell).erase(ids);"
         },
         {
-          "line": 161,
+          "line": 165,
           "text": "const candidate=refused;"
         },
         {
-          "line": 164,
+          "line": 168,
           "text": "let outcome:'deleted'|'changed'|'unconfirmed'|'unavailable'='unconfirmed';"
         },
         {
-          "line": 165,
+          "line": 169,
           "text": "try{const result=await actionsFor(shell).deleteForever(collection(shell),id,candidate.snapshot);outcome=result==='owned-content'?'changed':result;}"
         },
         {
-          "line": 168,
+          "line": 172,
           "text": "const settled=outcome==='deleted'||outcome==='changed';"
         },
         {
-          "line": 179,
+          "line": 183,
           "text": "const api=originalApi.call(this,key);"
         },
         {
-          "line": 182,
+          "line": 186,
           "text": "const shell=this;"
         },
         {
-          "line": 192,
+          "line": 196,
           "text": "const result=originalMount?.apply(this,args);"
         },
         {
-          "line": 214,
-          "text": "const view=render(state,api),trash=api.notesTrash as Bag|undefined;"
+          "line": 200,
+          "text": "window.addEventListener('alpha:notes-trash-changed',this.notesTrashChanged);"
+        },
+        {
+          "line": 205,
+          "text": "latestRead.delete(this);"
+        },
+        {
+          "line": 206,
+          "text": "window.removeEventListener('alpha:notes-trash-changed',this.notesTrashChanged);"
         },
         {
           "line": 219,
-          "text": "const rows:NotesTrashEntry[]=state.trash||[],now=Date.now(),disabled=!!state.trashBusy;"
+          "text": "const view=render(state,api),trash=api.notesTrash as Bag|undefined;"
         },
         {
           "line": 224,
+          "text": "const rows:NotesTrashEntry[]=state.trash||[],now=Date.now(),disabled=!!state.trashBusy;"
+        },
+        {
+          "line": 229,
           "text": "if(view.trashOpen&&Array.isArray(state.trash)&&!rows.length&&!disabled&&!state.trashFull)queueMicrotask(()=>{const latest=api.get('notes');if(latest.folder==='deleted'&&Array.isArray(latest.trash)&&!l"
         },
         {
-          "line": 228,
+          "line": 233,
           "text": "const title=entry.note.title||kindLabel[entry.note.kind]||'Untitled';"
         },
         {
-          "line": 236,
+          "line": 241,
           "text": "const ask=state.trashAsk as Bag|null,asked=ask&&view.trashOpen?rows.find(entry=>entry.id===ask.id):undefined;"
         },
         {
-          "line": 247,
+          "line": 252,
           "text": "const confirm=state.trashConfirm as Bag|null;"
         },
         {
-          "line": 249,
+          "line": 254,
           "text": "const full=(state.trashFull as Bag|null)&&(state.list||[]).some((n:Bag)=>n.id===state.trashFull.id&&n.id===state.open)?state.trashFull as Bag:null;"
         },
         {
-          "line": 262,
+          "line": 267,
           "text": "if(full.voice){const hook=api.deleteVoiceNoteForever;if(typeof hook==='function')void hook(full.id);else api.toast('Permanent voice deletion is unavailable. Nothing was deleted.');}"
         }
       ]
@@ -34417,14 +34522,20 @@
         "MapsRerouteOwnership",
         "ModalScrimOwnership",
         "NotesRecorderMediaAdmission",
-        "WorkflowRequestRecoveryAdmission"
+        "WorkflowRequestRecoveryAdmission",
+        "ScheduledTaskControls",
+        "WorkflowClockAdmission"
       ],
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "79e3e9c339db29699b6c621a719794d076b704458a5a16f42a509d4aa4d10871",
-      "stateAnchors": [],
-      "integrationReview": "2026-11-09: direct month/year selectors map to the existing calendar month offset; event email removed and editable actions grouped without changing permission guards. Four browser keyboard/light/dark/height scenarios passed. State-audit obligations remain. 2026-11-09: shared overlay bounds, retained dismiss controls and alarm reading order validated in browser layout and interaction checks; storage and handoff transitions are unchanged. 2026-11-09: Previous-notes UI entry removed; retained data stays behind its existing explicit source-selection contract. Domain allocation retained after merged fixes. Source identity and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations."
+      "sha256": "1c94732bcaf76e4a09ba7a4945dcc81332b59a282f0c27c121f7fa478029a309",
+      "stateAnchors": [
+        {
+          "line": 3359,
+          "text": "<sc-if value=\"{{workflows.automation.editingSchedule}}\"><sc-if value=\"{{workflows.automation.scheduleClockEditable}}\"><label class=\"schedule-instructions\">Time ({{workflows.automation.e"
+        }
+      ]
     },
     {
       "path": "apps/app/src/prototype/use-in-email-review.ts",
@@ -36593,12 +36704,14 @@
     },
     {
       "path": "apps/app/src/runtime/automations-protocol.ts",
-      "sha256": "b1b1e229c87702bfa1c60e8fe82f2e4697da670e569d5b2edd217748452e13bc",
       "models": [
-        "WorkflowExecution"
+        "WorkflowExecution",
+        "ScheduledTaskControls"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "d47943bea26fa2f06a43b7fe680ebc80334d5601ddee01cf2840945af60f2d6e",
       "stateAnchors": [
         {
           "line": 9,
@@ -36606,136 +36719,164 @@
         },
         {
           "line": 20,
-          "text": "const object=(value:unknown):ObjectValue=>{if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Invalid automation response.');return value as ObjectValue;};"
+          "text": "export const scheduledTaskEnded = (status:string) => ['completed','dismissed','skipped','expired','failed'].includes(status);"
         },
         {
           "line": 21,
+          "text": "const object=(value:unknown):ObjectValue=>{if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Invalid automation response.');return value as ObjectValue;};"
+        },
+        {
+          "line": 22,
           "text": "const text=(value:unknown):string=>typeof value==='string'?value:'';"
         },
         {
-          "line": 23,
+          "line": 24,
           "text": "const list=(value:unknown):unknown[]=>{if(!Array.isArray(value))throw Error('Invalid automation list.');return value;};"
         },
         {
-          "line": 29,
+          "line": 30,
           "text": "export const AUTOMATION_LIMIT_MESSAGE='This automation was not enabled. The agent is at its limit of active automations or is busy; pause another automation or try again later.';"
         },
         {
-          "line": 33,
+          "line": 34,
           "text": "const fields=/^(\\d{4,})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2})(?::(\\d{2})(?:\\.(\\d{1,3}))?)?$/.exec(value),date=new Date(value);"
         },
         {
-          "line": 35,
+          "line": 36,
           "text": "const expected=fields.slice(1,7).map(part=>Number(part||0)),actual=[date.getFullYear(),date.getMonth()+1,date.getDate(),date.getHours(),date.getMinutes(),date.getSeconds()];"
         },
         {
-          "line": 42,
+          "line": 43,
           "text": "const t=object(value);switch(t.triggerType??t.kind){"
         },
         {
-          "line": 45,
+          "line": 46,
           "text": "const expression=text(t.cronExpression??t.expression).trim(),description=expression?formatSchedule(expression):'';"
         },
         {
-          "line": 46,
+          "line": 47,
           "text": "let zone=text(t.timezone??t.tz).trim();"
         },
         {
-          "line": 61,
+          "line": 62,
           "text": "const workflowId=row.workflowId===undefined?undefined:automationId(row.workflowId),triggerId=row.triggerId===undefined?undefined:automationId(row.triggerId);"
         },
         {
           "line": 65,
+          "text": "function scheduled(value:unknown):AutomationRow {"
+        },
+        {
+          "line": 66,
           "text": "const row=object(value),id=automationId(row.taskId),state=object(row.state),trigger=object(row.trigger);"
         },
         {
-          "line": 67,
+          "line": 68,
           "text": "const labels:Record<string,string>={gm:'Good morning',gn:'Good night',checkin:'Daily check-in','weekly-review':'Weekly review'};"
         },
         {
-          "line": 68,
+          "line": 69,
           "text": "const title=labels[text(row.metadata?.recordKey)]||text(row.metadata?.slot)||text(row.kind)||'Scheduled task';"
         },
         {
-          "line": 72,
+          "line": 70,
+          "text": "const status=text(state.status),ended=scheduledTaskEnded(status);"
+        },
+        {
+          "line": 74,
           "text": "const row=object(value),definition=object(row.definition),id=automationId(definition.id),occurrence=row.occurrence?object(row.occurrence):null;"
         },
         {
-          "line": 73,
+          "line": 75,
           "text": "const presentation={definition:row.definition,occurrence:row.occurrence??null,latestAttempt:row.latestAttempt??null},due=reminderDue(presentation);"
         },
         {
-          "line": 79,
+          "line": 81,
           "text": "const row=object(value),record=object(row.definition),id=automationId(record.id),surface=text(record.metadata?.ownerSurface);"
         },
         {
-          "line": 80,
+          "line": 82,
           "text": "const label=surface==='OWNER_GOALS'?'Goal':surface==='OWNER_ROUTINES'||(!surface&&['habit','routine'].includes(record.kind))?'Routine':'';"
         },
         {
-          "line": 82,
+          "line": 84,
           "text": "const cadence=record.cadence&&typeof record.cadence==='object'?record.cadence:{},zone=text(record.timezone)||undefined;"
         },
         {
-          "line": 87,
+          "line": 89,
           "text": "const status=error&&typeof error==='object'&&'status' in error?Number(error.status):0;"
         },
         {
-          "line": 88,
+          "line": 90,
           "text": "const name={automations:'Automations',schedules:'Scheduled items',reminders:'Agent reminders',definitions:'Routines and goals',device:'Device reminders'}[source];"
         },
         {
-          "line": 89,
+          "line": 91,
           "text": "const unavailable=status===404||status===501;"
         },
         {
-          "line": 94,
+          "line": 96,
           "text": "const records=new Map<string,AutomationRow>();for(const row of rows)if(!records.has(row.key))records.set(row.key,row);"
         },
         {
-          "line": 102,
+          "line": 104,
           "text": "signal.throwIfAborted();const rows:AutomationRow[]=[],issues:AutomationIssue[]=[];"
         },
         {
-          "line": 109,
+          "line": 111,
           "text": "const title=draft.title.trim(),instructions=draft.instructions.trim();if(!title||!instructions)throw Error('Add a name and instructions.');"
         },
         {
-          "line": 110,
+          "line": 112,
           "text": "const request:ObjectValue={kind:'prompt',displayName:title,instructions,triggerType:draft.triggerType,timezone:draft.timezone};"
         },
         {
-          "line": 115,
+          "line": 117,
           "text": "const result=object(await this.request(id?'/api/triggers/'+automationId(id):'/api/triggers',id?'PUT':'POST',request,signal)),trigger=object(result.trigger);automationId(trigger.id);"
         },
         {
-          "line": 119,
+          "line": 121,
           "text": "let response:unknown;"
         },
         {
-          "line": 123,
+          "line": 125,
           "text": "let current:ObjectValue;try{current=await this.prompt(id,signal);}catch{throw error;}"
         },
         {
-          "line": 128,
+          "line": 130,
           "text": "const result=object(response),trigger=object(result.trigger);if(trigger.id!==id||trigger.enabled!==enabled)throw Error('Prompt state was not confirmed.');}"
         },
         {
-          "line": 139,
+          "line": 140,
+          "text": "async scheduledVerb(id:string,verb:ScheduledVerb,signal:AbortSignal):Promise<unknown>{"
+        },
+        {
+          "line": 141,
           "text": "const result=object(await this.request('/api/lifeops/scheduled-tasks/'+automationId(id)+'/'+verb,'POST',verb==='snooze'?{minutes:60}:{},signal));"
         },
         {
+          "line": 144,
+          "text": "if(fire.kind==='raced')throw new AutomationOutcomeError('Another run was already in progress.');"
+        },
+        {
           "line": 145,
+          "text": "if(!['fired','skipped','dispatch_deferred','dispatch_failed'].includes(fire.kind)||fire.task?.taskId!==id)"
+        },
+        {
+          "line": 147,
+          "text": "if(fire.kind!=='fired')throw new AutomationOutcomeError(text(fire.reason)||text(fire.error)||'This item did not run. Read its current status before trying again.');"
+        },
+        {
+          "line": 153,
           "text": "const title=draft.message.trim(),due=localDate(draft.due);if(!title||due.getTime()<=Date.now())throw Error('Add a reminder and a future time.');"
         }
-      ],
-      "integrationReview": "2026-11-09 UI and browser-return delta reviewed against existing domain models and new ChatAttachments/BrowserGoogleReturn contracts; see ui-return-review-20261109.md. Source-model refinement and device acceptance remain separate."
+      ]
     },
     {
       "path": "apps/app/src/runtime/automations-route-policy.ts",
       "sha256": "fe3ba7cbc62500fb1b95646e973a6fdbffacbb58e3e8db26de7574fecb31ad82",
       "models": [
-        "WorkflowExecution"
+        "WorkflowExecution",
+        "ScheduledTaskControls"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -37709,7 +37850,8 @@
       "path": "apps/app/src/runtime/clock-handoff-history.ts",
       "sha256": "5484d97c750534bec427ee134c99c9ddd11f42d9b29220dfa5e4bc86460feef9",
       "models": [
-        "DeviceActions"
+        "DeviceActions",
+        "WorkflowClockAdmission"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -45529,7 +45671,8 @@
       "sha256": "2f79c96825f076dadb02b0529aac5859db241c2b12e1412340bd26191ddc1b1a",
       "models": [
         "WorkflowExecution",
-        "WorkflowRequestRecoveryAdmission"
+        "WorkflowRequestRecoveryAdmission",
+        "ScheduledTaskControls"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -158577,7 +158720,8 @@
     {
       "path": "vendor/eliza/packages/contracts/src/workflow-intents.ts",
       "models": [
-        "WorkflowExecution"
+        "WorkflowExecution",
+        "ScheduledTaskControls"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",

@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "b1817660a0347ae19551b9ee296410fe55f02d59",
-  "ledgerSha256": "2b40fb67748725ad56c47fc1d442ec70fb033d299b6db2f0ab214096e0513d8f",
+  "ledgerSha256": "1f28b721913427413b581b4f38e10b605856b408a6a799cb6118663eef66a1ea",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -28,9 +28,9 @@
     "parsedFiles": 5678,
     "languageReview": 90,
     "parseErrors": 0,
-    "candidates": 67720,
-    "writeSites": 67282,
-    "writeAssociations": 60337,
+    "candidates": 67722,
+    "writeSites": 67286,
+    "writeAssociations": 60341,
     "asynchronous": 8387,
     "unassignedWrites": 10366
   },
@@ -32820,7 +32820,9 @@
         "StartupUpdateAdmission",
         "CanonicalNotificationTapAdmission",
         "ShadeNoticeQuestionAdmission",
-        "AppearancePreferenceAdmission"
+        "AppearancePreferenceAdmission",
+        "WorkflowClockAdmission",
+        "NotesTrashReadPublication"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -33361,7 +33363,9 @@
         "AssistantConversation",
         "NotesLifecycle",
         "ChatAttachments",
-        "FirstSendDraftMigration"
+        "FirstSendDraftMigration",
+        "WorkflowClockAdmission",
+        "NotesTrashReadPublication"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -33663,11 +33667,12 @@
     },
     {
       "path": "apps/app/src/prototype/automations-adapter.ts",
-      "sha256": "b235540fb8298068ab0422922ed435375f977a55c30838521001f0ce038e79f8",
+      "sha256": "87c366822ad3f38b743ec22393978f7f08de675547b19053b57114907fa2a2d6",
       "allocatedModels": [
         "WorkflowExecution",
         "ReminderOpenIntent",
-        "WorkflowRequestRecoveryAdmission"
+        "WorkflowRequestRecoveryAdmission",
+        "ScheduledTaskControls"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -33683,41 +33688,41 @@
           "owner": "installAutomationsAdapter",
           "line": 43,
           "bindings": 29,
-          "writes": 134
+          "writes": 140
         },
         {
-          "owner": "installAutomationsAdapter.settled.ArrowFunction@79",
-          "line": 80,
+          "owner": "installAutomationsAdapter.settled.ArrowFunction@80",
+          "line": 81,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installAutomationsAdapter.refresh",
-          "line": 96,
+          "line": 97,
           "bindings": 2,
           "writes": 6
         },
         {
           "owner": "installAutomationsAdapter.work",
-          "line": 115,
+          "line": 124,
           "bindings": 4,
           "writes": 3
         },
         {
           "owner": "installAutomationsAdapter.allowAnother",
-          "line": 127,
+          "line": 136,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "installAutomationsAdapter.save",
-          "line": 146,
+          "line": 155,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAutomationsAdapter.ArrowFunction@160",
-          "line": 166,
+          "owner": "installAutomationsAdapter.ArrowFunction@169",
+          "line": 175,
           "bindings": 5,
           "writes": 15
         }
@@ -34768,10 +34773,12 @@
     },
     {
       "path": "apps/app/src/prototype/clock-adapter.ts",
-      "sha256": "77b9c7c49f1ff59abfdcc24ec8e5a0c86d7c8404463b122dd859ae8de551e260",
+      "sha256": "3c8ed25e07cd7cab53f235875b974f21caf2c55e37bc7da431f788be0b08b424",
       "allocatedModels": [
-        "DeviceActions"
+        "DeviceActions",
+        "WorkflowClockAdmission"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -34784,18 +34791,18 @@
         {
           "owner": "installClockAdapter",
           "line": 11,
-          "bindings": 17,
-          "writes": 54
+          "bindings": 18,
+          "writes": 50
         },
         {
           "owner": "installClockAdapter.dispatch",
-          "line": 64,
+          "line": 66,
           "bindings": 3,
           "writes": 7
         },
         {
-          "owner": "installClockAdapter.ArrowFunction@84",
-          "line": 85,
+          "owner": "installClockAdapter.ArrowFunction@86",
+          "line": 87,
           "bindings": 1,
           "writes": 2
         }
@@ -35813,7 +35820,8 @@
         "CameraPreviewRetirement",
         "RetainedReminderTapAdmission",
         "ReminderOpenIntent",
-        "AppearancePreferenceAdmission"
+        "AppearancePreferenceAdmission",
+        "WorkflowClockAdmission"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -39223,10 +39231,12 @@
     },
     {
       "path": "apps/app/src/prototype/notes-trash-adapter.ts",
-      "sha256": "cc2ea41af468bde106a6edbadc0f980867ee56bc6487c94afe6b410208112b49",
+      "sha256": "61482de078a799503ffa56f4675ea121484863b064797d72efb6e5a6f5816a31",
       "allocatedModels": [
-        "NotesLifecycle"
+        "NotesLifecycle",
+        "NotesTrashReadPublication"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -39239,24 +39249,24 @@
         {
           "owner": "installNotesTrashAdapter",
           "line": 31,
-          "bindings": 5,
-          "writes": 16
+          "bindings": 6,
+          "writes": 18
         },
         {
           "owner": "installNotesTrashAdapter.deleteForever",
-          "line": 164,
+          "line": 168,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installNotesTrashAdapter.FunctionExpression@178",
-          "line": 179,
+          "owner": "installNotesTrashAdapter.FunctionExpression@182",
+          "line": 183,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "installNotesTrashAdapter.ArrowFunction@213",
-          "line": 214,
+          "owner": "installNotesTrashAdapter.ArrowFunction@218",
+          "line": 219,
           "bindings": 1,
           "writes": 27
         }
@@ -40202,7 +40212,7 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "79e3e9c339db29699b6c621a719794d076b704458a5a16f42a509d4aa4d10871",
+      "sha256": "1c94732bcaf76e4a09ba7a4945dcc81332b59a282f0c27c121f7fa478029a309",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -40216,7 +40226,9 @@
         "MapsRerouteOwnership",
         "ModalScrimOwnership",
         "NotesRecorderMediaAdmission",
-        "WorkflowRequestRecoveryAdmission"
+        "WorkflowRequestRecoveryAdmission",
+        "ScheduledTaskControls",
+        "WorkflowClockAdmission"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -41162,10 +41174,12 @@
     },
     {
       "path": "apps/app/src/runtime/automations-protocol.ts",
-      "sha256": "b1b1e229c87702bfa1c60e8fe82f2e4697da670e569d5b2edd217748452e13bc",
+      "sha256": "d47943bea26fa2f06a43b7fe680ebc80334d5601ddee01cf2840945af60f2d6e",
       "allocatedModels": [
-        "WorkflowExecution"
+        "WorkflowExecution",
+        "ScheduledTaskControls"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -41177,43 +41191,43 @@
         },
         {
           "owner": "schedule",
-          "line": 46,
+          "line": 47,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "mergeAutomationRows",
-          "line": 94,
+          "line": 96,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "AutomationsProtocol",
-          "line": 98,
+          "line": 100,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "AutomationsProtocol.list",
-          "line": 102,
+          "line": 104,
           "bindings": 2,
           "writes": 3
         },
         {
           "owner": "AutomationsProtocol.savePrompt",
-          "line": 110,
+          "line": 112,
           "bindings": 1,
           "writes": 3
         },
         {
           "owner": "AutomationsProtocol.setPromptEnabled",
-          "line": 119,
+          "line": 121,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "AutomationsProtocol.editReminder",
-          "line": 150,
+          "line": 158,
           "bindings": 1,
           "writes": 1
         }
@@ -41226,7 +41240,8 @@
       "path": "apps/app/src/runtime/automations-route-policy.ts",
       "sha256": "fe3ba7cbc62500fb1b95646e973a6fdbffacbb58e3e8db26de7574fecb31ad82",
       "allocatedModels": [
-        "WorkflowExecution"
+        "WorkflowExecution",
+        "ScheduledTaskControls"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -41634,7 +41649,8 @@
       "path": "apps/app/src/runtime/clock-handoff-history.ts",
       "sha256": "5484d97c750534bec427ee134c99c9ddd11f42d9b29220dfa5e4bc86460feef9",
       "allocatedModels": [
-        "DeviceActions"
+        "DeviceActions",
+        "WorkflowClockAdmission"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -45483,7 +45499,8 @@
       "sha256": "2f79c96825f076dadb02b0529aac5859db241c2b12e1412340bd26191ddc1b1a",
       "allocatedModels": [
         "WorkflowExecution",
-        "WorkflowRequestRecoveryAdmission"
+        "WorkflowRequestRecoveryAdmission",
+        "ScheduledTaskControls"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -76673,7 +76690,8 @@
       "path": "vendor/eliza/packages/contracts/src/workflow-intents.ts",
       "sha256": "3e4fa9bd054e82d244b8d7dc576e6a6f8c694e12548dc1d9d35e918f9cc8e9fa",
       "allocatedModels": [
-        "WorkflowExecution"
+        "WorkflowExecution",
+        "ScheduledTaskControls"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -221426,6 +221444,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "c0852f813c4fd27ccefb47b9a6571257579b2cd45a455af631e57e272f49f238"
+    "sha256": "d3e9bd0c674ef74a3ba92e48a50898808d9b6d86095da3cd37a2439a557cc94d"
   }
 }
