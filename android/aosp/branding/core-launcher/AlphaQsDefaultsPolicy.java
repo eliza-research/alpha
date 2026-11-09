@@ -8,9 +8,11 @@ import java.util.List;
 /** Update only known old stock layouts. Every other saved layout remains the owner's. */
 public final class AlphaQsDefaultsPolicy {
     public static final String ALPHA = "custom(ai.elizaresearch.alphaphone/.AlphaQuickSettingsTile)";
+    public static final int VERSION = 1;
+    public static final String VERSION_SETTING = "alpha_qs_layout_migration_version";
     private AlphaQsDefaultsPolicy() {}
-    public static boolean shouldMigrate(List<String> saved, List<String> defaults) {
-        if (!defaults.contains(ALPHA)) return false;
+    public static boolean shouldMigrate(List<String> saved, List<String> defaults, int reviewedVersion) {
+        if (reviewedVersion >= VERSION || !defaults.contains(ALPHA)) return false;
         for (String stock : Arrays.asList(
                 "internet,bt,dnd,cast,flashlight,airplane,rotation,wallet,alarm,controls,screenrecord,battery",
                 "wifi,bt,dnd,cast,flashlight,airplane,rotation,wallet,alarm,controls,screenrecord,battery",

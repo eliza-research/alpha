@@ -96,15 +96,29 @@ edit(fgs, text)
 
 repo = 'packages/SystemUI/src/com/android/systemui/qs/pipeline/data/repository/UserTileSpecRepository.kt'
 text = original(repo)
-text = replace(text, '        return if (fromSettings.isNotEmpty()) {', '''        return if (AlphaQsDefaultsPolicy.shouldMigrate(
-                fromSettings.map { it.spec }, defaultTiles.map { it.spec })) {
-            defaultTiles.also { logger.logParsedTiles(it, true, user) }
-        } else if (fromSettings.isNotEmpty()) {''')
+text = replace(text, '    private var isHeadlessSystemUser = false',
+    '    private var isHeadlessSystemUser = false\n    private var alphaDefaultsMigrationPending = false')
 text = replace(text, '        val loadedTiles = loadTilesFromSettings(userId)',
-    '        val loadedTiles = loadTilesFromSettings(userId)\n        val parsedTiles = parseTileSpecs(loadedTiles, userId)')
+    '''        val loadedTiles = loadTilesFromSettings(userId)
+        val reviewedVersion = withContext(backgroundDispatcher) {
+            secureSettings.getIntForUser(AlphaQsDefaultsPolicy.VERSION_SETTING, 0, userId)
+        }
+        alphaDefaultsMigrationPending = defaultTiles.any { it.spec == AlphaQsDefaultsPolicy.ALPHA } &&
+            reviewedVersion < AlphaQsDefaultsPolicy.VERSION
+        val selected = if (AlphaQsDefaultsPolicy.shouldMigrate(
+                loadedTiles.map { it.spec }, defaultTiles.map { it.spec }, reviewedVersion)) defaultTiles else loadedTiles
+        val parsedTiles = parseTileSpecs(selected, userId)''')
 text = replace(text, 'TilesUpgradePath.ReadFromSettings(loadedTiles.toSet())',
     'TilesUpgradePath.ReadFromSettings(parsedTiles.toSet())')
 text = replace(text, '        return parseTileSpecs(loadedTiles, userId)', '        return parsedTiles')
+text = replace(text, '            secureSettings.putStringForUser(SETTING, toStore, null, false, forUser, true)',
+    '''            val written = secureSettings.putStringForUser(SETTING, toStore, null, false, forUser, true)
+            // Commit the version only after the selected layout was stored. A later owner edit,
+            // even one recreating the old stock order, is never migrated a second time.
+            if (written && alphaDefaultsMigrationPending && secureSettings.putIntForUser(
+                    AlphaQsDefaultsPolicy.VERSION_SETTING, AlphaQsDefaultsPolicy.VERSION, forUser)) {
+                alphaDefaultsMigrationPending = false
+            }''')
 edit(repo, text)
 
 config = 'packages/SystemUI/res/values/config.xml'

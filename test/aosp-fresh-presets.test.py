@@ -10,6 +10,8 @@ spec=importlib.util.spec_from_file_location('alpha_branding_stage',REPO/'scripts
 stage=importlib.util.module_from_spec(spec);spec.loader.exec_module(stage)
 INPUT=Path(os.environ.get('ALPHA_FRESH_PRESET_INPUTS',BRAND/'provision/.cache'))
 ASSETS=Path(os.environ.get('ALPHA_BRANDING_ASSETS',BRAND/'generated'))
+CORE=BRAND/'core-launcher'
+core_baseline=lambda relative:(CORE/'.cache/baseline'/relative).read_bytes()
 
 class FreshPresets(unittest.TestCase):
  def test_actual_policy_completed_managed_home_failure_and_existing_ime_choices(self):
@@ -47,18 +49,22 @@ public class FreshTest {
   project='packages/apps/Provision'
   for name in ['src/com/android/provision/DefaultActivity.java','AndroidManifest.xml']:
    source=INPUT/project/name;target=root/project/name;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(source.read_bytes())
+  for row in json.loads((CORE/'SOURCE-INPUTS.json').read_text())['files']:
+   target=root/'frameworks/base'/row['path'];target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(core_baseline(row['path']))
   product=root/'vendor/alphaphone/product.mk';product.parent.mkdir(parents=True);product.write_text('# Existing accepted app product, retained\n')
   return stage.digest(product.read_bytes())
 
  def plan(self,root):
   before=self.fixture(root)
-  return stage.build_plan(root,ASSETS,stage.digest((ASSETS/'branding-assets.json').read_bytes()),INPUT,product_mk_hash=before)
+  return stage.build_plan(root,ASSETS,stage.digest((ASSETS/'branding-assets.json').read_bytes()),INPUT,product_mk_hash=before,core_baseline=core_baseline)
 
  def test_guarded_staging_roundtrip_preserves_enterprise_and_completed_paths(self):
   with tempfile.TemporaryDirectory(prefix='alpha-brand-stage-')as d,patch.object(stage,'check_revision')as revision:
    root=Path(d)/'aosp';root.mkdir();plan,rows=self.plan(root)
    self.assertEqual(revision.call_count,2)
-   self.assertTrue(all(name.startswith('vendor/alphaphone/')or name.startswith('packages/apps/Provision/')for name in plan))
+   self.assertTrue(all(name.startswith(('vendor/alphaphone/','packages/apps/Provision/','frameworks/base/'))for name in plan))
+   core=json.loads((CORE/'manifest.json').read_text())
+   for row in core['files']:self.assertEqual(stage.digest(plan['frameworks/base/'+row['path']]),row['afterSha256'])
    before=(INPUT/'packages/apps/Provision/src/com/android/provision/DefaultActivity.java').read_text()
    after=plan['packages/apps/Provision/src/com/android/provision/DefaultActivity.java'].decode()
    suffix='    private void finishSetup()'
@@ -94,7 +100,7 @@ public class FreshTest {
   with tempfile.TemporaryDirectory(prefix='alpha-brand-drift-')as d,patch.object(stage,'check_revision'):
    root=Path(d)/'aosp';root.mkdir();before=self.fixture(root)
    target=root/'packages/apps/Provision/src/com/android/provision/DefaultActivity.java';target.write_text('unreviewed change')
-   with self.assertRaises(AssertionError):stage.build_plan(root,ASSETS,stage.digest((ASSETS/'branding-assets.json').read_bytes()),INPUT,product_mk_hash=before)
+   with self.assertRaises(AssertionError):stage.build_plan(root,ASSETS,stage.digest((ASSETS/'branding-assets.json').read_bytes()),INPUT,product_mk_hash=before,core_baseline=core_baseline)
    self.assertEqual(target.read_text(),'unreviewed change')
   with tempfile.TemporaryDirectory(prefix='alpha-brand-late-')as d,patch.object(stage,'check_revision'):
    root=Path(d)/'aosp';root.mkdir();plan,rows=self.plan(root);product=root/'vendor/alphaphone/product.mk';product.write_text('other writer')

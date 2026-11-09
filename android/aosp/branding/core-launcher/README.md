@@ -3,10 +3,12 @@
 This source packet belongs to Alpha's OS image, not per-device customization. It requires the exact frameworks/base revision in SOURCE-INPUTS.json.
 
 - Core-launcher classification hides Alpha from the routine foreground-app manager only while the enabled preinstalled Alpha owns Home. Other apps, a sideloaded impostor, another selected launcher, and unknown identity keep normal controls. Voice Stop/Mute, App Info, ANR handling and renderer recovery are unchanged.
-- Native Quick Settings defaults omit unavailable Wallet, Cast, mobile-data and device-control shortcuts. Both the normal and split layouts are defined in OS resources. The repository migrates only exact prior stock layouts, including Alpha's original stock layout. Other saved layouts remain intact; the standard editor stays available.
+- Native Quick Settings defaults omit unavailable Wallet, Cast, mobile-data and device-control shortcuts. Both normal and split layouts are defined in OS resources. The repository migrates only exact prior stock layouts once, including Alpha's original stock layout. The version is stored after the selected layout; later owner edits are retained even if they recreate the old stock order. Other saved layouts remain intact; the standard editor stays available.
 - Provisioning and the post-update boot check grant the declared shared-storage app-op only to installed enabled system Alpha for the primary user, outside device-owner management and only while the app-op is unconfigured. An existing allow or deny remains untouched. App-private storage permissions are not granted.
 
-Run `python3 prepare.py --fetch` to fetch any missing public hash-pinned baseline inputs and reproduce the patch. An existing mismatched baseline fails without replacement. Then use the existing admission tool:
+The normal `scripts/stage-alpha-os-branding.py` always includes this packet in fresh-image and OS-update source staging. It verifies the exact baseline and patch outputs in scratch space, then uses the existing all-file admission and backup transaction. There is no phone-side customization step.
+
+Run `python3 prepare.py --fetch` to fetch missing public hash-pinned baseline inputs and reproduce the packet. An existing mismatched baseline fails without replacement. For separate read-only admission use the existing tool:
 
 `python3 ../system-entry/apply.py /path/to/frameworks/base --manifest manifest.json`
 

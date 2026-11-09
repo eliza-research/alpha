@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Guarded source-only Alpha branding/first-run staging. No build, device or user-data operations."""
+"""Guarded source-only Alpha OS policy, branding and first-run staging. No build or device operations."""
 from pathlib import Path
 import argparse, hashlib, json, os, subprocess, tempfile
 
@@ -47,7 +47,39 @@ def project_manifest(original):
         '    <application android:label="@string/alpha_name" android:icon="@drawable/alpha_mark" android:theme="@android:style/Theme.Material.NoActionBar">\n'
         '        <activity android:name="AlphaAppearance" android:exported="true" android:label="@string/alpha_name"/>',1)
 
-def build_plan(root, assets, report_hash, source_inputs, prior=None, product_mk_hash=None):
+def core_policy_plan(root, read_baseline=None):
+    """Materialize the reviewed policy packet in scratch space, never in the build checkout."""
+    packet = BRAND / 'core-launcher'
+    manifest = json.loads((packet / 'manifest.json').read_text())
+    revision = next(row['revision'] for row in LOCK['files'] if row['project'] == 'frameworks/base')
+    assert manifest['revision'] == revision and manifest['project'] == 'frameworks/base', 'Core policy source pin drift'
+    patch = packet / manifest['patch']
+    assert patch.parent == packet and digest(patch.read_bytes()) == manifest['patchSha256'], 'Core policy patch drift'
+    headers = [line for line in patch.read_text().splitlines() if line.startswith(('--- ', '+++ '))]
+    expected = []
+    for row in manifest['files']:
+        path = Path(row['path'])
+        assert not path.is_absolute() and '..' not in path.parts, 'Unsafe core policy path'
+        expected += ['--- /dev/null' if row['beforeSha256'] is None else '--- a/' + row['path'], '+++ b/' + row['path']]
+    assert headers == expected, 'Core patch exceeds its manifest scope'
+    with tempfile.TemporaryDirectory(prefix='alpha-core-policy-stage-') as directory:
+        temporary = Path(directory)
+        for row in manifest['files']:
+            if row['beforeSha256'] is None: continue
+            data = read_baseline(row['path']) if read_baseline else subprocess.check_output([
+                'git', '-C', str(root / 'frameworks/base'), 'show', revision + ':' + row['path']])
+            assert digest(data) == row['beforeSha256'], 'Core baseline drift: ' + row['path']
+            target = safe(temporary, row['path']); target.parent.mkdir(parents=True, exist_ok=True); target.write_bytes(data)
+        subprocess.run(['git', 'apply', '--check', str(patch)], cwd=temporary, check=True, capture_output=True)
+        subprocess.run(['git', 'apply', str(patch)], cwd=temporary, check=True, capture_output=True)
+        output = {}
+        for row in manifest['files']:
+            data = safe(temporary, row['path']).read_bytes()
+            assert digest(data) == row['afterSha256'], 'Core policy output drift: ' + row['path']
+            output['frameworks/base/' + row['path']] = (data, row['beforeSha256'])
+        return output
+
+def build_plan(root, assets, report_hash, source_inputs, prior=None, product_mk_hash=None, core_baseline=None):
     check_revision(root, 'packages/apps/Provision')
     check_revision(root, 'frameworks/base')
     report_path = assets / 'branding-assets.json'
@@ -61,6 +93,9 @@ def build_plan(root, assets, report_hash, source_inputs, prior=None, product_mk_
     def put(path, value, preimages=()):
         plan[path] = value
         allowed[path] = set(preimages)
+    # This is part of normal OS staging for every fresh image and update, not a phone-side edit.
+    for name, (data, before) in core_policy_plan(root, core_baseline).items():
+        put(name, data, (before,) if before is not None else ())
     # Stage only the source-owned visual/resource directories, including independent hardware
     # invocation defaults. No app APK, assistant implementation or listener source is modified.
     for name in ['Android.bp','branding.mk','secure-camera-inputs.json']:
@@ -151,7 +186,7 @@ def main():
     assert not args.receipt.exists(),'Preserve existing receipt; use a new path'
     backup=args.receipt.parent/(args.receipt.stem+'-source-preimages')
     if args.apply: apply_plan(root,plan,rows,backup)
-    record={'schema':1,'state':'ALPHA_BRANDING_SOURCE_STAGED_NOT_BUILT'if args.apply else'ADMITTED_SOURCE_PLAN_NOT_APPLIED','applied':args.apply,'assetReportSha256':args.assets_report_sha256,'productIconSha256':LOCK['productIcon']['sha256'],'sourceLockSha256':digest((BRAND/'provision/source-inputs.json').read_bytes()),'files':rows,'backup':str(backup)if args.apply else None,'userDataTouched':False,'settingsWrittenDuringStaging':False,'assistantOrPowerImplementationChanged':False,'imageBuilt':False,'deviceQualified':False,'productionQualified':False}
+    record={'schema':1,'state':'ALPHA_BRANDING_SOURCE_STAGED_NOT_BUILT'if args.apply else'ADMITTED_SOURCE_PLAN_NOT_APPLIED','applied':args.apply,'assetReportSha256':args.assets_report_sha256,'productIconSha256':LOCK['productIcon']['sha256'],'sourceLockSha256':digest((BRAND/'provision/source-inputs.json').read_bytes()),'corePolicyManifestSha256':digest((BRAND/'core-launcher/manifest.json').read_bytes()),'files':rows,'backup':str(backup)if args.apply else None,'userDataTouched':False,'settingsWrittenDuringStaging':False,'assistantOrPowerImplementationChanged':False,'coreLauncherTrayAndSharedFilesPolicyIncluded':True,'imageBuilt':False,'deviceQualified':False,'productionQualified':False}
     args.receipt.write_text(json.dumps(record,indent=2)+'\n')
     print(json.dumps({'state':record['state'],'files':len(rows),'receipt':str(args.receipt)}))
 

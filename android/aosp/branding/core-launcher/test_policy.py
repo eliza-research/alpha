@@ -28,19 +28,21 @@ public class CoreProbe {
   String a=AlphaQsDefaultsPolicy.ALPHA;
   List<String> defaults=list(a+",wifi,bt,dnd,airplane,rotation,flashlight,battery,alarm,screenrecord");
   String legacy="wifi,bt,cell,cast,dnd,wallet,airplane,rotation,flashlight,battery,alarm,controls,screenrecord";
-  check(AlphaQsDefaultsPolicy.shouldMigrate(list(legacy),defaults));
-  check(AlphaQsDefaultsPolicy.shouldMigrate(list(a+","+legacy),defaults));
-  check(!AlphaQsDefaultsPolicy.shouldMigrate(list("bt,wifi,flashlight"),defaults));
-  check(!AlphaQsDefaultsPolicy.shouldMigrate(list(a+","+legacy+",inversion"),defaults));
-  check(!AlphaQsDefaultsPolicy.shouldMigrate(defaults,defaults));
-  check(!AlphaQsDefaultsPolicy.shouldMigrate(list(legacy),list("wifi,bt")));
-  check(!AlphaQsDefaultsPolicy.shouldMigrate(Collections.emptyList(),defaults));
+  check(AlphaQsDefaultsPolicy.shouldMigrate(list(legacy),defaults,0));
+  check(AlphaQsDefaultsPolicy.shouldMigrate(list(a+","+legacy),defaults,0));
+  check(!AlphaQsDefaultsPolicy.shouldMigrate(list("bt,wifi,flashlight"),defaults,0));
+  check(!AlphaQsDefaultsPolicy.shouldMigrate(list(a+","+legacy+",inversion"),defaults,0));
+  check(!AlphaQsDefaultsPolicy.shouldMigrate(defaults,defaults,0));
+  check(!AlphaQsDefaultsPolicy.shouldMigrate(list(legacy),list("wifi,bt"),0));
+  check(!AlphaQsDefaultsPolicy.shouldMigrate(Collections.emptyList(),defaults,0));
+  check(!AlphaQsDefaultsPolicy.shouldMigrate(list(legacy),defaults,1));
+  check(!AlphaQsDefaultsPolicy.shouldMigrate(list(a+","+legacy),defaults,1));
   System.out.println("PASS core and QS policy "+checks);
  }
 }''')
             subprocess.run([str(JDK/'bin/javac'), '-d', str(d), str(ROOT/'AlphaCoreLauncherPolicy.java'),
                 str(ROOT/'AlphaQsDefaultsPolicy.java'), str(probe)], check=True, capture_output=True)
-            self.assertIn('PASS core and QS policy 23', subprocess.check_output(
+            self.assertIn('PASS core and QS policy 25', subprocess.check_output(
                 [str(JDK/'bin/java'), '-cp', str(d), 'CoreProbe'], text=True))
 
     def test_storage_default_refuses_non_owner_sideloaded_and_existing_modes(self):
@@ -74,6 +76,8 @@ public class StorageProbe {
             self.assertIn('if (!coreLauncher && isStoppableApp(packageName))',fgs)
             self.assertIn('else when (backgroundRestrictionExemptionReason)',fgs)
             self.assertIn('ACTION_PREFERRED_ACTIVITY_CHANGED',fgs)
+            repo=(d/'packages/SystemUI/src/com/android/systemui/qs/pipeline/data/repository/UserTileSpecRepository.kt').read_text()
+            self.assertLess(repo.index('val written = secureSettings.putStringForUser'),repo.index('secureSettings.putIntForUser('))
             permission=(d/'services/core/java/com/android/server/pm/permission/DefaultPermissionGrantPolicy.java').read_text()
             self.assertIn('policy.getDeviceOwnerComponentOnAnyUser() != null',permission)
             self.assertIn('mode == android.app.AppOpsManager.MODE_DEFAULT',permission)

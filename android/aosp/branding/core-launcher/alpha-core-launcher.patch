@@ -109,7 +109,7 @@
 
 --- /dev/null
 +++ b/packages/SystemUI/src/com/android/systemui/qs/pipeline/data/repository/AlphaQsDefaultsPolicy.java
-@@ -0,0 +1,27 @@
+@@ -0,0 +1,29 @@
 +// SPDX-License-Identifier: Apache-2.0
 +package com.android.systemui.qs.pipeline.data.repository;
 +
@@ -120,9 +120,11 @@
 +/** Update only known old stock layouts. Every other saved layout remains the owner's. */
 +public final class AlphaQsDefaultsPolicy {
 +    public static final String ALPHA = "custom(ai.elizaresearch.alphaphone/.AlphaQuickSettingsTile)";
++    public static final int VERSION = 1;
++    public static final String VERSION_SETTING = "alpha_qs_layout_migration_version";
 +    private AlphaQsDefaultsPolicy() {}
-+    public static boolean shouldMigrate(List<String> saved, List<String> defaults) {
-+        if (!defaults.contains(ALPHA)) return false;
++    public static boolean shouldMigrate(List<String> saved, List<String> defaults, int reviewedVersion) {
++        if (reviewedVersion >= VERSION || !defaults.contains(ALPHA)) return false;
 +        for (String stock : Arrays.asList(
 +                "internet,bt,dnd,cast,flashlight,airplane,rotation,wallet,alarm,controls,screenrecord,battery",
 +                "wifi,bt,dnd,cast,flashlight,airplane,rotation,wallet,alarm,controls,screenrecord,battery",
@@ -139,23 +141,41 @@
 +}
 --- a/packages/SystemUI/src/com/android/systemui/qs/pipeline/data/repository/UserTileSpecRepository.kt
 +++ b/packages/SystemUI/src/com/android/systemui/qs/pipeline/data/repository/UserTileSpecRepository.kt
-@@ -173,7 +173,10 @@
+@@ -66,6 +66,7 @@
+         MutableSharedFlow<ChangeAction>(extraBufferCapacity = CHANGES_BUFFER_SIZE)
+
+     private var isHeadlessSystemUser = false
++    private var alphaDefaultsMigrationPending = false
+
+     private lateinit var _tiles: StateFlow<List<TileSpec>>
+
+@@ -149,7 +150,13 @@
+                 .filter { it !is TileSpec.Invalid }
+                 .joinToString(DELIMITER, transform = TileSpec::spec)
+         withContext(backgroundDispatcher) {
+-            secureSettings.putStringForUser(SETTING, toStore, null, false, forUser, true)
++            val written = secureSettings.putStringForUser(SETTING, toStore, null, false, forUser, true)
++            // Commit the version only after the selected layout was stored. A later owner edit,
++            // even one recreating the old stock order, is never migrated a second time.
++            if (written && alphaDefaultsMigrationPending && secureSettings.putIntForUser(
++                    AlphaQsDefaultsPolicy.VERSION_SETTING, AlphaQsDefaultsPolicy.VERSION, forUser)) {
++                alphaDefaultsMigrationPending = false
++            }
+         }
      }
 
-     private fun parseTileSpecs(fromSettings: List<TileSpec>, user: Int): List<TileSpec> {
--        return if (fromSettings.isNotEmpty()) {
-+        return if (AlphaQsDefaultsPolicy.shouldMigrate(
-+                fromSettings.map { it.spec }, defaultTiles.map { it.spec })) {
-+            defaultTiles.also { logger.logParsedTiles(it, true, user) }
-+        } else if (fromSettings.isNotEmpty()) {
-             fromSettings.also { logger.logParsedTiles(it, false, user) }
-         } else {
-             defaultTiles.also { logger.logParsedTiles(it, true, user) }
-@@ -182,12 +185,13 @@
+@@ -182,12 +189,20 @@
 
      private suspend fun loadTilesFromSettingsAndParse(userId: Int): List<TileSpec> {
          val loadedTiles = loadTilesFromSettings(userId)
-+        val parsedTiles = parseTileSpecs(loadedTiles, userId)
++        val reviewedVersion = withContext(backgroundDispatcher) {
++            secureSettings.getIntForUser(AlphaQsDefaultsPolicy.VERSION_SETTING, 0, userId)
++        }
++        alphaDefaultsMigrationPending = defaultTiles.any { it.spec == AlphaQsDefaultsPolicy.ALPHA } &&
++            reviewedVersion < AlphaQsDefaultsPolicy.VERSION
++        val selected = if (AlphaQsDefaultsPolicy.shouldMigrate(
++                loadedTiles.map { it.spec }, defaultTiles.map { it.spec }, reviewedVersion)) defaultTiles else loadedTiles
++        val parsedTiles = parseTileSpecs(selected, userId)
          if (loadedTiles.isNotEmpty()) {
 -            _tilesUpgradePath.send(TilesUpgradePath.ReadFromSettings(loadedTiles.toSet()))
 +            _tilesUpgradePath.send(TilesUpgradePath.ReadFromSettings(parsedTiles.toSet()))
