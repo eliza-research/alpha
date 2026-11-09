@@ -13,7 +13,7 @@ import com.getcapacitor.JSObject;
 /** Provider metadata only. Never reads credentials, vault state or form values. */
 final class PasswordProviderSupport {
     static final String PACKAGE = "proton.android.pass";
-    // config/native-apps.json: original publisher, not an Alpha signing key.
+    // scripts/stage-native-apps.mjs pins the same original publisher.
     static final String CERTIFICATE = "dcc9439ec1a6c6a8d0203f3423ee42bcc8b970628e53cb73a0393f398dd5b853";
 
     static boolean trusted(Context context) {

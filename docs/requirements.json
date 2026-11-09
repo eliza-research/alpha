@@ -29,7 +29,7 @@
         "test/browser/home-compact-scroll.spec.ts",
         "apps/app/src/prototype/home-shell.ts",
         "apps/app/src/product/alpha-product.ts",
-        "config/alpha-product.json",
+        "apps/app/src/product/alpha-product-registration.ts",
         "test/home-shell.test.mjs",
         "test/browser/home-launcher.spec.ts",
         "test/browser/home-native-launcher.spec.ts",
@@ -93,9 +93,9 @@
         "apps/app/src/runtime/local-agent.ts",
         "test/browser/cloud-account-replacement.production.spec.ts",
         "docs/evidence/emulator-campaign-2026-10-14.md",
-        "config/cloud-deployment.json"
+        "scripts/cloud-deployment-policy.mjs"
       ],
-      "remaining": "Production Android pairing is retired by design: a flag-off build admits only the production api origin in config/cloud-deployment.json and opens only eliza.app, cloud.eliza.app and accounts.google.com externally (ConnectionRoutes.java). A sign-in as a second Cloud account revokes the first account's key once before the new key is stored, unless Cloud returns the same key; the resident conversation history stays with the local owner, not the Cloud account (test/browser/cloud-account-replacement.production.spec.ts). Route and origin guards, self-revocation and account replacement have synthetic, host JVM and stubbed-bridge coverage only. ConnectionRoutesInstrumentedTest failed on both flavors in the 2026-10-14 campaign (flagOffTransportRefusesEveryNonCloudRouteBeforeConnecting, class E on developer APKs at 304232690); no live Eliza Cloud revocation and no device run exist. Production builds also offer owner-provided Cerebras and optional Cartesia keys at sign-in (offerOwnKeys and OwnKeyForm in connection-ui.tsx, e15f0b7359; test/connection-routes.test.mjs). No owner decision records this path, which P-43 and P-68 describe as absent; recording or retiring it is the owner's decision. MVP-04/MVP-34: remove hosted-agent product paths, migrate credit UI to subscriptions, qualify owner-bound inference without a per-turn billing preflight."
+      "remaining": "Production Android pairing is retired by design: a flag-off build admits only the production api origin in scripts/cloud-deployment-policy.mjs and opens only eliza.app, cloud.eliza.app and accounts.google.com externally (ConnectionRoutes.java). A sign-in as a second Cloud account revokes the first account's key once before the new key is stored, unless Cloud returns the same key; the resident conversation history stays with the local owner, not the Cloud account (test/browser/cloud-account-replacement.production.spec.ts). Route and origin guards, self-revocation and account replacement have synthetic, host JVM and stubbed-bridge coverage only. ConnectionRoutesInstrumentedTest failed on both flavors in the 2026-10-14 campaign (flagOffTransportRefusesEveryNonCloudRouteBeforeConnecting, class E on developer APKs at 304232690); no live Eliza Cloud revocation and no device run exist. Production builds also offer owner-provided Cerebras and optional Cartesia keys at sign-in (offerOwnKeys and OwnKeyForm in connection-ui.tsx, e15f0b7359; test/connection-routes.test.mjs). No owner decision records this path, which P-43 and P-68 describe as absent; recording or retiring it is the owner's decision. MVP-04/MVP-34: remove hosted-agent product paths, migrate credit UI to subscriptions, qualify owner-bound inference without a per-turn billing preflight."
     },
     {
       "id": "AP-04",

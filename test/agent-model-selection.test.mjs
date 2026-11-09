@@ -6,6 +6,7 @@ import {join,resolve} from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {git} from './fixtures/git-fixture.mjs';
 import {AGENT_MODEL} from '../scripts/agent-model.mjs';
+import {nativeViewDeclarationsJson} from '../scripts/native-view-policy.mjs';
 
 function launch({route,override,swaps,existingToken=true,retainedIdentity=true,runtimeConfigUpdate=false,repeat=false,autoReset}={}) {
  const dir=mkdtempSync(join(tmpdir(),'alpha-model-')),profile=join(dir,'profile'),source=join(dir,'source'),receipt=join(dir,'models.json'),childReceipt=join(dir,'child.json'),bun=join(dir,'fake-bun');
@@ -67,7 +68,7 @@ test('host launcher defaults upstream secret and PII swaps off',()=>{
  }
 });
 test('local host uses the product-owned native route policy rather than inherited caller environment',()=>{
- const r=launch({swaps:{ELIZA_NATIVE_VIEW_DECLARATIONS:JSON.stringify([{id:'wallet',label:'Wallet',path:'/wallet'}])}});assert.equal(r.status,0,r.error);assert.deepEqual(r.child.nativeViews,JSON.parse(readFileSync(resolve('config/native-view-declarations.json'),'utf8')));assert.deepEqual(r.child.nativeViews.map(view=>view.id),['photos','maps','camera','notes','calendar','inbox']);
+ const r=launch({swaps:{ELIZA_NATIVE_VIEW_DECLARATIONS:JSON.stringify([{id:'wallet',label:'Wallet',path:'/wallet'}])}});assert.equal(r.status,0,r.error);assert.deepEqual(r.child.nativeViews,JSON.parse(nativeViewDeclarationsJson));assert.deepEqual(r.child.nativeViews.map(view=>view.id),['photos','maps','camera','notes','calendar','inbox']);
 });
 
 test('local host owns a fresh nonsecret retirement revision on each launch of the same profile',()=>{

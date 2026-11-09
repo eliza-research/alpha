@@ -42,7 +42,7 @@ export async function checkCloudQaLauncher(extraSources = []) {
     fileURLToPath(import.meta.url), probe, 'test/fixtures/core-state-root.mjs',
     'scripts/start-cloud-qa.mjs', 'scripts/local-agent-source.mjs', 'scripts/copy-file-clone.mjs',
     'scripts/cloud-sdk-authority.mjs', 'scripts/native-view-policy.mjs',
-    'config/cloud-deployment.json', 'config/native-view-declarations.json', 'upstream.lock.json',
+    'scripts/cloud-deployment-policy.mjs', 'upstream.lock.json',
     'vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs',
     'vendor/eliza/packages/agent/native-host/private-runtime-json.mjs',
     'vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs',

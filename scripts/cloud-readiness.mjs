@@ -7,7 +7,7 @@
  *
  * `registration` prints the values an Eliza Cloud operator enters for Alpha
  * (docs/human-actions.md H-11 to H-15), derived from committed product configuration:
- * app.config.json (package and App Auth client), config/cloud-deployment.json (hosts, tenant and
+ * app.config.json (package and App Auth client), scripts/cloud-deployment-policy.mjs (hosts, tenant and
  * entitlement audience) and the sign-in callback path and Steward app client that Alpha's native
  * sign-in registers. It reads no secret and contacts nothing. Values only the operator knows (the
  * Cloud apps-row UUID, Google's Android OAuth client ID) are named, never invented.
@@ -39,6 +39,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateCloudDeployment } from "./cloud-deployment.mjs";
+import { CLOUD_DEPLOYMENT } from "./cloud-deployment-policy.mjs";
 import { assetLinksGrants, publishedAssetLinksCheck, readAssetLinksSource } from "./render-assetlinks.mjs";
 
 /** The return path and Steward app client Alpha's native sign-in registers (AlphaCloudSignInPlugin). */
@@ -51,7 +52,7 @@ const base64url = bytes => Buffer.from(bytes).toString("base64url");
 
 /** Alpha's product registration for one Cloud environment, from committed configuration. */
 export function productRegistration(root = process.cwd(), environment = "production") {
-  const deployment = validateCloudDeployment(readJson(root, "config/cloud-deployment.json"))[environment];
+  const deployment = validateCloudDeployment(CLOUD_DEPLOYMENT)[environment];
   if (!deployment) throw new Error(`Unknown Cloud environment ${environment}`);
   const identity = readJson(root, "app.config.json");
   return {
@@ -89,7 +90,7 @@ export function registrationValues(registration) {
       value: { redirectUri: callback, androidPackage: packageName, appName },
       then: "Keep every other app's entry." },
     { step: "H-15", where: "Entitlement issuer audience", value: entitlementAudience,
-      then: "Cloud's ELIZA_ENTITLEMENT_* signer must issue this audience (config/cloud-deployment.json entitlementAudience)." },
+      then: "Cloud's ELIZA_ENTITLEMENT_* signer must issue this audience (scripts/cloud-deployment-policy.mjs entitlementAudience)." },
   ];
 }
 
