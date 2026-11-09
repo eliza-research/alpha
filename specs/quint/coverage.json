@@ -9139,7 +9139,8 @@
       "path": "apps/app/src/browser/audio-capture.ts",
       "sha256": "b103b5f1d7b98a6108104f47a7099ce04c6855f5d454790c0efff4eea0bcbd09",
       "models": [
-        "VoiceSession"
+        "VoiceSession",
+        "NotesRecorderMediaAdmission"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -12521,7 +12522,8 @@
       "path": "apps/app/src/browser/note-audio-store.ts",
       "sha256": "918c9412a43387762bb3dd7e8d0f5332d787be701042db3ec442787e90df1747",
       "models": [
-        "NotesLifecycle"
+        "NotesLifecycle",
+        "NotesRecorderMediaAdmission"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -13752,7 +13754,8 @@
       "path": "apps/app/src/browser/voice.ts",
       "sha256": "895093f74afd65c2e1e43bf9d91b6861dec10115e96a87f4cf4a4cb1dafc39fa",
       "models": [
-        "VoiceSession"
+        "VoiceSession",
+        "NotesRecorderMediaAdmission"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -20406,7 +20409,8 @@
         "NotesLifecycle",
         "CanonicalNotesFeedback",
         "CanonicalNotesView",
-        "CanonicalCalendarDraftHandoff"
+        "CanonicalCalendarDraftHandoff",
+        "NotesRecorderMediaAdmission"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -31539,11 +31543,13 @@
       "path": "apps/app/src/prototype/note-recorder.ts",
       "models": [
         "NotesLifecycle",
-        "MediaLifecycle"
+        "MediaLifecycle",
+        "NotesRecorderMediaAdmission"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
-      "sha256": "43c92dac368bba4c600eb124afefddc0e99f35ab4d6a6a372711a404b62383a8",
+      "reviewStatus": "state-audit-required",
+      "sha256": "79c0f42ec8c993584f2f8b7c15ff6ee32748a7dca69e3b641b2c126c7c1a6e6f",
       "stateAnchors": [
         {
           "line": 36,
@@ -31578,247 +31584,247 @@
           "text": "const aborted = (error: unknown) => (error as { name?: string })?.name === 'AbortError';"
         },
         {
-          "line": 100,
+          "line": 101,
           "text": "const { code, name, message } = (error ?? {}) as { code?: string; name?: string; message?: string };"
         },
         {
-          "line": 108,
+          "line": 110,
           "text": "const total = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(total / 3600), m = Math.floor(total / 60) % 60, s = total % 60;"
         },
         {
-          "line": 165,
+          "line": 167,
           "text": "const owner = this.options.owner();"
         },
         {
-          "line": 167,
+          "line": 169,
           "text": "const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(owner.identity));"
         },
         {
-          "line": 175,
+          "line": 177,
           "text": "const binding = status.binding;"
         },
         {
-          "line": 183,
+          "line": 185,
           "text": "const id = this.ownedRecordingId, wasOpen = this.open;"
         },
         {
-          "line": 194,
+          "line": 196,
           "text": "const parts: string[] = [];"
         },
         {
-          "line": 195,
+          "line": 197,
           "text": "for (const segment of this.segments) { const text = this.texts.get(segment.segmentId); if (text === undefined) break; if (text.trim()) parts.push(text.trim()); }"
         },
         {
-          "line": 200,
+          "line": 202,
           "text": "let ms = 0;"
         },
         {
-          "line": 201,
+          "line": 203,
           "text": "for (const segment of this.segments) { if (!this.texts.has(segment.segmentId)) break; ms += segment.durationMs; }"
         },
         {
-          "line": 210,
+          "line": 212,
           "text": "const committed = this.committedMs();"
         },
         {
-          "line": 211,
+          "line": 213,
           "text": "const live = this.liveFinals.filter(u => u.at >= committed).map(u => u.text);"
         },
         {
-          "line": 217,
+          "line": 219,
           "text": "const want = this.owned(this.epoch) && this.phase === 'recording' && !!this.options.live && !this.liveLost &&"
         },
         {
-          "line": 221,
+          "line": 223,
           "text": "const epoch = this.epoch; this.liveOpening = true;"
         },
         {
-          "line": 222,
+          "line": 224,
           "text": "let stream: { close(): Promise<void> | void } | null | undefined;"
         },
         {
-          "line": 223,
+          "line": 225,
           "text": "const handlers: NoteLiveHandlers = {"
         },
         {
-          "line": 228,
+          "line": 230,
           "text": "const value = String(text || '').trim();"
         },
         {
-          "line": 232,
+          "line": 234,
           "text": "const committed = this.committedMs(); this.liveFinals = this.liveFinals.filter(u => u.at >= committed);"
         },
         {
-          "line": 247,
+          "line": 249,
           "text": "const stream = this.liveStream; this.liveStream = undefined; this.liveInterim = '';"
         },
         {
-          "line": 260,
+          "line": 262,
           "text": "const epoch = ++this.epoch;"
-        },
-        {
-          "line": 265,
-          "text": "const existing = await this.driver.status();"
         },
         {
           "line": 272,
+          "text": "const existing = await this.driver.status();"
+        },
+        {
+          "line": 282,
           "text": "const binding = this.ownerDigest ? { ownerDigest: this.ownerDigest, folderId: this.recordingFolder } : undefined;"
         },
         {
-          "line": 273,
+          "line": 283,
           "text": "const status = existing.state === 'idle' ? await this.driver.start(binding) : existing;"
         },
         {
-          "line": 295,
+          "line": 306,
           "text": "const original = this.epoch;"
         },
         {
-          "line": 296,
+          "line": 307,
           "text": "const status = await this.driver.status();"
         },
         {
-          "line": 298,
+          "line": 309,
           "text": "const epoch = ++this.epoch;"
         },
         {
-          "line": 307,
+          "line": 318,
           "text": "const handle = await this.driver.listen(status => { if (epoch === this.epoch) this.apply(status); });"
         },
         {
-          "line": 315,
+          "line": 326,
           "text": "const handle = this.handle; this.handle = undefined; if (handle) void Promise.resolve(handle.remove()).catch(() => {});"
         },
         {
-          "line": 327,
+          "line": 338,
           "text": "const previous = this.phase;"
         },
         {
-          "line": 345,
+          "line": 356,
           "text": "for (const s of this.segments) if (typeof s.text === 'string' && !this.texts.has(s.segmentId)) this.texts.set(s.segmentId, s.text);"
         },
         {
-          "line": 351,
+          "line": 362,
           "text": "const epoch = this.epoch;"
         },
         {
-          "line": 363,
+          "line": 374,
           "text": "const epoch = this.epoch;"
         },
         {
-          "line": 364,
+          "line": 375,
           "text": "const run = (async () => {"
         },
         {
-          "line": 365,
+          "line": 376,
           "text": "let route: SegmentTranscriber | null = null, resolved = false;"
         },
         {
-          "line": 368,
+          "line": 379,
           "text": "const next = this.segments.find(s => !this.texts.has(s.segmentId));"
         },
         {
-          "line": 383,
+          "line": 394,
           "text": "const controller = new AbortController(); this.transcribing = controller;"
         },
         {
-          "line": 384,
+          "line": 395,
           "text": "let text: string;"
         },
         {
-          "line": 398,
+          "line": 409,
           "text": "const tracked = this.pumping;"
         },
         {
-          "line": 402,
+          "line": 413,
           "text": "const id = this.recordingId;"
         },
         {
-          "line": 404,
+          "line": 415,
           "text": "const epoch = this.epoch;"
         },
         {
-          "line": 405,
+          "line": 416,
           "text": "const status = await this.driver.pause(id);"
         },
         {
-          "line": 409,
+          "line": 420,
           "text": "const id = this.recordingId;"
         },
         {
-          "line": 411,
+          "line": 422,
           "text": "const epoch = this.epoch;"
-        },
-        {
-          "line": 414,
-          "text": "const status = await this.driver.resume(id);"
         },
         {
           "line": 425,
+          "text": "const status = await this.driver.resume(id);"
+        },
+        {
+          "line": 436,
           "text": "const id = this.recordingId, epoch = this.epoch;"
         },
         {
-          "line": 429,
+          "line": 440,
           "text": "const before = this.phase;"
         },
         {
-          "line": 432,
+          "line": 443,
           "text": "const stopped = await this.driver.stop(id);"
         },
         {
-          "line": 442,
+          "line": 453,
           "text": "* Done: stop, let the transcript catch up with the audio, and save both as one voice note"
         },
         {
-          "line": 452,
+          "line": 463,
           "text": "const id = this.recordingId;"
         },
         {
-          "line": 455,
+          "line": 466,
           "text": "const epoch = this.epoch;"
         },
         {
-          "line": 456,
+          "line": 467,
           "text": "const alreadyStopped = this.phase === 'stopped';"
         },
         {
-          "line": 457,
+          "line": 468,
           "text": "let savePending = false;"
         },
         {
-          "line": 460,
+          "line": 471,
           "text": "const stopped = alreadyStopped ? await this.driver.status() : await this.driver.stop(id);"
         },
         {
-          "line": 476,
+          "line": 487,
           "text": "const transcript = this.transcript();"
         },
         {
-          "line": 479,
+          "line": 490,
           "text": "const noteId = id;"
         },
         {
-          "line": 481,
+          "line": 492,
           "text": "const saved = keepAudio ? await this.driver.save({ recordingId: id, noteId, transcript }) : { audioId: id, noteId, durationMs: this.durationMs, transcript };"
         },
         {
-          "line": 484,
+          "line": 495,
           "text": "const intent = keepAudio ? undefined : {"
         },
         {
-          "line": 490,
+          "line": 501,
           "text": "const claimed = await this.driver.claimCanonicalSave(id);"
         },
         {
-          "line": 496,
+          "line": 507,
           "text": "const audio = await this.driver.save({recordingId: id, noteId: canonicalNoteId, transcript});"
         },
         {
-          "line": 519,
+          "line": 530,
           "text": "const id = this.recordingId;"
         },
         {
-          "line": 542,
+          "line": 553,
           "text": "const id = this.recordingId, recording = this.phase === 'recording';"
         }
       ]
@@ -32492,7 +32498,8 @@
       "path": "apps/app/src/prototype/notes-recorder-control.ts",
       "models": [
         "NotesLifecycle",
-        "MediaLifecycle"
+        "MediaLifecycle",
+        "NotesRecorderMediaAdmission"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -35242,7 +35249,8 @@
         "CanonicalCalendarEditorClose",
         "CameraPreviewRetirement",
         "MapsRerouteOwnership",
-        "ModalScrimOwnership"
+        "ModalScrimOwnership",
+        "NotesRecorderMediaAdmission"
       ],
       "scope": "application",
       "treatment": "stateless-presentation-contract",
@@ -35391,14 +35399,14 @@
       "models": [
         "VoiceSession",
         "ControllerComposition",
-        "BatchCaptureCompletion"
+        "BatchCaptureCompletion",
+        "NotesRecorderMediaAdmission"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "97901e111fea4895ed87c7b2e7f6e68990ff41d5a0a970de927248f4d3242032",
-      "stateAnchors": [],
-      "integrationReview": "Domain allocation retained after merged fixes. Source identity and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations."
+      "sha256": "1dc08723011ec74527f674d46408ef7f875837dac7e0d8324325cda3a3711f0d",
+      "stateAnchors": []
     },
     {
       "path": "apps/app/src/prototype/workflow-adapter.ts",

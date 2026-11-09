@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "f651fcd053fc7785238b273e737b1dbae935dcd10551ea2a5dbf3a67a4ffaa2e",
+  "ledgerSha256": "a0254f942c3a5e2319979e1d4adadbb19e89af3bcd66df81d2aef256e0693680",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -31,7 +31,7 @@
     "candidates": 67339,
     "writeSites": 66909,
     "writeAssociations": 60037,
-    "asynchronous": 8357,
+    "asynchronous": 8358,
     "unassignedWrites": 10273
   },
   "files": [
@@ -29091,7 +29091,8 @@
       "path": "apps/app/src/browser/audio-capture.ts",
       "sha256": "b103b5f1d7b98a6108104f47a7099ce04c6855f5d454790c0efff4eea0bcbd09",
       "allocatedModels": [
-        "VoiceSession"
+        "VoiceSession",
+        "NotesRecorderMediaAdmission"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -31145,7 +31146,8 @@
       "path": "apps/app/src/browser/note-audio-store.ts",
       "sha256": "918c9412a43387762bb3dd7e8d0f5332d787be701042db3ec442787e90df1747",
       "allocatedModels": [
-        "NotesLifecycle"
+        "NotesLifecycle",
+        "NotesRecorderMediaAdmission"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -32182,7 +32184,8 @@
       "path": "apps/app/src/browser/voice.ts",
       "sha256": "895093f74afd65c2e1e43bf9d91b6861dec10115e96a87f4cf4a4cb1dafc39fa",
       "allocatedModels": [
-        "VoiceSession"
+        "VoiceSession",
+        "NotesRecorderMediaAdmission"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -34548,7 +34551,8 @@
         "NotesLifecycle",
         "CanonicalNotesFeedback",
         "CanonicalNotesView",
-        "CanonicalCalendarDraftHandoff"
+        "CanonicalCalendarDraftHandoff",
+        "NotesRecorderMediaAdmission"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -38801,11 +38805,13 @@
     },
     {
       "path": "apps/app/src/prototype/note-recorder.ts",
-      "sha256": "43c92dac368bba4c600eb124afefddc0e99f35ab4d6a6a372711a404b62383a8",
+      "sha256": "79c0f42ec8c993584f2f8b7c15ff6ee32748a7dca69e3b641b2c126c7c1a6e6f",
       "allocatedModels": [
         "NotesLifecycle",
-        "MediaLifecycle"
+        "MediaLifecycle",
+        "NotesRecorderMediaAdmission"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -38817,43 +38823,43 @@
         },
         {
           "owner": "NoteRecorderSession",
-          "line": 113,
+          "line": 115,
           "bindings": 31,
           "writes": 122
         },
         {
           "owner": "NoteRecorderSession.transcript",
-          "line": 194,
+          "line": 196,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "NoteRecorderSession.committedMs",
-          "line": 200,
+          "line": 202,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "NoteRecorderSession.displayTranscript",
-          "line": 211,
+          "line": 213,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "NoteRecorderSession.syncLive",
-          "line": 222,
+          "line": 224,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "NoteRecorderSession.pump.ArrowFunction@364",
-          "line": 365,
+          "owner": "NoteRecorderSession.pump.ArrowFunction@375",
+          "line": 376,
           "bindings": 4,
           "writes": 3
         },
         {
           "owner": "NoteRecorderSession.finish",
-          "line": 457,
+          "line": 468,
           "bindings": 1,
           "writes": 2
         }
@@ -39126,7 +39132,8 @@
       "sha256": "c9522662cfc2d05d4b019dc29069ba95e63dbc7541527f01ae0b0fbd94b7449a",
       "allocatedModels": [
         "NotesLifecycle",
-        "MediaLifecycle"
+        "MediaLifecycle",
+        "NotesRecorderMediaAdmission"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -40150,7 +40157,8 @@
         "CanonicalCalendarEditorClose",
         "CameraPreviewRetirement",
         "MapsRerouteOwnership",
-        "ModalScrimOwnership"
+        "ModalScrimOwnership",
+        "NotesRecorderMediaAdmission"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -40265,11 +40273,12 @@
     },
     {
       "path": "apps/app/src/prototype/voice-adapter.ts",
-      "sha256": "97901e111fea4895ed87c7b2e7f6e68990ff41d5a0a970de927248f4d3242032",
+      "sha256": "1dc08723011ec74527f674d46408ef7f875837dac7e0d8324325cda3a3711f0d",
       "allocatedModels": [
         "VoiceSession",
         "ControllerComposition",
-        "BatchCaptureCompletion"
+        "BatchCaptureCompletion",
+        "NotesRecorderMediaAdmission"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -40402,32 +40411,32 @@
           "writes": 5
         },
         {
-          "owner": "installPrototypeVoiceAdapter.ArrowFunction@1153",
-          "line": 1169,
+          "owner": "installPrototypeVoiceAdapter.ArrowFunction@1160",
+          "line": 1176,
           "bindings": 4,
           "writes": 46
         },
         {
-          "owner": "installPrototypeVoiceAdapter.ArrowFunction@1153.ArrowFunction@1184",
-          "line": 1186,
+          "owner": "installPrototypeVoiceAdapter.ArrowFunction@1160.ArrowFunction@1191",
+          "line": 1193,
           "bindings": 3,
           "writes": 3
         },
         {
           "owner": "installPrototypeVoiceAdapter.recorderView",
-          "line": 1306,
+          "line": 1313,
           "bindings": 1,
           "writes": 7
         },
         {
-          "owner": "installPrototypeVoiceAdapter.FunctionExpression@1341",
-          "line": 1342,
+          "owner": "installPrototypeVoiceAdapter.FunctionExpression@1348",
+          "line": 1349,
           "bindings": 3,
           "writes": 40
         }
       ],
       "parseErrors": [],
-      "asynchronous": 111,
+      "asynchronous": 112,
       "unassignedWrites": 34
     },
     {
@@ -219882,6 +219891,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "219a1c4a907f9f5b83edb6d51143aa05d6681366348d1fce1ee6ffcde5d52c31"
+    "sha256": "63d91074172e683983f89dd0493d8c5c4c04164e8c6564cad7a7a5c2dbdd1bd4"
   }
 }

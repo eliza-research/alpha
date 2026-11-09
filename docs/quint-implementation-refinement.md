@@ -147,6 +147,11 @@ verifier passed on commit `839325d966` for the standalone and launcher debug
 and unsigned release APKs. Both unsigned releases report
 `distributable: false`. The build also generated both instrumentation APKs.
 The same build and APK verification passed again on commit `b7d63199b8`.
+The 207-model follow-up at `4f3463f63d` passed the normal build and independent
+APK verifier for all four standalone and launcher APKs. Both instrumentation
+APKs were also archived with checksums. The APK verifier records 1,119 runtime
+entries per release and 1,120 per debug APK. Mocks were disabled and both
+unsigned releases remain non-distributable.
 Installed emulator HOME behavior, full AOSP boot, real integrations and
 physical-device acceptance each require their own evidence.
 
@@ -1020,3 +1025,17 @@ despite separate Home mount and Google fixture failures.
 The Home replay now has its own navigation budget. Application campaigns
 retain results on either side of an individual failure while the aggregate
 still reports a failed run.
+
+`NotesRecorderMediaAdmission` checks five mounted schedules and 34
+checkpoints. Both the Notes button and the approved Notes recording control
+now wait for confirmed playback retirement before requesting capture. A
+refused stop leaves capture idle. Owner changes and Notes departure retire a
+held request. The approved action already requires the Notes view, and the
+replay checks fresh admission after reentry. Installed media focus, native
+microphone timing and broader playback and recording interleavings remain
+separate.
+
+The Google Connect fixture now runs through the same `tsImport` entry as the
+strict collector. Its browser initializer has no dependency on the host's
+transpiler helper. The mounted replay passed three matching traces and
+retained both expected historical differences.
