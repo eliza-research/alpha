@@ -38,8 +38,6 @@ const chatInputDifferences = {
     'The original current design guards the sheet. The mounted source also guards the raised dock input.'],
 };
 const pluginDifferences = {
-  PluginLateStartConnector: ['Late service start can register a connector after unload',
-    'The runtime stops the late instance but leaves its connector registered after ownership has been removed. The original design forbids that orphan.'],
   PluginRegistrationRollbackVisibility: ['Registration rollback removes public visibility before settlement',
     'During held disposal the runtime hides the plugin while both registrations are pending. The original action combines removal and settlement.'],
   PluginRuntimeStopLookup: ['Runtime shutdown clears the public service lookup',
@@ -115,7 +113,6 @@ const mapsDifferences = {
 };
 
 export async function runLegacyRefinement() {
-  const receipts = [], obligations = [];
   const campaigns = [
     ['ChatInput', async () => {
       const {receipts, mismatches} = await checkChatInputRefinement([driver]);
@@ -173,8 +170,6 @@ export async function runLegacyRefinement() {
         const [obligation, reason] = mapsDifferences[mismatch.id];
         return {model: 'Maps', obligation, reason, evidence: mismatch.receiptPath};
       });
-      obligations.push({model: 'Maps', obligation: 'Check landscape guidance and attribution access',
-        reason: 'The mounted portrait replay checks pointer access and exact reroute admission. At 915×412 the right-docked assistant can overlap Ask, and the guidance bar can cover Map information and attribution.'});
       return {receipts, obligations};
     }],
     ['SignIn', async () => {
@@ -243,11 +238,20 @@ export async function runLegacyRefinement() {
       ]};
     }],
   ];
+  return collectLegacyCampaigns(campaigns);
+}
+
+export async function collectLegacyCampaigns(campaigns) {
+  const receipts = [], obligations = [], failures = [];
   for (const [coverageModel, run] of campaigns) {
-    const result = await run();
-    const profiles = result.receipts ?? (Array.isArray(result) ? result : [result]);
-    for (const receipt of profiles) receipts.push(coverageModel ? {...receipt, coverageModel} : receipt);
-    obligations.push(...(result.obligations ?? []));
+    try {
+      const result = await run();
+      const profiles = result.receipts ?? (Array.isArray(result) ? result : [result]);
+      for (const receipt of profiles) receipts.push(coverageModel ? {...receipt, coverageModel} : receipt);
+      obligations.push(...(result.obligations ?? []));
+    } catch (error) {
+      failures.push({campaign: coverageModel ?? 'Core task scheduling profiles', error});
+    }
   }
-  return {receipts, obligations};
+  return {receipts, obligations, failures};
 }

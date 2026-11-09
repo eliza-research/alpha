@@ -28,6 +28,7 @@ final class AlphaHostedResultsPlugin extends HostedBridgeHost {
  ${between(' static final String CHANNEL=', ' private void channel()')}
  ${between(' private void sourceForeground()', ' @PluginMethod public void nativeSourceIdentity')}
  ${between(' @PluginMethod public void withdrawOtherOwnerApprovalNotices', ' @PluginMethod public void resumeWorkflowApprovalNotice')}
+ ${between(' private void retryCaptures()', ' @Override public void load()')}
  ${between(' @Override protected void handleOnNewIntent', ' @PluginMethod public void status')}
  ${between(' @Override protected void handleOnDestroy()', '\n}')}
 }
@@ -66,8 +67,10 @@ class HostedBridgeHost {
  HostedBridgeHost getContext(){return this;}
  <T> T getSystemService(Class<T> type){return type.cast(keyguard);}
  void captureRenewal(Intent unused){} // Independent source-renewal port.
+ void captureRenewalNow(Intent unused){} // Exercised by the separate source-renewal campaign.
  protected void handleOnNewIntent(Intent intent){}
  protected void handleOnResume(){}
+ protected void handleOnPause(){}
  protected void handleOnDestroy(){}
  void notifyListeners(String name,JSObject body,boolean retained){
   if(!name.equals("pendingResult")||!body.isEmpty()||!retained)throw new AssertionError("Expected an empty retained wakeup");
@@ -105,6 +108,10 @@ final class JSObject extends JSONObject {
  JSObject(){}
  JSObject(String text){super(text);}
 }
+final class JSArray extends org.json.JSONArray {
+ JSArray(org.json.JSONArray value){super(value.toString());}
+ @SuppressWarnings("unchecked") public <E> java.util.List<E> toList(){return (java.util.List<E>)(java.util.List<?>)super.toList();}
+}
 final class PluginCall {
  final JSObject data;
  boolean answered, rejected;
@@ -113,6 +120,8 @@ final class PluginCall {
  JSObject getData(){return data;}
  JSONObject getObject(String field){return data.optJSONObject(field);}
  String getString(String field,String fallback){return data.optString(field,fallback);}
+ String getString(String field){return data.optString(field,null);}
+ JSArray getArray(String field){org.json.JSONArray value=data.optJSONArray(field);return value==null?null:new JSArray(value);}
  void reject(String reason){answer();rejected=true;}
  void resolve(){resolve(new JSObject());}
  void resolve(JSObject value){answer();result=value;}

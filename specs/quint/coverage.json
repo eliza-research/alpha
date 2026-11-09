@@ -5860,12 +5860,14 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaAssistActivity.java",
-      "sha256": "01c039df777bae3c1e85adbad3d1927094cfe33b4e54f130dc1e742c7145c623",
       "models": [
-        "Application"
+        "Application",
+        "NativeAssistantEntry"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "2a51297b72cea768d6eac25af42610e3c3406bdd911f8638297383f74a2c08e2",
       "stateAnchors": [
         {
           "line": 14,
@@ -6335,7 +6337,8 @@
       "sha256": "677cf7872a1b343e35ac603a4ff83c197e74d1d85ba20baa053053e2aa4f9d6b",
       "models": [
         "NoticesAndCaches",
-        "NativeHostedResultNotices"
+        "NativeHostedResultNotices",
+        "NativeSourceRenewal"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -6389,7 +6392,8 @@
         "ResidentScheduling",
         "NativeGoogleAccessFile",
         "RuntimeUpdatePause",
-        "NativeUpdateComposition"
+        "NativeUpdateComposition",
+        "NativeAssistantEntry"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -6924,7 +6928,8 @@
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPowerVoiceActivity.java",
       "models": [
-        "ShellNavigation"
+        "ShellNavigation",
+        "NativeAssistantEntry"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -6939,7 +6944,8 @@
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaQuickSettingsTile.java",
       "models": [
-        "ShellNavigation"
+        "ShellNavigation",
+        "NativeAssistantEntry"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -7647,13 +7653,15 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/HostedNoticePoster.java",
-      "sha256": "663e6aa6560628becf3f1aa7c0f30cb495ee5bae35fcb766903013301ea0b8b1",
       "models": [
         "NoticesAndCaches",
-        "NativeHostedResultNotices"
+        "NativeHostedResultNotices",
+        "NativeSourceRenewal"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "89d93dcc121fd178745af8cbfabc4b53d6e51fec4349d4f2c01e13488f970efa",
       "stateAnchors": [
         {
           "line": 16,
@@ -7662,9 +7670,16 @@
         {
           "line": 21,
           "text": "private NotificationManager manager(){return context.getSystemService(NotificationManager.class);}"
+        },
+        {
+          "line": 47,
+          "text": "if(!allowed()||expiresAt<=now)return false;"
+        },
+        {
+          "line": 48,
+          "text": "manager().notify(renewalTag(sourceId),0,renewal(sourceId,expiresAt,now).build());"
         }
       ],
-      "reviewStatus": "state-audit-required",
       "integrationReview": "Domain allocation retained after merging the audit fixes. The refreshed source hash and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations."
     },
     {
@@ -7826,7 +7841,8 @@
         "Application",
         "RendererRecovery",
         "CanonicalNotificationTap",
-        "NativeTextScaleLifecycle"
+        "NativeTextScaleLifecycle",
+        "NativeAssistantEntry"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -8455,12 +8471,14 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/SourceRenewalHost.java",
-      "sha256": "09fc49b756dd92b344d6ebb742daab70157e8dfe994d2f58544ec72d8b20d02a",
       "models": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "NativeSourceRenewal"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "db32cf7463fa285e70a90246088bfeef2d044b62d30bbf798c1afaca38cbb3d2",
       "stateAnchors": [
         {
           "line": 5,
@@ -8472,7 +8490,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/SourceRenewalNotices.java",
       "sha256": "1afc6562e60713bfae93fe41603b7265b0da20c434f66ec6c486e3a5bd28fcfa",
       "models": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "NativeSourceRenewal"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -10285,7 +10304,7 @@
         },
         {
           "line": 271,
-          "text": "const when=reviewed.allDay?new Date(reviewed.begin).toLocaleDateString(undefined,{timeZone:'UTC',weekday:'short',year:'numeric',month:'short',day:'numeric'})+' · All day':`${new Date(reviewed.begin).t"
+          "text": "const when=reviewed.allDay?new Date(reviewed.begin).toLocaleDateString(undefined,{timeZone:'UTC',weekday:'short',year:'numeric',month:'short',day:'numeric'})+' \u00b7 All day':`${new Date(reviewed.begin).t"
         },
         {
           "line": 273,
@@ -10632,7 +10651,8 @@
       "models": [
         "BrowserReadingState",
         "BrowserSession",
-        "HostedNoticeQuestion"
+        "HostedNoticeQuestion",
+        "SourceRenewalQuestion"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -11230,7 +11250,7 @@
       "stateAnchors": [
         {
           "line": 6,
-          "text": "export const developmentName=(profile:DevelopmentProfile)=>`${profile==='local'?'On-device':profile==='cloud'?'Cloud':'Remote'} agent · development`;"
+          "text": "export const developmentName=(profile:DevelopmentProfile)=>`${profile==='local'?'On-device':profile==='cloud'?'Cloud':'Remote'} agent \u00b7 development`;"
         },
         {
           "line": 8,
@@ -12102,7 +12122,8 @@
       "path": "apps/app/src/browser/files.ts",
       "sha256": "79890f6d2d3adb963aca66b53e486e07c27a0fc7430d5be4f8d3311057dbbfe8",
       "models": [
-        "BrowserSession"
+        "BrowserSession",
+        "BrowserFilesTrash"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -12854,7 +12875,7 @@
         },
         {
           "line": 17,
-          "text": "const explanation=document.createElement('p');explanation.textContent='Review or paste the text you want to hear. Speech runs on this device through your local agent’s on-device voice; the text is use"
+          "text": "const explanation=document.createElement('p');explanation.textContent='Review or paste the text you want to hear. Speech runs on this device through your local agent\u2019s on-device voice; the text is use"
         },
         {
           "line": 18,
@@ -12922,7 +12943,7 @@
         },
         {
           "line": 44,
-          "text": "const current=++generation;field.disabled=true;read.disabled=true;stop.disabled=false;status.textContent='Preparing local speech…';const owner=new AbortController();speech=owner;"
+          "text": "const current=++generation;field.disabled=true;read.disabled=true;stop.disabled=false;status.textContent='Preparing local speech\u2026';const owner=new AbortController();speech=owner;"
         }
       ]
     },
@@ -14675,7 +14696,7 @@
         },
         {
           "line": 327,
-          "text": "}}/>}{testMocksEnabled && mock && <div className=\"mock-mode-banner\" role=\"status\"><span>Mock mode · simulated data and actions</span><button onClick={() => { void connectionController.offline().then(("
+          "text": "}}/>}{testMocksEnabled && mock && <div className=\"mock-mode-banner\" role=\"status\"><span>Mock mode \u00b7 simulated data and actions</span><button onClick={() => { void connectionController.offline().then(("
         },
         {
           "line": 332,
@@ -14759,7 +14780,8 @@
       "models": [
         "Maps",
         "MapsNavigation",
-        "NavigationProgress"
+        "NavigationProgress",
+        "MapsRerouteOwnership"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -14894,7 +14916,8 @@
       "sha256": "473e6790cabc47666f893b8bd297880058230d087ddf74fbbea7411bddfbc6fe",
       "models": [
         "MapsNavigation",
-        "NavigationProgress"
+        "NavigationProgress",
+        "MapsRerouteOwnership"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -15129,7 +15152,8 @@
       "path": "apps/app/src/maps/screen.ts",
       "models": [
         "MapsNavigation",
-        "NavigationProgress"
+        "NavigationProgress",
+        "MapsRerouteOwnership"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -15156,7 +15180,8 @@
       "sha256": "4e83fc8aa70ea95c4f6831a9789fce9520106f6ce19fe04a5a6baac104d07e96",
       "models": [
         "MapsNavigation",
-        "NavigationProgress"
+        "NavigationProgress",
+        "MapsRerouteOwnership"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -16994,7 +17019,7 @@
         },
         {
           "line": 1745,
-          "text": "const recoveryText=message==='The agent request failed. Check connection and action history before sending another request.'?'Sorry, I couldn’t finish that reply.':message;"
+          "text": "const recoveryText=message==='The agent request failed. Check connection and action history before sending another request.'?'Sorry, I couldn\u2019t finish that reply.':message;"
         },
         {
           "line": 1751,
@@ -17321,7 +17346,7 @@
         },
         {
           "line": 130,
-          "text": "const target=port();if(!target?.current()){api.toast(agentPendingText(undefined,'Calendar is unavailable for this agent connection. Check Settings › Agent connection.'));return;}"
+          "text": "const target=port();if(!target?.current()){api.toast(agentPendingText(undefined,'Calendar is unavailable for this agent connection. Check Settings \u203a Agent connection.'));return;}"
         },
         {
           "line": 131,
@@ -17401,7 +17426,7 @@
         },
         {
           "line": 173,
-          "text": "const cals=legacy?[{id:'legacy',name:'Saved app calendar · Read only',sub:'Kept on this device',color:'mut',on:true}]:sourceRows();"
+          "text": "const cals=legacy?[{id:'legacy',name:'Saved app calendar \u00b7 Read only',sub:'Kept on this device',color:'mut',on:true}]:sourceRows();"
         },
         {
           "line": 176,
@@ -17879,7 +17904,7 @@
         },
         {
           "line": 163,
-          "text": "editing:!!editor,fields,moreFields,whenFields,promptSaveNote:!editor?.row?'Saves paused. Enable it when you’re ready. Phone access needs a separate review.':editor.row.enabled?'Changes keep its existi"
+          "text": "editing:!!editor,fields,moreFields,whenFields,promptSaveNote:!editor?.row?'Saves paused. Enable it when you\u2019re ready. Phone access needs a separate review.':editor.row.enabled?'Changes keep its existi"
         },
         {
           "line": 164,
@@ -17887,7 +17912,7 @@
         },
         {
           "line": 165,
-          "text": "review:!!review,reviewLabel:review?.label||'',reviewPrompt:`${review?.label||''} on the currently connected agent? The agent’s existing permissions and scheduling rules still apply.`,reviewDetails:det"
+          "text": "review:!!review,reviewLabel:review?.label||'',reviewPrompt:`${review?.label||''} on the currently connected agent? The agent\u2019s existing permissions and scheduling rules still apply.`,reviewDetails:det"
         },
         {
           "line": 168,
@@ -19798,7 +19823,7 @@
         },
         {
           "line": 51,
-          "text": "out.discardEditDraft=()=>{if(state.form||!window.confirm('Discard these unsaved edits? Saved events and reminders won’t change.'))return;const text=shell.calendarEditDraftText;void controller.consume("
+          "text": "out.discardEditDraft=()=>{if(state.form||!window.confirm('Discard these unsaved edits? Saved events and reminders won\u2019t change.'))return;const text=shell.calendarEditDraftText;void controller.consume("
         },
         {
           "line": 53,
@@ -19877,7 +19902,7 @@
         },
         {
           "line": 51,
-          "text": "const form=state.form;if(!active||!window.confirm('Discard this draft? Saved events and reminders won’t change.'))return;"
+          "text": "const form=state.form;if(!active||!window.confirm('Discard this draft? Saved events and reminders won\u2019t change.'))return;"
         },
         {
           "line": 52,
@@ -20252,7 +20277,7 @@
       "stateAnchors": [
         {
           "line": 11,
-          "text": "const UNAVAILABLE='Notes is unavailable for this agent connection. Check Settings › Agent connection.';"
+          "text": "const UNAVAILABLE='Notes is unavailable for this agent connection. Check Settings \u203a Agent connection.';"
         },
         {
           "line": 13,
@@ -21132,7 +21157,7 @@
         },
         {
           "line": 16,
-          "text": "let owner:any,rows:Bag[]=[],status='Choose Contacts access to see this profile’s address book.',readable=false,loading=false,more=false,limit=50,epoch=0,active=false;"
+          "text": "let owner:any,rows:Bag[]=[],status='Choose Contacts access to see this profile\u2019s address book.',readable=false,loading=false,more=false,limit=50,epoch=0,active=false;"
         },
         {
           "line": 17,
@@ -21870,7 +21895,7 @@
         },
         {
           "line": 73,
-          "text": "const words=(value:string)=>value.toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g,'').split(/[^a-z0-9]+/).filter(Boolean);"
+          "text": "const words=(value:string)=>value.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').split(/[^a-z0-9]+/).filter(Boolean);"
         },
         {
           "line": 89,
@@ -22256,7 +22281,7 @@
         },
         {
           "line": 321,
-          "text": "export const MAPS_SAVED = { home: \"home\", work: \"lumen\", workLabel: \"Work\", workName: \"Work · Lumen studio\", initial: [\"tartine\"], preset: \"tartine\", sharePerson: \"maya\", shareDest: { priya: \"tartine\""
+          "text": "export const MAPS_SAVED = { home: \"home\", work: \"lumen\", workLabel: \"Work\", workName: \"Work \u00b7 Lumen studio\", initial: [\"tartine\"], preset: \"tartine\", sharePerson: \"maya\", shareDest: { priya: \"tartine\""
         },
         {
           "line": 323,
@@ -22990,7 +23015,7 @@
         },
         {
           "line": 281,
-          "text": "const pending=homeLoad;if(pending){status='Checking Gmail connection…';publish();await pending.task;}"
+          "text": "const pending=homeLoad;if(pending){status='Checking Gmail connection\u2026';publish();await pending.task;}"
         },
         {
           "line": 283,
@@ -23330,7 +23355,7 @@
         },
         {
           "line": 650,
-          "text": "await work('Loading selected attachment…',async({client},signal,valid)=>{const file=await client.gmailAttachment(accountId,source.message.id,attachment.partId,source.historyId!,signal).catch(error=>{t"
+          "text": "await work('Loading selected attachment\u2026',async({client},signal,valid)=>{const file=await client.gmailAttachment(accountId,source.message.id,attachment.partId,source.historyId!,signal).catch(error=>{t"
         },
         {
           "line": 660,
@@ -23338,7 +23363,7 @@
         },
         {
           "line": 661,
-          "text": "await work('Loading attachment…',async({client},signal,valid)=>{const file=await client.gmailOpaqueAttachment(accountId,source.message.id,attachment.partId,source.historyId!,signal).catch(error=>{thro"
+          "text": "await work('Loading attachment\u2026',async({client},signal,valid)=>{const file=await client.gmailOpaqueAttachment(accountId,source.message.id,attachment.partId,source.historyId!,signal).catch(error=>{thro"
         },
         {
           "line": 662,
@@ -23362,7 +23387,7 @@
         },
         {
           "line": 690,
-          "text": "const warning = linkTextMismatch(link) ? `\\n\\nWarning: the email shows “${link.text}”, but the link goes to ${url.hostname}.` : '';"
+          "text": "const warning = linkTextMismatch(link) ? `\\n\\nWarning: the email shows \u201c${link.text}\u201d, but the link goes to ${url.hostname}.` : '';"
         },
         {
           "line": 692,
@@ -23602,7 +23627,7 @@
         },
         {
           "line": 896,
-          "text": "body: activeBody.loading?'Loading message…':activeBody.bodyText || '(Empty message)', loading:!!activeBody.loading,canLoadThread:!thread&&!activeBody.loading&&!!provider.capabilities()?.threads,loadTh"
+          "text": "body: activeBody.loading?'Loading message\u2026':activeBody.bodyText || '(Empty message)', loading:!!activeBody.loading,canLoadThread:!thread&&!activeBody.loading&&!!provider.capabilities()?.threads,loadTh"
         },
         {
           "line": 902,
@@ -24162,7 +24187,7 @@
         },
         {
           "line": 160,
-          "text": "const controller = new AbortController(), state: Reading = { id, text, controller, message: 'Waiting for the previous audio to stop…' };"
+          "text": "const controller = new AbortController(), state: Reading = { id, text, controller, message: 'Waiting for the previous audio to stop\u2026' };"
         },
         {
           "line": 161,
@@ -24341,7 +24366,7 @@
         },
         {
           "line": 40,
-          "text": "const clean = (text: string) => text.replace(/[  ]/g, ' ');"
+          "text": "const clean = (text: string) => text.replace(/[\u202f\u00a0]/g, ' ');"
         },
         {
           "line": 42,
@@ -24371,7 +24396,8 @@
         "Maps",
         "MapsNavigation",
         "NavigationProgress",
-        "MapsEventReturn"
+        "MapsEventReturn",
+        "MapsRerouteOwnership"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -24914,7 +24940,7 @@
         },
         {
           "line": 241,
-          "text": "if (st.incoming) { var ip = pnWho(api, st.incoming); return { label: (st.ring === \"screen\" ? api.name + \" · \" : \"Incoming · \") + (ip ? pnFirst(ip) : \"Unknown\"), icon: \"phone\", color: \"var(--alpha-call"
+          "text": "if (st.incoming) { var ip = pnWho(api, st.incoming); return { label: (st.ring === \"screen\" ? api.name + \" \u00b7 \" : \"Incoming \u00b7 \") + (ip ? pnFirst(ip) : \"Unknown\"), icon: \"phone\", color: \"var(--alpha-call"
         },
         {
           "line": 246,
@@ -25142,7 +25168,7 @@
         },
         {
           "line": 391,
-          "text": "var status = !live ? \"Calling…\" : (st.hold ? \"On hold · \" : \"\") + pnClock(el);"
+          "text": "var status = !live ? \"Calling\u2026\" : (st.hold ? \"On hold \u00b7 \" : \"\") + pnClock(el);"
         },
         {
           "line": 392,
@@ -26066,7 +26092,7 @@
         },
         {
           "line": 1171,
-          "text": "var words = e.title.toLowerCase().replace(/[·]/g, \" \").split(/\\s+/).filter(function (w) { return w.length > 2; });"
+          "text": "var words = e.title.toLowerCase().replace(/[\u00b7]/g, \" \").split(/\\s+/).filter(function (w) { return w.length > 2; });"
         },
         {
           "line": 1172,
@@ -26170,7 +26196,7 @@
         },
         {
           "line": 1266,
-          "text": "var title = who.length ? kind + \" · \" + who.map(function (id) { return calPerson(api, id).name.split(\" \")[0]; }).join(\", \") : kind;"
+          "text": "var title = who.length ? kind + \" \u00b7 \" + who.map(function (id) { return calPerson(api, id).name.split(\" \")[0]; }).join(\", \") : kind;"
         },
         {
           "line": 1267,
@@ -26970,7 +26996,7 @@
         },
         {
           "line": 1855,
-          "text": "var CAM_ZOOM = [[\".5\", 1], [\"1×\", 1.35], [\"2\", 2], [\"5\", 3.4]];"
+          "text": "var CAM_ZOOM = [[\".5\", 1], [\"1\u00d7\", 1.35], [\"2\", 2], [\"5\", 3.4]];"
         },
         {
           "line": 1856,
@@ -27342,7 +27368,7 @@
         },
         {
           "line": 2202,
-          "text": "var name = nm ? cap(nm) : r.label.replace(/ · /g, \" \");"
+          "text": "var name = nm ? cap(nm) : r.label.replace(/ \u00b7 /g, \" \");"
         },
         {
           "line": 2203,
@@ -28294,7 +28320,7 @@
         },
         {
           "line": 2989,
-          "text": "var body = parts.map(function (l) { return \"· \" + l; }).join(\"\\n\");"
+          "text": "var body = parts.map(function (l) { return \"\u00b7 \" + l; }).join(\"\\n\");"
         },
         {
           "line": 2990,
@@ -28350,7 +28376,7 @@
         },
         {
           "line": 3053,
-          "text": "var title = text.length <= 44 ? cap(text) : cap(text.split(/\\s+/).slice(0, 5).join(\" \")) + \"…\";"
+          "text": "var title = text.length <= 44 ? cap(text) : cap(text.split(/\\s+/).slice(0, 5).join(\" \")) + \"\u2026\";"
         },
         {
           "line": 3054,
@@ -28402,7 +28428,7 @@
         },
         {
           "line": 3100,
-          "text": "setTimeout(function () { NT.pend = false; var s = api.get(\"notes\"); if (s.record) { api.set({ record: false }); api.toast(\"Recording isn’t available in this preview.\"); } else if (s.compose) notesNew("
+          "text": "setTimeout(function () { NT.pend = false; var s = api.get(\"notes\"); if (s.record) { api.set({ record: false }); api.toast(\"Recording isn\u2019t available in this preview.\"); } else if (s.compose) notesNew("
         },
         {
           "line": 3102,
@@ -28710,7 +28736,7 @@
         },
         {
           "line": 3417,
-          "text": "if (/\\bbirthday\\b/.test(t)) { var b = ctBday(p.birthday, api.now.getTime()); return b ? { text: f + \"'s birthday is \" + b.replace(\" · \", \", \") + \".\", card: card(\"contactsGift\", b) } : { text: \"No birt"
+          "text": "if (/\\bbirthday\\b/.test(t)) { var b = ctBday(p.birthday, api.now.getTime()); return b ? { text: f + \"'s birthday is \" + b.replace(\" \u00b7 \", \", \") + \".\", card: card(\"contactsGift\", b) } : { text: \"No birt"
         },
         {
           "line": 3419,
@@ -28962,7 +28988,7 @@
         },
         {
           "line": 3676,
-          "text": "var note = { id: id, kind: \"voice\", title: \"Landlord\", when: \"Yesterday · 6:20 PM\", dur: f.dur, pinned: false,"
+          "text": "var note = { id: id, kind: \"voice\", title: \"Landlord\", when: \"Yesterday \u00b7 6:20 PM\", dur: f.dur, pinned: false,"
         },
         {
           "line": 3687,
@@ -30006,11 +30032,11 @@
         },
         {
           "line": 4713,
-          "text": "var lvlText = function (a) { var on = ST_TYPES.filter(function (x) { return a[x[0]]; }).map(function (x) { return x[1]; }); return on.length ? on.join(\" · \") : \"Not syncing\"; };"
+          "text": "var lvlText = function (a) { var on = ST_TYPES.filter(function (x) { return a[x[0]]; }).map(function (x) { return x[1]; }); return on.length ? on.join(\" \u00b7 \") : \"Not syncing\"; };"
         },
         {
           "line": 4714,
-          "text": "var persona = ST_VOICES[ch.voice] + \" · \" + (ch.brev < 40 ? \"Brief\" : (ch.brev > 65 ? \"Detailed\" : \"Balanced\")) + \" · \" + (ch.tone > 55 ? \"Casual\" : \"Formal\");"
+          "text": "var persona = ST_VOICES[ch.voice] + \" \u00b7 \" + (ch.brev < 40 ? \"Brief\" : (ch.brev > 65 ? \"Detailed\" : \"Balanced\")) + \" \u00b7 \" + (ch.tone > 55 ? \"Casual\" : \"Formal\");"
         },
         {
           "line": 4717,
@@ -30166,7 +30192,7 @@
         },
         {
           "line": 4922,
-          "text": "var gr = [{ plain: true, rows: rows }, { plain: true, rows: [stRow(\"kBtn\", { label: busy ? \"Signing in…\" : \"Sign in\", primary: true, dis: !ok || busy, css: ok ? \"background:var(--acc);color:var(--alph"
+          "text": "var gr = [{ plain: true, rows: rows }, { plain: true, rows: [stRow(\"kBtn\", { label: busy ? \"Signing in\u2026\" : \"Sign in\", primary: true, dis: !ok || busy, css: ok ? \"background:var(--acc);color:var(--alph"
         },
         {
           "line": 4933,
@@ -30782,7 +30808,7 @@
         },
         {
           "line": 5582,
-          "text": "var vShow = S.voice === \"speaking\" ? S.vcap : (S.vtext || \"…\");"
+          "text": "var vShow = S.voice === \"speaking\" ? S.vcap : (S.vtext || \"\u2026\");"
         },
         {
           "line": 5584,
@@ -31045,7 +31071,7 @@
         },
         {
           "line": 134,
-          "text": "const unavailable = (api: Bag, message = 'This isn’t available on this phone.') => () => notify(api, message);"
+          "text": "const unavailable = (api: Bag, message = 'This isn\u2019t available on this phone.') => () => notify(api, message);"
         },
         {
           "line": 139,
@@ -31769,7 +31795,7 @@
         },
         {
           "line": 65,
-          "text": "const paint=()=>{linked.hidden=!source?.reference;name.textContent=source?.name||'No source linked';detail.textContent=source?`${typeLabel[source.mimeType]??'File'} · ${sizeLabel(source.size)}`:'';lin"
+          "text": "const paint=()=>{linked.hidden=!source?.reference;name.textContent=source?.name||'No source linked';detail.textContent=source?`${typeLabel[source.mimeType]??'File'} \u00b7 ${sizeLabel(source.size)}`:'';lin"
         },
         {
           "line": 66,
@@ -31789,7 +31815,7 @@
         },
         {
           "line": 78,
-          "text": "if(busy||!current())return;busy=true;status.textContent='Choose a file…';paint();let selectionId:string|undefined;"
+          "text": "if(busy||!current())return;busy=true;status.textContent='Choose a file\u2026';paint();let selectionId:string|undefined;"
         },
         {
           "line": 80,
@@ -31829,7 +31855,7 @@
         },
         {
           "line": 108,
-          "text": "linked.onclick=async()=>{if(busy||!current()||!source?.reference)return;busy=true;opened=true;paint();status.textContent='Opening verified source…';try{const result=await attachments.openSourceReferen"
+          "text": "linked.onclick=async()=>{if(busy||!current()||!source?.reference)return;busy=true;opened=true;paint();status.textContent='Opening verified source\u2026';try{const result=await attachments.openSourceReferen"
         }
       ]
     },
@@ -32085,7 +32111,7 @@
         },
         {
           "line": 79,
-          "text": "const where=operation.folder===null?'no folder':`“${operation.folder}”`;"
+          "text": "const where=operation.folder===null?'no folder':`\u201c${operation.folder}\u201d`;"
         },
         {
           "line": 81,
@@ -32319,7 +32345,7 @@
         },
         {
           "line": 45,
-          "text": "const change=remove?paragraph('The note moves to Trash and is erased after 3 days unless you restore it.'):paragraph(`New title: “${operation.fields.title}”\\n${operation.fields.body}`);change.style.wh"
+          "text": "const change=remove?paragraph('The note moves to Trash and is erased after 3 days unless you restore it.'):paragraph(`New title: \u201c${operation.fields.title}\u201d\\n${operation.fields.body}`);change.style.wh"
         },
         {
           "line": 46,
@@ -33692,7 +33718,7 @@
         },
         {
           "line": 8,
-          "text": "const zone=document.createElement('p');zone.textContent='Local time · '+Intl.DateTimeFormat().resolvedOptions().timeZone;"
+          "text": "const zone=document.createElement('p');zone.textContent='Local time \u00b7 '+Intl.DateTimeFormat().resolvedOptions().timeZone;"
         },
         {
           "line": 9,
@@ -33744,7 +33770,7 @@
         },
         {
           "line": 26,
-          "text": "const hint=suggested.recurrence;repeat.label.hidden=!hint;repeat.value.checked=false;if(hint){repeat.text.textContent=`Repeat ${repeatLabel[hint.repeat]} (suggested from “${hint.evidence}”)`;repeat.va"
+          "text": "const hint=suggested.recurrence;repeat.label.hidden=!hint;repeat.value.checked=false;if(hint){repeat.text.textContent=`Repeat ${repeatLabel[hint.repeat]} (suggested from \u201c${hint.evidence}\u201d)`;repeat.va"
         },
         {
           "line": 28,
@@ -33822,7 +33848,7 @@
         },
         {
           "line": 21,
-          "text": "event.preventDefault();busy=true;const token=generation;status.textContent='Opening browser…';"
+          "text": "event.preventDefault();busy=true;const token=generation;status.textContent='Opening browser\u2026';"
         }
       ]
     },
@@ -33937,7 +33963,7 @@
         },
         {
           "line": 23,
-          "text": "const status=document.createElement('p');status.setAttribute('role','status');status.setAttribute('aria-label','Scan status');status.textContent='Starting local scan…';"
+          "text": "const status=document.createElement('p');status.setAttribute('role','status');status.setAttribute('aria-label','Scan status');status.textContent='Starting local scan\u2026';"
         },
         {
           "line": 24,
@@ -33965,7 +33991,7 @@
         },
         {
           "line": 30,
-          "text": "if(source==='unsaved'&&keep){const kept=button('Keep photo');let keeping=false;kept.onclick=()=>{if(keeping||closed)return;keeping=true;kept.disabled=true;status.textContent='Saving photo to Photos…';"
+          "text": "if(source==='unsaved'&&keep){const kept=button('Keep photo');let keeping=false;kept.onclick=()=>{if(keeping||closed)return;keeping=true;kept.disabled=true;status.textContent='Saving photo to Photos\u2026';"
         },
         {
           "line": 33,
@@ -34021,7 +34047,7 @@
         },
         {
           "line": 53,
-          "text": "pdf.onclick=()=>{if(pdfAttempted)return;pdfAttempted=true;pdf.disabled=true;pdfStatus.textContent='Preparing photo PDF…';void exportScanPdf(image,controller.signal,'Alpha scan '+new Date().toISOString"
+          "text": "pdf.onclick=()=>{if(pdfAttempted)return;pdfAttempted=true;pdf.disabled=true;pdfStatus.textContent='Preparing photo PDF\u2026';void exportScanPdf(image,controller.signal,'Alpha scan '+new Date().toISOString"
         },
         {
           "line": 55,
@@ -34089,7 +34115,7 @@
         },
         {
           "line": 25,
-          "text": "const lines=initial?.[index]??(await recognizeLocalText(image,controller.signal,p=>{if(!closed)status.textContent=`Page ${index+1} · ${Math.round(p.progress*100)}% · ${p.status}`;},true)).lines!;contr"
+          "text": "const lines=initial?.[index]??(await recognizeLocalText(image,controller.signal,p=>{if(!closed)status.textContent=`Page ${index+1} \u00b7 ${Math.round(p.progress*100)}% \u00b7 ${p.status}`;},true)).lines!;contr"
         },
         {
           "line": 26,
@@ -34322,7 +34348,7 @@
         },
         {
           "line": 127,
-          "text": "closeQuestion=reviewContentQuestion({name:selected.pdf?name+' · page '+(selected.pdf.page+1):name,text:selected.text??'',current:()=>current===selected&&api.get(module).open===marker&&!document.hidden"
+          "text": "closeQuestion=reviewContentQuestion({name:selected.pdf?name+' \u00b7 page '+(selected.pdf.page+1):name,text:selected.text??'',current:()=>current===selected&&api.get(module).open===marker&&!document.hidden"
         },
         {
           "line": 129,
@@ -34560,7 +34586,7 @@
         },
         {
           "line": 86,
-          "text": "return {nativeManaged:true,nativePrototype:false,nativeStatus:session.state.message,nativeRows:session.state.rows.map(row=>({...row,address:row.addresses.join(', '),direction:`${row.direction} · ${row"
+          "text": "return {nativeManaged:true,nativePrototype:false,nativeStatus:session.state.message,nativeRows:session.state.rows.map(row=>({...row,address:row.addresses.join(', '),direction:`${row.direction} \u00b7 ${row"
         },
         {
           "line": 87,
@@ -34814,7 +34840,7 @@
         },
         {
           "line": 178,
-          "text": "const bounded = (text: string) => text.length > LIMIT ? text.slice(0, LIMIT - 1).trimEnd() + '…' : text;"
+          "text": "const bounded = (text: string) => text.length > LIMIT ? text.slice(0, LIMIT - 1).trimEnd() + '\u2026' : text;"
         },
         {
           "line": 179,
@@ -34909,7 +34935,7 @@
         },
         {
           "line": 12,
-          "text": "const title=document.createElement('input');title.setAttribute('aria-label','Summary note title');title.maxLength=200;title.value=('Summary · '+source.name).slice(0,200);"
+          "text": "const title=document.createElement('input');title.setAttribute('aria-label','Summary note title');title.maxLength=200;title.value=('Summary \u00b7 '+source.name).slice(0,200);"
         },
         {
           "line": 13,
@@ -34929,7 +34955,7 @@
         },
         {
           "line": 18,
-          "text": "if(recording){save.textContent='Save recording summary';const label=document.createElement('label');label.textContent='Action items · one per line';label.append(actions);content.append(label);}"
+          "text": "if(recording){save.textContent='Save recording summary';const label=document.createElement('label');label.textContent='Action items \u00b7 one per line';label.append(actions);content.append(label);}"
         },
         {
           "line": 20,
@@ -35031,7 +35057,6 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "89c12d50269a326e0641be753265ba16b76df8a66892fa4485e4e9db2ea1c31c",
       "models": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -35041,12 +35066,14 @@
         "DockClearanceOwnership",
         "CalendarPreservationConfirmation",
         "CanonicalCalendarEditorClose",
-        "CameraPreviewRetirement"
+        "CameraPreviewRetirement",
+        "MapsRerouteOwnership"
       ],
-      "treatment": "stateless-presentation-contract",
       "scope": "application",
-      "stateAnchors": [],
+      "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
+      "sha256": "dfc6974d8eb5f33cc9a08b3f556e98b53dbae03f6a5841bff919c0ed3d5eb47b",
+      "stateAnchors": [],
       "integrationReview": "Domain allocation retained after merged fixes. Source identity and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations."
     },
     {
@@ -35961,7 +35988,7 @@
         },
         {
           "line": 90,
-          "text": "active=true;busy=true;unreceipted=false;resendReview=false;draft=null;catalog=null;storage=null;requested=null;targetName=workflow?.name??'';status='Loading this agent’s workflow capabilities…';const "
+          "text": "active=true;busy=true;unreceipted=false;resendReview=false;draft=null;catalog=null;storage=null;requested=null;targetName=workflow?.name??'';status='Loading this agent\u2019s workflow capabilities\u2026';const "
         },
         {
           "line": 91,
@@ -36097,7 +36124,7 @@
         },
         {
           "line": 177,
-          "text": "const capabilities=catalog;controller=new AbortController();const signal=controller.signal;busy=true;generating=true;generated=null;status='Generating a draft for you to review…';publish();"
+          "text": "const capabilities=catalog;controller=new AbortController();const signal=controller.signal;busy=true;generating=true;generated=null;status='Generating a draft for you to review\u2026';publish();"
         },
         {
           "line": 178,
@@ -38342,7 +38369,7 @@
         },
         {
           "line": 227,
-          "text": "for(const source of result.sources){const option=document.createElement('option');option.value=calendarSourceKey(source);option.textContent=`${source.accountEmail??'Google account'} · ${source.summary"
+          "text": "for(const source of result.sources){const option=document.createElement('option');option.value=calendarSourceKey(source);option.textContent=`${source.accountEmail??'Google account'} \u00b7 ${source.summary"
         },
         {
           "line": 232,
@@ -38709,7 +38736,7 @@
         },
         {
           "line": 36,
-          "text": "const planName=active?plan.planName:plan?.kind==='expired'?plan.planName:noPlan?'No active subscription':checking?'Checking subscription…':'Subscription not confirmed';"
+          "text": "const planName=active?plan.planName:plan?.kind==='expired'?plan.planName:noPlan?'No active subscription':checking?'Checking subscription\u2026':'Subscription not confirmed';"
         },
         {
           "line": 37,
@@ -39136,11 +39163,11 @@
       "stateAnchors": [
         {
           "line": 19,
-          "text": "export const SIGN_IN_SENDING = 'Sending your code…';"
+          "text": "export const SIGN_IN_SENDING = 'Sending your code\u2026';"
         },
         {
           "line": 20,
-          "text": "export const SIGN_IN_SIGNING_IN = 'Signing in…';"
+          "text": "export const SIGN_IN_SIGNING_IN = 'Signing in\u2026';"
         },
         {
           "line": 21,
@@ -39232,7 +39259,7 @@
         },
         {
           "line": 84,
-          "text": "const title = view.step === 'choose' ? 'Welcome to Alpha.' : view.step === 'google' ? 'Finish in your browser.' : passkey ? 'Can’t finish sign-in' : 'Check your code.';"
+          "text": "const title = view.step === 'choose' ? 'Welcome to Alpha.' : view.step === 'google' ? 'Finish in your browser.' : passkey ? 'Can\u2019t finish sign-in' : 'Check your code.';"
         },
         {
           "line": 85,
@@ -39248,7 +39275,7 @@
         },
         {
           "line": 90,
-          "text": "const sendLabel = (method: 'email' | 'phone', idle: string) => sending && pending === method ? 'Sending code…' : idle;"
+          "text": "const sendLabel = (method: 'email' | 'phone', idle: string) => sending && pending === method ? 'Sending code\u2026' : idle;"
         }
       ]
     },
@@ -40179,7 +40206,7 @@
         },
         {
           "line": 83,
-          "text": "const timing = `${formatDeviceRecordDateTime(fields.start, fields.timeZone)} – ${formatDeviceRecordDateTime(fields.end, fields.timeZone)} (${fields.timeZone})`;"
+          "text": "const timing = `${formatDeviceRecordDateTime(fields.start, fields.timeZone)} \u2013 ${formatDeviceRecordDateTime(fields.end, fields.timeZone)} (${fields.timeZone})`;"
         },
         {
           "line": 129,
@@ -41733,14 +41760,16 @@
     },
     {
       "path": "apps/app/src/runtime/hosted-digest-ui.tsx",
-      "sha256": "2be620a7125ccba4757ceb8dd0d9918beae9df37588330dec6dad552aa11d41f",
       "models": [
         "NoticesAndCaches",
         "HostedDigestRefresh",
-        "HostedDigestMutation"
+        "HostedDigestMutation",
+        "SourceRenewalQuestion"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "a38977247f6a3240669b4e0a93748887d4e899c28a6a4ed5fdb5ce1a9e2704ea",
       "stateAnchors": [
         {
           "line": 64,
@@ -41895,335 +41924,362 @@
           "text": "const node=document.getElementById('hosted-result-'+tap.runId);if(!node)return;node.scrollIntoView({block:'nearest'});node.focus();"
         },
         {
-          "line": 181,
+          "line": 165,
           "text": "const refresh = (afterMutation=false,resultsOnly=false):Promise<void> => {"
         },
         {
-          "line": 189,
+          "line": 166,
+          "text": "const b = binding.current;"
+        },
+        {
+          "line": 172,
+          "text": "const controller = new AbortController();"
+        },
+        {
+          "line": 173,
           "text": "const abort = () => controller.abort();"
         },
         {
-          "line": 192,
+          "line": 176,
           "text": "let timedOut = false;"
         },
         {
-          "line": 193,
+          "line": 177,
           "text": "const deadline = setTimeout(() => { timedOut = true; abort(); }, 20000);"
         },
         {
-          "line": 194,
+          "line": 178,
           "text": "const signal = controller.signal;"
         },
         {
-          "line": 195,
+          "line": 179,
           "text": "const promise = Promise.resolve().then(async () => {"
         },
         {
-          "line": 198,
+          "line": 182,
           "text": "const rr = await b.inbox.sync(b.client, signal);"
         },
         {
-          "line": 206,
+          "line": 190,
           "text": "const advertised = await b.client.capabilities(signal),supported = advertised.digests;"
         },
         {
-          "line": 210,
+          "line": 194,
           "text": "const nativeSupported=supported&&advertised.nativeSources&&isAndroid&&connection.kind==='resident';"
         },
         {
-          "line": 214,
+          "line": 198,
           "text": "setNativeSourceProtocol(nativeSupported);const advertisedFeatures={nativeEvening:nativeSupported&&advertised.nativeEvening,sourcePause:supported&&advertised.sourcePause,dossier:nativeSupported};setFea"
         },
         {
-          "line": 219,
+          "line": 203,
           "text": "const [ss, ll, rr, pp] = await Promise.all(["
         },
         {
-          "line": 232,
+          "line": 216,
           "text": "try {const status=await hostedResultNative.status();if(binding.current===b){setNoticeEnabled(status.enabled);setBackgroundEnabled(status.backgroundEnabled===true);}}catch{}"
         },
         {
-          "line": 249,
+          "line": 233,
           "text": "const selected = connectionController.getWorkflowClient();"
         },
         {
-          "line": 269,
+          "line": 252,
+          "text": "const controller = new AbortController();"
+        },
+        {
+          "line": 253,
           "text": "let disposed = false;"
         },
         {
-          "line": 270,
+          "line": 254,
           "text": "let releaseBrowser:undefined|(()=>void),releaseScheduler:undefined|(()=>void);"
         },
         {
-          "line": 272,
+          "line": 256,
           "text": "const session = connection.session!,"
         },
         {
-          "line": 279,
+          "line": 263,
           "text": "const client=selected.client.hosted();let inbox:ResultInbox;"
         },
         {
-          "line": 280,
+          "line": 264,
           "text": "const development=devSurfacesEnabled&&browserDevProfile&&JSON.parse(localStorage.getItem('alpha.connection.selection.v1')||'null')?.kind==='development';"
         },
         {
-          "line": 281,
+          "line": 265,
           "text": "const storage=development?await (await import('../browser/digest-storage')).browserDigestStore(session,()=>!disposed&&connectionController.getSnapshot().session?.sessionId===session.sessionId,controll"
         },
         {
-          "line": 282,
+          "line": 266,
           "text": "const notices:HostedResultBinding={scope:slot.slice('hosted-digests:v1:'.length),origin:session.origin,ownerId:session.ownerId,agentId:session.agentId,current:()=>!disposed&&binding.current?.sessionId"
         },
         {
-          "line": 283,
+          "line": 267,
           "text": "let ready=false;"
         },
         {
-          "line": 285,
+          "line": 269,
           "text": "const cloud=testMocksEnabled&&connection.kind==='cloud'?await secureConnectionStore.read<Record<string,unknown>>(`cloud-runtime:${session.sessionId}`):null;"
         },
         {
-          "line": 293,
+          "line": 277,
           "text": "const b = {"
         },
         {
-          "line": 305,
+          "line": 289,
           "text": "if(development){const {startDevelopmentDigestScheduler}=await import('../browser/development-digests');if(!disposed)releaseScheduler=startDevelopmentDigestScheduler(notices.current,controller.signal);"
         },
         {
-          "line": 308,
+          "line": 292,
           "text": "const old = await b.inbox.history();"
         },
         {
-          "line": 314,
+          "line": 298,
           "text": "const resume = () => {"
         },
         {
-          "line": 320,
+          "line": 304,
           "text": "let ticks = 0;"
         },
         {
-          "line": 330,
+          "line": 314,
           "text": "let deviceFrame=0;const deviceResume=()=>{refreshFlight.current?.controller.abort();cancelAnimationFrame(deviceFrame);deviceFrame=requestAnimationFrame(resume);};"
         },
         {
-          "line": 333,
+          "line": 317,
           "text": "const listener = DailyApps.addListener(\"appResumed\", resume).catch("
         },
         {
-          "line": 353,
+          "line": 337,
           "text": "const previous = document.activeElement as HTMLElement | null;"
         },
         {
-          "line": 354,
+          "line": 338,
           "text": "const phone = document.querySelector<HTMLElement>('.os');"
         },
         {
-          "line": 355,
+          "line": 339,
           "text": "const releaseInert = holdPhoneInert(phone);"
         },
         {
-          "line": 358,
+          "line": 342,
           "text": "const back = (event: Event) => {"
         },
         {
-          "line": 364,
+          "line": 348,
           "text": "const key = (event: KeyboardEvent) => {"
         },
         {
-          "line": 368,
+          "line": 352,
           "text": "const items = Array.from(panel.current.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),summary,a[href]')).filter(item => item.ge"
         },
         {
-          "line": 369,
+          "line": 353,
           "text": "const first = items[0], last = items.at(-1);"
         },
         {
-          "line": 375,
+          "line": 359,
           "text": "const modal = panel.current;"
         },
         {
-          "line": 388,
+          "line": 372,
           "text": "const renewalSources=useRef(sources);renewalSources.current=sources;"
         },
         {
-          "line": 389,
+          "line": 373,
           "text": "const renewalFlight=resolveTap;"
         },
         {
-          "line": 390,
+          "line": 374,
           "text": "const renewalStart=useRef(startRenewal);renewalStart.current=startRenewal;"
         },
         {
-          "line": 392,
+          "line": 376,
           "text": "const checkRenewal=()=>renewalFlight.current(async()=>{"
         },
         {
-          "line": 393,
+          "line": 377,
           "text": "const b=binding.current;if(!isAndroid||!b||!canSyncResults()||questionBusy.current||questionClose.current)return;"
         },
         {
-          "line": 396,
+          "line": 380,
           "text": "let tapped=false;"
         },
         {
-          "line": 397,
+          "line": 381,
           "text": "try{const tap=await nativeSources.pendingSourceRenewal();if(!tap.token||!tap.selection||typeof tap.expiresAt!=='number'||binding.current!==b||!b.notices.current()||!canSyncResults())return;tapped=true"
         },
         {
-          "line": 398,
+          "line": 382,
           "text": "const current=()=>mounted.current&&binding.current===b&&b.notices.current()&&canSyncResults()&&!connectionController.getSnapshot().open&&renewalSources.current.some(source=>!source.revoked&&source.liv"
         },
         {
-          "line": 404,
+          "line": 386,
+          "text": "questionClose.current=reviewSourceRenewalQuestion({"
+        },
+        {
+          "line": 390,
+          "text": "canCompose:()=>canComposeQuestion?.(b.sessionId)===true,"
+        },
+        {
+          "line": 392,
+          "text": "report:value=>{if(mounted.current&&binding.current===b&&b.notices.current())setMessage(value);},"
+        },
+        {
+          "line": 401,
           "text": "useEffect(()=>{if(!isAndroid)return;const listener=nativeSources.addListener('renewSource',()=>{void checkRenewal();}).catch(()=>null);void checkRenewal();return()=>{void listener.then(l=>l?.remove())"
         },
         {
-          "line": 407,
+          "line": 404,
           "text": "useEffect(()=>{if(!isAndroid)return;for(const source of sources){if(source.live?.provider!=='native')continue;const bound=loops.some(l=>!l.removed&&l.spec.enabled&&l.spec.sourceId===source.id);if(boun"
         },
         {
-          "line": 408,
+          "line": 405,
           "text": "function clearRenewal(id:string){const selection=renewalSources.current.find(source=>source.id===id)?.live;if(selection?.provider==='native')void nativeSources.clearSourceRenewal({selection}).catch(()"
         },
         {
-          "line": 410,
+          "line": 407,
           "text": "const source=sources.find(s=>s.id===id);if(!source)return;setRenewing(id);setReview(null);setSourceId('');"
         },
         {
-          "line": 411,
+          "line": 408,
           "text": "const bound=loops.find(l=>!l.removed&&l.spec.sourceId===id);if(bound)setZone(bound.spec.timeZone);"
         },
         {
-          "line": 416,
+          "line": 413,
           "text": "const renewalLoops=(id:string|null)=>id?loops.filter(l=>!l.removed&&l.spec.enabled&&l.spec.sourceId===id).map(l=>({id:l.id,expectedVersionId:l.versionId,mutationId:crypto.randomUUID(),spec:{version:1,"
         },
         {
-          "line": 417,
+          "line": 414,
           "text": "const renewalNote=(id:string|null)=>{const moved=renewalLoops(id);return moved.length?`\\nRenewal: ${moved.map(l=>l.spec.template+' at '+l.spec.localTime).join(', ')} ${moved.length===1?'moves':'move'}"
         },
         {
-          "line": 419,
+          "line": 416,
           "text": "const billing=interactiveDevelopment?'Digests use the configured development reply.':isAndroid&&connection.kind==='resident'?`Model usage counts against your ${cloudServiceName(connectionController.ge"
         },
         {
-          "line": 421,
+          "line": 418,
           "text": "const missedOffers=available?missedRunNowOffers(binding.current?.sessionId===connection.session?.sessionId?results:[],loops,sources):new Map<string,MissedRunNow>();"
         },
         {
-          "line": 436,
+          "line": 425,
+          "text": "const b = binding.current;"
+        },
+        {
+          "line": 433,
           "text": "const reviewed:Pending = value===pending&&!digestPendingDiscardable(value) ? {...value,phase:'dispatched'} : {...value,phase:'review'};"
         },
         {
-          "line": 440,
+          "line": 437,
           "text": "let body=value.body;"
         },
         {
-          "line": 443,
+          "line": 440,
           "text": "const grant=await nativeSources.nativeSourceConsent({sessionId:b.sessionId,...value.nativeConsent,confirmed:true});"
         },
         {
-          "line": 448,
+          "line": 445,
           "text": "const source=sources.find(source=>source.id===body.id);"
         },
         {
-          "line": 461,
+          "line": 458,
           "text": "const dispatched:Pending={...value,phase:'dispatched'};"
         },
         {
-          "line": 465,
+          "line": 462,
           "text": "const saved=await b.client.mutate(value.path, body, b.controller.signal);"
         },
         {
-          "line": 469,
+          "line": 466,
           "text": "const source=(saved as {source?:{id?:unknown;revision?:unknown}}).source;"
         },
         {
-          "line": 471,
+          "line": 468,
           "text": "for(const loop of value.rebind){if(binding.current!==b)return;await b.client.mutate('loops',{spec:{...loop.spec,sourceId:source.id,sourceRevision:source.revision},mutationId:loop.mutationId,confirmed:"
         },
         {
-          "line": 477,
+          "line": 474,
           "text": "if(value.missedRunId&&binding.current===b){const id=value.missedRunId;setRanMissed(prior=>new Set([...prior,id]));}"
         },
         {
-          "line": 502,
+          "line": 499,
           "text": "const b=binding.current;if(!b||busy||!pending||!digestPendingDiscardable(pending))return;"
         },
         {
-          "line": 506,
+          "line": 503,
           "text": "async function loadNativeCalendars(){const b=binding.current;if(!b||busy)return;setBusy(true);try{const permission=await nativeCalendars.requestWorkflowReadAccess();if(permission.status!=='granted')th"
         },
         {
-          "line": 509,
+          "line": 506,
           "text": "const b=binding.current;if(!b||busy)return;"
         },
         {
-          "line": 515,
+          "line": 512,
           "text": "let expectedBinding:Record<string,unknown>;try{expectedBinding=await nativeSources.nativeSourceIdentity({sessionId:b.sessionId});if(binding.current!==b)return;}catch{setMessage('Reconnect your agent, "
         },
         {
-          "line": 517,
+          "line": 514,
           "text": "const sourceId=crypto.randomUUID(),reviewedAt=Date.now(),observedAt=new Date(reviewedAt).toISOString(),expiresAt=reviewedAt+hours*3600000;"
         },
         {
-          "line": 518,
+          "line": 515,
           "text": "const scope={calendars:selectedCalendars.map(id=>({id,revision:calendarChoices.find(calendar=>calendar.id===id)!.sourceRevision})),reminders:selectedReminders,timeZone:zone,window:'owner_day_and_overd"
         },
         {
-          "line": 519,
+          "line": 516,
           "text": "const renews=renewing&&sources.find(s=>s.id===renewing)?.live?.provider==='native'?renewing:null,rebind=renewalLoops(renews);"
         },
         {
-          "line": 523,
+          "line": 520,
           "text": "const old = loops.find((l) => !l.removed && l.spec.template === template);"
         },
         {
-          "line": 548,
+          "line": 545,
           "text": "const source = sources.find((s) => s.id === (sourceId || old?.spec.sourceId));"
         },
         {
-          "line": 561,
+          "line": 558,
           "text": "const spec = {"
         },
         {
-          "line": 570,
+          "line": 567,
           "text": "const changed = old && (old.spec.localTime !== spec.localTime || old.spec.timeZone !== zone) ? ` Changes ${old.spec.localTime} (${old.spec.timeZone}) to ${spec.localTime} (${zone}).` : \"\";"
         },
         {
-          "line": 571,
+          "line": 568,
           "text": "const native = source.live?.provider === \"native\";"
         },
         {
-          "line": 583,
+          "line": 580,
           "text": "const liveBinding = binding.current;"
         },
         {
-          "line": 584,
+          "line": 581,
           "text": "const now=Date.now(),renewals=digestRenewals(sources,loops,now);"
         },
         {
-          "line": 586,
+          "line": 583,
           "text": "const deviceZone=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone;}catch{return '';}})();"
         },
         {
-          "line": 659,
+          "line": 656,
           "text": "{liveBinding && <HostedLiveSourcePicker key={liveBinding.sessionId} client={liveBinding.client} scope={liveBinding.notices.scope} signal={liveBinding.controller.signal} current={() => binding.current "
         },
         {
-          "line": 721,
+          "line": 718,
           "text": "const reviewedAt = Date.now(),"
         },
         {
-          "line": 726,
+          "line": 723,
           "text": "const renews=renewing&&!sources.find(s=>s.id===renewing)?.live?renewing:null;"
         },
         {
-          "line": 763,
+          "line": 760,
           "text": "{features.dossier&&sources.find(s=>s.id===sourceId)?.live?.provider==='native'&&<button disabled={busy} onClick={()=>{const source=sources.find(s=>s.id===sourceId)!;setReview({path:'dossier',body:{sou"
         }
       ],
-      "reviewStatus": "state-audit-required",
       "integrationReview": "Domain allocation retained after merged fixes. Source identity and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations."
     },
     {
@@ -42294,7 +42350,8 @@
       "sha256": "f4c9446427b08349ece36c40e684ff00ecdef3485f0d68fc93d61c18a3d5e2c0",
       "models": [
         "NoticesAndCaches",
-        "HostedNoticeQuestion"
+        "HostedNoticeQuestion",
+        "SourceRenewalQuestion"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -43001,7 +43058,7 @@
         },
         {
           "line": 18,
-          "text": "const currency: Record<string, string> = { $: 'dollar', '£': 'pound', '€': 'euro' };"
+          "text": "const currency: Record<string, string> = { $: 'dollar', '\u00a3': 'pound', '\u20ac': 'euro' };"
         },
         {
           "line": 26,
@@ -44254,7 +44311,7 @@
         },
         {
           "line": 56,
-          "text": "const quoted=(value:string)=>`“${value}”`;"
+          "text": "const quoted=(value:string)=>`\u201c${value}\u201d`;"
         }
       ]
     },
@@ -44458,7 +44515,7 @@
         },
         {
           "line": 55,
-          "text": "if(note.kind==='list')text=(Array.isArray(note.items)?note.items:[]).map(item=>{const it=item as {t?:unknown;done?:unknown};return typeof it?.t==='string'?(it.done?'☑ ':'☐ ')+it.t:'';}).filter(Boolean"
+          "text": "if(note.kind==='list')text=(Array.isArray(note.items)?note.items:[]).map(item=>{const it=item as {t?:unknown;done?:unknown};return typeof it?.t==='string'?(it.done?'\u2611 ':'\u2610 ')+it.t:'';}).filter(Boolean"
         },
         {
           "line": 62,
@@ -45274,7 +45331,7 @@
         },
         {
           "line": 12,
-          "text": "export const RESIDENT_RECOVERY_PENDING='Alpha couldn’t start. Open Settings › Agent connection.';"
+          "text": "export const RESIDENT_RECOVERY_PENDING='Alpha couldn\u2019t start. Open Settings \u203a Agent connection.';"
         },
         {
           "line": 28,
@@ -45510,13 +45567,19 @@
     },
     {
       "path": "apps/app/src/runtime/source-renewal-question.ts",
-      "sha256": "2351b0809e50609818c6c5b43ad46ec85ede40f1ffe80d9966c65697472e01fd",
       "models": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "SourceRenewalQuestion"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "22d895760cc6ad01ebb4a94e05083b9f1207c4af11dd95506b50e08d90c95fc9",
       "stateAnchors": [
+        {
+          "line": 9,
+          "text": "const text='Scheduled brief source expires soon. Renew it in Alpha Phone to keep your brief reading it.';"
+        },
         {
           "line": 10,
           "text": "const current=()=>o.current()&&!alphaClient.getState().context.sensitive;"
@@ -45530,11 +45593,34 @@
           "text": "const done=()=>{if(ended)return;ended=true;window.removeEventListener('blur',abort);window.removeEventListener('launcher-home',abort);o.closed();};let abort=()=>{};"
         },
         {
-          "line": 14,
-          "text": "const close=reviewContentQuestion({signal:o.signal,name:'Scheduled source renewal notification',text,question:'Help me understand this source renewal.',current,validate:value=>!sensitiveReadingText(va"
+          "line": 19,
+          "text": "if(dismissed&&!interrupted)void o.settle(true).catch(()=>{});"
+        },
+        {
+          "line": 20,
+          "text": "interrupted=true;done();"
+        },
+        {
+          "line": 23,
+          "text": "composing=true;"
+        },
+        {
+          "line": 27,
+          "text": "const next=await o.recheck();"
+        },
+        {
+          "line": 30,
+          "text": "!o.canCompose())throw Error();"
+        },
+        {
+          "line": 31,
+          "text": "await o.settle(false);"
+        },
+        {
+          "line": 32,
+          "text": "if(interrupted||!current()||!o.compose(draft))throw Error();"
         }
       ],
-      "reviewStatus": "state-audit-required",
       "integrationReview": "Domain allocation retained after merging the audit fixes. The refreshed source hash and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations."
     },
     {
@@ -46921,7 +47007,7 @@
         },
         {
           "line": 256,
-          "text": "const aiNotice=connection.residentPlanNotice==='needs-plan'?'AI needs an active Cloud plan. Manage it in Settings.':connection.residentInference==='unknown'?'AI connection isn’t confirmed yet.':connec"
+          "text": "const aiNotice=connection.residentPlanNotice==='needs-plan'?'AI needs an active Cloud plan. Manage it in Settings.':connection.residentInference==='unknown'?'AI connection isn\u2019t confirmed yet.':connec"
         },
         {
           "line": 257,
@@ -46929,7 +47015,7 @@
         },
         {
           "line": 258,
-          "text": "const title=(connection.residentInference==='cloud'||connection.residentInference==='direct')&&!aiNotice&&!connection.error&&!revokeNotice&&!progressError?'You’re all set':'Setup finished';"
+          "text": "const title=(connection.residentInference==='cloud'||connection.residentInference==='direct')&&!aiNotice&&!connection.error&&!revokeNotice&&!progressError?'You\u2019re all set':'Setup finished';"
         },
         {
           "line": 268,
@@ -46937,7 +47023,7 @@
         },
         {
           "line": 269,
-          "text": "const primary = busy ? 'Checking…' : target && native && (state === 'ready' || state === 'settings') ? 'Open Android settings' : target && !native && state === 'ready' ? 'Done' : state === 'ready' ? '"
+          "text": "const primary = busy ? 'Checking\u2026' : target && native && (state === 'ready' || state === 'settings') ? 'Open Android settings' : target && !native && state === 'ready' ? 'Done' : state === 'ready' ? '"
         }
       ]
     },
@@ -47104,7 +47190,7 @@
         },
         {
           "line": 19,
-          "text": "const permissionText:Record<string,string>={'google.gmail.mailbox':'Gmail mailbox changes need permission. Enable Gmail changes in Settings → Connections.','google.gmail.send':'Sending Gmail needs per"
+          "text": "const permissionText:Record<string,string>={'google.gmail.mailbox':'Gmail mailbox changes need permission. Enable Gmail changes in Settings \u2192 Connections.','google.gmail.send':'Sending Gmail needs per"
         },
         {
           "line": 28,
@@ -47116,7 +47202,7 @@
         },
         {
           "line": 31,
-          "text": "const allowed=(kind:keyof GoogleAgentAccess)=>{if(access()[kind]!==true)throw new GoogleAgentRefusal('changes-off',kind==='gmailChanges'?'Gmail changes are turned off in Settings › Google accounts. Go"
+          "text": "const allowed=(kind:keyof GoogleAgentAccess)=>{if(access()[kind]!==true)throw new GoogleAgentRefusal('changes-off',kind==='gmailChanges'?'Gmail changes are turned off in Settings \u203a Google accounts. Go"
         },
         {
           "line": 32,
@@ -47220,7 +47306,7 @@
         },
         {
           "line": 90,
-          "text": "const needed=()=>new GoogleAgentRefusal('permission-needed',permissionText[capability]??'Gmail reads need permission. Reconnect Gmail in Settings → Connections.');"
+          "text": "const needed=()=>new GoogleAgentRefusal('permission-needed',permissionText[capability]??'Gmail reads need permission. Reconnect Gmail in Settings \u2192 Connections.');"
         },
         {
           "line": 91,
@@ -48722,12 +48808,13 @@
         "TaskSchedulerRuntime",
         "DevelopmentRuntimeLoader",
         "CombinedAgentLauncher",
-        "ReviewedWorkflowLauncher"
+        "ReviewedWorkflowLauncher",
+        "CoreConnectorCustody"
       ],
       "scope": "development-runtime",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "25b46e944ecd6a4d5569e8eace9e2f9b22eea2ebdd36075e90fd15d1b9fb6478",
+      "sha256": "331e2ce0df2c43a1f34969bc12b54d51292134320599e4a765e77b5129853171",
       "stateAnchors": []
     },
     {
@@ -49105,10 +49192,59 @@
         "ReviewedWorkflowLauncher"
       ],
       "scope": "development-runtime",
-      "treatment": "domain-contract-or-support",
+      "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
       "sha256": "d07650ac73236ad81a1bb7b327fdbcf69a299ba3fb59f9181a5813cdcf33d303",
-      "stateAnchors": []
+      "stateAnchors": [
+        {
+          "line": 3,
+          "text": "const forwards = {SIGINT: () => child.kill('SIGINT'), SIGTERM: () => child.kill('SIGTERM')};"
+        },
+        {
+          "line": 4,
+          "text": "const closed = new Promise(resolve => child.once('close', () => {"
+        },
+        {
+          "line": 5,
+          "text": "for (const [signal, listener] of Object.entries(forwards)) process.off(signal, listener);"
+        },
+        {
+          "line": 6,
+          "text": "closeLog();"
+        },
+        {
+          "line": 9,
+          "text": "child.on('error', error => {"
+        },
+        {
+          "line": 11,
+          "text": "process.exitCode = 1;"
+        },
+        {
+          "line": 13,
+          "text": "for (const [signal, listener] of Object.entries(forwards)) process.on(signal, listener);"
+        },
+        {
+          "line": 14,
+          "text": "child.once('exit', code => {process.exitCode = code ?? 1;});"
+        },
+        {
+          "line": 18,
+          "text": "if (child.pid) {"
+        },
+        {
+          "line": 19,
+          "text": "child.kill('SIGTERM');"
+        },
+        {
+          "line": 20,
+          "text": "force = setTimeout(() => child.kill('SIGKILL'), 5000);"
+        },
+        {
+          "line": 22,
+          "text": "try {await closed;} finally {clearTimeout(force);}"
+        }
+      ]
     },
     {
       "path": "scripts/native-google-host-artifact.mjs",
@@ -49140,10 +49276,23 @@
         "CombinedAgentLauncher"
       ],
       "scope": "development-runtime",
-      "treatment": "domain-contract-or-support",
+      "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
       "sha256": "ab5ceaac2df907fc7f96c4b19f516d296ccf0e1eb87b5592028ad002a00baef9",
-      "stateAnchors": [],
+      "stateAnchors": [
+        {
+          "line": 56,
+          "text": "retireFailedHandoff=superviseLauncherChild(child,()=>fs.closeSync(log),()=>{"
+        },
+        {
+          "line": 60,
+          "text": "fs.writeFileSync(path.join(profile,'process.json'),JSON.stringify(metadata,null,2),{mode:0o600});"
+        },
+        {
+          "line": 63,
+          "text": "if (retireFailedHandoff) await retireFailedHandoff();"
+        }
+      ],
       "integrationReview": "Domain allocation retained after merged fixes. Source identity and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations."
     },
     {
@@ -49189,10 +49338,23 @@
         "ReviewedWorkflowLauncher"
       ],
       "scope": "development-runtime",
-      "treatment": "domain-contract-or-support",
+      "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
       "sha256": "6e68d0e39b6994eb9e11052eb73a794470e832e38b369832df659bbddb9ed879",
-      "stateAnchors": [],
+      "stateAnchors": [
+        {
+          "line": 56,
+          "text": "retireFailedHandoff = superviseLauncherChild(child, () => fs.closeSync(log), error => console.error(error.message));"
+        },
+        {
+          "line": 58,
+          "text": "fs.writeFileSync(path.join(profile,'process.json'), JSON.stringify(metadata,null,2), {mode:0o600});"
+        },
+        {
+          "line": 61,
+          "text": "if (retireFailedHandoff) await retireFailedHandoff();"
+        }
+      ],
       "integrationReview": "Domain allocation retained after merged fixes. Source identity and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations."
     },
     {
@@ -50285,7 +50447,7 @@
         },
         {
           "line": 160,
-          "text": "const text = `Which account should I link — ${names}?`;"
+          "text": "const text = `Which account should I link \u2014 ${names}?`;"
         },
         {
           "line": 167,
@@ -50943,7 +51105,7 @@
         },
         {
           "line": 371,
-          "text": "const restartText = reason ? `Restarting… (${reason})` : \"Restarting…\";"
+          "text": "const restartText = reason ? `Restarting\u2026 (${reason})` : \"Restarting\u2026\";"
         },
         {
           "line": 375,
@@ -53191,7 +53353,7 @@
         },
         {
           "line": 105,
-          "text": "// idempotent — report the in-progress state and let the client poll"
+          "text": "// idempotent \u2014 report the in-progress state and let the client poll"
         },
         {
           "line": 133,
@@ -54589,7 +54751,7 @@
         },
         {
           "line": 281,
-          "text": "const out = Buffer.from(bytes); // copy — the store's original is immutable"
+          "text": "const out = Buffer.from(bytes); // copy \u2014 the store's original is immutable"
         },
         {
           "line": 282,
@@ -56223,7 +56385,7 @@
         },
         {
           "line": 722,
-          "text": "// payload — let it flow to the visible text path, which handles it."
+          "text": "// payload \u2014 let it flow to the visible text path, which handles it."
         },
         {
           "line": 727,
@@ -68806,7 +68968,7 @@
         },
         {
           "line": 28,
-          "text": "const MAX_DECODE_PIXELS = 16_777_216; // 16 Mi px → ≤64 MiB RGBA"
+          "text": "const MAX_DECODE_PIXELS = 16_777_216; // 16 Mi px \u2192 \u226464 MiB RGBA"
         },
         {
           "line": 65,
@@ -70530,7 +70692,7 @@
         },
         {
           "line": 94,
-          "text": "// Chat providers → the env-var family the corresponding model plugin reads."
+          "text": "// Chat providers \u2192 the env-var family the corresponding model plugin reads."
         },
         {
           "line": 101,
@@ -84335,7 +84497,7 @@
       "stateAnchors": [
         {
           "line": 45,
-          "text": "// from the env var before any user code runs, so we skip — calling it again"
+          "text": "// from the env var before any user code runs, so we skip \u2014 calling it again"
         },
         {
           "line": 58,
@@ -87732,7 +87894,7 @@
         },
         {
           "line": 173,
-          "text": "const emoji = entry.metadata?.emoji ?? \"🔗\";"
+          "text": "const emoji = entry.metadata?.emoji ?? \"\ud83d\udd17\";"
         }
       ]
     },
@@ -92236,7 +92398,7 @@
         },
         {
           "line": 138,
-          "text": "\"Connectors let Eliza work with your other apps and platforms — Discord, Telegram, Slack, X, WhatsApp, and more — so it can read and send messages there on your behalf. You add them in Settings.\","
+          "text": "\"Connectors let Eliza work with your other apps and platforms \u2014 Discord, Telegram, Slack, X, WhatsApp, and more \u2014 so it can read and send messages there on your behalf. You add them in Settings.\","
         }
       ]
     },
@@ -94985,7 +95147,7 @@
         },
         {
           "line": 6550,
-          "text": "// Log the error and continue the prompt loop — don't let a single"
+          "text": "// Log the error and continue the prompt loop \u2014 don't let a single"
         },
         {
           "line": 6589,
@@ -114374,7 +114536,7 @@
         },
         {
           "line": 77,
-          "text": "const MAX_PBKDF2_ITERATIONS = 1_200_000; // 2× the default — reject anything higher on import"
+          "text": "const MAX_PBKDF2_ITERATIONS = 1_200_000; // 2\u00d7 the default \u2014 reject anything higher on import"
         },
         {
           "line": 78,
@@ -129602,7 +129764,7 @@
         },
         {
           "line": 345,
-          "text": "// needs enough audio — run it and let the value flow; too-short turns just"
+          "text": "// needs enough audio \u2014 run it and let the value flow; too-short turns just"
         },
         {
           "line": 350,
@@ -141866,7 +142028,7 @@
         },
         {
           "line": 35,
-          "text": "const bytes = new Uint8Array(32); // 32 bytes → 43 base64url chars"
+          "text": "const bytes = new Uint8Array(32); // 32 bytes \u2192 43 base64url chars"
         },
         {
           "line": 41,
@@ -145507,7 +145669,7 @@
         },
         {
           "line": 380,
-          "text": "// No shorthand → the OP_SESSION_* var cannot be named. A session token"
+          "text": "// No shorthand \u2192 the OP_SESSION_* var cannot be named. A session token"
         },
         {
           "line": 393,
@@ -148998,7 +149160,7 @@
         },
         {
           "line": 93,
-          "text": "const SPAN_WORDS = /^((?:\\s+[\\p{L}\\p{N}'’]+)+)(\\s+|\\s*,\\s*)$/u;"
+          "text": "const SPAN_WORDS = /^((?:\\s+[\\p{L}\\p{N}'\u2019]+)+)(\\s+|\\s*,\\s*)$/u;"
         },
         {
           "line": 94,
@@ -149034,7 +149196,7 @@
         },
         {
           "line": 113,
-          "text": "const BARE_END = /(?:^|[\\s.!?,;:(])(?:don['’]?t|do\\s+not|never)[\\s.!?)]*$/i;"
+          "text": "const BARE_END = /(?:^|[\\s.!?,;:(])(?:don['\u2019]?t|do\\s+not|never)[\\s.!?)]*$/i;"
         },
         {
           "line": 115,
@@ -149062,7 +149224,7 @@
         },
         {
           "line": 139,
-          "text": "const quoted = /^([\"'“‘])(.+)([\"'”’])[.,!?]*$/u.exec(target);"
+          "text": "const quoted = /^([\"'\u201c\u2018])(.+)([\"'\u201d\u2019])[.,!?]*$/u.exec(target);"
         },
         {
           "line": 146,
@@ -149154,7 +149316,7 @@
         },
         {
           "line": 310,
-          "text": "const lead = word[0].replace(/^[(\"'“‘«<[]+/u, \"\");"
+          "text": "const lead = word[0].replace(/^[(\"'\u201c\u2018\u00ab<[]+/u, \"\");"
         },
         {
           "line": 311,
@@ -149266,7 +149428,7 @@
         },
         {
           "line": 470,
-          "text": "const word = /[\\p{L}'’]+$/u.exec(text.slice(0, end));"
+          "text": "const word = /[\\p{L}'\u2019]+$/u.exec(text.slice(0, end));"
         },
         {
           "line": 484,
@@ -158793,11 +158955,11 @@
         },
         {
           "line": 52,
-          "text": "const asked = String.raw`(?<!\\b(?:[Ww]hether|[Ww]hen|[Ww]here|[Hh]ow|[Ww]hat|[Ww]hich|[Ww]ho|[Ww]hom)\\s+(?:[\\w'’-]+\\s+){0,3})`;"
+          "text": "const asked = String.raw`(?<!\\b(?:[Ww]hether|[Ww]hen|[Ww]here|[Hh]ow|[Ww]hat|[Ww]hich|[Ww]ho|[Ww]hom)\\s+(?:[\\w'\u2019-]+\\s+){0,3})`;"
         },
         {
           "line": 55,
-          "text": "const polite = String.raw`[Kk]indly|[Jj]ust|[Nn]ow|[Yy]ou|[Ll]et['’]?s|[Gg]o|[Bb]itte|[Ff]avou?r|[Pp]lait|[Pp]lz|[Pp]ls`;"
+          "text": "const polite = String.raw`[Kk]indly|[Jj]ust|[Nn]ow|[Yy]ou|[Ll]et['\u2019]?s|[Gg]o|[Bb]itte|[Ff]avou?r|[Pp]lait|[Pp]lz|[Pp]ls`;"
         },
         {
           "line": 56,
@@ -160668,7 +160830,7 @@
         },
         {
           "line": 159,
-          "text": "const required = spec.required.length > 0 ? spec.required.join(\", \") : \"—\";"
+          "text": "const required = spec.required.length > 0 ? spec.required.join(\", \") : \"\u2014\";"
         },
         {
           "line": 160,
@@ -168556,7 +168718,7 @@
         },
         {
           "line": 101,
-          "text": "const NEGATION_WORD = String.raw`\\b(?:not|no|never|isn't|isn’t|aren't|aren’t|won't|won’t|doesn't|doesn’t|don't|don’t)\\b`;"
+          "text": "const NEGATION_WORD = String.raw`\\b(?:not|no|never|isn't|isn\u2019t|aren't|aren\u2019t|won't|won\u2019t|doesn't|doesn\u2019t|don't|don\u2019t)\\b`;"
         },
         {
           "line": 102,
@@ -173570,7 +173732,8 @@
         "WorkflowExecution",
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
-        "CoreServiceLifecycle"
+        "CoreServiceLifecycle",
+        "CoreConnectorCustody"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -175919,7 +176082,8 @@
         "CoreServiceLifecycle",
         "TaskServiceLifecycle",
         "EmbeddingStoreIdentity",
-        "FactWriteScope"
+        "FactWriteScope",
+        "CoreConnectorCustody"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -178225,7 +178389,8 @@
         "WorkflowExecution",
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
-        "CoreServiceLifecycle"
+        "CoreServiceLifecycle",
+        "CoreConnectorCustody"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -178273,7 +178438,8 @@
         "WorkflowExecution",
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
-        "CoreServiceLifecycle"
+        "CoreServiceLifecycle",
+        "CoreConnectorCustody"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -180646,11 +180812,11 @@
       "stateAnchors": [
         {
           "line": 23,
-          "text": "const ZH_HANS_RANGE = /[一-鿿]/;"
+          "text": "const ZH_HANS_RANGE = /[\u4e00-\u9fff]/;"
         },
         {
           "line": 24,
-          "text": "const JAPANESE_KANA_RANGE = /[぀-ヿ]/;"
+          "text": "const JAPANESE_KANA_RANGE = /[\u3040-\u30ff]/;"
         },
         {
           "line": 26,
@@ -180662,11 +180828,11 @@
         },
         {
           "line": 86,
-          "text": "const SPANISH_DIACRITICS = /[ñ¿¡áéíóúüÑÁÉÍÓÚÜ]/;"
+          "text": "const SPANISH_DIACRITICS = /[\u00f1\u00bf\u00a1\u00e1\u00e9\u00ed\u00f3\u00fa\u00fc\u00d1\u00c1\u00c9\u00cd\u00d3\u00da\u00dc]/;"
         },
         {
           "line": 87,
-          "text": "const FRENCH_DIACRITICS = /[àâäæçéèêëîïôœùûüÿÀÂÄÆÇÉÈÊËÎÏÔŒÙÛÜŸ]/;"
+          "text": "const FRENCH_DIACRITICS = /[\u00e0\u00e2\u00e4\u00e6\u00e7\u00e9\u00e8\u00ea\u00eb\u00ee\u00ef\u00f4\u0153\u00f9\u00fb\u00fc\u00ff\u00c0\u00c2\u00c4\u00c6\u00c7\u00c9\u00c8\u00ca\u00cb\u00ce\u00cf\u00d4\u0152\u00d9\u00db\u00dc\u0178]/;"
         },
         {
           "line": 96,
@@ -182817,7 +182983,7 @@
         },
         {
           "line": 119,
-          "text": "const suffix = ctx ? ` — ${redact(ctx)}` : \"\";"
+          "text": "const suffix = ctx ? ` \u2014 ${redact(ctx)}` : \"\";"
         },
         {
           "line": 129,
@@ -182889,7 +183055,7 @@
         },
         {
           "line": 120,
-          "text": "* — let the caller fall through to its plain-text handling)."
+          "text": "* \u2014 let the caller fall through to its plain-text handling)."
         },
         {
           "line": 126,
@@ -184441,7 +184607,8 @@
         "WorkflowExecution",
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
-        "CoreServiceLifecycle"
+        "CoreServiceLifecycle",
+        "CoreConnectorCustody"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -185512,7 +185679,7 @@
       "stateAnchors": [
         {
           "line": 135,
-          "text": "* Default `undefined` — no perf cost in production unless the env var is"
+          "text": "* Default `undefined` \u2014 no perf cost in production unless the env var is"
         },
         {
           "line": 352,
@@ -191417,7 +191584,7 @@
       "stateAnchors": [
         {
           "line": 103,
-          "text": "* `image`/`file` let a secret be captured as an upload — e.g. photograph a"
+          "text": "* `image`/`file` let a secret be captured as an upload \u2014 e.g. photograph a"
         },
         {
           "line": 220,
@@ -195744,7 +195911,7 @@
         },
         {
           "line": 77,
-          "text": "const opensSentence = before === \"\" || /[.!?。！？\\n]$/u.test(before);"
+          "text": "const opensSentence = before === \"\" || /[.!?\u3002\uff01\uff1f\\n]$/u.test(before);"
         },
         {
           "line": 81,
@@ -200839,7 +201006,7 @@
         },
         {
           "line": 500,
-          "text": "const label = [resolved.name, resolved.address].filter(Boolean).join(\" — \");"
+          "text": "const label = [resolved.name, resolved.address].filter(Boolean).join(\" \u2014 \");"
         },
         {
           "line": 531,
@@ -204451,7 +204618,7 @@
         },
         {
           "line": 73,
-          "text": "const singleLine = text.replace(/\\r?\\n/g, \"↵ \").replace(/\\s+/g, \" \").trim();"
+          "text": "const singleLine = text.replace(/\\r?\\n/g, \"\u21b5 \").replace(/\\s+/g, \" \").trim();"
         },
         {
           "line": 74,
@@ -208824,7 +208991,7 @@
       "stateAnchors": [
         {
           "line": 14,
-          "text": "*   - {@link isSelfEditPathDenied} — refuses to let the self-edit flow modify"
+          "text": "*   - {@link isSelfEditPathDenied} \u2014 refuses to let the self-edit flow modify"
         },
         {
           "line": 26,
@@ -218933,7 +219100,7 @@
         },
         {
           "line": 380,
-          "text": "// the post — don't claim success; let the store's glass fallback deliver."
+          "text": "// the post \u2014 don't claim success; let the store's glass fallback deliver."
         },
         {
           "line": 383,
@@ -219772,7 +219939,7 @@
       "stateAnchors": [
         {
           "line": 31,
-          "text": "* That Enter must never send — let it fall through to"
+          "text": "* That Enter must never send \u2014 let it fall through to"
         },
         {
           "line": 70,
@@ -222540,7 +222707,7 @@
         },
         {
           "line": 45,
-          "text": "* Read each env var by its literal name — Vite inlines custom `VITE_*` vars only"
+          "text": "* Read each env var by its literal name \u2014 Vite inlines custom `VITE_*` vars only"
         },
         {
           "line": 61,
@@ -229848,7 +230015,7 @@
         },
         {
           "line": 216,
-          "text": "* from the origin (#17579 — previously a single global key let a token"
+          "text": "* from the origin (#17579 \u2014 previously a single global key let a token"
         },
         {
           "line": 227,
@@ -231530,7 +231697,7 @@
       "stateAnchors": [
         {
           "line": 14,
-          "text": "*  - `config` — `local-config` modes render the plugin's env-var form (bot"
+          "text": "*  - `config` \u2014 `local-config` modes render the plugin's env-var form (bot"
         },
         {
           "line": 69,
@@ -232658,7 +232825,7 @@
         },
         {
           "line": 116,
-          "text": "let openLtAt = -1; // dangling '<' with no later '>' (clean ⇒ -1 at fromCut)"
+          "text": "let openLtAt = -1; // dangling '<' with no later '>' (clean \u21d2 -1 at fromCut)"
         },
         {
           "line": 121,
@@ -233382,7 +233549,7 @@
         },
         {
           "line": 192,
-          "text": "const value = statusText ?? \"Setting up…\";"
+          "text": "const value = statusText ?? \"Setting up\u2026\";"
         }
       ]
     },
@@ -235133,7 +235300,7 @@
         },
         {
           "line": 170,
-          "text": "/** The model hint for a mode (undefined ⇒ let the host pick its default). */"
+          "text": "/** The model hint for a mode (undefined \u21d2 let the host pick its default). */"
         },
         {
           "line": 186,
@@ -249248,7 +249415,7 @@
         },
         {
           "line": 402,
-          "text": "// Haptics are a nicety — never let them throw into the gesture path."
+          "text": "// Haptics are a nicety \u2014 never let them throw into the gesture path."
         },
         {
           "line": 405,
@@ -250580,7 +250747,7 @@
         },
         {
           "line": 2817,
-          "text": "// calc (not a JS-measured number): the host seeds that var on native — and"
+          "text": "// calc (not a JS-measured number): the host seeds that var on native \u2014 and"
         },
         {
           "line": 2820,
@@ -251000,7 +251167,7 @@
         },
         {
           "line": 4035,
-          "text": "// sits above the chat: let ITS Escape handling win — collapsing here"
+          "text": "// sits above the chat: let ITS Escape handling win \u2014 collapsing here"
         },
         {
           "line": 4071,
@@ -254585,7 +254752,7 @@
         },
         {
           "line": 723,
-          "text": "// let taps fall through to the composer textarea below it — otherwise its"
+          "text": "// let taps fall through to the composer textarea below it \u2014 otherwise its"
         }
       ]
     },
@@ -261579,7 +261746,7 @@
       "stateAnchors": [
         {
           "line": 151,
-          "text": "* Env var alias pairs for brand compatibility (e.g. ELIZA_* ↔ ELIZA_*)."
+          "text": "* Env var alias pairs for brand compatibility (e.g. ELIZA_* \u2194 ELIZA_*)."
         },
         {
           "line": 169,
@@ -263571,7 +263738,7 @@
         },
         {
           "line": 73,
-          "text": "const pct = displayPercent != null ? ` — ${displayPercent}%` : \"\";"
+          "text": "const pct = displayPercent != null ? ` \u2014 ${displayPercent}%` : \"\";"
         },
         {
           "line": 74,
@@ -272911,7 +273078,7 @@
         },
         {
           "line": 27,
-          "text": "const loading = <span role=\"status\">Loading wallets…</span>;"
+          "text": "const loading = <span role=\"status\">Loading wallets\u2026</span>;"
         },
         {
           "line": 57,
@@ -274765,7 +274932,7 @@
       "stateAnchors": [
         {
           "line": 38,
-          "text": "const clean = (text: string) => text.replace(/[  ]/g, \" \");"
+          "text": "const clean = (text: string) => text.replace(/[\u202f\u00a0]/g, \" \");"
         },
         {
           "line": 39,
@@ -276254,7 +276421,7 @@
         },
         {
           "line": 254,
-          "text": "// standalone/native ONLY — elsewhere (desktop/web/Android) the var is a hard 0"
+          "text": "// standalone/native ONLY \u2014 elsewhere (desktop/web/Android) the var is a hard 0"
         },
         {
           "line": 281,
@@ -291696,7 +291863,7 @@
       "stateAnchors": [
         {
           "line": 13,
-          "text": "* navigation — and scopes the DOM class/CSS-var vectors to the shell-owned"
+          "text": "* navigation \u2014 and scopes the DOM class/CSS-var vectors to the shell-owned"
         },
         {
           "line": 82,
@@ -292328,7 +292495,7 @@
       "stateAnchors": [
         {
           "line": 10,
-          "text": "* sessionStorage survives reloads — a permanent flag would let the FIRST"
+          "text": "* sessionStorage survives reloads \u2014 a permanent flag would let the FIRST"
         },
         {
           "line": 19,
@@ -293294,7 +293461,7 @@
         },
         {
           "line": 123,
-          "text": "const { fallback = \"—\" } = options;"
+          "text": "const { fallback = \"\u2014\" } = options;"
         },
         {
           "line": 124,
@@ -293306,7 +293473,7 @@
         },
         {
           "line": 147,
-          "text": "const { fallback = \"—\", locale, timeZone } = options;"
+          "text": "const { fallback = \"\u2014\", locale, timeZone } = options;"
         },
         {
           "line": 148,
@@ -293314,7 +293481,7 @@
         },
         {
           "line": 163,
-          "text": "const { fallback = \"—\", locale } = options;"
+          "text": "const { fallback = \"\u2014\", locale } = options;"
         },
         {
           "line": 164,
@@ -293322,7 +293489,7 @@
         },
         {
           "line": 176,
-          "text": "const { fallback = \"—\", t } = options;"
+          "text": "const { fallback = \"\u2014\", t } = options;"
         },
         {
           "line": 182,
@@ -293662,7 +293829,7 @@
         },
         {
           "line": 492,
-          "text": "*  - `{ kind: \"passthrough\" }` — nothing to intercept; let the textarea handle"
+          "text": "*  - `{ kind: \"passthrough\" }` \u2014 nothing to intercept; let the textarea handle"
         },
         {
           "line": 537,
@@ -294101,7 +294268,7 @@
         },
         {
           "line": 45,
-          "text": "const emptyLabel = options?.emptyLabel ?? \"—\";"
+          "text": "const emptyLabel = options?.emptyLabel ?? \"\u2014\";"
         },
         {
           "line": 58,
@@ -294169,7 +294336,7 @@
         },
         {
           "line": 67,
-          "text": "const singleLine = text.replace(/\\r?\\n/g, \"↵ \").replace(/\\s+/g, \" \").trim();"
+          "text": "const singleLine = text.replace(/\\r?\\n/g, \"\u21b5 \").replace(/\\s+/g, \" \").trim();"
         },
         {
           "line": 68,
@@ -301955,7 +302122,7 @@
         },
         {
           "line": 69,
-          "text": "const TERMINATOR_REGEX = /[.!?…。！？]/u;"
+          "text": "const TERMINATOR_REGEX = /[.!?\u2026\u3002\uff01\uff1f]/u;"
         },
         {
           "line": 71,
@@ -302039,7 +302206,7 @@
         },
         {
           "line": 297,
-          "text": "const trimMatch = /^[\\s​]+/u.exec(text);"
+          "text": "const trimMatch = /^[\\s\u200b]+/u.exec(text);"
         },
         {
           "line": 298,
@@ -305668,7 +305835,7 @@
         },
         {
           "line": 67,
-          "text": "const emoji = response.status === 429 ? \"🚫\" : \"📊\";"
+          "text": "const emoji = response.status === 429 ? \"\ud83d\udeab\" : \"\ud83d\udcca\";"
         },
         {
           "line": 72,
@@ -307278,11 +307445,11 @@
         },
         {
           "line": 1701,
-          "text": "const ts = item.timestamp ? ` · ${item.timestamp.slice(0, 19)}` : \"\";"
+          "text": "const ts = item.timestamp ? ` \u00b7 ${item.timestamp.slice(0, 19)}` : \"\";"
         },
         {
           "line": 1702,
-          "text": "const detail = item.detail ? ` — ${item.detail}` : \"\";"
+          "text": "const detail = item.detail ? ` \u2014 ${item.detail}` : \"\";"
         },
         {
           "line": 1706,
@@ -317557,7 +317724,7 @@
         },
         {
           "line": 631,
-          "text": "const text = \"Which trait should I change — verbosity, tone, or formality?\";"
+          "text": "const text = \"Which trait should I change \u2014 verbosity, tone, or formality?\";"
         },
         {
           "line": 636,
@@ -317565,7 +317732,7 @@
         },
         {
           "line": 642,
-          "text": "const text = `I can't set ${trait} to ${describeUserReference(value, \"that value\")} — that's not one of the options.`;"
+          "text": "const text = `I can't set ${trait} to ${describeUserReference(value, \"that value\")} \u2014 that's not one of the options.`;"
         },
         {
           "line": 647,
@@ -317581,7 +317748,7 @@
         },
         {
           "line": 699,
-          "text": "const text = \"Which trait should I clear — verbosity, tone, or formality?\";"
+          "text": "const text = \"Which trait should I clear \u2014 verbosity, tone, or formality?\";"
         },
         {
           "line": 703,
@@ -317641,7 +317808,7 @@
         },
         {
           "line": 912,
-          "text": "const text = \"Got it — I'll keep that in mind for our chats.\";"
+          "text": "const text = \"Got it \u2014 I'll keep that in mind for our chats.\";"
         },
         {
           "line": 926,
@@ -317681,7 +317848,7 @@
         },
         {
           "line": 1017,
-          "text": "const text = `I don't have a profile named ${describeUserReference(name, \"that profile\")} saved — ask me to list the profiles.`;"
+          "text": "const text = `I don't have a profile named ${describeUserReference(name, \"that profile\")} saved \u2014 ask me to list the profiles.`;"
         },
         {
           "line": 1021,
@@ -317873,7 +318040,7 @@
         },
         {
           "line": 73,
-          "text": "const QUOTED_MESSAGE = /^(?:\"[\\s\\S]*\"|“[\\s\\S]*”|'[\\s\\S]*')$/u;"
+          "text": "const QUOTED_MESSAGE = /^(?:\"[\\s\\S]*\"|\u201c[\\s\\S]*\u201d|'[\\s\\S]*')$/u;"
         },
         {
           "line": 74,
@@ -317881,7 +318048,7 @@
         },
         {
           "line": 76,
-          "text": "const LEADING_REQUEST_WORD = /^(?:please|kindly)\\b\\s*(?:(?:[,;:]|—|--+)\\s*)?/i;"
+          "text": "const LEADING_REQUEST_WORD = /^(?:please|kindly)\\b\\s*(?:(?:[,;:]|\u2014|--+)\\s*)?/i;"
         },
         {
           "line": 77,
@@ -317921,7 +318088,7 @@
         },
         {
           "line": 99,
-          "text": "const NEGATED_IMPERATIVE_START = /^(?:don['’]t|do\\s+not)\\b/i;"
+          "text": "const NEGATED_IMPERATIVE_START = /^(?:don['\u2019]t|do\\s+not)\\b/i;"
         },
         {
           "line": 100,
@@ -317953,11 +318120,11 @@
         },
         {
           "line": 123,
-          "text": "const CESSATION_PREFIX = String.raw`(?:never|stop|quit|cease|don['’]t|do\\s+not|no\\s+longer)`;"
+          "text": "const CESSATION_PREFIX = String.raw`(?:never|stop|quit|cease|don['\u2019]t|do\\s+not|no\\s+longer)`;"
         },
         {
           "line": 127,
-          "text": "const COMMUNICATION_CESSATION_VERB = `(?:answer(?:ing)?|respond(?:ing)?|repl(?:y|ying)|speak(?:ing)?|talk(?:ing)?|messag(?:e|ing)|text(?:ing)?|ping(?:ing)?|dm(?:['’]?ing)?)`;"
+          "text": "const COMMUNICATION_CESSATION_VERB = `(?:answer(?:ing)?|respond(?:ing)?|repl(?:y|ying)|speak(?:ing)?|talk(?:ing)?|messag(?:e|ing)|text(?:ing)?|ping(?:ing)?|dm(?:['\u2019]?ing)?)`;"
         },
         {
           "line": 128,
@@ -322891,7 +323058,7 @@
         },
         {
           "line": 110,
-          "text": "const desc = opt.description ? ` — ${opt.description}` : \"\";"
+          "text": "const desc = opt.description ? ` \u2014 ${opt.description}` : \"\";"
         },
         {
           "line": 122,
@@ -331257,7 +331424,7 @@
         },
         {
           "line": 222,
-          "text": "const text = `I've drafted the reply on ${record.source} — it's waiting for approval before it goes out.`;"
+          "text": "const text = `I've drafted the reply on ${record.source} \u2014 it's waiting for approval before it goes out.`;"
         },
         {
           "line": 252,
@@ -331397,7 +331564,7 @@
         },
         {
           "line": 137,
-          "text": "const prompt = `A user asked the agent to send an outbound message. Extract the parts of the request — this must work in any language, so do not rely on English keywords."
+          "text": "const prompt = `A user asked the agent to send an outbound message. Extract the parts of the request \u2014 this must work in any language, so do not rely on English keywords."
         },
         {
           "line": 149,
@@ -331549,7 +331716,7 @@
         },
         {
           "line": 420,
-          "text": "const text = `Here's what I'm about to send: ${previewOutboundDraft(existing)} — want me to send it?`;"
+          "text": "const text = `Here's what I'm about to send: ${previewOutboundDraft(existing)} \u2014 want me to send it?`;"
         },
         {
           "line": 445,
@@ -342334,7 +342501,7 @@
         },
         {
           "line": 110,
-          "text": "// launching the application itself (APP) — hint both and let the planner"
+          "text": "// launching the application itself (APP) \u2014 hint both and let the planner"
         },
         {
           "line": 112,
@@ -344787,7 +344954,7 @@
         },
         {
           "line": 2384,
-          "text": "/^(?:checking|fetching|gathering|reading|scanning|looking (?:up|into)|working on it|on it|one (?:moment|sec(?:ond)?)|give me a (?:sec(?:ond)?|moment)|let me (?!know\\b)[a-z]+)[.…!\\s]*$/i;"
+          "text": "/^(?:checking|fetching|gathering|reading|scanning|looking (?:up|into)|working on it|on it|one (?:moment|sec(?:ond)?)|give me a (?:sec(?:ond)?|moment)|let me (?!know\\b)[a-z]+)[.\u2026!\\s]*$/i;"
         },
         {
           "line": 2385,
@@ -346889,7 +347056,7 @@
         },
         {
           "line": 594,
-          "text": "const message = \"I couldn’t verify that change from the recorded results.\";"
+          "text": "const message = \"I couldn\u2019t verify that change from the recorded results.\";"
         },
         {
           "line": 595,
@@ -351077,7 +351244,7 @@
         },
         {
           "line": 12423,
-          "text": "\"calling|checking|fetching|gathering|looking (?:up|into)|running|using|spawning|starting|working on|one moment|let me|i(?:'|’)ll|i will\";"
+          "text": "\"calling|checking|fetching|gathering|looking (?:up|into)|running|using|spawning|starting|working on|one moment|let me|i(?:'|\u2019)ll|i will\";"
         },
         {
           "line": 12428,
@@ -354629,7 +354796,7 @@
         },
         {
           "line": 835,
-          "text": "const quoted = (value: string) => `“${value}”`;"
+          "text": "const quoted = (value: string) => `\u201c${value}\u201d`;"
         },
         {
           "line": 841,
@@ -356616,7 +356783,7 @@
         },
         {
           "line": 195,
-          "text": "const quoted = (value: string) => `“${value}”`;"
+          "text": "const quoted = (value: string) => `\u201c${value}\u201d`;"
         },
         {
           "line": 196,
@@ -362855,7 +363022,7 @@
         },
         {
           "line": 239,
-          "text": "// capture (formerly 80 chars) let a computed tail (\"… and then fetches the"
+          "text": "// capture (formerly 80 chars) let a computed tail (\"\u2026 and then fetches the"
         },
         {
           "line": 241,
@@ -367574,7 +367741,7 @@
         },
         {
           "line": 1287,
-          "text": "// survived collection, let the turn plan — the trigger path serves it."
+          "text": "// survived collection, let the turn plan \u2014 the trigger path serves it."
         },
         {
           "line": 1288,
@@ -368998,7 +369165,7 @@
         },
         {
           "line": 303,
-          "text": "// the user just read — drop the fallback and let the tool's words stand."
+          "text": "// the user just read \u2014 drop the fallback and let the tool's words stand."
         },
         {
           "line": 304,
@@ -370181,7 +370348,7 @@
         },
         {
           "line": 105,
-          "text": "const GENERIC_COMPLETION_OPENER_PATTERN = /^[\\s.!?…–—-]*done\\b/i;"
+          "text": "const GENERIC_COMPLETION_OPENER_PATTERN = /^[\\s.!?\u2026\u2013\u2014-]*done\\b/i;"
         },
         {
           "line": 125,
@@ -370217,15 +370384,15 @@
         },
         {
           "line": 235,
-          "text": "const MULTILINGUAL_SENTENCE_TERMINATOR = /[.!?。！？\\n]/u;"
+          "text": "const MULTILINGUAL_SENTENCE_TERMINATOR = /[.!?\u3002\uff01\uff1f\\n]/u;"
         },
         {
           "line": 248,
-          "text": "const MULTILINGUAL_CLAUSE_TAG_BOUNDARY = /[,，、;；—–:：…-]/gu;"
+          "text": "const MULTILINGUAL_CLAUSE_TAG_BOUNDARY = /[,\uff0c\u3001;\uff1b\u2014\u2013:\uff1a\u2026-]/gu;"
         },
         {
           "line": 253,
-          "text": "const MULTILINGUAL_QUESTION_MARK = /[?？¿]/gu;"
+          "text": "const MULTILINGUAL_QUESTION_MARK = /[?\uff1f\u00bf]/gu;"
         },
         {
           "line": 255,
@@ -370633,7 +370800,7 @@
         },
         {
           "line": 1102,
-          "text": "const sentences = words.slice(assent ? \"sure! \".length : 0).split(/[.!…]+ /u);"
+          "text": "const sentences = words.slice(assent ? \"sure! \".length : 0).split(/[.!\u2026]+ /u);"
         }
       ]
     },
@@ -373147,7 +373314,7 @@
         },
         {
           "line": 48,
-          "text": "const routeDelimiters = [...inner.matchAll(/\\([^()\\r\\n]+\\)\\s—\\s*/gu)];"
+          "text": "const routeDelimiters = [...inner.matchAll(/\\([^()\\r\\n]+\\)\\s\u2014\\s*/gu)];"
         },
         {
           "line": 49,
@@ -373203,7 +373370,7 @@
         },
         {
           "line": 78,
-          "text": "const zone = token.replace(/[.!?\"'“”‘’]+$/g, \"\");"
+          "text": "const zone = token.replace(/[.!?\"'\u201c\u201d\u2018\u2019]+$/g, \"\");"
         },
         {
           "line": 87,
@@ -391959,7 +392126,7 @@
         },
         {
           "line": 76,
-          "text": "const HAN_WEEKDAY_PREFIX = /^(?:周|週|星期|礼拜|禮拜)/u;"
+          "text": "const HAN_WEEKDAY_PREFIX = /^(?:\u5468|\u9031|\u661f\u671f|\u793c\u62dc|\u79ae\u62dc)/u;"
         },
         {
           "line": 78,
@@ -391967,11 +392134,11 @@
         },
         {
           "line": 81,
-          "text": "const HAN_SUNDAY_COMPOUND_AFTER = \"(?![程期子常记記历曆])\";"
+          "text": "const HAN_SUNDAY_COMPOUND_AFTER = \"(?![\u7a0b\u671f\u5b50\u5e38\u8bb0\u8a18\u5386\u66c6])\";"
         },
         {
           "line": 83,
-          "text": "const HAN_NUMBERED_DAY_COUNT_AFTER = \"(?![天次个個年月周週遍回])\";"
+          "text": "const HAN_NUMBERED_DAY_COUNT_AFTER = \"(?![\u5929\u6b21\u4e2a\u500b\u5e74\u6708\u5468\u9031\u904d\u56de])\";"
         },
         {
           "line": 86,
@@ -392079,7 +392246,7 @@
         },
         {
           "line": 215,
-          "text": "// wall-clock time range, not a date — let the weekday branch below win"
+          "text": "// wall-clock time range, not a date \u2014 let the weekday branch below win"
         },
         {
           "line": 217,
@@ -396693,7 +396860,7 @@
         },
         {
           "line": 88,
-          "text": "const quotedTitle = [`\"${query}\"`, `“${query}”`, `'${query}'`].some("
+          "text": "const quotedTitle = [`\"${query}\"`, `\u201c${query}\u201d`, `'${query}'`].some("
         },
         {
           "line": 92,
@@ -402542,19 +402709,19 @@
         },
         {
           "line": 368,
-          "text": "const top = `${c1}╔${\"═\".repeat(78)}╗${R}`;"
+          "text": "const top = `${c1}\u2554${\"\u2550\".repeat(78)}\u2557${R}`;"
         },
         {
           "line": 369,
-          "text": "const mid = `${c1}╠${\"═\".repeat(78)}╣${R}`;"
+          "text": "const mid = `${c1}\u2560${\"\u2550\".repeat(78)}\u2563${R}`;"
         },
         {
           "line": 370,
-          "text": "const bot = `${c1}╚${\"═\".repeat(78)}╝${R}`;"
+          "text": "const bot = `${c1}\u255a${\"\u2550\".repeat(78)}\u255d${R}`;"
         },
         {
           "line": 371,
-          "text": "const row = (s: string) => `${c1}║${R}${line(s)}${c1}║${R}`;"
+          "text": "const row = (s: string) => `${c1}\u2551${R}${line(s)}${c1}\u2551${R}`;"
         },
         {
           "line": 373,
@@ -404244,7 +404411,7 @@
         },
         {
           "line": 1217,
-          "text": "const status = newState.fullyBackfilled ? \"✓ complete\" : \"↻ partial\";"
+          "text": "const status = newState.fullyBackfilled ? \"\u2713 complete\" : \"\u21bb partial\";"
         }
       ]
     },
@@ -412484,15 +412651,15 @@
       "stateAnchors": [
         {
           "line": 29,
-          "text": "const EMOJI_QUEUED = \"⏳\";"
+          "text": "const EMOJI_QUEUED = \"\u23f3\";"
         },
         {
           "line": 30,
-          "text": "const EMOJI_THINKING = \"🤔\";"
+          "text": "const EMOJI_THINKING = \"\ud83e\udd14\";"
         },
         {
           "line": 31,
-          "text": "const EMOJI_ERROR = \"❌\";"
+          "text": "const EMOJI_ERROR = \"\u274c\";"
         },
         {
           "line": 42,
@@ -415019,7 +415186,7 @@
         },
         {
           "line": 41,
-          "text": "const quoted = text.match(/\"([^\"]{1,64})\"|'([^']{1,64})'|“([^”]{1,64})”/);"
+          "text": "const quoted = text.match(/\"([^\"]{1,64})\"|'([^']{1,64})'|\u201c([^\u201d]{1,64})\u201d/);"
         },
         {
           "line": 42,
@@ -415039,7 +415206,7 @@
         },
         {
           "line": 79,
-          "text": "const reserved = `Key names starting with \"${RESERVED_PREFIX}\" are reserved for provisioner-managed keys — pick another name.`;"
+          "text": "const reserved = `Key names starting with \"${RESERVED_PREFIX}\" are reserved for provisioner-managed keys \u2014 pick another name.`;"
         },
         {
           "line": 90,
@@ -423294,7 +423461,7 @@
         },
         {
           "line": 528,
-          "text": "return; // logged out / stopped — let the loop die"
+          "text": "return; // logged out / stopped \u2014 let the loop die"
         },
         {
           "line": 530,
@@ -426278,7 +426445,8 @@
         "BrowserSession",
         "BrowserSiteState",
         "FilesAndSharing",
-        "FilesTree"
+        "FilesTree",
+        "BrowserFilesTrash"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -426748,7 +426916,8 @@
       "models": [
         "FilesTree",
         "FilesPreview",
-        "FilesAndSharing"
+        "FilesAndSharing",
+        "BrowserFilesTrash"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -426906,7 +427075,8 @@
       "models": [
         "FilesTree",
         "FilesPreview",
-        "FilesAndSharing"
+        "FilesAndSharing",
+        "BrowserFilesTrash"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -427663,7 +427833,7 @@
         },
         {
           "line": 84,
-          "text": "const range = text.split(/\\s*(?:[-–—]|\\s+to\\s+)\\s*/i);"
+          "text": "const range = text.split(/\\s*(?:[-\u2013\u2014]|\\s+to\\s+)\\s*/i);"
         },
         {
           "line": 86,
@@ -428715,7 +428885,7 @@
         },
         {
           "line": 324,
-          "text": "let text = `Logged check-in for \"${goal.title}\"${progress ? ` — ${progress.replace(/_/g, \" \")}` : \"\"}.`;"
+          "text": "let text = `Logged check-in for \"${goal.title}\"${progress ? ` \u2014 ${progress.replace(/_/g, \" \")}` : \"\"}.`;"
         },
         {
           "line": 344,
@@ -436106,7 +436276,7 @@
         },
         {
           "line": 968,
-          "text": "const fallback = `${metric} — ${windowLabel}: ${aggregate.label} ${aggregate.value.toFixed("
+          "text": "const fallback = `${metric} \u2014 ${windowLabel}: ${aggregate.label} ${aggregate.value.toFixed("
         },
         {
           "line": 987,
@@ -437573,7 +437743,7 @@
         },
         {
           "line": 750,
-          "text": "// must NOT let the swallowed failure masquerade as `sleepHours: 0` — that"
+          "text": "// must NOT let the swallowed failure masquerade as `sleepHours: 0` \u2014 that"
         },
         {
           "line": 775,
@@ -448063,7 +448233,7 @@
         },
         {
           "line": 121,
-          "text": "const tag = entry.classification === \"urgent\" ? \" ⚠️\" : \"\";"
+          "text": "const tag = entry.classification === \"urgent\" ? \" \u26a0\ufe0f\" : \"\";"
         },
         {
           "line": 125,
@@ -452709,7 +452879,7 @@
         },
         {
           "line": 263,
-          "text": "const out = `Got it — I'll remember ${name}'s voice from now on.`;"
+          "text": "const out = `Got it \u2014 I'll remember ${name}'s voice from now on.`;"
         },
         {
           "line": 285,
@@ -468309,7 +468479,7 @@
         },
         {
           "line": 23,
-          "text": "const MAX_GGUF_HEADER_BYTES = 1 << 20; // 1 MiB — `general.architecture` is one of the first KV entries."
+          "text": "const MAX_GGUF_HEADER_BYTES = 1 << 20; // 1 MiB \u2014 `general.architecture` is one of the first KV entries."
         },
         {
           "line": 42,
@@ -468588,7 +468758,7 @@
         },
         {
           "line": 76,
-          "text": "* silently — silent unavailability would let the runtime fall back to"
+          "text": "* silently \u2014 silent unavailability would let the runtime fall back to"
         },
         {
           "line": 122,
@@ -469824,7 +469994,7 @@
         },
         {
           "line": 407,
-          "text": "// ASR never confirmed a word — the Silero VAD let through"
+          "text": "// ASR never confirmed a word \u2014 the Silero VAD let through"
         }
       ]
     },
@@ -474073,7 +474243,7 @@
         },
         {
           "line": 177,
-          "text": "// EIO, EMFILE) means we could not look at all — do not let callers"
+          "text": "// EIO, EMFILE) means we could not look at all \u2014 do not let callers"
         }
       ]
     },
@@ -475325,7 +475495,7 @@
         },
         {
           "line": 193,
-          "text": "const DEFAULT_FRAME_MS = 32; // 512 samples @ 16 kHz — matches Silero's window."
+          "text": "const DEFAULT_FRAME_MS = 32; // 512 samples @ 16 kHz \u2014 matches Silero's window."
         },
         {
           "line": 208,
@@ -481502,7 +481672,7 @@
         },
         {
           "line": 623,
-          "text": "* Returns 0.5 when no classifier is configured (uncertain — let tiers 1+2 decide)."
+          "text": "* Returns 0.5 when no classifier is configured (uncertain \u2014 let tiers 1+2 decide)."
         },
         {
           "line": 659,
@@ -481798,7 +481968,7 @@
         },
         {
           "line": 457,
-          "text": "// support — let GgmlWakeWordModel.load surface the structured"
+          "text": "// support \u2014 let GgmlWakeWordModel.load surface the structured"
         },
         {
           "line": 494,
@@ -482462,7 +482632,8 @@
         "AssistantConversation",
         "MapsNavigation",
         "NavigationProgress",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "MapsRerouteOwnership"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -482888,7 +483059,8 @@
       "path": "vendor/eliza/plugins/plugin-maps/src/client/device-navigation.ts",
       "models": [
         "MapsNavigation",
-        "NavigationProgress"
+        "NavigationProgress",
+        "MapsRerouteOwnership"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -483432,7 +483604,8 @@
       "path": "vendor/eliza/plugins/plugin-maps/src/client/maps-screen.ts",
       "models": [
         "MapsNavigation",
-        "NavigationProgress"
+        "NavigationProgress",
+        "MapsRerouteOwnership"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -484551,7 +484724,8 @@
       "path": "vendor/eliza/plugins/plugin-maps/src/client/state.ts",
       "models": [
         "MapsNavigation",
-        "NavigationProgress"
+        "NavigationProgress",
+        "MapsRerouteOwnership"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -507132,7 +507306,8 @@
     {
       "path": "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/AssistantEntryTile.java",
       "models": [
-        "AssistantConversation"
+        "AssistantConversation",
+        "NativeAssistantEntry"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -507150,7 +507325,8 @@
       "models": [
         "AlwaysOnListener",
         "ListenerLeaseProducer",
-        "ListenerLeaseRecovery"
+        "ListenerLeaseRecovery",
+        "NativeAssistantEntry"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -507236,7 +507412,8 @@
       "models": [
         "AlwaysOnListener",
         "ListenerLeaseProducer",
-        "ListenerLeaseRecovery"
+        "ListenerLeaseRecovery",
+        "NativeAssistantEntry"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -512303,11 +512480,11 @@
       "stateAnchors": [
         {
           "line": 6,
-          "text": "const LIST_MARKER = /^(\\s*)(?:(\\d+)([.)]\\s+)|([-*+•]\\s+)?(\\[[ xX]\\]\\s+)?)/;"
+          "text": "const LIST_MARKER = /^(\\s*)(?:(\\d+)([.)]\\s+)|([-*+\u2022]\\s+)?(\\[[ xX]\\]\\s+)?)/;"
         },
         {
           "line": 7,
-          "text": "const LAST_LIST_DELIMITER = /([,;，；、،؛])(\\s*)[^,;，；、،؛]*$/;"
+          "text": "const LAST_LIST_DELIMITER = /([,;\uff0c\uff1b\u3001\u060c\u061b])(\\s*)[^,;\uff0c\uff1b\u3001\u060c\u061b]*$/;"
         },
         {
           "line": 13,
@@ -523174,7 +523351,7 @@
         },
         {
           "line": 1162,
-          "text": "const fallback = `Updated meeting preferences (${updated.preferredStartLocal}–${updated.preferredEndLocal} ${updated.timeZone}, default ${updated.defaultDurationMinutes} min, travel buffer ${updated.t"
+          "text": "const fallback = `Updated meeting preferences (${updated.preferredStartLocal}\u2013${updated.preferredEndLocal} ${updated.timeZone}, default ${updated.defaultDurationMinutes} min, travel buffer ${updated.t"
         },
         {
           "line": 1217,
@@ -523582,7 +523759,7 @@
         },
         {
           "line": 42,
-          "text": "const DIRECTIVE_GAP = \"[^,.!?;:。！？；，、]*\";"
+          "text": "const DIRECTIVE_GAP = \"[^,.!?;:\u3002\uff01\uff1f\uff1b\uff0c\u3001]*\";"
         },
         {
           "line": 44,
@@ -523978,7 +524155,7 @@
         },
         {
           "line": 924,
-          "text": "const parts = [`Saved — \"${goal.title}\".`];"
+          "text": "const parts = [`Saved \u2014 \"${goal.title}\".`];"
         },
         {
           "line": 925,
@@ -524806,7 +524983,7 @@
         },
         {
           "line": 2780,
-          "text": "const CLOCK_CLAUSE_BOUNDARY_RE = /[.;!?\\n—–]|\\bbut\\b/gi;"
+          "text": "const CLOCK_CLAUSE_BOUNDARY_RE = /[.;!?\\n\u2014\u2013]|\\bbut\\b/gi;"
         },
         {
           "line": 2783,
@@ -525646,7 +525823,7 @@
         },
         {
           "line": 5025,
-          "text": "const fallback = `Okay — I removed \"${retracted.definition.title}\". Nothing is saved for it now.`;"
+          "text": "const fallback = `Okay \u2014 I removed \"${retracted.definition.title}\". Nothing is saved for it now.`;"
         },
         {
           "line": 5026,
@@ -525994,7 +526171,7 @@
         },
         {
           "line": 6031,
-          "text": "const alreadyText = `\"${duplicateOf.definition.title}\" is already saved as ${summarizeCadence(duplicateOf.definition.cadence, duplicateOf.definition.timezone)} — nothing new was created.`;"
+          "text": "const alreadyText = `\"${duplicateOf.definition.title}\" is already saved as ${summarizeCadence(duplicateOf.definition.cadence, duplicateOf.definition.timezone)} \u2014 nothing new was created.`;"
         },
         {
           "line": 6045,
@@ -526154,7 +526331,7 @@
         },
         {
           "line": 6531,
-          "text": "const text = `\"${created.goal.title}\" is already saved as a goal — nothing new was created.`;"
+          "text": "const text = `\"${created.goal.title}\" is already saved as a goal \u2014 nothing new was created.`;"
         },
         {
           "line": 6543,
@@ -527758,7 +527935,7 @@
         },
         {
           "line": 1905,
-          "text": "const text = `Approved the call to ${payload.to}, but Twilio is not configured (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER) — the call was not placed.`;"
+          "text": "const text = `Approved the call to ${payload.to}, but Twilio is not configured (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER) \u2014 the call was not placed.`;"
         },
         {
           "line": 1918,
@@ -527790,7 +527967,7 @@
         },
         {
           "line": 1987,
-          "text": "const text = `Approved the signature request for \"${payload.documentName}\", but DocumentRequest ${payload.documentId} no longer exists (the document store does not survive restarts) — nothing was disp"
+          "text": "const text = `Approved the signature request for \"${payload.documentName}\", but DocumentRequest ${payload.documentId} no longer exists (the document store does not survive restarts) \u2014 nothing was disp"
         },
         {
           "line": 2000,
@@ -527814,15 +527991,15 @@
         },
         {
           "line": 2058,
-          "text": "const text = `Approved request ${args.request.id}, but no executor exists for action \"${args.request.action}\" — nothing was executed.`;"
+          "text": "const text = `Approved request ${args.request.id}, but no executor exists for action \"${args.request.action}\" \u2014 nothing was executed.`;"
         },
         {
           "line": 2078,
-          "text": "const text = `Request ${request.id} already completed successfully — nothing was executed again.`;"
+          "text": "const text = `Request ${request.id} already completed successfully \u2014 nothing was executed again.`;"
         },
         {
           "line": 2097,
-          "text": "const text = `Request ${request.id} was already rejected — nothing was dispatched.`;"
+          "text": "const text = `Request ${request.id} was already rejected \u2014 nothing was dispatched.`;"
         },
         {
           "line": 2116,
@@ -527830,7 +528007,7 @@
         },
         {
           "line": 2142,
-          "text": "const text = `Request ${request.id} is already \"${request.state}\" — I did not ${intent} it, and nothing was executed.`;"
+          "text": "const text = `Request ${request.id} is already \"${request.state}\" \u2014 I did not ${intent} it, and nothing was executed.`;"
         },
         {
           "line": 2228,
@@ -527998,7 +528175,7 @@
         },
         {
           "line": 2678,
-          "text": "const text = `Request ${latest.id} kept changing state while I was resolving it — nothing was executed.`;"
+          "text": "const text = `Request ${latest.id} kept changing state while I was resolving it \u2014 nothing was executed.`;"
         },
         {
           "line": 2692,
@@ -531886,7 +532063,7 @@
         },
         {
           "line": 218,
-          "text": "\"Send a workout reminder for the afternoon. Direct, not pleading; one short sentence. Recent reminder outcomes are in context — let them shape tone (e.g. softer after a skip streak) without restating "
+          "text": "\"Send a workout reminder for the afternoon. Direct, not pleading; one short sentence. Recent reminder outcomes are in context \u2014 let them shape tone (e.g. softer after a skip streak) without restating "
         },
         {
           "line": 249,
@@ -535738,7 +535915,7 @@
         },
         {
           "line": 414,
-          "text": "const range = `${displayTime(event.startAt, args.timeZone)}–${displayTime(event.endAt, args.timeZone)}`;"
+          "text": "const range = `${displayTime(event.startAt, args.timeZone)}\u2013${displayTime(event.endAt, args.timeZone)}`;"
         },
         {
           "line": 415,
@@ -547778,11 +547955,11 @@
       "stateAnchors": [
         {
           "line": 25,
-          "text": "* design — let the caller normalize) or `null` when the regex misses."
+          "text": "* design \u2014 let the caller normalize) or `null` when the regex misses."
         },
         {
           "line": 34,
-          "text": "const NAME_TOKEN_PATTERN = \"(?!I['’](?:m|ve|ll|d)\\\\b)[A-Z][A-Za-z'.-]{1,40}\";"
+          "text": "const NAME_TOKEN_PATTERN = \"(?!I['\u2019](?:m|ve|ll|d)\\\\b)[A-Z][A-Za-z'.-]{1,40}\";"
         },
         {
           "line": 35,
@@ -547854,7 +548031,7 @@
         },
         {
           "line": 219,
-          "text": "const ORG_PHRASE = \"[A-Za-z][A-Za-z0-9&'’. -]{1,60}\";"
+          "text": "const ORG_PHRASE = \"[A-Za-z][A-Za-z0-9&'\u2019. -]{1,60}\";"
         },
         {
           "line": 221,
@@ -574472,7 +574649,7 @@
         },
         {
           "line": 207,
-          "text": "const title = event.title.replace(/[‐–—]/gu, \"-\");"
+          "text": "const title = event.title.replace(/[\u2010\u2013\u2014]/gu, \"-\");"
         },
         {
           "line": 208,
@@ -591325,7 +591502,7 @@
         },
         {
           "line": 29,
-          "text": "const NEGATION_TOKEN_PATTERN = /\\b(?:do\\s+not|don['’]?t|dont|never)\\b/gi;"
+          "text": "const NEGATION_TOKEN_PATTERN = /\\b(?:do\\s+not|don['\u2019]?t|dont|never)\\b/gi;"
         },
         {
           "line": 30,
@@ -591405,7 +591582,7 @@
         },
         {
           "line": 204,
-          "text": "const COMMAND_SEPARATOR = \"(?:[,.;:!?—–-]+|…)\";"
+          "text": "const COMMAND_SEPARATOR = \"(?:[,.;:!?\u2014\u2013-]+|\u2026)\";"
         },
         {
           "line": 206,
@@ -595924,7 +596101,7 @@
         },
         {
           "line": 65,
-          "text": "const ACCENT_FROM = \"àáâãäåāăąèéêëēĕėęěìíîïĩīĭįòóôõöøōŏőùúûüũūŭůűñçćčšžýÿ\";"
+          "text": "const ACCENT_FROM = \"\u00e0\u00e1\u00e2\u00e3\u00e4\u00e5\u0101\u0103\u0105\u00e8\u00e9\u00ea\u00eb\u0113\u0115\u0117\u0119\u011b\u00ec\u00ed\u00ee\u00ef\u0129\u012b\u012d\u012f\u00f2\u00f3\u00f4\u00f5\u00f6\u00f8\u014d\u014f\u0151\u00f9\u00fa\u00fb\u00fc\u0169\u016b\u016d\u016f\u0171\u00f1\u00e7\u0107\u010d\u0161\u017e\u00fd\u00ff\";"
         },
         {
           "line": 66,
@@ -595932,7 +596109,7 @@
         },
         {
           "line": 67,
-          "text": "const STRIP_CHARS = \"'’`\";"
+          "text": "const STRIP_CHARS = \"'\u2019`\";"
         },
         {
           "line": 70,
@@ -599602,7 +599779,7 @@
       "stateAnchors": [
         {
           "line": 2,
-          "text": "* Drizzle schema for `pairing_requests` — short-lived DM pairing codes that let a"
+          "text": "* Drizzle schema for `pairing_requests` \u2014 short-lived DM pairing codes that let a"
         },
         {
           "line": 16,
@@ -609003,7 +609180,7 @@
         },
         {
           "line": 81,
-          "text": "const FUSED_CONTEXT_MARKER = \"Detected context — pre-extracted from this image\";"
+          "text": "const FUSED_CONTEXT_MARKER = \"Detected context \u2014 pre-extracted from this image\";"
         },
         {
           "line": 92,
@@ -610848,7 +611025,7 @@
         },
         {
           "line": 593,
-          "text": "// residual — a whole-total re-baseline here would let an attacker-timed"
+          "text": "// residual \u2014 a whole-total re-baseline here would let an attacker-timed"
         },
         {
           "line": 595,
@@ -611513,7 +611690,7 @@
         },
         {
           "line": 330,
-          "text": "const suffix = pauses ? ' — paused' : ' — renew to resume';"
+          "text": "const suffix = pauses ? ' \u2014 paused' : ' \u2014 renew to resume';"
         },
         {
           "line": 340,
@@ -612552,7 +612729,7 @@
         },
         {
           "line": 55,
-          "text": "const statusEmoji = workflow.active ? '✅' : '⏸️';"
+          "text": "const statusEmoji = workflow.active ? '\u2705' : '\u23f8\ufe0f';"
         },
         {
           "line": 61,
@@ -617360,6 +617537,65 @@
   ],
   "configurationInputs": [
     {
+      "path": "android/app/src/launcher/AndroidManifest.xml",
+      "models": [
+        "Application",
+        "DeviceActions",
+        "NativeSmsDispatch",
+        "NativeMmsDispatch"
+      ],
+      "sha256": "a549ffbd77739527e6d2819fe80135558752090f20cd1a8718662be15e925e96"
+    },
+    {
+      "path": "android/app/src/main/AndroidManifest.xml",
+      "models": [
+        "Application",
+        "StartupPermissions",
+        "NativeReminderDelivery",
+        "NativeTextScaleLifecycle",
+        "NativeAssistantEntry"
+      ],
+      "sha256": "5988c10458b25bbda549955ea2c89161e19a262a50cf17eb313c420f38d0c058"
+    },
+    {
+      "path": "android/app/src/standalone/AndroidManifest.xml",
+      "models": [
+        "Application",
+        "DeviceActions"
+      ],
+      "sha256": "a65904d014a2d1f95cbbd35f8b61bacd24fb845d7e1379c3da98c36c87150f4f"
+    },
+    {
+      "path": "android/app/src/testMocks/AndroidManifest.xml",
+      "models": [
+        "DevelopmentSurfaces"
+      ],
+      "sha256": "02b73d5d903a36ddd7391abe26e70b3749cbface8a5e8f311f111c706f720387"
+    },
+    {
+      "path": "android/consumer-host.json",
+      "models": [
+        "Application",
+        "ResidentRuntime",
+        "AlwaysOnListener",
+        "NativeSmsDispatch",
+        "NativeMmsDispatch",
+        "NativeCrashJournal",
+        "NativeSettingsHandoff",
+        "NativeAssistantEntry"
+      ],
+      "sha256": "0bce8e83df6cf39ec58ebda94cdd0976c2558f346e8c0988e4fa904f6578d7cd"
+    },
+    {
+      "path": "android/voice-host/qualified-voice-host.json",
+      "models": [
+        "NativeListenerInput",
+        "NativeSpeechWarmup",
+        "NativeRecognizerAvailability"
+      ],
+      "sha256": "1ac7f32ef47c6c1dbf17887862f48c6a56dbbec03a6292b36bb051815c46eaad"
+    },
+    {
       "path": "app.config.json",
       "models": [
         "Application",
@@ -617377,126 +617613,12 @@
       "sha256": "ee4802ccd24647c4c25779d47d1f5a3327b692a7084de0810ade1e09fa2683af"
     },
     {
-      "path": "android/app/src/main/AndroidManifest.xml",
+      "path": "docs/client-feature-dependency-exceptions.json",
+      "sha256": "dacb9230d3f40bb07230abed237b11a60eb55f5373775802088d6123934c8d70",
       "models": [
-        "Application",
-        "StartupPermissions",
-        "NativeReminderDelivery",
-        "NativeTextScaleLifecycle"
+        "Application"
       ],
-      "sha256": "5988c10458b25bbda549955ea2c89161e19a262a50cf17eb313c420f38d0c058"
-    },
-    {
-      "path": "android/app/src/standalone/AndroidManifest.xml",
-      "models": [
-        "Application",
-        "DeviceActions"
-      ],
-      "sha256": "a65904d014a2d1f95cbbd35f8b61bacd24fb845d7e1379c3da98c36c87150f4f"
-    },
-    {
-      "path": "android/app/src/launcher/AndroidManifest.xml",
-      "models": [
-        "Application",
-        "DeviceActions",
-        "NativeSmsDispatch",
-        "NativeMmsDispatch"
-      ],
-      "sha256": "a549ffbd77739527e6d2819fe80135558752090f20cd1a8718662be15e925e96"
-    },
-    {
-      "path": "android/app/src/testMocks/AndroidManifest.xml",
-      "models": [
-        "DevelopmentSurfaces"
-      ],
-      "sha256": "02b73d5d903a36ddd7391abe26e70b3749cbface8a5e8f311f111c706f720387"
-    },
-    {
-      "path": "vendor/eliza/packages/app/platforms/android/sense/src/main/AndroidManifest.xml",
-      "models": [
-        "AlwaysOnListener"
-      ],
-      "sha256": "65a62b665e34dfc370cf10519f82cbfabce7089e65d11b7130498ccbb1b8fa89"
-    },
-    {
-      "path": "patches/eliza/native-manifest.json",
-      "models": [
-        "DurableStore",
-        "NoticesAndCaches",
-        "SpeechResources",
-        "StreamingPlayback",
-        "VoiceSession",
-        "MediaLifecycle",
-        "ResidentRuntime",
-        "AlwaysOnListener",
-        "ResetRecovery",
-        "DeletionJournal",
-        "DeviceActions",
-        "ApplicationComposition",
-        "NavigationProgress",
-        "ListenerLeaseRecovery",
-        "ResidentScheduling",
-        "RendererRecovery",
-        "VadSegmentation",
-        "VoiceIpcAssembly",
-        "ListenerLeaseProducer",
-        "IdentitySession",
-        "NativeCredentialMutation",
-        "NativeNoteRecordingService",
-        "NativeNoteRecording",
-        "NativeVoiceDraft",
-        "NativeNotePermission",
-        "ControllerComposition",
-        "SharedRecordingAdmission",
-        "NativeLiveCapture",
-        "NativeSpeechOutputPreparation",
-        "GoogleBrowserReturnClaim",
-        "NativeSmsDispatch",
-        "NativeMmsDispatch"
-      ],
-      "sha256": "df0c167ef389466f9e9e83384d2da3af4072b999e06a8518f81728843aecac1c"
-    },
-    {
-      "path": "android/consumer-host.json",
-      "models": [
-        "Application",
-        "ResidentRuntime",
-        "AlwaysOnListener",
-        "NativeSmsDispatch",
-        "NativeMmsDispatch",
-        "NativeCrashJournal",
-        "NativeSettingsHandoff"
-      ],
-      "sha256": "0bce8e83df6cf39ec58ebda94cdd0976c2558f346e8c0988e4fa904f6578d7cd"
-    },
-    {
-      "path": "patches/eliza/cloud-speech-native.patch",
-      "models": [
-        "SpeechResources",
-        "StreamingPlayback",
-        "VoiceSession",
-        "MediaLifecycle"
-      ],
-      "sha256": "692b290a787c409f91673f708760b744b4a4e57de23824bf5915a8cc3daa7fb1"
-    },
-    {
-      "path": "scripts/prepare-client-features.mjs",
-      "models": [
-        "ScanDocument",
-        "Application",
-        "ListFocus",
-        "FilesTree",
-        "CalendarSync",
-        "InboxCoordinator",
-        "RendererFailureUI",
-        "VoiceSession",
-        "FilesPreview",
-        "PermissionChoices",
-        "CalendarLinkedSync",
-        "InboxProviderDrafts"
-      ],
-      "sha256": "9e0d50a573a36aa999975e75775bc27535768f067184a7c9909a660c1a4b5ede",
-      "integrationReview": "Retains the reviewed source boundary and authenticated patch catalog; integration also admits installed dependency ranges and bounded source-copy helpers. Configuration identity alone is not runtime/refinement evidence."
+      "integrationReview": "Build/source admission support only. Domain allocation does not establish complete state coverage or source-model refinement."
     },
     {
       "path": "patches/eliza/calendar-semantic-client-manifest.json",
@@ -617542,6 +617664,26 @@
       "sha256": "b2f6aaff65bda36723865284e413e22fd46736a7cd9bf72b809ab73df8c45bcb"
     },
     {
+      "path": "patches/eliza/cloud-speech-native.patch",
+      "models": [
+        "SpeechResources",
+        "StreamingPlayback",
+        "VoiceSession",
+        "MediaLifecycle"
+      ],
+      "sha256": "692b290a787c409f91673f708760b744b4a4e57de23824bf5915a8cc3daa7fb1"
+    },
+    {
+      "path": "patches/eliza/core-state-manifest.json",
+      "models": [
+        "TaskServiceLifecycle",
+        "CanonicalNotesStore",
+        "CoreTurnControllers",
+        "CoreConnectorCustody"
+      ],
+      "sha256": "c857f206dfed8c329cb44259208937b5016e45ce81b108e8fdbee5df6222e862"
+    },
+    {
       "path": "patches/eliza/crash-error-class-client-manifest.json",
       "models": [
         "RendererFailureUI"
@@ -617563,6 +617705,16 @@
         "MediaLifecycle"
       ],
       "sha256": "5e7e3861ec6de996e9f5e7af341b5e90378630892aaca95df84949f0b4a267c5"
+    },
+    {
+      "path": "patches/eliza/embedding-store-identity.patch",
+      "models": [
+        "TaskServiceLifecycle",
+        "CanonicalNotesStore",
+        "CoreTurnControllers",
+        "EmbeddingStoreIdentity"
+      ],
+      "sha256": "358327f35c37bd5862ec6dcaa7657c4db545a548e4d5de63cf8efd8120f01d1e"
     },
     {
       "path": "patches/eliza/files-browser-agent.json",
@@ -617601,6 +617753,40 @@
         "FilesFilter"
       ],
       "sha256": "d39919145f4824f317e99ce32b9a98fb153bd4ec08cd6b2ab109cb459dcd08a5"
+    },
+    {
+      "path": "patches/eliza/files-storage-placement-client.patch",
+      "models": [
+        "BrowserFilesTrash"
+      ],
+      "sha256": "eae0a81ce647710304a6b843daa41308550719348b88de8923b289805d4e70c4"
+    },
+    {
+      "path": "patches/eliza/files-storage-query-client-manifest.json",
+      "models": [
+        "FilesTree",
+        "DeviceActions"
+      ],
+      "sha256": "5c8857ccd844d99c8cab77b88d4117902194d589de501b529ea66cabb9a35229",
+      "integrationReview": "Reviewed integration input; current source identity does not establish runtime behavior or source-model refinement."
+    },
+    {
+      "path": "patches/eliza/files-storage-query-client.patch",
+      "models": [
+        "FilesTree",
+        "DeviceActions",
+        "BrowserFilesTrash"
+      ],
+      "sha256": "d0a5320cd534a8ec6040dbf0694f2cdf145363e2a80101ce159e5c30c4d9abb8",
+      "integrationReview": "Reviewed integration input; current source identity does not establish runtime behavior or source-model refinement."
+    },
+    {
+      "path": "patches/eliza/files-storage-view.patch",
+      "models": [
+        "FilesTree",
+        "DeviceActions"
+      ],
+      "sha256": "4c7f0d061a4de632ad45faac794713c250be0c2a4237968b48bcfcd19e17b7fb"
     },
     {
       "path": "patches/eliza/google-browser-sign-in.patch",
@@ -617649,6 +617835,63 @@
       "sha256": "e42afcd3c0713cffaa8e6a00c7d85ccff7ca25ad20bff4003ed4260e235a00cf"
     },
     {
+      "path": "patches/eliza/indicator-provider-generation.patch",
+      "models": [
+        "NativeIndicatorProvider"
+      ],
+      "sha256": "930773aa46cb0cc44157feb8daf70cd16df4349eba69582c0a96d6e3f7ab64b1"
+    },
+    {
+      "path": "patches/eliza/launcher-drawer-ownership-client-manifest.json",
+      "models": [
+        "DrawerInteraction"
+      ],
+      "sha256": "304cadaca8d4ea77033ffeba4d687930ac39561beb5a2b0202d1e9efb5a0e97d"
+    },
+    {
+      "path": "patches/eliza/launcher-drawer-ownership-client.patch",
+      "models": [
+        "DrawerInteraction"
+      ],
+      "sha256": "943d65727a7b61c94bf5b593688926161208cbf418a44741ce6dea9436f628dc"
+    },
+    {
+      "path": "patches/eliza/launcher-legacy-view-key-client-manifest.json",
+      "models": [
+        "LauncherFavorites"
+      ],
+      "sha256": "40793b4b952f6637cf9144fa22d369c4675966d79942910a6e94e35ae40d9e84"
+    },
+    {
+      "path": "patches/eliza/launcher-legacy-view-key-client.patch",
+      "models": [
+        "LauncherFavorites"
+      ],
+      "sha256": "8ccf2bf6b7d8cd56cf12eb4ef09f59f78b7824e37376fe6782185eafabbf95f7"
+    },
+    {
+      "path": "patches/eliza/launcher-observer-client-manifest.json",
+      "models": [
+        "LauncherObserver"
+      ],
+      "sha256": "255d5aff1a3a617771c47bcd22b07f0bc3e18ad8033712c07fba769a21c70477"
+    },
+    {
+      "path": "patches/eliza/launcher-observer-client.patch",
+      "models": [
+        "LauncherObserver"
+      ],
+      "sha256": "89791337625d141904830e8c9f29a8452e7ac81c2a18ba18c3e40bad69c7b71e"
+    },
+    {
+      "path": "patches/eliza/listener-service-cleanup.patch",
+      "models": [
+        "NativeListenerService",
+        "NativeListenerInput"
+      ],
+      "sha256": "fab44bf6ca71b9cf872a8b4c830ca1e0b79740b064f1d81d1b5749e9379dfc8e"
+    },
+    {
       "path": "patches/eliza/local-inference-live-asr.patch",
       "models": [
         "VoiceSession",
@@ -617671,11 +617914,115 @@
       "sha256": "257d852292311f4b0887d082f799904508868e412739c453e8a1574cf34756ac"
     },
     {
+      "path": "patches/eliza/maps-hidden-fallback-client-manifest.json",
+      "models": [
+        "NavigationProgress"
+      ],
+      "sha256": "51e23a58827a271dd188784c6b8b3fb9f9e2fa817a778dbb79555b0c8527f8ca"
+    },
+    {
+      "path": "patches/eliza/maps-hidden-fallback-client.patch",
+      "models": [
+        "NavigationProgress"
+      ],
+      "sha256": "bcd6b942067c875020402d68658ce95ed30fd299bfcb4338c72efb87999c6fcd"
+    },
+    {
+      "path": "patches/eliza/maps-reroute-device-navigation-client-manifest.json",
+      "models": [
+        "MapsRerouteOwnership"
+      ],
+      "sha256": "3e954e486b6e56cfc8e18dc5f9d138be013d654ac5fbd88659f696761dcb6b33"
+    },
+    {
+      "path": "patches/eliza/maps-reroute-device-navigation-client.patch",
+      "models": [
+        "MapsRerouteOwnership"
+      ],
+      "sha256": "3a3059f90fe76abb4a77dcf98f1ccbc888c68c1524462e27ec859894724d03cf"
+    },
+    {
+      "path": "patches/eliza/maps-reroute-maps-screen-client-manifest.json",
+      "models": [
+        "MapsRerouteOwnership"
+      ],
+      "sha256": "c43ba71f1c888d2e75e10f8da6dc11ed7fc50400b3f40b1f260f27add9c4a834"
+    },
+    {
+      "path": "patches/eliza/maps-reroute-maps-screen-client.patch",
+      "models": [
+        "MapsRerouteOwnership"
+      ],
+      "sha256": "258b3396e12e1b13f5c8d7a043acee40fd6aaf6f8e1cac6633cdc12afb230702"
+    },
+    {
+      "path": "patches/eliza/maps-reroute-state-client-manifest.json",
+      "models": [
+        "MapsRerouteOwnership"
+      ],
+      "sha256": "31bc2ee6934e9e10e722de5d2f82b4c99b7758072b99a320b4c0d7b36b3d3881"
+    },
+    {
+      "path": "patches/eliza/maps-reroute-state-client.patch",
+      "models": [
+        "MapsRerouteOwnership"
+      ],
+      "sha256": "9272a43e0bfe87adc2eaa02db1750f04efdde19dfde373cdc3642311a8bfd17a"
+    },
+    {
       "path": "patches/eliza/mobile-uuid-build.json",
       "models": [
         "Application"
       ],
       "sha256": "bf31b0a89b756b5deb7281bd3f56baccba25ccea0337fba04ae2ddf9d31a011b"
+    },
+    {
+      "path": "patches/eliza/named-embedding-provenance.patch",
+      "models": [
+        "TaskServiceLifecycle",
+        "CanonicalNotesStore",
+        "CoreTurnControllers",
+        "NamedEmbeddingProvenance"
+      ],
+      "sha256": "8e874337cbcebe3e3fb69112db3b36c881ca0bc9737399818a06bb9fabf67f70"
+    },
+    {
+      "path": "patches/eliza/native-manifest.json",
+      "models": [
+        "DurableStore",
+        "NoticesAndCaches",
+        "SpeechResources",
+        "StreamingPlayback",
+        "VoiceSession",
+        "MediaLifecycle",
+        "ResidentRuntime",
+        "AlwaysOnListener",
+        "ResetRecovery",
+        "DeletionJournal",
+        "DeviceActions",
+        "ApplicationComposition",
+        "NavigationProgress",
+        "ListenerLeaseRecovery",
+        "ResidentScheduling",
+        "RendererRecovery",
+        "VadSegmentation",
+        "VoiceIpcAssembly",
+        "ListenerLeaseProducer",
+        "IdentitySession",
+        "NativeCredentialMutation",
+        "NativeNoteRecordingService",
+        "NativeNoteRecording",
+        "NativeVoiceDraft",
+        "NativeNotePermission",
+        "ControllerComposition",
+        "SharedRecordingAdmission",
+        "NativeLiveCapture",
+        "NativeSpeechOutputPreparation",
+        "GoogleBrowserReturnClaim",
+        "NativeSmsDispatch",
+        "NativeMmsDispatch"
+      ],
+      "sha256": "df0c167ef389466f9e9e83384d2da3af4072b999e06a8518f81728843aecac1c"
     },
     {
       "path": "patches/eliza/notes-organize-agent.patch",
@@ -617707,11 +618054,36 @@
       "sha256": "f75ecf069bdd3c5bf7666731925c2c8eed8baa8a475e7074ddefeb48c633cb84"
     },
     {
+      "path": "patches/eliza/notes-state-runtime.patch",
+      "models": [
+        "TaskServiceLifecycle",
+        "CanonicalNotesStore",
+        "CoreTurnControllers"
+      ],
+      "sha256": "5f62c6742a0c8f85f47aec6a629a1454d7cc74c5060d75a72b5c3d77a43dda18"
+    },
+    {
       "path": "patches/eliza/owned-captures-legacy-path.patch",
       "models": [
         "MediaLifecycle"
       ],
       "sha256": "2b5852eb356157820ab14f0e7bd731f6a7563782c7a80ed264e3b8d4bd4f42e3"
+    },
+    {
+      "path": "patches/eliza/photos-library-presentation-client-manifest.json",
+      "models": [
+        "MediaLifecycle",
+        "ListFocus"
+      ],
+      "sha256": "7df42862b0310ad4e392c38b29ce56bb2b47c6ebfd2f516e598bad6e1b6180ab"
+    },
+    {
+      "path": "patches/eliza/photos-library-presentation-client.patch",
+      "models": [
+        "MediaLifecycle",
+        "ListFocus"
+      ],
+      "sha256": "7f78e4c6c08d0023cd964a1f847055a7a8d92365ef0ea024ecf31da99b7fa2df"
     },
     {
       "path": "patches/eliza/photos-library.patch",
@@ -617730,6 +618102,37 @@
       "sha256": "0f5d1b0e1680d75e6b2e4a9c8421ca505b11be3af14f7fc827f31f5b0042a381"
     },
     {
+      "path": "patches/eliza/photos-window-client-manifest.json",
+      "models": [
+        "MediaLifecycle"
+      ],
+      "sha256": "f6b9f933c9c757da6f88341fd2ce974b4d1a2e92f446c17bf639445bd7638921"
+    },
+    {
+      "path": "patches/eliza/photos-window-client.patch",
+      "models": [
+        "MediaLifecycle"
+      ],
+      "sha256": "585b89c1ed5a23c3397d19a3303b89bef68c872849b46ba090d7b564b12421c5"
+    },
+    {
+      "path": "patches/eliza/plugin-connector-custody.patch",
+      "models": [
+        "TaskServiceLifecycle",
+        "CanonicalNotesStore",
+        "CoreTurnControllers",
+        "CoreConnectorCustody"
+      ],
+      "sha256": "a0f840fa8572fae33dc3958769c4bd9a951e6f18d04c2345979147134a1473b2"
+    },
+    {
+      "path": "patches/eliza/recognizer-retired-callback.patch",
+      "models": [
+        "NativeOnDeviceRecognizer"
+      ],
+      "sha256": "4e2ed9bade0ad8c426f243cf74af7d671aaaef3958af4fdaec408cf7506ed612"
+    },
+    {
       "path": "patches/eliza/reset-admission.patch",
       "models": [
         "ResetRecovery",
@@ -617737,6 +618140,30 @@
         "ApplicationComposition"
       ],
       "sha256": "c8c86881dab9de36a2cfb11b66b84b064752538b23132c094222caf7bb38148e"
+    },
+    {
+      "path": "patches/eliza/room-queue-admission.patch",
+      "models": [
+        "TaskServiceLifecycle",
+        "CanonicalNotesStore",
+        "CoreTurnControllers",
+        "CoreRoomHandlerQueue"
+      ],
+      "sha256": "343e39a3c756e3679b8a1e577352638119e0f17b1d0535023cbd1720fdddedde"
+    },
+    {
+      "path": "patches/eliza/screen-focus-priority-client-manifest.json",
+      "models": [
+        "ScreenFocusOwnership"
+      ],
+      "sha256": "1e951a364ba3bff1815a2f56dc1ee553b619c864f15088d4c642d672911baa60"
+    },
+    {
+      "path": "patches/eliza/screen-focus-priority-client.patch",
+      "models": [
+        "ScreenFocusOwnership"
+      ],
+      "sha256": "5139d258e7394790655fede433e653679d7dadb1869406b927967ee5fb4a9d5b"
     },
     {
       "path": "patches/eliza/sense-systemui-node26-manifest.json",
@@ -617757,6 +618184,50 @@
       "sha256": "22e763a8e1186aa0221fa47daec424d194f302cc29b101e61fd5d0a22c967403"
     },
     {
+      "path": "patches/eliza/sms-reviewed-binding.patch",
+      "models": [
+        "NativeSmsDispatch",
+        "NativeMmsDispatch"
+      ],
+      "sha256": "1a0f97e4ff2a5e7c5c4a0c9410939e51fb1305c3ae68de6ed703856bb3c603c8"
+    },
+    {
+      "path": "patches/eliza/speech-pipe-settlement.patch",
+      "models": [
+        "NativeAsrPipe"
+      ],
+      "sha256": "482fccdf0cc427722e22ba2c68e16dbbd1856ef7f68cdea73b0d4617777e7bb0"
+    },
+    {
+      "path": "patches/eliza/speech-recording-admission.patch",
+      "models": [
+        "NativeLiveCapture",
+        "SharedRecordingAdmission",
+        "VoiceSession",
+        "NativeCaptureFrames"
+      ],
+      "sha256": "92f193e7e940c0fefc350e20935d239ec15f8849d437823a22dfc53a001a7ebc"
+    },
+    {
+      "path": "patches/eliza/task-service-stop.patch",
+      "models": [
+        "TaskServiceLifecycle",
+        "CanonicalNotesStore",
+        "CoreTurnControllers",
+        "TaskSchedulerRuntime"
+      ],
+      "sha256": "d3b80ffb0dad32e3a17b50dbbb0d4c0dfb3f60b0f2a35f577be4612aa2f9db1e"
+    },
+    {
+      "path": "patches/eliza/turn-controller-isolation.patch",
+      "models": [
+        "TaskServiceLifecycle",
+        "CanonicalNotesStore",
+        "CoreTurnControllers"
+      ],
+      "sha256": "d587459e0123599d17f886fcc855eb90ce7ec20b286a42ce47a02a1ab1bd110b"
+    },
+    {
       "path": "patches/eliza/voice-assistant-streaming.patch",
       "models": [
         "VoiceSession",
@@ -617765,12 +618236,129 @@
       "sha256": "1ee08f6b12ccb7477961d82ed8afaf536c618fdb63383a8216e3715875aea0b9"
     },
     {
+      "path": "scripts/QuintJavaStateAudit.java",
+      "models": [
+        "Application"
+      ],
+      "sha256": "2fc3a4b95281d0d7fc69d351b276051089814aef42ba2833eade6d4796e822bf"
+    },
+    {
+      "path": "scripts/android-stage-voice-models.mjs",
+      "models": [
+        "Application",
+        "ResidentRuntime",
+        "SpeechResources",
+        "VoiceSession"
+      ],
+      "sha256": "b7a8a72b062b54fff72ecffb9753be58009ed215955e1091a6bedc4dd863d35c"
+    },
+    {
+      "path": "scripts/build-mobile-agent.mjs",
+      "models": [
+        "Application",
+        "ResidentRuntime",
+        "CoreRuntimeShutdown"
+      ],
+      "sha256": "a806e8eada974f400afe18e00e5cf275d3519ab00462615076e3d4124639a288"
+    },
+    {
       "path": "scripts/client-speech-patch.mjs",
       "models": [
         "VoiceSession",
         "ApplicationComposition"
       ],
       "sha256": "917e98981b129b6170ff3db4b6c343b8ba169eea8aa4dbfbc8baad08b9cb69ed"
+    },
+    {
+      "path": "scripts/combined-agent-source.mjs",
+      "models": [
+        "TaskServiceLifecycle",
+        "CanonicalNotesStore",
+        "CoreTurnControllers",
+        "CombinedAgentLauncher"
+      ],
+      "sha256": "a2f4d279f3f98ff078f3aedd6b9dc2dc5c3396ecdc7fb7f09b0da7e0c085062e"
+    },
+    {
+      "path": "scripts/copy-file-clone.mjs",
+      "sha256": "b1cf1b54d803d75a9dd091e8aa130e78f30af90ea897208f9672d378fa0b4b37",
+      "models": [
+        "Application",
+        "ResidentRuntime"
+      ],
+      "integrationReview": "Build/source admission support only. Domain allocation does not establish complete state coverage or source-model refinement."
+    },
+    {
+      "path": "scripts/core-state-patch.mjs",
+      "models": [
+        "TaskServiceLifecycle",
+        "CanonicalNotesStore",
+        "CoreTurnControllers",
+        "TaskSchedulerRuntime",
+        "DevelopmentRuntimeLoader",
+        "CombinedAgentLauncher",
+        "ReviewedWorkflowLauncher",
+        "CoreConnectorCustody"
+      ],
+      "sha256": "331e2ce0df2c43a1f34969bc12b54d51292134320599e4a765e77b5129853171"
+    },
+    {
+      "path": "scripts/core-state-preload.mjs",
+      "models": [
+        "TaskServiceLifecycle",
+        "CanonicalNotesStore",
+        "CoreTurnControllers",
+        "ReviewedWorkflowLauncher"
+      ],
+      "sha256": "c5368c9075aa8c7660bee01338185fbe673c9b8dd6889dd1ab01d195efa17c10"
+    },
+    {
+      "path": "scripts/local-agent-source.mjs",
+      "models": [
+        "TaskServiceLifecycle",
+        "CanonicalNotesStore",
+        "CoreTurnControllers",
+        "ReviewedWorkflowLauncher"
+      ],
+      "sha256": "bd5c0ae286c2802fed48f8e51150d4f2de75fb4c8563cfdcdd4d1347fb888c5f",
+      "integrationReview": "Retains the reviewed source boundary and authenticated patch catalog; integration also admits installed dependency ranges and bounded source-copy helpers. Configuration identity alone is not runtime/refinement evidence."
+    },
+    {
+      "path": "scripts/mobile-bundle-smoke.mjs",
+      "models": [
+        "TaskServiceLifecycle",
+        "CanonicalNotesStore",
+        "CoreTurnControllers"
+      ],
+      "sha256": "2e4f7ef05ae6f09285c2a6141876c14b5f30539c926a46864bf8862ae8d3b7bd"
+    },
+    {
+      "path": "scripts/mobile-uuid-adapter.mjs",
+      "models": [
+        "TaskServiceLifecycle",
+        "CanonicalNotesStore",
+        "CoreTurnControllers"
+      ],
+      "sha256": "5b2f99180a222f743367959b7ba0360d9d30597ba80d91ea126830074d190258"
+    },
+    {
+      "path": "scripts/prepare-client-features.mjs",
+      "models": [
+        "ScanDocument",
+        "Application",
+        "ListFocus",
+        "FilesTree",
+        "CalendarSync",
+        "InboxCoordinator",
+        "RendererFailureUI",
+        "VoiceSession",
+        "FilesPreview",
+        "PermissionChoices",
+        "CalendarLinkedSync",
+        "InboxProviderDrafts"
+      ],
+      "sha256": "3501fc1c8c31dd82b117749bbd4e2945cbae1357615f217fb5722632995b1f0e",
+      "integrationReview": "Retains the reviewed source boundary and authenticated patch catalog; integration also admits installed dependency ranges and bounded source-copy helpers. Configuration identity alone is not runtime/refinement evidence."
     },
     {
       "path": "scripts/prepare-patched-native.mjs",
@@ -617804,6 +618392,28 @@
       "integrationReview": "Retains the reviewed source boundary and authenticated patch catalog; integration also admits installed dependency ranges and bounded source-copy helpers. Configuration identity alone is not runtime/refinement evidence."
     },
     {
+      "path": "scripts/quint-java-state-audit.mjs",
+      "models": [
+        "Application"
+      ],
+      "sha256": "fd7baaa3fbcff6e3b42b79022ee488aeb6ff0aabd6a168a22b4cb1c8cb3abf0f"
+    },
+    {
+      "path": "scripts/quint-lib.mjs",
+      "models": [
+        "Application"
+      ],
+      "sha256": "e6b68b34dc4871a1adb0c8b226d00af632ca27d3afce5fd378a79e07e53581fb",
+      "integrationReview": "Reviewed integration input; current source identity does not establish runtime behavior or source-model refinement."
+    },
+    {
+      "path": "scripts/quint-state-audit.mjs",
+      "models": [
+        "Application"
+      ],
+      "sha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b"
+    },
+    {
       "path": "scripts/upstream-native-source.mjs",
       "models": [
         "Application",
@@ -617815,90 +618425,18 @@
       "integrationReview": "Retains the reviewed source boundary and authenticated patch catalog; integration also admits installed dependency ranges and bounded source-copy helpers. Configuration identity alone is not runtime/refinement evidence."
     },
     {
-      "path": "scripts/android-stage-voice-models.mjs",
+      "path": "specs/quint/legacy/core/check-configurations.mjs",
       "models": [
-        "Application",
-        "ResidentRuntime",
-        "SpeechResources",
-        "VoiceSession"
+        "Application"
       ],
-      "sha256": "b7a8a72b062b54fff72ecffb9753be58009ed215955e1091a6bedc4dd863d35c"
+      "sha256": "7e326a366edc6489239b314459f0f02b7cd6b1f80d62815fcc8027d5f872a56f"
     },
     {
-      "path": "patches/eliza/files-storage-query-client-manifest.json",
+      "path": "specs/quint/legacy/core/source-inventory.json",
       "models": [
-        "FilesTree",
-        "DeviceActions"
+        "Application"
       ],
-      "sha256": "575cce2dead9a032819fdd9248200319a4425a9e4f1f4b3d99d188213bbd9401",
-      "integrationReview": "Reviewed integration input; current source identity does not establish runtime behavior or source-model refinement."
-    },
-    {
-      "path": "patches/eliza/files-storage-query-client.patch",
-      "models": [
-        "FilesTree",
-        "DeviceActions"
-      ],
-      "sha256": "e7c5766ca8ad68e734f63c756a8643fb4ffda4a59b1ef868758da60e0e0b0dbf",
-      "integrationReview": "Reviewed integration input; current source identity does not establish runtime behavior or source-model refinement."
-    },
-    {
-      "path": "patches/eliza/files-storage-view.patch",
-      "models": [
-        "FilesTree",
-        "DeviceActions"
-      ],
-      "sha256": "4c7f0d061a4de632ad45faac794713c250be0c2a4237968b48bcfcd19e17b7fb"
-    },
-    {
-      "path": "patches/eliza/photos-library-presentation-client-manifest.json",
-      "models": [
-        "MediaLifecycle",
-        "ListFocus"
-      ],
-      "sha256": "7df42862b0310ad4e392c38b29ce56bb2b47c6ebfd2f516e598bad6e1b6180ab"
-    },
-    {
-      "path": "patches/eliza/photos-library-presentation-client.patch",
-      "models": [
-        "MediaLifecycle",
-        "ListFocus"
-      ],
-      "sha256": "7f78e4c6c08d0023cd964a1f847055a7a8d92365ef0ea024ecf31da99b7fa2df"
-    },
-    {
-      "path": "patches/eliza/photos-window-client-manifest.json",
-      "models": [
-        "MediaLifecycle"
-      ],
-      "sha256": "f6b9f933c9c757da6f88341fd2ce974b4d1a2e92f446c17bf639445bd7638921"
-    },
-    {
-      "path": "patches/eliza/photos-window-client.patch",
-      "models": [
-        "MediaLifecycle"
-      ],
-      "sha256": "585b89c1ed5a23c3397d19a3303b89bef68c872849b46ba090d7b564b12421c5"
-    },
-    {
-      "path": "patches/eliza/speech-recording-admission.patch",
-      "models": [
-        "NativeLiveCapture",
-        "SharedRecordingAdmission",
-        "VoiceSession",
-        "NativeCaptureFrames"
-      ],
-      "sha256": "92f193e7e940c0fefc350e20935d239ec15f8849d437823a22dfc53a001a7ebc"
-    },
-    {
-      "path": "specs/quint/refinement/services/runtime-bundle-inputs.json",
-      "models": [
-        "CoreRuntimeRetirement",
-        "CoreRuntimeShutdown",
-        "CoreServiceLifecycle",
-        "ApplicationComposition"
-      ],
-      "sha256": "3e6cb2cc82d2b9b72b47d53fd075b35d2027f16d94867b8b24fdc6cb3fad6791"
+      "sha256": "214b548c83da396d9a1e2f3682194f955c0c91c051fa9a4c78372574ca9a00b3"
     },
     {
       "path": "specs/quint/refinement/services/runtime-bundle-audit.mjs",
@@ -617919,13 +618457,14 @@
       "sha256": "1434a50f98b533fb6abd1178a1de0995214435b5dbf466ed118190deeebeaa77"
     },
     {
-      "path": "scripts/build-mobile-agent.mjs",
+      "path": "specs/quint/refinement/services/runtime-bundle-inputs.json",
       "models": [
-        "Application",
-        "ResidentRuntime",
-        "CoreRuntimeShutdown"
+        "CoreRuntimeRetirement",
+        "CoreRuntimeShutdown",
+        "CoreServiceLifecycle",
+        "ApplicationComposition"
       ],
-      "sha256": "a806e8eada974f400afe18e00e5cf275d3519ab00462615076e3d4124639a288"
+      "sha256": "17e0c981c5674dfd020a16ecbe922ae6c924924ef33ec751cf329aa069fbe1af"
     },
     {
       "path": "upstream.lock.json",
@@ -617937,309 +618476,11 @@
       "sha256": "62682bc4e49ea7c2f187a3b688f65289b4092c0438fd1cc210b5892ab306ee9d"
     },
     {
-      "path": "scripts/mobile-uuid-adapter.mjs",
+      "path": "vendor/eliza/packages/app/platforms/android/sense/src/main/AndroidManifest.xml",
       "models": [
-        "TaskServiceLifecycle",
-        "CanonicalNotesStore",
-        "CoreTurnControllers"
+        "AlwaysOnListener"
       ],
-      "sha256": "ea9438c30c7a6bb446f6d5c5cffd379796c5b43cc4e1aa614c24b00a48c16678"
-    },
-    {
-      "path": "scripts/mobile-bundle-smoke.mjs",
-      "models": [
-        "TaskServiceLifecycle",
-        "CanonicalNotesStore",
-        "CoreTurnControllers"
-      ],
-      "sha256": "2e4f7ef05ae6f09285c2a6141876c14b5f30539c926a46864bf8862ae8d3b7bd"
-    },
-    {
-      "path": "scripts/local-agent-source.mjs",
-      "models": [
-        "TaskServiceLifecycle",
-        "CanonicalNotesStore",
-        "CoreTurnControllers",
-        "ReviewedWorkflowLauncher"
-      ],
-      "sha256": "bd5c0ae286c2802fed48f8e51150d4f2de75fb4c8563cfdcdd4d1347fb888c5f",
-      "integrationReview": "Retains the reviewed source boundary and authenticated patch catalog; integration also admits installed dependency ranges and bounded source-copy helpers. Configuration identity alone is not runtime/refinement evidence."
-    },
-    {
-      "path": "scripts/core-state-patch.mjs",
-      "models": [
-        "TaskServiceLifecycle",
-        "CanonicalNotesStore",
-        "CoreTurnControllers",
-        "TaskSchedulerRuntime",
-        "DevelopmentRuntimeLoader",
-        "CombinedAgentLauncher",
-        "ReviewedWorkflowLauncher"
-      ],
-      "sha256": "25b46e944ecd6a4d5569e8eace9e2f9b22eea2ebdd36075e90fd15d1b9fb6478"
-    },
-    {
-      "path": "scripts/core-state-preload.mjs",
-      "models": [
-        "TaskServiceLifecycle",
-        "CanonicalNotesStore",
-        "CoreTurnControllers",
-        "ReviewedWorkflowLauncher"
-      ],
-      "sha256": "c5368c9075aa8c7660bee01338185fbe673c9b8dd6889dd1ab01d195efa17c10"
-    },
-    {
-      "path": "scripts/combined-agent-source.mjs",
-      "models": [
-        "TaskServiceLifecycle",
-        "CanonicalNotesStore",
-        "CoreTurnControllers",
-        "CombinedAgentLauncher"
-      ],
-      "sha256": "a2f4d279f3f98ff078f3aedd6b9dc2dc5c3396ecdc7fb7f09b0da7e0c085062e"
-    },
-    {
-      "path": "patches/eliza/core-state-manifest.json",
-      "models": [
-        "TaskServiceLifecycle",
-        "CanonicalNotesStore",
-        "CoreTurnControllers"
-      ],
-      "sha256": "9baa7b3e4f6032b18c33a09bd641e13ce8a7cda9de3d120233c7149aa2033953"
-    },
-    {
-      "path": "patches/eliza/task-service-stop.patch",
-      "models": [
-        "TaskServiceLifecycle",
-        "CanonicalNotesStore",
-        "CoreTurnControllers",
-        "TaskSchedulerRuntime"
-      ],
-      "sha256": "d3b80ffb0dad32e3a17b50dbbb0d4c0dfb3f60b0f2a35f577be4612aa2f9db1e"
-    },
-    {
-      "path": "patches/eliza/notes-state-runtime.patch",
-      "models": [
-        "TaskServiceLifecycle",
-        "CanonicalNotesStore",
-        "CoreTurnControllers"
-      ],
-      "sha256": "5f62c6742a0c8f85f47aec6a629a1454d7cc74c5060d75a72b5c3d77a43dda18"
-    },
-    {
-      "path": "patches/eliza/turn-controller-isolation.patch",
-      "models": [
-        "TaskServiceLifecycle",
-        "CanonicalNotesStore",
-        "CoreTurnControllers"
-      ],
-      "sha256": "d587459e0123599d17f886fcc855eb90ce7ec20b286a42ce47a02a1ab1bd110b"
-    },
-    {
-      "path": "patches/eliza/speech-pipe-settlement.patch",
-      "models": [
-        "NativeAsrPipe"
-      ],
-      "sha256": "482fccdf0cc427722e22ba2c68e16dbbd1856ef7f68cdea73b0d4617777e7bb0"
-    },
-    {
-      "path": "patches/eliza/indicator-provider-generation.patch",
-      "models": [
-        "NativeIndicatorProvider"
-      ],
-      "sha256": "930773aa46cb0cc44157feb8daf70cd16df4349eba69582c0a96d6e3f7ab64b1"
-    },
-    {
-      "path": "patches/eliza/listener-service-cleanup.patch",
-      "models": [
-        "NativeListenerService",
-        "NativeListenerInput"
-      ],
-      "sha256": "fab44bf6ca71b9cf872a8b4c830ca1e0b79740b064f1d81d1b5749e9379dfc8e"
-    },
-    {
-      "path": "scripts/quint-lib.mjs",
-      "models": [
-        "Application"
-      ],
-      "sha256": "e6b68b34dc4871a1adb0c8b226d00af632ca27d3afce5fd378a79e07e53581fb",
-      "integrationReview": "Reviewed integration input; current source identity does not establish runtime behavior or source-model refinement."
-    },
-    {
-      "path": "specs/quint/legacy/core/source-inventory.json",
-      "models": [
-        "Application"
-      ],
-      "sha256": "214b548c83da396d9a1e2f3682194f955c0c91c051fa9a4c78372574ca9a00b3"
-    },
-    {
-      "path": "specs/quint/legacy/core/check-configurations.mjs",
-      "models": [
-        "Application"
-      ],
-      "sha256": "7e326a366edc6489239b314459f0f02b7cd6b1f80d62815fcc8027d5f872a56f"
-    },
-    {
-      "path": "patches/eliza/recognizer-retired-callback.patch",
-      "models": [
-        "NativeOnDeviceRecognizer"
-      ],
-      "sha256": "4e2ed9bade0ad8c426f243cf74af7d671aaaef3958af4fdaec408cf7506ed612"
-    },
-    {
-      "path": "scripts/quint-state-audit.mjs",
-      "models": [
-        "Application"
-      ],
-      "sha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b"
-    },
-    {
-      "path": "scripts/quint-java-state-audit.mjs",
-      "models": [
-        "Application"
-      ],
-      "sha256": "fd7baaa3fbcff6e3b42b79022ee488aeb6ff0aabd6a168a22b4cb1c8cb3abf0f"
-    },
-    {
-      "path": "scripts/QuintJavaStateAudit.java",
-      "models": [
-        "Application"
-      ],
-      "sha256": "2fc3a4b95281d0d7fc69d351b276051089814aef42ba2833eade6d4796e822bf"
-    },
-    {
-      "path": "android/voice-host/qualified-voice-host.json",
-      "models": [
-        "NativeListenerInput",
-        "NativeSpeechWarmup",
-        "NativeRecognizerAvailability"
-      ],
-      "sha256": "1ac7f32ef47c6c1dbf17887862f48c6a56dbbec03a6292b36bb051815c46eaad"
-    },
-    {
-      "path": "patches/eliza/room-queue-admission.patch",
-      "models": [
-        "TaskServiceLifecycle",
-        "CanonicalNotesStore",
-        "CoreTurnControllers",
-        "CoreRoomHandlerQueue"
-      ],
-      "sha256": "343e39a3c756e3679b8a1e577352638119e0f17b1d0535023cbd1720fdddedde"
-    },
-    {
-      "path": "patches/eliza/launcher-observer-client.patch",
-      "models": [
-        "LauncherObserver"
-      ],
-      "sha256": "89791337625d141904830e8c9f29a8452e7ac81c2a18ba18c3e40bad69c7b71e"
-    },
-    {
-      "path": "patches/eliza/launcher-observer-client-manifest.json",
-      "models": [
-        "LauncherObserver"
-      ],
-      "sha256": "255d5aff1a3a617771c47bcd22b07f0bc3e18ad8033712c07fba769a21c70477"
-    },
-    {
-      "path": "patches/eliza/maps-hidden-fallback-client.patch",
-      "models": [
-        "NavigationProgress"
-      ],
-      "sha256": "bcd6b942067c875020402d68658ce95ed30fd299bfcb4338c72efb87999c6fcd"
-    },
-    {
-      "path": "patches/eliza/maps-hidden-fallback-client-manifest.json",
-      "models": [
-        "NavigationProgress"
-      ],
-      "sha256": "51e23a58827a271dd188784c6b8b3fb9f9e2fa817a778dbb79555b0c8527f8ca"
-    },
-    {
-      "path": "patches/eliza/launcher-legacy-view-key-client.patch",
-      "models": [
-        "LauncherFavorites"
-      ],
-      "sha256": "8ccf2bf6b7d8cd56cf12eb4ef09f59f78b7824e37376fe6782185eafabbf95f7"
-    },
-    {
-      "path": "patches/eliza/launcher-legacy-view-key-client-manifest.json",
-      "models": [
-        "LauncherFavorites"
-      ],
-      "sha256": "40793b4b952f6637cf9144fa22d369c4675966d79942910a6e94e35ae40d9e84"
-    },
-    {
-      "path": "patches/eliza/embedding-store-identity.patch",
-      "models": [
-        "TaskServiceLifecycle",
-        "CanonicalNotesStore",
-        "CoreTurnControllers",
-        "EmbeddingStoreIdentity"
-      ],
-      "sha256": "358327f35c37bd5862ec6dcaa7657c4db545a548e4d5de63cf8efd8120f01d1e"
-    },
-    {
-      "path": "patches/eliza/screen-focus-priority-client.patch",
-      "models": [
-        "ScreenFocusOwnership"
-      ],
-      "sha256": "5139d258e7394790655fede433e653679d7dadb1869406b927967ee5fb4a9d5b"
-    },
-    {
-      "path": "patches/eliza/screen-focus-priority-client-manifest.json",
-      "models": [
-        "ScreenFocusOwnership"
-      ],
-      "sha256": "1e951a364ba3bff1815a2f56dc1ee553b619c864f15088d4c642d672911baa60"
-    },
-    {
-      "path": "patches/eliza/launcher-drawer-ownership-client.patch",
-      "models": [
-        "DrawerInteraction"
-      ],
-      "sha256": "943d65727a7b61c94bf5b593688926161208cbf418a44741ce6dea9436f628dc"
-    },
-    {
-      "path": "patches/eliza/launcher-drawer-ownership-client-manifest.json",
-      "models": [
-        "DrawerInteraction"
-      ],
-      "sha256": "304cadaca8d4ea77033ffeba4d687930ac39561beb5a2b0202d1e9efb5a0e97d"
-    },
-    {
-      "path": "patches/eliza/named-embedding-provenance.patch",
-      "models": [
-        "TaskServiceLifecycle",
-        "CanonicalNotesStore",
-        "CoreTurnControllers",
-        "NamedEmbeddingProvenance"
-      ],
-      "sha256": "8e874337cbcebe3e3fb69112db3b36c881ca0bc9737399818a06bb9fabf67f70"
-    },
-    {
-      "path": "patches/eliza/sms-reviewed-binding.patch",
-      "models": [
-        "NativeSmsDispatch",
-        "NativeMmsDispatch"
-      ],
-      "sha256": "1a0f97e4ff2a5e7c5c4a0c9410939e51fb1305c3ae68de6ed703856bb3c603c8"
-    },
-    {
-      "path": "scripts/copy-file-clone.mjs",
-      "sha256": "b1cf1b54d803d75a9dd091e8aa130e78f30af90ea897208f9672d378fa0b4b37",
-      "models": [
-        "Application",
-        "ResidentRuntime"
-      ],
-      "integrationReview": "Build/source admission support only. Domain allocation does not establish complete state coverage or source-model refinement."
-    },
-    {
-      "path": "docs/client-feature-dependency-exceptions.json",
-      "sha256": "dacb9230d3f40bb07230abed237b11a60eb55f5373775802088d6123934c8d70",
-      "models": [
-        "Application"
-      ],
-      "integrationReview": "Build/source admission support only. Domain allocation does not establish complete state coverage or source-model refinement."
+      "sha256": "65a62b665e34dfc370cf10519f82cbfabce7089e65d11b7130498ccbb1b8fa89"
     }
   ],
   "runtimeAssets": [

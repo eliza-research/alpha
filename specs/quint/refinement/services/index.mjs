@@ -35,6 +35,7 @@ import {runNamedEmbeddingProvenanceRefinement} from './named-embedding-provenanc
 import {checkDevelopmentRuntimeLoader} from './development-runtime-loader.mjs';
 import {checkCombinedAgentLauncher} from './combined-agent-launcher.mjs';
 import {checkReviewedWorkflowLauncher} from './reviewed-workflow-launcher.mjs';
+import {checkCoreConnectorCustody} from './core-runtime/connector-custody.mjs';
 
 export async function runServicesRefinement() {
   const receipts = [];
@@ -43,7 +44,8 @@ export async function runServicesRefinement() {
     readingRefinement, scanRefinement, credentialRefinement, pdfRefinement, runSignInCoordinatorRefinement, runCoreRetirementRefinement, runCoreServiceLifecycleRefinement, runCoreRuntimeShutdownRefinement, runTurnControllerRefinement,
     () => checkDevelopmentRuntimeLoader([fileURLToPath(import.meta.url)]),
     () => checkCombinedAgentLauncher([fileURLToPath(import.meta.url)]),
-    () => checkReviewedWorkflowLauncher([fileURLToPath(import.meta.url)])]) {
+    () => checkReviewedWorkflowLauncher([fileURLToPath(import.meta.url)]),
+    () => checkCoreConnectorCustody([fileURLToPath(import.meta.url)])]) {
     const result = await check();
     receipts.push(...(Array.isArray(result) ? result : [result]));
   }
@@ -54,6 +56,8 @@ export async function runServicesRefinement() {
       reason: 'The receipt establishes spawn and process custody. The source campaign uses a closed child process, and live HTTP readiness is a separate observation.'},
     {model: 'ReviewedWorkflowLauncher', obligation: 'Confirm live workflow readiness and capability admission',
       reason: 'Source schedules observe reviewed bytes, child custody and preload rejection under closed ports. The metadata receipt alone does not observe HTTP readiness or permission to execute work.'},
+    {model: 'CoreConnectorCustody', obligation: 'Arbitrary detached callbacks and direct host mutation',
+      reason: 'The bounded source campaign holds selected service, disposal and detached continuations. Untracked host registry mutation and arbitrary scheduling remain separate.'},
     {model: 'CoreTurnControllers', obligation: 'Detached callbacks, reentrant observers and provider composition', reason: 'The source campaign checks lookup, cancellation and closure in two registries. Arbitrary reentrant observers and detached callbacks require separate source schedules.'},
     {model: 'IdentitySession', obligation: 'Installed sign-in integration and physical storage', reason: 'The patched shared sign-in coordinator executes callback claim, credential/receipt commit, acknowledgement, cancellation and replacement under controlled ports. App Link trust, real HTTPS, Keystore durability and process recreation remain external.'},
     {model: 'ServiceAuthorization', obligation: 'Managed-service dispatch authorization', reason: 'Entitlement refresh and admission views execute; exact route validation and server authorization still need their own dispatch trace adapter.'},

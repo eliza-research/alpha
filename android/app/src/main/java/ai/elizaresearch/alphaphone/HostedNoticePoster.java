@@ -50,6 +50,11 @@ final class HostedNoticePoster implements HostedResultNotices.Poster {
   PendingIntent ask=PendingIntent.getActivity(context,sourceId.hashCode(),new Intent(open).setAction(ASK_RENEW_ACTION),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);Notification.Action.Builder question=new Notification.Action.Builder(null,"Ask Alpha",ask);if(Build.VERSION.SDK_INT>=31)question.setAuthenticationRequired(true);
   return new Notification.Builder(context,CHANNEL).setSmallIcon(R.drawable.notification_icon).setContentTitle("A brief source expires soon").setContentText("Renew it to keep your brief updated.").setVisibility(Notification.VISIBILITY_PRIVATE).setPublicVersion(redacted).setContentIntent(tap).addAction(new Notification.Action.Builder(null,"Renew",tap).build()).addAction(question.build()).setOnlyAlertOnce(true).setAutoCancel(true).setTimeoutAfter(HostedResultNotices.renewalTimeout(expiresAt,now)).setCategory(Notification.CATEGORY_REMINDER);
  }
- void postRenewal(String sourceId,long expiresAt,long now){if(!allowed()||expiresAt<=now)return;manager().notify(renewalTag(sourceId),0,renewal(sourceId,expiresAt,now).build());}
+ /** True when the notify call returned. A pre-dispatch refusal keeps the journal retryable. */
+ boolean postRenewal(String sourceId,long expiresAt,long now){
+  if(!allowed()||expiresAt<=now)return false;
+  manager().notify(renewalTag(sourceId),0,renewal(sourceId,expiresAt,now).build());
+  return true;
+ }
  void cancelRenewal(String sourceId){manager().cancel(renewalTag(sourceId),0);for(String action:new String[]{RENEW_ACTION,ASK_RENEW_ACTION}){Intent intent=new Intent(context,MainActivity.class).setAction(action).setData(Uri.parse(RENEW_PREFIX+sourceId));PendingIntent tap=PendingIntent.getActivity(context,sourceId.hashCode(),intent,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_NO_CREATE);if(tap!=null)tap.cancel();}}
 }

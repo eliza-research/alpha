@@ -1818,6 +1818,53 @@
     ]
   },
   {
+    "path": "specs/quint/application/MapsRerouteOwnership.qnt",
+    "module": "MapsRerouteOwnership",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "samePublicIdCanBeNewRouteTest",
+      "exactLiveRefusalTest",
+      "lateSuccessCannotReturnReplacementTest",
+      "lateRefusalCannotReturnReplacementTest",
+      "endKeepsAdmittedReviewRouteTest"
+    ],
+    "invariants": [
+      "GuidanceOwnsWatch",
+      "ExactPublication",
+      "ExactAgentSettlement"
+    ],
+    "sources": [
+      "apps/app/src/prototype/maps-adapter.ts",
+      "apps/app/src/prototype/template.html",
+      "apps/app/src/maps/state.ts",
+      "apps/app/src/maps/screen.ts",
+      "apps/app/src/maps/device-navigation.ts",
+      "apps/app/src/maps/agent-navigation.ts",
+      "vendor/eliza/plugins/plugin-maps/src/client/state.ts",
+      "vendor/eliza/plugins/plugin-maps/src/client/maps-screen.ts",
+      "vendor/eliza/plugins/plugin-maps/src/client/device-navigation.ts",
+      "vendor/eliza/plugins/plugin-maps/src/client/agent-navigation.ts",
+      "patches/eliza/maps-reroute-state-client.patch",
+      "patches/eliza/maps-reroute-state-client-manifest.json",
+      "patches/eliza/maps-reroute-maps-screen-client.patch",
+      "patches/eliza/maps-reroute-maps-screen-client-manifest.json",
+      "patches/eliza/maps-reroute-device-navigation-client.patch",
+      "patches/eliza/maps-reroute-device-navigation-client-manifest.json"
+    ],
+    "stateMapping": {
+      "session/guidanceSession/guidanceRoute/rerouting/fixReady": "Mounted MapsScreenController navigation lifecycle and active guidance",
+      "phase/route/origin/requestOrigins/pending/aborted": "Exact admitted transport bodies, held replies, abort signals, and current MapsController route",
+      "agent/agentSession/settledFor": "Actual resident Maps navigation port request and result plus the screen's exact reroute publication authority",
+      "watches": "Browser geolocation port's live watch count"
+    },
+    "abstractions": [
+      "One mounted Maps component, three fixture route origins, up to three route requests, one agent reroute and a replacement guidance session. Public route IDs may repeat across accepted requests.",
+      "Actual template controls, provider controller and registered resident agent run with closed Cloud transport and precise synthetic geolocation. Reply checkpoints include agent settlement. Android task attribution, installed providers and unrestricted interleavings are external."
+    ]
+  },
+  {
     "path": "specs/quint/application/MapsEventReturn.qnt",
     "module": "MapsEventReturn",
     "init": "init",
@@ -2336,5 +2383,82 @@
       "Mounted pre-commit Camera leave and committed Home, preview-release latch, exact pending request owner, retired stream disposal and deliberate fresh reentry.",
       "Two browser visits and controlled canvas MediaStreams. Native permissions, conversation and media writes are separate."
     ]
+  },
+  {
+    "path": "specs/quint/application/SourceRenewalQuestion.qnt",
+    "module": "SourceRenewalQuestion",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "composeCurrentExactQuestionTest",
+      "retiredSettlementDoesNotReportTest",
+      "unavailableComposerPreservesTapTest",
+      "wrongSourceNeverOpensTest",
+      "interruptedQuestionPreservesTapTest",
+      "explicitDismissalDiscardsExactTapTest",
+      "rejectedNativeSettlementKeepsTapTest"
+    ],
+    "invariants": [
+      "DialogOwnedByCurrent",
+      "FailureOwnedByCurrent",
+      "DraftRequiresSettlement",
+      "StagesAreDisjoint"
+    ],
+    "sources": [
+      "apps/app/src/runtime/hosted-digest-ui.tsx",
+      "apps/app/src/runtime/source-renewal-question.ts",
+      "apps/app/src/runtime/hosted-notice-question.ts",
+      "apps/app/src/browser/content-question.ts"
+    ],
+    "abstractions": [
+      "Mounted notification Ask review, exact reread, native settlement, composer admission and publication within two digest binding lifetimes.",
+      "Controlled Android bridge, native tap slot and composer. Source renewal mutation and native posting are separate."
+    ]
+  },
+  {
+    "path": "specs/quint/application/BrowserFilesTrash.qnt",
+    "module": "BrowserFilesTrash",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "heldTrashProtectsPeerListTest",
+      "heldRestorePreservesPeerMarkerTest",
+      "rejectedJournalWriteReleasesQueueTest",
+      "confirmedOldMarkerSparedNewIncarnationTest",
+      "retentionErasesOnlyExpiredMarkerTest",
+      "failedTrashKeepsLiveRowTest",
+      "failedRestoreKeepsExactMarkerTest"
+    ],
+    "invariants": [
+      "ExclusiveCustody",
+      "ExactTrashMarker",
+      "ListedItemsUseExactRecords",
+      "KeysStayWithinAllocation",
+      "PreparedPlacementKeepsSource"
+    ],
+    "sources": [
+      "apps/app/src/browser/files.ts",
+      "vendor/eliza/plugins/plugin-files/src/browser/storage-volume.ts",
+      "vendor/eliza/plugins/plugin-files/src/browser/storage-model.ts",
+      "vendor/eliza/plugins/plugin-files/src/browser/files.ts",
+      "patches/eliza/files-storage-query-client.patch",
+      "patches/eliza/files-storage-placement-client.patch"
+    ],
+    "stateMapping": {
+      "mode/active/queued/prepared": "Actual Node exclusive lock and same-realm fallback with source requests held at library ports",
+      "rows/keys/journal/allocated": "Physical parent and destination name, exact marker identities and persisted journal bytes",
+      "expired/visible/status/count": "Controlled retention boundary and actual list, move, restore and confirmed-delete results"
+    },
+    "abstractions": [
+      "Two volume instances, one namespace, two files, three marker allocations and one waiting request. Controlled real-source library and journal ports expose rejection and release. Exact reviewed Empty uses one marker.",
+      "Placement checks the original revision and changes parent and name atomically. The journal and file transaction are separate. Cross-tab scheduling, interruption and larger batches remain separate."
+    ],
+    "bounds": {
+      "maxSamples": 1000,
+      "maxSteps": 80,
+      "maxVerifyDepth": 8
+    }
   }
 ]

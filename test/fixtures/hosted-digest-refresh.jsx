@@ -6,6 +6,8 @@ import {HostedSourceRejected, latestRetainedDigest} from '../../apps/app/src/run
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const subscribers = new Set(), intervals = new Map(), requests = [], capabilities = [], releases = [], visited = [];
 const stored = new Map(), writes = [], mutations = [];
+const renewalListeners = new Set(), settlements = [], compositions = [];
+let native = false, renewalTap = null, holdRenewalRead = false, sensitive = false, canCompose = true;
 let selection = {kind: 'none', session: null}, owner = 0, nextInterval = 0, holdStatus = false;
 const createInterval = window.setInterval.bind(window), clearInterval = window.clearInterval.bind(window);
 window.setInterval = (run, delay, ...args) => {
@@ -39,7 +41,16 @@ const date = '2027-01-01T12:00:00.000Z';
 const payload = id => ({cursor: id, runId: 'run-'+id, workflowId: 'fixture-workflow', workflowVersionId: 'fixture-version',
   templateVersion: 'fixture-template', scheduledAt: date, source: {observedAt: date, expiresAt: date},
   status: 'completed', startedAt: date, completedAt: date, output: 'fixture-result-'+id, error: null});
-const slot = id => 'hosted-digests:v1:owner-'+id+':pending';
+const renewalSource = id => ({
+  id: 'source-'+id, kind: 'tasks', label: 'Fixture source '+id, observedAt: date, expiresAt: '2099-01-01T00:00:00.000Z',
+  live: {provider: 'native', ownerId: 'owner-'+id, agentId: 'agent-'+id, installationId: 'install-'+id,
+    enrollmentId: 'enrollment-'+id, sourceId: 'source-'+id, revision: 'revision-'+id},
+});
+const tapFor = (id, question = true) => {
+  const source = renewalSource(id);
+  return {token: 'tap-'+id, selection: source.live, expiresAt: Date.parse(source.expiresAt), question};
+};
+const slot = id => (native ? 'renderer-' : '')+'hosted-digests:v1:owner-'+id+':pending';
 const storageOwner = key => {
   const id = [1, 2].find(owner => slot(owner) === key);
   if (!id) throw Error('Digest storage requires a fixture owner slot');
@@ -51,7 +62,7 @@ const pendingValue = (id, phase) => ({path: 'sources', body: {id: 'fixture-mutat
 const client = id => ({
   fixtureId: id,
   async capabilities(signal) {signal.throwIfAborted(); capabilities.push(id); return {digests: true};},
-  async sources() {return [];},
+  async sources() {return native ? [renewalSource(id)] : [];},
   async loops() {return [];},
   mutate(path, body, signal) {
     signal.throwIfAborted();
@@ -67,6 +78,30 @@ globalThis.hostedDigestRefreshPorts = {
   workflow() {
     const id = owner;
     return id ? {sessionId: 'session-'+id, client: {hosted: () => client(id)}} : null;
+  },
+  context: () => ({context: {sensitive}}),
+  plugin(name) {
+    if (name !== 'AlphaHostedResults') return {};
+    return {
+      async addListener(event, listener) {
+        if (event !== 'renewSource') throw Error('Unexpected native fixture listener '+event);
+        renewalListeners.add(listener);
+        return {async remove() {renewalListeners.delete(listener);}};
+      },
+      async pendingSourceRenewal() {
+        if (!holdRenewalRead) return structuredClone(renewalTap ?? {});
+        holdRenewalRead = false;
+        return request('renewal-read', owner);
+      },
+      async settleSourceRenewal({token, discard}) {
+        if (token !== renewalTap?.token) throw Error('No exact fixture tap '+token);
+        const id = Number(token.at(-1));
+        settlements.push([id, discard]);
+        if (!discard) await request('renewal-settle', id);
+        if (renewalTap?.token === token) renewalTap = null;
+      },
+      async clearSourceRenewal() {},
+    };
   },
   status: () => holdStatus ? request('status', owner, undefined, globalThis.inspectHostedDigestRefresh().open) : Promise.resolve(status),
   async read(key) {return structuredClone(stored.get(storageOwner(key)) ?? null);},
@@ -103,7 +138,15 @@ function press(label) {
   button.click();
 }
 globalThis.hostedDigestRefresh = {
-  mount: () => perform(() => root.render(<HostedDigestPanel />)),
+  mount: (nativeMode = false) => perform(() => {
+    native = nativeMode;
+    root.render(<HostedDigestPanel canComposeQuestion={session => canCompose && session === 'session-'+owner}
+      composeQuestion={(draft, session) => {
+        if (!canCompose || session !== 'session-'+owner) return false;
+        compositions.push({draft, session});
+        return true;
+      }} />);
+  }),
   unmount: () => perform(() => root.unmount()),
   select: id => perform(() => {
     if (id) visited.push(id);
@@ -141,7 +184,30 @@ globalThis.hostedDigestRefresh = {
     Object.defineProperty(document, 'hidden', {configurable: true, value: hidden});
     document.dispatchEvent(new Event('visibilitychange'));
   }),
+  showRenewal: (id, question = true, exact = true) => perform(() => {
+    renewalTap = tapFor(id, question);
+    if (!exact) renewalTap.selection.revision = 'different';
+    for (const notify of renewalListeners) notify();
+  }),
+  acceptRenewal: () => perform(() => {
+    holdRenewalRead = true;
+    document.querySelector('dialog[open] [aria-label="Use in conversation"]').click();
+  }),
+  dismissRenewal: () => perform(() => document.querySelector('dialog[open] button:last-child').click()),
+  interruptRenewal: () => perform(() => window.dispatchEvent(new Event('launcher-home'))),
+  renewalRead: (id, match = true) => perform(() => {
+    const tap = tapFor(id);
+    if (!match) tap.token = 'replaced';
+    reply('renewal-read', id, tap);
+  }),
+  renewalSettle: (id, refuse = false) => perform(() => reply('renewal-settle', id, undefined, refuse)),
+  conversation: allowed => perform(() => {canCompose = allowed;}),
+  sensitivity: blocked => perform(() => {sensitive = blocked;}),
   observe: () => ({...globalThis.inspectHostedDigestRefresh(),
+    renewalDialog: !!document.querySelector('dialog[open] [aria-label="Use in conversation"]'),
+    renewalTap: renewalTap?.token ?? '',
+    renewalExact: !!renewalTap && renewalTap.selection.revision === tapFor(Number(renewalTap.token.at(-1))).selection.revision,
+    sensitive, canCompose, settlements: [...settlements], compositions: [...compositions],
     hidden: document.hidden, brief: latestRetainedDigest(), capabilities: [...capabilities], releases: [...releases], visited: [...visited],
     stored: [...stored].map(([id, row]) => [id, structuredClone(row)]), writes: [...writes], mutations: [...mutations],
     requests: requests.map(({kind, id, signal, full, done}) => ({kind, id, aborted: signal?.aborted ?? false, full, done}))}),

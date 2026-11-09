@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
-import {CORE_STATE_INPUTS, CORE_STATE_TARGET, CORE_STATE_MANIFEST} from '../../scripts/core-state-patch.mjs';
+import {CORE_STATE_INPUTS, CORE_STATE_TARGET, PLUGIN_CONNECTOR_TARGET, CORE_STATE_MANIFEST} from '../../scripts/core-state-patch.mjs';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const repository = path.resolve(import.meta.dirname, '../..');
 
@@ -20,7 +20,7 @@ export function writeCoreStateFixture(root, source, pin, simple = false) {
   for (const patch of manifest.patches) {
     let patchBytes = fs.readFileSync(path.join(repository, 'patches/eliza', patch.file));
     for (const target of patch.targets) {
-      const simpleTarget = simple && target.path === CORE_STATE_TARGET;
+      const simpleTarget = simple && [CORE_STATE_TARGET, PLUGIN_CONNECTOR_TARGET].includes(target.path);
       const before = simpleTarget ? 'export const value = "before";\n' : fs.readFileSync(path.join(repository, 'vendor/eliza', target.path));
       if (simpleTarget) {
         patchBytes = `--- a/${target.path}\n+++ b/${target.path}\n@@ -1 +1 @@\n-export const value = "before";\n+export const value = "after";\n`;

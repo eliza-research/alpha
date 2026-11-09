@@ -27,6 +27,7 @@ import {checkAgentCalendarRefresh} from './agent-calendar-refresh.mjs';
 import {checkAgentCalendarMutation} from './agent-calendar-mutation.mjs';
 import {checkAgentCalendarEventReturn} from './agent-calendar-event-return.mjs';
 import {checkMapsEventReturn} from './maps-event-return.mjs';
+import {checkMapsRerouteOwnership} from './maps-reroute-ownership.mjs';
 import {checkAgentCalendarSyncControl} from './agent-calendar-sync-control.mjs';
 import {checkGoogleCalendarLinkFlow} from './google-calendar-link-flow.mjs';
 import {checkGoogleCalendarDisconnect} from './google-calendar-disconnect.mjs';
@@ -53,6 +54,8 @@ import {checkRendererHostedInbox} from './renderer-hosted-inbox.mjs';
 import {checkHostedBackgroundAdmission} from './hosted-background-admission.mjs';
 import {checkHostedDigestRefresh} from './hosted-digest-refresh.mjs';
 import {checkHostedDigestMutation} from './hosted-digest-mutation.mjs';
+import {checkSourceRenewalQuestion} from './source-renewal-question.mjs';
+import {checkBrowserFilesTrash} from './browser-files-trash.mjs';
 import {checkRendererDigestQueue} from './renderer-digest-queue.mjs';
 import {checkRetainedHomeBrief} from './retained-home-brief.mjs';
 import {checkHomeFailureNotice} from './home-failure-notice.mjs';
@@ -75,14 +78,14 @@ const adapters = [application, shellNavigation, startupPermissions, assistantCon
   permissionWalkthrough, developmentDevice, permanentVoiceDeletion, developmentHost, filesTree,
   calendarPresentation, draftDispatch, notificationCollection, callbackLanding,
   checkBrowserHostedResultNotice, checkHostedNoticeQuestion, checkRendererHostedInbox, checkHostedBackgroundAdmission,
-  checkRendererDigestQueue, checkHostedDigestRefresh, checkHostedDigestMutation,
+  checkRendererDigestQueue, checkHostedDigestRefresh, checkHostedDigestMutation, checkSourceRenewalQuestion, checkBrowserFilesTrash,
   checkRetainedHomeBrief,
   checkCalendarPreservationConfirmation,
   checkCanonicalCalendarEditorClose,
   checkCanonicalCalendarDraftHandoff,
   checkCameraPreviewRetirement,
   runStartupPermissionsCoordinatorRefinement, checkVaultCoordinator, checkNotesCoordinator, listFocus, checkRecoveryUI, checkShellCoordinator, checkNativeViewSubscription, filesPreview, runPermissionChoicesRefinement, checkCanonicalNotesController, checkCanonicalNotesDraft,
-  checkCanonicalNotesFeedback, checkCanonicalNotesMutation, checkCanonicalNotesView, checkCanonicalCalendarDraft, checkAgentCalendarRefresh, checkAgentCalendarMutation, checkAgentCalendarEventReturn, checkMapsEventReturn, checkAgentCalendarSyncControl, checkGoogleCalendarLinkFlow, checkGoogleCalendarDisconnect, checkGoogleCalendarLinkPublication, checkGoogleCalendarAccessChoice, checkFilesBrowserController, checkFilesFilter, checkPhotosWindow, checkPhotosTrash, checkGoogleConsentAdmission, checkGoogleAccessPublication, checkBrowserDeletionPoll, checkBrowserJournalRetention, checkBrowserReminderOrphan, checkBrowserOwnerReminderRead, checkBrowserOwnerReminderAction, checkHomeFailureNotice, checkHomeGesture, checkDrawerInteraction, checkLauncherOwnership, checkLauncherObserver, checkLauncherFavorites, checkAccessibleToastLifetime, checkModalToastForwarding, checkScreenFocusOwnership, checkDockClearanceOwnership, checkMountedUpdateAdmission, checkStartupUpdateAdmission, checkCanonicalNotificationTapAdmission, checkResidentLiveness];
+  checkCanonicalNotesFeedback, checkCanonicalNotesMutation, checkCanonicalNotesView, checkCanonicalCalendarDraft, checkAgentCalendarRefresh, checkAgentCalendarMutation, checkAgentCalendarEventReturn, checkMapsEventReturn, checkMapsRerouteOwnership, checkAgentCalendarSyncControl, checkGoogleCalendarLinkFlow, checkGoogleCalendarDisconnect, checkGoogleCalendarLinkPublication, checkGoogleCalendarAccessChoice, checkFilesBrowserController, checkFilesFilter, checkPhotosWindow, checkPhotosTrash, checkGoogleConsentAdmission, checkGoogleAccessPublication, checkBrowserDeletionPoll, checkBrowserJournalRetention, checkBrowserReminderOrphan, checkBrowserOwnerReminderRead, checkBrowserOwnerReminderAction, checkHomeFailureNotice, checkHomeGesture, checkDrawerInteraction, checkLauncherOwnership, checkLauncherObserver, checkLauncherFavorites, checkAccessibleToastLifetime, checkModalToastForwarding, checkScreenFocusOwnership, checkDockClearanceOwnership, checkMountedUpdateAdmission, checkStartupUpdateAdmission, checkCanonicalNotificationTapAdmission, checkResidentLiveness];
 
 /** Component traces, with remaining obligations kept explicit for the aggregate report. */
 export async function runApplicationRefinement() {

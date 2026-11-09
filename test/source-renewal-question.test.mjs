@@ -15,7 +15,7 @@ test('source renewal Ask requires matching current owner, revision and token; li
   const tap={token:'token',question:true,selection,expiresAt:Date.parse('2026-10-15T00:00:00Z')};
   let current=true,settled=0,discarded=0,composed=0,reported=0;
   const tick=()=>new Promise(r=>setImmediate(r));
-  const options={tap,signal:new AbortController().signal,current:()=>current,recheck:async()=>tap,settle:async discard=>{discard?discarded++:settled++},compose:()=>{composed++;return true},report:()=>{reported++},closed:()=>{}};
+  const options={tap,signal:new AbortController().signal,current:()=>current,recheck:async()=>tap,settle:async discard=>{discard?discarded++:settled++},canCompose:()=>true,compose:()=>{composed++;return true},report:()=>{reported++},closed:()=>{}};
   assert.equal(renewalMatches(tap,selection,'2026-10-15T00:00:00Z'),true);
   for(const field of ['ownerId','agentId','installationId','enrollmentId','sourceId','revision'])assert.equal(renewalMatches(tap,{...selection,[field]:'changed'},'2026-10-15T00:00:00Z'),false);
   reviewSourceRenewalQuestion(options);port.review.closed(true);await tick();assert.equal(discarded,1);assert.equal(settled,0);

@@ -711,3 +711,60 @@ Activity port. This establishes the app's dispatch behavior, while Android
 acceptance, task placement and Settings effects remain external.
 `PermissionChoices` and `StartupPermissions` cover renderer permission
 flow, and `RendererRecovery` covers the native renderer escape buttons.
+
+### Native hosted source renewal
+
+`NativeSourceRenewal` follows the source grant's exact identity through
+arming, durable dispatch reservation, redacted alerts, two opaque tap
+routes, and the latest pending review. The JVM executes the product host,
+ledger, poster and renewal bridge members. It checks the notification
+shape, both tap identities, cancellation and the empty retained wakeup.
+Only a foreground read of an exact current grant can return pending
+metadata.
+
+The as-built replay in commit `63f860a9e2` recorded a posted row after
+notification admission changed between checks and the poster skipped the
+alert. The poster now reports whether its notify call returned. A skipped
+post leaves the row armed, or dispatching if the reset save fails. A
+later eligible post can retry the exact tag. Clear and owner withdrawal
+still cancel the alert and routes before saving, so a reported save
+refusal can leave a posted row after cancellation.
+
+The ports supply synthetic grants, journal outcomes, alert registration,
+and copied intents. No Android Activity is launched. WorkManager timing,
+resident provider behavior and installed notification enforcement remain
+separate.
+
+### Native assistant entry
+
+`NativeAssistantEntry` follows explicit assistant and protected Power Activity
+entry, package-wide Sense invocation custody, legacy renderer hints and the
+Quick Settings tile. The closed JVM compiles the product Activities and tile
+with the pinned shared Sense and tile sources. The fixture executes the exact
+product Power pin and legacy readback members with controlled credential and
+permission inputs. It observes sanitized intents, event count, the actual
+private invocation and grant records, and the exact tile launch request.
+
+The baseline in commit `8d5b94f635` reproduces a trusted cold listener or
+System UI receipt becoming a plain assistant receipt. Installed Capacitor
+assigns the bridge and calls virtual `onNewIntent(getIntent())`, recording a
+second origin after the initial Android caller observation. The repaired
+Activity forwards only the exact current sanitized object during the scoped
+load call without recording a second origin. The bridge still receives the
+intent and renderer event. A copied intent during load and a public
+same-object delivery after load take the ordinary delivery path.
+
+The exact owner can adopt a cold receipt through the inclusive 15-second
+window. A different owner, a late bind, or an initially locked device cannot
+use it for a voice origin. Warm API 35 caller delivery still requires the
+exact foreground binding. Legacy readback supplies a navigation hint. Cold
+Power remains a separate one-shot grant that can be spent or invalidated by
+its own Activity, native credential replacement, focus loss, pause or
+destruction.
+
+The tile fixture checks inactive presentation, canceled and delivered unlock
+callbacks, direct Intent dispatch before API 34, and the explicit immutable
+PendingIntent on API 34 and later. No installed package, Activity, capture or
+device Settings are used. Android caller identity disclosure, component
+availability, permission enforcement, task placement and unlock scheduling
+remain platform obligations.

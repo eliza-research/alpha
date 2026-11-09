@@ -11,35 +11,37 @@
       "upstream.lock.json": "62682bc4e49ea7c2f187a3b688f65289b4092c0438fd1cc210b5892ab306ee9d",
       "patches/eliza/mobile-uuid-build.json": "bf31b0a89b756b5deb7281bd3f56baccba25ccea0337fba04ae2ddf9d31a011b",
       "scripts/build-mobile-agent.mjs": "a806e8eada974f400afe18e00e5cf275d3519ab00462615076e3d4124639a288",
-      "scripts/mobile-uuid-adapter.mjs": "ea9438c30c7a6bb446f6d5c5cffd379796c5b43cc4e1aa614c24b00a48c16678",
+      "scripts/mobile-uuid-adapter.mjs": "5b2f99180a222f743367959b7ba0360d9d30597ba80d91ea126830074d190258",
       "scripts/mobile-bundle-smoke.mjs": "2e4f7ef05ae6f09285c2a6141876c14b5f30539c926a46864bf8862ae8d3b7bd",
-      "scripts/local-agent-source.mjs": "bd5c0ae286c2802fed48f8e51150d4f2de75fb4c8563cfdcdd4d1347fb888c5f",
-      "scripts/core-state-patch.mjs": "25b46e944ecd6a4d5569e8eace9e2f9b22eea2ebdd36075e90fd15d1b9fb6478",
+      "scripts/local-agent-source.mjs": "321abaf05f9e8cbf6e4ba642ec7ebf45a6c693331a637210610a1f7723662daa",
+      "scripts/core-state-patch.mjs": "331e2ce0df2c43a1f34969bc12b54d51292134320599e4a765e77b5129853171",
       "scripts/core-state-preload.mjs": "c5368c9075aa8c7660bee01338185fbe673c9b8dd6889dd1ab01d195efa17c10",
       "scripts/combined-agent-source.mjs": "a2f4d279f3f98ff078f3aedd6b9dc2dc5c3396ecdc7fb7f09b0da7e0c085062e",
-      "patches/eliza/core-state-manifest.json": "9baa7b3e4f6032b18c33a09bd641e13ce8a7cda9de3d120233c7149aa2033953",
+      "patches/eliza/core-state-manifest.json": "c857f206dfed8c329cb44259208937b5016e45ce81b108e8fdbee5df6222e862",
       "patches/eliza/task-service-stop.patch": "d3b80ffb0dad32e3a17b50dbbb0d4c0dfb3f60b0f2a35f577be4612aa2f9db1e",
       "patches/eliza/notes-state-runtime.patch": "5f62c6742a0c8f85f47aec6a629a1454d7cc74c5060d75a72b5c3d77a43dda18",
       "patches/eliza/turn-controller-isolation.patch": "d587459e0123599d17f886fcc855eb90ce7ec20b286a42ce47a02a1ab1bd110b",
       "patches/eliza/room-queue-admission.patch": "343e39a3c756e3679b8a1e577352638119e0f17b1d0535023cbd1720fdddedde",
       "patches/eliza/embedding-store-identity.patch": "358327f35c37bd5862ec6dcaa7657c4db545a548e4d5de63cf8efd8120f01d1e",
-      "patches/eliza/named-embedding-provenance.patch": "8e874337cbcebe3e3fb69112db3b36c881ca0bc9737399818a06bb9fabf67f70"
+      "patches/eliza/named-embedding-provenance.patch": "8e874337cbcebe3e3fb69112db3b36c881ca0bc9737399818a06bb9fabf67f70",
+      "patches/eliza/plugin-connector-custody.patch": "a0f840fa8572fae33dc3958769c4bd9a951e6f18d04c2345979147134a1473b2"
     },
     "coreState": {
       "version": 1,
       "baseCommit": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-      "manifestSha256": "9baa7b3e4f6032b18c33a09bd641e13ce8a7cda9de3d120233c7149aa2033953",
+      "manifestSha256": "c857f206dfed8c329cb44259208937b5016e45ce81b108e8fdbee5df6222e862",
       "inputHashes": {
-        "scripts/core-state-patch.mjs": "25b46e944ecd6a4d5569e8eace9e2f9b22eea2ebdd36075e90fd15d1b9fb6478",
+        "scripts/core-state-patch.mjs": "331e2ce0df2c43a1f34969bc12b54d51292134320599e4a765e77b5129853171",
         "scripts/core-state-preload.mjs": "c5368c9075aa8c7660bee01338185fbe673c9b8dd6889dd1ab01d195efa17c10",
         "scripts/combined-agent-source.mjs": "a2f4d279f3f98ff078f3aedd6b9dc2dc5c3396ecdc7fb7f09b0da7e0c085062e",
-        "patches/eliza/core-state-manifest.json": "9baa7b3e4f6032b18c33a09bd641e13ce8a7cda9de3d120233c7149aa2033953",
+        "patches/eliza/core-state-manifest.json": "c857f206dfed8c329cb44259208937b5016e45ce81b108e8fdbee5df6222e862",
         "patches/eliza/task-service-stop.patch": "d3b80ffb0dad32e3a17b50dbbb0d4c0dfb3f60b0f2a35f577be4612aa2f9db1e",
         "patches/eliza/notes-state-runtime.patch": "5f62c6742a0c8f85f47aec6a629a1454d7cc74c5060d75a72b5c3d77a43dda18",
         "patches/eliza/turn-controller-isolation.patch": "d587459e0123599d17f886fcc855eb90ce7ec20b286a42ce47a02a1ab1bd110b",
         "patches/eliza/room-queue-admission.patch": "343e39a3c756e3679b8a1e577352638119e0f17b1d0535023cbd1720fdddedde",
         "patches/eliza/embedding-store-identity.patch": "358327f35c37bd5862ec6dcaa7657c4db545a548e4d5de63cf8efd8120f01d1e",
-        "patches/eliza/named-embedding-provenance.patch": "8e874337cbcebe3e3fb69112db3b36c881ca0bc9737399818a06bb9fabf67f70"
+        "patches/eliza/named-embedding-provenance.patch": "8e874337cbcebe3e3fb69112db3b36c881ca0bc9737399818a06bb9fabf67f70",
+        "patches/eliza/plugin-connector-custody.patch": "a0f840fa8572fae33dc3958769c4bd9a951e6f18d04c2345979147134a1473b2"
       },
       "patches": [
         {
@@ -65,6 +67,10 @@
         {
           "file": "named-embedding-provenance.patch",
           "sha256": "8e874337cbcebe3e3fb69112db3b36c881ca0bc9737399818a06bb9fabf67f70"
+        },
+        {
+          "file": "plugin-connector-custody.patch",
+          "sha256": "a0f840fa8572fae33dc3958769c4bd9a951e6f18d04c2345979147134a1473b2"
         }
       ],
       "files": {
@@ -111,6 +117,10 @@
         "plugins/plugin-assistant/src/features/advanced-capabilities/experience/service.ts": {
           "beforeSha256": "92e23a48cdb670b2aa02f4c441bedd0abf26122268ee23cdd01f28d974ec2c17",
           "afterSha256": "183053f31c514ab444823e2d3966619f920af3fed212e884d0f23802585e9f47"
+        },
+        "packages/core/src/plugin-lifecycle.ts": {
+          "beforeSha256": "954a7a185c6bb467831a221abd60fb2bec7683e3f5e615408c9ccbece1ccd8be",
+          "afterSha256": "208a5acb62404a722969aa3e11f76edbe6dffd44e66f6f62914148e2a8ed3435"
         }
       },
       "transforms": [
@@ -118,6 +128,11 @@
           "path": "packages/agent/src/api/conversation-routes.ts",
           "sourceSha256": "80dfd6c361678650f5ed94542d0e8db66a0418c0b630e3f4775b684ba06c2cf6",
           "outputSha256": "d0b6102bde8d6c0ab0fa559cf8667f50b3ab5b75b0833554376b30142a1451ac"
+        },
+        {
+          "path": "packages/core/src/plugin-lifecycle.ts",
+          "sourceSha256": "954a7a185c6bb467831a221abd60fb2bec7683e3f5e615408c9ccbece1ccd8be",
+          "outputSha256": "208a5acb62404a722969aa3e11f76edbe6dffd44e66f6f62914148e2a8ed3435"
         },
         {
           "path": "packages/core/src/runtime/embeddings.ts",
@@ -175,11 +190,11 @@
       "version": "1.4.2",
       "revision": "744846f844374847c902b5e7fd59b4342a51ef99"
     },
-    "bundleSha256": "930bc33a7eb7b8d5e8e24617b99327ee290772c3fb15fe2e516a127c6afed9f1",
+    "bundleSha256": "f6974a2c19dd648c4b5126f6a43123b8546961e173ea29d69fdc5ec485318c2e",
     "sourceTreeVerifiedBeforeAndAfter": true,
     "inputHashesUnchanged": true,
-    "rawMetafileSha256": "fa306b455a71776bc8c180f951ee0ac6e5ed5eb6d0a7234b593c4e7d8e786db1",
-    "producerObservationSha256": "9de6f9d7d72c1a2381db42ef66976082206394aa53b68e66f0215d11765a0f47"
+    "rawMetafileSha256": "068acbb3624513e4d67b99f14cd0b46b522b5cc8037cd71cdccf2baf90233f10",
+    "producerObservationSha256": "61183c0f088991cde64b139ce38b0ca7f4d7f19feeedce8bd31f18689b719c56"
   },
   "counts": {
     "parsed": 9988,
@@ -25617,7 +25632,9 @@
     },
     "packages/core/src/plugin-lifecycle.ts": {
       "sha256": "954a7a185c6bb467831a221abd60fb2bec7683e3f5e615408c9ccbece1ccd8be",
-      "bytesInOutput": 26314,
+      "effectiveSourceSha256": "208a5acb62404a722969aa3e11f76edbe6dffd44e66f6f62914148e2a8ed3435",
+      "transformation": "authenticated-core-state",
+      "bytesInOutput": 27002,
       "tracked": true,
       "gitObject": "2ff35bcdda84504de2560860e23c5bec8771460b",
       "imports": [
@@ -62687,7 +62704,7 @@
           "scope": "first-party"
         },
         {
-          "target": "node_modules/.bun/viem@2.56.9+c486653617c72b4e/node_modules/viem/_cjs/index.js",
+          "target": "node_modules/.bun/viem@2.56.9+2b78734613504846/node_modules/viem/_cjs/index.js",
           "kind": "dynamic-import",
           "scope": "virtual-or-unresolved"
         }
@@ -85091,7 +85108,7 @@
           "scope": "first-party"
         },
         {
-          "target": "node_modules/.bun/viem@2.56.9+c486653617c72b4e/node_modules/viem/_cjs/accounts/index.js",
+          "target": "node_modules/.bun/viem@2.56.9+2b78734613504846/node_modules/viem/_cjs/accounts/index.js",
           "kind": "import-statement",
           "scope": "bundled-dependency"
         },
@@ -96583,7 +96600,7 @@
     },
     "plugins/plugin-local-inference/src/services/voice/wake-word.ts": {
       "sha256": "d29607d0602c1712a59e3060da29d39554987e8c35a30003c5ddd035c2a36a24",
-      "bytesInOutput": 6738,
+      "bytesInOutput": 6735,
       "tracked": true,
       "gitObject": "1a0c32165c499612ac599f2b1778b52bcff83ab8",
       "imports": [
@@ -120122,7 +120139,7 @@
     },
     "plugins/plugin-vision/src/vision-worker-manager.ts": {
       "sha256": "227585cb5446d878cc936fb22ccae10c222f76637e389a30b57c5a2d1863b971",
-      "bytesInOutput": 8866,
+      "bytesInOutput": 8863,
       "tracked": true,
       "gitObject": "963484a67214e88aff052f9cd81f4d0d6fa806d1",
       "imports": [

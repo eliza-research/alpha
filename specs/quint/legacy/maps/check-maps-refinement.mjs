@@ -24,11 +24,13 @@ const destination = {latitude: 43.741, longitude: 7.424};
 const far = {latitude: 43.750, longitude: 7.424};
 const label = 'Fixture destination';
 const deviceModule = '/src/browser/device.ts';
+const agentModule = '/src/maps/agent-navigation.ts';
 const fixtureModules = ['/src/runtime/connection-ui.tsx', '/src/maps/cloud-maps.ts', '/src/maps/runtime.ts', deviceModule];
 
-async function setup(page) {
-  await preloadPageModules(page, fixtureModules);
-  await page.evaluate(({paths, destination, label}) => {
+async function setup(page, holdRouteReplies) {
+  const paths = holdRouteReplies ? [...fixtureModules, agentModule] : fixtureModules;
+  await preloadPageModules(page, paths);
+  await page.evaluate(({paths, destination, label, holdRouteReplies}) => {
     const modules = window.__alphaModules;
     const {connectionController} = modules[paths[0]];
     const {cloudMapsDiagnostics} = modules[paths[1]];
@@ -36,7 +38,8 @@ async function setup(page) {
     const providerId = 'eliza-cloud-osm', attribution = 'Synthetic map attribution';
     const position = () => ({providerId, id: 'fixture-place', name: label, coordinate: destination,
       address: 'Synthetic address', attribution, fetchedAt: Date.now()});
-    const f = window.closedMaps = {requests: [], pendingCapability: null, diagnostic: cloudMapsDiagnostics, mapsConnection, routeRefusal: false};
+    const f = window.closedMaps = {requests: [], pendingCapability: null, diagnostic: cloudMapsDiagnostics, mapsConnection, routeRefusal: false,
+      holdRouteReplies: false, pendingRoutes: [], agentPort: holdRouteReplies ? modules[paths[4]].residentMapsNavigationPort : undefined};
     const client = {
       async mapsRequest(endpoint, signal, body) {
         f.requests.push({endpoint, body: body ? structuredClone(body) : null});
@@ -53,11 +56,14 @@ async function setup(page) {
         if (endpoint === 'places/search') return {places: [position()]};
         if (endpoint === 'places/details') return {place: position()};
         if (endpoint === 'routes') {
-          if (f.routeRefusal) throw Object.assign(Error('Fixture provider unavailable'), {
+          const reply = f.holdRouteReplies ? await new Promise(resolve => {
+            f.pendingRoutes.push({body, signal, settle: resolve, settled: false});
+          }) : undefined;
+          if (f.routeRefusal || reply?.refuse) throw Object.assign(Error('Fixture provider unavailable'), {
             name: 'CloudProtocolError', code: 'http', status: 503, data: {code: 'provider_unavailable'},
           });
           const {from, to, mode} = body;
-          return {routes: [{providerId, id: 'route1_fixture_0123456789', from, to, mode, geometry: [from, to],
+          return {routes: [{providerId, id: reply?.id ?? 'route1_fixture_0123456789', from, to, mode, geometry: [from, to],
             distanceMeters: 333, durationSeconds: 223, attribution, fetchedAt: Date.now(), traffic: 'none',
             steps: [{instruction: 'Continue to destination', coordinate: to, distanceMeters: 333, maneuver: 'arrive'}]}]};
         }
@@ -67,7 +73,7 @@ async function setup(page) {
     };
     const owner = {sessionId: 'synthetic-maps-owner', credentialId: 'synthetic-maps-credential', client};
     connectionController.getCloudClient = () => owner;
-  }, {paths: fixtureModules, destination, label});
+  }, {paths, destination, label, holdRouteReplies});
 }
 
 async function observe(page) {
@@ -172,7 +178,7 @@ async function offlineRecovery(page) {
   return {trace: t.trace, differences: [['MapsHistoricalOfflinePrompt', oldError]]};
 }
 
-async function route(page, t) {
+export async function route(page, t) {
   await open(page, t, true);
   await search(page);
   await expect(result(page)).toBeVisible();
@@ -185,8 +191,8 @@ async function route(page, t) {
   await expect(input).toBeVisible();
   await expect(sheet(page, 'directions')).toContainText('Choose a real origin to calculate a route.');
   assert.equal((await requests(page)).some(row => row.endpoint === 'routes'), false);
-  const immediate = difference(t.trace, 'directions_wait_for_explicit_origin_before_route');
-  immediate.steps.push({label: 'Directions without an origin has no accepted route', action: action('Directions'), expect: await observe(page)});
+  const immediate = t.trace && difference(t.trace, 'directions_wait_for_explicit_origin_before_route');
+  immediate?.steps.push({label: 'Directions without an origin has no accepted route', action: action('Directions'), expect: await observe(page)});
   await input.fill(origin.latitude+', '+origin.longitude);
   await input.press('Enter');
   await expect(sheet(page, 'directions')).toContainText(/no live traffic/);
@@ -195,7 +201,7 @@ async function route(page, t) {
     [{from: origin, to: destination, mode: 'drive'}]);
   return immediate;
 }
-function geo(page, point) {
+export function geo(page, point) {
   return page.evaluate(point => {
     const f = window.closedMapsGeo;
     const latest = [...f.watches.values()].at(-1);
@@ -203,7 +209,7 @@ function geo(page, point) {
     latest({coords: {...point, accuracy: 5}, timestamp: Date.now()});
   }, point);
 }
-async function start(page, t) {
+export async function start(page, t) {
   await button(page, 'Start').click();
   await expect(button(page, 'End navigation')).toBeVisible();
   await page.waitForFunction(() => window.closedMapsGeo.watches.size === 1);
@@ -241,7 +247,7 @@ async function guidance(page) {
   ]};
 }
 
-async function portraitGuidance(page) {
+async function guidanceTargets(page, viewports) {
   const viewport = page.viewportSize();
   const settle = () => page.evaluate(() => new Promise(resolve =>
     requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(resolve)))));
@@ -257,10 +263,12 @@ async function portraitGuidance(page) {
   try {
     for (const percent of [100, 150]) {
       await setText(percent);
-      for (const [width, height] of [[412, 915], [360, 640]]) {
+      for (const [width, height] of viewports) {
         await page.setViewportSize({width, height});
+        await page.waitForFunction(landscape => document.documentElement.classList.contains('alpha-landscape') === landscape,
+          width > height);
         await settle();
-        const targets = await page.evaluate(() => {
+        const {targets, rightDock} = await page.evaluate(landscape => {
           const root = document.querySelector('[data-alpha-maps-root]');
           const end = root.querySelector('button[aria-label="End navigation"]');
           const owns = (node, x, y) => node.contains(document.elementFromPoint(x, y));
@@ -283,14 +291,39 @@ async function portraitGuidance(page) {
           const attribution = [...root.querySelectorAll('.alpha-map-credits a')].map(node =>
             ({label: node.textContent.trim(), owned: textLines(node)}));
           const notice = root.querySelector('[data-alpha-maps-status] [role="status"]');
-          return [...guidance, {label: 'Map information', owned: points(information, [0.05, 0.2, 0.5, 0.8, 0.95])},
-            ...attribution, {label: notice.textContent.trim(), owned: textLines(notice)}];
-        });
+          const pill = root.closest('[data-screen]').querySelector('[data-alpha-layer="pill"]');
+          const rail = pill?.getBoundingClientRect(), app = root.getBoundingClientRect();
+          const dockButtons = pill ? [...pill.querySelectorAll('button,[role="button"]')].filter(node =>
+            node.getClientRects().length && !node.closest('[aria-hidden="true"],[inert]')) : [];
+          return {
+            targets: [...guidance, {label: 'Map information', owned: points(information, [0.05, 0.2, 0.5, 0.8, 0.95])},
+              ...attribution, {label: notice.textContent.trim(), owned: textLines(notice)}],
+            rightDock: landscape && rail ? {
+              atRight: rail.left > app.left + app.width / 2 && Math.abs(rail.right - app.right) < 1,
+              controls: dockButtons.map(node => ({label: node.getAttribute('aria-label'), owned: points(node, [0.5])[1]})),
+            } : null,
+          };
+        }, width > height);
         assert.equal(targets.length, 9, 'Four guidance controls, Map information, three attribution links and status');
         for (const {label, owned} of targets) {
           assert.ok(owned.length && owned.every(Boolean), `${width}×${height} at ${percent}%: ${label} owns its sampled points`);
         }
-        observations.push({width, height, percent, targets});
+        if (width > height) {
+          assert.ok(rightDock?.atRight, 'The landscape assistant pill remains right-docked');
+          assert.ok(rightDock.controls.length && rightDock.controls.every(control => control.owned),
+            'The assistant pill still owns the centers of its controls');
+          const information = page.locator('[data-alpha-maps-root] summary[aria-label="Map information"]');
+          await information.tap();
+          await expect(information.locator('..')).toHaveAttribute('open', '');
+          const coordinates = information.locator('..').getByRole('button', {name:'Enter coordinates', exact:true});
+          assert.ok(await coordinates.evaluate(node => {
+            const box = node.getBoundingClientRect();
+            return node.contains(document.elementFromPoint(box.left+box.width/2, box.top+box.height/2));
+          }), 'The open disclosure owns its first action');
+          await information.tap();
+          await expect(information.locator('..')).not.toHaveAttribute('open', '');
+        }
+        observations.push({width, height, percent, targets, ...(rightDock ? {rightDock} : {})});
       }
     }
   } finally {
@@ -311,7 +344,8 @@ async function reroute(page) {
   await expect(rerouteButton).toBeVisible();
   assert.equal((await requests(page)).filter(row => row.endpoint === 'routes').length, 1);
   await t.point('An off-route fix preserves the route pending an explicit choice', action('OffRoute'));
-  const portrait = await portraitGuidance(page);
+  const portrait = await guidanceTargets(page, [[412, 915], [360, 640]]);
+  const landscape = await guidanceTargets(page, [[915, 412], [640, 360]]);
   await page.evaluate(() => {
     window.closedMaps.routeRefusal = true;
     document.addEventListener('pointerdown', event => {
@@ -338,13 +372,14 @@ async function reroute(page) {
     action: [action('CloudFault'), action('OffRoute')],
     expect: {'s.screen': after['s.screen'], 's.route': after['s.route'], 's.message': after['s.message']}});
   assert.equal(after['s.session'], 'ready');
-  return {trace: t.trace, differences: [['MapsHistoricalFailedRerouteKeepsRoute', failed]], portrait};
+  return {trace: t.trace, differences: [['MapsHistoricalFailedRerouteKeepsRoute', failed]], portrait, landscape};
 }
 
-async function mounted(extraSources) {
+export async function mountClosedMaps(extraSources, runs, holdRouteReplies = false) {
   checkClientFeatures();
   const watched = new Set([adapter, ...['maps-screen.ts', 'state.ts', 'cloud-provider.ts', 'cloud-session.ts']
     .map(path => resolve(root, '.eliza/client-features/plugins/plugin-maps/src/client/'+path))]);
+  if (holdRouteReplies) watched.add(resolve(root, '.eliza/client-features/plugins/plugin-maps/src/client/device-navigation.ts'));
   const sources = [...new Set([
     ...filesWithin(resolve(root, 'apps/app/src')), ...filesWithin(resolve(root, '.eliza/client-features')),
     ...filesWithin(resolve(root, 'config')), ...filesWithin(resolve(root, 'patches/eliza')),
@@ -376,14 +411,15 @@ async function mounted(extraSources) {
         if (path === adapter) {
           const anchor = '  let returningToEvent:';
           assert.equal(code.split(anchor).length, 2);
-          return code.replace(anchor, '  Object.assign(window, {inspectHistoricalMaps: () => ({route: mapsController?.snapshot().route, arrived: surface.guidance()?.arrived === true})});\n'+anchor);
+          const fields = holdRouteReplies ? ', guidance: surface.guidance(), session: screen.navSession, publication: screen.reroutePublication' : '';
+          return code.replace(anchor, '  Object.assign(window, {inspectHistoricalMaps: () => ({route: mapsController?.snapshot().route, arrived: surface.guidance()?.arrived === true'+fields+'})});\n'+anchor);
         }
       }}]});
     await server.listen();
     browser = await chromium.launch({headless: true});
     const base = 'http://127.0.0.1:'+server.httpServer.address().port;
     const results = [];
-    for (const run of [passiveOffline, offlineRecovery, guidance, reroute]) {
+    for (const run of runs) {
       const page = await browser.newPage({viewport: {width: 412, height: 915}, hasTouch: true, reducedMotion: 'reduce'});
       page.setDefaultTimeout(40000);
       const foreign = [], errors = [];
@@ -421,10 +457,10 @@ async function mounted(extraSources) {
           navigator.mediaDevices.getUserMedia = async () => {throw Error('Maps fixture forbids physical capture');};
       });
       try {
-        await page.goto(base+'/', {waitUntil: 'domcontentloaded', timeout: 60000});
-        await expect(button(page, 'Maps')).toBeVisible();
+        await page.goto(base+'/', {waitUntil: 'commit', timeout: 120000});
+        await expect(button(page, 'Maps')).toBeVisible({timeout: 120000});
         await page.waitForFunction(() => typeof window.inspectHistoricalMaps === 'function');
-        await setup(page);
+        await setup(page, holdRouteReplies);
         const navigations = [];
         page.on('framenavigated', frame => {if (frame === page.mainFrame()) navigations.push(frame.url());});
         results.push(await run(page));
@@ -447,12 +483,12 @@ async function mounted(extraSources) {
 }
 
 export async function checkMapsRefinement(extraSources = []) {
-  const {results, sources, driverHashes} = await mounted(extraSources);
+  const {results, sources, driverHashes} = await mountClosedMaps(extraSources, [passiveOffline, offlineRecovery, guidance, reroute]);
   const shared = {model, modelPath, sources, driverHashes, scope: 'bounded-orchestration', assumptions: [
     'Actual flag-off Maps renderer, shared Maps screen/controller, Cloud provider and browser location run in Chromium. The account transport, external map style and precise fixes are closed synthetic ports. No geographic request leaves the fixture.',
     'Connection observations are scoped to the captured synthetic owner and its actual capability requests. The network, subscription and Cloud service facts are controlled inputs. Informational and unmodeled notices have no historical error category.',
     'The accepted Directions projection includes the owner entering explicit origin coordinates. The real Arrived projection checks the screen and released location separately from the accepted route retained in the arrival state.',
-    'Mounted hit tests cover the guidance bar, Map information, attribution links and status at two portrait sizes and text scales, followed by actual touch reroute admission.',
+    'Mounted hit tests cover guidance, Map information, attribution and status at two sizes per orientation and two text scales. Landscape checks the right-docked assistant and taps Map information. Portrait taps Reroute and observes its exact admission.',
     'Calendar return, native background service, remote agent requests, installed permission flow and fairness are independent obligations.',
   ]};
   const receipt = await checkTraces({...shared, traces: results.map(result => result.trace)});
@@ -465,5 +501,6 @@ export async function checkMapsRefinement(extraSources = []) {
     assert.ok(mismatch.driverInputsBound);
     mismatches.push({...mismatch, id, receiptPath});
   }
-  return {receipts: [receipt], mismatches, portrait: results.flatMap(result => result.portrait ?? [])};
+  return {receipts: [receipt], mismatches, portrait: results.flatMap(result => result.portrait ?? []),
+    landscape: results.flatMap(result => result.landscape ?? [])};
 }

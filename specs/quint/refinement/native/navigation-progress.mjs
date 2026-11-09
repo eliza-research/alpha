@@ -13,6 +13,8 @@ const maps=prepared+'/plugins/plugin-maps/src/client';
 const adapter='apps/app/src/prototype/maps-adapter.ts';
 const fallbackPatch='patches/eliza/maps-hidden-fallback-client.patch';
 const fallbackManifest='patches/eliza/maps-hidden-fallback-client-manifest.json';
+const reroutePatch='patches/eliza/maps-reroute-maps-screen-client.patch';
+const rerouteManifest='patches/eliza/maps-reroute-maps-screen-client-manifest.json';
 const position=(east,north=0)=>({latitude:north/6371000*180/Math.PI,longitude:east/6371000*180/Math.PI});
 const destination=position(500);
 const labels=['First','Second','Arrive'];
@@ -37,7 +39,7 @@ async function captureImplementation(additionalSources=[]){
  const discover=await build(options);
  const inputs=Object.keys(discover.metafile.inputs).filter(path=>existsSync(resolve(path)));
  const sources=[...inputs,modelPath,adapter,'upstream.lock.json',preparedManifest,'package-lock.json',
-  'scripts/prepare-client-features.mjs',fallbackPatch,fallbackManifest,
+  'scripts/prepare-client-features.mjs',fallbackPatch,fallbackManifest,reroutePatch,rerouteManifest,
   fileURLToPath(import.meta.url),...additionalSources];
  const driverHashes=captureInputs(sources);
  const manifest=JSON.parse(readFileSync(preparedManifest,'utf8'));
@@ -45,10 +47,15 @@ async function captureImplementation(additionalSources=[]){
  if(manifest.baseCommit!==pin)throw Error('Maps source is from a different prepared pin');
  const patch=JSON.parse(readFileSync(fallbackManifest,'utf8'));
  const provenance=manifest.mapsHiddenFallbackPatch;
+ const reroute=JSON.parse(readFileSync(rerouteManifest,'utf8'));
+ const rerouteProvenance=manifest.mapsRerouteScreenPatch;
  const hash=path=>createHash('sha256').update(readFileSync(path)).digest('hex');
  if(!provenance||provenance.baseCommit!==pin||provenance.path!==patch.path||
     provenance.manifestSha256!==hash(fallbackManifest)||patch.patchSha256!==hash(fallbackPatch)||
-    manifest.sourceFiles[patch.path]!==patch.beforeSha256||manifest.files[patch.path]!==patch.afterSha256)
+    manifest.sourceFiles[patch.path]!==patch.beforeSha256||provenance.afterSha256!==patch.afterSha256||
+    reroute.beforeSha256!==patch.afterSha256||reroute.path!==patch.path||
+    rerouteProvenance?.manifestSha256!==hash(rerouteManifest)||reroute.patchSha256!==hash(reroutePatch)||
+    manifest.files[patch.path]!==reroute.afterSha256)
   throw Error('Prepare the authenticated Maps hidden-fallback patch before checking navigation');
  for(const path of inputs.filter(path=>path.startsWith(prepared+'/'))){
   const expected=manifest.files[relative(prepared,path)];

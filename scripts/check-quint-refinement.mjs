@@ -26,6 +26,16 @@ const report = {schemaVersion: 1, startedAt: new Date().toISOString(), evidence:
   reportingInputHashes: Object.fromEntries(reportingInputs.map(path => [path, sha256(readFileSync(join(repositoryRoot, path)))])),
   modelCount: models.length, families: [], models: [], obligations: [], checksPassed: false, completeApplicationRefinement: false};
 let failed = false;
+function diagnostic(error) {
+  const lines = [];
+  let cause = error;
+  for (let depth = 0; depth < 4; depth++) {
+    lines.push(cause instanceof Error ? cause.stack ?? cause.message : String(cause));
+    if (!(cause instanceof Error) || cause.cause === undefined) break;
+    cause = cause.cause;
+  }
+  return lines.join('\nCaused by: ').replace(/data:text\/javascript;base64,[\w+/=]+(?:#tsx-namespace=[\w-]+)?/g, '[bundled source]');
+}
 for (const family of requested) {
   const modulePath = join(repositoryRoot, 'specs/quint/refinement', family, 'index.mjs');
   if (!existsSync(modulePath)) {
@@ -35,9 +45,8 @@ for (const family of requested) {
     continue;
   }
   try {
-    // Service adapters import parameter-property TypeScript. Browser fixture
-    // functions retain Node's plain stripping so serialized callbacks have no
-    // out-of-scope transform helpers.
+    // Services and historical core adapters import parameter-property TypeScript.
+    // Serialized browser fixtures supply any helpers from that transform locally.
     const module = family === 'services' || family === 'legacy'
       ? await tsImport(pathToFileURL(modulePath).href, import.meta.url)
       : await import(pathToFileURL(modulePath).href);
@@ -45,13 +54,14 @@ for (const family of requested) {
     if (typeof run !== 'function') throw Error(`Missing runner for ${family}`);
     const result = await run();
     if (!Array.isArray(result.receipts) || !Array.isArray(result.obligations)) throw Error(`Invalid adapter report for ${family}`);
-    report.families.push({family, status: 'checked', receipts: result.receipts});
+    const failures = result.failures?.map(({campaign, error}) => ({campaign, error: diagnostic(error)})) ?? [];
+    if (failures.length) failed = true;
+    report.families.push({family, status: failures.length ? 'failed' : 'checked', receipts: result.receipts,
+      ...(failures.length ? {failures} : {})});
     report.obligations.push(...result.obligations);
   } catch (error) {
     failed = true;
-    const detail = error instanceof Error ? error.stack ?? error.message : String(error);
-    const diagnostic = detail.replace(/data:text\/javascript;base64,[\w+/=]+(?:#tsx-namespace=[\w-]+)?/g, '[bundled source]');
-    report.families.push({family, status: 'failed', error: diagnostic});
+    report.families.push({family, status: 'failed', error: diagnostic(error)});
   }
 }
 for (const model of models) {

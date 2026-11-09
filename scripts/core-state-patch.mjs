@@ -9,6 +9,7 @@ export const CORE_STATE_MANIFEST = 'patches/eliza/core-state-manifest.json';
 export const CORE_STATE_TARGET = 'packages/core/src/services/task.ts';
 export const TURN_STATE_TARGET = 'packages/core/src/runtime/turn-controller.ts';
 export const ROOM_QUEUE_TARGET = 'packages/core/src/runtime/room-handler-queue.ts';
+export const PLUGIN_CONNECTOR_TARGET = 'packages/core/src/plugin-lifecycle.ts';
 export const EMBEDDING_STATE_TARGET = 'packages/core/src/runtime/embeddings.ts';
 export const NAMED_EMBEDDING_TARGETS = [
   'plugins/plugin-sql/src/base.ts',
@@ -25,6 +26,7 @@ const reviewedPatches = [
   {file: 'room-queue-admission.patch', paths: [ROOM_QUEUE_TARGET]},
   {file: 'embedding-store-identity.patch', paths: [EMBEDDING_STATE_TARGET]},
   {file: 'named-embedding-provenance.patch', paths: NAMED_EMBEDDING_TARGETS},
+  {file: 'plugin-connector-custody.patch', paths: [PLUGIN_CONNECTOR_TARGET]},
 ];
 export const CORE_STATE_INPUTS = ['scripts/core-state-patch.mjs', 'scripts/core-state-preload.mjs',
   'scripts/combined-agent-source.mjs', CORE_STATE_MANIFEST,
@@ -119,7 +121,7 @@ export function coreStateBuildPlugin(root, source) {
   const prepared = coreStatePatch(root, source), transforms = [];
   const byPath = new Map([...prepared.files].map(([name, entry]) => [path.resolve(source, name), {name, entry}]));
   const plugin = {name: 'authenticated-core-state', setup(build) {
-    build.onLoad({filter: /(?:[\\/]packages[\\/]core[\\/]src[\\/]services[\\/]task\.ts|[\\/]packages[\\/]core[\\/]src[\\/]runtime[\\/](?:turn-controller|room-handler-queue|embeddings)\.ts|[\\/]plugins[\\/]plugin-notes[\\/]src[\\/](?:service|store|types|validation)\.ts|[\\/]plugins[\\/]plugin-sql[\\/]src[\\/]base\.ts|[\\/]packages[\\/]agent[\\/]src[\\/]api[\\/]conversation-routes\.ts|[\\/]plugins[\\/]plugin-assistant[\\/]src[\\/]features[\\/]advanced-capabilities[\\/]experience[\\/]service\.ts)$/}, args => {
+    build.onLoad({filter: /(?:[\\/]packages[\\/]core[\\/]src[\\/]services[\\/]task\.ts|[\\/]packages[\\/]core[\\/]src[\\/]plugin-lifecycle\.ts|[\\/]packages[\\/]core[\\/]src[\\/]runtime[\\/](?:turn-controller|room-handler-queue|embeddings)\.ts|[\\/]plugins[\\/]plugin-notes[\\/]src[\\/](?:service|store|types|validation)\.ts|[\\/]plugins[\\/]plugin-sql[\\/]src[\\/]base\.ts|[\\/]packages[\\/]agent[\\/]src[\\/]api[\\/]conversation-routes\.ts|[\\/]plugins[\\/]plugin-assistant[\\/]src[\\/]features[\\/]advanced-capabilities[\\/]experience[\\/]service\.ts)$/}, args => {
       const selected = byPath.get(path.resolve(args.path));
       if (!selected) throw Error('Unexpected core patch module path');
       const {name, entry} = selected;

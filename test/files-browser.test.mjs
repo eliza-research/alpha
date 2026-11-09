@@ -15,11 +15,13 @@ function library(){
  const kids=id=>[...rows.values()].filter(r=>r.parentId===id);
  const insert=(parentId,name,extra)=>{if(parentId!=='root'&&!rows.get(parentId)?.directory)throw Error('Choose a folder.');if(kids(parentId).some(r=>r.name===name))throw Error('Choose a different name.');const id=crypto.randomUUID();rows.set(id,{id,parentId,name,revision:rev(),modifiedAt:clock,...extra});return id;};
  const mutate=(input,change)=>{const row=rows.get(input.id);if(!row||row.revision!==input.expectedRevision)throw Error('This file changed.');const next=change(row);if(next&&kids(next.parentId).some(r=>r.id!==row.id&&r.name===next.name))throw Error('Choose a different name.');if(next)rows.set(row.id,{...next,revision:rev()});else rows.delete(row.id);};
+ const relocate=(input,name)=>mutate(input,row=>{let a=input.destinationId;while(a&&a!=='root'){if(a===row.id)throw Error('outside');a=rows.get(a)?.parentId;}return {...row,parentId:input.destinationId,name:name??row.name};});
  const api={rows,
   async list({id='root'}){if(id!=='root'&&!rows.get(id)?.directory)throw Error('Choose a folder.');return {folder:{id},entries:kids(id).map(({bytes,...r})=>r)};},
   async createFolder({id,name}){insert(id,name,{directory:true,mimeType:'',size:0});},
   async rename(input){mutate(input,row=>({...row,name:input.name}));},
-  async move(input){mutate(input,row=>{let a=input.destinationId;while(a&&a!=='root'){if(a===row.id)throw Error('outside');a=rows.get(a)?.parentId;}return {...row,parentId:input.destinationId};});},
+  async move(input){relocate(input);},
+  async place(input){relocate(input,input.name);},
   async delete(input){mutate(input,row=>{if(kids(row.id).length)throw Error('Empty this folder.');return null;});},
   async select({id}){const row=rows.get(id);if(!row||row.directory)throw Error('Choose a file.');const selectionId=crypto.randomUUID();sel.set(selectionId,id);return {status:'selected',selectionId,name:row.name,mimeType:row.mimeType};},
   async attachment({selectionId}){const row=rows.get(sel.get(selectionId));return {name:row.name,mimeType:row.mimeType,dataBase64:Buffer.from(row.bytes).toString('base64')};},
@@ -137,8 +139,8 @@ test('trash items expire after 30 days; folder moves into themselves are refused
 async function assertMovingTrashRecord(){
  const v=await fresh();await v.add('Download','moving.pdf');
  const peer=new BrowserStorageVolume(v.lib,{trashFolder:TRASH_FOLDER,trashKey:'alpha.files.trash.v1'},()=>{},()=>clock,v.fixtureStore);
- const arrived=Promise.withResolvers(), release=Promise.withResolvers(), move=v.lib.move;
- v.lib.move=async input=>{arrived.resolve();await release.promise;return move(input);};
+ const arrived=Promise.withResolvers(), release=Promise.withResolvers(), place=v.lib.place;
+ v.lib.place=async input=>{arrived.resolve();await release.promise;return place(input);};
  const moving=v.trash(['Download/moving.pdf']);await arrived.promise;
  const listing=peer.trashList();
  await new Promise(setImmediate);
@@ -162,9 +164,9 @@ test('finishing a held Restore preserves a peer Trash write',async()=>{
  const v=await fresh();await v.add('Download','first.pdf');await v.add('Download','second.pdf');
  const {outcomes:[first]}=await v.trash(['Download/first.pdf']);
  const peer=new BrowserStorageVolume(v.lib,{trashFolder:TRASH_FOLDER,trashKey:'alpha.files.trash.v1'},()=>{},()=>clock,v.fixtureStore);
- const restored=Promise.withResolvers(), release=Promise.withResolvers(), move=v.lib.move;
+ const restored=Promise.withResolvers(), release=Promise.withResolvers(), place=v.lib.place;
  const download=await idOf(v.lib,'Download');
- v.lib.move=async input=>{if(input.destinationId===download){restored.resolve();await release.promise;}return move(input);};
+ v.lib.place=async input=>{if(input.destinationId===download){restored.resolve();await release.promise;}return place(input);};
  const restoring=v.restore([first.to]);await restored.promise;
  const moving=peer.trash(['Download/second.pdf']);
  await new Promise(setImmediate);

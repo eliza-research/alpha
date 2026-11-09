@@ -14,13 +14,11 @@ conversation minimization and arrival. A fresh off-route fix keeps guidance
 and prompts for an explicit reroute. A real touch on the rendered button
 checks the exact route request endpoints. The same mounted replay checks
 guidance controls, Map information, attribution links and status text at
-412×915 and 360×640 with 100% and 150% browser text. These are derived
-renderer checks over the shell's measured dock clearance. End and arrival
-also release the synthetic location watch.
-
-Landscape has a separate layout obligation. At 915×412 the right-docked
-assistant can overlap part of Ask, and the guidance bar can cover Map
-information and attribution.
+412×915, 360×640, 915×412 and 640×360 with 100% and 150% browser text.
+The landscape checks also open and close Map information by touch, sample
+the first disclosure action and check the controls on the right-docked
+assistant. These are derived renderer checks over the shell's measured
+dock clearance. End and arrival also release the synthetic location watch.
 
 The separate mismatch receipts capture these differences.
 

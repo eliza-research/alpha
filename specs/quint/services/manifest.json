@@ -1811,6 +1811,55 @@
         "maxSteps": 80,
         "maxVerifyDepth": 13
       }
+    },
+    {
+      "path": "specs/quint/services/CoreConnectorCustody.qnt",
+      "module": "CoreConnectorCustody",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "lateReturnedStartDoesNotReopenRouteTest",
+        "detachedOldStampCannotTakeReplacementTest",
+        "earlyRivalRetainsBothExactClaimsTest",
+        "unscopedHostPublicationSurvivesOldStopTest",
+        "disposeSettlesBeforeWithdrawalTest",
+        "sharedClassUsesSeparateRuntimeStampsTest"
+      ],
+      "invariants": [
+        "PublicRoutesHaveExactLiveOwner",
+        "PublicRoutesKeepGenerationProvenance",
+        "ExactKeyHasAtMostOneClaim",
+        "StartStampStaysLocal",
+        "WithdrawnServiceDoesNotPublish",
+        "StopIsSingleFlight"
+      ],
+      "sources": [
+        "vendor/eliza/packages/core/src/plugin-lifecycle.ts",
+        "vendor/eliza/packages/core/src/runtime/connector-registry.ts",
+        "vendor/eliza/packages/core/src/runtime/connector-registration.ts",
+        "vendor/eliza/packages/core/src/runtime/service-lifecycle.ts",
+        "vendor/eliza/packages/core/src/runtime.ts",
+        "patches/eliza/plugin-connector-custody.patch",
+        "patches/eliza/core-state-manifest.json",
+        "scripts/core-state-patch.mjs"
+      ],
+      "stateMapping": {
+        "lanes.owner/lanes.rival/lanes.claims": "Actual public plugin ownership record and exact account/default/message/post/legacy claims",
+        "lanes.routes": "Public connector descriptors and synthetic dispatch readback. Hidden owner stamps are checked through these effects.",
+        "lanes.capture/lanes.retired": "Abstract exact runtime and ownership object identity at registration/service start and withdrawal",
+        "lanes.disposing/lanes.phase/lanes.stops/lanes.detached/lanes.continuation": "Held actual disposal, service admission/publication, stop invocation, and detached continuation progress",
+        "isolation": "Same class object registered in two separate runtime instances"
+      },
+      "abstractions": [
+        "One first plugin generation, one same-name replacement, one rival, one default and one named account, five exact keys and one service per runtime. The isolation profile uses two runtimes with a shared class identity.",
+        "Synchronous fixture publication across message, post and legacy APIs forms one action. Explicit direct unregistration, unscoped asynchronous callbacks and arbitrary plugin effects remain separate."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 6
+      }
     }
   ]
 }

@@ -55,7 +55,7 @@ type SignInMode='ok'|'created'|'mfa'|'hold'|'offline'|'readiness-hold'|'not-read
 type SignInFixtureInput={signIn?:SignInMode;tokens?:Record<string,string>;keys?:unknown[];serviceName?:string;keyLifetimeMs?:number;methods?:{email:boolean;phone:boolean;google:boolean}};
 async function boot(page:Page,origin:string,initial:SignInFixtureInput={}){
  page.on('pageerror',(error:Error)=>console.error('Composition page error:',error.message));
- await page.addInitScript(initial=>{
+ const initialize=(initial:SignInFixtureInput)=>{
   const w=window as any;
   if(!sessionStorage.getItem('signin-fixture-seeded')){sessionStorage.setItem('signin-fixture-seeded','1');localStorage.setItem('alpha.startup-permissions.v1',JSON.stringify({dismissed:true,attempted:{}}));}
   const f=w.signInFixture={signIn:'ok',...initial,saved:false as boolean,credential:null as any,running:false,bound:false,calls:[] as any[],release:null as null|((error:unknown)=>void)};
@@ -114,8 +114,14 @@ async function boot(page:Page,origin:string,initial:SignInFixtureInput={}){
    if(path==='/api/v1/billing/limits')return {status:404,data:{}};
    throw Error('Unexpected Cloud route '+path);
   }};
- },initial);
+ };
+ // The transformed Node caller can emit __name calls inside the serialized
+ // initializer. Keep the helper and initializer together in the browser.
+ await page.addInitScript(`(() => {
+  const __name = (value, name) => Object.defineProperty(value, 'name', {value: name, configurable: true});
+  (${initialize.toString()})(${JSON.stringify(initial)});
+ })();`);
  await page.goto(origin+'/subscription-composition',{waitUntil:'domcontentloaded',timeout:90000});
  // The composition imports the complete runtime before publishing its readiness marker.
- await expect.poll(()=>page.evaluate(()=>(window as any).planFlags),{timeout:30000}).toEqual({native:'android',mocks:false});
+ await expect.poll(()=>page.evaluate(()=>(window as any).planFlags),{timeout:90000}).toEqual({native:'android',mocks:false});
 }

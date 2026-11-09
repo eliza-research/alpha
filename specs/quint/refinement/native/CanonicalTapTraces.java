@@ -50,6 +50,7 @@ final class AlphaLocalAgentPlugin {
 }
 
 public final class CanonicalTapTraces {
+ public static long elapsedRealtime(){return TapPorts.now;}
  static void check(boolean condition,String message){if(!condition)throw new AssertionError(message);}
  static Field field(String name)throws Exception{
   var value=AlphaCanonicalNotifications.class.getDeclaredField(name);value.setAccessible(true);return value;
