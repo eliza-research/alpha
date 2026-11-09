@@ -3136,5 +3136,30 @@
     "abstractions": [
       "One serialized turn and representative supported, legacy, malformed and replacement process replies. The actual JSON and streaming requests run through closed bridge ports."
     ]
+  },
+  {
+    "path": "specs/quint/application/PhotosOwnedAlbumDialog.qnt",
+    "module": "PhotosOwnedAlbumDialog",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "replacementRetiresControlsTest",
+      "deleteNeedsFreshControlsTest",
+      "lateCompletionDoesNotCloseSuccessorTest",
+      "hiddenAndDepartedRejectControlTest",
+      "chooserStageRetiresMembershipControlsTest"
+    ],
+    "invariants": [
+      "ExactAlbumRevision",
+      "PendingOwnsARequest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/camera-adapter.ts",
+      "apps/app/src/prototype/template.html"
+    ],
+    "abstractions": [
+      "One Photos view, two synthetic albums, representative media revision bindings and one outstanding mutation. The album library and native bridge are closed ports."
+    ]
   }
 ]

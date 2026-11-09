@@ -37,6 +37,7 @@ import {checkReminderOpenIntent} from './reminder-open-intent.mjs';
 import {checkFirstSendDraftMigration} from './first-send-draft-migration.mjs';
 import {checkShadeNoticeQuestionAdmission} from './shade-notice-question-admission.mjs';
 import {checkWorkflowClockAdmission} from './workflow-clock-admission.mjs';
+import {checkPhotosOwnedAlbumDialog} from './photos-owned-album-dialog.mjs';
 import {checkBrowserExternalHandoff} from './browser-external-handoff.mjs';
 import {checkObservationTurnDispatch} from './observation-turn-dispatch.mjs';
 import {checkClientObservationSupport} from './client-observation-support.mjs';
@@ -109,6 +110,7 @@ const adapters = [checkChatAttachments, application, shellNavigation, startupPer
   checkNotesRecorderMediaAdmission, checkRetainedReminderTapAdmission, checkReminderOpenIntent, checkFirstSendDraftMigration,
   checkShadeNoticeQuestionAdmission, checkWorkflowClockAdmission,
   checkBrowserExternalHandoff,
+  checkPhotosOwnedAlbumDialog,
   checkClientObservationSupport,
   checkObservationTurnDispatch,
   checkEmailSuggestionReview,

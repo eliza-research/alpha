@@ -1,9 +1,10 @@
 # Quint implementation refinement
 
-The current implementation refinement continues in [draft PR 839](https://github.com/eliza-research/alphaphone/pull/839) on SDK
-`99b49439ce9d0cb5607e9831b9f7f58d89525029`. The migration and its approved
-product-source prerequisite are in merged PR 825. PR 838 integrated the
-first refinement PR, 835, into main. The family manifests bind the reviewed
+The current implementation refinement continues in
+[draft PR 843](https://github.com/eliza-research/alphaphone/pull/843) on SDK
+`b1817660a0347ae19551b9ee296410fe55f02d59`. The migration and its approved
+product-source prerequisite are in merged PR 825. PRs 835, 838, 839 and 842
+contain earlier source-refinement work. The family manifests bind the reviewed
 source owners, and the source inventory lists the remaining review work.
 
 ## Original source baseline
@@ -1368,13 +1369,13 @@ Closing the conversation retires the review before insertion. The replay
 records local draft insertion at a closed Inbox port. The composer,
 actual DOM focus and provider delivery remain separate.
 
-`BrowserExternalHandoff` checks 13 schedules and 79 checkpoints using the
-actual renderer handoff and byte-matched shared tab host. After the final
-presentation await, the handoff verifies the current Browser view and
-exact navigation commitment. The replay reproduces stale calls after view
-departure and a same-address recommit, and checks private approval and
-duplicate suppression. The bridge is closed. Android chooser delivery and
-external application behavior remain separate.
+`BrowserExternalHandoff` checks 16 schedules and 98 checkpoints using the
+actual renderer handoff and byte-matched shared tab host. Leaving the
+Browser view or backgrounding the document retires the originating visit.
+The handoff checks the unlocked screen and exact navigation after waiting
+for presentation and before opening a private review or calling the
+bridge. The replay covers returning to the same tab, locking and a
+same-address recommit. Android chooser delivery remains separate.
 
 `ClientObservationSupport` checks 21 schedules and 114 checkpoints in the
 actual optional-field handshake, observing all nine modeled fields. The
@@ -1405,3 +1406,12 @@ closed Android fixture forwards the captured request to the exact Java
 bridge, then returns its reply to the original renderer promise. The
 replay observes package inventory refresh, notices and drawer ownership.
 Installed Settings behavior and task placement remain separate.
+
+
+`PhotosOwnedAlbumDialog` checks 10 schedules and 98 checkpoints in the
+actual Photos album manager with a closed library. A retained Save
+previously used the replacement dialog's album and revision. The rendered
+controls now bind the exact dialog and stage, and late completion leaves
+a successor alone. The replay observes exact album and media mutation
+payloads. Durable storage, multi-item batches and device behavior remain
+separate.
