@@ -9,11 +9,11 @@ import {preloadPageModules} from './page-modules.ts';
 export async function installOneCalendar(page:Page,{googleInFeed,google=true,localEvents=true}:{googleInFeed:boolean;google?:boolean;localEvents?:boolean}){
  await page.route(/^https?:\/\/(?!127\.0\.0\.1:|localhost:)/,route=>route.abort());
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
- await page.goto('/');
+ await page.goto('/',{waitUntil:'domcontentloaded'});
  await expect(page.getByRole('button',{name:'Calendar',exact:true})).toBeVisible();
  // Loaded first: an evaluate left awaiting a cold module import can be collected (page-modules.ts).
  await preloadPageModules(page,['/src/runtime/connection-ui.tsx']);
- await page.evaluate(async({googleInFeed,google,localEvents})=>{
+ const initialize=async({googleInFeed,google,localEvents}:{googleInFeed:boolean;google:boolean;localEvents:boolean})=>{
   const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');
   const identity={ownerId:'one-calendar-owner',agentId:'one-calendar-agent',sessionId:'one-calendar-session',origin:location.origin};
   const owner='owner@example.test',grant='alpha-google:'+'c'.repeat(64),holidays='en.usa#holiday@group.v.calendar.google.com';
@@ -52,6 +52,11 @@ export async function installOneCalendar(page:Page,{googleInFeed,google=true,loc
   const snapshot={...c.getSnapshot(),cloudAccount:{environment:'production',userId:'8d0f6a3e-1c2b-4d5e-9f60-7a8b9c0d1e2f',organizationId:'1e2f3a4b-5c6d-4e7f-8a9b-0c1d2e3f4a5b',sessionId:'one-calendar-cloud',credentialId:'one-calendar-credential'}};
   c.getSnapshot=()=>snapshot as any;
   window.dispatchEvent(new CustomEvent('alpha:canonical-calendar-invalidated',{detail:{sessionId:identity.sessionId}}));
- },{googleInFeed,google,localEvents});
+ };
+ // Keep tsx's function-name helper in the serialized callback's own scope.
+ await page.evaluate(`(() => {
+  const __name = (value, name) => Object.defineProperty(value, 'name', {value: name, configurable: true});
+  return (${initialize.toString()})(${JSON.stringify({googleInFeed,google,localEvents})});
+ })()`);
  await expect.poll(()=>page.evaluate(()=>(window as any).oneCalendarFixture.requests.filter((r:string)=>r.includes('/api/lifeops/calendar/next-context')).length)).toBeGreaterThan(0);
 }
