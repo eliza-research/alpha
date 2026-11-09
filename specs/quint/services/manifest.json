@@ -2325,6 +2325,51 @@
         "maxSteps": 80,
         "maxVerifyDepth": 7
       }
+    },
+    {
+      "path": "specs/quint/services/ResidentJavaSourceStage.qnt",
+      "module": "ResidentJavaSourceStage",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "publishReplacementTest",
+        "anchorFailureKeepsPriorTest",
+        "inputAdmissionTest",
+        "privateCandidateFailureTest",
+        "restorePriorOnPublicationFailureTest",
+        "refusedRestoreKeepsBackupAcrossRetryTest",
+        "unexpectedOutputIsPreservedTest"
+      ],
+      "invariants": [
+        "PublishedPairUsesReviewedGeneration",
+        "RefusalPreservesPublishedPair",
+        "FailedRestoreRetainsBothPairs"
+      ],
+      "sources": [
+        "scripts/stage-local-agent-sources.mjs",
+        "scripts/local-agent-source.mjs",
+        "android/consumer-host.json",
+        "app.config.json",
+        "upstream.lock.json",
+        "vendor/eliza/packages/app/scripts/mobile/android/resident-host-sources.mjs",
+        "vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs"
+      ],
+      "stateMapping": {
+        "selected/admission": "Exact reviewed commit and prepared workspace admission",
+        "published/before/previous/candidate": "Byte-verified Java tree and source manifest generations",
+        "occupied": "Unexpected file at the generated output root",
+        "result": "Normal CLI success or specific generation, publication or restoration failure"
+      },
+      "abstractions": [
+        "Two approved synthetic commit generations, one committed rewrite-anchor refusal and at most one stranded transaction.",
+        "Only settled serial CLI outcomes. Process interruption, concurrent reader or producer behavior and actual Gradle consumption remain separate."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 7
+      }
     }
   ]
 }

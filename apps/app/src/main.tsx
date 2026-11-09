@@ -62,7 +62,7 @@ import { DailyApps } from './daily';
 import { installPrototypeVoiceAdapter } from './prototype/voice-adapter';
 import { installPrototypeBrowserAdapter } from './prototype/browser-adapter';
 import { installCalendarAdapter } from './prototype/calendar-adapter';
-import { installSettingsAdapter, readAppearanceChoice, resolveAppearance } from './prototype/settings-adapter';
+import { hasAppearancePreview, installSettingsAdapter, readAppearanceChoice, resolveAppearance } from './prototype/settings-adapter';
 import { ConnectionChooser, connectionController, connectionChooserVisible, residentAlwaysPresent } from './runtime/connection-ui';
 import { protectedPowerLaunchState } from './runtime/power-launch-state';
 import { installListenerInvocation, stopWakeListenerForChatOnly } from './runtime/always-on-listener';
@@ -108,7 +108,7 @@ const mock = testMocksEnabled && (query.get('mode') === 'mock' || savedMock);
 const systemShade=shadeSurface({native:isAndroid,simulated:devSurfacesEnabled});
 const fixture = testMocksEnabled && (mock || (devSurfacesEnabled && !isAndroid && query.get('fixture') === '1'));
 const initialTheme = (() => {
-  if (testMocksEnabled && (query.has('theme') || fixture)) return query.get('theme') === 'dark' ? 'dark' : 'light';
+  if (hasAppearancePreview(query) || fixture) return query.get('theme') === 'dark' ? 'dark' : 'light';
   return resolveAppearance(readAppearanceChoice());
 })();
 document.documentElement.dataset.connectionMode = mock ? 'mock' : 'live';

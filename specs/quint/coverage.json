@@ -14540,7 +14540,6 @@
     },
     {
       "path": "apps/app/src/main.tsx",
-      "sha256": "6bd9f5e8eb3ac838ec92fa5bb7d050a801982632dfb66674f7cb170f2bf79ce1",
       "models": [
         "Application",
         "AccessibleToastLifetime",
@@ -14550,10 +14549,13 @@
         "MountedUpdateAdmission",
         "StartupUpdateAdmission",
         "CanonicalNotificationTapAdmission",
-        "ShadeNoticeQuestionAdmission"
+        "ShadeNoticeQuestionAdmission",
+        "AppearancePreferenceAdmission"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "040b43ceb5f45ef3c1407636978e382af38248abdd39d47eb0d831f47c1e24bf",
       "stateAnchors": [
         {
           "line": 92,
@@ -14598,6 +14600,18 @@
         {
           "line": 110,
           "text": "const initialTheme = (() => {"
+        },
+        {
+          "line": 111,
+          "text": "if (hasAppearancePreview(query) || fixture) return query.get('theme') === 'dark' ? 'dark' : 'light';"
+        },
+        {
+          "line": 112,
+          "text": "return resolveAppearance(readAppearanceChoice());"
+        },
+        {
+          "line": 113,
+          "text": "})();"
         },
         {
           "line": 115,
@@ -24632,7 +24646,8 @@
         "CanonicalCalendarEditorClose",
         "CameraPreviewRetirement",
         "RetainedReminderTapAdmission",
-        "ReminderOpenIntent"
+        "ReminderOpenIntent",
+        "AppearancePreferenceAdmission"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -33626,13 +33641,87 @@
         "PreferencesAndPresentation",
         "SettingsNav",
         "NativeUpdateStaging",
-        "CalendarPreservationConfirmation"
+        "CalendarPreservationConfirmation",
+        "AppearancePreferenceAdmission"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "06f4eedc5fd1d70fb76dbc1fd955170f131a4b7941cc5abc816a23a30d7390d2",
-      "stateAnchors": []
+      "sha256": "f30de9846f5ab69fc1b778dd42a52ccf53de626fc83e76c546feb751f208e3b1",
+      "stateAnchors": [
+        {
+          "line": 204,
+          "text": "export function hasAppearancePreview(query: URLSearchParams): boolean {"
+        },
+        {
+          "line": 205,
+          "text": "return testMocksEnabled && query.has('theme');"
+        },
+        {
+          "line": 206,
+          "text": "}"
+        },
+        {
+          "line": 459,
+          "text": "if(!hasAppearancePreview(new URLSearchParams(location.search))){"
+        },
+        {
+          "line": 460,
+          "text": "// A read from storage or the system scheme carries a marker, so componentDidUpdate never writes it back."
+        },
+        {
+          "line": 461,
+          "text": "const apply=()=>{const theme=resolveAppearance(readAppearanceChoice());this.setState({theme,appearanceStorageRead:{theme}});};"
+        },
+        {
+          "line": 462,
+          "text": "if(!Capacitor.isNativePlatform()){"
+        },
+        {
+          "line": 464,
+          "text": "this.appearanceResumeListener=apply;"
+        },
+        {
+          "line": 467,
+          "text": "apply();"
+        },
+        {
+          "line": 489,
+          "text": "// The marker travels with React state, so queued external reads cannot echo an older theme."
+        },
+        {
+          "line": 490,
+          "text": "const external=this.state?.appearanceStorageRead;"
+        },
+        {
+          "line": 494,
+          "text": "catch { this.toast('Theme changed for this session, but could not be saved.'); }"
+        },
+        {
+          "line": 496,
+          "text": "};"
+        },
+        {
+          "line": 499,
+          "text": "window.removeEventListener('alpha:settings-page',this.settingsNavigation);"
+        },
+        {
+          "line": 907,
+          "text": "if(row.label==='Theme'&&row.kSeg){"
+        },
+        {
+          "line": 909,
+          "text": "const stored=readAppearanceChoice(),choice:AppearanceChoice=resolveAppearance(stored)===api.theme?stored:api.theme==='dark'?'dark':'light';"
+        },
+        {
+          "line": 912,
+          "text": "try{localStorage.setItem(APPEARANCE_KEY,next);}"
+        },
+        {
+          "line": 915,
+          "text": "owner?.setState({theme,appearanceStorageRead:{theme}});"
+        }
+      ]
     },
     {
       "path": "apps/app/src/prototype/share-panel-adapter.ts",
@@ -44389,12 +44478,14 @@
     },
     {
       "path": "apps/app/src/runtime/share-panel.ts",
-      "sha256": "e50d4eebabcdadac4e72efd39f5ec94c00e9b42fc4b7dc2439d1399c4dc7a1e7",
       "models": [
-        "FilesAndSharing"
+        "FilesAndSharing",
+        "SharePanelAdmission"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "fb2264d0d1adc4a95f7b6e334af28d47fcb44017a93ebfd9a6f5d159e335e093",
       "stateAnchors": [
         {
           "line": 4,
@@ -44407,6 +44498,18 @@
         {
           "line": 7,
           "text": "let emailComposer:((title:string,text:string)=>void)|undefined;"
+        },
+        {
+          "line": 12,
+          "text": "export function openSharePanel(options:SharePanelOptions):Promise<void>{"
+        },
+        {
+          "line": 13,
+          "text": "openPanel?.();"
+        },
+        {
+          "line": 14,
+          "text": "if(document.hidden||!options.current())return Promise.resolve();"
         },
         {
           "line": 16,
@@ -44465,12 +44568,24 @@
           "text": "if(!run){button.disabled=true;button.style.opacity='.5';if(reason){const hint=document.createElement('p');hint.textContent=reason;hint.style.fontSize='13px';dialog.append(button,hint);return;}}"
         },
         {
+          "line": 32,
+          "text": "button.onclick=()=>{if(closed)return;if(document.hidden||!options.current()){status.textContent='The selection changed. Close and choose it again.';return;}finish();try{void Promise.res"
+        },
+        {
+          "line": 37,
+          "text": "action('Cancel',()=>{});dialog.append(status);dialog.addEventListener('cancel',event=>{event.preventDefault();finish();});dialog.addEventListener('close',finish);"
+        },
+        {
           "line": 39,
           "text": "dialog.addEventListener('keydown',event=>{if(event.key!=='Tab')return;const buttons=Array.from(dialog.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')),first=buttons[0],last=buttons.at(-1)"
         },
         {
           "line": 40,
           "text": "document.addEventListener('visibilitychange',hidden);window.addEventListener('alpha-back',back,true);window.addEventListener('pagehide',finish);for(const event of retirementEvents)window.addEventListe"
+        },
+        {
+          "line": 41,
+          "text": "try{dialog.showModal();dialog.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();}catch{finish();}"
         }
       ]
     },
@@ -48296,7 +48411,8 @@
         "ResidentRuntime",
         "ReviewedWorkflowLauncher",
         "NativeGoogleHostArtifact",
-        "PreparedSourceStamp"
+        "PreparedSourceStamp",
+        "ResidentJavaSourceStage"
       ],
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
@@ -48519,13 +48635,135 @@
       "path": "scripts/stage-local-agent-sources.mjs",
       "models": [
         "MobileBundleAdmission",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "ResidentJavaSourceStage"
       ],
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
-      "sha256": "9fb41560c3c21a2b7b54add5c562f5f6e0140ee7a9f3d23b38a7a212f09f6f18",
-      "stateAnchors": []
+      "sha256": "cb927eaaaaf0a8479d0d34b943ffaef964ee92b42fed0220dc8bf4a942f4135d",
+      "stateAnchors": [
+        {
+          "line": 8,
+          "text": "const pin=JSON.parse(fs.readFileSync(path.join(root,'upstream.lock.json'),'utf8')).commit;"
+        },
+        {
+          "line": 9,
+          "text": "if(execFileSync('git',['-C',upstream,'rev-parse','HEAD'],{encoding:'utf8'}).trim()!==pin)throw Error('Unexpected native runtime source pin');"
+        },
+        {
+          "line": 11,
+          "text": "if(!/^[a-z][a-z0-9]*(\\.[a-z][a-z0-9]*)+$/.test(identity))throw Error('Invalid application identity');"
+        },
+        {
+          "line": 13,
+          "text": "const runtimeSource=sourceDirectory(root);"
+        },
+        {
+          "line": 15,
+          "text": "verifySource(runtimeSource,pin);"
+        },
+        {
+          "line": 20,
+          "text": "const parent=path.join(root,'android/app/build/generated');"
+        },
+        {
+          "line": 21,
+          "text": "const published=path.join(parent,'local-agent');"
+        },
+        {
+          "line": 22,
+          "text": "fs.mkdirSync(parent,{recursive:true});"
+        },
+        {
+          "line": 23,
+          "text": "const transaction=fs.mkdtempSync(path.join(parent,'.local-agent-stage-'));"
+        },
+        {
+          "line": 24,
+          "text": "const candidate=path.join(transaction,'candidate');"
+        },
+        {
+          "line": 29,
+          "text": "const staged=stageResidentHostSources({"
+        },
+        {
+          "line": 30,
+          "text": "sourceRoot:runtimeSource,"
+        },
+        {
+          "line": 33,
+          "text": "packageName:identity,"
+        },
+        {
+          "line": 34,
+          "text": "sockets:residentHost.sockets,"
+        },
+        {
+          "line": 36,
+          "text": "environmentHook:residentHost.environmentHook,"
+        },
+        {
+          "line": 38,
+          "text": "},"
+        },
+        {
+          "line": 40,
+          "text": "helpers:residentHost.helpers,"
+        },
+        {
+          "line": 41,
+          "text": "});"
+        },
+        {
+          "line": 43,
+          "text": "path:row.path,"
+        },
+        {
+          "line": 44,
+          "text": "generatedPath:path.join(path.relative(root,published),path.relative(candidate,row.generatedFile)),"
+        },
+        {
+          "line": 45,
+          "text": "sourceSha256:row.sourceSha256,"
+        },
+        {
+          "line": 49,
+          "text": "fs.writeFileSync(path.join(candidate,'source-manifest.json'),JSON.stringify(manifest,null,2)+'\\n',{flag:'wx'});"
+        },
+        {
+          "line": 50,
+          "text": "// Under the serial Gradle producer, publish the tree and its receipt together."
+        },
+        {
+          "line": 51,
+          "text": "const existing=fs.lstatSync(published,{throwIfNoEntry:false});"
+        },
+        {
+          "line": 53,
+          "text": "if(!existing.isDirectory()||fs.readdirSync(published).some(name=>name!=='java'&&name!=='source-manifest.json'))"
+        },
+        {
+          "line": 55,
+          "text": "fs.renameSync(published,previous);"
+        },
+        {
+          "line": 58,
+          "text": "try{fs.renameSync(candidate,published);}"
+        },
+        {
+          "line": 62,
+          "text": "fs.renameSync(previous,published);"
+        },
+        {
+          "line": 65,
+          "text": "throw new AggregateError([error,restoreError],`Resident Java publication and restore failed. Previous output retained at ${previous}`);"
+        },
+        {
+          "line": 73,
+          "text": "if(!preservePrevious)fs.rmSync(transaction,{recursive:true,force:true,maxRetries:3,retryDelay:100});"
+        }
+      ]
     },
     {
       "path": "scripts/stage-workflow-worker.mjs",
@@ -132171,7 +132409,8 @@
       "models": [
         "DevelopmentRuntimeLoader",
         "NativeGoogleHostArtifact",
-        "PreparedSourceStamp"
+        "PreparedSourceStamp",
+        "ResidentJavaSourceStage"
       ],
       "scope": "shared-upstream",
       "treatment": "domain-contract-or-support",
@@ -132191,6 +132430,17 @@
           "text": "if (!allowedGenerated(file))"
         }
       ]
+    },
+    {
+      "path": "vendor/eliza/packages/app/scripts/mobile/android/resident-host-sources.mjs",
+      "models": [
+        "ResidentJavaSourceStage"
+      ],
+      "scope": "shared-upstream",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "sha256": "b04b9d5144c6f5be05dad9c84b09d9ce64ecf8face015ac6264d4d5d6f1097b1",
+      "stateAnchors": []
     },
     {
       "path": "vendor/eliza/packages/app/src/api/auth-pairing-routes.ts",
@@ -618463,7 +618713,8 @@
         "NativeMmsDispatch",
         "NativeCrashJournal",
         "NativeSettingsHandoff",
-        "NativeAssistantEntry"
+        "NativeAssistantEntry",
+        "ResidentJavaSourceStage"
       ],
       "sha256": "cf0146eab41d40b6c298d168f1bbb3e9329b0889bedfab966321dfe28f4eef39",
       "integrationReview": "specs/quint/pixel-native-review-20261109.md"
@@ -618481,7 +618732,8 @@
       "path": "app.config.json",
       "models": [
         "Application",
-        "PreferencesAndPresentation"
+        "PreferencesAndPresentation",
+        "ResidentJavaSourceStage"
       ],
       "sha256": "c31484ec76141dc78cf7dc28fa4c60d8c62885e31f27e18755e87f0c18119bb0"
     },
@@ -619226,7 +619478,8 @@
         "CoreTurnControllers",
         "ReviewedWorkflowLauncher",
         "NativeGoogleHostArtifact",
-        "PreparedSourceStamp"
+        "PreparedSourceStamp",
+        "ResidentJavaSourceStage"
       ],
       "sha256": "bd5c0ae286c2802fed48f8e51150d4f2de75fb4c8563cfdcdd4d1347fb888c5f",
       "integrationReview": "Retains the reviewed source boundary and authenticated patch catalog; integration also admits installed dependency ranges and bounded source-copy helpers. Configuration identity alone is not runtime/refinement evidence."
@@ -619384,7 +619637,8 @@
         "CanonicalNotesStore",
         "CoreTurnControllers",
         "MobileBundleAdmission",
-        "NativeGoogleHostArtifact"
+        "NativeGoogleHostArtifact",
+        "ResidentJavaSourceStage"
       ],
       "sha256": "a5e200ab85930ea76d129ef7f15ba9c500a44c2b301bf1a4b8965aea298672c6"
     },
@@ -619437,13 +619691,20 @@
         "NativeGoogleHostArtifact"
       ],
       "sha256": "41acc142aab04535ae7ced0827b159b8d7fbefe0096f96282085d47682e57576"
+    },
+    {
+      "path": "patches/eliza/browser-tab-underlay-native.patch",
+      "models": [
+        "Application"
+      ],
+      "sha256": "766476a1546b4b556e55e2e2dd63581b6c4c1d4510225568c93c312dd8d257e3"
     }
   ],
   "runtimeAssets": [
     "apps/app/index.html"
   ],
   "sharedSourceDiscovery": {
-    "sharedSourceCount": 4867,
+    "sharedSourceCount": 4868,
     "producer": "specs/quint/refinement/services/runtime-bundle-inputs.json",
     "sourcePin": "b1817660a0347ae19551b9ee296410fe55f02d59",
     "meaning": "Authenticated source identities and domain allocations. Runtime activation and implementation refinement require separate evidence."

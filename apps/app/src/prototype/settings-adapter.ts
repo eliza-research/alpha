@@ -201,6 +201,9 @@ export function settingsNavigationRows<T extends { label?: string; lbl?: string 
 /** Saved appearance choice. 'system' follows prefers-color-scheme, which Android WebView also reports. */
 export type AppearanceChoice = 'system' | 'light' | 'dark';
 export const APPEARANCE_KEY = 'alpha.appearance.v1';
+export function hasAppearancePreview(query: URLSearchParams): boolean {
+  return testMocksEnabled && query.has('theme');
+}
 export function readAppearanceChoice(): AppearanceChoice {
   try { const value = localStorage.getItem(APPEARANCE_KEY); return value === 'dark' || value === 'system' ? value : 'light'; }
   catch { return 'light'; }
@@ -453,7 +456,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     window.addEventListener('alpha:device-settings',this.mailImagePreferenceChanged);
     initializeDevicePreferences(); void refresh(); void refreshCapabilities(); void checkForUpdate(false)?.then(changed);
     this.passwordLifecycle = passwordManagerLifecycle(changed);
-    if(!new URLSearchParams(location.search).has('theme')){
+    if(!hasAppearancePreview(new URLSearchParams(location.search))){
       // A read from storage or the system scheme carries a marker, so componentDidUpdate never writes it back.
       const apply=()=>{const theme=resolveAppearance(readAppearanceChoice());this.setState({theme,appearanceStorageRead:{theme}});};
       if(!Capacitor.isNativePlatform()){
