@@ -1336,8 +1336,12 @@ clock instant. Both recovery producers can pass the observed token, and
 the candidate rotates it while preserving the delivery key. On the
 original source, recovering a legacy tokenless claim twice after an
 interruption can change that key. The candidate preserves the fallback in
-the atomic claim. Receipt-bearing mutations, direct writers and the final
-pre-dispatch check at each delivery boundary still need review and replay.
+the atomic claim. A separate scratch replay reproduces stale
+receipt-bearing writes in the SDK memory, PGlite and record stores. An
+occurrence-specific guard preserved both same-key snooze replay and
+distinct completion receipts from the same occurrence. The record store
+ran through a closed transaction port. Direct writers, terminal receipt
+replay and the final check at each delivery boundary remain open.
 
 `PersonalAssistantScheduledTaskCustody` checks eight schedules and 60
 checkpoints through selected actual Personal Assistant policies and the
