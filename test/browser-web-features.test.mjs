@@ -61,7 +61,10 @@ test('site permissions are origin-bound prompts, stored only for normal tabs and
   assert.match(plugin, /!page\.equals\(BrowserDownloads\.origin\(t\.web\.getUrl\(\)\)\)\)return null;/, 'same-document navigations (pushState, fragments) keep the page origin');
   assert.match(plugin, /runtimePermissions\.launch\(missing\.toArray/, 'chained to the Android runtime permission');
   assert.match(plugin, /if\(!t\.priv\)try\{sessionStore\.clearPermissionsForSite\(cleared\);\}/);
-  assert.match(store, /seal\(bounded\)/, 'decisions are sealed with the Keystore key');
+  // Eliza owns the record format; Alpha owns which preference is unsealed and resealed.
+  assert.match(store, /getString\("permissions",null\)/);
+  assert.match(store, /BrowserSitePermissionRecord\.read\(frame\.open\(packed\)\)/);
+  assert.match(store, /String bounded=BrowserSitePermissionRecord\.write\(decisions\);\s*if\(!preferences\.edit\(\)\.putString\("permissions",frame\.seal\(bounded\)\)/);
 });
 
 test('HTTP authentication is a native prompt for the page host over a secure connection only', () => {

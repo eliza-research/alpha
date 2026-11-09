@@ -1,51 +1,23 @@
-import { readFileSync } from "node:fs";
-import { stripTypeScriptTypes } from "node:module";
-import { resolve } from "node:path";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
-const root = resolve(import.meta.dirname, "../..");
-const compile = (path: string) =>
-	stripTypeScriptTypes(readFileSync(resolve(root, path), "utf8"), {
-		mode: "strip",
-	}).replace(/^import[\s\S]*?;\n/gm, "");
-const source = [
-	".eliza/client-features/packages/core/src/events.ts",
-	".eliza/client-features/packages/core/src/views/view-interact-protocol.ts",
-	".eliza/client-features/packages/core/src/views/view-action-handoff.ts",
-	".eliza/client-features/packages/core/src/views/completed-action-navigation.ts",
-	"apps/app/src/runtime/alpha-client.ts",
-	"apps/app/src/runtime/aosp-image.ts",
-	"apps/app/src/prototype/mvp-features.ts",
-	"apps/app/src/runtime/view-navigation.ts",
-]
-	.map(compile)
-	.join("\n");
-async function setup(page: import("@playwright/test").Page) {
+async function setup(page: Page) {
 	// Native WebView and localhost are secure contexts; about:blank is not.
 	await page.route('**/__navigation-fixture',route=>route.fulfill({contentType:'text/html',body:'<main id="screen">Home</main>'}));
 	await page.goto('/__navigation-fixture');
-	await page.addScriptTag({
-		type: "module",
-		content:
-			"const browserDevProfile=false; const Capacitor={getPlatform:()=>\"web\",PluginHeaders:[]};\n" +
-			source +
-			"\nwindow.ViewNavigationClient=ViewNavigationClient;",
-	});
-	await page.evaluate(() => {
+	await page.evaluate(async () => {
+		const { ViewNavigationClient } = await import("/src/runtime/view-navigation.ts");
 		const win = window as any;
 		win.active = true;
 		win.current = { view: "home", revision: 1, sensitive: false };
 		win.requests = [];
 		win.switches = 0;
-		win.client = new win.ViewNavigationClient(
-			async (path: string, body: unknown) => {
-				win.requests.push({ path, body });
-				if (path.endsWith("claim")) return { claimId: "owned-claim" };
-				return { ok: true, accepted: win.accept !== false };
-			},
-			() => win.active,
-			() => win.current,
-		);
+		win.createClient = (request: ConstructorParameters<typeof ViewNavigationClient>[0]) =>
+			new ViewNavigationClient(request, () => win.active, () => win.current);
+		win.client = win.createClient(async (path: string, body: unknown) => {
+			win.requests.push({ path, body });
+			if (path.endsWith("claim")) return { claimId: "owned-claim" };
+			return { ok: true, accepted: win.accept !== false };
+		});
 		win.attempt = win.client.capture(win.current);
 		win.summary = (id = "notes", extra = {}) => ({
 			actionName: "VIEWS",
@@ -192,14 +164,10 @@ test("an owner change while claiming cannot switch or acknowledge under a new se
 	await setup(page);
 	const result = await page.evaluate(async () => {
 		const win = window as any;
-		const client = new win.ViewNavigationClient(
-			async () => {
-				win.active = false;
-				return { claimId: "old-session" };
-			},
-			() => win.active,
-			() => win.current,
-		);
+		const client = win.createClient(async () => {
+			win.active = false;
+			return { claimId: "old-session" };
+		});
 		const attempt = client.capture(win.current),
 			summary = win.summary();
 		summary.values.navigationBinding.clientId = client.clientId;
@@ -247,15 +215,11 @@ test("an owner change during acknowledgment cannot report delivery in the replac
 	await setup(page);
 	const result = await page.evaluate(async () => {
 		const win = window as any;
-		const client = new win.ViewNavigationClient(
-			async (path: string) => {
-				if (path.endsWith("claim")) return { claimId: "owned-claim" };
-				win.active = false;
-				return { ok: true, accepted: true };
-			},
-			() => win.active,
-			() => win.current,
-		);
+		const client = win.createClient(async (path: string) => {
+			if (path.endsWith("claim")) return { claimId: "owned-claim" };
+			win.active = false;
+			return { ok: true, accepted: true };
+		});
 		const attempt = client.capture(win.current),
 			summary = win.summary();
 		summary.values.navigationBinding.clientId = client.clientId;

@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {stripTypeScriptTypes} from 'node:module';
 import vm from 'node:vm';
+import {tsImport} from 'tsx/esm/api';
+
+const {overlayGoogleCalendarRows}=await tsImport('../apps/app/src/runtime/google-calendar-outbox.ts',import.meta.url);
 
 // Actual Calendar renderer + local provider geometry + Google display adapter.
 // No browser, credentials, provider requests, or local Calendar writes.
@@ -21,30 +24,30 @@ const SOURCE='google:grant:calendar';
 const event=(patch={})=>({id:`${SOURCE}:event`,calendarId:SOURCE,providerEventId:'event',title:'Owned Google event',body:'Owned body',location:'',begin:at(13,12),end:at(13,13),allDay:false,timeZone:'UTC',revision:'synthetic',source:'google',
   writable:true,connectionId:'grant',providerCalendarId:'calendar',recurringEventId:null,htmlLink:null,conferenceLink:null,attendees:[],selfResponse:null,organizerSelf:true,...patch});
 const calendarSource=(patch={})=>({id:SOURCE,name:'Owned Google calendar',account:'owner@example.test',connectionId:'grant',providerCalendarId:'calendar',timeZone:'UTC',primary:true,source:'google',accessRole:'owner',color:'#3366cc',textColor:null,selected:true,writable:true,...patch});
-/** The outbox's display rule, reduced to what these tests use: pending changes applied, deletes hidden, creates added. */
-function overlayForTest(rows,ops){
-  let out=rows.map(row=>({...row,pending:false}));
-  for(const op of ops){
-    const mark={pending:op.phase!=='done'&&op.phase!=='failed',outboxId:op.id,outboxPhase:op.phase};
-    if(op.kind==='create'){out.push(event({id:`${op.sourceId}:local:${op.id}`,calendarId:op.sourceId,providerEventId:'',title:op.fields.title,begin:Date.parse(op.fields.startAt),end:Date.parse(op.fields.endAt),localId:op.id,...mark}));continue;}
-    const hit=out.filter(row=>row.calendarId===op.sourceId&&row.providerEventId===op.eventId);
-    if(op.kind==='delete'&&op.phase!=='failed'){out=out.filter(row=>!hit.includes(row));continue;}
-    for(const row of hit){if(op.fields?.title)row.title=op.fields.title;Object.assign(row,mark);}
-  }
-  return out;
-}
 async function harness(events,{day=0,personal=true,days=1,calendars=[calendarSource()],failing=[],grants=['google.calendar.read','google.calendar.write'],signedInToGoogle=true,outboxFails=0,cached=null}={}){
   let view='calendar',allowRead=signedInToGoogle,pendingRead=null,prefs={},confirmAnswer=true;
   const listeners=new EventTarget(),writes=[],toasts=[],started=[],committed=[],puts=[],cloud={client:{},sessionId:'session',credentialId:'credential'};
   const state={events:[],day,month:null,open:null,form:null,calPrefs:{personal:{on:personal}}};
   const localCalendar={async list(){return {status:'ready',events:[],calendars:[{id:'local',local:true,visible:personal,color:'acc'}]};},async pendingCreations(){return {status:'ready',creations:[]};},async requestAccess(){return {status:'denied'};}};
-  // A stand-in outbox: records each change and shows it at once, like the real overlay.
+  // The outbox fixture records intents without persistence or transport. Display uses the real overlay.
   const outbox={ops:[],enqueued:[],calls:[],listeners:new Set(),
     get operations(){return this.ops;},
     subscribe(listener){this.listeners.add(listener);listener(this.ops);return()=>this.listeners.delete(listener);},
     notify(){for(const listener of this.listeners)listener(this.ops);},
-    attach(){return()=>{};},async flush(){},async load(){return this.ops;},overlay(rows){return overlayForTest(rows,this.ops);},
-    async enqueue(change){this.enqueued.push(change);const id=`op${this.ops.length+1}`;this.ops.push({id,kind:change.kind,sourceId:change.row?.calendarId??change.sourceId,eventId:change.row?.providerEventId,scope:change.scope??'this',fields:change.fields??{},response:change.response,phase:'queued'});this.notify();return {status:'queued',id,...(change.kind==='delete'?{undoUntil:instant+10000}:{})};},
+    attach(){return()=>{};},async flush(){},async load(){return this.ops;},overlay(rows){return overlayGoogleCalendarRows(rows,this.ops);},
+    async enqueue(change){
+      this.enqueued.push(change);
+      const {kind,row}=change;
+      const id=`op${this.ops.length+1}`;
+      this.ops.push({
+        id,kind,sourceId:row?.calendarId??change.sourceId,connectionId:row?.connectionId??change.connectionId,
+        calendarId:row?.providerCalendarId??change.calendarId,eventId:row?.providerEventId,
+        recurringEventId:row?.recurringEventId,localId:kind==='create'?id:row?.localId,
+        scope:change.scope??'this',fields:change.fields??{},response:change.response,phase:'queued',createdAt:instant,
+      });
+      this.notify();
+      return {status:'queued',id,...(kind==='delete'?{undoUntil:instant+10000}:{})};
+    },
     async undo(id){this.calls.push(['undo',id]);this.ops=this.ops.filter(op=>op.id!==id);this.notify();return true;},
     async resolveConflict(id,choice){this.calls.push(['conflict',id,choice]);return true;},async resolveUncertain(id,choice){this.calls.push(['uncertain',id,choice]);return true;},
     async resolvePaused(id,choice){this.calls.push(['paused',id,choice]);return true;},async dismiss(id){this.calls.push(['dismiss',id]);return true;}};
@@ -65,7 +68,7 @@ async function harness(events,{day=0,personal=true,days=1,calendars=[calendarSou
     GOOGLE_CALENDAR_PREFS_CHANGED:'prefs',GOOGLE_ACCOUNTS_CHANGED:'accounts',
     currentGoogleCalendarBinding:()=>({}),googleConnect:{start(){started.push(true);},getSnapshot:()=>'idle',subscribe:()=>()=>{}},googleConnectNote:()=>'',
     createGoogleAccounts:()=>({async list(){return accounts();}}),
-    openGoogleCalendarOutbox:async()=>{if(outboxFails>0){outboxFails--;throw new Error('storage');}return outbox;},overlayGoogleCalendarRows:overlayForTest,
+    openGoogleCalendarOutbox:async()=>{if(outboxFails>0){outboxFails--;throw new Error('storage');}return outbox;},overlayGoogleCalendarRows,
     GOOGLE_CALENDAR_WRITE_CAPABILITIES:{rsvp:false},DELETE_UNDO_MS:10000,CloudProtocolError:class extends Error{},
     startCalendarSyncHost:()=>()=>{},calendarSyncHost:{resume:async()=>{},linkedProviderEvents:async()=>new Set()},
     GoogleCalendarReader:class{invalidate(){}
@@ -238,7 +241,7 @@ test('each sync problem names what its pills do',async()=>{
     assert.equal(banner.text,'This event is no longer in Google Calendar.');assert.equal(banner.mineLabel,'OK');assert.equal(banner.theirsLabel,'');assert.equal(banner.keepTheirs,undefined);
     banner.keepMine();await h.settle();assert.deepEqual(plain(h.outbox.calls),[['dismiss','op1']]);
     // An unconfirmed create: add it again, or discard it.
-    h.outbox.ops=[{id:'op2',kind:'create',sourceId:SOURCE,scope:'this',fields:{title:'Lunch',startAt:new Date(at(13,15)).toISOString(),endAt:new Date(at(13,16)).toISOString()},phase:'uncertain'}];h.outbox.calls=[];
+    h.outbox.ops=[{id:'op2',localId:'op2',kind:'create',sourceId:SOURCE,scope:'this',fields:{title:'Lunch',startAt:new Date(at(13,15)).toISOString(),endAt:new Date(at(13,16)).toISOString()},phase:'uncertain'}];h.outbox.calls=[];
     h.state.open=`${SOURCE}:local:op2`;banner=h.render().ev.conflict;
     assert.equal(banner.text,'Google didn’t confirm this event was added.');assert.equal(banner.mineLabel,'Add again');assert.equal(banner.theirsLabel,'Discard');
     banner.keepMine();banner.keepTheirs();await h.settle();

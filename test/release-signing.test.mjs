@@ -5,9 +5,10 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { auditWebBundle } from "../scripts/audit-production-bundle.mjs";
-import { appLinkFilters, signInAppLinkProblems, assetLinksProblems, fingerprint, PLACEHOLDER, renderAssetLinks, TEMPLATE } from "../scripts/render-assetlinks.mjs";
-import { partialSigningProblem, readReleaseSigner, releaseAdmission, signingRequested, validateReleaseSigner } from "../scripts/build-android.mjs";
+import { appLinkFilters, signInAppLinkProblems, assetLinksProblems, fingerprint, PLACEHOLDER, renderAssetLinks, SIGNER_FILE, TEMPLATE } from "../scripts/render-assetlinks.mjs";
+import { partialSigningProblem, releaseAdmission, signingRequested, validateReleaseSigner } from "../scripts/build-android.mjs";
 
 const ALL = { ELIZAOS_KEYSTORE_PATH: "/k", ELIZAOS_KEYSTORE_PASSWORD: "p", ELIZAOS_KEY_ALIAS: "a", ELIZAOS_KEY_PASSWORD: "q" };
 const SIGNER = "a".repeat(64);
@@ -27,9 +28,7 @@ test("a partial ELIZAOS_ signing set is refused by name, never by value", () => 
   assert.doesNotMatch(gradle, /producing unsigned release APKs/);
 });
 
-test("the committed descriptor is valid and starts unset", () => {
-  const committed = readReleaseSigner();
-  assert.equal(committed.signerSha256, "unset");
+test("invalid release signer fingerprints, versions and schemas are refused", () => {
   assert.throws(() => validateReleaseSigner({ ...descriptor(), signerSha256: "ABC" }), /signerSha256/);
   assert.throws(() => validateReleaseSigner({ ...descriptor(), lastRelease: { versionCode: 0 } }), /versionCode/);
   assert.throws(() => validateReleaseSigner({ ...descriptor(), schema: 2 }), /schema/);
@@ -63,7 +62,7 @@ test("verify-apks requires signed:true and the descriptor match for distributabl
   assert.match(source, /entry\?\.name === BUN_ENTRY/);
 });
 
-test("assetlinks.json is rendered only from the recorded release signer, never unset, a placeholder or a debug key", () => {
+test("assetlinks.json is rendered only from the recorded release signer, never unset, a placeholder or a debug key", t => {
   const template = fs.readFileSync(TEMPLATE, "utf8");
   const packageName = JSON.parse(fs.readFileSync("app.config.json", "utf8")).appId;
   const text = renderAssetLinks({ template, signerSha256: SIGNER, packageName });
@@ -74,8 +73,6 @@ test("assetlinks.json is rendered only from the recorded release signer, never u
   assert.match(statement.target.sha256_cert_fingerprints[0], /^(AA:){31}AA$/);
   assert.doesNotMatch(text, new RegExp(PLACEHOLDER));
   assert.deepEqual(assetLinksProblems(text), []);
-  // The committed descriptor is unset, so rendering is refused until the release key exists (A-06).
-  assert.throws(() => renderAssetLinks({ template, signerSha256: readReleaseSigner().signerSha256, packageName }), /"unset"/);
   assert.throws(() => renderAssetLinks({ template, signerSha256: PLACEHOLDER, packageName }), /placeholder/);
   assert.throws(() => renderAssetLinks({ template, signerSha256: "ABC", packageName }), /64 lower-case hex/);
   assert.throws(() => renderAssetLinks({ template, signerSha256: SIGNER, packageName: "other.app" }), /not other\.app/);
@@ -86,13 +83,18 @@ test("assetlinks.json is rendered only from the recorded release signer, never u
   const debugFile = text.replace(fingerprint(SIGNER), fingerprint(debugKey));
   assert.match(assetLinksProblems(debugFile, { debugFingerprints: [debugKey] }).join(), /is a debug signing certificate/);
   assert.match(assetLinksProblems(text.replace(fingerprint(SIGNER), "unset")).join(), /unset release signer/);
-  // The CLI exits non-zero on the committed (unset) descriptor and writes nothing.
-  const out = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "alpha-assetlinks-")), "assetlinks.json");
-  const run = spawnSync(process.execPath, ["scripts/render-assetlinks.mjs", "--out", out], { encoding: "utf8" });
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "alpha-assetlinks-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  fs.mkdirSync(path.dirname(path.join(root, TEMPLATE)), { recursive: true });
+  fs.writeFileSync(path.join(root, TEMPLATE), template);
+  fs.writeFileSync(path.join(root, SIGNER_FILE), JSON.stringify(descriptor("unset")));
+  fs.writeFileSync(path.join(root, "app.config.json"), JSON.stringify({ appId: packageName }));
+  const script = new URL("../scripts/render-assetlinks.mjs", import.meta.url);
+  const out = path.join(root, "assetlinks.json");
+  const run = spawnSync(process.execPath, [fileURLToPath(script), "--out", out], { cwd: root, encoding: "utf8" });
   assert.equal(run.status, 1);
   assert.match(run.stderr, /signerSha256 is "unset"/);
   assert.equal(fs.existsSync(out), false);
-  fs.rmSync(path.dirname(out), { recursive: true, force: true });
 });
 
 test("the bundle audit fails an assetlinks.json with a placeholder or debug fingerprint", t => {

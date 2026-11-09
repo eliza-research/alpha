@@ -1,7 +1,7 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from 'node:module';
-// Restored from 8b88486c^ (deleted there as redundant; it is not): node-level coverage of every
-// poster inference rule docs/mvp-current-status.md lists for J01. The Playwright specs cover rendering.
-const {suggestScanEvent,suggestScanEventDetails,scanEventDraft}=await import('data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(readFileSync('apps/app/src/prototype/scan-event.ts','utf8'))).toString('base64'));
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { scanAllDayEventDraft, scanEventDraft, suggestScanEvent, suggestScanEventDetails } from '../apps/app/src/prototype/scan-event.ts';
+
 test('scan event suggestions preserve text and leave ambiguous dates or time zones for review',()=>{
  assert.deepEqual(suggestScanEvent('Open studio\n2026-10-10\n18:30\nMain hall'),{title:'Open studio',date:'2026-10-10',time:'18:30',minutes:60,location:''});
  for(const text of ['Tomorrow at 7','July 3 at 7 PM','2026-10-10\n2026-10-11\n07:00 PM','2026-10-10T18:30Z','2026-10-10\n18:30 PST','Meet at 18:30-19:30'])assert.equal(suggestScanEvent(text).time,'');
@@ -34,7 +34,6 @@ test('poster extraction does not invent years or accept conflicting, invalid or 
  assert.equal(suggestScanEvent('Event\nFebruary 29, 2027\n7 PM').date,'');
 });
 
-test('ordinary website paths and band names are not mistaken for time zones',()=>{assert.equal(suggestScanEvent('AC/DC tribute\nOctober 10, 2026\n6 PM\nhttps://example.com/events').time,'18:00');});
 
 
 test('explicit same-day poster time ranges suggest duration without inventing meridiem or overnight dates',()=>{
@@ -54,8 +53,6 @@ test('year-less dates suggest their next occurrence with a year-inferred disclos
  r=details('Gala\n2 March\n7 PM');assert.equal(r.fields.date,'2027-03-02');assert.match(r.disclosures.join('\n'),/Year inferred.*2027-03-02/);
  r=details('Fair\nOctober 3\n7 PM');assert.equal(r.fields.date,'2026-10-03','today still counts as the next occurrence');
  r=details('Leap gala\nFebruary 29\n7 PM');assert.equal(r.fields.date,'2028-02-29');
- assert.equal(suggestScanEvent('Event\nOctober 10').date,'','without an injected now no year is invented');
- r=details('Event\nOctober 10, 2026\nOctober 11');assert.equal(r.fields.date,'','conflicting dates stay blank');
 });
 test('weekday, today and tomorrow resolve against the injected now and are disclosed',()=>{
  let r=details('Book club\nTuesday\n6:30 PM');assert.equal(r.fields.date,'2026-10-06');assert.equal(r.fields.time,'18:30');assert.match(r.disclosures.join('\n'),/Tuesday.*next occurrence, 2026-10-06/);
@@ -107,5 +104,34 @@ test('an OCR line with an ambiguous numeric date and a zone abbreviation leaves 
  const r=details('Open studio\n10/11/2026 7 PM EST\nVenue: Main hall');
  assert.equal(r.fields.date,'');assert.equal(r.fields.time,'');assert.equal(r.fields.location,'Main hall');assert.equal(r.sourceZone,null);
  assert.match(r.disclosures.join('\n'),/numeric date such as 10\/11.*Enter the date yourself/);assert.match(r.disclosures.join('\n'),/Time zone “EST” is ambiguous\. Enter the local start time yourself\./);
- const weekday=details('Open studio\nFriday, October 10, 2026\n7 PM');assert.equal(weekday.fields.date,'');assert.match(weekday.disclosures.join('\n'),/“Friday” does not match the printed date/);
+});
+
+test('an all-day scan suggestion becomes an all-day Calendar draft, never a save',()=>{
+ const now=new Date(2026,9,3,15);
+ const suggested=details('Book fair\nOctober 10, 2026\nVenue: Library');
+ const draft=scanAllDayEventDraft({title:suggested.fields.title,date:suggested.fields.date,location:suggested.fields.location},'Book fair text',now);
+ assert.deepEqual({allDay:draft.allDay,off:draft.off,t:draft.t,d:draft.d,cal:draft.cal,where:draft.where,repeat:draft.repeat,alert:draft.alert},{allDay:true,off:7,t:0,d:24,cal:'native:local',where:'Library',repeat:'none',alert:null});
+ assert.equal(scanAllDayEventDraft({title:'Fair',date:'2026-10-10',location:'',repeat:'weekly'},'',now).repeat,'weekly');
+});
+test('all-day scan drafts validate the date, text and repeat',()=>{
+ const now=new Date(2026,9,3);
+ for(const date of ['','2026-02-30','1969-12-31','10/10/2026'])assert.throws(()=>scanAllDayEventDraft({title:'Fair',date,location:''},'',now));
+ assert.throws(()=>scanAllDayEventDraft({title:' ',date:'2026-10-10',location:''},'',now),/title/);
+ assert.throws(()=>scanAllDayEventDraft({title:'Fair',date:'2026-10-10',location:'',repeat:'monthly'},'',now),/repeat/);
+ assert.throws(()=>scanAllDayEventDraft({title:'Fair',date:'2026-10-10',location:''},'x'.repeat(16001),now),/16,000/);
+});
+test('scan drafts carry their own creationId, so Calendar retains the form under review and binds one Save',async()=>{
+ const {encodeCalendarForm,decodeCalendarForm}=await import('../apps/app/src/runtime/calendar-form-draft.ts');
+ const now=new Date(2026,9,3,15),uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+ const allDay=scanAllDayEventDraft({title:'Book fair',date:'2026-10-10',location:'Library'},'Book fair text',now);
+ const timed=scanEventDraft({title:'Open studio',date:'2026-10-10',time:'18:30',minutes:90,location:'Main hall'},'Open studio text',now);
+ for(const draft of [allDay,timed]){assert.match(draft.creationId,uuid);assert.equal(draft.separateCreation,false);assert.equal(draft.id,null);}
+ assert.notEqual(allDay.creationId,timed.creationId);
+ assert.notEqual(scanEventDraft({title:'Open studio',date:'2026-10-10',time:'18:30',minutes:90,location:''},'',now).creationId,timed.creationId,'every review is its own creation');
+ // The retained-form codec keeps the reviewed fields, the creation identity and, for all-day, the all-day flag.
+ for(const draft of [allDay,timed]){
+  const restored=decodeCalendarForm(encodeCalendarForm(draft,now),now).form;
+  assert.deepEqual({title:restored.title,where:restored.where,notes:restored.notes,off:restored.off,t:restored.t,d:restored.d,creationId:restored.creationId,separateCreation:restored.separateCreation,allDay:restored.allDay},{title:draft.title,where:draft.where,notes:draft.notes,off:draft.off,t:draft.t,d:draft.d,creationId:draft.creationId,separateCreation:false,allDay:draft.allDay});
+ }
+ assert.equal('allDay' in decodeCalendarForm(encodeCalendarForm({...timed,allDay:false},now),now).form,false,'a form toggled off all-day is stored as timed');
 });

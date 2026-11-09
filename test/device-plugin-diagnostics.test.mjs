@@ -11,7 +11,7 @@ import test from "node:test";
 const source = fs.readFileSync("android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java", "utf8");
 
 test("problem-log work is never handed to the worker outside the helper that survives a stopped worker", () => {
-  // The helper delegates to the shared PluginWorkers guard (see test/plugin-worker-guard.test.mjs).
+  // The helper delegates to the shared PluginWorkers guard (see test/native-plugin-teardown.test.mjs).
   assert.equal([...source.matchAll(/diagnosticsWorker\.execute\(/g)].length, 0, "the worker is never called directly");
   const helper = source.match(/private void diagnostics\(PluginCall call,Runnable work\)\{([\s\S]*?)\n \}/);
   assert.ok(helper, "the helper exists");

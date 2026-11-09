@@ -98,40 +98,6 @@ test('VAD fallback: an utterance is sent once after the long gap, and resumed sp
   assert.equal(h.phase(), 'thinking');
 });
 
-test('semantic endpoint: finished submits at the short gap; a slow or failing detector never blocks the long gap; speech wins a racing decision', async () => {
-  const finished = harness({endpoint: async () => 'finished'});
-  await finished.session.start();
-  await finished.say('what is the weather');
-  await finished.clock.advance(ASSISTANT_TIMING_DEFAULTS.shortGapMs);
-  assert.equal(finished.log.sends.length, 1);
-
-  const never = harness({endpoint: () => new Promise(() => {})});
-  await never.session.start();
-  await never.say('what is the weather');
-  await never.clock.advance(ASSISTANT_TIMING_DEFAULTS.shortGapMs + ASSISTANT_TIMING_DEFAULTS.endpointDeadlineMs);
-  assert.equal(never.log.sends.length, 0, 'an expired decision is continue');
-  await never.clock.advance(ASSISTANT_TIMING_DEFAULTS.longGapMs);
-  assert.equal(never.log.sends.length, 1, 'the long gap submits regardless');
-
-  const failing = harness({endpoint: async () => { throw Error('model unavailable'); }});
-  await failing.session.start();
-  await failing.say('hello there');
-  await failing.clock.advance(ASSISTANT_TIMING_DEFAULTS.longGapMs);
-  assert.equal(failing.log.sends.length, 1);
-
-  const decision = deferred();
-  const racing = harness({endpoint: () => decision.promise});
-  await racing.session.start();
-  await racing.say('turn on the');
-  await racing.clock.advance(ASSISTANT_TIMING_DEFAULTS.shortGapMs);
-  racing.mic.onSpeechStart(racing.clock.now()); await flush();
-  decision.resolve('finished'); await flush();
-  assert.equal(racing.log.sends.length, 0, 'resumed speech beats a late finished decision');
-  await racing.clock.advance(300); racing.mic.onSpeechEnd(racing.clock.now()); racing.mic.onSegment('kitchen lights'); await flush();
-  await racing.clock.advance(ASSISTANT_TIMING_DEFAULTS.longGapMs);
-  assert.deepEqual(racing.log.sends.map(send => send.text), ['turn on the kitchen lights']);
-});
-
 test('semantic endpoint (#36546 route): complete submits early, incomplete and unavailable wait for the long gap, and each submission records its path', async () => {
   const {residentEndpoint} = await import('../apps/app/src/runtime/voice-turn-routes.ts');
   const {shortGapMs, longGapMs} = ASSISTANT_TIMING_DEFAULTS;

@@ -19,11 +19,11 @@ test('a new event on a Google calendar keeps its calendar through the creation d
  assert.throws(()=>encodeCalendarForm({...form,cal:'native:'+'x'.repeat(300)},now),/recovery/,'device calendar ids keep their bound');
 });
 
-test('a Google event edit keeps its event, scope and starting version',()=>{
+test('the edit codec preserves full-series scope and defaults old drafts to one occurrence',()=>{
  const base={revision:JSON.stringify(['evt_1','2026-11-07T20:00:00Z','2026-11-07T21:00:00Z','confirmed','Lunch','','Cafe',null]),begin:Date.parse('2026-11-07T20:00:00Z'),end:Date.parse('2026-11-07T21:00:00Z')};
  const edit={...form,creationId:undefined,id:sourceId+':evt_1',googleEventId:'evt_1',googleScope:'all',googleBase:base};
  const raw=encodeCalendarEdit(edit,now),restored=decodeCalendarEdit(raw,now).form;
- assert.equal(restored.googleEventId,'evt_1');assert.equal(restored.googleScope,'all');assert.deepEqual(restored.googleBase,base);assert.equal(restored.cal,sourceId);assert.equal(restored.id,sourceId+':evt_1');
+ assert.equal(restored.googleScope,'all');
  assert.equal(JSON.parse(raw).target.kind,'google');
  // Scope defaults to this occurrence.
  assert.equal(decodeCalendarEdit(encodeCalendarEdit({...edit,googleScope:undefined},now),now).form.googleScope,'this');

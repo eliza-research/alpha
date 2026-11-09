@@ -1,6 +1,6 @@
 // Cloud provider admission (AP-04). Host-JVM run of the Capacitor-free LocalAgentProviderAdmission
 // with synthetic credentials, plus a source check that the plugin delegates to it. Not Android,
-// network or real-account evidence. Inference stays qwen-3.8-27b on Cerebras.
+// network or real-account evidence.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -17,11 +17,6 @@ test('the plugin delegates provider rules to the admission class and keeps the d
  assert.match(source,/LocalAgentProviderAdmission\.bindCloudProvider\(new LocalAgentProviderAdmission\.CloudBindingStore\(\)\{/);
  assert.match(source,/LocalAgentProviderAdmission\.providerStatus\(saved,cloud,System\.currentTimeMillis\(\)\)/);
  assert.doesNotMatch(source,/env\.put\("ELIZAOS_CLOUD_API_KEY"|env\.put\("CEREBRAS_API_KEY"/,'no provider environment is built in the plugin');
- assert.match(source,/static final String CLOUD_PROVIDER_MODEL=LocalAgentProviderAdmission\.CLOUD_PROVIDER_MODEL;/);
- const admission=readFileSync(nativeSource('LocalAgentProviderAdmission.java'),'utf8');
- assert.doesNotMatch(admission,/com\.getcapacitor|android\./,'the admission class is host-testable');
- assert.match(admission,/CEREBRAS_PROVIDER_MODEL="qwen-3\.8-27b"/);
- assert.match(admission,/CLOUD_PROVIDER_MODEL="cerebras\/qwen-3\.8-27b"/);
  // #410 (main, 2026-10-13): product phones use the Eliza Cloud plan; a direct (bring-your-own)
  // Cerebras key is a test-mocks developer route, refused in production before the key is read.
  const direct=source.slice(source.indexOf('static boolean directProviderAllowed('),source.indexOf('@PluginMethod public void clearProvider('));

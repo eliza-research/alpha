@@ -1,6 +1,5 @@
 // Input admission of the resident digest restart check. The check itself needs the prepared
-// upstream source with dependencies (about 6 GB) and is not part of `npm test`; see
-// docs/local-agent-development.md, "Isolated digest process-recovery check".
+// upstream source with dependencies and is run separately from `npm test`.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -25,10 +24,4 @@ test('digest restart check stops before any process work and names the exact pre
    assert.ok(!/\n\s+at /.test(result.stderr),'an instruction, not a stack trace');
   }
  }finally{fs.rmSync(empty,{recursive:true,force:true});}
-});
-
-test('the documented command and preparation match the script',()=>{
- assert.equal(JSON.parse(fs.readFileSync('package.json','utf8')).scripts['agent:test-digest-restart'],'node scripts/test-local-digest-restart.mjs');
- const guide=fs.readFileSync('docs/local-agent-development.md','utf8');
- for(const text of ['ALPHA_RUNTIME_GIT_CACHE="$PWD/vendor/eliza" npm run agent:prepare','npm run agent:test-digest-restart','artifacts/local-agent-resident-<commit>'])assert.ok(guide.includes(text),`docs/local-agent-development.md must show: ${text}`);
 });

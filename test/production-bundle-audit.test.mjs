@@ -25,8 +25,14 @@ test('a clean production bundle passes through the API and CLI',()=>{
   }finally{rmSync(dir,{recursive:true,force:true});}
 });
 
-test('every denylist entry fails a production bundle',()=>{
-  for(const entry of DENYLIST){
+// Independent examples pin exclusions that would disappear from a test derived solely from DENYLIST.
+const requiredMarkers = [
+  'demo-only-password', 'Development password provider', 'Add development provider',
+  'Proton Pass · development', '10.0.2.2:47850', '127.0.0.1:47850',
+];
+
+test('each forbidden marker fails a production bundle',()=>{
+  for(const entry of new Set([...DENYLIST, ...requiredMarkers])){
     const dir=bundle({'assets/chunk.js':`const label=${JSON.stringify(entry)};`});
     try{
       const result=auditWebBundle(dir,{testMocks:false});

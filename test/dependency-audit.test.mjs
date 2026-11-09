@@ -1,5 +1,5 @@
 // Offline: checks the committed audit snapshot and reviewed dispositions against package-lock.json.
-// The network audit itself is `node scripts/dependency-audit.mjs` (docs/dependency-audit.md).
+// The network audit itself is `node scripts/dependency-audit.mjs`.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -106,16 +106,6 @@ test('npm audit output is normalised to advisory ids and exact dependency paths'
   assert.equal(normalised.findings.find(finding => finding.package === 'uuid').fixAvailable, '@capacitor/cli@8.4.3 (outside the declared range)');
   // Re-normalising the committed snapshot's own inputs is stable: same lock, same hash.
   assert.equal(normalised.lockSha256, snapshot.lockSha256);
-});
-
-test('docs/dependency-audit.md records every disposition', () => {
-  const docs = fs.readFileSync('docs/dependency-audit.md', 'utf8');
-  for (const item of [...dispositions.fixes, ...dispositions.exceptions]) assert.ok(docs.includes(item.advisory), item.advisory);
-  for (const item of dispositions.exceptions) {
-    assert.ok(docs.includes(item.reviewBy), `${item.advisory} review date`);
-    for (const chain of item.paths) assert.ok(docs.includes(chain), chain);
-  }
-  assert.ok(docs.includes('node scripts/dependency-audit.mjs'));
 });
 
 test('a network run fails on an advisory published after the snapshot (the scheduled audit comparison)', t => {

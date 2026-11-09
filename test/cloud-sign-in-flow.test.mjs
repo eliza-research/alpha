@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import {mkdtempSync,readFileSync,rmSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
-import {execFileSync} from 'node:child_process';
+import {fixture,nativeSource,runJvm} from './fixtures/jvm-tools.mjs';
 
 // In-app Eliza Cloud sign-in (owner directive 2026-10-14). The pure policy runs on a plain JVM; the
 // Android wiring is checked from source. This builds no APK, runs nothing on Android, verifies no App
@@ -13,45 +13,26 @@ import {execFileSync} from 'node:child_process';
 const root=resolve(import.meta.dirname,'..');
 const read=file=>readFileSync(join(root,file),'utf8');
 const between=(text,start,end)=>{const from=text.indexOf(start),to=text.indexOf(end,from+start.length);assert.ok(from>=0&&to>from,`${start} … ${end} located`);return text.slice(from,to);};
-const java=process.env.JAVA_HOME||(process.platform==='darwin'?'/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home':'');const binary=name=>java?join(java,'bin',name):name;
 const native='android/app/src/main/java/ai/elizaresearch/alphaphone/';
 
-test('PKCE, state, authorize URL, strict App Link return, pending record, readiness and routes (plain JVM)',()=>{
- const temporary=mkdtempSync(join(tmpdir(),'cloud-sign-in-'));
- try{
-  execFileSync(binary('javac'),['--release','11','-d',temporary,join(root,native,'CloudDeployment.java'),join(root,native,'CloudSignInFlow.java'),join(root,native,'CloudSignInReadiness.java'),join(root,native,'ConnectionRoutes.java'),join(root,'test/fixtures/CloudSignInFlowTest.java'),join(root,'test/fixtures/CloudSignInContractTest.java')],{timeout:60000});
-  assert.match(execFileSync(binary('java'),['-cp',temporary,'ai.elizaresearch.alphaphone.CloudSignInFlowTest'],{encoding:'utf8',timeout:60000}),/^PASS cloud sign-in flow \(\d+ checks\)/);
- }finally{rmSync(temporary,{recursive:true,force:true});}
-});
-
-// Shared callback contract: the same fixture JSON is committed in elizaOS/eliza, whose fallback page
-// and Steward redirect tests read it. Here every vector goes through the native parser.
-test('shared callback contract vectors (fixture shared with elizaOS/eliza) through the native parser',()=>{
+// The pinned server and this consumer both check the App Link contract against
+// their respective parsers. Execute the vectors against Alpha's configured deployment.
+test('native sign-in policy and App Link contract (plain JVM)',t=>{
  const contract=JSON.parse(read('test/fixtures/alphaphone-auth-callback-contract.json'));
- assert.equal(contract.contract,'alphaphone-auth-callback');assert.equal(contract.version,1);
- assert.equal(contract.package,'ai.elizaresearch.alphaphone');assert.equal(contract.callbackPath,'/alphaphone/auth/callback');
- assert.deepEqual(contract.hosts,{production:'eliza.app',staging:'staging.eliza.app'});
- for(const kind of ['success','error','return','reject'])assert.ok(contract.cases.some(row=>row.expect===kind),`vectors cover ${kind}`);
- // A code is a success only from the fragment; no other vector carries one as a result.
- for(const row of contract.cases)if(row.expect==='success')assert.ok(new URL(row.url).hash.includes('code=')&&!new URL(row.url).search,row.name);
- // The fallback page's hand-off arrives as the bare callback URL: no result, nothing forwarded.
- for(const row of contract.fallbackHandoffs){
-  assert.ok(!row.intentUrl.split('#Intent')[0].includes('?')&&!/code=|state=/.test(row.intentUrl),row.name);
-  assert.equal(`https://${row.intentUrl.slice('intent://'.length).split('#Intent')[0]}`,row.deliveredUrl,row.name);
- }
- const native_=read(native+'CloudSignInFlow.java');
- for(const error of contract.errorAllowlist)assert.ok(native_.includes(`"${error}"`),`native allowlists ${error}`);
- assert.equal((native_.match(/"(?:app_link_unverified|mfa_required|oauth_[a-z_]+)"/g)||[]).filter((v,i,a)=>a.indexOf(v)===i).length,contract.errorAllowlist.length,'no error outside the shared allowlist');
  const lines=[...contract.cases.map(row=>['case',row.environment,row.expect,row.url,row.code??'',row.state??'',row.error??'']),
   ...contract.fallbackHandoffs.map(row=>['case',row.environment,row.expect,row.deliveredUrl,'','','']),
-  ...Object.entries(contract.authorizeRequired).map(([name,value])=>['authorize',name,value])];
+  ...Object.entries(contract.authorizeRequired).map(([name,value])=>['authorize',name,value]),
+  ...contract.errorAllowlist.map(error=>['error',error])];
  for(const line of lines)assert.ok(line.every(field=>!/[\t\n]/.test(field)));
  const temporary=mkdtempSync(join(tmpdir(),'cloud-sign-in-contract-'));
- try{
-  writeFileSync(join(temporary,'vectors.tsv'),lines.map(line=>line.join('\t')).join('\n')+'\n');
-  execFileSync(binary('javac'),['--release','11','-d',temporary,join(root,native,'CloudDeployment.java'),join(root,native,'CloudSignInFlow.java'),join(root,'test/fixtures/CloudSignInContractTest.java')],{timeout:60000});
-  assert.match(execFileSync(binary('java'),['-cp',temporary,'ai.elizaresearch.alphaphone.CloudSignInContractTest',join(temporary,'vectors.tsv')],{encoding:'utf8',timeout:60000}),new RegExp(`^PASS callback contract \\(${lines.length} vectors\\)`));
- }finally{rmSync(temporary,{recursive:true,force:true});}
+ t.after(()=>rmSync(temporary,{recursive:true,force:true}));
+ const vectors=join(temporary,'vectors.tsv');
+ writeFileSync(vectors,lines.map(line=>line.join('\t')).join('\n')+'\n');
+ const sources=[
+  ...['CloudDeployment.java','CloudSignInFlow.java','CloudSignInReadiness.java','ConnectionRoutes.java'].map(nativeSource),
+  ...['CloudSignInFlowTest.java','CloudSignInContractTest.java'].map(fixture),
+ ];
+ assert.match(runJvm(sources,'ai.elizaresearch.alphaphone.CloudSignInFlowTest',{args:[vectors]}),/^PASS native sign-in policy/);
 });
 
 test('the sign-in App Link follows the configured deployment; staging lives in the test-mocks overlay',()=>{
@@ -78,8 +59,6 @@ test('the native sign-in client owns every secret, compares state before burning
  // The renderer receives only these outcome fields.
  for(const resolved of plugin.match(/\.resolve\([^;]*;/g)||[])assert.doesNotMatch(resolved,/token|secret|verifier|refresh|code"/i,resolved);
  const finish=between(plugin,'JSObject outcome = new JSObject()','finish(current, outcome);');assert.doesNotMatch(finish,/\.put\("(?:secret|token)"/);
- // The key is renderer-readable (the existing cloud:<environment> slot); the source says so plainly.
- assert.match(plugin,/That slot is renderer-readable/);assert.doesNotMatch(plugin,/no \.\.\. unacknowledged key crosses|unacknowledged key crosses the bridge/);
  // Fixed routes only, no redirects, origin and route checked before any connection.
  const post=between(plugin,'private Response post(Attempt current, CloudSignInFlow.Environment environment,','/** The readiness probe');
  assert.ok(post.indexOf('ConnectionRoutes.signInOrigin(')<post.indexOf('fetch(')&&post.indexOf('ConnectionRoutes.signInRoute(')<post.indexOf('fetch('));

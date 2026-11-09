@@ -1,28 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {existsSync,readdirSync,mkdtempSync,readFileSync,rmSync} from 'node:fs';
-import {homedir,tmpdir} from 'node:os';
-import {join,resolve} from 'node:path';
-import {execFileSync} from 'node:child_process';
-// The Android Calendar view's bounded provider read, run on the JVM against a stand-in provider.
-// CalendarTruncationInstrumentedTest is the CalendarProvider and rendered-warning check; this is
-// neither Android nor a device run.
-const cache=join(homedir(),'.gradle/caches/modules-2/files-2.1/org.json/json/20250517');
-const cached=existsSync(cache)?readdirSync(cache).flatMap(hash=>readdirSync(join(cache,hash)).filter(name=>name==='json-20250517.jar').map(name=>join(cache,hash,name)))[0]:undefined;
-const jsonJar=process.env.ALPHA_JSON_JAR||cached;
-const root=resolve(import.meta.dirname,'..');
-test('Android Calendar range read returns at most 2,000 instances and reports a longer provider result',{skip:!jsonJar?'Pinned JVM JSON dependency unavailable':false},()=>{
- const temporary=mkdtempSync(join(tmpdir(),'calendar-range-reader-'));
- const java=process.env.JAVA_HOME||(process.platform==='darwin'?'/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home':'');const binary=name=>java?join(java,'bin',name):name;
- const shared=name=>join(root,'vendor/eliza/plugins/plugin-native-calendar/test/jvm/android',name);
- try{
-  execFileSync(binary('javac'),['--release','11','-cp',jsonJar,'-d',temporary,
-   join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarRangeReader.java'),
-   ...['content/ContentResolver.java','content/ContentUris.java','database/Cursor.java','net/Uri.java'].map(shared),
-   join(root,'test/fixtures/calendar-provider-jvm/android/provider/CalendarContract.java'),join(root,'test/fixtures/CalendarRangeReaderTest.java')],{timeout:180000,stdio:'pipe'});
-  const output=execFileSync(binary('java'),['-cp',temporary+':'+jsonJar,'ai.elizaresearch.alphaphone.CalendarRangeReaderTest'],{encoding:'utf8',timeout:120000,stdio:'pipe'});
-  assert.equal(output.trim(),'PASS calendar range reader');
- }finally{rmSync(temporary,{recursive:true,force:true});}
+import {readFileSync} from 'node:fs';
+import {join} from 'node:path';
+import {fixture, jsonJarSkip, nativeSource, root, runJvm} from './fixtures/jvm-tools.mjs';
+
+// Exercise the bounded provider read on the JVM; Android instrumentation tests the real provider.
+test('Android Calendar range read returns at most 2,000 instances and reports a longer provider result', {skip: jsonJarSkip}, () => {
+ const shared = join(root, 'vendor/eliza/plugins/plugin-native-calendar/test/jvm/android');
+ runJvm([
+  nativeSource('CalendarRangeReader.java'),
+  ...['content/ContentResolver', 'content/ContentUris', 'database/Cursor', 'net/Uri']
+    .map(name => join(shared, name + '.java')),
+  fixture('calendar-provider-jvm/android/provider/CalendarContract.java'),
+  fixture('CalendarRangeReaderTest.java'),
+ ], 'ai.elizaresearch.alphaphone.CalendarRangeReaderTest', {json: true});
 });
 test('the Android Calendar plugin answers list through the bounded reader, not the unbounded shared one',()=>{
  const plugin=readFileSync(join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCalendarPlugin.java'),'utf8');

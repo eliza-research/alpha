@@ -1,5 +1,6 @@
 package ai.elizaresearch.alphaphone;
 import ai.eliza.plugins.browsersurface.BrowserSessionPolicy;
+import ai.eliza.plugins.browsersurface.BrowserSitePermissionRecord;
 import ai.eliza.plugins.browsersurface.BrowserSitePermissions;
 import ai.eliza.plugins.browsersurface.BrowserWebOrigin;
 
@@ -51,7 +52,7 @@ final class BrowserSessionStore {
  synchronized void clear(){if(!preferences.edit().remove("sealed").commit())throw new IllegalStateException();}
 
  /* Website permission decisions for the persistent normal-tab profile only, decided by upstream
-  * BrowserSitePermissions (BrowserPermissionRecords): {"https://host[:port]":{"camera":true,
+  * BrowserSitePermissions (BrowserSitePermissionRecord): {"https://host[:port]":{"camera":true,
   * "microphone":false,"location":true}}, the format earlier builds stored, oldest origin first.
   * Private tabs never read or write them. Origins reveal visited sites, so the record is sealed
   * with the same Keystore key. Bounded to MAX_PERMISSION_ORIGINS. Alpha's own rules stay in
@@ -62,13 +63,13 @@ final class BrowserSessionStore {
  static boolean validOrigin(String origin){return origin!=null&&origin.length()<=300&&origin.equals(BrowserWebOrigin.of(origin));}
  private BrowserSitePermissions decisions(){
   String packed=preferences.getString("permissions",null);
-  if(packed==null)return BrowserPermissionRecords.read(null);
+  if(packed==null)return BrowserSitePermissionRecord.read(null);
   // A damaged record grants nothing: every site is asked again.
-  try{return BrowserPermissionRecords.read(frame.open(packed));}catch(Exception damaged){return BrowserPermissionRecords.read(null);}
+  try{return BrowserSitePermissionRecord.read(frame.open(packed));}catch(Exception damaged){return BrowserSitePermissionRecord.read(null);}
  }
  /** The bounded record (at most MAX_PERMISSION_ORIGINS), sealed with the Keystore key. */
  private void save(BrowserSitePermissions decisions)throws Exception{
-  String bounded=BrowserPermissionRecords.write(decisions);
+  String bounded=BrowserSitePermissionRecord.write(decisions);
   if(!preferences.edit().putString("permissions",frame.seal(bounded)).commit())throw new IllegalStateException();
  }
  /** Stored decision, or null when the site must be asked. */

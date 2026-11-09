@@ -1,24 +1,16 @@
-import {test} from 'node:test';
-import {execFileSync} from 'node:child_process';
-test('local agent contracts (synthetic HTTP and durable development journal)',()=>{
- execFileSync(process.execPath,['--import','tsx','scripts/test-local-agent.mjs'],{cwd:new URL('..',import.meta.url),timeout:60000,stdio:'pipe'});
-});
-test('local agent streaming and cancellation contracts',()=>{
- execFileSync(process.execPath,['--import','tsx','scripts/test-local-agent-stream.mjs'],{cwd:new URL('..',import.meta.url),timeout:60000,stdio:'pipe'});
-});
+import { test } from 'node:test';
+import { execFileSync } from 'node:child_process';
 
-test('local browser digest persistence and recovery',()=>{
- execFileSync(process.execPath,['--import','tsx','scripts/test-local-digest-storage.mjs'],{cwd:new URL('..',import.meta.url),timeout:60000,stdio:'pipe'});
-});
-
-test('digest cancellation preserves replay recovery',()=>{
- execFileSync(process.execPath,['--import','tsx','scripts/test-digest-cancellation.mjs'],{cwd:new URL('..',import.meta.url),timeout:60000,stdio:'pipe'});
-});
-
-test('local agent speech bridge owns credentials, binary bounds and cancellation',()=>{
- execFileSync(process.execPath,['--import','tsx','scripts/test-agent-speech-bridge.mjs'],{cwd:new URL('..',import.meta.url),timeout:30000,stdio:'pipe'});
-});
-
-test('local agent TTS bridge validates audio identity, ownership and cancellation',()=>{
- execFileSync(process.execPath,['--import','tsx','scripts/test-agent-tts-bridge.mjs'],{cwd:new URL('..',import.meta.url),timeout:30000,stdio:'pipe'});
-});
+const cwd = new URL('..', import.meta.url);
+for (const [description, script, timeout] of [
+  ['local agent contracts (synthetic HTTP and durable development journal)', 'scripts/test-local-agent.mjs', 60_000],
+  ['local agent streaming and cancellation contracts', 'scripts/test-local-agent-stream.mjs', 60_000],
+  ['local browser digest persistence and recovery', 'scripts/test-local-digest-storage.mjs', 60_000],
+  ['digest cancellation preserves replay recovery', 'scripts/test-digest-cancellation.mjs', 60_000],
+  ['local agent speech bridge owns credentials, binary bounds and cancellation', 'scripts/test-agent-speech-bridge.mjs', 30_000],
+  ['local agent TTS bridge validates audio identity, ownership and cancellation', 'scripts/test-agent-tts-bridge.mjs', 30_000],
+]) {
+  test(description, () => {
+    execFileSync(process.execPath, ['--import', 'tsx', script], { cwd, timeout, stdio: 'pipe' });
+  });
+}

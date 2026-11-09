@@ -50,7 +50,7 @@ for(const relative of [
  manifest.files.push({path:relative,generatedPath:path.relative(root,target),sourceSha256:digest(input),sha256:digest(input),generatedSha256:digest(input)});
 }
 const browserTarget=path.join(output,'ai/eliza/plugins/browsersurface');fs.mkdirSync(browserTarget,{recursive:true});
-for(const name of ['ChromiumBrowserIdentity','ChromiumBrowserConnection','BrowserWebOrigin','BrowserDownloadPolicy','BrowserSessionPolicy','BrowserSitePermissions','BrowserExternalLinkPolicy','BrowserAutofillEligibility']){
+for(const name of ['ChromiumBrowserIdentity','ChromiumBrowserConnection','BrowserWebOrigin','BrowserDownloadPolicy','BrowserSessionPolicy','BrowserSitePermissions','BrowserSitePermissionRecord','BrowserExternalPage','BrowserExternalLinkPolicy','BrowserAutofillEligibility']){
  const relative=`plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/${name}.java`;
  const input=fs.readFileSync(path.join(runtimeSource,relative),'utf8');
  const value=name==='ChromiumBrowserConnection'?input.replace('package ai.eliza.plugins.browsersurface;',`package ai.eliza.plugins.browsersurface;\nimport ${identity}.BuildConfig;`):input;

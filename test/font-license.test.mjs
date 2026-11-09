@@ -114,8 +114,6 @@ test('the check follows the packaged bytes: recorded bytes are resolved, any oth
 
 test('the one constant decides whether an unresolved font withholds distribution: both settings', t => {
   assert.equal(UNRESOLVED_FONT_LICENCE_BLOCKS_DISTRIBUTION, false, 'owner decision 2026-10-10: flag only; making the check strict again is a deliberate change of this constant');
-  // What verify-apks computes for `distributable`, with the same inputs it uses.
-  const distributable = check => check.blockers.length === 0;
   const recorded = payload(t, {notices: committedNotices, files: {'denton-300.woff2': dentonBytes}});
   const swapped = payload(t, {notices: committedNotices, files: {'denton-300.woff2': otherFont}});
   const message = fontLicenceFindings(swapped).unresolved[0].message;
@@ -125,7 +123,6 @@ test('the one constant decides whether an unresolved font withholds distribution
   for (const blocksDistribution of [true, false]) {
     const check = fontLicenceCheck(recorded, {blocksDistribution});
     assert.deepEqual(check, {check: FONT_BLOCKER, status: RESOLVED_BY_OWNER_STATEMENT, blocksDistribution, items: [], resolved: [resolvedMessage], blockers: []});
-    assert.equal(distributable(check), true);
     assert.deepEqual(releaseBlockers({...RELEASE, licenceBlockers: check.blockers}, {fontLicenceBlocks: blocksDistribution}), []);
     assert.equal(fontLicenceLine(resolvedMessage, blocksDistribution), `LICENCE FLAG (reported, not blocking) ${resolvedMessage}`);
   }
@@ -133,14 +130,12 @@ test('the one constant decides whether an unresolved font withholds distribution
   // An unrecorded font, strict (true): recorded, printed as a release blocker, withholds distributable, blocks every gate.
   const strict = fontLicenceCheck(swapped, {blocksDistribution: true});
   assert.deepEqual(strict, {check: FONT_BLOCKER, status: 'unresolved', blocksDistribution: true, items: [message], resolved: [], blockers: [message]});
-  assert.equal(distributable(strict), false);
   assert.deepEqual(releaseBlockers({...RELEASE, licenceBlockers: strict.blockers}, {fontLicenceBlocks: true}), [message]);
   assert.equal(fontLicenceLine(message, true), `RELEASE BLOCKER ${message}`);
 
   // An unrecorded font, flag only (false, the default): still run, recorded and printed; nothing withheld or blocked.
   const reporting = fontLicenceCheck(swapped, {blocksDistribution: false});
   assert.deepEqual(reporting, {check: FONT_BLOCKER, status: 'unresolved', blocksDistribution: false, items: [message], resolved: [], blockers: []});
-  assert.equal(distributable(reporting), true);
   assert.deepEqual(releaseBlockers({...RELEASE, licenceBlockers: reporting.blockers}, {fontLicenceBlocks: false}), []);
   assert.equal(fontLicenceLine(message, false), `LICENCE FLAG (reported, not blocking) ${message}`);
   // A row recorded while the check blocked is not a blocker once the constant is false, and the reverse holds.

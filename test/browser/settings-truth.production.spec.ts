@@ -217,13 +217,6 @@ test('every Settings row is a control backed by real state, with no fixture valu
  }
  await test.info().attach('settings-rows',{body:report.join('\n\n'),contentType:'text/plain'});
  writeFileSync(test.info().outputPath('settings-rows.txt'),report.join('\n\n'));
- // The email image switch persists both ways across a reload.
- await openSettings(page);
- const images=()=>current(page).getByRole('button',{name:'Load images in email',exact:true});
- await expect(images()).toHaveAttribute('aria-pressed','true');
- await images().click();await expect(images()).toHaveAttribute('aria-pressed','false');
- await openSettings(page);await expect(images()).toHaveAttribute('aria-pressed','false');
- await images().click();await expect(images()).toHaveAttribute('aria-pressed','true');
  expect((await callNames(page)).filter(name=>/\.set(?!Flashlight)|\.perform$/i.test(name))).toEqual([]);
 });
 

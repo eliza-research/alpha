@@ -12,11 +12,31 @@ test('normal browser profile ignores developer coordinates',async({page})=>{awai
 test('a cancelled location condition retires a pending host fix without accepting it late',async({page})=>{await configure(page);const result=await page.evaluate(async()=>{const {readLocationSimulation,saveLocationSimulation}=await import('/src/browser/location-simulation.ts');saveLocationSimulation({...readLocationSimulation(),mode:'browser'});let callback:Function|undefined,cleared=0;Object.defineProperty(navigator,'permissions',{value:{query:async()=>({state:'granted'})}});Object.defineProperty(navigator,'geolocation',{value:{watchPosition:(fn:Function)=>{callback=fn;return 42;},clearWatch:()=>cleared++}});const {workflowAwayFromHome}=await import('/src/browser/workflow-location.ts');const abort=new AbortController(),pending=workflowAwayFromHome(abort.signal).then(()=>false,error=>error.name==='AbortError');while(!callback)await new Promise(r=>setTimeout(r,0));abort.abort();callback({coords:{latitude:1,longitude:1,accuracy:5},timestamp:Date.now()});return {cancelled:await pending,cleared};});expect(result.cancelled).toBe(true);expect(result.cleared).toBeGreaterThan(0);});
 test('Maps Recenter displays the configured development coordinates',async({page})=>{await configure(page,.01);await page.getByRole('button',{name:'Maps',exact:true}).click();await page.getByRole('button',{name:'Recenter',exact:true}).click();await expect(page.getByText('Current location',{exact:true})).toBeVisible();await expect(page.getByText('0.01000, 0.00000',{exact:true})).toBeVisible();await expect(page.getByText('Your location',{exact:true})).toBeVisible();await expect(page.getByText(/Location fix · accuracy/)).toHaveCount(0);});
 test('another tab updates the active coordinate stream',async({page,context})=>{await configure(page);await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');const location=registerPlugin<any>('ElizaLocation');(window as any).positionEvents=[];(window as any).positionListener=await location.addListener('locationChange',(value:any)=>(window as any).positionEvents.push(value.coords.latitude));(window as any).positionWatch=await location.watchPosition();});const other=await context.newPage();await other.goto('/?mode=dev');await other.evaluate(async()=>{const {readLocationSimulation,saveLocationSimulation}=await import('/src/browser/location-simulation.ts');saveLocationSimulation({...readLocationSimulation(),latitude:.02});});await expect.poll(()=>page.evaluate(()=>(window as any).positionEvents.includes(.02))).toBe(true);await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');await registerPlugin<any>('ElizaLocation').clearWatch((window as any).positionWatch);await (window as any).positionListener.remove();});await other.close();});
-test('Home edits during a pending host fix reject the outdated boundary',async({page})=>{await configure(page);const error=await page.evaluate(async()=>{const {readLocationSimulation,saveLocationSimulation}=await import('/src/browser/location-simulation.ts');saveLocationSimulation({...readLocationSimulation(),mode:'browser'});let callback:Function|undefined;Object.defineProperty(navigator,'permissions',{value:{query:async()=>({state:'granted'})}});Object.defineProperty(navigator,'geolocation',{value:{watchPosition:(fn:Function)=>{callback=fn;return 42;},clearWatch:()=>{}}});const {workflowAwayFromHome}=await import('/src/browser/workflow-location.ts');const pending=workflowAwayFromHome(new AbortController().signal).then(()=>'',error=>error.message);while(!callback)await new Promise(r=>setTimeout(r,0));const {SavedPlaces}=await import('/src/maps/saved-places.ts');new SavedPlaces().rename(readLocationSimulation().homeId,'Edited Home');callback({coords:{latitude:1,longitude:1,accuracy:5},timestamp:Date.now()});return pending;});expect(error).toContain('Home changed');});
-
-test('changing Home during a held fix rejects the old boundary',async({page})=>{
- await configure(page);const result=await page.evaluate(async()=>{const {readLocationSimulation,saveLocationSimulation}=await import('/src/browser/location-simulation.ts');saveLocationSimulation({...readLocationSimulation(),mode:'browser'});let callback:Function|undefined;Object.defineProperty(navigator,'permissions',{value:{query:async()=>({state:'granted'})}});Object.defineProperty(navigator,'geolocation',{value:{watchPosition:(fn:Function)=>{callback=fn;return 91;},clearWatch:()=>{}}});const {workflowAwayFromHome}=await import('/src/browser/workflow-location.ts');const pending=workflowAwayFromHome(new AbortController().signal).then(()=>'',error=>error.message);while(!callback)await new Promise(r=>setTimeout(r,0));saveLocationSimulation({...readLocationSimulation(),radius:500});callback({coords:{latitude:1,longitude:1,accuracy:5},timestamp:Date.now()});return pending;});expect(result).toContain('Home changed');
-});
+for (const change of ['name', 'radius'] as const) {
+ test(`a Home ${change} change invalidates a pending location condition`, async ({page}) => {
+  await configure(page);
+  const error = await page.evaluate(async change => {
+   const {readLocationSimulation,saveLocationSimulation}=await import('/src/browser/location-simulation.ts');
+   const {SavedPlaces}=await import('/src/maps/saved-places.ts');
+   const {workflowAwayFromHome}=await import('/src/browser/workflow-location.ts');
+   saveLocationSimulation({...readLocationSimulation(),mode:'browser'});
+   const watch=Promise.withResolvers<(value:unknown)=>void>();
+   Object.defineProperty(navigator,'permissions',{value:{query:async()=>({state:'granted'})}});
+   Object.defineProperty(navigator,'geolocation',{value:{
+    watchPosition:(callback:(value:unknown)=>void)=>{watch.resolve(callback);return 42;},
+    clearWatch:()=>{},
+   }});
+   const pending=workflowAwayFromHome(new AbortController().signal).then(()=>'',error=>error.message);
+   const fix=await watch.promise;
+   const settings=readLocationSimulation();
+   if(change==='name')new SavedPlaces().rename(settings.homeId,'Edited Home');
+   else saveLocationSimulation({...settings,radius:500});
+   fix({coords:{latitude:1,longitude:1,accuracy:5},timestamp:Date.now()});
+   return pending;
+  }, change);
+  expect(error).toContain('Home changed');
+ });
+}
 
 test('cancelling a pending permission request immediately clears its browser watch',async({page})=>{
  await configure(page);const result=await page.evaluate(async()=>{const {readLocationSimulation,saveLocationSimulation}=await import('/src/browser/location-simulation.ts');saveLocationSimulation({...readLocationSimulation(),mode:'browser'});let called=false,cleared=0;Object.defineProperty(navigator,'permissions',{value:{query:async()=>({state:'prompt'})}});Object.defineProperty(navigator,'geolocation',{value:{watchPosition:()=>{called=true;return 73;},clearWatch:(id:number)=>{if(id===73)cleared++;}}});const {workflowAwayFromHome}=await import('/src/browser/workflow-location.ts');const abort=new AbortController();const pending=workflowAwayFromHome(abort.signal).then(()=>false,error=>error.name==='AbortError');while(!called)await new Promise(r=>setTimeout(r,0));abort.abort();return {cancelled:await pending,cleared};});expect(result.cancelled).toBe(true);expect(result.cleared).toBe(1);

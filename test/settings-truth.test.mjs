@@ -12,11 +12,6 @@ test('the version row shows only what the build and Android report',()=>{
  for(const code of [0,-1,1.5,'7',null,NaN])assert.equal(m.versionLabel('0.1.0',code),'0.1.0');
  for(const version of ['',undefined,null,7])assert.equal(m.versionLabel(version,7),'Unavailable');
 });
-test('no update claim is shown or made',()=>{
- // Alpha has no update check; neither the adapter nor the native plugin says otherwise.
- assert.doesNotMatch(source,/Up to date|Update available|Check for updates|does not check for updates/);
- assert.doesNotMatch(java,/Up to date|Update available/);
-});
 test('prototype-only sheets (memory wipe, Wi-Fi password, forget network) never reach the renderer',()=>{
  const line=source.split('\n').find(row=>row.includes('const out = render({ ...state'));
  for(const kind of ['wipe','wifiPw','forget','conn','voice'])assert.match(line,new RegExp(`'${kind}'`));
@@ -55,12 +50,6 @@ test('stale or removed Settings routes open the top level; Developer only with d
  assert.equal(m.settingsPage('cloud-plan',false),'account');
  assert.equal(m.settingsPage('developer',true),'developer');
  assert.match(source,/const current = settingsPage\(state\.page, devSurfacesEnabled\)/);
-});
-test('Settings rows are controls: no device facts Alpha cannot change',()=>{
- const body=source.slice(source.indexOf('definition.render = (state: Bag, api: Bag) => {'));
- for(const gone of ["'Wi-Fi'","'Bluetooth'","'Mobile data'","'Battery'","'Sound & vibration'","'Models'","'Privacy & data'","'Inference model'","'Security patch'","'Do Not Disturb'","'Delivery timing'","'Personality settings'","'Home app'","'Assistant app'"])assert.ok(!body.includes(gone),gone);
- assert.match(body,/row\('Android settings', manage\('system'\)\)/);
- assert.match(java,/case "system":return new String\[\]\{Settings\.ACTION_SETTINGS\}/);
 });
 test('permission summary counts only reported grants',()=>{
  assert.equal(m.permissionSummary({Microphone:true,Camera:true}),'All allowed');

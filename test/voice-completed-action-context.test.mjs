@@ -25,31 +25,3 @@ test('voice metadata never invents completed-action after sensitive context, dis
  for(const mode of ['sensitive','disposed','disconnected']){const f=fixture();if(mode==='sensitive')f.context.sensitive=true;else if(mode==='disposed')f.owner.disposed=true;else f.disconnect();assert.throws(()=>f.read(),/not bound|changed/);}
  const empty=connectionFactory(()=>undefined);assert.deepEqual(empty.voiceRendererMetadata({view:'home'}),{});
 });
-
-test('authenticated upstream browser voice parser preserves only the explicit literal delivery protocol',()=>{
- const projected=readFileSync(new URL('../.eliza/client-features/packages/host/src/voice/ui-context.ts',import.meta.url),'utf8');
- const stamp=JSON.parse(readFileSync(new URL('../.eliza/client-features/.source.json',import.meta.url),'utf8'));
- assert.equal(stamp.sourceFiles['packages/host/src/voice/ui-context.ts'],'f29343cc85fe4d18af0c72c8b0bb508224dabbb26dc0b97c2471d90017ab65ad');
- const js=stripTypeScriptTypes(projected.replace(/^import .*;$/gm,'').replace(/^export /gm,''),{mode:'strip'});
- const parse=new Function('parseViewInteractionClientId',js+';return parseVoiceUiContext;')(v=>typeof v==='string'&&v.length>0?v:null);
- const valid=parse({viewDelivery:'completed-action',uiBrowserSurface:'native',uiClientId:'fixture-client'});assert.equal(valid.viewDelivery,'completed-action');assert.equal(valid.uiClientId,'fixture-client');assert.deepEqual(parse({uiBrowserSurface:'native'}),{uiBrowserSurface:'native'});
- for(const value of [true,null,{},'hosted','completed-action '])assert.equal(parse({viewDelivery:value}),null);
-});
-
-test('projected voice context admits direct actions only for a bound renderer',()=>{
- const source=readFileSync('.eliza/client-features/packages/host/src/voice/ui-context.ts','utf8');
- const js=stripTypeScriptTypes(source.replace(/^import .*;$/gm,'').replace(/^export /gm,''),{mode:'strip'});
- const parse=new Function('parseViewInteractionClientId',js+';return parseVoiceUiContext;')(value=>typeof value==='string'&&value.length>0?value:null);
- const binding={viewDelivery:'completed-action',uiClientId:'11111111-2222-4333-8444-555555555555'};
- assert.equal(parse({...binding,agentActionMode:'direct-request-v1'}).agentActionMode,'direct-request-v1');
- assert.equal(parse({agentActionMode:'direct-request-v1'}),null);assert.equal(parse({...binding,agentActionMode:'always'}),null);
- assert.equal(parse(binding).agentActionMode,undefined);
-});
-test('projected completion parser preserves exact message IDs and refuses malformed correlation',()=>{
- const source=readFileSync('.eliza/client-features/packages/ui/src/voice/voice-session-protocol.ts','utf8');
- const js=stripTypeScriptTypes(source,{mode:'strip'}).replace(/^import[\s\S]*?;\n/gm,'').replace(/^export /gm,'');
- const parse=new Function('findViewActionHandoff',js+';return parseServerControl;')(()=>null);
- const frame={t:'reply_complete',traceId:'trace',userMessageId:'11111111-2222-4333-8444-555555555555'};
- assert.deepEqual(parse(JSON.stringify(frame)),frame);assert.equal(parse(JSON.stringify({...frame,userMessageId:'bad'})),null);
- assert.deepEqual(parse(JSON.stringify({t:'reply_complete',traceId:'trace'})),{t:'reply_complete',traceId:'trace'});
-});

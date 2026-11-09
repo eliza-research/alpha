@@ -13,6 +13,21 @@ test('upstream plugin-maps navigation tests pass on the pinned source', () => {
   execFileSync(process.execPath, ['--import=tsx', '--test', ...tests], { stdio: 'pipe', timeout: 60_000 });
 });
 
+test('distance to a route handles ends, repeated points and the date line', async () => {
+  const { distanceToRoute } = await import('../apps/app/src/maps/route-distance.ts');
+  const point = (latitude, longitude) => ({ latitude, longitude });
+  const start = point(0, 0), middle = point(0, 1), end = point(0, 2);
+  const segment = [start, end];
+  for (const fix of [point(1, 1), point(0, 3), point(0, -1)]) {
+    assert.ok(Math.abs(distanceToRoute(fix, segment) - 111_195) < 1);
+  }
+  assert.ok(distanceToRoute(middle, segment) < 0.001);
+  assert.ok(distanceToRoute(middle, [start, start, end]) < 0.001);
+  assert.ok(distanceToRoute(point(0, 180), [point(0, 179), point(0, -179)]) < 0.001);
+  assert.ok(distanceToRoute(start, [start]) < 0.001);
+  assert.equal(distanceToRoute(start, []), Infinity);
+});
+
 test('guidance presents the next maneuver, the following step and the remaining trip', async () => {
   const { guidanceView, guidanceDistance, maneuverIcon, MANEUVER_ICONS } = await import('../apps/app/src/maps/guidance.ts');
   assert.equal(guidanceDistance(42), '40 m');

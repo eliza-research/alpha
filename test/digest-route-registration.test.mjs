@@ -27,17 +27,16 @@ await attempt(()=>p.results('client',signal));await attempt(()=>p.ack('client',{
 console.log(JSON.stringify([...new Set(calls)]));`;
 const appCalls=()=>JSON.parse(execFileSync(process.execPath,['--import=tsx','--input-type=module','-e',script],{cwd:root,encoding:'utf8',timeout:60000}));
 
-test('the protocol under test is the whole set of hosted paths the app source names', () => {
+test('all hosted digest requests from Alpha reach registered routes in the pinned agent', () => {
+  const calls=appCalls();
   const source=readFileSync(resolve(root,'apps/app/src/runtime/hosted-digests.ts'),'utf8');
   // The enumerations above must cover every mutate and delegation path the source allows.
   assert.match(source,/path: "sources" \| "loops" \| "sources\/revoke" \| "dossier",/);
   assert.match(source,/delegation\(path: "start"\|"complete"\|"status"\|"cancel"\|"revoke"\|"revocations",/);
   const literals=[...source.matchAll(/["'](\/api\/workflow\/hosted\/[^"'?]*)/g)].map(match=>match[1]).filter(path=>!path.endsWith('/'));
-  const called=appCalls().map(call=>call.split(' ')[1]);
+  const called=calls.map(call=>call.split(' ')[1]);
   for(const path of literals)assert.ok(called.includes(path),`${path} is exercised`);
-});
 
-test('every hosted digest route the app calls is registered by the pinned agent, including the dossier', () => {
   const routes=show('plugins/plugin-workflow/src/plugin-routes.ts');
   const registered=new Set([...routes.matchAll(/type:\s*'(GET|POST|PUT|PATCH|DELETE)',\s*path:\s*'([^']+)'/g)].map(([,method,path])=>`${method} ${path}`));
   assert.ok(registered.has('GET /api/workflow/status'),'the route table was parsed');
@@ -45,7 +44,7 @@ test('every hosted digest route the app calls is registered by the pinned agent,
   const policy=show('packages/app/src/api/route-auth-policy.ts');
   const prefixes=[...new Set([...policy.matchAll(/["'](\/api\/workflow\/hosted\/[^"']*\/)["']/g)].map(match=>match[1]))];
   assert.deepEqual(prefixes,['/api/workflow/hosted/cloud-delegation/'],'route-auth-policy prefixes under hosted/');
-  const unregistered=appCalls().filter(call=>call.includes('/api/workflow/hosted/')&&!registered.has(call)&&!prefixes.some(prefix=>call.split(' ')[1].startsWith(prefix)));
+  const unregistered=calls.filter(call=>call.includes('/api/workflow/hosted/')&&!registered.has(call)&&!prefixes.some(prefix=>call.split(' ')[1].startsWith(prefix)));
   // elizaOS/eliza#35906 registered POST /hosted/dossier; the resident renderer offers the dossier on that
   // basis (digest-capabilities.test.mjs). A pin without it must fail here.
   assert.deepEqual(unregistered,[]);

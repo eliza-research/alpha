@@ -45,7 +45,11 @@ test('rendered Browser menu opens local review offline and HOME cancels it',asyn
  await page.getByRole('button',{name:'Search or type address',exact:true}).click();
  await page.getByRole('textbox',{name:'Address',exact:true}).fill('https://example.com/article');await page.getByRole('textbox',{name:'Address',exact:true}).press('Enter');
  await expect(page.frameLocator('iframe[title="Website"]').getByRole('heading',{name:'Public article'})).toBeVisible();
- await page.getByRole('button',{name:'Menu',exact:true}).click();await page.getByRole('button',{name:'Read aloud',exact:true}).click();
+ await page.getByRole('button',{name:'Menu',exact:true}).click();
+ const menu=page.getByRole('dialog',{name:'Browser menu'});
+ await expect(menu.getByRole('note',{name:'Page reading unavailable'})).toHaveCount(0);
+ await expect(menu.getByRole('button',{name:'Ask about page',exact:true})).toBeVisible();
+ await menu.getByRole('button',{name:'Read aloud',exact:true}).click();
  const dialog=page.getByRole('dialog',{name:'Read page excerpt'});await expect(dialog).toBeVisible();
  await expect(dialog.getByRole('textbox')).toHaveValue('Public article\n\nFixture excerpt.');
  await dialog.getByRole('textbox').fill('Fixture excerpt.');await dialog.getByRole('button',{name:'Read locally',exact:true}).click();await expect(dialog.getByRole('status')).toHaveText('Reading locally…');

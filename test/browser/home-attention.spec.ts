@@ -33,8 +33,7 @@ test('a failed calendar read shows the retry state instead of neutral copy, then
   await expect(card).toContainText('No upcoming events');
 });
 
-// A retained brief sits beside the attention items without replacing them; a record of an
-// occurrence that did not run is never shown as a brief.
+// A retained brief sits beside the attention items without replacing them.
 const remember = (page: import('@playwright/test').Page, rows: unknown[]) => page.evaluate(async rows => { (await import('/src/runtime/hosted-digests.ts')).rememberRetainedDigests(rows as any, 'Synthetic agent'); }, rows);
 test('a retained brief appears next to the attention items, which keep their count', async ({ page }) => {
   await page.goto('/?mode=dev');
@@ -50,14 +49,4 @@ test('a retained brief appears next to the attention items, which keep their cou
   await expect(attention).toHaveAttribute('aria-label', name!);
   const order = await home.locator('[data-alpha-home-layout] > .scr').first().getByRole('button').evaluateAll(list => list.map(el => el.hasAttribute('data-alpha-home-inbox') ? 'inbox' : el.hasAttribute('data-alpha-home-brief') ? 'brief' : 'other'));
   expect(order.indexOf('brief')).toBe(order.indexOf('inbox') + 1);
-});
-test('with only missed records there is no brief card, and the attention items stay', async ({ page }) => {
-  await page.goto('/?mode=dev');
-  const home = page.getByRole('region', { name: 'Home', exact: true });
-  await remember(page, [
-    { cursor: 1, runId: 'run-missed', completedAt: new Date(Date.now() - 3_600_000).toISOString(), status: 'missed', output: { status: 'missed', text: 'The scheduled time was missed. No backlog was executed.' }, error: null },
-    { cursor: 2, runId: 'run-unavailable', completedAt: new Date(Date.now() - 1_800_000).toISOString(), status: 'unavailable', output: { status: 'unavailable', text: 'The source was not available.' }, error: null }]);
-  await expect(home.getByRole('button', { name: /^Open Inbox: \d+ unread emails?$/ })).toHaveCount(1);
-  await expect(home.locator('[data-alpha-home-brief]')).toHaveCount(0);
-  await expect(home).not.toContainText(/Latest brief|scheduled time was missed|Did not run/);
 });

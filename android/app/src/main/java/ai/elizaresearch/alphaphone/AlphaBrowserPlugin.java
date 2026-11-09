@@ -1,5 +1,6 @@
 package ai.elizaresearch.alphaphone;
 import ai.eliza.plugins.browsersurface.BrowserAutofillEligibility;
+import ai.eliza.plugins.browsersurface.BrowserExternalPage;
 
 import android.graphics.Bitmap;
 import android.net.Uri;

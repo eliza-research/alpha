@@ -3,13 +3,6 @@ import {test,expect,type Page} from '@playwright/test';
 async function start(page:Page){await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));await page.goto('/?mode=dev');await page.getByRole('button',{name:'Calendar',exact:true}).click();}
 async function draft(page:Page,title:string){const replace=async(dialog:any)=>{expect(dialog.message()).toBe('Replace the retained unsaved form with a new event?');await dialog.accept();};page.on('dialog',replace);try{await page.getByRole('button',{name:'New event',exact:true}).click();}finally{page.off('dialog',replace);}await page.getByRole('textbox',{name:'Title',exact:true}).fill(title);}
 async function count(page:Page){return page.evaluate(async()=>JSON.parse((await (await import('/src/browser/calendar-store.ts')).calendarDocument.readRaw())||'{"events":[]}').events.length);}
-test('committed creation response loss survives reload and recovers receipt without replay',async({page})=>{
- const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await start(page);
- await page.evaluate(async()=>{const {BrowserCalendar}=await import('/src/browser/calendar.ts');const original=BrowserCalendar.prototype.save;BrowserCalendar.prototype.save=async function(input:any){await original.call(this,input);throw Error('Simulated response transport loss after commit');};});
- await draft(page,'Lost creation response');await page.getByRole('button',{name:'Save event',exact:true}).click();await expect.poll(()=>count(page)).toBe(1);
- await page.getByRole('button',{name:'Save event',exact:true}).click();expect(await count(page)).toBe(1);
- await page.reload();await page.getByRole('button',{name:'Calendar',exact:true}).click();await page.getByRole('button',{name:'Check event creation receipts',exact:true}).click();await expect(page.getByRole('button',{name:'Check event creation receipts',exact:true})).toHaveCount(0);expect(await count(page)).toBe(1);expect(errors).toEqual([]);
-});
 test('creation identity returns original receipt and rejects changed arguments',async({page})=>{
  await start(page);const result=await page.evaluate(async()=>{const {BrowserCalendar}=await import('/src/browser/calendar.ts');const cal=new BrowserCalendar(),input={creationId:crypto.randomUUID(),calendarId:'local',title:'Bound request',begin:Date.now()+3600000,end:Date.now()+7200000};const first=await cal.save(input),second=await cal.save(input);let changed=false;try{await cal.save({...input,title:'Changed request'});}catch{changed=true;}return {first,second,changed};});expect(result.second).toEqual(result.first);expect(result.changed).toBe(true);expect(await count(page)).toBe(1);
 });

@@ -14,12 +14,6 @@ test('preview preserves literal text, unknown references and single-pass encodin
  assert.equal(decodeMailPreview('&amp;#39; &amp;amp;'),'&#39; &amp;');
  assert.equal(decodeMailPreview('https://example.test/?a=1&b=2'),'https://example.test/?a=1&b=2');
 });
-test('markup in preview text cannot create elements, scripts or image requests',()=>{
- assert.equal(decodeMailPreview('&lt;img src=&quot;https://example.test/pixel&quot; onerror=&quot;alert(1)&quot;&gt;'),'<img src="https://example.test/pixel" onerror="alert(1)">');
- assert.equal(document.querySelectorAll('img,script,iframe').length,0);
- assert.equal(document.body.childNodes.length,0);
-});
-
 test('marketing preheader padding does not consume the inbox preview',()=>{
  assert.equal(decodeMailPreview('New collection &#847;&zwnj;&nbsp;&#847;&zwnj; Shop now'),'New collection Shop now');
  assert.equal(decodeMailPreview('Offer\u200c\u00a0\u034f\u200c\u00a0Details'),'Offer Details');

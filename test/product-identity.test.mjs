@@ -85,3 +85,16 @@ test('the key scan would catch an unprefixed or foreign key', t => {
   fs.writeFileSync(path.join(dir, 'a.ts'), "const k='milady.theme';localStorage.getItem(k);localStorage.setItem('eliza:x','1');localStorage.getItem(`alpha.dev.${n}`);");
   assert.deepEqual(literalStorageKeys(dir).map(row => row.key).sort(), ['alpha.dev.', 'eliza:x', 'milady.theme']);
 });
+
+// The launcher is portrait only; the standalone app is an ordinary app and rotates. Android's
+// handling of the lock is emulator and device evidence (RotationInstrumentedTest).
+test('every launcher surface is locked to portrait', () => {
+  const launcher = fs.readFileSync('android/app/src/launcher/AndroidManifest.xml', 'utf8');
+  for (const activity of ['MainActivity', 'AlphaAssistActivity'])
+    assert.match(launcher, new RegExp(`<activity android:name="\\.${activity}"[^>]*android:screenOrientation="portrait" tools:replace="android:screenOrientation"`));
+});
+
+test('the standalone app keeps the shared orientation', () => {
+  assert.equal(identity.orientation, 'unspecified');
+  assert.doesNotMatch(fs.readFileSync('android/app/src/standalone/AndroidManifest.xml', 'utf8'), /screenOrientation/);
+});

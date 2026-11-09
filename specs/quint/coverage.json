@@ -8910,7 +8910,7 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaBrowserPlugin.java",
-      "sha256": "686fd0e650825c64c97ea428bf00adcd7718698fb352d1e22b857959e8f7d7b6",
+      "sha256": "7ada80c357882c03878164cf6581c30eb36b568eee6d5443988f02c3d22d8aaa",
       "models": [
         "BrowserDownloads",
         "BrowserSession",
@@ -8920,407 +8920,407 @@
       "treatment": "state-and-transition-projection",
       "stateAnchors": [
         {
-          "line": 47,
+          "line": 48,
           "text": "private final Map<String, Tab> tabs = new HashMap<>();"
         },
         {
-          "line": 48,
+          "line": 49,
           "text": "private String namespace = PRIVATE_PREFIX + UUID.randomUUID().toString().replace(\"-\", \"\");"
         },
         {
-          "line": 49,
+          "line": 50,
           "text": "private final WebViewListener hostNavigation = new WebViewListener() {"
         },
         {
-          "line": 55,
+          "line": 56,
           "text": "private void resetHostDocument() {"
         },
         {
-          "line": 66,
+          "line": 67,
           "text": "private String session;"
         },
         {
-          "line": 67,
+          "line": 68,
           "text": "private long sequence;"
         },
         {
-          "line": 68,
+          "line": 69,
           "text": "private String presentedId;"
         },
         {
-          "line": 69,
+          "line": 70,
           "text": "private boolean paused;"
         },
         {
-          "line": 70,
+          "line": 71,
           "text": "private boolean destroyed;"
         },
         {
-          "line": 71,
+          "line": 72,
           "text": "private BrowserDownloads downloads;"
         },
         {
-          "line": 72,
+          "line": 73,
           "text": "private BrowserReading reading;"
         },
         {
-          "line": 73,
+          "line": 74,
           "text": "private BrowserBookmarks bookmarks;"
         },
         {
-          "line": 74,
+          "line": 75,
           "text": "private BrowserSessionStore sessionStore;"
         },
         {
-          "line": 75,
+          "line": 76,
           "text": "private boolean clearing;"
         },
         {
-          "line": 76,
+          "line": 77,
           "text": "private final AutofillManager.AutofillCallback autofillCallback=new AutofillManager.AutofillCallback() {"
         },
         {
-          "line": 80,
+          "line": 81,
           "text": "private void autofillEvent(View view,int virtualId,int event) {"
         },
         {
-          "line": 90,
+          "line": 91,
           "text": "private final android.os.Handler navigationHandler = new android.os.Handler(android.os.Looper.getMainLooper());"
         },
         {
-          "line": 91,
+          "line": 92,
           "text": "private static boolean cleanedProfiles;"
         },
         {
-          "line": 92,
+          "line": 93,
           "text": "private final Map<String,String> retiredProfiles=new LinkedHashMap<>();"
         },
         {
-          "line": 93,
+          "line": 94,
           "text": "private android.content.SharedPreferences profileRetirement;"
         },
         {
-          "line": 94,
+          "line": 95,
           "text": "private ActivityResultLauncher<Intent> filePicker;"
         },
         {
-          "line": 95,
+          "line": 96,
           "text": "private ActivityResultLauncher<Intent> pageShare;"
         },
         {
-          "line": 96,
+          "line": 97,
           "text": "private boolean shareOutstanding;"
         },
         {
-          "line": 97,
+          "line": 98,
           "text": "private ValueCallback<Uri[]> fileCallback;"
         },
         {
-          "line": 98,
+          "line": 99,
           "text": "private Tab fileTab;"
         },
         {
-          "line": 99,
+          "line": 100,
           "text": "private long fileNavigation;"
         },
         {
-          "line": 100,
+          "line": 101,
           "text": "private boolean pickerOutstanding;"
         },
         {
-          "line": 101,
+          "line": 102,
           "text": "private ActivityResultLauncher<String[]> runtimePermissions;"
         },
         {
-          "line": 102,
+          "line": 103,
           "text": "private java.util.function.Consumer<Map<String,Boolean>> runtimeResult;"
         },
         {
-          "line": 103,
+          "line": 104,
           "text": "private ActivityResultLauncher<Uri> takePicture;"
         },
         {
-          "line": 104,
+          "line": 105,
           "text": "private Uri pictureUri;"
         },
         {
-          "line": 106,
+          "line": 107,
           "text": "private AlertDialog siteDialog;"
         },
         {
-          "line": 107,
+          "line": 108,
           "text": "private Tab siteDialogTab;"
         },
         {
-          "line": 108,
+          "line": 109,
           "text": "private Runnable siteDialogCancel;"
         },
         {
-          "line": 109,
+          "line": 110,
           "text": "private View customView;"
         },
         {
-          "line": 110,
+          "line": 111,
           "text": "private FrameLayout fullscreen;"
         },
         {
-          "line": 111,
+          "line": 112,
           "text": "private Tab fullscreenTab;"
         },
         {
-          "line": 112,
+          "line": 113,
           "text": "private WebChromeClient.CustomViewCallback customCallback;"
         },
         {
-          "line": 113,
+          "line": 114,
           "text": "private OnBackPressedCallback fullscreenBack;"
         },
         {
-          "line": 114,
+          "line": 115,
           "text": "private void cancelFile() { ValueCallback<Uri[]> callback=fileCallback;fileCallback=null;fileTab=null;if(callback!=null)callback.onReceiveValue(null); }"
         },
         {
-          "line": 160,
+          "line": 161,
           "text": "private java.util.function.Function<Intent,java.util.List<android.content.pm.ResolveInfo>> externalBrowserResolver ="
         },
         {
-          "line": 162,
+          "line": 163,
           "text": "private static class Tab { BrowserReadingWorld readingWorld; BrowserDownloads.BlobCapture capture; String findQuery; /** Latest main-frame request or redirect t"
         },
         {
-          "line": 167,
+          "line": 168,
           "text": "private boolean canAutofill(Tab t) {"
         },
         {
-          "line": 171,
+          "line": 172,
           "text": "private BrowserAutofillEligibility.TabState autofillState(Tab t) {"
         },
         {
-          "line": 182,
+          "line": 183,
           "text": "private BrowserFieldOrigin.TabSnapshot fieldSnapshot(Tab t) {"
         },
         {
-          "line": 189,
+          "line": 190,
           "text": "private void cancelAutofill(Tab t) {"
         },
         {
-          "line": 217,
+          "line": 218,
           "text": "private void commitAutofill(Tab t) {"
         },
         {
-          "line": 226,
+          "line": 227,
           "text": "private void disableAutofill(Tab t) {"
         },
         {
-          "line": 230,
+          "line": 231,
           "text": "private void syncAutofill(Tab t) {"
         },
         {
-          "line": 239,
+          "line": 240,
           "text": "private final class CredentialWebView extends WebView {"
         },
         {
-          "line": 240,
+          "line": 241,
           "text": "private final Tab tab;"
         },
         {
-          "line": 266,
+          "line": 267,
           "text": "private void clearTimeout(Tab t) { if(t.timeout!=null) navigationHandler.removeCallbacks(t.timeout); t.timeout=null; }"
         },
         {
-          "line": 267,
+          "line": 268,
           "text": "private void loading(Tab t) { loading(t,false); }"
         },
         {
-          "line": 268,
+          "line": 269,
           "text": "private void loading(Tab t,boolean startedCallback) {"
         },
         {
-          "line": 286,
+          "line": 287,
           "text": "private void dispose(Tab t) {"
         },
         {
-          "line": 327,
+          "line": 328,
           "text": "private boolean safe(String value) {"
         },
         {
-          "line": 330,
+          "line": 331,
           "text": "private void fail(Tab t, String message) { finishAuthSave(t,null); disableAutofill(t); clearTimeout(t); t.error = message; t.loading = false; t.committed = fals"
         },
         {
-          "line": 331,
+          "line": 332,
           "text": "private JSObject state(Tab t) { JSObject s = new JSObject(); s.put(\"session\", session); s.put(\"id\", t.id); s.put(\"sequence\", ++sequence); s.put(\"navigation\", St"
         },
         {
-          "line": 332,
+          "line": 333,
           "text": "private void emit(Tab t) { if (tabs.get(t.id) == t) notifyListeners(\"stateChanged\", state(t)); }"
         },
         {
-          "line": 338,
+          "line": 339,
           "text": "private boolean closed(PluginCall call){if(!destroyed)return false;call.reject(\"Browser closed\");return true;}"
         },
         {
-          "line": 339,
+          "line": 340,
           "text": "private void run(PluginCall call, java.util.function.Consumer<Tab> action) { getActivity().runOnUiThread(() -> {if(closed(call))return; if (!Objects.equals(sess"
         },
         {
-          "line": 358,
+          "line": 359,
           "text": "private Tab build(String id, boolean priv, String profileName) throws Exception {"
         },
         {
-          "line": 430,
+          "line": 431,
           "text": "private void openPicker(Tab t,FileChooserParams params) {"
         },
         {
-          "line": 439,
+          "line": 440,
           "text": "private void offerCamera(Tab t,FileChooserParams params) {"
         },
         {
-          "line": 477,
+          "line": 478,
           "text": "private boolean promptable(Tab t){return !paused&&!destroyed&&!t.dead&&tabs.get(t.id)==t&&Objects.equals(presentedId,t.id)&&t.error.isEmpty();}"
         },
         {
-          "line": 478,
+          "line": 479,
           "text": "private void showSiteDialog(Tab t,AlertDialog dialog,Runnable cancel){"
         },
         {
-          "line": 490,
+          "line": 491,
           "text": "private void dismissSiteDialogs(){"
         },
         {
-          "line": 496,
+          "line": 497,
           "text": "private void revokeSiteDialogAutofill(){Runnable revoke=siteDialogRevoke;siteDialogRevoke=null;if(revoke!=null)revoke.run();}"
         },
         {
-          "line": 498,
+          "line": 499,
           "text": "private boolean siteDialogAutofill;"
         },
         {
-          "line": 500,
+          "line": 501,
           "text": "private Runnable siteDialogRevoke;"
         },
         {
-          "line": 502,
+          "line": 503,
           "text": "private final BrowserHttpAuthOrigin.EngineChallengeSource authEngine=BrowserHttpAuthOrigin.STANDARD_WEBVIEW;"
         },
         {
-          "line": 504,
+          "line": 505,
           "text": "private BrowserHttpAuthOrigin.TabSnapshot authSnapshot(Tab t,String host,String realm){"
         },
         {
-          "line": 513,
+          "line": 514,
           "text": "private void finishAuthSave(Tab t,String committedUrl){"
         },
         {
-          "line": 525,
+          "line": 526,
           "text": "private boolean declared(String permission){"
         },
         {
-          "line": 530,
+          "line": 531,
           "text": "private boolean granted(String permission){return androidx.core.content.ContextCompat.checkSelfPermission(getContext(),permission)==android.content.pm.PackageMa"
         },
         {
-          "line": 532,
+          "line": 533,
           "text": "private boolean grantable(String kind){for(String permission:androidPermissions(kind))if(declared(permission))return true;return false;}"
         },
         {
-          "line": 533,
+          "line": 534,
           "text": "private boolean androidGranted(String kind){for(String permission:androidPermissions(kind))if(declared(permission)&&granted(permission))return true;return false"
         },
         {
-          "line": 535,
+          "line": 536,
           "text": "private String permissionOrigin(Tab t,String requested){"
         },
         {
-          "line": 545,
+          "line": 546,
           "text": "private void sitePermission(Tab t,String origin,List<String> kinds,java.util.function.Consumer<Set<String>> result){"
         },
         {
-          "line": 583,
+          "line": 584,
           "text": "private void mediaPermission(Tab t,PermissionRequest request){"
         },
         {
-          "line": 598,
+          "line": 599,
           "text": "private void locationPermission(Tab t,String requested,GeolocationPermissions.Callback callback){"
         },
         {
-          "line": 605,
+          "line": 606,
           "text": "private static boolean secureAuthPage(Uri page){return \"https\".equalsIgnoreCase(page.getScheme())||(BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS&&\"http\".equalsIgnoreC"
         },
         {
-          "line": 606,
+          "line": 607,
           "text": "private void httpAuth(Tab t,HttpAuthHandler handler,String host,String realm){"
         },
         {
-          "line": 674,
+          "line": 675,
           "text": "private void cameraForFile(Tab t){"
         },
         {
-          "line": 693,
+          "line": 694,
           "text": "private void pictureTaken(Boolean saved){"
         },
         {
-          "line": 700,
+          "line": 701,
           "text": "private void enterFullscreen(Tab t,View view,WebChromeClient.CustomViewCallback callback){"
         },
         {
-          "line": 714,
+          "line": 715,
           "text": "private void exitFullscreen(boolean tellPage){"
         },
         {
-          "line": 725,
+          "line": 726,
           "text": "private void findResult(Tab t,int ordinal,int count,boolean done){"
         },
         {
-          "line": 731,
+          "line": 732,
           "text": "private void clearFind(Tab t){"
         },
         {
-          "line": 749,
+          "line": 750,
           "text": "private void passkeyNotice(Tab t){"
         },
         {
-          "line": 750,
+          "line": 751,
           "text": "android.content.SharedPreferences notices=getContext().getSharedPreferences(\"alpha-browser-notices\",0);"
         },
         {
-          "line": 755,
+          "line": 756,
           "text": "private void notice(Tab t,String message) { if(tabs.get(t.id)!=t)return; JSObject event=new JSObject(); event.put(\"session\",session); event.put(\"id\",t.id); even"
         },
         {
-          "line": 759,
+          "line": 760,
           "text": "private boolean popup(Tab opener,boolean gesture,android.os.Message message) {"
         },
         {
-          "line": 774,
+          "line": 775,
           "text": "private boolean ownsRoute(Intent intent) {"
         },
         {
-          "line": 782,
+          "line": 783,
           "text": "private void handoff(Tab t,String raw,boolean gesture) {"
         },
         {
-          "line": 806,
+          "line": 807,
           "text": "private void tabClosed(String id){JSObject event=new JSObject();event.put(\"session\",session);event.put(\"id\",id);notifyListeners(\"tabClosed\",event);}"
         },
         {
-          "line": 808,
+          "line": 809,
           "text": "private void closePopup(Tab t){navigationHandler.post(()->{if(tabs.get(t.id)!=t)return;tabs.remove(t.id);dispose(t);tabClosed(t.id);});}"
         },
         {
-          "line": 819,
+          "line": 820,
           "text": "private boolean bookmarkSession(PluginCall call) {"
         },
         {
-          "line": 824,
+          "line": 825,
           "text": "private JSObject bookmarkResult(ArrayList<String> urls) { JSObject result=new JSObject();JSArray list=new JSArray();for(String url:urls)list.put(url);result.put"
         },
         {
-          "line": 890,
+          "line": 891,
           "text": "private void reviewPage(PluginCall call,boolean question) { getActivity().runOnUiThread(()->{if(closed(call))return;"
         },
         {
-          "line": 936,
+          "line": 937,
           "text": "private void flushCookies() {"
         }
       ]
@@ -12989,25 +12989,6 @@
       ]
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserExternalPage.java",
-      "sha256": "effa5291f51ee8b9037e5926a07d4bb2ab44fe2799477a0907fcd5997313896e",
-      "models": [
-        "BrowserSession"
-      ],
-      "scope": "application",
-      "treatment": "state-and-transition-projection",
-      "stateAnchors": [
-        {
-          "line": 14,
-          "text": "private static int port(URI url){return url.getPort()<0?(\"https\".equalsIgnoreCase(url.getScheme())?443:80):url.getPort();}"
-        },
-        {
-          "line": 18,
-          "text": "private BrowserExternalPage(){}"
-        }
-      ]
-    },
-    {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserExternalResolver.java",
       "sha256": "ed388a83ca782eb6893e5455896e9b3f7df2d0034fdf6abb5686f0743f3e20a3",
       "models": [
@@ -13261,30 +13242,6 @@
       ]
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserPermissionRecords.java",
-      "sha256": "77478c69b0a1396f1fd767b8e2a56003faefb2a3a3a6940285ed967f5a330827",
-      "models": [
-        "BrowserSiteState",
-        "StartupPermissions"
-      ],
-      "scope": "application",
-      "treatment": "state-and-transition-projection",
-      "stateAnchors": [
-        {
-          "line": 19,
-          "text": "private BrowserPermissionRecords(){}"
-        },
-        {
-          "line": 27,
-          "text": "private static Map<String,Map<String,Boolean>> ordered(String json)throws Exception{"
-        },
-        {
-          "line": 47,
-          "text": "private static Map<String,Map<String,Boolean>> endOfRecord(JSONTokener tokens,Map<String,Map<String,Boolean>> sites)throws Exception{"
-        }
-      ]
-    },
-    {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserReading.java",
       "sha256": "517c7a25038b45a2cab7fd8816e74d640ceabe46653fb82affa6e9cf970a1c61",
       "models": [
@@ -13438,7 +13395,7 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserSessionStore.java",
-      "sha256": "8f13e29b4dba53e03a278128d9d4afd7d48062c5de7d0e50774319b8ae6575c2",
+      "sha256": "93875e3a4944a657c3698f3a0ebcd889ebe6eb8cd827bd571157b92c539d5c89",
       "models": [
         "BrowserSession",
         "BrowserSiteState"
@@ -13447,31 +13404,31 @@
       "treatment": "state-and-transition-projection",
       "stateAnchors": [
         {
-          "line": 8,
+          "line": 9,
           "text": "import android.content.SharedPreferences;"
         },
         {
-          "line": 19,
+          "line": 20,
           "text": "private final SharedPreferences preferences;"
         },
         {
-          "line": 20,
+          "line": 21,
           "text": "private final KeystoreTextFrame frame=new KeystoreTextFrame(ALIAS,2000000);"
         },
         {
-          "line": 39,
+          "line": 40,
           "text": "private String seal(JSONObject value)throws Exception{return frame.seal(value.toString());}"
         },
         {
-          "line": 40,
+          "line": 41,
           "text": "private JSONObject open(String packed)throws Exception{return new JSONObject(frame.open(packed));}"
         },
         {
-          "line": 63,
+          "line": 64,
           "text": "private BrowserSitePermissions decisions(){"
         },
         {
-          "line": 70,
+          "line": 71,
           "text": "private void save(BrowserSitePermissions decisions)throws Exception{"
         }
       ]
@@ -36044,7 +36001,7 @@
     },
     {
       "path": "apps/app/src/runtime/note-share-text.ts",
-      "sha256": "c7ec497f5fa9deec88ffb010ab4ec3d66ef3954f85e8513cd94eea8dfe583461",
+      "sha256": "def6c05f5de07e6b9c68e21c10810ea6f7ba70a5e39e9b672bcc4e6c7ab04e30",
       "models": [
         "NotesLifecycle"
       ],
@@ -36064,7 +36021,7 @@
     },
     {
       "path": "apps/app/src/runtime/notes-secure-store.ts",
-      "sha256": "4dec4c38afd12efcc6e38fd773a81322797f814ac38da58008ee7e81441bfac5",
+      "sha256": "17355114ae2ab04c1661007ab2813fe36ab249e0256cba11b994a1f571af3a91",
       "models": [
         "DurableStore",
         "NotesLifecycle"
@@ -36073,19 +36030,19 @@
       "treatment": "state-and-transition-projection",
       "stateAnchors": [
         {
-          "line": 22,
+          "line": 23,
           "text": "async compareExchange(key,expected,value){"
         },
         {
-          "line": 23,
+          "line": 24,
           "text": "try{return await vault.compareExchange(key,expected,value);}"
         },
         {
-          "line": 120,
+          "line": 55,
           "text": "if((await vault.compareExchange(SECURE_NOTES_DRAFT_SLOT,expected,draft)).status==='saved')return draft;"
         },
         {
-          "line": 126,
+          "line": 61,
           "text": "return (await vault.compareExchange(SECURE_NOTES_DRAFT_SLOT,expected,null)).status==='saved';"
         }
       ]

@@ -76,26 +76,17 @@ test('an upstream-relative script path needs its upstream directory named in the
   assert.equal(vendorRelativeInContext('scripts/release.mjs', 'In `vendor/eliza`, run it.', files), false);
 });
 
-// Stale references in documents this check does not yet own. Each entry must still be
-// stale; remove it as soon as the document is corrected.
-const knownStale = new Map([
-  // Dated snapshots stay as written; the removed speech toolchain is replaced by docs/fused-speech.md.
-  ['docs/mvp-audit-2026-10-11.md|scripts/local-speech/requalify-runtime.py', 'dated audit snapshot; the earlier speech toolchain was removed for the fused libelizainference engine'],
-]);
-
 test('every scripts/... path in README.md and docs/ exists in this repository or the pinned upstream', () => {
-  const failures = [], stillStale = new Set();
+  const failures = [];
   for (const file of docs) {
     const text = read(file);
     for (const { reference, index } of scriptReferences(text)) {
       if (fs.existsSync(path.join(root, reference))) continue;
       if (vendorRelativeInContext(reference, text, listVendorFiles())) continue;
-      if (knownStale.has(`${file}|${reference}`)) { stillStale.add(`${file}|${reference}`); continue; }
       failures.push(`${file}:${lineOf(text, index)}: ${reference}`);
     }
   }
   assert.deepEqual(failures, [], 'Replace or remove references to scripts that no longer exist');
-  assert.deepEqual([...knownStale.keys()].filter(key => !stillStale.has(key)), [], 'remove corrected entries from knownStale');
 });
 
 test('every `npm run X` in README.md and docs/ names a root package.json script', () => {
@@ -104,30 +95,6 @@ test('every `npm run X` in README.md and docs/ names a root package.json script'
   for (const file of docs) {
     const text = read(file);
     for (const { name, index } of npmScriptReferences(text)) if (!Object.hasOwn(scripts, name)) failures.push(`${file}:${lineOf(text, index)}: npm run ${name}`);
-  }
-  assert.deepEqual(failures, []);
-});
-
-// Wording retired by the October 1 resident-agent decision and the October 8 removal
-// of the aggregate smoke runners. Historical records describe those events in prose.
-const retired = [
-  [/[\w-]+-smoke\.mjs/, 'removed smoke runner'],
-  [/\bandroid:smoke\b/, 'removed npm script'],
-  [/smoke lane/i, 'removed CI lane'],
-  [/qualify-stock-video/, 'removed CI qualification step'],
-  [/Cloud-only execution/i, 'superseded by the Android-resident agent'],
-  [/signed enclave deployment/i, 'enclave hosting is not the architecture'],
-  [/AlphaPhotos\.describe/, 'no such native method'],
-];
-
-test('README.md and docs/ contain no retired runner or superseded architecture wording', () => {
-  const failures = [];
-  for (const file of docs) {
-    const text = read(file);
-    for (const [pattern, reason] of retired) {
-      const match = pattern.exec(text);
-      if (match) failures.push(`${file}:${lineOf(text, match.index)}: "${match[0]}" (${reason})`);
-    }
   }
   assert.deepEqual(failures, []);
 });

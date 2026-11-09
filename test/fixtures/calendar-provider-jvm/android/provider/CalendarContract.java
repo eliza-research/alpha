@@ -5,12 +5,13 @@ package android.provider;
  * SQL the reader builds is the SQL CalendarProvider would receive. Test-only.
  */
 public final class CalendarContract {
- public static final String ACCOUNT_TYPE_LOCAL="LOCAL";
+ public static final String AUTHORITY="calendar",ACCOUNT_TYPE_LOCAL="LOCAL";
  public static final class Attendees {
   public static final android.net.Uri CONTENT_URI=new android.net.Uri("attendees");
   public static final int ATTENDEE_STATUS_NONE=0,ATTENDEE_STATUS_ACCEPTED=1,ATTENDEE_STATUS_DECLINED=2,ATTENDEE_STATUS_INVITED=3,ATTENDEE_STATUS_TENTATIVE=4;
  }
  public static final class Reminders {public static final android.net.Uri CONTENT_URI=new android.net.Uri("reminders");}
+ public static final class ExtendedProperties {public static final android.net.Uri CONTENT_URI=new android.net.Uri("properties");}
  public static final class Calendars {
   public static final android.net.Uri CONTENT_URI=new android.net.Uri("calendars");
   public static final String ACCOUNT_TYPE="account_type";
@@ -24,8 +25,12 @@ public final class CalendarContract {
    DESCRIPTION="description",EVENT_LOCATION="eventLocation",RRULE="rrule";
  }
  public static final class Events {
-  public static final android.net.Uri CONTENT_URI=new android.net.Uri("events");
-  public static final String DELETED="deleted";
+  public static final android.net.Uri CONTENT_URI=new android.net.Uri("events"),
+   CONTENT_EXCEPTION_URI=new android.net.Uri("exceptions");
+  public static final String DELETED="deleted",CALENDAR_ID="calendar_id",TITLE="title",
+   DESCRIPTION="description",EVENT_LOCATION="eventLocation",DTSTART="dtstart",
+   EVENT_TIMEZONE="eventTimezone",ALL_DAY="allDay",DTEND="dtend",RRULE="rrule",DURATION="duration",
+   STATUS="eventStatus",ORIGINAL_INSTANCE_TIME="originalInstanceTime";
   public static final int AVAILABILITY_BUSY=0,AVAILABILITY_FREE=1,AVAILABILITY_TENTATIVE=2;
   public static final int STATUS_TENTATIVE=0,STATUS_CONFIRMED=1,STATUS_CANCELED=2;
  }

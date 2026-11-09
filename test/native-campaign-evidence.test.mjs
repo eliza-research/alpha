@@ -72,16 +72,19 @@ test('the recovery phase runs alone as a selection and never reads as the whole 
  assert.ok(r.record.phases.workflow.cases.every(row=>row.status==='not-run')&&r.record.phases['approval-notice'].cases.every(row=>row.status==='not-run'));
  assert.equal(r.state.user,'0');assert.equal(r.state.created,false);assert.deepEqual(r.state.files,{});
 });
-test('a skipped or failed recovery case names itself and fails the selection and the campaign',()=>{
- for(const mode of ['skipped','wrong-method','wrong-terminal','summary-only']){
-  const r=exercise(mode,'workflow',['--phase=approval-notice-recovery','--variant=launcher']);assert.notEqual(r.code,0,mode);
-  assert.equal(r.record.passed,false,mode);assert.equal(r.record.selectionPassed,false,mode);
-  assert.deepEqual([r.record.failure.variant,r.record.failure.phase],['launcher','approval-notice-recovery'],mode);assert.match(r.record.failure.method,/WorkflowApprovalNoticeProcessDeathInstrumentedTest#pendingApprovalNoticeSurvivesProcessDeathAndOpensItsExactApprovalOnce$/,mode);
-  // The first failure stops the phase: the owner-change case is not run and reads not-run, never passed.
-  assert.equal(r.record.results.length,1,mode);assert.equal(r.commands.filter(a=>a.includes('instrument')&&a.includes('-w')).length>=1,true,mode);
-  assert.deepEqual(r.record.phases['approval-notice-recovery'].cases.filter(row=>row.variant==='launcher').map(row=>row.status),['failed','not-run'],mode);
-  assert.equal(r.record.phases['approval-notice-recovery'].complete,false,mode);assert.equal(r.state.created,false,mode);assert.equal(r.state.user,'0',mode);
- }
+test('a skipped recovery case fails the selection and leaves its successor unrun',()=>{
+ const r=exercise('skipped','workflow',['--phase=approval-notice-recovery','--variant=launcher']);
+ assert.notEqual(r.code,0);
+ assert.equal(r.record.passed,false);
+ assert.equal(r.record.selectionPassed,false);
+ assert.deepEqual([r.record.failure.variant,r.record.failure.phase],['launcher','approval-notice-recovery']);
+ assert.match(r.record.failure.method,/WorkflowApprovalNoticeProcessDeathInstrumentedTest#pendingApprovalNoticeSurvivesProcessDeathAndOpensItsExactApprovalOnce$/);
+ assert.equal(r.record.results.length,1);
+ const phase=r.record.phases['approval-notice-recovery'];
+ assert.deepEqual(phase.cases.filter(row=>row.variant==='launcher').map(row=>row.status),['failed','not-run']);
+ assert.equal(phase.complete,false);
+ assert.equal(r.state.created,false);
+ assert.equal(r.state.user,'0');
 });
 test('a failed case names itself, leaves later phases not-run and fails the campaign',()=>{
  const r=run('skipped');assert.notEqual(r.code,0);

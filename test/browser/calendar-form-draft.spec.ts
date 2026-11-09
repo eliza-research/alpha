@@ -24,9 +24,34 @@ test('restart on another date retains the selected date',async({page})=>{
  await open(page);await begin(page);await page.clock.setFixedTime(new Date('2027-03-14T00:00Z'));await page.reload();await page.getByRole('button',{name:'Calendar',exact:true}).click();await page.getByRole('button',{name:'New event',exact:true}).click();await expect(page.getByLabel('Selected event date')).toContainText('13');
 });
 test('a committed event with lost response is recovered without a second creation',async({page})=>{
- await open(page);await begin(page,'Uncertain event');await page.evaluate(async()=>{const {BrowserCalendar}=await import('/src/browser/calendar.ts');const save=BrowserCalendar.prototype.save;BrowserCalendar.prototype.save=async function(input){await save.call(this,input);throw Error('Response lost');};});
- await page.getByRole('button',{name:'Save event',exact:true}).click();await expect(page.getByText('The calendar write was not confirmed. Check creation receipts before creating another event.',{exact:true})).toBeVisible();await page.reload();await page.getByRole('button',{name:'Calendar',exact:true}).click();await page.getByRole('button',{name:'Check event creation receipts',exact:true}).click();await expect(page.getByRole('button',{name:'Check event creation receipts',exact:true})).toHaveCount(0);await page.getByRole('button',{name:'New event',exact:true}).click();await page.getByRole('button',{name:'Save event',exact:true}).click();
- await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveCount(0);expect(await page.evaluate(async()=>(await new (await import('/src/browser/calendar.ts')).BrowserCalendar().list({begin:0,end:Date.parse('2030-01-01')})).events.length)).toBe(1);
+ const errors:string[]=[];
+ page.on('pageerror',error=>errors.push(error.message));
+ await open(page);
+ await begin(page,'Uncertain event');
+ await page.evaluate(async()=>{
+  const {BrowserCalendar}=await import('/src/browser/calendar.ts');
+  const save=BrowserCalendar.prototype.save;
+  BrowserCalendar.prototype.save=async function(input){await save.call(this,input);throw Error('Response lost');};
+ });
+ const save=page.getByRole('button',{name:'Save event',exact:true});
+ const receipts=page.getByRole('button',{name:'Check event creation receipts',exact:true});
+ const count=()=>page.evaluate(async()=>{
+  const {BrowserCalendar}=await import('/src/browser/calendar.ts');
+  return (await new BrowserCalendar().list({begin:0,end:Date.parse('2030-01-01')})).events.length;
+ });
+ await save.click();
+ await expect(page.getByText('The calendar write was not confirmed. Check creation receipts before creating another event.',{exact:true})).toBeVisible();
+ await save.click();
+ expect(await count()).toBe(1);
+ await page.reload();
+ await page.getByRole('button',{name:'Calendar',exact:true}).click();
+ await receipts.click();
+ await expect(receipts).toHaveCount(0);
+ await page.getByRole('button',{name:'New event',exact:true}).click();
+ await save.click();
+ await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveCount(0);
+ expect(await count()).toBe(1);
+ expect(errors).toEqual([]);
 });
 test('a restored uncertain reminder checks its original attempt without rescheduling',async({page})=>{
  await open(page);await begin(page,'Uncertain reminder');await page.getByRole('button',{name:'Reminders',exact:true}).click();await expectSavedCalendarDraft(page,'creation',{cal:'alpha-reminders'});

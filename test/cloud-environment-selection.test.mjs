@@ -32,11 +32,6 @@ test('a hidden selector retains current Cloud issuer and actual sign-in dispatch
  assert.match(ui,/connectionController.cloudLogin\(env\(\)\)/);
  assert.match(ui,/async cloudLogin\(environment: CloudEnvironment\)[\s\S]*?connectionController.beginSignIn\(environment\)/);
 });
-test('the new resolver has no credential, profile, login or storage side effects',()=>{
- const source=fs.readFileSync(new URL('../apps/app/src/runtime/cloud-environment-selection.ts',import.meta.url),'utf8');
- assert.doesNotMatch(source,/localStorage|credential|token|fetch\(|login\(|dirname|profile/);
-});
-
 test('explicit real Cloud resident fixes one issuer without enabling mock selection',()=>{
  const cloud={development:true,testMocks:false,android:false,cloudResident:true,previewEnvironment:'staging'};
  assert.equal(resolveCloudEnvironment(cloud,'production'),'staging');

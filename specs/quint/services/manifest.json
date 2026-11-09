@@ -406,7 +406,6 @@
     {
       "sources": [
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaBrowserPlugin.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserPermissionRecords.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserPasskeys.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserHttpAuthOrigin.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserHttpAuthAutofill.java",
@@ -419,7 +418,7 @@
         "autofillExposed/authSave": "current STANDARD_WEBVIEW cannot attest challenge origin and exposes neither"
       },
       "abstractions": [
-        "One tab, two exact origin classes and one representative sensor kind; sealed 200-origin record bounds remain covered by source tests.",
+        "One tab, two exact origin classes and one representative sensor kind; the pinned Eliza suite covers the shared 200-origin record bound.",
         "Cookie/profile and passkey-policy mismatches refuse tab creation. Private tabs do not persist site decisions.",
         "The current STANDARD_WEBVIEW engine cannot authenticate a challenge origin, so HTTP autofill remains disabled while manual input works. Shared hypothetical attested-engine behavior is excluded.",
         "permissionResult records a completed permission callback rather than a claim that an active sensor keeps running."

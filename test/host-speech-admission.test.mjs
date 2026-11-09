@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,writeFileSync,symlinkSync,rmSync,readFileSync,existsSync} from 'node:fs';
+import {mkdtempSync,writeFileSync,symlinkSync,rmSync,readFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createHash} from 'node:crypto';
@@ -23,11 +23,6 @@ test('host asset manifest matches the current shared worker pins: Paradee, optio
  assert.deepEqual(speechAssets.espeak,parse(tts.split('ESPEAK_DATA_ASSETS:')[1].split('];')[0]));
  // Phonon-2 (the parakeet backend, upstream default) is the one ASR model the host worker admits here.
  assert.deepEqual(speechAssets.asr,[...parse(assets.split('PHONON_ASR_ASSETS:')[1].split('];')[0]),...parse(asr.split('const VAD_ASSET')[1].split('};')[0])]);
-});
-test('retired Kokoro/Whisper proof entrypoints are deleted, not stubbed',()=>{
- for(const name of ['test-cold-kokoro','test-paired-whisper','test-combined-voice-roundtrip','test-agent-asr','test-agent-tts','test-host-kokoro','test-local-asr','test-paired-local-voice','retired-host-speech-proof'])
-  assert.equal(existsSync(new URL('../scripts/'+name+'.mjs',import.meta.url)),false,name);
- assert.doesNotMatch(readFileSync(new URL('../package.json',import.meta.url),'utf8'),/kokoro|whisper/i);
 });
 test('frozen combined source admits only the current reviewed native gitlink',()=>{
  const source=readFileSync(new URL('../scripts/combined-agent-source.mjs',import.meta.url),'utf8');

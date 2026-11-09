@@ -8,11 +8,11 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
+import { createReadingSupport, READING_UNSUPPORTED_MESSAGE } from "../apps/app/src/browser/reading-capability.ts";
 
 const java = name => fs.readFileSync(`android/app/src/main/java/ai/elizaresearch/alphaphone/${name}.java`, "utf8");
 const world = java("BrowserReadingWorld"), reading = java("BrowserReading"), plugin = java("AlphaBrowserPlugin"), downloads = java("BrowserDownloads");
 const adapter = fs.readFileSync("apps/app/src/prototype/browser-adapter.ts", "utf8");
-const capability = fs.readFileSync("apps/app/src/browser/reading-capability.ts", "utf8");
 const template = fs.readFileSync("apps/app/src/prototype/template.html", "utf8");
 
 test("no browser source can put a script or a bridge in a page's own world", () => {
@@ -53,15 +53,15 @@ test("the native side reports the capability and refuses a review with the unava
   assert.ok(unsupported > 0 && route > unsupported && sensitive > route && notReady > sensitive && extract > notReady, "unsupported, then speech route, sensitive page, not ready, then extraction");
   assert.match(review, /^[^\n]*\n\s*cancel\(\);final long expected=generation;\n\s*\/\/[^\n]*\n\s*if\(world==null\|\|!world\.available\(\)\)/, "nothing but the cancellation of an earlier review precedes it");
   assert.match(reading, /static final String UNSUPPORTED_CODE="reading-unsupported";/);
+  assert.match(reading, /ISOLATED_WORLD_UNAVAILABLE="isolated-world-unavailable"/);
+  assert.match(reading, /SENSITIVE_PAGE="sensitive-page"/);
+  assert.match(review, /rejected\.reject\([^\n]*,SENSITIVE_PAGE\);/, "a sensitive extraction is not recoverable by pasting");
+  assert.match(review, /rejected\.reject\(ISOLATED_MESSAGE,ISOLATED_WORLD_UNAVAILABLE\);/, "an isolated-world failure can offer a paste review");
 });
 
 test("the renderer and the native side say the same words", () => {
-  const message = /READING_UNSUPPORTED_MESSAGE =\s*'([^']+)';/.exec(capability)?.[1];
   const native = /static final String UNSUPPORTED="([^"]+)";/.exec(reading)?.[1];
-  assert.ok(message && native);
-  assert.equal(native, message);
-  assert.match(message, /Read aloud and Ask about page are unavailable on this device/);
-  assert.match(message, /Update Android System WebView\.$/);
+  assert.equal(native, READING_UNSUPPORTED_MESSAGE);
 });
 
 test("the renderer asks on Android only, says so before any speech route or excerpt is prepared, and shows it in the menu", () => {
@@ -74,17 +74,45 @@ test("the renderer asks on Android only, says so before any speech route or exce
   assert.match(adapter, /report\(new Error\(READING_UNSUPPORTED_MESSAGE\)\)/);
   assert.match(adapter, /readingUnavailable:readingSupport\?\.state==='unavailable',readingNote:READING_UNSUPPORTED_MESSAGE,/);
   assert.match(template, /<sc-if value="\{\{browser\.readingUnavailable\}\}"><p role="note" aria-label="Page reading unavailable" data-alpha-reading-unavailable [^>]*>\{\{browser\.readingNote\}\}<\/p><\/sc-if>/);
-  // Only an explicit boolean is believed.
-  assert.match(capability, /if \(available === true\) state = 'available';\s*else if \(available === false\) state = 'unavailable';/);
 });
 
-test("BrowserReadingNavigation runs exactly one method per provider and records which", () => {
-  const source = fs.readFileSync("android/app/src/androidTest/java/ai/elizaresearch/alphaphone/BrowserReadingNavigationInstrumentedTest.java", "utf8");
-  assert.match(source, /assumeFalse\("This WebView provider has isolated-world injection[^\n]{0,120}?,provider\(\)\);/, "the unavailable method runs only without the capability");
-  assert.match(source, /assumeTrue\("This WebView provider has no isolated-world injection[^\n]{0,160}?,provider\(\)\);/, "the full method runs only with it");
-  assert.match(source, /assertEquals\("The product reports the provider's isolated-world capability as it is",capable,BrowserReadingWorld\.supported\(\)\);/);
-  assert.match(source, /seen\.putString\("browserReadingProvider",capable\?"isolated-world":"no-isolated-world"\)/);
-  // The full method's assertions are the ones it had.
-  for (const kept of ['assertFalse("Old document must not bind after invalidation",world.ready());', 'extracted.get().contains("Current synthetic page /second")', 'world.pageStarted("https://reading.invalid/other");assertFalse(world.ready());'])
-    assert.ok(source.includes(kept), kept);
+for (const [available, expected] of [[true, "available"], [false, "unavailable"]]) {
+  test(`the renderer shares one pending probe and retains a confirmed ${expected} result`, async () => {
+    let queries = 0;
+    let changes = 0;
+    const pending = Promise.withResolvers();
+    const support = createReadingSupport(() => {
+      queries++;
+      return pending.promise;
+    }, () => changes++);
+
+    assert.equal(support.state, "unknown");
+    const first = support.check();
+    const second = support.check();
+    pending.resolve({ available });
+    assert.deepEqual(await Promise.all([first, second]), [expected, expected]);
+    assert.equal(support.state, expected);
+    assert.equal(await support.check(), expected);
+    assert.equal(queries, 1);
+    assert.equal(changes, 1);
+  });
+}
+
+test("failed or malformed support probes stay unknown and can be retried", async () => {
+  const malformed = [null, {}, { available: "false" }, { available: 0 }, "no"];
+  const answers = [...malformed, { available: false }];
+  let changes = 0;
+  let attempts = 0;
+  const support = createReadingSupport(async () => {
+    if (attempts++ === 0) throw Error("The bridge is not ready");
+    return answers.shift();
+  }, () => changes++);
+
+  for (let n = 0; n <= malformed.length; n++) {
+    assert.equal(await support.check(), "unknown");
+    assert.equal(support.state, "unknown");
+  }
+  assert.equal(changes, 0);
+  assert.equal(await support.check(), "unavailable");
+  assert.equal(changes, 1);
 });

@@ -14,6 +14,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
+import { nativeSource, fixture, runJvm } from "./fixtures/jvm-tools.mjs";
 
 const root = "android/app/src/main/java/ai/elizaresearch/alphaphone";
 const files = fs.readdirSync(root).filter(name => name.endsWith(".java")).sort();
@@ -80,7 +81,7 @@ function handOffs(name, code) {
   const declaration = new RegExp(`(?:^|[\\s.;{(])(?:${EXECUTOR_TYPES})\\s+(\\w+)\\s*[=;,)]`, "g");
   for (const match of code.matchAll(declaration)) fields.add(match[1]);
   const all = blocks(code), sites = [];
-  for (const match of code.matchAll(/(\w+(?:\(\))?)\.(execute|submit|schedule|scheduleAtFixedRate|scheduleWithFixedDelay)\(/g)) {
+  for (const match of code.matchAll(/(\w+(?:\(\))?)\.(execute|submit|invokeAll|invokeAny|schedule|scheduleAtFixedRate|scheduleWithFixedDelay)\(/g)) {
     if (!fields.has(match[1])) continue;
     const at = match.index;
     const enclosing = all.filter(block => block.start < at && at < block.end).sort((a, b) => b.start - a.start);
@@ -92,7 +93,7 @@ function handOffs(name, code) {
     sites.push({ file: name, line: code.slice(0, at).split("\n").length, receiver: match[1], method: match[2], guarded });
   }
   // PluginWorkers.submit(worker, work, refused) answers a stopped or full worker by running refused
-  // (test/plugin-worker-guard.test.mjs runs it on the JVM), so each such hand-off is guarded.
+  // (exercised on the host JVM below), so each such hand-off is guarded.
   for (const match of code.matchAll(/\bPluginWorkers\.submit\((\w+(?:\(\))?),/g)) {
     if (!fields.has(match[1])) continue;
     sites.push({ file: name, line: code.slice(0, match.index).split("\n").length, receiver: match[1], method: "PluginWorkers.submit", guarded: true });
@@ -111,6 +112,13 @@ const REVIEWED = [
 ];
 
 const sites = files.flatMap(name => handOffs(name, mask(read(name))));
+
+test("the shared guard refuses work for a stopped, shut-down or full worker without throwing", () => {
+  assert.match(runJvm(
+    [nativeSource("PluginWorkers.java"), nativeSource("WorkflowNoticeIo.java"), fixture("PluginWorkersTest.java")],
+    "ai.elizaresearch.alphaphone.PluginWorkersTest",
+  ), /^PASS plugin workers/);
+});
 
 test("the scanner sees the executors the app really has", () => {
   // A scanner that silently finds nothing would pass every assertion below.
@@ -325,3 +333,11 @@ test("shared Kotlin System activity launch methods have guarded product override
 });
 
 test("Contacts generic permission requests remain image and foreground gated",()=>{const source=read("AlphaContactsPlugin.java");assert.match(source,/public void requestPermissions\(PluginCall call\)\{\s*if\(!foreground\(\)\)/);assert.match(source,/LateLaunch.ask\(call,\(\)->requestPermissionForAlias\("contacts",call,"permissionResult"\)\)/);});
+
+test('the Maps deadline scheduler is the one dispatch that cannot use Executor and keeps its own catch',()=>{
+ const source=read("AlphaMapsTransportPlugin.java");
+ const request=source.slice(source.indexOf('@PluginMethod public void request('),source.indexOf('@PluginMethod public void cancel('));
+ const schedule=request.indexOf('deadlines.schedule(');
+ assert.ok(schedule>0&&request.lastIndexOf('try{',schedule)>0,'deadlines.schedule runs inside a try');
+ assert.match(request.slice(schedule),/\}catch\(RejectedExecutionException busy\)\{[^\n]*pending\.remove\(id,job\);job\.cancel\(/,'and a stopped scheduler cancels the job instead of throwing');
+});

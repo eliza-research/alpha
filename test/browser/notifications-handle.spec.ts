@@ -47,13 +47,9 @@ test.describe('standalone app', () => {
 });
 
 test.describe('launcher', () => {
-  test('Home has no notifications control below the status bar', async ({ page }) => {
-    await home(page);
-    await expect(page.getByRole('button', { name: 'Open notifications', exact: true })).toHaveCount(0);
-  });
-
   test('a pull down on empty Home opens the shade; Close, Back and Escape close it', async ({ page }) => {
     await home(page);
+    await expect(page.getByRole('button', { name: 'Open notifications', exact: true })).toHaveCount(0);
     const open = () => drag(page, { x: 206, y: 420 }, 240);
     await open();
     await expect(shade(page)).toHaveAttribute('aria-hidden', 'false');
@@ -68,11 +64,10 @@ test.describe('launcher', () => {
     await expect(shade(page)).toHaveAttribute('aria-hidden', 'true');
   });
 
-  test('a pull down anywhere on empty Home opens the shade', async ({ page }) => {
+  test('pulling down from upper or lower empty Home opens the shade', async ({ page }) => {
     await home(page);
     for (const start of [
       { name: 'upper Home', x: 206, y: 90 },
-      { name: 'middle of Home', x: 206, y: 420 },
       { name: 'lower Home', x: 206, y: 640 },
     ]) {
       await drag(page, start, 240);

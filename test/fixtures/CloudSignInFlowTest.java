@@ -2,15 +2,11 @@ package ai.elizaresearch.alphaphone;
 
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.Base64;
-import java.util.HashSet;
-import java.util.Set;
 
 /** Plain-JVM checks of the in-app sign-in policy. No Android, network, storage or account. */
 public final class CloudSignInFlowTest {
- private static int checks;
- private static void check(boolean condition, String message) { checks++; if (!condition) throw new AssertionError(message); }
+ private static void check(boolean condition, String message) { if (!condition) throw new AssertionError(message); }
  public static void main(String[] args) throws Exception {
   CloudSignInFlow.Environment production = CloudSignInFlow.Environment.PRODUCTION, staging = CloudSignInFlow.Environment.STAGING;
 
@@ -18,19 +14,14 @@ public final class CloudSignInFlowTest {
   check(CloudSignInFlow.environment("production", false) == production, "production always");
   check(CloudSignInFlow.environment("staging", true) == staging, "staging with test mocks");
   for (String refused : new String[]{"staging", "development", "", null}) {
-   try { CloudSignInFlow.environment(refused, false); check(false, "refused environment " + refused); } catch (IllegalArgumentException expected) { checks++; }
+   try { CloudSignInFlow.environment(refused, false); check(false, "refused environment " + refused); } catch (IllegalArgumentException expected) {}
   }
   check("https://eliza.app/alphaphone/auth/callback".equals(production.callback()), "production App Link");
   check("https://staging.eliza.app/alphaphone/auth/callback".equals(staging.callback()), "staging App Link");
 
-  // PKCE and state: RFC 7636 shapes, fresh every time, S256 matches the verifier.
-  Set<String> seen = new HashSet<>();
-  for (int i = 0; i < 200; i++) {
-   String verifier = CloudSignInFlow.newVerifier(), state = CloudSignInFlow.newState();
-   check(verifier.length() == 64 && CloudSignInFlow.validVerifier(verifier), "64-character verifier");
-   check(CloudSignInFlow.validState(state), "43-character state");
-   check(seen.add(verifier) && seen.add(state), "never repeated");
-  }
+  // The shared RFC vector validates S256 and the local attempt generates valid inputs.
+  check(CloudSignInFlow.validVerifier(CloudSignInFlow.newVerifier()), "generated verifier");
+  check(CloudSignInFlow.validState(CloudSignInFlow.newState()), "generated state");
   String verifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk";
   check("E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM".equals(CloudSignInFlow.s256(verifier)), "RFC 7636 appendix B vector");
 
@@ -42,44 +33,13 @@ public final class CloudSignInFlowTest {
   check(authorize.getRawQuery().equals("response_type=code&tenant_id=elizacloud&redirect_uri=https%3A%2F%2Feliza.app%2Falphaphone%2Fauth%2Fcallback&code_challenge=" + challenge + "&code_challenge_method=S256&state=" + state + "&prompt=select_account&mfa=exchange"), "exact query, with Google's account chooser and native MFA");
   check(new URI(CloudSignInFlow.authorizeUrl(staging, challenge, state)).getHost().equals("api-staging.eliza.app"), "staging authority");
   for (String[] bad : new String[][]{{challenge, "short"}, {"x", state}, {challenge, state + "&x=1"}}) {
-   try { CloudSignInFlow.authorizeUrl(production, bad[0], bad[1]); check(false, "refused authorize input"); } catch (IllegalArgumentException expected) { checks++; }
+   try { CloudSignInFlow.authorizeUrl(production, bad[0], bad[1]); check(false, "refused authorize input"); } catch (IllegalArgumentException expected) {}
   }
 
-  // Callback: the shared contract vectors run in CloudSignInContractTest; these cover generated values.
+  // The shared contract covers successful, rejected and non-result callbacks.
+  CloudSignInContractTest.main(args);
   String code = Base64.getUrlEncoder().withoutPadding().encodeToString("synthetic-one-time-steward-code-0001".getBytes(StandardCharsets.US_ASCII));
-  String base = "https://eliza.app/alphaphone/auth/callback";
-  CloudSignInFlow.Callback ok = CloudSignInFlow.parseCallback(base + "#code=" + code + "&state=" + state, production);
-  check(ok != null && ok.kind == CloudSignInFlow.ReturnKind.SUCCESS && code.equals(ok.code) && state.equals(ok.state) && ok.error == null, "valid return");
-  CloudSignInFlow.Callback refused = CloudSignInFlow.parseCallback(base + "?error=oauth_authorization_failed&state=" + state, production);
-  check(refused != null && refused.kind == CloudSignInFlow.ReturnKind.ERROR && refused.code == null && "oauth_authorization_failed".equals(refused.error), "Steward recovery link in the query");
-  String[] noResult = {
-   base, base + "#", base + "?", base + "?code=" + code + "&state=" + state, base + "?x=1#code=" + code + "&state=" + state,
-   base + "#code=" + code + "&state=" + state + "&extra=1", base + "#code=" + code + "&code=" + code + "&state=" + state,
-   base + "#code=" + code + "&state=" + state + "&state=" + state, base + "#code=" + code, base + "#state=" + state,
-   base + "#code=" + code + "&error=access_denied&state=" + state, base + "#code=" + code + "&state=" + state.substring(1),
-   base + "#code=" + code + "&state=" + state + "x", base + "#code=a%2Fb&state=" + state, base + "#code=&state=" + state,
-   base + "#code=" + code + "&state=" + state + "&", base + "#error=Not%20Allowed&state=" + state, base + "#error=access_denied&state=" + state,
-  };
-  for (String url : noResult) {
-   CloudSignInFlow.Callback parsed = CloudSignInFlow.parseCallback(url, production);
-   check(parsed != null && parsed.kind == CloudSignInFlow.ReturnKind.RETURN && parsed.code == null && parsed.state == null, "no result, never a code: " + url);
-  }
-  String[] rejected = {
-   "http://eliza.app/alphaphone/auth/callback#code=" + code + "&state=" + state,
-   "https://evil.example/alphaphone/auth/callback#code=" + code + "&state=" + state,
-   "https://eliza.app.evil.example/alphaphone/auth/callback#code=" + code + "&state=" + state,
-   "https://staging.eliza.app/alphaphone/auth/callback#code=" + code + "&state=" + state,
-   "https://eliza.app:443/alphaphone/auth/callback#code=" + code + "&state=" + state,
-   "https://user@eliza.app/alphaphone/auth/callback#code=" + code + "&state=" + state,
-   "https://eliza.app/alphaphone/auth/callback/#code=" + code + "&state=" + state,
-   "https://eliza.app/alphaphone/auth/callbackx#code=" + code + "&state=" + state,
-   "https://eliza.app/alphaphone/auth/cloud-delegation#code=" + code + "&state=" + state,
-   "https://eliza.app/ALPHAPHONE/auth/callback#code=" + code + "&state=" + state,
-   "alphaphone://cloud-delegation?code=" + code + "&state=" + state,
-   null,
-  };
-  for (String url : rejected) check(CloudSignInFlow.parseCallback(url, production) == null, "rejected return " + url);
-  check(CloudSignInFlow.parseCallback("https://staging.eliza.app/alphaphone/auth/callback#code=" + code + "&state=" + state, staging).kind == CloudSignInFlow.ReturnKind.SUCCESS, "staging return for staging");
+  String base = production.callback();
 
   // Pending record: single attempt, expires after ten minutes, constant-time state match.
   long now = 1_800_000_000_000L;
@@ -170,7 +130,17 @@ public final class CloudSignInFlowTest {
   check(CloudSignInReadiness.Result.parse("v2|true|true|1800000001000") == null, "old cache must re-probe SMS policy");
   check(CloudSignInReadiness.Result.parse("v3|true|true|yes|true|1800000001000") == null, "malformed method flag refused");
   check(!new CloudSignInReadiness.Result(true, true, t + 365L * 86400000L).fresh(t), "a cache entry from the future is not trusted");
-  check(MessageDigest.isEqual("a".getBytes(StandardCharsets.US_ASCII), "a".getBytes(StandardCharsets.US_ASCII)), "jdk");
-  System.out.println("PASS cloud sign-in flow (" + checks + " checks)");
+  checkTransport(new java.net.UnknownHostException("private details"), "dns");
+  checkTransport(new java.net.ConnectException("private details"), "offline");
+  checkTransport(new java.net.NoRouteToHostException("private details"), "offline");
+  checkTransport(new java.net.SocketTimeoutException("private details"), "timeout");
+  checkTransport(new javax.net.ssl.SSLHandshakeException("private details"), "secure-connection");
+  checkTransport(new java.io.IOException("private details"), "unavailable");
+  System.out.println("PASS native sign-in policy");
+ }
+
+ private static void checkTransport(java.io.IOException error, String expected) {
+  check(expected.equals(CloudSignInFlow.failureForTransport(error, false)), expected);
+  check("cancelled".equals(CloudSignInFlow.failureForTransport(error, true)), "cancelled");
  }
 }

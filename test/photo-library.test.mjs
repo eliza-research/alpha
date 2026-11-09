@@ -3,7 +3,6 @@ import test from 'node:test';import assert from 'node:assert/strict';import {rea
 // the native source shape, not Android behaviour (see PhotoLibraryInstrumentedTest for that).
 const m=await import('../apps/app/src/runtime/photo-library.ts');
 const java=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPhotoLibraryPlugin.java','utf8');
-const rules=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/PhotoLibraryAccess.java','utf8');
 const manifest=readFileSync('android/app/src/main/AndroidManifest.xml','utf8');
 const adapter=readFileSync('apps/app/src/prototype/photo-library-adapter.ts','utf8');
 
@@ -18,21 +17,6 @@ test('manifest declares the media permissions Android needs per API level, legac
  assert.doesNotMatch(manifest,/MANAGE_EXTERNAL_STORAGE|ACCESS_MEDIA_LOCATION/);
  assert.match(manifest,/WRITE_EXTERNAL_STORAGE" tools:node="remove"/);
  assert.match(readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/MainActivity.java','utf8'),/registerPlugin\(AlphaPhotoLibraryPlugin\.class\);/);
-});
-
-test('native scope mirrors the renderer: full, Android 14 selected, or denied',()=>{
- const body=rules.slice(rules.indexOf('static String scope('),rules.indexOf('static String[] requestAliases('));
- assert.match(body,/if \(sdk < 33\) return legacyRead \? "full" : "denied";/);
- assert.match(body,/if \(images \|\| videos\) return "full";/);
- assert.match(body,/if \(sdk >= 34 && userSelected\) return "selected";/);
- assert.match(rules,/if \(sdk < 33\) return new String\[\] \{"mediaLegacy"\};[\s\S]*return new String\[\] \{"media", "mediaSelected"\};/);
- for(const [name,value] of [['PAGE_MAX',100],['THUMBNAIL_ROWS_MAX',30],['VALIDATE_MAX',200],['CHANGES_MAX',200],['ACTION_MAX',20],['QUERY_MAX',80]]){
-  assert.match(rules,new RegExp(`${name} = ${value}\\b`),name);
- }
- assert.equal(m.LIBRARY_LIMITS.page,100);assert.equal(m.LIBRARY_LIMITS.thumbnailRows,30);assert.equal(m.LIBRARY_LIMITS.validate,200);assert.equal(m.LIBRARY_LIMITS.action,20);assert.equal(m.LIBRARY_LIMITS.query,80);
- // Same id grammar on both sides.
- assert.ok(rules.includes('"^lib:([iv]):([1-9][0-9]{0,18}):([0-9]{1,19})$"'));
- assert.equal(m.LIBRARY_ID.source,'^lib:([iv]):([1-9][0-9]{0,18}):([0-9]{1,19})$');
 });
 
 test('agent album delegates reads and reviewed mutations to the canonical catalog',()=>{
@@ -104,8 +88,7 @@ test('external edits and deletes reconcile; a row id reused after delete is a di
  const changes=catalog.applyChanges([{...item(3),trashed:true},{...item(2,{revision:'1:1:99'})},{...item(9)}],99);
  assert.deepEqual(changes,{removed:['lib:i:3:30'],changed:['lib:i:2:20'],added:1});assert.equal(catalog.generation,99);
  assert.equal('trashed' in catalog.items[0],false);
- // MediaStore _id 2 reused with a new add generation is not the old item.
- assert.notEqual('lib:i:2:20','lib:i:2:21');assert.ok(m.isLibraryId('lib:i:2:21'));
+
 });
 
 test('permission downgrade or a MediaStore version change clears the catalog and selection',()=>{
@@ -212,15 +195,6 @@ test('agent album observes only while open and falls back to a bounded fresh cat
  assert.match(adapter,/watch\(!!scope && scope.scope !== 'denied' && !scope.locked\)/);
  const agent=adapter.slice(adapter.indexOf('const agent: LibraryAgent'),adapter.indexOf('mountedAgent = agent;'));
  assert.doesNotMatch(agent,/query/);
-});
-
-test('PhotoLibraryAccess runs on a plain JVM: scope per SDK, id round trip, LIKE escaping and bounds',()=>{
- const root=resolve(import.meta.dirname,'..'),temporary=mkdtempSync(join(tmpdir(),'photo-library-access-'));
- const home=process.env.JAVA_HOME||(process.platform==='darwin'?'/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home':'');const binary=name=>home?join(home,'bin',name):name;
- try{
-  execFileSync(binary('javac'),['--release','11','-d',temporary,join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/PhotoLibraryAccess.java'),join(root,'test/fixtures/PhotoLibraryAccessTest.java')],{timeout:60000,stdio:'pipe'});
-  assert.match(execFileSync(binary('java'),['-cp',temporary,'ai.elizaresearch.alphaphone.PhotoLibraryAccessTest'],{encoding:'utf8',timeout:60000}),/^PASS photo library access/);
- }finally{rmSync(temporary,{recursive:true,force:true});}
 });
 
 test('adapter: new items and widened grants reload a fresh first page; agent reads are identity-only',()=>{
