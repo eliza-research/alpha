@@ -620221,7 +620221,7 @@
         "CoreServiceLifecycle",
         "ApplicationComposition"
       ],
-      "sha256": "f0d1a839c16a594282c196c67cbbba2abc4496b6ff0f77f04bdf1ebf69b03f70"
+      "sha256": "f517ae0db1c4d6b4dc836588234c72c9cbcaccd4d9d76084b102443a2db2c0e4"
     },
     {
       "path": "upstream.lock.json",
