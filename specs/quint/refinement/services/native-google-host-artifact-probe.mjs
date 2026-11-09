@@ -37,7 +37,7 @@ const productFiles = [
   'scripts/build-native-google-host.ts', 'scripts/local-agent-source.mjs', 'scripts/native-google-host-artifact.mjs',
   'scripts/prepare-client-features.mjs', 'package.json', 'tsconfig.json',
   'vendor/eliza/tsconfig.json',
-  'patches/eliza/managed-google-body-limit-client-manifest.json', 'patches/eliza/managed-google-body-limit-client.patch',
+  'scripts/upstream-native-source.mjs', 'vendor/eliza/packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts',
 ];
 const workerFiles = ['node_modules/smthrs/package.json', 'node_modules/zod/package.json',
   'node_modules/effect/package.json', 'node_modules/@smthrs/engine/package.json', 'dependencies.json', 'lib/worker.js'];
@@ -70,6 +70,11 @@ function setup(number, simpleCore = false) {
   const policy = parseBuildPolicy(fs.readFileSync(coreManifest));
   write(coreManifest, policySource({...policy, baseCommit: pin}));
   json(path.join(root, 'upstream.lock.json'), {commit: pin});
+  const googleHost='packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts';
+  const googleBytes=fs.readFileSync(path.join(root,'vendor/eliza',googleHost)),googleHash=digest(googleBytes);
+  write(path.join(root,'.eliza/client-features',googleHost),googleBytes);
+  json(path.join(root,'.eliza/client-features/.source.json'),{baseCommit:pin,projectionVersion:14,
+    sourceFiles:{[googleHost]:googleHash},files:{[googleHost]:googleHash}});
   json(path.join(sdk, '.alpha-runtime-source.json'), {base: pin, patches: []});
   write(source, fixtureSource(1));
   write(path.join(root, 'linked-target.ts'), 'export const synthetic = true;');
@@ -106,6 +111,11 @@ function setup(number, simpleCore = false) {
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
     const host = manifest.nativeGoogleHost;
     if (host) assert.deepEqual(Object.keys(host).sort(), ['bunVersion','coreState','inputs','module','version']);
+    if (host) {
+      assert.equal(host.inputs['vendor/eliza/'+googleHost],googleHash,'receipt binds raw upstream Google host');
+      assert.equal(host.inputs['.eliza/client-features/'+googleHost],googleHash,'compiler host consumes exact upstream bytes');
+      assert.equal(host.inputs['.eliza/client-features/.source.json'],digest(fs.readFileSync(path.join(root,'.eliza/client-features/.source.json'))));
+    }
     const manifestBundle = classify(moduleHashes, manifest.files['google-host.mjs'] ?? null);
     const boundSource = classify(sourceHashes, host?.inputs[productInput] ?? null);
     const exactCore = host?.coreState.transforms.some(row => row.path === PLUGIN_CONNECTOR_TARGET) ?? false;

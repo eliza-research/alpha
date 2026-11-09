@@ -1,8 +1,0 @@
-{
-  "schema": 1,
-  "baseCommit": "ac18377c5a9e4eb7afeac1c62a026ad3be95733e",
-  "path": "packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts",
-  "beforeSha256": "b157fa2c9b3c0d4a3e9d6aca0fedc6dc9d4142c69721adbb8b370233d53dc5bc",
-  "afterSha256": "4002afcaefdc347b2de013cb49523dc77545dd1cb896183d8d704678336ddc01",
-  "patchSha256": "0b3d6429fcba9150e3468fb06c981d75feefe560c35093639a17996706249e00"
-}

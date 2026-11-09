@@ -22,6 +22,8 @@ function fixture(run) {
    const file=path.join(vendor,path.extname(prefix)?prefix:prefix+'/fixture.ts');
    fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,'export const value = 1;\n');
   }
+  // A concrete upstream Google host leaf exercises direct source copying.
+  fs.writeFileSync(path.join(vendor,'packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts'),'export const value = 1;\n');
   // The development launcher imports the shared verifier through its product adapter.
   for(const name of ['immutable-workspace-source.mjs','committed-source.mjs']) {
    const relative=`packages/app/scripts/lib/${name}`,target=path.join(vendor,relative);
@@ -172,24 +174,19 @@ assert.equal(stamp.baseCommit,JSON.parse(fs.readFileSync('upstream.lock.json','u
  assert.equal(stamp.sourceFiles[mapPath],stamp.files[mapPath]);
  assert.match(fs.readFileSync(path.join(source,mapPath),'utf8'),/export interface GlobalBasemap/);
  const calendarPath='packages/contracts/src/calendar-linked-sync.ts';
- assert.deepEqual(Object.keys(stamp).sort(), ['appUpdateResumePatch','baseCommit','files','managedGoogleBodyLimitPatch','projectionVersion','sourceFiles']);
+ assert.deepEqual(Object.keys(stamp).sort(), ['baseCommit','files','projectionVersion','sourceFiles']);
  const googlePath='packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts';
- const googleManifestBytes=fs.readFileSync('patches/eliza/managed-google-body-limit-client-manifest.json');
- const googleManifest=JSON.parse(googleManifestBytes);
- assert.deepEqual(stamp.managedGoogleBodyLimitPatch,{...googleManifest,manifestSha256:createHash('sha256').update(googleManifestBytes).digest('hex')});
- assert.equal(googleManifest.baseCommit,stamp.baseCommit);
- assert.equal(googleManifest.beforeSha256,stamp.sourceFiles[googlePath]);
- assert.equal(googleManifest.afterSha256,stamp.files[googlePath]);
- for(const name of Object.keys(stamp.sourceFiles).filter(name=>name.startsWith('packages/app/src/runtime/managed-google-agent/')&&name!==googlePath))
+ assert.equal(stamp.managedGoogleBodyLimitPatch,undefined);
+ assert.equal(stamp.files[googlePath],'4002afcaefdc347b2de013cb49523dc77545dd1cb896183d8d704678336ddc01');
+ for(const name of Object.keys(stamp.sourceFiles).filter(name=>name.startsWith('packages/app/src/runtime/managed-google-agent/'))){
   assert.equal(stamp.sourceFiles[name],stamp.files[name],name+' is copied directly from upstream');
+  assert.deepEqual(fs.readFileSync(path.join(source,name)),fs.readFileSync(path.join('vendor/eliza',name)),name+' has exact raw upstream bytes');
+ }
  const updatePath='packages/ui/src/state/app-update-gate.ts';
- const updateManifestBytes=fs.readFileSync('patches/eliza/app-update-resume-client-manifest.json');
- const updateManifest=JSON.parse(updateManifestBytes);
- assert.deepEqual(stamp.appUpdateResumePatch,{...updateManifest,manifestSha256:createHash('sha256').update(updateManifestBytes).digest('hex')});
- assert.equal(updateManifest.baseCommit,stamp.baseCommit);
- assert.equal(updateManifest.beforeSha256,stamp.sourceFiles[updatePath]);
- assert.equal(updateManifest.afterSha256,stamp.files[updatePath]);
- assert.notEqual(stamp.sourceFiles[updatePath],stamp.files[updatePath],'automatic update scheduling carries its reviewed patch');
+ assert.equal(stamp.appUpdateResumePatch,undefined);
+ assert.equal(stamp.sourceFiles[updatePath],stamp.files[updatePath],'final reviewed update source is copied directly');
+ assert.equal(stamp.files[updatePath],'89dc78042b8808e4bd264732ac06bb4fb43a3da35d397a5f126c73896f23eca5');
+ assert.deepEqual(fs.readFileSync(path.join(source,updatePath)),fs.readFileSync(path.join('vendor/eliza',updatePath)));
  assert.match(fs.readFileSync(path.join(source,updatePath),'utf8'),/export function createAppUpdateScheduler/);
  for(const file of [
   calendarPath,
@@ -244,33 +241,31 @@ assert.equal(stamp.baseCommit,JSON.parse(fs.readFileSync('upstream.lock.json','u
 
 });
 
-test('automatic update client patch requires its exact source, digest and target without replacing an admitted cache',()=>fixture(({root,vendor,commit})=>{
- const file='packages/ui/src/state/app-update-gate.ts';
- const before='export const value = 1;\n',after='export const value = 2;\n';
- assert.equal(fs.readFileSync(path.join(vendor,file),'utf8'),before);
- const digest=value=>createHash('sha256').update(value).digest('hex');
- const patch=`--- a/${file}\n+++ b/${file}\n@@ -1 +1 @@\n-export const value = 1;\n+export const value = 2;\n`;
- const patchRoot=path.join(root,'patches/eliza');fs.mkdirSync(patchRoot,{recursive:true});
- const patchFile=path.join(patchRoot,'app-update-resume-client.patch');
- const manifestFile=path.join(patchRoot,'app-update-resume-client-manifest.json');
- const manifest={schema:1,baseCommit:commit,path:file,beforeSha256:digest(before),afterSha256:digest(after),patchSha256:digest(patch)};
- const write=value=>fs.writeFileSync(manifestFile,JSON.stringify(value));
- fs.writeFileSync(patchFile,patch);write(manifest);
+test('retired client patch files and receipt slots cannot replace an admitted raw-source cache',()=>fixture(({root,vendor,commit})=>{
+ const file='packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts';
+ const before='export const value = 1;\n';
  const projected=prepareClientFeatures({root,projectVoice:false});
- assert.equal(fs.readFileSync(path.join(projected,file),'utf8'),after);
- const stamp=fs.readFileSync(path.join(projected,'.source.json'));
- assert.deepEqual(JSON.parse(stamp).appUpdateResumePatch,{...manifest,manifestSha256:digest(fs.readFileSync(manifestFile))});
- const unchanged=()=>assert.deepEqual(fs.readFileSync(path.join(projected,'.source.json')),stamp,'refused patches preserve the admitted cache');
- for(const invalid of [{...manifest,baseCommit:'0'.repeat(40)},{...manifest,beforeSha256:'0'.repeat(64)},{...manifest,path:'unreviewed.ts'}]){
-  write(invalid);assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/patch source mismatch/);unchanged();
+ const stampFile=path.join(projected,'.source.json'),stamp=fs.readFileSync(stampFile);
+ const unchanged=()=>{
+  assert.deepEqual(fs.readFileSync(stampFile),stamp,'retired slots preserve the admitted cache');
+  assert.equal(fs.readFileSync(path.join(projected,file),'utf8'),before);
+ };
+ assert.equal(fs.readFileSync(path.join(vendor,file),'utf8'),before);
+ const patchRoot=path.join(root,'patches/eliza');fs.mkdirSync(patchRoot,{recursive:true});
+ for(const prefix of ['managed-google-body-limit-client','app-update-resume-client']){
+  for(const suffix of ['.patch','-manifest.json']){
+   const retired=path.join(patchRoot,prefix+suffix);
+   fs.writeFileSync(retired,suffix==='.patch'?'unreviewed behavior':JSON.stringify({schema:1,baseCommit:commit,path:file}));
+   for(const check of [false,true]) assert.throws(()=>prepareClientFeatures({root,projectVoice:false,check}),/Retired client patch slot/);
+   unchanged();fs.unlinkSync(retired);
+  }
  }
- write({...manifest,afterSha256:'0'.repeat(64)});
- assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/patch output mismatch/);unchanged();
- const wrongTarget=patch.replaceAll(file,'packages/ui/src/state/unreviewed.ts');
- fs.writeFileSync(patchFile,wrongTarget);write({...manifest,patchSha256:digest(wrongTarget)});
- assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/patch digest or target mismatch/);unchanged();
- fs.writeFileSync(patchFile,patch+'changed');write(manifest);
- assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/patch digest or target mismatch/);unchanged();
- fs.writeFileSync(patchFile,patch);
+ for(const key of ['managedGoogleBodyLimitPatch','appUpdateResumePatch','unknownPatch']){
+  const obsolete={...JSON.parse(stamp),[key]:{manifestSha256:'0'.repeat(64)}};
+  fs.writeFileSync(stampFile,JSON.stringify(obsolete));
+  assert.throws(()=>prepareClientFeatures({root,projectVoice:false,check:true}),/missing or stale/);
+  assert.deepEqual(JSON.parse(fs.readFileSync(stampFile)),obsolete,'check mode never rewrites a stale receipt');
+  prepareClientFeatures({root,projectVoice:false});unchanged();
+ }
  assert.equal(prepareClientFeatures({root,projectVoice:false,check:true}),projected);
 }));

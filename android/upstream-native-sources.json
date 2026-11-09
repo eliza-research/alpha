@@ -19,23 +19,5 @@
     "plugins/plugin-native-secure-store/android-nativeonly",
     "plugins/plugin-native-system/android"
   ],
-  "patches": [
-    {
-      "module": "plugins/plugin-native-notifications/android",
-      "file": "notice-coordinator-cleanup.patch",
-      "sha256": "beafdaad43462d538e1fea7b198b4cfb13fbb832df47b31d9cb2959f355b3fc3",
-      "targets": [
-        {
-          "path": "plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NoticeCoordinator.java",
-          "beforeSha256": "960930412850fb8c9b7f28fc48bd33a86de0026c9cd1913facc95039cc12ea39",
-          "afterSha256": "7808f64944fa3f9f9868dc4aaa6462d7ab8462fd86e08e46192d933fddec0419"
-        },
-        {
-          "path": "plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NoticeDelivery.java",
-          "beforeSha256": "2b4246f3a1e29752911bf70aed0bec4b2a0ab581406da553623603a1f7481c60",
-          "afterSha256": "cdb296ddcba2ce3005d6070925d8c727a3be4f213c9a3b579e3bc05b496794d9"
-        }
-      ]
-    }
-  ]
+  "patches": []
 }

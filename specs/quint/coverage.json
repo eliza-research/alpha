@@ -88,7 +88,7 @@
   ],
   "upstream": {
     "url": "https://github.com/elizaOS/eliza.git",
-    "commit": "ac18377c5a9e4eb7afeac1c62a026ad3be95733e",
+    "commit": "6f414658b08cf8075d8fb12ece2ec968a221af7e",
     "appSource": "packages/app",
     "nativeSystemSource": "plugins/plugin-native-system",
     "osSource": "packages/os"
@@ -47776,7 +47776,7 @@
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
-      "sha256": "642f4d6ce61e678366efbb6dc910a24aa64a5450c4e157e6f36853d694b8d6e2",
+      "sha256": "f662824d15e959a96ecebb00699f4da92549614d5403517764743dd04f381766",
       "stateAnchors": [],
       "integrationReview": "Reviewed merged source and upstream contract integration. Existing domain allocation is retained; refreshed hashes do not establish implementation refinement or device acceptance."
     },
@@ -47911,7 +47911,7 @@
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
-      "sha256": "29916f68cac2070a46ec6188ec4ce5f10161bf96c8e2ac8b18638b81354f5ec1",
+      "sha256": "9ea513f0e2cafa7df945f5155c21e61d22ecf9d97a36ac20b51a99b21f2921a8",
       "stateAnchors": [],
       "integrationReview": "Reviewed merged source and upstream contract integration. Existing domain allocation is retained; refreshed hashes do not establish implementation refinement or device acceptance."
     },
@@ -47980,7 +47980,7 @@
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
-      "sha256": "bde29ae21c2b34287a075d99a85b91faa6e3fa4b00c936fbfa3d502e2ee45773",
+      "sha256": "4aa18b5b6c50a30bf88b1fd66f9bf5879156dffb0cdbf2a69f905e7f1ba7968f",
       "stateAnchors": [
         {
           "line": 16,
@@ -48370,7 +48370,7 @@
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
-      "sha256": "68d36c3212a945aa23b2211729837e3434a77264316296f823238154f53070fb",
+      "sha256": "4982851e12745c10985c4410bc394374c315c38148b08e1668ad4d9819b7784f",
       "stateAnchors": [],
       "integrationReview": "Reviewed merged source and upstream contract integration. Existing domain allocation is retained; refreshed hashes do not establish implementation refinement or device acceptance."
     },
@@ -134632,7 +134632,7 @@
       "reviewStatus": "state-audit-required",
       "stateAnchors": [],
       "integrationReview": "Reviewed merged source and upstream contract integration. Existing domain allocation is retained; refreshed hashes do not establish implementation refinement or device acceptance.",
-      "sha256": "b157fa2c9b3c0d4a3e9d6aca0fedc6dc9d4142c69721adbb8b370233d53dc5bc"
+      "sha256": "4002afcaefdc347b2de013cb49523dc77545dd1cb896183d8d704678336ddc01"
     },
     {
       "path": "vendor/eliza/packages/app/src/runtime/managed-google-agent/managed-google-calendar-read.ts",
@@ -278655,150 +278655,146 @@
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "37ea7d2970b7aa6b92e28697e29dbb2d69a9a9f27f2d91baa425dbef5ae7f15a",
+      "sha256": "89dc78042b8808e4bd264732ac06bb4fb43a3da35d397a5f126c73896f23eca5",
       "stateAnchors": [
         {
-          "line": 28,
+          "line": 29,
           "text": "const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;"
         },
         {
-          "line": 29,
+          "line": 30,
           "text": "const identity = (value: unknown): value is string =>"
         },
         {
-          "line": 31,
+          "line": 32,
           "text": "const waitForReadback = () =>"
         },
         {
-          "line": 33,
+          "line": 34,
           "text": "const outcome = (value: unknown): value is UpdateOutcome =>"
         },
         {
-          "line": 84,
+          "line": 86,
           "text": "let pending: Activation | undefined;"
         },
         {
-          "line": 85,
+          "line": 87,
           "text": "let acknowledged: string | undefined;"
         },
         {
-          "line": 87,
+          "line": 89,
           "text": "const state = await port.updateState().catch(() => undefined);"
         },
         {
-          "line": 88,
+          "line": 90,
           "text": "let resumable: Activation | undefined;"
         },
         {
-          "line": 107,
+          "line": 109,
           "text": "const next ="
         },
         {
-          "line": 133,
+          "line": 135,
           "text": "const panel = document.createElement(\"dialog\");"
         },
         {
-          "line": 137,
+          "line": 139,
           "text": "const status = document.createElement(\"span\");"
         },
         {
-          "line": 140,
+          "line": 142,
           "text": "const button = document.createElement(\"button\");"
         },
         {
-          "line": 144,
+          "line": 146,
           "text": "let current: Activation | undefined;"
         },
         {
-          "line": 182,
+          "line": 184,
           "text": "const panel = updatePanel(port, appearance);"
         },
         {
-          "line": 182,
+          "line": 184,
           "text": "const panel = updatePanel(port, appearance);"
-        },
-        {
-          "line": 203,
-          "text": "let active: Pending | undefined;"
-        },
-        {
-          "line": 85,
-          "text": "let acknowledged: string | undefined;"
-        },
-        {
-          "line": 205,
-          "text": "let reconnect: ((stillSettled: () => boolean) => Promise<void>) | undefined;"
-        },
-        {
-          "line": 206,
-          "text": "let localRefusal = false;"
         },
         {
           "line": 207,
-          "text": "let checking = false;"
+          "text": "let active: Pending | undefined;"
         },
         {
-          "line": 208,
-          "text": "let notified = false;"
+          "line": 87,
+          "text": "let acknowledged: string | undefined;"
         },
         {
           "line": 209,
+          "text": "let reconnect: ((stillSettled: () => boolean) => Promise<void>) | undefined;"
+        },
+        {
+          "line": 210,
+          "text": "let localRefusal = false;"
+        },
+        {
+          "line": 211,
+          "text": "let checking = false;"
+        },
+        {
+          "line": 212,
+          "text": "let notified = false;"
+        },
+        {
+          "line": 221,
           "text": "const stopNavigation = (event: Event) => {"
         },
         {
-          "line": 214,
+          "line": 226,
           "text": "for (const event of appearance.navigationEvents)"
         },
         {
-          "line": 217,
+          "line": 229,
           "text": "const check = async () => {"
         },
         {
-          "line": 223,
+          "line": 235,
           "text": "const value = await port.updateState().catch(() => undefined);"
         },
         {
-          "line": 225,
+          "line": 237,
           "text": "const next = value.pending === true ? preparation(value) : undefined;"
         },
         {
-          "line": 228,
+          "line": 242,
           "text": "const binding = {"
         },
         {
-          "line": 232,
+          "line": 246,
           "text": "let frozen = true;"
         },
         {
-          "line": 245,
+          "line": 259,
           "text": "const current = () =>"
         },
         {
-          "line": 250,
+          "line": 264,
           "text": "const ready = frozen"
         },
         {
-          "line": 274,
+          "line": 290,
           "text": "const ended = active.activationId;"
         },
         {
-          "line": 275,
+          "line": 291,
           "text": "const terminal ="
         },
         {
-          "line": 285,
+          "line": 301,
           "text": "const matching = acknowledged === ended;"
         },
         {
-          "line": 286,
+          "line": 302,
           "text": "const restart ="
         },
         {
-          "line": 293,
-          "text": "const explain = matching && terminal === \"failed\" && localRefusal;"
-        },
-        {
-          "line": 313,
+          "line": 333,
           "text": "const pending = preparation(value);"
         }
       ],
@@ -505120,7 +505116,7 @@
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "960930412850fb8c9b7f28fc48bd33a86de0026c9cd1913facc95039cc12ea39",
+      "sha256": "7808f64944fa3f9f9868dc4aaa6462d7ab8462fd86e08e46192d933fddec0419",
       "stateAnchors": [
         {
           "line": 17,
@@ -505141,7 +505137,7 @@
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "2b4246f3a1e29752911bf70aed0bec4b2a0ab581406da553623603a1f7481c60",
+      "sha256": "cdb296ddcba2ce3005d6070925d8c727a3be4f213c9a3b579e3bc05b496794d9",
       "stateAnchors": [
         {
           "line": 38,
@@ -618268,7 +618264,7 @@
         "NativeRecognizerAvailability",
         "NativeSpeechWarmup"
       ],
-      "sha256": "e01bbfdd35c808e23a741e83ae8175ce4d5c7f37da88e4b91d274878fed9214d"
+      "sha256": "336c47632998becc820a537b2e92e461d5150edb3ca3e4e407edf8c915b556a7"
     },
     {
       "path": "app.config.json",
@@ -618297,7 +618293,7 @@
         "MobileBundleAdmission",
         "NativeGoogleHostArtifact"
       ],
-      "sha256": "b7893e78704b29df3abc9eb4e0da2dd632dcbbda7073c52e73df068cff0fd324"
+      "sha256": "8319609fa477b48b913612f37eb9810b37aff390b6ebbf4e53a1845bb9673bae"
     },
     {
       "path": "scripts/upstream-mobile-build.mjs",
@@ -618305,7 +618301,7 @@
         "Application",
         "MobileBundleAdmission"
       ],
-      "sha256": "02dab9ebf26965e7d95e38cae7548c68c8c4f0fe20bd35f434c00559b30c50b9"
+      "sha256": "f47de6e0402f95a37b9c8e1f535c7de20a15e5a2bd57ee45a0ff1f096d022502"
     },
     {
       "path": "android/upstream-native-sources.json",
@@ -618391,7 +618387,7 @@
         "ScanDocument",
         "VoiceSession"
       ],
-      "sha256": "29916f68cac2070a46ec6188ec4ce5f10161bf96c8e2ac8b18638b81354f5ec1",
+      "sha256": "9ea513f0e2cafa7df945f5155c21e61d22ecf9d97a36ac20b51a99b21f2921a8",
       "integrationReview": "Retains the reviewed source boundary and authenticated patch catalog; integration also admits installed dependency ranges and bounded source-copy helpers. Configuration identity alone is not runtime/refinement evidence."
     },
     {
@@ -618506,7 +618502,7 @@
         "VoiceIpcAssembly",
         "VoiceSession"
       ],
-      "sha256": "bde29ae21c2b34287a075d99a85b91faa6e3fa4b00c936fbfa3d502e2ee45773",
+      "sha256": "4aa18b5b6c50a30bf88b1fd66f9bf5879156dffb0cdbf2a69f905e7f1ba7968f",
       "integrationReview": "specs/quint/pixel-native-review-20261109.md"
     },
     {
@@ -618555,7 +618551,7 @@
       "models": [
         "Application"
       ],
-      "sha256": "f1b8b19d07e6bec404bcff8eca5e9db454ebf351e5dd3d955bc39f04b5ffd89f"
+      "sha256": "24133be6829d81cd3e253726d64e1d76b2aa7bb2ad66330fd9d0103e225c9d94"
     },
     {
       "path": "specs/quint/refinement/services/runtime-bundle-audit.mjs",
@@ -618583,7 +618579,7 @@
         "CoreRuntimeShutdown",
         "CoreServiceLifecycle"
       ],
-      "sha256": "11d919206af580c9657da830880d9c448254611639fa35787aedb88aba8b7aa6"
+      "sha256": "0d82f8490672617635f9f29af35d3de5c574b19e2e2e9e535ea6091e8a08c413"
     },
     {
       "path": "upstream.lock.json",
@@ -618595,7 +618591,7 @@
         "ResidentJavaSourceStage",
         "TaskServiceLifecycle"
       ],
-      "sha256": "8c7e801dfd6b2e32b364f614587e881c5e03190e89e528b5942dc350529009cf"
+      "sha256": "1d8b7d58abcc4276feae2d8b7c101901599cf697acaffc082b909c18e65b7b93"
     },
     {
       "path": "vendor/eliza/packages/app/platforms/android/sense/src/main/AndroidManifest.xml",
@@ -618641,24 +618637,6 @@
       "sha256": "aca18a41c51f4eacc0525407a64e3abb470a9068eab01a6fad6d768dc90e7961"
     },
     {
-      "path": "patches/eliza/app-update-resume-client.patch",
-      "models": [
-        "AutomaticAppUpdateSchedule",
-        "MountedUpdateAdmission",
-        "StartupUpdateAdmission"
-      ],
-      "sha256": "32fb16422e949e159f88a5a78695be21736d613b16e2c1b15b76f4c73c1d5061"
-    },
-    {
-      "path": "patches/eliza/app-update-resume-client-manifest.json",
-      "models": [
-        "AutomaticAppUpdateSchedule",
-        "MountedUpdateAdmission",
-        "StartupUpdateAdmission"
-      ],
-      "sha256": "c02f20260e7d1c2cf7d0a020a4d172f664cfd4c145af4a507cd253337afc33d8"
-    },
-    {
       "path": ".github/workflows/publish-qualified-app-update.yml",
       "models": [
         "PilotApkUpdate"
@@ -618666,20 +618644,11 @@
       "sha256": "b547bf62df688b2dccb89d3ccf4777a8a49972bd8c01f46a9cec8e5f5873af22"
     },
     {
-      "path": "patches/eliza/managed-google-body-limit-client-manifest.json",
-      "sha256": "f0446b74f4449a771474dd74101d493413847dc07a4cc46cfde8c48cc0f844c0",
+      "path": "specs/quint/refinement/native/mms-historical-sources.json",
+      "sha256": "4e9975b547d1bae039fd587e28e5fe6e8c4d442187098875f40ff10883c8e1cd",
       "models": [
-        "NativeGoogleHostArtifact",
-        "BrowserCloudRequestCustody"
-      ],
-      "treatment": "authenticated-build-policy"
-    },
-    {
-      "path": "patches/eliza/managed-google-body-limit-client.patch",
-      "sha256": "0b3d6429fcba9150e3468fb06c981d75feefe560c35093639a17996706249e00",
-      "models": [
-        "NativeGoogleHostArtifact",
-        "BrowserCloudRequestCustody"
+        "NativeMmsDispatch",
+        "NativeSmsDispatch"
       ],
       "treatment": "authenticated-build-policy"
     }

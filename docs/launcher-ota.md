@@ -40,9 +40,11 @@ and [Cloud APK build receipt](evidence/launcher-ota-cloud-apk-build-20261109.jso
 remain historical evidence: the APK receipt names product commit `e359d8d928`
 and upstream `b1817660a0`, while the source comparison names `099e2d27ad`.
 Neither describes the integrated package identity. The integrated
-Alpha Compute branch pins `ac18377c5a9e4eb7afeac1c62a026ad3be95733e` and carries
-the scheduler through the authenticated `app-update-resume-client` patch. Its
-manifest binds the exact source and output hashes. Earlier build evidence does
+Alpha Compute branch pins `6f414658b08cf8075d8fb12ece2ec968a221af7e`, which contains
+the final reviewed scheduler and mounted gate directly. The earlier authenticated
+`app-update-resume-client` patch is retired. The shared gate captures focused
+editing before modal focus changes and keeps automatic refusal quiet while
+retaining exact native activation acknowledgements. Earlier build evidence does
 not transfer native, APK or device qualification to this integration.
 
 Automatic installation requires Android 12/API 31 or newer and Android's existing

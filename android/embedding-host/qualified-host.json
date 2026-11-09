@@ -127,7 +127,7 @@
   },
   "requalification": {
     "required": true,
-    "atPin": "ac18377c5a9e4eb7afeac1c62a026ad3be95733e",
+    "atPin": "6f414658b08cf8075d8fb12ece2ec968a221af7e",
     "reason": "Android package/JNI class namespace changed; existing libraries and receipt do not qualify the new identity."
   }
 }

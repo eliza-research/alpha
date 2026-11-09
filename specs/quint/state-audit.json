@@ -11,8 +11,8 @@
   },
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
-  "sourcePin": "ac18377c5a9e4eb7afeac1c62a026ad3be95733e",
-  "ledgerSha256": "a14230e30821118cfe49070c25103091213292dd62257d02db14c58173eeff32",
+  "sourcePin": "6f414658b08cf8075d8fb12ece2ec968a221af7e",
+  "ledgerSha256": "f2faa713c7ab4f216d03d61d0e622b44ef6daf095a13667c59deed83a23a9ef1",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -28,11 +28,11 @@
     "parsedFiles": 5707,
     "languageReview": 94,
     "parseErrors": 0,
-    "candidates": 69668,
-    "writeSites": 68563,
-    "writeAssociations": 61511,
-    "asynchronous": 8566,
-    "unassignedWrites": 10505
+    "candidates": 69678,
+    "writeSites": 68575,
+    "writeAssociations": 61521,
+    "asynchronous": 8569,
+    "unassignedWrites": 10507
   },
   "files": [
     {
@@ -46636,7 +46636,7 @@
     },
     {
       "path": "scripts/native-google-host-artifact.mjs",
-      "sha256": "642f4d6ce61e678366efbb6dc910a24aa64a5450c4e157e6f36853d694b8d6e2",
+      "sha256": "f662824d15e959a96ecebb00699f4da92549614d5403517764743dd04f381766",
       "allocatedModels": [
         "NativeGoogleAccessFile",
         "NativeGoogleHostArtifact",
@@ -46654,13 +46654,13 @@
         },
         {
           "owner": "fixedInputHashes",
-          "line": 38,
+          "line": 45,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "addNativeGoogleHostArtifact",
-          "line": 106,
+          "line": 113,
           "bindings": 1,
           "writes": 2
         }
@@ -46743,7 +46743,7 @@
     },
     {
       "path": "scripts/prepare-client-features.mjs",
-      "sha256": "29916f68cac2070a46ec6188ec4ce5f10161bf96c8e2ac8b18638b81354f5ec1",
+      "sha256": "9ea513f0e2cafa7df945f5155c21e61d22ecf9d97a36ac20b51a99b21f2921a8",
       "allocatedModels": [
         "Application",
         "BrowserFilesTrash",
@@ -46759,50 +46759,50 @@
       "owners": [
         {
           "owner": "inventory",
-          "line": 19,
+          "line": 17,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "<module>",
-          "line": 36,
+          "line": 34,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "comparator.upper",
-          "line": 336,
+          "line": 330,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "packageRoot",
-          "line": 352,
+          "line": 346,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "checkClientFeatureDependencies",
-          "line": 363,
+          "line": 357,
           "bindings": 3,
           "writes": 3
         },
         {
           "owner": "prepareClientFeatures",
           "line": 392,
-          "bindings": 3,
-          "writes": 5
+          "bindings": 2,
+          "writes": 3
         },
         {
           "owner": "prepareClientFeatures.current",
-          "line": 502,
+          "line": 474,
           "bindings": 1,
           "writes": 1
         }
       ],
       "parseErrors": [],
       "asynchronous": 0,
-      "unassignedWrites": 4
+      "unassignedWrites": 6
     },
     {
       "path": "scripts/prepare-embedding-host.mjs",
@@ -46851,7 +46851,7 @@
     },
     {
       "path": "scripts/prepare-patched-native.mjs",
-      "sha256": "bde29ae21c2b34287a075d99a85b91faa6e3fa4b00c936fbfa3d502e2ee45773",
+      "sha256": "4aa18b5b6c50a30bf88b1fd66f9bf5879156dffb0cdbf2a69f905e7f1ba7968f",
       "allocatedModels": [
         "AndroidBrowserModuleStage",
         "NativeMmsDispatch",
@@ -47009,7 +47009,7 @@
     },
     {
       "path": "scripts/source-snapshot.mjs",
-      "sha256": "68d36c3212a945aa23b2211729837e3434a77264316296f823238154f53070fb",
+      "sha256": "4982851e12745c10985c4410bc394374c315c38148b08e1668ad4d9819b7784f",
       "allocatedModels": [
         "Application",
         "MobileBundleAdmission",
@@ -68341,7 +68341,7 @@
     },
     {
       "path": "vendor/eliza/packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts",
-      "sha256": "b157fa2c9b3c0d4a3e9d6aca0fedc6dc9d4142c69721adbb8b370233d53dc5bc",
+      "sha256": "4002afcaefdc347b2de013cb49523dc77545dd1cb896183d8d704678336ddc01",
       "allocatedModels": [
         "NativeGoogleHostArtifact"
       ],
@@ -68351,49 +68351,49 @@
       "owners": [
         {
           "owner": "<module>",
-          "line": 54,
+          "line": 56,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "createManagedGoogleAgentHost",
-          "line": 127,
+          "line": 129,
           "bindings": 2,
           "writes": 6
         },
         {
           "owner": "createManagedGoogleAgentHost.sharedLookup",
-          "line": 162,
+          "line": 164,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "createManagedGoogleAgentHost.ownerAccounts",
-          "line": 198,
+          "line": 200,
           "bindings": 1,
           "writes": 6
         },
         {
           "owner": "createManagedGoogleAgentHost.verified",
-          "line": 347,
+          "line": 349,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "createManagedGoogleAgentHost.calendarFeed",
-          "line": 638,
+          "line": 640,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "createManagedGoogleAgentHost.list",
-          "line": 730,
+          "line": 732,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "createManagedGoogleAgentHost.list.ArrowFunction@746",
-          "line": 753,
+          "owner": "createManagedGoogleAgentHost.list.ArrowFunction@748",
+          "line": 755,
           "bindings": 2,
           "writes": 2
         },
@@ -114411,7 +114411,7 @@
     },
     {
       "path": "vendor/eliza/packages/ui/src/state/app-update-gate.ts",
-      "sha256": "37ea7d2970b7aa6b92e28697e29dbb2d69a9a9f27f2d91baa425dbef5ae7f15a",
+      "sha256": "89dc78042b8808e4bd264732ac06bb4fb43a3da35d397a5f126c73896f23eca5",
       "allocatedModels": [
         "Application",
         "AutomaticAppUpdateSchedule",
@@ -114426,31 +114426,43 @@
       "owners": [
         {
           "owner": "waitForAppUpdateStartup",
-          "line": 84,
+          "line": 86,
           "bindings": 3,
           "writes": 3
         },
         {
           "owner": "updatePanel",
-          "line": 133,
+          "line": 135,
           "bindings": 4,
           "writes": 10
         },
         {
           "owner": "watchMountedAppUpdates",
-          "line": 203,
-          "bindings": 6,
-          "writes": 14
+          "line": 207,
+          "bindings": 7,
+          "writes": 16
         },
         {
           "owner": "watchMountedAppUpdates.check",
-          "line": 232,
+          "line": 246,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "createAppUpdateScheduler",
+          "line": 388,
+          "bindings": 3,
+          "writes": 9
+        },
+        {
+          "owner": "createAppUpdateScheduler.poll",
+          "line": 423,
           "bindings": 1,
           "writes": 1
         }
       ],
       "parseErrors": [],
-      "asynchronous": 11,
+      "asynchronous": 14,
       "unassignedWrites": 2
     },
     {
@@ -190426,7 +190438,7 @@
     },
     {
       "path": "vendor/eliza/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NoticeCoordinator.java",
-      "sha256": "960930412850fb8c9b7f28fc48bd33a86de0026c9cd1913facc95039cc12ea39",
+      "sha256": "7808f64944fa3f9f9868dc4aaa6462d7ab8462fd86e08e46192d933fddec0419",
       "allocatedModels": [
         "DeviceActions",
         "NoticesAndCaches",
@@ -190476,30 +190488,30 @@
         {
           "owner": "NoticeCoordinator.postApproval@36.lambda@36",
           "line": 38,
-          "bindings": 3,
+          "bindings": 5,
           "writes": 1
         },
         {
-          "owner": "NoticeCoordinator.withdrawApproval@52",
-          "line": 52,
+          "owner": "NoticeCoordinator.withdrawApproval@59",
+          "line": 59,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "NoticeCoordinator.withdrawOtherOwners@55",
-          "line": 55,
+          "owner": "NoticeCoordinator.withdrawOtherOwners@62",
+          "line": 62,
           "bindings": 6,
           "writes": 2
         },
         {
-          "owner": "NoticeCoordinator.resumeApproval@61",
-          "line": 61,
+          "owner": "NoticeCoordinator.resumeApproval@68",
+          "line": 68,
           "bindings": 5,
           "writes": 0
         },
         {
-          "owner": "NoticeCoordinator.resumeApproval@61.lambda@61",
-          "line": 63,
+          "owner": "NoticeCoordinator.resumeApproval@68.lambda@68",
+          "line": 70,
           "bindings": 3,
           "writes": 2
         }
@@ -190510,7 +190522,7 @@
     },
     {
       "path": "vendor/eliza/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NoticeDelivery.java",
-      "sha256": "2b4246f3a1e29752911bf70aed0bec4b2a0ab581406da553623603a1f7481c60",
+      "sha256": "cdb296ddcba2ce3005d6070925d8c727a3be4f213c9a3b579e3bc05b496794d9",
       "allocatedModels": [
         "DeviceActions",
         "NativeActionRecovery",
@@ -190753,12 +190765,12 @@
         {
           "owner": "NoticeDelivery.approvalStatus@187",
           "line": 187,
-          "bindings": 2,
+          "bindings": 6,
           "writes": 0
         },
         {
-          "owner": "NoticeDelivery.expireApprovals@189",
-          "line": 189,
+          "owner": "NoticeDelivery.expireApprovals@199",
+          "line": 199,
           "bindings": 6,
           "writes": 2
         }
@@ -225228,6 +225240,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "14252a57e27d64d3460a4227f7d197d525b60a838319f2036374b8694423d114"
+    "sha256": "174b97a2dfa1f015900004d3f7045e5eec8bf4c6b0fd029294d1d2a85041c0b0"
   }
 }

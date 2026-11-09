@@ -2,6 +2,30 @@
 
 ## Current source-lock review — November 9
 
+SDK `6f414658b08cf8075d8fb12ece2ec968a221af7e` has fresh root and resident
+registry audits. They reproduce the same three moderate root findings and 103
+resident findings across 3,694 registry versions (12 low, 44 moderate, 46 high
+and one critical). The Bun lock is byte-identical. All 84 resident exception
+objects, their original review deadlines and the 12 pending upstream fixes remain
+unchanged. The resident audit still exits nonzero for the pending findings.
+Three shared notice/Gmail production files match their prior reviewed postimages,
+with owning-module regressions now upstream and local behavior patches retired.
+This source review grants no new artifact, security or release qualification.
+See the [source-lock review](security/resident-source-review-6f414658-2026-11-09.json).
+
+## Previous source-lock review — November 9
+
+SDK `450087e00e6dc1c289aab0c3e424560b7040d163` has fresh root and resident
+registry audits. They reproduce the same three moderate root findings and 103
+resident findings across 3,694 registry versions (12 low, 44 moderate, 46 high
+and one critical). The Bun lock is byte-identical. All 84 resident exception
+objects, their original review deadlines and the 12 pending upstream fixes remain
+unchanged. The resident audit still exits nonzero for the pending findings.
+The curated persona and foreground updater source changes grant no new artifact,
+security or release qualification. See the [source-lock review](security/resident-source-review-450087e0-2026-11-09.json).
+
+## Previous source-lock review — November 9
+
 SDK `ac18377c5a9e4eb7afeac1c62a026ad3be95733e` has a fresh npm bulk query reproducing the same 3,694 registry versions and all 103 findings as SDK `86ab55fd81`. The dependency lock is byte-identical; all exception objects, review deadlines and pending fixes remain unchanged. This four-file identity follow-up grants no new artifact, security or release qualification. See the [source-lock review](security/resident-source-review-ac18377c-2026-11-09.json).
 
 ## Built static review at SDK 86ab55fd81 — November 9
