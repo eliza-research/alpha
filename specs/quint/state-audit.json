@@ -12,7 +12,7 @@
   "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "c0e6852d567428aabfe6853b3b458ed5a225cbd5456db7002ed8bc3cb8bd8459",
+  "ledgerSha256": "5cce9c181aaf7180e6113ec279baf268b8588281740fef19fc5e00dc32373e7a",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -28,9 +28,9 @@
     "parsedFiles": 5629,
     "languageReview": 55,
     "parseErrors": 0,
-    "candidates": 67129,
-    "writeSites": 66560,
-    "writeAssociations": 59739,
+    "candidates": 67131,
+    "writeSites": 66567,
+    "writeAssociations": 59746,
     "asynchronous": 8301,
     "unassignedWrites": 10189
   },
@@ -16988,40 +16988,42 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaAssistActivity.java",
-      "sha256": "01c039df777bae3c1e85adbad3d1927094cfe33b4e54f130dc1e742c7145c623",
+      "sha256": "2a51297b72cea768d6eac25af42610e3c3406bdd911f8638297383f74a2c08e2",
       "allocatedModels": [
-        "Application"
+        "Application",
+        "NativeAssistantEntry"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
         {
           "owner": "AlphaAssistActivity",
           "line": 14,
-          "bindings": 1,
-          "writes": 2
+          "bindings": 3,
+          "writes": 8
         },
         {
-          "owner": "AlphaAssistActivity.onCreate@18",
-          "line": 18,
+          "owner": "AlphaAssistActivity.onCreate@20",
+          "line": 20,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaAssistActivity.onNewIntent@25",
-          "line": 26,
+          "owner": "AlphaAssistActivity.onNewIntent@35",
+          "line": 36,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "AlphaAssistActivity.onNewIntent@30",
-          "line": 30,
+          "owner": "AlphaAssistActivity.onNewIntent@41",
+          "line": 41,
           "bindings": 2,
-          "writes": 0
+          "writes": 1
         },
         {
-          "owner": "AlphaAssistActivity.cleanIntent@53",
-          "line": 53,
+          "owner": "AlphaAssistActivity.cleanIntent@70",
+          "line": 70,
           "bindings": 3,
           "writes": 0
         }
@@ -19765,7 +19767,8 @@
         "ResidentScheduling",
         "NativeGoogleAccessFile",
         "RuntimeUpdatePause",
-        "NativeUpdateComposition"
+        "NativeUpdateComposition",
+        "NativeAssistantEntry"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -22178,7 +22181,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPowerVoiceActivity.java",
       "sha256": "235b2c35463c883e0e75bdd4ded87b01e30d735bfb39ac6a603e8ebb2d598f37",
       "allocatedModels": [
-        "ShellNavigation"
+        "ShellNavigation",
+        "NativeAssistantEntry"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -22204,7 +22208,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaQuickSettingsTile.java",
       "sha256": "15f59d8b0cf1083b755886010a93549e1fcb499e09ab01a639af6b0316928b1d",
       "allocatedModels": [
-        "ShellNavigation"
+        "ShellNavigation",
+        "NativeAssistantEntry"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -25452,7 +25457,8 @@
         "Application",
         "RendererRecovery",
         "CanonicalNotificationTap",
-        "NativeTextScaleLifecycle"
+        "NativeTextScaleLifecycle",
+        "NativeAssistantEntry"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -39863,7 +39869,7 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "779fa4e2ae53f2d8b91d4c19c02d9ef218969568ca603b67d0eb9008f539f142",
+      "sha256": "dfc6974d8eb5f33cc9a08b3f556e98b53dbae03f6a5841bff919c0ed3d5eb47b",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -45772,7 +45778,7 @@
     },
     {
       "path": "scripts/core-state-patch.mjs",
-      "sha256": "25b46e944ecd6a4d5569e8eace9e2f9b22eea2ebdd36075e90fd15d1b9fb6478",
+      "sha256": "331e2ce0df2c43a1f34969bc12b54d51292134320599e4a765e77b5129853171",
       "allocatedModels": [
         "TaskServiceLifecycle",
         "TaskSchedulerRuntime",
@@ -45786,31 +45792,31 @@
       "owners": [
         {
           "owner": "<module>",
-          "line": 13,
+          "line": 14,
           "bindings": 4,
           "writes": 0
         },
         {
           "owner": "readRegular",
-          "line": 39,
+          "line": 41,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "coreStateReceipt",
-          "line": 54,
+          "line": 56,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "coreStatePatch",
-          "line": 101,
+          "line": 103,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "coreStateBuildPlugin",
-          "line": 119,
+          "line": 121,
           "bindings": 2,
           "writes": 1
         }
@@ -191616,7 +191622,8 @@
       "path": "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/AssistantEntryTile.java",
       "sha256": "3897192a72181c5a1d8eaa7a876ce83a0058ebac6eebacd013edb8dd70468d51",
       "allocatedModels": [
-        "AssistantConversation"
+        "AssistantConversation",
+        "NativeAssistantEntry"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -191657,7 +191664,8 @@
       "allocatedModels": [
         "AlwaysOnListener",
         "ListenerLeaseProducer",
-        "ListenerLeaseRecovery"
+        "ListenerLeaseRecovery",
+        "NativeAssistantEntry"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -191764,7 +191772,8 @@
       "allocatedModels": [
         "AlwaysOnListener",
         "ListenerLeaseProducer",
-        "ListenerLeaseRecovery"
+        "ListenerLeaseRecovery",
+        "NativeAssistantEntry"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -218670,6 +218679,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "62a985879397b7a55d02b09d1bd91e597827f8654bb44f97ee989fb9fc35aa42"
+    "sha256": "a8053d6e8159b81727c0d735f07a043217fe68d60171afde4348e7536e9b4eac"
   }
 }

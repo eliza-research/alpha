@@ -6224,12 +6224,14 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaAssistActivity.java",
-      "sha256": "01c039df777bae3c1e85adbad3d1927094cfe33b4e54f130dc1e742c7145c623",
       "models": [
-        "Application"
+        "Application",
+        "NativeAssistantEntry"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "2a51297b72cea768d6eac25af42610e3c3406bdd911f8638297383f74a2c08e2",
       "stateAnchors": [
         {
           "line": 14,
@@ -6755,7 +6757,8 @@
         "ResidentScheduling",
         "NativeGoogleAccessFile",
         "RuntimeUpdatePause",
-        "NativeUpdateComposition"
+        "NativeUpdateComposition",
+        "NativeAssistantEntry"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -7294,7 +7297,8 @@
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPowerVoiceActivity.java",
       "models": [
-        "ShellNavigation"
+        "ShellNavigation",
+        "NativeAssistantEntry"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -7309,7 +7313,8 @@
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaQuickSettingsTile.java",
       "models": [
-        "ShellNavigation"
+        "ShellNavigation",
+        "NativeAssistantEntry"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -8197,7 +8202,8 @@
         "Application",
         "RendererRecovery",
         "CanonicalNotificationTap",
-        "NativeTextScaleLifecycle"
+        "NativeTextScaleLifecycle",
+        "NativeAssistantEntry"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -35646,7 +35652,7 @@
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "779fa4e2ae53f2d8b91d4c19c02d9ef218969568ca603b67d0eb9008f539f142",
+      "sha256": "dfc6974d8eb5f33cc9a08b3f556e98b53dbae03f6a5841bff919c0ed3d5eb47b",
       "stateAnchors": []
     },
     {
@@ -49391,7 +49397,7 @@
       "scope": "development-runtime",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "25b46e944ecd6a4d5569e8eace9e2f9b22eea2ebdd36075e90fd15d1b9fb6478",
+      "sha256": "331e2ce0df2c43a1f34969bc12b54d51292134320599e4a765e77b5129853171",
       "stateAnchors": []
     },
     {
@@ -507874,7 +507880,8 @@
     {
       "path": "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/AssistantEntryTile.java",
       "models": [
-        "AssistantConversation"
+        "AssistantConversation",
+        "NativeAssistantEntry"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -507892,7 +507899,8 @@
       "models": [
         "AlwaysOnListener",
         "ListenerLeaseProducer",
-        "ListenerLeaseRecovery"
+        "ListenerLeaseRecovery",
+        "NativeAssistantEntry"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -507978,7 +507986,8 @@
       "models": [
         "AlwaysOnListener",
         "ListenerLeaseProducer",
-        "ListenerLeaseRecovery"
+        "ListenerLeaseRecovery",
+        "NativeAssistantEntry"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -618509,7 +618518,8 @@
         "Application",
         "StartupPermissions",
         "NativeReminderDelivery",
-        "NativeTextScaleLifecycle"
+        "NativeTextScaleLifecycle",
+        "NativeAssistantEntry"
       ],
       "sha256": "5988c10458b25bbda549955ea2c89161e19a262a50cf17eb313c420f38d0c058"
     },
@@ -618592,7 +618602,8 @@
         "NativeSmsDispatch",
         "NativeMmsDispatch",
         "NativeCrashJournal",
-        "NativeSettingsHandoff"
+        "NativeSettingsHandoff",
+        "NativeAssistantEntry"
       ],
       "sha256": "0bce8e83df6cf39ec58ebda94cdd0976c2558f346e8c0988e4fa904f6578d7cd"
     },
@@ -619021,7 +619032,7 @@
         "CoreServiceLifecycle",
         "ApplicationComposition"
       ],
-      "sha256": "19a37f5fce563acd4a424d35d118afdf66f7e94585f5e63b55cd39cb9b180ac3"
+      "sha256": "17e0c981c5674dfd020a16ecbe922ae6c924924ef33ec751cf329aa069fbe1af"
     },
     {
       "path": "specs/quint/refinement/services/runtime-bundle-audit.mjs",
@@ -619066,7 +619077,7 @@
         "CanonicalNotesStore",
         "CoreTurnControllers"
       ],
-      "sha256": "ea9438c30c7a6bb446f6d5c5cffd379796c5b43cc4e1aa614c24b00a48c16678"
+      "sha256": "5b2f99180a222f743367959b7ba0360d9d30597ba80d91ea126830074d190258"
     },
     {
       "path": "scripts/mobile-bundle-smoke.mjs",
@@ -619098,7 +619109,7 @@
         "CombinedAgentLauncher",
         "ReviewedWorkflowLauncher"
       ],
-      "sha256": "25b46e944ecd6a4d5569e8eace9e2f9b22eea2ebdd36075e90fd15d1b9fb6478"
+      "sha256": "331e2ce0df2c43a1f34969bc12b54d51292134320599e4a765e77b5129853171"
     },
     {
       "path": "scripts/core-state-preload.mjs",
@@ -619127,7 +619138,7 @@
         "CanonicalNotesStore",
         "CoreTurnControllers"
       ],
-      "sha256": "9baa7b3e4f6032b18c33a09bd641e13ce8a7cda9de3d120233c7149aa2033953"
+      "sha256": "c857f206dfed8c329cb44259208937b5016e45ce81b108e8fdbee5df6222e862"
     },
     {
       "path": "patches/eliza/task-service-stop.patch",
@@ -619393,6 +619404,15 @@
         "BrowserFilesTrash"
       ],
       "sha256": "eae0a81ce647710304a6b843daa41308550719348b88de8923b289805d4e70c4"
+    },
+    {
+      "path": "patches/eliza/plugin-connector-custody.patch",
+      "models": [
+        "TaskServiceLifecycle",
+        "CanonicalNotesStore",
+        "CoreTurnControllers"
+      ],
+      "sha256": "a0f840fa8572fae33dc3958769c4bd9a951e6f18d04c2345979147134a1473b2"
     }
   ],
   "runtimeAssets": [
