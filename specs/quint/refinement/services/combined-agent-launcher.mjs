@@ -12,7 +12,7 @@ const manifest = 'patches/eliza/core-state-manifest.json';
 const scenarios = [
   'node-version', 'source-mismatch', 'port-busy', 'profile-source', 'key-mode', 'speech',
   'unmarked', 'bad-marker', 'bad-routing', 'validate', 'validate-bad-marker', 'empty-input', 'core-refused',
-  'independent', 'pinned', 'child-seven', 'signal-int', 'signal-term', 'spawn-error', 'metadata-write',
+  'independent', 'pinned', 'child-seven', 'signal-int', 'signal-term', 'spawn-error', 'metadata-write', 'metadata-stubborn',
 ];
 
 function sourceInputs(extraSources) {
@@ -40,7 +40,7 @@ function runScenario(scenario) {
     const env = {PATH: '/usr/bin:/bin', HOME: home, TMPDIR: scratch,
       GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null'};
     const result = spawnSync(process.execPath, [probe, scratch, scenario], {
-      cwd: scratch, env, encoding: 'utf8', timeout: 15000, maxBuffer: 1024 * 1024,
+      cwd: scratch, env, encoding: 'utf8', timeout: 20000, maxBuffer: 1024 * 1024,
     });
     if (result.error) throw result.error;
     assert.equal(result.signal, null, scenario+' failed: '+result.stderr);
@@ -60,6 +60,6 @@ export async function checkCombinedAgentLauncher(extraSources = []) {
       'The exact launcher and its manifest, profile identity, routing, speech verification and core patch admission helpers execute in a disposable repository. The Git workspace and speech bytes are synthetic.',
       'Module hooks replace only the launcher version, loopback probe and spawn ports, and observe its real private file operations. Each child is an actual synthetic Node process with a private IPC channel. External files, providers, and listeners are outside the fixture.',
       'Boot denotes the synthetic child acknowledging script execution over IPC. Launch metadata precedes that acknowledgment. Endpoint readiness requires a separate authenticated check.',
-      'The fixture captures the metadata write rejection before the launcher process exits, while the child remains responsive. The harness explicitly reaps its own child. The model leaves competing launchers, external termination, HTTP readiness and actual agent execution separate.',
+      'Receipt failure is captured before the launcher signals its returned child. A stubborn synthetic child ignores SIGTERM and is reaped after the bounded fallback. Competing launchers, external termination, HTTP readiness and actual agent execution are separate obligations.',
     ]});
 }

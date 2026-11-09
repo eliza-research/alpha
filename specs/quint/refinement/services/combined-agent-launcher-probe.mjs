@@ -94,6 +94,7 @@ const refusals = {
   'empty-input': /Required private credential is empty/,
   'core-refused': /Core patch digest mismatch/,
   'metadata-write': /EISDIR/,
+  'metadata-stubborn': /EISDIR/,
 };
 
 function isFile(path) {
@@ -117,9 +118,10 @@ async function drive(scratch, scenario) {
   const entry = pathToFileURL(join(f.repo, launcher)).href;
   const ports = join(scratch, 'ports');
   const report = join(scratch, 'report.json');
+  const failedMetadata = scenario === 'metadata-write' || scenario === 'metadata-stubborn';
   const probe = {checks: 0, port: 'unprobed', logFd: undefined, core: 'unselected',
-    child: undefined, booted: false, childExited: false, childFailed: false,
-    forwarded: 'none', outcome: 'running', exited: -1};
+    child: undefined, booted: false, childExited: false, childFailed: false, childClosed: false,
+    receiptFailed: false, cleanupSignal: 'none', forwarded: 'none', outcome: 'running', exited: -1};
   const trace = {name: scenario, init: action('startState', isDirectory(f.profile), isFile(f.marker), isFile(f.config)),
     expect: null, steps: []};
   const supervisorCount = {int: process.listenerCount('SIGINT'), term: process.listenerCount('SIGTERM')};
@@ -135,9 +137,10 @@ async function drive(scratch, scenario) {
       's.core': probe.core, 's.spawnRequested': !!probe.child, 's.pid': Number(!!probe.child?.pid),
       's.metadata': !!metadata, 's.metadataPid': Number(!!metadata?.pid),
       's.supervised': signals, 's.booted': probe.booted, 's.childExited': probe.childExited,
-      's.childFailed': probe.childFailed, 's.forwarded': probe.forwarded, 's.outcome': probe.outcome,
+      's.childFailed': probe.childFailed, 's.childClosed': probe.childClosed, 's.receiptFailed': probe.receiptFailed,
+      's.cleanupSignal': probe.cleanupSignal, 's.forwarded': probe.forwarded, 's.outcome': probe.outcome,
       's.exitCode': probe.exited,
-      ChildCustodyAfterLaunch: probe.outcome !== 'metadata-write' || !probe.child?.pid || signals || probe.childExited,
+      ChildCustodyAfterLaunch: !probe.receiptFailed || (probe.outcome === 'running' ? signals || probe.childClosed : probe.childClosed),
     };
   }
   const point = (label, next) => trace.steps.push({label, action: next, expect: observe()});
@@ -158,7 +161,13 @@ async function drive(scratch, scenario) {
   const boot = new Promise(resolve => {bootResolve = resolve;});
   const settled = new Promise(resolve => {childResolve = resolve;});
   const childScript = join(scratch, 'fake-child.mjs');
-  f.write(childScript, `process.on('disconnect', () => process.exit(0));
+  const signalReady = join(scratch, 'child-signal-ready'), signalSeen = join(scratch, 'child-signal-seen');
+  const stubborn = scenario === 'metadata-stubborn';
+  const ignoreTerm = stubborn ? `import {writeFileSync} from 'node:fs';
+process.on('SIGTERM', () => writeFileSync(${JSON.stringify(signalSeen)}, 'SIGTERM'));
+writeFileSync(${JSON.stringify(signalReady)}, 'ready');` : '';
+  f.write(childScript, `${ignoreTerm}
+process.on('disconnect', () => process.exit(0));
 process.on('message', message => {if (message?.kind === 'finish') process.exit(message.code);});
 process.send({kind:'boot'});
 `);
@@ -213,8 +222,21 @@ process.send({kind:'boot'});
       writeFileSync(path, bytes, options) {
         if (path !== f.metadata) return fs.writeFileSync(path, bytes, options);
         assert.equal(options.mode, 0o600);
-        if (scenario === 'metadata-write') fs.mkdirSync(f.metadata, {mode: 0o700});
-        fs.writeFileSync(path, bytes, options);
+        if (stubborn) {
+          // Give only our synthetic child time to install its ignoring handler.
+          const wait = new Int32Array(new SharedArrayBuffer(4)), deadline = Date.now() + 5000;
+          while (!isFile(signalReady) && Date.now() < deadline) Atomics.wait(wait, 0, 0, 10);
+          assert.ok(isFile(signalReady));
+        }
+        if (failedMetadata) fs.mkdirSync(f.metadata, {mode: 0o700});
+        try { fs.writeFileSync(path, bytes, options); }
+        catch (error) {
+          assert.ok(failedMetadata);
+          assert.equal(error.code, 'EISDIR');
+          probe.receiptFailed = true;
+          point('Process receipt fails while child supervision is already installed', action('metadataFailure'));
+          throw error;
+        }
         const value = JSON.parse(fs.readFileSync(path, 'utf8'));
         assert.equal(value.source, f.frozen);
         assert.equal(value.revision, f.snapshot.revision);
@@ -228,7 +250,7 @@ process.send({kind:'boot'});
         assert.equal(value.coreState.applied, probe.core === 'pinned');
         assert.ok(!Object.hasOwn(value, 'ready'));
         assert.ok(!Object.hasOwn(value, 'ELIZA_API_TOKEN') && !Object.hasOwn(value, 'CEREBRAS_API_KEY'));
-        point('Process metadata is published before any child readiness or signal supervision', action('publishMetadata'));
+        point('Process metadata is published after supervision and before the synthetic boot observation', action('publishMetadata'));
       },
     },
     spawn(command, args, options) {
@@ -264,36 +286,49 @@ process.send({kind:'boot'});
         assert.deepEqual(message, {kind: 'boot'});
         bootResolve();
       });
+      let spawnError, exit;
       child.on('error', error => {
         assert.equal(scenario, 'spawn-error');
         assert.equal(error.code, 'ENOENT');
-        queueMicrotask(() => {
+        spawnError = error;
+      });
+      child.on('exit', (code, signal) => {exit = {code, signal};});
+      child.on('close', () => queueMicrotask(() => {
+        const next = [];
+        if (spawnError) {
           probe.childFailed = true;
           finish('child-error', process.exitCode);
-          point('The actual launch-error listener sets failure while process metadata has no PID', action('childError'));
-          childResolve();
-        });
-      });
-      child.on('exit', (code, signal) => queueMicrotask(() => {
-        if (scenario !== 'metadata-write') {
+          next.push(action('childError'));
+        } else {
+          assert.ok(exit);
           probe.childExited = true;
-          finish('child-exit', process.exitCode);
-          point('The actual child exit handler closes the log and propagates the child result',
-            action('childExit', code ?? -1));
-          assert.equal(process.exitCode, code ?? 1);
-          if (scenario.startsWith('signal-')) assert.equal(signal, probe.forwarded);
+          if (failedMetadata) {
+            probe.exited = process.exitCode;
+            assert.equal(exit.signal, stubborn ? 'SIGKILL' : 'SIGTERM');
+          } else finish('child-exit', process.exitCode);
+          assert.equal(process.exitCode, exit.code ?? 1);
+          if (scenario.startsWith('signal-')) assert.equal(exit.signal, probe.forwarded);
+          next.push(action('childExit', exit.code ?? -1));
         }
+        probe.childClosed = true;
+        next.push(action('closeChild'));
+        point('The actual close event reaps the child, detaches handlers and closes only its log', next);
         childResolve();
       }));
       const on = child.on, kill = child.kill;
       child.on = function(event, handler) {
         const result = on.call(this, event, handler);
-        if (event === 'exit') point('The actual launcher attaches both signal handlers and exit observation', action('supervise'));
+        if (event === 'exit') point('The actual launcher attaches supervision before receipt publication', action('supervise'));
         return result;
       };
       child.kill = function(signal) {
-        probe.forwarded = signal;
-        point('The launcher forwards the synthetic parent signal only to its returned child', action('forward', signal));
+        if (probe.receiptFailed) {
+          probe.cleanupSignal = signal;
+          point('Failed handoff signals only the exact returned synthetic child', action('cleanupSignal', signal));
+        } else {
+          probe.forwarded = signal;
+          point('The launcher forwards the synthetic parent signal only to its returned child', action('forward', signal));
+        }
         return kill.call(this, signal);
       };
       return child;
@@ -319,17 +354,13 @@ export const execFileSync=(...args)=>globalThis.closedCombinedPorts.execFileSync
     assert.ok(Object.hasOwn(refusals, scenario), error.stack);
     assert.match(error.message, refusals[scenario]);
     process.exitCode = 1;
-    finish(scenario, 1);
-    if (scenario === 'metadata-write') {
-      // An IPC handshake proves our private child remained alive after the
-      // launcher rejected. The harness then reaps its own child explicitly.
-      await boot;
-      probe.booted = true;
-      point('Metadata write rejected after spawn while the synthetic child can still answer',
-        [action('metadataFailure'), action('childBoot')]);
-      probe.child.send({kind: 'finish', code: 0});
-      await settled;
-      fs.closeSync(probe.logFd);
+    finish(failedMetadata ? 'metadata-write' : scenario, 1);
+    if (failedMetadata) {
+      assert.ok(probe.childClosed && probe.childExited);
+      assert.equal(probe.logFd, undefined);
+      assert.ok(!isFile(f.metadata));
+      if (stubborn) assert.equal(fs.readFileSync(signalSeen, 'utf8'), 'SIGTERM');
+      point('Only after child close does the launcher return the original metadata error', action('rejectMetadata'));
     } else if (scenario === 'empty-input') {
       point('Prepared identity and token survive refusal of the empty synthetic input',
         [action('prepareFiles'), action('failBeforeSpawn', scenario)]);

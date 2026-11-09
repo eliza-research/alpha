@@ -1722,15 +1722,18 @@
         "coreRefusalFollowsPrivateLogTest",
         "launchReceiptBeforeChildBootTest",
         "launchErrorReceiptHasNoPidTest",
-        "metadataFailureLeavesChildUnsupervisedTest",
+        "receiptFailureReapsBeforeRejectionTest",
+        "forcedCleanupReapsStubbornChildTest",
         "signalExitPropagatesFailureTest"
       ],
       "invariants": [
         "SpawnRequiresPreparedProfile",
         "MetadataDescribesSpawn",
         "ValidateDoesNotLaunch",
+        "SupervisionPrecedesPublication",
         "ForwardingRequiresOwnedChild",
-        "ChildExitClosesLog"
+        "ClosedChildReleasesOwnership",
+        "ChildCustodyAfterLaunch"
       ],
       "sources": [
         "scripts/start-combined-agent.mjs",
@@ -1744,17 +1747,18 @@
         "checks/port": "Exact version calls and synthetic fixed-port probe completion",
         "profile/marker/config/identity/token/logOpen": "Real private scratch files and launcher-owned log descriptor",
         "core/spawnRequested/pid/metadata/metadataPid": "Resolved source overlay, actual returned synthetic child and process receipt",
-        "supervised/booted/childExited/childFailed/forwarded": "Actual handler installation, child IPC, signal forwarding and terminal child events",
-        "outcome/exitCode": "Observed source refusal or process result"
+        "outcome/exitCode": "Observed source refusal or process result",
+        "supervised/booted/childExited/childFailed/childClosed/forwarded": "Actual handler lifetime, child IPC, parent signal forwarding and terminal child events",
+        "receiptFailed/cleanupSignal": "Observed write refusal and the launcher signal to its exact returned child"
       },
       "abstractions": [
         "One launcher process, one returned child, at most one forwarded signal, two synthetic core modes, finite version and profile refusals. The port probe is a synthetic availability check, separate from later child socket ownership.",
-        "Metadata records spawn, including a request with no PID. Failed metadata can leave a responsive child outside launcher supervision. ChildCustodyAfterLaunch is a separate observed expectation."
+        "Metadata records spawn, including a request with no PID. Supervision is installed before publication. Receipt rejection waits for child close and releases the private log. Child boot is an IPC observation independent of endpoint readiness."
       ],
       "bounds": {
         "maxSamples": 1000,
         "maxSteps": 80,
-        "maxVerifyDepth": 12
+        "maxVerifyDepth": 15
       }
     }
   ]

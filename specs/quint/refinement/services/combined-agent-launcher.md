@@ -4,8 +4,9 @@
 `scripts/start-combined-agent.mjs`. The launcher verifies the executable
 versions and frozen source manifest, probes its fixed loopback port, checks
 private profile and speech prerequisites, then prepares the profile and selects
-the core overlay before requesting one child. Its process receipt records the
-spawn result. The child may begin executing after the receipt is written.
+the core overlay before requesting one child. The launcher installs child and
+signal handlers before publishing its process receipt. The synthetic child
+can acknowledge boot after the receipt is written.
 Endpoint readiness belongs to a separate authenticated acceptance check.
 
 The source driver runs the exact launcher and helpers in a disposable
@@ -20,19 +21,20 @@ The schedules cover version and source rejection, an occupied port, profile
 containment and ownership, speech integrity, marker and routing refusal,
 validation-only, both core overlay decisions, late profile or patch refusal,
 process metadata, launch failure, two forwarded signals, and numeric child
-exit. A patch admission error occurs after the private log opens. Refusing
+exit. A patch admission error closes the private log it opened. Refusing
 empty synthetic provider input leaves the prepared profile and token before
 that log step. Validation-only
 accepts an existing marker file before parsing its contents. The normal
 launch separately rejects the same wrong marker. A spawn failure can leave
-metadata without a PID, and the process exit closes the remaining descriptor.
+metadata without a PID. The child close event releases the log and handlers.
 
-An obstructed `process.json` write fails after a child is returned and before
-the launcher installs its signal and child exit handlers. The synthetic child
-still acknowledges boot while the launcher import has rejected. The fixture
-then reaps its own child. The separate `ChildCustodyAfterLaunch` predicate
-records this baseline failure, while the registered safety invariants describe
-the actual launch and receipt ordering.
+An obstructed `process.json` write fails under supervision. The launcher sends
+SIGTERM to its returned child and waits for its close event before rejecting.
+A synthetic child that ignores SIGTERM receives the bounded SIGKILL fallback.
+Both cases close the private log and remove signal handlers before returning
+the original write error. `ChildCustodyAfterLaunch` is now a checked safety
+invariant. The prior source observation is preserved in the
+[baseline record](combined-agent-launcher-baseline.md).
 
 `DevelopmentHost` covers Cloud resident binding and retirement through
 `scripts/cloud-resident-host.mjs`. The combined launcher has a distinct
