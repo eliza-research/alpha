@@ -69,7 +69,11 @@ function fixture({currentOnly=false,producerInputs=false}={}){
  // Tiny content fixtures retain the production manifest shape; the known BGE hash is checked last.
  for(const row of qualified.libraries){const file=path.join(dir,'android/app/src/main/jniLibs/arm64-v8a',row.name);fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,'fixture-'+row.name);}
  const manifest=structuredClone(qualified);for(const row of manifest.libraries){row.sha256=createHash('sha256').update('fixture-'+row.name).digest('hex');row.bytes=Buffer.byteLength('fixture-'+row.name);}
- if(producerInputs)manifest.producerInputs=embeddingProducerInputPaths.map(name=>({path:name,sha256:sha(execFileSync('git',['-C',vendor,'show','HEAD:'+name]))}));
+ if(producerInputs){
+  // These generated digests describe a synthetic build, not the historical receipt's producer.
+  manifest.pin='1'.repeat(40);
+  manifest.producerInputs=embeddingProducerInputPaths.map(name=>({path:name,sha256:sha(execFileSync('git',['-C',vendor,'show','HEAD:'+name]))}));
+ }
  fs.writeFileSync(path.join(dir,'android/embedding-host/qualified-host.json'),JSON.stringify(manifest));
  // The voice host stages the same arm64 engine file, so its record names the same bytes.
  fs.mkdirSync(path.join(dir,'android/voice-host'),{recursive:true});
