@@ -1008,6 +1008,8 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       const owner=api;
       if(!cameraViewVisible()||!owner)return {status:'failed',summary:'Open Camera, then ask again. No photo was taken.'};
       if(agentRequest||session.busy)return busy;
+      // Close the chat so the owner sees the viewfinder and the capture.
+      if(owner.S.chat!=='hidden')owner.shell({chat:'hidden'});
       request=agentRequest={queued:false,refused:false};requestedCaptureHolds++;
       if(session.phase!=='ready'){
         request.queued=true;

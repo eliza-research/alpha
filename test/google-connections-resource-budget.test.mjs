@@ -76,7 +76,7 @@ test('Google settings offer no calendar choice, revalidate grants and own Androi
   const switches=()=>Object.fromEntries([...dom.window.document.querySelectorAll('[aria-label="Agent access to Google"] input[role="switch"]')].map(input=>[input.getAttribute('aria-label'),input]));
   const agentAccess=dom.window.document.querySelector('[aria-label="Agent access to Google"]');
   assert.ok(agentAccess,'Connected Google exposes the agent access switches');
-  assert.match(agentAccess.textContent,/asks you to review email sends and Calendar changes, even when “Ask before agent actions” is off\./,'Provider consent must not imply the optional local-action setting bypasses send or Calendar review');
+  assert.match(agentAccess.textContent,/asks you to review email sends and Calendar changes, even when “Ask before taking actions” is off\./,'Provider consent must not imply the optional local-action setting bypasses send or Calendar review');
   assert.equal(switches()['Gmail changes'].checked,false,'A switch whose grant is missing shows off');
   assert.match(agentAccess.textContent,/Needs Google approval/);
   let underlyingBack=0;dom.window.addEventListener('alpha-back',()=>underlyingBack++);
