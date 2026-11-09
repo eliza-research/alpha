@@ -997,7 +997,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       const permissions:Record<string,string[]>={camera:['Camera','Microphone'],maps:['Location'],notes:['Microphone']};
       for(const label of permissions[appSettingsPage]||[])rows.push(info(label,typeof facts.permissions?.[label]==='boolean'?(facts.permissions[label]?'Allowed for Alpha':'Not allowed'):'Managed by your system'));
       if(appSettingsPage==='photos')rows.push(info('Photo access','Photos you choose'));
-      if(appSettingsPage==='files')rows.push(info('File access','Files and folders you choose'));
+      if(appSettingsPage==='files')rows.push(info('File access','All files on this phone when you allow it; otherwise only files you choose'));
       if(appSettingsPage==='browser')rows.push(info('Website permissions','Managed per website'));
       out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:names[appSettingsPage]||'App settings',hasTitle:true,backLabel:'Back to Apps',back:()=>{activeSettingsCategory='settings-apps';api.set({page:'settings-apps'});},hero:{},groups:rows.length?[group(rows)]:[group([info('Settings','No additional options')])]});
     }
@@ -1007,7 +1007,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       const rows=['Camera','Microphone','Location',...(native?['Calendar']:[])].map(label=>native?{...action(label,manage('privacy')),val:status(label),hasVal:true}:info(label,status(label)));
       const photos=native?(photoAccess?.scope==='full'?'All photos and videos':photoAccess?.scope==='selected'?'Selected photos and videos':photoAccess?.scope==='partial'?'Limited access':photoAccess?.scope==='denied'?'Saved by Alpha only':'Not checked'):'Photos you choose';
       rows.push(native?{...action('Photos',()=>void photoLibrary.openLibrarySettings().catch(()=>api.toast('Photo settings could not open.'))),val:photos,hasVal:true}:info('Photos',photos));
-      rows.push(info('Files','Files and folders you choose'));
+      rows.push(info('Files','All files on this phone when you allow it; otherwise only files you choose'));
       rows.push({...action('Notifications',()=>api.set({page:'notifications'})),val:typeof delivery.appEnabled==='boolean'?(delivery.appEnabled&&delivery.permissionGranted?'Allowed':'Off'):'Not checked',hasVal:true});
       out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:'App permissions',backLabel:'Back to Privacy',back:()=>api.set({page:'settings-privacy'}),hero:{},groups:[group(rows)]});
     }
