@@ -31,7 +31,7 @@ const settle = async (page: Page) => {
   await settled(page);
 };
 
-const press = async (page: Page, steps: string[]) => { for (const step of steps) { if(step==='Edit event'||step==='Delete event') await chooseCalendarEventAction(page,step); else await (step === 'Photos tools' ? page.getByLabel(step, { exact: true }) : page.getByRole('button', { name: step, exact: true }).first()).click(); } };
+const press = async (page: Page, steps: string[]) => { for (const step of steps) { if(step==='Edit event'||step==='Delete event') await chooseCalendarEventAction(page,step); else await (step === 'Photos tools' || step === 'Message actions' ? page.getByLabel(step, { exact: true }) : page.getByRole('button', { name: step, exact: true }).first()).click(); } };
 /** The named subview is on screen and exposed (not retired behind another subview). */
 const showing = async (page: Page, subview?: string) => {
   if (subview) await expect(page.locator(`[data-alpha-subview="${subview}"]:not([inert])`)).toBeVisible();
@@ -163,7 +163,7 @@ export const MOCK_STATES: State[] = [
 ].map(start => mock(start, [], SUBVIEW[start])).concat([
   // Subviews, menus, sheets and search fields one or two taps inside a view.
   mock('inbox', ['Search email']),
-  mock('inbox:mail', ['Reply'], 'inbox-composing'),
+  mock('inbox:mail', ['Message actions', 'Reply'], 'inbox-composing'),
   mock('calendar:event', ['Edit event'], 'calendar-form'),
   mock('workflows', ['Clock alarms']),
   mock('browser', ['Menu']),
