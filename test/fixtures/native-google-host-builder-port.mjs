@@ -1,0 +1,96 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import {createHash} from 'node:crypto';
+import {pathToFileURL} from 'node:url';
+import {PLUGIN_CONNECTOR_TARGET} from '../../scripts/core-state-patch.mjs';
+
+export const productInput = 'backend/native-google-agent-host.ts';
+export const fixtureSource = version => `export const fixtureSource = ${version};\n`;
+export const digest = bytes => createHash('sha256').update(bytes).digest('hex');
+export const fixtureModule = bytes => `export const fixtureInputSha256 = "${digest(bytes)}";\n`;
+export const controlName = '.native-google-fixture.json';
+export const eventsName = '.native-google-events.jsonl';
+
+async function main() {
+  const root = path.dirname(process.argv[1]);
+  const control = JSON.parse(fs.readFileSync(path.join(root, controlName), 'utf8'));
+  const event = kind => fs.appendFileSync(path.join(root, eventsName), JSON.stringify(kind)+'\n');
+  const args = process.argv.slice(2);
+  if (args.length === 1 && args[0] === '--version') {
+    event('version');
+    console.log(control.mode === 'wrong-bun' ? '1.4.1' : '1.4.2');
+    return;
+  }
+  const [condition, script, requestedRoot, sdk, file, meta] = args;
+  assert.equal(args.length, 6);
+  assert.equal(condition, '--conditions=eliza-source');
+  assert.equal(script, 'scripts/build-native-google-host.ts');
+  assert.equal(requestedRoot, root);
+  assert.equal(process.cwd(), root);
+  assert.equal(sdk, path.join(root, 'artifacts/sdk'));
+  assert.equal(file, path.join(root, 'artifacts/worker/google-host.mjs'));
+  assert.equal(path.dirname(path.dirname(meta)), process.env.TMPDIR);
+  assert.match(path.basename(path.dirname(meta)), /^alpha-google-host-build-/);
+  assert.equal(path.basename(meta), 'meta.json');
+
+  const input = path.join(root, productInput);
+  const coreTarget = path.join(sdk, PLUGIN_CONNECTOR_TARGET);
+  const sdkInput = path.join(sdk, 'tsconfig.json');
+  const fixtureDependency = path.join(sdk, 'fixture-dependency.ts');
+  const repository = path.resolve(import.meta.dirname, '../..');
+  const output = {kind: 'entry-point'};
+  let bytes;
+  globalThis.Bun = {
+    async build(options) {
+      event('compile');
+      assert.deepEqual(options.entrypoints, [input]);
+      assert.deepEqual(options.conditions, ['eliza-source']);
+      assert.equal(options.tsconfig, sdkInput);
+      assert.equal(options.metafile, true);
+      if (control.mode === 'compiler-refused') return {success: false, logs: [Error('fixture compiler refused')]};
+      if (control.mode === 'no-output') return {success: true, outputs: [], metafile: {inputs: {}}};
+      bytes = fixtureModule(fs.readFileSync(input));
+      const selected = { [input]: {}, [fixtureDependency]: {} };
+      if (control.selectedCore) selected[coreTarget] = {};
+      for (const plugin of options.plugins) plugin.setup({
+        onLoad({filter}, load) {
+          if (control.selectedCore && control.mode !== 'missing-transform') {
+            assert.ok(filter.test(coreTarget));
+            assert.equal(load({path: coreTarget}).loader, 'ts');
+          }
+        },
+        onResolve({filter}, resolve) {
+          assert.ok(filter.test('@elizaos/fixture-dependency'));
+          assert.equal(resolve({path: '@elizaos/fixture-dependency', importer: input}).path, fixtureDependency);
+          assert.equal(resolve({path: 'node:fs', importer: input}), undefined);
+        },
+      });
+      if (control.mode === 'escape-graph') selected[path.join(root, '..', 'outside-input.ts')] = {};
+      if (control.mode === 'missing-input') selected[path.join(root, 'unavailable-input.ts')] = {};
+      if (control.mode === 'linked-input') selected[path.join(root, 'linked-input.ts')] = {};
+      if (control.mode === 'input-drift') fs.writeFileSync(input, fixtureSource(2));
+      if (control.mode === 'sdk-drift') fs.appendFileSync(sdkInput, '\n');
+      return {success: true, outputs: [output], metafile: {inputs: selected}};
+    },
+    resolveSync(name, parent) {
+      assert.equal(name, '@elizaos/fixture-dependency');
+      assert.equal(parent, sdk);
+      if (control.mode === 'escape-resolver') return path.join(root, 'outside-sdk.ts');
+      return fixtureDependency;
+    },
+    async write(target, artifact) {
+      assert.equal(target, file);
+      assert.equal(artifact, output);
+      fs.writeFileSync(target, bytes);
+      event('module');
+      if (control.mode === 'metadata-refused') fs.mkdirSync(meta);
+    },
+  };
+  process.argv = [process.execPath, path.join(repository, script), root, sdk, file, meta];
+  await import(pathToFileURL(process.argv[1]).href);
+  assert.ok(fs.statSync(meta).isFile());
+  event('metadata');
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]).endsWith('/fixture-bun.mjs')) await main();

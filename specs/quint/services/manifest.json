@@ -1937,6 +1937,49 @@
         "Exact verified worker artifact, copied extraction index, previous directory, target publication, rollback and uncertain cleanup outcomes.",
         "Two synthetic generations and one retained backup. Packaging and installed extraction remain separately tested."
       ]
+    },
+    {
+      "path": "specs/quint/services/NativeGoogleHostArtifact.qnt",
+      "module": "NativeGoogleHostArtifact",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "completeBuildPublishesCurrentReceiptTest",
+        "staleProductInputRefusesReadbackTest",
+        "lateFailureCanSplitPreviouslyUsablePairTest",
+        "compilerReceiptCanBindLaterProductBytesTest",
+        "sdkPostcheckRefusesAfterOutputTest",
+        "preflightRefusalKeepsPriorPairTest"
+      ],
+      "invariants": [
+        "AcceptedReadbackMatchesDeclared",
+        "AcceptedBuildRequiresMetadata",
+        "ProducerOrder",
+        "BuildScratchReleased"
+      ],
+      "sources": [
+        "scripts/native-google-host-artifact.mjs",
+        "scripts/build-native-google-host.ts",
+        "scripts/workflow-worker-artifact.mjs",
+        "scripts/local-agent-source.mjs",
+        "scripts/core-state-patch.mjs",
+        "vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs"
+      ],
+      "stateMapping": {
+        "source/sdkCurrent": "Exact physical synthetic product input and prepared SDK committed input bytes",
+        "host/receipt": "Actual producer-written module, additive worker manifest digest, product input digest and selected core record",
+        "attempt/outcome": "Actual projection/version/compiler/write/metadata events, temporary cleanup and helper result categories"
+      },
+      "abstractions": [
+        "One selected product input, two identities, one private generic worker artifact and optional representative core target. The actual producer wraps a synthetic compiler port.",
+        "Accepted readback checks current declared input and module bytes. Compiled-input drift and failure after module write remain explicit current source outcomes."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 6
+      }
     }
   ]
 }
