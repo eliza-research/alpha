@@ -64,7 +64,7 @@ module NativeSourceRenewal {
       val fired={ ...reserved,visible:if (posted) reserved.visible.union(Set(id)) else reserved.visible,
         routes:if (attempted) reserved.routes.union(Set(id)) else reserved.routes,
         posts:if (posted) reserved.posts+1 else reserved.posts }
-      val refused=state.gate=="denied" or (attempted and mode=="notify-fail")
+      val refused=not(attempted) or mode=="notify-fail"
       val finalRow={ ...row,phase:if (refused) "armed" else "posted" }
       val stored=if (mode=="final-before") fired else setRow(fired,id,finalRow)
       result(stored,if (refused or mode.in(Set("final-before","final-after"))) "failed" else "ok")
@@ -183,9 +183,14 @@ module NativeSourceRenewal {
   run interruptedFinalSaveReusesTagTest = armed.then(post(1,"final-before"))
     .expect(s.rows.get(1).phase=="dispatching" and s.visible==Set(1))
     .then(restart).then(post(1,"none")).expect(s.posts==2 and s.visible==Set(1) and s.rows.get(1).phase=="posted")
-  run secondAdmissionCanSilentlyLoseAlertAsBuiltTest = armed.then(gate("flip")).then(post(1,"none"))
+  run secondAdmissionRefusalKeepsRetryableRowTest = armed.then(gate("flip")).then(post(1,"none"))
+    .expect(s.posts==0 and s.rows.get(1).phase=="armed" and s.visible==Set() and s.reply.status=="failed")
     .then(gate("allowed")).then(post(1,"none"))
-    .expect(s.posts==0 and s.rows.get(1).phase=="posted" and s.visible==Set())
+    .expect(s.posts==1 and s.rows.get(1).phase=="posted" and s.visible==Set(1))
+  run refusedResetSaveKeepsDispatchReservationTest = armed.then(gate("flip")).then(post(1,"final-before"))
+    .expect(s.posts==0 and s.rows.get(1).phase=="dispatching" and s.visible==Set())
+    .then(gate("allowed")).then(post(1,"none"))
+    .expect(s.posts==1 and s.rows.get(1).phase=="posted" and s.visible==Set(1))
   run failedClearCancelsBeforeSavingAsBuiltTest = posted.then(clear(1,true))
     .expect(s.visible==Set() and s.routes==Set() and s.rows.get(1).phase=="posted" and s.reply.status=="failed")
   run validPrefixWithoutRowOnlyWakesTest = init.then(capture(4,"question",false)).then(pending)

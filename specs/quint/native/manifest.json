@@ -2381,7 +2381,8 @@
         "ownerChangeRetiresTapAndBothIntentsTest",
         "uncertainReservationCanRetryTest",
         "interruptedFinalSaveReusesTagTest",
-        "secondAdmissionCanSilentlyLoseAlertAsBuiltTest",
+        "secondAdmissionRefusalKeepsRetryableRowTest",
+        "refusedResetSaveKeepsDispatchReservationTest",
         "failedClearCancelsBeforeSavingAsBuiltTest",
         "validPrefixWithoutRowOnlyWakesTest"
       ],
@@ -2402,7 +2403,7 @@
       },
       "abstractions": [
         "Four exact synthetic bindings across two owners, two source IDs and two revisions. Fixed expiry and bounded token history.",
-        "The model preserves the difference between journal phase, visible synthetic alert, and exact tap routes. A double-check admission change or cancellation write refusal can separate them.",
+        "The model preserves the difference between journal phase, visible synthetic alert, and exact tap routes. Admission refusal keeps the row retryable. Cancellation before a failed journal save can still separate the durable and visible states.",
         "Host JVM fixtures exercise renewal-specific methods. WorkManager scheduling, platform intent delivery, encrypted-storage internals, resident and external effects remain outside the campaign."
       ],
       "bounds": {

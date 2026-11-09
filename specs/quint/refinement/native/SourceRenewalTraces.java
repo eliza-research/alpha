@@ -250,9 +250,19 @@ public static void beforeNotify(String tag,Notification notice){
     }
     case "post-final-write-report" -> {f.arm(1,false);f.post(1,"final-after");f.restart();f.post(1,"none");}
     case "post-admission-flip" -> {
-     f.arm(1,false);f.gate("flip");f.post(1,"none");f.gate("allowed");f.post(1,"none");
-     check(f.context.manager.posts==0&&f.disk().getJSONObject(f.keys.get(1)).getString("phase").equals("posted"),
-      "As built, the second alert admission can silently leave a posted row without a notification");
+     f.arm(1,false);f.gate("flip");f.post(1,"none");
+     String skipped=f.disk().getJSONObject(f.keys.get(1)).getString("phase");
+     check(f.context.manager.posts==0&&skipped.equals("armed")&&f.reply.getString("status").equals("failed"),
+      "Skipped renewal must remain armed. Observed durable phase: "+skipped);
+     f.gate("allowed");f.post(1,"none");
+     check(f.context.manager.posts==1&&f.disk().getJSONObject(f.keys.get(1)).getString("phase").equals("posted"),
+      "The exact armed row can post when admission returns");
+     f.arm(2,false);f.gate("flip");f.post(2,"final-before");
+     check(f.context.manager.posts==1&&f.disk().getJSONObject(f.keys.get(2)).getString("phase").equals("dispatching"),
+      "A refused reset save leaves the durable dispatch reservation retryable");
+     f.gate("allowed");f.post(2,"none");
+     check(f.context.manager.posts==2&&f.disk().getJSONObject(f.keys.get(2)).getString("phase").equals("posted"),
+      "The exact interrupted reservation can post when admission returns");
     }
     case "failed-clear-and-withdraw" -> {
      f.arm(1,false);f.post(1,"none");f.clear(1,true);f.post(1,"none");f.capture(1,"question",false);f.pending();

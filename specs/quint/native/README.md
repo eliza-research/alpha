@@ -722,12 +722,13 @@ shape, both tap identities, cancellation and the empty retained wakeup.
 Only a foreground read of an exact current grant can return pending
 metadata.
 
-The replay preserves two as-built outcomes. Notification admission can
-change between the host and poster checks, leaving a posted row without
-a visible alert. Clear and owner withdrawal cancel the alert and routes
-before saving, so a reported save refusal can leave a posted row after
-cancellation. A final post write refusal can instead leave a dispatching
-row and a visible tag, which can retry the same tag after restart.
+The as-built replay in commit `63f860a9e2` recorded a posted row after
+notification admission changed between checks and the poster skipped the
+alert. The poster now reports whether its notify call returned. A skipped
+post leaves the row armed, or dispatching if the reset save fails. A
+later eligible post can retry the exact tag. Clear and owner withdrawal
+still cancel the alert and routes before saving, so a reported save
+refusal can leave a posted row after cancellation.
 
 The ports supply synthetic grants, journal outcomes, alert registration,
 and copied intents. No Android Activity is launched. WorkManager timing,

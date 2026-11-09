@@ -46,8 +46,8 @@ export async function checkNativeSourceRenewal(extraSources=[]) {
     return {receipt,obligations:[
       {model,obligation:'Installed notification and scheduling effects',
         reason:'Host replay does not establish WorkManager latency, Android grant or PendingIntent enforcement, platform timeout/auto-dismiss, or resident provider access.'},
-      {model,obligation:'Durable posted versus visible alert consistency',
-        reason:'The as-built host can silently skip the effect after its second admission check. Clear and owner withdrawal can cancel before a journal save fails.'},
+      {model,obligation:'Cancellation versus failed journal save',
+        reason:'Clear and owner withdrawal can cancel the platform alert and routes before a journal save reports failure.'},
     ]};
   } finally {rmSync(temporary,{recursive:true,force:true});}
 }
