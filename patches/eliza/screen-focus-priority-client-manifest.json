@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseCommit": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
+  "baseCommit": "b1817660a0347ae19551b9ee296410fe55f02d59",
   "path": "packages/ui/src/accessibility/screen-focus.ts",
   "beforeSha256": "b4b9c173244d0e07f1002000a9f3b740974b6c47af92d4242c9c312f3d522705",
   "afterSha256": "5ad041fdcf334c39b9d4f320c5b88cb4c84cba69e548164aa59a31c5be44d758",

@@ -302,10 +302,10 @@ const managedGrant='alpha-google:'+'b'.repeat(64);
 const managedSource={summary:'Work',provider:'google',side:'owner',grantId:managedGrant,calendarId:'work',includeInFeed:true,accessRole:'owner'};
 const managedEvent={id:'standup',provider:'google',side:'owner',grantId:managedGrant,calendarId:'work',title:'Standup',description:'',recurringEventId:'series-1',startAt:'2026-11-06T15:00:00Z',endAt:'2026-11-06T15:30:00Z'};
 const detailRow=e=>({id:'canonical-calendar:'+e.id,canonicalEvent:e,canonicalEventKey:e.id,off:0,t:15,d:.5,title:e.title});
-test('a managed Google event offers no Delete and says where to delete or decline it',()=>{
+test('a managed Google event keeps Delete unavailable in the event menu',()=>{
  const template=readFileSync('apps/app/src/prototype/template.html','utf8');
- assert.match(template,/<sc-if value="\{\{calendar\.ev\.del\}\}"><button class="ib" aria-label="Delete event"/);
- assert.match(template,/\{\{calendar\.ev\.providerNotice\}\}/);
+ assert.match(template,/<sc-if value="\{\{calendar\.ev\.del\}\}"><button aria-label="Delete event"/);
+ assert.doesNotMatch(template,/\{\{calendar\.ev\.providerNotice\}\}/);
  for(const event of [managedEvent,{...managedEvent,recurringEventId:undefined}]){
   const f=fixture({calendars:[localSource,managedSource],events:[event],row:detailRow}),out=f.views.calendar.render({open:'canonical-calendar:standup'},calendarApi(f));
   assert.equal(out.ev.del,null);assert.equal(out.ev.providerNotice,'Delete or decline this event in Google Calendar.');assert.deepEqual(out.ev.recurrenceScopes,[]);

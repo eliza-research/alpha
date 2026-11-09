@@ -116,7 +116,7 @@ test('terminal failures keep one honest line without the transcript tail or a du
    assert.doesNotMatch(shown.text,/Last transcript|so \./);
    assert.equal(shown.text.split(shown.model.lines[0].t).length-1,0,'classified failure is not put on screen');
    const status=shown.doc.querySelector('[role="status"][aria-label="Voice conversation status"]');
-   assert.equal(status.textContent,'','the visible alert is the only announcement');
+   assert.equal(status.textContent,'Voice stopped','the readiness status is shown once; internal error details are not duplicated');
    assert.equal(shown.doc.querySelector('[role="alert"]'),null,'terminal failure is internal, not a banner');
    await clock.advance(60_000);assert.equal(runs.length,1,'terminal failures are not retried');assert.deepEqual(f.shell.messages,[]);
   });
@@ -128,7 +128,7 @@ test('a denied microphone at start keeps its honest settings message, said once'
  const shown=view();
  assert.equal(shown.model.state,'error');assert.equal(shown.model.lines.length,1);
  assert.match(shown.model.lines[0].t,/microphone|settings/i);assert.doesNotMatch(shown.text,/Last transcript/);
- assert.equal(shown.doc.querySelector('[role="status"][aria-label="Voice conversation status"]').textContent,'');
+ assert.equal(shown.doc.querySelector('[role="status"][aria-label="Voice conversation status"]').textContent,'Voice stopped');
  assert.equal(runs.length,1);
 });
 
@@ -163,7 +163,7 @@ test('a normal voice turn is unchanged',async t=>{
  }
  assert.deepEqual(seen,['transcribing','thinking','preparing-speech','speaking','listening']);
  // The status region still carries the live phase for screen readers.
- assert.equal(view().doc.querySelector('[role="status"][aria-label="Voice conversation status"]').textContent,'Listening…');
+ assert.equal(view().doc.querySelector('[role="status"][aria-label="Voice conversation status"]').textContent,'Listening');
  await clock.advance(30_000);assert.equal(runs.length,1);assert.deepEqual(f.shell.messages,[]);
 });
 

@@ -64,7 +64,7 @@
   ],
   "upstream": {
     "url": "https://github.com/elizaOS/eliza.git",
-    "commit": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
+    "commit": "b1817660a0347ae19551b9ee296410fe55f02d59",
     "appSource": "packages/app",
     "nativeSystemSource": "plugins/plugin-native-system",
     "osSource": "packages/os"
@@ -18012,9 +18012,10 @@
     },
     {
       "path": "apps/app/src/prototype/browser-adapter.ts",
-      "sha256": "2eb9b5e0f59484eeabf97719becb1ab31f4fe613bd57783425bc0725c3e2a1cb",
+      "sha256": "685a8e21b95743b9c31b98761f05230e074d8c081f2d7a18f7877c32853f818d",
       "models": [
-        "BrowserSession"
+        "BrowserSession",
+        "BrowserUnderlay"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -18493,7 +18494,7 @@
         }
       ],
       "reviewStatus": "state-audit-required",
-      "integrationReview": "2026-11-09 UI and browser-return delta reviewed against existing domain models and new ChatAttachments/BrowserGoogleReturn contracts; see ui-return-review-20261109.md. Source-model refinement and device acceptance remain separate."
+      "integrationReview": "2026-11-09: tested native below-host presentation keeps page size and identity through chat, blocks page input beneath host controls, and fences stale backdrop cleanup. TypeScript and isolated renderer pass; exact Android/Pixel acceptance remains open."
     },
     {
       "path": "apps/app/src/prototype/browser-camera.ts",
@@ -32852,9 +32853,9 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "c16b20b034ff794bf86b4570bf64510347c8cee9ac27dcb3c7272c4d75ffc067",
+      "sha256": "b18bbe9509b5873133dcb0d1680e08b63368a7a7eecef78ee54e6f6021560c2e",
       "stateAnchors": [],
-      "integrationReview": "2026-11-09: Notes recorder action bar reserves existing assistant dock clearance. Recording state and persistence unchanged; existing Notes accessibility scenarios qualify layout."
+      "integrationReview": "2026-11-09: tested native below-host presentation keeps page size and identity through chat, blocks page input beneath host controls, and fences stale backdrop cleanup. TypeScript and isolated renderer pass; exact Android/Pixel acceptance remains open."
     },
     {
       "path": "apps/app/src/prototype/photo-library-adapter.ts",
@@ -386498,7 +386499,7 @@
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "c9069f396a45e152d6b7f018de56c5bfec1666dfacf59b01d898e17f92c59699",
+      "sha256": "6fed672a6f11dc2af0c07d52973b3036f059043f3a26ac11a301316c19091e39",
       "stateAnchors": [
         {
           "line": 22,
@@ -519395,7 +519396,7 @@
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "52daca4fe6a2b4bdfad88be599ac2314a88946e352f530ffe5f7a0ab701322df",
+      "sha256": "73f0b1478d279fa3f14395e9a08cb578d3d00593f1dc51bf8e6e16275e6cd4fb",
       "stateAnchors": [
         {
           "line": 110,
@@ -619375,7 +619376,7 @@
         "ApplicationComposition",
         "CalendarLinkedSync"
       ],
-      "sha256": "580454692d23643a558c4d14acc76a1d87002481100ebb112b80dfcad58fa10b"
+      "sha256": "075a39aa9c4db495e7feece24fcb608cc2eb85abfa3d5dd34d7496489e961cdc"
     },
     {
       "path": "patches/eliza/calendar-semantic-client.patch",
@@ -619401,7 +619402,7 @@
         "VoiceSession",
         "SpeechResources"
       ],
-      "sha256": "afe24aa9ea99ca02b9503586195007bf5bf2b4570a3c7c03422192b0b1531d54"
+      "sha256": "cc070a65aba928de52baafc95cd195abeee04d6b41974441d6bbc7b704145049"
     },
     {
       "path": "patches/eliza/cloud-speech-client.patch",
@@ -619430,14 +619431,14 @@
         "CoreConnectorCustody",
         "MobileBundleAdmission"
       ],
-      "sha256": "c857f206dfed8c329cb44259208937b5016e45ce81b108e8fdbee5df6222e862"
+      "sha256": "05810aff930cb207ead617b5667950dc04df8c1f94203f4090baf3e41e6e75b4"
     },
     {
       "path": "patches/eliza/crash-error-class-client-manifest.json",
       "models": [
         "RendererFailureUI"
       ],
-      "sha256": "c3e74e8a5da522804b0e91737ac3032a2a255ff38c54bff3fb38f75fcb21996e"
+      "sha256": "9b2b5cc7f3a0ea97bf3c0037991b633ae9de6ed7c2bc25854bdfa73f8e86902c"
     },
     {
       "path": "patches/eliza/crash-error-class-client.patch",
@@ -619471,7 +619472,7 @@
         "FilesTree",
         "DeviceActions"
       ],
-      "sha256": "7e8c99d5f3e57c112712d36acc89b782d104b2866d92cdcd5f6b60e74d77d0a0"
+      "sha256": "3f15f3af15fce7b3dc6f95ce7f81a1cf6a5bb64d6d66ab8b1dc9b97269d93f1e"
     },
     {
       "path": "patches/eliza/files-browser-agent.patch",
@@ -619490,7 +619491,7 @@
         "FilesBrowserController",
         "FilesFilter"
       ],
-      "sha256": "6c4c54929fc0de243ae881a9b6d1aa4349201911de6dfad12e21b908bd847cd2"
+      "sha256": "2d6975d7af20ea5e6525b2e3a24a922688c831cc5429347254855f10f42d44c0"
     },
     {
       "path": "patches/eliza/files-list-identity-client.patch",
@@ -619516,7 +619517,7 @@
         "FilesTree",
         "DeviceActions"
       ],
-      "sha256": "5c8857ccd844d99c8cab77b88d4117902194d589de501b529ea66cabb9a35229",
+      "sha256": "f3f10afc9091d27d9799de8bdb648707189f3ace9f9f2584d2bb716492e64e4d",
       "integrationReview": "Reviewed integration input; current source identity does not establish runtime behavior or source-model refinement."
     },
     {
@@ -619554,7 +619555,7 @@
         "InboxDelivery",
         "InboxProviderDrafts"
       ],
-      "sha256": "83c05cade7c082e18db5ef4c32a940e0a9dfe56ad18e8fc6a112cb0c959f7a51"
+      "sha256": "51a06ffc0f45cbcb1aa690911bf8c9e9ae0bcb4dd0d44ecefec6e27e5a986284"
     },
     {
       "path": "patches/eliza/inbox-cleanup-client.patch",
@@ -619572,7 +619573,7 @@
         "InboxDelivery",
         "InboxProviderDrafts"
       ],
-      "sha256": "0ad311aac310a6a5589b8072c277d57c6c5ae903ff9a7cb7a333435e3b9d640b"
+      "sha256": "72387b9703932041237532210f474964c12ebf2572e1301f35c7a2f55962fb2f"
     },
     {
       "path": "patches/eliza/inbox-confirmation-client.patch",
@@ -619595,7 +619596,7 @@
       "models": [
         "DrawerInteraction"
       ],
-      "sha256": "304cadaca8d4ea77033ffeba4d687930ac39561beb5a2b0202d1e9efb5a0e97d"
+      "sha256": "5d6849318bf734b8ed836d70f4b67d16b59bb97b2274b4bb19c8a326a205dbec"
     },
     {
       "path": "patches/eliza/launcher-drawer-ownership-client.patch",
@@ -619609,7 +619610,7 @@
       "models": [
         "LauncherFavorites"
       ],
-      "sha256": "40793b4b952f6637cf9144fa22d369c4675966d79942910a6e94e35ae40d9e84"
+      "sha256": "575505ee67c23eddf7dab5e2c2c572136b5845061d8a20a585c6d8b249f3a3df"
     },
     {
       "path": "patches/eliza/launcher-legacy-view-key-client.patch",
@@ -619623,7 +619624,7 @@
       "models": [
         "LauncherObserver"
       ],
-      "sha256": "255d5aff1a3a617771c47bcd22b07f0bc3e18ad8033712c07fba769a21c70477"
+      "sha256": "f54031e85aa075229d7bf03b0a19e04bfb75ddbcda2438390ef1bf683bbc7d82"
     },
     {
       "path": "patches/eliza/launcher-observer-client.patch",
@@ -619667,7 +619668,7 @@
       "models": [
         "NavigationProgress"
       ],
-      "sha256": "51e23a58827a271dd188784c6b8b3fb9f9e2fa817a778dbb79555b0c8527f8ca"
+      "sha256": "c4fb7c9b764f27893674cc118a5c6e78aca1fa7d719542a084090ece9c329180"
     },
     {
       "path": "patches/eliza/maps-hidden-fallback-client.patch",
@@ -619681,7 +619682,7 @@
       "models": [
         "MapsRerouteOwnership"
       ],
-      "sha256": "3e954e486b6e56cfc8e18dc5f9d138be013d654ac5fbd88659f696761dcb6b33"
+      "sha256": "2e5cce98d430f9e51986264e92f86e98200ccd4dbc8293be2a81a332e11ecfa5"
     },
     {
       "path": "patches/eliza/maps-reroute-device-navigation-client.patch",
@@ -619695,7 +619696,7 @@
       "models": [
         "MapsRerouteOwnership"
       ],
-      "sha256": "c43ba71f1c888d2e75e10f8da6dc11ed7fc50400b3f40b1f260f27add9c4a834"
+      "sha256": "fdbc1728289af28ca33382ab4499d295ec172bf11f1c7768d6a527111213e309"
     },
     {
       "path": "patches/eliza/maps-reroute-maps-screen-client.patch",
@@ -619709,7 +619710,7 @@
       "models": [
         "MapsRerouteOwnership"
       ],
-      "sha256": "31bc2ee6934e9e10e722de5d2f82b4c99b7758072b99a320b4c0d7b36b3d3881"
+      "sha256": "dac21a87c66d34de07f2161698b230c8356c2da4e70f6aa85b8f8b83abbfb044"
     },
     {
       "path": "patches/eliza/maps-reroute-state-client.patch",
@@ -619724,7 +619725,7 @@
         "Application",
         "MobileBundleAdmission"
       ],
-      "sha256": "bf31b0a89b756b5deb7281bd3f56baccba25ccea0337fba04ae2ddf9d31a011b"
+      "sha256": "63dfaff4278f4f11069728ff0b1578ff48491a91856c511733b373c13b33aabd"
     },
     {
       "path": "patches/eliza/named-embedding-provenance.patch",
@@ -619772,7 +619773,7 @@
         "NativeSmsDispatch",
         "NativeMmsDispatch"
       ],
-      "sha256": "cd6a16e696aa24fdf6d7ed6d3e32db98d6f3e2b315453d3a34f7171b96315d52",
+      "sha256": "bc6f2ef7e3d987fea0ce06080d7ff7f9deeaacb5f3400a1935a380b661690827",
       "integrationReview": "specs/quint/pixel-native-review-20261109.md"
     },
     {
@@ -619826,7 +619827,7 @@
         "MediaLifecycle",
         "ListFocus"
       ],
-      "sha256": "7df42862b0310ad4e392c38b29ce56bb2b47c6ebfd2f516e598bad6e1b6180ab"
+      "sha256": "1a72084e55fea259a34cdcbc21b1f764f66168c5e74b37c3ab989328182ee2f1"
     },
     {
       "path": "patches/eliza/photos-library-presentation-client.patch",
@@ -619857,7 +619858,7 @@
       "models": [
         "MediaLifecycle"
       ],
-      "sha256": "f6b9f933c9c757da6f88341fd2ce974b4d1a2e92f446c17bf639445bd7638921"
+      "sha256": "c399a2b748136035c34e94f8831f3aa0d50a0ecd6298507551e4fc57c4ae4365"
     },
     {
       "path": "patches/eliza/photos-window-client.patch",
@@ -619908,7 +619909,7 @@
       "models": [
         "ScreenFocusOwnership"
       ],
-      "sha256": "1e951a364ba3bff1815a2f56dc1ee553b619c864f15088d4c642d672911baa60"
+      "sha256": "99f7971f7b0fb25e2f0d60c108a83a1d22ce11971d5c97baec2e8a73d9907ede"
     },
     {
       "path": "patches/eliza/screen-focus-priority-client.patch",
@@ -619924,7 +619925,7 @@
         "ListenerLeaseRecovery",
         "ListenerLeaseProducer"
       ],
-      "sha256": "0982f8aafe60cede1992658262398c403b4570a9cc212db79a9334ff332a6817"
+      "sha256": "05b11c81bcb8a6cde0792db0c09d26852b0377e2435517929c3ce2aa00aac79f"
     },
     {
       "path": "patches/eliza/sense-systemui-node26.patch",
@@ -620230,7 +620231,7 @@
         "CoreTurnControllers",
         "MobileBundleAdmission"
       ],
-      "sha256": "62682bc4e49ea7c2f187a3b688f65289b4092c0438fd1cc210b5892ab306ee9d"
+      "sha256": "a5e200ab85930ea76d129ef7f15ba9c500a44c2b301bf1a4b8965aea298672c6"
     },
     {
       "path": "vendor/eliza/packages/app/platforms/android/sense/src/main/AndroidManifest.xml",

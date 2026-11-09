@@ -40,6 +40,7 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
   const reviews = new BrowserReviews();
   let profileUnsupportedTab:string|undefined;
   let shell: any, lastGeometry = '', disposed = false, sharing = false, confirming = false, clearingData = false;
+  let lastPresented:Bag|undefined,presentationFrame:number|undefined,presentationFailed=false;
   // Saving waits for a successful read so a damaged saved record is never overwritten implicitly.
   let sessionRead = false, sessionHydrated = false, lastSaved = '', saveQueue = Promise.resolve();
   const tabOf = (id: string) => state()?.tabs?.find((tab: Bag) => tab.id === id);
@@ -162,8 +163,7 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
   function hide() {
     const next = JSON.stringify({session,id:null});
     if (lastGeometry === next) return;
-    lastGeometry = next;
-    void Browser.present({session,id:null}).catch(() => { if(lastGeometry === next) lastGeometry=''; });
+    void presentBrowser({session,id:null});
   }
   function ensure(id: string, priv = isPrivate(id)) {
     return tabs.ensure(id, priv, () => Browser.create({ session, id, private: priv }).catch((error: unknown) => { if(!disposed&&Capacitor.isNativePlatform()&&state()?.cur===id&&error instanceof Error&&error.message===PROFILE_UNSUPPORTED_NATIVE_MESSAGE){profileUnsupportedTab=id;refresh();} throw error; }));
@@ -444,7 +444,7 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
     // transmitted merely by opening the agent. Navigation changes the revision
     // so a proposal for an earlier document cannot retain current authority.
     this.browserSelection = () => tabs.selection(state()?.cur);
-    const S=this.S();const b=this.vget('browser');if(S.view!=='browser'||b.menu||b.editing||b.tabsOpen||b.lib||S.shade||nativeUnderAssistant())hide();return oldRender.call(this);};
+    const S=this.S();const b=this.vget('browser');if(S.view!=='browser'||b.menu||b.editing||b.tabsOpen||b.lib||S.shade)hide();else {blockPageInput();schedulePresentation();}return oldRender.call(this);};
   let listener: any, resumeListener: any, openedListener: any, closedListener: any, noticeListener: any, findListener: any, fullscreenListener: any;
   void Browser.addListener('findResult',(event:BrowserFindResult)=>{
     const s=state(),found=s&&!disposed?tabs.findResult(event,s.findTab):undefined;if(!found)return;
@@ -478,18 +478,58 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
   }).then((value:any)=>{openedListener=value;}).catch(()=>{});
   void Browser.addListener('tabClosed',(event:BrowserTabEvent)=>{const id=disposed?undefined:tabs.applyClosed(event);if(id)forgetTabs([id]);}).then((value:any)=>{closedListener=value;}).catch(()=>{});
   void Browser.addListener('notice',(event:BrowserTabNotice)=>{const message=disposed?undefined:tabs.notice(event);if(message!==undefined)shell?.toast(message);}).then((value:any)=>{noticeListener=value;}).catch(()=>{});
-  // A native surface sits above the host WebView. Hide it for every host overlay.
+  // Explicit modal panels retain whole-window ownership on native hosts.
   // host-modal:begin
-  /** A modal host layer (a dialog opened with showModal, such as the first-run access panel, or the
-   * connection panel) makes the rest of the host inert, but Android draws the native page above the
-   * whole host WebView: left visible, the page covered the panel and stayed interactive. In a browser
-   * build the page is an element inside the host document, below any modal, and stays shown. */
+  /** First-run access and connection modals withdraw the native page. The assistant is
+   * not a modal: on Android it stays above the retained below-host page. */
   const hostModalOpen = (root: { querySelector(selector: string): unknown }, nativeSurface: boolean): boolean => nativeSurface && !!root.querySelector('dialog:modal, .alpha-connection-scrim');
   // host-modal:end
-  /** Android draws its native page above the whole host WebView, so the chat sheet can be seen only while
-   * that page is withdrawn: when the sheet rests open and as soon as it is pulled. The web build's page is
-   * an element of the phone canvas below the assistant layers and stays where it is under the sheet. */
+  const nativeUnderlay = () => Capacitor.getPlatform()==='android';
+  /** Keep the native page drawn while the host owns interaction with the assistant. */
   const nativeUnderAssistant = () => Capacitor.isNativePlatform() && (['sheet','full'].includes(shell?.S().chat) || !!shell?.chatMotion?.moved);
+  function browserBackdrop(rect?:Bag){
+    const html=document.documentElement;
+    if(!rect){if(html.getAttribute('data-alpha-browser-underlay')!==session)return;html.removeAttribute('data-alpha-browser-underlay');html.style.removeProperty('--alpha-browser-clear-top');html.style.removeProperty('--alpha-browser-clear-bottom');return;}
+    const app=document.querySelector<HTMLElement>('[data-alpha-layer="app"]'),box=app?.getBoundingClientRect();
+    const scale=box&&app?.offsetWidth?box.width/app.offsetWidth:1;
+    html.style.setProperty('--alpha-browser-clear-top',`${Math.max(0,(rect.y-(box?.top||0))/scale)}px`);
+    html.style.setProperty('--alpha-browser-clear-bottom',`${Math.max(0,(rect.y+rect.height-(box?.top||0))/scale)}px`);
+    html.setAttribute('data-alpha-browser-underlay',session);
+  }
+  const browserChromeSelector='[data-alpha-layer="composer"],[data-alpha-layer="pill"] > *,[data-alpha-layer="conversation"],.alpha-plan-notice,[data-alpha-toast] > *,[data-screen] > button[aria-label="Home"]';
+  function browserHostRects(page:Bag){
+    if(nativeUnderAssistant())return [{x:page.x,y:page.y,width:page.width,height:page.height,cornerRadius:0}];
+    return [...document.querySelectorAll<HTMLElement>(browserChromeSelector)].flatMap(element=>{
+      const style=getComputedStyle(element),rect=element.getBoundingClientRect();
+      if(element.closest('[inert],[aria-hidden="true"]')||style.display==='none'||style.visibility==='hidden'||style.pointerEvents==='none'||Number(style.opacity)===0||rect.width<=0||rect.height<=0)return [];
+      const scale=element.offsetWidth?rect.width/element.offsetWidth:1;
+      return [{x:rect.x,y:rect.y,width:rect.width,height:rect.height,cornerRadius:(parseFloat(style.borderTopLeftRadius)||0)*scale}];
+    });
+  }
+  function presentBrowser(payload:Bag){
+    const next=JSON.stringify(payload);if(next===lastGeometry)return;
+    lastGeometry=next;
+    if(!payload.id){lastPresented=undefined;browserBackdrop();}
+    return Browser.present(payload).then(()=>{
+      if(disposed||lastGeometry!==next)return;
+      presentationFailed=false;
+      if(payload.id&&nativeUnderlay()){lastPresented=payload;browserBackdrop(payload);}
+    }).catch((error:unknown)=>{
+      if(disposed||lastGeometry!==next)return;
+      lastGeometry='';lastPresented=undefined;browserBackdrop();
+      if(!presentationFailed){presentationFailed=true;report(error);}
+    });
+  }
+  // Retire page input before a host render can add controls. The next frame publishes
+  // their measured bounds; the website itself is neither hidden nor reloaded.
+  function blockPageInput(){
+    if(!nativeUnderlay()||!lastPresented)return;
+    const p=lastPresented;void presentBrowser({...p,hostRects:[{x:p.x,y:p.y,width:p.width,height:p.height,cornerRadius:0}]});
+  }
+  function schedulePresentation(){
+    if(disposed||!nativeUnderlay()||shell?.S().view!=='browser'||presentationFrame!==undefined)return;
+    presentationFrame=window.requestAnimationFrame(()=>{presentationFrame=undefined;void update();if(document.getAnimations?.().some(animation=>animation.playState==='running'&&((animation.effect as KeyframeEffect|null)?.target as Element|null)?.closest?.(browserChromeSelector)))schedulePresentation();});
+  }
   const update = () => {
     if(disposed)return;
     saveSession();
@@ -498,7 +538,7 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
     if(document.hidden){if(reading)stopReading();return;}
     const s=state(), S=shell?.S();
     const element=document.querySelector('[data-native-browser-viewport]') as HTMLElement|null;
-    const hidden=questionReview || confirming || hostModalOpen(document, Capacitor.isNativePlatform()) || !s || !element || !element.isConnected || !element.getClientRects().length || S?.view!=='browser' || s.editing || s.tabsOpen || s.menu || s.lib || s.share || s.ag || s.confirm || S?.shade || S?.screen !== 'home' || nativeUnderAssistant();
+    const hidden=questionReview || confirming || hostModalOpen(document, Capacitor.isNativePlatform()) || !s || !element || !element.isConnected || !element.getClientRects().length || S?.view!=='browser' || s.editing || s.tabsOpen || s.menu || s.lib || s.share || s.ag || s.confirm || S?.shade || S?.screen !== 'home' || (!nativeUnderlay()&&nativeUnderAssistant());
     if(reading && (disposed || document.documentElement.hasAttribute('data-dev-background') || S?.screen!=='home' || S?.view!=='browser' || s?.tabsOpen || s?.editing || S?.shade || ['sheet','full'].includes(S?.chat)))stopReading();
     const rect=element?.getBoundingClientRect();
     // Measure the full page beneath the overlays. Chat movement must not resize the website.
@@ -507,8 +547,8 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
     // A restored cold-start tab loads its last committed page when first shown.
     if(!hidden && s && restored.has(s.cur) && !tabs.has(s.cur) && !clearingData){const saved=restored.get(s.cur)!;void navigate(saved.url,false,undefined,false,true);}
     const payload=hidden || !tabs.has(s?.cur) ? {session,id:null} : {session,id:s.cur,x:rect!.x,y:rect!.y,width:rect!.width,height};
-    const next=JSON.stringify(payload);
-    if(next!==lastGeometry){lastGeometry=next;return Browser.present(payload).catch(()=>{lastGeometry='';});}
+    const native=payload.id&&nativeUnderlay()?{...payload,layer:'below-host',hostRects:browserHostRects(payload)}:payload;
+    return presentBrowser(native);
   };
   const openBrowserView = (event: Event) => {
     const view=(event as CustomEvent<string>).detail;
@@ -522,5 +562,11 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
   const timer=window.setInterval(update,100);
   const visibility = () => { lastGeometry=''; update(); if (!document.hidden && shell?.S().view === 'browser') refreshBookmarks(); };
   window.addEventListener('resize',update);document.addEventListener('visibilitychange',visibility);
-  return ()=>{window.removeEventListener('alpha:bookmarks-document-changed',bookmarksDocumentChanged);window.removeEventListener('alpha:browser-open-view',openBrowserView);stopReading();unsubscribeReading();disposed=true;clearInterval(timer);window.removeEventListener('resize',update);document.removeEventListener('visibilitychange',visibility);void resumeListener?.remove();void listener?.remove();void openedListener?.remove();void closedListener?.remove();void noticeListener?.remove();void findListener?.remove();void fullscreenListener?.remove();window.clearTimeout(findTimer);for(const id of tabs.dispose())void Browser.close({session,id}).catch(()=>{});};
+  window.addEventListener('pointermove',schedulePresentation,true);
+  const chromeChanged=(node:Node)=>node instanceof Element&&!!(node.matches(browserChromeSelector)||node.closest(browserChromeSelector)||node.querySelector(browserChromeSelector));
+  const chromeObserver=new MutationObserver(records=>{if(records.some(record=>chromeChanged(record.target)||[...record.addedNodes,...record.removedNodes].some(chromeChanged))){blockPageInput();schedulePresentation();}});
+  chromeObserver.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style','hidden','inert','aria-hidden']});
+  const chromeTransition=(event:Event)=>{if(chromeChanged(event.target as Node))schedulePresentation();};
+  for(const event of ['transitionrun','transitionend','transitioncancel','animationstart','animationend'])document.addEventListener(event,chromeTransition,true);
+  return ()=>{window.removeEventListener('alpha:bookmarks-document-changed',bookmarksDocumentChanged);window.removeEventListener('alpha:browser-open-view',openBrowserView);stopReading();unsubscribeReading();disposed=true;clearInterval(timer);if(presentationFrame!==undefined)window.cancelAnimationFrame(presentationFrame);browserBackdrop();window.removeEventListener('pointermove',schedulePresentation,true);chromeObserver.disconnect();for(const event of ['transitionrun','transitionend','transitioncancel','animationstart','animationend'])document.removeEventListener(event,chromeTransition,true);window.removeEventListener('resize',update);document.removeEventListener('visibilitychange',visibility);void resumeListener?.remove();void listener?.remove();void openedListener?.remove();void closedListener?.remove();void noticeListener?.remove();void findListener?.remove();void fullscreenListener?.remove();window.clearTimeout(findTimer);for(const id of tabs.dispose())void Browser.close({session,id}).catch(()=>{});};
 }

@@ -824,3 +824,9 @@ dialog.alarm-page{position:fixed;inset:0 auto auto 0;margin:0;width:100vw;height
 .alpha-pill-voice-controls .alpha-voice-startup-status {padding-right:8px;}
 @keyframes alpha-voice-connect-spin {to {transform:rotate(360deg);}}
 @media(prefers-reduced-motion:reduce){[data-voice-state="starting"] .alpha-voice-startup-status::before,[data-voice-state="connecting"] .alpha-voice-startup-status::before,.alpha-pill-voice-synth[data-connecting="true"]::before{animation:none;}}
+
+/* Native websites remain full-size under the host's assistant controls. */
+html[data-alpha-browser-underlay],html[data-alpha-browser-underlay] body,html[data-alpha-browser-underlay] #root,
+html[data-alpha-browser-underlay] .alpha-phone,html[data-alpha-browser-underlay] [data-screen]{background:transparent!important}
+html[data-alpha-browser-underlay] [data-alpha-layer="home"]{visibility:hidden!important}
+html[data-alpha-browser-underlay] [data-alpha-layer="app"]{background:linear-gradient(to bottom,var(--bg) 0 var(--alpha-browser-clear-top),transparent var(--alpha-browser-clear-top) var(--alpha-browser-clear-bottom),var(--bg) var(--alpha-browser-clear-bottom))!important}

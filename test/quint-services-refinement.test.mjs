@@ -28,7 +28,7 @@ test('service components and coordinators check real-source traces and preserve 
     }
     const {models, traces, obligations} = JSON.parse(result.output[3]);
     const manifest = JSON.parse(readFileSync(new URL('../specs/quint/services/manifest.json', import.meta.url)));
-    const expected = new Set(manifest.map(model => model.module));
+    const expected = new Set((Array.isArray(manifest) ? manifest : manifest.models).map(model => model.module));
     assert.deepEqual(new Set(models), expected);
     assert.deepEqual(models.filter((model, index) => models.indexOf(model) !== index).sort(),
       ['GoogleAccounts', 'IdentitySession', 'InboxCoordinator']);

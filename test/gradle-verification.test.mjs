@@ -86,7 +86,7 @@ test('archives that only a library module compiles against are pinned too', () =
 });
 
 test('the check rejects a missing pin, a weaker checksum, a trust exception, an unreviewed publisher and a new repository', t => {
-  const without = text.replace(/<component group="androidx\.webkit" name="webkit"[\s\S]*?<\/component>\s*/, '');
+  const without = text.replace(/<component group="androidx\.webkit" name="webkit"[\s\S]*?<\/component>\s*/g, '');
   assert.notEqual(without, text);
   assert.match(mutated(t, {[METADATA]: without}).join('\n'), /androidx\.webkit:webkit:[\d.]+ ships in the APKs .* but has no SHA-256/);
   assert.match(mutated(t, {[METADATA]: text.replace('<sha256 value=', '<md5 value=')}).join('\n'), /exactly one SHA-256 checksum is expected/);

@@ -11,8 +11,8 @@
   },
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
-  "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "6fbdda4f2af9289642a56e83b66199b3f902dcc2cb12da434060c952e4a0d721",
+  "sourcePin": "b1817660a0347ae19551b9ee296410fe55f02d59",
+  "ledgerSha256": "f155a3223dae0ba0b3c546b344bc9a9304a6578666c6f676537b91f5c2ad83d5",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -22,17 +22,17 @@
     "The ledger supplies pinned source bytes. Effective client/native/runtime patch outputs require their separately authenticated source mappings."
   ],
   "counts": {
-    "files": 5723,
-    "testSupportFiles": 285,
-    "testSupportCandidates": 11383,
-    "parsedFiles": 5653,
-    "languageReview": 70,
+    "files": 5749,
+    "testSupportFiles": 297,
+    "testSupportCandidates": 11402,
+    "parsedFiles": 5660,
+    "languageReview": 89,
     "parseErrors": 0,
-    "candidates": 67299,
-    "writeSites": 66874,
-    "writeAssociations": 59984,
-    "asynchronous": 8362,
-    "unassignedWrites": 10273
+    "candidates": 67569,
+    "writeSites": 66987,
+    "writeAssociations": 60105,
+    "asynchronous": 8371,
+    "unassignedWrites": 10274
   },
   "files": [
     {
@@ -29785,24 +29785,31 @@
     },
     {
       "path": "apps/app/src/browser/camera-focus.ts",
-      "sha256": "d38671fb84c39db4d2194a88613fdf88db48573ae2eba3f0ec320d94365c8e4e",
+      "sha256": "e1bdeda311af772768176830b9b1618a082b82bd7363340f3181628e7eb1434b",
       "allocatedModels": [
         "MediaLifecycle"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
         {
-          "owner": "BrowserCameraFocus",
+          "owner": "cameraFocusTarget",
           "line": 5,
+          "bindings": 1,
+          "writes": 2
+        },
+        {
+          "owner": "BrowserCameraFocus",
+          "line": 10,
           "bindings": 3,
           "writes": 5
         },
         {
           "owner": "BrowserCameraFocus.select",
-          "line": 14,
+          "line": 19,
           "bindings": 3,
-          "writes": 6
+          "writes": 4
         }
       ],
       "parseErrors": [],
@@ -29824,10 +29831,11 @@
     },
     {
       "path": "apps/app/src/browser/clock.ts",
-      "sha256": "ef1d6dc9c7e72ebdeb64f7141b24f7f7e40ba9d653d61cf00c78dcd90d24c2a7",
+      "sha256": "d59815a84b0d969db84cc19aae4a06d78c47eaabbf8f01909ccab22273b04c65",
       "allocatedModels": [
         "DeviceActions",
-        "BrowserReminderOrphan"
+        "BrowserReminderOrphan",
+        "ShellNavigation"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -29835,37 +29843,37 @@
       "owners": [
         {
           "owner": "BrowserClock",
-          "line": 12,
+          "line": 13,
           "bindings": 17,
           "writes": 33
         },
         {
           "owner": "BrowserClock.render",
-          "line": 56,
+          "line": 57,
           "bindings": 3,
           "writes": 3
         },
         {
           "owner": "BrowserClock.render.action",
-          "line": 56,
-          "bindings": 1,
-          "writes": 2
-        },
-        {
-          "owner": "BrowserClock.button",
           "line": 57,
           "bindings": 1,
           "writes": 2
         },
         {
+          "owner": "BrowserClock.button",
+          "line": 58,
+          "bindings": 1,
+          "writes": 2
+        },
+        {
           "owner": "BrowserClock.open",
-          "line": 60,
-          "bindings": 15,
-          "writes": 31
+          "line": 61,
+          "bindings": 16,
+          "writes": 32
         }
       ],
       "parseErrors": [],
-      "asynchronous": 16,
+      "asynchronous": 11,
       "unassignedWrites": 3
     },
     {
@@ -33681,9 +33689,10 @@
     },
     {
       "path": "apps/app/src/prototype/browser-adapter.ts",
-      "sha256": "2eb9b5e0f59484eeabf97719becb1ab31f4fe613bd57783425bc0725c3e2a1cb",
+      "sha256": "685a8e21b95743b9c31b98761f05230e074d8c081f2d7a18f7877c32853f818d",
       "allocatedModels": [
-        "BrowserSession"
+        "BrowserSession",
+        "BrowserUnderlay"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -33692,24 +33701,24 @@
         {
           "owner": "installPrototypeBrowserAdapter",
           "line": 38,
-          "bindings": 31,
-          "writes": 79
+          "bindings": 34,
+          "writes": 84
         },
         {
           "owner": "installPrototypeBrowserAdapter.stopReading",
-          "line": 106,
+          "line": 107,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installPrototypeBrowserAdapter.readPage",
-          "line": 115,
+          "line": 116,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "installPrototypeBrowserAdapter.askPage",
-          "line": 144,
+          "line": 145,
           "bindings": 2,
           "writes": 2
         },
@@ -33733,7 +33742,7 @@
         }
       ],
       "parseErrors": [],
-      "asynchronous": 70,
+      "asynchronous": 74,
       "unassignedWrites": 16
     },
     {
@@ -34242,7 +34251,7 @@
     },
     {
       "path": "apps/app/src/prototype/calendar-month-focus.ts",
-      "sha256": "980535689c68ff1b944fd262cf08dd943a047a679ff5a13722edc922c77cdf43",
+      "sha256": "22d10de0bfe4a99b8fc0c8a467ad47a79fe42a5a41f693d02a9a4ea3eff9e71b",
       "allocatedModels": [
         "CalendarPresentation",
         "CalendarSync"
@@ -34255,15 +34264,21 @@
           "line": 5,
           "bindings": 3,
           "writes": 4
+        },
+        {
+          "owner": "installCalendarMonthFocus.ArrowFunction@7",
+          "line": 7,
+          "bindings": 1,
+          "writes": 6
         }
       ],
       "parseErrors": [],
       "asynchronous": 2,
-      "unassignedWrites": 1
+      "unassignedWrites": 2
     },
     {
       "path": "apps/app/src/prototype/camera-adapter.ts",
-      "sha256": "863205a0deafdcae1be1f3a8b562cfaf41fa6ed2aeaaff899193f98e749b617c",
+      "sha256": "6d707480b8fff997b1eea5f40ccc6d59916be60a80eb96f9d7d41b46e5b3c7ce",
       "allocatedModels": [
         "MediaLifecycle",
         "PhotosWindow",
@@ -34278,170 +34293,170 @@
       "owners": [
         {
           "owner": "<module>",
-          "line": 30,
+          "line": 31,
           "bindings": 5,
           "writes": 8
         },
         {
           "owner": "installViewPresence",
-          "line": 159,
+          "line": 160,
           "bindings": 2,
           "writes": 5
         },
         {
           "owner": "installPrototypeCameraAdapter",
-          "line": 179,
-          "bindings": 102,
-          "writes": 418
+          "line": 180,
+          "bindings": 109,
+          "writes": 442
         },
         {
-          "owner": "installPrototypeCameraAdapter.FunctionExpression@184",
-          "line": 185,
+          "owner": "installPrototypeCameraAdapter.FunctionExpression@185",
+          "line": 186,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "installPrototypeCameraAdapter.beginEdit",
-          "line": 243,
+          "line": 244,
           "bindings": 2,
           "writes": 2
         },
         {
-          "owner": "installPrototypeCameraAdapter.beginEdit.ArrowFunction@256",
-          "line": 257,
+          "owner": "installPrototypeCameraAdapter.beginEdit.ArrowFunction@257",
+          "line": 258,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "installPrototypeCameraAdapter.transformEdit",
-          "line": 275,
+          "line": 276,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "installPrototypeCameraAdapter.recoverEdit",
-          "line": 302,
+          "line": 303,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installPrototypeCameraAdapter.saveEdit",
-          "line": 311,
+          "line": 312,
           "bindings": 2,
           "writes": 5
         },
         {
           "owner": "installPrototypeCameraAdapter.patchView",
-          "line": 389,
+          "line": 390,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "installPrototypeCameraAdapter.dragTo",
-          "line": 418,
+          "line": 419,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "installPrototypeCameraAdapter.changeSelection",
-          "line": 448,
+          "line": 449,
           "bindings": 5,
           "writes": 8
         },
         {
           "owner": "installPrototypeCameraAdapter.addMembers",
-          "line": 495,
+          "line": 496,
           "bindings": 3,
           "writes": 4
         },
         {
           "owner": "installPrototypeCameraAdapter.mutateAlbum",
-          "line": 504,
+          "line": 505,
           "bindings": 2,
           "writes": 3
         },
         {
           "owner": "installPrototypeCameraAdapter.deletePermanent",
-          "line": 585,
+          "line": 586,
           "bindings": 2,
           "writes": 8
         },
         {
           "owner": "installPrototypeCameraAdapter.mask",
-          "line": 689,
+          "line": 690,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "installPrototypeCameraAdapter.showAccess",
-          "line": 791,
+          "line": 796,
           "bindings": 3,
           "writes": 4
         },
         {
           "owner": "installPrototypeCameraAdapter.showAccess.action",
-          "line": 795,
+          "line": 800,
           "bindings": 1,
           "writes": 4
         },
         {
           "owner": "installPrototypeCameraAdapter.control",
-          "line": 855,
+          "line": 861,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installPrototypeCameraAdapter.takeRequestedPhoto",
-          "line": 973,
+          "line": 1005,
           "bindings": 2,
           "writes": 4
         },
         {
-          "owner": "installPrototypeCameraAdapter.ArrowFunction@1127",
-          "line": 1129,
+          "owner": "installPrototypeCameraAdapter.ArrowFunction@1159",
+          "line": 1161,
           "bindings": 1,
-          "writes": 30
+          "writes": 33
         },
         {
           "owner": "installPrototypeCameraAdapter.attachGrid",
-          "line": 1196,
+          "line": 1244,
           "bindings": 2,
           "writes": 3
         },
         {
           "owner": "installPrototypeCameraAdapter.settleThumbnails",
-          "line": 1215,
+          "line": 1263,
           "bindings": 6,
           "writes": 1
         },
         {
           "owner": "installPrototypeCameraAdapter.loadCoverThumbnails",
-          "line": 1242,
+          "line": 1290,
           "bindings": 3,
           "writes": 1
         },
         {
           "owner": "installPrototypeCameraAdapter.run",
-          "line": 1271,
+          "line": 1319,
           "bindings": 2,
           "writes": 5
         },
         {
-          "owner": "installPrototypeCameraAdapter.ArrowFunction@1334",
-          "line": 1342,
+          "owner": "installPrototypeCameraAdapter.ArrowFunction@1382",
+          "line": 1390,
           "bindings": 5,
           "writes": 109
         },
         {
-          "owner": "installPrototypeCameraAdapter.ArrowFunction@1564",
-          "line": 1566,
+          "owner": "installPrototypeCameraAdapter.ArrowFunction@1612",
+          "line": 1614,
           "bindings": 1,
           "writes": 1
         }
       ],
       "parseErrors": [],
-      "asynchronous": 96,
-      "unassignedWrites": 116
+      "asynchronous": 99,
+      "unassignedWrites": 115
     },
     {
       "path": "apps/app/src/prototype/canonical-calendar-drafts.ts",
@@ -39288,7 +39303,7 @@
     },
     {
       "path": "apps/app/src/prototype/phone.css",
-      "sha256": "85cc07c20f3fd3a8f3fd5154752a099ff8c8639ba66da868dbc9657c78dc6038",
+      "sha256": "b18bbe9509b5873133dcb0d1680e08b63368a7a7eecef78ee54e6f6021560c2e",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -40105,7 +40120,7 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "f16ad7f8c3c0c2541f7eeb9942d9bcac3f96d5acc61270ccff8b1c09521d63a4",
+      "sha256": "3f1e5975605acf65ec252a63bfb4fc1c2e303f1676fb512c7f62b108ecdb9c79",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -43459,7 +43474,7 @@
     },
     {
       "path": "apps/app/src/runtime/inline-modal.ts",
-      "sha256": "d7973391b03bbd35276b9b824cbe55fd9a15fbe53df58158dc7f545fed0dd71d",
+      "sha256": "c4831ba061fa5f9c18b0c7b655f0a31fdd4631dcb9f6c51414bd28d2ce35dad2",
       "allocatedModels": [
         "ShellNavigation"
       ],
@@ -45133,7 +45148,7 @@
     },
     {
       "path": "apps/app/src/runtime/view-focus.ts",
-      "sha256": "e86fbe8b0ce4331af464255341553b011349a47c0338578255a0306f2b2b85c2",
+      "sha256": "35956ecd77cbec189d86a0a3729eddc30441ef19fd1dba98f4aa9d28946e7fe6",
       "allocatedModels": [
         "ShellNavigation",
         "ScreenFocusOwnership"
@@ -45150,14 +45165,14 @@
         },
         {
           "owner": "installViewFocus",
-          "line": 57,
-          "bindings": 1,
-          "writes": 1
+          "line": 60,
+          "bindings": 2,
+          "writes": 2
         }
       ],
       "parseErrors": [],
-      "asynchronous": 2,
-      "unassignedWrites": 0
+      "asynchronous": 6,
+      "unassignedWrites": 1
     },
     {
       "path": "apps/app/src/runtime/view-navigation.ts",
@@ -46793,7 +46808,7 @@
     },
     {
       "path": "scripts/prepare-patched-native.mjs",
-      "sha256": "5308ee484c0ca5a880ff9f4ef63b286dae5c2112de9e67970387cdc6762178c1",
+      "sha256": "12ca1c60028cedf07b9ddf7f63d901fcb542d3f28a228392d64096be54c618d0",
       "allocatedModels": [
         "NativeSmsDispatch",
         "NativeMmsDispatch",
@@ -46805,25 +46820,25 @@
       "owners": [
         {
           "owner": "inventory",
-          "line": 15,
+          "line": 16,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "materializeNativePatches",
-          "line": 23,
+          "line": 24,
           "bindings": 5,
           "writes": 6
         },
         {
           "owner": "verifyNativePatchReceipt",
-          "line": 53,
+          "line": 54,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "preparePatchedNative",
-          "line": 60,
+          "line": 61,
           "bindings": 1,
           "writes": 1
         }
@@ -137721,7 +137736,7 @@
     },
     {
       "path": "vendor/eliza/plugins/plugin-calendar/src/calendar-read-parameters.ts",
-      "sha256": "c9069f396a45e152d6b7f018de56c5bfec1666dfacf59b01d898e17f92c59699",
+      "sha256": "6fed672a6f11dc2af0c07d52973b3036f059043f3a26ac11a301316c19091e39",
       "allocatedModels": [
         "CalendarLinkedSync",
         "CalendarPresentation"
@@ -137738,7 +137753,7 @@
         },
         {
           "owner": "calendarCreateParameters",
-          "line": 265,
+          "line": 269,
           "bindings": 1,
           "writes": 0
         }
@@ -197720,7 +197735,7 @@
     },
     {
       "path": "vendor/eliza/plugins/plugin-personal-assistant/src/actions/calendar.ts",
-      "sha256": "52daca4fe6a2b4bdfad88be599ac2314a88946e352f530ffe5f7a0ab701322df",
+      "sha256": "73f0b1478d279fa3f14395e9a08cb578d3d00593f1dc51bf8e6e16275e6cd4fb",
       "allocatedModels": [
         "AssistantConversation",
         "CalendarLinkedSync",
@@ -219663,10 +219678,913 @@
       "parseErrors": [],
       "asynchronous": 0,
       "unassignedWrites": 1
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/androidTest/java/ai/eliza/plugins/browsersurface/BelowHostLayerInstrumentedTest.kt",
+      "sha256": "21c6cfea9474e300a084af7789a26add912427019a2df15f72102273ddce39bb",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState",
+        "BrowserUnderlay"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "test-support-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/androidTest/java/ai/eliza/plugins/browsersurface/BelowHostWebViewInstrumentedTest.kt",
+      "sha256": "c093ff4bc431c9eef4df2c55507c3a9d440e9180a813f13dc74350a36177f0a4",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState",
+        "BrowserUnderlay"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "test-support-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/androidTest/java/ai/eliza/plugins/browsersurface/BrowserSurfaceIsolationInstrumentedTest.kt",
+      "sha256": "98336d2a45a3d979c332be2352ff87f2a1092c045f27cb82becb23863446386b",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "test-support-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/androidTest/java/ai/eliza/plugins/browsersurface/SurfacePauseInstrumentedTest.kt",
+      "sha256": "3fdf1be0abcf17d6babd9bd7d872dcaa1481c7333db8e963c6904679acbec5d6",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "test-support-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BelowHostLayer.kt",
+      "sha256": "775788796a5a88fa298bc33ce595cd0a307de740d47ad6b9d73e5d7065150c77",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState",
+        "BrowserUnderlay"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserCapturePolicy.java",
+      "sha256": "cd6d7673ab1adf9f4b47328cedc717259136e3f9ee718a449ce26afb8dbc9fd8",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "BrowserCapturePolicy.validMaxEdge@18",
+          "line": 18,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserCapturePolicy.validQuality@22",
+          "line": 22,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserCapturePolicy.scaled@27",
+          "line": 27,
+          "bindings": 5,
+          "writes": 0
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserDockController.kt",
+      "sha256": "30e19ed92e19b15c627467a8881024f6a4db40397e7abdb14a8c51446b900177",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState",
+        "BrowserUnderlay"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserEffectWatch.java",
+      "sha256": "535c76a0d8d20606ae1d4911b72792f98027f106e716d8fcddb17acd38258aa0",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "BrowserEffectWatch",
+          "line": 29,
+          "bindings": 2,
+          "writes": 13
+        },
+        {
+          "owner": "BrowserEffectWatch.Handoff",
+          "line": 37,
+          "bindings": 7,
+          "writes": 6
+        },
+        {
+          "owner": "BrowserEffectWatch.Handoff.<init>@44",
+          "line": 44,
+          "bindings": 6,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserEffectWatch.Request",
+          "line": 58,
+          "bindings": 4,
+          "writes": 4
+        },
+        {
+          "owner": "BrowserEffectWatch.Request.<init>@64",
+          "line": 64,
+          "bindings": 5,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserEffectWatch.Allowed",
+          "line": 75,
+          "bindings": 3,
+          "writes": 3
+        },
+        {
+          "owner": "BrowserEffectWatch.Allowed.<init>@79",
+          "line": 79,
+          "bindings": 3,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserEffectWatch.Watch",
+          "line": 87,
+          "bindings": 13,
+          "writes": 8
+        },
+        {
+          "owner": "BrowserEffectWatch.Watch.<init>@104",
+          "line": 104,
+          "bindings": 8,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserEffectWatch.arm@125",
+          "line": 125,
+          "bindings": 11,
+          "writes": 2
+        },
+        {
+          "owner": "BrowserEffectWatch.cancel@143",
+          "line": 143,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserEffectWatch.close@149",
+          "line": 149,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserEffectWatch.observe@154",
+          "line": 154,
+          "bindings": 4,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserEffectWatch.observe@159",
+          "line": 159,
+          "bindings": 6,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserEffectWatch.report@167",
+          "line": 167,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserEffectWatch.report@177",
+          "line": 177,
+          "bindings": 4,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserEffectWatch.read@186",
+          "line": 186,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserEffectWatch.settlePrevious@195",
+          "line": 195,
+          "bindings": 2,
+          "writes": 2
+        },
+        {
+          "owner": "BrowserEffectWatch.merge@203",
+          "line": 203,
+          "bindings": 4,
+          "writes": 4
+        },
+        {
+          "owner": "BrowserEffectWatch.settle@213",
+          "line": 213,
+          "bindings": 2,
+          "writes": 3
+        },
+        {
+          "owner": "BrowserEffectWatch.violates@225",
+          "line": 225,
+          "bindings": 7,
+          "writes": 2
+        },
+        {
+          "owner": "BrowserEffectWatch.sameSite@241",
+          "line": 241,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserEffectWatch.tail@245",
+          "line": 245,
+          "bindings": 3,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserEffectWatch.byPerson@250",
+          "line": 250,
+          "bindings": 3,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserEffectWatch.allowed@256",
+          "line": 256,
+          "bindings": 3,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserEffectWatch.resolve@265",
+          "line": 265,
+          "bindings": 3,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserEffectWatch.sameAddress@273",
+          "line": 273,
+          "bindings": 5,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserEffectWatch.samePath@283",
+          "line": 283,
+          "bindings": 5,
+          "writes": 0
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserEmbeddingTrust.kt",
+      "sha256": "5fb47ac341b79e2ae69c4db88c1c3df336f5e1f6246e9198145ba32aebeef146",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserHelperEntry.kt",
+      "sha256": "ca306c4162384073291aa1044e5f4ac2bd267fb1d11d9debbebcf4beb4ea111f",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserMainFrameGate.java",
+      "sha256": "19705a7f03bd50b6a7eccf233163b1bf15624d18f129a4747fb2c3ba3d9efe4f",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "BrowserMainFrameGate",
+          "line": 44,
+          "bindings": 3,
+          "writes": 6
+        },
+        {
+          "owner": "BrowserMainFrameGate.setTaskOrigins@53",
+          "line": 53,
+          "bindings": 3,
+          "writes": 1
+        },
+        {
+          "owner": "BrowserMainFrameGate.upgrade@70",
+          "line": 70,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserMainFrameGate.covers@75",
+          "line": 75,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserMainFrameGate.pending@79",
+          "line": 79,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserMainFrameGate.approve@90",
+          "line": 90,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserMainFrameGate.commit@99",
+          "line": 99,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserMainFrameGate.redirect@106",
+          "line": 106,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserMainFrameGate.settle@115",
+          "line": 115,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserMainFrameGate.admit@126",
+          "line": 126,
+          "bindings": 2,
+          "writes": 0
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserNativeMessagingService.java",
+      "sha256": "e17950fe624879ed4ed6c5063875f7de04aa734fb0987ec20e4ff4b2694d0693",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "BrowserNativeMessagingService",
+          "line": 39,
+          "bindings": 2,
+          "writes": 2
+        },
+        {
+          "owner": "BrowserNativeMessagingService.requireBrowser@41",
+          "line": 43,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserNativeMessagingService.requireBrowser@41.lambda@45",
+          "line": 45,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserNativeMessagingService.Anonymous@51.connectExtension@52",
+          "line": 53,
+          "bindings": 3,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserNativeMessagingService.Anonymous@51.connectExtension@52.Anonymous@60",
+          "line": 61,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "BrowserNativeMessagingService.Anonymous@51.connectExtension@52.Anonymous@60.connectPort@68",
+          "line": 68,
+          "bindings": 4,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserNativeMessagingService.onBind@93",
+          "line": 93,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserNativeMessagingService.Relay",
+          "line": 100,
+          "bindings": 7,
+          "writes": 8
+        },
+        {
+          "owner": "BrowserNativeMessagingService.Relay.<init>@107",
+          "line": 107,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserNativeMessagingService.Relay.Anonymous@112.postMessage@113",
+          "line": 113,
+          "bindings": 4,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserNativeMessagingService.Relay.start@138.lambda@139",
+          "line": 142,
+          "bindings": 7,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserNativeMessagingService.Relay.close@172",
+          "line": 180,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserNativeMessagingService.readExactly@188",
+          "line": 188,
+          "bindings": 5,
+          "writes": 1
+        },
+        {
+          "owner": "BrowserNativeMessagingService.writeFrame@199",
+          "line": 199,
+          "bindings": 2,
+          "writes": 0
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 3,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserNavigationPolicy.kt",
+      "sha256": "56e5e919c8009b2da4b9a636ebcd623071bf0b28ef2b64917d3298639c92ea37",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserPageHandoffs.java",
+      "sha256": "1ebc7b38657ece2a37ff62b310a940935ce049f644a75e41a23b0d1f2edef012",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "BrowserPageHandoffs.DialogKind",
+          "line": 28,
+          "bindings": 5,
+          "writes": 1
+        },
+        {
+          "owner": "BrowserPageHandoffs.DialogKind.<init>@35",
+          "line": 35,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserPageHandoffs.text@41",
+          "line": 41,
+          "bindings": 4,
+          "writes": 1
+        },
+        {
+          "owner": "BrowserPageHandoffs.dialogMayWait@56",
+          "line": 56,
+          "bindings": 3,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserPageHandoffs.Dialogs",
+          "line": 65,
+          "bindings": 1,
+          "writes": 3
+        },
+        {
+          "owner": "BrowserPageHandoffs.Dialogs.open@71",
+          "line": 71,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserPageHandoffs.Dialogs.take@77",
+          "line": 77,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserPageHandoffs.Dialogs.drain@82",
+          "line": 83,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserPageHandoffs.WindowDecision",
+          "line": 91,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserPageHandoffs.window@97",
+          "line": 97,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserPageHandoffs.identityProvider@108",
+          "line": 108,
+          "bindings": 4,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserPageHandoffs.pathOf@123",
+          "line": 123,
+          "bindings": 3,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserPageHandoffs.Download",
+          "line": 138,
+          "bindings": 5,
+          "writes": 5
+        },
+        {
+          "owner": "BrowserPageHandoffs.Download.<init>@144",
+          "line": 144,
+          "bindings": 5,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserPageHandoffs.validTextZoom@156",
+          "line": 156,
+          "bindings": 1,
+          "writes": 0
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserSurfacePlugin.kt",
+      "sha256": "171a8b0cd1cef2b425d92bd29233d274a2e77d5a90f201ca86cc292871b7b2f0",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState",
+        "BrowserUnderlay"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/ChromiumBrowserLauncher.kt",
+      "sha256": "d0ccead968914a0f3890e458bccd04e85e8d801d9443e63538cdf5b14d64fe9e",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/ElizaBridgeActivity.java",
+      "sha256": "e91696479b796ca2f344dac7ebff59fb21e723a42fb84332c13a07abad15e7ae",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "ElizaBridgeActivity",
+          "line": 36,
+          "bindings": 2,
+          "writes": 3
+        },
+        {
+          "owner": "ElizaBridgeActivity.onCreate@39",
+          "line": 40,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "ElizaBridgeActivity.onCreate@39.Anonymous@45.onRenderProcessGone@46",
+          "line": 48,
+          "bindings": 2,
+          "writes": 0
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/SurfaceControlChannel.kt",
+      "sha256": "a1adb4cf474918c7ee305c243be389f8fe894e05c3ec259ea4f753ec5277918d",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/test/java/ai/eliza/plugins/browsersurface/ActiveOwnerRegistryTest.kt",
+      "sha256": "d7b5455a510db57de154112f153c084ca57d38eac8675bf684ec7ad19cc2174f",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "test-support-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/test/java/ai/eliza/plugins/browsersurface/BelowHostLayerTest.kt",
+      "sha256": "362eea510af60d724527599c8689e113fbfd067ab7ee5bdf63feb5874e11ed13",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState",
+        "BrowserUnderlay"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "test-support-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/test/java/ai/eliza/plugins/browsersurface/BrowserDockGeometryTest.kt",
+      "sha256": "3f4f44de8f5fced442bad923612c329dc21f2f8311f87d0933b5d58375eb535d",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState",
+        "BrowserUnderlay"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "test-support-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/test/java/ai/eliza/plugins/browsersurface/BrowserEmbeddingTrustTest.kt",
+      "sha256": "14ec1c3634a018dfe31b3b7b720e1e8d8195f28b3fd792aba117fac45a0503d8",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "test-support-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/test/java/ai/eliza/plugins/browsersurface/BrowserNavigationPolicyTest.kt",
+      "sha256": "2d00cd9228e220bae1ae115bc05fda3333a878b54a4adc3a966adf163dd5ab0c",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "test-support-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/test/java/ai/eliza/plugins/browsersurface/ChromiumBrowserIdentityTest.java",
+      "sha256": "ca356be018541934d76643a228a53d71820d091dfaf9fb158ff759261f9c86dd",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "test-support-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "ChromiumBrowserIdentityTest.allowsOnlyTheTwoBuildPackages@10",
+          "line": 13,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "ChromiumBrowserIdentityTest.checksTheSelectedPackageAndExactCertificateBytes@18",
+          "line": 19,
+          "bindings": 2,
+          "writes": 1
+        },
+        {
+          "owner": "ChromiumBrowserIdentityTest.checksTheSelectedPackageAndExactCertificateBytes@18.lambda@21",
+          "line": 21,
+          "bindings": 3,
+          "writes": 0
+        },
+        {
+          "owner": "ChromiumBrowserIdentityTest.sameSignerOnOtherPackageDoesNotAuthorizeBinderCaller@32",
+          "line": 33,
+          "bindings": 2,
+          "writes": 1
+        },
+        {
+          "owner": "ChromiumBrowserIdentityTest.sameSignerOnOtherPackageDoesNotAuthorizeBinderCaller@32.lambda@34",
+          "line": 34,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "ChromiumBrowserIdentityTest.wrongSignerAndMalformedOrUnconfiguredPinsFailClosed@43.lambda@44",
+          "line": 44,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "ChromiumBrowserIdentityTest.wrongSignerAndMalformedOrUnconfiguredPinsFailClosed@43.lambda@45",
+          "line": 45,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "ChromiumBrowserIdentityTest.wrongSignerAndMalformedOrUnconfiguredPinsFailClosed@43",
+          "line": 46,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "ChromiumBrowserIdentityTest.wrongSignerAndMalformedOrUnconfiguredPinsFailClosed@43.lambda@47",
+          "line": 47,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "ChromiumBrowserIdentityTest.wrongSignerAndMalformedOrUnconfiguredPinsFailClosed@43.lambda@52",
+          "line": 52,
+          "bindings": 2,
+          "writes": 0
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/test/java/ai/eliza/plugins/browsersurface/ChromiumBrowserLauncherTest.kt",
+      "sha256": "f2f2a3ddf919c8be8e0a0573774f07ac08c7eafd6db45ce8cb086e861ce06786",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "test-support-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/test/java/ai/eliza/plugins/browsersurface/RoundedOcclusionRectTest.kt",
+      "sha256": "ea80cc4c38531e4e199e2451d396be1e7de37528fb359b5f0b8c0564e65ea16f",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState",
+        "BrowserUnderlay"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "test-support-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
     }
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "de2100443c4e4b2466f0379e88c0301058d51ac7ee713c8c4e2f85bb5ad8ba5d"
+    "sha256": "02d4f463b1d4291be1b5e7610998baa44a7382639617ab5be81c301f45fea938"
   }
 }
