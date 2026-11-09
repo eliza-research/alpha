@@ -2474,6 +2474,45 @@
     ]
   },
   {
+    "path": "specs/quint/application/NotesRecorderMediaAdmission.qnt",
+    "module": "NotesRecorderMediaAdmission",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "heldSavedAudioDelaysButtonTest",
+      "heldSavedAudioDelaysControlTest",
+      "unconfirmedStopRefusesCaptureTest",
+      "retiredControlCannotClaimReentryTest",
+      "replacedOwnerCannotCaptureTest"
+    ],
+    "invariants": [
+      "CaptureRequiresConfirmedDrain",
+      "OnlyCurrentAttemptCaptures",
+      "ControlCannotClaimReplacement"
+    ],
+    "sources": [
+      "apps/app/src/prototype/voice-adapter.ts",
+      "apps/app/src/prototype/note-recorder.ts",
+      "apps/app/src/prototype/notes-recorder-control.ts",
+      "apps/app/src/prototype/canonical-notes-ui.ts",
+      "apps/app/src/prototype/template.html",
+      "apps/app/src/browser/voice.ts",
+      "apps/app/src/browser/audio-capture.ts",
+      "apps/app/src/browser/note-audio-store.ts"
+    ],
+    "stateMapping": {
+      "view/owner/recorder": "Committed shell view, controlled canonical Notes identity and mounted recorder state",
+      "attempts/active/drains": "Numbered actual recorder begin epochs and the last attempt that entered preflight",
+      "playback/captures/lastCapture/unconfirmedCapture": "Synthetic media port calls, stop results and exact attempt at the capture boundary",
+      "control/controlAttempt": "Agent-facing control promise and the recorder epoch it started"
+    },
+    "abstractions": [
+      "Mounted button and agent-facing recorder control across one saved audio session, two begin epochs and two canonical owners.",
+      "Controlled Chromium audio and microphone ports. The replay ends at capture admission or refusal. Native playback, permission, pause/resume journal, recording writes and arbitrary cross-surface speech remain separate."
+    ]
+  },
+  {
     "path": "specs/quint/application/BrowserFilesTrash.qnt",
     "module": "BrowserFilesTrash",
     "init": "init",

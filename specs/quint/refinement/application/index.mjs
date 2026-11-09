@@ -22,6 +22,7 @@ import {checkCanonicalNotesDraft} from './canonical-notes-draft.mjs';
 import {checkCanonicalNotesFeedback} from './canonical-notes-feedback.mjs';
 import {checkCanonicalNotesMutation} from './canonical-notes-mutation.mjs';
 import {checkCanonicalNotesView} from './canonical-notes-view.mjs';
+import {checkNotesRecorderMediaAdmission} from './notes-recorder-media-admission.mjs';
 import {checkCanonicalCalendarDraft} from './canonical-calendar-draft.mjs';
 import {checkAgentCalendarRefresh} from './agent-calendar-refresh.mjs';
 import {checkAgentCalendarMutation} from './agent-calendar-mutation.mjs';
@@ -86,6 +87,7 @@ const adapters = [application, shellNavigation, startupPermissions, assistantCon
   checkCanonicalCalendarEditorClose,
   checkCanonicalCalendarDraftHandoff,
   checkCameraPreviewRetirement,
+  checkNotesRecorderMediaAdmission,
   runStartupPermissionsCoordinatorRefinement, checkVaultCoordinator, checkNotesCoordinator, listFocus, checkRecoveryUI, checkShellCoordinator, checkNativeViewSubscription, filesPreview, runPermissionChoicesRefinement, checkCanonicalNotesController, checkCanonicalNotesDraft,
   checkCanonicalNotesFeedback, checkCanonicalNotesMutation, checkCanonicalNotesView, checkCanonicalCalendarDraft, checkAgentCalendarRefresh, checkAgentCalendarMutation, checkAgentCalendarEventReturn, checkMapsEventReturn, checkMapsRerouteOwnership, checkCloudConnectionNotices, checkModalScrimOwnership, checkAgentCalendarSyncControl, checkGoogleCalendarLinkFlow, checkGoogleCalendarDisconnect, checkGoogleCalendarLinkPublication, checkGoogleCalendarAccessChoice, checkFilesBrowserController, checkFilesFilter, checkPhotosWindow, checkPhotosTrash, checkGoogleConsentAdmission, checkGoogleAccessPublication, checkBrowserDeletionPoll, checkBrowserJournalRetention, checkBrowserReminderOrphan, checkBrowserOwnerReminderRead, checkBrowserOwnerReminderAction, checkHomeFailureNotice, checkHomeGesture, checkDrawerInteraction, checkLauncherOwnership, checkLauncherObserver, checkLauncherFavorites, checkAccessibleToastLifetime, checkModalToastForwarding, checkScreenFocusOwnership, checkDockClearanceOwnership, checkMountedUpdateAdmission, checkStartupUpdateAdmission, checkCanonicalNotificationTapAdmission, checkResidentLiveness];
 

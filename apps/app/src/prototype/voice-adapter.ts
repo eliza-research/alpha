@@ -39,7 +39,7 @@ import { connectionController } from '../runtime/connection-ui';
 import { workflowReplyText } from '../runtime/action-message-presentation';
 import { NoteRecorderSession, addSavedNoteTranscript, formatRecordingClock, type CanonicalNoteSaveIntent, type SavedNoteAudio } from './note-recorder';
 import { createNoteRecorderDriver } from '../runtime/note-recorder-driver';
-import { setNotesRecorderControl } from './notes-recorder-control';
+import { setNotesRecorderControl, type NotesRecordStart } from './notes-recorder-control';
 const voiceServiceName = () => connectionController.getSnapshot().residentInference==='direct'?'Cartesia':cloudServiceName(connectionController.getCloudEnvironment() ?? connectionController.getSnapshot().cloudAccount?.environment ?? connectionController.getSnapshot().signIn?.environment ?? 'production');
 // Reading a note aloud sends only that note's text, never recordings or replies, so Notes names it.
 const noteSpeechDisclosure = () => connectionController.getSnapshot().residentInference==='direct' ? 'Cartesia speech sends this note’s text using your own API key and provider allowance.' : cloudRuntimeEnabled ? `Read with ${voiceServiceName()} uploads this note’s text to your selected Cloud account for Cartesia speech and uses your plan allowance.` : '';
@@ -1081,14 +1081,23 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     const folderId = typeof notes.folder==='string' && (notes.folders||[]).some((f:Bag)=>f.id===notes.folder) ? notes.folder : null;
     noteProvenance = undefined;
     noteDestination = {api:targetApi,canonical,route,current};
-    return {identity,folderId,current};
+    return {identity,folderId,current,
+      captureCurrent:()=>targetApi.voiceNoteActive()&&!document.hidden&&!connectionController.getSnapshot().open};
   }
   // A voice note records audio only. Transcription is a separate explicit action;
   // opening or saving this recorder never starts a speech provider or local model.
   const noteRemoteTranscription = () => noteDestination?.route === 'cloud' || noteDestination?.route === 'agent' && !browserDevProfile;
+  const prepareNoteCapture = async () => {
+    cancelSavedTranscription();
+    if (stage !== 'closed') cleanup();
+    const reading = stopLocalSpeechPlayback();
+    stopSaved();
+    return Promise.all([stopping, reading]).then(() => true, () => false);
+  };
   const noteRecorder = new NoteRecorderSession(createNoteRecorderDriver(), async () => null,
     () => { api?.setView('notes', { noteRecorderRevision: Date.now() }); },
-    { visible: () => !document.hidden, owner:captureNoteOwner, remoteTranscription: noteRemoteTranscription, automaticTranscription:false });
+    { visible: () => !document.hidden, owner:captureNoteOwner, remoteTranscription: noteRemoteTranscription,
+      automaticTranscription:false, prepareCapture:prepareNoteCapture });
   const persistNoteRecording = async (saved: SavedNoteAudio, transcript: string, intent?: CanonicalNoteSaveIntent) => {
     const destination = noteDestination;
     if (!destination?.current() || destination.api.storageReady?.() === false) return false;
@@ -1104,15 +1113,14 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     return await owner.saveVoiceNote({ list: [note, ...latest], open: saved.noteId }) === true;
   };
   const finishNoteRecording = () => noteRecorder.finishAudio(persistNoteRecording, !!noteDestination?.canonical);
+  const startNoteRecorder = async (): Promise<NotesRecordStart> => {
+    if (noteRecorder.open && noteRecorder.phase !== 'failed') return 'already';
+    try { return await noteRecorder.begin() === 'recording' ? 'started' : 'failed'; }
+    catch { return 'failed'; }
+  };
   // Agent and direct controls use the same Stop-and-save operation.
   setNotesRecorderControl({
-    start: async () => {
-      cancelSavedTranscription();
-      if (noteRecorder.open && noteRecorder.phase !== 'failed') return 'already';
-      if (stage !== 'closed') cleanup(); stopLocalSpeechPlayback(); stopSaved();
-      try { await noteRecorder.begin(); } catch { return 'failed'; }
-      return noteRecorder.phase === 'recording' ? 'started' : 'failed';
-    },
+    start: startNoteRecorder,
     stop: async () => {
       if (!noteRecorder.recordingId || !['recording', 'paused', 'stopped'].includes(noteRecorder.phase)) return 'none';
       return await finishNoteRecording() ? 'saved' : 'failed';
@@ -1148,7 +1156,6 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
       done: save,
     };
   }
-  const startNoteRecorder = () => { cancelSavedTranscription();if (stage !== 'closed') cleanup(); stopLocalSpeechPlayback(); stopSaved(); void noteRecorder.begin().catch(() => { /* The recorder shows the error line. */ }); };
   let recordRequested = false;
   notes.render = (state: Bag, current: Bag) => {
     api = current;

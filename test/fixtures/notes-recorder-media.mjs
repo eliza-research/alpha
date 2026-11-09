@@ -13,10 +13,30 @@ async function installPorts({audioId, noteId}) {
   const {BrowserVoice} = await import('/src/browser/voice.ts');
   const {BrowserAudioCapture} = await import('/src/browser/audio-capture.ts');
   const {notesRecorderControl} = await import('/src/prototype/notes-recorder-control.ts');
+  const {NoteRecorderSession} = await import('/src/prototype/note-recorder.ts');
+  const {connectionController} = await import('/src/runtime/connection-ui.tsx');
   const shell = window.quintMountedCalendar;
   const events = [];
-  let playback = 'idle', releaseStop, control = 'idle', forbidden = 0;
-  let capturedId;
+  let playback = 'idle', releaseStop, control = 'idle', controlAttempt = 0, forbidden = 0;
+  let session, lastDrain = 0;
+  const attempts = [], captures = [];
+  const observed = new WeakSet();
+  const begin = NoteRecorderSession.prototype.begin;
+  NoteRecorderSession.prototype.begin = function () {
+    const prepare = this.options.prepareCapture;
+    if (prepare && !observed.has(this)) {
+      observed.add(this);
+      this.options.prepareCapture = () => {
+        lastDrain = attempts.indexOf(this.epoch) + 1;
+        events.push('drain-await');
+        return prepare();
+      };
+    }
+    const pending = begin.call(this);
+    session = this;
+    if (this.phase === 'starting' && attempts.at(-1) !== this.epoch) attempts.push(this.epoch);
+    return pending;
+  };
   // The real store and audio-selection logic see only a local synthetic blob.
   await retainAudio(audioId, noteId, '', {blob: new Blob(['synthetic'], {type: 'audio/wav'}), durationMs: 1000});
   navigator.mediaDevices.getUserMedia = async () => {
@@ -42,8 +62,8 @@ async function installPorts({audioId, noteId}) {
   };
   BrowserAudioCapture.prototype.start = async function () {
     events.push('capture-start');
-    capturedId = crypto.randomUUID();
-    return {recordingId: capturedId, maxDurationMs: Infinity};
+    captures.push({attempt: attempts.indexOf(session.epoch) + 1, playback});
+    return {recordingId: crypto.randomUUID(), maxDurationMs: Infinity};
   };
   BrowserAudioCapture.prototype.elapsed = () => 0;
   BrowserAudioCapture.prototype.metrics = recordingId => ({recordingId, peak: 0});
@@ -52,7 +72,9 @@ async function installPorts({audioId, noteId}) {
   window.quintNotesMedia = {
     invokeControl() {
       control = 'pending';
-      void notesRecorderControl().start().then(result => {control = result;});
+      const pending = notesRecorderControl().start();
+      controlAttempt = attempts.length;
+      void pending.then(result => {control = result;});
     },
     release(failure = false) {
       if (!releaseStop) throw Error('No saved audio stop is pending');
@@ -64,9 +86,16 @@ async function installPorts({audioId, noteId}) {
       }
       release(failure);
     },
-    snapshot: () => ({view: shell.S().view || 'home', playback, control, forbidden,
-      recorder: document.querySelector('[data-alpha-subview="notes-recorder"]')?.getAttribute('data-recorder-state') || 'closed',
-      captures: events.filter(event => event === 'capture-start').length, events: [...events]}),
+    snapshot: () => {
+      const panel = document.querySelector('[data-alpha-subview="notes-recorder"]');
+      return {view: shell.S().view || 'home', owner: connectionController.getAppRecordClient().identity.ownerId,
+        playback, control, controlAttempt, forbidden, recorder: panel?.getAttribute('data-recorder-state') || 'closed',
+        message: panel?.querySelector('[role="alert"]')?.textContent || '',
+        attempts: attempts.length, active: session?.phase === 'starting' ? attempts.indexOf(session.epoch) + 1 : 0,
+        drains: events.filter(event => event === 'drain-await').length, lastDrain,
+        captures: captures.length, lastCapture: captures.at(-1)?.attempt || 0,
+        unconfirmedCapture: captures.some(capture => !['idle', 'stopped'].includes(capture.playback)), events: [...events]};
+    },
   };
 }
 
@@ -77,8 +106,16 @@ export async function mountNotesRecorderMedia(f) {
   const wait = (field, value) => page.waitForFunction(({field, value}) =>
     window.quintNotesMedia.snapshot()[field] === value, {field, value});
   return {snapshot, wait,
+    openNotes: () => f.button('Notes').click(),
+    leaveNotes: () => page.evaluate(() => window.dispatchEvent(new Event('launcher-home'))),
+    switchOwner: () => f.invoke('switchPort', 'owner-b', 'session-b'),
+    async waitForAttempt(count = 1) {
+      await page.waitForFunction(count => {
+        const state = window.quintNotesMedia.snapshot();
+        return state.drains >= count || state.captures >= count;
+      }, count);
+    },
     async play() {
-      await f.button('Notes').click();
       await f.button('Open Synthetic recording').click();
       await f.button('Play recording').click();
       await wait('playback', 'playing');
