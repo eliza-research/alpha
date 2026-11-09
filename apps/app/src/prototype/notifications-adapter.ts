@@ -90,49 +90,89 @@ export function installCanonicalNotificationTaps(Component: any) {
 /** Active rows only. Android access and per-app opt-in are enforced natively. */
 export function installNotificationsAdapter(Component: any) {
  const p=Component.prototype, render=p.renderVals, mount=p.componentDidMount, update=p.componentDidUpdate, unmount=p.componentWillUnmount;
- const shadeActive=(shell:any)=>{const state=shell.S();return !!state.shade&&state.screen!=='lock'&&state.screen!=='off';};
+ const shadeActive=(shell:any)=>{const state=shell.S();return !!state.shade&&state.screen==='home';};
+ const active=(shell:any)=>shell.alphaNoticesLive&&!document.hidden&&shadeActive(shell);
+ const key=(row:Notice)=>({id:row.id,revision:row.revision,source:row.source});
+ const clearableKeys=(rows:Notice[])=>rows.filter(row=>row.clearable).map(key);
  const retireQuestion=(shell:any)=>{
   const close=shell.alphaNoticeQuestion;
   shell.alphaNoticeQuestion=undefined;
   shell.alphaNoticeQuestionLease=undefined;
   close?.();
  };
- p.componentDidMount=function(){mount?.call(this);this.alphaNotices=[];this.alphaNoticesLive=true;this.alphaNoticeEpoch=0;
-  this.alphaNoticeVisibility=()=>{this.alphaNoticeEpoch++;if(document.hidden){retireQuestion(this);this.alphaNotices=[];this.alphaNoticeSelection=undefined;}else{this.setState({nativeNoticeRevision:Date.now()});if(this.S().shade)void this.refreshAlphaNotices();}};
-  document.addEventListener('visibilitychange',this.alphaNoticeVisibility);
-  this.alphaNoticeDeviceState=()=>{this.alphaNoticeEpoch++;retireQuestion(this);this.alphaNotices=[];this.alphaNoticeSelection=undefined;this.setState({nativeNoticeRevision:Date.now()});};
-  if(!Capacitor.isNativePlatform())window.addEventListener('alpha:device-state',this.alphaNoticeDeviceState);
-  this.alphaNoticeTimer=window.setInterval(()=>{if(this.alphaNoticesLive&&this.S().shade&&!document.hidden){this.publishAlphaNoticeSelection();void this.refreshAlphaNotices();}},1000);
+ const retireVisit=(shell:any)=>{
+  shell.alphaNoticeVisit={};
+  shell.alphaNoticeSelection=undefined;
+  retireQuestion(shell);
  };
- p.componentDidUpdate=function(...args:any[]){update?.apply(this,args);if(!shadeActive(this))retireQuestion(this);};
- p.componentWillUnmount=function(){this.alphaNoticesLive=false;retireQuestion(this);this.alphaNoticeSelection=undefined;this.alphaNoticeEpoch++;document.removeEventListener('visibilitychange',this.alphaNoticeVisibility);window.removeEventListener('alpha:device-state',this.alphaNoticeDeviceState);clearInterval(this.alphaNoticeTimer);unmount?.call(this);};
+ p.componentDidMount=function(){mount?.call(this);this.alphaNotices=[];this.alphaNoticesLive=true;this.alphaNoticeEpoch=0;
+  this.alphaNoticeVisit={};
+  this.alphaNoticeShadeActive=shadeActive(this);
+  this.alphaNoticeVisibility=()=>{
+   this.alphaNoticeEpoch++;
+   retireVisit(this);
+   if(document.hidden)this.alphaNotices=[];
+   else{this.setState({nativeNoticeRevision:Date.now()});void this.refreshAlphaNotices();}
+  };
+  document.addEventListener('visibilitychange',this.alphaNoticeVisibility);
+  this.alphaNoticeDeviceState=()=>{this.alphaNoticeEpoch++;retireVisit(this);this.alphaNotices=[];this.setState({nativeNoticeRevision:Date.now()});};
+  if(!Capacitor.isNativePlatform())window.addEventListener('alpha:device-state',this.alphaNoticeDeviceState);
+  this.alphaNoticeTimer=window.setInterval(()=>{if(active(this)){this.publishAlphaNoticeSelection();void this.refreshAlphaNotices();}},1000);
+ };
+ p.componentDidUpdate=function(...args:any[]){
+  update?.apply(this,args);
+  const showing=shadeActive(this);
+  if(this.alphaNoticeShadeActive&&!showing)retireVisit(this);
+  this.alphaNoticeShadeActive=showing;
+ };
+ p.componentWillUnmount=function(){this.alphaNoticesLive=false;retireVisit(this);this.alphaNoticeEpoch++;document.removeEventListener('visibilitychange',this.alphaNoticeVisibility);window.removeEventListener('alpha:device-state',this.alphaNoticeDeviceState);clearInterval(this.alphaNoticeTimer);unmount?.call(this);};
  p.refreshAlphaNotices=async function(){
-  if(this.alphaNoticesBusy||!this.alphaNoticesLive||document.hidden)return;this.alphaNoticesBusy=true;const epoch=this.alphaNoticeEpoch;
-  try{const result=await native.list();if(!this.alphaNoticesLive||document.hidden||epoch!==this.alphaNoticeEpoch)return;if(result.calendarStatus==='unavailable'){if(!this.alphaCalendarAlertError)this.toast('Calendar alerts could not load. Open Calendar to review the problem.');this.alphaCalendarAlertError=true;}else this.alphaCalendarAlertError=false;const next=result.items;const chosen=this.alphaNoticeSelection;if(chosen&&!next.some((n:Notice)=>n.id===chosen.id&&n.revision===chosen.revision&&n.source==='own'))this.alphaNoticeSelection=undefined;if(JSON.stringify(next)!==JSON.stringify(this.alphaNotices)){this.alphaNotices=next;this.setState({nativeNoticeRevision:Date.now()});}this.alphaNoticeError=false;}
-  catch{if(this.alphaNoticesLive&&!document.hidden&&epoch===this.alphaNoticeEpoch&&!this.alphaNoticeError){this.alphaNoticeError=true;this.alphaNotices=[];this.alphaNoticeSelection=undefined;this.setState({nativeNoticeRevision:Date.now()});this.toast('Alpha Phone notifications are unavailable.');}}
+  if(this.alphaNoticesBusy||!active(this))return;
+  this.alphaNoticesBusy=true;
+  const visit=this.alphaNoticeVisit;
+  const current=()=>active(this)&&this.alphaNoticeVisit===visit;
+  try{const result=await native.list();if(!current())return;if(result.calendarStatus==='unavailable'){if(!this.alphaCalendarAlertError)this.toast('Calendar alerts could not load. Open Calendar to review the problem.');this.alphaCalendarAlertError=true;}else this.alphaCalendarAlertError=false;const next=result.items;const chosen=this.alphaNoticeSelection;if(chosen&&!next.some((n:Notice)=>n.id===chosen.id&&n.revision===chosen.revision&&n.source==='own'))this.alphaNoticeSelection=undefined;if(JSON.stringify(next)!==JSON.stringify(this.alphaNotices)){this.alphaNotices=next;this.setState({nativeNoticeRevision:Date.now()});}this.alphaNoticeError=false;}
+  catch{if(current()&&!this.alphaNoticeError){this.alphaNoticeError=true;this.alphaNotices=[];this.alphaNoticeSelection=undefined;this.setState({nativeNoticeRevision:Date.now()});this.toast('Alpha Phone notifications are unavailable.');}}
   finally{this.alphaNoticesBusy=false;}
  };
  /** A press records the selection without rendering, so a swipe or tap in progress is never
   * interrupted. This renders once afterwards so the agent context carries the pressed
   * notification (or drops a replaced one) instead of waiting for an unrelated render. */
- p.publishAlphaNoticeSelection=function(){if(!this.alphaNoticesLive||JSON.stringify(this.alphaNoticeSelection??null)===this.alphaNoticeSelectionRendered)return;this.setState({nativeNoticeRevision:Date.now()});};
+ p.publishAlphaNoticeSelection=function(){if(!active(this)||JSON.stringify(this.alphaNoticeSelection??null)===this.alphaNoticeSelectionRendered)return;this.setState({nativeNoticeRevision:Date.now()});};
  /** The own notification the owner last pressed while the shade is open, for agent context. */
- p.notificationSelection=function(){if(!this.S().shade||document.hidden){this.alphaNoticeSelection=undefined;return undefined;}const chosen=this.alphaNoticeSelection;return chosen?{...chosen}:undefined;};
+ p.notificationSelection=function(){if(!active(this)){this.alphaNoticeSelection=undefined;return undefined;}const chosen=this.alphaNoticeSelection;return chosen?{...chosen}:undefined;};
  p.renderVals=function(){
   const out=render.call(this),self=this;
   // A press from an earlier shade session never becomes context for a later one.
-  if(!this.S().shade)this.alphaNoticeSelection=undefined;
+  if(!shadeActive(this))this.alphaNoticeSelection=undefined;
   this.alphaNoticeSelectionRendered=JSON.stringify(this.alphaNoticeSelection??null);
-  const action=async(task:()=>Promise<void>)=>{try{await task();await self.refreshAlphaNotices();}catch{if(self.alphaNoticesLive&&!document.hidden){self.toast('The notification changed or could not be updated.');await self.refreshAlphaNotices();}}};
-  const shadeN=(this.alphaNotices||[]).map((n:Notice)=>{
-   const swipe=this.sw(()=>{if(n.clearable)void action(()=>native.dismiss({id:n.id,revision:n.revision,source:n.source}));else this.toast('This is an ongoing notification.');},{axis:'x'});
+  const visit=this.alphaNoticeVisit;
+  const currentVisit=()=>active(self)&&self.alphaNoticeVisit===visit;
+  const action=async(task:()=>Promise<void|boolean>)=>{
+   try{
+    const unavailable=await task();
+    if(currentVisit()&&unavailable===true)self.toast('Some notifications changed. Review the refreshed list.');
+   }catch{if(currentVisit())self.toast('The notification changed or could not be updated.');}
+   if(currentVisit())await self.refreshAlphaNotices();
+  };
+  const rows:Notice[]=this.alphaNotices||[];
+  const items=clearableKeys(rows);
+  const shadeN=rows.map((n:Notice)=>{
+   const target=key(n);
+   const current=()=>currentVisit()?self.alphaNotices.find((row:Notice)=>row.id===target.id&&row.revision===target.revision&&row.source===target.source):undefined;
+   const swipe=this.sw(()=>{
+    const row=current();
+    if(!row)return;
+    if(row.clearable)void action(()=>native.dismiss(target));
+    else this.toast('This is an ongoing notification.');
+   },{axis:'x'});
    const select=()=>{this.alphaNoticeSelection=ownNotificationSelection(n);};
    /** Review scope: this one Alpha Phone notification's shown title and text, editable before
     * anything reaches the conversation draft. Other apps' and hosted rows offer no question.
     * The list is read again when the owner continues, so a dismissed, replaced or updated
     * notification (or one hidden by a lock) adds nothing and never becomes its neighbor. */
    const ask=()=>{
-    if(this.swallowed()||!self.alphaNoticesLive||document.hidden||!shadeActive(self)||!noticeReviewable(n))return;
+    if(this.swallowed()||!current()||!noticeReviewable(n))return;
     retireQuestion(self);select();self.publishAlphaNoticeSelection();
     const lease=self.alphaNoticeQuestionLease={};
     const reviewed={id:n.id,revision:n.revision,source:n.source},excerpt=noticeExcerpt(n);
@@ -157,8 +197,16 @@ export function installNotificationsAdapter(Component: any) {
      finally{if(owned())retireQuestion(self);}
     })();}});
    };
-   return {canAsk:noticeReviewable(n),ask,askLabel:'Ask Alpha about this '+(n.appLabel||'Alpha Phone')+' notification',id:n.id,d:out.ic.bell,who:n.source==='external'?n.appLabel:n.title||'Alpha Phone',text:n.source==='external'&&n.title!==n.appLabel?[n.title,n.text].filter(Boolean).join(' · '):n.text,time:formatTime(new Date(n.at)),tx:0,op:1,down:(event:unknown)=>{select();return swipe.down(event);},up:(event:unknown)=>{window.setTimeout(()=>self.publishAlphaNoticeSelection(),0);return swipe.up(event);},open:()=>{if(this.swallowed())return;if(!n.canOpen){this.toast('This notification has no available action.');return;}void action(()=>native.open({id:n.id,revision:n.revision,source:n.source}));}};
+   return {canAsk:noticeReviewable(n),ask,askLabel:'Ask Alpha about this '+(n.appLabel||'Alpha Phone')+' notification',id:n.id,d:out.ic.bell,who:n.source==='external'?n.appLabel:n.title||'Alpha Phone',text:n.source==='external'&&n.title!==n.appLabel?[n.title,n.text].filter(Boolean).join(' · '):n.text,time:formatTime(new Date(n.at)),tx:0,op:1,down:(event:unknown)=>{if(!current())return;select();return swipe.down(event);},up:(event:unknown)=>{if(currentVisit())window.setTimeout(()=>{if(currentVisit())self.publishAlphaNoticeSelection();},0);return swipe.up(event);},open:()=>{
+    const row=current();
+    if(this.swallowed()||!row)return;
+    if(!row.canOpen){this.toast('This notification has no available action.');return;}
+    void action(()=>native.open(target));
+   }};
   });
-  return {...out,shadeN,clearAll:()=>{const items=(this.alphaNotices||[]).filter((n:Notice)=>n.clearable).map((n:Notice)=>({id:n.id,revision:n.revision,source:n.source}));void action(async()=>{const result=await native.clear({items});if(result.outcomes.some(row=>row.status==='unavailable'))self.toast('Some notifications changed. Review the refreshed list.');});}};
+  return {...out,shadeN,clearAll:()=>{
+   if(!currentVisit()||!items.length||JSON.stringify(items)!==JSON.stringify(clearableKeys(self.alphaNotices)))return;
+   void action(async()=>{const result=await native.clear({items});return result.outcomes.some(row=>row.status==='unavailable');});
+  }};
  };
 }
