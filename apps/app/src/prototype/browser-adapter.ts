@@ -501,8 +501,7 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
     const hidden=questionReview || confirming || hostModalOpen(document, Capacitor.isNativePlatform()) || !s || !element || !element.isConnected || !element.getClientRects().length || S?.view!=='browser' || s.editing || s.tabsOpen || s.menu || s.lib || s.share || s.ag || s.confirm || S?.shade || S?.screen !== 'home' || nativeUnderAssistant();
     if(reading && (disposed || document.documentElement.hasAttribute('data-dev-background') || S?.screen!=='home' || S?.view!=='browser' || s?.tabsOpen || s?.editing || S?.shade || ['sheet','full'].includes(S?.chat)))stopReading();
     const rect=element?.getBoundingClientRect();
-    // The page ends above the resting dock's reserve (template.html), never above the dock's current
-    // painted position: a composer pulled up with the sheet, or the sheet itself, does not resize it.
+    // Measure the full page beneath the overlays. Chat movement must not resize the website.
     const page=document.querySelector('[data-alpha-browser-page]')?.getBoundingClientRect();
     const height=rect ? Math.max(0,Math.min(rect.bottom,page?.bottom ?? rect.bottom)-rect.top) : 0;
     // A restored cold-start tab loads its last committed page when first shown.

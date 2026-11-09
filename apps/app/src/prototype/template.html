@@ -1354,10 +1354,8 @@
   </div>
 
   <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 130px; background: linear-gradient(to bottom, transparent, var(--bg) 70%); pointer-events: none; z-index: 1"></div>
-  <!-- Where a website is presented: the page area above the resting dock's reserve, the clearance Home keeps
-       for the composer and the pill alike. It is measured in layout pixels, so dragging or opening the chat sheet
-       never resizes the page; the sheet is drawn over it (browser-adapter.ts, browser-surface.ts). -->
-  <div data-alpha-browser-page aria-hidden="true" style="position: absolute; left: 0; right: 0; top: 0; bottom: var(--alpha-dock-reserve, 108px); visibility: hidden; pointer-events: none"></div>
+  <!-- The website fills the Browser view beneath the dock and chat overlays. Its bounds stay fixed while chat moves. -->
+  <div data-alpha-browser-page aria-hidden="true" style="position: absolute; left: 0; right: 0; top: 0; bottom: 0; visibility: hidden; pointer-events: none"></div>
   <sc-if value="{{browser.agOn}}">
     <div style="position: absolute; inset: 0; z-index: 2; pointer-events: none; box-shadow: inset 0 0 0 3px var(--acc); border-radius: 0 0 48px 48px"></div>
   </sc-if>

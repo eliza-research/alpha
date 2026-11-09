@@ -45,10 +45,11 @@ test('pulling, opening and expanding the chat sheet leaves the website under it 
  const {site,geometry,settled,loads}=await openSite(page);
  expect(settled.frame.display).toBe('flex');
  expect(settled.page.scrollY).toBe(600);
- // Presented at viewport size inside the scaled canvas, and ending above the resting composer.
+ // Presented at viewport size inside the scaled canvas, beneath the resting composer.
  expect(settled.page).toMatchObject({width:settled.frame.width});
  const composer=page.locator('[data-alpha-input-bar]');
- expect(settled.frame.y+settled.frame.height).toBeLessThanOrEqual((await composer.boundingBox())!.y);
+ const screenBounds=(await page.locator('[data-screen]').boundingBox())!;
+ expect(Math.abs(settled.frame.y+settled.frame.height-screenBounds.y-screenBounds.height)).toBeLessThanOrEqual(2);
 
  // Pull the composer up the way a finger does, checking the page at every step of the drag.
  const handle=(await composer.locator('[data-alpha-input-drag-background]').boundingBox())!;
