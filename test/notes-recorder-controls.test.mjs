@@ -13,8 +13,8 @@ function fixture(phase='recording',canonical=true){
  const recorder={phase,recordingId:'recording-fixture',durationMs:1250,levels:[],error:'',confirmingDiscard:false,canonicalSavePending:false,
   finishAudio:async(...args)=>{calls.save.push(args);return true;},discard:async confirmed=>calls.discard.push(confirmed),keep(){this.confirmingDiscard=false;},togglePause:async()=>{calls.toggle++;}};
  const context=vm.createContext({noteRecorder:recorder,noteDestination:canonical?{canonical:{}}:{},persistNoteRecording:persist,formatRecordingClock});
- const declaration=between('  const finishNoteRecording =','  // Agent and direct controls');
- const view=between('  function noteRecorderView(','  const startNoteRecorder =');
+ const declaration=between('  const finishNoteRecording =','  const startNoteRecorder =');
+ const view=between('  function noteRecorderView(','  let recordRequested =');
  vm.runInContext(stripTypeScriptTypes(declaration+view+';globalThis.view=noteRecorderView;',{mode:'transform'}),context);
  return {calls,recorder,context,persist,view:()=>context.view({pause:'pause',mic:'mic',stop:'stop',check:'check'})};
 }
