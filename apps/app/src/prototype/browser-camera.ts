@@ -24,7 +24,15 @@ function db(){return database??=new Promise<IDBDatabase>((resolve,reject)=>{
  request.onerror=()=>{database=undefined;reject(request.error);};
  request.onblocked=()=>{database=undefined;reject(Error('Close other Alpha tabs to open photo storage.'));};
 });}
-async function transaction<T>(mode:IDBTransactionMode,action:(store:IDBObjectStore,set:(value:T)=>void,fail:(error:Error)=>void)=>void):Promise<T>{
+const photoMutationLock='alpha.browser.photos.mutation.v1';
+function withPhotoMutation<T>(action:()=>Promise<T>):Promise<T>{
+ return navigator.locks?.request?navigator.locks.request(photoMutationLock,action):action();
+}
+function transaction<T>(mode:IDBTransactionMode,action:(store:IDBObjectStore,set:(value:T)=>void,fail:(error:Error)=>void)=>void):Promise<T>{
+ const run=()=>runPhotoTransaction(mode,action);
+ return mode==='readwrite'?withPhotoMutation(run):run();
+}
+async function runPhotoTransaction<T>(mode:IDBTransactionMode,action:(store:IDBObjectStore,set:(value:T)=>void,fail:(error:Error)=>void)=>void):Promise<T>{
  const connection=await db();
  return new Promise((resolve,reject)=>{const tx=connection.transaction('photos',mode);let value:T,error:Error|undefined;
   tx.oncomplete=()=>resolve(value);tx.onerror=()=>reject(error??tx.error);tx.onabort=()=>reject(error??tx.error??Error('Photo storage interrupted.'));
@@ -214,9 +222,10 @@ export const browserPhotoLibrary={
   if(!['create','rename','delete','add','remove'].includes(String(input.operation)))throw Error('Unknown album operation.');
   const name=typeof input.name==='string'?input.name.trim():'';
   if(['create','rename'].includes(String(input.operation))&&(!name||name.length>80||/[\u0000-\u001f\u007f]/.test(name)))throw Error('Choose an album name between 1 and 80 characters.');
-  return albumDocument.edit<Album[],{status:string;id:string;revision:string}>(()=>[],async albums=>{
+  const withMedia=input.operation==='add'||input.operation==='remove'||input.operation==='create'&&(input.mediaId!==undefined||input.mediaRevision!==undefined);
+  const commit=()=>albumDocument.edit<Album[],{status:string;id:string;revision:string}>(()=>[],async albums=>{
    let media:Row|undefined;
-   if(input.operation==='add'||input.operation==='remove'||input.operation==='create'&&(input.mediaId!==undefined||input.mediaRevision!==undefined)){
+   if(withMedia){
     if(typeof input.mediaId!=='string'||typeof input.mediaRevision!=='string')throw Error('Select the photo again.');
     media=await read(input.mediaId);if(media.mutationRevision!==input.mediaRevision||media.trashed)throw Error('Photo changed. Reopen it.');
    }
@@ -227,6 +236,8 @@ export const browserPhotoLibrary={
    else {album.memberIds=album.memberIds.filter(id=>id!==media!.id);if(input.operation==='add')album.memberIds.push(media!.id);}
    album.revision=revision();album.count=album.memberIds.length;return {status:'updated',id:album.id,revision:album.revision};
   });
+  // Keep the selected media revision current through the separate album document CAS.
+  return withMedia?withPhotoMutation(commit):commit();
  },
  async setFavorite(input:{id:string;revision:string;favorite:boolean}){return change(input,{favorite:input.favorite});},
  async setTrashed(input:{id:string;revision:string;trashed:boolean}){return {...await change(input,{trashed:input.trashed}),status:'updated'};},
