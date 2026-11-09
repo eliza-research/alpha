@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "171ed27ea4f4212deb2e20f9234218c33b96028008efae497affafc3f9ec5545",
+  "ledgerSha256": "6fbdda4f2af9289642a56e83b66199b3f902dcc2cb12da434060c952e4a0d721",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -29,8 +29,8 @@
     "languageReview": 70,
     "parseErrors": 0,
     "candidates": 67299,
-    "writeSites": 66873,
-    "writeAssociations": 59983,
+    "writeSites": 66874,
+    "writeAssociations": 59984,
     "asynchronous": 8362,
     "unassignedWrites": 10273
   },
@@ -39288,7 +39288,7 @@
     },
     {
       "path": "apps/app/src/prototype/phone.css",
-      "sha256": "1e6421cafbf073c434d8ba195d738e6ebf7f27ea89d02f715cf8f3c77cc4c63d",
+      "sha256": "85cc07c20f3fd3a8f3fd5154752a099ff8c8639ba66da868dbc9657c78dc6038",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -40105,7 +40105,7 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "15b93fe89dd62ee7680d2b3cb3dfd8011d33cf8e03e7303665a95f297fb2686c",
+      "sha256": "f16ad7f8c3c0c2541f7eeb9942d9bcac3f96d5acc61270ccff8b1c09521d63a4",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -40231,7 +40231,7 @@
     },
     {
       "path": "apps/app/src/prototype/voice-adapter.ts",
-      "sha256": "97901e111fea4895ed87c7b2e7f6e68990ff41d5a0a970de927248f4d3242032",
+      "sha256": "29f31ef7389546e336c6b808fb1f32c8c7e59e8aa8abc35e7916c3cc5549ffc8",
       "allocatedModels": [
         "VoiceSession",
         "ControllerComposition",
@@ -40389,7 +40389,7 @@
           "owner": "installPrototypeVoiceAdapter.FunctionExpression@1341",
           "line": 1342,
           "bindings": 3,
-          "writes": 40
+          "writes": 41
         }
       ],
       "parseErrors": [],
@@ -42502,7 +42502,7 @@
     },
     {
       "path": "apps/app/src/runtime/development-cartesia-conversation.ts",
-      "sha256": "bea5bccfb9a382198abc7b5d4237955b849258addaeb539b8f9299428f9fa8a3",
+      "sha256": "e0567afa559337d619a218058c82dc7bd4e6d082f6488141d7fd9cbc757f031f",
       "allocatedModels": [
         "DevelopmentSurfaces"
       ],
@@ -219667,6 +219667,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "ab29d2d9622531d5410ced7480ce42c034cf709c4a31ad27f77aed7460044f35"
+    "sha256": "de2100443c4e4b2466f0379e88c0301058d51ac7ee713c8c4e2f85bb5ad8ba5d"
   }
 }

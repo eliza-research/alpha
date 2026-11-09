@@ -32515,9 +32515,9 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "1e6421cafbf073c434d8ba195d738e6ebf7f27ea89d02f715cf8f3c77cc4c63d",
+      "sha256": "85cc07c20f3fd3a8f3fd5154752a099ff8c8639ba66da868dbc9657c78dc6038",
       "stateAnchors": [],
-      "integrationReview": "2026-11-09 UI and browser-return delta reviewed against existing domain models and new ChatAttachments/BrowserGoogleReturn contracts; see ui-return-review-20261109.md. Source-model refinement and device acceptance remain separate."
+      "integrationReview": "2026-11-09: Cloud now uses same canonical bounded recovery as Direct; readiness and failure visible without changing manual mute/Stop. 42 tests including actual SDK reconnection passed; live Cloud returned to Listening at 74s without another Talk click. Renewal latency remains open."
     },
     {
       "path": "apps/app/src/prototype/photo-library-adapter.ts",
@@ -34803,9 +34803,9 @@
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "15b93fe89dd62ee7680d2b3cb3dfd8011d33cf8e03e7303665a95f297fb2686c",
+      "sha256": "f16ad7f8c3c0c2541f7eeb9942d9bcac3f96d5acc61270ccff8b1c09521d63a4",
       "stateAnchors": [],
-      "integrationReview": "2026-11-09 UI and browser-return delta reviewed against existing domain models and new ChatAttachments/BrowserGoogleReturn contracts; see ui-return-review-20261109.md. Source-model refinement and device acceptance remain separate."
+      "integrationReview": "2026-11-09: Cloud now uses same canonical bounded recovery as Direct; readiness and failure visible without changing manual mute/Stop. 42 tests including actual SDK reconnection passed; live Cloud returned to Listening at 74s without another Talk click. Renewal latency remains open."
     },
     {
       "path": "apps/app/src/prototype/use-in-email-review.ts",
@@ -34952,9 +34952,9 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "97901e111fea4895ed87c7b2e7f6e68990ff41d5a0a970de927248f4d3242032",
+      "sha256": "29f31ef7389546e336c6b808fb1f32c8c7e59e8aa8abc35e7916c3cc5549ffc8",
       "stateAnchors": [],
-      "integrationReview": "Domain allocation retained after merged fixes. Source identity and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations."
+      "integrationReview": "2026-11-09: Cloud now uses same canonical bounded recovery as Direct; readiness and failure visible without changing manual mute/Stop. 42 tests including actual SDK reconnection passed; live Cloud returned to Listening at 74s without another Talk click. Renewal latency remains open."
     },
     {
       "path": "apps/app/src/prototype/workflow-adapter.ts",
@@ -39388,7 +39388,7 @@
     },
     {
       "path": "apps/app/src/runtime/development-cartesia-conversation.ts",
-      "sha256": "bea5bccfb9a382198abc7b5d4237955b849258addaeb539b8f9299428f9fa8a3",
+      "sha256": "e0567afa559337d619a218058c82dc7bd4e6d082f6488141d7fd9cbc757f031f",
       "models": [
         "DevelopmentSurfaces"
       ],
@@ -39607,7 +39607,8 @@
           "line": 168,
           "text": "const previous=renderer;renderer=next;pendingRenderer=undefined;"
         }
-      ]
+      ],
+      "integrationReview": "2026-11-09: Cloud now uses same canonical bounded recovery as Direct; readiness and failure visible without changing manual mute/Stop. 42 tests including actual SDK reconnection passed; live Cloud returned to Listening at 74s without another Talk click. Renewal latency remains open."
     },
     {
       "path": "apps/app/src/runtime/development-cartesia-flag.ts",

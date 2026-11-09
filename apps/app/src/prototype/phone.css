@@ -815,3 +815,11 @@ dialog.alarm-page{position:fixed;inset:0 auto auto 0;margin:0;width:100vw;height
 [data-alpha-maps-guidance-controls]{bottom:max(var(--alpha-maps-guidance-bottom,26px),var(--alpha-dock-reserve,108px))!important}
 
 [data-alpha-chat-home]{background:transparent!important;box-shadow:none!important}
+
+.alpha-voice-startup-status { display:flex;align-items:center;gap:9px;font-size:14px;font-weight:600;color:var(--fg);white-space:nowrap; }
+[data-voice-state="starting"] .alpha-voice-startup-status::before,
+[data-voice-state="connecting"] .alpha-voice-startup-status::before,
+.alpha-pill-voice-synth[data-connecting="true"]::before { content:"";display:block;width:18px;height:18px;box-sizing:border-box;border:2px solid var(--line);border-top-color:var(--acc);border-radius:50%;animation:alpha-voice-connect-spin .9s linear infinite; }
+.alpha-pill-voice-controls .alpha-voice-startup-status {padding-right:8px;}
+@keyframes alpha-voice-connect-spin {to {transform:rotate(360deg);}}
+@media(prefers-reduced-motion:reduce){[data-voice-state="starting"] .alpha-voice-startup-status::before,[data-voice-state="connecting"] .alpha-voice-startup-status::before,.alpha-pill-voice-synth[data-connecting="true"]::before{animation:none;}}
