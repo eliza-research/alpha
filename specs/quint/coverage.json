@@ -43778,7 +43778,7 @@
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
-      "sha256": "448e557733c85eeedf137bdaa914cc5d59bb397c2fb42ad8aba67d0708eb12f1",
+      "sha256": "02b2c0eae477e00b87f6e88cf366be2353918c6a2498d72269c15ff0ae923502",
       "stateAnchors": [
         {
           "line": 3,
@@ -43832,7 +43832,8 @@
           "line": 41,
           "text": "const id = path.slice(head.length, path.length - tail.length);"
         }
-      ]
+      ],
+      "integrationReview": "2026-11-09 explicit .ts import restores native Node loading of the existing owner-route table. Table bytes and admission behavior unchanged; native import and deferred feature checks pass."
     },
     {
       "path": "apps/app/src/runtime/paired-voice.ts",
@@ -618160,7 +618161,7 @@
         "FilesTree",
         "DeviceActions"
       ],
-      "sha256": "3f15f3af15fce7b3dc6f95ce7f81a1cf6a5bb64d6d66ab8b1dc9b97269d93f1e"
+      "sha256": "39d023ba236a0bd1a904781ba5648e134c5376bbe98628100a1f48bf2acbd1b8"
     },
     {
       "path": "patches/eliza/files-browser-agent.patch",

@@ -488,6 +488,7 @@ export const featureParityAllowlist = {
     "apps/app/src/runtime/hosted-live-source-ui.tsx",
     "apps/app/src/runtime/hosted-notice-question.ts",
     "apps/app/src/runtime/hosted-result-notices.ts",
+    "apps/app/src/runtime/image-preview.ts",
     "apps/app/src/runtime/image-sms.ts",
     "apps/app/src/runtime/inbox-attachment.ts",
     "apps/app/src/runtime/inbox-local-store.ts",
@@ -575,9 +576,10 @@ export const featureParityAllowlist = {
     "apps/app/src/runtime/workflow-presentation.ts",
     "apps/app/src/runtime/workflow-protocol.ts",
     "apps/app/src/runtime/workflow-reminder-read.ts",
+    "apps/app/src/runtime/workflow-request-recovery.ts",
     "apps/app/src/startup-browser-permissions.ts",
     "apps/app/src/startup-permission-flow.ts",
     "apps/app/src/startup-permission-progress.ts",
-    "apps/app/src/startup-permissions.tsx"
+    "apps/app/src/startup-permissions.tsx",
   ]
 };

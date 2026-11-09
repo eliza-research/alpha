@@ -91,7 +91,7 @@ the operator's index of build, provisioning, release and support material is the
 
 ## Product boundaries
 
-Current source composition pin `b1817660a0` adds the reviewed Calendar read guidance to `99b49439ce`; it is recorded in `upstream.lock.json`. The new runtime, workflow worker and Google host have been built. Full combined verification, signing, disposable update retention and Pixel acceptance remain open. Earlier binary qualification retains its original pin and requires exact native-input comparison before reuse.
+Current source composition pin `80fbb1d259` retains the Calendar guidance and adds the reviewed Direct provider capability and boot fixes; it is recorded in `upstream.lock.json`. The matching runtime, workflow worker and Google host have been built. Full combined verification, signing, disposable update retention and Pixel acceptance remain open. Earlier binary qualification retains its original pin and requires exact native-input comparison before reuse.
 
 Earlier source composition pin `99b49439ce` adds reversible Files sorting, All files and shared retained-recording windows to `db96bb0a03`; it is recorded in `upstream.lock.json`. Final combined verification, exact APK qualification, protected signing and disposable Settings retention remain separate gates before Pixel and human acceptance. Historical observations below retain their original source bindings.
 
