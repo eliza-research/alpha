@@ -793,3 +793,10 @@ dialog.alarm-page{position:fixed;inset:0 auto auto 0;margin:0;width:100vw;height
 
 .sent-content-attachment{align-self:flex-end;max-width:80%;box-sizing:border-box;padding:10px 14px;margin-bottom:4px;border:1px solid var(--line);border-radius:18px;background:var(--s2);color:var(--fg);display:grid;gap:3px}
 .sent-content-attachment small{color:var(--mut);font-size:12px}.sent-content-attachment strong{font-size:14px;overflow-wrap:anywhere}.sent-content-attachment img{width:120px;max-height:150px;object-fit:contain;border-radius:10px}
+
+.photos-section-control{display:flex;gap:3px;margin:0 16px 12px;padding:4px;border-radius:15px;background:var(--s2);flex-shrink:0}
+.photos-section-button{display:flex;align-items:center;justify-content:center;gap:8px;flex:1;min-width:0;min-height:44px;padding:8px 12px;border-radius:11px;font-size:14px;font-weight:600;line-height:1.25;text-align:center;transition:background .2s}
+.photos-section-icon,.photo-album-icon{display:block;flex:none;width:18px;height:18px;background:currentColor;mask:url('/icons/lucide/folder.svg') center/contain no-repeat}
+.photo-album-label{display:flex;align-items:center;gap:7px;min-width:0;max-width:100%;font-size:15px;font-weight:600;line-height:1.35}
+.photo-album-label>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.photo-album-icon{width:16px;height:16px}

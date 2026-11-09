@@ -31,3 +31,38 @@ test('Camera cover, menu selection, info swipe and photo chat share use the save
  await expect(page.getByRole('dialog',{name:'Ask about selected content'})).toHaveCount(0);
  await expect(page.getByAltText('Captured photo')).toBeVisible();
 });
+
+test('custom albums can be created, filled, renamed and removed without deleting their photos',async({page})=>{
+ await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
+ await page.goto('/?mode=dev');
+ await page.evaluate(async()=>{
+  const {importBrowserPhoto}=await import('/src/prototype/browser-camera.ts');
+  const c=document.createElement('canvas');c.width=10;c.height=10;
+  await importBrowserPhoto({original:new File(['fixture'],'sample.png'),image:c.toDataURL('image/png'),width:10,height:10},new AbortController().signal);
+ });
+ await page.getByRole('button',{name:'Photos',exact:true}).click();
+ await page.getByRole('button',{name:'Albums',exact:true}).click();
+ await page.getByLabel('Photos tools',{exact:true}).click();
+ await page.getByRole('button',{name:'New album',exact:true}).click();
+ await page.getByLabel('Album name',{exact:true}).fill('Test album');
+ await page.getByRole('button',{name:'Save album',exact:true}).click();
+ await page.getByRole('button',{name:'Library',exact:true}).click();
+ await page.getByLabel('Photos tools',{exact:true}).click();
+ await page.getByRole('button',{name:'Select photos',exact:true}).click();
+ await page.getByRole('button',{name:/^Photo, /}).first().click();
+ await page.getByRole('button',{name:'Add selected to album',exact:true}).click();
+ await page.getByRole('button',{name:'Add to Test album',exact:true}).click();
+ await page.getByRole('button',{name:'Albums',exact:true}).click();
+ await page.getByRole('button',{name:'Test album',exact:true}).click();
+ await expect(page.getByRole('button',{name:/^Photo, /})).toHaveCount(1);
+ await page.getByLabel('Album options',{exact:true}).click();
+ await page.getByRole('button',{name:'Rename album',exact:true}).click();
+ await page.getByLabel('Album name',{exact:true}).fill('Renamed album');
+ await page.getByRole('button',{name:'Save album',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Renamed album',exact:true})).toBeVisible();
+ await page.getByLabel('Album options',{exact:true}).click();
+ await page.getByRole('button',{name:'Delete album',exact:true}).click();
+ await page.getByRole('button',{name:'Confirm delete album',exact:true}).click();
+ await page.getByRole('button',{name:'Library',exact:true}).click();
+ await expect(page.getByRole('button',{name:/^Photo, /})).toHaveCount(1);
+});

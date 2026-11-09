@@ -1342,7 +1342,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     const data = photosRender(st, currentApi);data.normalSelecting=true;if(data.v)data.v.notDeleted=true;
     const onAlbums=st.tab==='alb'&&!st.album;
     // Header: "Photos" / "Albums" with text tabs; Select in the Library and in albums.
-    data.tabs=(data.tabs||[]).map((tab:Bag)=>({...tab,pick:()=>{if(mutating||sharing)return;selection=undefined;selectionTab=undefined;drag=undefined;currentApi.set({nativeMultiSelection:Date.now()});tab.pick?.();}}));
+    data.tabs=(data.tabs||[]).map((tab:Bag)=>({...tab,iconCss:'mask-image:url(/icons/lucide/'+(tab.label==='Library'?'images':'folder')+'.svg)',pick:()=>{if(mutating||sharing)return;selection=undefined;selectionTab=undefined;drag=undefined;currentApi.set({nativeMultiSelection:Date.now()});tab.pick?.();}}));
     data.libTab=!onAlbums&&!selection;
     // Access: one row while access is partial or denied; nothing once it is full.
 
@@ -1362,7 +1362,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     const cover=(rows:SavedPhoto[])=>{covers.push(rows[0]);return rows[0]?.image?`url("${rows[0].image}") center / cover no-repeat`:'var(--s2)';};
     const openAlbum=(key:string)=>{currentApi.set({album:key,open:null,nativePhotoSelection:null});closeVideo();void loadAlbum(key,currentApi);};
     const builtIn:[string,string,string,number|undefined][]=[['fav','Favorites','favorites',counts?.favorites],['video','Videos','videos',counts?.videos],['camera','Camera','camera',counts?.camera],['shot','Screenshots','screenshots',counts?.screenshots]];
-    data.tiles=builtIn.filter(([key,,,count])=>key==='fav'||count===undefined&&captures.some(row=>albumOf(row,ALBUM_KEYS[key]))||!!count).map(([key,name,album,count])=>({id:'album:'+key,name,count:count??'',bg:cover(browserMode&&album==='camera'?captures:captures.filter(row=>albumOf(row,album))),tf:'',flt:'',open:()=>openAlbum(key)}));
+    data.tiles=builtIn.filter(([key,,,count])=>key==='fav'||count===undefined&&captures.some(row=>albumOf(row,ALBUM_KEYS[key]))||!!count).map(([key,name,album,count])=>({id:'album:'+key,iconCss:'mask-image:url(/icons/lucide/'+({fav:'heart',video:'video',camera:'camera',shot:'images'}[key]||'folder')+'.svg)',name,count:count??'',bg:cover(browserMode&&album==='camera'?captures:captures.filter(row=>albumOf(row,album))),tf:'',flt:'',open:()=>openAlbum(key)}));
     data.tiles.push(...customAlbums.map(album=>({id:'custom:'+album.id,name:album.name,count:album.count,bg:cover(captures.filter(row=>album.memberIds.includes(nativeId(row.id)))),tf:'',flt:'',open:()=>{openAlbum('custom:'+album.id);void loadCustomAlbums(currentApi);}})));
     if(onAlbums)keepCovers(covers);
     data.hasPeople=false;
@@ -1374,6 +1374,13 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       items:customAlbums.map(album=>{const member=!many&&album.memberIds.includes(nativeId(manager?.media?.id||''));return {id:'custom:'+album.id,name:album.name,label:(member?'Remove from ':'Add to ')+album.name,go:()=>{void mutateAlbum(currentApi,member?'remove':'add',album);}};}),
       create:()=>{if(manager){manager.creating=true;manager.name='';currentApi.set({nativeAlbumDraft:Date.now()});}},save:()=>{void mutateAlbum(currentApi,selectedManager.creating?'create':'rename');},askDelete:()=>{if(manager){manager.confirmDelete=true;currentApi.set({nativeAlbumDraft:Date.now()});}},delete:()=>{void mutateAlbum(currentApi,'delete');},close:()=>{manager=undefined;currentApi.set({sheet:null});}};}
     data.selStart=()=>startSelection(currentApi);
+    data.newAlbum=(event:Event)=>{
+      if(mutating||sharing)return;
+      (event.currentTarget as HTMLElement).closest('details')?.removeAttribute('open');
+      albumTrigger=document.activeElement instanceof HTMLElement?document.activeElement:null;
+      manager={name:'',creating:true};
+      currentApi.set({sheet:'owned-album'});
+    };
     if(selection){
       const pool=selectionPool(currentApi),all=pool.length>0&&pool.every(row=>selection!.some(item=>item.id===row.id));
       data.hdr=false;data.selecting=true;data.selN=selection.length?`${selection.length} selected`:'Select items';data.selNone=!selection.length;
@@ -1405,7 +1412,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     if (st.album && st.album !== 'trash') {
       if(albumKey !== st.album){albumRows=[];albumNext='';queueMicrotask(()=>{void loadAlbum(st.album,currentApi);});}
       const custom=customAlbums.find(row=>'custom:'+row.id===st.album),names:Record<string,string>={fav:'Favorites',video:'Videos',camera:'Camera',shot:'Screenshots'};
-      data.album=true;data.alb={title:selection?(selection.length?`${selection.length} selected`:'Select items'):custom?.name||names[st.album]||'Album',isCustom:!!custom&&!selection,canSelect:!selection&&albumRows.length>0,select:()=>startSelection(currentApi),manage:(event:Event)=>{if(custom)openAlbumManager(currentApi,undefined,custom,event.currentTarget as HTMLElement);},isTrash:false,notTrash:true,count:'',empty:!albumBusy&&!albumRows.length,
+      data.album=true;data.alb={title:selection?(selection.length?`${selection.length} selected`:'Select items'):custom?.name||names[st.album]||'Album',isCustom:!!custom&&!selection,canSelect:!selection&&albumRows.length>0,select:()=>startSelection(currentApi),manage:(event:Event)=>{if(custom){(event.currentTarget as HTMLElement).closest('details')?.removeAttribute('open');openAlbumManager(currentApi,undefined,custom,event.currentTarget as HTMLElement);}},deleteAlbum:(event:Event)=>{if(custom){(event.currentTarget as HTMLElement).closest('details')?.removeAttribute('open');openAlbumManager(currentApi,undefined,custom,event.currentTarget as HTMLElement);if(manager)manager.confirmDelete=true;currentApi.set({nativeAlbumDraft:Date.now()});}},isTrash:false,notTrash:true,count:'',empty:!albumBusy&&!albumRows.length,
         close:()=>{if(selection)cancelPhotoSelection(currentApi);else currentApi.set({album:null});},status:st.nativeAlbumError||'',more:!!st.nativeAlbumError,moreLabel:'Retry',loadMore:()=>{void loadAlbum(st.album,currentApi);},
         items:tiles(albumRows,currentApi)};
     }

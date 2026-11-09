@@ -1610,14 +1610,17 @@
       <sc-if value="{{photos.importAvailable}}">
         <details class="photo-import-menu"><summary aria-label="Photos tools"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.more}}"></path></svg></summary><div>
           <sc-if value="{{photos.libTab}}"><button aria-label="Select photos" onClick="{{photos.selStart}}">Select</button></sc-if>
+          <sc-if value="{{photos.isAlb}}"><button aria-label="New album" onClick="{{photos.newAlbum}}">New album</button></sc-if>
           <button onClick="{{photos.importImage}}">Choose image</button>
         </div></details>
       </sc-if>
 
     </div>
-    <div role="group" aria-label="Photos sections" style="display: flex; gap: 2px; margin: 0 16px 4px; padding: 2px; border-radius: 24px; background: var(--s2); flex-shrink: 0">
+    <div role="group" aria-label="Photos sections" class="photos-section-control">
       <sc-for list="{{photos.tabs}}" key="{{t.id}}" as="t">
-        <button aria-label="{{t.label}}" aria-pressed="{{t.on}}" onClick="{{t.pick}}" style="flex: 1; min-width: 0; min-height: 44px; padding: 6px 4px; border-radius: 22px; font-size: 14.5px; font-weight: 600; line-height: 1.2; transition: background .2s; {{t.css}}">{{t.label}}</button>
+        <button class="photos-section-button" aria-label="{{t.label}}" aria-pressed="{{t.on}}" onClick="{{t.pick}}" style="{{t.css}}">
+          <span class="photos-section-icon" aria-hidden="true" style="{{t.iconCss}}"></span><span>{{t.label}}</span>
+        </button>
       </sc-for>
     </div>
   </sc-if>
@@ -1713,11 +1716,11 @@
       <sc-if value="{{photos.albumsError}}"><button class="tap" onClick="{{photos.albumsRecover}}" style="display: block; margin: 0 16px 12px; padding: 12px 16px; border-radius: 16px; background: var(--s2); color: var(--fg); font-size: 14px; text-align: left">{{photos.albumsError}} Recover</button></sc-if>
       <div class="photo-album-grid" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 12px; padding: 8px 16px 0">
         <sc-for list="{{photos.tiles}}" key="{{a.id}}" as="a">
-          <button aria-label="{{a.name}}" onClick="{{a.open}}" style="display: flex; flex-direction: column; gap: 3px; min-width: 0">
+          <button class="photo-album-card" aria-label="{{a.name}}" onClick="{{a.open}}" style="display: flex; flex-direction: column; gap: 3px; min-width: 0">
             <span style="position: relative; display: block; width: 100%; aspect-ratio: 1; border-radius: 14px; overflow: hidden; background: var(--s2); margin-bottom: 7px">
               <span style="position: absolute; inset: 0; background: {{a.bg}}; transform: {{a.tf}}; filter: {{a.flt}}"></span>
             </span>
-            <span style="font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{a.name}}</span>
+            <span class="photo-album-label"><span class="photo-album-icon" aria-hidden="true" style="{{a.iconCss}}"></span><span>{{a.name}}</span></span>
             <span style="font-size: 13px; color: var(--mut)">{{a.count}}</span>
           </button>
         </sc-for>
@@ -1742,7 +1745,7 @@
         <sc-if value="{{photos.alb.menu}}">
           <details class="photo-import-menu"><summary aria-label="Album options"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.more}}"></path></svg></summary><div>
             <sc-if value="{{photos.alb.canSelect}}"><button aria-label="Select items" disabled="{{photos.selectionBusy}}" onClick="{{photos.alb.select}}">Select</button></sc-if>
-            <sc-if value="{{photos.alb.isCustom}}"><button aria-label="Manage album" onClick="{{photos.alb.manage}}">Manage album</button></sc-if>
+            <sc-if value="{{photos.alb.isCustom}}"><button aria-label="Rename album" onClick="{{photos.alb.manage}}">Rename album</button><button aria-label="Delete album" onClick="{{photos.alb.deleteAlbum}}">Delete album</button></sc-if>
             <sc-if value="{{photos.alb.canEmpty}}"><button aria-label="Delete all forever" onClick="{{photos.alb.emptyTrash}}">Delete all forever</button></sc-if>
           </div></details>
         </sc-if>
