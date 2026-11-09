@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "08583b33ddda7970f06fb2c432db326446c84b3a54911dc091077cf5574982e8",
+  "ledgerSha256": "805743e972cd26c64a7bf422f569d3cfe7cd4827958ad2cac8050bcf7ec04ece",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -22,17 +22,17 @@
     "The ledger supplies pinned source bytes. Effective client/native/runtime patch outputs require their separately authenticated source mappings."
   ],
   "counts": {
-    "files": 5700,
+    "files": 5725,
     "testSupportFiles": 287,
     "testSupportCandidates": 11480,
-    "parsedFiles": 5630,
+    "parsedFiles": 5655,
     "languageReview": 70,
     "parseErrors": 0,
-    "candidates": 67174,
-    "writeSites": 66638,
-    "writeAssociations": 59785,
-    "asynchronous": 8301,
-    "unassignedWrites": 10221
+    "candidates": 67294,
+    "writeSites": 66854,
+    "writeAssociations": 59954,
+    "asynchronous": 8332,
+    "unassignedWrites": 10282
   },
   "files": [
     {
@@ -30623,7 +30623,8 @@
       "sha256": "4edcdf0e91bdeb642d8a134ac22d7ed8bbb6259d6bdf59f21a30f6397d9221c9",
       "allocatedModels": [
         "BrowserSession",
-        "PreferencesAndPresentation"
+        "PreferencesAndPresentation",
+        "CloudConnectionNotices"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -41856,11 +41857,12 @@
     },
     {
       "path": "apps/app/src/runtime/connection-ui.css",
-      "sha256": "cffc4c8c55ef1f7d0a30df4b02c400e6ae0ea0a133ee4191e6acc1cdfee65745",
+      "sha256": "4b22ff6e9118983c161cb1d0228b7b21a5619870e718bb16283a541e5de2403d",
       "allocatedModels": [
         "Application",
         "IdentitySession",
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "CloudConnectionNotices"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -41872,7 +41874,7 @@
     },
     {
       "path": "apps/app/src/runtime/connection-ui.tsx",
-      "sha256": "85ff4157a733b8dc475d016a2cd64332d1229fd6a4a7b154cd1e8cf2fb8d13b0",
+      "sha256": "17c31f1780b450a2c6768a493fcd2a568fed73157e18271f523d3c5e77f2ee98",
       "allocatedModels": [
         "Application",
         "ApplicationComposition",
@@ -41880,7 +41882,8 @@
         "IdentitySession",
         "ControllerComposition",
         "ResidentLiveness",
-        "CanonicalNotificationTapAdmission"
+        "CanonicalNotificationTapAdmission",
+        "CloudConnectionNotices"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -45849,6 +45852,79 @@
       "unassignedWrites": 0
     },
     {
+      "path": "scripts/agent-bundle-dependencies.mjs",
+      "sha256": "c6d59a969fe138b867801a81c7c5a8425da9c7d8a3b6d7dd609c68291a5d67cc",
+      "allocatedModels": [
+        "MobileBundleAdmission",
+        "ResidentRuntime"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "scripts/android-build-preflight.mjs",
+      "sha256": "9b59171e58fc405b00fa5c29e00b64accefe649cca9d59361f9b9921c61a8a60",
+      "allocatedModels": [
+        "MobileBundleAdmission",
+        "ResidentRuntime"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "<module>",
+          "line": 36,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "mainPinStatus",
+          "line": 49,
+          "bindings": 3,
+          "writes": 3
+        },
+        {
+          "owner": "checkoutProblems",
+          "line": 101,
+          "bindings": 1,
+          "writes": 3
+        },
+        {
+          "owner": "preparedRuntimeProblems",
+          "line": 154,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "strictBuildInputs",
+          "line": 208,
+          "bindings": 2,
+          "writes": 2
+        },
+        {
+          "owner": "formatReport",
+          "line": 260,
+          "bindings": 1,
+          "writes": 4
+        },
+        {
+          "owner": "main",
+          "line": 280,
+          "bindings": 2,
+          "writes": 2
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 5
+    },
+    {
       "path": "scripts/browser-cloud-dev-bridge.ts",
       "sha256": "b780537b54035955e6c7112ee05af2b6b38d251b8ba42cb4e6ff5711d37d3d7d",
       "allocatedModels": [
@@ -45954,6 +46030,138 @@
       "unassignedWrites": 20
     },
     {
+      "path": "scripts/build-android.mjs",
+      "sha256": "ce380067aa2aa02823b529552c6c170972935c3d5e70f3aa8c9993cd55825cfa",
+      "allocatedModels": [
+        "MobileBundleAdmission",
+        "ResidentRuntime"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "<module>",
+          "line": 33,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "parseBuildArgs",
+          "line": 50,
+          "bindings": 1,
+          "writes": 6
+        },
+        {
+          "owner": "buildEnv",
+          "line": 72,
+          "bindings": 1,
+          "writes": 3
+        },
+        {
+          "owner": "withDistributionWebRestored",
+          "line": 99,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "validateReleaseSigner",
+          "line": 133,
+          "bindings": 1,
+          "writes": 4
+        },
+        {
+          "owner": "releaseAdmission",
+          "line": 159,
+          "bindings": 2,
+          "writes": 3
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 3
+    },
+    {
+      "path": "scripts/build-embedding-host.mjs",
+      "sha256": "51605fb5a38b9aed1f7d262ee8f284229c209f45db9a626900d3f1bef389bd10",
+      "allocatedModels": [
+        "EmbeddingStoreIdentity",
+        "NamedEmbeddingProvenance"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "stagedLibraries.ArrowFunction@39",
+          "line": 41,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "Stop",
+          "line": 92,
+          "bindings": 1,
+          "writes": 1
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 4
+    },
+    {
+      "path": "scripts/build-mobile-agent.mjs",
+      "sha256": "a806e8eada974f400afe18e00e5cf275d3519ab00462615076e3d4124639a288",
+      "allocatedModels": [
+        "MobileBundleAdmission",
+        "ResidentRuntime"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 3
+    },
+    {
+      "path": "scripts/build-native-google-host.ts",
+      "sha256": "7ef99aa093e8566620ce08b23a279c70bae5c5f003b336defff00c015f1ac851",
+      "allocatedModels": [
+        "NativeGoogleAccessFile",
+        "ServiceAuthorization"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "<module>",
+          "line": 32,
+          "bindings": 1,
+          "writes": 1
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 1
+    },
+    {
+      "path": "scripts/build-workflow-worker.ts",
+      "sha256": "59362cbfb8799916eb8385c1b3fb9909d807010322e5537b35dfacc814350455",
+      "allocatedModels": [
+        "WorkflowExecution",
+        "ReviewedWorkflowLauncher"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
       "path": "scripts/cloud-email-code.ts",
       "sha256": "1a2a7b898eb1eb216cc532f72d3d66c66ff9f2d7c45c1c5b0319770c3637f146",
       "allocatedModels": [
@@ -46006,6 +46214,28 @@
       "parseErrors": [],
       "asynchronous": 8,
       "unassignedWrites": 2
+    },
+    {
+      "path": "scripts/copy-file-clone.mjs",
+      "sha256": "06d7e30ee87463d542ed419a38b230c4d88893c009fa0aab078d7dcfed863e71",
+      "allocatedModels": [
+        "DevelopmentHost",
+        "ResidentRuntime"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "copyFilesClone",
+          "line": 26,
+          "bindings": 3,
+          "writes": 5
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 1
     },
     {
       "path": "scripts/core-state-patch.mjs",
@@ -46177,10 +46407,176 @@
       "unassignedWrites": 2
     },
     {
+      "path": "scripts/local-agent-dev-bridge.ts",
+      "sha256": "90d69b2d1ff4b804d4c2f72d7d176523ae5690eb043df600adb24c89c33286f9",
+      "allocatedModels": [
+        "DevelopmentHost",
+        "ResidentRuntime"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "voiceControl",
+          "line": 40,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "createLocalAgentDevHandler",
+          "line": 84,
+          "bindings": 2,
+          "writes": 15
+        },
+        {
+          "owner": "createLocalAgentDevHandler.handler",
+          "line": 113,
+          "bindings": 18,
+          "writes": 34
+        },
+        {
+          "owner": "createLocalAgentDevHandler.upgrade",
+          "line": 262,
+          "bindings": 1,
+          "writes": 3
+        },
+        {
+          "owner": "localAgentDevBridge.configureServer",
+          "line": 298,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "localAgentDevBridge.configureServer.ArrowFunction@299",
+          "line": 302,
+          "bindings": 1,
+          "writes": 1
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 31,
+      "unassignedWrites": 1
+    },
+    {
+      "path": "scripts/local-agent-dev-storage.ts",
+      "sha256": "959162f7fcae47b7b650bd63556ac78dfcadf8bbed599e2a1f88a5696fad3fcf",
+      "allocatedModels": [
+        "DevelopmentSurfaces",
+        "DurableStore"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "localAgentStorage",
+          "line": 44,
+          "bindings": 1,
+          "writes": 6
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "scripts/local-agent-source.mjs",
+      "sha256": "321abaf05f9e8cbf6e4ba642ec7ebf45a6c693331a637210610a1f7723662daa",
+      "allocatedModels": [
+        "DevelopmentHost",
+        "ResidentRuntime",
+        "ReviewedWorkflowLauncher"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "assertWorkerOutputSeparation",
+          "line": 26,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "sourceDirectory",
+          "line": 48,
+          "bindings": 2,
+          "writes": 2
+        },
+        {
+          "owner": "seedCommittedCache",
+          "line": 80,
+          "bindings": 7,
+          "writes": 9
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 4
+    },
+    {
+      "path": "scripts/mobile-bundle-smoke.mjs",
+      "sha256": "2e4f7ef05ae6f09285c2a6141876c14b5f30539c926a46864bf8862ae8d3b7bd",
+      "allocatedModels": [
+        "MobileBundleAdmission",
+        "ResidentRuntime"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "<module>",
+          "line": 20,
+          "bindings": 6,
+          "writes": 3
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 1
+    },
+    {
+      "path": "scripts/mobile-uuid-adapter.mjs",
+      "sha256": "5b2f99180a222f743367959b7ba0360d9d30597ba80d91ea126830074d190258",
+      "allocatedModels": [
+        "MobileBundleAdmission",
+        "ResidentRuntime"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "<module>",
+          "line": 10,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "readRegular",
+          "line": 17,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "createMobileUuidAdapter",
+          "line": 59,
+          "bindings": 1,
+          "writes": 1
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 8
+    },
+    {
       "path": "scripts/native-google-host-artifact.mjs",
       "sha256": "65793e1ceacbc8b49c2733072d34827a20fc3082fe4fc1b8a4e351007c680b42",
       "allocatedModels": [
-        "Application"
+        "NativeGoogleAccessFile",
+        "ServiceAuthorization"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -46196,6 +46592,259 @@
       "parseErrors": [],
       "asynchronous": 0,
       "unassignedWrites": 1
+    },
+    {
+      "path": "scripts/prepare-client-features.mjs",
+      "sha256": "3501fc1c8c31dd82b117749bbd4e2945cbae1357615f217fb5722632995b1f0e",
+      "allocatedModels": [
+        "Application",
+        "BrowserFilesTrash",
+        "MapsRerouteOwnership",
+        "FilesPreview",
+        "InboxProviderDrafts"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "inventory",
+          "line": 20,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "<module>",
+          "line": 37,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "prepareClientFeatures",
+          "line": 339,
+          "bindings": 2,
+          "writes": 4
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 3
+    },
+    {
+      "path": "scripts/prepare-embedding-host.mjs",
+      "sha256": "f98a20a4bd7a4fcb4a360cce496580a0ed33038a7fcfeb05fae5287b86cc4912",
+      "allocatedModels": [
+        "EmbeddingStoreIdentity",
+        "NamedEmbeddingProvenance"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "<module>",
+          "line": 13,
+          "bindings": 8,
+          "writes": 8
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 3
+    },
+    {
+      "path": "scripts/prepare-local-agent.mjs",
+      "sha256": "13462189190e3e7a796c834f8c780181c0e7c39b16721a8d59477318885ac98e",
+      "allocatedModels": [
+        "DevelopmentHost",
+        "ResidentRuntime"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "<module>",
+          "line": 10,
+          "bindings": 3,
+          "writes": 2
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 2
+    },
+    {
+      "path": "scripts/prepare-patched-native.mjs",
+      "sha256": "f0ea56c6f9d031b3bdc96a49b56ff49f42fcac5b207ed7bfcea44edd29396070",
+      "allocatedModels": [
+        "NativeSmsDispatch",
+        "NativeMmsDispatch",
+        "NativeSettingsHandoff"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "inventory",
+          "line": 15,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "materializeNativePatches",
+          "line": 23,
+          "bindings": 5,
+          "writes": 6
+        },
+        {
+          "owner": "verifyNativePatchReceipt",
+          "line": 53,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "preparePatchedNative",
+          "line": 60,
+          "bindings": 1,
+          "writes": 1
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 6
+    },
+    {
+      "path": "scripts/prepared-workflow-worker.mjs",
+      "sha256": "6df478b2ab982be895eb5a8f9f03c29b353453c4ea7851f98e9a76950e5c3bae",
+      "allocatedModels": [
+        "WorkflowExecution",
+        "ReviewedWorkflowLauncher"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "buildPreparedWorkflowWorker",
+          "line": 12,
+          "bindings": 2,
+          "writes": 2
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 3
+    },
+    {
+      "path": "scripts/runtime-profile.mjs",
+      "sha256": "19f876a99a613653c193a307030e128e57b86daafbbd8459b5e05224b7185cc5",
+      "allocatedModels": [
+        "MobileBundleAdmission",
+        "ResidentRuntime"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "verifyCloudResident",
+          "line": 34,
+          "bindings": 2,
+          "writes": 1
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 2
+    },
+    {
+      "path": "scripts/stage-embedding-host.mjs",
+      "sha256": "e19b5da9a836a643befafe2aa4825fd419e375361315cb3d332af7a312725e3b",
+      "allocatedModels": [
+        "EmbeddingStoreIdentity",
+        "NamedEmbeddingProvenance"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "<module>",
+          "line": 10,
+          "bindings": 3,
+          "writes": 0
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 3
+    },
+    {
+      "path": "scripts/stage-local-agent-runtime.mjs",
+      "sha256": "617ce74dc8a97be1221c16956a86133871217975eb11f98b6268f98fab7e788a",
+      "allocatedModels": [
+        "MobileBundleAdmission",
+        "ResidentRuntime"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "runtimeStagingSelection",
+          "line": 22,
+          "bindings": 1,
+          "writes": 2
+        },
+        {
+          "owner": "stageLocalAgentRuntime",
+          "line": 70,
+          "bindings": 1,
+          "writes": 1
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 2
+    },
+    {
+      "path": "scripts/stage-local-agent-sources.mjs",
+      "sha256": "9fb41560c3c21a2b7b54add5c562f5f6e0140ee7a9f3d23b38a7a212f09f6f18",
+      "allocatedModels": [
+        "MobileBundleAdmission",
+        "ResidentRuntime"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "<module>",
+          "line": 23,
+          "bindings": 1,
+          "writes": 0
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 1
+    },
+    {
+      "path": "scripts/stage-workflow-worker.mjs",
+      "sha256": "e31076dade085ec4647e4ed26f7de5c18f38879ce5da19f842e2abb0f816186f",
+      "allocatedModels": [
+        "WorkflowExecution",
+        "ReviewedWorkflowLauncher"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
     },
     {
       "path": "scripts/start-cloud-qa.mjs",
@@ -46319,6 +46968,75 @@
       "parseErrors": [],
       "asynchronous": 0,
       "unassignedWrites": 3
+    },
+    {
+      "path": "scripts/voice-host.mjs",
+      "sha256": "71f29af327b7905d23669988dd2df0795ec7f9fec3bfc4d42cb5fa8fd83a2ac9",
+      "allocatedModels": [
+        "NativeListenerInput",
+        "NativeSpeechWarmup",
+        "NativeRecognizerAvailability"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "voiceHostProblems",
+          "line": 35,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "voiceBundleAdmission",
+          "line": 111,
+          "bindings": 4,
+          "writes": 9
+        },
+        {
+          "owner": "voiceStagingState.at",
+          "line": 147,
+          "bindings": 3,
+          "writes": 3
+        },
+        {
+          "owner": "verifyVoiceHost",
+          "line": 225,
+          "bindings": 1,
+          "writes": 0
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 5
+    },
+    {
+      "path": "scripts/workflow-worker-artifact.mjs",
+      "sha256": "eb9bc1665425ec4b3a7d5cbe4b4492a65e17957d55ef60b4b2568e7eb55aee68",
+      "allocatedModels": [
+        "WorkflowExecution",
+        "ReviewedWorkflowLauncher"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "verifyWorkerArtifact",
+          "line": 7,
+          "bindings": 4,
+          "writes": 4
+        },
+        {
+          "owner": "stageWorkerArtifact",
+          "line": 43,
+          "bindings": 4,
+          "writes": 4
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
     },
     {
       "path": "vendor/eliza/packages/agent/scripts/build-mobile-bundle.ts",
@@ -218986,6 +219704,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "d76d4b295c6880da4d9620c6647799a7d8d03494d5a6609d474bab96858946ea"
+    "sha256": "7f3c04941440ebf4ffeeb2f21728d5ff493ae78e488e5ae5141530a34adc95e5"
   }
 }
