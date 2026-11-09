@@ -42,7 +42,6 @@ jobs:
         with:
           bun-version: "1.4.2"
       - run: npm ci
-      - run: npm ci --prefix backend
       - name: Install browser for source-refinement checks
         run: npx playwright install --with-deps chromium
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1

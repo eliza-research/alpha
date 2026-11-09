@@ -149,13 +149,6 @@ test('patch consumes the verified Buffer when its pathname is replaced before ex
   } finally { childProcess.execFileSync = original; syncBuiltinESMExports(); }
 });
 
-test('development backend requires its selected TaskService transformation', t => {
-  const source = fs.readFileSync(new URL('../backend/loader.ts', import.meta.url), 'utf8');
-  assert.ok(source.includes("coreStateRequiredTargets(Object.keys(built.metafile!.inputs))"));
-  const f = fixture(t), skipped = coreStateBuildPlugin(f.root, f.source);
-  assert.throws(() => coreStateBuildRecord(f.root, skipped.transforms, true), /transformation/);
-});
-
 test('each producer must transform exactly its selected reviewed targets', t => {
   const f = fixture(t), prepared = coreStateBuildPlugin(f.root, f.source); let load;
   prepared.plugin.setup({onLoad(_options, callback) { load = callback; }});

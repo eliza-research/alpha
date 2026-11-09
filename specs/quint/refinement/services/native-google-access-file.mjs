@@ -13,7 +13,7 @@ import {deferred} from './support.mjs';
 
 const model = 'NativeGoogleAccessFile';
 const root = fileURLToPath(new URL('../../../../', import.meta.url));
-const entry = 'backend/native-google-agent-host.ts';
+const entry = 'scripts/native-google-product-host.ts';
 const bridge = 'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java';
 const writer = 'android/app/src/main/java/ai/elizaresearch/alphaphone/GoogleAgentAccessFile.java';
 const fixture = fileURLToPath(new URL('./NativeGoogleAccessFileTraces.java', import.meta.url));
@@ -74,7 +74,8 @@ async function scenario(hostModule, classes, name, drive) {
   const parent = join(dir, '.eliza'), path = join(parent, fileName), peer = join(dir, 'peer');
   const previous = process.env[envKey];
   process.env[envKey] = path;
-  const {savedGoogleAgentAccess, startNativeGoogleAgentHost} = hostModule;
+  const {readGoogleAgentAccessFile, startNativeGoogleAgentHost} = hostModule;
+  const savedGoogleAgentAccess = () => readGoogleAgentAccessFile(process.env[envKey]);
   const requests = new Map(), transportCalls = [];
   let host, armed, writes = 0, refusals = 0, hostGeneration = 0;
   let readerOpen = false, snapshot = off, lastRead = off;

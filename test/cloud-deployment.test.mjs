@@ -154,18 +154,18 @@ test('custom deployment reaches native inference configuration and Google transp
  try{
   write('package.json','{"type":"module"}');
   for(const [name,text] of Object.entries(deploymentOutputs(config)))write(name,text);
-  for(const name of ['apps/app/src/product/alpha-product-registration.ts','backend/managed-google-failure-stage.ts','backend/managed-google-route-policy.ts','backend/native-google-cloud-port.ts','backend/native-cloud-runtime.ts','apps/app/src/runtime/managed-service-routes.ts'])write(name,fs.readFileSync(name,'utf8'));
+  for(const name of ['apps/app/src/product/alpha-product-registration.ts','apps/app/src/product/native-cloud-runtime.ts'])write(name,fs.readFileSync(name,'utf8'));
   const load=name=>tsImport(pathToFileURL(path.join(temp,name)).href,{parentURL:import.meta.url});
   // The product declares only its admitted Cloud API base; the shared upstream
   // runtime profile writes routing and refuses any other base URL.
-  const {nativeCloudRuntime}=await load('backend/native-cloud-runtime.ts');
+  const {nativeCloudRuntime}=await load('apps/app/src/product/native-cloud-runtime.ts');
   assert.equal(nativeCloudRuntime.apiBaseUrl,config.production.api+'/api/v1');
   assert.equal(nativeCloudRuntime.productCharacter.name,product.identity.characterName);
   assert.ok(nativeCloudRuntime.productCharacter.bio[0].includes(product.identity.appName));
   assert.ok(Object.isFrozen(nativeCloudRuntime));
-  const {createNativeGoogleCloudPort}=await load('backend/native-google-cloud-port.ts');
+  const {createNativeGoogleCloudPort}=await import('../.eliza/client-features/packages/app/src/runtime/managed-google-agent/native-google-cloud-port.ts');
   const id='11111111-1111-4111-8111-111111111111',user='22222222-2222-4222-8222-222222222222',org='33333333-3333-4333-8333-333333333333',calls=[];
-  const port=createNativeGoogleCloudPort({credentialId:id,userId:user,organizationId:org,accountRef:JSON.stringify(['cloud','production',user,org]),sessionGeneration:'synthetic',token:'synthetic-token'},()=>{},async(url)=>{calls.push(String(url));return new Response('{}',{headers:{'content-type':'application/json'}});});
+  const port=createNativeGoogleCloudPort({credentialId:id,userId:user,organizationId:org,accountRef:JSON.stringify(['cloud','production',user,org]),sessionGeneration:'synthetic',token:'synthetic-token'},{apiOrigin:config.production.api,userAgent:'AlphaPhone-Native-Google/1',assertCurrent:()=>{},request:async(url)=>{calls.push(String(url));return new Response('{}',{headers:{'content-type':'application/json'}});}});
   const request={url:config.production.api+'/api/v1/eliza/google/accounts?side=owner',method:'GET',credentialReference:'native-google-reference:'+id,signal:new AbortController().signal};
   await port.agentRead(request);assert.deepEqual(calls,[request.url]);
   await assert.rejects(port.agentRead({...request,url:defaults.production.api+'/api/v1/eliza/google/accounts?side=owner'}),/refused/);

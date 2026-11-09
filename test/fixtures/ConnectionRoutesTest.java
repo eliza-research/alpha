@@ -70,7 +70,7 @@ public final class ConnectionRoutesTest {
   java.net.URI plain=java.net.URI.create("https://api.eliza.app/api/v1/user?x=1");
   check(ConnectionRoutes.admittedOrigin(plain.getScheme(),plain.getHost(),plain.getPort(),false),"flag-off admits the parsed Cloud API URL");
   check(ConnectionRoutes.admittedOrigin("https","agent.example.test",8443,true),"test mocks keep a remote agent port");
-  check(ConnectionRoutes.admittedOrigin("http","10.0.2.2",2138,true),"test mocks keep the development agent");
+  check(ConnectionRoutes.admittedOrigin("http","10.0.2.2",2138,true),"test mocks admit the loopback fixture origin");
 
   // openExternal: a flag-off build opens Cloud sign-in, top-up and account management, and Google consent only.
   for(String text:new String[]{"https://eliza.app/auth/cli-login?session=abc","https://cloud.eliza.app/cloud/billing","https://accounts.google.com/o/oauth2/v2/auth?client_id=x","https://ELIZA.APP/auth/cli-login","https://cloud.eliza.app:443/cloud/billing"}){

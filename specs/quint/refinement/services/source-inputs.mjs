@@ -31,10 +31,12 @@ export function serviceInputs(entries) {
     if (digest(manifestPath) !== receipt.manifestSha256 || digest(patchPath) !== receipt.patchSha256) throw Error(`Changed client patch ${prefix}`);
     found.add(manifestPath);found.add(patchPath);accounted.add(key);
   }
-  if (provenance.speechPatch) {
-    const manifestPath = 'patches/eliza/cloud-speech-client-manifest.json', receipt = provenance.speechPatch;
-    if (digest(manifestPath) !== receipt.manifestSha256 || digest('scripts/client-speech-patch.mjs') !== receipt.preparerSha256) throw Error('Stale client speech patch provenance');
-    found.add(manifestPath);accounted.add('speechPatch');
+  for (const [key, name] of [['speechPatch', 'cloud-speech-client'], ['managedGooglePatch', 'managed-google-agent']]) {
+    const receipt = provenance[key];
+    if (!receipt) continue;
+    const manifestPath = `patches/eliza/${name}-manifest.json`;
+    if (digest(manifestPath) !== receipt.manifestSha256 || digest('scripts/client-speech-patch.mjs') !== receipt.preparerSha256) throw Error(`Stale client patch provenance ${name}`);
+    found.add(manifestPath);accounted.add(key);
     for (const patch of JSON.parse(fs.readFileSync(manifestPath, 'utf8')).patches) {
       const file = 'patches/eliza/' + patch.file;
       if (digest(file) !== patch.sha256) throw Error(`Changed client patch ${file}`);

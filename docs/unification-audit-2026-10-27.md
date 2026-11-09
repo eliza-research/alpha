@@ -203,14 +203,14 @@ Largest relevant orchestration files: `apps/app/src/runtime/connection-ui.tsx` 2
 - Recommendation: create one shared Android host inference policy, with Cerebras text through owner-bound Eliza Cloud in both products and local libelizainference embeddings/STT/TTS in native/AOSP. Keep explicit Cloud QA only as an opt-in if the new owner intent retains it. Do not silently fall back to Cloud if native assets are missing; surface unavailable and keep qualification gates.
 - Verification: inspect generated env/route config for unbound, native+Cloud, native+direct diagnostic, explicit Cloud QA and account changes; run existing local embedding bootstrap/provider-admission tests and real ABI embedding smoke runs separately from APK build.
 
-### 2. Alpha has separate development action names (small but real divergence)
+### 2. Alpha formerly had separate development action names
 
-- `backend/proposal-action.ts` registers `CREATE_NOTE`, `CREATE_REMINDER`, `OPEN_VIEW`, and returns `actionName: PREPARE_ALPHA_ACTION`; the last action name is not even one of its exposed tool names.
-- `backend/runtime.ts` filters assistant actions down to REPLY/IGNORE/NONE, adds the three Alpha proposals, removes embedding handlers and supplies a product-specific character prompt.
+- The old host registered `CREATE_NOTE`, `CREATE_REMINDER` and `OPEN_VIEW`. It returned `PREPARE_ALPHA_ACTION` as the action name even though that name was absent from the exposed tools.
+- Its runtime filtered assistant actions down to REPLY/IGNORE/NONE, added those three proposals, removed embedding handlers and supplied a product-specific character prompt.
 - This is a deliberately limited development host, not the production resident. Production should not be described as having these separate actions.
 - Upstream convention: `PROPOSE_DEVICE_ACTION` with `create_note`, typed reminder operations and canonical navigation `VIEWS`/`VIEWS_SHOW`.
 - Recommendation: make development exercise the same resident/device action service with a deliberately non-effecting executor, or retire the diagnostic host where no longer used. Do not merely rename CREATE_REMINDER: its wall-clock+timezone shape differs from the legacy upstream dueAt and modern typed reminder_create contracts. Reuse upstream reminder input resolution. Keep fixture/no-effect guarantees explicit.
-- Tests to migrate: `backend/test-runtime.ts`, `scripts/dev-agent.mjs`, `scripts/test-dev-agent.mjs`, development proposal fixtures. Live provider evidence must not be replaced with mocks.
+- Resolution: the owner retired the parallel host and its bespoke proposal fixtures. Emulator development uses the upstream resident agent. Live provider evidence remains separate from mocks.
 
 ### 3. Device executor orchestration is large and Alpha-owned (high-value shared extraction)
 
@@ -251,9 +251,9 @@ Largest relevant orchestration files: `apps/app/src/runtime/connection-ui.tsx` 2
 - Important difference: upstream `client-workflow.ts` calls `workflowSurfaceClient`, whose documented policy can fall back to a linked Cloud agent when a mobile runtime lacks the plugin. Alpha requires local orchestration. A shared client needs an explicit local-only host policy; do not import this fallback into production Alpha.
 - Share the full workflow view and builder after the underlying contract converges. Restricting both to the smaller Alpha manual palette without preserving upstream capabilities would be functional loss, not unification.
 
-### 8. Managed Google host is still Alpha-owned but generally reusable
+### 8. Managed Google host extraction
 
-- Alpha backend: `managed-google-agent-host.ts` 101 lines, `managed-google-agent-broker.ts` 46, `managed-google-route-policy.ts` 74, `native-google-cloud-port.ts` 43, `native-google-agent-host.ts` 32. Also `scripts/gmail-agent-mailbox-host.ts`, `scripts/gmail-agent-read-host.ts` and `calendar-agent-write-host.ts`.
+- The audit found a reusable private loopback host in Alpha. Eliza now owns its managed Google host, mailbox receipts and route admission. Alpha packages the shared host with its own deployment and consent inputs.
 - Upstream already defines `ManagedGmailAdapter`, managed-gmail read/send/manage transports and managed Calendar interfaces. Alpha implements the private loopback host expected by these interfaces.
 - Move the host port adapter, revision-bound prepare/dispatch/read receipt flow and route admission into a shared host package. Inject deployment origin, identity/credential port, allowed capabilities, client user-agent and account selector. Avoid Alpha prefixes in new cross-product IDs; preserve old persisted IDs through a supported compatibility reader/migration.
 - The service currently requires exactly one matching account rather than sharing a canonical account-selection policy. A shared selector can support both products without guessing when several accounts are connected.

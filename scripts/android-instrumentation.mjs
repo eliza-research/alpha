@@ -141,7 +141,6 @@ export const CLASS_REGISTRY = {
   BrowserDialogLifecycle: { requiresTestMocksBuild: true },
   BrowserWebFeatures: { requiresTestMocksBuild: true },
   CloudVoice: { requiresTestMocksBuild: true },
-  DevelopmentAgent: { requiresTestMocksBuild: true },
   PairedAsr: { requiresTestMocksBuild: true },
   PairedVoice: { requiresTestMocksBuild: true },
   ScopedVoicePlayback: { requiresTestMocksBuild: true },

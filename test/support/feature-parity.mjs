@@ -462,8 +462,6 @@ export const featureParityAllowlist = {
     "apps/app/src/runtime/development-cartesia-flag.ts",
     "apps/app/src/runtime/development-cloud-agents.ts",
     "apps/app/src/runtime/development-cloud-voice.ts",
-    "apps/app/src/runtime/development-transport.ts",
-    "apps/app/src/runtime/development-view-contract.ts",
     "apps/app/src/runtime/device-actions.ts",
     "apps/app/src/runtime/device-record-presentation.ts",
     "apps/app/src/runtime/device-view-profile.ts",
