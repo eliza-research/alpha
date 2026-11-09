@@ -2532,8 +2532,14 @@
         "workerRetiredByCredentialTest",
         "stoppedWorkerRetriesWithoutPageTest",
         "postcommitFaultKeepsCursorTest",
-        "withdrawHeldOtherGrantAsBuiltTest",
-        "capturedTapCanSettleAfterRemoteRevokeAsBuiltTest",
+        "withdrawHeldGrantPreservesSavedCursorTest",
+        "withdrawQueuedGrantBeforeTransportTest",
+        "unrelatedWithdrawalLeavesQueuedSelectionTest",
+        "retiringSavedGrantKeepsUnrelatedPendingTest",
+        "withdrawingNeitherGrantLeavesBothUntouchedTest",
+        "revokedTapCanRetryAfterRestorationTest",
+        "offlineQuestionCanBeCancelledLocallyTest",
+        "supersededTapCannotSettleAfterVerificationTest",
         "uncertainNoticeNeverRepostsTest"
       ],
       "invariants": [
@@ -2542,7 +2548,9 @@
         "ContinuationKeepsBaseline",
         "VisibleNoticeIsPosted",
         "TapNeedsRetainedNotice",
-        "AdmissionEpoch"
+        "AdmissionEpoch",
+        "PendingGrantOwnsAttempt",
+        "HeldConsumeHasExactTap"
       ],
       "sources": [
         "android/app/src/main/java/ai/elizaresearch/alphaphone/GmailBackground.java",
@@ -2552,20 +2560,21 @@
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCredentialStore.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/LocalAgentProviderAdmission.java",
         "vendor/eliza/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/MailBackgroundDelivery.java",
-        "vendor/eliza/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/MailHistoryReconciliation.java"
+        "vendor/eliza/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/MailHistoryReconciliation.java",
+        "patches/eliza/gmail-background-retirement.patch"
       ],
       "stateMapping": {
         "credential/remoteOwner/grants/reset": "Synthetic raw credential classes, remotely reported owner/grants and pending reset",
         "generation/grant/owner/boundCredential/cursor/continuation/phase/incomplete/checked": "Selected encrypted row, exact owner and decimal history progress",
-        "latestGeneration/attempt/admitted/configuring/configOwner/configCredential/configAttempt/configGrantVerified": "Actual generation assignment and admitted epoch with one held account response",
+        "latestGeneration/attempt/admitted/configuring/configOwner/configCredential/configAttempt/configGrantVerified/configQueued/pendingGrant": "Actual generation assignment and admitted epoch with one held account response",
         "periodic/catchup/schedules/cancels": "Closed WorkManager command names, generations and request counts",
         "workGeneration/workEpoch/workReply/historyReads/process": "Exact worker snapshot and result, page reads and reconstruction",
-        "notice/tap/visible/posts/allowed/observable/locked/bridgeReply": "Ledger and exact pending/consume/release, synthetic posting and foreground readback"
+        "notice/tap/visible/posts/allowed/observable/locked/online/bridgeReply/tapAuthorityReads/consumeGeneration/consumeEpoch/consumeCurrent": "Ledger and exact pending/consume/release, synthetic posting and foreground readback"
       },
       "abstractions": [
-        "Two grants and remote owners, three credential equality classes, one retained notice and one held transport callback across two bridge instances.",
+        "Three grants, two remote owners, three credential equality classes, one retained notice and one held transport callback across two bridge instances.",
         "Four-page Worker checkpoint, 20-digit decimal cursor examples, synthetic work commands, selected HTTP outcomes and pre/postcommit storage failures.",
-        "As-built exact grant retirement checks the saved grant, and captured tap settlement uses local credential/generation only. Both divergences are preserved in the source campaign.",
+        "Targeted retirement fences only matching saved or pending grants. Consume checks the exact still-current tap after remote admission. Releasing a question remains local cancellation.",
         "Android and provider effects are closed. WorkManager delivery, real durable storage and installed notification/Activity enforcement remain outside the campaign."
       ],
       "bounds": {

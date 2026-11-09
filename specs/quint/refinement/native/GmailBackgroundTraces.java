@@ -24,10 +24,13 @@ public final class GmailBackgroundTraces {
  private static AlphaGmailPlugin primary=new AlphaGmailPlugin(),secondary=new AlphaGmailPlugin();
  private static Trace trace;
  private static String state,fault="none",script="none",workReply="none",bridgeReply="none";
- private static int credential=1,owner=1,grants=3,periodic,catchup,schedules,cancels,posts,historyReads,process=1;
+ private static int credential=1,owner=1,grants=7,periodic,catchup,schedules,cancels,posts,historyReads,process=1;
  private static int configuring,configOwner,configCredential,configAttempt,workGeneration,workEpoch;
  private static boolean configGrantVerified;
- private static PluginCall configuringCall;
+ private static PluginCall configuringCall,consumingCall;
+ private static String consumeToken;
+ private static int consumeGeneration,consumeEpoch,tapAuthorityReads;
+ private static boolean online=true,trackingTap;
  private static Thread worker;
  private static WorkerParameters parameters;
  private static String workerOutput;
@@ -36,6 +39,7 @@ public final class GmailBackgroundTraces {
  static boolean reset;
  public static boolean allowed=true;
  private static Hold hold;
+ private static CountDownLatch queuedConfiguration;
  private record Hold(String route,CountDownLatch entered,CountDownLatch released) {
   Hold(String route){this(route,new CountDownLatch(1),new CountDownLatch(1));}
   void waitAtPort()throws IOException {
@@ -114,8 +118,9 @@ public final class GmailBackgroundTraces {
  }
 
  private static String grant(int grant){return "fixture-grant-"+grant;}
+ private static boolean grantAllowed(int grant){return (grants&(1<<(grant-1)))!=0;}
  private static int grantClass(String value){
-  for(int i=1;i<=2;i++)if(grant(i).equals(value))return i;
+  for(int i=1;i<=3;i++)if(grant(i).equals(value))return i;
   throw new AssertionError("Unknown grant class");
  }
  private static int ownerClass(String value){
@@ -195,6 +200,10 @@ public final class GmailBackgroundTraces {
    if(!"GET".equals(getRequestMethod())||getInstanceFollowRedirects()
        ||!("Bearer fixture-token-"+credential).equals(getRequestProperty("Authorization")))
     throw new AssertionError("Unexpected mail request");
+   if(route.equals("accounts")) {
+    if(trackingTap)tapAuthorityReads++;
+    if(!online)return 503;
+   }
    if(!route.equals("history"))return 200;
    historyReads++;
    return switch(script){case "retry" -> 503;case "unsupported" -> 404;case "forbidden" -> 403;default -> 200;};
@@ -205,8 +214,8 @@ public final class GmailBackgroundTraces {
      .put("data",new JSONObject().put("id",OWNER[owner]).put("organization_id",ORG));
    else if(route.equals("accounts")) {
     JSONArray accounts=new JSONArray();
-    for(int g=1;g<=2;g++)accounts.put(new JSONObject().put("connectionId",grant(g))
-      .put("connected",(grants&g)!=0).put("grantedCapabilities",new JSONArray().put("google.gmail.triage")));
+    for(int g=1;g<=3;g++)accounts.put(new JSONObject().put("connectionId",grant(g))
+      .put("connected",grantAllowed(g)).put("grantedCapabilities",new JSONArray().put("google.gmail.triage")));
     body=accounts;
    } else {
     Map<String,String> query=parameters(url);
@@ -238,6 +247,7 @@ public final class GmailBackgroundTraces {
    if(boundCredential==0||!new JSONArray().put("cloud").put("production").put(binding.getString("userId")).put(ORG).toString()
        .equals(binding.getString("accountRef")))throw new AssertionError("Unexpected durable owner binding");
   }
+  String pending=(String)Trace.read(delivery,"pendingGrant");
   return Trace.fields("latestGeneration",generations.size(),"credential",credential,"remoteOwner",owner,"grants",grants,"reset",reset,"allowed",allowed,
    "observable",observable,"locked",primary.activity.keyguard.locked,"phase",saved==null?"disabled":saved.getString("status"),
    "generation",binding==null?0:generations.get(binding.getString("generation")),"grant",binding==null?0:grantClass(binding.getString("grantId")),
@@ -248,8 +258,11 @@ public final class GmailBackgroundTraces {
    "visible",!shown.isEmpty(),"posts",posts,"periodic",periodic,"catchup",catchup,"schedules",schedules,"cancels",cancels,
    "attempt",((AtomicLong)Trace.read(delivery,"attempts")).get(),"admitted",Trace.read(delivery,"admittedAttempt"),
    "configuring",configuring,"configOwner",configOwner,"configCredential",configCredential,"configAttempt",configAttempt,
-   "configGrantVerified",configGrantVerified,"workGeneration",workGeneration,"workEpoch",workEpoch,"workReply",workReply,
-   "bridgeReply",bridgeReply,"historyReads",historyReads,"process",process);
+   "configGrantVerified",configGrantVerified,"configQueued",queuedConfiguration!=null,"workGeneration",workGeneration,"workEpoch",workEpoch,"workReply",workReply,
+   "bridgeReply",bridgeReply,"historyReads",historyReads,"process",process,
+   "pendingGrant",pending==null?0:grantClass(pending),"online",online,"tapAuthorityReads",tapAuthorityReads,
+   "consumeGeneration",consumeGeneration,"consumeEpoch",consumeEpoch,
+   "consumeCurrent",consumeToken!=null&&tap!=null&&consumeToken.equals(tap.getString("token")));
  }
 
  private static void env(int remoteOwner,int activeGrants,boolean resetPending,boolean notificationAllowed,boolean active,boolean locked)throws Exception {
@@ -265,13 +278,33 @@ public final class GmailBackgroundTraces {
     .put("userId",OWNER[selectedOwner]).put("organizationId",ORG));
   primary.configure(configuringCall);
   hold.await();
-  configGrantVerified=(grants&g)!=0;
+  configGrantVerified=grantAllowed(g);
   configAttempt=(int)((AtomicLong)Trace.read(GmailBackground.get(context),"attempts")).get();
   trace.step("beginConfigure",observe(),g,selectedOwner);
  }
 
+ private static void queueConfigure(int g,int selectedOwner)throws Exception {
+  configuring=g;configOwner=selectedOwner;configCredential=credential;
+  queuedConfiguration=new CountDownLatch(1);
+  CountDownLatch release=queuedConfiguration;
+  CountDownLatch running=new CountDownLatch(1);
+  ((ExecutorService)Trace.read(primary,"io")).submit(()->{
+   running.countDown();
+   if(!release.await(10,TimeUnit.SECONDS))throw new AssertionError("Queued configure port wait exceeded");
+   return null;
+  });
+  if(!running.await(7,TimeUnit.SECONDS))throw new AssertionError("Bridge work was not held");
+  configuringCall=new PluginCall(new JSONObject().put("grantId",grant(g)).put("credentialId","fixture-credential")
+   .put("userId",OWNER[selectedOwner]).put("organizationId",ORG));
+  primary.configure(configuringCall);
+  configAttempt=(int)((AtomicLong)Trace.read(GmailBackground.get(context),"attempts")).get();
+  trace.step("queueConfigure",observe(),g,selectedOwner);
+ }
+
  private static void finishConfigure()throws Exception {
-  hold.released.countDown();configuringCall.await();
+  if(queuedConfiguration!=null)queuedConfiguration.countDown();
+  else hold.released.countDown();
+  configuringCall.await();queuedConfiguration=null;
   bridgeReply=configuringCall.rejection==null?"configured":"refused";
   hold=null;configuring=0;configOwner=0;configuringCall=null;
   configCredential=0;configAttempt=0;configGrantVerified=false;
@@ -340,7 +373,15 @@ public final class GmailBackgroundTraces {
    bridgeReply=call.result.getString("status");
    if(!bridgeReply.equals("disabled")) {
     JSONObject row=new JSONObject(state);
-    if(call.result.getBoolean("notificationsAllowed")!=allowed
+    JSONObject notices=row.getJSONObject("notices");
+    int uncertain=0,denied=0;
+    for(String key:notices.keySet()){
+     String phase=notices.getJSONObject(key).getString("phase");
+     if(phase.equals("uncertain")||phase.equals("dispatching"))uncertain++;
+     if(phase.equals("denied"))denied++;
+    }
+    if(call.result.getInt("uncertainNotices")!=uncertain||call.result.getInt("deniedNotices")!=denied
+        ||call.result.getBoolean("notificationsAllowed")!=allowed
         ||call.result.getBoolean("incompleteCatchup")!=row.getBoolean("incompleteCatchup")
         ||call.result.getLong("lastSyncAt")!=row.getLong("lastSyncAt")
         ||!call.result.getString("grantId").equals(row.getJSONObject("binding").getString("grantId")))
@@ -372,14 +413,39 @@ public final class GmailBackgroundTraces {
   trace.step("capture",observe(),question);
  }
 
+ private static void network(boolean connected)throws Exception {
+  online=connected;
+  trace.step("network",observe(),connected);
+ }
+
+ private static void beginConsume()throws Exception {
+  JSONObject saved=new JSONObject(state);
+  consumeGeneration=generations.get(saved.getJSONObject("binding").getString("generation"));
+  consumeEpoch=(int)((AtomicLong)Trace.read(GmailBackground.get(context),"attempts")).get();
+  consumeToken=saved.getJSONObject("tap").getString("token");
+  consumingCall=new PluginCall(new JSONObject().put("token",consumeToken));
+  hold=new Hold("accounts");
+  tapAuthorityReads=0;trackingTap=true;
+  primary.consume(consumingCall);hold.await();
+  trace.step("beginConsume",observe());
+ }
+
+ private static void finishConsume()throws Exception {
+  hold.released.countDown();consumingCall.await();trackingTap=false;
+  bridgeReply=consumingCall.rejection==null?"settled":"refused";
+  hold=null;consumingCall=null;consumeToken=null;consumeGeneration=0;consumeEpoch=0;
+  trace.step("finishConsume",observe());
+ }
+
  private static void tap(String method,boolean exact)throws Exception {
   JSONObject saved=state==null?null:new JSONObject(state);
   JSONObject captured=saved==null?null:saved.optJSONObject("tap");
   String token=exact&&captured!=null?captured.getString("token"):"fixture-wrong-token";
   PluginCall call=new PluginCall(new JSONObject().put("token",token));
+  tapAuthorityReads=0;trackingTap=true;
   switch(method){case "pending" -> primary.pending(call);case "consume" -> primary.consume(call);
    case "release" -> primary.releaseQuestion(call);default -> throw new AssertionError(method);}
-  call.await();
+  call.await();trackingTap=false;
   bridgeReply=call.rejection!=null?"refused":method.equals("pending")?
    call.result.has("token")?"pending":"empty":"settled";
   if(bridgeReply.equals("pending")) {
@@ -413,15 +479,43 @@ public final class GmailBackgroundTraces {
     case "stopped" -> {configure(1);work(1,"baseline");beginWorker(1);finishWorker(true);status();}
     case "reset" -> {configure(1);work(1,"baseline");work(1,"reset");status();beginWorker(1);
      env(1,3,true,true,true,false);finishWorker(false);resume();status();}
-    case "withdraw-during-configure" -> {configure(1);work(1,"baseline");beginConfigure(2,1);withdraw(2);
-     finishConfigure();status();withdraw(1);status();withdraw(2);status();}
+    case "withdraw-during-configure" -> {configure(1);work(1,"baseline");work(1,"continued");beginConfigure(2,1);
+     withdraw(2);finishConfigure();status();work(1,"final");status();}
+    case "withdraw-queued" -> {configure(1);work(1,"baseline");queueConfigure(2,1);
+     withdraw(2);finishConfigure();status();}
+    case "withdraw-queued-other" -> {configure(1);queueConfigure(3,1);withdraw(2);finishConfigure();status();}
     case "withdraw-current" -> {configure(1);beginConfigure(2,1);withdraw(1);finishConfigure();status();}
+    case "withdraw-unrelated" -> {configure(1);beginConfigure(3,1);withdraw(2);finishConfigure();status();}
+    case "withdraw-empty-other" -> {beginConfigure(3,1);withdraw(2);finishConfigure();status();}
+    case "withdraw-empty-exact" -> {beginConfigure(2,1);withdraw(2);finishConfigure();status();}
+    case "withdraw-global" -> {configure(1);beginConfigure(2,1);withdraw(0);finishConfigure();status();}
     case "old-owner" -> {configure(1);work(1,"baseline");env(2,3,false,true,true,false);
      work(1,"none");status();configure(2);status();}
     case "remote-revoked-consume","remote-revoked-release" -> {
      configure(1);work(1,"baseline");work(1,"notify");capture(args[0].endsWith("release"));
      tap("pending",true);env(1,2,false,true,true,false);tap("pending",true);
      tap(args[0].endsWith("release")?"release":"consume",true);tap("pending",true);
+     if(args[0].endsWith("consume")){
+      env(1,3,false,true,true,false);tap("consume",true);tap("consume",true);
+     }
+    }
+    case "offline-tap" -> {
+     configure(1);work(1,"baseline");work(1,"notify");capture(true);network(false);
+     tap("consume",false);tap("consume",true);tap("release",true);
+     capture(false);tap("consume",true);network(true);tap("consume",true);tap("consume",true);
+    }
+    case "consume-retoken" -> {
+     configure(1);work(1,"baseline");work(1,"notify");capture(false);beginConsume();
+     capture(true);finishConsume();tap("pending",true);tap("consume",true);
+    }
+    case "consume-locked" -> {
+     configure(1);work(1,"baseline");work(1,"notify");capture(false);beginConsume();
+     env(1,3,false,true,true,true);finishConsume();tap("pending",true);
+     env(1,3,false,true,true,false);tap("consume",true);
+    }
+    case "consume-owner-retired" -> {
+     configure(1);work(1,"baseline");work(1,"notify");capture(false);beginConsume();
+     replaceCredential(2,true);finishConsume();tap("pending",true);configure(2);status();
     }
     case "uncertain" -> {configure(1);work(1,"baseline");env(1,3,false,true,false,false);work(1,"notify");
      status();recreate();resume();work(1,"final");status();capture(true);tap("pending",true);
@@ -433,6 +527,7 @@ public final class GmailBackgroundTraces {
    System.out.println(trace.value);
   } finally {
    if(hold!=null)hold.released.countDown();
+   if(queuedConfiguration!=null)queuedConfiguration.countDown();
    primary.handleOnDestroy();secondary.handleOnDestroy();
   }
  }

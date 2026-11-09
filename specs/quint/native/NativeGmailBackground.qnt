@@ -5,11 +5,13 @@ module NativeGmailBackground {
     owner: int, boundCredential: int, cursor: int, continuation: int, incomplete: bool,
     checked: bool, notice: str, tap: str, visible: bool, posts: int, periodic: int,
     catchup: int, schedules: int, cancels: int, attempt: int, admitted: int, configuring: int,
-    configOwner: int, configCredential: int, configAttempt: int, configGrantVerified: bool,
-    workGeneration: int, workEpoch: int, workReply: str, bridgeReply: str, historyReads: int, process: int}
+    configOwner: int, configCredential: int, configAttempt: int, configGrantVerified: bool, configQueued: bool,
+    workGeneration: int, workEpoch: int, workReply: str, bridgeReply: str, historyReads: int, process: int,
+    pendingGrant: int, online: bool, tapAuthorityReads: int, consumeGeneration: int, consumeEpoch: int, consumeCurrent: bool}
   var s: State
 
-  val selections = Set(1,2)
+  val owners = Set(1,2)
+  val selections = Set(1,2,3)
   val credentialClasses = Set(0,1,2,3)
   val jobGenerations = Set(0,1,2,3,4)
   val scripts = Set("none","baseline","continued","final","notify","reset","retry","unsupported","forbidden","malformed")
@@ -18,14 +20,18 @@ module NativeGmailBackground {
   val liveNotices = Set("posted","uncertain")
 
   action init: bool = s'={
-    latestGeneration:0,credential:1,remoteOwner:1,grants:3,reset:false,allowed:true,observable:true,locked:false,
+    latestGeneration:0,credential:1,remoteOwner:1,grants:7,reset:false,allowed:true,observable:true,locked:false,
     phase:"disabled",generation:0,grant:0,owner:0,boundCredential:0,cursor:0,continuation:0,incomplete:false,
     checked:false,notice:"none",tap:"none",visible:false,posts:0,periodic:0,catchup:0,schedules:0,cancels:0,
-    attempt:0,admitted:0,configuring:0,configOwner:0,configCredential:0,configAttempt:0,configGrantVerified:false,
-    workGeneration:0,workEpoch:0,workReply:"none",bridgeReply:"none",historyReads:0,process:1
+    attempt:0,admitted:0,configuring:0,configOwner:0,configCredential:0,configAttempt:0,configGrantVerified:false,configQueued:false,
+    workGeneration:0,workEpoch:0,workReply:"none",bridgeReply:"none",historyReads:0,process:1,
+    pendingGrant:0,online:true,tapAuthorityReads:0,consumeGeneration:0,consumeEpoch:0,consumeCurrent:false
   }
 
-  pure def grantAllowed(grants: int, grant: int): bool = grant!=0 and (grants==3 or grants==grant)
+  pure def grantAllowed(grants: int, grant: int): bool =
+    if (grant==1) grants.in(Set(1,3,5,7))
+    else if (grant==2) grants.in(Set(2,3,6,7))
+    else grant==3 and grants.in(Set(4,5,6,7))
   pure def local(st: State): bool = st.generation!=0 and st.credential==st.boundCredential and
     not(st.reset) and st.admitted==st.attempt
   pure def remote(st: State): bool = st.owner==st.remoteOwner and grantAllowed(st.grants,st.grant)
@@ -33,36 +39,44 @@ module NativeGmailBackground {
     catchup:if (st.catchup==0) st.generation else st.catchup,schedules:st.schedules+1}
   pure def cancelScheduled(st: State): State = {...st,periodic:0,catchup:0,cancels:st.cancels+1,visible:false}
   pure def dropSelection(st: State): State = {...cancelScheduled(st),phase:"disabled",generation:0,grant:0,
-    owner:0,boundCredential:0,cursor:0,continuation:0,incomplete:false,checked:false,notice:"none",tap:"none"}
-  pure def withdrawAll(st: State): State = {...dropSelection(st),attempt:st.attempt+1,admitted:st.attempt+1}
+    owner:0,boundCredential:0,cursor:0,continuation:0,incomplete:false,checked:false,notice:"none",tap:"none",consumeCurrent:false}
+  pure def withdrawAll(st: State): State = {...dropSelection(st),attempt:st.attempt+1,admitted:st.attempt+1,pendingGrant:0}
   pure def freshSelection(st: State): State = scheduled({...dropSelection(st),phase:"waiting",
     latestGeneration:st.latestGeneration+1,generation:st.latestGeneration+1,grant:st.configuring,
     owner:st.configOwner,boundCredential:st.configCredential,incomplete:true})
 
   action environment(owner: int, grants: int, reset: bool, allowed: bool, observable: bool, locked: bool): bool = all {
-    owner.in(selections), grants.in(Set(0,1,2,3)),
+    owner.in(owners), grants.in(0.to(7)),
     s'={...s,remoteOwner:owner,grants:grants,reset:reset,allowed:allowed,observable:observable,locked:locked}
   }
-  action beginConfigure(grant: int, owner: int): bool = all {
+  action configureAt(grant: int, owner: int, checked: bool): bool = all {
     grant.in(selections), owner==s.remoteOwner, s.credential!=0, not(s.reset or s.locked),
-    s.configuring==0, s.workGeneration==0, s.attempt<8, s.schedules<8, s.latestGeneration<3,
+    s.configuring==0, s.workGeneration==0, s.consumeGeneration==0,s.online,s.attempt<8, s.schedules<8, s.latestGeneration<3,
     s'={...s,attempt:s.attempt+1,configuring:grant,configOwner:owner,configCredential:s.credential,
-      configAttempt:s.attempt+1,configGrantVerified:grantAllowed(s.grants,grant)}
+      configAttempt:s.attempt+1,configGrantVerified:checked and grantAllowed(s.grants,grant),configQueued:not(checked),pendingGrant:grant}
   }
+  action beginConfigure(grant: int, owner: int): bool = configureAt(grant,owner,true)
+  action queueConfigure(grant: int, owner: int): bool = configureAt(grant,owner,false)
   action finishConfigure: bool = all {
     s.configuring!=0,
     val current=s.attempt==s.configAttempt
-    val eligible=current and s.configCredential==s.credential and not(s.reset) and s.configGrantVerified
+    val verified=if (s.configQueued) s.online and s.configOwner==s.remoteOwner and grantAllowed(s.grants,s.configuring)
+      else s.configGrantVerified
+    val eligible=current and s.configCredential==s.credential and not(s.reset) and verified
     val same=s.grant==s.configuring and s.owner==s.configOwner and s.boundCredential==s.configCredential
     val updated=if (not(eligible)) s else if (same) scheduled(s) else freshSelection(s)
-    s'={...updated,configuring:0,configOwner:0,configCredential:0,configAttempt:0,configGrantVerified:false,
-      admitted:if (current) s.attempt else s.admitted,bridgeReply:if (eligible) "configured" else "refused"}
+    s'={...updated,configuring:0,configOwner:0,configCredential:0,configAttempt:0,configGrantVerified:false,configQueued:false,
+      admitted:if (current) s.attempt else s.admitted,pendingGrant:if (current) 0 else s.pendingGrant,bridgeReply:if (eligible) "configured" else "refused"}
   }
-  // As built, grant-specific retirement looks only at the saved grant, not a held selection.
   action withdraw(grant: int): bool = all {
-    grant.in(Set(0,1,2)),s.attempt<8,
-    val accepted=grant==0 or s.grant==0 or s.grant==grant
-    s'={...(if (accepted) withdrawAll(s) else s),bridgeReply:"withdrawn"}
+    grant.in(Set(0,1,2,3)),s.attempt<8,
+    val pendingMatch=grant!=0 and s.pendingGrant==grant
+    val savedMatch=grant!=0 and s.grant==grant
+    val nextState=if (grant==0 or savedMatch and (s.pendingGrant==0 or pendingMatch)) withdrawAll(s)
+      else if (savedMatch) dropSelection(s)
+      else if (pendingMatch) {...s,attempt:s.attempt+1,admitted:s.attempt+1,pendingGrant:0}
+      else s
+    s'={...nextState,bridgeReply:"withdrawn"}
   }
   action replaceCredential(value: int, notify: bool): bool = all {
     value.in(credentialClasses),value!=s.credential,s.attempt<8,
@@ -76,7 +90,7 @@ module NativeGmailBackground {
   action status: bool = s'={...s,bridgeReply:
     if (s.generation==0) "disabled" else if (local(s)) s.phase else "refused"}
   action recreate: bool = all {
-    s.process<3,s.configuring==0,s.workGeneration==0,
+    s.process<3,s.configuring==0,s.workGeneration==0,s.consumeGeneration==0,
     s'={...s,process:s.process+1,attempt:0,admitted:0,locked:false}
   }
 
@@ -118,19 +132,20 @@ module NativeGmailBackground {
 
   action work(generation: int, response: str, stopped: bool, fault: str): bool = all {
     generation.in(jobGenerations),response.in(scripts),fault.in(faults),
-    s.workGeneration==0,s.continuation<=8,s.posts<8,
+    s.workGeneration==0,s.consumeGeneration==0,s.continuation<=8,s.posts<8,
     fault=="none" or response=="baseline",
-    response!="none" or generation!=s.generation or stopped or not(local(s) and remote(s)),
+    response!="none" or generation!=s.generation or stopped or not(local(s) and remote(s) and s.online),
     val cleared={...s,historyReads:0}
     s'=if (generation==0) {...cleared,workReply:"failure"}
       else if (generation!=s.generation) {...cleared,workReply:"success"}
       else if (stopped) {...cleared,workReply:"retry"}
       else if (not(local(s))) {...cleared,workReply:"success"}
+      else if (s.owner==s.remoteOwner and not(s.online)) retry(cleared)
       else if (not(remote(s))) unavailable(cleared)
       else page({...cleared,historyReads:1},response,fault)
   }
   action beginWorker(generation: int): bool = all {
-    generation==s.generation,s.workGeneration==0,s.configuring==0,local(s),remote(s),s.posts<8,
+    generation==s.generation,s.workGeneration==0,s.configuring==0,s.consumeGeneration==0,local(s),remote(s),s.online,s.posts<8,
     s'={...s,historyReads:1,workGeneration:generation,workEpoch:s.attempt,workReply:"running"}
   }
   action finishWorker(stopped: bool): bool = all {
@@ -139,31 +154,52 @@ module NativeGmailBackground {
     s'=if (stopped) {...cleared,workReply:"retry"}
       else if (not(local(s)) or s.workGeneration!=s.generation or s.workEpoch!=s.attempt)
         {...cleared,workReply:"success"}
+      else if (s.owner==s.remoteOwner and not(s.online)) retry(cleared)
+      else if (s.owner==s.remoteOwner and not(s.online)) retry(cleared)
       else if (not(remote(s))) unavailable(cleared)
       else page(cleared,"notify","none")
   }
 
+  pure def routePresent(st: State): bool =
+    st.tap!="none" and st.notice.in(liveNotices) and (st.tap!="question" or st.visible)
   action capture(question: bool): bool = all {
     local(s),
-    s'={...s,tap:if (s.notice.in(liveNotices) and (not(question) or s.visible))
-      (if (question) "question" else "open") else s.tap}
+    val recorded=s.notice.in(liveNotices) and (not(question) or s.visible)
+    s'={...s,tap:if (recorded) (if (question) "question" else "open") else s.tap,
+      consumeCurrent:s.consumeCurrent and not(recorded)}
   }
-  // Pending re-verifies the grant. Existing exact settlements use only the local owner fence.
+  // Release is an exact local cancellation. Only consuming a notice requires remote admission.
   action tapCall(method: str, exact: bool): bool = all {
-    method.in(tapMethods),
+    method.in(tapMethods),s.consumeGeneration==0,
     val pending=method=="pending"
-    val routePresent=s.tap!="none" and s.notice.in(liveNotices) and (s.tap!="question" or s.visible)
+    val request=not(s.locked) and local(s) and routePresent(s) and
+      (pending or method=="consume" and exact)
+    val checks=if (request and s.owner==s.remoteOwner) 1 else 0
     val settled=not(pending or s.locked) and local(s) and exact and
-      (if (method=="release") s.tap=="question" else s.tap=="open" or s.tap=="question" and s.visible)
+      (if (method=="release") s.tap=="question" else routePresent(s) and remote(s) and s.online)
     val reply=if (pending) {
       if (s.locked or s.generation==0) "empty"
       else if (not(local(s))) "refused"
-      else if (not(routePresent)) "empty"
-      else if (remote(s)) "pending" else "refused"
+      else if (not(routePresent(s))) "empty"
+      else if (remote(s) and s.online) "pending" else "refused"
     } else if (settled) "settled" else "refused"
     s'={...s,tap:if (settled) "none" else s.tap,
       notice:if (settled and method=="consume") "opened" else s.notice,
-      visible:s.visible and not(settled and method=="consume"),bridgeReply:reply}
+      visible:s.visible and not(settled and method=="consume"),bridgeReply:reply,tapAuthorityReads:checks}
+  }
+  action network(connected: bool): bool = s'={...s,online:connected}
+  action beginConsume: bool = all {
+    s.consumeGeneration==0,s.workGeneration==0,s.configuring==0,not(s.locked),
+    local(s),remote(s),s.online,routePresent(s),
+    s'={...s,consumeGeneration:s.generation,consumeEpoch:s.attempt,consumeCurrent:true,tapAuthorityReads:1}
+  }
+  action finishConsume: bool = all {
+    s.consumeGeneration!=0,
+    val current=local(s) and not(s.locked) and s.consumeCurrent and routePresent(s) and
+      s.consumeGeneration==s.generation and s.consumeEpoch==s.attempt
+    s'={...s,consumeGeneration:0,consumeEpoch:0,consumeCurrent:false,
+      bridgeReply:if (current) "settled" else "refused",tap:if (current) "none" else s.tap,
+      notice:if (current) "opened" else s.notice,visible:s.visible and not(current)}
   }
 
   val RetiredSelectionIsEmpty = s.generation!=0 or
@@ -176,16 +212,21 @@ module NativeGmailBackground {
   val TapNeedsRetainedNotice = s.tap=="none" or s.notice.in(liveNotices)
   val AdmissionEpoch = s.admitted<=s.attempt and
     (s.configuring!=0 or (s.configAttempt==0 and s.configOwner==0 and s.configCredential==0))
+  val PendingGrantOwnsAttempt = s.pendingGrant==0 or
+    (s.pendingGrant==s.configuring and s.configAttempt==s.attempt and s.admitted<s.attempt)
+  val HeldConsumeHasExactTap = not(s.consumeCurrent) or
+    (s.consumeGeneration!=0 and s.consumeGeneration==s.generation and s.tap!="none")
   val safety=all {RetiredSelectionIsEmpty,ExactSchedule,ContinuationKeepsBaseline,
-    VisibleNoticeIsPosted,TapNeedsRetainedNotice,AdmissionEpoch}
+    VisibleNoticeIsPosted,TapNeedsRetainedNotice,AdmissionEpoch,PendingGrantOwnsAttempt,HeldConsumeHasExactTap}
 
   action step = any {
-    { nondet owner=selections.oneOf(); nondet grants=Set(0,1,2,3).oneOf(); nondet reset=Bool.oneOf();
+    { nondet owner=owners.oneOf(); nondet grants=0.to(7).oneOf(); nondet reset=Bool.oneOf();
       nondet allowed=Bool.oneOf(); nondet seen=Bool.oneOf(); nondet locked=Bool.oneOf();
       environment(owner,grants,reset,allowed,seen,locked) },
     { nondet grant=selections.oneOf(); beginConfigure(grant,s.remoteOwner) },
+    { nondet grant=selections.oneOf(); queueConfigure(grant,s.remoteOwner) },
     finishConfigure,
-    { nondet grant=Set(0,1,2).oneOf(); withdraw(grant) },
+    { nondet grant=Set(0,1,2,3).oneOf(); withdraw(grant) },
     { nondet value=credentialClasses.oneOf(); nondet notify=Bool.oneOf(); replaceCredential(value,notify) },
     resume,status,recreate,
     { nondet gen=jobGenerations.oneOf(); nondet response=scripts.oneOf(); nondet stopped=Bool.oneOf();
@@ -194,6 +235,8 @@ module NativeGmailBackground {
     { nondet stopped=Bool.oneOf(); finishWorker(stopped) },
     { nondet question=Bool.oneOf(); capture(question) },
     { nondet method=tapMethods.oneOf(); nondet exact=Bool.oneOf(); tapCall(method,exact) },
+    { nondet connected=Bool.oneOf(); network(connected) },
+    beginConsume,finishConsume,
     s'=s,
   }
 
@@ -211,14 +254,41 @@ module NativeGmailBackground {
     .expect(s.workReply=="retry" and s.cursor==1 and s.posts==0)
   run postcommitFaultKeepsCursorTest = init.then(beginConfigure(1,1)).then(finishConfigure)
     .then(work(1,"baseline",false,"after")).expect(s.cursor==1 and s.workReply=="retry" and s.phase=="retrying")
-  run withdrawHeldOtherGrantAsBuiltTest = init.then(beginConfigure(1,1)).then(finishConfigure)
+  run withdrawHeldGrantPreservesSavedCursorTest = init.then(beginConfigure(1,1)).then(finishConfigure)
     .then(work(1,"baseline",false,"none")).then(beginConfigure(2,1)).then(withdraw(2))
-    .expect(s.grant==1 and s.cursor==1 and s.attempt==2)
-    .then(finishConfigure).expect(s.grant==2 and s.generation==2 and s.cursor==0)
-  run capturedTapCanSettleAfterRemoteRevokeAsBuiltTest = init.then(beginConfigure(1,1)).then(finishConfigure)
+    .expect(s.grant==1 and s.cursor==1 and s.attempt==3 and s.pendingGrant==0)
+    .then(finishConfigure).expect(s.bridgeReply=="refused" and s.grant==1 and s.periodic==1)
+  run withdrawQueuedGrantBeforeTransportTest = init.then(beginConfigure(1,1)).then(finishConfigure)
+    .then(queueConfigure(2,1)).expect(s.pendingGrant==2 and not(s.configGrantVerified))
+    .then(withdraw(2)).then(finishConfigure).expect(s.bridgeReply=="refused" and s.grant==1 and s.schedules==1)
+  run unrelatedWithdrawalLeavesQueuedSelectionTest = init.then(beginConfigure(1,1)).then(finishConfigure)
+    .then(queueConfigure(3,1)).then(withdraw(2)).then(finishConfigure)
+    .expect(s.bridgeReply=="configured" and s.grant==3 and s.generation==2)
+  run retiringSavedGrantKeepsUnrelatedPendingTest = init.then(beginConfigure(1,1)).then(finishConfigure)
+    .then(beginConfigure(3,1)).then(withdraw(1))
+    .expect(s.grant==0 and s.pendingGrant==3 and s.attempt==2)
+    .then(finishConfigure).expect(s.grant==3 and s.generation==2)
+  run withdrawingNeitherGrantLeavesBothUntouchedTest = init.then(beginConfigure(1,1)).then(finishConfigure)
+    .then(beginConfigure(3,1)).then(withdraw(2))
+    .expect(s.grant==1 and s.pendingGrant==3 and s.attempt==2 and s.periodic==1)
+    .then(finishConfigure).expect(s.grant==3)
+  run revokedTapCanRetryAfterRestorationTest = init.then(beginConfigure(1,1)).then(finishConfigure)
     .then(work(1,"baseline",false,"none")).then(work(1,"notify",false,"none")).then(capture(false))
     .then(environment(1,2,false,true,true,false)).then(tapCall("pending",true)).expect(s.bridgeReply=="refused")
-    .then(tapCall("consume",true)).expect(s.notice=="opened" and s.tap=="none" and not(s.visible))
+    .then(tapCall("consume",true)).expect(s.bridgeReply=="refused" and s.tap=="open" and s.visible)
+    .then(environment(1,3,false,true,true,false)).then(tapCall("consume",true))
+    .expect(s.bridgeReply=="settled" and s.notice=="opened" and s.tap=="none" and s.tapAuthorityReads==1)
+    .then(tapCall("consume",true)).expect(s.bridgeReply=="refused" and s.tapAuthorityReads==0)
+  run offlineQuestionCanBeCancelledLocallyTest = init.then(beginConfigure(1,1)).then(finishConfigure)
+    .then(work(1,"baseline",false,"none")).then(work(1,"notify",false,"none")).then(capture(true))
+    .then(network(false)).then(tapCall("consume",true))
+    .expect(s.bridgeReply=="refused" and s.tap=="question" and s.tapAuthorityReads==1)
+    .then(tapCall("release",true))
+    .expect(s.bridgeReply=="settled" and s.tap=="none" and s.visible and s.tapAuthorityReads==0)
+  run supersededTapCannotSettleAfterVerificationTest = init.then(beginConfigure(1,1)).then(finishConfigure)
+    .then(work(1,"baseline",false,"none")).then(work(1,"notify",false,"none")).then(capture(false))
+    .then(beginConsume).then(capture(true)).then(finishConsume)
+    .expect(s.bridgeReply=="refused" and s.tap=="question" and s.visible)
   run uncertainNoticeNeverRepostsTest = init.then(beginConfigure(1,1)).then(finishConfigure)
     .then(work(1,"baseline",false,"none")).then(environment(1,3,false,true,false,false))
     .then(work(1,"notify",false,"none")).then(recreate).then(work(1,"final",false,"none"))

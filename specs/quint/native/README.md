@@ -809,16 +809,24 @@ the installed schedule identities, network constraint, periodic UPDATE
 and catch-up KEEP commands, exact input generation, status and retry
 classification. It checks that a four-page retry keeps the original
 20-digit cursor and continuation, including after reconstruction and
-same-owner revalidation. Only the final page advances that cursor.
+same-owner revalidation. Only the final page advances a retained pagination cursor.
 Credential retirement and pending reset fence a held worker response.
 A synthetic failure after a durable page write retains the new cursor.
 
-Two closed JVM schedules preserve the as-built divergences. A held
-configuration for grant B can commit after a second bridge withdraws B
-while grant A remains saved. The check compares only the saved grant.
-A captured token also remains locally settleable after the remote grant
-is revoked and pending readback refuses. Exact consume opens the retained
-notice and cancels the synthetic alert. Question release clears the
-question without consuming the notice. The replay holds the synthetic
-notification and vault bytes, and intercepts all child-JVM URL opens.
-No real mailbox, Android job, alert, permission or provider action runs.
+The baseline in commit `42dda1db19` reproduced a held configuration for
+grant B committing after a second bridge withdrew B while grant A remained
+saved. It also reproduced local consume of a previously captured token
+after the remote grant was revoked and pending readback refused.
+
+The authenticated repair records the grant before the bridge queues its
+selection. Withdrawing the matching pending grant leaves another saved
+selection's cursor, work and notices in place. Removing a saved grant
+preserves an unrelated pending selection. Consumption rechecks the remote
+owner and grant, then the same foreground, selection epoch and exact tap.
+A revoke or offline response retains the tap for an exact later retry.
+Releasing a question remains local cancellation and keeps the notice.
+
+The replay uses authenticated staged Java, synthetic work requests, vault
+bytes and alert state, and intercepts every child-JVM URL open. Installed
+WorkManager execution, notice delivery and live provider freshness remain
+outside the replay.
