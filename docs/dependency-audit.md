@@ -528,8 +528,8 @@ nothing.
 | `test/licenses.test.mjs`, `test/font-license.test.mjs` | Use Denton as the proprietary-font example |
 
 There is no preload link. `apps/app/index.html`, the Vite configuration, the bundle audit
-denylist and the Android project do not name Denton. `design-assets/` and `design/` hold
-reference copies that are not built into the product.
+denylist and the Android project do not name Denton. Historical font copies remain in the
+[archived design assets](https://github.com/eliza-research/alphaphone/tree/bfb0c54abff6c18035f58a554c68f096b3918b75/design-assets).
 
 ### Fraunces is not yet a complete fallback
 
