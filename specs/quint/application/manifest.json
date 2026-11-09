@@ -1284,8 +1284,8 @@
       "upstream.lock.json"
     ],
     "abstractions": [
-      "Installed agent filter operations from a mounted Browse view, with separate access and query generations, current filter ownership, cancellation and filtered result ordering.",
-      "Three operation identities, two text classes and four unique row identities. Reload after mount, category/Trash list transactions, file mutations and provider query implementation remain separate obligations."
+      "Installed agent filters from a mounted Browse view, with separate reload and query generations, pending and displayed filter ownership, cancellation, filtered result ordering and no storage writes.",
+      "Three operation identities, two text classes and four unique row identities. The model covers reloads during an explicit filter. Other reload sequences, category and Trash transactions, and provider queries remain separate obligations."
     ]
   },
   {

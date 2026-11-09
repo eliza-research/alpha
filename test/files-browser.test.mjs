@@ -361,7 +361,7 @@ test('the browser volume answers the folder filter with folders, as Android walk
 test('Browse requests count-only category summaries from the shared storage adapter',async()=>{
  const adapter=readFileSync('.eliza/client-features/plugins/plugin-files/src/browser/files-browser-adapter.ts','utf8');
  const counts=adapter.slice(adapter.indexOf('async function loadCounts'),adapter.indexOf('async function reload'));
- assert.match(counts,/storageCategory\(\{ category: id, countOnly: true \}\)/);
+ assert.match(counts,/storageCategory\(\{\s*category: id,\s*countOnly: true,?\s*\}\)/);
  const v=await fresh();await v.add('DCIM/Camera','one.jpg','x');await v.add('DCIM/Camera','two.jpg','y');
  assert.deepEqual(await v.run('storageCategory',{category:'images',countOnly:true}),{status:'ready',count:2});
  assert.equal((await v.run('storageCategory',{category:'images'})).entries.length,2);
