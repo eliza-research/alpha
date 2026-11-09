@@ -93,11 +93,10 @@ role assignment or OTA was observed.
 
 ### 3. Emulator development host
 
-- **Implemented:** the separate emulator development host was retired in PR #845. Emulator chat
-  uses the packaged resident, and browser Cloud QA uses the pinned resident through `npm run dev:cloud`.
-  See [local agent development](../local-agent-development.md) for both paths.
-- **Evidence:** keep production bundle verification and live-provider acceptance separate from
-  synthetic development tests.
+The owner retired the separate emulator host, its diagnostic commands and its
+development-only action transport. Emulator development now uses the upstream
+resident agent. Flag-gated fixtures remain available for synthetic checks, and live
+provider checks still require separate evidence.
 
 ### 4. Default role holders on the AOSP image (dialer, SMS)
 
@@ -178,7 +177,7 @@ role assignment or OTA was observed.
 
 ## Remaining human steps
 
-1. Reply on #680 for each open item with the option letter, or confirm the default. For item 1, also
+1. Reply on #680 for each item with the option letter, or confirm the default. For item 1, also
    say whether a Doze delay while the agent runs should still run (option B).
 2. An agent then records the dated P- entries and opens the matching PRs from the outlines above.
    Upstream PRs go to elizaOS/eliza first. Alpha follows by moving the pin.
