@@ -1,6 +1,7 @@
 import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import {openCloudPlanFromSettings} from './helpers/cloud-plan-settings';
-import {seedCompletedAccessSetup} from './flag-off-android';
+import {fenceNetwork,seedCompletedAccessSetup} from './flag-off-android';
+import {observeCloudNotices} from './helpers/cloud-connection-notices';
 import {test,expect,type Page} from '@playwright/test';
 import {installResidentAgentPlugin} from './helpers/resident-agent-plugin';
 import {createServer,type ViteDevServer} from 'vite';
@@ -132,7 +133,7 @@ async function boot(page:Page,initial:Fixture&{tokens?:Record<string,string>;key
    throw Error('Unexpected Cloud route '+path);
   }};
  },initial);
- await page.goto(origin+(initial.fullApp?'/':'/subscription-composition'));
+ await page.goto(origin+(initial.fullApp?'/':'/subscription-composition'),{waitUntil:'commit'});
  if(initial.fullApp)await page.evaluate(async()=>{
   const w=window as any;w.planController=(await import('/src/runtime/connection-ui.tsx')).connectionController;
   w.planFlags={native:(await import('/src/native.ts')).isAndroid?'android':'web',mocks:(await import('/src/build-flags.ts')).testMocksEnabled};
@@ -784,4 +785,35 @@ test.describe('explicit membership code entry',()=>{
   const input=sheet(page).getByRole('textbox',{name:'Membership code',exact:true});await expect(input).toBeFocused();await input.fill('SYNTHETIC-OLD-ACCOUNT');
   await sheet(page).getByRole('button',{name:'Sign out',exact:true}).click();await expect(input).toHaveCount(0);await expect.poll(()=>page.evaluate(()=>(window as any).planController.getSnapshot().membershipCodeEntry===true)).toBe(false);await noEffects(page);
  });
+});
+
+test('simultaneous plan and expiry notices keep their own actions after Settings', async ({page}) => {
+  test.setTimeout(360_000);
+  const foreign = await fenceNetwork(page);
+  await boot(page, {...await entitlements(), plan:'none', expiresAt:Date.now()+5*24*3600_000,
+    holdProvider:false, fullApp:true});
+  const plan = page.getByRole('region', {name:'Eliza Cloud plan notice', exact:true});
+  const expiry = page.getByRole('region', {name:'Eliza Cloud sign-in notice', exact:true});
+  await expect(plan).toBeVisible({timeout:90_000});
+  await expect(expiry).toBeVisible();
+  const together = await observeCloudNotices(page);
+  await page.getByRole('button', {name:'Settings', exact:true}).click();
+  await expect(page.locator('[data-settings-page]:visible')).toHaveCount(1);
+  const settings = await observeCloudNotices(page);
+  expect(settings.notices.map(({kind,visible}) => [kind,visible])).toEqual([['plan',false],['sign-in',false]]);
+  await page.evaluate(() => window.dispatchEvent(new Event('alpha-back', {cancelable:true})));
+  await expect(plan).toBeVisible();
+  await expect(expiry).toBeVisible();
+  const returned = await observeCloudNotices(page);
+  await expiry.getByRole('button', {name:'Dismiss sign-in notice', exact:true}).click();
+  await expect(expiry).toHaveCount(0);
+  await expect(plan).toBeVisible();
+  expect((await observeCloudNotices(page)).notices.map(({kind}) => kind)).toEqual(['plan']);
+  expect(foreign).toEqual([]);
+  expect((await calls(page)).filter(call => call.method==='openExternal' || call.method==='startEmail' ||
+    call.path?.endsWith('/redeem'))).toEqual([]);
+  for (const state of [together,returned]) {
+    expect(state.notices.map(({kind}) => kind)).toEqual(['plan','sign-in']);
+    expect(state.notices.flatMap(({actions}) => actions.filter(({owned}) => !owned))).toEqual([]);
+  }
 });
