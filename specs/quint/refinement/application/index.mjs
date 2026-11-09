@@ -34,6 +34,8 @@ import {checkGoogleCalendarLinkPublication} from './google-calendar-link-publica
 import {checkGoogleCalendarAccessChoice} from './google-calendar-access-choice.mjs';
 import {checkCalendarPreservationConfirmation} from './calendar-preservation-confirmation.mjs';
 import {checkCanonicalCalendarEditorClose} from './canonical-calendar-editor-close.mjs';
+import {checkCanonicalCalendarDraftHandoff} from './canonical-calendar-draft-handoff.mjs';
+import {checkCameraPreviewRetirement} from './camera-preview-retirement.mjs';
 import {checkFilesBrowserController} from './files-browser-coordinator.mjs';
 import {checkFilesFilter} from './files-filter.mjs';
 import {checkGoogleConsentAdmission} from './google-consent-admission.mjs';
@@ -49,6 +51,8 @@ import {checkBrowserHostedResultNotice} from './browser-hosted-result-notice.mjs
 import {checkHostedNoticeQuestion} from './hosted-notice-question.mjs';
 import {checkRendererHostedInbox} from './renderer-hosted-inbox.mjs';
 import {checkHostedBackgroundAdmission} from './hosted-background-admission.mjs';
+import {checkHostedDigestRefresh} from './hosted-digest-refresh.mjs';
+import {checkHostedDigestMutation} from './hosted-digest-mutation.mjs';
 import {checkRendererDigestQueue} from './renderer-digest-queue.mjs';
 import {checkRetainedHomeBrief} from './retained-home-brief.mjs';
 import {checkHomeFailureNotice} from './home-failure-notice.mjs';
@@ -71,10 +75,12 @@ const adapters = [application, shellNavigation, startupPermissions, assistantCon
   permissionWalkthrough, developmentDevice, permanentVoiceDeletion, developmentHost, filesTree,
   calendarPresentation, draftDispatch, notificationCollection, callbackLanding,
   checkBrowserHostedResultNotice, checkHostedNoticeQuestion, checkRendererHostedInbox, checkHostedBackgroundAdmission,
-  checkRendererDigestQueue,
+  checkRendererDigestQueue, checkHostedDigestRefresh, checkHostedDigestMutation,
   checkRetainedHomeBrief,
   checkCalendarPreservationConfirmation,
   checkCanonicalCalendarEditorClose,
+  checkCanonicalCalendarDraftHandoff,
+  checkCameraPreviewRetirement,
   runStartupPermissionsCoordinatorRefinement, checkVaultCoordinator, checkNotesCoordinator, listFocus, checkRecoveryUI, checkShellCoordinator, checkNativeViewSubscription, filesPreview, runPermissionChoicesRefinement, checkCanonicalNotesController, checkCanonicalNotesDraft,
   checkCanonicalNotesFeedback, checkCanonicalNotesMutation, checkCanonicalNotesView, checkCanonicalCalendarDraft, checkAgentCalendarRefresh, checkAgentCalendarMutation, checkAgentCalendarEventReturn, checkMapsEventReturn, checkAgentCalendarSyncControl, checkGoogleCalendarLinkFlow, checkGoogleCalendarDisconnect, checkGoogleCalendarLinkPublication, checkGoogleCalendarAccessChoice, checkFilesBrowserController, checkFilesFilter, checkPhotosWindow, checkPhotosTrash, checkGoogleConsentAdmission, checkGoogleAccessPublication, checkBrowserDeletionPoll, checkBrowserJournalRetention, checkBrowserReminderOrphan, checkBrowserOwnerReminderRead, checkBrowserOwnerReminderAction, checkHomeFailureNotice, checkHomeGesture, checkDrawerInteraction, checkLauncherOwnership, checkLauncherObserver, checkLauncherFavorites, checkAccessibleToastLifetime, checkModalToastForwarding, checkScreenFocusOwnership, checkDockClearanceOwnership, checkMountedUpdateAdmission, checkStartupUpdateAdmission, checkCanonicalNotificationTapAdmission, checkResidentLiveness];
 

@@ -87,6 +87,8 @@ test('expired and rejected restored sessions still require authentication; valid
 // Execute the actual controller preflights. Stop send immediately after its
 // normal conversation binding, before preferences, transport or model work.
 const preflightSource = [
+  section('function conversationKey(', '\n'),
+  ...source.match(/^export const STOPPED_(?:REPLY|CANCELLED|UNCHECKED)_NOTICE = .*$/gm).map(line => line.replace(/^export /, '')),
   section('function residentSignInRequired()', '\n'),
   section('function fundingNeeded()', '\n'),
   section('function releaseOperation(', '/** Start (or restart) the resident.'),
@@ -116,10 +118,10 @@ function preflightFixture(balance, options = {}) {
     NO_AGENT_SEND: 'No selected session', NO_AGENT_VOICE: 'No selected session',
     noSessionError: () => Error('No selected session'),
     phoneContextMessage: (text, context) => ({text, context}),
-    boundNavigation: () => undefined, cancelStoppedReply: () => {},
+    boundNavigation: () => undefined, cancelStoppedReply: () => {}, conversationMemory: new Map(),
     clearPersonalSetup: () => {},
-    ensureSelectedConversation: async (_selected, _session, _signal, current) => {
-      current(); bindings++; return 'conversation-1';
+    ensureSelectedConversation: async (_selected, session, _signal, current) => {
+      current(); bindings++; f.context.conversationMemory.set(f.context.conversationKey(session), 'conversation-1'); return 'conversation-1';
     },
   });
   f.context.state = {...f.snapshot(), open: false, membershipBalance: balance,

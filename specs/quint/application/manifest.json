@@ -2077,6 +2077,52 @@
     ]
   },
   {
+    "path": "specs/quint/application/HostedDigestMutation.qnt",
+    "module": "HostedDigestMutation",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "retiredJournalClearDoesNotRefreshReplacementTest",
+      "oldCleanupKeepsNewSaveBusyTest",
+      "lateRejectionCannotPublishToReplacementTest",
+      "unconfirmedRemoteKeepsExactRetryTest",
+      "discardClearsOnlyAnUnsentReviewTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/hosted-digest-ui.tsx",
+      "apps/app/src/runtime/hosted-digests.ts",
+      ".eliza/client-features/plugins/plugin-workflow/src/client/hosted-digests.ts"
+    ],
+    "abstractions": [
+      "Actual mounted digest journal review, dispatch, cleanup and publication across two exact session bindings, including a legacy record without a phase.",
+      "One held mutation or discard per binding and exact synthetic slot storage. Initial history and reads form one setup step. Native consent, renewal rebind and real provider settlement are separate."
+    ]
+  },
+  {
+    "path": "specs/quint/application/HostedDigestRefresh.qnt",
+    "module": "HostedDigestRefresh",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "retiredPromotionCannotLabelReplacementTest",
+      "retiredPollStatusCannotDispatchReplacementReadTest",
+      "sameSessionPromotionKeepsFullFollowUpTest",
+      "visibilityRetiresHeldResultAndResumesTest",
+      "lateHistoryCannotPublishForReplacementTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/hosted-digest-ui.tsx",
+      "apps/app/src/runtime/hosted-digests.ts",
+      ".eliza/client-features/plugins/plugin-workflow/src/client/hosted-digests.ts"
+    ],
+    "abstractions": [
+      "Mounted browser digest binding, history, visibility, exact pending poll and refresh ownership, single-flight promotion and retained Home attribution.",
+      "Two distinct sessions, bounded result replies and a successful capability port. The model holds status and inbox replies separately. Android setup and digest mutations are separate."
+    ]
+  },
+  {
     "path": "specs/quint/application/HostedBackgroundAdmission.qnt",
     "module": "HostedBackgroundAdmission",
     "init": "init",
@@ -2228,6 +2274,67 @@
     "abstractions": [
       "Mounted Calendar picker and editor Back, exact detail and draft identity, deliberate discard and owner retirement, and Settings scope after discard.",
       "Two owners, two synthetic service event targets and four form identities. Actual IndexedDB over a closed Calendar record transport. Provider saves and other draft destinations are separate."
+    ]
+  },
+  {
+    "path": "specs/quint/application/CanonicalCalendarDraftHandoff.qnt",
+    "module": "CanonicalCalendarDraftHandoff",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "noteAndReminderUseSeparateDraftAdmissionTest",
+      "scanRefusalKeepsReviewAndRetainedDraftTest",
+      "deliberateClearAdmitsFreshScanTest",
+      "pendingConsumeDoesNotAdmitNoteTest",
+      "openingReplacementSlotDoesNotAdmitIncomingDraftTest",
+      "unavailableCanonicalSourceRetainsOriginTest"
+    ],
+    "invariants": [
+      "OriginReviewIsScoped",
+      "CanonicalEditorUsesSlot",
+      "LoadingSlotHasNoOldDraft"
+    ],
+    "sources": [
+      "apps/app/src/prototype/agent-calendar-adapter.ts",
+      "apps/app/src/prototype/canonical-calendar-drafts.ts",
+      "apps/app/src/prototype/canonical-notes-ui.ts",
+      "apps/app/src/prototype/camera-adapter.ts",
+      "apps/app/src/prototype/scan-review.ts",
+      "apps/app/src/prototype/scan-event-review.ts",
+      "apps/app/src/runtime/assistant-draft-store.ts"
+    ],
+    "abstractions": [
+      "Exact mounted Note and scanned-event draft admission to the canonical Calendar editor, retaining earlier drafts and separate reminder authority.",
+      "Two owners and selected slot open, retain, consume and ready phases. Chromium IndexedDB, closed Calendar transport, synthetic image and camera port. Native capture and provider writes remain separate."
+    ]
+  },
+  {
+    "path": "specs/quint/application/CameraPreviewRetirement.qnt",
+    "module": "CameraPreviewRetirement",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "pendingLeaveBeforeHomeFencesPreviewTest",
+      "readyLeaveReleasesItsExactTrackTest",
+      "retiredStreamCannotReplaceTheFreshPreviewTest"
+    ],
+    "invariants": [
+      "RetirementStopsAdmission",
+      "CurrentRequestOwnsPreview",
+      "VisibleTrackMatchesRequest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/camera-adapter.ts",
+      "apps/app/src/prototype/browser-camera.ts",
+      "apps/app/src/prototype/model.js",
+      "apps/app/src/prototype/template.html",
+      ".eliza/client-features/plugins/plugin-native-camera/src/session.ts"
+    ],
+    "abstractions": [
+      "Mounted pre-commit Camera leave and committed Home, preview-release latch, exact pending request owner, retired stream disposal and deliberate fresh reentry.",
+      "Two browser visits and controlled canvas MediaStreams. Native permissions, conversation and media writes are separate."
     ]
   }
 ]

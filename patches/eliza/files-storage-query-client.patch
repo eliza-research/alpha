@@ -1,6 +1,18 @@
 --- a/plugins/plugin-files/src/browser/storage-volume.ts
 +++ b/plugins/plugin-files/src/browser/storage-volume.ts
-@@ -205,2 +205,23 @@
+@@ -76,6 +76,8 @@
+   size: number;
+ };
+ 
++const trashFlights = new Map<string, Promise<void>>();
++
+ class Missing extends Error {}
+ class Exists extends Error {}
+ 
+@@ -202,8 +204,29 @@
+         .sort((a, b) => b.modified - a.modified),
+     };
+   }
 -  async query(): Promise<{ entries: StorageEntry[] }> {
 -    return { entries: await this.walk() };
 +  /** Visible folders under the requested path, bounded like the file walk. */
@@ -26,13 +38,92 @@
 +    return { entries: input.folders === true
 +      ? await this.walkFolders(typeof input.folder === "string" ? input.folder : "")
 +      : await this.walk() };
-@@ -699,2 +720,4 @@
+   }
+ 
+   async createFolder(
+@@ -413,6 +436,21 @@
+     return { outcomes };
+   }
+ 
++  // A listing may prune the journal, so it must hold the same custody as writers.
++  private withTrashLock<T>(work: () => Promise<T>): Promise<T> {
++    const key = "browser-files-trash:" + this.namespace.trashKey;
++    const locks = globalThis.navigator?.locks;
++    if (locks?.request) return locks.request(key, { mode: "exclusive" }, work);
++
++    const previous = trashFlights.get(key) ?? Promise.resolve();
++    const attempt = previous.then(work);
++    const tail = attempt.then(() => {}, () => {});
++    trashFlights.set(key, tail);
++    return attempt.finally(() => {
++      if (trashFlights.get(key) === tail) trashFlights.delete(key);
++    });
++  }
++
+   private records(): Record<string, TrashRecord> {
+     try {
+       const value = JSON.parse(
+@@ -441,7 +479,10 @@
+     }
+   }
+   /** The origin is recorded before anything moves, so an interrupted trash never loses the way back. */
+-  async trash(
++  trash(paths: unknown, reviewed?: unknown) {
++    return this.withTrashLock(() => this.trashRows(paths, reviewed));
++  }
++  private async trashRows(
+     paths: unknown,
+     reviewed?: unknown,
+   ): Promise<{ outcomes: { path: string; status: string; to?: string }[] }> {
+@@ -498,7 +539,10 @@
+     return { outcomes };
+   }
+   /** Trash, newest first; items past the 30-day retention are deleted here. */
+-  async trashList(): Promise<{ items: TrashEntry[] }> {
++  trashList() {
++    return this.withTrashLock(() => this.listTrashRows());
++  }
++  private async listTrashRows(): Promise<{ items: TrashEntry[] }> {
+     const trashId = await this.existingTrashId(),
+       rows = trashId ? await this.children(trashId) : [],
+       records = this.records(),
+@@ -519,7 +563,10 @@
+     this.save(records);
+     return { items: items.sort((a, b) => b.deletedAt - a.deletedAt) };
+   }
+-  async restore(
++  restore(ids: unknown) {
++    return this.withTrashLock(() => this.restoreRows(ids));
++  }
++  private async restoreRows(
+     ids: unknown,
+   ): Promise<{ outcomes: { path: string; status: string; to?: string }[] }> {
+     if (!Array.isArray(ids) || !ids.length || ids.length > BATCH_MAX)
+@@ -584,7 +631,10 @@
+       });
+   }
+   /** Permanent deletion, only after the owner confirmed it. */
+-  async emptyTrash(
++  emptyTrash(ids: unknown, confirmed: boolean) {
++    return this.withTrashLock(() => this.emptyTrashRows(ids, confirmed));
++  }
++  private async emptyTrashRows(
+     ids: unknown,
+     confirmed: boolean,
+   ): Promise<Status & { count?: number }> {
+@@ -696,10 +746,12 @@
+           return { status: "ready", access: "granted" };
+         case "storageList":
+           return { status: "ready", ...(await this.list(input.path ?? "")) };
 -        case "storageCategory":
 -          return { status: "ready", ...(await this.category(input.category)) };
 +        case "storageCategory": {
 +          const { entries } = await this.category(input.category);
 +          return { status: "ready", ...(input.countOnly === true ? { count: entries.length } : { entries }) };
 +        }
-@@ -702 +725 @@
+         case "storageQuery":
 -          return { status: "ready", ...(await this.query()) };
 +          return { status: "ready", ...(await this.query(input)) };
+         case "storageReviewedIdentities":
+           return {
+             status: "ready",

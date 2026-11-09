@@ -39,3 +39,18 @@ test('provider capability leaves native navigation owner-fence failures observab
  assert.throws(()=>agent.answer('subscribeViewEvents',{subscriptionId:'s',ownerId:'other-owner',clientId:'client'}),/Invalid view event subscription/);
  assert.deepEqual(agent.state.unexpected,['Agent.subscribeViewEvents']);
 });
+
+// The real plugin exposes this native settings write independently of provider readiness.
+test('fixture Google switches retain only explicit booleans and grant no provider access',()=>{
+ const agent=make();
+ assert.equal(agent.methods(['start']).filter(row=>row.name==='setGoogleAgentAccess').length,1);
+ assert.equal(agent.methods(['setGoogleAgentAccess']).filter(row=>row.name==='setGoogleAgentAccess').length,1);
+ assert.deepEqual(agent.state.googleAgentAccess,{gmailChanges:false,calendarEdits:false});
+ assert.deepEqual(agent.answer('setGoogleAgentAccess',{gmailChanges:true,calendarEdits:false}),{});
+ assert.deepEqual(agent.state.googleAgentAccess,{gmailChanges:true,calendarEdits:false});
+ for(const input of [{gmailChanges:true},{gmailChanges:'true',calendarEdits:true},null])
+  assert.throws(()=>agent.answer('setGoogleAgentAccess',input),/Invalid Google access/);
+ assert.deepEqual(agent.state.googleAgentAccess,{gmailChanges:true,calendarEdits:false});
+ assert.equal(agent.answer('providerStatus',{}),undefined);
+ assert.deepEqual(agent.state.unexpected,[]);
+});

@@ -2002,7 +2002,7 @@
 
 
 <sc-if value="{{is.maps}}">
-<div data-alpha-maps-root ref="{{maps.rootRef}}" style="display: flex; flex-direction: column; height: 100%; position: relative; overflow: hidden">
+<div data-alpha-maps-root data-alpha-maps-guidance="{{maps.isNav}}" ref="{{maps.rootRef}}" style="display: flex; flex-direction: column; height: 100%; position: relative; overflow: hidden">
   
   <!-- Reading order (TalkBack, keyboard; AP-15): what is drawn over the top of the map is read first,
        then the map, its credits and controls, then the sheets. Stacking comes from each layer's z-index. -->
@@ -2218,7 +2218,7 @@
 
   
   <sc-if value="{{maps.isNav}}">
-    <div class="enter" style="position: absolute; left: 12px; right: 12px; bottom: 26px; border-radius: 32px; background: var(--alpha-gray-15); color: var(--alpha-white); padding: 10px; display: flex; align-items: center; gap: 12px; z-index: 5">
+    <div class="enter" data-alpha-maps-guidance-controls style="position: absolute; left: 12px; right: 12px; bottom: var(--alpha-maps-guidance-bottom,26px); border-radius: 32px; background: var(--alpha-gray-15); color: var(--alpha-white); padding: 10px; display: flex; align-items: center; gap: 12px; z-index: 5">
       <button aria-label="End navigation" onClick="{{maps.dr.nav.end}}" style="width: 56px; height: 56px; border-radius: 28px; background: var(--alpha-gray-26); color: var(--alpha-white); display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.x}}"></path></svg></button>
       <div style="flex-grow: 1; min-width: 0; text-align: center">
         <div class="serif" style="font-size: 30px; line-height: 1.05">{{maps.dr.nav.left}}</div>
@@ -2322,6 +2322,7 @@
       <sc-if value="{{notes.ed.menuOpen}}"><div class="notes-menu" role="dialog" aria-label="Note actions">
         <sc-if value="{{notes.ed.toCal}}"><button onClick="{{notes.ed.toCal}}"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="{{ic.cal}}"></path></svg>Review reminder draft</button></sc-if>
         <sc-if value="{{notes.ed.toEvent}}"><button onClick="{{notes.ed.toEvent}}"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="{{ic.cal}}"></path></svg>Review calendar event draft</button></sc-if>
+        <button data-agent-id="notes-share" aria-label="Share note" onClick="{{notes.ed.share}}"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="{{ic.share}}"></path></svg>Share</button>
         <button onClick="{{notes.ed.pin}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.notesPin}}"></path></svg>{{notes.ed.pinLabel}}</button>
         <hr>
         <button onClick="{{notes.ed.del}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.trash}}"></path></svg>Delete</button>
@@ -2409,6 +2410,7 @@
       <sc-if value="{{notes.vo.menuOpen}}"><div class="notes-menu" role="dialog" aria-label="Note actions">
         <sc-if value="{{notes.vo.toCal}}"><button onClick="{{notes.vo.toCal}}"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="{{ic.cal}}"></path></svg>Review reminder draft</button></sc-if>
         <sc-if value="{{notes.vo.toEvent}}"><button onClick="{{notes.vo.toEvent}}"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="{{ic.cal}}"></path></svg>Review calendar event draft</button></sc-if>
+        <button data-agent-id="notes-share" aria-label="Share note" onClick="{{notes.vo.share}}"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="{{ic.share}}"></path></svg>Share</button>
         <button onClick="{{notes.vo.pin}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.notesPin}}"></path></svg>{{notes.vo.pinLabel}}</button>
         <hr>
         <button onClick="{{notes.vo.del}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.trash}}"></path></svg>Delete</button>
@@ -2437,6 +2439,7 @@
       <sc-if value="{{notes.lk.menuShown}}"><div ref="{{notes.noteMenu}}" data-alpha-popup style="display: contents">
       <sc-if value="{{notes.lk.menuShown}}"><button aria-hidden="true" tabindex="-1" onClick="{{notes.lk.closeMenu}}" style="position: absolute; inset: 0; z-index: 11; background: transparent"></button></sc-if>
       <sc-if value="{{notes.lk.menuOpen}}"><div class="notes-menu" role="dialog" aria-label="Note actions">
+        <button data-agent-id="notes-share" aria-label="Share note" onClick="{{notes.lk.share}}"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="{{ic.share}}"></path></svg>Share</button>
         <button onClick="{{notes.lk.pin}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.notesPin}}"></path></svg>{{notes.lk.pinLabel}}</button>
         <hr>
         <button onClick="{{notes.lk.del}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.trash}}"></path></svg>Delete</button>

@@ -18,7 +18,7 @@ async function cloudPlan(page: Page) {
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   await button(page, 'Settings').click();
   await openCloudPlanFromSettings(page);
-  return page.getByRole('region',{name:'Settings',exact:true});
+  return page.locator('[data-settings-page]:not([inert])').last();
 }
 
 test('signing out of account A and into account B stops the resident before A is revoked and uses only B afterwards', async ({ page }) => {

@@ -69,6 +69,15 @@ preparing the pinned SDK and runs `npm run verify` with `ALPHA_REQUIRE_PREPARED_
 so the prepared-SDK tests fail there instead of skipping. The Android foundation's
 manual verification lane prepares the same way.
 
+The Repository verification job has a bounded 60-minute limit. The November 8
+local baseline needed 8 minutes 36 seconds for clean SDK preparation and
+17 minutes 51 seconds for the 184-model Quint gate, before the Node source-contract
+suites and production builds. Those phases alone exceeded the former 25-minute
+job budget. The [hosted verification job](https://github.com/eliza-research/alphaphone/actions/runs/42537018458/job/128903664417)
+was canceled after 25 minutes 19 seconds while `npm run verify` was still running,
+near that configured ceiling. Browser shard and production-browser limits and
+selection stay separate.
+
 Round 10 added no job, step or network access to any run. Gradle dependency verification
 (`android/gradle/verification-metadata.xml`) is enforced by the Gradle build the Android
 foundation job already runs; its offline check and the SBOM tests are part of `npm test`;

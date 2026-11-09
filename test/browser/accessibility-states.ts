@@ -177,7 +177,7 @@ export const MOCK_STATES: State[] = [
   mock('photos', ['Select photos']),
   // Earlier folder-creation controls were retired; the live retained-record state above covers recovery.
   mock('notes', ['Open The case for on-device agents'], 'notes-link'),
-  mock('notes:editor', ['Share note']),
+  mock('notes:editor', ['More', 'Share note']),
   {name:'live Files sort',open:async(page,theme)=>{await openFilesStorage(page,theme);await press(page,['Sort files']);await settle(page);}},
   mock('files:preview', ['Rename']),
   mock('files:preview', ['Move file']),
@@ -344,7 +344,9 @@ export const FIXTURE_STATES: State[] = [
 const launcherBridge = () => {
   localStorage.setItem('alpha.connection.selection.v1', JSON.stringify({ kind: 'offline' }));
   const w = window as any; w.androidBridge = {};
+  w.launcherGoogleAgentAccess = {gmailChanges:false,calendarEdits:false};
   const plugins: Record<string, string[]> = {
+    Agent: ['setGoogleAgentAccess'],
     ElizaSystem: ['listLauncherApps', 'launchApp', 'resolveDefaultApp', 'openDefaultApp', 'getBuildInfo', 'getLocaleInfo', 'getLaunchInfo'],
       DeviceApps: ['platformCapabilities'],
     DailyApps: ['surfaceInfo', 'requestPermissions', 'closeAssistant'],
@@ -352,7 +354,12 @@ const launcherBridge = () => {
     AlphaVoiceCloud: ['checkPermissions', 'requestPermissions'],
     AlphaDevice: ['openSettings'],
   };
-  const answer = (plugin: string, method: string) => {
+  const answer = (plugin: string, method: string, input: any) => {
+    if (plugin === 'Agent' && method === 'setGoogleAgentAccess') {
+      if (typeof input?.gmailChanges !== 'boolean' || typeof input?.calendarEdits !== 'boolean') throw Error('Invalid Google access.');
+      w.launcherGoogleAgentAccess = {gmailChanges:input.gmailChanges,calendarEdits:input.calendarEdits};
+      return {};
+    }
     if (plugin === 'ElizaSystem') {
       if (method === 'listLauncherApps') return { apps: [{ packageName: 'org.example.clock', label: 'Synthetic clock' }, { packageName: 'org.example.weather', label: 'Synthetic weather' }] };
       if (method === 'resolveDefaultApp') return { role: 'dial', available: false };
@@ -371,7 +378,7 @@ const launcherBridge = () => {
     Plugins: {},
     PluginHeaders: Object.entries(plugins).map(([name, methods]) => ({ name, methods: [...methods, 'addListener', 'removeListener'].map(m => ({ name: m, rtype: m === 'addListener' ? 'callback' : 'promise' })) })),
     nativeCallback: () => 'stub-callback',
-    nativePromise: async (plugin: string, method: string) => answer(plugin, method),
+    nativePromise: async (plugin: string, method: string, input: any) => answer(plugin, method, input),
   };
   for (const name of Object.keys(plugins)) cap.Plugins[name] = { addListener: () => ({ remove: async () => {} }) };
 };

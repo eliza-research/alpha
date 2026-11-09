@@ -109,6 +109,11 @@ for (const [kind, text] of Object.entries(KINDS)) for (const frame of ['done', '
     }
     // Exactly one stream request and no automatic resend of any kind.
     await page.waitForTimeout(1500);
+    if(kind==='insufficient_credits'){
+      // A later plan refresh must not turn this known terminal refusal into an unknown outcome.
+      await expect(conversation(page).getByText(text,{exact:true})).toHaveCount(1);
+      await expect(page.getByText('This reply may still finish. It will appear here if it does.',{exact:true})).toHaveCount(0);
+    }
     expect(await harness(page, f => f.streams)).toBe(1);
     expect(await stub(page, s => s.recoveries)).toEqual([]);
     expect(await harness(page, f => f.unexpected)).toEqual([]);

@@ -165,7 +165,18 @@ public final class AlphaDevicePlugin extends Plugin {
   diagnostics(call,()->{
    try{
     try{ai.eliza.plugins.system.crash.CrashLog.collectExitReasons(getContext());}catch(Exception unavailable){/* Exit history is best effort. */}
-    JSObject out=new JSObject();out.put("entries",ai.eliza.plugins.system.crash.CrashLog.read(getContext()).getJSONArray("entries"));out.put("exitHistory",Build.VERSION.SDK_INT>=Build.VERSION_CODES.R);call.resolve(out);
+    org.json.JSONArray stored=ai.eliza.plugins.system.crash.CrashLog.read(getContext()).getJSONArray("entries");
+    org.json.JSONArray entries=new org.json.JSONArray();
+    for(int i=0;i<stored.length();i++){
+     org.json.JSONObject row=stored.optJSONObject(i);
+     if(row==null||!(row.opt("at") instanceof Number timestamp))continue;
+     // Keep the renderer's safe integer contract before the redactor reads a long.
+     double at=timestamp.doubleValue();
+     if(!Double.isFinite(at)||at!=Math.rint(at)||Math.abs(at)>9_007_199_254_740_991d)continue;
+     org.json.JSONObject safe=ai.eliza.plugins.system.crash.CrashLog.redact(row);
+     if(safe!=null)entries.put(safe);
+    }
+    JSObject out=new JSObject();out.put("entries",entries);out.put("exitHistory",Build.VERSION.SDK_INT>=Build.VERSION_CODES.R);call.resolve(out);
    }catch(Exception error){call.reject("Problem log is unavailable");}
   });
  }

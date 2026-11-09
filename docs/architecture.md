@@ -551,7 +551,8 @@ Trash, review and reload) bound by `canonical-notes-ui.ts`; the device-local Old
 keeps its own store, Trash and recorder. The shared `NotesWorkspace` component is not rendered.
 Both sources share the view refresh layout (design/view-refresh-2026-11/PLAN.md section 3): a header
 with Record (`notes-record`) and New note only, a folder chip row (All, folders, +, and Recently deleted
-while it has items), a one-column list with a Pinned section, and Back · Checklist · Share · ⋯ on a note.
+while it has items), a one-column list with a Pinned section, and Back · Checklist · More on a note. More includes Share, which opens the existing
+reviewed sharing panel for the selected note; choosing a destination remains explicit.
 Folders are one device slot (`notes-folders:v1:device`, `runtime/notes-folders.ts`); a note names its
 folder by `folderId` (agent notes in their format data), and a reference to a deleted folder reads as no
 folder. Record opens the unlimited Notes recorder (`prototype/note-recorder.ts` over

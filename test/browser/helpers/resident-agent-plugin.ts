@@ -9,6 +9,7 @@ import {installNativeNavigationFixture} from './native-navigation-protocol';
  * AlphaLocalAgentPlugin always exposes besides the spec's own request routing:
  * - optional, explicit read-only providerStatus capability for fixtures that start the resident;
  *   provider-specific fixtures keep their own responses unless they opt in;
+ * - setGoogleAgentAccess records the two explicit owner switches; it grants no account/provider access;
  * - Capacitor's Plugin base addListener/removeListener (native `callback` methods, so the
  *   fixture's Capacitor global must use the returned `nativeCallback`);
  * - subscribeViewEvents/unsubscribeViewEvents for the renderer's alphaViewEvent feed;
@@ -28,7 +29,7 @@ function defineResidentAgentPlugin() {
   // `unexpected` lets a spec collect contract violations in the list it already asserts empty.
   (window as any).createResidentAgentPlugin = (options: {owner: () => string; agentId: string; unexpected?: string[]; providerStatus?: {provider: 'elizacloud'|'cerebras'; configured: boolean; selected?: boolean; model?: string; voiceConfigured?: boolean}}) => {
     const listeners = new Map<string, {eventName: string; callback: (value: unknown) => void}>();
-    const state = {subscriptions: [] as string[], unsubscribed: [] as string[], unexpected: options.unexpected ?? [] as string[]};
+    const state = {googleAgentAccess: {gmailChanges: false, calendarEdits: false}, subscriptions: [] as string[], unsubscribed: [] as string[], unexpected: options.unexpected ?? [] as string[]};
     const protocol = (window as any).createNativeNavigationFixture(options.owner, options.agentId, state);
     let nextCallback = 0;
     return {
@@ -36,7 +37,7 @@ function defineResidentAgentPlugin() {
       /** Agent header: the spec's own promise methods plus the plugin's listener, view-event and provider-status methods. */
       methods(names: string[]) {
         return [
-          ...[...names, 'subscribeViewEvents', 'unsubscribeViewEvents', ...(options.providerStatus && !names.includes('providerStatus') ? ['providerStatus'] : [])].map(name => ({name, rtype: 'promise'})),
+          ...[...names, 'subscribeViewEvents', 'unsubscribeViewEvents', ...(!names.includes('setGoogleAgentAccess') ? ['setGoogleAgentAccess'] : []), ...(options.providerStatus && !names.includes('providerStatus') ? ['providerStatus'] : [])].map(name => ({name, rtype: 'promise'})),
           {name: 'addListener', rtype: 'callback'},
           {name: 'removeListener', rtype: 'callback'},
         ];
@@ -57,6 +58,11 @@ function defineResidentAgentPlugin() {
         // Explicit capability only: provider-setting specs without this option keep
         // their own provider response and malformed/refusal controls.
         if (method === 'providerStatus' && options.providerStatus) return {...options.providerStatus};
+        if (method === 'setGoogleAgentAccess') {
+          if (typeof input?.gmailChanges !== 'boolean' || typeof input?.calendarEdits !== 'boolean') throw Error('Invalid Google access.');
+          state.googleAgentAccess = {gmailChanges: input.gmailChanges, calendarEdits: input.calendarEdits};
+          return {};
+        }
         if (method === 'subscribeViewEvents') {
           if (typeof input?.subscriptionId !== 'string' || input?.ownerId !== options.owner() || typeof input?.clientId !== 'string') {
             state.unexpected.push('Agent.subscribeViewEvents');

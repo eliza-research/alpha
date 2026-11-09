@@ -93,7 +93,7 @@ test('live agent Notes in dark mode, the text editor and the checklist editor',a
  for(const name of ['Back to notes','More']){
   const control=page.getByRole('button',{name,exact:true});await expect(control).toBeVisible();
   const box=(await control.boundingBox())!;expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(412);
-  // The editor header: Back · Checklist · Share · ⋯ at 44px; the draft actions are full 48px rows.
+  // The editor header: Back · Checklist · More (Share is in More) at 44px; the draft actions are full 48px rows.
   expect(box.height).toBeGreaterThanOrEqual(name.startsWith('Review')?47.5:43.5);
  }
  // Reviewed handoffs are inside More; the note header keeps its compact controls.

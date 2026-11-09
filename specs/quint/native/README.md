@@ -649,3 +649,65 @@ tuple. The source replay rejects changed body, recipients, SIM or attachment
 bytes, including an ID retained by SMS. It also checks that a pruned exact
 review reports `expired` and a conflicting review reports `invalid`, with
 the newly staged PDU cleaned in both cases.
+
+### Android text scale and accessibility readback
+
+`NativeTextScaleLifecycle` follows the installed appearance preference and
+the zoom of two Activity-owned WebViews. The JVM executes `MainActivity`
+and the exact appearance members of `AlphaDevicePlugin` to observe creation,
+configuration changes, resume, queued writes and a retired Activity. A saved
+preference affects each peer view when that view next reapplies it. The
+source schedules also distinguish a reported commit failure before a visible
+change from one after a visible change that a process restart discards.
+
+`recommendedTimeout` performs a synchronous read of Android's current
+AccessibilityManager. The JVM checks argument bounds, API and service
+availability, and the exact text/controls mask. The method owns no native
+observer. `AccessibleToastLifetime` covers the separate renderer refresh
+and timer ownership. Installed font metrics, preference durability, and
+accessibility service behavior remain platform obligations.
+
+### Native renderer problem journal
+
+`NativeCrashJournal` follows the native bridge's append, read and clear
+requests through separate diagnostics executors and the shared no-backup
+log. An executor drains already accepted work after destruction and
+rejects a later call. The source replays cover the 50-row cap, age
+boundaries, corrupt and oversized input, class-only writes, and controlled
+failure reports before and after atomic replacement.
+
+Clear retains the greatest exit timestamp already collected. A history
+read held before clear can still import an unseen exit from that snapshot.
+A later platform addition is outside the captured read. The as-built
+replay in commit `600c3730a6` recorded a synthetic extra field in a raw
+native reply. The bridge now applies the existing row allowlist and checks
+that each original timestamp is a numeric JavaScript-safe integer. The
+source replay verifies that the extra remains on disk and that valid
+neighboring rows still appear in the reply.
+`RendererRecovery`, `CrashLoopBreaker` and `RendererFailureUI` cover
+separate recovery, listener and renderer boundaries.
+
+The JVM uses private synthetic records and a controlled Android history
+and atomic-file port. It exercises no device logs, sharing or external
+opening. Android process history and cross-process durability remain
+installed-platform obligations.
+
+### Native Android Settings handoff
+
+`NativeSettingsHandoff` follows the exact Alpha Device bridge through the
+UI queue and the shared Android page allowlist. It distinguishes explicit
+Settings home from a specific page and an allowlisted broader fallback.
+Both package variants exercise the ordered intent attempts, exact package
+scope, task flags, and resolved page and specificity. The neighboring
+password-provider Settings path uses a different fallback condition.
+The trusted picker falls back to Settings home only after a missing
+Activity handler.
+
+The synthetic absent-host case records a synchronous throw from targeted
+Settings and password setup, while the explicit system path rejects the
+call. Capacitor's installed Activity constructor binds a fixed context.
+The synthetic retirement replay observes the queued attempt reaching the
+Activity port. This establishes the app's dispatch behavior, while Android
+acceptance, task placement and Settings effects remain external.
+`PermissionChoices` and `StartupPermissions` cover renderer permission
+flow, and `RendererRecovery` covers the native renderer escape buttons.

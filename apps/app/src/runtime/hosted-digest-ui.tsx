@@ -119,7 +119,7 @@ export function HostedDigestPanel({composeQuestion,canComposeQuestion}:{composeQ
 		sessionId: string;
 		controller: AbortController;
 	} | null>(null);
-	const mutationBusy = useRef(false);
+	const mutationBusy = useRef<NonNullable<typeof binding.current> | null>(null);
 	const refreshFlight = useRef<{controller:AbortController;promise:Promise<void>;full:boolean} | null>(null);
 	const openRef = useRef(false);openRef.current = open;
 	const mounted = useRef(true);
@@ -180,8 +180,11 @@ export function HostedDigestPanel({composeQuestion,canComposeQuestion}:{composeQ
 	// resultsOnly: the closed-panel poll reads only the inbox (results and notices for Home and taps).
 	const refresh = (afterMutation=false,resultsOnly=false):Promise<void> => {
 		const b = binding.current;
-		if (!b || !canSyncResults() || (mutationBusy.current && !afterMutation)) return Promise.resolve();
-		if (refreshFlight.current) return refreshFlight.current.full||resultsOnly ? refreshFlight.current.promise : refreshFlight.current.promise.then(()=>refresh(afterMutation));
+		if (!b || !canSyncResults() || (mutationBusy.current === b && !afterMutation)) return Promise.resolve();
+		const flight = refreshFlight.current;
+		if (flight) return flight.full || resultsOnly ? flight.promise : flight.promise.then(() => {
+			if (binding.current === b) return refresh(afterMutation);
+		});
 		const controller = new AbortController();
 		const abort = () => controller.abort();
 		b.controller.signal.addEventListener("abort", abort, {once:true});
@@ -245,6 +248,7 @@ export function HostedDigestPanel({composeQuestion,canComposeQuestion}:{composeQ
 	useEffect(() => {
 		const selected = connectionController.getWorkflowClient();
 		binding.current?.controller.abort();
+        if (mutationBusy.current) {mutationBusy.current = null; setBusy(false);}
         questionClose.current?.();
 		binding.current = null;
 		setAvailable(false);setNativeReady(false);setBackgroundEnabled(false);setNoticeEnabled(false);setFeatures({nativeEvening:false,sourcePause:false,dossier:false});
@@ -314,7 +318,14 @@ export function HostedDigestPanel({composeQuestion,canComposeQuestion}:{composeQ
 		// Foreground freshness only; Android background delivery is a separate transport. While the panel
 		// is closed only the inbox is read, once a minute; open, resume, mutation and reconnect refresh fully.
 		let ticks = 0;
-		const poll = setInterval(() => { const full = openRef.current; if (!full && ++ticks % 4) return; if (canSyncResults()) void (async()=>{if(isAndroid||(await hostedResultNative.status()).backgroundEnabled)await refresh(false,!full);})().catch(()=>{}); }, 15000);
+		const poll = setInterval(() => {
+			const full = openRef.current;
+			if ((!full && ++ticks % 4) || !canSyncResults()) return;
+			void (async () => {
+				const enabled = isAndroid || (await hostedResultNative.status()).backgroundEnabled;
+				if (enabled && !disposed) await refresh(false, !full);
+			})().catch(() => {});
+		}, 15000);
 		window.addEventListener("online", resume);
         let deviceFrame=0;const deviceResume=()=>{refreshFlight.current?.controller.abort();cancelAnimationFrame(deviceFrame);deviceFrame=requestAnimationFrame(resume);};
         window.addEventListener("alpha:device-state",deviceResume);
@@ -415,8 +426,8 @@ export function HostedDigestPanel({composeQuestion,canComposeQuestion}:{composeQ
     }
 	async function submit(value: Pending) {
 		const b = binding.current;
-		if (!b || busy || mutationBusy.current) return;
-		setBusy(true); mutationBusy.current = true;
+		if (!b || busy || mutationBusy.current === b) return;
+		setBusy(true); mutationBusy.current = b;
 		try {
 			refreshFlight.current?.controller.abort();
 			await refreshFlight.current?.promise;
@@ -443,7 +454,8 @@ export function HostedDigestPanel({composeQuestion,canComposeQuestion}:{composeQ
               if(binding.current!==b)return;
               // A retry of a dispatched request may already have reached the agent: keep it for Retry.
               if(!digestPendingDiscardable(reviewed)){setMessage(`Not confirmed: ${(error as Error)?.message||'this phone did not confirm access.'} Retry.`);return;}
-              try{await b.storage.remove(b.pendingSlot);}catch{setMessage('Not sent. Its saved request could not be cleared. Try again.');return;}
+              try{await b.storage.remove(b.pendingSlot);}catch{if(binding.current===b)setMessage('Not sent. Its saved request could not be cleared. Try again.');return;}
+              if(binding.current!==b)return;
               setPending(null);setReview(null);setMessage(`Not sent: ${(error as Error)?.message||'this phone did not confirm access.'} Review it again.`);return;
             }
             const dispatched:Pending={...value,phase:'dispatched'};
@@ -451,34 +463,38 @@ export function HostedDigestPanel({composeQuestion,canComposeQuestion}:{composeQ
             if(binding.current!==b)return;
             setPending(dispatched);
             const saved=await b.client.mutate(value.path, body, b.controller.signal);
+            if(binding.current!==b)return;
             if(value.rebind?.length){
               // One confirmed renewal: the reviewed source above, then each loop moves to its exact new revision.
               const source=(saved as {source?:{id?:unknown;revision?:unknown}}).source;
-              if(binding.current!==b)return;if(!source||source.id!==body.id||typeof source.revision!=='string')throw Error('Renewed source receipt changed');
+              if(!source||source.id!==body.id||typeof source.revision!=='string')throw Error('Renewed source receipt changed');
               for(const loop of value.rebind){if(binding.current!==b)return;await b.client.mutate('loops',{spec:{...loop.spec,sourceId:source.id,sourceRevision:source.revision},mutationId:loop.mutationId,confirmed:true,id:loop.id,expectedVersionId:loop.expectedVersionId},b.controller.signal);}
-              if(value.renews&&isAndroid)clearRenewal(value.renews);
+              if(value.renews&&isAndroid&&binding.current===b)clearRenewal(value.renews);
             }
-            if(value.path==='sources/revoke'&&isAndroid&&typeof body.id==='string')clearRenewal(body.id);
+            if(value.path==='sources/revoke'&&isAndroid&&typeof body.id==='string'&&binding.current===b)clearRenewal(body.id);
             if(value.nativeConsent&&binding.current===b)setSourceId(value.nativeConsent.sourceId);
             if(value.renews&&binding.current===b)setRenewing(null);
             if(value.missedRunId&&binding.current===b){const id=value.missedRunId;setRanMissed(prior=>new Set([...prior,id]));}
 			if (binding.current !== b) return;
 			await b.storage.remove(b.pendingSlot);
+			if (binding.current !== b) return;
 			setPending(null);
 			setReview(null);
 			setText("");
 			await refresh(true);
 		} catch (error) {
       if(error instanceof HostedSourceRejected && binding.current===b){
-        try { await b.storage.remove(b.pendingSlot); } catch {setMessage("Source not saved. Retry to clear it.");return;}
+        try { await b.storage.remove(b.pendingSlot); } catch {if(binding.current===b)setMessage("Source not saved. Retry to clear it.");return;}
         if(binding.current!==b)return;
-        setPending(null);setReview(null);await refresh(true);setMessage(error.message);return;
+        setPending(null);setReview(null);await refresh(true);if(binding.current===b)setMessage(error.message);return;
       }
 			if (binding.current === b)
 				setMessage("Save not confirmed. Retry.");
 		} finally {
-			mutationBusy.current = false;
-			if (mounted.current) setBusy(false);
+			if (mutationBusy.current === b) {
+				mutationBusy.current = null;
+				if (mounted.current) setBusy(false);
+			}
 		}
 	}
 	// Only a request still in review never reached the agent; it is dropped without a server call.
