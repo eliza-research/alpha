@@ -1,3 +1,4 @@
+import {STARTUP_PERMISSIONS_REOPEN} from '../startup-permission-flow';
 import type {VoiceStartupStage} from '../runtime/diagnostics-export';
 import type {RealtimeCancellationCause} from '../../../../.eliza/client-features/packages/voice/src/realtime-voice-timing.ts';
 import { cloudServiceName } from '../runtime/cloud-protocol';
@@ -1088,7 +1089,12 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
   const noteRemoteTranscription = () => noteDestination?.route === 'cloud' || noteDestination?.route === 'agent' && !browserDevProfile;
   const noteRecorder = new NoteRecorderSession(createNoteRecorderDriver(), async () => null,
     () => { api?.setView('notes', { noteRecorderRevision: Date.now() }); },
-    { visible: () => !document.hidden, owner:captureNoteOwner, remoteTranscription: noteRemoteTranscription, automaticTranscription:false });
+    { visible: () => !document.hidden, owner:captureNoteOwner, remoteTranscription: noteRemoteTranscription, automaticTranscription:false,
+      onPermissionDenied: () => {
+        if (!document.hidden && document.documentElement.dataset.activeView === 'notes')
+          window.dispatchEvent(new CustomEvent(STARTUP_PERMISSIONS_REOPEN, {detail:{permission:'microphone'}}));
+      },
+    });
   const persistNoteRecording = async (saved: SavedNoteAudio, transcript: string, intent?: CanonicalNoteSaveIntent) => {
     const destination = noteDestination;
     if (!destination?.current() || destination.api.storageReady?.() === false) return false;

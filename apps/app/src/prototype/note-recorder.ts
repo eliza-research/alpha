@@ -72,7 +72,7 @@ export interface NoteLiveHandlers { speechStart(): void; interim(text: string): 
 /** Opens a live transcription stream for display, or null when none is available. */
 export type NoteLivePort = (handlers: NoteLiveHandlers) => Promise<{ close(): Promise<void> | void } | null>;
 type NoteRecorderOwner = { identity: string; folderId: string | null; current(): boolean };
-type NoteRecorderOptions = { pollMs?: number; visible?: () => boolean; live?: NoteLivePort; owner?: () => NoteRecorderOwner | undefined; remoteTranscription?: () => boolean; automaticTranscription?: boolean };
+type NoteRecorderOptions = { pollMs?: number; visible?: () => boolean; live?: NoteLivePort; owner?: () => NoteRecorderOwner | undefined; remoteTranscription?: () => boolean; automaticTranscription?: boolean; onPermissionDenied?: () => void };
 /** Text of one finished segment; '' for silence. Throws when the route fails. */
 export type SegmentTranscriber = (segmentId: string, signal: AbortSignal) => Promise<string>;
 /** `failed`: the microphone did not start; the recorder stays open with one error line. */
@@ -285,8 +285,11 @@ export class NoteRecorderSession {
     } catch (error) {
       if (epoch !== this.epoch) return;
       this.detach(); this.phase = 'failed';
-      this.error = noteRecorderError(startFailure(error));
-      this.changed(); throw error;
+      const reason = startFailure(error);
+      this.error = noteRecorderError(reason);
+      this.changed();
+      if (reason === 'permission' && this.owned(epoch)) this.options.onPermissionDenied?.();
+      throw error;
     }
   }
   /** Show an open recording left by an earlier process or page without starting one. */
@@ -415,8 +418,10 @@ export class NoteRecorderSession {
       if (epoch === this.epoch) this.apply(status);
     } catch (error) {
       if (epoch !== this.epoch) return;
-      this.error = noteRecorderError(startFailure(error));
+      const reason = startFailure(error);
+      this.error = noteRecorderError(reason);
       this.changed();
+      if (reason === 'permission' && this.owned(epoch)) this.options.onPermissionDenied?.();
     }
   }
   async togglePause() { if (this.phase === 'failed') await this.begin().catch(() => {}); else if (this.phase === 'recording') await this.pause(); else await this.resume(); }

@@ -1,7 +1,7 @@
 import {test,expect} from '@playwright/test';
 import {canonicalNotesFixture,openCanonicalNotes} from './helpers/canonical-notes';
 
-test('blocked Notes microphone opens the existing access panel and keeps the retry explicit',async({page})=>{
+test('blocked Notes microphone opens the existing access panel and keeps the retry explicit',async({page},info)=>{
  await page.addInitScript(()=>{
   localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));
   const fixture=(window as any).notePermissionFixture={state:'denied',requests:0};
@@ -15,6 +15,7 @@ test('blocked Notes microphone opens the existing access panel and keeps the ret
  await expect(access).toBeVisible();
  await expect(access.getByText('Off. Turn it on in your browser’s site settings.',{exact:true})).toBeVisible();
  await expect(access.getByRole('button',{name:'Check access',exact:true})).toBeEnabled();
+ await page.screenshot({path:info.outputPath('microphone-access.png')});
  expect(await page.evaluate(()=>(window as any).notePermissionFixture.requests)).toBe(1);
  expect(await page.evaluate(()=>(window as any).canonicalNotesFixture.state.notes.length)).toBe(0);
  // Model the browser reporting the user's changed setting; the app cannot grant it itself.

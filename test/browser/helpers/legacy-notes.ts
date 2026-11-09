@@ -14,14 +14,32 @@ export async function openLegacyNotes(page:Page,records:Record<string,unknown>[]
  await expect(page.getByText('Previous notes need a recovery review. Nothing was moved or changed.',{exact:true})).toHaveCount(0);
 }
 
+/** The product no longer exposes a second Notes button. Compatibility fixtures use
+ * the existing guarded source selector; they do not assign source state or migrate data. */
+const retainedSource = (page:Page,activate=false) => page.evaluate(activate=>{
+ const screen=document.querySelector('[data-screen]') as any;
+ if(!screen)return false;
+ const key=Object.keys(screen).find(name=>name.startsWith('__reactFiber$'));
+ if(!key)return false;
+ for(let fiber=screen[key];fiber;fiber=fiber.return){
+  const shell=fiber.stateNode;
+  if(typeof shell?.api!=='function'||typeof shell?.vget!=='function')continue;
+  const choice=shell.api('notes').notesSourceOptions?.find((item:any)=>item.id==='legacy');
+  if(!choice||!choice.selected&&choice.available!==true)return false;
+  if(activate&&!choice.selected)choice.choose();
+  return true;
+ }
+ return false;
+},activate);
+
 /** Navigate only; leave raw-store setup and recovery assertions to the caller. */
 export async function selectLegacyNotes(page:Page){
  await page.getByRole('button',{name:'Notes',exact:true}).click();
- // The source choice is only counted once the Notes view is active, not on the home screen.
  await expect(page.locator('html')).toHaveAttribute('data-active-view','notes');
- const older=page.getByRole('button',{name:/^(Older|Previous) notes$/});
- await expect(older).toBeVisible();
- await older.click();
+ await expect(page.getByRole('button',{name:/^(Older|Previous) notes$/})).toHaveCount(0);
+ await expect.poll(()=>retainedSource(page)).toBe(true);
+ await retainedSource(page,true);
+ await expect(page.getByRole('heading',{name:'Previous notes',exact:true})).toBeVisible();
 }
 
 /** Retained attachment metadata only; no file picker, file contents, or real user store. */

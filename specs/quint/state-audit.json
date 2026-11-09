@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "b1817660a0347ae19551b9ee296410fe55f02d59",
-  "ledgerSha256": "0f9e26f09a4a7ae48dc8e3a680c4818559d3fd1f82bcf6c25614902c8d48c4dd",
+  "ledgerSha256": "93e647d6ae3f470f578c1d3910018d7598a23ffdebd6a1513bab0887cb56c4bb",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -38784,7 +38784,7 @@
     },
     {
       "path": "apps/app/src/prototype/note-recorder.ts",
-      "sha256": "43c92dac368bba4c600eb124afefddc0e99f35ab4d6a6a372711a404b62383a8",
+      "sha256": "71c6e52fc3d68ec2a94976b8d83f50e40a1cfd56321f10b146d2c8edacefaed8",
       "allocatedModels": [
         "NotesLifecycle",
         "MediaLifecycle"
@@ -38829,14 +38829,14 @@
           "writes": 1
         },
         {
-          "owner": "NoteRecorderSession.pump.ArrowFunction@364",
-          "line": 365,
+          "owner": "NoteRecorderSession.pump.ArrowFunction@367",
+          "line": 368,
           "bindings": 4,
           "writes": 3
         },
         {
           "owner": "NoteRecorderSession.finish",
-          "line": 457,
+          "line": 462,
           "bindings": 1,
           "writes": 2
         }
@@ -40120,7 +40120,7 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "ba60b7103fe70df2e67865fb8f545edbf1ac7468f423cd1fa5b5d718d8f49a92",
+      "sha256": "79e3e9c339db29699b6c621a719794d076b704458a5a16f42a509d4aa4d10871",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -40246,7 +40246,7 @@
     },
     {
       "path": "apps/app/src/prototype/voice-adapter.ts",
-      "sha256": "29f31ef7389546e336c6b808fb1f32c8c7e59e8aa8abc35e7916c3cc5549ffc8",
+      "sha256": "df5ef2e7ecaefebbdd263848b462996be6b65ee931487ef1928890aa342c14ee",
       "allocatedModels": [
         "VoiceSession",
         "ControllerComposition",
@@ -40258,151 +40258,151 @@
       "owners": [
         {
           "owner": "installPrototypeVoiceAdapter",
-          "line": 83,
+          "line": 84,
           "bindings": 79,
           "writes": 316
         },
         {
-          "owner": "installPrototypeVoiceAdapter.FunctionExpression@87",
-          "line": 88,
+          "owner": "installPrototypeVoiceAdapter.FunctionExpression@88",
+          "line": 89,
           "bindings": 1,
           "writes": 10
         },
         {
           "owner": "installPrototypeVoiceAdapter.cleanup",
-          "line": 250,
+          "line": 251,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installPrototypeVoiceAdapter.enter",
-          "line": 274,
+          "line": 275,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "installPrototypeVoiceAdapter.start",
-          "line": 331,
+          "line": 332,
           "bindings": 3,
           "writes": 4
         },
         {
           "owner": "installPrototypeVoiceAdapter.listen",
-          "line": 404,
+          "line": 405,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "installPrototypeVoiceAdapter.chatCurrent",
-          "line": 420,
+          "line": 421,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "installPrototypeVoiceAdapter.navigationContinuation",
-          "line": 428,
+          "line": 429,
           "bindings": 2,
           "writes": 4
         },
         {
           "owner": "installPrototypeVoiceAdapter.navigationContinuation.apply",
-          "line": 433,
+          "line": 434,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installPrototypeVoiceAdapter.cancelChat",
-          "line": 448,
+          "line": 449,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "installPrototypeVoiceAdapter.captureConversationAudio",
-          "line": 477,
+          "line": 478,
           "bindings": 11,
           "writes": 21
         },
         {
           "owner": "installPrototypeVoiceAdapter.beginConversation",
-          "line": 542,
+          "line": 543,
           "bindings": 8,
           "writes": 14
         },
         {
           "owner": "installPrototypeVoiceAdapter.beginConversation.sendTurn",
-          "line": 609,
+          "line": 610,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installPrototypeVoiceAdapter.beginConversation.sendTurn.send",
-          "line": 621,
+          "line": 622,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installPrototypeVoiceAdapter.beginConversation.speak",
-          "line": 698,
+          "line": 699,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "installPrototypeVoiceAdapter.beginConversation.listen",
-          "line": 712,
+          "line": 713,
           "bindings": 5,
           "writes": 14
         },
         {
           "owner": "installPrototypeVoiceAdapter.beginConversation.transcribe",
-          "line": 804,
+          "line": 805,
           "bindings": 2,
           "writes": 1
         },
         {
           "owner": "installPrototypeVoiceAdapter.conversationRecorderView",
-          "line": 862,
+          "line": 863,
           "bindings": 2,
           "writes": 3
         },
         {
           "owner": "installPrototypeVoiceAdapter.restoreDeletion",
-          "line": 912,
+          "line": 913,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installPrototypeVoiceAdapter.restoreDeletion.ArrowFunction@913",
-          "line": 936,
+          "owner": "installPrototypeVoiceAdapter.restoreDeletion.ArrowFunction@914",
+          "line": 937,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installPrototypeVoiceAdapter.deleteVoiceNote",
-          "line": 956,
+          "line": 957,
           "bindings": 2,
           "writes": 5
         },
         {
-          "owner": "installPrototypeVoiceAdapter.ArrowFunction@1153",
-          "line": 1169,
+          "owner": "installPrototypeVoiceAdapter.ArrowFunction@1159",
+          "line": 1175,
           "bindings": 4,
           "writes": 46
         },
         {
-          "owner": "installPrototypeVoiceAdapter.ArrowFunction@1153.ArrowFunction@1184",
-          "line": 1186,
+          "owner": "installPrototypeVoiceAdapter.ArrowFunction@1159.ArrowFunction@1190",
+          "line": 1192,
           "bindings": 3,
           "writes": 3
         },
         {
           "owner": "installPrototypeVoiceAdapter.recorderView",
-          "line": 1306,
+          "line": 1312,
           "bindings": 1,
           "writes": 7
         },
         {
-          "owner": "installPrototypeVoiceAdapter.FunctionExpression@1341",
-          "line": 1342,
+          "owner": "installPrototypeVoiceAdapter.FunctionExpression@1347",
+          "line": 1348,
           "bindings": 3,
           "writes": 41
         }
@@ -44322,7 +44322,7 @@
     },
     {
       "path": "apps/app/src/runtime/note-recorder-driver.ts",
-      "sha256": "074e45e26f075055e45facdd26a7196a724eca4c096f54240ffe43cf239a9af1",
+      "sha256": "01493b740d8dfac51a566e788febb341ab9473eb4309430258df7dd9f2d9a55b",
       "allocatedModels": [
         "NotesLifecycle",
         "MediaLifecycle"
@@ -44332,7 +44332,7 @@
       "owners": [
         {
           "owner": "noteSegmentTranscriber",
-          "line": 67,
+          "line": 61,
           "bindings": 1,
           "writes": 1
         }
@@ -220585,6 +220585,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "26e8a49e189616c9a584a7b87d8837189cb03267414edb0ab79bdb2a9fa82f51"
+    "sha256": "fb6ccaaab190d62eb61ecfd931388db8a1166ee394432fa6ec150235243e8489"
   }
 }

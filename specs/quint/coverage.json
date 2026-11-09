@@ -31439,7 +31439,7 @@
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
-      "sha256": "43c92dac368bba4c600eb124afefddc0e99f35ab4d6a6a372711a404b62383a8",
+      "sha256": "71c6e52fc3d68ec2a94976b8d83f50e40a1cfd56321f10b146d2c8edacefaed8",
       "stateAnchors": [
         {
           "line": 36,
@@ -31566,158 +31566,167 @@
           "text": "const status = existing.state === 'idle' ? await this.driver.start(binding) : existing;"
         },
         {
-          "line": 295,
-          "text": "const original = this.epoch;"
-        },
-        {
-          "line": 296,
-          "text": "const status = await this.driver.status();"
+          "line": 291,
+          "text": "if (reason === 'permission' && this.owned(epoch)) this.options.onPermissionDenied?.();"
         },
         {
           "line": 298,
+          "text": "const original = this.epoch;"
+        },
+        {
+          "line": 299,
+          "text": "const status = await this.driver.status();"
+        },
+        {
+          "line": 301,
           "text": "const epoch = ++this.epoch;"
         },
         {
-          "line": 307,
+          "line": 310,
           "text": "const handle = await this.driver.listen(status => { if (epoch === this.epoch) this.apply(status); });"
         },
         {
-          "line": 315,
+          "line": 318,
           "text": "const handle = this.handle; this.handle = undefined; if (handle) void Promise.resolve(handle.remove()).catch(() => {});"
         },
         {
-          "line": 327,
+          "line": 330,
           "text": "const previous = this.phase;"
         },
         {
-          "line": 345,
+          "line": 348,
           "text": "for (const s of this.segments) if (typeof s.text === 'string' && !this.texts.has(s.segmentId)) this.texts.set(s.segmentId, s.text);"
         },
         {
-          "line": 351,
+          "line": 354,
           "text": "const epoch = this.epoch;"
         },
         {
-          "line": 363,
+          "line": 366,
           "text": "const epoch = this.epoch;"
         },
         {
-          "line": 364,
+          "line": 367,
           "text": "const run = (async () => {"
         },
         {
-          "line": 365,
+          "line": 368,
           "text": "let route: SegmentTranscriber | null = null, resolved = false;"
         },
         {
-          "line": 368,
+          "line": 371,
           "text": "const next = this.segments.find(s => !this.texts.has(s.segmentId));"
         },
         {
-          "line": 383,
+          "line": 386,
           "text": "const controller = new AbortController(); this.transcribing = controller;"
         },
         {
-          "line": 384,
+          "line": 387,
           "text": "let text: string;"
         },
         {
-          "line": 398,
+          "line": 401,
           "text": "const tracked = this.pumping;"
         },
         {
-          "line": 402,
+          "line": 405,
           "text": "const id = this.recordingId;"
         },
         {
-          "line": 404,
+          "line": 407,
           "text": "const epoch = this.epoch;"
         },
         {
-          "line": 405,
+          "line": 408,
           "text": "const status = await this.driver.pause(id);"
         },
         {
-          "line": 409,
+          "line": 412,
           "text": "const id = this.recordingId;"
-        },
-        {
-          "line": 411,
-          "text": "const epoch = this.epoch;"
         },
         {
           "line": 414,
-          "text": "const status = await this.driver.resume(id);"
-        },
-        {
-          "line": 425,
-          "text": "const id = this.recordingId, epoch = this.epoch;"
-        },
-        {
-          "line": 429,
-          "text": "const before = this.phase;"
-        },
-        {
-          "line": 432,
-          "text": "const stopped = await this.driver.stop(id);"
-        },
-        {
-          "line": 442,
-          "text": "* Done: stop, let the transcript catch up with the audio, and save both as one voice note"
-        },
-        {
-          "line": 452,
-          "text": "const id = this.recordingId;"
-        },
-        {
-          "line": 455,
           "text": "const epoch = this.epoch;"
         },
         {
-          "line": 456,
-          "text": "const alreadyStopped = this.phase === 'stopped';"
+          "line": 417,
+          "text": "const status = await this.driver.resume(id);"
+        },
+        {
+          "line": 424,
+          "text": "if (reason === 'permission' && this.owned(epoch)) this.options.onPermissionDenied?.();"
+        },
+        {
+          "line": 430,
+          "text": "const id = this.recordingId, epoch = this.epoch;"
+        },
+        {
+          "line": 434,
+          "text": "const before = this.phase;"
+        },
+        {
+          "line": 437,
+          "text": "const stopped = await this.driver.stop(id);"
+        },
+        {
+          "line": 447,
+          "text": "* Done: stop, let the transcript catch up with the audio, and save both as one voice note"
         },
         {
           "line": 457,
-          "text": "let savePending = false;"
-        },
-        {
-          "line": 460,
-          "text": "const stopped = alreadyStopped ? await this.driver.status() : await this.driver.stop(id);"
-        },
-        {
-          "line": 476,
-          "text": "const transcript = this.transcript();"
-        },
-        {
-          "line": 479,
-          "text": "const noteId = id;"
-        },
-        {
-          "line": 481,
-          "text": "const saved = keepAudio ? await this.driver.save({ recordingId: id, noteId, transcript }) : { audioId: id, noteId, durationMs: this.durationMs, transcript };"
-        },
-        {
-          "line": 484,
-          "text": "const intent = keepAudio ? undefined : {"
-        },
-        {
-          "line": 490,
-          "text": "const claimed = await this.driver.claimCanonicalSave(id);"
-        },
-        {
-          "line": 496,
-          "text": "const audio = await this.driver.save({recordingId: id, noteId: canonicalNoteId, transcript});"
-        },
-        {
-          "line": 519,
           "text": "const id = this.recordingId;"
         },
         {
-          "line": 542,
+          "line": 460,
+          "text": "const epoch = this.epoch;"
+        },
+        {
+          "line": 461,
+          "text": "const alreadyStopped = this.phase === 'stopped';"
+        },
+        {
+          "line": 462,
+          "text": "let savePending = false;"
+        },
+        {
+          "line": 465,
+          "text": "const stopped = alreadyStopped ? await this.driver.status() : await this.driver.stop(id);"
+        },
+        {
+          "line": 481,
+          "text": "const transcript = this.transcript();"
+        },
+        {
+          "line": 484,
+          "text": "const noteId = id;"
+        },
+        {
+          "line": 486,
+          "text": "const saved = keepAudio ? await this.driver.save({ recordingId: id, noteId, transcript }) : { audioId: id, noteId, durationMs: this.durationMs, transcript };"
+        },
+        {
+          "line": 489,
+          "text": "const intent = keepAudio ? undefined : {"
+        },
+        {
+          "line": 495,
+          "text": "const claimed = await this.driver.claimCanonicalSave(id);"
+        },
+        {
+          "line": 501,
+          "text": "const audio = await this.driver.save({recordingId: id, noteId: canonicalNoteId, transcript});"
+        },
+        {
+          "line": 524,
+          "text": "const id = this.recordingId;"
+        },
+        {
+          "line": 547,
           "text": "const id = this.recordingId, recording = this.phase === 'recording';"
         }
-      ]
+      ],
+      "integrationReview": " 2026-11-09: An owned start/resume permission failure can notify the visible recovery UI. The recording remains failed/paused until an explicit retry; its journal is retained."
     },
     {
       "path": "apps/app/src/prototype/note-source-adapter.ts",
@@ -35141,9 +35150,9 @@
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "ba60b7103fe70df2e67865fb8f545edbf1ac7468f423cd1fa5b5d718d8f49a92",
+      "sha256": "79e3e9c339db29699b6c621a719794d076b704458a5a16f42a509d4aa4d10871",
       "stateAnchors": [],
-      "integrationReview": "2026-11-09: direct month/year selectors map to the existing calendar month offset; event email removed and editable actions grouped without changing permission guards. Four browser keyboard/light/dark/height scenarios passed. State-audit obligations remain. 2026-11-09: shared overlay bounds, retained dismiss controls and alarm reading order validated in browser layout and interaction checks; storage and handoff transitions are unchanged."
+      "integrationReview": "2026-11-09: direct month/year selectors map to the existing calendar month offset; event email removed and editable actions grouped without changing permission guards. Four browser keyboard/light/dark/height scenarios passed. State-audit obligations remain. 2026-11-09: shared overlay bounds, retained dismiss controls and alarm reading order validated in browser layout and interaction checks; storage and handoff transitions are unchanged. 2026-11-09: Previous-notes UI entry removed; retained data stays behind its existing explicit source-selection contract."
     },
     {
       "path": "apps/app/src/prototype/use-in-email-review.ts",
@@ -35290,9 +35299,14 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "29f31ef7389546e336c6b808fb1f32c8c7e59e8aa8abc35e7916c3cc5549ffc8",
-      "stateAnchors": [],
-      "integrationReview": "2026-11-09: Cloud now uses same canonical bounded recovery as Direct; readiness and failure visible without changing manual mute/Stop. 42 tests including actual SDK reconnection passed; live Cloud returned to Listening at 74s without another Talk click. Renewal latency remains open."
+      "sha256": "df5ef2e7ecaefebbdd263848b462996be6b65ee931487ef1928890aa342c14ee",
+      "stateAnchors": [
+        {
+          "line": 1095,
+          "text": "window.dispatchEvent(new CustomEvent(STARTUP_PERMISSIONS_REOPEN, {detail:{permission:'microphone'}}));"
+        }
+      ],
+      "integrationReview": "2026-11-09: Cloud now uses same canonical bounded recovery as Direct; readiness and failure visible without changing manual mute/Stop. 42 tests including actual SDK reconnection passed; live Cloud returned to Listening at 74s without another Talk click. Renewal latency remains open. 2026-11-09: Owned recorder failure opens only the existing microphone review while Notes is visible. No permission is granted, no setup history is reset and no recording retries automatically."
     },
     {
       "path": "apps/app/src/prototype/workflow-adapter.ts",
@@ -44162,41 +44176,38 @@
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
-      "sha256": "074e45e26f075055e45facdd26a7196a724eca4c096f54240ffe43cf239a9af1",
+      "sha256": "01493b740d8dfac51a566e788febb341ab9473eb4309430258df7dd9f2d9a55b",
       "stateAnchors": [
         {
           "line": 16,
           "text": "const native = registerPlugin<{"
         },
         {
-          "line": 35,
-          "text": "const failure = error as {name?: string; code?: string};"
-        },
-        {
-          "line": 54,
+          "line": 48,
           "text": "const silence = (error: unknown) => (error as { code?: string })?.code === 'no-speech' || /no usable|heard no speech/i.test(String((error as Error)?.message || ''));"
         },
         {
-          "line": 63,
+          "line": 57,
           "text": "const wrap = (run: (segmentId: string, signal: AbortSignal) => Promise<{ text: string }>): SegmentTranscriber => async (segmentId, owned) => {"
         },
         {
-          "line": 67,
+          "line": 61,
           "text": "let cloud: ReturnType<typeof createCloudVoice>;"
         },
         {
-          "line": 72,
+          "line": 66,
           "text": "const requestId = crypto.randomUUID(), cancel = () => { void cloud.cancel({ requestId }).catch(() => {}); };"
         },
         {
-          "line": 80,
+          "line": 74,
           "text": "const local = createOnDeviceVoice();"
         },
         {
-          "line": 85,
+          "line": 79,
           "text": "const paired = createPairedVoice();"
         }
-      ]
+      ],
+      "integrationReview": " 2026-11-09: The driver preserves the native error and sends no obsolete setup event; current recorder ownership decides whether to show recovery."
     },
     {
       "path": "apps/app/src/runtime/notes-contract.ts",

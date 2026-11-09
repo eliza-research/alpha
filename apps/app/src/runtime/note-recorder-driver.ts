@@ -30,13 +30,7 @@ export function createNoteRecorderDriver(): NoteRecorderDriver {
   return {
     start: async binding => {
       if (!binding) throw Error('Notes recording owner is unavailable');
-      try { return await native.startNoteRecording(binding); }
-      catch (error) {
-        const failure = error as {name?: string; code?: string};
-        if (failure?.name === 'NotAllowedError' || failure?.code === 'permission-denied')
-          window.dispatchEvent(new CustomEvent('alpha:setup-permissions', {detail: {permission: 'microphone'}}));
-        throw error;
-      }
+      return native.startNoteRecording(binding);
     },
     status: () => native.noteRecordingStatus(),
     pause: recordingId => native.pauseNoteRecording({ recordingId }),
