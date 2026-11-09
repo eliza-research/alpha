@@ -800,3 +800,16 @@ dialog.alarm-page{position:fixed;inset:0 auto auto 0;margin:0;width:100vw;height
 .photo-album-label{display:flex;align-items:center;gap:7px;min-width:0;max-width:100%;font-size:15px;font-weight:600;line-height:1.35}
 .photo-album-label>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .photo-album-icon{width:16px;height:16px}
+
+/* App-owned action bars share the assistant's reserved bottom space. */
+[data-alpha-view-actions]{bottom:var(--alpha-dock-reserve,108px)!important}
+[data-alpha-photo-actions]>div{padding-bottom:12px!important}
+[data-alpha-popup] [role="dialog"],[data-alpha-album-manager]{bottom:var(--alpha-dock-reserve,108px)!important;max-height:calc(100% - var(--alpha-dock-reserve,108px) - 32px)}
+
+.chat-image-preview{position:absolute;inset:0 0 var(--alpha-dock-reserve,108px);z-index:130;background:rgba(0,0,0,.94);color:white}
+.chat-image-preview>[role="dialog"]{height:100%;display:flex;align-items:center;justify-content:center;padding:64px 16px 16px;box-sizing:border-box}
+.chat-image-preview img{max-width:100%;max-height:100%;object-fit:contain}
+.chat-image-preview .ib{position:absolute;right:16px;top:16px;background:rgba(255,255,255,.15);border-radius:50%}
+
+[data-alpha-message-composer]{padding-bottom:calc(var(--alpha-dock-reserve,108px) + 12px)!important}
+[data-alpha-maps-guidance-controls]{bottom:max(var(--alpha-maps-guidance-bottom,26px),var(--alpha-dock-reserve,108px))!important}

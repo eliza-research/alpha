@@ -304,7 +304,7 @@ test('the layout hooks the sweep depends on stay in the template', () => {
   // Toasts are announced: the live region is always present and its text arrives inside it,
   // and an inline modal does not retire it.
   assert.match(template, /<div data-alpha-toast aria-live="polite" aria-atomic="true"[^>]*>\n<sc-if value="\{\{toastOn\}\}">/);
-  assert.match(read('apps/app/src/runtime/inline-modal.ts'), /!sibling\.matches\('\[data-alpha-toast\]'\)/);
+  assert.match(read('apps/app/src/runtime/inline-modal.ts'), /!sibling\.matches\('\[data-alpha-toast\],/);
   // The find bar is bound to its open flag, not to the always-present binding object.
   assert.ok(template.includes('<sc-if value="{{browser.finding}}">'));
   assert.ok(!template.includes('<sc-if value="{{browser.find}}">'));

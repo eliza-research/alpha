@@ -1,3 +1,4 @@
+import {createInlineModal} from '../runtime/inline-modal';
 import type {VerifiedSession} from '../runtime/alpha-client';
 import {browserDocuments} from '../browser/documents';
 import {projectNoteForModel,type StickyNote} from '../../../../.eliza/client-features/plugins/plugin-notes/src/types.ts';
@@ -696,7 +697,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         this.composerDraft.retire(false);
         this.startupDraft=null;
         cancelMessageContext(this);
-        this.closeSummaryReview?.();this.cameraAttachment=null;this.reviewedSourceDraft=null;this.transcriptAttachment=null;
+        this.closeSummaryReview?.();this.chatImagePreview=null;this.cameraAttachment=null;this.reviewedSourceDraft=null;this.transcriptAttachment=null;
         clearMapsSelection();
         this.connectionSession = session;
         alphaClient.disconnect();
@@ -1192,6 +1193,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
   };
   p.componentDidUpdate = function (prev: Shell) { originalUpdate.call(this, prev); const notesView=this.S().view==='notes';if(notesView&&!this.wasCanonicalNotesView&&this.notesSourceMode==='canonical')void this.canonicalNotesUi?.refresh().catch(()=>{});this.wasCanonicalNotesView=notesView; context(this); void connectionController.observeCommittedView(); sizeComposer();this.composerDraft?.edit(String(this.S().draft||''));const shade=!!this.S().shade;if(shade&&!this.shadeWasOpen)this.refreshTileFacts();this.shadeWasOpen=shade;const chatOpen=this.S().chat==='sheet'||this.S().chat==='full',drafting=!!String(this.S().draft||'').trim();if((chatOpen&&!this.chatWasOpen)||(drafting&&!this.wasDrafting))connectionController.warmInference();this.chatWasOpen=chatOpen;this.wasDrafting=drafting;const selected=this.messageReplyTarget||this.messageEditTarget;if(selected&&(JSON.stringify(selected.session)!==JSON.stringify(connectionController.getSnapshot().session)||!this.S().msgs.some((m:Shell)=>m.id===selected.messageId&&m.text===selected.text))){cancelMessageContext(this);this.setState({});} };
   p.componentWillUnmount = function () {
+    this.chatImageModal?.ref(null);
     const notes=this.canonicalNotesUi;this.canonicalNotesUi=null;notes?.retire();this.notesSourceEpoch=(this.notesSourceEpoch??0)+1;
     this.cancelReadReplyCompletions?.();
     cancelMessageContext(this);connectionController.cancelViewNavigation();
@@ -1398,6 +1400,12 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
   p.renderVals = function () {
     const out = originalVals.call(this);
     const composeTarget=this.messageEditTarget||this.messageReplyTarget;
+    this.chatImageModal??=createInlineModal(()=>{this.chatImagePreview=null;this.setState({});});
+    out.chatImagePreview=out.isOn&&!this.S().secure?this.chatImagePreview||'':'';
+    out.chatImagePreviewRef=this.chatImageModal.ref;
+    out.closeChatImagePreview=()=>{this.chatImagePreview=null;this.setState({});};
+    out.openDraftPhoto=()=>{if(this.cameraAttachment){this.chatImagePreview=this.cameraAttachment.image;this.setState({});}};
+
     const photo=this.cameraAttachment;
     out.attachedCameraPhoto=photo&&!this.S().msgs.some((m:Shell)=>m.cameraAttachment===photo)&&this.S().view==='photos'&&this.vget('photos').open===photo.id?photo.image:'';
     out.removeCameraPhoto=()=>{
@@ -1441,7 +1449,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     if(shownNotices!==live){const kept=new Set(shownNotices.map(item=>item.id)),hidden=new Set(live.filter(item=>item.systemNotice&&!kept.has(item.id)).map(item=>item.id));out.msgs=(out.msgs||[]).filter((m:Shell)=>!hidden.has(m.id));}
     out.msgs=(out.msgs||[]).map((m:Shell)=>{
       const sent=live.find(item=>item.id===m.id);
-      m={...m,sentTranscript:sent?.transcriptAttachment?.title||'',sentPhoto:sent?.cameraAttachment?.image||''};
+      m={...m,sentTranscript:sent?.transcriptAttachment?.title||'',sentPhoto:sent?.cameraAttachment?.image||'',openPhotoPreview:()=>{if(sent?.cameraAttachment?.image){this.chatImagePreview=sent.cameraAttachment.image;this.setState({});}}};
       const c=m.c||{};
       // A system notice card already carries its text; do not print it a second time above the card.
       if(c.systemNotice&&m.cGeneric&&m.displayText===c.sub)return {...m,hasCalendarText:false};

@@ -21,6 +21,10 @@ test('Camera cover, menu selection, info swipe and photo chat share use the save
  await expect(album.locator('span[style*="background: url"]')).toHaveCount(1);
  await album.click();
  await page.getByRole('button',{name:/^Photo, /}).first().click();
+ const dock=page.locator('[data-alpha-layer="pill"],[data-alpha-layer="composer"]').filter({visible:true}).first();
+ await expect(dock).toBeVisible();
+ const controls=(await page.locator('[data-alpha-photo-actions]').boundingBox())!,dockBox=(await dock.boundingBox())!;
+ expect(controls.y+controls.height).toBeLessThanOrEqual(dockBox.y);
  await page.getByRole('button',{name:'Photo info',exact:true}).click();
  const dialog=page.getByRole('dialog',{name:'Photo info',exact:true});await expect(dialog).toBeVisible();
  const box=(await dialog.boundingBox())!;
@@ -30,6 +34,10 @@ test('Camera cover, menu selection, info swipe and photo chat share use the save
  await page.getByRole('button',{name:'Ask Alpha about this photo',exact:true}).click();
  await expect(page.getByRole('dialog',{name:'Ask about selected content'})).toHaveCount(0);
  await expect(page.getByAltText('Captured photo')).toBeVisible();
+ await page.getByRole('button',{name:'Preview attached photo',exact:true}).click();
+ await expect(page.getByRole('dialog',{name:'Image preview',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Close image preview',exact:true}).click();
+ await expect(page.getByRole('dialog',{name:'Image preview',exact:true})).toHaveCount(0);
 });
 
 test('custom albums can be created, filled, renamed and removed without deleting their photos',async({page})=>{

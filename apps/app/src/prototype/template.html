@@ -9,6 +9,15 @@
 <div style="position: absolute; right: -5px; top: 316px; width: 6px; height: 118px; border-radius: 0 4px 4px 0; background: var(--alpha-gray-26)"></div>
 
 <div data-screen="1" data-alpha-chat-half="{{nonblockingChat}}" onPointerDown="{{gDown}}" onPointerUp="{{gUp}}" onPointerCancel="{{gCancel}}" style="position: absolute; top: 12px; left: 14px; width: 412px; height: 915px; border-radius: 48px; overflow: hidden; background: var(--bg); color: var(--fg); user-select: none; -webkit-user-select: none; touch-action: none; font-size: 15px; --alpha-chat-clearance:{{panelH}}px">
+<sc-if value="{{chatImagePreview}}">
+  <div ref="{{chatImagePreviewRef}}" class="chat-image-preview">
+    <div role="dialog" aria-modal="true" aria-label="Image preview" tabindex="-1">
+      <button class="ib" aria-label="Close image preview" onClick="{{closeChatImagePreview}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.x}}"></path></svg></button>
+      <img src="{{chatImagePreview}}" alt="Attached image preview" />
+    </div>
+  </div>
+</sc-if>
+
 
 <div data-alpha-system-cutout style="position: absolute; top: 13px; left: 195px; width: 22px; height: 22px; border-radius: 11px; background: var(--alpha-black); box-shadow: 0 0 0 1.5px var(--alpha-gray-11); z-index: 99; pointer-events: none"></div>
 
@@ -501,7 +510,7 @@
         </div>
       </div>
 
-      <div style="flex-shrink: 0; padding: 6px 12px 30px">
+      <div data-alpha-message-composer style="flex-shrink: 0; padding: 6px 12px 30px">
         <sc-if value="{{messages.t.hasSmart}}">
           <div class="scr" style="display: flex; gap: 8px; padding: 2px 0 10px; overflow-x: auto; touch-action: pan-x">
             <button aria-label="Ask {{name}} to reply" onClick="{{messages.t.ask}}" style="height: 36px; padding: 0 14px 0 12px; border-radius: 18px; flex-shrink: 0; background: var(--s2); display: flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 600; white-space: nowrap"><span style="color: var(--acct); font-family: Denton, Fraunces, Georgia, serif; font-style: italic; font-size: 19px; line-height: 1"><span class="alpha-compute-mark" aria-hidden="true"></span></span>Reply</button>
@@ -1782,7 +1791,7 @@
   </sc-if>
 
   <sc-if value="{{photos.selecting}}">
-    <div role="toolbar" aria-label="Selection actions" inert="{{photos.albumCovered}}" aria-hidden="{{photos.albumCovered}}" style="position: absolute; left: 0; right: 0; bottom: 96px; height: 72px; z-index: 6; background: var(--bg); box-shadow: 0 -1px 0 var(--line); display: flex; align-items: flex-start; justify-content: space-around; padding: 10px 12px 0; box-sizing: border-box; {{photos.selDim}}">
+    <div data-alpha-view-actions role="toolbar" aria-label="Selection actions" inert="{{photos.albumCovered}}" aria-hidden="{{photos.albumCovered}}" style="position: absolute; left: 0; right: 0; bottom: 96px; height: 72px; z-index: 6; background: var(--bg); box-shadow: 0 -1px 0 var(--line); display: flex; align-items: flex-start; justify-content: space-around; padding: 10px 12px 0; box-sizing: border-box; {{photos.selDim}}">
       <sc-if value="{{photos.trashSelecting}}">
         <button class="tap photo-bar-action" aria-label="Recover selected" disabled="{{photos.selectionDisabled}}" onClick="{{photos.selRecover}}" style="display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 64px; min-height: 48px; font-size: 12px; color: var(--fg)"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg>Recover</button>
         <sc-if value="{{photos.trashCanDelete}}"><button class="tap photo-bar-action" aria-label="Delete selected forever" disabled="{{photos.selectionDisabled}}" onClick="{{photos.selDeleteForever}}" style="display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 64px; min-height: 48px; font-size: 12px; color: var(--fg)"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.trash}}"></path></svg>Delete</button></sc-if>
@@ -1824,7 +1833,7 @@
       </div>
       <sc-if value="{{photos.v.hasPrev}}"><button class="ib" aria-label="Previous" onClick="{{photos.v.prev}}" style="position: absolute; left: 4px; top: 50%; margin-top: -22px; z-index: 3; color: var(--alpha-white); opacity: {{photos.v.chromeOp}}; pointer-events: {{photos.v.chromePE}}; transition: opacity .25s"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if>
       <sc-if value="{{photos.v.hasNext}}"><button class="ib" aria-label="Next" onClick="{{photos.v.next}}" style="position: absolute; right: 4px; top: 50%; margin-top: -22px; z-index: 3; color: var(--alpha-white); transform: scaleX(-1); opacity: {{photos.v.chromeOp}}; pointer-events: {{photos.v.chromePE}}; transition: opacity .25s"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if>
-      <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 150px; background: linear-gradient(to top, rgba(0,0,0,.8) 90px, rgba(0,0,0,0)); pointer-events: none; opacity: {{photos.v.chromeOp}}; transition: opacity .25s; z-index: 3; display: flex; align-items: flex-end">
+      <div data-alpha-photo-actions style="position: absolute; left: 0; right: 0; bottom: var(--alpha-dock-reserve,108px); height: 100px; background: linear-gradient(to top, rgba(0,0,0,.8) 70px, rgba(0,0,0,0)); pointer-events: none; opacity: {{photos.v.chromeOp}}; transition: opacity .25s; z-index: 3; display: flex; align-items: flex-end">
         <div style="display: flex; justify-content: space-around; width: 100%; padding: 0 16px 34px; pointer-events: {{photos.v.chromePE}}">
           <sc-if value="{{photos.v.hasPrevItem}}"><button class="ib" aria-label="Previous item" onClick="{{photos.v.prevItem}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if>
           <sc-if value="{{photos.v.canEmail}}"><button class="ib" aria-label="Use photo in email" onClick="{{photos.v.email}}" style="font-size:12px">Email</button></sc-if>
@@ -2772,7 +2781,7 @@
         </sc-if>
       </div>
       <sc-if value="{{files.isSel}}">
-        <div role="toolbar" aria-label="Selection actions" style="position: absolute; left: 12px; right: 12px; bottom: 96px; display: flex; justify-content: space-around; padding: 6px; border-radius: 26px; background: var(--bg); box-shadow: 0 0 0 1px var(--line), 0 12px 32px var(--shc); z-index: 5">
+        <div data-alpha-view-actions role="toolbar" aria-label="Selection actions" style="position: absolute; left: 12px; right: 12px; bottom: 96px; display: flex; justify-content: space-around; padding: 6px; border-radius: 26px; background: var(--bg); box-shadow: 0 0 0 1px var(--line), 0 12px 32px var(--shc); z-index: 5">
           <button disabled="{{files.selectionDisabled}}" onClick="{{files.selShare}}" style="display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 60px; min-height: 52px; justify-content: center; font-size: 12px; opacity: {{files.selOp}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{files.icons.share}}"></path></svg>Share</button>
           <button disabled="{{files.selectionDisabled}}" onClick="{{files.selMove}}" style="display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 60px; min-height: 52px; justify-content: center; font-size: 12px; opacity: {{files.selOp}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{files.icons.move}}"></path></svg>Move</button>
           <button disabled="{{files.selectionDisabled}}" onClick="{{files.selCopy}}" style="display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 60px; min-height: 52px; justify-content: center; font-size: 12px; opacity: {{files.selOp}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{files.icons.copy}}"></path></svg>Copy</button>
@@ -3961,7 +3970,7 @@
 <div data-alpha-browser-surfaces inert="{{appHidden}}" aria-hidden="{{appHidden}}" style="position: absolute; inset: 0; z-index: 20; pointer-events: none"></div>
 
 <sc-if value="{{isOn}}">
-<div data-alpha-chat-scrim data-alpha-dock-scrim="{{dockScrim}}" aria-hidden="true" onPointerDown="{{scrimSw.down}}" onPointerMove="{{scrimSw.move}}" onPointerUp="{{scrimSw.up}}" onPointerCancel="{{scrimSw.cancel}}" onClick="{{scrimTap}}" style="position: absolute; inset: 0; z-index: {{scrimZ}}; background: var(--scrim); opacity: {{scrimOp}}; pointer-events: {{scrimPE}}; touch-action: none; transition: opacity .45s"></div>
+<div data-alpha-chat-scrim data-alpha-dock-scrim="{{dockScrim}}" aria-hidden="true" onPointerDown="{{scrimSw.down}}" onPointerMove="{{scrimSw.move}}" onPointerUp="{{scrimSw.up}}" onPointerCancel="{{scrimSw.cancel}}" onClick="{{scrimTap}}" style="position: absolute; inset: 0; z-index: {{scrimZ}}; background: transparent; opacity: {{scrimOp}}; pointer-events: {{scrimPE}}; touch-action: none; transition: opacity .45s"></div>
 <div data-alpha-layer="conversation" aria-hidden="{{conversationHidden}}" inert="{{conversationHidden}}" style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 50; height: {{panelH}}px; border-radius: {{panelR}}; background: var(--s1); overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; opacity: {{panelOp}}; pointer-events: {{panelPE}}; box-shadow: 0 -1px 0 var(--line), 0 -20px 60px var(--shc); transition: {{panelTransition}}">
   <div data-alpha-chat-top style="height: {{panelTop}}; flex-shrink: 0; transition: height .4s"></div>
   <div data-alpha-chat-header style="display:grid;grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr);align-items:center;padding:0 12px 4px;gap:0;flex-shrink:0">
@@ -4027,7 +4036,7 @@
       <div data-alpha-message-id="{{m.id}}" style="display: flex; flex-direction: column">
         <sc-if value="{{m.isUser}}">
           <sc-if value="{{m.sentTranscript}}"><div class="sent-content-attachment" aria-label="Sent transcript"><small>Transcript</small><strong>{{m.sentTranscript}}</strong></div></sc-if>
-          <sc-if value="{{m.sentPhoto}}"><div class="sent-content-attachment" aria-label="Sent photo"><img src="{{m.sentPhoto}}" alt="Sent photo" /></div></sc-if>
+          <sc-if value="{{m.sentPhoto}}"><button class="sent-content-attachment" aria-label="Preview sent photo" onClick="{{m.openPhotoPreview}}"><img src="{{m.sentPhoto}}" alt="Sent photo" /></button></sc-if>
 
           <div data-alpha-message-text role="{{m.messageActionsRole}}" tabIndex="{{m.messageActionsTabIndex}}" aria-label="{{m.messageActionsLabel}}" aria-haspopup="{{m.messageActionsPopup}}" aria-expanded="{{m.messageActionsOpen}}" onClick="{{m.openMessageActions}}" onKeyDown="{{m.messageActionsKey}}" onContextMenu="{{m.messageActionsContext}}" onPointerDown="{{m.messageActionsDown}}" onPointerMove="{{m.messageActionsMove}}" onPointerUp="{{m.messageActionsCancel}}" onPointerCancel="{{m.messageActionsCancel}}" style="align-self: flex-end; max-width: 80%; background: var(--acc); color: var(--alpha-white); padding: 11px 16px; border-radius: 22px 22px 6px 22px; font-size: 15px; line-height: 1.4">{{m.text}}</div>
         </sc-if>
@@ -4166,7 +4175,7 @@
   <sc-if value="{{panelComposer}}">
   <sc-if value="{{messageComposeContext}}"><div style="display:flex;align-items:center;gap:8px;padding:6px 16px;font-size:13px;background:var(--s2);border-radius:14px"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{messageComposeContext}}</span><button class="tap" aria-label="Cancel reply or edit" onClick="{{cancelMessageContext}}" style="min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center"><svg class="i" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="{{ic.x}}"></path></svg></button></div></sc-if>
 
-    <sc-if value="{{attachedCameraPhoto}}"><div class="note-transcript-chip" aria-label="Attached photo"><img alt="Captured photo" width="48" height="48" src="{{attachedCameraPhoto}}" style="object-fit:cover;border-radius:8px"><span>Photo</span><button aria-label="Remove photo" onClick="{{removeCameraPhoto}}">×</button></div></sc-if>
+    <sc-if value="{{attachedCameraPhoto}}"><div class="note-transcript-chip" aria-label="Attached photo"><button aria-label="Preview attached photo" onClick="{{openDraftPhoto}}"><img alt="Captured photo" width="48" height="48" src="{{attachedCameraPhoto}}" style="object-fit:cover;border-radius:8px"></button><span>Photo</span><button aria-label="Remove photo" onClick="{{removeCameraPhoto}}">×</button></div></sc-if>
     <sc-if value="{{attachedTranscript}}"><div class="note-transcript-chip" role="group" aria-label="Attached transcript"><span class="note-transcript-chip-label"><small>Transcript</small><strong>{{attachedTranscript}}</strong></span><button type="button" aria-label="Remove transcript" onClick="{{removeTranscript}}"><i aria-hidden="true" class="note-transcript-remove-icon"></i></button></div></sc-if>
     <div class="alpha-chat-composer">
       <textarea disabled="{{draftOpening}}" onPointerDown="{{composerPointer}}" data-alpha-composer="true" rows="1" aria-label="Message {{name}}" placeholder="Message {{name}}" value="{{draft}}" onChange="{{onDraft}}" onKeyDown="{{onKey}}" style="flex-grow: 1; min-width: 0; height: 44px; min-height:44px; max-height:min(168px,28dvh); resize:none; overflow-y:auto; font-family:inherit; line-height:22px; padding-top:11px; padding-bottom:11px; box-sizing:border-box; border: 0; outline: 0; background: transparent; color: var(--fg); font-size: 16px"></textarea>

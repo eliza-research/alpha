@@ -15,7 +15,7 @@ export function createInlineModal(close:()=>void,returnFocus?:()=>HTMLElement|nu
   const phone=container.closest<HTMLElement>('.os');
   while(branch!==phone&&branch.parentElement){
    // The toast region stays live: a status message raised from inside the modal must still be announced.
-   for(const sibling of branch.parentElement.children)if(sibling!==branch&&sibling instanceof HTMLElement&&!sibling.inert&&!sibling.matches('[data-alpha-toast]'))backgrounds.push(sibling);
+   for(const sibling of branch.parentElement.children)if(sibling!==branch&&sibling instanceof HTMLElement&&!sibling.inert&&!sibling.matches('[data-alpha-toast],[data-alpha-layer="pill"],[data-alpha-layer="composer"],[data-alpha-layer="conversation"]'))backgrounds.push(sibling);
    branch=branch.parentElement;
   }
   const ownsFocus=()=>container.isConnected&&!container.closest('[inert]')&&!document.querySelector('dialog[open]');
@@ -32,8 +32,11 @@ export function createInlineModal(close:()=>void,returnFocus?:()=>HTMLElement|nu
    else if(!event.shiftKey&&(active===last||!dialog.contains(active))){event.preventDefault();first.focus();}
   };
   const back=(event:Event)=>{if(!ownsFocus())return;event.preventDefault();event.stopImmediatePropagation();close();};
-  const contain=()=>{if(ownsFocus()&&!dialog.contains(document.activeElement))focus();};
-  const isSheet=getComputedStyle(dialog).bottom==='0px'&&parseFloat(getComputedStyle(dialog).borderTopLeftRadius)>0;
+  const assistantTarget=(target:EventTarget|null)=>target instanceof Element&&!!target.closest('[data-alpha-layer="pill"],[data-alpha-layer="composer"],[data-alpha-layer="conversation"]');
+  const assistantPress=(event:PointerEvent)=>{if(ownsFocus()&&assistantTarget(event.target))close();};
+  const contain=()=>{if(ownsFocus()&&!dialog.contains(document.activeElement)&&!assistantTarget(document.activeElement))focus();};
+  document.addEventListener('pointerdown',assistantPress,true);
+  const isSheet=(dialog.style.bottom==='0px'||getComputedStyle(dialog).bottom==='0px')&&parseFloat(getComputedStyle(dialog).borderTopLeftRadius)>0;
   const grip=isSheet?dialog.firstElementChild as HTMLElement|null:null;
   const oldTouchAction=grip?.style.touchAction;
   if(grip)grip.style.touchAction='none';
@@ -82,6 +85,7 @@ export function createInlineModal(close:()=>void,returnFocus?:()=>HTMLElement|nu
    dialog.removeEventListener('pointermove',pointerMove);
    dialog.removeEventListener('pointerup',pointerUp);
    dialog.removeEventListener('pointercancel',resetDrag);
+   document.removeEventListener('pointerdown',assistantPress,true);
    observer.disconnect();window.removeEventListener('alpha-back',back,true);dialog.removeEventListener('cancel',back);document.removeEventListener('keydown',key,true);document.removeEventListener('focusin',contain);
    releases.reverse().forEach(release=>release());
    // Renderer-owned inert flags are removed later in the same DOM commit.

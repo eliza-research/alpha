@@ -5601,8 +5601,8 @@ class Component extends DCLogic {
       [IC.lock, "Side key: tap · lock or wake"]
     ].map(function (l) { return { d: l[0], t: l[1] }; });
 
-    var showPill = isOn && S.chat === "hidden" && !voiceOn && !imm.noPill;
-    var showComposer = isOn && S.chat === "input" && !voiceOn && !imm.noPill;
+    var showPill = isOn && S.chat === "hidden" && !voiceOn;
+    var showComposer = isOn && S.chat === "input" && !voiceOn;
     var sbColor = isView && imm.dark && !S.shade && S.chat !== "full" && S.chat !== "sheet" ? "var(--alpha-white)" : "var(--fg)";
     if (S.secure) { showPill = false; showComposer = false; }
     var ongoing = null;
@@ -5624,7 +5624,7 @@ class Component extends DCLogic {
       showAppBack: P.systemShell === false && isOn && isView && !S.shade,
       // A fresh Home or Talk press is intentional even immediately after opening chat.
       chatControlPointer: function (event) { if (event.isPrimary !== false && event.button === 0) self.swallow = 0; },
-      backToApps: function (event) { var fromChat = event && event.currentTarget && event.currentTarget.hasAttribute("data-alpha-chat-home"); if (fromChat && event.detail > 0 && self.swallowed()) return; self.goHome(fromChat ? self.S().chat : undefined); },
+      backToApps: function (event) { var fromChat = event && event.currentTarget && event.currentTarget.hasAttribute("data-alpha-chat-home"); if (fromChat && event.detail > 0 && self.swallowed()) return; self.goHome(); },
       showStatus: !P.nativeSystemChrome && S.screen !== "boot" && S.screen !== "off" && !imm.noStatus, micLive: S.voice === "listening",
       showIndicator: !P.nativeSystemChrome && (isOn || S.screen === "lock") && !(isOn && !S.view && !S.drawer && !S.shade && S.chat !== "sheet" && S.chat !== "full"),
       toast: S.toast, toastOn: !!S.toast, toastUndo: !!S.toastUndo, toastPadR: S.toastUndo ? 5 : 18, doUndo: function () { var f = self.undoFn; self.undoFn = null; self.clear("t"); self.setState({ toast: "", toastUndo: false }); if (f) f(); },
