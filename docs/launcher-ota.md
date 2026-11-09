@@ -40,7 +40,7 @@ and [Cloud APK build receipt](evidence/launcher-ota-cloud-apk-build-20261109.jso
 remain historical evidence: the APK receipt names product commit `e359d8d928`
 and upstream `b1817660a0`, while the source comparison names `099e2d27ad`.
 Neither describes the integrated package identity. The integrated
-Alpha Compute branch pins `86ab55fd81f68a2c5dd4fd32e1c1431723648c58` and carries
+Alpha Compute branch pins `ac18377c5a9e4eb7afeac1c62a026ad3be95733e` and carries
 the scheduler through the authenticated `app-update-resume-client` patch. Its
 manifest binds the exact source and output hashes. Earlier build evidence does
 not transfer native, APK or device qualification to this integration.

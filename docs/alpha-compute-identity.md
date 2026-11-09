@@ -11,6 +11,13 @@ the earlier merged cleanup sources and the historical persona signatures needed
 to recognize existing default profiles; the original rename-only branch pin is
 not the final admitted source.
 
+The follow-up pin `ac18377c5a9e4eb7afeac1c62a026ad3be95733e`
+([elizaOS/eliza#39173](https://github.com/elizaOS/eliza/pull/39173)) completes
+the remaining callback and default-persona references. A SHA-256 fingerprint
+retains exact recognition of historical default biographies without retaining
+the former company text in source. This four-file update changes no native,
+model or dependency input and transfers no earlier qualification.
+
 Android treats the renamed package as a separate installation. It cannot replace
 an APK from the earlier namespace or inherit that package's private data, Android
 roles, grants, Keystore entries or update sessions. This change supplies no data
@@ -28,6 +35,9 @@ cannot qualify the new identity, so the embedding host requires a rebuilt and
 reviewed candidate. Voice and physical-device acceptance remain separate gates.
 Historical reports retain their original hashes and dates; company/package text
 in those reports has been renamed and is not fresh execution evidence.
+The historical native OTA report is retained verbatim at an immutable revision;
+[its reference](evidence/launcher-ota-native-validation-20261109.json) records the
+original blob and digest instead of relabelling its captured facts.
 
 Repository and release URLs keep the existing GitHub organization, which is a
 separate identifier from the company name.

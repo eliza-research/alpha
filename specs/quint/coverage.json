@@ -88,7 +88,7 @@
   ],
   "upstream": {
     "url": "https://github.com/elizaOS/eliza.git",
-    "commit": "86ab55fd81f68a2c5dd4fd32e1c1431723648c58",
+    "commit": "ac18377c5a9e4eb7afeac1c62a026ad3be95733e",
     "appSource": "packages/app",
     "nativeSystemSource": "plugins/plugin-native-system",
     "osSource": "packages/os"
@@ -618268,7 +618268,7 @@
         "NativeRecognizerAvailability",
         "NativeSpeechWarmup"
       ],
-      "sha256": "7843f55bd4d69c54c46a3c97b83fd28545e44fbc77b71de5e964490d91d0bdea"
+      "sha256": "e01bbfdd35c808e23a741e83ae8175ce4d5c7f37da88e4b91d274878fed9214d"
     },
     {
       "path": "app.config.json",
@@ -618297,7 +618297,7 @@
         "MobileBundleAdmission",
         "NativeGoogleHostArtifact"
       ],
-      "sha256": "470745fa59cae9662f83a2f1ba39b25b33f839e22dee2069987cb378366c2438"
+      "sha256": "b7893e78704b29df3abc9eb4e0da2dd632dcbbda7073c52e73df068cff0fd324"
     },
     {
       "path": "scripts/upstream-mobile-build.mjs",
@@ -618305,7 +618305,7 @@
         "Application",
         "MobileBundleAdmission"
       ],
-      "sha256": "651d351d53ab0dddd2e2ef133b8dd0541c757158436f7e1e0c80165835d036ca"
+      "sha256": "02dab9ebf26965e7d95e38cae7548c68c8c4f0fe20bd35f434c00559b30c50b9"
     },
     {
       "path": "android/upstream-native-sources.json",
@@ -618555,7 +618555,7 @@
       "models": [
         "Application"
       ],
-      "sha256": "4c5a07595fb38afcd80e936ba55bda3bc95d0a9d49950497f47e2470c0bd80bd"
+      "sha256": "f1b8b19d07e6bec404bcff8eca5e9db454ebf351e5dd3d955bc39f04b5ffd89f"
     },
     {
       "path": "specs/quint/refinement/services/runtime-bundle-audit.mjs",
@@ -618583,7 +618583,7 @@
         "CoreRuntimeShutdown",
         "CoreServiceLifecycle"
       ],
-      "sha256": "73dc594a60014c2f1e3d8acab6ca1d91b51aa858ec08c49ef35f61baa35670d0"
+      "sha256": "11d919206af580c9657da830880d9c448254611639fa35787aedb88aba8b7aa6"
     },
     {
       "path": "upstream.lock.json",
@@ -618595,7 +618595,7 @@
         "ResidentJavaSourceStage",
         "TaskServiceLifecycle"
       ],
-      "sha256": "1ca23179a93b731aa839a9ac45fd7b03b328b7c7761f24514363fda334399c24"
+      "sha256": "8c7e801dfd6b2e32b364f614587e881c5e03190e89e528b5942dc350529009cf"
     },
     {
       "path": "vendor/eliza/packages/app/platforms/android/sense/src/main/AndroidManifest.xml",
@@ -618656,7 +618656,7 @@
         "MountedUpdateAdmission",
         "StartupUpdateAdmission"
       ],
-      "sha256": "734cb22996e2610424301711597775ef7393a8e840705f18a63b8de1d8886170"
+      "sha256": "c02f20260e7d1c2cf7d0a020a4d172f664cfd4c145af4a507cd253337afc33d8"
     },
     {
       "path": ".github/workflows/publish-qualified-app-update.yml",
@@ -618667,7 +618667,7 @@
     },
     {
       "path": "patches/eliza/managed-google-body-limit-client-manifest.json",
-      "sha256": "6b8e0f44e423be4b0554a615c254e23202e1b16fbcdfb930056dcb1a6f2e6ddf",
+      "sha256": "f0446b74f4449a771474dd74101d493413847dc07a4cc46cfde8c48cc0f844c0",
       "models": [
         "NativeGoogleHostArtifact",
         "BrowserCloudRequestCustody"
@@ -618688,9 +618688,9 @@
     "apps/app/index.html"
   ],
   "sharedSourceDiscovery": {
-    "sharedSourceCount": 4868,
+    "sharedSourceCount": 4907,
     "producer": "specs/quint/refinement/services/runtime-bundle-inputs.json",
-    "sourcePin": "dddd9a6c6f75c32146d512d92d86add9a8ccf9ea",
+    "sourcePin": "ac18377c5a9e4eb7afeac1c62a026ad3be95733e",
     "meaning": "Authenticated source identities and domain allocations. Runtime activation and implementation refinement require separate evidence."
   }
 }

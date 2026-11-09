@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseCommit": "86ab55fd81f68a2c5dd4fd32e1c1431723648c58",
+  "baseCommit": "ac18377c5a9e4eb7afeac1c62a026ad3be95733e",
   "path": "packages/ui/src/state/app-update-gate.ts",
   "beforeSha256": "37ea7d2970b7aa6b92e28697e29dbb2d69a9a9f27f2d91baa425dbef5ae7f15a",
   "afterSha256": "e10534cab3c03e24c3eb687feb99c3aa22f677203932660fb937fdccfc64d959",
