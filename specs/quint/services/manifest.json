@@ -2327,6 +2327,31 @@
       }
     },
     {
+      "path": "specs/quint/services/AndroidBrowserModuleStage.qnt",
+      "module": "AndroidBrowserModuleStage",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": ["publishAndReuseTest", "badPatchPreservesHostTest", "publicationFailurePreservesPriorTest",
+        "cacheDriftRefusesReuseTest", "badRouteKeepsPriorHostTest", "markerAllowsInterruptedHostRetryTest",
+        "unownedOutputIsPreservedTest", "receiptMustMatchCurrentGenerationTest"],
+      "invariants": ["PublishedHostReferencesStagedModule", "SuccessBindsCurrentReviewedCache",
+        "OwnedIncompleteHostHasProfile", "SuccessfulReceiptRequiresExactCurrentCache"],
+      "sources": ["android/consumer-host.json", "scripts/android-host.mjs", "scripts/prepare-patched-native.mjs",
+        "scripts/upstream-native-source.mjs", "patches/eliza/native-manifest.json", "patches/eliza/browser-tab-underlay-native.patch",
+        "vendor/eliza/packages/app/scripts/mobile/android/consumer-host.mjs",
+        "vendor/eliza/packages/app/scripts/mobile/android/consumer-host/settings.gradle",
+        "vendor/eliza/plugins/plugin-native-browser-surface/android/build.gradle"],
+      "stateMapping": {
+        "selected/reviewed/patchValid": "Exact manifest byte identity, reviewed module route and authenticated patch bytes",
+        "stage1/stage2": "Keyed staged source and provenance receipts with observed cache drift",
+        "host/hostGeneration/fresh/result": "Generated output ownership, module and asset path, input digest freshness and actual generator or receipt-verifier result"
+      },
+      "abstractions": ["One independent browser module, two manifest byte identities and one reviewed patch with all pinned module files.",
+        "The source generator and exact receipt verification execute in scratch. Full Gradle, concurrent publication, arbitrary interruption and installed behavior remain separate."],
+      "bounds": {"maxSamples": 1000, "maxSteps": 80, "maxVerifyDepth": 8}
+    },
+    {
       "path": "specs/quint/services/ResidentJavaSourceStage.qnt",
       "module": "ResidentJavaSourceStage",
       "init": "init",

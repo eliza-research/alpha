@@ -48,6 +48,7 @@ import {checkGmailAgentMailboxRecovery} from './gmail-agent-mailbox-recovery.mjs
 import {checkDevelopmentDigestPending} from './development-digest-pending.mjs';
 import {checkAndroidGzipAssetStage} from './android-gzip-asset-stage.mjs';
 import {checkResidentJavaSourceStage} from './resident-java-source-stage.mjs';
+import {checkAndroidBrowserModuleStage} from './android-browser-module-stage.mjs';
 
 export async function runServicesRefinement() {
   const driver = fileURLToPath(import.meta.url);
@@ -62,7 +63,7 @@ export async function runServicesRefinement() {
     ...[checkBrowserGoogleReturn, checkDevelopmentRuntimeLoader, checkCombinedAgentLauncher, checkReviewedWorkflowLauncher,
       checkCoreConnectorCustody, checkMobileBundleAdmission, checkWorkflowWorkerStaging, checkNativeGoogleHostArtifact,
       checkPreparedSourceStamp, checkCloudQaLauncher, checkBrowserCloudRequestCustody, checkGmailAgentMailboxRecovery,
-      checkDevelopmentDigestPending, checkAndroidGzipAssetStage, checkResidentJavaSourceStage].map(withDriver),
+      checkDevelopmentDigestPending, checkAndroidGzipAssetStage, checkResidentJavaSourceStage, checkAndroidBrowserModuleStage].map(withDriver),
     ...[runInboxCoordinatorRefinement, runInboxCleanupRefinement, runInboxProviderDraftsRefinement,
       runWorkflowEngineRefinement, runWorkflowWakeupRefinement, runWorkflowTaskRefinement, runCanonicalNotesRefinement,
       runTaskServiceRefinement, runTaskSchedulerRuntimeRefinement, runPilotApkUpdateRefinement,
@@ -97,6 +98,8 @@ export async function runServicesRefinement() {
       reason: 'The scratch replay exercises the actual wrapper and byte comparison. The modeled merge uses a one-layer fixture. Independent APK checks and installed OCR have separate evidence.'},
     {model: 'ResidentJavaSourceStage', obligation: 'Concurrent readers, process interruption and Gradle consumption',
       reason: 'Serial source replay observes exact settled trees and manifests, including a retained backup when restore is refused. Reader timing, cleanup failures and actual Gradle builds remain separate.'},
+    {model: 'AndroidBrowserModuleStage', obligation: 'Concurrent module publication, Gradle configuration and APK consumption',
+      reason: 'The selected browser module executes actual source staging, Gradle host generation and receipt verification in scratch. Concurrent processes, the full module graph, Gradle and installed input handling remain separate.'},
     {model: 'NativeGoogleHostArtifact', obligation: 'Cross-process publication, interruption and installed use',
       reason: 'The source replay verifies a private candidate and restore under the serial producer contract. Independent readers, process death between the two publication renames and installed host execution remain separate.'},
     {model: 'CoreTurnControllers', obligation: 'Detached callbacks, reentrant observers and provider composition', reason: 'The source campaign checks lookup, cancellation and closure in two registries. Arbitrary reentrant observers and detached callbacks require separate source schedules.'},
