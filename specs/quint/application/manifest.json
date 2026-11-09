@@ -318,6 +318,41 @@
     ]
   },
   {
+    "path": "specs/quint/application/ScheduledTaskControls.qnt",
+    "module": "ScheduledTaskControls",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "editReviewBindsExactRequestTest",
+      "mismatchedFireRemainsLockedTest",
+      "racedFireDoesNotClaimSuccessTest",
+      "terminalManualReopenTest",
+      "partialAbsenceRetiresDetailTest",
+      "failedListCannotDispatchReviewedActionTest",
+      "retiredReplyDoesNotReleaseTest"
+    ],
+    "invariants": ["SentWithExactIntent", "PendingRemainsJournaled", "UnconfirmedStaysLocked", "TerminalHasReopenOnly", "FailedSourceDisablesControls"],
+    "sources": [
+      "apps/app/src/prototype/automations-adapter.ts",
+      "apps/app/src/prototype/template.html",
+      "apps/app/src/runtime/automations-protocol.ts",
+      "apps/app/src/runtime/automations-route-policy.ts",
+      "apps/app/src/runtime/workflow-intents.ts",
+      "vendor/eliza/packages/contracts/src/workflow-intents.ts"
+    ],
+    "stateMapping": {
+      "owner/visible/source/detail/shownStatus/editing/draft/time": "Controlled shell and connection inputs, actual schedule-list issue and renderer projection",
+      "kind/storedStatus/storedText/storedCron/catalog": "One synthetic LifeOps task record and independent list failure inputs",
+      "review/pending/message/sends/intents": "Actual review label, held transport receipt, presentation, dispatched request and exact owner-keyed intent"
+    },
+    "abstractions": [
+      "One weekly task, finite status and cron classes, one pending request and up to three attempted sends across two owners.",
+      "The reviewed verb is directly observed. The reviewed body is observed once the intent and request are emitted.",
+      "The closed adapter replays actual renderer callbacks and installed slot CAS. Mounted DOM scheduling, the browser document backend, installed platform delivery and server-side scheduled execution require separate refinement."
+    ]
+  },
+  {
     "path": "specs/quint/application/AppearancePreferenceAdmission.qnt",
     "module": "AppearancePreferenceAdmission",
     "init": "init",
