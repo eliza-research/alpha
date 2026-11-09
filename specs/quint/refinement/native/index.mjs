@@ -53,6 +53,7 @@ import {checkNativeMmsDispatch} from './mms-dispatch.mjs';
 import {checkNativeTextScaleLifecycle} from './text-scale-lifecycle.mjs';
 import {checkNativeCrashJournal} from './crash-journal.mjs';
 import {checkNativeSettingsHandoff} from './settings-handoff.mjs';
+import {checkNativeAppInfoHandoff} from './app-info-handoff.mjs';
 import {checkNativeSourceRenewal} from './source-renewal.mjs';
 import {checkNativeAssistantEntry} from './assistant-entry.mjs';
 import {checkNativeActionRecovery} from './action-recovery.mjs';
@@ -62,7 +63,7 @@ import {checkNativeCalendarScopedReview} from './scoped-calendar-review.mjs';
 import {checkNativeCalendarSyncEnable} from './calendar-sync-enable.mjs';
 import {checkBrowserUnderlay} from './browser-underlay.mjs';
 
-export async function runNativeRefinement() {
+export async function runNativeRefinement(onProgress) {
   const earlyInputs = [fileURLToPath(import.meta.url)];
   const nativeInputs = [...earlyInputs, join(root, 'specs/quint/refinement/model-state.mjs')];
   const withInputs = inputs => check => [check.name, () => check(inputs)];
@@ -180,7 +181,7 @@ export async function runNativeRefinement() {
       checkNativeUpdateStaging, checkCanonicalNotificationTap, checkWorkflowNoticeDelivery,
       checkNativeHostedResultNotices, checkNativeHostedInbox, checkNativeReminderDelivery, checkNativeClockReview,
       checkNativeSmsDispatch, checkNativeMmsDispatch, checkNativeTextScaleLifecycle, checkNativeCrashJournal,
-      checkNativeSettingsHandoff, checkNativeSourceRenewal, checkNativeAssistantEntry, checkNativeActionRecovery,
+      checkNativeSettingsHandoff, checkNativeAppInfoHandoff, checkNativeSourceRenewal, checkNativeAssistantEntry, checkNativeActionRecovery,
       checkNativeGmailBackground, checkNativeDigestConsent, checkNativeCalendarScopedReview,
       checkNativeCalendarSyncEnable, checkBrowserUnderlay].map(withInputs(nativeInputs)),
   ];
@@ -222,7 +223,7 @@ export async function runNativeRefinement() {
     {model: 'VoiceIpcAssembly', obligation: 'Deadline scheduling races and actual owner/binding admission', reason: 'Eight actual exchanges check return/cleanup. Static deadline scheduling and local assembly state need a deterministic observer seam.'},
     {model: 'ListenerLeaseProducer', obligation: 'Controller measurement and real SystemUI/Binder identity', reason: 'Actual lease delivery consumes fixture snapshots. Controller/view geometry and real identity checks remain external.'},
   ];
-  const {receipts, obligations, failures} = await collectRefinementCampaigns(campaigns, baseObligations);
+  const {receipts, obligations, failures} = await collectRefinementCampaigns(campaigns, baseObligations, onProgress);
   const modelPaths = new Map(loadModels().map(model => [model.module, model.path]));
   for (const model of new Set(receipts.map(receipt => receipt.model))) {
     const related = receipts.filter(receipt => receipt.model === model);

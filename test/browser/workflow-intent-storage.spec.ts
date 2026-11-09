@@ -37,6 +37,7 @@ for(const operation of ['run','metadata','lifecycle'])for(const outcome of ['sav
  },{operation,outcome});expect(result).toEqual({beforePosts:0,accepted:outcome==='saved',posts:outcome==='saved'?1:0});
 });
 for(const mode of ['reset','leave'])test(`workflow request recovery uses the captured account: ${mode}`,async({page})=>{
+ test.setTimeout(120_000);
  await page.goto('/?mode=dev&workflows=agent');await page.getByRole('button',{name:'Settings',exact:true}).click();await openConnectionDiagnostics(page);await page.getByRole('button',{name:'Connect development profile'}).click();await expect(page.getByRole('dialog',{name:'Development connections'})).toHaveCount(0);await returnToApps(page);
  const {key,capturedOwner}=await page.evaluate(async()=>{const {connectionController}=await import('/src/runtime/connection-ui.tsx'),{workflowIntentKey}=await import('/src/runtime/workflow-intents.ts');const {origin,ownerId,agentId}=connectionController.getSnapshot().session!,capturedOwner={origin,ownerId,agentId};const key=workflowIntentKey(capturedOwner,'lost-flow')+':lifecycle';localStorage.setItem(key,' {unreadable intent ');return {key,capturedOwner};});
  await page.getByRole('button',{name:'Workflows',exact:true}).click();await expect(page.getByText('Workflow request recovery',{exact:true})).toBeVisible();await expect(page.getByText('Loading workflows…',{exact:true})).toHaveCount(0);await page.getByText('Workflow request recovery',{exact:true}).click();

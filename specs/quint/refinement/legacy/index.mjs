@@ -112,7 +112,7 @@ const mapsDifferences = {
     'The historical proposed fault and off-route sequence retains the route.'],
 };
 
-export async function runLegacyRefinement() {
+export async function runLegacyRefinement(onProgress) {
   const campaigns = [
     ['ChatInput', async () => {
       const {receipts, mismatches} = await checkChatInputRefinement([driver]);
@@ -238,10 +238,10 @@ export async function runLegacyRefinement() {
       ]};
     }],
   ];
-  return collectLegacyCampaigns(campaigns);
+  return collectLegacyCampaigns(campaigns, onProgress);
 }
 
-export async function collectLegacyCampaigns(campaigns) {
+export async function collectLegacyCampaigns(campaigns, onProgress) {
   const receipts = [], obligations = [], failures = [];
   for (const [coverageModel, run] of campaigns) {
     try {
@@ -252,6 +252,7 @@ export async function collectLegacyCampaigns(campaigns) {
     } catch (error) {
       failures.push({campaign: coverageModel ?? 'Core task scheduling profiles', error});
     }
+    onProgress?.({receipts, failures});
   }
   return {receipts, obligations, failures};
 }
