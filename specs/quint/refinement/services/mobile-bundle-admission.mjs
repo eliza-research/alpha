@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {isDeepStrictEqual} from 'node:util';
-import {createMobileUuidAdapter, mobileBuildInputs, mobileBuildReceipt, verifyMobileBuildReceipt,
+import {expectedMobileUuidTransforms, mobileBuildInputs, mobileBuildReceipt, verifyMobileBuildReceipt,
   MOBILE_BUILD_INPUTS, MOBILE_BUILD_RECEIPT, MOBILE_UUID_POLICY} from '../../../../scripts/mobile-uuid-adapter.mjs';
 import {coreStateBuildPlugin, coreStateReceipt, PLUGIN_CONNECTOR_TARGET} from '../../../../scripts/core-state-patch.mjs';
 import {actualPolicy, hash, mobileUuidFixture} from '../../../../test/fixtures/mobile-uuid-build.mjs';
@@ -26,13 +26,12 @@ function installedTransforms(f) {
       callback({path: file});
     }
   }});
-  const uuid = createMobileUuidAdapter(f.root, f.source);
-  invoke(uuid.plugin, [path.join(uuid.inputs.packageRoot, 'dist-node/index.js')]);
-  assert.equal(uuid.transforms.length, 1);
+  const uuid = expectedMobileUuidTransforms(mobileBuildInputs(f.root, f.source));
+  assert.equal(uuid.length, 1);
   const core = coreStateBuildPlugin(f.root, f.source);
   invoke(core.plugin, [...core.files.keys()].map(name => path.join(f.source, name)));
   assert.ok(core.transforms.some(item => item.path === PLUGIN_CONNECTOR_TARGET));
-  return {uuid: uuid.transforms, core: core.transforms};
+  return {uuid, core: core.transforms};
 }
 
 function refusal(error, files) {
@@ -384,7 +383,7 @@ export async function checkMobileBundleAdmission(extraSources = []) {
   ];
   return checkTraces({model: 'MobileBundleAdmission', sources, driverHashes, traces, scope: 'bounded-orchestration',
     assumptions: [
-      'Actual mobileBuildInputs, mobileBuildReceipt, verifyMobileBuildReceipt and UUID/core onLoad adapters execute in private scratch. The initial SDK lock, pinned producer, authored adapters, policy and all 23 UUID files are byte-exact.',
+      'Actual mobileBuildInputs, mobileBuildReceipt, verifyMobileBuildReceipt and UUID observation records and the core input observer execute in private scratch. The initial SDK lock, pinned producer, authored adapters, policy and all 23 UUID files are byte-exact.',
       'The source stamp and bundle are synthetic. Faults change only owned fixture bytes. A second producer digest represents a coherent synthetic policy revision.',
       'Fingerprints are equality classes of file digests. The observed candidate and stored receipt are distinct. Exact receipt admission verifies smoke claim fields. Mobile producer and smoke execution require separate evidence.',
       'One selected directory and one input fault at a time. The alternate directory is a direct verifier input; actual staged copying, interruption and installed runtime execution remain separate.',

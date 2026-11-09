@@ -187,7 +187,7 @@ def verify(apk, release=False, runtime_profile="native", local_embeddings=False)
         # Explicit build adapters are separate from the unmodified source stamp.
         # If this build declares one, bind its receipt and producer input hashes too.
         mobile_receipt_file = staged / 'alpha-mobile-build.json'
-        mobile_policy_file = ROOT / 'patches/eliza/mobile-uuid-build.json'
+        mobile_policy_file = ROOT / 'config/upstream-mobile-build.json'
         if mobile_policy_file.exists() or mobile_receipt_file.exists() or 'assets/agent/alpha-mobile-build.json' in names:
             check('assets/agent/alpha-mobile-build.json', mobile_receipt_file)
             mobile_receipt = json.loads(archive.read('assets/agent/alpha-mobile-build.json'))

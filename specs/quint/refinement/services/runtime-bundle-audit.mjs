@@ -14,12 +14,12 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../.
 const source = sourceDirectory(root, {ALPHA_LOCAL_AGENT_SOURCE_DIR: path.resolve(process.argv[2] ?? '')});
 const output = path.join(root, 'test-results/quint-runtime-bundle-core-state');
 const pin = JSON.parse(fs.readFileSync(path.join(root, 'upstream.lock.json'), 'utf8')).commit;
-const policy = JSON.parse(fs.readFileSync(path.join(root, 'patches/eliza/mobile-uuid-build.json'), 'utf8'));
+const policy = JSON.parse(fs.readFileSync(path.join(root, 'config/upstream-mobile-build.json'), 'utf8'));
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 if (Bun.version !== policy.bun.version || Bun.revision !== policy.bun.revision) throw Error('Audit requires the exact reviewed Bun build');
 verifySource(source, pin);
 fs.mkdirSync(output, {recursive: true});
-const inputFiles = [fileURLToPath(import.meta.url), 'specs/quint/refinement/services/runtime-bundle-graph.mjs', 'upstream.lock.json', 'patches/eliza/mobile-uuid-build.json',
+const inputFiles = [fileURLToPath(import.meta.url), 'specs/quint/refinement/services/runtime-bundle-graph.mjs', 'upstream.lock.json', 'config/upstream-mobile-build.json',
   'scripts/build-mobile-agent.mjs', 'scripts/mobile-uuid-adapter.mjs', 'scripts/mobile-bundle-smoke.mjs',
   'scripts/local-agent-source.mjs', ...CORE_STATE_INPUTS].map(file => path.resolve(root, file));
 const core = coreStatePatch(root, source);
