@@ -32516,9 +32516,9 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "85cc07c20f3fd3a8f3fd5154752a099ff8c8639ba66da868dbc9657c78dc6038",
+      "sha256": "c16b20b034ff794bf86b4570bf64510347c8cee9ac27dcb3c7272c4d75ffc067",
       "stateAnchors": [],
-      "integrationReview": "2026-11-09: Cloud now uses same canonical bounded recovery as Direct; readiness and failure visible without changing manual mute/Stop. 42 tests including actual SDK reconnection passed; live Cloud returned to Listening at 74s without another Talk click. Renewal latency remains open."
+      "integrationReview": "2026-11-09: Notes recorder action bar reserves existing assistant dock clearance. Recording state and persistence unchanged; existing Notes accessibility scenarios qualify layout."
     },
     {
       "path": "apps/app/src/prototype/photo-library-adapter.ts",
