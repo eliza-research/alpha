@@ -12128,7 +12128,8 @@
       "sha256": "bfc094aafe6183cec37da7f2f50ceee483399e0b7a1825c69076dc70475f08ef",
       "models": [
         "BrowserSession",
-        "DurableStore"
+        "DurableStore",
+        "WorkflowRequestRecoveryAdmission"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -17288,228 +17289,261 @@
     },
     {
       "path": "apps/app/src/prototype/automations-adapter.ts",
-      "sha256": "88db562cc08559eb128aa1790c0c4c46f6571cb148fd0bec410b11e1e3ba5167",
       "models": [
         "WorkflowExecution",
-        "ReminderOpenIntent"
+        "ReminderOpenIntent",
+        "WorkflowRequestRecoveryAdmission"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "b235540fb8298068ab0422922ed435375f977a55c30838521001f0ce038e79f8",
       "stateAnchors": [
         {
-          "line": 16,
+          "line": 18,
           "text": "const dateInput=automationLocalDateInput;"
         },
         {
-          "line": 17,
+          "line": 19,
           "text": "const future=()=>dateInput(Date.now()+3600000);"
         },
         {
-          "line": 18,
+          "line": 20,
           "text": "const timeZone=()=>Intl.DateTimeFormat().resolvedOptions().timeZone;"
         },
         {
-          "line": 21,
+          "line": 23,
           "text": "const parts=expression.trim().split(/\\s+/),minute=Number(parts[0]),hour=Number(parts[1]);"
         },
         {
-          "line": 23,
+          "line": 25,
           "text": "const preset=CRON_PRESETS.slice(1,4).find(p=>p.expression.split(/\\s+/).slice(2).join(' ')===parts.slice(2).join(' '));"
         },
         {
-          "line": 27,
+          "line": 29,
           "text": "const match=/^([01]\\d|2[0-3]):([0-5]\\d)$/.exec(time);"
         },
         {
-          "line": 31,
+          "line": 33,
           "text": "const filters=[...FEED_FILTERS.slice(0,4),'schedules',...FEED_FILTERS.slice(4)] as const;"
         },
         {
-          "line": 33,
+          "line": 35,
           "text": "const filterNames:Record<Filter,string>={all:'All',reminders:'Reminders',prompts:'Prompts',workflows:'Workflows',schedules:'Schedules',active:'Active',inactive:'Inactive'};"
         },
         {
-          "line": 41,
+          "line": 43,
           "text": "const view=views.workflows,p=Component.prototype,render=view.render,back=view.back,leave=view.onLeave;"
         },
         {
-          "line": 43,
+          "line": 45,
           "text": "let owner:any,api:Bag|undefined,rows:AutomationRow[]=[],issues:AutomationIssue[]=[],typeFilter:WorkflowTypeFilter='all',statusFilter:WorkflowStatusFilter='all';"
         },
         {
-          "line": 44,
+          "line": 46,
           "text": "let promptMore=false,newMore=false;"
         },
         {
-          "line": 45,
+          "line": 47,
           "text": "let closeFilters:(()=>void)|undefined;"
         },
         {
-          "line": 46,
+          "line": 48,
           "text": "const dismissFilters=()=>{closeFilters?.();closeFilters=undefined;};"
         },
         {
-          "line": 47,
+          "line": 49,
           "text": "let detail:AutomationRow|null=null,editor:Editor|null=null,creating=false,review:{label:string;key:string;run:(client:AutomationsProtocol,signal:AbortSignal)=>Promise<unknown>}|null=null;"
         },
         {
-          "line": 48,
+          "line": 50,
           "text": "let state:'idle'|'loading'|'ready'|'failed'='idle',message='',controller:AbortController|null=null,epoch=0,session:string|null=null,loadedSession:string|null=null,history:string[]=[];"
         },
         {
-          "line": 51,
+          "line": 53,
           "text": "let completionDirty=false;"
         },
         {
-          "line": 52,
+          "line": 54,
           "text": "const uncertain=new Set<string>();"
         },
         {
-          "line": 53,
+          "line": 55,
           "text": "let intentStore:WorkflowIntentStore|null=null,suspended=document.hidden;"
         },
         {
-          "line": 54,
+          "line": 56,
+          "text": "const recovery=createWorkflowRequestRecovery(async()=>(await import('../browser/domain-recovery')).openDomainRecovery);"
+        },
+        {
+          "line": 57,
           "text": "let homeCache:{sessionId:string;rows:Array<{name:string;status:string}>;total:number;complete:boolean;partial:boolean;stale:boolean;error:boolean;loadedAt:number}|null=null;"
         },
         {
-          "line": 55,
+          "line": 58,
           "text": "const binding=():Binding|null=>(connectionController as typeof connectionController & {getAutomationsClient():Binding|null}).getAutomationsClient();"
         },
         {
-          "line": 58,
+          "line": 61,
           "text": "const publish=()=>{if(owner?.live&&!suspended&&!document.hidden)owner.vset('workflows',{automationTick:Date.now()});};"
         },
         {
-          "line": 60,
-          "text": "const requestKey=(id:string)=>{const owner=connectionController.getSnapshot().session;return owner?workflowIntentKey(owner,'automation:'+id):'offline:'+id;};"
-        },
-        {
-          "line": 61,
-          "text": "const key=(row:AutomationRow)=>requestKey(row.key);"
-        },
-        {
           "line": 62,
-          "text": "const locked=(row:AutomationRow)=>uncertain.has(key(row))||(!!binding()&&(intentStore?.locked(key(row))??true));"
+          "text": "const retire=(clear=false)=>{dismissFilters();recovery.retire();epoch++;controller?.abort();controller=null;detail=null;scheduleDraft=null;editor=null;creating=false;review=null;message"
         },
         {
           "line": 63,
-          "text": "const visible=()=>owner?.live&&!suspended&&owner.S().view==='workflows'&&!document.hidden&&!connectionController.getSnapshot().open;"
+          "text": "const requestKey=(id:string)=>{const owner=connectionController.getSnapshot().session;return owner?workflowIntentKey(owner,'automation:'+id):'offline:'+id;};"
+        },
+        {
+          "line": 64,
+          "text": "const key=(row:AutomationRow)=>requestKey(row.key);"
+        },
+        {
+          "line": 65,
+          "text": "const locked=(row:AutomationRow)=>uncertain.has(key(row))||(!!binding()&&(intentStore?.locked(key(row))??true));"
         },
         {
           "line": 66,
-          "text": "const settled=(entries:Record<string,string>,fresh:AutomationRow[],complete:(source:AutomationIssue['source'])=>boolean)=>Object.entries(entries).filter(([id,raw])=>{"
+          "text": "const visible=()=>owner?.live&&!suspended&&owner.S().view==='workflows'&&!document.hidden&&!connectionController.getSnapshot().open;"
         },
         {
           "line": 67,
-          "text": "let intent:Bag;try{intent=JSON.parse(raw);}catch{return false;}"
+          "text": "const recoverRequests=()=>{"
         },
         {
-          "line": 69,
-          "text": "const body:Bag=intent.body&&typeof intent.body==='object'?intent.body:{},fields=Object.keys(body),row=fresh.find(row=>requestKey(row.key)===id);"
+          "line": 68,
+          "text": "const store=intentStore, ticket=epoch, sessionId=connectionController.getSnapshot().session?.sessionId;"
         },
         {
-          "line": 76,
-          "text": "const selected=binding(),ticket=++epoch,abort=controller=new AbortController();state='loading';if(homeCache)homeCache.stale=true;if(!preserveMessage)message='';publish();"
+          "line": 72,
+          "text": "current:()=>!!visible()&&!controller&&epoch===ticket&&intentStore===store&&connectionController.getSnapshot().session?.sessionId===sessionId,"
         },
         {
-          "line": 77,
-          "text": "const valid=()=>ticket===epoch&&!abort.signal.aborted&&visible()&&selected?.sessionId===binding()?.sessionId;"
+          "line": 73,
+          "text": "changed:()=>{store.invalidate();publish();},"
         },
         {
           "line": 79,
-          "text": "const ownerContext=connectionController.getSnapshot().session,store=ownerContext?new WorkflowIntentStore(ownerContext):null;"
+          "text": "const settled=(entries:Record<string,string>,fresh:AutomationRow[],complete:(source:AutomationIssue['source'])=>boolean)=>Object.entries(entries).filter(([id,raw])=>{"
+        },
+        {
+          "line": 80,
+          "text": "let intent:Bag;try{intent=JSON.parse(raw);}catch{return false;}"
         },
         {
           "line": 82,
-          "text": "const next:AutomationRow[]=[],failures:AutomationIssue[]=[];"
+          "text": "const body:Bag=intent.body&&typeof intent.body==='object'?intent.body:{},fields=Object.keys(body),row=fresh.find(row=>requestKey(row.key)===id);"
         },
         {
-          "line": 85,
-          "text": "const fresh=mergeAutomationRows(next),complete=(source:AutomationIssue['source'])=>remote.status==='fulfilled'&&!remote.value.issues.some(issue=>issue.source===source);"
+          "line": 89,
+          "text": "recovery.retire();"
         },
         {
           "line": 90,
-          "text": "const enabled=rows.filter(row=>row.enabled);"
+          "text": "const selected=binding(),ticket=++epoch,abort=controller=new AbortController();state='loading';if(homeCache)homeCache.stale=true;if(!preserveMessage)message='';publish();"
+        },
+        {
+          "line": 91,
+          "text": "const valid=()=>ticket===epoch&&!abort.signal.aborted&&visible()&&selected?.sessionId===binding()?.sessionId;"
+        },
+        {
+          "line": 93,
+          "text": "const ownerContext=connectionController.getSnapshot().session,store=ownerContext?new WorkflowIntentStore(ownerContext):null;"
+        },
+        {
+          "line": 96,
+          "text": "const next:AutomationRow[]=[],failures:AutomationIssue[]=[];"
         },
         {
           "line": 99,
-          "text": "if(controller)return;const selected=binding();if(!selected){showAgentStatus(owner);return;}"
+          "text": "const fresh=mergeAutomationRows(next),complete=(source:AutomationIssue['source'])=>remote.status==='fulfilled'&&!remote.value.issues.some(issue=>issue.source===source);"
         },
         {
-          "line": 100,
-          "text": "const ownerContext=connectionController.getSnapshot().session;if(!ownerContext)return;"
-        },
-        {
-          "line": 101,
-          "text": "const intents=new WorkflowIntentStore(ownerContext),ticket=++epoch,abort=controller=new AbortController();let dispatched=false,retained:string|undefined,sent='';message='';publish();"
-        },
-        {
-          "line": 102,
-          "text": "const valid=()=>ticket===epoch&&!abort.signal.aborted&&visible()&&selected.sessionId===binding()?.sessionId;"
-        },
-        {
-          "line": 112,
-          "text": "const ownerContext=connectionController.getSnapshot().session;if(!ownerContext)return;"
+          "line": 104,
+          "text": "const enabled=rows.filter(row=>row.enabled);"
         },
         {
           "line": 113,
-          "text": "const intents=new WorkflowIntentStore(ownerContext),ticket=++epoch,abort=controller=new AbortController();message='';publish();"
+          "text": "if(controller)return;const selected=binding();if(!selected){showAgentStatus(owner);return;}"
         },
         {
           "line": 114,
+          "text": "const ownerContext=connectionController.getSnapshot().session;if(!ownerContext)return;"
+        },
+        {
+          "line": 115,
+          "text": "const intents=new WorkflowIntentStore(ownerContext),ticket=++epoch,abort=controller=new AbortController();let dispatched=false,retained:string|undefined,sent='';message='';publish();"
+        },
+        {
+          "line": 116,
+          "text": "const valid=()=>ticket===epoch&&!abort.signal.aborted&&visible()&&selected.sessionId===binding()?.sessionId;"
+        },
+        {
+          "line": 126,
+          "text": "const ownerContext=connectionController.getSnapshot().session;if(!ownerContext)return;"
+        },
+        {
+          "line": 127,
+          "text": "const intents=new WorkflowIntentStore(ownerContext),ticket=++epoch,abort=controller=new AbortController();message='';publish();"
+        },
+        {
+          "line": 128,
           "text": "try{const raw=await intents.read(id,abort.signal);if(raw!==null)await intents.acknowledge(id,raw,abort.signal);if(ticket===epoch)uncertain.delete(id);}"
         },
         {
-          "line": 120,
+          "line": 134,
           "text": "if(row.kind==='workflow'&&row.workflowId){detail=null;const out=render(owner.vget('workflows'),owner.api('workflows'));out.openWorkflow(row.workflowId);return;}"
         },
         {
-          "line": 132,
+          "line": 146,
           "text": "if(!editor||controller)return;const selected=editor,id=selected.row?key(selected.row):requestKey('new:'+selected.kind);"
         },
         {
-          "line": 135,
+          "line": 149,
           "text": "const blocked=selected.kind==='reminder'?reminderBlock():automationBlock();if(blocked){message=blocked;publish();return;}"
         },
         {
-          "line": 139,
+          "line": 153,
           "text": "const close=()=>{if(controller)return;editor=null;detail=null;creating=false;review=null;message='';publish();};"
         },
         {
-          "line": 140,
+          "line": 154,
           "text": "const newDeviceReminder=()=>{close();owner.openView('calendar');owner.newDeviceReminderDraft();};"
         },
         {
-          "line": 144,
+          "line": 158,
           "text": "const values=p.renderVals;"
         },
         {
-          "line": 147,
+          "line": 161,
           "text": "api=current;const workflow=render(value,current),currentSession=binding()?.sessionId||'offline';"
         },
         {
-          "line": 151,
+          "line": 165,
           "text": "const empty=state==='ready'&&!cards.length&&!issues.length;"
         },
         {
-          "line": 152,
+          "line": 168,
+          "text": "name:'Workflow request recovery',short:'Back up or reset this agent’s pending requests',open:recoverRequests,"
+        },
+        {
+          "line": 170,
           "text": "const selected=editor?.row||detail,selectedLocked=!!selected&&locked(selected);"
         },
         {
-          "line": 153,
+          "line": 171,
           "text": "const lockId=selected?key(selected):editor?requestKey('new:'+editor.kind):'',formLocked=!selected&&!!editor&&(uncertain.has(lockId)||!!intentStore?.locked(lockId));"
         },
         {
-          "line": 154,
+          "line": 172,
           "text": "const actions:Array<{label:string;run:()=>void;disabled:boolean}>=[];"
         },
         {
-          "line": 191,
+          "line": 209,
           "text": "const mount=p.componentDidMount,unmount=p.componentWillUnmount;"
         }
-      ],
-      "integrationReview": "2026-11-09 UI and browser-return delta reviewed against existing domain models and new ChatAttachments/BrowserGoogleReturn contracts; see ui-return-review-20261109.md. Source-model refinement and device acceptance remain separate."
+      ]
     },
     {
       "path": "apps/app/src/prototype/automations.css",
@@ -34382,7 +34416,8 @@
         "CameraPreviewRetirement",
         "MapsRerouteOwnership",
         "ModalScrimOwnership",
-        "NotesRecorderMediaAdmission"
+        "NotesRecorderMediaAdmission",
+        "WorkflowRequestRecoveryAdmission"
       ],
       "scope": "application",
       "treatment": "stateless-presentation-contract",
@@ -45493,7 +45528,8 @@
       "path": "apps/app/src/runtime/workflow-intents.ts",
       "sha256": "2f79c96825f076dadb02b0529aac5859db241c2b12e1412340bd26191ddc1b1a",
       "models": [
-        "WorkflowExecution"
+        "WorkflowExecution",
+        "WorkflowRequestRecoveryAdmission"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -45637,6 +45673,74 @@
         {
           "line": 27,
           "text": "const checked=await validateWorkflowReadResult(operation,result);"
+        }
+      ]
+    },
+    {
+      "path": "apps/app/src/runtime/workflow-request-recovery.ts",
+      "models": [
+        "WorkflowRequestRecoveryAdmission"
+      ],
+      "scope": "application",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "sha256": "364edc8dc60eff1f89affba210e2f22d1c35f18c4db32dcd23c82eebdde0e413",
+      "stateAnchors": [
+        {
+          "line": 12,
+          "text": "let owner: AbortController | undefined;"
+        },
+        {
+          "line": 13,
+          "text": "const retire = () => {"
+        },
+        {
+          "line": 15,
+          "text": "owner = undefined;"
+        },
+        {
+          "line": 16,
+          "text": "previous?.abort();"
+        },
+        {
+          "line": 22,
+          "text": "const controller = owner = new AbortController();"
+        },
+        {
+          "line": 23,
+          "text": "const current = () => owner === controller && request.current();"
+        },
+        {
+          "line": 24,
+          "text": "const check = (signal?: AbortSignal) => {"
+        },
+        {
+          "line": 30,
+          "text": "const domain = await request.store.recoveryDocument();"
+        },
+        {
+          "line": 32,
+          "text": "const show = await loadDialog();"
+        },
+        {
+          "line": 35,
+          "text": "capture(signal) {"
+        },
+        {
+          "line": 37,
+          "text": "return domain.capture(signal);"
+        },
+        {
+          "line": 39,
+          "text": "async reset(expected, signal) {"
+        },
+        {
+          "line": 42,
+          "text": "if (current()) request.changed();"
+        },
+        {
+          "line": 48,
+          "text": "if (current()) request.unavailable();"
         }
       ]
     },

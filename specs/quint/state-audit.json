@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "b1817660a0347ae19551b9ee296410fe55f02d59",
-  "ledgerSha256": "5840f096bbd36b3ecea78bc15c1a5c1913a338aaaff08b7720e7c8db23845d6b",
+  "ledgerSha256": "2b40fb67748725ad56c47fc1d442ec70fb033d299b6db2f0ab214096e0513d8f",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -22,15 +22,15 @@
     "The ledger supplies pinned source bytes. Effective client/native/runtime patch outputs require their separately authenticated source mappings."
   ],
   "counts": {
-    "files": 5767,
+    "files": 5768,
     "testSupportFiles": 297,
     "testSupportCandidates": 11402,
-    "parsedFiles": 5677,
+    "parsedFiles": 5678,
     "languageReview": 90,
     "parseErrors": 0,
-    "candidates": 67717,
-    "writeSites": 67278,
-    "writeAssociations": 60333,
+    "candidates": 67720,
+    "writeSites": 67282,
+    "writeAssociations": 60337,
     "asynchronous": 8387,
     "unassignedWrites": 10366
   },
@@ -30780,7 +30780,8 @@
       "sha256": "bfc094aafe6183cec37da7f2f50ceee483399e0b7a1825c69076dc70475f08ef",
       "allocatedModels": [
         "BrowserSession",
-        "DurableStore"
+        "DurableStore",
+        "WorkflowRequestRecoveryAdmission"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -33662,61 +33663,63 @@
     },
     {
       "path": "apps/app/src/prototype/automations-adapter.ts",
-      "sha256": "88db562cc08559eb128aa1790c0c4c46f6571cb148fd0bec410b11e1e3ba5167",
+      "sha256": "b235540fb8298068ab0422922ed435375f977a55c30838521001f0ce038e79f8",
       "allocatedModels": [
         "WorkflowExecution",
-        "ReminderOpenIntent"
+        "ReminderOpenIntent",
+        "WorkflowRequestRecoveryAdmission"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
         {
           "owner": "<module>",
-          "line": 31,
+          "line": 33,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "installAutomationsAdapter",
-          "line": 41,
+          "line": 43,
           "bindings": 29,
           "writes": 134
         },
         {
-          "owner": "installAutomationsAdapter.settled.ArrowFunction@66",
-          "line": 67,
+          "owner": "installAutomationsAdapter.settled.ArrowFunction@79",
+          "line": 80,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installAutomationsAdapter.refresh",
-          "line": 82,
+          "line": 96,
           "bindings": 2,
           "writes": 6
         },
         {
           "owner": "installAutomationsAdapter.work",
-          "line": 101,
+          "line": 115,
           "bindings": 4,
           "writes": 3
         },
         {
           "owner": "installAutomationsAdapter.allowAnother",
-          "line": 113,
+          "line": 127,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "installAutomationsAdapter.save",
-          "line": 132,
+          "line": 146,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAutomationsAdapter.ArrowFunction@146",
-          "line": 154,
-          "bindings": 4,
-          "writes": 14
+          "owner": "installAutomationsAdapter.ArrowFunction@160",
+          "line": 166,
+          "bindings": 5,
+          "writes": 15
         }
       ],
       "parseErrors": [],
@@ -40212,7 +40215,8 @@
         "CameraPreviewRetirement",
         "MapsRerouteOwnership",
         "ModalScrimOwnership",
-        "NotesRecorderMediaAdmission"
+        "NotesRecorderMediaAdmission",
+        "WorkflowRequestRecoveryAdmission"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -45478,7 +45482,8 @@
       "path": "apps/app/src/runtime/workflow-intents.ts",
       "sha256": "2f79c96825f076dadb02b0529aac5859db241c2b12e1412340bd26191ddc1b1a",
       "allocatedModels": [
-        "WorkflowExecution"
+        "WorkflowExecution",
+        "WorkflowRequestRecoveryAdmission"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -45576,6 +45581,33 @@
       "parseErrors": [],
       "asynchronous": 1,
       "unassignedWrites": 1
+    },
+    {
+      "path": "apps/app/src/runtime/workflow-request-recovery.ts",
+      "sha256": "364edc8dc60eff1f89affba210e2f22d1c35f18c4db32dcd23c82eebdde0e413",
+      "allocatedModels": [
+        "WorkflowRequestRecoveryAdmission"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "createWorkflowRequestRecovery",
+          "line": 12,
+          "bindings": 1,
+          "writes": 2
+        },
+        {
+          "owner": "createWorkflowRequestRecovery.retire",
+          "line": 14,
+          "bindings": 1,
+          "writes": 1
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
     },
     {
       "path": "apps/app/src/startup-browser-permissions.ts",
@@ -221394,6 +221426,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "c557f13d5b9ae28513b41bcb0140c7ad8fd9e6d93187252cc7a4932d1552a61d"
+    "sha256": "c0852f813c4fd27ccefb47b9a6571257579b2cd45a455af631e57e272f49f238"
   }
 }

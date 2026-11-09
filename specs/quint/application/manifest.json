@@ -623,6 +623,37 @@
     ]
   },
   {
+    "path": "specs/quint/application/WorkflowRequestRecoveryAdmission.qnt",
+    "module": "WorkflowRequestRecoveryAdmission",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "exactReviewCanCaptureAndResetTest",
+      "leaveDuringModuleLoadKeepsOldReviewClosedTest",
+      "replacementRevokesOldCallbacksTest",
+      "departureWhileSavingKeepsCompletionSilentTest",
+      "reportOnlyCurrentFailureTest"
+    ],
+    "invariants": ["ClosedReviewWasOffered", "ActiveReviewIsNotClosed", "AllCallbacksBelongToAnOfferedReview", "RetiredOffersAreClosed"],
+    "sources": [
+      "apps/app/src/runtime/workflow-request-recovery.ts",
+      "apps/app/src/runtime/workflow-intents.ts",
+      "apps/app/src/prototype/automations-adapter.ts",
+      "apps/app/src/browser/domain-recovery.ts",
+      "apps/app/src/prototype/template.html"
+    ],
+    "stateMapping": {
+      "allowed/seen/owner": "Visible and exact caller admission, counted document requests and the current recovery AbortController",
+      "reading/loading/offered/closed": "Held document and dialog preparation, actual dialog invocation and observed abort signal",
+      "captured/saving/published/reported": "Calls to controlled document ports and to the current Workflows UI"
+    },
+    "abstractions": [
+      "Three recovery requests, one selected account document per request and closed persistence ports.",
+      "The mounted browser suite exercises visible recovery controls separately. Kernel durability and arbitrary cross-tab writes are outside this model."
+    ]
+  },
+  {
     "path": "specs/quint/application/SharePanelAdmission.qnt",
     "module": "SharePanelAdmission",
     "init": "init",

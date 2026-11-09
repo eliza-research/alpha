@@ -1231,3 +1231,16 @@ tests that reported compiler aborts during the broad run. The original
 closed Camera recovery fixture also passes in isolation. The broad result
 remains failed. The Share model passes depth-eight symbolic verification
 and the common Share panel passes its Chromium fixture.
+
+The main integration pins SDK `b1817660a`. Its resident host descriptor
+moves 28 Java helpers into the separate Android browser library. Normal
+source-only preparation and staging generated 41 resident Java entries.
+Independent readback matched every generated file to its manifest and
+pinned source. This run does not exercise Gradle or APK installation.
+
+`WorkflowRequestRecoveryAdmission` checks seven schedules and 54
+checkpoints. The unified Workflows view exposes browser request recovery
+using its current account's request store. Replacement, view departure
+and refresh retire the old review. The closed replay checks delayed
+document and dialog preparation, retained callbacks and reset completion.
+The separate mounted fixture covers the visible dialog and IndexedDB.
