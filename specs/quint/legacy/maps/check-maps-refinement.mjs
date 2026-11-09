@@ -23,7 +23,8 @@ const origin = {latitude: 43.738, longitude: 7.424};
 const destination = {latitude: 43.741, longitude: 7.424};
 const far = {latitude: 43.750, longitude: 7.424};
 const label = 'Fixture destination';
-const fixtureModules = ['/src/runtime/connection-ui.tsx', '/src/maps/cloud-maps.ts', '/src/maps/runtime.ts'];
+const deviceModule = '/src/browser/device.ts';
+const fixtureModules = ['/src/runtime/connection-ui.tsx', '/src/maps/cloud-maps.ts', '/src/maps/runtime.ts', deviceModule];
 
 async function setup(page) {
   await preloadPageModules(page, fixtureModules);
@@ -240,6 +241,66 @@ async function guidance(page) {
   ]};
 }
 
+async function portraitGuidance(page) {
+  const viewport = page.viewportSize();
+  const settle = () => page.evaluate(() => new Promise(resolve =>
+    requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(resolve)))));
+  const setText = async percent => {
+    await page.evaluate(async ({path, percent}) => {
+      const {BrowserDevice} = window.__alphaModules[path];
+      await BrowserDevice.prototype.setTextScale({percent});
+    }, {path: deviceModule, percent});
+    await expect.poll(() => page.evaluate(() => Number(
+      getComputedStyle(document.documentElement).getPropertyValue('--alpha-text-scale')))).toBe(percent / 100);
+  };
+  const observations = [];
+  try {
+    for (const percent of [100, 150]) {
+      await setText(percent);
+      for (const [width, height] of [[412, 915], [360, 640]]) {
+        await page.setViewportSize({width, height});
+        await settle();
+        const targets = await page.evaluate(() => {
+          const root = document.querySelector('[data-alpha-maps-root]');
+          const end = root.querySelector('button[aria-label="End navigation"]');
+          const owns = (node, x, y) => node.contains(document.elementFromPoint(x, y));
+          const points = (node, heights) => {
+            const box = node.getBoundingClientRect();
+            return [0.2, 0.5, 0.8].flatMap(x => heights.map(y =>
+              owns(node, box.left + box.width*x, box.top + box.height*y)));
+          };
+          const textLines = node => {
+            const range = document.createRange();
+            range.selectNodeContents(node);
+            return [...range.getClientRects()].map(box =>
+              owns(node, box.left + box.width/2, box.top + box.height/2));
+          };
+          const guidance = [...end.parentElement.querySelectorAll('button')].map(node => ({
+            label: node.getAttribute('aria-label') || node.textContent.trim(),
+            owned: points(node, [0.2, 0.5, 0.8]),
+          }));
+          const information = root.querySelector('summary[aria-label="Map information"]');
+          const attribution = [...root.querySelectorAll('.alpha-map-credits a')].map(node =>
+            ({label: node.textContent.trim(), owned: textLines(node)}));
+          const notice = root.querySelector('[data-alpha-maps-status] [role="status"]');
+          return [...guidance, {label: 'Map information', owned: points(information, [0.05, 0.2, 0.5, 0.8, 0.95])},
+            ...attribution, {label: notice.textContent.trim(), owned: textLines(notice)}];
+        });
+        assert.equal(targets.length, 9, 'Four guidance controls, Map information, three attribution links and status');
+        for (const {label, owned} of targets) {
+          assert.ok(owned.length && owned.every(Boolean), `${width}×${height} at ${percent}%: ${label} owns its sampled points`);
+        }
+        observations.push({width, height, percent, targets});
+      }
+    }
+  } finally {
+    await page.setViewportSize(viewport);
+    await setText(100);
+    await settle();
+  }
+  return observations;
+}
+
 async function reroute(page) {
   const t = await schedule(page, 'off_route_prompt_before_explicit_reroute');
   await route(page, t);
@@ -250,12 +311,18 @@ async function reroute(page) {
   await expect(rerouteButton).toBeVisible();
   assert.equal((await requests(page)).filter(row => row.endpoint === 'routes').length, 1);
   await t.point('An off-route fix preserves the route pending an explicit choice', action('OffRoute'));
-  await page.evaluate(() => {window.closedMaps.routeRefusal = true;});
-  // The compact launcher pill overlaps this control's pointer target.
-  // Exercise its normal keyboard activation without a forced click.
-  await rerouteButton.focus();
-  await expect(rerouteButton).toBeFocused();
-  await page.keyboard.press('Enter');
+  const portrait = await portraitGuidance(page);
+  await page.evaluate(() => {
+    window.closedMaps.routeRefusal = true;
+    document.addEventListener('pointerdown', event => {
+      const button = event.target.closest('button');
+      window.closedMaps.reroutePointer = {label: button?.textContent.trim(),
+        layer: event.target.closest('[data-alpha-layer]')?.getAttribute('data-alpha-layer')};
+    }, {capture: true, once: true});
+  });
+  await rerouteButton.tap();
+  assert.deepEqual(await page.evaluate(() => window.closedMaps.reroutePointer),
+    {label: 'Reroute from here', layer: 'app'});
   await expect(sheet(page, 'directions')).toBeVisible();
   await expect(status(page)).toContainText('Cloud Maps is temporarily unavailable. Try again later.');
   await page.waitForFunction(() => window.closedMapsGeo.watches.size === 0);
@@ -271,7 +338,7 @@ async function reroute(page) {
     action: [action('CloudFault'), action('OffRoute')],
     expect: {'s.screen': after['s.screen'], 's.route': after['s.route'], 's.message': after['s.message']}});
   assert.equal(after['s.session'], 'ready');
-  return {trace: t.trace, differences: [['MapsHistoricalFailedRerouteKeepsRoute', failed]]};
+  return {trace: t.trace, differences: [['MapsHistoricalFailedRerouteKeepsRoute', failed]], portrait};
 }
 
 async function mounted(extraSources) {
@@ -385,6 +452,7 @@ export async function checkMapsRefinement(extraSources = []) {
     'Actual flag-off Maps renderer, shared Maps screen/controller, Cloud provider and browser location run in Chromium. The account transport, external map style and precise fixes are closed synthetic ports. No geographic request leaves the fixture.',
     'Connection observations are scoped to the captured synthetic owner and its actual capability requests. The network, subscription and Cloud service facts are controlled inputs. Informational and unmodeled notices have no historical error category.',
     'The accepted Directions projection includes the owner entering explicit origin coordinates. The real Arrived projection checks the screen and released location separately from the accepted route retained in the arrival state.',
+    'Mounted hit tests cover the guidance bar, Map information, attribution links and status at two portrait sizes and text scales, followed by actual touch reroute admission.',
     'Calendar return, native background service, remote agent requests, installed permission flow and fairness are independent obligations.',
   ]};
   const receipt = await checkTraces({...shared, traces: results.map(result => result.trace)});
@@ -397,5 +465,5 @@ export async function checkMapsRefinement(extraSources = []) {
     assert.ok(mismatch.driverInputsBound);
     mismatches.push({...mismatch, id, receiptPath});
   }
-  return {receipts: [receipt], mismatches};
+  return {receipts: [receipt], mismatches, portrait: results.flatMap(result => result.portrait ?? [])};
 }

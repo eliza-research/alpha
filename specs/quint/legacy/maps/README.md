@@ -11,10 +11,16 @@ route, installed provider and capability attempt. It checks selected shared
 projections for capability success and failure, explicit search recovery,
 result selection, Directions after explicit origin entry, Start, End,
 conversation minimization and arrival. A fresh off-route fix keeps guidance
-and prompts for an explicit reroute. The driver uses keyboard activation
-where the launcher pill overlaps the reroute button on the compact viewport.
-It checks the exact route request
-endpoints and checks that End and arrival release the synthetic location watch.
+and prompts for an explicit reroute. A real touch on the rendered button
+checks the exact route request endpoints. The same mounted replay checks
+guidance controls, Map information, attribution links and status text at
+412×915 and 360×640 with 100% and 150% browser text. These are derived
+renderer checks over the shell's measured dock clearance. End and arrival
+also release the synthetic location watch.
+
+Landscape has a separate layout obligation. At 915×412 the right-docked
+assistant can overlap part of Ask, and the guidance bar can cover Map
+information and attribution.
 
 The separate mismatch receipts capture these differences.
 

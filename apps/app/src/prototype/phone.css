@@ -393,6 +393,22 @@ html:not(.alpha-landscape) .alpha-phone [data-screen]:not([data-alpha-chat-half=
 .alpha-landscape [data-alpha-maps-sheet]{left:auto!important;width:min(440px,50%);border-radius:28px 0 0 0!important}
 .alpha-landscape [data-alpha-maps-directions]{right:auto!important;width:calc(50% - 24px);box-sizing:border-box;max-height:calc(100% - 64px);overflow-y:auto}
 
+/* Guidance controls float above the measured assistant dock in portrait. */
+html:not(.alpha-landscape) [data-alpha-maps-guidance="true"] {
+  --alpha-maps-guidance-bottom:calc(var(--alpha-dock-clearance,102px) + 8px);
+}
+/* When text grows, put the status and credits in flow with the guidance bar.
+   Their existing reading order also keeps each target above its neighbor. */
+html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] {
+  box-sizing:border-box; justify-content:flex-end; row-gap:8px; padding-bottom:var(--alpha-maps-guidance-bottom);
+}
+html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > :is([data-alpha-maps-status],.alpha-map-credits,[data-alpha-maps-guidance-controls]) {
+  position:relative!important; inset:auto!important; flex:none;
+}
+html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > [data-alpha-maps-status] { margin-inline:20px; }
+html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > .alpha-map-credits { margin-inline:12px 76px; }
+html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > [data-alpha-maps-guidance-controls] { margin-inline:12px; }
+
 /* Keep portrait capture controls above the assistant on short windows. */
 html:not(.alpha-landscape) [data-alpha-camera="capture"]{top:min(712px,calc(100% - var(--alpha-dock-clearance,102px) - 106px))!important}
 html:not(.alpha-landscape) [data-alpha-camera="modes"]{top:min(656px,calc(100% - var(--alpha-dock-clearance,102px) - 162px))!important}

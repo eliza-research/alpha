@@ -173,8 +173,8 @@ export async function runLegacyRefinement() {
         const [obligation, reason] = mapsDifferences[mismatch.id];
         return {model: 'Maps', obligation, reason, evidence: mismatch.receiptPath};
       });
-      obligations.push({model: 'Maps', obligation: 'Verify compact reroute pointer access',
-        reason: 'The launcher assistant pill overlapped the Reroute from here control at 412×915. The mounted comparison exercised its ordinary keyboard activation.'});
+      obligations.push({model: 'Maps', obligation: 'Check landscape guidance and attribution access',
+        reason: 'The mounted portrait replay checks pointer access and exact reroute admission. At 915×412 the right-docked assistant can overlap Ask, and the guidance bar can cover Map information and attribution.'});
       return {receipts, obligations};
     }],
     ['SignIn', async () => {
