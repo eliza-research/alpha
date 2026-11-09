@@ -1330,6 +1330,15 @@ Alpha runtime patch allowlist and Android receipt verifier exclude scheduler
 source. A shared repair needs a reviewed SDK change and new authenticated
 build evidence for each consuming pin.
 
+On the exact SDK pin, scratch replays exercised occurrence claims in the
+memory store and PGlite, including two concurrent recoveries at the same
+clock instant. Both recovery producers can pass the observed token, and
+the candidate rotates it while preserving the delivery key. On the
+original source, recovering a legacy tokenless claim twice after an
+interruption can change that key. The candidate preserves the fallback in
+the atomic claim. Receipt-bearing mutations, direct writers and the final
+pre-dispatch check at each delivery boundary still need review and replay.
+
 `PersonalAssistantScheduledTaskCustody` checks eight schedules and 60
 checkpoints through selected actual Personal Assistant policies and the
 SDK SQL store in private PGlite. Managed claim commits the admitted day
@@ -1376,3 +1385,11 @@ stale packages and profiles, disabled applications, malformed arguments
 and the exact component, user profile and flags sent to the closed
 launcher port. A real Android Settings launch and device policy remain
 separate.
+
+`ObservationTurnDispatch` checks 20 schedules and 93 checkpoints through the
+actual connection controller's send method, optional-field handshake and
+local protocol. The replay captures both JSON and streaming request bodies
+at a closed bridge. Unsupported peers preserve ordinary context. Caller
+Stop and recognized connection replacement prevent dispatch. Silent
+process replacement after the fresh status comparison and remote request
+handling remain separate.

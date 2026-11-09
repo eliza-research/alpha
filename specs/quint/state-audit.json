@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "b1817660a0347ae19551b9ee296410fe55f02d59",
-  "ledgerSha256": "1d041d5b090f4e39e6ddc16f8dbaf97203c21b70f0376bb477dbccad763a2e14",
+  "ledgerSha256": "62f352be3ccadc0c8d14329134f07dcadc4b17ca3a4d94406044d352db0139de",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -41598,7 +41598,8 @@
       "sha256": "a394b8ba5689199cf63767e1f19d6ab8e71b552290f51cf609c68ad57b3cc2ec",
       "allocatedModels": [
         "AssistantConversation",
-        "ClientObservationSupport"
+        "ClientObservationSupport",
+        "ObservationTurnDispatch"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -42083,7 +42084,8 @@
         "CloudConnectionNotices",
         "ChatAttachments",
         "RetainedReminderTapAdmission",
-        "ClientObservationSupport"
+        "ClientObservationSupport",
+        "ObservationTurnDispatch"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -43785,7 +43787,8 @@
         "ApplicationComposition",
         "ResidentRuntime",
         "ResidentLiveness",
-        "ChatAttachments"
+        "ChatAttachments",
+        "ObservationTurnDispatch"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -44791,7 +44794,8 @@
       "path": "apps/app/src/runtime/phone-context.ts",
       "sha256": "6bb467133d6c359eea1cce7da5ed3590704f8b745d7cdec46cb3d3c7a1ee3688",
       "allocatedModels": [
-        "ShellNavigation"
+        "ShellNavigation",
+        "ObservationTurnDispatch"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -221529,6 +221533,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "89ceec2e481b912ba050f99bc82ed36477e50f82cfd3278deca3b6f9f31bd9a8"
+    "sha256": "cc02f6ad71bdca61828317086761b6c2b7896717fe7f96c0397cf3a6e37b4017"
   }
 }

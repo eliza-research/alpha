@@ -37997,7 +37997,8 @@
       "path": "apps/app/src/runtime/client-observation-support.ts",
       "models": [
         "AssistantConversation",
-        "ClientObservationSupport"
+        "ClientObservationSupport",
+        "ObservationTurnDispatch"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -39022,7 +39023,8 @@
         "CloudConnectionNotices",
         "ChatAttachments",
         "RetainedReminderTapAdmission",
-        "ClientObservationSupport"
+        "ClientObservationSupport",
+        "ObservationTurnDispatch"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -42549,7 +42551,8 @@
         "ApplicationComposition",
         "ResidentRuntime",
         "ResidentLiveness",
-        "ChatAttachments"
+        "ChatAttachments",
+        "ObservationTurnDispatch"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -44365,7 +44368,8 @@
       "path": "apps/app/src/runtime/phone-context.ts",
       "sha256": "6bb467133d6c359eea1cce7da5ed3590704f8b745d7cdec46cb3d3c7a1ee3688",
       "models": [
-        "ShellNavigation"
+        "ShellNavigation",
+        "ObservationTurnDispatch"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",

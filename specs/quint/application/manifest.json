@@ -3062,5 +3062,30 @@
     "abstractions": [
       "One serialized turn, one shared background learn, five status reads, independent connection epoch replacement and explicit retirement. The status callback is a closed fixture."
     ]
+  },
+  {
+    "path": "specs/quint/application/ObservationTurnDispatch.qnt",
+    "module": "ObservationTurnDispatch",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "ExactSupportAddsOneMetadataFieldTest",
+      "ReplacementProcessKeepsOrdinaryPlainTurnTest",
+      "LegacyProductBypassesObservationSessionTest",
+      "LegacyMockEnvelopeNeverContainsOptionalDayTest",
+      "ReplacementAfterAdmissionStillFencesPostTest",
+      "CallerStopDuringComparisonRefusesBeforeDispatchTest",
+      "ActivationAndTurnShareOneStatusBeforeFreshComparisonTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/connection-ui.tsx",
+      "apps/app/src/runtime/client-observation-support.ts",
+      "apps/app/src/runtime/phone-context.ts",
+      "apps/app/src/runtime/local-agent.ts"
+    ],
+    "abstractions": [
+      "One serialized turn and representative supported, legacy, malformed and replacement process replies. The actual JSON and streaming requests run through closed bridge ports."
+    ]
   }
 ]

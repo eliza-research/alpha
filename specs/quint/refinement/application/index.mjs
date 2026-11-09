@@ -38,6 +38,7 @@ import {checkFirstSendDraftMigration} from './first-send-draft-migration.mjs';
 import {checkShadeNoticeQuestionAdmission} from './shade-notice-question-admission.mjs';
 import {checkWorkflowClockAdmission} from './workflow-clock-admission.mjs';
 import {checkBrowserExternalHandoff} from './browser-external-handoff.mjs';
+import {checkObservationTurnDispatch} from './observation-turn-dispatch.mjs';
 import {checkClientObservationSupport} from './client-observation-support.mjs';
 import {checkEmailSuggestionReview} from './email-suggestion-review.mjs';
 import {checkSharePanelAdmission} from './share-panel-admission.mjs';
@@ -108,6 +109,7 @@ const adapters = [checkChatAttachments, application, shellNavigation, startupPer
   checkShadeNoticeQuestionAdmission, checkWorkflowClockAdmission,
   checkBrowserExternalHandoff,
   checkClientObservationSupport,
+  checkObservationTurnDispatch,
   checkEmailSuggestionReview,
   checkSharePanelAdmission,
   checkWorkflowRequestRecoveryAdmission,
