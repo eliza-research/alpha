@@ -855,8 +855,9 @@ voice capture remain separate.
 The shared plugin runtime's baseline records late eager and lazy
 connectors after unload, including takeover of a rival or same-name
 replacement. The authenticated repair fences publication by the exact
-runtime and plugin ownership at withdrawal. Ten controlled runtime
-schedules check connector, post and send-handler publication, sibling
-keys, disposal ordering, nested registration and two isolated runtimes.
+runtime and plugin ownership at withdrawal. `CoreConnectorCustody`
+checks ten controlled runtime schedules and 41 checkpoints for connector,
+post and send-handler publication, sibling keys, disposal ordering,
+nested registration and two isolated runtimes.
 The Android mobile producer observed the connector patch as its
 twelfth authenticated transform and passed the pre-provider turn smoke.
