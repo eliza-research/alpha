@@ -655,6 +655,9 @@ public final class AlphaDevicePlugin extends Plugin {
    if(!"supported".equals(status)){call.resolve(new JSObject().put("status",status));return;}
   }
   if(!getContext().getPackageManager().canRequestPackageInstalls()){
+   // Consent can be revoked between the automatic capability read and this read.
+   // Only an explicit manual request may open Android's settings page.
+   if(automatic){call.resolve(new JSObject().put("status","permission-required"));return;}
    getActivity().runOnUiThread(()->{
     try{getActivity().startActivity(handOff(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,android.net.Uri.parse("package:"+getContext().getPackageName()))));call.resolve();}
     catch(RuntimeException unavailable){call.reject("Update unavailable");}

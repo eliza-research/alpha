@@ -1884,6 +1884,18 @@ public final class UpdateFlowTest {
    check(context.packages.installer.committed.equals(List.of(session))&&connections.isEmpty(),"Continue neither downloads nor commits again");
   }
  }
+ private static void consentRevokedBetweenAdmissionReadsNeverOpensSettingsAutomatically(File cache)throws Exception{
+  Context context=installing(cache);context.packages.installsAllowed=false;
+  context.packages.installConsentAnswers.add(true);context.packages.installConsentAnswers.add(false);
+  AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);connections.clear();AlphaLocalAgentPlugin.stops=0;
+  PluginCall result=automatic(owner);
+  check(result.resolved.get()==1&&result.result!=null&&"permission-required".equals(result.result.optString("status")),"automatic consent revoked between the two native reads is reported without a settings handoff");
+  check(context.packages.installConsentAnswers.isEmpty(),"the fixture exercised both distinct native permission reads");
+  check(owner.activity.started.isEmpty()&&connections.isEmpty()&&context.packages.installer.sessions.isEmpty()&&AlphaLocalAgentPlugin.stops==0&&AlphaDevicePlugin.UpdatePause.store().read()==null,"revoked automatic consent cannot open settings, download, stage, pause or commit");
+  PluginCall manual=offered();manual.getData().put("automatic",false);owner.installUpdate(manual);manual.awaitAnswer();
+  check(manual.resolved.get()==1&&owner.activity.started.size()==1&&owner.activity.started.get(0).action.equals("android.settings.MANAGE_UNKNOWN_APP_SOURCES"),"an explicit manual request still opens Android's install-consent page");
+  check(connections.isEmpty()&&context.packages.installer.sessions.isEmpty()&&AlphaLocalAgentPlugin.stops==0,"the manual consent handoff does not install or pause anything");
+ }
  private static void automaticSuccessReconcilesTheExactInstalledSuccessor(File cache)throws Exception{
   Context context=installing(cache);AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);
   check(automatic(owner).resolved.get()==1,"automatic attempt commits");int session=committed(context);
@@ -1968,6 +1980,7 @@ public final class UpdateFlowTest {
   try{
    automaticUpdatesRequireSupportedAndroidAndExistingConsent(cache);
    automaticPendingActionWaitsForAnExplicitContinue(cache);
+   consentRevokedBetweenAdmissionReadsNeverOpensSettingsAutomatically(cache);
    automaticSuccessReconcilesTheExactInstalledSuccessor(cache);
    automaticDraftRefusalNeverStopsOrCommits(cache);
    automaticModeIsStrictAndExplicitFalseKeepsManualBehavior(cache);
