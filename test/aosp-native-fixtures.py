@@ -2,6 +2,7 @@
 import importlib.util
 import hashlib
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -24,6 +25,9 @@ def load(name, file):
 
 
 native = load('stage_native', 'stage-aosp-native.py')
+NATIVE_VIEW_POLICY = ROOT / 'scripts/native-view-policy.mjs'
+NATIVE_VIEW_DECLARATIONS = subprocess.check_output(
+    [os.environ.get('ALPHA_NODE', 'node'), NATIVE_VIEW_POLICY], timeout=30)
 ELF = b'\x7fELF\x02\x01' + bytes(12) + b'\xb7\x00' + bytes(44)
 ELF_X86 = ELF[:18] + b'\x3e\x00' + ELF[20:]
 BP = '''// Generated from a hash- and signer-verified downstream launcher.
@@ -111,7 +115,7 @@ class Packaging(unittest.TestCase):
             'scripts/copy-file-clone.mjs': (ROOT / 'scripts/copy-file-clone.mjs').read_bytes(),
             'scripts/local-agent-source.mjs': b'guard fixture',
             'vendor/eliza/bun.lock': b'dependency lock fixture',
-            'config/native-view-declarations.json': b'{}',
+            'scripts/native-view-policy.mjs': NATIVE_VIEW_POLICY.read_bytes(),
         }
         digest = lambda data: hashlib.sha256(data).hexdigest()
         bun = {'version': '1.4.2', 'revision': '2' * 40,
@@ -145,7 +149,7 @@ class Packaging(unittest.TestCase):
                       'files': [{'path': n, 'size_bytes': len(data), 'sha256': digest(data)} for n, data in entries.items()]}
         entries['assets/agent/android-agent-runtime-provenance.json'] = json.dumps(provenance).encode()
         entries['assets/agent/alpha-source.json'] = stamp_bytes
-        entries['assets/agent/native-view-declarations.json'] = b'{}'
+        entries['assets/agent/native-view-declarations.json'] = NATIVE_VIEW_DECLARATIONS
         prefix = 'assets/agent/workflow-worker/'
         worker_files = {name: b'{}' for name in ['node_modules/smthrs/package.json', 'node_modules/zod/package.json',
                          'node_modules/effect/package.json', 'node_modules/@smthrs/engine/package.json', 'dependencies.json']}

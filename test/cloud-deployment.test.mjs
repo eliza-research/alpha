@@ -1,13 +1,14 @@
+import {ALPHA_PRODUCT_REGISTRATION as product} from '../apps/app/src/product/alpha-product-registration.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {deploymentOutputs,validateCloudDeployment} from '../scripts/cloud-deployment.mjs';
+import {CLOUD_DEPLOYMENT as defaults} from '../scripts/cloud-deployment-policy.mjs';
 import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
 import {runJvm} from './fixtures/jvm-tools.mjs';
-const defaults=JSON.parse(fs.readFileSync(new URL('../config/cloud-deployment.json',import.meta.url)));
-test('committed renderer and native authorities match the deployment configuration',()=>{
+test('committed renderer, native and Gradle authorities match the deployment configuration',()=>{
  for(const [file,contents] of Object.entries(deploymentOutputs(defaults)))assert.equal(fs.readFileSync(file,'utf8'),contents);
 });
 test('a different deployment changes actual native login, request admission and revocation together',()=>{
@@ -81,22 +82,20 @@ test('configuration the shared native sign-in client cannot register fails at bu
  for(const tenant of ['Org_Tenant-1','elizacloud','elizacloud-staging','t'.repeat(64)])assert.match(tenant,new RegExp(`^(?:${tenantRule})$`),tenant);
 });
 
-test('build admission rejects drift in either renderer or native generated authorities',async()=>{
+test('build admission rejects drift in renderer, native or Gradle generated authorities',async()=>{
  const {checkCloudDeployment}=await import('../scripts/cloud-deployment.mjs');
  const temp=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-cloud-build-'));
  try{
-  fs.mkdirSync(path.join(temp,'config'));fs.writeFileSync(path.join(temp,'config/cloud-deployment.json'),JSON.stringify(defaults));
   const outputs=deploymentOutputs(defaults);
   for(const [file,contents] of Object.entries(outputs)){fs.mkdirSync(path.dirname(path.join(temp,file)),{recursive:true});fs.writeFileSync(path.join(temp,file),contents);}
   checkCloudDeployment(temp);
   for(const [file,contents] of Object.entries(outputs)){
-   fs.writeFileSync(path.join(temp,file),contents.replace('api.eliza.app','unexpected.example.org'));
+   fs.writeFileSync(path.join(temp,file),contents.replace('eliza.app','unexpected.example.org'));
    assert.throws(()=>checkCloudDeployment(temp),/Stale Cloud deployment output/);
    fs.writeFileSync(path.join(temp,file),contents);
   }
   const changed=structuredClone(defaults);changed.production.tenant='another-tenant';
-  fs.writeFileSync(path.join(temp,'config/cloud-deployment.json'),JSON.stringify(changed));
-  assert.throws(()=>checkCloudDeployment(temp),/Stale Cloud deployment output/);
+  assert.throws(()=>checkCloudDeployment(temp,{config:changed}),/Stale Cloud deployment output/);
  }finally{fs.rmSync(temp,{recursive:true,force:true});}
 });
 
@@ -106,11 +105,10 @@ test('build admission rejects a staging-only change that would move production c
  const temp=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-cloud-namespace-'));
  try{
   const changed=structuredClone(defaults);changed.staging.services='https://different.example.org';
-  fs.mkdirSync(path.join(temp,'config'));fs.writeFileSync(path.join(temp,'config/cloud-deployment.json'),JSON.stringify(changed));
   // Regenerated outputs are not enough: the reviewed namespace list must move with them.
   for(const [file,contents] of Object.entries(deploymentOutputs(changed))){fs.mkdirSync(path.dirname(path.join(temp,file)),{recursive:true});fs.writeFileSync(path.join(temp,file),contents);}
-  assert.throws(()=>checkCloudDeployment(temp),/Cloud storage namespace would change: every installed phone loses its production credential/);
-  checkCloudDeployment(temp,undefined,[...STORAGE_NAMESPACES,storageFingerprint(changed)]);
+  assert.throws(()=>checkCloudDeployment(temp,{config:changed}),/Cloud storage namespace would change: every installed phone loses its production credential/);
+  checkCloudDeployment(temp,{config:changed,namespaces:[...STORAGE_NAMESPACES,storageFingerprint(changed)]});
  }finally{fs.rmSync(temp,{recursive:true,force:true});}
 });
 
@@ -119,7 +117,7 @@ test('build admission rejects a resident Cloud SDK base that disagrees with the 
  const {CLOUD_SDK_BASES,cloudSdkBases}=await import('../scripts/cloud-sdk-authority.mjs');
  assert.deepEqual(CLOUD_SDK_BASES,{production:defaults.production.api+'/api/v1',staging:defaults.staging.api+'/api/v1'});
  checkCloudDeployment();
- assert.throws(()=>checkCloudDeployment(undefined,{...CLOUD_SDK_BASES,production:'https://api.example.org/api/v1'}),/Cloud SDK bases .* disagree/);
+ assert.throws(()=>checkCloudDeployment(undefined,{sdkBases:{...CLOUD_SDK_BASES,production:'https://api.example.org/api/v1'}}),/Cloud SDK bases .* disagree/);
  const config=structuredClone(defaults);config.production.api='https://api.example.org';
  assert.equal(cloudSdkBases(config).production,'https://api.example.org/api/v1');
  for(const api of ['http://api.example.org','https://api.example.org/','not a url'])assert.throws(()=>cloudSdkBases({...config,production:{...config.production,api}}),/Invalid Cloud API origin/,api);
@@ -156,13 +154,12 @@ test('custom deployment reaches native inference configuration and Google transp
  try{
   write('package.json','{"type":"module"}');
   for(const [name,text] of Object.entries(deploymentOutputs(config)))write(name,text);
-  for(const name of ['config/alpha-product.json','backend/managed-google-failure-stage.ts','backend/managed-google-route-policy.ts','backend/native-google-cloud-port.ts','backend/native-cloud-runtime.ts','apps/app/src/runtime/managed-service-routes.ts'])write(name,fs.readFileSync(name,'utf8'));
+  for(const name of ['apps/app/src/product/alpha-product-registration.ts','backend/managed-google-failure-stage.ts','backend/managed-google-route-policy.ts','backend/native-google-cloud-port.ts','backend/native-cloud-runtime.ts','apps/app/src/runtime/managed-service-routes.ts'])write(name,fs.readFileSync(name,'utf8'));
   const load=name=>tsImport(pathToFileURL(path.join(temp,name)).href,{parentURL:import.meta.url});
   // The product declares only its admitted Cloud API base; the shared upstream
   // runtime profile writes routing and refuses any other base URL.
   const {nativeCloudRuntime}=await load('backend/native-cloud-runtime.ts');
   assert.equal(nativeCloudRuntime.apiBaseUrl,config.production.api+'/api/v1');
-  const product=JSON.parse(fs.readFileSync('config/alpha-product.json','utf8'));
   assert.equal(nativeCloudRuntime.productCharacter.name,product.identity.characterName);
   assert.ok(nativeCloudRuntime.productCharacter.bio[0].includes(product.identity.appName));
   assert.ok(Object.isFrozen(nativeCloudRuntime));

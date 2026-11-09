@@ -6,6 +6,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { CALLBACK_PATH, STEWARD_APP_CLIENT, formatProbe, main, probe, productRegistration, registrationValues } from "../scripts/cloud-readiness.mjs";
+import { CLOUD_DEPLOYMENT } from "../scripts/cloud-deployment-policy.mjs";
 import { fingerprint } from "../scripts/render-assetlinks.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
@@ -15,7 +16,7 @@ const javaDir = path.join(root, "android/app/src/main/java/ai/elizaresearch/alph
 function fixtureRoot(t, signer) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "alpha-cloud-readiness-"));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
-  for (const file of ["app.config.json", "config/cloud-deployment.json", "android/release-signer.json"]) {
+  for (const file of ["app.config.json", "android/release-signer.json"]) {
     fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
     fs.copyFileSync(path.join(root, file), path.join(dir, file));
   }
@@ -28,7 +29,7 @@ const javaSource = fs.readdirSync(javaDir).filter(name => name.endsWith(".java")
 test("registration values come from the committed product configuration and match the native sign-in registration", () => {
   const registration = productRegistration(root, "production");
   const identity = JSON.parse(fs.readFileSync(path.join(root, "app.config.json"), "utf8"));
-  const deployment = JSON.parse(fs.readFileSync(path.join(root, "config/cloud-deployment.json"), "utf8")).production;
+  const deployment = CLOUD_DEPLOYMENT.production;
   assert.equal(registration.clientId, identity.appId);
   assert.equal(registration.callback, `${deployment.web}${CALLBACK_PATH}`);
   assert.equal(registration.tenant, deployment.tenant);

@@ -1,5 +1,6 @@
-// The locally launched host presents as the product: config/alpha-product.json identity is the one
+// The locally launched host presents as the product: apps/app/src/product/alpha-product-registration.ts identity is the one
 // source for the shell label and for the agent character the launchers hand upstream.
+import {ALPHA_PRODUCT_REGISTRATION as record} from '../apps/app/src/product/alpha-product-registration.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -10,7 +11,6 @@ import {git} from './fixtures/git-fixture.mjs';
 import {AGENT_CHARACTER,AGENT_CHARACTER_ENVIRONMENT} from '../scripts/agent-identity.mjs';
 import {LOCAL_EMBEDDING_ROUTE} from '../scripts/agent-embeddings.mjs';
 
-const record=JSON.parse(fs.readFileSync('config/alpha-product.json','utf8'));
 const LAUNCHERS=['scripts/start-local-remote.mjs','scripts/start-combined-agent.mjs','scripts/start-local-voice-agent.mjs','scripts/start-reviewed-workflow-agent.mjs'];
 
 test('the agent character carries the product identity and inherits the bundled persona',()=>{

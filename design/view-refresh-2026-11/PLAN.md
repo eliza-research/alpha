@@ -331,7 +331,7 @@ Final:
 
 The 2026-11-07 review recorded a module-ceiling change from 555 to 564 for
 nine product-owned modules. That was the inventory policy at that time. The
-current `config/feature-parity.json` records actual owned modules and has no
+current `test/support/feature-parity.mjs` records actual owned modules and has no
 module ceiling. The transcription limitation above is retained with its date.
 
 ## View refresh models

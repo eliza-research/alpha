@@ -1,7 +1,9 @@
-{
-  "$comment": "Parity of Alpha with Eliza's reference mobile registration (test/feature-parity.test.mjs, scripts/feature-manifest.mjs --parity). Brands may differ only by identity and theme. 'differences' are the functional manifest differences still open, each with the Alpha module that owns it; 'modules' are the Alpha source files that still carry behaviour (everything but apps/app/src/product). Add an entry when Alpha gains behaviour of its own, and remove it when the behaviour moves upstream.",
-  "reference": "ELIZA_MOBILE_PRODUCT",
-  "differences": {
+// Alpha's remaining functional differences from Eliza's reference mobile shell.
+// The feature parity test checks each difference against its owner and requires
+// the inventory to shrink as Alpha-owned behaviour moves upstream.
+export const featureParityAllowlist = {
+  reference: "ELIZA_MOBILE_PRODUCT",
+  differences: {
     "view:clock:only-b": "Eliza offers Clock; Alpha hands alarms and timers to the Android clock (clock.handoff) without a Clock view.",
     "capability:calendar.agenda-read.v1:only-a": "apps/app/src/runtime/connection-ui.tsx deviceCapabilities and apps/app/src/runtime/device-actions.ts",
     "capability:calendar.availability-read.v1:only-a": "apps/app/src/runtime/connection-ui.tsx deviceCapabilities and apps/app/src/runtime/device-actions.ts",
@@ -21,7 +23,7 @@
     "capability:reminders.local-record.v2:only-a": "apps/app/src/runtime/connection-ui.tsx deviceCapabilities and apps/app/src/runtime/device-actions.ts",
     "capability:sms.send.v1:only-a": "apps/app/src/runtime/connection-ui.tsx deviceCapabilities and apps/app/src/runtime/device-actions.ts"
   },
-  "modules": [
+  modules: [
     "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaActionJournal.java",
     "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaActionJournalPlugin.java",
     "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaApplication.java",
@@ -580,4 +582,4 @@
     "apps/app/src/startup-permission-progress.ts",
     "apps/app/src/startup-permissions.tsx"
   ]
-}
+};

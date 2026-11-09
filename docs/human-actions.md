@@ -322,7 +322,7 @@ staging values.
   The Cloud contract is in the upstream `packages/cloud/api/README.md` (Subscription grant codes
   and entitlements).
 - Seam: Alpha verifies ES256 entitlements for audience `eliza-alpha-phone`
-  (`config/cloud-deployment.json`); [Cloud subscription QA](cloud-subscription-qa.md) has the
+  (`scripts/cloud-deployment-policy.mjs`); [Cloud subscription QA](cloud-subscription-qa.md) has the
   staging end-to-end checklist.
 - Verify: the probe's entitlement keys gate (production `entitlement-production-2026-10` and
   staging `entitlement-staging-2026-10` on October 27); a deployed latency report once a harness

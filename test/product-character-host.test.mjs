@@ -1,3 +1,4 @@
+import {ALPHA_PRODUCT_REGISTRATION as product} from '../apps/app/src/product/alpha-product-registration.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -11,7 +12,6 @@ import {verifySource,preparedSourceEnv,workerArtifactDirectory,digest} from '../
 import {verifyWorkerArtifact} from '../scripts/workflow-worker-artifact.mjs';
 import {preparePrivateRuntimeProfile,runtimeEnvironment} from '../vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs';
 import {CLOUD_SDK_BASES} from '../scripts/cloud-sdk-authority.mjs';
-const product=JSON.parse(fs.readFileSync('config/alpha-product.json','utf8'));
 const hash=b=>createHash('sha256').update(b).digest('hex');
 import {productCharacterHostFixture as fixture} from './fixtures/product-character-host.mjs';
 test('native declaration uses canonical product name and the existing bio without a renderer or credential input',()=>{
