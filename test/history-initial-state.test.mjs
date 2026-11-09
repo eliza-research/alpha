@@ -1,4 +1,5 @@
 import {systemNoticeKind,collapseSystemNotices} from '../apps/app/src/runtime/action-message-presentation.ts';
+import {restoreAttachments} from './support/attachment-restoration.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -14,7 +15,7 @@ const callback=stripTypeScriptTypes('(function(){const session=connectionControl
 const merge=stripTypeScriptTypes(slice(connection,'export function mergeConversationDelivery','const actionReceipts =').replace('export ',''),{mode:'strip'});
 function fixture(){
  let snapshot={session:{sessionId:'owner-a'},history:null,conversationDelivery:null};const pending=[];
- const box={systemNoticeKind,collapseSystemNotices,structuredClone,QUICK_SETTINGS:{wifi:false},ALPHA_PRODUCT:{identity:{characterName:'Alpha'}},Date,connectionController:{getSnapshot:()=>snapshot,getSelectedConversationId:()=> 'room'},alphaClient:{disconnect(){}},cancelMessageContext(){}};
+ const box={systemNoticeKind,collapseSystemNotices,restoreAttachments,structuredClone,QUICK_SETTINGS:{wifi:false},ALPHA_PRODUCT:{identity:{characterName:'Alpha'}},Date,connectionController:{getSnapshot:()=>snapshot,getSelectedConversationId:()=> 'room'},alphaClient:{disconnect(){}},cancelMessageContext(){}};
  // Evaluate the actual shell constructor and history/delivery callback with queued React-style state updates.
  const context=vm.createContext({...box,pending});vm.runInContext('class ReactBase {constructor(props){this.props=props;}setState(update){pending.push(()=>{const patch=typeof update==="function"?update(this.state):update;if(patch)Object.assign(this.state,patch);});}} class DCLogic extends ReactBase {'+dcConstructor+'}'+base+component+';globalThis.Component=Component;'+merge+';globalThis.changed='+callback,context);
  const shell=new context.Component({});Object.assign(shell,{live:true,composerDraft:{retire(){}},closeSummaryReview(){}});
