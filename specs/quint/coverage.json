@@ -23,6 +23,7 @@
     "scripts/start-reviewed-workflow-agent.mjs",
     "scripts/start-cloud-qa.mjs",
     "scripts/start-combined-agent.mjs",
+    "scripts/launcher-child.mjs",
     "scripts/native-google-host-artifact.mjs"
   ],
   "excludedDirectories": [
@@ -6531,7 +6532,8 @@
         "NativeUpdateComposition",
         "NativeUpdateStaging",
         "NativeTextScaleLifecycle",
-        "NativeCrashJournal"
+        "NativeCrashJournal",
+        "NativeSettingsHandoff"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -8512,7 +8514,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/PasswordProviderSupport.java",
       "sha256": "04a6649d2a722d734bcfa2179907114d42f09dc86e1140cc30b090b2cb312cd8",
       "models": [
-        "CredentialVault"
+        "CredentialVault",
+        "NativeSettingsHandoff"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -35607,7 +35610,6 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "c56dd5bc3edbca593fde4462a11a5ad16aaf4a23fe10ef64511c0d78751f01b6",
       "models": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -35619,8 +35621,10 @@
         "CanonicalCalendarEditorClose",
         "CameraPreviewRetirement"
       ],
-      "treatment": "stateless-presentation-contract",
       "scope": "application",
+      "treatment": "stateless-presentation-contract",
+      "reviewStatus": "state-audit-required",
+      "sha256": "779fa4e2ae53f2d8b91d4c19c02d9ef218969568ca603b67d0eb9008f539f142",
       "stateAnchors": []
     },
     {
@@ -49319,7 +49323,8 @@
         "TaskServiceLifecycle",
         "TaskSchedulerRuntime",
         "DevelopmentRuntimeLoader",
-        "CombinedAgentLauncher"
+        "CombinedAgentLauncher",
+        "ReviewedWorkflowLauncher"
       ],
       "scope": "development-runtime",
       "treatment": "domain-contract-or-support",
@@ -49330,7 +49335,8 @@
     {
       "path": "scripts/core-state-preload.mjs",
       "models": [
-        "Application"
+        "Application",
+        "ReviewedWorkflowLauncher"
       ],
       "scope": "development-runtime",
       "treatment": "domain-contract-or-support",
@@ -49695,6 +49701,18 @@
       ]
     },
     {
+      "path": "scripts/launcher-child.mjs",
+      "models": [
+        "CombinedAgentLauncher",
+        "ReviewedWorkflowLauncher"
+      ],
+      "scope": "development-runtime",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "sha256": "d07650ac73236ad81a1bb7b327fdbcf69a299ba3fb59f9181a5813cdcf33d303",
+      "stateAnchors": []
+    },
+    {
       "path": "scripts/native-google-host-artifact.mjs",
       "models": [
         "Application"
@@ -49725,7 +49743,7 @@
       "scope": "development-runtime",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "4aa34fa49394ce91155a05aa726136b4b15e81d8da6880034ceb83d3b80eecd4",
+      "sha256": "ab5ceaac2df907fc7f96c4b19f516d296ccf0e1eb87b5592028ad002a00baef9",
       "stateAnchors": []
     },
     {
@@ -49766,12 +49784,13 @@
     {
       "path": "scripts/start-reviewed-workflow-agent.mjs",
       "models": [
-        "Application"
+        "Application",
+        "ReviewedWorkflowLauncher"
       ],
       "scope": "development-runtime",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "52b6ae41e1a758b2b15f4e5dbec31e888c04cb11262c7e40445c6289e515babd",
+      "sha256": "6e68d0e39b6994eb9e11052eb73a794470e832e38b369832df659bbddb9ed879",
       "stateAnchors": []
     },
     {
@@ -508075,7 +508094,8 @@
     {
       "path": "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SystemSettingsPages.java",
       "models": [
-        "PreferencesAndPresentation"
+        "PreferencesAndPresentation",
+        "NativeSettingsHandoff"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -618427,7 +618447,8 @@
         "AlwaysOnListener",
         "NativeSmsDispatch",
         "NativeMmsDispatch",
-        "NativeCrashJournal"
+        "NativeCrashJournal",
+        "NativeSettingsHandoff"
       ],
       "sha256": "0bce8e83df6cf39ec58ebda94cdd0976c2558f346e8c0988e4fa904f6578d7cd"
     },
@@ -618789,7 +618810,7 @@
         "FilesTree",
         "DeviceActions"
       ],
-      "sha256": "949be13d289a4d257f504f256a9038cb7cedaf66168e923428c85a2a93a41b8b"
+      "sha256": "575cce2dead9a032819fdd9248200319a4425a9e4f1f4b3d99d188213bbd9401"
     },
     {
       "path": "patches/eliza/files-storage-query-client.patch",
@@ -618797,7 +618818,7 @@
         "FilesTree",
         "DeviceActions"
       ],
-      "sha256": "446b53d6ffeb74331b5c99d15620e32f2f28c20d1c003507fe4b766a10a62d7a"
+      "sha256": "e7c5766ca8ad68e734f63c756a8643fb4ffda4a59b1ef868758da60e0e0b0dbf"
     },
     {
       "path": "patches/eliza/files-storage-view.patch",
@@ -618916,7 +618937,8 @@
       "models": [
         "TaskServiceLifecycle",
         "CanonicalNotesStore",
-        "CoreTurnControllers"
+        "CoreTurnControllers",
+        "ReviewedWorkflowLauncher"
       ],
       "sha256": "321abaf05f9e8cbf6e4ba642ec7ebf45a6c693331a637210610a1f7723662daa"
     },
@@ -618928,7 +618950,8 @@
         "CoreTurnControllers",
         "TaskSchedulerRuntime",
         "DevelopmentRuntimeLoader",
-        "CombinedAgentLauncher"
+        "CombinedAgentLauncher",
+        "ReviewedWorkflowLauncher"
       ],
       "sha256": "25b46e944ecd6a4d5569e8eace9e2f9b22eea2ebdd36075e90fd15d1b9fb6478"
     },
@@ -618937,7 +618960,8 @@
       "models": [
         "TaskServiceLifecycle",
         "CanonicalNotesStore",
-        "CoreTurnControllers"
+        "CoreTurnControllers",
+        "ReviewedWorkflowLauncher"
       ],
       "sha256": "c5368c9075aa8c7660bee01338185fbe673c9b8dd6889dd1ab01d195efa17c10"
     },
@@ -619015,7 +619039,7 @@
       "models": [
         "Application"
       ],
-      "sha256": "3679abbb390ba5d37cf15f015949004142142fb4c29aabb19c2579e1cc3070b8"
+      "sha256": "e6b68b34dc4871a1adb0c8b226d00af632ca27d3afce5fd378a79e07e53581fb"
     },
     {
       "path": "specs/quint/legacy/core/source-inventory.json",

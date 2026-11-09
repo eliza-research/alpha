@@ -12,7 +12,7 @@
   "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "ff4f7de8230de01f4474816cf8f9220da2005b3dc2861877526cd393e8961574",
+  "ledgerSha256": "a6850fe7ccf96de780e7503c4ee296294cc871c96796b29a9a1eb46d6fff5e30",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -22,17 +22,17 @@
     "The ledger supplies pinned source bytes. Effective client/native/runtime patch outputs require their separately authenticated source mappings."
   ],
   "counts": {
-    "files": 5683,
+    "files": 5684,
     "testSupportFiles": 287,
     "testSupportCandidates": 11480,
-    "parsedFiles": 5628,
+    "parsedFiles": 5629,
     "languageReview": 55,
     "parseErrors": 0,
     "candidates": 67129,
-    "writeSites": 66562,
+    "writeSites": 66560,
     "writeAssociations": 59739,
-    "asynchronous": 8304,
-    "unassignedWrites": 10191
+    "asynchronous": 8301,
+    "unassignedWrites": 10189
   },
   "files": [
     {
@@ -18336,7 +18336,8 @@
         "NativeUpdateComposition",
         "NativeUpdateStaging",
         "NativeTextScaleLifecycle",
-        "NativeCrashJournal"
+        "NativeCrashJournal",
+        "NativeSettingsHandoff"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -26454,7 +26455,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/PasswordProviderSupport.java",
       "sha256": "04a6649d2a722d734bcfa2179907114d42f09dc86e1140cc30b090b2cb312cd8",
       "allocatedModels": [
-        "CredentialVault"
+        "CredentialVault",
+        "NativeSettingsHandoff"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -39848,7 +39850,7 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "c56dd5bc3edbca593fde4462a11a5ad16aaf4a23fe10ef64511c0d78751f01b6",
+      "sha256": "779fa4e2ae53f2d8b91d4c19c02d9ef218969568ca603b67d0eb9008f539f142",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -39860,6 +39862,7 @@
         "CanonicalCalendarEditorClose",
         "CameraPreviewRetirement"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "language-review-required",
       "owners": [],
@@ -45756,7 +45759,8 @@
         "TaskServiceLifecycle",
         "TaskSchedulerRuntime",
         "DevelopmentRuntimeLoader",
-        "CombinedAgentLauncher"
+        "CombinedAgentLauncher",
+        "ReviewedWorkflowLauncher"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -45801,7 +45805,8 @@
       "path": "scripts/core-state-preload.mjs",
       "sha256": "c5368c9075aa8c7660bee01338185fbe673c9b8dd6889dd1ab01d195efa17c10",
       "allocatedModels": [
-        "Application"
+        "Application",
+        "ReviewedWorkflowLauncher"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -45887,6 +45892,34 @@
       "unassignedWrites": 2
     },
     {
+      "path": "scripts/launcher-child.mjs",
+      "sha256": "d07650ac73236ad81a1bb7b327fdbcf69a299ba3fb59f9181a5813cdcf33d303",
+      "allocatedModels": [
+        "CombinedAgentLauncher",
+        "ReviewedWorkflowLauncher"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "superviseLauncherChild",
+          "line": 4,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "superviseLauncherChild.retireFailedHandoff",
+          "line": 17,
+          "bindings": 1,
+          "writes": 1
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 7,
+      "unassignedWrites": 2
+    },
+    {
       "path": "scripts/native-google-host-artifact.mjs",
       "sha256": "65793e1ceacbc8b49c2733072d34827a20fc3082fe4fc1b8a4e351007c680b42",
       "allocatedModels": [
@@ -45930,7 +45963,7 @@
     },
     {
       "path": "scripts/start-combined-agent.mjs",
-      "sha256": "4aa34fa49394ce91155a05aa726136b4b15e81d8da6880034ceb83d3b80eecd4",
+      "sha256": "ab5ceaac2df907fc7f96c4b19f516d296ccf0e1eb87b5592028ad002a00baef9",
       "allocatedModels": [
         "Application",
         "CombinedAgentLauncher"
@@ -45941,14 +45974,14 @@
       "owners": [
         {
           "owner": "<module>",
-          "line": 31,
-          "bindings": 8,
-          "writes": 3
+          "line": 32,
+          "bindings": 5,
+          "writes": 1
         }
       ],
       "parseErrors": [],
-      "asynchronous": 9,
-      "unassignedWrites": 4
+      "asynchronous": 2,
+      "unassignedWrites": 2
     },
     {
       "path": "scripts/start-local-agent.mjs",
@@ -46010,9 +46043,10 @@
     },
     {
       "path": "scripts/start-reviewed-workflow-agent.mjs",
-      "sha256": "52b6ae41e1a758b2b15f4e5dbec31e888c04cb11262c7e40445c6289e515babd",
+      "sha256": "6e68d0e39b6994eb9e11052eb73a794470e832e38b369832df659bbddb9ed879",
       "allocatedModels": [
-        "Application"
+        "Application",
+        "ReviewedWorkflowLauncher"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -46020,14 +46054,14 @@
       "owners": [
         {
           "owner": "<module>",
-          "line": 48,
-          "bindings": 2,
-          "writes": 0
+          "line": 47,
+          "bindings": 3,
+          "writes": 1
         }
       ],
       "parseErrors": [],
-      "asynchronous": 3,
-      "unassignedWrites": 5
+      "asynchronous": 0,
+      "unassignedWrites": 3
     },
     {
       "path": "vendor/eliza/packages/agent/scripts/mobile-stubs/argon2.ts",
@@ -192484,7 +192518,8 @@
       "path": "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SystemSettingsPages.java",
       "sha256": "9948e6f789764615b4aff5b1852a1c0edef3ba84f4f840dddf4837bafdb90b56",
       "allocatedModels": [
-        "PreferencesAndPresentation"
+        "PreferencesAndPresentation",
+        "NativeSettingsHandoff"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -218610,6 +218645,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "a0b628c6553560778f42afb495de0210db998efd62f5f2801ef0169a47546c1e"
+    "sha256": "84e8968351871cee7ae049f4abf7975c66da0cf1ae8f9960aaa1f9fdd2beaa02"
   }
 }

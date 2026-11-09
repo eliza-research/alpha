@@ -12,7 +12,8 @@ export const runtimeScriptPaths = ['scripts/browser-cloud-dev-bridge.ts', 'scrip
   'scripts/cloud-email-code.ts', 'scripts/dev-agent.mjs', 'scripts/dev-cloud.mjs', 'scripts/dev-local.mjs',
   'scripts/start-local-agent.mjs', 'scripts/start-local-voice-agent.mjs', 'scripts/start-local-remote.mjs',
   'scripts/core-state-patch.mjs', 'scripts/core-state-preload.mjs', 'scripts/start-reviewed-workflow-agent.mjs',
-  'scripts/start-cloud-qa.mjs', 'scripts/start-combined-agent.mjs', 'scripts/native-google-host-artifact.mjs'];
+  'scripts/start-cloud-qa.mjs', 'scripts/start-combined-agent.mjs', 'scripts/launcher-child.mjs',
+  'scripts/native-google-host-artifact.mjs'];
 export const runtimeAssetPaths = ['apps/app/index.html'];
 const omittedDirectories = new Set(['node_modules', 'build', '.generated', '.gradle', '.cxx', '.kotlin', 'assets', 'jniLibs', 'capacitor-cordova-android-plugins']);
 const sourceExtensions = new Set(['.ts', '.tsx', '.js', '.java', '.kt', '.cpp', '.h', '.c', '.html', '.mjs', '.jsx', '.cc', '.hpp', '.rs', '.swift']);

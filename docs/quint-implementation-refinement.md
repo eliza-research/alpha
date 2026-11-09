@@ -707,9 +707,11 @@ provider effects use controlled ports.
 
 The historical Maps replay checks four mounted schedules and 29
 checkpoints. Six separate receipts cover offline status, origin entry,
-chat retention, arrival and failed reroute. The compact launcher pill
-overlaps the reroute pointer target in the test viewport. The driver uses
-keyboard activation for that control.
+chat retention, arrival and failed reroute. The portrait guidance surface
+now clears the measured assistant dock at two viewport widths and two
+text scales. The mounted replay checks control and attribution hit targets
+and admits the exact reroute request by touch. The landscape overlap
+remains a separate obligation.
 
 `HostedDigestRefresh` checks nine mounted schedules and 73 checkpoints. A
 queued full refresh and a delayed poll status read keep their exact session
@@ -773,3 +775,23 @@ baseline records a live child after a metadata-write failure. The repaired
 launcher installs ownership before writing the receipt and reaps only its
 own child before propagating that failure. Exact exit and signal paths,
 validation-only behavior and PID-less spawn-error receipts remain covered.
+
+`ReviewedWorkflowLauncher` checks 16 schedules and 104 checkpoints with
+a closed child and local package inputs. A real Bun invocation in the same
+isolated fixture adds three schedules and 27 checkpoints. The baseline
+records a live child after the receipt or post-spawn Git read fails. The
+launcher now reads the revision before spawn and shares child ownership
+and failed-receipt cleanup with the combined launcher. The receipt
+records spawn and does not establish workflow readiness.
+
+`NativeSettingsHandoff` checks nine JVM schedules and 155 checkpoints
+for all 15 allowlisted routes, explicit Settings home and the password
+provider fallback. Controlled Activity failures reproduce the existing
+targeted launch behavior. Installed Settings delivery remains open.
+
+The authenticated Browser Files patch serializes Trash, listing,
+Restore and Empty for each journal key. The baseline could erase a
+moving file's origin record during listing or lose a peer Trash record
+when Restore saved an earlier journal snapshot. Both exact synthetic
+schedules now preserve the records. The primary path uses an exclusive
+Web Lock. The fallback serializes the journal within one realm.
