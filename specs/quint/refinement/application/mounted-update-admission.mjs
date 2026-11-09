@@ -48,7 +48,7 @@ async function fixture(name, code) {
     };
   }
   const context = vm.createContext({
-    window, document, fixtureShell: owner,
+    window, document, HTMLElement: window.HTMLElement, fixtureShell: owner,
     connectionController: {
       getSnapshot: () => ({busy: false}),
       captureAppUpdateReconnect() {
