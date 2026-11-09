@@ -3161,5 +3161,59 @@
     "abstractions": [
       "One Photos view, two synthetic albums, representative media revision bindings and one outstanding mutation. The album library and native bridge are closed ports."
     ]
+  },
+  {
+    "path": "specs/quint/application/BrowserAlbumStorage.qnt",
+    "module": "BrowserAlbumStorage",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "AlbumCommitOrdersBeforeQueuedTrashTest",
+      "PriorMediaWriteRefusesStaleAddTest",
+      "BatchContinuesAfterStaleMediaTest",
+      "RenamedAlbumRejectsOldRevisionTest"
+    ],
+    "invariants": [
+      "HeldMediaIsCurrent",
+      "AlbumOwnsMembers"
+    ],
+    "sources": [
+      "apps/app/src/prototype/browser-camera.ts",
+      "apps/app/src/prototype/camera-adapter.ts",
+      "apps/app/src/browser/documents.ts",
+      "apps/app/src/browser/domain-document.ts",
+      "apps/app/src/browser/preference-documents.ts",
+      "vendor/eliza/packages/ui/src/platform/browser-document-store.ts"
+    ],
+    "abstractions": [
+      "Closed Chromium tabs exercise actual IndexedDB and a representative three-item rendered batch. Mixed-version writers and process interruption remain separate."
+    ]
+  },
+  {
+    "path": "specs/quint/application/ShadeRowCustody.qnt",
+    "module": "ShadeRowCustody",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "shadeReentryCannotPublishOldPollTest",
+      "retainedControlsCannotAcquireReplacementTest",
+      "exactClearReportsPartialAndRefreshesTest",
+      "retiredOperationCannotReportOrRefreshTest",
+      "refreshClearsReplacedSelectionTest"
+    ],
+    "invariants": [
+      "SelectionBelongsToCurrentOwnRow",
+      "NonemptyDispatchKeys",
+      "PendingReadHasVisit"
+    ],
+    "sources": [
+      "apps/app/src/prototype/notifications-adapter.ts",
+      "apps/app/src/prototype/template.html"
+    ],
+    "abstractions": [
+      "Closed bridge and two representative notification revisions, shade visits and lock transitions. Android delivery and pointer ownership remain separate."
+    ]
   }
 ]
