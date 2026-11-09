@@ -51,6 +51,7 @@ import {checkNativeSmsDispatch} from './sms-dispatch.mjs';
 import {checkNativeMmsDispatch} from './mms-dispatch.mjs';
 import {checkNativeTextScaleLifecycle} from './text-scale-lifecycle.mjs';
 import {checkNativeCrashJournal} from './crash-journal.mjs';
+import {checkNativeSettingsHandoff} from './settings-handoff.mjs';
 
 export async function runNativeRefinement() {
   const models = ['VadSegmentation', 'RendererRecovery', 'ResidentScheduling'];
@@ -186,6 +187,8 @@ export async function runNativeRefinement() {
   results.push(textScale.receipt);
   const crashJournal = await checkNativeCrashJournal(nativeInputs);
   results.push(crashJournal.receipt);
+  const settingsHandoff = await checkNativeSettingsHandoff(nativeInputs);
+  results.push(settingsHandoff.receipt);
   const obligations = [
     ...updatePause.obligations,
     ...updateActivation.obligations,
@@ -201,6 +204,7 @@ export async function runNativeRefinement() {
     ...mmsDispatch.obligations,
     ...textScale.obligations,
     ...crashJournal.obligations,
+    ...settingsHandoff.obligations,
     {model: 'GoogleBrowserReturnClaim', obligation: 'Installed callback delivery and durable credential custody',
       reason: 'The authenticated Java claim and grace functions execute under controlled queues, storage and HTTPS. Installed lifecycle, secure-store durability and intra-worker schedules remain separate.'},
     ...reviewedCopiesObligations,
