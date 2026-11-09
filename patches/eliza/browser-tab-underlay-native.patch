@@ -116,3 +116,14 @@
   /** Persist normal-tab sign-in cookies promptly; the process may be killed in background. */
   private void flushCookies() {
    try{if(WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROFILE)){androidx.webkit.Profile profile=ProfileStore.getInstance().getProfile(config().persistentProfile);if(profile!=null)profile.getCookieManager().flush();}}catch(Exception unavailable){/* Chromium also flushes periodically. */}
+--- a/plugins/plugin-native-browser-surface/android/build.gradle
++++ b/plugins/plugin-native-browser-surface/android/build.gradle
+@@ -4,7 +4,7 @@
+     androidxJunitVersion = project.hasProperty('androidxJunitVersion') ? rootProject.ext.androidxJunitVersion : '1.1.5'
+     androidxEspressoCoreVersion = project.hasProperty('androidxEspressoCoreVersion') ? rootProject.ext.androidxEspressoCoreVersion : '3.5.1'
+     androidxWebkitVersion = project.hasProperty('androidxWebkitVersion') ? rootProject.ext.androidxWebkitVersion : '1.16.0'
+-    coroutinesVersion = project.hasProperty('coroutinesVersion') ? rootProject.ext.coroutinesVersion : '1.10.2'
++    coroutinesVersion = project.hasProperty('coroutinesVersion') ? rootProject.ext.coroutinesVersion : '1.9.0'
+ }
+
+ apply plugin: 'com.android.library'
