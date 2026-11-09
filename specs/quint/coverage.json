@@ -20205,7 +20205,8 @@
       "sha256": "980535689c68ff1b944fd262cf08dd943a047a679ff5a13722edc922c77cdf43",
       "models": [
         "CalendarPresentation",
-        "CalendarSync"
+        "CalendarSync",
+        "ModalScrimOwnership"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -20672,13 +20673,15 @@
     },
     {
       "path": "apps/app/src/prototype/chat-overlay-motion-adapter.ts",
-      "sha256": "eca19bf83c613bf1506586a2eb48faac9e7da835cddfb014b755d227f903fe7b",
       "models": [
         "Application",
-        "ChatInput"
+        "ChatInput",
+        "ModalScrimOwnership"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "7760898b213dbd511e61591b476e1d575f0496c52f37dbba7694741484de2910",
       "stateAnchors": [
         {
           "line": 13,
@@ -20705,412 +20708,404 @@
           "text": "const SCRIM_CLICK_WAIT_MS = 350;"
         },
         {
-          "line": 27,
+          "line": 85,
           "text": "export const CHAT_SNAP_ZONE = 120;"
         },
         {
-          "line": 29,
+          "line": 87,
           "text": "export const CHAT_FLICK_VELOCITY = 1;"
         },
         {
-          "line": 31,
+          "line": 89,
           "text": "const FLICK_WINDOW_MS = 100;"
         },
         {
-          "line": 33,
+          "line": 91,
           "text": "const FLICK_HOLD_MS = 80;"
         },
         {
-          "line": 35,
+          "line": 93,
           "text": "const SHEET_MIN_HEIGHT = 200;"
         },
         {
-          "line": 39,
+          "line": 97,
           "text": "const last = track[track.length - 1];"
         },
         {
-          "line": 41,
+          "line": 99,
           "text": "const first = track.find((sample) => last.t - sample.t <= FLICK_WINDOW_MS);"
         },
         {
-          "line": 66,
+          "line": 124,
           "text": "const { mode, direction, height, floor, full, flick } = options;"
         },
         {
-          "line": 67,
+          "line": 125,
           "text": "const zone = Math.min(CHAT_SNAP_ZONE, (full - floor) / 3);"
         },
         {
-          "line": 68,
+          "line": 126,
           "text": "const nearTop = height >= full - zone,"
         },
         {
-          "line": 111,
+          "line": 169,
           "text": "const zone = Math.min(CHAT_SNAP_ZONE, (d.full - d.floor) / 3);"
         },
         {
-          "line": 115,
+          "line": 173,
           "text": "const SHEET_ROWS = \"[data-alpha-chat-header],[data-alpha-chat-suggestions]\";"
         },
         {
-          "line": 117,
+          "line": 175,
           "text": "const ROW_REVEAL = 16;"
         },
         {
-          "line": 123,
+          "line": 181,
           "text": "const top = panel.getBoundingClientRect().top;"
         },
         {
-          "line": 126,
+          "line": 184,
           "text": "const spacer ="
         },
         {
-          "line": 128,
+          "line": 186,
           "text": "const transcript ="
         },
         {
-          "line": 130,
+          "line": 188,
           "text": "for (const row of panel.querySelectorAll<HTMLElement>(SHEET_ROWS)) {"
         },
         {
-          "line": 131,
+          "line": 189,
           "text": "const header = row.matches(\"[data-alpha-chat-header]\");"
         },
         {
-          "line": 132,
+          "line": 190,
           "text": "let room = (row.getBoundingClientRect().top - top) / scale - (header ? spacer : 0);"
         },
         {
-          "line": 139,
+          "line": 197,
           "text": "const composer = panel.querySelector<HTMLElement>(\".alpha-chat-composer\");"
         },
         {
-          "line": 152,
+          "line": 210,
           "text": "const token = (shell.chatRevealToken = (shell.chatRevealToken || 0) + 1);"
         },
         {
-          "line": 153,
+          "line": 211,
           "text": "const end = performance.now() + 480;"
         },
         {
-          "line": 154,
+          "line": 212,
           "text": "const frame = () => {"
         },
         {
-          "line": 155,
+          "line": 213,
           "text": "const panel = document.querySelector<HTMLElement>("
-        },
-        {
-          "line": 164,
-          "text": "const mode = shell.S().chat;"
-        },
-        {
-          "line": 166,
-          "text": "for (const row of panel.querySelectorAll<HTMLElement>(SHEET_ROWS))"
-        },
-        {
-          "line": 169,
-          "text": "const panel = document.querySelector<HTMLElement>("
-        },
-        {
-          "line": 177,
-          "text": "const still = { transition: \"none\", animation: \"none\" };"
-        },
-        {
-          "line": 180,
-          "text": "const down = -d.offset / d.scale;"
-        },
-        {
-          "line": 193,
-          "text": "for (let node = element.parentElement; node; node = node.parentElement) {"
-        },
-        {
-          "line": 194,
-          "text": "const overflow = getComputedStyle(node).overflowY;"
-        },
-        {
-          "line": 205,
-          "text": "const p = Component.prototype,"
-        },
-        {
-          "line": 211,
-          "text": "const screen = document.querySelector<HTMLElement>(\"[data-screen]\");"
-        },
-        {
-          "line": 212,
-          "text": "const viewportH = screen?.clientHeight || window.innerHeight;"
-        },
-        {
-          "line": 214,
-          "text": "const full = resolveChatPanelLayout({"
         },
         {
           "line": 222,
-          "text": "const inset = resolveChatPanelLayout({"
+          "text": "const mode = shell.S().chat;"
         },
         {
-          "line": 247,
-          "text": "const token = (shell.chatResizeToken = (shell.chatResizeToken || 0) + 1);"
+          "line": 224,
+          "text": "for (const row of panel.querySelectorAll<HTMLElement>(SHEET_ROWS))"
         },
         {
-          "line": 248,
+          "line": 227,
           "text": "const panel = document.querySelector<HTMLElement>("
+        },
+        {
+          "line": 235,
+          "text": "const still = { transition: \"none\", animation: \"none\" };"
+        },
+        {
+          "line": 238,
+          "text": "const down = -d.offset / d.scale;"
         },
         {
           "line": 251,
-          "text": "const scale = bounds().scale || 1;"
+          "text": "for (let node = element.parentElement; node; node = node.parentElement) {"
         },
         {
           "line": 252,
-          "text": "const open = (mode: Mode) => mode === \"sheet\" || mode === \"full\";"
+          "text": "const overflow = getComputedStyle(node).overflowY;"
         },
         {
-          "line": 254,
-          "text": "const target = panel.style.height;"
+          "line": 263,
+          "text": "const p = Component.prototype,"
         },
         {
-          "line": 285,
-          "text": "const drag: Drag | undefined = shell.chatMotion;"
+          "line": 269,
+          "text": "const screen = document.querySelector<HTMLElement>(\"[data-screen]\");"
         },
         {
-          "line": 293,
+          "line": 270,
+          "text": "const viewportH = screen?.clientHeight || window.innerHeight;"
+        },
+        {
+          "line": 272,
+          "text": "const full = resolveChatPanelLayout({"
+        },
+        {
+          "line": 280,
+          "text": "const inset = resolveChatPanelLayout({"
+        },
+        {
+          "line": 305,
+          "text": "const token = (shell.chatResizeToken = (shell.chatResizeToken || 0) + 1);"
+        },
+        {
+          "line": 306,
           "text": "const panel = document.querySelector<HTMLElement>("
         },
         {
-          "line": 307,
-          "text": "for (const dock of document.querySelectorAll<HTMLElement>("
+          "line": 309,
+          "text": "const scale = bounds().scale || 1;"
         },
         {
           "line": 310,
-          "text": "for (const name of [\"transform\", \"opacity\", \"transition\"])"
+          "text": "const open = (mode: Mode) => mode === \"sheet\" || mode === \"full\";"
         },
         {
-          "line": 334,
-          "text": "const free = keyboardFreeHeight();"
+          "line": 312,
+          "text": "const target = panel.style.height;"
         },
         {
-          "line": 335,
-          "text": "const visible = () => {"
+          "line": 343,
+          "text": "const drag: Drag | undefined = shell.chatMotion;"
         },
         {
-          "line": 336,
-          "text": "const width = document.documentElement.clientWidth || window.innerWidth,"
-        },
-        {
-          "line": 344,
-          "text": "const seed = visible();"
-        },
-        {
-          "line": 346,
-          "text": "let keyboardOpen = false;"
-        },
-        {
-          "line": 348,
-          "text": "const now = visible(),"
-        },
-        {
-          "line": 354,
-          "text": "const active = document.activeElement;"
-        },
-        {
-          "line": 365,
-          "text": "const active = document.activeElement;"
-        },
-        {
-          "line": 374,
-          "text": "const drag: Drag | undefined = this.chatMotion,"
-        },
-        {
-          "line": 377,
-          "text": "const previousView = args[1]?.view;"
-        },
-        {
-          "line": 390,
-          "text": "const change = this.chatChange;"
-        },
-        {
-          "line": 410,
-          "text": "const d: Drag | undefined = this.chatMotion;"
-        },
-        {
-          "line": 412,
-          "text": "const action = d.tap;"
-        },
-        {
-          "line": 420,
-          "text": "const d: Drag | undefined = this.chatMotion;"
-        },
-        {
-          "line": 422,
-          "text": "const shell = this,"
-        },
-        {
-          "line": 425,
-          "text": "const firstMove = !d.moved;"
-        },
-        {
-          "line": 434,
+          "line": 351,
           "text": "const panel = document.querySelector<HTMLElement>("
         },
         {
-          "line": 437,
-          "text": "const share = collapseShare(d);"
+          "line": 365,
+          "text": "for (const dock of document.querySelectorAll<HTMLElement>("
         },
         {
-          "line": 447,
-          "text": "const dock = dockStyle(d);"
+          "line": 368,
+          "text": "for (const name of [\"transform\", \"opacity\", \"transition\"])"
         },
         {
-          "line": 448,
-          "text": "const pill = document.querySelector<HTMLElement>("
+          "line": 392,
+          "text": "const free = keyboardFreeHeight();"
         },
         {
-          "line": 451,
-          "text": "const input = document.querySelector<HTMLElement>(\"[data-alpha-input-bar]\");"
+          "line": 393,
+          "text": "const visible = () => {"
         },
         {
-          "line": 452,
-          "text": "for (const element of [pill, input])"
+          "line": 394,
+          "text": "const width = document.documentElement.clientWidth || window.innerWidth,"
         },
         {
-          "line": 454,
-          "text": "for (const [name, value] of Object.entries(dock))"
+          "line": 402,
+          "text": "const seed = visible();"
         },
         {
-          "line": 459,
-          "text": "const d: Drag | undefined = this.chatMotion;"
+          "line": 404,
+          "text": "let keyboardOpen = false;"
         },
         {
-          "line": 461,
-          "text": "const travel = Math.abs(d.offset / d.scale),"
+          "line": 406,
+          "text": "const now = visible(),"
         },
         {
-          "line": 468,
-          "text": "const next = chatRelease({"
-        },
-        {
-          "line": 488,
-          "text": "const out = render.call(this),"
-        },
-        {
-          "line": 507,
-          "text": "const target = event.target;"
-        },
-        {
-          "line": 514,
-          "text": "const scroll = target.closest<HTMLElement>("
-        },
-        {
-          "line": 518,
-          "text": "const box = target.getBoundingClientRect();"
-        },
-        {
-          "line": 519,
-          "text": "const sheet = shell.S().chat === \"sheet\";"
-        },
-        {
-          "line": 523,
-          "text": "const covers ="
-        },
-        {
-          "line": 531,
-          "text": "let hidden = 0;"
-        },
-        {
-          "line": 532,
-          "text": "for (const cover of covers) {"
-        },
-        {
-          "line": 533,
-          "text": "const over = cover.getBoundingClientRect();"
-        },
-        {
-          "line": 540,
-          "text": "const isOpen = (mode: unknown) => mode === \"sheet\" || mode === \"full\";"
-        },
-        {
-          "line": 542,
-          "text": "const from = shell.chatRenderedMode;"
-        },
-        {
-          "line": 545,
-          "text": "const tap = !shell.chatSettledByDrag && s.voice === \"off\";"
-        },
-        {
-          "line": 564,
-          "text": "const dock = drag?.moved"
-        },
-        {
-          "line": 583,
-          "text": "const rest = shell.rest();"
-        },
-        {
-          "line": 587,
-          "text": "const binding = shell.props.chatPullBinding;"
-        },
-        {
-          "line": 588,
-          "text": "const handlers = {"
-        },
-        {
-          "line": 599,
-          "text": "const emptyInput ="
-        },
-        {
-          "line": 621,
-          "text": "const g = bounds(),"
-        },
-        {
-          "line": 670,
-          "text": "const d: Drag | undefined = shell.chatMotion;"
-        },
-        {
-          "line": 682,
-          "text": "const d: Drag = shell.chatMotion;"
-        },
-        {
-          "line": 687,
-          "text": "const speed = releaseVelocity(d.track, event.timeStamp) / d.scale;"
-        },
-        {
-          "line": 715,
-          "text": "for (const name of [\"openSheet\", \"toInput\", \"startVoice\"]) {"
-        },
-        {
-          "line": 716,
-          "text": "const action = out[name];"
-        },
-        {
-          "line": 721,
-          "text": "const grabTap = out.grabTap;"
-        },
-        {
-          "line": 725,
-          "text": "const toolbar=event.currentTarget instanceof HTMLElement&&event.currentTarget.hasAttribute('data-alpha-chat-size');"
-        },
-        {
-          "line": 728,
-          "text": "const next = shell.S().chat === \"full\" ? \"sheet\" : \"full\";"
-        },
-        {
-          "line": 748,
-          "text": "const setInputFocus = (focused: boolean) => {"
-        },
-        {
-          "line": 755,
-          "text": "const dockScrim ="
-        },
-        {
-          "line": 763,
+          "line": 412,
           "text": "const active = document.activeElement;"
         },
         {
-          "line": 792,
-          "text": "const press = shell.chatScrimPress;"
+          "line": 423,
+          "text": "const active = document.activeElement;"
         },
         {
-          "line": 805,
-          "text": "const press = shell.chatScrimPress;"
+          "line": 432,
+          "text": "const drag: Drag | undefined = this.chatMotion,"
+        },
+        {
+          "line": 435,
+          "text": "const previousView = args[1]?.view;"
+        },
+        {
+          "line": 448,
+          "text": "const change = this.chatChange;"
+        },
+        {
+          "line": 468,
+          "text": "const d: Drag | undefined = this.chatMotion;"
+        },
+        {
+          "line": 470,
+          "text": "const action = d.tap;"
+        },
+        {
+          "line": 478,
+          "text": "const d: Drag | undefined = this.chatMotion;"
+        },
+        {
+          "line": 480,
+          "text": "const shell = this,"
+        },
+        {
+          "line": 483,
+          "text": "const firstMove = !d.moved;"
+        },
+        {
+          "line": 492,
+          "text": "const panel = document.querySelector<HTMLElement>("
+        },
+        {
+          "line": 495,
+          "text": "const share = collapseShare(d);"
+        },
+        {
+          "line": 505,
+          "text": "const dock = dockStyle(d);"
+        },
+        {
+          "line": 506,
+          "text": "const pill = document.querySelector<HTMLElement>("
+        },
+        {
+          "line": 509,
+          "text": "const input = document.querySelector<HTMLElement>(\"[data-alpha-input-bar]\");"
+        },
+        {
+          "line": 510,
+          "text": "for (const element of [pill, input])"
+        },
+        {
+          "line": 512,
+          "text": "for (const [name, value] of Object.entries(dock))"
+        },
+        {
+          "line": 517,
+          "text": "const d: Drag | undefined = this.chatMotion;"
+        },
+        {
+          "line": 519,
+          "text": "const travel = Math.abs(d.offset / d.scale),"
+        },
+        {
+          "line": 526,
+          "text": "const next = chatRelease({"
+        },
+        {
+          "line": 546,
+          "text": "const out = render.call(this),"
+        },
+        {
+          "line": 565,
+          "text": "const target = event.target;"
+        },
+        {
+          "line": 572,
+          "text": "const scroll = target.closest<HTMLElement>("
+        },
+        {
+          "line": 576,
+          "text": "const box = target.getBoundingClientRect();"
+        },
+        {
+          "line": 577,
+          "text": "const sheet = shell.S().chat === \"sheet\";"
+        },
+        {
+          "line": 581,
+          "text": "const covers ="
+        },
+        {
+          "line": 589,
+          "text": "let hidden = 0;"
+        },
+        {
+          "line": 590,
+          "text": "for (const cover of covers) {"
+        },
+        {
+          "line": 591,
+          "text": "const over = cover.getBoundingClientRect();"
+        },
+        {
+          "line": 598,
+          "text": "const isOpen = (mode: unknown) => mode === \"sheet\" || mode === \"full\";"
+        },
+        {
+          "line": 600,
+          "text": "const from = shell.chatRenderedMode;"
+        },
+        {
+          "line": 603,
+          "text": "const tap = !shell.chatSettledByDrag && s.voice === \"off\";"
+        },
+        {
+          "line": 622,
+          "text": "const dock = drag?.moved"
+        },
+        {
+          "line": 641,
+          "text": "const rest = shell.rest();"
+        },
+        {
+          "line": 645,
+          "text": "const binding = shell.props.chatPullBinding;"
+        },
+        {
+          "line": 646,
+          "text": "const handlers = {"
+        },
+        {
+          "line": 657,
+          "text": "const emptyInput ="
+        },
+        {
+          "line": 679,
+          "text": "const g = bounds(),"
+        },
+        {
+          "line": 728,
+          "text": "const d: Drag | undefined = shell.chatMotion;"
+        },
+        {
+          "line": 740,
+          "text": "const d: Drag = shell.chatMotion;"
+        },
+        {
+          "line": 745,
+          "text": "const speed = releaseVelocity(d.track, event.timeStamp) / d.scale;"
+        },
+        {
+          "line": 773,
+          "text": "for (const name of [\"openSheet\", \"toInput\", \"startVoice\"]) {"
+        },
+        {
+          "line": 774,
+          "text": "const action = out[name];"
+        },
+        {
+          "line": 779,
+          "text": "const grabTap = out.grabTap;"
+        },
+        {
+          "line": 783,
+          "text": "const toolbar=event.currentTarget instanceof HTMLElement&&event.currentTarget.hasAttribute('data-alpha-chat-size');"
+        },
+        {
+          "line": 786,
+          "text": "const next = shell.S().chat === \"full\" ? \"sheet\" : \"full\";"
+        },
+        {
+          "line": 806,
+          "text": "const setInputFocus = (focused: boolean) => {"
+        },
+        {
+          "line": 813,
+          "text": "const dockScrim ="
+        },
+        {
+          "line": 821,
+          "text": "const active = document.activeElement;"
         }
       ]
     },
@@ -32952,7 +32947,8 @@
         "Maps",
         "DockClearanceOwnership",
         "HomeLayout",
-        "ChatInput"
+        "ChatInput",
+        "ModalScrimOwnership"
       ],
       "scope": "application",
       "treatment": "conditional-presentation-source",
@@ -35240,7 +35236,8 @@
         "CalendarPreservationConfirmation",
         "CanonicalCalendarEditorClose",
         "CameraPreviewRetirement",
-        "MapsRerouteOwnership"
+        "MapsRerouteOwnership",
+        "ModalScrimOwnership"
       ],
       "scope": "application",
       "treatment": "stateless-presentation-contract",
@@ -42705,7 +42702,8 @@
       "path": "apps/app/src/runtime/inline-modal.ts",
       "sha256": "661a0c7607ffba9bf7359650c6997f08ee12cc0969136d88574c5a8abaf8018e",
       "models": [
-        "ShellNavigation"
+        "ShellNavigation",
+        "ModalScrimOwnership"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -43533,7 +43531,8 @@
       "sha256": "6fcdc9cd4bc581355f5d445af63723f062164748a262fc68f48822008b0b671a",
       "models": [
         "ShellNavigation",
-        "GoogleCalendarLinkPublication"
+        "GoogleCalendarLinkPublication",
+        "ModalScrimOwnership"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",

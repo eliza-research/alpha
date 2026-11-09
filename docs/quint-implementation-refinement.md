@@ -963,3 +963,12 @@ current pair before publication. A refused manifest rename restores
 the prior module under the serial producer contract. The two-rename
 intermediate state, process interruption and installed execution
 remain separate.
+
+`ModalScrimOwnership` checks 15 schedules and 85 checkpoints. The
+baseline let a captured raised-input scrim press survive a modal
+opening, including open-and-close before the old release. The
+repair retires the exact press at inert or native modal coverage and
+fences both release and compatibility fallback. Trusted mouse and
+touch, React's native event identity, unrelated mutations and a fresh
+press have separate controlled observations. Full product modal entry
+points and half-sheet ownership remain separately scoped.

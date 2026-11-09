@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "4aa416032b3decceab74f8387e0d3ed462f5d535133a513b32414ed64979c61b",
+  "ledgerSha256": "c1b4905446a6f69ee097539a8dea79315110e07effe622a38d46f0ab093dc710",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -28,11 +28,11 @@
     "parsedFiles": 5656,
     "languageReview": 71,
     "parseErrors": 0,
-    "candidates": 67322,
-    "writeSites": 66889,
-    "writeAssociations": 60018,
-    "asynchronous": 8345,
-    "unassignedWrites": 10272
+    "candidates": 67324,
+    "writeSites": 66890,
+    "writeAssociations": 60020,
+    "asynchronous": 8348,
+    "unassignedWrites": 10271
   },
   "files": [
     {
@@ -34258,7 +34258,8 @@
       "sha256": "980535689c68ff1b944fd262cf08dd943a047a679ff5a13722edc922c77cdf43",
       "allocatedModels": [
         "CalendarPresentation",
-        "CalendarSync"
+        "CalendarSync",
+        "ModalScrimOwnership"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -34621,90 +34622,98 @@
     },
     {
       "path": "apps/app/src/prototype/chat-overlay-motion-adapter.ts",
-      "sha256": "eca19bf83c613bf1506586a2eb48faac9e7da835cddfb014b755d227f903fe7b",
+      "sha256": "7760898b213dbd511e61591b476e1d575f0496c52f37dbba7694741484de2910",
       "allocatedModels": [
         "Application",
-        "ChatInput"
+        "ChatInput",
+        "ModalScrimOwnership"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
         {
           "owner": "revealRows",
-          "line": 130,
+          "line": 188,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "scrollParent",
-          "line": 193,
+          "line": 251,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installChatOverlayMotion",
-          "line": 205,
+          "line": 263,
           "bindings": 1,
           "writes": 7
         },
         {
           "owner": "installChatOverlayMotion.resizeForTap",
-          "line": 248,
+          "line": 306,
           "bindings": 1,
           "writes": 12
         },
         {
           "owner": "installChatOverlayMotion.retire",
-          "line": 293,
+          "line": 351,
           "bindings": 2,
           "writes": 4
         },
         {
-          "owner": "installChatOverlayMotion.FunctionExpression@319",
-          "line": 346,
+          "owner": "installChatOverlayMotion.FunctionExpression@377",
+          "line": 404,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installChatOverlayMotion.FunctionExpression@372",
-          "line": 390,
+          "owner": "installChatOverlayMotion.FunctionExpression@430",
+          "line": 448,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installChatOverlayMotion.FunctionExpression@419",
-          "line": 420,
+          "owner": "installChatOverlayMotion.FunctionExpression@477",
+          "line": 478,
           "bindings": 2,
           "writes": 6
         },
         {
-          "owner": "installChatOverlayMotion.FunctionExpression@487",
-          "line": 488,
+          "owner": "installChatOverlayMotion.FunctionExpression@545",
+          "line": 546,
           "bindings": 3,
-          "writes": 45
+          "writes": 44
         },
         {
-          "owner": "installChatOverlayMotion.FunctionExpression@487.ArrowFunction@506",
-          "line": 514,
+          "owner": "installChatOverlayMotion.FunctionExpression@545.ArrowFunction@564",
+          "line": 572,
           "bindings": 2,
           "writes": 2
         },
         {
-          "owner": "installChatOverlayMotion.FunctionExpression@487.move",
-          "line": 670,
+          "owner": "installChatOverlayMotion.FunctionExpression@545.move",
+          "line": 728,
           "bindings": 2,
           "writes": 3
         },
         {
-          "owner": "installChatOverlayMotion.FunctionExpression@487.up",
-          "line": 682,
+          "owner": "installChatOverlayMotion.FunctionExpression@545.up",
+          "line": 740,
+          "bindings": 2,
+          "writes": 4
+        },
+        {
+          "owner": "installChatOverlayMotion.FunctionExpression@545.down",
+          "line": 861,
           "bindings": 1,
-          "writes": 2
+          "writes": 1
         }
       ],
       "parseErrors": [],
-      "asynchronous": 18,
-      "unassignedWrites": 20
+      "asynchronous": 21,
+      "unassignedWrites": 19
     },
     {
       "path": "apps/app/src/prototype/clock-adapter.ts",
@@ -39313,7 +39322,8 @@
         "Maps",
         "DockClearanceOwnership",
         "HomeLayout",
-        "ChatInput"
+        "ChatInput",
+        "ModalScrimOwnership"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -40134,7 +40144,8 @@
         "CalendarPreservationConfirmation",
         "CanonicalCalendarEditorClose",
         "CameraPreviewRetirement",
-        "MapsRerouteOwnership"
+        "MapsRerouteOwnership",
+        "ModalScrimOwnership"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -43469,7 +43480,8 @@
       "path": "apps/app/src/runtime/inline-modal.ts",
       "sha256": "661a0c7607ffba9bf7359650c6997f08ee12cc0969136d88574c5a8abaf8018e",
       "allocatedModels": [
-        "ShellNavigation"
+        "ShellNavigation",
+        "ModalScrimOwnership"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -43996,7 +44008,8 @@
       "sha256": "6fcdc9cd4bc581355f5d445af63723f062164748a262fc68f48822008b0b671a",
       "allocatedModels": [
         "ShellNavigation",
-        "GoogleCalendarLinkPublication"
+        "GoogleCalendarLinkPublication",
+        "ModalScrimOwnership"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -219793,6 +219806,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "6b905e10d31ff03bf72895a0c73f32494493fe038f8e7f653a5776c6e8c5b928"
+    "sha256": "4c7860d7c76d16ad2b3f1d72787d7e40fcf4d4925cf334a689c6eb2c74b1ba6c"
   }
 }
