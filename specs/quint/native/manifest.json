@@ -2478,8 +2478,10 @@
         "noticeExactBindingBeforeReadTest",
         "deletionRequiresExactProofTest",
         "deletionUndoCannotBecomeSuccessTest",
-        "reminderForeignBindingAsBuiltTest",
-        "passiveReminderFieldsAsBuiltTest",
+        "reminderForeignBindingRefusedBeforeLookupTest",
+        "passiveReminderFieldsRetainedForExactGetTest",
+        "settledLegacyReminderStillReadableTest",
+        "legacyReminderWithoutBindingCannotSettleTest",
         "passiveNoteDoesNotMutateExactReadTest",
         "retiredBridgeCannotRecoverTest"
       ],
@@ -2488,7 +2490,8 @@
         "ClaimedDeletionRetainsAttempt",
         "PassiveReadOnly",
         "IndependentCommitBoundaries",
-        "RedactedPassiveReads"
+        "RedactedPassiveReads",
+        "ReminderLookupUsesSelectedBinding"
       ],
       "sources": [
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaActionJournal.java",
@@ -2502,14 +2505,14 @@
         "vendor/eliza/plugins/plugin-native-reminders/android/src/main/java/ai/eliza/plugins/reminders/ReminderStore.java"
       ],
       "stateMapping": {
-        "kind/phase/attempt/claim/result": "Exact selected journal operation class, durable status, immutable admission and retained result",
+        "kind/phase/attempt/claim/completeBinding/result": "Exact selected journal operation class, durable status, immutable admission and retained result",
         "proof/status/notice/visible": "Synthetic child evidence, persisted notification receipt and active-list outcome",
-        "live/process/method/reply/replyResult": "Bridge retirement/reconstruction, chosen readback and projected result class",
+        "live/process/method/requestedBinding/reply/replyResult": "Bridge retirement/reconstruction, chosen readback and projected result class",
         "noticeReads/deletionReads/reminderReads/matches/noticeWrites/journalWrites": "Closed receipt accesses and separately observed durable write attempts"
       },
       "abstractions": [
         "One selected row, absent/foreign request addresses, exact known operation and bounded receipt equality classes.",
-        "Baseline preserves foreign reminder binding settlement and passive reminder fields. Other result families retain the existing projection.",
+        "The selected binding fences unresolved reminder receipt lookup. Passive selected-reminder reads retain a marker and summary, with the full result preserved for exact get.",
         "Native worker and journal run on the host JVM. Deletion provider, notification manager and ReminderEnvelope are closed synthetic inputs, with pre- and post-commit store failure."
       ],
       "bounds": {

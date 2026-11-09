@@ -1,8 +1,8 @@
 // Exact selected action-journal recovery, durable write receipts and passive read projection.
 module NativeActionRecovery {
-  type State = {kind: str, phase: str, attempt: bool, claim: bool, result: str,
+  type State = {kind: str, phase: str, attempt: bool, claim: bool, completeBinding: bool, result: str,
     proof: str, status: str, notice: str, visible: bool, live: bool, process: int,
-    method: str, reply: str, replyResult: str, noticeReads: int, deletionReads: int,
+    method: str, requestedBinding: str, reply: str, replyResult: str, noticeReads: int, deletionReads: int,
     reminderReads: int, matches: int, noticeWrites: int, journalWrites: int}
   var s: State
 
@@ -40,23 +40,27 @@ module NativeActionRecovery {
     else if (result=="note") "note-retained"
     else if (result=="query") "query-retained"
     else if (result=="maps") "maps-retained"
+    else if (result=="reminder-read") "reminder-retained"
     else result
 
-  action initWith(kind: str, phase: str, attempt: bool, claim: bool): bool = all {
+  action initWithMetadata(kind: str, phase: str, attempt: bool, claim: bool, completeBinding: bool): bool = all {
     kind.in(kinds), phase.in(phases),
     if (phase.in(Set("applying","succeeded"))) attempt else if (phase.in(Set("absent","reserved"))) not(attempt) else true,
     not(claim) or (attempt and deletionKind(kind)),
-    s'={kind:kind,phase:phase,attempt:attempt,claim:claim,result:if (phase=="succeeded") resultFor(kind) else "none",
-      proof:"exact",status:"missing",notice:"missing",visible:false,live:true,process:1,method:"none",reply:"none",replyResult:"none",
+    s'={kind:kind,phase:phase,attempt:attempt,claim:claim,completeBinding:completeBinding,result:if (phase=="succeeded") resultFor(kind) else "none",
+      proof:"exact",status:"missing",notice:"missing",visible:false,live:true,process:1,method:"none",requestedBinding:"none",reply:"none",replyResult:"none",
       noticeReads:0,deletionReads:0,reminderReads:0,matches:0,noticeWrites:0,journalWrites:0}
   }
+  action initWith(kind: str, phase: str, attempt: bool, claim: bool): bool =
+    initWithMetadata(kind,phase,attempt,claim,true)
   action init = {
     nondet kind=kinds.oneOf()
     nondet phase=phases.oneOf()
     nondet hasAttempt=Bool.oneOf()
     nondet hasClaim=Bool.oneOf()
+    nondet completeBinding=Bool.oneOf()
     val attempt=phase.in(Set("applying","succeeded")) or (phase.in(Set("unknown","failed")) and hasAttempt)
-    initWith(kind,phase,attempt,attempt and deletionKind(kind) and hasClaim)
+    initWithMetadata(kind,phase,attempt,attempt and deletionKind(kind) and hasClaim,completeBinding)
   }
 
   // Child receipts are synthetic durable input. Only NoticeDelivery's readback may update its own receipt.
@@ -110,26 +114,23 @@ module NativeActionRecovery {
   }
 
   pure def notification(st: State, candidate: str, fault: str): State =
-    if (st.kind!="notice" or candidate!="exact") refuse(st)
+    if (st.kind!="notice" or candidate!="exact" or not(st.completeBinding)) refuse(st)
     else if (settled(st.phase)) unchanged(st)
     else if (not(st.attempt and eligible(st.phase))) refuse(st)
     else notificationReceipt(st,fault)
 
-  // As built, this method supplies the caller's binding directly to the receipt store.
-  // A receipt seeded with a different owner's exact binding can therefore be read under this row.
   pure def reminder(st: State, candidate: str, fault: str): State =
     if (not(reminderKind(st.kind))) refuse(st)
     else if (settled(st.phase)) unchanged(st)
-    else if (not(eligible(st.phase))) refuse(st)
+    else if (not(eligible(st.phase)) or candidate!="exact" or not(st.completeBinding)) refuse(st)
     else {
       val reading={...st,reminderReads:1}
-      val expected=if (st.proof=="foreign") "foreign" else "exact"
       val cancelled=st.kind=="reminder-cancel"
       val found=if (cancelled) st.status=="deleted" and st.proof!="missing-result" else st.status!="missing"
       val succeeded=if (cancelled) found else st.status=="succeeded"
       if (fault=="receipt-read") refuse(reading)
       else if (not(found)) unchanged(reading)
-      else if (candidate!=expected or (st.proof=="payload" and not(cancelled))) refuse(reading)
+      else if (st.proof=="foreign" or (st.proof=="payload" and not(cancelled))) refuse(reading)
       else if (not(succeeded)) unchanged(reading)
       else if (not(st.attempt) or st.proof=="result") refuse(reading)
       else commit(reading,"succeeded",resultFor(st.kind),fault)
@@ -151,7 +152,7 @@ module NativeActionRecovery {
     }
 
   pure def dispatch(st: State, method: str, address: str, candidate: str, fault: str): State = {
-    val ready={...st,method:method,noticeReads:0,deletionReads:0,reminderReads:0,matches:0,noticeWrites:0,journalWrites:0}
+    val ready={...st,method:method,requestedBinding:candidate,noticeReads:0,deletionReads:0,reminderReads:0,matches:0,noticeWrites:0,journalWrites:0}
     val present=st.phase!="absent" and address!="scope" and (method=="list" or address!="proposal")
     if (not(st.live) or address=="invalid" or fault=="journal-read") refuse(ready)
     else if (not(present)) (if (method.in(Set("notice","reminder"))) refuse(ready) else absent(ready))
@@ -175,9 +176,12 @@ module NativeActionRecovery {
     (s.noticeReads==0 and s.reminderReads==0 and s.deletionReads==0 and s.noticeWrites==0 and s.journalWrites==0)
   val IndependentCommitBoundaries = s.noticeWrites<=s.noticeReads and s.matches<=s.noticeReads and
     s.journalWrites<=1 and (s.noticeWrites==0 or s.method=="notice")
-  val RedactedPassiveReads = s.method!="list" or not(s.replyResult.in(Set("workflow","calendar-read","note","query","maps")))
+  val RedactedPassiveReads = s.method!="list" or
+    not(s.replyResult.in(Set("workflow","calendar-read","note","query","maps","reminder-read")))
+  val ReminderLookupUsesSelectedBinding = s.method!="reminder" or s.reminderReads==0 or
+    (s.requestedBinding=="exact" and s.completeBinding)
   val safety = all {SuccessRequiresAdmission,ClaimedDeletionRetainsAttempt,PassiveReadOnly,
-    IndependentCommitBoundaries,RedactedPassiveReads}
+    IndependentCommitBoundaries,RedactedPassiveReads,ReminderLookupUsesSelectedBinding}
 
   action step = any {
     { nondet status=statuses.oneOf(); nondet proof=proofs.oneOf(); nondet visible=Bool.oneOf(); receipt(status,proof,visible) },
@@ -204,11 +208,23 @@ module NativeActionRecovery {
   run deletionUndoCannotBecomeSuccessTest = initWith("calendar-delete","applying",true,true)
     .then(receipt("undone","exact",false)).then(call("deletion","exact","exact","none"))
     .expect(s.phase=="failed" and s.result=="operation")
-  run reminderForeignBindingAsBuiltTest = initWith("reminder-read","applying",true,false)
+  run reminderForeignBindingRefusedBeforeLookupTest = initWith("reminder-read","applying",true,false)
     .then(receipt("succeeded","foreign",false)).then(call("reminder","exact","foreign","none"))
+    .expect(s.phase=="applying" and s.reminderReads==0 and s.journalWrites==0 and s.reply=="refused")
+    .then(call("reminder","exact","exact","none"))
+    .expect(s.phase=="applying" and s.reminderReads==1 and s.reply=="refused")
+    .then(receipt("succeeded","exact",false)).then(call("reminder","exact","exact","none"))
     .expect(s.phase=="succeeded" and s.result=="reminder-read" and s.journalWrites==1)
-  run passiveReminderFieldsAsBuiltTest = initWith("reminder-read","succeeded",true,false)
-    .then(call("list","exact","exact","none")).expect(s.replyResult=="reminder-read" and s.journalWrites==0)
+  run passiveReminderFieldsRetainedForExactGetTest = initWith("reminder-read","succeeded",true,false)
+    .then(call("list","exact","exact","none")).expect(s.replyResult=="reminder-retained" and s.journalWrites==0)
+    .then(call("get","exact","exact","none")).expect(s.replyResult=="reminder-read")
+  run settledLegacyReminderStillReadableTest = initWithMetadata("reminder-read","succeeded",true,false,false)
+    .then(call("reminder","exact","foreign","none"))
+    .expect(s.reply=="succeeded" and s.replyResult=="reminder-read" and s.reminderReads==0)
+    .then(call("list","exact","exact","none")).expect(s.replyResult=="reminder-retained")
+  run legacyReminderWithoutBindingCannotSettleTest = initWithMetadata("reminder-read","applying",true,false,false)
+    .then(receipt("succeeded","exact",false)).then(call("reminder","exact","exact","none"))
+    .expect(s.phase=="applying" and s.reminderReads==0 and s.reply=="refused")
   run passiveNoteDoesNotMutateExactReadTest = initWith("note-query","succeeded",true,false)
     .then(call("list","exact","exact","none")).expect(s.replyResult=="query-retained" and s.result=="query")
     .then(call("get","exact","exact","none")).expect(s.replyResult=="query")

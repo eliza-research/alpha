@@ -27,9 +27,9 @@ public final class ActionRecoveryTraces {
  private static JSONObject deletion, reminders=new JSONObject();
  private static AlphaActionJournalPlugin plugin;
  private static Trace trace;
- private static String kind,proof="exact",status="missing",fault="none",method="none",reply="none",replyResult="none";
+ private static String kind,proof="exact",status="missing",fault="none",method="none",requestedBinding="none",reply="none",replyResult="none";
  private static String binding,foreignBinding;
- private static boolean visible, live=true;
+ private static boolean visible, live=true, completeBinding=true;
  private static int noticeReads,deletionReads,reminderReads,matches,noticeWrites,journalWrites,process=1;
 
  static String read(String slot)throws Exception {
@@ -108,6 +108,7 @@ public final class ActionRecoveryTraces {
    .put("origin","https://fixture.invalid").put("installationId","installation").put("enrollmentId","enrollment")
    .put("digest","digest").put("operation",operation());
   if(kind.equals("notice")||kind.equals("workflow-read"))record.put("workflow",new JSONObject().put("step","step"));
+  if(!completeBinding)record.remove("enrollmentId");
   return record;
  }
 
@@ -148,6 +149,16 @@ public final class ActionRecoveryTraces {
   if(body.optBoolean("calendarReadRetained"))return "calendar-retained";
   if(body.optBoolean("notesReadRetained"))return kind.equals("note-query")?"query-retained":"note-retained";
   if(body.optBoolean("mapsReadRetained"))return "maps-retained";
+  if(body.optBoolean("reminderReadRetained")){
+   JSONObject reminder=body.getJSONObject("reminderResult");
+   if(reminder.has("fields")||!"reminder_read_selected".equals(reminder.getString("kind"))
+       ||reminder.getInt("version")!=1||!"source".equals(reminder.getString("sourceId"))
+       ||!"reminder".equals(reminder.getString("reminderId"))
+       ||!"occurrence".equals(reminder.getString("occurrenceId"))
+       ||!"revision".equals(reminder.getString("revision"))||reminder.getInt("at")!=1000)
+    throw new AssertionError("Passive reminder identity or summary changed");
+   return "reminder-retained";
+  }
   if(body.has("readResult"))return "workflow";
   if(body.has("calendarResult"))return body.getJSONObject("calendarResult").has("fields")?"calendar-read":"calendar-delete";
   if(body.has("notesResult"))return body.getJSONObject("notesResult").has("record")?"query":"note";
@@ -187,9 +198,10 @@ public final class ActionRecoveryTraces {
   String notice="missing";
   if(slots.containsKey(NOTICE_SLOT))notice=new JSONObject(slots.get(NOTICE_SLOT)).getJSONObject(OPERATION).getString("status");
   return Trace.fields("kind",kind,"phase",phase(saved),"attempt",saved!=null&&saved.has("attemptId"),
-    "claim",saved!=null&&saved.has("nativeDispatchClaim"),"result",result(saved),
+    "claim",saved!=null&&saved.has("nativeDispatchClaim"),
+    "completeBinding",saved==null?completeBinding:saved.getJSONObject("record").has("enrollmentId"),"result",result(saved),
     "proof",proof,"status",status,"notice",notice,"visible",visible,"live",live,"process",process,
-    "method",method,"reply",reply,"replyResult",replyResult,"noticeReads",noticeReads,"deletionReads",deletionReads,
+    "method",method,"requestedBinding",requestedBinding,"reply",reply,"replyResult",replyResult,"noticeReads",noticeReads,"deletionReads",deletionReads,
     "reminderReads",reminderReads,"matches",matches,"noticeWrites",noticeWrites,"journalWrites",journalWrites);
  }
 
@@ -205,9 +217,9 @@ public final class ActionRecoveryTraces {
    if(!phase.equals("reserved")&&!phase.equals("applying"))
     journal.finish(SCOPE,PROPOSAL,phase,"fixture-original",phase.equals("succeeded")?initialResult():null);
   }
-  JSONObject current=new JSONObject().put("record",record()).put("operationId",OPERATION);
+  JSONObject current=new JSONObject().put("record",record().put("enrollmentId","enrollment")).put("operationId",OPERATION);
   binding=NoticeRecovery.binding(current,SCOPE,PROPOSAL);
-  JSONObject peer=new JSONObject().put("record",record().put("ownerId","owner-b")).put("operationId",OPERATION);
+  JSONObject peer=new JSONObject().put("record",record().put("ownerId","owner-b").put("enrollmentId","enrollment")).put("operationId",OPERATION);
   foreignBinding=NoticeRecovery.binding(peer,PEER,"peer-proposal");
   journalWrites=0;
  }
@@ -256,7 +268,9 @@ public final class ActionRecoveryTraces {
  private static void resetCounters() {noticeReads=deletionReads=reminderReads=matches=noticeWrites=journalWrites=0;}
 
  private static void call(String method,String address,String candidate,String injected)throws Exception {
-  resetCounters();ActionRecoveryTraces.method=method;
+  resetCounters();
+  ActionRecoveryTraces.method=method;requestedBinding=candidate;
+  String before=slots.get(JOURNAL_SLOT);
   fault=injected;
   JSONObject request=new JSONObject().put("scope",address.equals("invalid")?"invalid":address.equals("scope")?PEER:SCOPE)
    .put("proposalId",address.equals("proposal")?"peer-proposal":PROPOSAL)
@@ -283,10 +297,14 @@ public final class ActionRecoveryTraces {
     seen=list.length()==0?null:list.getJSONObject(0);
    } else seen=call.result.optJSONObject("entry");
    verifyEntry(seen);
+   if(method.equals("get")&&address.equals("exact")&&!ActionJournal.sameJson(entry(),seen))
+    throw new AssertionError("Exact read did not return the stored receipt");
    reply=phase(seen);replyResult=result(seen);
    if(replyResult.endsWith("-retained") && seen.getJSONObject("result").toString().contains(PRIVATE))
     throw new AssertionError("Passive marker still retained private data");
   }
+  if((method.equals("list")||method.equals("get"))&&!java.util.Objects.equals(before,slots.get(JOURNAL_SLOT)))
+   throw new AssertionError("Reading changed the durable row");
   trace.step("call",observe(),method,address,candidate,injected);
  }
 
@@ -309,9 +327,11 @@ public final class ActionRecoveryTraces {
  public static void main(String[] args)throws Exception {
   String scenario=args[0], phase=args[2];
   boolean attempt=Boolean.parseBoolean(args[3]), claim=Boolean.parseBoolean(args[4]);
+  completeBinding=!scenario.startsWith("legacy-missing-binding");
   prepare(args[1],phase,attempt,claim);
   trace=new Trace(scenario,observe());
-  trace.value.put("init",Trace.action("initWith",kind,phase,attempt,claim));
+  trace.value.put("init",completeBinding?Trace.action("initWith",kind,phase,attempt,claim):
+   Trace.action("initWithMetadata",kind,phase,attempt,claim,false));
   try {
    switch(scenario) {
     case "notice-recovered" -> {
@@ -344,7 +364,13 @@ public final class ActionRecoveryTraces {
      call("reminder","exact","wrong","none");call("list");call("get");
     }
     case "reminder-exact" -> {receipt("succeeded","exact",false);call("reminder");call("list");call("get");}
-    case "reminder-foreign" -> {receipt("succeeded","foreign",false);call("reminder","exact","foreign","none");call("list");call("get");}
+    case "reminder-foreign" -> {
+     receipt("succeeded","foreign",false);call("reminder","exact","foreign","none");call("reminder");call("get");
+     receipt("succeeded","exact",false);call("reminder");call("list");call("get");
+    }
+    case "reminder-cancel-exact" -> {receipt("deleted","exact",false);call("reminder");call("list");}
+    case "legacy-missing-binding-settled" -> {call("reminder","exact","foreign","none");call("list");call("get");}
+    case "legacy-missing-binding-applying" -> {receipt("succeeded","exact",false);call("reminder");call("get");}
     case "reminder-invalid-result" -> {receipt("succeeded","result",false);call("reminder");}
     case "reminder-legacy-no-attempt" -> {receipt("succeeded","exact",false);call("reminder");}
     case "reminder-no-admission" -> {receipt("succeeded","exact",false);call("reminder");}

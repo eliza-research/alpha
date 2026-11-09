@@ -30,6 +30,9 @@ const cases=[
   ...['reminder-create','reminder-update','reminder-snooze']
     .map(kind=>['reminder-exact',kind,'applying']),
   ['reminder-foreign','reminder-read','applying'],
+  ['reminder-cancel-exact','reminder-cancel','applying',true,true],
+  ['legacy-missing-binding-settled','reminder-read','succeeded'],
+  ['legacy-missing-binding-applying','reminder-read','applying'],
   ['reminder-invalid-result','reminder-create','applying'],
   ['reminder-legacy-no-attempt','reminder-complete','unknown',false],
   ['reminder-no-admission','reminder-complete','reserved',false],
@@ -76,7 +79,7 @@ export async function checkNativeActionRecovery(extraSources=[]) {
       ]});
     return {receipt,obligations:[
       {model,obligation:'Cross-process storage and live platform receipt evidence',reason:'The fixture observes one app worker at a time, with explicit destruction and reconstruction. Android secure-store durability, active notification matching and upstream provider effects remain external.'},
-      {model,obligation:'Renderer proposal admission and same-installation actor',reason:'Requests and proof keys are synthetic. The recorded divergence supplies an existing foreign binding and an equivalent operation, without assuming the standard renderer issues such a request.'},
+      {model,obligation:'Renderer proposal admission and same-installation actor',reason:'Requests and proof keys are synthetic. The baseline divergence supplied an existing foreign binding and equivalent operation. The repaired boundary checks the selected row before receipt lookup.'},
     ]};
   } finally {fixture.close();}
 }

@@ -6,7 +6,7 @@ import {checkNativeActionRecovery} from '../specs/quint/refinement/native/action
 test('native action recovery and passive history refine exact journal and receipt source', async () => {
   const {receipt}=await checkNativeActionRecovery();
   assert.equal(receipt.passed,true);
-  assert.equal(receipt.traces,32);
-  assert.equal(receipt.observedFields.length,20);
+  assert.equal(receipt.traces,35);
+  assert.equal(receipt.observedFields.length,22);
   assert.equal(verifyRefinementReceiptInputs(receipt),true);
 });
