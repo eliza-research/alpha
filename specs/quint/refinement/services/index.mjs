@@ -36,6 +36,7 @@ import {checkDevelopmentRuntimeLoader} from './development-runtime-loader.mjs';
 import {checkCombinedAgentLauncher} from './combined-agent-launcher.mjs';
 import {checkReviewedWorkflowLauncher} from './reviewed-workflow-launcher.mjs';
 import {checkCoreConnectorCustody} from './core-runtime/connector-custody.mjs';
+import {checkMobileBundleAdmission} from './mobile-bundle-admission.mjs';
 
 export async function runServicesRefinement() {
   const receipts = [];
@@ -45,7 +46,8 @@ export async function runServicesRefinement() {
     () => checkDevelopmentRuntimeLoader([fileURLToPath(import.meta.url)]),
     () => checkCombinedAgentLauncher([fileURLToPath(import.meta.url)]),
     () => checkReviewedWorkflowLauncher([fileURLToPath(import.meta.url)]),
-    () => checkCoreConnectorCustody([fileURLToPath(import.meta.url)])]) {
+    () => checkCoreConnectorCustody([fileURLToPath(import.meta.url)]),
+    () => checkMobileBundleAdmission([fileURLToPath(import.meta.url)])]) {
     const result = await check();
     receipts.push(...(Array.isArray(result) ? result : [result]));
   }
@@ -58,6 +60,8 @@ export async function runServicesRefinement() {
       reason: 'Source schedules observe reviewed bytes, child custody and preload rejection under closed ports. The metadata receipt alone does not observe HTTP readiness or permission to execute work.'},
     {model: 'CoreConnectorCustody', obligation: 'Arbitrary detached callbacks and direct host mutation',
       reason: 'The bounded source campaign holds selected service, disposal and detached continuations. Untracked host registry mutation and arbitrary scheduling remain separate.'},
+    {model: 'MobileBundleAdmission', obligation: 'Staging and installation after mobile receipt admission',
+      reason: 'The producer functions and readback execute against reviewed inputs and synthetic bundle generations. The full mobile compiler, staged copy under interruption and installed execution are separate.'},
     {model: 'CoreTurnControllers', obligation: 'Detached callbacks, reentrant observers and provider composition', reason: 'The source campaign checks lookup, cancellation and closure in two registries. Arbitrary reentrant observers and detached callbacks require separate source schedules.'},
     {model: 'IdentitySession', obligation: 'Installed sign-in integration and physical storage', reason: 'The patched shared sign-in coordinator executes callback claim, credential/receipt commit, acknowledgement, cancellation and replacement under controlled ports. App Link trust, real HTTPS, Keystore durability and process recreation remain external.'},
     {model: 'ServiceAuthorization', obligation: 'Managed-service dispatch authorization', reason: 'Entitlement refresh and admission views execute; exact route validation and server authorization still need their own dispatch trace adapter.'},

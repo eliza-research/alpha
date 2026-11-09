@@ -886,3 +886,12 @@ separate consumed-source discovery policy.
 | Browser dialogs | Calendar, document, review and attachment styles now have source allocations. Cross-dialog pointer and focus ownership remains open. |
 | Device and startup | Existing profile, inset and permission fixtures cover visible setup states. The audit keeps the style conditions for pending, disabled and short-height presentation. |
 | Membership, connection and Undo | Billing and Undo style inputs follow their operation owners. The two independently admitted connection notices and Settings suppression need a joint mounted projection. |
+
+`MobileBundleAdmission` checks 11 source schedules and 191 checkpoints.
+The driver exercises the actual receipt producer and verifier with
+reviewed SDK inputs, the exact UUID transform, all 12 core transforms
+and synthetic bundle generations. It checks stale receipt refusal,
+missing, duplicate and altered transforms, and publication of a fresh
+receipt. The actual Android producer and its pre-provider smoke have
+separate provenance. Staging interruption and installed execution
+remain open.
