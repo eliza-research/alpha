@@ -7864,13 +7864,14 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/MainActivity.java",
-      "sha256": "f35ee61299955a4f3a6d12fc160c4376176229fbb87c6dc9c727b3e33407ec67",
+      "sha256": "b2ecd0f978d487a73792cf2c8a3d271b1e6484fe041f120b6be2ce0bf569281b",
       "models": [
         "Application",
         "RendererRecovery",
         "CanonicalNotificationTap",
         "NativeTextScaleLifecycle",
-        "NativeAssistantEntry"
+        "NativeAssistantEntry",
+        "KeyboardFocus"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -7935,7 +7936,8 @@
           "line": 194,
           "text": "private static boolean handOffUnreliable = false;"
         }
-      ]
+      ],
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md"
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeDeletionCoordinator.java",
@@ -20969,10 +20971,11 @@
     },
     {
       "path": "apps/app/src/prototype/chat-overlay-motion-adapter.ts",
-      "sha256": "eca19bf83c613bf1506586a2eb48faac9e7da835cddfb014b755d227f903fe7b",
+      "sha256": "4809f702aa045175a2754a1b78c5fc2ce541a5ac014202d34ab64787e9fce670",
       "models": [
         "Application",
-        "ChatInput"
+        "ChatInput",
+        "KeyboardFocus"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -21182,56 +21185,48 @@
           "text": "for (const name of [\"transform\", \"opacity\", \"transition\"])"
         },
         {
-          "line": 334,
+          "line": 332,
           "text": "const free = keyboardFreeHeight();"
         },
         {
-          "line": 335,
+          "line": 349,
           "text": "const visible = () => {"
         },
         {
-          "line": 336,
+          "line": 350,
           "text": "const width = document.documentElement.clientWidth || window.innerWidth,"
         },
         {
-          "line": 344,
+          "line": 358,
           "text": "const seed = visible();"
         },
         {
-          "line": 346,
+          "line": 360,
           "text": "let keyboardOpen = false;"
         },
         {
-          "line": 348,
+          "line": 362,
           "text": "const now = visible(),"
         },
         {
-          "line": 354,
+          "line": 334,
           "text": "const active = document.activeElement;"
         },
         {
-          "line": 365,
+          "line": 334,
           "text": "const active = document.activeElement;"
         },
         {
-          "line": 374,
+          "line": 383,
           "text": "const drag: Drag | undefined = this.chatMotion,"
         },
         {
-          "line": 377,
+          "line": 386,
           "text": "const previousView = args[1]?.view;"
         },
         {
-          "line": 390,
+          "line": 399,
           "text": "const change = this.chatChange;"
-        },
-        {
-          "line": 410,
-          "text": "const d: Drag | undefined = this.chatMotion;"
-        },
-        {
-          "line": 412,
-          "text": "const action = d.tap;"
         },
         {
           "line": 420,
@@ -21239,177 +21234,186 @@
         },
         {
           "line": 422,
-          "text": "const shell = this,"
+          "text": "const action = d.tap;"
         },
         {
-          "line": 425,
-          "text": "const firstMove = !d.moved;"
-        },
-        {
-          "line": 434,
-          "text": "const panel = document.querySelector<HTMLElement>("
-        },
-        {
-          "line": 437,
-          "text": "const share = collapseShare(d);"
-        },
-        {
-          "line": 447,
-          "text": "const dock = dockStyle(d);"
-        },
-        {
-          "line": 448,
-          "text": "const pill = document.querySelector<HTMLElement>("
-        },
-        {
-          "line": 451,
-          "text": "const input = document.querySelector<HTMLElement>(\"[data-alpha-input-bar]\");"
-        },
-        {
-          "line": 452,
-          "text": "for (const element of [pill, input])"
-        },
-        {
-          "line": 454,
-          "text": "for (const [name, value] of Object.entries(dock))"
-        },
-        {
-          "line": 459,
+          "line": 420,
           "text": "const d: Drag | undefined = this.chatMotion;"
         },
         {
+          "line": 432,
+          "text": "const shell = this,"
+        },
+        {
+          "line": 435,
+          "text": "const firstMove = !d.moved;"
+        },
+        {
+          "line": 444,
+          "text": "const panel = document.querySelector<HTMLElement>("
+        },
+        {
+          "line": 447,
+          "text": "const share = collapseShare(d);"
+        },
+        {
+          "line": 457,
+          "text": "const dock = dockStyle(d);"
+        },
+        {
+          "line": 458,
+          "text": "const pill = document.querySelector<HTMLElement>("
+        },
+        {
           "line": 461,
+          "text": "const input = document.querySelector<HTMLElement>(\"[data-alpha-input-bar]\");"
+        },
+        {
+          "line": 462,
+          "text": "for (const element of [pill, input])"
+        },
+        {
+          "line": 464,
+          "text": "for (const [name, value] of Object.entries(dock))"
+        },
+        {
+          "line": 469,
+          "text": "const d: Drag | undefined = this.chatMotion;"
+        },
+        {
+          "line": 471,
           "text": "const travel = Math.abs(d.offset / d.scale),"
         },
         {
-          "line": 468,
+          "line": 478,
           "text": "const next = chatRelease({"
         },
         {
-          "line": 488,
+          "line": 498,
           "text": "const out = render.call(this),"
         },
         {
-          "line": 507,
+          "line": 517,
           "text": "const target = event.target;"
         },
         {
-          "line": 514,
+          "line": 524,
           "text": "const scroll = target.closest<HTMLElement>("
         },
         {
-          "line": 518,
+          "line": 528,
           "text": "const box = target.getBoundingClientRect();"
         },
         {
-          "line": 519,
+          "line": 529,
           "text": "const sheet = shell.S().chat === \"sheet\";"
         },
         {
-          "line": 523,
+          "line": 533,
           "text": "const covers ="
         },
         {
-          "line": 531,
+          "line": 541,
           "text": "let hidden = 0;"
         },
         {
-          "line": 532,
+          "line": 542,
           "text": "for (const cover of covers) {"
         },
         {
-          "line": 533,
+          "line": 543,
           "text": "const over = cover.getBoundingClientRect();"
         },
         {
-          "line": 540,
+          "line": 550,
           "text": "const isOpen = (mode: unknown) => mode === \"sheet\" || mode === \"full\";"
         },
         {
-          "line": 542,
+          "line": 552,
           "text": "const from = shell.chatRenderedMode;"
         },
         {
-          "line": 545,
+          "line": 555,
           "text": "const tap = !shell.chatSettledByDrag && s.voice === \"off\";"
         },
         {
-          "line": 564,
+          "line": 574,
           "text": "const dock = drag?.moved"
         },
         {
-          "line": 583,
+          "line": 593,
           "text": "const rest = shell.rest();"
         },
         {
-          "line": 587,
+          "line": 597,
           "text": "const binding = shell.props.chatPullBinding;"
         },
         {
-          "line": 588,
+          "line": 598,
           "text": "const handlers = {"
         },
         {
-          "line": 599,
+          "line": 609,
           "text": "const emptyInput ="
         },
         {
-          "line": 621,
+          "line": 631,
           "text": "const g = bounds(),"
         },
         {
-          "line": 670,
+          "line": 680,
           "text": "const d: Drag | undefined = shell.chatMotion;"
         },
         {
-          "line": 682,
+          "line": 692,
           "text": "const d: Drag = shell.chatMotion;"
         },
         {
-          "line": 687,
+          "line": 697,
           "text": "const speed = releaseVelocity(d.track, event.timeStamp) / d.scale;"
         },
         {
-          "line": 715,
+          "line": 725,
           "text": "for (const name of [\"openSheet\", \"toInput\", \"startVoice\"]) {"
         },
         {
-          "line": 716,
+          "line": 726,
           "text": "const action = out[name];"
         },
         {
-          "line": 721,
+          "line": 731,
           "text": "const grabTap = out.grabTap;"
         },
         {
-          "line": 725,
+          "line": 735,
           "text": "const toolbar=event.currentTarget instanceof HTMLElement&&event.currentTarget.hasAttribute('data-alpha-chat-size');"
         },
         {
-          "line": 728,
+          "line": 738,
           "text": "const next = shell.S().chat === \"full\" ? \"sheet\" : \"full\";"
         },
         {
-          "line": 748,
+          "line": 758,
           "text": "const setInputFocus = (focused: boolean) => {"
         },
         {
-          "line": 755,
+          "line": 765,
           "text": "const dockScrim ="
         },
         {
-          "line": 763,
+          "line": 773,
           "text": "const active = document.activeElement;"
         },
         {
-          "line": 792,
+          "line": 802,
           "text": "const press = shell.chatScrimPress;"
         },
         {
-          "line": 805,
+          "line": 802,
           "text": "const press = shell.chatScrimPress;"
         }
-      ]
+      ],
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md"
     },
     {
       "path": "apps/app/src/prototype/clock-adapter.ts",
@@ -619919,6 +619923,36 @@
           "text": "const sent = await service.sendDirectMessageForAccount(accountId, {"
         }
       ]
+    },
+    {
+      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaKeyboardDictationService.java",
+      "sha256": "5a1f6b89f5d15e4c6de893ae7b0bb3cf159264fe8ee20963361ff166a99d02f9",
+      "models": [
+        "KeyboardDictation"
+      ],
+      "scope": "application",
+      "treatment": "state-and-transition-projection",
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md"
+    },
+    {
+      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/KeyboardDictationCloud.java",
+      "sha256": "ae71095180173ebfd53b2ea6542ab45b231c006c3ff66acbf11816d0cf04eecf",
+      "models": [
+        "KeyboardDictation"
+      ],
+      "scope": "application",
+      "treatment": "state-and-transition-projection",
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md"
+    },
+    {
+      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/KeyboardDictationPolicy.java",
+      "sha256": "fcb73710c422a050ca78cb003418cbd11beaa589f9e1de71de8452642d1a69c6",
+      "models": [
+        "KeyboardDictation"
+      ],
+      "scope": "application",
+      "treatment": "state-and-transition-projection",
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md"
     }
   ],
   "configurationInputs": [
@@ -619928,9 +619962,11 @@
         "Application",
         "DeviceActions",
         "NativeSmsDispatch",
-        "NativeMmsDispatch"
+        "NativeMmsDispatch",
+        "KeyboardDictation"
       ],
-      "sha256": "a549ffbd77739527e6d2819fe80135558752090f20cd1a8718662be15e925e96"
+      "sha256": "e75f4e4d44522c2997d7bc7061ecc42d6d49f91eac723d9b7c8b7e18d64c72e0",
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md"
     },
     {
       "path": "android/app/src/main/AndroidManifest.xml",
@@ -620878,6 +620914,22 @@
         "AlwaysOnListener"
       ],
       "sha256": "65a62b665e34dfc370cf10519f82cbfabce7089e65d11b7130498ccbb1b8fa89"
+    },
+    {
+      "path": "android/app/src/launcher/res/xml/alpha_keyboard_dictation.xml",
+      "models": [
+        "KeyboardDictation"
+      ],
+      "sha256": "2754112871f7b33aa6c5773dcc6ee5128a16cddd6f96663737c974dbb57259f9",
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md"
+    },
+    {
+      "path": "android/app/src/launcher/res/values/alpha_keyboard_dictation.xml",
+      "models": [
+        "KeyboardDictation"
+      ],
+      "sha256": "f5a919d4d9ba3ee8047df65886220ab02e44b889b94e0056ec889997a824ae99",
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md"
     }
   ],
   "runtimeAssets": [

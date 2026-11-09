@@ -23,3 +23,21 @@ runtime classpaths and notices were regenerated.
 
 No source inventory update establishes APK signing, update retention, Pixel acceptance,
 production OTA trust/recovery or recording approval.
+
+Keyboard dismissal now consumes the actual Android IME-visible to IME-hidden transition.
+It releases only the active Alpha composer, including full conversation; initial/repeated hidden
+insets and another text field retain focus. Browser previews retain viewport inference. The
+KeyboardFocus model separates IME visibility from resizing, and the production-handler tests
+exercise both composers, retained draft/selection, retap, initial hidden state and foreign focus.
+The old Pixel v44 reproduced hidden IME with retained composer focus and a failed retap.
+The new native bridge still requires installation and physical verification; a model/test pass
+does not establish that result.
+
+The launcher adds an auxiliary voice IME for LatinIME's microphone shortcut. Dictation owns a
+bounded recording and inserts only into the unchanged original editor after current provider
+authority is checked. It does not submit text. The KeyboardDictation model is refined against
+the actual Java gate; separate host tests exercise stale recording IDs, cancelled results,
+sensitive fields and intercepted real-client HTTP routes. Direct uses its existing Cartesia key
+without Cloud fallback; Cloud uses its selected account. These controlled HTTP tests are not live
+provider evidence. Android input-method switching, actual insertion and cancellation, full-image
+enablement and the interaction with native keyboard-hide focus remain installed-device gates.

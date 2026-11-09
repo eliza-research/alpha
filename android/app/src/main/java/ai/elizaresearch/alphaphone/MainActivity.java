@@ -354,8 +354,13 @@ public class MainActivity extends BridgeActivity {
   getWindow().setNavigationBarColor(android.graphics.Color.TRANSPARENT);
   if (android.os.Build.VERSION.SDK_INT >= 29) getWindow().setNavigationBarContrastEnforced(false);
   ViewCompat.setOnApplyWindowInsetsListener(getWindow().getDecorView(), (view, insets) -> {
-   int bottom = insets.isVisible(WindowInsetsCompat.Type.ime())
+   boolean imeVisible = insets.isVisible(WindowInsetsCompat.Type.ime());
+   int bottom = imeVisible
      ? insets.getInsets(WindowInsetsCompat.Type.ime()).bottom : 0;
+   // IME dismissal does not blur a WebView text field. Publish actual visibility instead of
+   // requiring the renderer to infer it from a size change (floating IMEs need not resize).
+   getBridge().getWebView().evaluateJavascript("(() => { const root = document.documentElement; if (!root) return; const visible = " + imeVisible
+     + "; if (root.dataset.alphaKeyboardVisible === String(visible)) return; root.dataset.alphaKeyboardVisible = String(visible); window.dispatchEvent(new CustomEvent('alpha-keyboard-visibility', { detail: { visible } })); })()", null);
    boolean fitContent = !BuildConfig.IS_LAUNCHER || isAssistantSurface();
    Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
    Insets safe = insets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());

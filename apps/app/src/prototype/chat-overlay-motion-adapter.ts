@@ -326,12 +326,26 @@ export function installChatOverlayMotion(Component: Shell) {
 		window.addEventListener("blur", this.cancelChatMotion);
 		window.addEventListener("pagehide", this.cancelChatMotion);
 		document.addEventListener("visibilitychange", this.chatMotionVisibility);
-		// Android can close the keyboard by itself (its hide key, Back) and leave the composer
-		// focused. Keyboard up and composer focus are one state here, so the composer lets go.
-		// MainActivity uses adjustResize, so the WebView itself shrinks with the keyboard: compare
-		// against the keyboard-free height for this width (the shared helper main.tsx also uses),
-		// seeded now, before any keyboard can have shrunk the window.
+		// Back can hide Android's IME without blurring its text field. Use the native visibility
+		// transition, including floating keyboards and a renderer mounted with the IME already up.
+		// Browsers without native insets retain the viewport fallback.
 		const free = keyboardFreeHeight();
+		const releaseComposer = () => {
+			const active = document.activeElement;
+			if (!(active instanceof HTMLElement) || !active.matches("[data-alpha-composer]")) return;
+			this.chatScrimPress = undefined;
+			active.blur();
+			this.chatInputFocused = false;
+		};
+		const initialVisibility = document.documentElement.dataset.alphaKeyboardVisible;
+		let nativeKeyboardVisible: boolean | undefined = initialVisibility === undefined ? undefined : initialVisibility === "true";
+		this.dockNativeKeyboardWatch = (event: CustomEvent<{ visible: boolean }>) => {
+			const visible = event.detail?.visible;
+			if (typeof visible !== "boolean") return;
+			if (nativeKeyboardVisible === true && !visible) releaseComposer();
+			nativeKeyboardVisible = visible;
+		};
+		window.addEventListener("alpha-keyboard-visibility", this.dockNativeKeyboardWatch);
 		const visible = () => {
 			const width = document.documentElement.clientWidth || window.innerWidth,
 				layout = document.documentElement.clientHeight || window.innerHeight;
@@ -350,11 +364,7 @@ export function installChatOverlayMotion(Component: Shell) {
 					free(now.width, now.layout, isEditing(document.activeElement)) -
 						now.height >
 					150;
-			if (keyboardOpen && !covered && this.chatInputFocused) {
-				const active = document.activeElement;
-				if (active instanceof HTMLElement && active.matches("[data-alpha-composer]"))
-					active.blur();
-			}
+			if (nativeKeyboardVisible === undefined && keyboardOpen && !covered) releaseComposer();
 			keyboardOpen = covered;
 		};
 		window.visualViewport?.addEventListener("resize", this.dockKeyboardWatch);
@@ -362,8 +372,7 @@ export function installChatOverlayMotion(Component: Shell) {
 		// Leaving the app ends typing: the keyboard is gone when it returns.
 		this.dockHiddenWatch = () => {
 			if (!document.hidden) return;
-			const active = document.activeElement;
-			if (active instanceof HTMLElement && active.matches("[data-alpha-composer]")) active.blur();
+			releaseComposer();
 			this.chatInputFocused = false;
 			this.chatScrimPress = undefined;
 		};
@@ -402,6 +411,7 @@ export function installChatOverlayMotion(Component: Shell) {
 		document.removeEventListener("visibilitychange", this.chatMotionVisibility);
 		window.visualViewport?.removeEventListener("resize", this.dockKeyboardWatch);
 		window.removeEventListener("resize", this.dockKeyboardWatch);
+		window.removeEventListener("alpha-keyboard-visibility", this.dockNativeKeyboardWatch);
 		document.removeEventListener("visibilitychange", this.dockHiddenWatch);
 		unmount?.call(this);
 	};

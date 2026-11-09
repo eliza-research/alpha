@@ -2516,5 +2516,32 @@
       "Finite representative identities and successful storage writes only. Models are contract checks, not complete implementation refinement or cross-device persistence proof.",
       "Source review recorded in specs/quint/ui-return-review-20261109.md."
     ]
+  },
+  {
+    "path": "specs/quint/application/KeyboardFocus.qnt",
+    "module": "KeyboardFocus",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "floatingKeyboardBackAndRetapTest",
+      "initialHiddenDoesNotStealFocusTest",
+      "otherFieldRetainsFocusTest",
+      "browserFallbackTest",
+      "nativeOwnsResizeOrderingTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/chat-overlay-motion-adapter.ts",
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/MainActivity.java"
+    ],
+    "stateMapping": {
+      "native": "MainActivity IME insets and renderer nativeKeyboardVisible; -1 means browser fallback",
+      "covered": "viewport keyboard coverage, independent of native IME visibility",
+      "focus/draft/selection": "composer active element and retained editing state"
+    },
+    "abstractions": [
+      "OS scheduling and text rendering require installed-device evidence. This model covers focus transitions, not dictation or navigation.",
+      "Production renderer transitions execute in test/final-ui-lifecycle.test.mjs, including Home and full conversation with constant viewport."
+    ]
   }
 ]
