@@ -27,7 +27,7 @@ test('Alpha shutter attaches one capture to a chat draft',async({page})=>{
  await camera.getByRole('button',{name:'Alpha mode'}).click();
  await camera.getByRole('button',{name:'Attach photo to chat'}).click();
  await expect(page.getByAltText('Captured photo')).toBeVisible();
- await expect(page.locator('[data-alpha-input-bar] textarea')).toBeEmpty();
+ await expect(page.locator('.alpha-chat-composer textarea')).toHaveValue('');
  await page.getByRole('button',{name:'Remove photo'}).click();
  await expect(page.getByAltText('Captured photo')).toHaveCount(0);
 });
