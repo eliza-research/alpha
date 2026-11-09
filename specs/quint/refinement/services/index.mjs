@@ -43,6 +43,7 @@ import {checkPreparedSourceStamp} from './prepared-source-stamp.mjs';
 import {checkCloudQaLauncher} from './cloud-qa-launcher.mjs';
 import {checkBrowserCloudRequestCustody} from './browser-cloud-request-custody.mjs';
 import {checkGmailAgentMailboxRecovery} from './gmail-agent-mailbox-recovery.mjs';
+import {checkDevelopmentDigestPending} from './development-digest-pending.mjs';
 
 export async function runServicesRefinement() {
   const receipts = [];
@@ -59,7 +60,8 @@ export async function runServicesRefinement() {
     () => checkPreparedSourceStamp([fileURLToPath(import.meta.url)]),
     () => checkCloudQaLauncher([fileURLToPath(import.meta.url)]),
     () => checkBrowserCloudRequestCustody([fileURLToPath(import.meta.url)]),
-    () => checkGmailAgentMailboxRecovery([fileURLToPath(import.meta.url)])]) {
+    () => checkGmailAgentMailboxRecovery([fileURLToPath(import.meta.url)]),
+    () => checkDevelopmentDigestPending([fileURLToPath(import.meta.url)])]) {
     const result = await check();
     receipts.push(...(Array.isArray(result) ? result : [result]));
   }
@@ -84,6 +86,8 @@ export async function runServicesRefinement() {
       reason: 'Closed request and response ports drive the real handler on the public entitlement route. Authenticated routes, Node socket delivery and process restart remain separate.'},
     {model: 'GmailAgentMailboxRecovery', obligation: 'Provider receipt durability and concurrent calls',
       reason: 'The caller and protocol read exact synthetic receipts and run one recovery lookup after dispatch failure. Provider durability, concurrent invocations and installed account behavior remain separate.'},
+    {model: 'DevelopmentDigestPending', obligation: 'Physical storage and overlapping renderer calls',
+      reason: 'The renderer and host compare exact bytes through an in-memory filesystem port. Physical durability, multiple writes inside one renderer and actual provider dispatch remain separate.'},
     {model: 'NativeGoogleHostArtifact', obligation: 'Cross-process publication, interruption and installed use',
       reason: 'The source replay verifies a private candidate and restore under the serial producer contract. Independent readers, process death between the two publication renames and installed host execution remain separate.'},
     {model: 'CoreTurnControllers', obligation: 'Detached callbacks, reentrant observers and provider composition', reason: 'The source campaign checks lookup, cancellation and closure in two registries. Arbitrary reentrant observers and detached callbacks require separate source schedules.'},

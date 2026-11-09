@@ -42010,7 +42010,8 @@
         "NoticesAndCaches",
         "HostedDigestRefresh",
         "HostedDigestMutation",
-        "SourceRenewalQuestion"
+        "SourceRenewalQuestion",
+        "DevelopmentDigestPending"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -43034,12 +43035,14 @@
     },
     {
       "path": "apps/app/src/runtime/local-agent-storage.ts",
-      "sha256": "5a81324a92cbb3a7fe9005fd405aaba1fa5b9435327700582f1f4dbdd36b7195",
       "models": [
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "DevelopmentDigestPending"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "sha256": "11c820b73dd420029e7828e47c5df071f34968f655d60b9d1108adc28286873d",
       "stateAnchors": [
         {
           "line": 8,
@@ -43110,19 +43113,19 @@
           "text": "const reminderResult=isReminderCreate(effect)?validateReminderCreateResult(effect,receipt.result,entry.operationId):validateReminderResult(effect,receipt.result);"
         },
         {
-          "line": 57,
+          "line": 66,
           "text": "const observed=new Map<string,string|null>();"
         },
         {
-          "line": 59,
+          "line": 68,
           "text": "const {value}=await request({operation:'digestRead',slot});"
         },
         {
-          "line": 64,
+          "line": 73,
           "text": "const expectedValue=observed.get(slot)!;"
         },
         {
-          "line": 66,
+          "line": 75,
           "text": "const result=await request({operation:'digestCompareExchange',slot,expectedValue,value});"
         }
       ]
@@ -49746,7 +49749,8 @@
       "path": "scripts/local-agent-dev-storage.ts",
       "models": [
         "DevelopmentSurfaces",
-        "DurableStore"
+        "DurableStore",
+        "DevelopmentDigestPending"
       ],
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",

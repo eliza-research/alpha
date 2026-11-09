@@ -1113,3 +1113,17 @@ The exact 213-model commit `421bbd82a0` passed normal Android packaging and
 independent verification for both variants. Its two releases are unsigned
 and non-distributable. The four app APKs and both instrumentation APKs are
 retained under that revision.
+
+`DevelopmentDigestPending` checks seven schedules and 52 checkpoints. The
+old development store rejected the renderer's normal transition from review
+to dispatched. The repair permits that phase advance for the exact payload,
+including a legacy record without a phase. The host still compares the
+original stored bytes. The closed replay covers stale tabs, changed review
+payloads and failed or uncertain acknowledgement. Physical durability and
+provider effects remain separate.
+
+The older full verification exposed stale Power and notification JVM
+fixtures. Their stubs now match the current bridge entry and owner/agent
+requirements. The mounted reminder fixture also supplies the synthetic Agent
+access-preference method used at startup. These fixture changes preserve the
+real product methods in the checks.

@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "44eff6bf0ae51addef1cc2bd99688566e0659b432a099882f85fb4a00481dbd8",
+  "ledgerSha256": "dfe73ed72d291001273e5e59e7cc3d92bb5f5932f542662d9793df1a2f4537b6",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -43271,7 +43271,8 @@
         "NoticesAndCaches",
         "HostedDigestRefresh",
         "HostedDigestMutation",
-        "SourceRenewalQuestion"
+        "SourceRenewalQuestion",
+        "DevelopmentDigestPending"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -43642,10 +43643,12 @@
     },
     {
       "path": "apps/app/src/runtime/local-agent-storage.ts",
-      "sha256": "5a81324a92cbb3a7fe9005fd405aaba1fa5b9435327700582f1f4dbdd36b7195",
+      "sha256": "11c820b73dd420029e7828e47c5df071f34968f655d60b9d1108adc28286873d",
       "allocatedModels": [
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "DevelopmentDigestPending"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -43657,7 +43660,7 @@
         },
         {
           "owner": "developmentDigestStore",
-          "line": 57,
+          "line": 66,
           "bindings": 1,
           "writes": 2
         }
@@ -47017,7 +47020,8 @@
       "sha256": "959162f7fcae47b7b650bd63556ac78dfcadf8bbed599e2a1f88a5696fad3fcf",
       "allocatedModels": [
         "DevelopmentSurfaces",
-        "DurableStore"
+        "DurableStore",
+        "DevelopmentDigestPending"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -220377,6 +220381,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "a398b9478177d11023d433490b84c6926f7e0539253603368a95e1aa7a86db23"
+    "sha256": "e1467754b6e9b97cb4d8f063bde9e7f2ab48589efb8dd08f9cb56dce09fe67a2"
   }
 }
