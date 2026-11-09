@@ -2368,5 +2368,48 @@
       "Mounted notification Ask review, exact reread, native settlement, composer admission and publication within two digest binding lifetimes.",
       "Controlled Android bridge, native tap slot and composer. Source renewal mutation and native posting are separate."
     ]
+  },
+  {
+    "path": "specs/quint/application/BrowserFilesTrash.qnt",
+    "module": "BrowserFilesTrash",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "heldTrashProtectsPeerListTest",
+      "heldRestorePreservesPeerMarkerTest",
+      "rejectedJournalWriteReleasesQueueTest",
+      "confirmedOldMarkerSparedNewIncarnationTest",
+      "retentionErasesOnlyExpiredMarkerTest",
+      "moveFailureLeavesHiddenStagingTest",
+      "failedRestoreDoesNotRebindMarkerTest"
+    ],
+    "invariants": [
+      "ExclusiveCustody",
+      "ExactTrashMarker",
+      "ListedItemsUseExactRecords",
+      "KeysStayWithinAllocation",
+      "StagingBelongsToCurrentRequest"
+    ],
+    "sources": [
+      "apps/app/src/browser/files.ts",
+      "vendor/eliza/plugins/plugin-files/src/browser/storage-volume.ts",
+      "vendor/eliza/plugins/plugin-files/src/browser/storage-model.ts",
+      "patches/eliza/files-storage-query-client.patch"
+    ],
+    "stateMapping": {
+      "mode/active/queued/staged": "Actual Node exclusive lock and same-realm fallback with source requests held at library ports",
+      "rows/keys/journal/allocated": "Physical parent and staging name, exact marker identities and persisted journal bytes",
+      "expired/visible/status/count": "Controlled retention boundary and actual list, move, restore and confirmed-delete results"
+    },
+    "abstractions": [
+      "Two volume instances, one namespace, two files, three marker allocations and one waiting request. Controlled real-source library and journal ports expose rejection and release. Exact reviewed Empty uses one marker.",
+      "Temporary rename and underlying move are separate operations. Move refusal can leave hidden staging rows. Cross-tab IndexedDB, interruption and larger batches remain separate."
+    ],
+    "bounds": {
+      "maxSamples": 1000,
+      "maxSteps": 80,
+      "maxVerifyDepth": 8
+    }
   }
 ]
