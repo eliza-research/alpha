@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseCommit": "b1817660a0347ae19551b9ee296410fe55f02d59",
+  "baseCommit": "80fbb1d25937585b24fd85132d623d5391c8ca07",
   "path": "plugins/plugin-files/src/browser/files.ts",
   "beforeSha256": "8cadb8f87298fc01fdb50dd236063b5c2cf3ebff82544ac05c035c0009a78ded",
   "afterSha256": "a7f6ada5867a1f74ebf8b70399e9743d98f589d40cd855e4ea83f4fdb9617562",

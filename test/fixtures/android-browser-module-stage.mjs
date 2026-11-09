@@ -3,7 +3,7 @@ import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {generateAlphaAndroidHost, HOST_DESCRIPTOR, readHostDescriptor} from '../../scripts/android-host.mjs';
+import {generateAlphaAndroidHost, HOST_DESCRIPTOR, readHostDescriptor, stageOwnerRouteAsset} from '../../scripts/android-host.mjs';
 import {preparePatchedNative, verifyNativePatchReceipt} from '../../scripts/prepare-patched-native.mjs';
 import {sha, upstreamNativeSource} from '../../scripts/upstream-native-source.mjs';
 
@@ -27,6 +27,7 @@ const git = (directory, ...args) => execFileSync('git', ['--no-lazy-fetch', '-C'
   '-c', 'user.name=Quint Fixture', '-c', 'user.email=quint-fixture@localhost', ...args], {env: gitEnv, encoding: 'utf8'}).trim();
 
 function inputs() {
+  stageOwnerRouteAsset(root);
   const descriptor = readHostDescriptor(root);
   const profile = descriptor.profile;
   const patch = JSON.parse(read(nativeManifest)).patches.find(row => row.file === patchFile);
@@ -64,6 +65,7 @@ export function loadAndroidBrowserModuleFixture() {
 }
 
 function fixture({directory, descriptor, patch, browser, browserFiles, wrapperInputs, patchBytes, expected, manifests}) {
+  directory=fs.realpathSync(directory);
   const upstream = join(directory, sdk), output = join(directory, 'android');
   const patchRoot = join(directory, patchPath), manifestPath = join(directory, nativeManifest);
   const profilePath = join(output, '.eliza-consumer-profile.json');
