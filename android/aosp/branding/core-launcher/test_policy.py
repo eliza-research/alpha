@@ -10,7 +10,119 @@ import os
 ROOT = Path(__file__).resolve().parent
 JDK = Path(os.environ.get('JAVA_HOME', '/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home'))
 
+def kotlin_compiler():
+    """Use an installed compiler only; no Gradle build or dependency downloads."""
+    installed = shutil.which('kotlinc')
+    if installed:
+        library = Path(installed).resolve().parent.parent / 'lib/kotlin-stdlib.jar'
+        return [installed], str(library)
+    cache = Path(os.environ.get('GRADLE_USER_HOME', Path.home() / '.gradle')) / 'caches/modules-2/files-2.1'
+    jars = []
+    for group, artifact in [
+        ('org.jetbrains.kotlin', 'kotlin-compiler-embeddable'),
+        ('org.jetbrains.kotlin', 'kotlin-stdlib'),
+        ('org.jetbrains.kotlin', 'kotlin-script-runtime'),
+        ('org.jetbrains.kotlin', 'kotlin-reflect'),
+        ('org.jetbrains.kotlin', 'kotlin-daemon-embeddable'),
+        ('org.jetbrains.kotlinx', 'kotlinx-coroutines-core-jvm'),
+        ('org.jetbrains', 'annotations'),
+    ]:
+        candidates = sorted((cache / group / artifact).glob('*/*/*.jar'))
+        if not candidates:
+            raise RuntimeError('Install kotlinc or populate the Gradle cache: missing ' + artifact)
+        jars.append(str(candidates[-1]))
+    classpath = os.pathsep.join(jars)
+    return [str(JDK/'bin/java'), '-cp', classpath, 'org.jetbrains.kotlin.cli.jvm.K2JVMCompiler'], classpath
+
 class CorePolicyTest(unittest.TestCase):
+    def test_actual_fgs_cache_update_hides_and_restores_core_launcher(self):
+        """Compile the generated update method with small Android boundary doubles."""
+        path = 'packages/SystemUI/src/com/android/systemui/qs/FgsManagerController.kt'
+        with tempfile.TemporaryDirectory(prefix='alpha-fgs-transition-') as directory:
+            d = Path(directory)
+            shutil.copytree(ROOT/'.cache/baseline', d/'source')
+            subprocess.run(['git', 'apply', str(ROOT/'alpha-core-launcher.patch')],
+                cwd=d/'source', check=True, capture_output=True)
+            compiler, libraries = kotlin_compiler()
+            for candidate, should_pass in [(d/'source'/path, True), (ROOT/'.cache/baseline'/path, False)]:
+                source = candidate.read_text()
+                start = source.index('    private fun updateAppItems(\n')
+                end = source.index('    /** Must be called on the background thread. */', start)
+                method = source[start:end]
+                probe = d/'Transition.kt'
+                probe.write_text('''
+import java.util.concurrent.Executor
+enum class UIControl { NORMAL, HIDE_BUTTON, HIDE_ENTRY }
+object AlphaCoreLauncherPolicy { const val PACKAGE = "ai.elizaresearch.alphaphone" }
+data class UserPackage(val userId: Int, val packageName: String) {
+    var uiControl = UIControl.NORMAL
+    fun updateUiControl() {}
+}
+data class RunningApp(val userId: Int, val packageName: String, val timeStarted: Long,
+    val uiControl: UIControl, var appLabel: String, var icon: String, var stopped: Boolean = false)
+object UserHandle { fun of(userId: Int) = userId }
+class PackageManager {
+    fun getApplicationInfoAsUser(name: String, flags: Int, userId: Int) = name
+    fun getApplicationLabel(info: String) = info
+    fun getApplicationIcon(info: String) = info
+    fun getUserBadgedIcon(icon: String, userId: Int) = icon
+}
+class Adapter {
+    var rows = emptyList<RunningApp>()
+    fun setData(value: List<RunningApp>) { rows = value }
+}
+class Probe {
+    val runningApps = mutableMapOf<UserPackage, RunningApp>()
+    val packageManager = PackageManager()
+    val mainExecutor = Executor { it.run() }
+    val appListAdapter = Adapter()
+    val stopEvents = mutableListOf<String>()
+    fun logEvent(stopped: Boolean, packageName: String, userId: Int, timeStarted: Long) {
+        if (stopped) stopEvents.add(packageName)
+    }
+''' + method + '''
+    fun run() {
+        val alpha = UserPackage(0, AlphaCoreLauncherPolicy.PACKAGE)
+        val other = UserPackage(0, "owner.other.app")
+        val noStop = UserPackage(0, "system.other.app").apply { uiControl = UIControl.HIDE_BUTTON }
+        val packages = mapOf(alpha to 10L, other to 20L, noStop to 30L)
+        updateAppItems(packages, setOf(0))
+        check(appListAdapter.rows.size == 3)
+        val previous = runningApps.getValue(alpha)
+        check(previous.uiControl == UIControl.NORMAL && !previous.stopped)
+        alpha.uiControl = UIControl.HIDE_ENTRY
+        updateAppItems(packages, setOf(0), false)
+        check(runningApps[alpha] == null) { "newly protected Alpha remains in the live cache" }
+        check(appListAdapter.rows.none { it.packageName == alpha.packageName })
+        check(!previous.stopped && stopEvents.isEmpty()) { "hiding must not stop Alpha" }
+        check(runningApps.getValue(other).uiControl == UIControl.NORMAL)
+        check(runningApps.getValue(noStop).uiControl == UIControl.HIDE_BUTTON)
+        alpha.uiControl = UIControl.NORMAL
+        updateAppItems(packages, setOf(0), false)
+        check(appListAdapter.rows.size == 3)
+        check(runningApps.getValue(alpha).uiControl == UIControl.NORMAL)
+        check(!runningApps.getValue(alpha).stopped)
+        check(runningApps.getValue(alpha).timeStarted == 10L)
+        updateAppItems(packages - other, setOf(0), false)
+        check(runningApps.getValue(other).stopped) { "normal stopped-row recovery changed" }
+        check(!runningApps.getValue(alpha).stopped && stopEvents.isEmpty())
+        println("PASS actual FGS visible-protected-visible transition and unrelated controls")
+    }
+}
+fun main() { Probe().run() }
+''')
+                compiled = subprocess.run(compiler + ['-no-stdlib', '-no-reflect', '-classpath', libraries,
+                    '-d', str(d/'classes'), str(probe)], capture_output=True, text=True)
+                self.assertEqual(compiled.returncode, 0, compiled.stdout + compiled.stderr)
+                executed = subprocess.run([str(JDK/'bin/java'), '-cp', str(d/'classes')+os.pathsep+libraries,
+                    'TransitionKt'], capture_output=True, text=True)
+                if should_pass:
+                    self.assertEqual(executed.returncode, 0, executed.stdout + executed.stderr)
+                    self.assertIn('PASS actual FGS visible-protected-visible transition', executed.stdout)
+                else:
+                    self.assertNotEqual(executed.returncode, 0, 'unpatched cache must reproduce the defect')
+                    self.assertIn('newly protected Alpha remains in the live cache', executed.stderr)
+
     def test_core_identity_and_known_stock_migration_execute_on_jvm(self):
         with tempfile.TemporaryDirectory(prefix='alpha-core-policy-') as directory:
             d = Path(directory)

@@ -57,7 +57,21 @@
              initialized = true
          }
      }
-@@ -728,18 +746,38 @@
+@@ -474,6 +492,13 @@
+         if (refreshUiControls) {
+             packages.forEach { (pkg, _) -> pkg.updateUiControl() }
+         }
++
++        // A Home change can hide a row already cached by the open dialog. Remove it
++        // without marking it stopped so normal controls return when Home changes away.
++        packages.keys.filter {
++            it.packageName == AlphaCoreLauncherPolicy.PACKAGE &&
++                it.uiControl == UIControl.HIDE_ENTRY
++        }.forEach { runningApps.remove(it) }
+
+         val addedPackages =
+             packages.keys.filter {
+@@ -728,18 +753,38 @@
          private var uiControlInitialized = false
          var uiControl: UIControl = UIControl.NORMAL
              get() {
@@ -98,7 +112,7 @@
                      PowerExemptionManager.REASON_SYSTEM_UID,
                      PowerExemptionManager.REASON_DEVICE_DEMO_MODE -> UIControl.HIDE_ENTRY
 
-@@ -765,7 +803,7 @@
+@@ -765,7 +810,7 @@
                  }
              // If the app wants to be a good citizen by being stoppable, even if the category it
              // belongs to is exempted for background restriction, let it be stoppable by user.

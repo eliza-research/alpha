@@ -73,6 +73,15 @@ text = replace(text, '                when (backgroundRestrictionExemptionReason
     '                if (coreLauncher) UIControl.HIDE_ENTRY\n                else when (backgroundRestrictionExemptionReason) {')
 text = replace(text, 'if (isStoppableApp(packageName)) {',
     'if (!coreLauncher && isStoppableApp(packageName)) {')
+text = replace(text, '        val addedPackages =\n', '''        // A Home change can hide a row already cached by the open dialog. Remove it
+        // without marking it stopped so normal controls return when Home changes away.
+        packages.keys.filter {
+            it.packageName == AlphaCoreLauncherPolicy.PACKAGE &&
+                it.uiControl == UIControl.HIDE_ENTRY
+        }.forEach { runningApps.remove(it) }
+
+        val addedPackages =
+''')
 text = replace(text, '            initialized = true', '''            // Refresh cached classification when the owner changes the selected Home app.
             broadcastDispatcher.registerReceiver(
                 object : BroadcastReceiver() {

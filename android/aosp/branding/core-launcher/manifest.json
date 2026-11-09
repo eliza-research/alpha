@@ -3,7 +3,7 @@
   "project": "frameworks/base",
   "revision": "94b4c163b7dfe5ce3607f7bb8456f9573f7de57d",
   "patch": "alpha-core-launcher.patch",
-  "patchSha256": "e79410960796077ac4276f1525717ca9089161afd0c2427083115fe6f2867a66",
+  "patchSha256": "3c6316be2e947a5af6ba78f514f39b4576519764e5dc7e0b85fe79d93e0cd3cc",
   "files": [
     {
       "path": "packages/SystemUI/res/values/config.xml",
@@ -20,7 +20,7 @@
     {
       "path": "packages/SystemUI/src/com/android/systemui/qs/FgsManagerController.kt",
       "beforeSha256": "2a6d58fc5055b6c83dc17d109a319e9f0436b5993a69caac847f433cabc95fb7",
-      "afterSha256": "0d3c233959ae3d40d24c06019b37df142daa9fb0411612c4bbe12d44b560809d",
+      "afterSha256": "8e6663c16dca10e91b25acb146d0a1841e8ef3ead551921e7ee7ae302051f46f",
       "new": false
     },
     {
