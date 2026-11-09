@@ -52,8 +52,20 @@ export function installViewFocus(doc: Document = document): () => void {
     screen: screenFocusTarget,
     selfFocused: SELF_FOCUSED,
     ready: () => doc.documentElement.dataset.activeView !== undefined,
-    focusRing: 'var(--acc,#0000ff)',
+    focusRing: false,
   });
+  // Android's software keyboard can leave :focus-visible active after typing.
+  // Keep focus restoration for screen readers, but draw a screen ring only
+  // after keyboard navigation, never around a touch-opened app or Home.
+  const style = doc.createElement('style');
+  style.textContent = '[data-screen-focus]:focus{outline:none}html[data-alpha-keyboard-navigation] [data-screen-focus]:focus-visible{outline:2px solid var(--acc,#0000ff);outline-offset:-2px;border-radius:6px}';
+  doc.head.append(style);
+  const keyboard = (event: KeyboardEvent) => {
+    if (event.key === 'Tab' || event.key.startsWith('Arrow')) doc.documentElement.dataset.alphaKeyboardNavigation = '';
+  };
+  const pointer = () => { delete doc.documentElement.dataset.alphaKeyboardNavigation; };
+  doc.addEventListener('keydown', keyboard, true);
+  doc.addEventListener('pointerdown', pointer, true);
   let current = doc.documentElement.dataset.activeView;
   const changes = new MutationObserver(() => {
     const next = doc.documentElement.dataset.activeView;
@@ -70,6 +82,10 @@ export function installViewFocus(doc: Document = document): () => void {
     installed = null;
     changes.disconnect();
     view.removeEventListener('launcher-home', home);
+    doc.removeEventListener('keydown', keyboard, true);
+    doc.removeEventListener('pointerdown', pointer, true);
+    delete doc.documentElement.dataset.alphaKeyboardNavigation;
+    style.remove();
     focus.dispose();
   };
   installed = uninstall;

@@ -109,6 +109,36 @@ test('an inline modal surface opening over dropped focus takes it, and HOME give
   await expect.poll(() => focused(page)).toBe('Home');
 });
 
+test('typing then touch navigation restores screen focus without a whole-screen ring', async ({ page }) => {
+  await load(page);
+  const composer = page.getByRole('textbox', { name: 'Ask Alpha', exact: true });
+  await composer.click();
+  await composer.pressSequentially('A draft');
+  await composer.blur();
+  // Native Back or an agent-opened app changes screens without a DOM pointer event.
+  await show(page, 'settings');
+  const title = page.getByRole('heading', { name: 'Settings', exact: true });
+  await expect(title).toBeFocused();
+  await expect(title).toHaveCSS('outline-style', 'none');
+  await show(page, 'home');
+  await expect.poll(() => focused(page)).toBe('Home');
+  await expect(page.getByRole('region', { name: 'Home', exact: true })).toHaveCSS('outline-style', 'none');
+  await expect(composer).toHaveValue('A draft');
+});
+
+test('keyboard navigation keeps the screen ring and a later touch removes it', async ({ page }) => {
+  await load(page);
+  await page.keyboard.press('Tab');
+  await show(page, 'settings');
+  const title = page.getByRole('heading', { name: 'Settings', exact: true });
+  await expect(title).toBeFocused();
+  await expect(title).toHaveCSS('outline-style', 'solid');
+  await page.getByRole('button', { name: 'Display', exact: true }).click();
+  await show(page, 'home');
+  await expect.poll(() => focused(page)).toBe('Home');
+  await expect(page.getByRole('region', { name: 'Home', exact: true })).toHaveCSS('outline-style', 'none');
+});
+
 test('a resize cannot narrow a pending screen change', async ({ page }) => {
   await load(page);
   await page.evaluate(async () => {
