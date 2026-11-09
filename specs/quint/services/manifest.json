@@ -2247,12 +2247,12 @@
       "stateMapping": {
         "sameScope/message/request/kind": "Invocation input bound to the selected scope and opaque turn and message IDs",
         "durable": "In-memory provider receipt state, kind and success message keyed by exact turn",
-        "proposal/sent/calls": "Actual in-memory CloudProtocol route order and encoded prepare and dispatch proposal",
+        "proposal/sent/calls": "Actual in-memory managed Google client route order and encoded prepare and dispatch proposal",
         "aborted/result/recoveryReads": "Actual AbortSignal, returned confirmation or error and observed recovery reads"
       },
       "abstractions": [
         "One selected owner grant, two turn, message and history representatives, four mailbox mutation kinds, and at most two sequential invocations. Durable states are synthetic provider replies.",
-        "The source driver executes the exact mailbox helper, CloudProtocol and projected upstream Gmail decoder without files, bearer credentials or network. Provider mutation, durable storage behavior, concurrent invocations and outer host credential selection are separate."
+        "The source driver executes the shared mailbox helper, managed Google client and projected upstream Gmail decoder without files, bearer credentials or network. Provider mutation, durable storage behavior, concurrent invocations and outer host credential selection are separate."
       ],
       "bounds": {
         "maxSamples": 1000,
