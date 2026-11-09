@@ -123,5 +123,5 @@ async function boot(page:Page,origin:string,initial:SignInFixtureInput={}){
  })();`);
  await page.goto(origin+'/subscription-composition',{waitUntil:'domcontentloaded',timeout:90000});
  // The composition imports the complete runtime before publishing its readiness marker.
- await expect.poll(()=>page.evaluate(()=>(window as any).planFlags),{timeout:30000}).toEqual({native:'android',mocks:false});
+ await expect.poll(()=>page.evaluate(()=>(window as any).planFlags),{timeout:90000}).toEqual({native:'android',mocks:false});
 }

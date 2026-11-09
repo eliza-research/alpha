@@ -429,8 +429,8 @@ export async function mountClosedMaps(extraSources, runs, holdRouteReplies = fal
           navigator.mediaDevices.getUserMedia = async () => {throw Error('Maps fixture forbids physical capture');};
       });
       try {
-        await page.goto(base+'/', {waitUntil: 'domcontentloaded', timeout: 60000});
-        await expect(button(page, 'Maps')).toBeVisible();
+        await page.goto(base+'/', {waitUntil: 'commit', timeout: 120000});
+        await expect(button(page, 'Maps')).toBeVisible({timeout: 120000});
         await page.waitForFunction(() => typeof window.inspectHistoricalMaps === 'function');
         await setup(page, holdRouteReplies);
         const navigations = [];

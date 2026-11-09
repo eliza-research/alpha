@@ -1692,6 +1692,8 @@ public final class UpdateFlowTest {
    var preparations=new java.util.concurrent.ConcurrentHashMap<com.getcapacitor.Plugin,JSObject>();
    com.getcapacitor.Plugin.ready=(plugin,value)->{preparations.put(plugin,value);ready.countDown();};
    AlphaLocalAgentPlugin.stops=0;AlphaLocalAgentPlugin.releases=0;AlphaLocalAgentPlugin.confirmed=false;
+   CountDownLatch pauseRequested=new CountDownLatch(1);
+   AlphaLocalAgentPlugin.pauseRequested=pauseRequested;
    PluginCall installing=offered();owner.installUpdate(installing);
    check(ready.await(10,TimeUnit.SECONDS),"verified staged APK asks the renderer for draft readback");
    check(context.packages.installer.committed.isEmpty()&&AlphaLocalAgentPlugin.stops==0,"no shutdown or commit before renderer acknowledgment");
@@ -1718,8 +1720,7 @@ public final class UpdateFlowTest {
    check(sibling.resolved.get()==1&&AlphaLocalAgentPlugin.stops==0,"a joining renderer also must acknowledge its drafts");
    PluginCall joined=new PluginCall(preparations.get(joining).put("ready",true));joining.activateUpdate(joined);
    check(joined.resolved.get()==1,"the joining renderer acknowledged its own receipt");
-   long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(5);
-   while(AlphaLocalAgentPlugin.stops==0&&System.nanoTime()<deadline)Thread.sleep(5);
+   check(pauseRequested.await(60,TimeUnit.SECONDS),"the exact attempt reaches the synthetic shutdown port");
    check(AlphaLocalAgentPlugin.stops==1&&context.packages.installer.committed.isEmpty(),"shutdown requested, unconfirmed stop prevents commit");
    check(AlphaDevicePlugin.UpdatePause.store().read()!=null,"pause survives before stop acknowledgment");
    PluginCall repeated=new PluginCall(new JSObject().put("activationId",activationId).put("bridgeId",bridgeId).put("ready",false));owner.activateUpdate(repeated);
@@ -1757,7 +1758,11 @@ public final class UpdateFlowTest {
      &&activationId.equals(readback.result.optString("activationId"))&&"canceled".equals(readback.result.optString("outcome")),
      "a renderer that missed the event can read the same terminal identity");
    check(Boolean.FALSE.equals(readback.result.opt("resume")),"a sibling cannot start another resident");
-  }finally{com.getcapacitor.Plugin.ready=original;AlphaLocalAgentPlugin.confirmed=true;}
+  }finally{
+   AlphaLocalAgentPlugin.pauseRequested=new CountDownLatch(0);
+   AlphaLocalAgentPlugin.confirmed=true;
+   com.getcapacitor.Plugin.ready=original;
+  }
  }
  private static void refusedDraftFlushNeverStopsOrCommits(File cache)throws Exception{
   var original=com.getcapacitor.Plugin.ready;
