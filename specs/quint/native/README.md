@@ -830,3 +830,10 @@ The replay uses authenticated staged Java, synthetic work requests, vault
 bytes and alert state, and intercepts every child-JVM URL open. Installed
 WorkManager execution, notice delivery and live provider freshness remain
 outside the replay.
+
+The executor-refusal baseline closes the old bridge after its foreground
+check and before its configure call can acquire the lifecycle lock.
+The refusal leaves the attempted grant registered without an admitted
+worker. The saved cursor, continuation and visible notice survive, but the
+other bridge cannot read the selection, resume skips scheduling, and an
+old worker retires without fetching history.

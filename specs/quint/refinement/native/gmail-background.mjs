@@ -17,7 +17,7 @@ const nativeManifest='patches/eliza/native-manifest.json';
 const hostPath='android/consumer-host.json';
 const modulePath='plugins/plugin-native-notifications/android';
 const patchFile='gmail-background-retirement.patch';
-const scenarios=['continuation','retry','storage','resume-stale','rotation','stopped','reset',
+const scenarios=['continuation','retry','storage','resume-stale','rotation','stopped','reset','enqueue-refusal','enqueue-refusal-worker',
   'withdraw-during-configure','withdraw-queued','withdraw-queued-other','withdraw-current','withdraw-unrelated','withdraw-empty-other',
   'withdraw-empty-exact','withdraw-global','old-owner','remote-revoked-consume','remote-revoked-release',
   'offline-tap','consume-retoken','consume-locked','consume-owner-retired','uncertain','denied'];

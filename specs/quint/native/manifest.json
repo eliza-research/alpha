@@ -2540,6 +2540,8 @@
         "revokedTapCanRetryAfterRestorationTest",
         "offlineQuestionCanBeCancelledLocallyTest",
         "supersededTapCannotSettleAfterVerificationTest",
+        "refusedEnqueueLeavesSavedSelectionFencedAsBuiltTest",
+        "refusedEnqueueFencesOldWorkerAsBuiltTest",
         "uncertainNoticeNeverRepostsTest"
       ],
       "invariants": [
@@ -2568,13 +2570,13 @@
         "generation/grant/owner/boundCredential/cursor/continuation/phase/incomplete/checked": "Selected encrypted row, exact owner and decimal history progress",
         "latestGeneration/attempt/admitted/configuring/configOwner/configCredential/configAttempt/configGrantVerified/configQueued/pendingGrant": "Actual generation assignment and admitted epoch with one held account response",
         "periodic/catchup/schedules/cancels": "Closed WorkManager command names, generations and request counts",
-        "workGeneration/workEpoch/workReply/historyReads/process": "Exact worker snapshot and result, page reads and reconstruction",
+        "workGeneration/workEpoch/workReply/historyReads/process/retiredBridge": "Exact worker snapshot and result, page reads and reconstruction",
         "notice/tap/visible/posts/allowed/observable/locked/online/bridgeReply/tapAuthorityReads/consumeGeneration/consumeEpoch/consumeCurrent": "Ledger and exact pending/consume/release, synthetic posting and foreground readback"
       },
       "abstractions": [
         "Three grants, two remote owners, three credential equality classes, one retained notice and one held transport callback across two bridge instances.",
         "Four-page Worker checkpoint, 20-digit decimal cursor examples, synthetic work commands, selected HTTP outcomes and pre/postcommit storage failures.",
-        "Targeted retirement fences only matching saved or pending grants. Consume checks the exact still-current tap after remote admission. Releasing a question remains local cancellation.",
+        "Targeted retirement fences only matching saved or pending grants. Consume checks the exact still-current tap after remote admission. Releasing a question remains local cancellation. The baseline retains the ghost attempt after executor rejection.",
         "Android and provider effects are closed. WorkManager delivery, real durable storage and installed notification/Activity enforcement remain outside the campaign."
       ],
       "bounds": {

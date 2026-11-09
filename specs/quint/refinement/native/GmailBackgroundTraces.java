@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import org.json.*;
 
 public final class GmailBackgroundTraces {
@@ -261,6 +262,7 @@ public final class GmailBackgroundTraces {
    "configGrantVerified",configGrantVerified,"configQueued",queuedConfiguration!=null,"workGeneration",workGeneration,"workEpoch",workEpoch,"workReply",workReply,
    "bridgeReply",bridgeReply,"historyReads",historyReads,"process",process,
    "pendingGrant",pending==null?0:grantClass(pending),"online",online,"tapAuthorityReads",tapAuthorityReads,
+   "retiredBridge",secondary.activity.isDestroyed(),
    "consumeGeneration",consumeGeneration,"consumeEpoch",consumeEpoch,
    "consumeCurrent",consumeToken!=null&&tap!=null&&consumeToken.equals(tap.getString("token")));
  }
@@ -312,6 +314,42 @@ public final class GmailBackgroundTraces {
  }
 
  private static void configure(int grant)throws Exception {beginConfigure(grant,owner);finishConfigure();}
+
+ private static void refuseConfigure(int g,int selectedOwner)throws Exception {
+  AlphaGmailPlugin closing=primary;
+  PluginCall call=new PluginCall(new JSONObject().put("grantId",grant(g)).put("credentialId","fixture-credential")
+   .put("userId",OWNER[selectedOwner]).put("organizationId",ORG));
+  AtomicReference<Throwable> failure=new AtomicReference<>();
+  Thread caller=new Thread(()->{
+   try {closing.configure(call);}
+   catch(Throwable error){failure.set(error);}
+  });
+  String prior=state;
+  int priorPeriodic=periodic,priorCatchup=catchup,priorSchedules=schedules,priorCancels=cancels,priorPosts=posts;
+  Set<String> priorShown=Set.copyOf(shown);
+  synchronized(AlphaLocalAgentPlugin.LIFECYCLE) {
+   caller.start();
+   try {
+    long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(5);
+    while(caller.getState()!=Thread.State.BLOCKED||Arrays.stream(caller.getStackTrace()).noneMatch(frame->
+      frame.getClassName().equals(MailBackgroundDelivery.class.getName())&&frame.getMethodName().equals("begin"))) {
+     if(!caller.isAlive()||System.nanoTime()>=deadline)throw new AssertionError("Configure missed the locked begin boundary",failure.get());
+     Thread.sleep(1);
+    }
+   } finally {closing.handleOnDestroy();}
+  }
+  caller.join(5000);
+  if(caller.isAlive()||failure.get()!=null)throw new AssertionError("Configure did not settle on the closed executor",failure.get());
+  call.await();
+  if(!"Gmail bridge closed".equals(call.rejection))throw new AssertionError("Expected exact executor refusal");
+  if(!Objects.equals(state,prior)||periodic!=priorPeriodic||catchup!=priorCatchup||schedules!=priorSchedules
+      ||cancels!=priorCancels||posts!=priorPosts||!shown.equals(priorShown))
+   throw new AssertionError("Refused enqueue changed durable state or requested effects");
+  primary=secondary;secondary=closing;
+  bridgeReply="refused";
+  trace.step("refuseConfigure",observe(),g,selectedOwner);
+ }
+
 
  private static void withdraw(int g)throws Exception {
   PluginCall call=new PluginCall(g==0?new JSONObject():new JSONObject().put("grantId",grant(g)));
@@ -479,6 +517,14 @@ public final class GmailBackgroundTraces {
     case "stopped" -> {configure(1);work(1,"baseline");beginWorker(1);finishWorker(true);status();}
     case "reset" -> {configure(1);work(1,"baseline");work(1,"reset");status();beginWorker(1);
      env(1,3,true,true,true,false);finishWorker(false);resume();status();}
+    case "enqueue-refusal" -> {
+     configure(1);work(1,"baseline");work(1,"continued");refuseConfigure(2,1);
+     status();resume();work(1,"none");status();
+    }
+    case "enqueue-refusal-worker" -> {
+     configure(1);work(1,"baseline");beginWorker(1);refuseConfigure(2,1);
+     finishWorker(false);status();
+    }
     case "withdraw-during-configure" -> {configure(1);work(1,"baseline");work(1,"continued");beginConfigure(2,1);
      withdraw(2);finishConfigure();status();work(1,"final");status();}
     case "withdraw-queued" -> {configure(1);work(1,"baseline");queueConfigure(2,1);
