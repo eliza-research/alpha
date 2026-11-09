@@ -11,7 +11,8 @@ import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.m
 const model='NativeDigestConsent';
 const harness='NativeDigestTraces.java';
 const nativeManifest='patches/eliza/native-manifest.json';
-const scenarios=['describe-revoked-held','describe-expired-held','consent','scope-refusal','storage','exact-owner',
+const scenarios=['describe-revoked-held','describe-expired-held','describe-current-held','describe-calendar-changed-held',
+  'describe-owner-retired-held','consent','scope-refusal','storage','exact-owner',
   'projection','bounds','reminders-only','calendar-only','read-revoked','read-expired','read-calendar-changed',
   'read-owner-retired','read-transport-retired'];
 
@@ -37,6 +38,7 @@ export async function checkNativeDigestConsent(extraSources=[]) {
         'Actual NativeDigestHost and NativeDigestSources execute with exact HostedDelivery.nativeSource admission and generation check calls. Resident transport, source identity, Android permission and Calendar/Reminder source reads are closed synthetic ports.',
         'Two synthetic owners and two source slots, reviewed scope classes, one held operation and selected wall clock boundaries. The source uses actual 23-hour owner day projection, scope parsing, exact revision hash, and item and serialized byte limits.',
         'The store port records before-commit refusal, lost acknowledgement after commit, and a foreground transition following the grant write. Exact reply classification, durable row state and projected fields are observed.',
+        'Held describe verifies the selected Calendar identity once, then rechecks the durable grant after the blocking port. Exact response source, revision, owner and occurrence/window are checked.',
         'Closed read results go only to the JVM trace observer. Installed Capacitor ingress and foreground scheduling, provider data freshness and later model use are external.',
       ]});
     return {receipt,obligations:[

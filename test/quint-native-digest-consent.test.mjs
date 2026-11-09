@@ -6,7 +6,7 @@ import {checkNativeDigestConsent} from '../specs/quint/refinement/native/native-
 test('native digest consent and readback refine the exact selected-source host', async () => {
   const {receipt}=await checkNativeDigestConsent();
   assert.equal(receipt.passed,true);
-  assert.equal(receipt.traces,15);
-  assert.equal(receipt.observedFields.length,23);
+  assert.equal(receipt.traces,18);
+  assert.equal(receipt.observedFields.length,24);
   assert.equal(verifyRefinementReceiptInputs(receipt),true);
 });

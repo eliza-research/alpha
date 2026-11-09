@@ -4,7 +4,7 @@ module NativeDigestConsent {
   type GrantReply = {scope: int, expiry: int, revoked: bool}
   type State = {rows: int -> Grant, owner: int, generation: int, now: int, foreground: bool,
     transport: bool, calendarRevision: int, calendarPermission: bool, writes: int, calendarReads: int,
-    reminderReads: int, restarts: int, reply: str, requestKind: str, grantReply: GrantReply,
+    reminderReads: int, restarts: int, reply: str, replyAt: int, requestKind: str, grantReply: GrantReply,
     events: int, reminders: List[str], readOwner: int, readSource: int, readGeneration: int,
     readKind: str, readProfile: str, readScope: int}
   var s: State
@@ -24,7 +24,7 @@ module NativeDigestConsent {
   action init: bool = s'={
     rows:Map((11,emptyGrant),(12,emptyGrant),(21,emptyGrant),(22,emptyGrant)),
     owner:1,generation:1,now:0,foreground:true,transport:true,calendarRevision:1,calendarPermission:true,
-    writes:0,calendarReads:0,reminderReads:0,restarts:0,reply:"none",requestKind:"none",grantReply:emptyReply,
+    writes:0,calendarReads:0,reminderReads:0,restarts:0,reply:"none",replyAt:0,requestKind:"none",grantReply:emptyReply,
     events:0,reminders:List(),readOwner:0,readSource:0,readGeneration:0,readKind:"none",readProfile:"none",readScope:0
   }
   pure def key(owner: int, source: int): int = (if (owner==0) 1 else owner)*10+source
@@ -36,7 +36,7 @@ module NativeDigestConsent {
   pure def live(st: State, row: Grant): bool = row.present and not(row.revoked) and row.integrity and row.expiry>st.now
   pure def connected(st: State): bool = st.owner!=0 and st.transport
   pure def answer(st: State, kind: str, reply: str): State =
-    {...st,requestKind:kind,reply:reply,grantReply:emptyReply,events:0,reminders:List()}
+    {...st,requestKind:kind,reply:reply,replyAt:st.now,grantReply:emptyReply,events:0,reminders:List()}
   pure def returnGrant(st: State, kind: str, result: str, row: Grant): State =
     {...answer(st,kind,result),grantReply:{scope:row.scope,expiry:row.expiry,revoked:row.revoked}}
 
@@ -141,11 +141,10 @@ module NativeDigestConsent {
     val same=connected(s) and s.owner==s.readOwner and s.generation==s.readGeneration
     val counted={...cleared,reminderReads:s.reminderReads+(if (s.readProfile=="calendar" and hasReminders(scope)
       and s.calendarPermission) 1 else 0)}
-    // As built, describe returns the grant captured before the Calendar identity check.
-    val snapshot={present:true,revoked:false,integrity:true,scope:scope,reviewed:scope,expiry:row.expiry}
     s'=if (kind=="describe") {
       if (not(same and selectedSource(s,scope))) answer(cleared,kind,"refused")
-      else returnGrant(cleared,kind,"described",snapshot)
+      else if (not(live(s,row))) answer(cleared,kind,"changed")
+      else returnGrant(cleared,kind,"described",row)
     } else if (s.readProfile=="calendar" and not(s.calendarPermission)) answer(cleared,kind,"refused")
       else if (scope==3 or not(same and selectedSource(s,scope))) answer(counted,kind,"refused")
       else if (not(live(s,row))) answer(counted,kind,"changed")
@@ -157,7 +156,8 @@ module NativeDigestConsent {
   val ExactSelectionCustody = s.readOwner!=0 or (s.readSource==0 and s.readGeneration==0 and s.readScope==0)
   val BoundedProjectedOutput = s.events+s.reminders.length()<=12
   val NoUnreviewedReminder = s.reminders.indices().forall(i => s.reminders.nth(i).in(Set("today","overdue","done","recurring")))
-  val safety=all {NoPayloadOnRefusal,ExactSelectionCustody,BoundedProjectedOutput,NoUnreviewedReminder}
+  val DescribedBeforeExpiry = s.reply!="described" or (s.grantReply.expiry>s.replyAt and not(s.grantReply.revoked))
+  val safety=all {NoPayloadOnRefusal,ExactSelectionCustody,BoundedProjectedOutput,NoUnreviewedReminder,DescribedBeforeExpiry}
   action step = any {
     { nondet front=Bool.oneOf(); nondet link=Bool.oneOf(); nondet permission=Bool.oneOf();
       nondet revision=Set(1,2).oneOf(); environment(front,link,permission,revision) },
@@ -175,13 +175,16 @@ module NativeDigestConsent {
     finishRead,s'=s,
   }
 
-  run describeCanReturnRevokedSnapshotAsBuiltTest = init
+  run heldDescribeRejectsRevokedGrantTest = init
     .then(consent(1,"both",week,"none","exact",false)).then(holdRead(1,"describe","identity"))
     .then(consent(1,"both",0,"none","exact",true)).then(finishRead)
-    .expect(s.rows.get(11).revoked and s.reply=="described" and not(s.grantReply.revoked))
-  run describeCanReturnExpiredSnapshotAsBuiltTest = init
+    .expect(s.rows.get(11).revoked and s.reply=="changed" and s.grantReply==emptyReply)
+  run heldDescribeRejectsExactExpiryTest = init
     .then(consent(1,"both",100,"none","exact",false)).then(holdRead(1,"describe","identity")).then(clock(100))
-    .then(finishRead).expect(s.reply=="described" and s.grantReply.expiry==s.now)
+    .then(finishRead).expect(s.reply=="changed" and s.grantReply==emptyReply)
+  run heldDescribeReturnsFreshExactGrantTest = init
+    .then(consent(1,"both",100,"none","exact",false)).then(holdRead(1,"describe","identity"))
+    .then(finishRead).expect(s.reply=="described" and s.grantReply.expiry==100 and s.calendarReads==0)
   run heldContentRejectsRevokedGrantTest = init
     .then(consent(1,"both",week,"none","exact",false)).then(holdRead(1,"morning","calendar"))
     .then(consent(1,"both",0,"none","exact",true)).then(finishRead)

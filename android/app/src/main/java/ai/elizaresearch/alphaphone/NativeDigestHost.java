@@ -21,7 +21,8 @@ final class NativeDigestHost {
    for(String field:new String[]{"ownerId","agentId","installationId","enrollmentId"})if(!binding.getString(field).equals(request.getString(field)))throw new NativeDigestSources.SourceChanged("Native source binding changed");
    String id=request.getString("sourceId"),revision=request.getString("revision");long now=System.currentTimeMillis();
    JSONObject grant=sources.current(binding,id,revision,now,guard);NativeDigestSources.Guard sourceGuard=()->{guard.check();ai.eliza.plugins.calendar.read.SelectedCalendarReader.assertSourceIdentities(context.getContentResolver(),grant.getJSONObject("scope").getJSONArray("calendars"));};sourceGuard.check();
-   if("describe".equals(request.getString("action")))return grant;
+   // Source identity verification can block while this exact grant is revoked or expires.
+   if("describe".equals(action))return sources.current(binding,id,revision,System.currentTimeMillis(),guard);
    if(!"read".equals(request.getString("action")))throw new SecurityException("Unsupported native source operation");
    long occurrence=java.time.Instant.parse(request.getString("occurrence")).toEpochMilli();
    NativeDigestSources.checkOccurrence(occurrence,now);

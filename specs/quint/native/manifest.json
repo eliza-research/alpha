@@ -2596,8 +2596,9 @@
       "step": "step",
       "invariant": "safety",
       "tests": [
-        "describeCanReturnRevokedSnapshotAsBuiltTest",
-        "describeCanReturnExpiredSnapshotAsBuiltTest",
+        "heldDescribeRejectsRevokedGrantTest",
+        "heldDescribeRejectsExactExpiryTest",
+        "heldDescribeReturnsFreshExactGrantTest",
         "heldContentRejectsRevokedGrantTest",
         "expiredWhileReadingNeverPublishesTest",
         "storeRefusalAfterCommitKeepsGrantTest",
@@ -2608,7 +2609,8 @@
         "NoPayloadOnRefusal",
         "ExactSelectionCustody",
         "BoundedProjectedOutput",
-        "NoUnreviewedReminder"
+        "NoUnreviewedReminder",
+        "DescribedBeforeExpiry"
       ],
       "sources": [
         "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeDigestSources.java",
@@ -2620,11 +2622,11 @@
         "rows/now/writes/restarts": "Selected durable consent, exact scope/revision, revocation and expiry across host reconstruction",
         "owner/generation/foreground/transport/calendarRevision/calendarPermission": "Controlled admission, review foreground and source identity",
         "readOwner/readSource/readGeneration/readKind/readProfile/readScope": "One retained read across controlled source suspension",
-        "reply/requestKind/grantReply/events/reminders/calendarReads/reminderReads": "Actual returned metadata and bounded projected result with source port counts"
+        "reply/replyAt/requestKind/grantReply/events/reminders/calendarReads/reminderReads": "Actual returned metadata and bounded projected result with source port counts"
       },
       "abstractions": [
         "Two owners and two exact grant slots, opaque revision equality, one selected owner day, and one held source operation.",
-        "Preserves as-built stale describe after revoke or expiry, while actual content read repeats the consent check.",
+        "Described grant is revalidated after Calendar identity checking. Content reads also repeat exact consent checks.",
         "Synthetic storage, resident, Calendar and Reminder ports only. No device/provider action or model egress."
       ],
       "bounds": {

@@ -852,8 +852,9 @@ It checks scope refusal, same-revision replay, tombstones, expiry, write
 failures before and after commit, and selected owner-day projection.
 Source rows are synthetic and the result stays within the JVM observer.
 
-The as-built schedules hold Calendar identity verification after the
-host captures a grant. If the grant is revoked or reaches expiry during
-that check, the `describe` branch can still return its old metadata.
-Content reads take another exact grant check before returning their
-projected events and reminders.
+The baseline in commit `261c7e6779` holds Calendar identity verification
+after the host captures a grant. A revoke or exact expiry during that
+check could leave `describe` returning the captured metadata. The host
+now rechecks the durable grant and current clock after verification. It
+reuses the completed Calendar check. Content reads retain their separate
+final consent check before returning projected events and reminders.

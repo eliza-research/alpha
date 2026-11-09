@@ -17,13 +17,14 @@ public final class NativeDigestTraces {
  private static final Map<String,Integer> revisionScopes=new HashMap<>();
  private static NativeDigestHost host=new NativeDigestHost(context);
  private static Trace trace;
- private static long now;
+ private static long now,replyAt;
  private static int owner=1,generation=1,calendarRevision=1,writes,calendarReads,reminderReads,restarts,identityReads,heldIdentityReads;
  private static boolean foreground=true,transport=true,calendarPermission=true;
  private static String fault="none",profile="normal",reply="none",requestKind="none";
  private static JSONObject returned;
  private static volatile Hold held;
  private static FutureTask<JSONObject> pending;
+ private static JSONObject pendingRequest;
  private static int readOwner,readSource,readGeneration,readScope;
  private static String readKind="none",readProfile="none";
  private record Hold(String port,CountDownLatch reached,CountDownLatch released) {
@@ -174,7 +175,7 @@ public final class NativeDigestTraces {
   return Trace.fields("rows",rows,"owner",owner,"generation",generation,"now",now,"foreground",foreground,
    "transport",transport,"calendarRevision",calendarRevision,"calendarPermission",calendarPermission,
    "writes",writes,"calendarReads",calendarReads,"reminderReads",reminderReads,"restarts",restarts,
-   "reply",reply,"requestKind",requestKind,"grantReply",grant,"events",events,"reminders",projected,
+   "reply",reply,"replyAt",replyAt,"requestKind",requestKind,"grantReply",grant,"events",events,"reminders",projected,
    "readOwner",readOwner,"readSource",readSource,"readGeneration",readGeneration,"readKind",readKind,"readProfile",readProfile,"readScope",readScope);
  }
  private static void consent(int id,String kind,long expiry,String faultMode,String address,boolean revoke)throws Exception {
@@ -191,7 +192,7 @@ public final class NativeDigestTraces {
    reply=revoke?"revoked":"approved";
   }catch(Exception denied){returned=null;reply="refused";}
   finally {fault="none";}
-  requestKind=revoke?"revoke":"approve";
+  requestKind=revoke?"revoke":"approve";replyAt=now;
   trace.step("consent",observe(),id,kind,expiry,faultMode,address,revoke);
  }
  private static void approve(int id,String kind,long expiry)throws Exception {consent(id,kind,expiry,"none","exact",false);}
@@ -217,14 +218,31 @@ public final class NativeDigestTraces {
   }
   return value;
  }
+ private static void checkReadback(JSONObject requested,JSONObject result) {
+  if(result==null)return;
+  if(!requested.getString("sourceId").equals(result.getString("sourceId")))
+   throw new AssertionError("Native digest returned another source");
+  if(requested.getString("action").equals("describe")) {
+   for(String key:List.of("ownerId","agentId","installationId","enrollmentId","revision"))
+    if(!requested.getString(key).equals(result.getString(key)))
+     throw new AssertionError("Native grant readback differs at "+key);
+  } else if(!requested.getString("revision").equals(result.getString("sourceRevision"))
+    ||!Instant.parse(requested.getString("occurrence")).equals(Instant.parse(result.getString("occurrence")))
+    ||!"America/Los_Angeles".equals(result.getString("timeZone"))
+    ||!Instant.parse(result.getString("start")).equals(Instant.parse("2026-03-08T08:00:00Z"))
+    ||!Instant.parse(result.getString("end")).equals(Instant.parse("2026-03-09T07:00:00Z")))
+   throw new AssertionError("Native source result changed its reviewed day or revision");
+ }
  private static void read(int id,String kind,String address,long occurrence,String portProfile)throws Exception {
   profile=portProfile;requestKind=kind;
-  try {returned=host.read(request(id,kind,address,occurrence));reply=kind.equals("describe")?"described":"read";}
+  JSONObject requested=request(id,kind,address,occurrence);
+  try {returned=host.read(requested);reply=kind.equals("describe")?"described":"read";}
   catch(Exception denied){returned=null;reply=denied instanceof NativeDigestSources.SourceChanged?"changed":"refused";}
+  replyAt=now;checkReadback(requested,returned);
   trace.step("read",observe(),id,kind,address,occurrence,portProfile);
  }
  private static void holdRead(int id,String kind,String port)throws Exception {
-  JSONObject exact=request(id,kind,"exact",now);
+  JSONObject exact=request(id,kind,"exact",now);pendingRequest=exact;
   held=new Hold(port);profile="normal";readOwner=owner;readSource=id;readGeneration=generation;readKind=kind;readProfile=port;
   readScope=row(owner,id).getInt("scope");
   pending=new FutureTask<>(()->host.read(exact));
@@ -236,6 +254,7 @@ public final class NativeDigestTraces {
   try {returned=pending.get(8,TimeUnit.SECONDS);reply=readKind.equals("describe")?"described":"read";}
   catch(ExecutionException failure){returned=null;reply=failure.getCause() instanceof NativeDigestSources.SourceChanged?"changed":"refused";}
   if(readKind.equals("describe")&&identityReads!=heldIdentityReads)throw new AssertionError("Describe re-queried Calendar");
+  replyAt=now;checkReadback(pendingRequest,returned);pendingRequest=null;
   requestKind=readKind;held=null;pending=null;readOwner=0;readSource=0;readGeneration=0;readKind="none";readProfile="none";readScope=0;
   trace.step("finishRead",observe());
  }
@@ -260,6 +279,11 @@ public final class NativeDigestTraces {
    switch(args[0]) {
     case "describe-revoked-held" -> {approve(1,"both",WEEK);holdRead(1,"describe","identity");revoke(1);finishRead();}
     case "describe-expired-held" -> {approve(1,"both",100);holdRead(1,"describe","identity");clock(100);finishRead();}
+    case "describe-current-held" -> {approve(1,"both",100);holdRead(1,"describe","identity");finishRead();}
+    case "describe-calendar-changed-held" -> {
+     approve(1,"both",WEEK);holdRead(1,"describe","identity");environment(true,true,true,2);finishRead();
+    }
+    case "describe-owner-retired-held" -> {approve(1,"both",WEEK);holdRead(1,"describe","identity");connect(2);finishRead();}
     case "consent" -> {
      approve(1,"both",WEEK);approve(1,"both",WEEK);approve(1,"reminders",WEEK);
      restart();read(1,"describe","exact",0,"normal");revoke(1);approve(1,"both",WEEK);
