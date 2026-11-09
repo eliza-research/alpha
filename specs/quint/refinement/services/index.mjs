@@ -1,3 +1,4 @@
+import {collectRefinementCampaigns} from '../campaigns.mjs';
 import {fileURLToPath} from 'node:url';
 import {authorizationRefinement} from './authorization.mjs';
 import {googleAccountsRefinement} from './google-accounts.mjs';
@@ -48,7 +49,7 @@ import {checkAndroidGzipAssetStage} from './android-gzip-asset-stage.mjs';
 
 export async function runServicesRefinement() {
   const driver = fileURLToPath(import.meta.url);
-  const direct = check => [check.name, check];
+  const direct = check => [check.name, () => check()];
   const withDriver = check => [check.name, () => check([driver])];
   const campaigns = [
     ...[authorizationRefinement, googleAccountsRefinement, googleAccountsLifecycleRefinement, calendarRefinement,
@@ -109,25 +110,5 @@ export async function runServicesRefinement() {
     {model: 'NativeCredentialMutation', obligation: 'Real shutdown, encryption and lock interleavings', reason: 'Actual credential-store classification, recheck, admission invalidation and preflight run against primitive storage/lifecycle ports. Those ports do not establish native shutdown or encrypted persistence.'},
     {model: 'PdfWorker', obligation: 'Kernel isolation, descriptor transfer, watchdog and memory kill', reason: 'Actual service request/render/cleanup/reply code executes against Android primitives. Host stubs cannot establish kernel or real PDF renderer behavior.', requires: ['IsolatedPdfInstrumentedTest on a disposable admitted installation']},
   ];
-  return collectServiceCampaigns(campaigns, obligations);
-}
-
-export async function collectServiceCampaigns(campaigns, baseObligations = []) {
-  const receipts = [], obligations = [...baseObligations], failures = [];
-  for (const [campaign, check] of campaigns) {
-    try {
-      const result = await check();
-      const checked = result?.receipts ?? (Array.isArray(result) ? result : [result]);
-      const remaining = result?.obligations ?? [];
-      if (!Array.isArray(checked) || checked.some(receipt => typeof receipt?.passed !== 'boolean')
-        || !Array.isArray(remaining)) throw Error('Invalid service adapter result');
-      receipts.push(...checked);
-      obligations.push(...remaining);
-      const failed = checked.filter(receipt => !receipt.passed);
-      if (failed.length) throw Error('Failed service receipts: '+failed.map(receipt => receipt.model).join(', '));
-    } catch (error) {
-      failures.push({campaign, error});
-    }
-  }
-  return {receipts, obligations, failures};
+  return collectRefinementCampaigns(campaigns, obligations);
 }

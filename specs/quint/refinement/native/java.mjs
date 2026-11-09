@@ -34,7 +34,10 @@ export function javaTraceCampaign(harness, sources, argumentSets, mainClass) {
   const jar = jsonJar();
   const run = (command, commandArgs) => {
     const result = spawnSync(command, commandArgs, {cwd: root, encoding: 'utf8', timeout: 120000, maxBuffer: 64 * 1024 * 1024});
-    if (result.error || result.status !== 0) throw new Error(`${command} failed\n${result.error || ''}\n${result.stdout}\n${result.stderr}`);
+    if (result.error || result.status !== 0) {
+      const exit = result.signal || `status ${result.status}`;
+      throw new Error(`${command} failed (${exit})\n${result.error || ''}\n${result.stdout}\n${result.stderr}`);
+    }
     return result.stdout;
   };
   try {

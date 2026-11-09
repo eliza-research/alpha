@@ -1185,3 +1185,16 @@ CredentialVault and DevelopmentSurfaces. All three passed on exact isolated
 replay. The checker now retries a silent `SIGSEGV` or `SIGILL` once and
 records the first signal. A second interruption, a timeout or a reported
 counterexample keeps its failure classification.
+
+The strict 214-model run credited 113 models before the service and native
+collectors returned compiler failures. Revalidation of 82 individual
+receipts from the same run added evidence for 54 more models. The original
+run remains failed. The credential compiler failure did not recur in its
+isolated replay. The native update composition test exposed a missing latch
+in its synthetic resident port. The port now mirrors the shared fixture's
+pause observation, and the closed composition replay passes.
+
+The service and native collectors retain completed receipts and obligations
+when a later adapter throws. They report the failed adapter and continue
+with subsequent campaigns. A failed replay still fails the aggregate. The
+collector cannot recover from termination of its own process.
