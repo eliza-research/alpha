@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-import {mkdirSync, mkdtempSync, rmSync} from 'node:fs';
+import {mkdirSync, mkdtempSync, realpathSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -11,7 +11,8 @@ const repository = resolve(import.meta.dirname, '../../../..');
 const probe = join(import.meta.dirname, 'native-google-host-artifact-probe.mjs');
 
 function runProbe(args = []) {
-  const scratch = mkdtempSync(join(tmpdir(), 'quint-native-google-host-'));
+  // Node reports the physical cwd on macOS; pass the same owned directory to the probe.
+  const scratch = realpathSync(mkdtempSync(join(tmpdir(), 'quint-native-google-host-')));
   try {
     const home = join(scratch, 'home');
     mkdirSync(home, {mode: 0o700});
