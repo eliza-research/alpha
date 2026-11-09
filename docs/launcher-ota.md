@@ -182,6 +182,15 @@ delivery path until a native producer bridge is separately qualified.
 
 ## Acceptance on the phone host
 
+The [November 9 software verification](evidence/launcher-ota-verification-20261109.json)
+records the passing full repository run, four Cloud APK builds, explicit
+environment skips and remaining phone-host gates. The
+[formal receipt](evidence/launcher-ota-formal-validation-20261109.json) gives the
+exact source inputs and safety bounds. The
+[uploaded walkthrough](https://github.com/eliza-research/alphaphone/releases/tag/pr853-evidence-17dacc127beb)
+shows synthetic cancellation and draft restoration only.
+
+
 The isolated API 36 PackageInstaller fixture can be rerun on an owned disposable
 emulator with SDK 36 build tools and JDK 21:
 

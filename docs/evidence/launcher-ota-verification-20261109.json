@@ -1,0 +1,164 @@
+{
+  "schema": "alpha-launcher-ota-verification-v1",
+  "date": "2026-11-09",
+  "codeCommit": "17dacc127beb7febf5520b078f4d647f3ed9a755",
+  "upstreamPin": "9add52f6b83efa77241fb72ae769729121944cac",
+  "sourceInventorySha256": "a08115a79a85fbc50b18b2e11158dbfed59a51e56a678873a90ef9417a85d966",
+  "scope": "Software qualification and a phone-host handoff. This is not production release or installed-device acceptance.",
+  "fullVerification": {
+    "status": "passed",
+    "command": "npm run build && npm run verify",
+    "preparedSdkRequired": true,
+    "node": {
+      "tests": 5059,
+      "passed": 5055,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 4,
+      "todo": 0
+    },
+    "bun": "1.4.2",
+    "log": "/tmp/alpha-ota-final-17dacc127b-verify.log",
+    "sourceCommit": "17dacc127beb7febf5520b078f4d647f3ed9a755",
+    "upstreamPin": "9add52f6b83efa77241fb72ae769729121944cac",
+    "phase": "verify",
+    "exitCode": 0,
+    "elapsedSeconds": 2557.635603904724,
+    "logSha256": "9ec9e4ee9759b154c357a27bdb8715f582f1d6b7fc64527803921e491b16c3fe",
+    "resultSha256": "a23e42c3587a778978938560305f4180a98cbfe9110a38d8ea25aafcc52e2f9c",
+    "quint": {
+      "models": 247,
+      "typeScenarioSimulationChecksPassed": 741,
+      "counterexampleCanary": "passed"
+    },
+    "typecheck": "passed",
+    "skips": [
+      "\ufe63 exact pinned source produces a verified overlay and rejects postimage mutation (0.126292ms) # Set ALPHA_SYSTEMUI_TEST_SOURCE to a pinned SystemUI checkout; no CI lane checks one out, so the local AOSP image build owns this test",
+      "\ufe63 emulator microphone preflight never injects or reads audio unsafely (0.09975ms) # Python grpcio and grpcio-tools are not installed",
+      "\ufe63 pinned Bun preserves real loader semantics and the exact reviewed core bytes in the host graph (0.101666ms) # set ALPHA_QUINT_BUN to the pinned Bun 1.4.2 binary",
+      "\ufe63 the selected NDK normal strip produces both recorded packaged STL libraries (0.082125ms) # pinned Linux Android NDK not installed"
+    ],
+    "notesQueryCampaign": "passed; real file CAS store and synthetic provider/browser scenarios only",
+    "productionBundleAudit": "passed; testMocks=false",
+    "nodeVersion": "26.13.0"
+  },
+  "apkBuildEvidence": "launcher-ota-cloud-apk-build-20261109.json",
+  "formalEvidence": "launcher-ota-formal-validation-20261109.json",
+  "nativeEvidence": "launcher-ota-native-validation-20261109.json",
+  "nativeProfilePrerequisites": {
+    "codeCommit": "17dacc127beb7febf5520b078f4d647f3ed9a755",
+    "results": [
+      {
+        "command": "npm run android:build:local",
+        "exitCode": 2,
+        "seconds": 0.24698376655578613,
+        "log": "/tmp/alpha-ota-final-17dacc127b-android-build-local.log",
+        "sha256": "a8e7f09e9f232ee99c7f0a0dc55bc3097f91b9b3b3b5f905b6d1579b5c613570",
+        "reason": "\n> @eliza-research/alphaphone@0.1.0 android:build:local\n> node scripts/android-build-preflight.mjs --before-prepare && npm run agent:build-embedding-host && npm run agent:prepare && npm run agent:build-workflow-worker && npm run agent:stage-android && npm run licenses:packaged-runtime && npm run android:build\n\nAndroid build prerequisites are missing:\n  - The on-device voice outputs in .eliza/paradee-voice/native are not admitted by android/voice-host/qualified-voice-host.json (On-device voice outputs are not staged in .eliza/paradee-voice/native; run node scripts/android-stage-voice-models.mjs; Gradle :app:verifyVoiceHost rejects the build). npm run android:build:local does not produce them: stage them with node scripts/android-stage-voice-models.mjs --from <directory of the recorded voice outputs and models> (see docs/fused-speech.md).\n"
+      },
+      {
+        "command": "npm run android:build",
+        "exitCode": 2,
+        "seconds": 0.25492191314697266,
+        "log": "/tmp/alpha-ota-final-17dacc127b-android-build.log",
+        "sha256": "8c9191a23ce1cf4005c3b92f1bc216b6917d76341d5792645757bea32ab0372a",
+        "reason": "\n> @eliza-research/alphaphone@0.1.0 android:build\n> node scripts/build-android.mjs\n\nAndroid build prerequisites are missing:\n  - The on-device voice outputs in .eliza/paradee-voice/native are not admitted by android/voice-host/qualified-voice-host.json (On-device voice outputs are not staged in .eliza/paradee-voice/native; run node scripts/android-stage-voice-models.mjs; Gradle :app:verifyVoiceHost rejects the build). npm run android:build:local does not produce them: stage them with node scripts/android-stage-voice-models.mjs --from <directory of the recorded voice outputs and models> (see docs/fused-speech.md).\n"
+      }
+    ]
+  },
+  "walkthrough": {
+    "url": "https://github.com/eliza-research/alphaphone/releases/download/pr853-evidence-17dacc127beb/alpha-pr853-17dacc127beb-renderer-cancellation.mp4",
+    "sourceCommit": "17dacc127beb7febf5520b078f4d647f3ed9a755",
+    "sha256": "b1e64a390e647c40c49f70bb8abb266b5564827a1ca0af8269cc8583a62f4939",
+    "sizeBytes": 1246706,
+    "casesPassed": 2,
+    "scope": "Actual renderer with simulated native IPC; canceled/newer-idle outcomes and retained drafts only. No APK installation, HTTPS update, native resident restart or phone acceptance.",
+    "anonymousReadback": "passed",
+    "receiptUrl": "https://github.com/eliza-research/alphaphone/releases/download/pr853-evidence-17dacc127beb/alpha-pr853-17dacc127beb-anonymous-readback.json"
+  },
+  "hostedBrowserBaseline": {
+    "reviewedRun": 42698540904,
+    "reviewedCommit": "9bbd8f8d37a7783145a72fd7a369f089b7b453b7",
+    "baselineRun": 42686026558,
+    "failedCases": 198,
+    "exactNamesAlsoFailingInBaseline": 195,
+    "otaSettingsPassed": 4,
+    "repositoryTimeoutMinutes": 60,
+    "productionTimeoutMinutes": 25,
+    "scope": "Historical comparison, not a green final full-browser result.",
+    "receiptUrl": "https://github.com/eliza-research/alphaphone/releases/download/pr853-evidence-17dacc127beb/alpha-pr853-browser-ci-baseline-9bbd8f8d.json"
+  },
+  "publication": {
+    "productionApkSigned": false,
+    "productionUpdatePublished": false,
+    "evidenceOnlyPrerelease": "pr853-evidence-17dacc127beb",
+    "appStableReleaseCreatedByThisTask": false
+  },
+  "remainingPhoneHostWork": [
+    "Admit production APK signing and reviewed version floor; qualify genuine voice on each exact signed release APK.",
+    "Publish and anonymously read back the real launcher feed; apply a higher-code candidate without an Install tap.",
+    "Read back installed APK/code/signer and HOME; verify logical drafts, preferences, credentials, conversation state and resident restart.",
+    "Run interruption, low-storage, permission, process-death, reboot, confirmation and invalid-offer cases on both preinstalled and sideloaded launcher baselines.",
+    "Resolve AOSP platform/release/AVB/OTA identity placeholders and complete image/physical acceptance."
+  ],
+  "separateUnimplementedScopes": [
+    "Independent recovery supervisor for a broken launcher.",
+    "AOSP OS-partition update_engine client and signed-channel/slot/recovery qualification."
+  ],
+  "physicalDeviceAcceptance": "not performed; device is on an inaccessible machine and owner requested PR handoff.",
+  "settingsBrowser": {
+    "sourceCommit": "17dacc127beb7febf5520b078f4d647f3ed9a755",
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "flaky": 0,
+    "scope": "Actual renderer with synthetic native IPC; no installed-device acceptance.",
+    "receiptUrl": "https://github.com/eliza-research/alphaphone/releases/download/pr853-evidence-17dacc127beb/alpha-pr853-17dacc127beb-settings-browser.json",
+    "receiptSha256": "bbfa937c296121ac241c29d978d9b0d293b2312da94ae92480cdce0d2cb3882d",
+    "allTrackedSourceAndProjectionStable": true
+  },
+  "hostedCiOnCodeCommit": {
+    "runId": 42713065569,
+    "runUrl": "https://github.com/eliza-research/alphaphone/actions/runs/42713065569",
+    "sourceCommit": "17dacc127beb7febf5520b078f4d647f3ed9a755",
+    "androidFoundation": "passed",
+    "residentPreparation": "passed",
+    "repositoryVerification": "running at snapshot",
+    "browserShards": {
+      "1": "passed 627 main plus 12 auxiliary checks",
+      "2": "failed 27 cases",
+      "3": "failed 1 case",
+      "4": "running",
+      "5": "failed 60 cases",
+      "6": "failed 41 cases"
+    },
+    "productionBrowser": {
+      "conclusion": "cancelled",
+      "timeoutMinutes": 25,
+      "failedCaseNamesObservedBeforeTimeout": 34,
+      "allNamesAlsoOccurInRecordedBaseline": true,
+      "baselineRunId": 42686026558,
+      "limitation": "Case-name match is not a stack-trace or root-cause equivalence claim."
+    },
+    "scope": "Incomplete hosted run snapshot; not full green CI.",
+    "snapshotPhase": "Completed jobs before evidence-only follow-up; shard4 and repository verification were still running.",
+    "completedShardFailedCaseNames": 129,
+    "allCompletedFailedNamesAlsoOccurInBothEarlierRuns": true,
+    "earlierRuns": [
+      42686026558,
+      42698540904
+    ],
+    "hostedSettingsOtaPassed": 4,
+    "hostedMountedCases": "not yet verified; shard4 still running at snapshot",
+    "completedComparisonUrl": "https://github.com/eliza-research/alphaphone/releases/download/pr853-evidence-17dacc127beb/alpha-pr853-17dacc127beb-ci-completed.json",
+    "completedComparisonSha256": "414626d6a453cb1dc66bbc4325578aec58f25d659da101d820f1cf089c39c87e"
+  },
+  "availableBunSkipFollowup": {
+    "command": "ALPHA_QUINT_BUN=/absolute/pinned/bun-1.4.2 node --test --test-name-pattern=\"pinned Bun preserves real loader\" test/quint-native-google-host-artifact.test.mjs",
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "scope": "Separate follow-up of one environment skip in the full run; original full-run skip count remains four.",
+    "logSha256": "6670c0fb437dbbcf22f6f8f98234a268ad25b6e57424fa41de9cccb804babb80"
+  }
+}
