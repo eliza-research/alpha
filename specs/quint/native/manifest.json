@@ -2388,6 +2388,52 @@
       }
     },
     {
+      "path": "specs/quint/native/NativeAppInfoHandoff.qnt",
+      "module": "NativeAppInfoHandoff",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "personalOpensPackageSettingsTest",
+        "removedPersonalAppHasNoLaunchTest",
+        "workUsesSelectedComponentTest",
+        "workUsesPackageFallbackTest",
+        "removedProfileRefusesBeforeLookupTest",
+        "currentProfileSerialNeverFallsBackTest",
+        "removedWorkAppHasNoLaunchTest",
+        "invalidInputRefusesBeforeLookupTest",
+        "disabledPausedOrLockedWorkAppHasExactDetailsTest",
+        "refusedLookupHasNoLaunchTest",
+        "refusedLaunchRetainsAttemptTest"
+      ],
+      "invariants": [
+        "NoRejectedLookupLaunch",
+        "RefusedInputSkipsLookup",
+        "MatchingLookupAndLaunch",
+        "ExactProfileAndTarget",
+        "ReplyMatchesDispatch"
+      ],
+      "sources": [
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaSystemPlugin.java",
+        "android/consumer-host.json",
+        "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SystemLauncherApps.java"
+      ],
+      "stateMapping": {
+        "entry": "Selected launcher identity and incoming Capacitor JSON argument partitions",
+        "personalStatus/workStatus/profile/launch": "Package and profile availability plus Android lookup and dispatch outcomes",
+        "reply": "Observed bridge result, queried user and flags, exact attempted Settings target, and accepted dispatch"
+      },
+      "abstractions": [
+        "One synthetic package in the current user and an exact distinct work profile, with missing, disabled, paused, locked and platform denial outcomes.",
+        "One synchronous bridge request per checkpoint. Actual package visibility, Settings UI, Binder delivery and cross-profile task placement require installed evidence."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 8
+      }
+    },
+    {
       "path": "specs/quint/native/NativeSourceRenewal.qnt",
       "module": "NativeSourceRenewal",
       "init": "init",

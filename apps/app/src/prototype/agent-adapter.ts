@@ -614,7 +614,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       else {shell.notesOpenFailed=true;originalSet.call(shell,'notes',{list:[],storageStatus:'Previous notes need a recovery review. Nothing was moved or changed.'});}
       context(shell);
     }});
-    await shell.notesReady;return !shell.notesStorageFailed;
+    await shell.notesReady;return current()&&!shell.notesStorageFailed;
   }
   function context(shell: Shell) {
     syncPreviousNotesAvailability(shell);
@@ -1682,14 +1682,19 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     const reviewedSource=fromComposer?this.reviewedSourceDraft:null;if(fromComposer)this.reviewedSourceDraft=null;
     // Everything this send later shows belongs to the agent connection it was sent on.
     const sameChat=()=>connectionController.getSnapshot().session?.sessionId===sessionId;
-    const attempt:SendAttempt=this.sendAttempt={transportCalled:false,preDispatch:false,streamed:false};
     const userId=crypto.randomUUID(),streamedId=crypto.randomUUID();let streamed=false;
     const sentAttachment=fromComposer?{transcriptAttachment:transcript,cameraAttachment:this.cameraAttachment,displayText:text,requestText}:null;
     if(sentAttachment&&(transcript||this.cameraAttachment)&&connection.session&&conversationId){
       try{await saveAttachment(connection.session,conversationId,userId,sentAttachment);}
       catch{if(fromComposer)releaseComposerSend(this,heldKey,heldText);this.toast('Attachment could not be saved. Try again.');return;}
+      // The local write may settle after the composer, attachment or conversation has been replaced.
+      if(!current()||this.composerDraft.binding!==heldKey||!transcriptCurrent()||this.cameraAttachment!==sentAttachment.cameraAttachment){
+        if(this.live)releaseComposerSend(this,heldKey,heldText);else this.composerDraft?.release();
+        return;
+      }
     }
 
+    const attempt:SendAttempt=this.sendAttempt={transportCalled:false,preDispatch:false,streamed:false};
     const replaceStream=(value:string,streaming=true)=>this.setState((previous:Shell)=>({msgs:previous.msgs.map((message:Shell)=>message.id===streamedId?{...message,text:value,streaming}:message)}));
     let streamFrame=0,latestStream:string|undefined;
     const flushStream=()=>{if(streamFrame){cancelAnimationFrame(streamFrame);streamFrame=0;}if(latestStream!==undefined){const value=latestStream;latestStream=undefined;if(this.live)replaceStream(value);}};

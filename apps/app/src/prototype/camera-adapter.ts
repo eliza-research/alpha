@@ -1417,10 +1417,28 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     data.albumsError=albumsRecovery?String(st.nativeAlbumsError||'Albums could not be read.'):'';data.albumsRecover=()=>{void import('../browser/preference-recovery').then(m=>m.openAlbumRecovery()).catch(()=>currentApi.toast('Album recovery could not open.'));};
     data.albumBackLabel='Back to albums';data.selectionBusy=mutating||sharing;
     data.albumManager=st.sheet==='owned-album'&&!!manager;
-    if(manager){const selectedManager=manager,many=manager.items;data.am={modalRef:albumModal.ref,title:manager.confirmDelete?'Delete album?':manager.creating?'New album':manager.album?'Manage album':'Add to album',name:manager.name,onName:(event:Event)=>{if(manager){manager.name=(event.target as HTMLInputElement).value;currentApi.set({nativeAlbumDraft:Date.now()});}},
-      managing:!!manager.album,naming:!!manager.creating||!!manager.album&&!manager.confirmDelete,info:false,description:'',choose:()=>{},choosing:(!!manager.media||!!many)&&!manager.creating,confirming:!!manager.confirmDelete,error:st.nativeAlbumsError||'',busy:mutating,
-      items:customAlbums.map(album=>{const member=!many&&album.memberIds.includes(nativeId(manager?.media?.id||''));return {id:'custom:'+album.id,name:album.name,label:(member?'Remove from ':'Add to ')+album.name,go:()=>{void mutateAlbum(currentApi,member?'remove':'add',album);}};}),
-      create:()=>{if(manager){manager.creating=true;manager.name='';currentApi.set({nativeAlbumDraft:Date.now()});}},save:()=>{void mutateAlbum(currentApi,selectedManager.creating?'create':'rename');},askDelete:()=>{if(manager){manager.confirmDelete=true;currentApi.set({nativeAlbumDraft:Date.now()});}},delete:()=>{void mutateAlbum(currentApi,'delete');},close:()=>{manager=undefined;currentApi.set({sheet:null});}};}
+    if(manager){
+      const shown=manager,{creating,confirmDelete,album,media,items}=shown;
+      const naming=!!creating||!!album&&!confirmDelete,choosing=(!!media||!!items)&&!creating;
+      // A queued callback belongs to the dialog and stage that rendered it.
+      const current=()=>manager===shown&&shown.creating===creating&&shown.confirmDelete===confirmDelete
+        &&!disposed&&!document.hidden&&currentApi.isActive()&&currentApi.get('photos').sheet==='owned-album';
+      data.am={
+        modalRef:albumModal.ref,title:confirmDelete?'Delete album?':creating?'New album':album?'Manage album':'Add to album',name:shown.name,
+        onName:(event:Event)=>{if(current()&&naming){shown.name=(event.target as HTMLInputElement).value;currentApi.set({nativeAlbumDraft:Date.now()});}},
+        managing:!!album,naming,info:false,description:'',choose:()=>{},choosing,confirming:!!confirmDelete,error:st.nativeAlbumsError||'',busy:mutating,
+        items:customAlbums.map(target=>{
+          const member=!items&&target.memberIds.includes(nativeId(media?.id||''));
+          return {id:'custom:'+target.id,name:target.name,label:(member?'Remove from ':'Add to ')+target.name,
+            go:()=>{if(current()&&choosing)void mutateAlbum(currentApi,member?'remove':'add',target);}};
+        }),
+        create:()=>{if(current()&&choosing&&!mutating){shown.creating=true;shown.name='';currentApi.set({nativeAlbumDraft:Date.now()});}},
+        save:()=>{if(current()&&naming)void mutateAlbum(currentApi,creating?'create':'rename');},
+        askDelete:()=>{if(current()&&naming&&album&&!mutating){shown.confirmDelete=true;currentApi.set({nativeAlbumDraft:Date.now()});}},
+        delete:()=>{if(current()&&confirmDelete)void mutateAlbum(currentApi,'delete');},
+        close:()=>{if(current()){manager=undefined;currentApi.set({sheet:null});}},
+      };
+    }
     data.selStart=()=>startSelection(currentApi);
     data.newAlbum=(event:Event)=>{
       if(mutating||sharing)return;
@@ -1444,7 +1462,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     data.mutationBusy = mutating;
     data.emptyOpen = st.sheet==='empty' && !!prepared;
     data.trashCount = prepared ? `${prepared.count} ${prepared.count===1?'item':'items'}` : '';
-    const priorCloseSheet = data.closeSheet; data.closeSheet=()=>{if(st.sheet==='empty')cancelPermanent(currentApi);else if(st.sheet==='owned-album'){manager=undefined;currentApi.set({sheet:null});}else if(st.sheet==='photo-info')currentApi.set({sheet:null});else priorCloseSheet?.();};
+    const priorCloseSheet = data.closeSheet; data.closeSheet=()=>{if(st.sheet==='empty')cancelPermanent(currentApi);else if(st.sheet==='owned-album')data.am?.close();else if(st.sheet==='photo-info')currentApi.set({sheet:null});else priorCloseSheet?.();};
     data.openTrash = () => { currentApi.set({ album: 'trash', open: null, nativePhotoSelection: null }); closeVideo(); void loadTrash(currentApi); };
     data.emptyNow = () => { void deletePermanent(currentApi); };
     data.trashAsk = () => { void preparePermanent(currentApi); };

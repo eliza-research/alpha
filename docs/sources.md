@@ -2,9 +2,9 @@
 
 ## Product inputs
 
-- [Eliza Product Vision](https://docs.google.com/document/d/1l6O9s8P5jtzoisotUgyMbcRP-btrN0LbgMLxHV1PBd4/edit): authenticated exports of **Product Vision**, **Design Exploration Plan**, and **On-screen Helper PRD** are in `design/sources/`. Exported separately; comments are not part of the Markdown export. The source remains a work in progress.
-- [Alpha Phone prototype](https://alpha-phone-prototype.pages.dev/): HTML, React runtime, dc-lite runtime and both SVG assets preserved in `design/prototype/`.
-- Senior-care handoff: in the separate senior-care repository. `design/manifest.json` records original byte hashes.
+- [Eliza Product Vision](https://docs.google.com/document/d/1l6O9s8P5jtzoisotUgyMbcRP-btrN0LbgMLxHV1PBd4/edit). The authenticated Markdown exports of **Product Vision**, **Design Exploration Plan**, and **On-screen Helper PRD** remain in the [archived source tree](https://github.com/eliza-research/alphaphone/tree/bfb0c54abff6c18035f58a554c68f096b3918b75/design/sources).
+- [Alpha Phone prototype](https://alpha-phone-prototype.pages.dev/). The HTML, React runtime, dc-lite runtime and SVG assets remain in the [archived prototype tree](https://github.com/eliza-research/alphaphone/tree/bfb0c54abff6c18035f58a554c68f096b3918b75/design/prototype).
+- The senior-care handoff lives in the separate senior-care repository. The [archived design manifest](https://github.com/eliza-research/alphaphone/blob/bfb0c54abff6c18035f58a554c68f096b3918b75/design/manifest.json) records original byte hashes.
 - `vendor/eliza` is the build-consumed upstream source; `upstream.lock.json` pins it. Current upstream scripts use `.ts`; older local checkouts used `.mjs`. Plans below refer to the pinned `.ts` layout.
 
 ## Existing Alpha engineering contracts reviewed
