@@ -2,33 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import os from 'node:os';
-import {createHash} from 'node:crypto';
-import {createMobileUuidAdapter,mobileBuildInputs,mobileBuildReceipt,verifyMobileBuildReceipt,uuidCommonJsBridge,MOBILE_BUILD_RECEIPT,MOBILE_UUID_POLICY,MOBILE_BUILD_INPUTS} from '../scripts/mobile-uuid-adapter.mjs';
+import {createMobileUuidAdapter,mobileBuildInputs,mobileBuildReceipt,verifyMobileBuildReceipt,uuidCommonJsBridge,MOBILE_BUILD_RECEIPT,MOBILE_BUILD_INPUTS} from '../scripts/mobile-uuid-adapter.mjs';
+import {actualPolicy, barrel, hash, mobileUuidFixture} from './fixtures/mobile-uuid-build.mjs';
 
-import {writeCoreStateFixture} from './fixtures/core-state-root.mjs';
-import {coreStateReceipt,CORE_STATE_TARGET} from '../scripts/core-state-patch.mjs';
-const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
-const actualPolicy=JSON.parse(fs.readFileSync(new URL('../patches/eliza/mobile-uuid-build.json',import.meta.url)));
-const barrel=[['MAX','max'],['NIL','nil'],...['parse','stringify','v1','v1ToV6','v3','v4','v5','v6','v6ToV1','v7','validate','version'].map(name=>[name,name])].map(([name,file])=>`export { default as ${name} } from './${file}.js';`).join('\n')+'\n';
 function fixture(t){
- const root=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-uuid-producer-')),source=path.join(root,'source'),policy=structuredClone(actualPolicy);
- t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
- const write=(name,bytes)=>{const file=path.join(root,name);fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,bytes);};
- const json=(name,value)=>write(name,JSON.stringify(value));
- json('upstream.lock.json',{commit:policy.baseCommit});json('source/.alpha-runtime-source.json',{base:policy.baseCommit,patches:[]});write('source/bun.lock','fixture pinned dependency lock');policy.lockSha256=hash('fixture pinned dependency lock');
- write('source/'+policy.builder.path,'fixture unchanged producer');policy.builder.sha256=hash('fixture unchanged producer');
- for(const name of MOBILE_BUILD_INPUTS)write(name,'fixture '+name);
- for(const name of Object.keys(policy.package.files)){
-  const bytes=name==='package.json'?JSON.stringify({name:'uuid',version:'14.0.2'}):name==='dist-node/index.js'?barrel:'export default "fixture";\n';
-  write('source/'+policy.package.root+'/'+name,bytes);policy.package.files[name]=hash(bytes);
- }
- writeCoreStateFixture(root,source,policy.baseCommit);
- const save=()=>json(MOBILE_UUID_POLICY,policy);save();
- const bundle=path.join(source,'packages/agent/dist-mobile/agent-bundle.js');write('source/packages/agent/dist-mobile/agent-bundle.js','fixture bundled output');
- const receipt=coreStateReceipt(root);
- const coreTransforms=Object.entries(receipt.files).map(([path,entry])=>({path,sourceSha256:entry.beforeSha256,outputSha256:entry.afterSha256}));
- return {root,source,policy,write,json,save,bundle,coreTransforms};
+ const result=mobileUuidFixture();
+ t.after(result.cleanup);
+ return result;
 }
 function transform(f){
  const adapter=createMobileUuidAdapter(f.root,f.source);let load;

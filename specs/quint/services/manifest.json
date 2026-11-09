@@ -1860,6 +1860,54 @@
         "maxSteps": 80,
         "maxVerifyDepth": 6
       }
+    },
+    {
+      "path": "specs/quint/services/MobileBundleAdmission.qnt",
+      "module": "MobileBundleAdmission",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "freshReceiptAdmissionTest",
+        "bundleChangeRequiresFreshReceiptTest",
+        "producerPolicyAndReceiptAreSeparateTest",
+        "connectorTransformRequiredOnIssueAndVerifyTest",
+        "malformedReceiptReadbackTest",
+        "candidateAndPersistedReceiptCanDivergeTest"
+      ],
+      "invariants": [
+        "AdmitRequiresCurrentExactReceipt",
+        "AdmitRequiresReviewedInputs",
+        "AdmitRequiresExistingBundle",
+        "CandidateRecordsExactTransforms"
+      ],
+      "sources": [
+        "scripts/mobile-uuid-adapter.mjs",
+        "scripts/core-state-patch.mjs",
+        "scripts/build-mobile-agent.mjs",
+        "scripts/mobile-bundle-smoke.mjs",
+        "patches/eliza/mobile-uuid-build.json",
+        "patches/eliza/core-state-manifest.json",
+        "patches/eliza/plugin-connector-custody.patch",
+        "upstream.lock.json",
+        "vendor/eliza/bun.lock",
+        "vendor/eliza/packages/agent/scripts/build-mobile-bundle.ts"
+      ],
+      "stateMapping": {
+        "files": "Exact reviewed policy and producer, adapter, source stamp and selected bundle digest equality classes",
+        "fault/uuid/core": "Fixture input mutations and exact observed UUID/core onLoad transform records, including the required connector target",
+        "candidate/stored": "Actual helper return and independent receipt slot bytes, with format and binding faults",
+        "outcome": "Actual input, issue or readback result category at each synthetic checkpoint"
+      },
+      "abstractions": [
+        "One selected directory, one synthetic input fault at a time, two coherent producer/policy and valid file identity variants. UUID and reviewed core hook records are materialized against exact copied inputs.",
+        "Admission compares smoke claim fields and complete receipt identity. Smoke execution, actual staging copy timing, interruption and installed runtime remain separate."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 6
+      }
     }
   ]
 }
