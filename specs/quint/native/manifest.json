@@ -2520,6 +2520,59 @@
         "maxSteps": 80,
         "maxVerifyDepth": 4
       }
+    },
+    {
+      "path": "specs/quint/native/NativeGmailBackground.qnt",
+      "module": "NativeGmailBackground",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "continuationSurvivesRecreationAndSameSelectionTest",
+        "workerRetiredByCredentialTest",
+        "stoppedWorkerRetriesWithoutPageTest",
+        "postcommitFaultKeepsCursorTest",
+        "withdrawHeldOtherGrantAsBuiltTest",
+        "capturedTapCanSettleAfterRemoteRevokeAsBuiltTest",
+        "uncertainNoticeNeverRepostsTest"
+      ],
+      "invariants": [
+        "RetiredSelectionIsEmpty",
+        "ExactSchedule",
+        "ContinuationKeepsBaseline",
+        "VisibleNoticeIsPosted",
+        "TapNeedsRetainedNotice",
+        "AdmissionEpoch"
+      ],
+      "sources": [
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/GmailBackground.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/GmailDeliveryWorker.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaGmailPlugin.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CloudDeployment.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCredentialStore.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/LocalAgentProviderAdmission.java",
+        "vendor/eliza/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/MailBackgroundDelivery.java",
+        "vendor/eliza/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/MailHistoryReconciliation.java"
+      ],
+      "stateMapping": {
+        "credential/remoteOwner/grants/reset": "Synthetic raw credential classes, remotely reported owner/grants and pending reset",
+        "generation/grant/owner/boundCredential/cursor/continuation/phase/incomplete/checked": "Selected encrypted row, exact owner and decimal history progress",
+        "latestGeneration/attempt/admitted/configuring/configOwner/configCredential/configAttempt/configGrantVerified": "Actual generation assignment and admitted epoch with one held account response",
+        "periodic/catchup/schedules/cancels": "Closed WorkManager command names, generations and request counts",
+        "workGeneration/workEpoch/workReply/historyReads/process": "Exact worker snapshot and result, page reads and reconstruction",
+        "notice/tap/visible/posts/allowed/observable/locked/bridgeReply": "Ledger and exact pending/consume/release, synthetic posting and foreground readback"
+      },
+      "abstractions": [
+        "Two grants and remote owners, three credential equality classes, one retained notice and one held transport callback across two bridge instances.",
+        "Four-page Worker checkpoint, 20-digit decimal cursor examples, synthetic work commands, selected HTTP outcomes and pre/postcommit storage failures.",
+        "As-built exact grant retirement checks the saved grant, and captured tap settlement uses local credential/generation only. Both divergences are preserved in the source campaign.",
+        "Android and provider effects are closed. WorkManager delivery, real durable storage and installed notification/Activity enforcement remain outside the campaign."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 4
+      }
     }
   ]
 }

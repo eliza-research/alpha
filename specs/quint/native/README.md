@@ -800,3 +800,25 @@ bytes unchanged and that a reminder creation retains its original result.
 The ports provide one selected journal row, storage interruption, deletion
 receipt evidence and notification active-list matches. No notification,
 reminder, deletion, provider or Android device action executes.
+
+### Native Gmail background delivery
+
+`NativeGmailBackground` joins the Alpha WorkManager worker and bridge to
+the pinned mail delivery and history engine. The source replay observes
+the installed schedule identities, network constraint, periodic UPDATE
+and catch-up KEEP commands, exact input generation, status and retry
+classification. It checks that a four-page retry keeps the original
+20-digit cursor and continuation, including after reconstruction and
+same-owner revalidation. Only the final page advances that cursor.
+Credential retirement and pending reset fence a held worker response.
+A synthetic failure after a durable page write retains the new cursor.
+
+Two closed JVM schedules preserve the as-built divergences. A held
+configuration for grant B can commit after a second bridge withdraws B
+while grant A remains saved. The check compares only the saved grant.
+A captured token also remains locally settleable after the remote grant
+is revoked and pending readback refuses. Exact consume opens the retained
+notice and cancels the synthetic alert. Question release clears the
+question without consuming the notice. The replay holds the synthetic
+notification and vault bytes, and intercepts all child-JVM URL opens.
+No real mailbox, Android job, alert, permission or provider action runs.
