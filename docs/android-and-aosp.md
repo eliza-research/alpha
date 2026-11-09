@@ -298,6 +298,11 @@ of this package/flavor/signing family and never opens the permission page.
 Revoking this permission stops automatic installation; a later manual Install tap
 can reopen the permission page. Provision it before distributing the batch.
 
+The confirmation timing below describes manual installation. Automatic sessions
+add `/automatic` to their durable session binding and keep Android's optional
+confirmation quiet across a bridge restart. They use the same unknown-session
+fence; an explicit **Continue update** is required to open a kept confirmation.
+
 The one manifest URL is `updateManifestUrl` in `app.config.json`; `android/app/product.gradle`
 requires HTTPS and emits it as `BuildConfig.ALPHA_UPDATE_MANIFEST_URL`. The default,
 `https://github.com/eliza-research/alphaphone/releases/download/app-stable/alpha-update-stable.json`,

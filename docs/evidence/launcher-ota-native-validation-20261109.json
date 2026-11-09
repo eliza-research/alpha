@@ -4,12 +4,12 @@
   "scope": "Native host source tests and separate Android platform fixture; no product APK, HOME, AOSP image, physical-device, real-service or user acceptance",
   "sources": {
     "android/app/src/main/AndroidManifest.xml": "f6a3389cb5359f4e899a43d32e05761a51b8981b33f83dd01621c21e9e1a4fd0",
-    "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java": "bea8e921170b08f2e35131d03a4c8425ae001d955d6bff9e6c9f822418cb5b3a",
+    "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java": "beec81e67179e6ee8efedf522f4a0ebf3f068ccaf4bb46c94034ccc4ce13de0e",
     "android/app/src/main/java/ai/elizaresearch/alphaphone/PluginWorkers.java": "1348add936da232412999b23cfb48fbbc08a5243f2b4a8075626e7a855ac3007",
     "scripts/test-automatic-update-platform.mjs": "60b63165a578a3ab96b3220c6b5a09a134b05a141c9f4d51b484c3c33d309326",
     "test/app-update.test.mjs": "38ce28f6787fa383adc8236b89497a883b6ca052f3100f3988e10d0ad977a686",
     "test/fixtures/UpdateDownloadTest.java": "5313e75f7aca5a84d02ce8ee3f13049516d9b51fad322d7c20d2eaf77e98a538",
-    "test/fixtures/UpdateFlowTest.java": "aa384a99f0855f911483f98b4e0f1f978bdfe66f95cc1fce26a34f9a18a88445",
+    "test/fixtures/UpdateFlowTest.java": "1690841d74bd744f35b6b21501d9c9d27c6e8b53f234782deb17bdda7964cf48",
     "test/fixtures/app-update-jvm/ai/eliza/plugins/agent/connection/ConnectionTransport.java": "e99cbf50814941e84e4b6863807db71421a1bdb69e45e0d281dcfaf838be6448",
     "test/fixtures/app-update-jvm/ai/elizaresearch/alphaphone/AlphaImageCapability.java": "051bd1397c9ba79614112bc3a75aa2ec1ba0136fd48d18d74cc4649b23707da7",
     "test/fixtures/app-update-jvm/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java": "48ec551eccfa1c436f2352d5e2ea23b18b3cf47d6bcc511280f7b37a3726370e",
@@ -28,7 +28,7 @@
     "test/fixtures/app-update-jvm/android/content/pm/ApplicationInfo.java": "361ffa0d4c18dbd35da4077163d9b5a9ca341596ed05b8a49e2ffb9d45a387c9",
     "test/fixtures/app-update-jvm/android/content/pm/PackageInfo.java": "1eb35afe2462891eacdfec0a5c2f7e3a13e387b6a44ea69e2eb8a6a7657e630e",
     "test/fixtures/app-update-jvm/android/content/pm/PackageInstaller.java": "25153262bec547e024f262fa54d0bc49dc58d5998b66e2bf6a38e168b301a872",
-    "test/fixtures/app-update-jvm/android/content/pm/PackageManager.java": "6994fd05ec9cd94e6aa04fc0d3a47d3d0dc49d3659a48836a5e6e4c6bdb9013a",
+    "test/fixtures/app-update-jvm/android/content/pm/PackageManager.java": "117f87e339c4d36dfbe2e4ef15b0fc648f638029fbbeba0c3bf8619e6db90735",
     "test/fixtures/app-update-jvm/android/content/pm/Signature.java": "d01ed6c2631f453caacd61ec93eac32f7fc9f5b2e3575ee7bea9a1611940f27f",
     "test/fixtures/app-update-jvm/android/content/pm/SigningInfo.java": "50dae45fb55576cf2e45aefe84f9042e17449070873614c251d95a8750b05f62",
     "test/fixtures/app-update-jvm/android/net/Uri.java": "2a82de6184044960b7d1d5f263465322e7e5520e483c01b22c166ba4c02ba431",
@@ -59,9 +59,10 @@
       "automatic pending user action never opens a dialog or restarts resident; explicit Continue uses same session",
       "automatic MainActivity resumed/focused/unlocked admission; sideload has no Telecom requirement; admitted image defers active, missing or denied call state",
       "foreground lost after download/staging or call begins/unknown after resident stop prevents commit and reconciles owned pause",
-      "assistant and power-voice subclasses cannot initiate an automatic update outside the main surface"
+      "assistant and power-voice subclasses cannot initiate an automatic update outside the main surface",
+      "install consent revoked between native reads never opens Settings automatically; explicit manual permission handoff remains available"
     ],
-    "durationSecondsReported": 52.16
+    "durationSecondsReported": 12.75
   },
   "platform": {
     "outcome": "incomplete",
