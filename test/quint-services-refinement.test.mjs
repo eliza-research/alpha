@@ -1,11 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-import {closeSync, fstatSync, mkdtempSync, openSync, readFileSync, readSync, rmSync} from 'node:fs';
+import {closeSync, fstatSync, mkdtempSync, openSync, readSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
+import {loadModels} from '../scripts/quint-lib.mjs';
 
 test('service components and coordinators check real-source traces and preserve explicit platform obligations', {timeout: 900000}, () => {
+  const expected = new Set(loadModels().filter(model => model.family === 'services').map(model => model.module));
   const directory = mkdtempSync(join(tmpdir(), 'alpha-quint-services-'));
   const log = openSync(join(directory, 'run.log'), 'w+');
   try {
@@ -27,8 +29,6 @@ test('service components and coordinators check real-source traces and preserve 
       assert.fail(`Service refinement exited with ${result.error ?? result.signal ?? result.status}\n${tail.toString('utf8', 0, read)}`);
     }
     const {models, traces, obligations} = JSON.parse(result.output[3]);
-    const manifest = JSON.parse(readFileSync(new URL('../specs/quint/services/manifest.json', import.meta.url)));
-    const expected = new Set(manifest.map(model => model.module));
     assert.deepEqual(new Set(models), expected);
     assert.deepEqual(models.filter((model, index) => models.indexOf(model) !== index).sort(),
       ['GoogleAccounts', 'IdentitySession', 'InboxCoordinator']);
