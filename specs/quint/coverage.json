@@ -618341,14 +618341,6 @@
       "sha256": "fab44bf6ca71b9cf872a8b4c830ca1e0b79740b064f1d81d1b5749e9379dfc8e"
     },
     {
-      "path": "patches/eliza/local-inference-live-asr.patch",
-      "models": [
-        "VoiceSession",
-        "SpeechResources"
-      ],
-      "sha256": "9f1076b02370e0d7e719f827326dfdc601eaf4152ad19cb33cf2bdb881064eaf"
-    },
-    {
       "path": "patches/eliza/local-speech-streaming.patch",
       "models": [
         "SpeechResources",
