@@ -3,48 +3,84 @@ import {openLegacyNotes} from './helpers/legacy-notes';
 import { returnToApps } from './app-navigation';
 import {test,expect,type Page} from '@playwright/test';
 test.setTimeout(60000);
-const transcript='Public action: water the plants.\nPRIVATE OMIT: internal planning.';
+const transcript='Water the plants.\nReview the irrigation schedule.';
 async function notes(page:Page){return page.evaluate(async ()=>JSON.parse((await (await import('/src/runtime/browser-notes-document.ts')).readBrowserNotesRaw())||'{"records":[]}').records);}
 async function setup(page:Page,actions=false){
  await page.addInitScript(()=>{if(!localStorage.getItem('alpha.connection.selection.v1'))localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));});
  await page.goto('/?mode=dev&tools=1',{waitUntil:'domcontentloaded'});await page.getByRole('button',{name:'Settings',exact:true}).click();await openConnectionDiagnostics(page);await page.getByRole('button',{name:'Connect development profile'}).click();await returnToApps(page);await openLegacyNotes(page);await page.getByRole('button',{name:'New note',exact:true}).click();await page.getByRole('textbox',{name:'Title',exact:true}).fill('Meeting recording');await page.getByRole('textbox',{name:'Note',exact:true}).fill(transcript);await expect.poll(async()=>(await notes(page))[0]?.body).toBe(transcript);
  await page.evaluate(async({transcript,actions})=>{const store=JSON.parse((await (await import('/src/runtime/browser-notes-document.ts')).readBrowserNotesRaw())!),note=store.records[0];const bytes=new Uint8Array(3244),v=new DataView(bytes.buffer);for(const [offset,text]of [[0,'RIFF'],[8,'WAVE'],[12,'fmt '],[36,'data']] as const)for(let i=0;i<text.length;i++)bytes[offset+i]=text.charCodeAt(i);v.setUint32(4,bytes.length-8,true);v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,16000,true);v.setUint32(28,32000,true);v.setUint16(32,2,true);v.setUint16(34,16,true);v.setUint32(40,3200,true);const{retainAudio}=await import('/src/browser/note-audio-store.ts');note.audio=await retainAudio('question-audio',note.id,transcript,{blob:new Blob([bytes],{type:'audio/wav'}),durationMs:100});Object.assign(note,{kind:'voice',dur:0.1,summary:actions?['Reviewed meeting summary']:[],actions:actions?[{t:'Water the plants',done:false},{t:'Already handled',done:true}]:[],onCal:actions,lines:[{s:'me',at:0,t:transcript}]});(await (await import('/src/runtime/browser-notes-document.ts')).browserNotesPort.compareExchange((await (await import('/src/runtime/browser-notes-document.ts')).browserNotesPort.read())!,JSON.stringify(store)));}, {transcript,actions});await page.reload({waitUntil:'domcontentloaded'});await openLegacyNotes(page);await page.getByRole('button',{name:'Open Meeting recording',exact:true}).click();
 }
-test('recording transcript is reviewed and edited before a separate Send',async({page},info)=>{
- await setup(page);const before=await notes(page);await expect(page.getByText('Too short to summarize',{exact:true})).toHaveCount(0);await page.getByRole('button',{name:'Review transcript with Alpha',exact:true}).click();const review=page.getByRole('dialog',{name:'Ask about selected content'});await expect(review.getByRole('textbox',{name:'Question about content'})).toHaveValue(/Do not change or schedule anything/);await expect(review.getByRole('textbox',{name:'Content excerpt'})).toHaveValue(transcript);await review.getByRole('textbox',{name:'Content excerpt'}).fill('Public action: water the plants.');await page.screenshot({path:info.outputPath('recording-question.png')});await review.getByRole('button',{name:'Use in conversation',exact:true}).click();await expect(review).toHaveCount(0);const draft=page.locator('[data-alpha-layer="conversation"]').getByRole('textbox');await expect(draft).toHaveValue(/Public action/);await expect(draft).not.toHaveValue(/PRIVATE OMIT/);await expect(page.getByText('Development reply. Edit this response in Agent connection.',{exact:true})).toHaveCount(0);expect(await notes(page)).toEqual(before);await page.getByRole('button',{name:'Send',exact:true}).click();await expect(page.getByText('Development reply. Edit this response in Agent connection.',{exact:true})).toBeVisible();expect(await notes(page)).toEqual(before);
-});
-test('Cancel and HOME retire transcript review without changing the recording',async({page})=>{
- await setup(page);const before=await notes(page);await page.getByRole('button',{name:'Review transcript with Alpha',exact:true}).click();await page.getByRole('dialog',{name:'Ask about selected content'}).getByRole('button',{name:'Cancel',exact:true}).click();expect(await notes(page)).toEqual(before);await page.getByRole('button',{name:'Review transcript with Alpha',exact:true}).click();await page.evaluate(()=>window.dispatchEvent(new Event('launcher-home')));await expect(page.getByRole('dialog',{name:'Ask about selected content'})).toHaveCount(0);expect(await notes(page)).toEqual(before);
-});
-test('changed recording refuses the old excerpt without sending',async({page})=>{
- await setup(page);await page.getByRole('button',{name:'Review transcript with Alpha',exact:true}).click();await page.locator('input[aria-label="Title"]:visible').last().evaluate((title:HTMLInputElement)=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(title,'Renamed recording');title.dispatchEvent(new Event('input',{bubbles:true}));title.dispatchEvent(new Event('change',{bubbles:true}));});await expect.poll(async()=>(await notes(page))[0].title).toBe('Renamed recording');const review=page.getByRole('dialog',{name:'Ask about selected content'});await review.getByRole('button',{name:'Use in conversation',exact:true}).click();await expect(review.getByRole('status')).toContainText('Selection changed');await expect(page.getByRole('button',{name:'Send',exact:true})).toHaveCount(0);
-});
-test('retained action items open a reminder draft and never claim scheduling before Save',async({page})=>{
- await setup(page,true);const before=await notes(page);await expect(page.getByRole('button',{name:'Added to calendar',exact:true})).toHaveCount(0);await page.getByRole('button',{name:'Review reminder draft',exact:true}).click();await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveValue('');await expect(page.getByRole('textbox',{name:'Notes',exact:true})).toHaveValue('Water the plants');expect(await page.evaluate(async ()=>JSON.parse((await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())||'{"reminders":[]}').reminders)).toHaveLength(0);await page.getByRole('button',{name:'Back to calendar',exact:true}).last().click();expect(await notes(page)).toEqual(before);
-});
-async function answerReview(page:Page){
- await page.getByRole('button',{name:'Review transcript with Alpha',exact:true}).click();const question=page.getByRole('dialog',{name:'Ask about selected content'});await question.getByRole('textbox',{name:'Content excerpt'}).fill('Public action: water the plants.');await question.getByRole('button',{name:'Use in conversation',exact:true}).click();await page.getByRole('button',{name:'Send',exact:true}).click();await page.getByText('Review summary note',{exact:true}).click();return page.getByRole('dialog',{name:'Save reviewed summary note'});
+
+// The owner removed the transcript-review/summary wizard. The current flow attaches
+// the selected recording to a normal chat draft; sending remains a separate action.
+const attachment=(page:Page)=>page.getByRole('group',{name:'Attached transcript',exact:true});
+const draft=(page:Page)=>page.locator('textarea[data-alpha-composer]:visible').first();
+async function captureSends(page:Page){
+ await page.evaluate(async()=>{const {alphaClient}=await import('/src/runtime/alpha-client.ts');const send=alphaClient.send.bind(alphaClient);(window as any).recordingRequests=[];alphaClient.send=async(...args:any[])=>{(window as any).recordingRequests.push({text:args[0],context:structuredClone(alphaClient.getState().context)});return send(...args);};});
 }
-for(const disabled of [false,true])test(`reviewed recording summary to reminder completion, notifications ${disabled?'disabled':'enabled'}`,async({page},info)=>{
- await page.clock.setFixedTime(new Date('2027-03-13T00:00Z'));if(disabled)await page.addInitScript(()=>localStorage.setItem('alpha.browser.notification-policy.v1',JSON.stringify({appEnabled:false})));
- await setup(page);const before=(await notes(page))[0];let review=await answerReview(page);await review.getByRole('button',{name:'Cancel',exact:true}).click();expect((await notes(page))[0]).toEqual(before);
- await page.getByText('Review summary note',{exact:true}).click();review=page.getByRole('dialog',{name:'Save reviewed summary note'});await review.getByRole('textbox',{name:'Summary note text'}).fill('The plants need watering.');await review.getByRole('textbox',{name:'Action items, one per line'}).fill('Water the plants');await page.screenshot({path:info.outputPath('review-recording-summary.png')});await review.getByRole('button',{name:'Save recording summary',exact:true}).click();await expect(review).toHaveCount(0);await expect(page.getByText('Recording summary saved',{exact:true})).toBeVisible();const retained=await notes(page);expect(retained).toHaveLength(1);expect(retained[0]).toMatchObject({id:before.id,audio:before.audio,body:before.body,summary:['The plants need watering.'],actions:[{t:'Water the plants',done:false}]});
- await page.reload({waitUntil:'domcontentloaded'});await openLegacyNotes(page);await page.getByRole('button',{name:'Open Meeting recording',exact:true}).click();await expect(page.getByText('The plants need watering.',{exact:true})).toBeVisible();await page.getByRole('button',{name:'Review reminder draft',exact:true}).click();await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveValue('');await expect(page.getByRole('textbox',{name:'Notes',exact:true})).toHaveValue('Water the plants');await page.getByRole('textbox',{name:'Title',exact:true}).fill('Water the plants');await page.getByRole('button',{name:'Save event',exact:true}).click();await expect(page.getByRole('button',{name:'Save event',exact:true})).toHaveCount(0);
- if(disabled)await expect(page.getByText("Saved. Notifications are off, so it won't alert.",{exact:true})).toBeVisible();const row=await page.evaluate(async ()=>JSON.parse((await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())!).reminders[0]);expect(row.status).toBe(disabled?'permission-denied':'scheduled');await page.clock.setFixedTime(new Date(row.at+1));await returnToApps(page);await page.getByRole('button',{name:'Device controls',exact:true}).click();await page.getByRole('button',{name:'Notifications',exact:true}).click();
- const open=page.getByRole('button',{name:'Open Water the plants',exact:true});
- if(disabled){await expect(open).toHaveCount(0);await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('button',{name:'Calendar',exact:true}).click();await page.getByRole('button',{name:/^Water the plants,/}).click();await expect(page.getByText(/Not delivered · notifications were disabled/)).toBeVisible();}
- else await open.click();
- await page.getByRole('button',{name:'Complete reminder occurrence',exact:true}).click();await expect.poll(()=>page.evaluate(async ()=>JSON.parse((await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())!).reminders[0].status)).toBe('completed');expect((await notes(page))[0].audio).toEqual(before.audio);
+const sentCount=(page:Page)=>page.evaluate(()=>(window as any).recordingRequests.length);
+async function attach(page:Page){
+ await page.getByRole('button',{name:'Ask Alpha about this transcript',exact:true}).click();
+ await expect(attachment(page)).toBeVisible();
+ await expect(page.getByRole('dialog',{name:'Ask about selected content',exact:true})).toHaveCount(0);
+}
+async function sendAttached(page:Page){
+ await attach(page);await page.getByRole('button',{name:'Send',exact:true}).click();
+ await expect(page.getByText('Development reply. Edit this response in Agent connection.',{exact:true})).toBeVisible();
+ await expect(attachment(page)).toHaveCount(0);
+}
+
+test('a transcript attachment prefills an editable question without sending or changing the recording',async({page})=>{
+ await setup(page);await captureSends(page);const before=await notes(page);
+ await attach(page);await expect(draft(page)).toHaveValue('Summarize this for me');
+ await expect(attachment(page)).toContainText('Meeting recording');await expect(attachment(page)).not.toContainText(transcript);
+ expect(await sentCount(page)).toBe(0);expect(await notes(page)).toEqual(before);
+ await draft(page).fill('What should I do next?');await attachment(page).getByRole('button',{name:'Remove transcript',exact:true}).click();
+ await expect(attachment(page)).toHaveCount(0);await expect(draft(page)).toHaveValue('What should I do next?');expect(await notes(page)).toEqual(before);
 });
-test('changed recording cannot accept an answer for its older transcript',async({page})=>{
- await setup(page);const review=await answerReview(page);await page.locator('input[aria-label="Title"]:visible').last().evaluate((title:HTMLInputElement)=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(title,'Changed while reviewing');title.dispatchEvent(new Event('input',{bubbles:true}));title.dispatchEvent(new Event('change',{bubbles:true}));});await expect.poll(async()=>(await notes(page))[0].title).toBe('Changed while reviewing');await review.getByRole('button',{name:'Save recording summary',exact:true}).click();await expect(review.getByRole('status')).toContainText('Recording, agent or conversation changed');expect((await notes(page))[0].summary).toEqual([]);
+
+test('Send keeps the compact transcript with its message and leaves the original recording unchanged',async({page})=>{
+ await setup(page,true);await captureSends(page);const before=await notes(page);
+ await expect(page.getByRole('button',{name:/^(Review reminder|Review event|Review transcript with Alpha)/})).toHaveCount(0);
+ await sendAttached(page);expect(await sentCount(page)).toBe(1);
+ const sent=page.locator('[aria-label="Sent transcript"]');await expect(sent).toHaveCount(1);await expect(sent).toContainText('Meeting recording');
+ await expect(sent.locator('..').locator('[data-alpha-message-text]')).toHaveText('Summarize this for me');
+ const request=await page.evaluate(()=>(window as any).recordingRequests[0]);expect(request.text).toContain('Use the transcript of the selected voice note');expect(request.context.view).toBe('notes');expect(request.context.selectedObject.id).toBe(before[0].id);
+ expect(await notes(page)).toEqual(before);await expect(page.getByRole('dialog',{name:'Review recording summary',exact:true})).toHaveCount(0);
 });
-test('recording summary storage refusal never creates a duplicate or claims completion',async({page})=>{
- await setup(page);const before=await notes(page),review=await answerReview(page);await page.evaluate(()=>{const set=IDBObjectStore.prototype.put;IDBObjectStore.prototype.put=function(value,key){if(key==='alpha.browser.notes.v1')throw new DOMException('Full','QuotaExceededError');return set.call(this,value,key);};});await review.getByRole('button',{name:'Save recording summary',exact:true}).click();await expect(review.getByRole('status')).toContainText('Save is unconfirmed');await expect(review.getByRole('button',{name:'Save recording summary',exact:true})).toBeDisabled();expect(await notes(page)).toEqual(before);await review.getByRole('button',{name:'Cancel',exact:true}).click();await expect(page.getByText('Check Notes before retrying',{exact:true})).toBeVisible();
+
+test('reloading restores the transcript attachment on the sent message',async({page},info)=>{
+ await setup(page);await captureSends(page);const before=await notes(page);await sendAttached(page);
+ await page.reload();
+ await expect.poll(()=>page.evaluate(async()=>{const state=(await import('/src/runtime/connection-ui.tsx')).connectionController.getSnapshot();return {ready:state.startupResolved,messages:state.history?.messages.length,error:state.historyError};}),{timeout:20000}).toMatchObject({ready:true,messages:2});
+ await page.getByRole('button',{name:'Open conversation',exact:true}).click();
+ const sent=page.locator('[aria-label="Sent transcript"]');await expect(sent).toHaveCount(1);await expect(sent).toContainText('Meeting recording');
+ await expect(sent.locator('..').locator('[data-alpha-message-text]')).toHaveText('Summarize this for me');
+ await expect(attachment(page)).toHaveCount(0);expect(await notes(page)).toEqual(before);
+ await page.getByRole('button',{name:'Expand chat',exact:true}).click();
+ await expect(sent).toBeInViewport();
+ await page.screenshot({path:info.outputPath('restored-transcript.png')});
 });
-test('opening the connection chooser retires a recording question',async({page})=>{
- await setup(page);await page.getByRole('button',{name:'Review transcript with Alpha',exact:true}).click();await page.evaluate(async()=>{const{connectionController}=await import('/src/runtime/connection-ui.tsx');connectionController.open();});await expect(page.getByRole('dialog',{name:'Ask about selected content'})).toHaveCount(0);
+
+test('changing the recording before Send refuses the stale attachment',async({page})=>{
+ await setup(page);await captureSends(page);await attach(page);
+ await page.getByRole('button',{name:'Minimize chat',exact:true}).click();
+ await page.getByRole('textbox',{name:'Title',exact:true}).fill('Changed recording');
+ await expect.poll(async()=>(await notes(page))[0].title).toBe('Changed recording');
+ await page.getByRole('button',{name:'Open conversation',exact:true}).click();await page.getByRole('button',{name:'Send',exact:true}).click();
+ await expect(page.getByText('The recording changed. Remove the transcript or attach it again.',{exact:true})).toBeVisible();
+ expect(await sentCount(page)).toBe(0);expect((await notes(page))[0].body).toBe(transcript);
 });
-test('structured recording answer prefills editable summary and actions without saving',async({page})=>{
- await setup(page);const before=await notes(page);await page.evaluate(async()=>{const{alphaClient}=await import('/src/runtime/alpha-client.ts');const send=alphaClient.send.bind(alphaClient);alphaClient.send=async(...args:any[])=>({...await send(...args),text:JSON.stringify({summary:'The plants need watering.',actions:['Water the plants','Review irrigation']})});});const review=await answerReview(page);await expect(review.getByRole('textbox',{name:'Summary note text'})).toHaveValue('The plants need watering.');await expect(review.getByRole('textbox',{name:'Action items, one per line'})).toHaveValue('Water the plants\nReview irrigation');expect(await notes(page)).toEqual(before);await review.getByRole('textbox',{name:'Action items, one per line'}).fill('Water the plants');await review.getByRole('button',{name:'Save recording summary',exact:true}).click();await expect(review).toHaveCount(0);expect((await notes(page))[0].actions).toEqual([{t:'Water the plants',done:false}]);expect(await page.evaluate(async ()=>JSON.parse((await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())||'{"reminders":[]}').reminders)).toHaveLength(0);
+
+test('switching away from the connection retires the draft attachment without changing its recording',async({page})=>{
+ await setup(page);await captureSends(page);const before=await notes(page);await attach(page);
+ await page.evaluate(async()=>{await(await import('/src/runtime/connection-ui.tsx')).connectionController.offline();});
+ await expect(attachment(page)).toHaveCount(0);expect(await sentCount(page)).toBe(0);expect(await notes(page)).toEqual(before);
+});
+
+test('an unsent refusal retains the transcript and question for an explicit retry',async({page})=>{
+ await setup(page);await captureSends(page);const before=await notes(page);await attach(page);
+ await page.evaluate(async()=>{const {alphaClient,AlphaClientError}=await import('/src/runtime/alpha-client.ts');alphaClient.send=async()=>{(window as any).recordingRequests.push({refused:true});throw new AlphaClientError('busy','Controlled send refusal');};});
+ await page.getByRole('button',{name:'Send',exact:true}).click();await expect(draft(page)).toHaveValue('Summarize this for me');await expect(attachment(page)).toBeVisible();
+ await expect(page.locator('[aria-label="Sent transcript"]')).toHaveCount(0);expect(await sentCount(page)).toBe(1);expect(await notes(page)).toEqual(before);
 });

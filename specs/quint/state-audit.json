@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "b1817660a0347ae19551b9ee296410fe55f02d59",
-  "ledgerSha256": "93e647d6ae3f470f578c1d3910018d7598a23ffdebd6a1513bab0887cb56c4bb",
+  "ledgerSha256": "50079671ae712f7b3c8398cfa87ee7d572bd0551e152ba3eb49ec475c6035776",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -33306,7 +33306,7 @@
     },
     {
       "path": "apps/app/src/prototype/agent-adapter.ts",
-      "sha256": "489a190c36ad71a6055b980ca904c603079684a1d5304764350ef6170bd73e9a",
+      "sha256": "0f7dd0e6e0275afccc1378aeb4e1f1f4a69b48a06811604feff65159aa176b7f",
       "allocatedModels": [
         "Application",
         "AssistantConversation",
@@ -33337,181 +33337,181 @@
         },
         {
           "owner": "trackDispatch",
-          "line": 199,
+          "line": 200,
           "bindings": 1,
           "writes": 3
         },
         {
           "owner": "installAgentAdapter",
-          "line": 248,
+          "line": 249,
           "bindings": 3,
           "writes": 38
         },
         {
           "owner": "installAgentAdapter.sizeComposer",
-          "line": 273,
+          "line": 274,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "installAgentAdapter.keepNotesDraft",
-          "line": 286,
+          "line": 287,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAgentAdapter.keepNotesDraft.ArrowFunction@288",
-          "line": 289,
+          "owner": "installAgentAdapter.keepNotesDraft.ArrowFunction@289",
+          "line": 290,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installAgentAdapter.resumeNotesDraft",
-          "line": 300,
+          "line": 301,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installAgentAdapter.openNativeNotesRecovery",
-          "line": 343,
+          "line": 344,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@378",
-          "line": 379,
+          "owner": "installAgentAdapter.FunctionExpression@379",
+          "line": 380,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "installAgentAdapter.completeReadReply",
-          "line": 388,
+          "line": 389,
           "bindings": 1,
           "writes": 3
         },
         {
-          "owner": "installAgentAdapter.recoverPendingActions.ArrowFunction@438.ArrowFunction@441",
-          "line": 443,
+          "owner": "installAgentAdapter.recoverPendingActions.ArrowFunction@439.ArrowFunction@442",
+          "line": 444,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "installAgentAdapter.syncCanonicalNotes",
-          "line": 526,
+          "line": 527,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installAgentAdapter.syncPreviousNotesAvailability",
-          "line": 553,
+          "line": 554,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "installAgentAdapter.selectNotesSource",
-          "line": 576,
+          "line": 577,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAgentAdapter.selectNotesSource.ArrowFunction@589",
-          "line": 595,
+          "owner": "installAgentAdapter.selectNotesSource.ArrowFunction@590",
+          "line": 596,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installAgentAdapter.context",
-          "line": 630,
+          "line": 631,
           "bindings": 1,
           "writes": 11
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@675.ArrowFunction@690",
-          "line": 692,
+          "owner": "installAgentAdapter.FunctionExpression@676.ArrowFunction@691",
+          "line": 693,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@675.ArrowFunction@834",
-          "line": 836,
+          "owner": "installAgentAdapter.FunctionExpression@676.ArrowFunction@835",
+          "line": 837,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@675.ArrowFunction@891",
-          "line": 929,
+          "owner": "installAgentAdapter.FunctionExpression@676.ArrowFunction@892",
+          "line": 930,
           "bindings": 15,
           "writes": 16
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1169",
-          "line": 1172,
+          "owner": "installAgentAdapter.FunctionExpression@1170",
+          "line": 1173,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1269",
-          "line": 1270,
+          "owner": "installAgentAdapter.FunctionExpression@1270",
+          "line": 1271,
           "bindings": 1,
           "writes": 16
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1269.ArrowFunction@1281.ArrowFunction@1281",
-          "line": 1282,
+          "owner": "installAgentAdapter.FunctionExpression@1270.ArrowFunction@1282.ArrowFunction@1282",
+          "line": 1283,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAgentAdapter.recheckCloudFromCard.ArrowFunction@1359",
-          "line": 1360,
+          "owner": "installAgentAdapter.recheckCloudFromCard.ArrowFunction@1360",
+          "line": 1361,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installAgentAdapter.sendFromComposer",
-          "line": 1380,
+          "line": 1381,
           "bindings": 3,
           "writes": 3
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1400",
-          "line": 1401,
+          "owner": "installAgentAdapter.FunctionExpression@1401",
+          "line": 1402,
           "bindings": 3,
           "writes": 41
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1549",
-          "line": 1553,
+          "owner": "installAgentAdapter.FunctionExpression@1550",
+          "line": 1554,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1564",
-          "line": 1565,
+          "owner": "installAgentAdapter.FunctionExpression@1565",
+          "line": 1566,
           "bindings": 5,
           "writes": 5
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1633",
-          "line": 1634,
+          "owner": "installAgentAdapter.FunctionExpression@1634",
+          "line": 1635,
           "bindings": 13,
           "writes": 16
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1840",
-          "line": 1846,
+          "owner": "installAgentAdapter.FunctionExpression@1841",
+          "line": 1847,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1852",
-          "line": 1870,
+          "owner": "installAgentAdapter.FunctionExpression@1853",
+          "line": 1871,
           "bindings": 2,
           "writes": 4
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1979",
-          "line": 1980,
+          "owner": "installAgentAdapter.FunctionExpression@1980",
+          "line": 1981,
           "bindings": 1,
           "writes": 12
         }
@@ -41959,7 +41959,7 @@
     },
     {
       "path": "apps/app/src/runtime/connection-ui.tsx",
-      "sha256": "3e9a951a1a43dc2cd5e078c285d66b833afa8150c4f697c2f1dd584ae9167f3a",
+      "sha256": "a66bbbcffd88bc5138fd37f3475d2753aa9b45d95e8c37d2cef37d8b3aa122e4",
       "allocatedModels": [
         "Application",
         "ApplicationComposition",
@@ -42073,313 +42073,313 @@
         },
         {
           "owner": "admitCloudResident",
-          "line": 1198,
+          "line": 1199,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "recheckResidentPlan",
-          "line": 1264,
+          "line": 1265,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "restoreOwnProviderCloudServices",
-          "line": 1384,
+          "line": 1385,
           "bindings": 3,
           "writes": 3
         },
         {
           "owner": "connectResident",
-          "line": 1409,
+          "line": 1410,
           "bindings": 10,
           "writes": 13
         },
         {
           "owner": "connectCloud",
-          "line": 1504,
+          "line": 1505,
           "bindings": 6,
           "writes": 20
         },
         {
           "owner": "migrateLegacyMock",
-          "line": 1562,
+          "line": 1563,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "migrateLegacyHostedSelection",
-          "line": 1587,
+          "line": 1588,
           "bindings": 2,
           "writes": 3
         },
         {
           "owner": "ensureSelectedConversation",
-          "line": 1616,
+          "line": 1617,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "createSelectedConversation",
-          "line": 1623,
+          "line": 1624,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "effectAppliedBeforeFailure",
-          "line": 1690,
+          "line": 1691,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "scheduleStoppedReply",
-          "line": 1800,
+          "line": 1801,
           "bindings": 2,
           "writes": 1
         },
         {
           "owner": "restoreConversationHistory",
-          "line": 1856,
+          "line": 1857,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "readConversation",
-          "line": 1905,
+          "line": 1906,
           "bindings": 5,
           "writes": 11
         },
         {
           "owner": "presentActionEntry",
-          "line": 1965,
+          "line": 1966,
           "bindings": 2,
           "writes": 5
         },
         {
           "owner": "boundNavigation",
-          "line": 1998,
+          "line": 1999,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "personalAccept.ArrowFunction@2044",
-          "line": 2048,
+          "owner": "personalAccept.ArrowFunction@2045",
+          "line": 2049,
           "bindings": 2,
           "writes": 3
         },
         {
-          "owner": "personalFinalize.ArrowFunction@2056",
-          "line": 2061,
+          "owner": "personalFinalize.ArrowFunction@2057",
+          "line": 2062,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "residentBrowserLoginAction",
-          "line": 2101,
+          "line": 2102,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "rejectWorkflowPhoneAction",
-          "line": 2286,
+          "line": 2287,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "cancelReadReply",
-          "line": 2317,
+          "line": 2318,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "rejectProposal",
-          "line": 2339,
+          "line": 2340,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "getOwnerReminderNotificationBinding.openConversation",
-          "line": 2384,
+          "line": 2385,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "getAppRecordClient.request",
-          "line": 2402,
+          "line": 2403,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "getAutomationsClient.request",
-          "line": 2417,
+          "line": 2418,
           "bindings": 2,
           "writes": 3
         },
         {
-          "owner": "initialize.ArrowFunction@2559",
-          "line": 2563,
+          "owner": "initialize.ArrowFunction@2560",
+          "line": 2564,
           "bindings": 3,
           "writes": 3
         },
         {
           "owner": "configureLocal",
-          "line": 2642,
+          "line": 2643,
           "bindings": 3,
           "writes": 3
         },
         {
-          "owner": "configureLocal.ArrowFunction@2650.ArrowFunction@2656",
-          "line": 2656,
+          "owner": "configureLocal.ArrowFunction@2651.ArrowFunction@2657",
+          "line": 2657,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "selectSavedProvider",
-          "line": 2674,
+          "line": 2675,
           "bindings": 2,
           "writes": 2
         },
         {
-          "owner": "newConversation.ArrowFunction@2715",
-          "line": 2722,
+          "owner": "newConversation.ArrowFunction@2716",
+          "line": 2723,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "confirmRecovery",
-          "line": 2750,
+          "line": 2751,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "beginSignIn",
-          "line": 2807,
+          "line": 2808,
           "bindings": 3,
           "writes": 4
         },
         {
           "owner": "cancelSignIn",
-          "line": 2870,
+          "line": 2871,
           "bindings": 2,
           "writes": 4
         },
         {
-          "owner": "signInGoogle.ArrowFunction@2890",
-          "line": 2896,
+          "owner": "signInGoogle.ArrowFunction@2891",
+          "line": 2897,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "reopenGoogle",
-          "line": 2916,
+          "line": 2917,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "verifySignInCode.ArrowFunction@2948",
-          "line": 2950,
+          "owner": "verifySignInCode.ArrowFunction@2949",
+          "line": 2951,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "signInReturned",
-          "line": 2990,
+          "line": 2991,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "residentRedeem",
-          "line": 3078,
+          "line": 3079,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "residentRedeem.ArrowFunction@3081",
-          "line": 3084,
+          "owner": "residentRedeem.ArrowFunction@3082",
+          "line": 3085,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "disconnect.ArrowFunction@3203",
-          "line": 3207,
+          "owner": "disconnect.ArrowFunction@3204",
+          "line": 3208,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "cloudSignOut.ArrowFunction@3224",
-          "line": 3226,
+          "owner": "cloudSignOut.ArrowFunction@3225",
+          "line": 3227,
           "bindings": 2,
           "writes": 2
         },
         {
-          "owner": "mock.ArrowFunction@3264",
-          "line": 3271,
+          "owner": "mock.ArrowFunction@3265",
+          "line": 3272,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "truncateMessage",
-          "line": 3298,
+          "line": 3299,
           "bindings": 2,
           "writes": 1
         },
         {
           "owner": "prepareVoiceConversation",
-          "line": 3328,
+          "line": 3329,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "send",
-          "line": 3340,
+          "line": 3341,
           "bindings": 10,
           "writes": 12
         },
         {
           "owner": "ConnectionChooser",
-          "line": 3599,
+          "line": 3600,
           "bindings": 36,
           "writes": 15
         },
         {
-          "owner": "ConnectionChooser.ArrowFunction@3613",
-          "line": 3615,
+          "owner": "ConnectionChooser.ArrowFunction@3614",
+          "line": 3616,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "ConnectionChooser.ArrowFunction@3626",
-          "line": 3626,
+          "owner": "ConnectionChooser.ArrowFunction@3627",
+          "line": 3627,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "ConnectionChooser.ArrowFunction@3630",
-          "line": 3630,
+          "owner": "ConnectionChooser.ArrowFunction@3631",
+          "line": 3631,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "OwnKeyForm",
-          "line": 3999,
+          "line": 4000,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "OwnProviderChoice",
-          "line": 4020,
+          "line": 4021,
           "bindings": 4,
           "writes": 0
         },
         {
           "owner": "ProviderKeys",
-          "line": 4058,
+          "line": 4059,
           "bindings": 15,
           "writes": 16
         },
         {
           "owner": "ProviderKeys.run",
-          "line": 4076,
+          "line": 4077,
           "bindings": 1,
           "writes": 0
         }
@@ -220585,6 +220585,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "fb6ccaaab190d62eb61ecfd931388db8a1166ee394432fa6ec150235243e8489"
+    "sha256": "c7d8792080d4c5a2b0134dff405c8cbfc86aa58bcf4d6f405edf1907b005a5b1"
   }
 }
