@@ -22,23 +22,21 @@ import zipfile
 ROOT = Path(__file__).resolve().parent.parent
 LOCAL_EMBEDDING_MODEL = {'path': 'assets/agent/models/bge-small-en-v1.5-f16.gguf', 'sha256': 'f0b2fef971e8366438bfd2d9aefea1b0115919389448806d290237f638bae999'}
 
-# Independent policy for the exact Android producer's reviewed core transforms.
-MOBILE_CORE_PATCH_TARGETS = [
-    ('task-service-stop.patch', ['packages/core/src/services/task.ts']),
-    ('notes-state-runtime.patch', [
-        'plugins/plugin-notes/src/service.ts', 'plugins/plugin-notes/src/store.ts',
-        'plugins/plugin-notes/src/types.ts', 'plugins/plugin-notes/src/validation.ts',
-    ]),
-    ('turn-controller-isolation.patch', ['packages/core/src/runtime/turn-controller.ts']),
-    ('room-queue-admission.patch', ['packages/core/src/runtime/room-handler-queue.ts']),
-    ('embedding-store-identity.patch', ['packages/core/src/runtime/embeddings.ts']),
-    ('named-embedding-provenance.patch', [
-        'plugins/plugin-sql/src/base.ts', 'packages/agent/src/api/conversation-routes.ts',
-        'plugins/plugin-assistant/src/features/advanced-capabilities/experience/service.ts',
-    ]),
-    ('plugin-connector-custody.patch', ['packages/core/src/plugin-lifecycle.ts']),
+# Independent allowlist of source owners observed by the Android producer.
+MOBILE_CORE_SOURCE_TARGETS = [
+    'packages/core/src/services/task.ts',
+    'plugins/plugin-notes/src/service.ts',
+    'plugins/plugin-notes/src/store.ts',
+    'plugins/plugin-notes/src/types.ts',
+    'plugins/plugin-notes/src/validation.ts',
+    'packages/core/src/runtime/turn-controller.ts',
+    'packages/core/src/runtime/room-handler-queue.ts',
+    'packages/core/src/runtime/embeddings.ts',
+    'plugins/plugin-sql/src/base.ts',
+    'packages/agent/src/api/conversation-routes.ts',
+    'plugins/plugin-assistant/src/features/advanced-capabilities/experience/service.ts',
+    'packages/core/src/plugin-lifecycle.ts',
 ]
-
 
 def digest(stream):
     value = hashlib.sha256()
@@ -213,38 +211,33 @@ def verify(apk, release=False, runtime_profile="native", local_embeddings=False)
             expected_adapters = ['scripts/build-mobile-agent.mjs', 'scripts/mobile-uuid-adapter.mjs', 'scripts/mobile-bundle-smoke.mjs']
             if mobile_receipt.get('adapterFiles') != {name: file_hash(ROOT / name) for name in expected_adapters}:
                 raise ValueError('Packaged mobile producer adapter changed')
-            core_manifest_file = ROOT / 'patches/eliza/core-state-manifest.json'
-            core_manifest = json.loads(core_manifest_file.read_text())
-            if (set(core_manifest) != {'schema', 'baseCommit', 'patches'} or
-                    core_manifest.get('schema') != 1 or core_manifest.get('baseCommit') != pin or
-                    len(core_manifest.get('patches', [])) != len(MOBILE_CORE_PATCH_TARGETS)):
-                raise ValueError('Packaged core patch policy differs')
-            core_files, core_patches, core_transforms = {}, [], []
-            for core_patch, (patch_name, targets) in zip(core_manifest['patches'], MOBILE_CORE_PATCH_TARGETS):
-                if (set(core_patch) != {'file', 'sha256', 'targets'} or
-                        core_patch.get('file') != patch_name or len(core_patch.get('targets', [])) != len(targets) or
-                        core_patch.get('sha256') != file_hash(ROOT / 'patches/eliza' / patch_name)):
-                    raise ValueError('Packaged core patch allowlist differs')
-                for core_file, core_target in zip(core_patch['targets'], targets):
-                    if (set(core_file) != {'path', 'beforeSha256', 'afterSha256'} or
-                            core_file.get('path') != core_target or
-                            any(not re.fullmatch('[a-f0-9]{64}', str(core_file.get(key, '')))
-                                for key in ['beforeSha256', 'afterSha256'])):
-                        raise ValueError('Packaged core patch input differs')
-                    core_files[core_target] = {key: core_file[key] for key in ['beforeSha256', 'afterSha256']}
-                    core_transforms.append({'path': core_target, 'sourceSha256': core_file['beforeSha256'],
-                                            'outputSha256': core_file['afterSha256']})
-                core_patches.append({'file': patch_name, 'sha256': core_patch['sha256']})
+            core_catalog_name = 'config/upstream-core-sources.json'
+            core_catalog_file = ROOT / core_catalog_name
+            core_catalog = json.loads(core_catalog_file.read_text())
+            core_digests = core_catalog.get('files')
+            if (set(core_catalog) != {'schema', 'baseCommit', 'files'} or
+                    core_catalog.get('schema') != 1 or core_catalog.get('baseCommit') != pin or
+                    not isinstance(core_digests, dict) or list(core_digests) != MOBILE_CORE_SOURCE_TARGETS):
+                raise ValueError('Packaged core source policy differs')
+            core_files, core_transforms = {}, []
+            for target, expected_hash in core_digests.items():
+                git_bytes = subprocess.check_output(
+                    ['git', '-C', str(ROOT / 'vendor/eliza'), 'show', f'{pin}:{target}'])
+                if (hashlib.sha256(git_bytes).hexdigest() != expected_hash or
+                        file_hash(ROOT / 'vendor/eliza' / target) != expected_hash):
+                    raise ValueError('Packaged core source input differs')
+                core_files[target] = {'beforeSha256': expected_hash, 'afterSha256': expected_hash}
+                core_transforms.append({'path': target, 'sourceSha256': expected_hash,
+                                        'outputSha256': expected_hash})
             core_inputs = ['scripts/core-state-patch.mjs', 'scripts/core-state-preload.mjs',
-                           'scripts/combined-agent-source.mjs', 'patches/eliza/core-state-manifest.json'] + [
-                           'patches/eliza/' + name for name, _targets in MOBILE_CORE_PATCH_TARGETS]
-            expected_core = {'version': 1, 'baseCommit': pin,
-                             'manifestSha256': file_hash(core_manifest_file),
+                           'scripts/combined-agent-source.mjs', core_catalog_name]
+            expected_core = {'version': 2, 'baseCommit': pin,
+                             'manifestSha256': file_hash(core_catalog_file),
                              'inputHashes': {name: file_hash(ROOT / name) for name in core_inputs},
-                             'patches': core_patches, 'files': core_files,
+                             'patches': [], 'files': core_files,
                              'transforms': sorted(core_transforms, key=lambda item: item['path'])}
             if mobile_receipt.get('coreState') != expected_core:
-                raise ValueError('Packaged core state transformation differs')
+                raise ValueError('Packaged core source receipt differs')
         bundle_dependencies = json.loads(archive.read('assets/agent/agent-bundle-dependencies.json'))
         if (bundle_dependencies.get('version') != 1 or
                 bundle_dependencies.get('bundleSha256') != checks['assets/agent/agent-bundle.js'] or
