@@ -2020,7 +2020,6 @@
         "vendor/eliza/packages/core/src/runtime/room-handler-queue.ts",
         "vendor/eliza/packages/core/src/services/task.ts",
         "vendor/eliza/packages/core/src/runtime/turn-controller.ts",
-        "scripts/client-speech-patch.mjs",
         "scripts/combined-agent-source.mjs",
         "scripts/core-state-preload.mjs",
         "scripts/gmail-agent-mailbox-host.ts",
