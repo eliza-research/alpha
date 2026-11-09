@@ -2336,5 +2336,37 @@
       "Mounted pre-commit Camera leave and committed Home, preview-release latch, exact pending request owner, retired stream disposal and deliberate fresh reentry.",
       "Two browser visits and controlled canvas MediaStreams. Native permissions, conversation and media writes are separate."
     ]
+  },
+  {
+    "path": "specs/quint/application/SourceRenewalQuestion.qnt",
+    "module": "SourceRenewalQuestion",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "composeCurrentExactQuestionTest",
+      "retiredSettlementDoesNotReportTest",
+      "unavailableComposerPreservesTapTest",
+      "wrongSourceNeverOpensTest",
+      "interruptedQuestionPreservesTapTest",
+      "explicitDismissalDiscardsExactTapTest",
+      "rejectedNativeSettlementKeepsTapTest"
+    ],
+    "invariants": [
+      "DialogOwnedByCurrent",
+      "FailureOwnedByCurrent",
+      "DraftRequiresSettlement",
+      "StagesAreDisjoint"
+    ],
+    "sources": [
+      "apps/app/src/runtime/hosted-digest-ui.tsx",
+      "apps/app/src/runtime/source-renewal-question.ts",
+      "apps/app/src/runtime/hosted-notice-question.ts",
+      "apps/app/src/browser/content-question.ts"
+    ],
+    "abstractions": [
+      "Mounted notification Ask review, exact reread, native settlement, composer admission and publication within two digest binding lifetimes.",
+      "Controlled Android bridge, native tap slot and composer. Source renewal mutation and native posting are separate."
+    ]
   }
 ]

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
+import {checkSourceRenewalQuestion} from '../specs/quint/refinement/application/source-renewal-question.mjs';
 import {withHostedDigestRefresh} from '../specs/quint/refinement/application/hosted-digest-refresh.mjs';
 
 const driver = fileURLToPath(import.meta.url);
@@ -48,4 +49,10 @@ test('a renewal question leaves its exact native tap pending when the composer i
     assert.deepEqual(state.compositions, []);
     assert.deepEqual(state.settlements, []);
   }));
+});
+
+test('mounted source renewal question matches the bounded Quint projection', {timeout: 120_000}, async () => {
+  const receipt = await checkSourceRenewalQuestion([driver]);
+  assert.equal(receipt.passed, true);
+  assert.equal(receipt.traces, 11);
 });
