@@ -328,7 +328,7 @@ async function mounted(extraSources) {
   try {
     process.env.ELIZA_DEV_ALLOW_TEST_MOCKS = '';
     server = await createServer({configFile: resolve(root, 'vite.config.ts'), logLevel: 'error', cacheDir,
-      server: {host: '127.0.0.1', port: 0, strictPort: false},
+      server: {host: '127.0.0.1', port: 0, strictPort: false, hmr: false, watch: null},
       define: {'import.meta.env.VITE_ELIZA_DEV_ALLOW_TEST_MOCKS': JSON.stringify('')},
       plugins: [{name: 'quint-legacy-files-inputs', enforce: 'pre', transform(code, id) {
         const path = id.split('?')[0];

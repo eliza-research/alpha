@@ -266,8 +266,9 @@ test('explicit legacy and transition recovery retain their existing empty-day pr
   if(options.error)assert.equal(out.nativeStatusLabel,options.error,'legacy recovery detail is retained');
   assert.equal(out.empty,true);assert.equal(out.emptyText,'Free all day','existing legacy renderer presentation is unchanged');
   assert.deepEqual(out.renderedRows.map(row=>row.id),['legacy-calendar:retained']);
-  assert.equal(out.canConfirmCalendarTransition,options.status==='transition-required');
-  assert.equal(typeof out.confirmCalendarTransition,'function');
+  const canReview=options.status==='transition-required';
+  assert.equal(out.canConfirmCalendarTransition,canReview);
+  assert.equal(typeof out.confirmCalendarTransition,canReview?'function':'undefined');
   out.newEvent();assert.deepEqual(toasts,['Choose Agent Calendar to create an event.']);
   assert.equal(f.refreshes.length,reads);assert.deepEqual(f.state,before);assert.deepEqual(f.creates,[]);
  }

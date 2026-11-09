@@ -290,6 +290,8 @@ async function collect(page) {
   const input = page.locator('[data-alpha-layer="composer"] textarea[data-alpha-composer]');
   await input.focus();
   await page.setViewportSize({width: 412, height: 620});
+  // Deliver the covered frame to the mounted keyboard watcher before restoring the viewport.
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await expect(input).toBeFocused();
   const keyboard = await point('Focused composer receives a reduced viewport representing the keyboard');
   assert.equal(keyboard.dock, 'keyboard');
@@ -334,7 +336,7 @@ async function mounted(extraSources) {
   checkClientFeatures();
   const watched = new Set(['main.tsx', 'prototype/data-adapter.ts', 'prototype/home-overview-cards.ts',
     'prototype/home-shell.ts', 'prototype/settings-adapter.ts', 'prototype/automations-adapter.ts',
-    'prototype/inbox-cloud-adapter.ts'].map(path => resolve(root, 'apps/app/src/'+path)));
+    'prototype/inbox-cloud-adapter.ts', 'prototype/chat-overlay-motion-adapter.ts'].map(path => resolve(root, 'apps/app/src/'+path)));
   const sources = [...new Set([
     ...filesWithin(resolve(root, 'apps/app/src')), ...filesWithin(resolve(root, '.eliza/client-features')),
     ...filesWithin(resolve(root, 'config')), ...filesWithin(resolve(root, 'patches/eliza')),
@@ -354,7 +356,7 @@ async function mounted(extraSources) {
   try {
     process.env.ELIZA_DEV_ALLOW_TEST_MOCKS = '';
     server = await createServer({configFile: resolve(root, 'vite.config.ts'), logLevel: 'error', cacheDir,
-      server: {host: '127.0.0.1', port: 0, strictPort: false},
+      server: {host: '127.0.0.1', port: 0, strictPort: false, hmr: false, watch: null},
       define: {'import.meta.env.VITE_ELIZA_DEV_ALLOW_TEST_MOCKS': JSON.stringify('')},
       plugins: [{name: 'quint-home-layout-readback', enforce: 'pre', transform(code, id) {
         const path = id.split('?')[0];
