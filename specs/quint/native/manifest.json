@@ -2411,6 +2411,59 @@
         "maxSteps": 80,
         "maxVerifyDepth": 4
       }
+    },
+    {
+      "path": "specs/quint/native/NativeAssistantEntry.qnt",
+      "module": "NativeAssistantEntry",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "coldTrustedAttributionLostAtBridgeLoadTest",
+        "modernWarmListenerReadOnceTest",
+        "coldPowerExactOnceTest",
+        "coldPowerNeverReturnsAfterFocusLossTest",
+        "newNativeOwnerRetiresColdPinTest",
+        "stalePowerPreservesSuccessorTest",
+        "tileCancellationAndImmutableDispatchTest"
+      ],
+      "invariants": [
+        "sanitizedSurface",
+        "scopedGrant",
+        "monotoneBinding",
+        "legacyHasNoVoice",
+        "tileHasNoAuthority"
+      ],
+      "sources": [
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaAssistActivity.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPowerVoiceActivity.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaQuickSettingsTile.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/MainActivity.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java",
+        "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SenseListenerClient.java",
+        "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SenseInvocation.java",
+        "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/AssistantEntryTile.java",
+        "android/app/src/main/AndroidManifest.xml",
+        "android/consumer-host.json"
+      ],
+      "stateMapping": {
+        "sdk/now/locked/policy/account/epoch/signers/protected": "Controlled platform clock, Activity metadata, signers, keyguard and native credential admission snapshot",
+        "latest/bound/invocation": "Actual package-wide Sense lease, recorded origin, lock, arrival and native owner adoption",
+        "surfaces": "Intent projection, virtual bridge-load reentry, window events, Activity lease, focus and exact protected launch grant",
+        "tile": "Inactive presentation, callback custody and exact explicit immutable or legacy dispatch request",
+        "reply": "Legacy hint or shared take and protected claim result"
+      },
+      "abstractions": [
+        "Two Activity/bridge identities, fixed renderer generation, exact or foreign binding, one bound account snapshot and selected elapsed-time boundaries.",
+        "Closed bridge port mirrors installed Capacitor bridge assignment and virtual intent reentry. The baseline preserves overwrite of a trusted cold caller receipt by that reentry.",
+        "Power entry uses exact product pin and readback members with controlled credential and Android permission ports. Tile has at most one pending controlled unlock callback.",
+        "No Activity launches, microphone capture, Android Settings or app runtime process. OS authority and delivery are external."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 4
+      }
     }
   ]
 }
