@@ -268,7 +268,8 @@ public final class AlphaDevicePlugin extends Plugin {
     if(calls==null||calls.isInCall())return false;
    }
    return true;
-  }catch(RuntimeException unknown){return false;}
+  }catch(SecurityException denied){return false;}
+  catch(RuntimeException unknown){return false;}
  }
  /** SHA-256 of the original certificate of Alpha's one signer (apksigner's digest), which key rotation never changes: an update manifest offers an APK only to installs of that signing lineage. */
  static String appSigner(Context context)throws Exception{
