@@ -2835,7 +2835,16 @@
       "refusedSendRestoresDraftTest",
       "ownerIsolationTest",
       "conversationIsolationTest",
-      "imagePreviewDoesNotNavigateTest"
+      "imagePreviewDoesNotNavigateTest",
+      "refusedWriteKeepsDraftTest",
+      "retiredWriteKeepsOriginalSlotTest",
+      "revivedConversationDoesNotReviveWriteTest",
+      "orphanedBytesDoNotCreateHistoryTest"
+    ],
+    "invariants": [
+      "NoDoublePlacement",
+      "CurrentVisible",
+      "PreviewInPlace"
     ],
     "sources": [
       "apps/app/src/prototype/agent-adapter.ts",
@@ -2846,8 +2855,15 @@
       "apps/app/src/runtime/development-cloud-agents.ts",
       "apps/app/src/prototype/camera-adapter.ts"
     ],
+    "stateMapping": {
+      "owner/conversation/generation": "Two exact renderer bindings and the controlled sequence of their session and history lifetimes",
+      "draft/preparing/pending/heldOwner/heldConversation/heldGeneration": "Actual transcript chip, held storage call, typing state and scoped draft-controller hold port",
+      "sent/saved/recorded/visible": "Actual optimistic and restored shell rows, exact local document keys and closed transport receipts",
+      "preview/view": "In-place preview contract. The replay observes the Notes view and does not execute preview."
+    },
     "abstractions": [
-      "Finite representative identities and successful storage writes only. Models are contract checks, not complete implementation refinement or cross-device persistence proof.",
+      "Actual composer send, transcript draft projection and session/history subscription with closed document, shell, draft-controller and transport ports.",
+      "One attachment with bounded binding generations and representative owners and conversations. Physical storage, queued React commits, arbitrary overlap and image preview remain separate.",
       "Source review recorded in specs/quint/ui-return-review-20261109.md."
     ]
   },
