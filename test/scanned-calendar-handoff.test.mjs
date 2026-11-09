@@ -14,7 +14,7 @@ function fixture({status='ready',sources=1,authority='canonical',platform='web',
  const refreshes=[],creates=[],updates=[],listeners={};let published;
  class Calendar{state=state;subscribe(fn){published=fn;return()=>{};}refresh(window){refreshes.push(window);}create(sourceKey,input){creates.push({sourceKey,input});return {outcome:'created',event:created};}update(eventKey,providerVersion,input){updates.push({eventKey,providerVersion,input});return {outcome:'updated',event:null};}invalidateNext(){state.nextFresh=false;if(state.next?.event&&Date.parse(state.next.event.endAt)<=Date.now())state.next=null;}retire(){}selection(){}sourceHandle(key){return 'handle:'+key;}sourceKeyForHandle(handle){return handle.slice('handle:'.length);}}
  const connection={subscribe:()=>()=>{},getAppRecordClient:()=>recordPort};
- const install=new Function('AgentCalendar','Capacitor','connectionController','calendarSourceKey','presentCalendarIntervals','calendarFormCreate','getZonedDateParts','addDaysToLocalDate','calendarOwnerKey','agentPendingText','testMocksEnabled','canonicalCalendarRow','calendarRange','calendarEventKey','eventEditorMutability','calendarFormPatch','rememberNoteOrigin','calendarFormMinutes',code+';return installAgentCalendarAdapter;')(Calendar,{getPlatform:()=>platform},connection,c=>c.calendarId,()=>{},draft=>draft,()=>({}),()=>({}),()=>state.ownerKey,pendingText,testMocks,row,records=>({events:records}),event=>event.id,()=>({kind:'editable',providerVersion:'version-1'}),draft=>draft,async(...args)=>{remembered?.push(args);return true;},hours=>Math.round(Number(hours)*60));
+ const install=new Function('AgentCalendar','Capacitor','connectionController','calendarSourceKey','presentCalendarIntervals','calendarFormCreate','getZonedDateParts','addDaysToLocalDate','calendarOwnerKey','agentPendingText','testMocksEnabled','canonicalCalendarRow','calendarRange','calendarEventKey','eventEditorMutability','calendarFormPatch','rememberNoteOrigin','calendarFormMinutes',code+';return installAgentCalendarAdapter;')(Calendar,{getPlatform:()=>platform},connection,c=>c.calendarId,()=>{},draft=>draft,()=>({}),()=>({}),target=>target.fixtureOwnerKey??state.ownerKey,pendingText,testMocks,row,records=>({events:records}),event=>event.id,()=>({kind:'editable',providerVersion:'version-1'}),draft=>draft,async(...args)=>{remembered?.push(args);return true;},hours=>Math.round(Number(hours)*60));
 
  const opened=[];const calendar={calendarAuthority:authority,form};
  class Shell{live=true;componentDidMount(){}componentWillUnmount(){}vget(){return calendar;}vset(_view,patch){Object.assign(calendar,patch);}openView(...args){opened.push(args);}setState(){}}
@@ -26,30 +26,37 @@ function fixture({status='ready',sources=1,authority='canonical',platform='web',
 }
 const draft={id:null,creationId:'scan-operation',title:'Reviewed event',notes:'Exact OCR text',off:2,t:18.5,d:1.5,where:'Main hall',cal:'native:local',repeat:'none',allDay:false};
 test('scanned event binds to current canonical owner and source without saving',()=>{
- const f=fixture();assert.equal(f.shell.reviewScannedCalendarDraft(draft),true);
+ const f=fixture({recordPort:availablePort});assert.equal(f.shell.reviewScannedCalendarDraft(draft),true);
  const [view,payload]=f.opened[0];assert.equal(view,'calendar');
  assert.equal(payload.form.canonicalOwnerKey,'owner-A');assert.equal(payload.form.cal,'handle:primary');
  for(const field of ['title','notes','off','t','d','where','repeat','allDay'])assert.equal(payload.form[field],draft[field]);
  assert.notEqual(payload.form.creationId,draft.creationId);assert.equal(draft.cal,'native:local');
 });
 test('multiple authorized sources still default a new Alpha draft to the canonical Eliza primary',()=>{
- const f=fixture({sources:2});assert.equal(f.shell.reviewScannedCalendarDraft(draft),true);assert.equal(f.opened[0][1].form.cal,'handle:primary');
+ const f=fixture({recordPort:availablePort,sources:2});assert.equal(f.shell.reviewScannedCalendarDraft(draft),true);assert.equal(f.opened[0][1].form.cal,'handle:primary');
 });
 test('unavailable sources, preservation review and existing drafts retain camera review',()=>{
  for(const options of [{sources:0},{status:'disconnected'},{status:'transition-required'},{status:'legacy-recovery'},{authority:'legacy'},{form:{title:'Keep me'}}]){
-  const f=fixture(options);assert.equal(f.shell.reviewScannedCalendarDraft(draft),false,JSON.stringify(options));assert.deepEqual(f.opened,[]);
+  const f=fixture({recordPort:availablePort,...options});assert.equal(f.shell.reviewScannedCalendarDraft(draft),false,JSON.stringify(options));assert.deepEqual(f.opened,[]);
+ }
+});
+test('a scan cannot open Calendar without its exact current owner',()=>{
+ for(const recordPort of [null,{...availablePort,current:()=>false},{...availablePort,fixtureOwnerKey:'owner-B'}]){
+  const f=fixture({recordPort});
+  assert.equal(f.shell.reviewScannedCalendarDraft(draft),false);
+  assert.deepEqual(f.opened,[]);
  }
 });
 test('Google sources never replace the canonical Eliza destination for a new Alpha draft',()=>{
  const source=(calendarId,includeInFeed,accessRole)=>({summary:calendarId,provider:'google',side:'owner',grantId:'google-grant',calendarId,includeInFeed,accessRole});
  const local={summary:'Calendar',provider:'eliza',side:'owner',grantId:'eliza-calendar',calendarId:'primary',includeInFeed:true,accessRole:'owner'};
- const f=fixture({calendars:[local,source('owner',true,'owner'),source('holidays',true,'reader'),source('birthdays',false,'owner')]});
+ const f=fixture({recordPort:availablePort,calendars:[local,source('owner',true,'owner'),source('holidays',true,'reader'),source('birthdays',false,'owner')]});
  assert.equal(f.shell.reviewScannedCalendarDraft(draft),true);assert.equal(f.opened[0][1].form.cal,'handle:primary');
  assert.deepEqual(f.views.calendar.displaySources().sources.map(row=>[row.name,row.on,row.writable]),[['Calendar',true,true],['owner',true,true],['holidays',true,false]]);
- const googleOnly=fixture({calendars:[source('owner',true,'owner')]});assert.equal(googleOnly.shell.reviewScannedCalendarDraft(draft),false,'no direct Google fallback');
+ const googleOnly=fixture({recordPort:availablePort,calendars:[source('owner',true,'owner')]});assert.equal(googleOnly.shell.reviewScannedCalendarDraft(draft),false,'no direct Google fallback');
 });
 test('a saved "Previously connected calendars" choice reopens the one merged Calendar',()=>{
- const f=fixture({authority:'legacy-google'});assert.equal(f.calendar.calendarAuthority,'canonical');
+ const f=fixture({recordPort:availablePort,authority:'legacy-google'});assert.equal(f.calendar.calendarAuthority,'canonical');
  assert.equal(f.shell.reviewScannedCalendarDraft(draft),true);assert.equal(f.opened[0][1].calendarAuthority,'canonical');
 });
 test('explicit Android Calendar handoff preserves the native draft',()=>{
@@ -279,7 +286,7 @@ const noteOrigin={version:2,noteId:'note-1',revision:'a'.repeat(64)};
 const noteDraft={id:null,title:'Venue plan',off:1,t:9,d:1,where:'',video:false,who:[],repeat:'none',notes:'Book the venue',origin:noteOrigin,creationId:'note-operation',separateCreation:false,cal:'native:local',alert:null};
 test('a note event draft is admitted to Agent Calendar, saves, and links the created event to its note',async()=>{
  const remembered=[],created={id:'created-event',provider:'eliza',side:'owner',grantId:'eliza-calendar',calendarId:'primary'};
- const f=fixture({remembered,created});assert.equal(f.shell.reviewScannedCalendarDraft(noteDraft),true);
+ const f=fixture({recordPort:availablePort,remembered,created});assert.equal(f.shell.reviewScannedCalendarDraft(noteDraft),true);
  const form=f.opened[0][1].form;assert.equal(form.canonicalOwnerKey,'owner-A');assert.equal(form.cal,'handle:primary');assert.deepEqual(form.origin,noteOrigin);
  f.calendar.form=form;const toasts=[],out=f.views.calendar.render(f.calendar,calendarApi(f,toasts));
  assert.equal(out.f.saveOff,false);await out.f.save();await new Promise(resolve=>setTimeout(resolve,0));
