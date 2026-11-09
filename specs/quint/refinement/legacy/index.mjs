@@ -115,7 +115,6 @@ const mapsDifferences = {
 };
 
 export async function runLegacyRefinement() {
-  const receipts = [], obligations = [];
   const campaigns = [
     ['ChatInput', async () => {
       const {receipts, mismatches} = await checkChatInputRefinement([driver]);
@@ -243,11 +242,20 @@ export async function runLegacyRefinement() {
       ]};
     }],
   ];
+  return collectLegacyCampaigns(campaigns);
+}
+
+export async function collectLegacyCampaigns(campaigns) {
+  const receipts = [], obligations = [], failures = [];
   for (const [coverageModel, run] of campaigns) {
-    const result = await run();
-    const profiles = result.receipts ?? (Array.isArray(result) ? result : [result]);
-    for (const receipt of profiles) receipts.push(coverageModel ? {...receipt, coverageModel} : receipt);
-    obligations.push(...(result.obligations ?? []));
+    try {
+      const result = await run();
+      const profiles = result.receipts ?? (Array.isArray(result) ? result : [result]);
+      for (const receipt of profiles) receipts.push(coverageModel ? {...receipt, coverageModel} : receipt);
+      obligations.push(...(result.obligations ?? []));
+    } catch (error) {
+      failures.push({campaign: coverageModel ?? 'Core task scheduling profiles', error});
+    }
   }
-  return {receipts, obligations};
+  return {receipts, obligations, failures};
 }
