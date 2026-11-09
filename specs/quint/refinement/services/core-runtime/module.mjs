@@ -6,6 +6,7 @@ import {dirname, resolve, relative, sep} from 'node:path';
 import {build} from 'esbuild';
 import {captureInputs} from '../../check-traces.mjs';
 import {CORE_STATE_INPUTS, coreStatePatch, coreStateBuildRecord, coreStateRequiredTargets} from '../../../../../scripts/core-state-patch.mjs';
+import {materializeHistoricalFormalSources} from '../../../legacy/core/formal-source-inventory.mjs';
 
 /** Compile the real shared classes and bind exact input bytes before evaluating them. */
 async function loadCoreSource(contents, extraSources) {
@@ -45,7 +46,8 @@ async function loadCoreSource(contents, extraSources) {
     if (input === 'core-runtime-entry.ts') continue;
     assert.ok(compiled.has(resolve(root, input)), `Unobserved bundled input ${input}`);
   }
-  const sources = [...compiled.keys(), fileURLToPath(import.meta.url), 'package-lock.json', 'upstream.lock.json', ...CORE_STATE_INPUTS, ...extraSources];
+  const history = materializeHistoricalFormalSources(root,extraSources);
+  const sources = [...compiled.keys(), fileURLToPath(import.meta.url), 'package-lock.json', 'upstream.lock.json', ...CORE_STATE_INPUTS, ...history.sources];
   const driverHashes = captureInputs(sources);
   for (const [path, digest] of compiled) assert.equal(driverHashes[resolve(path)], digest, 'Core source changed during compilation');
   for (const [path, digest] of Object.entries(prepared.receipt.inputHashes)) assert.equal(driverHashes[resolve(path)], digest, 'Core source input changed before capture');

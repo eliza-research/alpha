@@ -95,7 +95,7 @@ test('copied client features fail on an unmet dependency range unless a reviewed
  assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/exception has no reason: plugins\/plugin-maps maplibre-gl/);
 }));
 test('direct local development launcher prepares a clean client tree before starting services',()=>fixture(({root,commit})=>{
- for(const file of ['scripts/dev-local.mjs','scripts/dev-speech-settings.mjs','scripts/speech-env.mjs','scripts/local-agent-source.mjs','scripts/copy-file-clone.mjs','scripts/prepare-client-features.mjs','scripts/managed-google-client-backport.mjs','scripts/upstream-native-source.mjs']){const target=path.join(root,file);fs.mkdirSync(path.dirname(target),{recursive:true});fs.copyFileSync(file,target);}
+ for(const file of ['scripts/dev-local.mjs','scripts/dev-speech-settings.mjs','scripts/speech-env.mjs','scripts/local-agent-source.mjs','scripts/copy-file-clone.mjs','scripts/prepare-client-features.mjs','scripts/upstream-native-source.mjs']){const target=path.join(root,file);fs.mkdirSync(path.dirname(target),{recursive:true});fs.copyFileSync(file,target);}
  // The generic copier fixture explicitly tests the non-voice projection path.
  const prep=path.join(root,'scripts/prepare-client-features.mjs');fs.writeFileSync(prep,fs.readFileSync(prep,'utf8').replace('projectVoice = true','projectVoice = false'));
  // Source hashing and materialization can exceed 20 seconds on a loaded build host.
@@ -149,7 +149,16 @@ assert.equal(stamp.baseCommit,JSON.parse(fs.readFileSync('upstream.lock.json','u
  assert.equal(stamp.sourceFiles[mapPath],stamp.files[mapPath]);
  assert.match(fs.readFileSync(path.join(source,mapPath),'utf8'),/export interface GlobalBasemap/);
  const calendarPath='packages/contracts/src/calendar-linked-sync.ts';
- assert.deepEqual(Object.keys(stamp).sort(), ['appUpdateResumePatch','baseCommit','files','managedGooglePatch','projectionVersion','sourceFiles']);
+ assert.deepEqual(Object.keys(stamp).sort(), ['appUpdateResumePatch','baseCommit','files','managedGoogleBodyLimitPatch','projectionVersion','sourceFiles']);
+ const googlePath='packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts';
+ const googleManifestBytes=fs.readFileSync('patches/eliza/managed-google-body-limit-client-manifest.json');
+ const googleManifest=JSON.parse(googleManifestBytes);
+ assert.deepEqual(stamp.managedGoogleBodyLimitPatch,{...googleManifest,manifestSha256:createHash('sha256').update(googleManifestBytes).digest('hex')});
+ assert.equal(googleManifest.baseCommit,stamp.baseCommit);
+ assert.equal(googleManifest.beforeSha256,stamp.sourceFiles[googlePath]);
+ assert.equal(googleManifest.afterSha256,stamp.files[googlePath]);
+ for(const name of Object.keys(stamp.sourceFiles).filter(name=>name.startsWith('packages/app/src/runtime/managed-google-agent/')&&name!==googlePath))
+  assert.equal(stamp.sourceFiles[name],stamp.files[name],name+' is copied directly from upstream');
  const updatePath='packages/ui/src/state/app-update-gate.ts';
  const updateManifestBytes=fs.readFileSync('patches/eliza/app-update-resume-client-manifest.json');
  const updateManifest=JSON.parse(updateManifestBytes);

@@ -36,8 +36,8 @@ const noAttempt = {projection: false, version: false, compile: false, moduleWrit
 const productFiles = [
   'scripts/build-native-google-host.ts', 'scripts/local-agent-source.mjs', 'scripts/native-google-host-artifact.mjs',
   'scripts/prepare-client-features.mjs', 'package.json', 'tsconfig.json',
-  'vendor/eliza/tsconfig.json', 'scripts/managed-google-client-backport.mjs',
-  'patches/eliza/managed-google-agent-manifest.json', 'patches/eliza/managed-google-agent.patch',
+  'vendor/eliza/tsconfig.json',
+  'patches/eliza/managed-google-body-limit-client-manifest.json', 'patches/eliza/managed-google-body-limit-client.patch',
 ];
 const workerFiles = ['node_modules/smthrs/package.json', 'node_modules/zod/package.json',
   'node_modules/effect/package.json', 'node_modules/@smthrs/engine/package.json', 'dependencies.json', 'lib/worker.js'];

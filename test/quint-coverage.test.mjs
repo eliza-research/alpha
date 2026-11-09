@@ -5,6 +5,7 @@ import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { checkCoverage, detectedCounterexample, loadModels, readJson, repositoryRoot, runQuintChecker, runtimeScriptPaths, runtimeAssetPaths, sha256, sourceRoots } from '../scripts/quint-lib.mjs';
+import {authenticateFormalSources} from '../specs/quint/legacy/core/formal-source-inventory.mjs';
 
 test('counterexample admission requires the pinned CLI violation markers and rejects tool errors', () => {
   assert.equal(detectedCounterexample('[violation] Found an issue (42ms).\nerror: found a counterexample\n'), true);
@@ -116,12 +117,9 @@ test('every tracked TLA module and TLC configuration has an authenticated Quint 
   const upstream = readJson(join(repositoryRoot, 'specs/quint/legacy/core/source-inventory.json'));
   const sourcePin = readJson(join(repositoryRoot, 'upstream.lock.json')).commit;
   const vendor = join(repositoryRoot, 'vendor/eliza');
-  const shared = upstream.models.flatMap(model => {
-    assert.ok(registered.has(model.quintModule), model.quintModule);
-    return [{path: model.source, sha256: model.sha256}, ...model.configs];
-  });
-  assert.deepEqual(formalPaths(git(vendor, ['ls-tree', '-r', '--name-only', '-z', sourcePin])), shared.map(row => row.path).sort());
-  for (const row of shared) assert.equal(sha256(git(vendor, ['cat-file', 'blob', `${sourcePin}:${row.path}`])), row.sha256, row.path);
+  authenticateFormalSources(vendor, upstream.revision, upstream.models, registered);
+  assert.equal(upstream.currentUpstream.revision, sourcePin, 'Review the live formal-source inventory after an upstream pin change');
+  authenticateFormalSources(vendor, sourcePin, upstream.currentUpstream.models, registered);
 });
 
 test('coverage admission detects changed, removed and unassigned source records', () => {

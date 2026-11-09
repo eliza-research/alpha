@@ -1,6 +1,6 @@
 {
   "revision": "4787d51a142c63c98371c832997184c53f7218d3",
-  "classification": "immutable-upstream-specifications",
+  "classification": "historical-upstream-specifications",
   "modelCount": 16,
   "configurationCount": 31,
   "models": [
@@ -2105,6 +2105,17 @@
       "path": "packages/core/tla/InteractiveTask.reducer.graph.json",
       "sha256": "c4c54fa0230a7d5162a160ee90a128fa027baec35b7f4425d541cbd118022bb7",
       "classification": "upstream-graph-evidence-not-executable"
+    },
+    {
+      "path": "packages/core/scripts/tla-graph.ts",
+      "sha256": "46c60866499aea4f0315ed804876d9945fc1c4b54558ac7b4067fa14beaab47d",
+      "classification": "historical-upstream-TLC-DOT-parser"
     }
-  ]
+  ],
+  "currentUpstream": {
+    "revision": "86ab55fd81f68a2c5dd4fd32e1c1431723648c58",
+    "classification": "current-upstream-formal-specifications",
+    "models": [],
+    "note": "The current upstream tree has no tracked TLA modules or TLC configurations. Historical translations and source hashes above remain bound to revision 4787d51a142c63c98371c832997184c53f7218d3; this current inventory must separately allocate any future formal source."
+  }
 }

@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
-import {prepareClientFeatures} from '../../../../scripts/prepare-client-features.mjs';
+import {prepareClientFeatures, CLIENT_FEATURE_PATCHES} from '../../../../scripts/prepare-client-features.mjs';
 
 const staged = '.eliza/client-features/';
 const digest = file => createHash('sha256').update(fs.readFileSync(file)).digest('hex');
@@ -23,23 +23,20 @@ export function serviceInputs(entries) {
     }
   }
   for (const entry of ['specs/quint/refinement/services/source-inputs.mjs', 'package-lock.json', 'upstream.lock.json', staged + '.source.json', 'scripts/prepare-client-features.mjs', 'scripts/upstream-native-source.mjs']) found.add(entry);
-  const preparer = 'scripts/managed-google-client-backport.mjs';
-  found.add(preparer);
-  const receipt = provenance.managedGooglePatch;
-  if (receipt) {
-    const manifest = 'patches/eliza/managed-google-agent-manifest.json';
-    if (digest(manifest) !== receipt.manifestSha256 || digest(preparer) !== receipt.preparerSha256) {
-      throw Error('Stale managed Google client backport provenance');
+  for (const [key, prefix, target] of CLIENT_FEATURE_PATCHES) {
+    const receipt = provenance[key];
+    if (!receipt) continue;
+    const manifest = `patches/eliza/${prefix}-manifest.json`, patch = `patches/eliza/${prefix}.patch`;
+    if (digest(manifest) !== receipt.manifestSha256 || digest(patch) !== receipt.patchSha256 ||
+        receipt.baseCommit !== provenance.baseCommit || receipt.path !== target ||
+        receipt.beforeSha256 !== provenance.sourceFiles[target] || receipt.afterSha256 !== provenance.files[target]) {
+      throw Error(`Stale client patch provenance ${key}`);
     }
     found.add(manifest);
-    for (const patch of receipt.patches) {
-      const file = 'patches/eliza/' + patch.file;
-      if (digest(file) !== patch.sha256) throw Error(`Changed client patch ${file}`);
-      found.add(file);
-    }
+    found.add(patch);
   }
   for (const [key, value] of Object.entries(provenance)) {
-    if (value?.manifestSha256 && key !== 'managedGooglePatch') throw Error(`Unbound client patch provenance ${key}`);
+    if (value?.manifestSha256 && !CLIENT_FEATURE_PATCHES.some(([allowed]) => key === allowed)) throw Error(`Unbound client patch provenance ${key}`);
   }
   return [...found].sort();
 }

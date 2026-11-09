@@ -2,7 +2,6 @@ import { createHash, randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import os from 'node:os';
 import { upstreamNativeSource } from './upstream-native-source.mjs';
-import { clientManagedGooglePatch } from './managed-google-client-backport.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -35,6 +34,7 @@ function matches(actual, expected) {
     Object.entries(expected).every(([file, digest]) => actual[file] === digest);
 }
 export const CLIENT_FEATURE_PATHS = [
+  'packages/app/src/runtime/managed-google-agent',
   'packages/core/src/utils/type-guards.ts',
   'packages/cloud/sdk/native-host/subscription-grant.mjs',
   'packages/cloud/sdk/native-host/subscription-grant.d.mts',
@@ -313,6 +313,7 @@ export const CLIENT_FEATURE_PATHS = [
 // The newer automatic-update behavior is not in the pin yet. Authenticate only
 // this reviewed delta; superseded client patches stay retired.
 export const CLIENT_FEATURE_PATCHES = [
+  ['managedGoogleBodyLimitPatch', 'managed-google-body-limit-client', 'packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts'],
   ['appUpdateResumePatch', 'app-update-resume-client', 'packages/ui/src/state/app-update-gate.ts'],
 ];
 // Copied client source imports Alpha's installed runtime dependencies, so each copied package's
@@ -390,8 +391,6 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
     log?.(`Client feature dependency exception: ${exception.package} ${exception.dependency} ${exception.range}, installed ${exception.installed}: ${exception.reason}`);
   const source = new Map(CLIENT_FEATURE_PATHS.flatMap(prefix => [...upstream.read(prefix)]));
   const sourceFiles = Object.fromEntries([...source].map(([name, file]) => [name, file.sha256]));
-  const {files: managedGoogleFiles, receipt: managedGooglePatch} = clientManagedGooglePatch(root, upstream);
-  for (const [name, file] of managedGoogleFiles) source.set(name, file);
   const clientPatches = {};
   for (const [key, prefix, name] of CLIENT_FEATURE_PATCHES) {
     const manifestFile = path.join(root, 'patches/eliza', prefix + '-manifest.json');
@@ -482,7 +481,6 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
   const files = Object.fromEntries([...source].map(([name, file]) => [name, file.sha256]));
   const provenance = {
     baseCommit: upstream.pin, sourceFiles, projectionVersion:projectVoice?13:0, files,
-    ...(managedGooglePatch ? {managedGooglePatch} : {}),
     ...clientPatches,
   };
   const parent = path.join(root, '.eliza'), destination = path.join(parent, 'client-features');
@@ -502,7 +500,6 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
         const actual = inventory(destination); delete actual['.source.json'];
         return previous.baseCommit === upstream.pin && previous.projectionVersion === provenance.projectionVersion &&
           Object.keys(previous).length === Object.keys(provenance).length &&
-          JSON.stringify(previous.managedGooglePatch ?? null) === JSON.stringify(managedGooglePatch) &&
           CLIENT_FEATURE_PATCHES.every(([key]) => JSON.stringify(previous[key] ?? null) === JSON.stringify(clientPatches[key] ?? null)) &&
           matches(previous.sourceFiles || {}, sourceFiles) && matches(previous.files || {}, files) && matches(actual, files);
       } catch (error) { if (error.code !== 'ENOENT' || attempt >= 4) throw error; }
