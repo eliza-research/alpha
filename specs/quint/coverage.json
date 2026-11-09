@@ -15734,12 +15734,13 @@
         "FirstSendDraftMigration",
         "WorkflowClockAdmission",
         "NotesTrashReadPublication",
-        "PreviousNotesAvailability"
+        "PreviousNotesAvailability",
+        "PreviousNotesSourceOpening"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "66829c3bea670ed5eace8320ea13f8ad6cf2fce3db3be40815b1a7615f0f4db6",
+      "sha256": "f47ad7835f5f0b9650051dc1ece6fcd382e3c307172d7cb5a8d3f5917e10d507",
       "stateAnchors": [
         {
           "line": 77,
@@ -16126,8 +16127,24 @@
           "text": "const revision=await notesDraftBase(store.raw);if(!current())throw new DOMException('Notes source changed.','AbortError');"
         },
         {
+          "line": 573,
+          "text": "async function selectNotesSource(shell:Shell,source:'canonical'|'legacy'):Promise<boolean>{"
+        },
+        {
           "line": 576,
           "text": "const draftTask=shell.notesDraftTask,openingEpoch=shell.notesSourceEpoch;"
+        },
+        {
+          "line": 577,
+          "text": "if(draftTask){await draftTask;if(!shell.live||shell.notesSourceEpoch!==openingEpoch||shell.notesDraftTask!==draftTask)return false;}"
+        },
+        {
+          "line": 578,
+          "text": "if(owner!==previousNotesOwnerKey())return false;"
+        },
+        {
+          "line": 582,
+          "text": "if(shell.notesSourceMode==='legacy'&&shell.notesStorageFailed&&!shell.notesDraftSaved&&shell.notesStoreEpoch===shell.notesSourceEpoch){"
         },
         {
           "line": 583,
@@ -16136,6 +16153,14 @@
         {
           "line": 587,
           "text": "const previous=shell.canonicalNotesUi;shell.canonicalNotesUi=null;shell.canonicalNotesKey=null;previous?.retire();"
+        },
+        {
+          "line": 588,
+          "text": "shell.notesLegacySource=null;shell.notesSourceMode=source;shell.notesSourceEpoch=(shell.notesSourceEpoch??0)+1;shell.notesSelectionKey=null;shell.notesSelection=null;"
+        },
+        {
+          "line": 593,
+          "text": "if(source==='canonical'){syncCanonicalNotes(shell);context(shell);return true;}"
         },
         {
           "line": 594,
@@ -16150,8 +16175,32 @@
           "text": "if(!current())return;const observation=await previousNotesObservation(store,current);if(!current())return;shell.notesStore=store;shell.notesRaw=store.raw;shell.notesLegacySource=observation;"
         },
         {
+          "line": 601,
+          "text": "if(isAndroid){"
+        },
+        {
           "line": 602,
           "text": "let draft:NotesDraft|null=null;"
+        },
+        {
+          "line": 605,
+          "text": "if(!current())return;"
+        },
+        {
+          "line": 607,
+          "text": "}"
+        },
+        {
+          "line": 609,
+          "text": "originalSet.call(shell,'notes',{list:store.list,storageStatus:shell.notesDraftKept?'Unsaved changes from an earlier session are kept on this phone.':isAndroid?'Note text encrypted on th"
+        },
+        {
+          "line": 611,
+          "text": "shell.notesStorageFailed=true;"
+        },
+        {
+          "line": 617,
+          "text": "await shell.notesReady;return current()&&!shell.notesStorageFailed;"
         },
         {
           "line": 621,
@@ -23910,7 +23959,8 @@
       "path": "apps/app/src/prototype/legacy-notes-access.ts",
       "models": [
         "NotesLifecycle",
-        "PreviousNotesAvailability"
+        "PreviousNotesAvailability",
+        "PreviousNotesSourceOpening"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -23953,6 +24003,14 @@
           "text": "const saved=await vault.readRaw(SECURE_NOTES_SLOT);check();"
         },
         {
+          "line": 33,
+          "text": "},signal,current);"
+        },
+        {
+          "line": 35,
+          "text": "export async function openExistingBrowserNotes(port:NotesDocumentPort,signal:AbortSignal,current:()=>boolean,storage:Pick<Storage,'getItem'>=localStorage){"
+        },
+        {
           "line": 36,
           "text": "const check=()=>{signal.throwIfAborted();if(!current())throw new DOMException('Notes source changed.','AbortError');};"
         },
@@ -23967,6 +24025,10 @@
         {
           "line": 40,
           "text": "async compareExchange(expected,raw,owned){check();const saved=await port.compareExchange(expected,raw,owned);check();return saved;},"
+        },
+        {
+          "line": 43,
+          "text": "export async function openExistingDeviceNotes(vault:NotesVault,storage:Pick<Storage,'getItem'|'setItem'|'removeItem'>,signal:AbortSignal,current:()=>boolean){"
         },
         {
           "line": 44,
@@ -23993,12 +24055,24 @@
           "text": "async compareExchange(key,expected,value){check();if(opening)refuse();const result=await vault.compareExchange(key,expected,value);check();return result;},"
         },
         {
+          "line": 50,
+          "text": "};"
+        },
+        {
+          "line": 52,
+          "text": "check();if(await guarded.read(SECURE_NOTES_SLOT)===null&&noLegacyKeys(storage)){"
+        },
+        {
           "line": 53,
           "text": "let draft:unknown;"
         },
         {
           "line": 58,
           "text": "check();const result=await SecureNotesStore.open(guarded,{getItem:key=>{check();return storage.getItem(key);},setItem:()=>refuse(),removeItem:()=>refuse()},[]);"
+        },
+        {
+          "line": 60,
+          "text": "}catch(error){if(refused)throw new LegacyNotesReviewRequired();throw error;}"
         }
       ]
     },
@@ -45186,7 +45260,8 @@
       "path": "apps/app/src/runtime/view-navigation.ts",
       "sha256": "96c0511d8c336da8239dacb0823181255e6241a031f999cff56d64ab805c4858",
       "models": [
-        "ShellNavigation"
+        "ShellNavigation",
+        "CommittedViewObservation"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -45216,8 +45291,36 @@
           "text": "private readonly executing=new Set<AbortController>();"
         },
         {
+          "line": 65,
+          "text": "/** Record an already committed manual screen through the same owner-bound"
+        },
+        {
+          "line": 68,
+          "text": "observeCommittedView(retryAfterFailure = false): Promise<boolean> {"
+        },
+        {
           "line": 69,
           "text": "const context = this.context();"
+        },
+        {
+          "line": 72,
+          "text": "this.observation = undefined;"
+        },
+        {
+          "line": 73,
+          "text": "return Promise.resolve(false);"
+        },
+        {
+          "line": 75,
+          "text": "if (this.delivering) return Promise.resolve(false);"
+        },
+        {
+          "line": 77,
+          "text": "if (this.observationView === context.view && (!retryAfterFailure || this.observationAccepted)) return Promise.resolve(this.observationAccepted);"
+        },
+        {
+          "line": 78,
+          "text": "this.observation?.controller.abort();"
         },
         {
           "line": 79,
@@ -45260,12 +45363,28 @@
           "text": "let positiveDispatched = false;"
         },
         {
+          "line": 95,
+          "text": "try {"
+        },
+        {
           "line": 97,
           "text": "const prepared = object(await this.request(`/api/views/${encodeURIComponent(viewId)}/navigate`, {"
         },
         {
+          "line": 100,
+          "text": "}, controller.signal));"
+        },
+        {
           "line": 101,
           "text": "const preparedBinding = object(prepared.navigationBinding);"
+        },
+        {
+          "line": 102,
+          "text": "if (preparedBinding.clientId !== this.clientId || preparedBinding.viewId !== viewId || preparedBinding.viewType !== 'gui' || typeof preparedBinding.requestId !== 'string' || !preparedBi"
+        },
+        {
+          "line": 108,
+          "text": "// and only a returned claimId can settle it. The claim keeps its own deadline."
         },
         {
           "line": 109,
@@ -45280,8 +45399,28 @@
           "text": "let claimed: Record<string, unknown>;"
         },
         {
+          "line": 115,
+          "text": "clearTimeout(claimDeadline);"
+        },
+        {
+          "line": 116,
+          "text": "}"
+        },
+        {
+          "line": 118,
+          "text": "claimId = claimed.claimId;"
+        },
+        {
           "line": 121,
           "text": "const accepted = object(await this.request('/api/views/interact-result', {"
+        },
+        {
+          "line": 123,
+          "text": "}, controller.signal));"
+        },
+        {
+          "line": 129,
+          "text": "// Only the original owner/session/runtime may retire its prepared waiter."
         },
         {
           "line": 132,
@@ -45294,6 +45433,14 @@
         {
           "line": 136,
           "text": "const claimed = object(await this.request('/api/views/interact-claim', binding, cleanup.signal));"
+        },
+        {
+          "line": 142,
+          "text": "...binding, claimId, success: false, result: {switched: false},"
+        },
+        {
+          "line": 150,
+          "text": "}"
         },
         {
           "line": 163,
@@ -71812,7 +71959,8 @@
       "path": "vendor/eliza/packages/agent/src/api/pending-request-map.ts",
       "models": [
         "AssistantConversation",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "CommittedViewObservation"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -81041,7 +81189,8 @@
       "path": "vendor/eliza/packages/agent/src/api/view-installations.ts",
       "models": [
         "AssistantConversation",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "CommittedViewObservation"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -81186,7 +81335,8 @@
       "path": "vendor/eliza/packages/agent/src/api/view-interaction-host.ts",
       "models": [
         "AssistantConversation",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "CommittedViewObservation"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -81752,7 +81902,8 @@
       "path": "vendor/eliza/packages/agent/src/api/views-routes.ts",
       "models": [
         "AssistantConversation",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "CommittedViewObservation"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -168419,7 +168570,8 @@
         "WorkflowExecution",
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
-        "CoreServiceLifecycle"
+        "CoreServiceLifecycle",
+        "CommittedViewObservation"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -205143,7 +205295,8 @@
       "models": [
         "Application",
         "DraftDispatch",
-        "ShellNavigation"
+        "ShellNavigation",
+        "CommittedViewObservation"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -205353,7 +205506,8 @@
       "models": [
         "Application",
         "DraftDispatch",
-        "ShellNavigation"
+        "ShellNavigation",
+        "CommittedViewObservation"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -205451,7 +205605,8 @@
       "models": [
         "Application",
         "DraftDispatch",
-        "ShellNavigation"
+        "ShellNavigation",
+        "CommittedViewObservation"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -573332,7 +573487,8 @@
     {
       "path": "vendor/eliza/plugins/plugin-personal-assistant/src/lifeops/scheduled-task/dossier-activity-migration.ts",
       "models": [
-        "AssistantConversation"
+        "AssistantConversation",
+        "PersonalAssistantScheduledTaskCustody"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -573416,7 +573572,8 @@
     {
       "path": "vendor/eliza/plugins/plugin-personal-assistant/src/lifeops/scheduled-task/dossier-activity-policy.ts",
       "models": [
-        "AssistantConversation"
+        "AssistantConversation",
+        "PersonalAssistantScheduledTaskCustody"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -573488,12 +573645,24 @@
           "text": "const generation = prior ? prior.generation + 1 : 1;"
         },
         {
+          "line": 182,
+          "text": "export function admitDossierActivity("
+        },
+        {
           "line": 196,
           "text": "const receivedAt = instant(activity.receivedAtIso);"
         },
         {
           "line": 199,
           "text": "const day = dossierOwnerDay(activity.receivedAtIso, state.day);"
+        },
+        {
+          "line": 204,
+          "text": "return state;"
+        },
+        {
+          "line": 225,
+          "text": ")"
         }
       ]
     },
@@ -573501,7 +573670,8 @@
       "path": "vendor/eliza/plugins/plugin-personal-assistant/src/lifeops/scheduled-task/dossier-activity-runtime.ts",
       "models": [
         "AssistantConversation",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "PersonalAssistantScheduledTaskCustody"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -573521,8 +573691,16 @@
           "text": "export const prepareDossierAutomaticFire: ScheduledTaskAutomaticFirePolicy = ({"
         },
         {
+          "line": 56,
+          "text": "nowIso,"
+        },
+        {
           "line": 58,
           "text": "const state = readDossierActivityState(task.metadata);"
+        },
+        {
+          "line": 77,
+          "text": "function hasActivityAnchor(task: ScheduledTask): boolean {"
         },
         {
           "line": 96,
@@ -573537,6 +573715,10 @@
           "text": "const prior = readDossierActivityState(previous?.metadata);"
         },
         {
+          "line": 105,
+          "text": "code: \"DOSSIER_ACTIVITY_METADATA_READ_ONLY\","
+        },
+        {
           "line": 116,
           "text": "const activityAnchor = hasActivityAnchor(proposed);"
         },
@@ -573547,6 +573729,10 @@
         {
           "line": 129,
           "text": "const state = updateDossierActivityControl({"
+        },
+        {
+          "line": 139,
+          "text": "});"
         },
         {
           "line": 164,
@@ -573567,6 +573753,10 @@
         {
           "line": 195,
           "text": "const selected = eligible[0];"
+        },
+        {
+          "line": 201,
+          "text": "export async function resolveOwnerDossierActivityAnchor("
         },
         {
           "line": 205,
@@ -573595,6 +573785,10 @@
         {
           "line": 251,
           "text": "const committed = await store.upsertIfStatus("
+        },
+        {
+          "line": 274,
+          "text": "kind: \"admitted\","
         }
       ]
     },
@@ -574104,7 +574298,8 @@
       "path": "vendor/eliza/plugins/plugin-personal-assistant/src/lifeops/scheduled-task/runtime-wiring.ts",
       "models": [
         "AssistantConversation",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "PersonalAssistantScheduledTaskCustody"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -574500,8 +574695,20 @@
           "text": "const providerMessageId = disposition.providerMessageId;"
         },
         {
+          "line": 1381,
+          "text": "export function registerDossierActivityAnchor("
+        },
+        {
           "line": 1386,
           "text": "const { store } = makeRepositoryBackedStores(runtime, runtime.agentId);"
+        },
+        {
+          "line": 1389,
+          "text": "consumption: \"host_claim\","
+        },
+        {
+          "line": 1397,
+          "text": "}"
         },
         {
           "line": 1400,
@@ -574552,8 +574759,16 @@
           "text": "const ownerFacts = opts.ownerFacts ?? defaultOwnerFactsProvider(opts.runtime);"
         },
         {
+          "line": 1497,
+          "text": "return {"
+        },
+        {
           "line": 1504,
           "text": "const facts = await ownerFacts();"
+        },
+        {
+          "line": 1517,
+          "text": "),"
         },
         {
           "line": 1529,
@@ -588645,7 +588860,8 @@
       "path": "vendor/eliza/plugins/plugin-scheduling/src/routes/scheduled-tasks.ts",
       "models": [
         "Application",
-        "LifeOpsScheduledTaskRoute"
+        "LifeOpsScheduledTaskRoute",
+        "PersonalAssistantScheduledTaskCustody"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -590353,7 +590569,8 @@
     {
       "path": "vendor/eliza/plugins/plugin-scheduling/src/scheduled-task/migration.ts",
       "models": [
-        "Application"
+        "Application",
+        "PersonalAssistantScheduledTaskCustody"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -591006,7 +591223,8 @@
       "path": "vendor/eliza/plugins/plugin-scheduling/src/scheduled-task/runner.ts",
       "models": [
         "Application",
-        "LifeOpsScheduledTaskRoute"
+        "LifeOpsScheduledTaskRoute",
+        "PersonalAssistantScheduledTaskCustody"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -592564,7 +592782,8 @@
     {
       "path": "vendor/eliza/plugins/plugin-scheduling/src/scheduled-task/store.ts",
       "models": [
-        "DurableStore"
+        "DurableStore",
+        "PersonalAssistantScheduledTaskCustody"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -592624,6 +592843,10 @@
           "text": "const parsedMetadata ="
         },
         {
+          "line": 239,
+          "text": "/** Compare the definition returned by parseScheduledTaskRow, including its optional-record normalization. */"
+        },
+        {
           "line": 241,
           "text": "const optionalRecord = (column: string) =>"
         },
@@ -592632,8 +592855,16 @@
           "text": "const expressions = {"
         },
         {
+          "line": 258,
+          "text": "respectsGlobalPause: \"to_jsonb(COALESCE(respects_global_pause, TRUE))\","
+        },
+        {
           "line": 266,
           "text": "const value = expected[field as keyof ScheduledTaskDefinition];"
+        },
+        {
+          "line": 282,
+          "text": "export function createSchedulingSqlScheduledTaskStore("
         },
         {
           "line": 285,
@@ -592656,6 +592887,10 @@
           "text": "const nextFireAtSql ="
         },
         {
+          "line": 367,
+          "text": "// `upsertIfStatus` must NOT resurrect a row a concurrent writer deleted."
+        },
+        {
           "line": 373,
           "text": "const guardedUpdateStatement = ("
         },
@@ -592668,8 +592903,16 @@
           "text": "const nextFireAtSql ="
         },
         {
+          "line": 398,
+          "text": "idempotency_key = ${sqlText(task.idempotencyKey ?? null)},"
+        },
+        {
           "line": 422,
           "text": "const rows = await executeSql("
+        },
+        {
+          "line": 450,
+          "text": "},"
         },
         {
           "line": 453,
@@ -592686,6 +592929,10 @@
         {
           "line": 465,
           "text": "const rows = await executeSql("
+        },
+        {
+          "line": 485,
+          "text": "${args.expectedMetadata === undefined ? \"\" : expectedMetadataGuard(args.expectedMetadata)}"
         },
         {
           "line": 495,
@@ -592710,6 +592957,10 @@
         {
           "line": 523,
           "text": "const mergedMetadataSql = `jsonb_set("
+        },
+        {
+          "line": 530,
+          "text": "true"
         },
         {
           "line": 532,

@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "b1817660a0347ae19551b9ee296410fe55f02d59",
-  "ledgerSha256": "2fc85612542eac36a5a98b293d1d98ef7fcb58e9f466f000aec2b1f2e3f4d446",
+  "ledgerSha256": "1182e5d71c369dcc7d38460d3c1bcbc71635a8dfb9ba63e4a05a11781d5420de",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -33357,7 +33357,7 @@
     },
     {
       "path": "apps/app/src/prototype/agent-adapter.ts",
-      "sha256": "66829c3bea670ed5eace8320ea13f8ad6cf2fce3db3be40815b1a7615f0f4db6",
+      "sha256": "f47ad7835f5f0b9650051dc1ece6fcd382e3c307172d7cb5a8d3f5917e10d507",
       "allocatedModels": [
         "Application",
         "AssistantConversation",
@@ -33366,7 +33366,8 @@
         "FirstSendDraftMigration",
         "WorkflowClockAdmission",
         "NotesTrashReadPublication",
-        "PreviousNotesAvailability"
+        "PreviousNotesAvailability",
+        "PreviousNotesSourceOpening"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -35480,7 +35481,8 @@
       "sha256": "beec749de9b332757e3acabaf32804144ee7cfe1b37835e46c36a41ac01c6946",
       "allocatedModels": [
         "NotesLifecycle",
-        "PreviousNotesAvailability"
+        "PreviousNotesAvailability",
+        "PreviousNotesSourceOpening"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -45304,7 +45306,8 @@
       "path": "apps/app/src/runtime/view-navigation.ts",
       "sha256": "96c0511d8c336da8239dacb0823181255e6241a031f999cff56d64ab805c4858",
       "allocatedModels": [
-        "ShellNavigation"
+        "ShellNavigation",
+        "CommittedViewObservation"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -52370,7 +52373,8 @@
       "sha256": "734e1b59a56114d49c48fe85de7aca38885b45037b32f05952a88d0d1e157c7f",
       "allocatedModels": [
         "AssistantConversation",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "CommittedViewObservation"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -54425,7 +54429,8 @@
       "sha256": "3ff1abec8446ae804286c81fccc2d1ce4334b01c3d4b0a535464084b1028dbca",
       "allocatedModels": [
         "AssistantConversation",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "CommittedViewObservation"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -54489,7 +54494,8 @@
       "sha256": "07cd6caaab63a46b2f8ce305df360ff23711191d89903738ba67323b38e4e132",
       "allocatedModels": [
         "AssistantConversation",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "CommittedViewObservation"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -54605,7 +54611,8 @@
       "sha256": "db673e57b7bd1cf2e7059a32d3b9194dc3af76b23c7482013bbe104ff2ff226f",
       "allocatedModels": [
         "AssistantConversation",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "CommittedViewObservation"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -79239,7 +79246,8 @@
         "WorkflowExecution",
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
-        "CoreServiceLifecycle"
+        "CoreServiceLifecycle",
+        "CommittedViewObservation"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -90558,7 +90566,8 @@
       "allocatedModels": [
         "Application",
         "DraftDispatch",
-        "ShellNavigation"
+        "ShellNavigation",
+        "CommittedViewObservation"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -90667,7 +90676,8 @@
       "allocatedModels": [
         "Application",
         "DraftDispatch",
-        "ShellNavigation"
+        "ShellNavigation",
+        "CommittedViewObservation"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -90690,7 +90700,8 @@
       "allocatedModels": [
         "Application",
         "DraftDispatch",
-        "ShellNavigation"
+        "ShellNavigation",
+        "CommittedViewObservation"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -210639,7 +210650,8 @@
       "path": "vendor/eliza/plugins/plugin-personal-assistant/src/lifeops/scheduled-task/dossier-activity-migration.ts",
       "sha256": "6a278ae9757c2c9571ea5a9c19f66768edf9e9025e7cdb43851e97fea1c78351",
       "allocatedModels": [
-        "AssistantConversation"
+        "AssistantConversation",
+        "PersonalAssistantScheduledTaskCustody"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -210666,7 +210678,8 @@
       "path": "vendor/eliza/plugins/plugin-personal-assistant/src/lifeops/scheduled-task/dossier-activity-policy.ts",
       "sha256": "119cc992f66f057fe96fe9a7c3e69237b2f1675405d05d063291e28af4fc014d",
       "allocatedModels": [
-        "AssistantConversation"
+        "AssistantConversation",
+        "PersonalAssistantScheduledTaskCustody"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -210681,7 +210694,8 @@
       "sha256": "dd63d8acbadc76a2a49fdf823269c327318b6b13d9c429442c768ae967e51c68",
       "allocatedModels": [
         "AssistantConversation",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "PersonalAssistantScheduledTaskCustody"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -210852,7 +210866,8 @@
       "sha256": "e3a7fdcd2e767e3efa9fc3d274e6ef41ebbc49bdcfd4e319d2e95f4e5b98e67c",
       "allocatedModels": [
         "AssistantConversation",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "PersonalAssistantScheduledTaskCustody"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -214247,7 +214262,8 @@
       "sha256": "84fd87d0ee67aff682b46f825b84623352b3cf1b95b69de0071366d327804001",
       "allocatedModels": [
         "Application",
-        "LifeOpsScheduledTaskRoute"
+        "LifeOpsScheduledTaskRoute",
+        "PersonalAssistantScheduledTaskCustody"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -214719,7 +214735,8 @@
       "path": "vendor/eliza/plugins/plugin-scheduling/src/scheduled-task/migration.ts",
       "sha256": "c415c5389342f1c8633249307e662a683688f403eaa0d1b792deac27a81994b6",
       "allocatedModels": [
-        "Application"
+        "Application",
+        "PersonalAssistantScheduledTaskCustody"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -214900,7 +214917,8 @@
       "sha256": "17a2adc96410df5298fc7c0398df9f1ba331a70d83e75233e8edd8a59723df06",
       "allocatedModels": [
         "Application",
-        "LifeOpsScheduledTaskRoute"
+        "LifeOpsScheduledTaskRoute",
+        "PersonalAssistantScheduledTaskCustody"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -215164,7 +215182,8 @@
       "path": "vendor/eliza/plugins/plugin-scheduling/src/scheduled-task/store.ts",
       "sha256": "0224506d41ec46db1134ae1ca48624771c6d8da205b9aa8321f49615a0a1e7c6",
       "allocatedModels": [
-        "DurableStore"
+        "DurableStore",
+        "PersonalAssistantScheduledTaskCustody"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -221503,6 +221522,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "84a2162524fbeb37ebce8d18207a5f656c9ea68615aed831e482a0e8ed3ce1db"
+    "sha256": "225a63b1d07d396316d4e2fa8bd8e06bc1292b79af353d9f0eb7f7a0f580eec2"
   }
 }

@@ -1285,6 +1285,21 @@ view before calling the canonical refresh. The replay uses actual probe
 code with read-only ports and a synthetic already-selected legacy view.
 Record opening, platform delivery and installed storage remain separate.
 
+`PreviousNotesSourceOpening` checks 14 schedules and 88 checkpoints. An
+older opening previously could return success after a later source visit
+opened successfully. The settled return now checks the exact opening
+owner and epoch. The replay holds collection, fingerprint and draft reads
+and covers absent, unreadable and draft-only outcomes, plus canonical
+return. The read-only presence probe and Trash publication use separate
+models.
+
+`CommittedViewObservation` checks 18 schedules and 54 checkpoints through
+the actual renderer observer, host waiter and history-commit callback. It
+covers the same-view cache, explicit retry, stale and ambiguous claims,
+exact negative settlement, genuine timeout and lost positive confirmation.
+The closed request port leaves actual transport and history persistence
+as separate obligations.
+
 `AndroidBrowserModuleStage` checks eight schedules and 43 checkpoints in
 one disposable module host. It exercises the reviewed native patch,
 authenticated source cache, Gradle host generation and receipt readback.
@@ -1306,6 +1321,15 @@ guards and still calls the status-only pre-dispatch assertion. The current
 Alpha runtime patch allowlist and Android receipt verifier exclude scheduler
 source. A shared repair needs a reviewed SDK change and new authenticated
 build evidence for each consuming pin.
+
+`PersonalAssistantScheduledTaskCustody` checks eight schedules and 60
+checkpoints through selected actual Personal Assistant policies and the
+SDK SQL store in private PGlite. Managed claim commits the admitted day
+with the fired row. An older manual dispatch can pass the status-only
+pre-dispatch check after a refire. Its full expected-state write is refused
+and the route returns the newer row. Metadata-only and definition-only
+replacement also fence the stale write. Production family wrappers and
+same-clock occurrence identity remain separate.
 
 The extended `ChatAttachments` replay checks 12 schedules and 70
 checkpoints. A held browser transcript save previously repainted the
