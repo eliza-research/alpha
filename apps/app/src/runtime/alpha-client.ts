@@ -125,6 +125,7 @@ export interface VerifiedSessionTransport {
     channelType?: ChatChannel;
     expectedConversationId?: string;
     voiceTurnSignal?: VoiceTurnSignal;
+    images?: Array<{data:string;mimeType:string;name:string}>;
     context: ContextEnvelope;
     signal: AbortSignal;
     onText?:import('./local-agent-stream').StreamTextListener;
@@ -370,7 +371,7 @@ export class AlphaClient {
       return reply.text;
     },signal,automatic);
   }
-  async send(text: string, onText?:import('./local-agent-stream').StreamTextListener, replyTo?:ConversationMessageTarget,onReplyReady?:(results:readonly unknown[]|undefined)=>void,options?:{channelType:ChatChannel;requestId?:string;signal?:AbortSignal;expectedConversationId?:string;voiceTurnSignal?:VoiceTurnSignal}): Promise<AgentReply> {
+  async send(text: string, onText?:import('./local-agent-stream').StreamTextListener, replyTo?:ConversationMessageTarget,onReplyReady?:(results:readonly unknown[]|undefined)=>void,options?:{channelType:ChatChannel;requestId?:string;signal?:AbortSignal;expectedConversationId?:string;voiceTurnSignal?:VoiceTurnSignal;images?:Array<{data:string;mimeType:string;name:string}>}): Promise<AgentReply> {
     if (!text.trim()) throw new Error("Enter a message.");
     if(options?.channelType==='VOICE_DM'&&replyTo)throw Error("A voice turn cannot resend or edit a selected message.");
     return this.run(async (transport, context, signal) => {
@@ -379,6 +380,7 @@ export class AlphaClient {
         requestId: options?.requestId ?? crypto.randomUUID(),
         ...(options?{channelType:options.channelType,expectedConversationId:options.expectedConversationId,voiceTurnSignal:options.voiceTurnSignal}:{}),
         text,
+        images:options?.images,
         ...(replyTo?{replyTo}:{}),
         context,
         signal,

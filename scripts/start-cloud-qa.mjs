@@ -39,8 +39,13 @@ async function main(){
  const configPath=path.join(qa.profile,'eliza.json'),privateProfile=await preparePrivateRuntimeProfile({tokenPath:path.join(qa.profile,'owner-token'),configPath,createToken:()=>crypto.randomBytes(32).toString('hex'),initialConfig:{cloud:{enabled:true},serviceRouting:{llmText:qa.route},plugins:{entries:{'personal-assistant':{enabled:false}}}}});
  if(JSON.stringify(privateProfile.config.serviceRouting?.llmText)!==JSON.stringify(qa.route)||privateProfile.config.cloud?.enabled!==true)throw Error('QA profile routing differs from the requested staging Cloud route. Use a fresh profile or review its existing configuration.');
  const env=runtimeEnvironment({inherited:process.env,allow:['PATH','TMPDIR','LANG','SHELL','USER','LOGNAME','HOME'],settings:{},owned:{...qa.authority,ELIZA_HEADLESS:'1',ELIZA_DISTRIBUTION_PROFILE:'store',ELIZA_PLUGIN_SET:'lean-chat',ELIZA_REQUIRE_LOCAL_AUTH:'1',ELIZA_API_BIND:'127.0.0.1',ELIZA_API_PORT:String(qa.port),ELIZA_API_EXPOSE_PORT:'1',ELIZA_STATE_DIR:qa.profile,ELIZA_CONFIG_PATH:configPath,ELIZA_API_TOKEN:privateProfile.token,ELIZA_HOST_CONTEXT_REVISION:'cloud-qa:'+crypto.randomUUID(),ELIZA_NATIVE_VIEW_DECLARATIONS:nativeViewDeclarationsJson,ELIZA_NATIVE_BROWSER_COMMANDS:'back,forward,reload',ELIZA_BROWSER_NATIVE_TARGET:'off'},remove:['CEREBRAS_API_KEY','OPENAI_API_KEY','ANTHROPIC_API_KEY']});
- const log=fs.openSync(path.join(qa.profile,'server.log'),'a',0o600);
- try{fs.fchmodSync(log,0o600);const running=await startPrivateRuntimeProcess({command:process.env.ALPHA_BUN||'bun',args:coreRuntimeArguments(root,source,['--no-install','--conditions=eliza-source',entry]),cwd:qa.profile,env:{...env,ALPHA_CORE_STATE_SOURCE:source},stdio:['ignore',log,log],async recordLaunch({pid,launchedAt}){
+ const {O_WRONLY,O_APPEND,O_CREAT,O_NOFOLLOW,O_NONBLOCK}=fs.constants;
+ const log=fs.openSync(path.join(qa.profile,'server.log'),O_WRONLY|O_APPEND|O_CREAT|O_NOFOLLOW|O_NONBLOCK,0o600);
+ try{
+  const stat=fs.fstatSync(log);
+  if(!stat.isFile()||stat.nlink!==1)throw Error('QA log must be a single-link regular file.');
+  fs.fchmodSync(log,0o600);
+  const running=await startPrivateRuntimeProcess({command:process.env.ALPHA_BUN||'bun',args:coreRuntimeArguments(root,source,['--no-install','--conditions=eliza-source',entry]),cwd:qa.profile,env:{...env,ALPHA_CORE_STATE_SOURCE:source},stdio:['ignore',log,log],async recordLaunch({pid,launchedAt}){
   const receipt={purpose:'isolated-staging-cloud-qa',pid,port:qa.port,profile:qa.profile,source,revision:execFileSync('git',['rev-parse','HEAD'],{cwd:source,encoding:'utf8'}).trim(),route:qa.route,environment:'staging',apiBase:CLOUD_SDK_BASES.staging,credentialLocation:'server-side owner-only file',identityVerified:false,modelCallsPerformedByLauncher:0,startedAt:new Date(launchedAt).toISOString()};
   await writePrivateRuntimeJson(path.join(qa.profile,'process.json'),receipt);console.log(JSON.stringify(receipt));
  }});const result=await running.completion;if(result.error)console.error(result.error.message);process.exitCode=result.error?1:result.code??1;}finally{fs.closeSync(log);}

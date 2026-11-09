@@ -12,10 +12,11 @@ test('mounted Calendar Edit keeps the retained draft until explicit Resume or Di
         const open = title => f.page.getByRole('button', {name: new RegExp('^' + title + ',')}).click();
         const title = f.page.getByRole('textbox', {name: 'Title', exact: true});
         const detail = f.page.locator('[data-alpha-subview="calendar-detail"]:not([inert])');
+        const edit = async () => { await detail.locator('summary[aria-label="Event actions"]').click(); await f.button('Edit event').click(); };
         try {
           await f.button('Calendar').click();
           await open('Fixture Existing Event A');
-          await f.button('Edit event').click();
+          await edit();
           await title.fill('Retained edit A');
           await f.page.waitForFunction(() => window.quintCalendar.snapshot().retainedForm?.title === 'Retained edit A');
           const old = await f.snapshot();
@@ -29,7 +30,7 @@ test('mounted Calendar Edit keeps the retained draft until explicit Resume or Di
           await f.button('Resume event draft').waitFor();
 
           await open(nextTitle);
-          await f.button('Edit event').click();
+          await edit();
           const blocked = await f.snapshot();
           assert.equal(!!blocked.form, false, 'Edit must keep the existing durable draft until explicit action');
           assert.equal(blocked.notices.at(-1), 'Finish or discard your draft first.');
@@ -47,7 +48,7 @@ test('mounted Calendar Edit keeps the retained draft until explicit Resume or Di
           await f.button('Discard event draft').click();
           await f.button('Resume event draft').waitFor({state: 'detached'});
           await open(nextTitle);
-          await f.button('Edit event').click();
+          await edit();
           assert.equal(await title.inputValue(), nextTitle);
           assert.notEqual((await f.snapshot()).form.id, old.form.id);
         } finally {await f.close();}

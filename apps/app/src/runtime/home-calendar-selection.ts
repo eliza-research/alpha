@@ -73,7 +73,7 @@ export function homeCalendarSelection(
 	const upcoming = (event: (typeof visible)[number]) => event.isAllDay
 		? day(event.endAt, true) > today
 		: Date.parse(event.endAt) > now.getTime();
-	const candidates = visible.filter(event => rank(event) >= 0);
+	const candidates = visible.filter(event => upcoming(event) && rank(event) >= 0);
 	candidates.sort((a, b) => {
 		const aUpcoming = upcoming(a), bUpcoming = upcoming(b);
 		return rank(a) - rank(b) || Number(bUpcoming) - Number(aUpcoming) ||

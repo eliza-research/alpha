@@ -1,6 +1,7 @@
 import {writeCoreStateFixture} from './core-state-root.mjs';
-import {coreRuntimeArguments,coreStateBuildRecord,verifyCoreStateBuildRecord,coreStateRequiredTargets} from '../../scripts/core-state-patch.mjs';
+import {coreRuntimeArguments,coreStateBuildRecord} from '../../scripts/core-state-patch.mjs';
 import fs from 'node:fs';
+import {verifyNativeGoogleHostArtifact} from '../../scripts/native-google-host-artifact.mjs';
 import {createProviderKeySession} from '../../vendor/eliza/packages/host/native-host/provider-key-session.mjs';
 import os from 'node:os';
 import path from 'node:path';
@@ -15,9 +16,6 @@ import {CLOUD_SDK_BASES} from '../../scripts/cloud-sdk-authority.mjs';
 const hash=b=>createHash('sha256').update(b).digest('hex');
 // Real host function and admission helpers; only its product-root location and
 // process launch port are fixture-owned. No verifier is mocked or disabled.
-const nativeSource=fs.readFileSync('scripts/native-google-host-artifact.mjs','utf8');
-const verification=nativeSource.slice(nativeSource.indexOf('const hash='),nativeSource.indexOf('/** Product host code'));
-const {verifyNativeGoogleHostArtifact}=vm.runInNewContext(verification.replace('export function','function')+';({verifyNativeGoogleHostArtifact});',{fs,path,createHash,verifyCoreStateBuildRecord,coreStateRequiredTargets,JSON});
 const source=fs.readFileSync('scripts/cloud-resident-host.mjs','utf8').replace(/^import .*;\n/gm,'').replaceAll('import.meta.dirname','scriptDirectory').replace(/^export /gm,'');
 export function productCharacterHostFixture(mode,options={}){
  const root=fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()),'product-character-host-')),sdk=path.join(root,'sdk'),profile=path.join(root,'profile'),worker=path.join(root,'artifacts','fixture-worker');

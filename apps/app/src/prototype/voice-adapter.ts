@@ -1,3 +1,4 @@
+import {STARTUP_PERMISSIONS_REOPEN} from '../startup-permission-flow';
 import type {VoiceStartupStage} from '../runtime/diagnostics-export';
 import type {RealtimeCancellationCause} from '../../../../.eliza/client-features/packages/voice/src/realtime-voice-timing.ts';
 import { cloudServiceName } from '../runtime/cloud-protocol';
@@ -39,7 +40,7 @@ import { connectionController } from '../runtime/connection-ui';
 import { workflowReplyText } from '../runtime/action-message-presentation';
 import { NoteRecorderSession, addSavedNoteTranscript, formatRecordingClock, type CanonicalNoteSaveIntent, type SavedNoteAudio } from './note-recorder';
 import { createNoteRecorderDriver } from '../runtime/note-recorder-driver';
-import { setNotesRecorderControl } from './notes-recorder-control';
+import { setNotesRecorderControl, type NotesRecordStart } from './notes-recorder-control';
 const voiceServiceName = () => connectionController.getSnapshot().residentInference==='direct'?'Cartesia':cloudServiceName(connectionController.getCloudEnvironment() ?? connectionController.getSnapshot().cloudAccount?.environment ?? connectionController.getSnapshot().signIn?.environment ?? 'production');
 // Reading a note aloud sends only that note's text, never recordings or replies, so Notes names it.
 const noteSpeechDisclosure = () => connectionController.getSnapshot().residentInference==='direct' ? 'Cartesia speech sends this note’s text using your own API key and provider allowance.' : cloudRuntimeEnabled ? `Read with ${voiceServiceName()} uploads this note’s text to your selected Cloud account for Cartesia speech and uses your plan allowance.` : '';
@@ -1081,14 +1082,28 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     const folderId = typeof notes.folder==='string' && (notes.folders||[]).some((f:Bag)=>f.id===notes.folder) ? notes.folder : null;
     noteProvenance = undefined;
     noteDestination = {api:targetApi,canonical,route,current};
-    return {identity,folderId,current};
+    return {identity,folderId,current,
+      captureCurrent:()=>targetApi.voiceNoteActive()&&!document.hidden&&!connectionController.getSnapshot().open};
   }
   // A voice note records audio only. Transcription is a separate explicit action;
   // opening or saving this recorder never starts a speech provider or local model.
   const noteRemoteTranscription = () => noteDestination?.route === 'cloud' || noteDestination?.route === 'agent' && !browserDevProfile;
+  const prepareNoteCapture = async () => {
+    cancelSavedTranscription();
+    if (stage !== 'closed') cleanup();
+    const reading = stopLocalSpeechPlayback();
+    stopSaved();
+    return Promise.all([stopping, reading]).then(() => true, () => false);
+  };
   const noteRecorder = new NoteRecorderSession(createNoteRecorderDriver(), async () => null,
     () => { api?.setView('notes', { noteRecorderRevision: Date.now() }); },
-    { visible: () => !document.hidden, owner:captureNoteOwner, remoteTranscription: noteRemoteTranscription, automaticTranscription:false });
+    { visible: () => !document.hidden, owner:captureNoteOwner, remoteTranscription: noteRemoteTranscription,
+      automaticTranscription:false, prepareCapture:prepareNoteCapture,
+      onPermissionDenied: () => {
+        if (!document.hidden && document.documentElement.dataset.activeView === 'notes')
+          window.dispatchEvent(new CustomEvent(STARTUP_PERMISSIONS_REOPEN, {detail:{permission:'microphone'}}));
+      },
+    });
   const persistNoteRecording = async (saved: SavedNoteAudio, transcript: string, intent?: CanonicalNoteSaveIntent) => {
     const destination = noteDestination;
     if (!destination?.current() || destination.api.storageReady?.() === false) return false;
@@ -1104,15 +1119,14 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     return await owner.saveVoiceNote({ list: [note, ...latest], open: saved.noteId }) === true;
   };
   const finishNoteRecording = () => noteRecorder.finishAudio(persistNoteRecording, !!noteDestination?.canonical);
+  const startNoteRecorder = async (): Promise<NotesRecordStart> => {
+    if (noteRecorder.open && noteRecorder.phase !== 'failed') return 'already';
+    try { return await noteRecorder.begin() === 'recording' ? 'started' : 'failed'; }
+    catch { return 'failed'; }
+  };
   // Agent and direct controls use the same Stop-and-save operation.
   setNotesRecorderControl({
-    start: async () => {
-      cancelSavedTranscription();
-      if (noteRecorder.open && noteRecorder.phase !== 'failed') return 'already';
-      if (stage !== 'closed') cleanup(); stopLocalSpeechPlayback(); stopSaved();
-      try { await noteRecorder.begin(); } catch { return 'failed'; }
-      return noteRecorder.phase === 'recording' ? 'started' : 'failed';
-    },
+    start: startNoteRecorder,
     stop: async () => {
       if (!noteRecorder.recordingId || !['recording', 'paused', 'stopped'].includes(noteRecorder.phase)) return 'none';
       return await finishNoteRecording() ? 'saved' : 'failed';
@@ -1148,7 +1162,6 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
       done: save,
     };
   }
-  const startNoteRecorder = () => { cancelSavedTranscription();if (stage !== 'closed') cleanup(); stopLocalSpeechPlayback(); stopSaved(); void noteRecorder.begin().catch(() => { /* The recorder shows the error line. */ }); };
   let recordRequested = false;
   notes.render = (state: Bag, current: Bag) => {
     api = current;
@@ -1363,11 +1376,11 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     out.voiceInterim=recorder?.interimTranscript&&!out.msgs?.some((message:Bag)=>message.isUser&&message.text===recorder.interimTranscript&&(!(ownBrowserVoiceActive()||developmentCloudRealtimeVoiceEnabled||(developmentCartesiaVoiceEnabled&&!developmentCloudVoiceEnabled))||!conversationInterimKnownMessages.has(String(message.id))))?recorder.interimTranscript:'';
     if(recorder){recorder.connecting=['starting','connecting'].includes(recorder.state);// A voice planning label shares the transcript's shimmer line above the composer, as typed chat does.
       if(recorder.progressText)out.turnStatus=recorder.progressText;
-      const phase=recorder.muted==='true'&&!recorder.muteAutomatically?'paused':recorder.state==='starting'?'connecting':recorder.state==='preparing-speech'?'thinking':recorder.state==='awaiting-user-input'?'paused':recorder.state==='stopping'?'interrupting':recorder.state;recorder.problem=recorder.state==='error'||recorder.failed===true;recorder.statusClass='alpha-voice-status-hidden';recorder.statusLines=recorder.problem?[]:recorder.lines;if(recorder.problem){if(recorder.recoveryLabel!==DENIED_SETTINGS_LABEL)recorder.recoveryLabel='';recorder.progressText='';}recorder.activity=recorder.problem?null:React.createElement(VoiceActivity,{phase,theme:this.S().theme==='dark'?'dark':'light'});
+      const phase=recorder.muted==='true'&&!recorder.muteAutomatically?'paused':recorder.state==='starting'?'connecting':recorder.state==='preparing-speech'?'thinking':recorder.state==='awaiting-user-input'?'paused':recorder.state==='listening'&&recorder.muteAutomatically?'thinking':recorder.state==='stopping'?'interrupting':recorder.state;recorder.problem=recorder.state==='error'||recorder.failed===true;recorder.readinessLabel=recorder.problem?'Voice stopped':recorder.connecting?'Connecting…':phase==='listening'&&recorder.muted!=='mixed'?'Listening':phase==='paused'?'Muted':phase==='speaking'?'Speaking':phase==='thinking'?(recorder.state==='listening'?'Finishing…':'Thinking…'):phase==='transcribing'?'Transcribing…':'';recorder.statusClass=recorder.problem||recorder.readinessLabel?'alpha-voice-startup-status':'alpha-voice-status-hidden';recorder.statusLines=recorder.problem?[{t:'Voice stopped'}]:recorder.readinessLabel?[{t:recorder.readinessLabel}]:recorder.lines;if(recorder.problem){if(recorder.recoveryLabel&&recorder.recoveryLabel!==DENIED_SETTINGS_LABEL)recorder.recoveryLabel='Try again';recorder.progressText='';}recorder.activity=recorder.problem||recorder.connecting?null:React.createElement(VoiceActivity,{phase,theme:this.S().theme==='dark'?'dark':'light'});
       recorder.voiceDetails=false; // Voice failures stay internal; Settings owns service diagnostics.
       recorder.muteAsset=recorder.muted==='true'?'/icons/lucide/mic-off.svg':'/icons/lucide/mic.svg';}
     const pillVoice=active&&this.S().chat==='hidden'&&(retiring?retirement?.panelChat==='hidden':chatDestination?.chat==='hidden')&&!out.legacyChatRecorder;
-    out.pillVoiceInactive=!pillVoice;out.pillVoice=pillVoice?{...recorder,activity:recorder.problem?null:React.createElement(VoiceActivity,{phase:recorder.connecting?'connecting':recorder.muted==='true'&&!recorder.muteAutomatically?'paused':recorder.state,theme:this.S().theme==='dark'?'dark':'light',compact:true}),controlDown:(event:PointerEvent)=>event.stopPropagation(),stop:()=>retiring?hold():cancelChat()}:null;
+    out.pillVoiceInactive=!pillVoice;out.pillVoice=pillVoice?{...recorder,activity:recorder.problem||recorder.connecting?null:React.createElement(VoiceActivity,{phase:recorder.connecting?'connecting':recorder.muted==='true'&&!recorder.muteAutomatically?'paused':recorder.state,theme:this.S().theme==='dark'?'dark':'light',compact:true}),controlDown:(event:PointerEvent)=>event.stopPropagation(),stop:()=>retiring?hold():cancelChat()}:null;
     if(retiring&&!pillVoice){out.conversationHidden=false;out.panelOp=1;out.panelPE='auto';if(!out.panelH)out.panelH=560;}
     if(active){
       out.panelComposer=false;out.showSugg=false;out.showComposer=false;out.showPill=!!pillVoice;out.canStopReply=false;

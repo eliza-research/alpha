@@ -11,6 +11,7 @@ for(const mode of ['recover','stale','read-failure','draft-race','navigation-rac
   const slots:Record<string,string>={};
   const methods=(names:string[])=>names.map(name=>({name,rtype:'promise'}));
   w.Capacitor={PluginHeaders:[
+   {name:'Agent',methods:methods(['setGoogleAgentAccess'])},
    {name:'AlphaNotifications',methods:methods(['status','crossAppStatus','addListener','removeListener'])},
    {name:'AlphaVoiceCloud',methods:methods(['checkPermissions'])},
    {name:'DailyApps',methods:methods(['surfaceInfo','pendingReminderTap','consumeReminderTap','dismissReminderTap','listReminders','addListener','removeListener'])},

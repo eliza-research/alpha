@@ -1,3 +1,4 @@
+import {chooseCalendarEventAction} from './helpers/browser-calendar';
 import {test,expect} from '@playwright/test';
 test.use({timezoneId:'UTC'});
 async function openReminder(page:any){
@@ -9,7 +10,7 @@ async function openReminder(page:any){
 const read=(page:any)=>page.evaluate(async()=>JSON.parse((await(await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())!));
 for(const mode of ['undo','expire','restart'])test(`real reminder deletion review and durable ${mode}`,async({page})=>{
  await openReminder(page);const before=(await read(page)).reminders[0];
- await page.getByRole('button',{name:'Delete event',exact:true}).click();
+ await chooseCalendarEventAction(page, 'Delete event');
  const review=page.getByRole('dialog',{name:'Delete reminder?',exact:true});await expect(review).toBeVisible();
  await review.getByRole('button',{name:'Delete reminder',exact:true}).click();
  const panel=page.getByRole('complementary',{name:'Pending deletions'});await expect(panel.getByRole('button',{name:'Undo',exact:true})).toBeVisible();
@@ -25,7 +26,7 @@ for(const mode of ['undo','expire','restart'])test(`real reminder deletion revie
 
 test('unknown deletion receipt can refresh and dismiss without changing or retrying the item',async({page})=>{
  await openReminder(page);const before=(await read(page)).reminders[0];
- await page.getByRole('button',{name:'Delete event',exact:true}).click();
+ await chooseCalendarEventAction(page, 'Delete event');
  await page.getByRole('dialog',{name:'Delete reminder?',exact:true}).getByRole('button',{name:'Delete reminder',exact:true}).click();
  await page.evaluate(async()=>{const {reminderDocument}=await import('/src/browser/reminder-store.ts');await reminderDocument.edit(()=>({}),data=>{const entry=Object.values(data.deletions)[0] as any;entry.phase='unknown';delete data.reminders[0].pendingDeletion;});window.dispatchEvent(new Event('alpha:deletions-changed'));});
  const panel=page.getByRole('complementary',{name:'Pending deletions'});

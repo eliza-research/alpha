@@ -1,14 +1,10 @@
 {
   "schema": 1,
-  "repository": "elizaOS/eliza",
+  "aheadBy": 38,
   "base": "develop",
-  "baseCommit": "c5bdacf5b30ad70e9bf02c2c40cef6035baf687f",
-  "head": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "recordedAt": "2026-11-08",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "status": "diverged",
-  "aheadBy": 37,
-  "behindBy": 100,
+  "baseCommit": "1df8e6024b4c24696cfa0e46d2a38c61cdffa61d",
+  "behindBy": 423,
+  "head": "b1817660a0347ae19551b9ee296410fe55f02d59",
   "mergeBase": "13fc7b637406372f68f05814e76267d690f144fd",
   "pinOnlyCommits": [
     {
@@ -40,8 +36,20 @@
       "subject": "Keep the reviewed Maps admission error handling on the current mobile SDK"
     },
     {
+      "sha": "0893a8bb1541973b480b2d8d8c7b5cd395e33b6d",
+      "subject": "Preserve the Alpha release SDK ancestry in the reviewed mobile source"
+    },
+    {
+      "sha": "d69271fd0d9ab5ca218fa1e8b5d3ae7da60fe881",
+      "subject": "Preserve retained Pixel v44 SDK ancestry without changing reviewed source"
+    },
+    {
       "sha": "e7c4c2e10cac71fd83746fb24bc21b9e24c45eea",
       "subject": "Refuse case-distinct existing destinations in shared Files rename"
+    },
+    {
+      "sha": "77428481fbf9b6369c496d377e2dabeb90c6f703",
+      "subject": "Integrate current upstream Android voice language policy into the reviewed mobile SDK"
     },
     {
       "sha": "aa9a50d96c6144e9d839ed65fd4f8a161514a570",
@@ -146,7 +154,15 @@
     {
       "sha": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
       "subject": "media: keep recording windows independent of product names"
+    },
+    {
+      "sha": "b1817660a0347ae19551b9ee296410fe55f02d59",
+      "subject": "Apply reviewed Calendar search guidance to Alpha SDK pin"
     }
   ],
+  "repository": "elizaOS/eliza",
+  "status": "diverged",
+  "recordedAt": "2026-11-09",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...b1817660a0347ae19551b9ee296410fe55f02d59",
   "pullRequests": []
 }

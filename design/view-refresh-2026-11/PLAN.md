@@ -334,21 +334,28 @@ nine product-owned modules. That was the inventory policy at that time. The
 current `config/feature-parity.json` records actual owned modules and has no
 module ceiling. The transcription limitation above is retained with its date.
 
-## TLA+ models (written and checked 2026-11-06)
-Specs are in `design/view-refresh-2026-11/tla/{camera-session,photos-library,notes-view,files-browser}`,
-run by `tla/check.sh <tla2tools.jar>`; results in `tla/results.md`.
+## View refresh models
+
+The original specifications and TLC results from 2026-11-06 are archived
+under `design/view-refresh-2026-11/tla/` for comparison.
 `Design.cfg` is the proposed design. Each `AsBuilt_*.cfg` turns off one fix, to show that
 the historical implementation has the defect. Each `Ablate_*.cfg` turns off one design rule, to show the
 rule is needed.
 
-The four specifications and all 22 configurations also have Quint translations
+The four specifications and all 22 configurations have Quint translations
 in `specs/quint/legacy/{CameraSession,PhotosLibrary,NotesView,FilesBrowser}.qnt`.
 `view-refresh-configurations.json` retains the original configuration values and
 property expectations, and `manifest.json` retains the SHA-256 of each TLA input.
 The original TLA assets remain available for comparison. The 38 executable
 scenarios and seeded simulations are bounded design evidence. Completed TLC
 runs, incomplete runs, and current implementation conformance are recorded
-separately in the legacy README and runtime refinement receipts.
+separately in the legacy README and runtime refinement receipts. Run the active
+Quint checks from the repository root.
+
+```sh
+npm run quint:check -- --models=CameraSession,PhotosLibrary,NotesView,FilesBrowser
+npm run quint:compare -- --models=CameraSession,PhotosLibrary,NotesView,FilesBrowser
+```
 
 Design changes the models found:
 - **Camera:** if the agent queues a photo during start and you then start recording, the

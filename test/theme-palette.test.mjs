@@ -36,7 +36,7 @@ test('every palette property the prototype uses is in the record, and every pale
   for (const match of readFileSync('apps/app/src/prototype/model.js', 'utf8').matchAll(/alphaPaletteColor\("(--alpha-[a-z0-9-]+)"\)/g)) used.add(match[1]);
   // Layout properties the renderer sets itself (--alpha-dock-width: ...) are not colours.
   const defined = new Set();
-  for (const file of [...FILES, 'apps/app/src/runtime/dock-clearance.ts', 'apps/app/src/main.tsx'])
+  for (const file of [...FILES, 'apps/app/src/runtime/dock-clearance.ts', 'apps/app/src/prototype/browser-adapter.ts', 'apps/app/src/main.tsx'])
     for (const match of readFileSync(file, 'utf8').matchAll(/(--alpha-[a-z0-9-]+)['"]?\s*[:,]/g)) defined.add(match[1]);
   const missing = [...used].filter(name => !Object.hasOwn(palette, name) && !defined.has(name));
   assert.deepEqual(missing, [], 'used but not in theme.palette');

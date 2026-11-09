@@ -11,8 +11,8 @@
   },
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
-  "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "e92da6e1bf3d744dc67162ed4dfcfb44e128fd66b606e8f7446ab831e5a86e62",
+  "sourcePin": "b1817660a0347ae19551b9ee296410fe55f02d59",
+  "ledgerSha256": "38148d17bb39d10a6612551c30b45706b130b0c98327d78acd1574a28f633f9a",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -22,17 +22,17 @@
     "The ledger supplies pinned source bytes. Effective client/native/runtime patch outputs require their separately authenticated source mappings."
   ],
   "counts": {
-    "files": 5723,
-    "testSupportFiles": 285,
-    "testSupportCandidates": 11383,
-    "parsedFiles": 5653,
-    "languageReview": 70,
+    "files": 5766,
+    "testSupportFiles": 297,
+    "testSupportCandidates": 11402,
+    "parsedFiles": 5676,
+    "languageReview": 90,
     "parseErrors": 0,
-    "candidates": 67289,
-    "writeSites": 66824,
-    "writeAssociations": 59944,
-    "asynchronous": 8344,
-    "unassignedWrites": 10260
+    "candidates": 67709,
+    "writeSites": 67261,
+    "writeAssociations": 60319,
+    "asynchronous": 8387,
+    "unassignedWrites": 10363
   },
   "files": [
     {
@@ -17050,7 +17050,9 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCalendarPlugin.java",
       "sha256": "4ba9ec0cbbb773855838b3ba45a59b97476a15f1d07983a3b5a039fcb00c7845",
       "allocatedModels": [
-        "CalendarSync"
+        "CalendarSync",
+        "NativeCalendarScopedReview",
+        "NativeCalendarSyncEnable"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -17480,7 +17482,8 @@
       "sha256": "ae30280d76f209655db63906b950b32ea8670795f79a30c9955c3d5d0f2d81f3",
       "allocatedModels": [
         "Application",
-        "NativeCredentialMutation"
+        "NativeCredentialMutation",
+        "NativeCalendarSyncEnable"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -17833,7 +17836,9 @@
       "sha256": "cd9da4c865178edc3c1733eed909d75d36eff969891c03c9ff068517b59f29e8",
       "allocatedModels": [
         "IdentitySession",
-        "NativeCredentialMutation"
+        "NativeCredentialMutation",
+        "NativeGmailBackground",
+        "NativeCalendarSyncEnable"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -19151,10 +19156,12 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaGmailPlugin.java",
-      "sha256": "8fdf0813436cb0a9b51d2e7324a770a7a6c8f67a876c1dbd8834e2373dc48888",
+      "sha256": "00fb2dd0b1921dfd2bbaf0223aa23ed551cbb8a74b744e94dcd169b582587239",
       "allocatedModels": [
-        "InboxDelivery"
+        "InboxDelivery",
+        "NativeGmailBackground"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -19167,102 +19174,108 @@
         {
           "owner": "AlphaGmailPlugin.submit@18",
           "line": 18,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaGmailPlugin.submit@19",
+          "line": 19,
           "bindings": 3,
           "writes": 0
         },
         {
-          "owner": "AlphaGmailPlugin.submit@18.lambda@18",
-          "line": 18,
+          "owner": "AlphaGmailPlugin.submit@19.lambda@19",
+          "line": 20,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaGmailPlugin.foreground@19",
-          "line": 19,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "AlphaGmailPlugin.requireForeground@21",
-          "line": 21,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "AlphaGmailPlugin.configure@22",
+          "owner": "AlphaGmailPlugin.foreground@22",
           "line": 22,
-          "bindings": 6,
-          "writes": 0
-        },
-        {
-          "owner": "AlphaGmailPlugin.withdraw@23",
-          "line": 23,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaGmailPlugin.status@24",
+          "owner": "AlphaGmailPlugin.requireForeground@24",
           "line": 24,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaGmailPlugin.pending@25",
+          "owner": "AlphaGmailPlugin.configure@25",
           "line": 25,
-          "bindings": 2,
+          "bindings": 7,
           "writes": 0
         },
         {
-          "owner": "AlphaGmailPlugin.consume@26",
+          "owner": "AlphaGmailPlugin.withdraw@26",
           "line": 26,
-          "bindings": 2,
+          "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaGmailPlugin.releaseQuestion@27",
+          "owner": "AlphaGmailPlugin.status@27",
           "line": 27,
-          "bindings": 2,
+          "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaGmailPlugin.notificationSettings@28",
+          "owner": "AlphaGmailPlugin.pending@28",
           "line": 28,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "AlphaGmailPlugin.capture@30",
+          "owner": "AlphaGmailPlugin.consume@29",
+          "line": 29,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaGmailPlugin.releaseQuestion@30",
           "line": 30,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "AlphaGmailPlugin.capture@30.lambda@30",
-          "line": 30,
-          "bindings": 2,
-          "writes": 0
-        },
-        {
-          "owner": "AlphaGmailPlugin.resumeDelivery@31",
+          "owner": "AlphaGmailPlugin.notificationSettings@31",
           "line": 31,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "AlphaGmailPlugin.handleOnNewIntent@33",
+          "owner": "AlphaGmailPlugin.capture@33",
           "line": 33,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaGmailPlugin.capture@33.lambda@33",
+          "line": 33,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaGmailPlugin.resumeDelivery@34",
+          "line": 34,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaGmailPlugin.handleOnNewIntent@36",
+          "line": 36,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaGmailPlugin.handleOnResume@34",
-          "line": 34,
+          "owner": "AlphaGmailPlugin.handleOnResume@37",
+          "line": 37,
           "bindings": 1,
           "writes": 0
         }
       ],
       "parseErrors": [],
-      "asynchronous": 9,
+      "asynchronous": 10,
       "unassignedWrites": 3
     },
     {
@@ -22951,7 +22964,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarDeletionIdentity.java",
       "sha256": "8e4179e018cbbd1c2bc0366055190afa00f50941e576a332baa09d91c9dc58e3",
       "allocatedModels": [
-        "CalendarSync"
+        "CalendarSync",
+        "NativeCalendarScopedReview"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -22999,10 +23013,12 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarScopedDeletionReview.java",
-      "sha256": "44b34b89a4347b38343b9b7c53a6b81e4c65deb7a23207126702a0d3de19e8f2",
+      "sha256": "85ed1ad2851b6c480271eec1e2271cda48fb9c69c3d2a20f9841bfab57a56b85",
       "allocatedModels": [
-        "CalendarSync"
+        "CalendarSync",
+        "NativeCalendarScopedReview"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -23051,78 +23067,78 @@
         {
           "owner": "CalendarScopedDeletionReview.remember@27",
           "line": 27,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "CalendarScopedDeletionReview.key@28",
-          "line": 28,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "CalendarScopedDeletionReview.ticket@29",
-          "line": 29,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "CalendarScopedDeletionReview.target@30",
-          "line": 30,
-          "bindings": 2,
-          "writes": 0
-        },
-        {
-          "owner": "CalendarScopedDeletionReview.read@34",
+          "owner": "CalendarScopedDeletionReview.key@34",
           "line": 34,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "CalendarScopedDeletionReview.ticket@35",
+          "line": 35,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "CalendarScopedDeletionReview.target@36",
+          "line": 36,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "CalendarScopedDeletionReview.read@40",
+          "line": 40,
           "bindings": 3,
           "writes": 0
         },
         {
-          "owner": "CalendarScopedDeletionReview.inspect@38",
-          "line": 38,
+          "owner": "CalendarScopedDeletionReview.inspect@44",
+          "line": 44,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "CalendarScopedDeletionReview.inspect@38.lambda@40",
-          "line": 41,
+          "owner": "CalendarScopedDeletionReview.inspect@44.lambda@46",
+          "line": 47,
           "bindings": 6,
           "writes": 5
         },
         {
-          "owner": "CalendarScopedDeletionReview.review@47",
-          "line": 47,
+          "owner": "CalendarScopedDeletionReview.review@54",
+          "line": 54,
           "bindings": 3,
           "writes": 0
         },
         {
-          "owner": "CalendarScopedDeletionReview.review@47.lambda@49",
-          "line": 50,
+          "owner": "CalendarScopedDeletionReview.review@54.lambda@56",
+          "line": 57,
           "bindings": 4,
           "writes": 0
         },
         {
-          "owner": "CalendarScopedDeletionReview.show@55",
-          "line": 55,
+          "owner": "CalendarScopedDeletionReview.show@62",
+          "line": 62,
           "bindings": 11,
           "writes": 8
         },
         {
-          "owner": "CalendarScopedDeletionReview.show@55.lambda@64",
-          "line": 64,
+          "owner": "CalendarScopedDeletionReview.show@62.lambda@71",
+          "line": 71,
           "bindings": 5,
           "writes": 0
         },
         {
-          "owner": "CalendarScopedDeletionReview.show@55.lambda@68",
-          "line": 68,
+          "owner": "CalendarScopedDeletionReview.show@62.lambda@75",
+          "line": 75,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "CalendarScopedDeletionReview.dispatch@73",
-          "line": 73,
+          "owner": "CalendarScopedDeletionReview.dispatch@80",
+          "line": 80,
           "bindings": 6,
           "writes": 1
         }
@@ -23133,10 +23149,12 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncBridge.java",
-      "sha256": "7b35fa6d9827ffdb99929ecaa6d04f07545949ed7fdf04a7314a8b03b830eb7c",
+      "sha256": "6a69b3ce6ae442347425b4603e12299d1ba008e7ca839c1b1719db1f657536e5",
       "allocatedModels": [
-        "CalendarSync"
+        "CalendarSync",
+        "NativeCalendarSyncEnable"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -23144,7 +23162,7 @@
           "owner": "CalendarSyncBridge",
           "line": 23,
           "bindings": 10,
-          "writes": 16
+          "writes": 12
         },
         {
           "owner": "CalendarSyncBridge.Anonymous@31.onChange@31",
@@ -23201,146 +23219,152 @@
           "writes": 0
         },
         {
-          "owner": "CalendarSyncBridge.digest@59",
-          "line": 59,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "CalendarSyncBridge.same@60",
+          "owner": "CalendarSyncBridge.saveEnabled@60",
           "line": 60,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "CalendarSyncBridge.scope@61",
-          "line": 61,
-          "bindings": 4,
-          "writes": 1
+          "owner": "CalendarSyncBridge.digest@64",
+          "line": 64,
+          "bindings": 1,
+          "writes": 0
         },
         {
-          "owner": "CalendarSyncBridge.enabled@66",
-          "line": 66,
+          "owner": "CalendarSyncBridge.same@65",
+          "line": 65,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "CalendarSyncBridge.check@67",
-          "line": 67,
+          "owner": "CalendarSyncBridge.scope@66",
+          "line": 66,
+          "bindings": 4,
+          "writes": 1
+        },
+        {
+          "owner": "CalendarSyncBridge.enabled@71",
+          "line": 71,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "CalendarSyncBridge.check@72",
+          "line": 72,
           "bindings": 3,
           "writes": 1
         },
         {
-          "owner": "CalendarSyncBridge.read@76",
-          "line": 76,
+          "owner": "CalendarSyncBridge.read@81",
+          "line": 81,
           "bindings": 4,
           "writes": 0
         },
         {
-          "owner": "CalendarSyncBridge.events@82",
-          "line": 82,
+          "owner": "CalendarSyncBridge.events@87",
+          "line": 87,
           "bindings": 6,
           "writes": 2
         },
         {
-          "owner": "CalendarSyncBridge.prepare@89",
-          "line": 89,
+          "owner": "CalendarSyncBridge.prepare@94",
+          "line": 94,
           "bindings": 17,
           "writes": 15
         },
         {
-          "owner": "CalendarSyncBridge.prepare@89.lambda@104",
-          "line": 104,
+          "owner": "CalendarSyncBridge.prepare@94.lambda@109",
+          "line": 109,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "CalendarSyncBridge.projection@121",
-          "line": 121,
+          "owner": "CalendarSyncBridge.projection@126",
+          "line": 126,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "CalendarSyncBridge.call@122",
-          "line": 122,
+          "owner": "CalendarSyncBridge.call@127",
+          "line": 127,
           "bindings": 8,
           "writes": 3
         },
         {
-          "owner": "CalendarSyncBridge.call@122.lambda@124",
-          "line": 128,
+          "owner": "CalendarSyncBridge.call@127.lambda@129",
+          "line": 133,
           "bindings": 23,
           "writes": 19
         },
         {
-          "owner": "CalendarSyncBridge.cloudFailure@152",
-          "line": 152,
+          "owner": "CalendarSyncBridge.cloudFailure@157",
+          "line": 157,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "CalendarSyncBridge.snapshot@153",
-          "line": 153,
+          "owner": "CalendarSyncBridge.snapshot@158",
+          "line": 158,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "CalendarSyncBridge.link@154",
-          "line": 154,
+          "owner": "CalendarSyncBridge.link@159",
+          "line": 159,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "CalendarSyncBridge.consent@155",
-          "line": 155,
+          "owner": "CalendarSyncBridge.consent@160",
+          "line": 160,
           "bindings": 5,
           "writes": 2
         },
         {
-          "owner": "CalendarSyncBridge.consent@155.lambda@158",
-          "line": 158,
+          "owner": "CalendarSyncBridge.consent@160.lambda@163",
+          "line": 163,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "CalendarSyncBridge.consent@155.lambda@159",
-          "line": 159,
+          "owner": "CalendarSyncBridge.consent@160.lambda@164",
+          "line": 164,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "CalendarSyncBridge.consent@155.lambda@160",
-          "line": 160,
+          "owner": "CalendarSyncBridge.consent@160.lambda@165",
+          "line": 165,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "CalendarSyncBridge.enable@167",
-          "line": 167,
+          "owner": "CalendarSyncBridge.enable@172",
+          "line": 172,
           "bindings": 9,
           "writes": 5
         },
         {
-          "owner": "CalendarSyncBridge.mutate@181",
-          "line": 181,
+          "owner": "CalendarSyncBridge.mutate@186",
+          "line": 186,
           "bindings": 21,
           "writes": 15
         },
         {
-          "owner": "CalendarSyncBridge.mutate@181.lambda@194",
-          "line": 194,
+          "owner": "CalendarSyncBridge.mutate@186.lambda@199",
+          "line": 199,
           "bindings": 3,
           "writes": 0
         },
         {
-          "owner": "CalendarSyncBridge.dispatchDeletion@213",
-          "line": 213,
+          "owner": "CalendarSyncBridge.dispatchDeletion@218",
+          "line": 218,
           "bindings": 8,
           "writes": 2
         },
         {
-          "owner": "CalendarSyncBridge.deletionRefusal@222",
-          "line": 222,
+          "owner": "CalendarSyncBridge.deletionRefusal@227",
+          "line": 227,
           "bindings": 6,
           "writes": 0
         }
@@ -23353,7 +23377,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncConsent.java",
       "sha256": "9041ce3d58d4ba2ce60c50832dfb200f61aa030e2e7adb4c57e74bf2da1f207a",
       "allocatedModels": [
-        "CalendarSync"
+        "CalendarSync",
+        "NativeCalendarSyncEnable"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -23417,7 +23442,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncMutation.java",
       "sha256": "a956e9bc8b208d9e0126e9634f6b25b17fdceb42a4d3a3bac7150f4b4dceed28",
       "allocatedModels": [
-        "CalendarSync"
+        "CalendarSync",
+        "NativeCalendarSyncEnable"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -23473,7 +23499,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncReceiptRecovery.java",
       "sha256": "873f6e9d7fdbce4c3f065769e001a54f3a9004a5526086865c94922d962605c1",
       "allocatedModels": [
-        "CalendarSync"
+        "CalendarSync",
+        "NativeCalendarSyncEnable"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -23511,7 +23538,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncSnapshot.java",
       "sha256": "363360cc4a536c21e3beca24aa970429a2651318a439a561ff52c59ab9d9b57e",
       "allocatedModels": [
-        "CalendarSync"
+        "CalendarSync",
+        "NativeCalendarSyncEnable"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -23783,7 +23811,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/CloudDeployment.java",
       "sha256": "c42767d8d5c6226f8398e5d22fa3aa007b0c26811d8ad44fabc4bf164cb561dc",
       "allocatedModels": [
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "NativeGmailBackground"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -24211,7 +24240,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/GmailBackground.java",
       "sha256": "9364b0153e0f3b70eaaf5d10d618233e23112b3bfcf0e7f55bf8101c2e48bdeb",
       "allocatedModels": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "NativeGmailBackground"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -24261,7 +24291,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/GmailDeliveryWorker.java",
       "sha256": "82921c44d47eba2c06b367dcc9c42ba94c438cada353cc778fb0d877f299377e",
       "allocatedModels": [
-        "InboxDelivery"
+        "InboxDelivery",
+        "NativeGmailBackground"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -24523,7 +24554,8 @@
       "sha256": "0beb42ca42f2bd53ea0b2e92b7d3e1282b41c13814e4e633a476939e5dbb6d8d",
       "allocatedModels": [
         "NoticesAndCaches",
-        "NativeHostedInbox"
+        "NativeHostedInbox",
+        "NativeDigestConsent"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -25020,7 +25052,8 @@
       "allocatedModels": [
         "NoticesAndCaches",
         "NativeHostedResultNotices",
-        "NativeHostedInbox"
+        "NativeHostedInbox",
+        "NativeDigestConsent"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -25464,7 +25497,9 @@
       "allocatedModels": [
         "ApplicationComposition",
         "NativeCredentialMutation",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "NativeGmailBackground",
+        "NativeCalendarSyncEnable"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -25645,7 +25680,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeDeletionCoordinator.java",
       "sha256": "9ef18e9c57dbf9470adb2371a392d532ef32204af45f02ec9adf36f7a61065ea",
       "allocatedModels": [
-        "DeletionJournal"
+        "DeletionJournal",
+        "NativeCalendarSyncEnable"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -25780,10 +25816,12 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeDigestHost.java",
-      "sha256": "b5ef73a23f167a779e9c3ae763ab3c740527e564419b6838830f81db8aacc852",
+      "sha256": "c06bbf6bb3525c5a569e4b89e6045f24cd4d01551682368a33011a44a64bc0be",
       "allocatedModels": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "NativeDigestConsent"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -25836,8 +25874,8 @@
           "writes": 0
         },
         {
-          "owner": "NativeDigestHost.read@17.lambda@20.Anonymous@30.calendar@31",
-          "line": 31,
+          "owner": "NativeDigestHost.read@17.lambda@20.Anonymous@31.calendar@32",
+          "line": 32,
           "bindings": 7,
           "writes": 0
         }
@@ -25850,7 +25888,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeDigestSources.java",
       "sha256": "21400c0d2a397cc466027623cfd800c569b22b22a49d61b5280132dfa77e16be",
       "allocatedModels": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "NativeDigestConsent"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -26524,7 +26563,8 @@
         "NativeUpdateActivation",
         "NativeUpdateStaging",
         "NativeClockReview",
-        "NativeCrashJournal"
+        "NativeCrashJournal",
+        "NativeGmailBackground"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -29072,7 +29112,8 @@
       "path": "apps/app/src/browser/audio-capture.ts",
       "sha256": "b103b5f1d7b98a6108104f47a7099ce04c6855f5d454790c0efff4eea0bcbd09",
       "allocatedModels": [
-        "VoiceSession"
+        "VoiceSession",
+        "NotesRecorderMediaAdmission"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -29634,7 +29675,8 @@
       "path": "apps/app/src/browser/calendar-sync-fields.ts",
       "sha256": "e45806a45e8231d7e3955486cc2e18c5f7df08c3806688ce79036f957e338038",
       "allocatedModels": [
-        "CalendarSync"
+        "CalendarSync",
+        "NativeGoogleHostArtifact"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -29785,24 +29827,31 @@
     },
     {
       "path": "apps/app/src/browser/camera-focus.ts",
-      "sha256": "d38671fb84c39db4d2194a88613fdf88db48573ae2eba3f0ec320d94365c8e4e",
+      "sha256": "e1bdeda311af772768176830b9b1618a082b82bd7363340f3181628e7eb1434b",
       "allocatedModels": [
         "MediaLifecycle"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
         {
-          "owner": "BrowserCameraFocus",
+          "owner": "cameraFocusTarget",
           "line": 5,
+          "bindings": 1,
+          "writes": 2
+        },
+        {
+          "owner": "BrowserCameraFocus",
+          "line": 10,
           "bindings": 3,
           "writes": 5
         },
         {
           "owner": "BrowserCameraFocus.select",
-          "line": 14,
+          "line": 19,
           "bindings": 3,
-          "writes": 6
+          "writes": 4
         }
       ],
       "parseErrors": [],
@@ -29824,10 +29873,11 @@
     },
     {
       "path": "apps/app/src/browser/clock.ts",
-      "sha256": "818c4a1bbddbb4fd30a43cdd9ab0df599a4bdc1d35990cd86999c705a96f275f",
+      "sha256": "d06f7d6578d69e7a0e6fa7962a4a43780e4d95e6ef4594b0abaff411480309f1",
       "allocatedModels": [
         "DeviceActions",
-        "BrowserReminderOrphan"
+        "BrowserReminderOrphan",
+        "ShellNavigation"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -29835,37 +29885,37 @@
       "owners": [
         {
           "owner": "BrowserClock",
-          "line": 12,
+          "line": 13,
           "bindings": 17,
           "writes": 33
         },
         {
           "owner": "BrowserClock.render",
-          "line": 56,
+          "line": 57,
           "bindings": 3,
           "writes": 3
         },
         {
           "owner": "BrowserClock.render.action",
-          "line": 56,
-          "bindings": 1,
-          "writes": 2
-        },
-        {
-          "owner": "BrowserClock.button",
           "line": 57,
           "bindings": 1,
           "writes": 2
         },
         {
+          "owner": "BrowserClock.button",
+          "line": 58,
+          "bindings": 1,
+          "writes": 2
+        },
+        {
           "owner": "BrowserClock.open",
-          "line": 60,
-          "bindings": 15,
-          "writes": 31
+          "line": 61,
+          "bindings": 16,
+          "writes": 32
         }
       ],
       "parseErrors": [],
-      "asynchronous": 13,
+      "asynchronous": 11,
       "unassignedWrites": 3
     },
     {
@@ -29931,7 +29981,8 @@
         "BrowserReadingState",
         "BrowserSession",
         "HostedNoticeQuestion",
-        "SourceRenewalQuestion"
+        "SourceRenewalQuestion",
+        "ShadeNoticeQuestionAdmission"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -31126,7 +31177,8 @@
       "path": "apps/app/src/browser/note-audio-store.ts",
       "sha256": "918c9412a43387762bb3dd7e8d0f5332d787be701042db3ec442787e90df1747",
       "allocatedModels": [
-        "NotesLifecycle"
+        "NotesLifecycle",
+        "NotesRecorderMediaAdmission"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -32163,7 +32215,8 @@
       "path": "apps/app/src/browser/voice.ts",
       "sha256": "895093f74afd65c2e1e43bf9d91b6861dec10115e96a87f4cf4a4cb1dafc39fa",
       "allocatedModels": [
-        "VoiceSession"
+        "VoiceSession",
+        "NotesRecorderMediaAdmission"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -32764,7 +32817,8 @@
         "DockClearanceOwnership",
         "MountedUpdateAdmission",
         "StartupUpdateAdmission",
-        "CanonicalNotificationTapAdmission"
+        "CanonicalNotificationTapAdmission",
+        "ShadeNoticeQuestionAdmission"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -33298,11 +33352,13 @@
     },
     {
       "path": "apps/app/src/prototype/agent-adapter.ts",
-      "sha256": "a0e09e0a7326410e56640539e4a662461078aa82e6155c4bb9bd99b0c1a2f731",
+      "sha256": "8bf683a65a4010137a8fb9df9abb543ef90272155445bc07963d16527777e332",
       "allocatedModels": [
         "Application",
         "AssistantConversation",
-        "NotesLifecycle"
+        "NotesLifecycle",
+        "ChatAttachments",
+        "FirstSendDraftMigration"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -33310,210 +33366,210 @@
       "owners": [
         {
           "owner": "<module>",
-          "line": 88,
+          "line": 91,
           "bindings": 3,
           "writes": 2
         },
         {
           "owner": "firstSendReview",
-          "line": 102,
+          "line": 105,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "settleFirstSendSlot",
-          "line": 126,
+          "line": 129,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "trackDispatch",
-          "line": 176,
+          "line": 206,
           "bindings": 1,
           "writes": 3
         },
         {
           "owner": "installAgentAdapter",
-          "line": 225,
+          "line": 255,
           "bindings": 3,
           "writes": 38
         },
         {
           "owner": "installAgentAdapter.sizeComposer",
-          "line": 250,
+          "line": 280,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "installAgentAdapter.keepNotesDraft",
-          "line": 263,
+          "line": 293,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAgentAdapter.keepNotesDraft.ArrowFunction@265",
-          "line": 266,
+          "owner": "installAgentAdapter.keepNotesDraft.ArrowFunction@295",
+          "line": 296,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installAgentAdapter.resumeNotesDraft",
-          "line": 277,
+          "line": 307,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installAgentAdapter.openNativeNotesRecovery",
-          "line": 320,
+          "line": 350,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@355",
-          "line": 356,
+          "owner": "installAgentAdapter.FunctionExpression@385",
+          "line": 386,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "installAgentAdapter.completeReadReply",
-          "line": 365,
+          "line": 395,
           "bindings": 1,
           "writes": 3
         },
         {
-          "owner": "installAgentAdapter.recoverPendingActions.ArrowFunction@415.ArrowFunction@418",
-          "line": 420,
+          "owner": "installAgentAdapter.recoverPendingActions.ArrowFunction@445.ArrowFunction@448",
+          "line": 450,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "installAgentAdapter.syncCanonicalNotes",
-          "line": 503,
+          "line": 533,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installAgentAdapter.syncPreviousNotesAvailability",
-          "line": 530,
+          "line": 560,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "installAgentAdapter.selectNotesSource",
-          "line": 553,
+          "line": 583,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAgentAdapter.selectNotesSource.ArrowFunction@566",
-          "line": 572,
+          "owner": "installAgentAdapter.selectNotesSource.ArrowFunction@596",
+          "line": 602,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installAgentAdapter.context",
-          "line": 607,
+          "line": 637,
           "bindings": 1,
           "writes": 11
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@652.ArrowFunction@667",
-          "line": 669,
+          "owner": "installAgentAdapter.FunctionExpression@682.ArrowFunction@697",
+          "line": 699,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@652.ArrowFunction@802",
-          "line": 804,
+          "owner": "installAgentAdapter.FunctionExpression@682.ArrowFunction@841",
+          "line": 843,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@652.ArrowFunction@859",
-          "line": 897,
+          "owner": "installAgentAdapter.FunctionExpression@682.ArrowFunction@898",
+          "line": 936,
           "bindings": 15,
           "writes": 16
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1137",
-          "line": 1140,
+          "owner": "installAgentAdapter.FunctionExpression@1176",
+          "line": 1179,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1236",
-          "line": 1237,
+          "owner": "installAgentAdapter.FunctionExpression@1276",
+          "line": 1277,
           "bindings": 1,
-          "writes": 15
+          "writes": 16
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1236.ArrowFunction@1248.ArrowFunction@1248",
-          "line": 1249,
+          "owner": "installAgentAdapter.FunctionExpression@1276.ArrowFunction@1288.ArrowFunction@1288",
+          "line": 1289,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAgentAdapter.recheckCloudFromCard.ArrowFunction@1322",
-          "line": 1323,
+          "owner": "installAgentAdapter.recheckCloudFromCard.ArrowFunction@1366",
+          "line": 1367,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installAgentAdapter.sendFromComposer",
-          "line": 1343,
+          "line": 1387,
           "bindings": 3,
           "writes": 3
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1363",
-          "line": 1364,
+          "owner": "installAgentAdapter.FunctionExpression@1407",
+          "line": 1408,
           "bindings": 3,
-          "writes": 35
+          "writes": 41
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1495",
-          "line": 1499,
+          "owner": "installAgentAdapter.FunctionExpression@1556",
+          "line": 1560,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1510",
-          "line": 1511,
+          "owner": "installAgentAdapter.FunctionExpression@1571",
+          "line": 1572,
           "bindings": 5,
           "writes": 5
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1579",
-          "line": 1580,
+          "owner": "installAgentAdapter.FunctionExpression@1640",
+          "line": 1641,
           "bindings": 13,
           "writes": 16
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1775",
-          "line": 1781,
+          "owner": "installAgentAdapter.FunctionExpression@1847",
+          "line": 1853,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1787",
-          "line": 1805,
+          "owner": "installAgentAdapter.FunctionExpression@1859",
+          "line": 1877,
           "bindings": 2,
           "writes": 4
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1914",
-          "line": 1915,
+          "owner": "installAgentAdapter.FunctionExpression@1986",
+          "line": 1987,
           "bindings": 1,
           "writes": 12
         }
       ],
       "parseErrors": [],
-      "asynchronous": 109,
-      "unassignedWrites": 254
+      "asynchronous": 112,
+      "unassignedWrites": 266
     },
     {
       "path": "apps/app/src/prototype/agent-calendar-adapter.ts",
-      "sha256": "7b6e9e25556a1ed38871cf5133a7ac40c553e3a7dd530a93486c82c2de44c54e",
+      "sha256": "90100540874ae21a8fd109fe9ef30cf06c9d9b6ab280ffe02ece9c38f909a3b6",
       "allocatedModels": [
         "CalendarPresentation",
         "AgentCalendarRefresh",
@@ -33604,9 +33660,10 @@
     },
     {
       "path": "apps/app/src/prototype/automations-adapter.ts",
-      "sha256": "a3270932efe68e9b2da938e60e748afd1c2078ceee4cabd5042224fff97bec48",
+      "sha256": "88db562cc08559eb128aa1790c0c4c46f6571cb148fd0bec410b11e1e3ba5167",
       "allocatedModels": [
-        "WorkflowExecution"
+        "WorkflowExecution",
+        "ReminderOpenIntent"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -33620,44 +33677,44 @@
         {
           "owner": "installAutomationsAdapter",
           "line": 41,
-          "bindings": 27,
-          "writes": 125
+          "bindings": 29,
+          "writes": 134
         },
         {
-          "owner": "installAutomationsAdapter.settled.ArrowFunction@64",
-          "line": 65,
+          "owner": "installAutomationsAdapter.settled.ArrowFunction@66",
+          "line": 67,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installAutomationsAdapter.refresh",
-          "line": 80,
+          "line": 82,
           "bindings": 2,
           "writes": 6
         },
         {
           "owner": "installAutomationsAdapter.work",
-          "line": 99,
+          "line": 101,
           "bindings": 4,
           "writes": 3
         },
         {
           "owner": "installAutomationsAdapter.allowAnother",
-          "line": 111,
+          "line": 113,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "installAutomationsAdapter.save",
-          "line": 130,
+          "line": 132,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAutomationsAdapter.ArrowFunction@144",
-          "line": 152,
+          "owner": "installAutomationsAdapter.ArrowFunction@146",
+          "line": 154,
           "bindings": 4,
-          "writes": 13
+          "writes": 14
         }
       ],
       "parseErrors": [],
@@ -33666,7 +33723,7 @@
     },
     {
       "path": "apps/app/src/prototype/automations.css",
-      "sha256": "4eaffea25299c2af04464e5c69ac6e413edf79f33570a09ae2ff711ec8c29f99",
+      "sha256": "db32bf5adbf8fda7ac689b98e6d9f07b6d87a37617a11a8ed7d4116db8ab4a08",
       "allocatedModels": [
         "WorkflowExecution"
       ],
@@ -33680,9 +33737,10 @@
     },
     {
       "path": "apps/app/src/prototype/browser-adapter.ts",
-      "sha256": "ca2057dae81d730131669090ba12100110bb9db949c1eb0ce0d309c1f9a5ff05",
+      "sha256": "685a8e21b95743b9c31b98761f05230e074d8c081f2d7a18f7877c32853f818d",
       "allocatedModels": [
-        "BrowserSession"
+        "BrowserSession",
+        "BrowserUnderlay"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -33691,24 +33749,24 @@
         {
           "owner": "installPrototypeBrowserAdapter",
           "line": 38,
-          "bindings": 31,
-          "writes": 79
+          "bindings": 34,
+          "writes": 84
         },
         {
           "owner": "installPrototypeBrowserAdapter.stopReading",
-          "line": 106,
+          "line": 107,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installPrototypeBrowserAdapter.readPage",
-          "line": 115,
+          "line": 116,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "installPrototypeBrowserAdapter.askPage",
-          "line": 144,
+          "line": 145,
           "bindings": 2,
           "writes": 2
         },
@@ -33732,7 +33790,7 @@
         }
       ],
       "parseErrors": [],
-      "asynchronous": 70,
+      "asynchronous": 74,
       "unassignedWrites": 16
     },
     {
@@ -34241,10 +34299,11 @@
     },
     {
       "path": "apps/app/src/prototype/calendar-month-focus.ts",
-      "sha256": "980535689c68ff1b944fd262cf08dd943a047a679ff5a13722edc922c77cdf43",
+      "sha256": "22d10de0bfe4a99b8fc0c8a467ad47a79fe42a5a41f693d02a9a4ea3eff9e71b",
       "allocatedModels": [
         "CalendarPresentation",
-        "CalendarSync"
+        "CalendarSync",
+        "ModalScrimOwnership"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -34254,21 +34313,28 @@
           "line": 5,
           "bindings": 3,
           "writes": 4
+        },
+        {
+          "owner": "installCalendarMonthFocus.ArrowFunction@7",
+          "line": 7,
+          "bindings": 1,
+          "writes": 6
         }
       ],
       "parseErrors": [],
       "asynchronous": 2,
-      "unassignedWrites": 1
+      "unassignedWrites": 2
     },
     {
       "path": "apps/app/src/prototype/camera-adapter.ts",
-      "sha256": "f4fbdb7c6e372d4823b61287fce50742f6d43b3ff8a984f88c9f578a04d82530",
+      "sha256": "6d707480b8fff997b1eea5f40ccc6d59916be60a80eb96f9d7d41b46e5b3c7ce",
       "allocatedModels": [
         "MediaLifecycle",
         "PhotosWindow",
         "PhotosTrash",
         "CanonicalCalendarDraftHandoff",
-        "CameraPreviewRetirement"
+        "CameraPreviewRetirement",
+        "ChatAttachments"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -34276,175 +34342,169 @@
       "owners": [
         {
           "owner": "<module>",
-          "line": 30,
+          "line": 31,
           "bindings": 5,
           "writes": 8
         },
         {
           "owner": "installViewPresence",
-          "line": 159,
+          "line": 160,
           "bindings": 2,
           "writes": 5
         },
         {
           "owner": "installPrototypeCameraAdapter",
-          "line": 179,
-          "bindings": 102,
-          "writes": 417
+          "line": 180,
+          "bindings": 109,
+          "writes": 442
         },
         {
-          "owner": "installPrototypeCameraAdapter.FunctionExpression@184",
-          "line": 185,
+          "owner": "installPrototypeCameraAdapter.FunctionExpression@185",
+          "line": 186,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "installPrototypeCameraAdapter.beginEdit",
-          "line": 243,
+          "line": 244,
           "bindings": 2,
           "writes": 2
         },
         {
-          "owner": "installPrototypeCameraAdapter.beginEdit.ArrowFunction@256",
-          "line": 257,
+          "owner": "installPrototypeCameraAdapter.beginEdit.ArrowFunction@257",
+          "line": 258,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "installPrototypeCameraAdapter.transformEdit",
-          "line": 275,
+          "line": 276,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "installPrototypeCameraAdapter.recoverEdit",
-          "line": 302,
+          "line": 303,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installPrototypeCameraAdapter.saveEdit",
-          "line": 311,
+          "line": 312,
           "bindings": 2,
           "writes": 5
         },
         {
           "owner": "installPrototypeCameraAdapter.patchView",
-          "line": 389,
+          "line": 390,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "installPrototypeCameraAdapter.dragTo",
-          "line": 418,
+          "line": 419,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "installPrototypeCameraAdapter.changeSelection",
-          "line": 448,
+          "line": 449,
           "bindings": 5,
           "writes": 8
         },
         {
           "owner": "installPrototypeCameraAdapter.addMembers",
-          "line": 495,
+          "line": 496,
           "bindings": 3,
           "writes": 4
         },
         {
           "owner": "installPrototypeCameraAdapter.mutateAlbum",
-          "line": 504,
+          "line": 505,
           "bindings": 2,
           "writes": 3
         },
         {
           "owner": "installPrototypeCameraAdapter.deletePermanent",
-          "line": 585,
+          "line": 586,
           "bindings": 2,
           "writes": 8
         },
         {
           "owner": "installPrototypeCameraAdapter.mask",
-          "line": 689,
+          "line": 690,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "installPrototypeCameraAdapter.showAccess",
-          "line": 791,
+          "line": 796,
           "bindings": 3,
           "writes": 4
         },
         {
           "owner": "installPrototypeCameraAdapter.showAccess.action",
-          "line": 795,
+          "line": 800,
           "bindings": 1,
           "writes": 4
         },
         {
           "owner": "installPrototypeCameraAdapter.control",
-          "line": 855,
+          "line": 861,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installPrototypeCameraAdapter.takeRequestedPhoto",
-          "line": 966,
+          "line": 1005,
           "bindings": 2,
           "writes": 4
         },
         {
-          "owner": "installPrototypeCameraAdapter.askCapture.compose.ArrowFunction@1102",
-          "line": 1105,
+          "owner": "installPrototypeCameraAdapter.ArrowFunction@1159",
+          "line": 1161,
           "bindings": 1,
-          "writes": 1
-        },
-        {
-          "owner": "installPrototypeCameraAdapter.ArrowFunction@1126",
-          "line": 1128,
-          "bindings": 1,
-          "writes": 31
+          "writes": 33
         },
         {
           "owner": "installPrototypeCameraAdapter.attachGrid",
-          "line": 1194,
+          "line": 1244,
           "bindings": 2,
           "writes": 3
         },
         {
           "owner": "installPrototypeCameraAdapter.settleThumbnails",
-          "line": 1213,
+          "line": 1263,
           "bindings": 6,
           "writes": 1
         },
         {
           "owner": "installPrototypeCameraAdapter.loadCoverThumbnails",
-          "line": 1240,
+          "line": 1290,
           "bindings": 3,
           "writes": 1
         },
         {
           "owner": "installPrototypeCameraAdapter.run",
-          "line": 1269,
+          "line": 1319,
           "bindings": 2,
           "writes": 5
         },
         {
-          "owner": "installPrototypeCameraAdapter.ArrowFunction@1332",
-          "line": 1340,
+          "owner": "installPrototypeCameraAdapter.ArrowFunction@1382",
+          "line": 1390,
           "bindings": 5,
-          "writes": 104
+          "writes": 109
         },
         {
-          "owner": "installPrototypeCameraAdapter.ArrowFunction@1550",
-          "line": 1552,
+          "owner": "installPrototypeCameraAdapter.ArrowFunction@1612",
+          "line": 1614,
           "bindings": 1,
           "writes": 1
         }
       ],
       "parseErrors": [],
-      "asynchronous": 94,
+      "asynchronous": 99,
       "unassignedWrites": 115
     },
     {
@@ -34528,7 +34588,8 @@
         "NotesLifecycle",
         "CanonicalNotesFeedback",
         "CanonicalNotesView",
-        "CanonicalCalendarDraftHandoff"
+        "CanonicalCalendarDraftHandoff",
+        "NotesRecorderMediaAdmission"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -34607,94 +34668,102 @@
     },
     {
       "path": "apps/app/src/prototype/chat-overlay-motion-adapter.ts",
-      "sha256": "eca19bf83c613bf1506586a2eb48faac9e7da835cddfb014b755d227f903fe7b",
+      "sha256": "7760898b213dbd511e61591b476e1d575f0496c52f37dbba7694741484de2910",
       "allocatedModels": [
         "Application",
-        "ChatInput"
+        "ChatInput",
+        "ModalScrimOwnership"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
         {
           "owner": "revealRows",
-          "line": 130,
+          "line": 188,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "scrollParent",
-          "line": 193,
+          "line": 251,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installChatOverlayMotion",
-          "line": 205,
+          "line": 263,
           "bindings": 1,
           "writes": 7
         },
         {
           "owner": "installChatOverlayMotion.resizeForTap",
-          "line": 248,
+          "line": 306,
           "bindings": 1,
           "writes": 12
         },
         {
           "owner": "installChatOverlayMotion.retire",
-          "line": 293,
+          "line": 351,
           "bindings": 2,
           "writes": 4
         },
         {
-          "owner": "installChatOverlayMotion.FunctionExpression@319",
-          "line": 346,
+          "owner": "installChatOverlayMotion.FunctionExpression@377",
+          "line": 404,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installChatOverlayMotion.FunctionExpression@372",
-          "line": 390,
+          "owner": "installChatOverlayMotion.FunctionExpression@430",
+          "line": 448,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installChatOverlayMotion.FunctionExpression@419",
-          "line": 420,
+          "owner": "installChatOverlayMotion.FunctionExpression@477",
+          "line": 478,
           "bindings": 2,
           "writes": 6
         },
         {
-          "owner": "installChatOverlayMotion.FunctionExpression@487",
-          "line": 488,
+          "owner": "installChatOverlayMotion.FunctionExpression@545",
+          "line": 546,
           "bindings": 3,
-          "writes": 45
+          "writes": 44
         },
         {
-          "owner": "installChatOverlayMotion.FunctionExpression@487.ArrowFunction@506",
-          "line": 514,
+          "owner": "installChatOverlayMotion.FunctionExpression@545.ArrowFunction@564",
+          "line": 572,
           "bindings": 2,
           "writes": 2
         },
         {
-          "owner": "installChatOverlayMotion.FunctionExpression@487.move",
-          "line": 670,
+          "owner": "installChatOverlayMotion.FunctionExpression@545.move",
+          "line": 728,
           "bindings": 2,
           "writes": 3
         },
         {
-          "owner": "installChatOverlayMotion.FunctionExpression@487.up",
-          "line": 682,
+          "owner": "installChatOverlayMotion.FunctionExpression@545.up",
+          "line": 740,
+          "bindings": 2,
+          "writes": 4
+        },
+        {
+          "owner": "installChatOverlayMotion.FunctionExpression@545.down",
+          "line": 861,
           "bindings": 1,
-          "writes": 2
+          "writes": 1
         }
       ],
       "parseErrors": [],
-      "asynchronous": 18,
-      "unassignedWrites": 20
+      "asynchronous": 21,
+      "unassignedWrites": 19
     },
     {
       "path": "apps/app/src/prototype/clock-adapter.ts",
-      "sha256": "9c977981b37ba1688e39ade8997d5b1f85c4e91e0ac4af9f6f26a34c03ad0f62",
+      "sha256": "77b9c7c49f1ff59abfdcc24ec8e5a0c86d7c8404463b122dd859ae8de551e260",
       "allocatedModels": [
         "DeviceActions"
       ],
@@ -34762,7 +34831,8 @@
       "allocatedModels": [
         "FilesTree",
         "ShellNavigation",
-        "HostedNoticeQuestion"
+        "HostedNoticeQuestion",
+        "ShadeNoticeQuestionAdmission"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -35089,7 +35159,7 @@
     },
     {
       "path": "apps/app/src/prototype/home-overview-cards.ts",
-      "sha256": "a6a98d827d80ceab8a025d3b96cbccb27a2e058b38fe71ecb0eb155358b1ca99",
+      "sha256": "f3cc88163789a0f1bb6eed3132075f480ba88ede8b541c18a9142cff100aff5d",
       "allocatedModels": [
         "PreferencesAndPresentation"
       ],
@@ -35105,7 +35175,7 @@
         },
         {
           "owner": "installHomeOverviewCards",
-          "line": 92,
+          "line": 93,
           "bindings": 1,
           "writes": 1
         }
@@ -35724,7 +35794,7 @@
     },
     {
       "path": "apps/app/src/prototype/model.js",
-      "sha256": "cd16c0361d79a1c834747bbf882047898a90dfa3f1eccceeed959db8c89124b5",
+      "sha256": "eadab21fe6bfe9fbbed044bcb6f4ff8c0d3a03f508184c8efe2d637ef9f4f254",
       "allocatedModels": [
         "Application",
         "CalendarPresentation",
@@ -35735,7 +35805,9 @@
         "AccessibleToastLifetime",
         "CalendarPreservationConfirmation",
         "CanonicalCalendarEditorClose",
-        "CameraPreviewRetirement"
+        "CameraPreviewRetirement",
+        "RetainedReminderTapAdmission",
+        "ReminderOpenIntent"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -38773,11 +38845,13 @@
     },
     {
       "path": "apps/app/src/prototype/note-recorder.ts",
-      "sha256": "43c92dac368bba4c600eb124afefddc0e99f35ab4d6a6a372711a404b62383a8",
+      "sha256": "c68f1787eb041b670813041887a2da5741bf188769b883a083ea6680968e9f3b",
       "allocatedModels": [
         "NotesLifecycle",
-        "MediaLifecycle"
+        "MediaLifecycle",
+        "NotesRecorderMediaAdmission"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -38789,43 +38863,43 @@
         },
         {
           "owner": "NoteRecorderSession",
-          "line": 113,
+          "line": 115,
           "bindings": 31,
           "writes": 122
         },
         {
           "owner": "NoteRecorderSession.transcript",
-          "line": 194,
+          "line": 196,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "NoteRecorderSession.committedMs",
-          "line": 200,
+          "line": 202,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "NoteRecorderSession.displayTranscript",
-          "line": 211,
+          "line": 213,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "NoteRecorderSession.syncLive",
-          "line": 222,
+          "line": 224,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "NoteRecorderSession.pump.ArrowFunction@364",
-          "line": 365,
+          "owner": "NoteRecorderSession.pump.ArrowFunction@378",
+          "line": 379,
           "bindings": 4,
           "writes": 3
         },
         {
           "owner": "NoteRecorderSession.finish",
-          "line": 457,
+          "line": 473,
           "bindings": 1,
           "writes": 2
         }
@@ -39098,7 +39172,8 @@
       "sha256": "c9522662cfc2d05d4b019dc29069ba95e63dbc7541527f01ae0b0fbd94b7449a",
       "allocatedModels": [
         "NotesLifecycle",
-        "MediaLifecycle"
+        "MediaLifecycle",
+        "NotesRecorderMediaAdmission"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -39186,11 +39261,12 @@
     },
     {
       "path": "apps/app/src/prototype/notifications-adapter.ts",
-      "sha256": "90c26ad311249e7c3f2d5423bee5b70b9f803bdd88041322046ee0547abdd46d",
+      "sha256": "54f0fe9f96b24849f26308e796192efdb3c32630712a3720ed4047bb566933e5",
       "allocatedModels": [
         "NoticesAndCaches",
         "NotificationCollection",
-        "CanonicalNotificationTapAdmission"
+        "CanonicalNotificationTapAdmission",
+        "ShadeNoticeQuestionAdmission"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -39218,18 +39294,18 @@
           "owner": "installNotificationsAdapter",
           "line": 92,
           "bindings": 1,
-          "writes": 6
+          "writes": 7
         },
         {
-          "owner": "installNotificationsAdapter.FunctionExpression@113",
-          "line": 114,
+          "owner": "installNotificationsAdapter.FunctionExpression@121",
+          "line": 122,
           "bindings": 1,
-          "writes": 2
+          "writes": 3
         }
       ],
       "parseErrors": [],
-      "asynchronous": 18,
-      "unassignedWrites": 33
+      "asynchronous": 17,
+      "unassignedWrites": 35
     },
     {
       "path": "apps/app/src/prototype/own-notice-question.ts",
@@ -39292,14 +39368,15 @@
     },
     {
       "path": "apps/app/src/prototype/phone.css",
-      "sha256": "e2f628a02b219ac7957e6f059597b5bf7bb168381af635d5ed312871478bb5c0",
+      "sha256": "f718ef2e3a262826e177090ad31b319d472cd10a42ee0da4ca661355268493ea",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
         "Maps",
         "DockClearanceOwnership",
         "HomeLayout",
-        "ChatInput"
+        "ChatInput",
+        "ModalScrimOwnership"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -39370,10 +39447,13 @@
     },
     {
       "path": "apps/app/src/prototype/reminder-adapter.ts",
-      "sha256": "ce1c796751c65918009d3e6456011c4dbcd3ba3e961ced34362bfa99a5140631",
+      "sha256": "70774fa211433a7beb52de46b5197800e6c1d253833e2f2132c91b4d08ccdb6d",
       "allocatedModels": [
-        "DeviceActions"
+        "DeviceActions",
+        "RetainedReminderTapAdmission",
+        "ReminderOpenIntent"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -39384,69 +39464,75 @@
           "writes": 17
         },
         {
-          "owner": "installReminderAdapter.FunctionExpression@83",
-          "line": 91,
-          "bindings": 1,
-          "writes": 1
-        },
-        {
-          "owner": "installReminderAdapter.FunctionExpression@122",
-          "line": 126,
-          "bindings": 1,
-          "writes": 1
-        },
-        {
-          "owner": "installReminderAdapter.FunctionExpression@147",
-          "line": 148,
-          "bindings": 1,
-          "writes": 31
-        },
-        {
-          "owner": "installReminderAdapter.FunctionExpression@147.todoDecision",
-          "line": 170,
+          "owner": "installReminderAdapter.FunctionExpression@31",
+          "line": 36,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "installReminderAdapter.FunctionExpression@147.ArrowFunction@184",
-          "line": 185,
+          "owner": "installReminderAdapter.FunctionExpression@99",
+          "line": 107,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "installReminderAdapter.FunctionExpression@138",
+          "line": 142,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "installReminderAdapter.FunctionExpression@163",
+          "line": 164,
+          "bindings": 1,
+          "writes": 31
+        },
+        {
+          "owner": "installReminderAdapter.FunctionExpression@163.todoDecision",
+          "line": 186,
+          "bindings": 1,
+          "writes": 2
+        },
+        {
+          "owner": "installReminderAdapter.FunctionExpression@163.ArrowFunction@200",
+          "line": 201,
           "bindings": 2,
           "writes": 6
         },
         {
-          "owner": "installReminderAdapter.FunctionExpression@147.ArrowFunction@207.saveEdit",
-          "line": 217,
+          "owner": "installReminderAdapter.FunctionExpression@163.ArrowFunction@223.saveEdit",
+          "line": 233,
           "bindings": 7,
           "writes": 11
         },
         {
-          "owner": "installReminderAdapter.FunctionExpression@147.ArrowFunction@207",
-          "line": 273,
+          "owner": "installReminderAdapter.FunctionExpression@163.ArrowFunction@223",
+          "line": 289,
           "bindings": 9,
           "writes": 14
         },
         {
-          "owner": "installReminderAdapter.FunctionExpression@147.decide",
-          "line": 342,
+          "owner": "installReminderAdapter.FunctionExpression@163.decide",
+          "line": 358,
           "bindings": 5,
           "writes": 9
         },
         {
-          "owner": "installReminderAdapter.FunctionExpression@147.reopen",
-          "line": 387,
+          "owner": "installReminderAdapter.FunctionExpression@163.reopen",
+          "line": 403,
           "bindings": 5,
           "writes": 9
         },
         {
-          "owner": "installReminderAdapter.FunctionExpression@147.ArrowFunction@436",
-          "line": 439,
+          "owner": "installReminderAdapter.FunctionExpression@163.ArrowFunction@452",
+          "line": 455,
           "bindings": 1,
           "writes": 3
         }
       ],
       "parseErrors": [],
       "asynchronous": 26,
-      "unassignedWrites": 40
+      "unassignedWrites": 41
     },
     {
       "path": "apps/app/src/prototype/scan-correction-review.ts",
@@ -40109,7 +40195,7 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "6ee0fabc343d4743dcdc15443d692827ae0351131f8397ca2b95f4e02780331b",
+      "sha256": "79e3e9c339db29699b6c621a719794d076b704458a5a16f42a509d4aa4d10871",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -40120,7 +40206,9 @@
         "CalendarPreservationConfirmation",
         "CanonicalCalendarEditorClose",
         "CameraPreviewRetirement",
-        "MapsRerouteOwnership"
+        "MapsRerouteOwnership",
+        "ModalScrimOwnership",
+        "NotesRecorderMediaAdmission"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -40235,11 +40323,12 @@
     },
     {
       "path": "apps/app/src/prototype/voice-adapter.ts",
-      "sha256": "97901e111fea4895ed87c7b2e7f6e68990ff41d5a0a970de927248f4d3242032",
+      "sha256": "e948a4fe801399c43cb12fac24a94e6d5bc30fcb1a49f04adf954e845d2bed80",
       "allocatedModels": [
         "VoiceSession",
         "ControllerComposition",
-        "BatchCaptureCompletion"
+        "BatchCaptureCompletion",
+        "NotesRecorderMediaAdmission"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -40247,162 +40336,162 @@
       "owners": [
         {
           "owner": "installPrototypeVoiceAdapter",
-          "line": 83,
+          "line": 84,
           "bindings": 79,
           "writes": 316
         },
         {
-          "owner": "installPrototypeVoiceAdapter.FunctionExpression@87",
-          "line": 88,
+          "owner": "installPrototypeVoiceAdapter.FunctionExpression@88",
+          "line": 89,
           "bindings": 1,
           "writes": 10
         },
         {
           "owner": "installPrototypeVoiceAdapter.cleanup",
-          "line": 250,
+          "line": 251,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installPrototypeVoiceAdapter.enter",
-          "line": 274,
+          "line": 275,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "installPrototypeVoiceAdapter.start",
-          "line": 331,
+          "line": 332,
           "bindings": 3,
           "writes": 4
         },
         {
           "owner": "installPrototypeVoiceAdapter.listen",
-          "line": 404,
+          "line": 405,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "installPrototypeVoiceAdapter.chatCurrent",
-          "line": 420,
+          "line": 421,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "installPrototypeVoiceAdapter.navigationContinuation",
-          "line": 428,
+          "line": 429,
           "bindings": 2,
           "writes": 4
         },
         {
           "owner": "installPrototypeVoiceAdapter.navigationContinuation.apply",
-          "line": 433,
+          "line": 434,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installPrototypeVoiceAdapter.cancelChat",
-          "line": 448,
+          "line": 449,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "installPrototypeVoiceAdapter.captureConversationAudio",
-          "line": 477,
+          "line": 478,
           "bindings": 11,
           "writes": 21
         },
         {
           "owner": "installPrototypeVoiceAdapter.beginConversation",
-          "line": 542,
+          "line": 543,
           "bindings": 8,
           "writes": 14
         },
         {
           "owner": "installPrototypeVoiceAdapter.beginConversation.sendTurn",
-          "line": 609,
+          "line": 610,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installPrototypeVoiceAdapter.beginConversation.sendTurn.send",
-          "line": 621,
+          "line": 622,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installPrototypeVoiceAdapter.beginConversation.speak",
-          "line": 698,
+          "line": 699,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "installPrototypeVoiceAdapter.beginConversation.listen",
-          "line": 712,
+          "line": 713,
           "bindings": 5,
           "writes": 14
         },
         {
           "owner": "installPrototypeVoiceAdapter.beginConversation.transcribe",
-          "line": 804,
+          "line": 805,
           "bindings": 2,
           "writes": 1
         },
         {
           "owner": "installPrototypeVoiceAdapter.conversationRecorderView",
-          "line": 862,
+          "line": 863,
           "bindings": 2,
           "writes": 3
         },
         {
           "owner": "installPrototypeVoiceAdapter.restoreDeletion",
-          "line": 912,
+          "line": 913,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installPrototypeVoiceAdapter.restoreDeletion.ArrowFunction@913",
-          "line": 936,
+          "owner": "installPrototypeVoiceAdapter.restoreDeletion.ArrowFunction@914",
+          "line": 937,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installPrototypeVoiceAdapter.deleteVoiceNote",
-          "line": 956,
+          "line": 957,
           "bindings": 2,
           "writes": 5
         },
         {
-          "owner": "installPrototypeVoiceAdapter.ArrowFunction@1153",
-          "line": 1169,
+          "owner": "installPrototypeVoiceAdapter.ArrowFunction@1166",
+          "line": 1182,
           "bindings": 4,
           "writes": 46
         },
         {
-          "owner": "installPrototypeVoiceAdapter.ArrowFunction@1153.ArrowFunction@1184",
-          "line": 1186,
+          "owner": "installPrototypeVoiceAdapter.ArrowFunction@1166.ArrowFunction@1197",
+          "line": 1199,
           "bindings": 3,
           "writes": 3
         },
         {
           "owner": "installPrototypeVoiceAdapter.recorderView",
-          "line": 1306,
+          "line": 1319,
           "bindings": 1,
           "writes": 7
         },
         {
-          "owner": "installPrototypeVoiceAdapter.FunctionExpression@1341",
-          "line": 1342,
+          "owner": "installPrototypeVoiceAdapter.FunctionExpression@1354",
+          "line": 1355,
           "bindings": 3,
-          "writes": 40
+          "writes": 41
         }
       ],
       "parseErrors": [],
-      "asynchronous": 111,
+      "asynchronous": 112,
       "unassignedWrites": 34
     },
     {
       "path": "apps/app/src/prototype/workflow-adapter.ts",
-      "sha256": "c8e2796a00889458f404852a766bfd90bafd8afe628253390bb3e8764fc3d0e3",
+      "sha256": "2ef2b5ab283825eee06f440cea6683692900deb5aba9d16d7f36280ab6d02337",
       "allocatedModels": [
         "WorkflowExecution",
         "NoticesAndCaches"
@@ -40419,8 +40508,8 @@
         {
           "owner": "installWorkflowAdapter",
           "line": 66,
-          "bindings": 44,
-          "writes": 234
+          "bindings": 43,
+          "writes": 230
         },
         {
           "owner": "installWorkflowAdapter.work",
@@ -40435,62 +40524,62 @@
           "writes": 1
         },
         {
-          "owner": "installWorkflowAdapter.refresh.ArrowFunction@184",
-          "line": 184,
+          "owner": "installWorkflowAdapter.refresh.ArrowFunction@177",
+          "line": 177,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installWorkflowAdapter.open.ArrowFunction@207",
-          "line": 210,
+          "owner": "installWorkflowAdapter.open.ArrowFunction@200",
+          "line": 203,
           "bindings": 3,
           "writes": 4
         },
         {
           "owner": "installWorkflowAdapter.restore",
-          "line": 277,
+          "line": 270,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "installWorkflowAdapter.submitRun.ArrowFunction@323",
-          "line": 324,
+          "owner": "installWorkflowAdapter.submitRun.ArrowFunction@316",
+          "line": 317,
           "bindings": 2,
           "writes": 2
         },
         {
-          "owner": "installWorkflowAdapter.resubmitRun.ArrowFunction@334",
-          "line": 337,
+          "owner": "installWorkflowAdapter.resubmitRun.ArrowFunction@327",
+          "line": 330,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installWorkflowAdapter.read.ArrowFunction@360",
-          "line": 361,
+          "owner": "installWorkflowAdapter.read.ArrowFunction@353",
+          "line": 354,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installWorkflowAdapter.saveMetadata.ArrowFunction@384",
-          "line": 385,
+          "owner": "installWorkflowAdapter.saveMetadata.ArrowFunction@377",
+          "line": 378,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installWorkflowAdapter.lifecycle.ArrowFunction@394",
-          "line": 394,
+          "owner": "installWorkflowAdapter.lifecycle.ArrowFunction@387",
+          "line": 387,
           "bindings": 2,
           "writes": 2
         },
         {
-          "owner": "installWorkflowAdapter.ArrowFunction@396",
-          "line": 399,
+          "owner": "installWorkflowAdapter.ArrowFunction@389",
+          "line": 392,
           "bindings": 1,
-          "writes": 6
+          "writes": 5
         },
         {
-          "owner": "installWorkflowAdapter.FunctionExpression@417",
-          "line": 419,
+          "owner": "installWorkflowAdapter.FunctionExpression@409",
+          "line": 411,
           "bindings": 1,
           "writes": 1
         }
@@ -40844,41 +40933,43 @@
     },
     {
       "path": "apps/app/src/runtime/alpha-client.ts",
-      "sha256": "0a13728c4df274cf8a31781cfbf6a17a10d38bf5cbae67c3cbe059d33cc70372",
+      "sha256": "4f1b14427cf3e40fe9b1935f5733ea4ef1f54f2ff3cf7ed35ca5b2d0ef46d0ef",
       "allocatedModels": [
         "Application",
-        "AssistantConversation"
+        "AssistantConversation",
+        "ChatAttachments",
+        "RetainedReminderTapAdmission"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
         {
           "owner": "AlphaClientError",
-          "line": 152,
+          "line": 153,
           "bindings": 2,
           "writes": 1
         },
         {
           "owner": "AlphaClient",
-          "line": 192,
+          "line": 193,
           "bindings": 8,
           "writes": 25
         },
         {
           "owner": "AlphaClient.attachVerifiedTransport",
-          "line": 220,
+          "line": 221,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "AlphaClient.run",
-          "line": 299,
+          "line": 300,
           "bindings": 3,
           "writes": 2
         },
         {
-          "owner": "AlphaClient.send.ArrowFunction@376",
-          "line": 377,
+          "owner": "AlphaClient.send.ArrowFunction@377",
+          "line": 378,
           "bindings": 3,
           "writes": 3
         }
@@ -41038,7 +41129,8 @@
         "AssistantConversation",
         "DraftDispatch",
         "CanonicalCalendarEditorClose",
-        "CanonicalCalendarDraftHandoff"
+        "CanonicalCalendarDraftHandoff",
+        "FirstSendDraftMigration"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -41062,7 +41154,7 @@
     },
     {
       "path": "apps/app/src/runtime/automations-protocol.ts",
-      "sha256": "415242b0557f695f5aafd6210bddb5c6e5e221ed723b1709961e432512d847f4",
+      "sha256": "b1b1e229c87702bfa1c60e8fe82f2e4697da670e569d5b2edd217748452e13bc",
       "allocatedModels": [
         "WorkflowExecution"
       ],
@@ -41113,7 +41205,7 @@
         },
         {
           "owner": "AutomationsProtocol.editReminder",
-          "line": 143,
+          "line": 150,
           "bindings": 1,
           "writes": 1
         }
@@ -41146,7 +41238,8 @@
       "path": "apps/app/src/runtime/browser-cloud-resident.ts",
       "sha256": "272b423b5684b104bcf6a95ff3caa0081d9344199d4ba822adef7c357fb18fba",
       "allocatedModels": [
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "NativeGoogleHostArtifact"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -41311,7 +41404,8 @@
       "path": "apps/app/src/runtime/calendar-linked-provider.ts",
       "sha256": "4f30bf83e2a8d30be7768138a13da7e85438e1f78ad9d376a63c85d15b34176b",
       "allocatedModels": [
-        "CalendarSync"
+        "CalendarSync",
+        "NativeGoogleHostArtifact"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -41572,7 +41666,8 @@
       "path": "apps/app/src/runtime/cloud-deployment.generated.ts",
       "sha256": "0c9ba401ee40ab7c25aea7de846375b9d805fd33b0932f0ebb965c126972f8da",
       "allocatedModels": [
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "NativeGoogleHostArtifact"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -41733,7 +41828,9 @@
         "ApplicationComposition",
         "GoogleConnect",
         "InboxProviderDrafts",
-        "ControllerComposition"
+        "ControllerComposition",
+        "NativeGoogleHostArtifact",
+        "GmailAgentMailboxRecovery"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -41847,7 +41944,8 @@
       "path": "apps/app/src/runtime/cloud-sign-in.ts",
       "sha256": "1faf20fcf8f38f77c37e9a877e6cdb68b01928d8368a6b3d254fbf37d4aae7c0",
       "allocatedModels": [
-        "IdentitySession"
+        "IdentitySession",
+        "NativeGoogleHostArtifact"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -41947,7 +42045,7 @@
     },
     {
       "path": "apps/app/src/runtime/connection-ui.tsx",
-      "sha256": "7ddc6888f1d0244d80025b5714396e2816683d0d7c233fd9f3cebcbd605cd9fd",
+      "sha256": "a66bbbcffd88bc5138fd37f3475d2753aa9b45d95e8c37d2cef37d8b3aa122e4",
       "allocatedModels": [
         "Application",
         "ApplicationComposition",
@@ -41956,7 +42054,9 @@
         "ControllerComposition",
         "ResidentLiveness",
         "CanonicalNotificationTapAdmission",
-        "CloudConnectionNotices"
+        "CloudConnectionNotices",
+        "ChatAttachments",
+        "RetainedReminderTapAdmission"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -42060,313 +42160,313 @@
         },
         {
           "owner": "admitCloudResident",
-          "line": 1198,
+          "line": 1199,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "recheckResidentPlan",
-          "line": 1264,
+          "line": 1265,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "restoreOwnProviderCloudServices",
-          "line": 1384,
+          "line": 1385,
           "bindings": 3,
           "writes": 3
         },
         {
           "owner": "connectResident",
-          "line": 1409,
+          "line": 1410,
           "bindings": 10,
           "writes": 13
         },
         {
           "owner": "connectCloud",
-          "line": 1504,
+          "line": 1505,
           "bindings": 6,
           "writes": 20
         },
         {
           "owner": "migrateLegacyMock",
-          "line": 1562,
+          "line": 1563,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "migrateLegacyHostedSelection",
-          "line": 1587,
+          "line": 1588,
           "bindings": 2,
           "writes": 3
         },
         {
           "owner": "ensureSelectedConversation",
-          "line": 1616,
+          "line": 1617,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "createSelectedConversation",
-          "line": 1623,
+          "line": 1624,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "effectAppliedBeforeFailure",
-          "line": 1690,
+          "line": 1691,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "scheduleStoppedReply",
-          "line": 1800,
+          "line": 1801,
           "bindings": 2,
           "writes": 1
         },
         {
           "owner": "restoreConversationHistory",
-          "line": 1856,
+          "line": 1857,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "readConversation",
-          "line": 1905,
+          "line": 1906,
           "bindings": 5,
           "writes": 11
         },
         {
           "owner": "presentActionEntry",
-          "line": 1965,
+          "line": 1966,
           "bindings": 2,
           "writes": 5
         },
         {
           "owner": "boundNavigation",
-          "line": 1998,
+          "line": 1999,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "personalAccept.ArrowFunction@2044",
-          "line": 2048,
+          "owner": "personalAccept.ArrowFunction@2045",
+          "line": 2049,
           "bindings": 2,
           "writes": 3
         },
         {
-          "owner": "personalFinalize.ArrowFunction@2056",
-          "line": 2061,
+          "owner": "personalFinalize.ArrowFunction@2057",
+          "line": 2062,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "residentBrowserLoginAction",
-          "line": 2101,
+          "line": 2102,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "rejectWorkflowPhoneAction",
-          "line": 2286,
+          "line": 2287,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "cancelReadReply",
-          "line": 2317,
+          "line": 2318,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "rejectProposal",
-          "line": 2339,
+          "line": 2340,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "getOwnerReminderNotificationBinding.openConversation",
-          "line": 2384,
+          "line": 2385,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "getAppRecordClient.request",
-          "line": 2402,
+          "line": 2403,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "getAutomationsClient.request",
-          "line": 2417,
+          "line": 2418,
           "bindings": 2,
           "writes": 3
         },
         {
-          "owner": "initialize.ArrowFunction@2559",
-          "line": 2563,
+          "owner": "initialize.ArrowFunction@2560",
+          "line": 2564,
           "bindings": 3,
           "writes": 3
         },
         {
           "owner": "configureLocal",
-          "line": 2642,
+          "line": 2643,
           "bindings": 3,
           "writes": 3
         },
         {
-          "owner": "configureLocal.ArrowFunction@2650.ArrowFunction@2656",
-          "line": 2656,
+          "owner": "configureLocal.ArrowFunction@2651.ArrowFunction@2657",
+          "line": 2657,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "selectSavedProvider",
-          "line": 2674,
+          "line": 2675,
           "bindings": 2,
           "writes": 2
         },
         {
-          "owner": "newConversation.ArrowFunction@2715",
-          "line": 2722,
+          "owner": "newConversation.ArrowFunction@2716",
+          "line": 2723,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "confirmRecovery",
-          "line": 2750,
+          "line": 2751,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "beginSignIn",
-          "line": 2807,
+          "line": 2808,
           "bindings": 3,
           "writes": 4
         },
         {
           "owner": "cancelSignIn",
-          "line": 2870,
+          "line": 2871,
           "bindings": 2,
           "writes": 4
         },
         {
-          "owner": "signInGoogle.ArrowFunction@2890",
-          "line": 2896,
+          "owner": "signInGoogle.ArrowFunction@2891",
+          "line": 2897,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "reopenGoogle",
-          "line": 2916,
+          "line": 2917,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "verifySignInCode.ArrowFunction@2948",
-          "line": 2950,
+          "owner": "verifySignInCode.ArrowFunction@2949",
+          "line": 2951,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "signInReturned",
-          "line": 2990,
+          "line": 2991,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "residentRedeem",
-          "line": 3078,
+          "line": 3079,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "residentRedeem.ArrowFunction@3081",
-          "line": 3084,
+          "owner": "residentRedeem.ArrowFunction@3082",
+          "line": 3085,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "disconnect.ArrowFunction@3203",
-          "line": 3207,
+          "owner": "disconnect.ArrowFunction@3204",
+          "line": 3208,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "cloudSignOut.ArrowFunction@3224",
-          "line": 3226,
+          "owner": "cloudSignOut.ArrowFunction@3225",
+          "line": 3227,
           "bindings": 2,
           "writes": 2
         },
         {
-          "owner": "mock.ArrowFunction@3264",
-          "line": 3271,
+          "owner": "mock.ArrowFunction@3265",
+          "line": 3272,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "truncateMessage",
-          "line": 3298,
+          "line": 3299,
           "bindings": 2,
           "writes": 1
         },
         {
           "owner": "prepareVoiceConversation",
-          "line": 3328,
+          "line": 3329,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "send",
-          "line": 3340,
+          "line": 3341,
           "bindings": 10,
           "writes": 12
         },
         {
           "owner": "ConnectionChooser",
-          "line": 3599,
+          "line": 3600,
           "bindings": 36,
           "writes": 15
         },
         {
-          "owner": "ConnectionChooser.ArrowFunction@3613",
-          "line": 3615,
+          "owner": "ConnectionChooser.ArrowFunction@3614",
+          "line": 3616,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "ConnectionChooser.ArrowFunction@3626",
-          "line": 3626,
+          "owner": "ConnectionChooser.ArrowFunction@3627",
+          "line": 3627,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "ConnectionChooser.ArrowFunction@3630",
-          "line": 3630,
+          "owner": "ConnectionChooser.ArrowFunction@3631",
+          "line": 3631,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "OwnKeyForm",
-          "line": 3999,
+          "line": 4000,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "OwnProviderChoice",
-          "line": 4020,
+          "line": 4021,
           "bindings": 4,
           "writes": 0
         },
         {
           "owner": "ProviderKeys",
-          "line": 4058,
+          "line": 4059,
           "bindings": 15,
           "writes": 16
         },
         {
           "owner": "ProviderKeys.run",
-          "line": 4076,
+          "line": 4077,
           "bindings": 1,
           "writes": 0
         }
@@ -42504,7 +42604,7 @@
     },
     {
       "path": "apps/app/src/runtime/development-cartesia-conversation.ts",
-      "sha256": "bea5bccfb9a382198abc7b5d4237955b849258addaeb539b8f9299428f9fa8a3",
+      "sha256": "e0567afa559337d619a218058c82dc7bd4e6d082f6488141d7fd9cbc757f031f",
       "allocatedModels": [
         "DevelopmentSurfaces"
       ],
@@ -42549,9 +42649,10 @@
     },
     {
       "path": "apps/app/src/runtime/development-cloud-agents.ts",
-      "sha256": "f802cd31875e138da131015b4af1af03ff11b7b3494f94ad09e53cc478f4cf39",
+      "sha256": "b87d10c539708c9993a78b7096cd9517ffee6aac4d5e772693ccca6d9b43df7b",
       "allocatedModels": [
-        "DevelopmentSurfaces"
+        "DevelopmentSurfaces",
+        "ChatAttachments"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -42784,7 +42885,7 @@
     },
     {
       "path": "apps/app/src/runtime/dock-clearance.ts",
-      "sha256": "143b65b7fa2ca36cd056d620818b1ed53cf2ca4f89b5083a4ce0c86e88b509e1",
+      "sha256": "f83b74acccf84c2479dd10b39b64cc0c865de38c7dea603128981517067168c0",
       "allocatedModels": [
         "HomeLayout",
         "PreferencesAndPresentation",
@@ -42892,7 +42993,8 @@
         "InboxDelivery",
         "InboxCoordinator",
         "InboxProviderDrafts",
-        "GoogleConsentAdmission"
+        "GoogleConsentAdmission",
+        "NativeGoogleHostArtifact"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -43065,13 +43167,14 @@
     },
     {
       "path": "apps/app/src/runtime/google-connection-ui.tsx",
-      "sha256": "f89743ecf42447a7fac50692d2c5368e5de6cfd737c0a47d6102b1ae04b78e4f",
+      "sha256": "9e9bf2d5586a8f06145680033648db4279eb2fcd6f821a23ecfe17d9ee96f361",
       "allocatedModels": [
         "GoogleAccounts",
         "GoogleConnect",
         "GoogleConsentAdmission",
         "GoogleCalendarLinkPublication",
-        "GoogleCalendarAccessChoice"
+        "GoogleCalendarAccessChoice",
+        "BrowserGoogleReturn"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -43086,8 +43189,8 @@
         {
           "owner": "GoogleConnectionsPanel",
           "line": 51,
-          "bindings": 26,
-          "writes": 26
+          "bindings": 28,
+          "writes": 34
         },
         {
           "owner": "GoogleConnectionsPanel.ArrowFunction@52",
@@ -43096,26 +43199,32 @@
           "writes": 1
         },
         {
-          "owner": "GoogleConnectionsPanel.ArrowFunction@72.ArrowFunction@72",
-          "line": 73,
+          "owner": "GoogleConnectionsPanel.ArrowFunction@73.ArrowFunction@73",
+          "line": 74,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "GoogleConnectionsPanel.load",
-          "line": 95,
+          "line": 96,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "GoogleConnectionsPanel.ArrowFunction@145",
+          "line": 147,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "GoogleConnectionsPanel.connect",
-          "line": 162,
+          "line": 174,
           "bindings": 3,
           "writes": 5
         },
         {
           "owner": "GoogleConnectionsPanel.disconnect",
-          "line": 195,
+          "line": 208,
           "bindings": 2,
           "writes": 1
         }
@@ -43129,7 +43238,8 @@
       "sha256": "30cdcd481c794b3846fdf97d6f7a4f2a18500b6df5e55b13eb27f924f269bfdb",
       "allocatedModels": [
         "IdentitySession",
-        "GoogleAccounts"
+        "GoogleAccounts",
+        "NativeGoogleHostArtifact"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -43147,7 +43257,7 @@
     },
     {
       "path": "apps/app/src/runtime/home-calendar-selection.ts",
-      "sha256": "cb0164cc9bc97ddc1f3ce0fed8e7926a2d232c420953ba08faa4a50392b3d17f",
+      "sha256": "f86fabc5229dac1e920d2c6d9cf4b629a0d06eb15e2fff9a78f04f3787ac4b7c",
       "allocatedModels": [
         "CalendarPresentation"
       ],
@@ -43205,7 +43315,8 @@
         "NoticesAndCaches",
         "HostedDigestRefresh",
         "HostedDigestMutation",
-        "SourceRenewalQuestion"
+        "SourceRenewalQuestion",
+        "DevelopmentDigestPending"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -43383,7 +43494,8 @@
       "allocatedModels": [
         "FilesAndSharing",
         "InboxDelivery",
-        "InboxCoordinator"
+        "InboxCoordinator",
+        "NativeGoogleHostArtifact"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -43453,9 +43565,10 @@
     },
     {
       "path": "apps/app/src/runtime/inline-modal.ts",
-      "sha256": "661a0c7607ffba9bf7359650c6997f08ee12cc0969136d88574c5a8abaf8018e",
+      "sha256": "c4831ba061fa5f9c18b0c7b655f0a31fdd4631dcb9f6c51414bd28d2ce35dad2",
       "allocatedModels": [
-        "ShellNavigation"
+        "ShellNavigation",
+        "ModalScrimOwnership"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -43469,12 +43582,12 @@
         {
           "owner": "createInlineModal.ref",
           "line": 10,
-          "bindings": 4,
-          "writes": 5
+          "bindings": 6,
+          "writes": 12
         }
       ],
       "parseErrors": [],
-      "asynchronous": 13,
+      "asynchronous": 23,
       "unassignedWrites": 0
     },
     {
@@ -43574,10 +43687,12 @@
     },
     {
       "path": "apps/app/src/runtime/local-agent-storage.ts",
-      "sha256": "5a81324a92cbb3a7fe9005fd405aaba1fa5b9435327700582f1f4dbdd36b7195",
+      "sha256": "11c820b73dd420029e7828e47c5df071f34968f655d60b9d1108adc28286873d",
       "allocatedModels": [
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "DevelopmentDigestPending"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -43589,7 +43704,7 @@
         },
         {
           "owner": "developmentDigestStore",
-          "line": 57,
+          "line": 66,
           "bindings": 1,
           "writes": 2
         }
@@ -43638,11 +43753,12 @@
     },
     {
       "path": "apps/app/src/runtime/local-agent.ts",
-      "sha256": "af398afff3ca3f8823ee9fffdd5d5b496136b28d8ec75f42265f3de95c6213d1",
+      "sha256": "8700d5c2e1a534ec96a8e465704d4f8ba13abe2fb06863dc27b99f5684ced5e6",
       "allocatedModels": [
         "ApplicationComposition",
         "ResidentRuntime",
-        "ResidentLiveness"
+        "ResidentLiveness",
+        "ChatAttachments"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -43893,7 +44009,8 @@
       "path": "apps/app/src/runtime/managed-service-routes.ts",
       "sha256": "a9a958d5a27cf66d51e5327d62f605d81af3f6aff5cd4af1b80b2f39350506fe",
       "allocatedModels": [
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "NativeGoogleHostArtifact"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -43982,7 +44099,8 @@
       "sha256": "6fcdc9cd4bc581355f5d445af63723f062164748a262fc68f48822008b0b671a",
       "allocatedModels": [
         "ShellNavigation",
-        "GoogleCalendarLinkPublication"
+        "GoogleCalendarLinkPublication",
+        "ModalScrimOwnership"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -44300,7 +44418,7 @@
     },
     {
       "path": "apps/app/src/runtime/note-recorder-driver.ts",
-      "sha256": "074e45e26f075055e45facdd26a7196a724eca4c096f54240ffe43cf239a9af1",
+      "sha256": "01493b740d8dfac51a566e788febb341ab9473eb4309430258df7dd9f2d9a55b",
       "allocatedModels": [
         "NotesLifecycle",
         "MediaLifecycle"
@@ -44310,7 +44428,7 @@
       "owners": [
         {
           "owner": "noteSegmentTranscriber",
-          "line": 67,
+          "line": 61,
           "bindings": 1,
           "writes": 1
         }
@@ -44744,7 +44862,9 @@
       "path": "apps/app/src/runtime/reminder-creations.ts",
       "sha256": "d0e28b7a0ee10dc8547c1d0a32c9a2391f03865e1712b166c43b7d202e3a5a89",
       "allocatedModels": [
-        "DeviceActions"
+        "DeviceActions",
+        "RetainedReminderTapAdmission",
+        "ReminderOpenIntent"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -44782,9 +44902,10 @@
     },
     {
       "path": "apps/app/src/runtime/remote-protocol.ts",
-      "sha256": "9a867fc0dfe0b7e07c70ec4007907f210a932179e316f2f0434c59a8822c3abc",
+      "sha256": "3beac820bbc6425ddba13d4aa111ad5550e9e7393f3e61bbdc223f198116b241",
       "allocatedModels": [
-        "Application"
+        "Application",
+        "ChatAttachments"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -45125,7 +45246,7 @@
     },
     {
       "path": "apps/app/src/runtime/view-focus.ts",
-      "sha256": "e86fbe8b0ce4331af464255341553b011349a47c0338578255a0306f2b2b85c2",
+      "sha256": "35956ecd77cbec189d86a0a3729eddc30441ef19fd1dba98f4aa9d28946e7fe6",
       "allocatedModels": [
         "ShellNavigation",
         "ScreenFocusOwnership"
@@ -45142,14 +45263,14 @@
         },
         {
           "owner": "installViewFocus",
-          "line": 57,
-          "bindings": 1,
-          "writes": 1
+          "line": 60,
+          "bindings": 2,
+          "writes": 2
         }
       ],
       "parseErrors": [],
-      "asynchronous": 2,
-      "unassignedWrites": 0
+      "asynchronous": 6,
+      "unassignedWrites": 1
     },
     {
       "path": "apps/app/src/runtime/view-navigation.ts",
@@ -45585,7 +45706,8 @@
       "path": "backend/calendar-read-timing.ts",
       "sha256": "6c182fd47e3711d5a37a475691cfd168c34f9be21f83c5ab72605262618c65f5",
       "allocatedModels": [
-        "CalendarPresentation"
+        "CalendarPresentation",
+        "NativeGoogleHostArtifact"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -45627,7 +45749,8 @@
       "sha256": "7063562ae9f4305828afb1252ce3d9d9868b6a28ae7ff4d308adcc1741409965",
       "allocatedModels": [
         "ServiceAuthorization",
-        "NativeGoogleAccessFile"
+        "NativeGoogleAccessFile",
+        "NativeGoogleHostArtifact"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -45648,7 +45771,8 @@
       "sha256": "6b4629eb2c8adeb4ffefaf4fcf14b6367483dbb917e5ecceeb59e5890e76f115",
       "allocatedModels": [
         "ServiceAuthorization",
-        "NativeGoogleAccessFile"
+        "NativeGoogleAccessFile",
+        "NativeGoogleHostArtifact"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -45716,7 +45840,8 @@
       "path": "backend/managed-google-failure-stage.ts",
       "sha256": "209d8a2d4c3a8c95a1545c5a018b8107ff352099694b92defc1c0e177cffa604",
       "allocatedModels": [
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "NativeGoogleHostArtifact"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -45736,7 +45861,9 @@
       "path": "backend/managed-google-route-policy.ts",
       "sha256": "96a07cf0d4adbf372be56f93419a9bb662477cbe1221fb828e77fa0685be4ac3",
       "allocatedModels": [
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "NativeGoogleHostArtifact",
+        "BrowserCloudRequestCustody"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -45762,7 +45889,8 @@
       "path": "backend/native-cloud-runtime.ts",
       "sha256": "95cf46c7db11a7ebb7b0cb4efa5a8a210951f52184a14831be7f6aba88f01347",
       "allocatedModels": [
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "NativeGoogleHostArtifact"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -45776,7 +45904,8 @@
       "sha256": "f58b8a2be174148b5f7fe9c5f147a6615697a226c654e27fb57efa8139464d9e",
       "allocatedModels": [
         "ResidentRuntime",
-        "NativeGoogleAccessFile"
+        "NativeGoogleAccessFile",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -45803,7 +45932,8 @@
       "path": "backend/native-google-cloud-port.ts",
       "sha256": "8f008c1d720e0609c12443b99d9a2493ac74e55e11d311b06b06b80cc45dda2a",
       "allocatedModels": [
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "NativeGoogleHostArtifact"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -45936,6 +46066,28 @@
       "unassignedWrites": 0
     },
     {
+      "path": "capacitor.config.ts",
+      "sha256": "f0479865460ce5bf5e2e50ff8cd158a6ab20796a5496e1fe4ec7c3b40486e227",
+      "allocatedModels": [
+        "MobileBundleAdmission",
+        "NativeViewSubscription"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "<module>",
+          "line": 3,
+          "bindings": 1,
+          "writes": 0
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
       "path": "scripts/agent-bundle-dependencies.mjs",
       "sha256": "c6d59a969fe138b867801a81c7c5a8425da9c7d8a3b6d7dd609c68291a5d67cc",
       "allocatedModels": [
@@ -45952,7 +46104,7 @@
     },
     {
       "path": "scripts/android-build-preflight.mjs",
-      "sha256": "9b59171e58fc405b00fa5c29e00b64accefe649cca9d59361f9b9921c61a8a60",
+      "sha256": "4a083bcd66cbaf363a4d8501af933344fb3e20bd90f4fc4cba97b56519f41306",
       "allocatedModels": [
         "MobileBundleAdmission",
         "ResidentRuntime"
@@ -45993,15 +46145,15 @@
         },
         {
           "owner": "formatReport",
-          "line": 260,
+          "line": 266,
           "bindings": 1,
           "writes": 4
         },
         {
           "owner": "main",
-          "line": 280,
-          "bindings": 2,
-          "writes": 2
+          "line": 288,
+          "bindings": 3,
+          "writes": 3
         }
       ],
       "parseErrors": [],
@@ -46009,12 +46161,134 @@
       "unassignedWrites": 5
     },
     {
+      "path": "scripts/android-gzip-assets.mjs",
+      "sha256": "713a46033f082c27ad4335d08506e9e5d5a1db40ca02303d2fe582bb79b468e5",
+      "allocatedModels": [
+        "MobileBundleAdmission",
+        "WorkflowWorkerStaging",
+        "AndroidGzipAssetStage"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "protectGzipAssets",
+          "line": 25,
+          "bindings": 1,
+          "writes": 2
+        },
+        {
+          "owner": "packagedGzipProblems",
+          "line": 50,
+          "bindings": 1,
+          "writes": 2
+        },
+        {
+          "owner": "<module>",
+          "line": 67,
+          "bindings": 1,
+          "writes": 2
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 2
+    },
+    {
+      "path": "scripts/android-host.mjs",
+      "sha256": "519f5023bff0d6655d57e558945ce0165ca520e17e9c30f23c16e9749128ef94",
+      "allocatedModels": [
+        "MobileBundleAdmission",
+        "NativeViewSubscription",
+        "ResidentRuntime"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "hostProfile",
+          "line": 57,
+          "bindings": 1,
+          "writes": 2
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 1
+    },
+    {
+      "path": "scripts/apk.mjs",
+      "sha256": "1536f16768a33c741f00301517a35625e223b92f61332cd84e9a8f493cdef380",
+      "allocatedModels": [
+        "Application"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "distributionProblems",
+          "line": 76,
+          "bindings": 1,
+          "writes": 4
+        },
+        {
+          "owner": "legacyStorageProblems",
+          "line": 118,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "verifyOwnerRouteTable",
+          "line": 151,
+          "bindings": 1,
+          "writes": 1
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 1
+    },
+    {
+      "path": "scripts/audit-production-bundle.mjs",
+      "sha256": "1405ace51db62ea0a918c5e70cba1470b338ae7c9cd897e88896488020969c31",
+      "allocatedModels": [
+        "DevelopmentSurfaces",
+        "MobileBundleAdmission"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "engineFindings",
+          "line": 81,
+          "bindings": 1,
+          "writes": 3
+        },
+        {
+          "owner": "auditWebBundle",
+          "line": 124,
+          "bindings": 2,
+          "writes": 10
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 4
+    },
+    {
       "path": "scripts/browser-cloud-dev-bridge.ts",
-      "sha256": "b780537b54035955e6c7112ee05af2b6b38d251b8ba42cb4e6ff5711d37d3d7d",
+      "sha256": "cc954b5564cfad600a0ee77cf666879070c633bc1964f39e033513068008adc7",
       "allocatedModels": [
         "DevelopmentHost",
-        "DevelopmentSurfaces"
+        "DevelopmentSurfaces",
+        "BrowserGoogleReturn",
+        "BrowserCloudRequestCustody"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -46027,84 +46301,84 @@
         {
           "owner": "createBrowserCloudDevHandler",
           "line": 45,
-          "bindings": 10,
-          "writes": 25
+          "bindings": 11,
+          "writes": 28
         },
         {
           "owner": "createBrowserCloudDevHandler.retire",
-          "line": 65,
+          "line": 66,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "createBrowserCloudDevHandler.canonical",
-          "line": 66,
+          "line": 67,
           "bindings": 1,
           "writes": 3
         },
         {
           "owner": "createBrowserCloudDevHandler.signInCall",
-          "line": 77,
+          "line": 78,
           "bindings": 3,
           "writes": 2
         },
         {
           "owner": "createBrowserCloudDevHandler.scopedSignInCredential",
-          "line": 101,
+          "line": 102,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "createBrowserCloudDevHandler.cancelGoogleAttempt",
-          "line": 126,
+          "line": 127,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "createBrowserCloudDevHandler.completeGoogleAttempt.ArrowFunction@150",
-          "line": 151,
+          "owner": "createBrowserCloudDevHandler.completeGoogleAttempt.ArrowFunction@151",
+          "line": 152,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "createBrowserCloudDevHandler.signInOperation",
-          "line": 182,
+          "line": 183,
           "bindings": 11,
           "writes": 137
         },
         {
-          "owner": "createBrowserCloudDevHandler.signInOperation.ArrowFunction@295",
-          "line": 296,
+          "owner": "createBrowserCloudDevHandler.signInOperation.ArrowFunction@296",
+          "line": 297,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "createBrowserCloudDevHandler.handler",
-          "line": 317,
-          "bindings": 18,
-          "writes": 41
+          "line": 312,
+          "bindings": 22,
+          "writes": 45
         },
         {
-          "owner": "createBrowserCloudDevHandler.handler.ArrowFunction@330",
-          "line": 337,
+          "owner": "createBrowserCloudDevHandler.handler.ArrowFunction@344",
+          "line": 351,
           "bindings": 2,
           "writes": 8
         },
         {
-          "owner": "createBrowserCloudDevHandler.handler.ArrowFunction@367",
-          "line": 368,
+          "owner": "createBrowserCloudDevHandler.handler.ArrowFunction@381",
+          "line": 382,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "createBrowserCloudDevHandler.startGoogleHost",
-          "line": 445,
+          "line": 467,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "browserCloudDevBridge.configureServer",
-          "line": 479,
+          "line": 501,
           "bindings": 1,
           "writes": 1
         }
@@ -46118,7 +46392,8 @@
       "sha256": "ce380067aa2aa02823b529552c6c170972935c3d5e70f3aa8c9993cd55825cfa",
       "allocatedModels": [
         "MobileBundleAdmission",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "AndroidGzipAssetStage"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -46210,10 +46485,11 @@
     },
     {
       "path": "scripts/build-native-google-host.ts",
-      "sha256": "7ef99aa093e8566620ce08b23a279c70bae5c5f003b336defff00c015f1ac851",
+      "sha256": "3b4390d9ac72eaa39bcce8b0ab7dd515040c07e115d02217edf2f8302a3a8147",
       "allocatedModels": [
         "NativeGoogleAccessFile",
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -46221,14 +46497,14 @@
       "owners": [
         {
           "owner": "<module>",
-          "line": 32,
-          "bindings": 1,
-          "writes": 1
+          "line": 11,
+          "bindings": 2,
+          "writes": 3
         }
       ],
       "parseErrors": [],
       "asynchronous": 0,
-      "unassignedWrites": 1
+      "unassignedWrites": 3
     },
     {
       "path": "scripts/build-workflow-worker.ts",
@@ -46246,6 +46522,40 @@
       "unassignedWrites": 0
     },
     {
+      "path": "scripts/cloud-deployment.mjs",
+      "sha256": "c3a9ddc001aad5affcdd084bf3b84dc91b63017b934f65b5459088dbfb8684f6",
+      "allocatedModels": [
+        "ServiceAuthorization",
+        "BrowserCloudRequestCustody"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "<module>",
+          "line": 9,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "validateCloudDeployment",
+          "line": 21,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "deploymentOutputs",
+          "line": 38,
+          "bindings": 2,
+          "writes": 4
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 4
+    },
+    {
       "path": "scripts/cloud-email-code.ts",
       "sha256": "1a2a7b898eb1eb216cc532f72d3d66c66ff9f2d7c45c1c5b0319770c3637f146",
       "allocatedModels": [
@@ -46261,7 +46571,7 @@
     },
     {
       "path": "scripts/cloud-resident-host.mjs",
-      "sha256": "9f69ec6855fe910c9b240769c8f78eede66e55ad4ec89956956e947b053a5265",
+      "sha256": "03dace20e6b26b35651dcade3139ddcd18e223c39f56d3d2e2fed900d6d81497",
       "allocatedModels": [
         "DevelopmentHost",
         "ResidentRuntime"
@@ -46300,11 +46610,34 @@
       "unassignedWrites": 2
     },
     {
+      "path": "scripts/combined-agent-source.mjs",
+      "sha256": "a2f4d279f3f98ff078f3aedd6b9dc2dc5c3396ecdc7fb7f09b0da7e0c085062e",
+      "allocatedModels": [
+        "CombinedAgentLauncher",
+        "NativeGoogleHostArtifact"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "sourceManifest",
+          "line": 11,
+          "bindings": 4,
+          "writes": 8
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 1
+    },
+    {
       "path": "scripts/copy-file-clone.mjs",
       "sha256": "b1cf1b54d803d75a9dd091e8aa130e78f30af90ea897208f9672d378fa0b4b37",
       "allocatedModels": [
         "DevelopmentHost",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "PreparedSourceStamp"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -46331,7 +46664,8 @@
         "CombinedAgentLauncher",
         "ReviewedWorkflowLauncher",
         "CoreConnectorCustody",
-        "MobileBundleAdmission"
+        "MobileBundleAdmission",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -46377,7 +46711,9 @@
       "sha256": "c5368c9075aa8c7660bee01338185fbe673c9b8dd6889dd1ab01d195efa17c10",
       "allocatedModels": [
         "Application",
-        "ReviewedWorkflowLauncher"
+        "ReviewedWorkflowLauncher",
+        "NativeGoogleHostArtifact",
+        "CloudQaLauncher"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -46461,6 +46797,193 @@
       "parseErrors": [],
       "asynchronous": 6,
       "unassignedWrites": 2
+    },
+    {
+      "path": "scripts/generate-licenses.mjs",
+      "sha256": "26b30559b83c3a6c7c63b03281fb441f102611e3ab61786a80074ec0038fc9c2",
+      "allocatedModels": [
+        "MobileBundleAdmission"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "<module>",
+          "line": 55,
+          "bindings": 4,
+          "writes": 0
+        },
+        {
+          "owner": "declarationOnlyPackage",
+          "line": 113,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "productionLockPackages",
+          "line": 134,
+          "bindings": 1,
+          "writes": 2
+        },
+        {
+          "owner": "loadTemplates.canonical",
+          "line": 160,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "packageNotice",
+          "line": 242,
+          "bindings": 4,
+          "writes": 13
+        },
+        {
+          "owner": "sfntNameTable",
+          "line": 301,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "woff2NameTable",
+          "line": 314,
+          "bindings": 5,
+          "writes": 8
+        },
+        {
+          "owner": "woff2NameTable.base128",
+          "line": 316,
+          "bindings": 2,
+          "writes": 2
+        },
+        {
+          "owner": "fontNames",
+          "line": 351,
+          "bindings": 4,
+          "writes": 6
+        },
+        {
+          "owner": "listFonts",
+          "line": 375,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "npmEntries",
+          "line": 390,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "fontEntries",
+          "line": 455,
+          "bindings": 9,
+          "writes": 13
+        },
+        {
+          "owner": "parseGradleTree",
+          "line": 528,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "androidDependencyFingerprint",
+          "line": 560,
+          "bindings": 3,
+          "writes": 5
+        },
+        {
+          "owner": "refreshAndroidClasspath",
+          "line": 595,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "androidEntries",
+          "line": 612,
+          "bindings": 2,
+          "writes": 2
+        },
+        {
+          "owner": "voiceHostEntries",
+          "line": 671,
+          "bindings": 2,
+          "writes": 2
+        },
+        {
+          "owner": "runtimeEntries",
+          "line": 737,
+          "bindings": 9,
+          "writes": 9
+        },
+        {
+          "owner": "runtimeEntries.add",
+          "line": 750,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "applyReasons",
+          "line": 834,
+          "bindings": 3,
+          "writes": 3
+        },
+        {
+          "owner": "collectNotices",
+          "line": 853,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "finishEntry",
+          "line": 878,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "reviewedPackagedEntries.readInput",
+          "line": 943,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "reviewedPackagedEntries",
+          "line": 960,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "verifyCommittedNotices",
+          "line": 976,
+          "bindings": 1,
+          "writes": 1
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 52
+    },
+    {
+      "path": "scripts/gmail-agent-mailbox-host.ts",
+      "sha256": "a976b952421e93fa83bd06cb6e6115702618caf910c018472adad626c74e40ce",
+      "allocatedModels": [
+        "NativeGoogleHostArtifact",
+        "GmailAgentMailboxRecovery"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "gmailAgentMailbox",
+          "line": 16,
+          "bindings": 1,
+          "writes": 1
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
     },
     {
       "path": "scripts/launcher-child.mjs",
@@ -46547,7 +47070,8 @@
       "sha256": "959162f7fcae47b7b650bd63556ac78dfcadf8bbed599e2a1f88a5696fad3fcf",
       "allocatedModels": [
         "DevelopmentSurfaces",
-        "DurableStore"
+        "DurableStore",
+        "DevelopmentDigestPending"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -46570,7 +47094,9 @@
       "allocatedModels": [
         "DevelopmentHost",
         "ResidentRuntime",
-        "ReviewedWorkflowLauncher"
+        "ReviewedWorkflowLauncher",
+        "NativeGoogleHostArtifact",
+        "PreparedSourceStamp"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -46657,25 +47183,38 @@
     },
     {
       "path": "scripts/native-google-host-artifact.mjs",
-      "sha256": "65793e1ceacbc8b49c2733072d34827a20fc3082fe4fc1b8a4e351007c680b42",
+      "sha256": "f22eed6561ab217c1171ea8df46ad2aed17c2450833ee55d9767679821abf808",
       "allocatedModels": [
         "NativeGoogleAccessFile",
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
         {
+          "owner": "regularFile",
+          "line": 17,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "fixedInputHashes",
+          "line": 38,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
           "owner": "addNativeGoogleHostArtifact",
-          "line": 36,
-          "bindings": 3,
-          "writes": 4
+          "line": 107,
+          "bindings": 1,
+          "writes": 2
         }
       ],
       "parseErrors": [],
       "asynchronous": 0,
-      "unassignedWrites": 1
+      "unassignedWrites": 8
     },
     {
       "path": "scripts/prepare-client-features.mjs",
@@ -46685,7 +47224,8 @@
         "BrowserFilesTrash",
         "MapsRerouteOwnership",
         "FilesPreview",
-        "InboxProviderDrafts"
+        "InboxProviderDrafts",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -46765,7 +47305,8 @@
       "sha256": "13462189190e3e7a796c834f8c780181c0e7c39b16721a8d59477318885ac98e",
       "allocatedModels": [
         "DevelopmentHost",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "PreparedSourceStamp"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -46784,7 +47325,7 @@
     },
     {
       "path": "scripts/prepare-patched-native.mjs",
-      "sha256": "5308ee484c0ca5a880ff9f4ef63b286dae5c2112de9e67970387cdc6762178c1",
+      "sha256": "12ca1c60028cedf07b9ddf7f63d901fcb542d3f28a228392d64096be54c618d0",
       "allocatedModels": [
         "NativeSmsDispatch",
         "NativeMmsDispatch",
@@ -46796,25 +47337,25 @@
       "owners": [
         {
           "owner": "inventory",
-          "line": 15,
+          "line": 16,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "materializeNativePatches",
-          "line": 23,
+          "line": 24,
           "bindings": 5,
           "writes": 6
         },
         {
           "owner": "verifyNativePatchReceipt",
-          "line": 53,
+          "line": 54,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "preparePatchedNative",
-          "line": 60,
+          "line": 61,
           "bindings": 1,
           "writes": 1
         }
@@ -46866,6 +47407,65 @@
       "parseErrors": [],
       "asynchronous": 0,
       "unassignedWrites": 2
+    },
+    {
+      "path": "scripts/source-snapshot.mjs",
+      "sha256": "477ba7a2848b76c4f2b74743f5970858c4f87a279507ac2fa00b5220d76f951e",
+      "allocatedModels": [
+        "Application",
+        "MobileBundleAdmission",
+        "ResidentRuntime"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "<module>",
+          "line": 5,
+          "bindings": 2,
+          "writes": 5
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 1
+    },
+    {
+      "path": "scripts/stage-aosp.mjs",
+      "sha256": "64be96d6c9bb8c92760a17737a51b0395e179bd80bbcc9eac9b7803a7cc1d693",
+      "allocatedModels": [
+        "MobileBundleAdmission",
+        "LauncherOwnership",
+        "AlwaysOnListener",
+        "ResidentRuntime"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "aospProductLockProblems",
+          "line": 34,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "admitListener",
+          "line": 92,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "main",
+          "line": 121,
+          "bindings": 4,
+          "writes": 5
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 6
     },
     {
       "path": "scripts/stage-embedding-host.mjs",
@@ -46944,7 +47544,8 @@
       "sha256": "e31076dade085ec4647e4ed26f7de5c18f38879ce5da19f842e2abb0f816186f",
       "allocatedModels": [
         "WorkflowExecution",
-        "ReviewedWorkflowLauncher"
+        "ReviewedWorkflowLauncher",
+        "WorkflowWorkerStaging"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -46956,9 +47557,10 @@
     },
     {
       "path": "scripts/start-cloud-qa.mjs",
-      "sha256": "eba2e7bc233def8ed3fe15106ca4251dcf09d966013400b6810449baf515ae64",
+      "sha256": "dcdca9567dfead874603e07ac657f6fa0b3bdf5ca80bd9021f873fb2448b0e76",
       "allocatedModels": [
-        "Application"
+        "Application",
+        "CloudQaLauncher"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -47078,8 +47680,52 @@
       "unassignedWrites": 3
     },
     {
+      "path": "scripts/verify-apks.mjs",
+      "sha256": "57d3f5124fc3ed64e7e2e5b626aec6dfb77f2830c121cc5e6314c4f6bfccafd9",
+      "allocatedModels": [
+        "Application",
+        "AndroidGzipAssetStage"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "<module>",
+          "line": 80,
+          "bindings": 23,
+          "writes": 56
+        },
+        {
+          "owner": "listenerFacts",
+          "line": 297,
+          "bindings": 1,
+          "writes": 5
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 1
+    },
+    {
+      "path": "scripts/verify-packaged-runtime.py",
+      "sha256": "a812a2508ff230207f3663f44994bbc1fcffea4f5fcc232e07171ca94b6df41b",
+      "allocatedModels": [
+        "Application",
+        "MobileBundleAdmission",
+        "ResidentRuntime"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
       "path": "scripts/voice-host.mjs",
-      "sha256": "71f29af327b7905d23669988dd2df0795ec7f9fec3bfc4d42cb5fa8fd83a2ac9",
+      "sha256": "ce25437081590f9523cb23d179a6be5c50add4fc6e8cd967854a8143468e3501",
       "allocatedModels": [
         "NativeListenerInput",
         "NativeSpeechWarmup",
@@ -47097,33 +47743,50 @@
         },
         {
           "owner": "voiceBundleAdmission",
-          "line": 111,
+          "line": 113,
           "bindings": 4,
           "writes": 9
         },
         {
           "owner": "voiceStagingState.at",
-          "line": 147,
+          "line": 149,
           "bindings": 3,
           "writes": 3
         },
         {
           "owner": "verifyVoiceHost",
-          "line": 225,
+          "line": 227,
           "bindings": 1,
           "writes": 0
         }
       ],
       "parseErrors": [],
       "asynchronous": 0,
-      "unassignedWrites": 5
+      "unassignedWrites": 6
+    },
+    {
+      "path": "scripts/with-test-mocks.mjs",
+      "sha256": "d460b9b705f3a55a3addff97f742da602e988bf2fb1b009cbea80e5ead07d9b0",
+      "allocatedModels": [
+        "DevelopmentSurfaces",
+        "DevelopmentHost"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 3,
+      "unassignedWrites": 0
     },
     {
       "path": "scripts/workflow-worker-artifact.mjs",
       "sha256": "eb9bc1665425ec4b3a7d5cbe4b4492a65e17957d55ef60b4b2568e7eb55aee68",
       "allocatedModels": [
         "WorkflowExecution",
-        "ReviewedWorkflowLauncher"
+        "ReviewedWorkflowLauncher",
+        "WorkflowWorkerStaging",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -47144,6 +47807,51 @@
       ],
       "parseErrors": [],
       "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs",
+      "sha256": "23177bf57b40717d75a67d6bc01b5cfc85325b6f28e8ebc0641bbc65c88812a6",
+      "allocatedModels": [
+        "CloudQaLauncher"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "readPrivateRuntimeEnvironment",
+          "line": 21,
+          "bindings": 2,
+          "writes": 2
+        },
+        {
+          "owner": "privateFile",
+          "line": 40,
+          "bindings": 2,
+          "writes": 5
+        },
+        {
+          "owner": "runtimeEnvironment",
+          "line": 152,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "startPrivateRuntimeProcess",
+          "line": 181,
+          "bindings": 7,
+          "writes": 6
+        },
+        {
+          "owner": "RuntimeLaunchError",
+          "line": 9,
+          "bindings": 2,
+          "writes": 2
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 9,
       "unassignedWrites": 0
     },
     {
@@ -66912,6 +67620,27 @@
       "unassignedWrites": 1
     },
     {
+      "path": "vendor/eliza/packages/app/scripts/lib/committed-source.mjs",
+      "sha256": "477f43708fb99ef992af002b8b2fb81a8da09dc5ab2286dd54127ca64dcee71f",
+      "allocatedModels": [
+        "PreparedSourceStamp"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "ConsumerSourceError",
+          "line": 50,
+          "bindings": 1,
+          "writes": 1
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 2
+    },
+    {
       "path": "vendor/eliza/packages/app/scripts/lib/consumer-source-resolver.mjs",
       "sha256": "79743fd6f2ed6a8b20e50d4bc2dfcc9d9d0975be512863bebc7622ca1ebb92fd",
       "allocatedModels": [
@@ -66942,7 +67671,9 @@
       "path": "vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs",
       "sha256": "10b43806d93aa4e7bba53cc33df975afa69f39aa760507b7aeff9cfeb026fc2b",
       "allocatedModels": [
-        "DevelopmentRuntimeLoader"
+        "DevelopmentRuntimeLoader",
+        "NativeGoogleHostArtifact",
+        "PreparedSourceStamp"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -70297,7 +71028,8 @@
       "path": "vendor/eliza/packages/auth/src/auth/native-cloud-sign-in.ts",
       "sha256": "c993e0343316953ba421155098317c1092c85fcc6fbce6267cd27599596920e8",
       "allocatedModels": [
-        "IdentitySession"
+        "IdentitySession",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -72069,7 +72801,8 @@
       "sha256": "6b9bf34bfb8f0d6bdc9d0e0bf0cfbb6a4f7f75e3fc18ad3e824067fb2d11bc11",
       "allocatedModels": [
         "IdentitySession",
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -72516,7 +73249,8 @@
       "path": "vendor/eliza/packages/cloud/sdk/src/cloud-account-billing.ts",
       "sha256": "d7757db327445266be5b76fda7918920f378b5a326bc276c9a620719e79ca63d",
       "allocatedModels": [
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -72803,7 +73537,8 @@
       "sha256": "d2f8a876850bb959cda20972399a60331e716d0b40fec769b79adeaebe64f5e6",
       "allocatedModels": [
         "IdentitySession",
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -73021,7 +73756,8 @@
       "allocatedModels": [
         "CalendarLinkedSync",
         "CalendarPresentation",
-        "CalendarSync"
+        "CalendarSync",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -73061,7 +73797,8 @@
       "sha256": "6bdc734b82075968c4801f02ec5dcc002fac8fec2d787a77276cb6a0e2286010",
       "allocatedModels": [
         "CalendarLinkedSync",
-        "CalendarPresentation"
+        "CalendarPresentation",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -113721,7 +114458,8 @@
       "sha256": "10978b5da6c44130f683379c013595d54ee388b464b0b727ac82999aa6e779d9",
       "allocatedModels": [
         "Application",
-        "DurableStore"
+        "DurableStore",
+        "FirstSendDraftMigration"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -136068,7 +136806,8 @@
       "path": "vendor/eliza/plugins/plugin-assistant/src/utils/html-entities.ts",
       "sha256": "6087cede2d200d05126151a6eaf1473ce93b06776e7230bd0a2c32de97c60c01",
       "allocatedModels": [
-        "AssistantConversation"
+        "AssistantConversation",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -137712,7 +138451,7 @@
     },
     {
       "path": "vendor/eliza/plugins/plugin-calendar/src/calendar-read-parameters.ts",
-      "sha256": "c9069f396a45e152d6b7f018de56c5bfec1666dfacf59b01d898e17f92c59699",
+      "sha256": "6fed672a6f11dc2af0c07d52973b3036f059043f3a26ac11a301316c19091e39",
       "allocatedModels": [
         "CalendarLinkedSync",
         "CalendarPresentation"
@@ -137729,7 +138468,7 @@
         },
         {
           "owner": "calendarCreateParameters",
-          "line": 265,
+          "line": 269,
           "bindings": 1,
           "writes": 0
         }
@@ -139111,7 +139850,8 @@
         "CalendarLinkedSync",
         "CalendarPresentation",
         "GoogleAccounts",
-        "InboxDelivery"
+        "InboxDelivery",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -140514,7 +141254,8 @@
       "sha256": "cb846fbdbd0885711dedfb9f94a39ddaeef1adb949f0e76ac301601948020da0",
       "allocatedModels": [
         "CalendarLinkedSync",
-        "CalendarPresentation"
+        "CalendarPresentation",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -146197,7 +146938,8 @@
       "allocatedModels": [
         "BrowserSession",
         "BrowserSiteState",
-        "FilesAndSharing"
+        "FilesAndSharing",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -146600,7 +147342,8 @@
       "path": "vendor/eliza/plugins/plugin-files/src/documents/local-ocr.ts",
       "sha256": "38b788b1fc106a270f83a25ec8f02f83a8a34248dc98c81d9ac375125c492a61",
       "allocatedModels": [
-        "FilesAndSharing"
+        "FilesAndSharing",
+        "AndroidGzipAssetStage"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -151268,7 +152011,8 @@
       "allocatedModels": [
         "InboxCoordinator",
         "InboxDelivery",
-        "InboxProviderDrafts"
+        "InboxProviderDrafts",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -151386,7 +152130,8 @@
       "allocatedModels": [
         "InboxCoordinator",
         "InboxDelivery",
-        "InboxProviderDrafts"
+        "InboxProviderDrafts",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -151421,7 +152166,8 @@
       "allocatedModels": [
         "InboxCoordinator",
         "InboxDelivery",
-        "InboxProviderDrafts"
+        "InboxProviderDrafts",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -151453,7 +152199,8 @@
       "allocatedModels": [
         "InboxCoordinator",
         "InboxDelivery",
-        "InboxProviderDrafts"
+        "InboxProviderDrafts",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -151546,7 +152293,9 @@
         "GoogleAccounts",
         "InboxCoordinator",
         "InboxDelivery",
-        "InboxProviderDrafts"
+        "InboxProviderDrafts",
+        "NativeGoogleHostArtifact",
+        "GmailAgentMailboxRecovery"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -167192,7 +167941,8 @@
         "DeletionJournal",
         "DurableStore",
         "ResetRecovery",
-        "CalendarSync"
+        "CalendarSync",
+        "NativeCalendarSyncEnable"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -168446,7 +169196,8 @@
       "allocatedModels": [
         "ResidentRuntime",
         "ApplicationComposition",
-        "NativeCredentialMutation"
+        "NativeCredentialMutation",
+        "NativeCalendarSyncEnable"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -169043,6 +169794,84 @@
       "unassignedWrites": 0
     },
     {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/androidTest/java/ai/eliza/plugins/browsersurface/BelowHostLayerInstrumentedTest.kt",
+      "sha256": "21c6cfea9474e300a084af7789a26add912427019a2df15f72102273ddce39bb",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState",
+        "BrowserUnderlay"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "test-support-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/androidTest/java/ai/eliza/plugins/browsersurface/BelowHostWebViewInstrumentedTest.kt",
+      "sha256": "c093ff4bc431c9eef4df2c55507c3a9d440e9180a813f13dc74350a36177f0a4",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState",
+        "BrowserUnderlay"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "test-support-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/androidTest/java/ai/eliza/plugins/browsersurface/BrowserSurfaceIsolationInstrumentedTest.kt",
+      "sha256": "98336d2a45a3d979c332be2352ff87f2a1092c045f27cb82becb23863446386b",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "test-support-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/androidTest/java/ai/eliza/plugins/browsersurface/SurfacePauseInstrumentedTest.kt",
+      "sha256": "3fdf1be0abcf17d6babd9bd7d872dcaa1481c7333db8e963c6904679acbec5d6",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "test-support-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BelowHostLayer.kt",
+      "sha256": "775788796a5a88fa298bc33ce595cd0a307de740d47ad6b9d73e5d7065150c77",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState",
+        "BrowserUnderlay"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
       "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserAutofillEligibility.java",
       "sha256": "aaea21c81821c7ae9e99b821fad2eb0ba730ee1d7228d82deb0fed0436936c27",
       "allocatedModels": [
@@ -169235,6 +170064,56 @@
       "parseErrors": [],
       "asynchronous": 0,
       "unassignedWrites": 1
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserCapturePolicy.java",
+      "sha256": "cd6d7673ab1adf9f4b47328cedc717259136e3f9ee718a449ce26afb8dbc9fd8",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "BrowserCapturePolicy.validMaxEdge@18",
+          "line": 18,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserCapturePolicy.validQuality@22",
+          "line": 22,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserCapturePolicy.scaled@27",
+          "line": 27,
+          "bindings": 5,
+          "writes": 0
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserDockController.kt",
+      "sha256": "30e19ed92e19b15c627467a8881024f6a4db40397e7abdb14a8c51446b900177",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState",
+        "BrowserUnderlay"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
     },
     {
       "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserDownloadPolicy.java",
@@ -169697,6 +170576,205 @@
       "unassignedWrites": 5
     },
     {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserEffectWatch.java",
+      "sha256": "535c76a0d8d20606ae1d4911b72792f98027f106e716d8fcddb17acd38258aa0",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "BrowserEffectWatch",
+          "line": 29,
+          "bindings": 2,
+          "writes": 13
+        },
+        {
+          "owner": "BrowserEffectWatch.Handoff",
+          "line": 37,
+          "bindings": 7,
+          "writes": 6
+        },
+        {
+          "owner": "BrowserEffectWatch.Handoff.<init>@44",
+          "line": 44,
+          "bindings": 6,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserEffectWatch.Request",
+          "line": 58,
+          "bindings": 4,
+          "writes": 4
+        },
+        {
+          "owner": "BrowserEffectWatch.Request.<init>@64",
+          "line": 64,
+          "bindings": 5,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserEffectWatch.Allowed",
+          "line": 75,
+          "bindings": 3,
+          "writes": 3
+        },
+        {
+          "owner": "BrowserEffectWatch.Allowed.<init>@79",
+          "line": 79,
+          "bindings": 3,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserEffectWatch.Watch",
+          "line": 87,
+          "bindings": 13,
+          "writes": 8
+        },
+        {
+          "owner": "BrowserEffectWatch.Watch.<init>@104",
+          "line": 104,
+          "bindings": 8,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserEffectWatch.arm@125",
+          "line": 125,
+          "bindings": 11,
+          "writes": 2
+        },
+        {
+          "owner": "BrowserEffectWatch.cancel@143",
+          "line": 143,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserEffectWatch.close@149",
+          "line": 149,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserEffectWatch.observe@154",
+          "line": 154,
+          "bindings": 4,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserEffectWatch.observe@159",
+          "line": 159,
+          "bindings": 6,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserEffectWatch.report@167",
+          "line": 167,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserEffectWatch.report@177",
+          "line": 177,
+          "bindings": 4,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserEffectWatch.read@186",
+          "line": 186,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserEffectWatch.settlePrevious@195",
+          "line": 195,
+          "bindings": 2,
+          "writes": 2
+        },
+        {
+          "owner": "BrowserEffectWatch.merge@203",
+          "line": 203,
+          "bindings": 4,
+          "writes": 4
+        },
+        {
+          "owner": "BrowserEffectWatch.settle@213",
+          "line": 213,
+          "bindings": 2,
+          "writes": 3
+        },
+        {
+          "owner": "BrowserEffectWatch.violates@225",
+          "line": 225,
+          "bindings": 7,
+          "writes": 2
+        },
+        {
+          "owner": "BrowserEffectWatch.sameSite@241",
+          "line": 241,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserEffectWatch.tail@245",
+          "line": 245,
+          "bindings": 3,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserEffectWatch.byPerson@250",
+          "line": 250,
+          "bindings": 3,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserEffectWatch.allowed@256",
+          "line": 256,
+          "bindings": 3,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserEffectWatch.resolve@265",
+          "line": 265,
+          "bindings": 3,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserEffectWatch.sameAddress@273",
+          "line": 273,
+          "bindings": 5,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserEffectWatch.samePath@283",
+          "line": 283,
+          "bindings": 5,
+          "writes": 0
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserEmbeddingTrust.kt",
+      "sha256": "5fb47ac341b79e2ae69c4db88c1c3df336f5e1f6246e9198145ba32aebeef146",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
       "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserExternalHandoff.java",
       "sha256": "372d9a56fe4c569d3358027c19e69858035fe780b5a65eca502751e26931c274",
       "allocatedModels": [
@@ -169990,6 +171068,21 @@
           "writes": 2
         }
       ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserHelperEntry.kt",
+      "sha256": "ca306c4162384073291aa1044e5f4ac2bd267fb1d11d9debbebcf4beb4ea111f",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
+      "owners": [],
       "parseErrors": [],
       "asynchronous": 0,
       "unassignedWrites": 0
@@ -170306,6 +171399,303 @@
       "parseErrors": [],
       "asynchronous": 0,
       "unassignedWrites": 2
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserMainFrameGate.java",
+      "sha256": "19705a7f03bd50b6a7eccf233163b1bf15624d18f129a4747fb2c3ba3d9efe4f",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "BrowserMainFrameGate",
+          "line": 44,
+          "bindings": 3,
+          "writes": 6
+        },
+        {
+          "owner": "BrowserMainFrameGate.setTaskOrigins@53",
+          "line": 53,
+          "bindings": 3,
+          "writes": 1
+        },
+        {
+          "owner": "BrowserMainFrameGate.upgrade@70",
+          "line": 70,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserMainFrameGate.covers@75",
+          "line": 75,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserMainFrameGate.pending@79",
+          "line": 79,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserMainFrameGate.approve@90",
+          "line": 90,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserMainFrameGate.commit@99",
+          "line": 99,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserMainFrameGate.redirect@106",
+          "line": 106,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserMainFrameGate.settle@115",
+          "line": 115,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserMainFrameGate.admit@126",
+          "line": 126,
+          "bindings": 2,
+          "writes": 0
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserNativeMessagingService.java",
+      "sha256": "e17950fe624879ed4ed6c5063875f7de04aa734fb0987ec20e4ff4b2694d0693",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "BrowserNativeMessagingService",
+          "line": 39,
+          "bindings": 2,
+          "writes": 2
+        },
+        {
+          "owner": "BrowserNativeMessagingService.requireBrowser@41",
+          "line": 43,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserNativeMessagingService.requireBrowser@41.lambda@45",
+          "line": 45,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserNativeMessagingService.Anonymous@51.connectExtension@52",
+          "line": 53,
+          "bindings": 3,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserNativeMessagingService.Anonymous@51.connectExtension@52.Anonymous@60",
+          "line": 61,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "BrowserNativeMessagingService.Anonymous@51.connectExtension@52.Anonymous@60.connectPort@68",
+          "line": 68,
+          "bindings": 4,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserNativeMessagingService.onBind@93",
+          "line": 93,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserNativeMessagingService.Relay",
+          "line": 100,
+          "bindings": 7,
+          "writes": 8
+        },
+        {
+          "owner": "BrowserNativeMessagingService.Relay.<init>@107",
+          "line": 107,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserNativeMessagingService.Relay.Anonymous@112.postMessage@113",
+          "line": 113,
+          "bindings": 4,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserNativeMessagingService.Relay.start@138.lambda@139",
+          "line": 142,
+          "bindings": 7,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserNativeMessagingService.Relay.close@172",
+          "line": 180,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserNativeMessagingService.readExactly@188",
+          "line": 188,
+          "bindings": 5,
+          "writes": 1
+        },
+        {
+          "owner": "BrowserNativeMessagingService.writeFrame@199",
+          "line": 199,
+          "bindings": 2,
+          "writes": 0
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 3,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserNavigationPolicy.kt",
+      "sha256": "56e5e919c8009b2da4b9a636ebcd623071bf0b28ef2b64917d3298639c92ea37",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserPageHandoffs.java",
+      "sha256": "1ebc7b38657ece2a37ff62b310a940935ce049f644a75e41a23b0d1f2edef012",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "BrowserPageHandoffs.DialogKind",
+          "line": 28,
+          "bindings": 5,
+          "writes": 1
+        },
+        {
+          "owner": "BrowserPageHandoffs.DialogKind.<init>@35",
+          "line": 35,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserPageHandoffs.text@41",
+          "line": 41,
+          "bindings": 4,
+          "writes": 1
+        },
+        {
+          "owner": "BrowserPageHandoffs.dialogMayWait@56",
+          "line": 56,
+          "bindings": 3,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserPageHandoffs.Dialogs",
+          "line": 65,
+          "bindings": 1,
+          "writes": 3
+        },
+        {
+          "owner": "BrowserPageHandoffs.Dialogs.open@71",
+          "line": 71,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserPageHandoffs.Dialogs.take@77",
+          "line": 77,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserPageHandoffs.Dialogs.drain@82",
+          "line": 83,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserPageHandoffs.WindowDecision",
+          "line": 91,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserPageHandoffs.window@97",
+          "line": 97,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserPageHandoffs.identityProvider@108",
+          "line": 108,
+          "bindings": 4,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserPageHandoffs.pathOf@123",
+          "line": 123,
+          "bindings": 3,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserPageHandoffs.Download",
+          "line": 138,
+          "bindings": 5,
+          "writes": 5
+        },
+        {
+          "owner": "BrowserPageHandoffs.Download.<init>@144",
+          "line": 144,
+          "bindings": 5,
+          "writes": 0
+        },
+        {
+          "owner": "BrowserPageHandoffs.validTextZoom@156",
+          "line": 156,
+          "bindings": 1,
+          "writes": 0
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
     },
     {
       "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserPageReading.java",
@@ -170999,6 +172389,22 @@
           "writes": 0
         }
       ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserSurfacePlugin.kt",
+      "sha256": "171a8b0cd1cef2b425d92bd29233d274a2e77d5a90f201ca86cc292871b7b2f0",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState",
+        "BrowserUnderlay"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
+      "owners": [],
       "parseErrors": [],
       "asynchronous": 0,
       "unassignedWrites": 0
@@ -172386,6 +173792,254 @@
       "unassignedWrites": 0
     },
     {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/ChromiumBrowserLauncher.kt",
+      "sha256": "d0ccead968914a0f3890e458bccd04e85e8d801d9443e63538cdf5b14d64fe9e",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/ElizaBridgeActivity.java",
+      "sha256": "e91696479b796ca2f344dac7ebff59fb21e723a42fb84332c13a07abad15e7ae",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "ElizaBridgeActivity",
+          "line": 36,
+          "bindings": 2,
+          "writes": 3
+        },
+        {
+          "owner": "ElizaBridgeActivity.onCreate@39",
+          "line": 40,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "ElizaBridgeActivity.onCreate@39.Anonymous@45.onRenderProcessGone@46",
+          "line": 48,
+          "bindings": 2,
+          "writes": 0
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/SurfaceControlChannel.kt",
+      "sha256": "a1adb4cf474918c7ee305c243be389f8fe894e05c3ec259ea4f753ec5277918d",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/test/java/ai/eliza/plugins/browsersurface/ActiveOwnerRegistryTest.kt",
+      "sha256": "d7b5455a510db57de154112f153c084ca57d38eac8675bf684ec7ad19cc2174f",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "test-support-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/test/java/ai/eliza/plugins/browsersurface/BelowHostLayerTest.kt",
+      "sha256": "362eea510af60d724527599c8689e113fbfd067ab7ee5bdf63feb5874e11ed13",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState",
+        "BrowserUnderlay"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "test-support-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/test/java/ai/eliza/plugins/browsersurface/BrowserDockGeometryTest.kt",
+      "sha256": "3f4f44de8f5fced442bad923612c329dc21f2f8311f87d0933b5d58375eb535d",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState",
+        "BrowserUnderlay"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "test-support-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/test/java/ai/eliza/plugins/browsersurface/BrowserEmbeddingTrustTest.kt",
+      "sha256": "14ec1c3634a018dfe31b3b7b720e1e8d8195f28b3fd792aba117fac45a0503d8",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "test-support-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/test/java/ai/eliza/plugins/browsersurface/BrowserNavigationPolicyTest.kt",
+      "sha256": "2d00cd9228e220bae1ae115bc05fda3333a878b54a4adc3a966adf163dd5ab0c",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "test-support-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/test/java/ai/eliza/plugins/browsersurface/ChromiumBrowserIdentityTest.java",
+      "sha256": "ca356be018541934d76643a228a53d71820d091dfaf9fb158ff759261f9c86dd",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "test-support-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "ChromiumBrowserIdentityTest.allowsOnlyTheTwoBuildPackages@10",
+          "line": 13,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "ChromiumBrowserIdentityTest.checksTheSelectedPackageAndExactCertificateBytes@18",
+          "line": 19,
+          "bindings": 2,
+          "writes": 1
+        },
+        {
+          "owner": "ChromiumBrowserIdentityTest.checksTheSelectedPackageAndExactCertificateBytes@18.lambda@21",
+          "line": 21,
+          "bindings": 3,
+          "writes": 0
+        },
+        {
+          "owner": "ChromiumBrowserIdentityTest.sameSignerOnOtherPackageDoesNotAuthorizeBinderCaller@32",
+          "line": 33,
+          "bindings": 2,
+          "writes": 1
+        },
+        {
+          "owner": "ChromiumBrowserIdentityTest.sameSignerOnOtherPackageDoesNotAuthorizeBinderCaller@32.lambda@34",
+          "line": 34,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "ChromiumBrowserIdentityTest.wrongSignerAndMalformedOrUnconfiguredPinsFailClosed@43.lambda@44",
+          "line": 44,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "ChromiumBrowserIdentityTest.wrongSignerAndMalformedOrUnconfiguredPinsFailClosed@43.lambda@45",
+          "line": 45,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "ChromiumBrowserIdentityTest.wrongSignerAndMalformedOrUnconfiguredPinsFailClosed@43",
+          "line": 46,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "ChromiumBrowserIdentityTest.wrongSignerAndMalformedOrUnconfiguredPinsFailClosed@43.lambda@47",
+          "line": 47,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "ChromiumBrowserIdentityTest.wrongSignerAndMalformedOrUnconfiguredPinsFailClosed@43.lambda@52",
+          "line": 52,
+          "bindings": 2,
+          "writes": 0
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/test/java/ai/eliza/plugins/browsersurface/ChromiumBrowserLauncherTest.kt",
+      "sha256": "f2f2a3ddf919c8be8e0a0573774f07ac08c7eafd6db45ce8cb086e861ce06786",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "test-support-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/test/java/ai/eliza/plugins/browsersurface/RoundedOcclusionRectTest.kt",
+      "sha256": "ea80cc4c38531e4e199e2451d396be1e7de37528fb359b5f0b8c0564e65ea16f",
+      "allocatedModels": [
+        "BrowserSession",
+        "BrowserSiteState",
+        "BrowserUnderlay"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "test-support-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
       "path": "vendor/eliza/plugins/plugin-native-browser-surface/src/address-input.ts",
       "sha256": "de976c085cab0c72867b6ccbefcc0b48c2206c594b70f96d3b758b736f79a81c",
       "allocatedModels": [
@@ -172886,7 +174540,8 @@
       "allocatedModels": [
         "CalendarSync",
         "CalendarLinkedSync",
-        "DeviceActions"
+        "DeviceActions",
+        "NativeCalendarScopedReview"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -173450,7 +175105,8 @@
       "sha256": "bf1580e4a3a3b0b92cb28edef77a4f66652174ed1e0fc1306cd71a1b95acfa41",
       "allocatedModels": [
         "CalendarLinkedSync",
-        "CalendarPresentation"
+        "CalendarPresentation",
+        "NativeCalendarScopedReview"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -173589,7 +175245,8 @@
       "allocatedModels": [
         "CalendarSync",
         "CalendarLinkedSync",
-        "DeviceActions"
+        "DeviceActions",
+        "NativeCalendarSyncEnable"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -184901,7 +186558,8 @@
       "allocatedModels": [
         "DeviceActions",
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "NativeGmailBackground"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -185116,7 +186774,8 @@
       "allocatedModels": [
         "DeviceActions",
         "NoticesAndCaches",
-        "NotificationCollection"
+        "NotificationCollection",
+        "NativeGmailBackground"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -197711,7 +199370,7 @@
     },
     {
       "path": "vendor/eliza/plugins/plugin-personal-assistant/src/actions/calendar.ts",
-      "sha256": "52daca4fe6a2b4bdfad88be599ac2314a88946e352f530ffe5f7a0ab701322df",
+      "sha256": "73f0b1478d279fa3f14395e9a08cb578d3d00593f1dc51bf8e6e16275e6cd4fb",
       "allocatedModels": [
         "AssistantConversation",
         "CalendarLinkedSync",
@@ -219654,10 +221313,33 @@
       "parseErrors": [],
       "asynchronous": 0,
       "unassignedWrites": 1
+    },
+    {
+      "path": "vite.config.ts",
+      "sha256": "3df051169be3a388ed557ea45afd0cde28dc8072741ff62fca34e33f9946779d",
+      "allocatedModels": [
+        "DevelopmentSurfaces",
+        "DevelopmentHost",
+        "BrowserCloudRequestCustody"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "<module>",
+          "line": 27,
+          "bindings": 1,
+          "writes": 0
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 2
     }
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "c2a66d4cf64c6994bd2a91a147d08e1bee5b7446590126e2ed5da9651c7770c3"
+    "sha256": "cfd2a575f05df2c9b28e7a2853e271864440882f61ca17d5ff45aad469d101b2"
   }
 }

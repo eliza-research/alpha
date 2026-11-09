@@ -5,7 +5,7 @@
     "standaloneDebugRuntimeClasspath",
     "launcherDebugRuntimeClasspath"
   ],
-  "inputFingerprint": "6403e355470df7e0516102358ea5c088558fc650cb5db4956610f9cafaa1626b",
+  "inputFingerprint": "736e9bfb0767ee3b8b432c440e812460b46a62e432235fb8161b260f49770574",
   "coordinates": [
     "androidx.activity:activity:1.10.1",
     "androidx.annotation:annotation-experimental:1.4.1",
@@ -80,6 +80,9 @@
     "androidx.versionedparcelable:versionedparcelable:1.1.1",
     "androidx.viewpager:viewpager:1.0.0",
     "androidx.webkit:webkit:1.17.1",
+    "androidx.window:window-core-android:1.4.0",
+    "androidx.window:window-core:1.4.0",
+    "androidx.window:window:1.4.0",
     "androidx.work:work-runtime:2.11.0",
     "com.google.android.gms:play-services-auth-api-phone:18.0.2",
     "com.google.android.gms:play-services-auth-base:18.0.10",

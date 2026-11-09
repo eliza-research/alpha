@@ -26,15 +26,31 @@ export function installReminderAdapter(Component: Bag, views: Bag) {
   let closeNoticeQuestion:(()=>void)|undefined;
   let tapBusy=false, tapRequested=false, tapInteraction=0;
   const interaction=()=>{tapInteraction++;};
-  for(const name of ['openView','goHome','back']){const original=p[name];p[name]=function(...args:Bag[]){tapInteraction++;return original.apply(this,args);};}
+  for(const name of ['openView','goHome','back']){
+    const original=p[name];
+    p[name]=function(...args:Bag[]){
+      tapInteraction++;
+      // Back changes the visit only when it delegates to an app or Home navigation.
+      if(name!=='back'){
+        const previous=this.reminderOpenVisit??0, visit=this.reminderOpenVisit=previous+1;
+        const open=this.pendingReminderOpen;
+        if(name==='openView'&&args[0]==='calendar'&&open?.visit===previous&&!open.followedCalendar&&open.view!=='calendar'&&this.S().view===open.view){
+          open.visit=visit;
+          open.followedCalendar=true;
+        }
+      }
+      return original.apply(this,args);
+    };
+  }
   const sameTarget=(a:Bag,b:Bag)=>!!a&&!!b&&Object.keys(a).length===Object.keys(b).length&&Object.entries(a).every(([key,value])=>b[key]===value);
   async function checkReminderTap(explicit=false) {
     if(closeNoticeQuestion)return;
     if(tapBusy){if(explicit)tapRequested=true;return;}
     const shell=owner;
-    if(!Capacitor.isNativePlatform()||!shell?.live||document.hidden||connectionController.getSnapshot().open||alphaClient.getState().context.sensitive||shell.vget('calendar').form)return;
+    const eligible=()=>owner===shell&&shell?.live&&!document.hidden&&!connectionController.getSnapshot().open&&!alphaClient.getState().context.sensitive&&!shell.vget('calendar').form;
+    if(!Capacitor.isNativePlatform()||!eligible())return;
     const initialView=shell.S().view, initialOpen=shell.vget('calendar').open, interactionAt=tapInteraction;
-    const current=()=>tapInteraction===interactionAt&&owner===shell&&shell.live&&!document.hidden&&!connectionController.getSnapshot().open&&!alphaClient.getState().context.sensitive&&!shell.vget('calendar').form&&shell.S().view===initialView&&shell.vget('calendar').open===initialOpen;
+    const current=()=>tapInteraction===interactionAt&&eligible()&&shell.S().view===initialView&&shell.vget('calendar').open===initialOpen;
     tapBusy=true;
     try {
       const capability=await DailyApps.surfaceInfo();
@@ -58,7 +74,7 @@ export function installReminderAdapter(Component: Bag, views: Bag) {
       await new Promise<void>(resolve=>shell.setState({},resolve));
       // Consume only after the exact detail is visible. Native rechecks the current
       // source, occurrence and revision; a newer queued tap cannot be consumed here.
-      if(tapInteraction!==openingInteraction||owner!==shell||!shell.live||document.hidden||shell.S().view!=='calendar'||shell.vget('calendar').open!==target.id)return;
+      if(tapInteraction!==openingInteraction||!eligible()||shell.S().view!=='calendar'||shell.vget('calendar').open!==target.id)return;
       if(pending.question){
         const session=connectionController.getSnapshot().session,enrollment=JSON.stringify(connectionController.getWorkflowDeviceTarget());
         if(!session){shell.toast("Your agent isn't ready. Try again.");return;}
@@ -82,9 +98,9 @@ export function installReminderAdapter(Component: Bag, views: Bag) {
   };
   p.refreshReminders = async function (openId?: string, occurrenceId?: string) {
     // Resume and calendar refresh may supersede the notification's fetch, so the latest
-    // successful fetch consumes the tap. It opens only soon after the tap, in the foreground,
-    // and while the person is still where they tapped (or already in Calendar).
-    if (openId) this.pendingReminderOpen = {id:openId,occurrenceId,at:Date.now(),view:this.S().view};
+    // successful fetch consumes the tap. The visit can follow one direct Calendar entry.
+    // An openView before this call (for a Workflows row) owns the visit even before React commits it.
+    if (openId) this.pendingReminderOpen = {id:openId,occurrenceId,at:Date.now(),view:this.S().view,visit:this.reminderOpenVisit??0,followedCalendar:false};
     const generation = this.reminderRefreshGeneration = (this.reminderRefreshGeneration || 0) + 1;
     try {
       const reminderDeleteUnknown=await reconcileReminderDeletions();
@@ -107,7 +123,7 @@ export function installReminderAdapter(Component: Bag, views: Bag) {
       const open = this.pendingReminderOpen;
       this.pendingReminderOpen = undefined;
       const view = this.S().view;
-      if (open && Date.now()-open.at < 30000 && !document.hidden && (view === open.view || view === 'calendar')) {
+      if (open && open.visit === (this.reminderOpenVisit??0) && Date.now()-open.at < 30000 && !document.hidden && (view === open.view || view === 'calendar')) {
         const target = rows.find(e => e.alphaReminderId === open.id && (!open.occurrenceId || e.reminderOccurrence===open.occurrenceId));
         this.openView('calendar', target ? { open:target.id, day:target.off, openDay:target.off, events:rows } : {events:rows});
       }

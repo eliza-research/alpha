@@ -310,6 +310,11 @@ test("APK voice admission requires the complete recorded bundle and every record
   };
   assert.deepEqual(voiceBundleAdmission(apk(), host), { packaged: true, asr: true, differences: [], qualified: true });
   assert.deepEqual(voiceBundleAdmission({ names: ["classes.dex"], read: () => null }, host), { packaged: false, asr: false, differences: [], qualified: false });
+  const absent = { names: ["classes.dex"], read: () => assert.fail("no speech payload to read") };
+  assert.deepEqual(voiceBundleAdmission(absent, () => assert.fail("absent speech must not load an unrelated qualification")),
+    { packaged: false, asr: false, differences: [], qualified: false });
+  assert.throws(() => voiceBundleAdmission(apk(), () => { throw Error("stale qualification"); }), /stale qualification/);
+  assert.deepEqual(voiceBundleAdmission(apk(), () => host), voiceBundleAdmission(apk(), host));
   // Without the ASR slot the bundle is admitted, but asr:false keeps a release distributable:false (verify-apks).
   const noAsr = voiceBundleAdmission(apk(undefined, Object.keys(bytes).filter(file => !file.startsWith("asr/"))), host);
   assert.deepEqual(noAsr.differences, []);

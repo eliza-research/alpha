@@ -10,13 +10,24 @@ test('accepted voice progress is ephemeral, clears with SDK state and cannot ret
   f.box.React = {createElement: () => null};
   f.box.VoiceActivity = () => null;
   const sessions = [];
+  let automaticallyMuted = false;
   f.box.developmentCartesiaConversation = async options => {
     sessions.push(options);
-    return {async start() { options.assertCurrent(); options.onState('listening', ''); }, async stop() {}, recheck() {}, microphoneMuted: false, microphoneAutomaticallyMuted: false, setMicrophoneMuted() {}};
+    return {async start() { options.assertCurrent(); options.onState('listening', ''); }, async stop() {}, recheck() {}, microphoneMuted: false, get microphoneAutomaticallyMuted() {return automaticallyMuted;}, setMicrophoneMuted() {}};
   };
   const messagesBefore = JSON.stringify(f.shell.state.msgs);
   await f.shell.startVoice();
   const first = sessions[0];
+  first.onState('connecting', '');
+  assert.equal(f.renderChat().readinessLabel, 'Connecting…');
+  assert.equal(f.renderChat().activity, null);
+  first.onState('ready', '');
+  assert.equal(f.renderChat().readinessLabel, 'Connecting…');
+  first.onState('listening', '');
+  automaticallyMuted = true;
+  assert.equal(f.renderChat().readinessLabel, 'Finishing…');
+  automaticallyMuted = false;
+  assert.equal(f.renderChat().readinessLabel, 'Listening');
   first.onState('thinking', 'Creating that now.');
   // The label shimmers on the transcript line above the composer; the composer keeps the phase.
   assert.equal(f.shell.renderVals().turnStatus, 'Creating that now.');
@@ -38,7 +49,8 @@ test('accepted voice progress is ephemeral, clears with SDK state and cannot ret
   assert.equal(f.renderChat().progressText || '', '');
   first.onState('listening', '');
   assert.equal(f.renderChat().progressText || '', '');
-  assert.equal(f.renderChat().statusClass, 'alpha-voice-status-hidden');
+  assert.equal(f.renderChat().statusClass, 'alpha-voice-startup-status');
+  assert.equal(f.renderChat().readinessLabel, 'Listening');
   first.onState('thinking', 'Checking that.');
   first.onError(Error('Synthetic voice failure'));
   assert.equal(f.renderChat().progressText || '', '');

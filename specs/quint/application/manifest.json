@@ -42,14 +42,17 @@
       "hiddenRetiresSendTest",
       "suspendedRetiresSendTest",
       "suspendedClaimRefusedTest",
-      "resumedClaimTest"
+      "resumedClaimTest",
+      "sheetGripDismissTest",
+      "assistantAboveSheetTest"
     ],
     "sources": [
       "apps/app/src/prototype/model.js",
       "apps/app/src/runtime/view-navigation.ts",
       "apps/app/src/prototype/subview-accessibility.ts",
       "apps/app/src/runtime/inline-modal.ts",
-      "apps/app/src/runtime/modal-inert.ts"
+      "apps/app/src/runtime/modal-inert.ts",
+      "apps/app/src/browser/clock.ts"
     ],
     "abstractions": [
       "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",
@@ -533,6 +536,35 @@
     ]
   },
   {
+    "path": "specs/quint/application/FirstSendDraftMigration.qnt",
+    "module": "FirstSendDraftMigration",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "matchingDestinationClearsExactSourceTest",
+      "retiredBindingCannotDispatchClearTest",
+      "destinationDisagreementRetainsSourceTest",
+      "changedSourceConflictsWithClearReceiptTest",
+      "destinationReplacementAfterDispatchRemainsIndependentTest"
+    ],
+    "invariants": ["ClearDispatchWasAuthorized", "ClearUsesExactSourceReceipt", "ConfirmedClearIsRevisioned"],
+    "sources": [
+      "apps/app/src/prototype/agent-adapter.ts",
+      "apps/app/src/runtime/assistant-draft-store.ts",
+      "vendor/eliza/packages/ui/src/state/durable-draft.ts"
+    ],
+    "stateMapping": {
+      "phase/live/binding/retries": "Actual migration call and held raw slot or timer, controlled shell owner binding and observed retry schedule",
+      "source/destination/sourceReceipt/destinationReceipt": "Raw slot record text, mark and revision and actual read receipt",
+      "attempts/dispatched/result": "Observed CAS admission, expected source revision, destination at dispatch and actual slot result"
+    },
+    "abstractions": [
+      "One first-send cleanup, two separately stored binding records, a bounded competing revision on each slot, and actual source CAS over in-memory bytes.",
+      "Destination is rechecked before dispatch. A destination write after a source CAS is dispatched remains independent. Composer/send authorization, installed persistence and cross-store atomicity are separate."
+    ]
+  },
+  {
     "path": "specs/quint/application/DraftDispatch.qnt",
     "module": "DraftDispatch",
     "init": "init",
@@ -557,6 +589,36 @@
     "abstractions": [
       "Hold requires a durable matching saved draft. Per-binding sending markers survive process restart and require review, while confirmed non-dispatch unmarks the original binding.",
       "Atomic hold abstracts the serialized marking write and its current-binding check. Storage failure, ownership changes and unsettled recovery retain source regression coverage."
+    ]
+  },
+  {
+    "path": "specs/quint/application/ShadeNoticeQuestionAdmission.qnt",
+    "module": "ShadeNoticeQuestionAdmission",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "approvedDialogHandsOffItsLeaseTest",
+      "successorReviewRetiresPendingReadTest",
+      "shadeReentryCannotReviveReadTest",
+      "foregroundAndLockRetireReadTest",
+      "currentReadKeepsUnavailableReportTest"
+    ],
+    "invariants": ["DialogHasExactLease", "CurrentOwnerIsActive", "RetiredReadHasNoEffect", "ComposedNoticeWasReviewed"],
+    "sources": [
+      "apps/app/src/prototype/notifications-adapter.ts",
+      "apps/app/src/prototype/context-selection.ts",
+      "apps/app/src/browser/content-question.ts",
+      "apps/app/src/main.tsx"
+    ],
+    "stateMapping": {
+      "shade/screen/hidden/live/epoch": "Synthetic committed shell state, actual DOM visibility event and renderer lifetime counter",
+      "owner/dialog/reviews/pending": "Exact adapter lease identity, actual JSDOM dialog and controlled readback records",
+      "composed/reported/staleEffect": "Observed closed composer and report calls and the active lease at publication"
+    },
+    "abstractions": [
+      "Simulated development shade, two own notices, up to three review leases and controlled final list outcomes.",
+      "Actual dialog approval and cancellation run in JSDOM. Physical browser focus and top-layer behavior, Android delivery and provider calls are outside this projection."
     ]
   },
   {
@@ -1716,6 +1778,69 @@
     ]
   },
   {
+    "path": "specs/quint/application/ReminderOpenIntent.qnt",
+    "module": "ReminderOpenIntent",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "latestResumeStillOpensExactReminderTest",
+      "interveningVisitRetiresTapTest",
+      "directCalendarEntryKeepsTapTest",
+      "workflowsRowCapturesRequestedVisitTest",
+      "expiredTapKeepsTheCacheTest",
+      "differentOccurrenceOnlyOpensCalendarTest"
+    ],
+    "invariants": ["DeliveryOwnsCurrentVisit", "VisitAndReadAreIndependent"],
+    "sources": [
+      "apps/app/src/prototype/reminder-adapter.ts",
+      "apps/app/src/prototype/automations-adapter.ts",
+      "apps/app/src/prototype/model.js",
+      "apps/app/src/runtime/reminder-creations.ts"
+    ],
+    "stateMapping": {
+      "view/deferred/visit": "Shell port committed view, held Calendar commit, and the actual adapter navigation visit counter",
+      "refresh/reads/cache/stale/notice": "Actual refresh generation, held native list promises, row cache and refresh diagnostics",
+      "intent/now/foreground/delivery": "Actual captured reminder, occurrence, time and owning visit, controlled clock and visibility, and observed Calendar open"
+    },
+    "abstractions": [
+      "Legacy read-only reminder intent across three refreshes, one exact occurrence plus a changed occurrence, and bounded app or Home navigation.",
+      "Actual Workflows device-row branch opens Calendar before starting the read. Its Calendar commit is held by the shell port. Typed tap custody, Android delivery, mounted rendering, and provider effects are separate."
+    ]
+  },
+  {
+    "path": "specs/quint/application/RetainedReminderTapAdmission.qnt",
+    "module": "RetainedReminderTapAdmission",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "uninterruptedDetailConsumesTest",
+      "chooserCloseRechecksRetainedTokenTest",
+      "sensitiveAndFormRetainTest",
+      "changedVisitRefusesSameDetailTest",
+      "nativeReplacementKeepsNewTokenTest"
+    ],
+    "invariants": ["ProtectedCommitKeepsCustody", "CommitOwnsPublishedVisit", "ConsumesExactToken"],
+    "sources": [
+      "apps/app/src/prototype/reminder-adapter.ts",
+      "apps/app/src/runtime/reminder-creations.ts",
+      "apps/app/src/runtime/connection-ui.tsx",
+      "apps/app/src/runtime/alpha-client.ts",
+      "apps/app/src/prototype/model.js"
+    ],
+    "stateMapping": {
+      "view/visit/detail/capturedVisit": "Shell port view and navigation generation with equality against the exact reminder detail",
+      "captured/waiting": "Exact token passed through the real adapter to the held Calendar render callback",
+      "chooser/sensitive/form/foreground": "Controlled connection, context, Calendar form and document state read by the actual adapter",
+      "pending/attempts/consumed/blockedConsume": "Synthetic native custody and exact token dispatch observations"
+    },
+    "abstractions": [
+      "Retained non-question reminder link, real adapter read and render boundaries, one exact occurrence and two synthetic native tokens.",
+      "Shell commits and native token custody are controlled ports. Mounted DOM visibility, Android delivery and storage, question drafting and legacy refresh navigation have separate obligations."
+    ]
+  },
+  {
     "path": "specs/quint/application/CanonicalNotificationTapAdmission.qnt",
     "module": "CanonicalNotificationTapAdmission",
     "init": "init",
@@ -1815,6 +1940,37 @@
     "abstractions": [
       "Canonical event selection and Maps origin capture, exact Calendar feed and source requests through the actual API, current binding and same-epoch selection checks.",
       "Two owner/session/scope classes, eight epochs, four attempts and finite provider response classes. Mounted Maps navigation and native Calendar returns, remote effects and linked provider control have separate scope."
+    ]
+  },
+  {
+    "path": "specs/quint/application/ModalScrimOwnership.qnt",
+    "module": "ModalScrimOwnership",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "inlineCoverageReleasesCapturedPointerTest",
+      "actualNativeModalRetiresDelayedReleaseTest",
+      "sameTaskModalDoesNotRestoreOldPressTest",
+      "nonmodalAndUninterruptedCompatibilityTest",
+      "oldDeadlineCannotSettleANewPressTest"
+    ],
+    "invariants": [
+      "ExactPress",
+      "ModalOwns",
+      "NoEscapedActivation"
+    ],
+    "sources": [
+      "apps/app/src/prototype/chat-overlay-motion-adapter.ts",
+      "apps/app/src/prototype/calendar-month-focus.ts",
+      "apps/app/src/runtime/inline-modal.ts",
+      "apps/app/src/runtime/modal-inert.ts",
+      "apps/app/src/prototype/phone.css",
+      "apps/app/src/prototype/template.html"
+    ],
+    "abstractions": [
+      "Raised input scrim with two press generations, bounded pointer identities, one inline or native modal and representative held, moved and released paths. A nonmodal dialog does not take modal ownership.",
+      "Actual source adapters and browser pointer capture execute over a controlled shell. Half-sheet gestures, full product mounting for other modal families, and installed Android pointer delivery are separate."
     ]
   },
   {
@@ -2443,6 +2599,45 @@
     ]
   },
   {
+    "path": "specs/quint/application/NotesRecorderMediaAdmission.qnt",
+    "module": "NotesRecorderMediaAdmission",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "heldSavedAudioDelaysButtonTest",
+      "heldSavedAudioDelaysControlTest",
+      "unconfirmedStopRefusesCaptureTest",
+      "retiredControlCannotClaimReentryTest",
+      "replacedOwnerCannotCaptureTest"
+    ],
+    "invariants": [
+      "CaptureRequiresConfirmedDrain",
+      "OnlyCurrentAttemptCaptures",
+      "ControlCannotClaimReplacement"
+    ],
+    "sources": [
+      "apps/app/src/prototype/voice-adapter.ts",
+      "apps/app/src/prototype/note-recorder.ts",
+      "apps/app/src/prototype/notes-recorder-control.ts",
+      "apps/app/src/prototype/canonical-notes-ui.ts",
+      "apps/app/src/prototype/template.html",
+      "apps/app/src/browser/voice.ts",
+      "apps/app/src/browser/audio-capture.ts",
+      "apps/app/src/browser/note-audio-store.ts"
+    ],
+    "stateMapping": {
+      "view/owner/recorder": "Committed shell view, controlled canonical Notes identity and mounted recorder state",
+      "attempts/active/drains": "Numbered actual recorder begin epochs and the last attempt that entered preflight",
+      "playback/captures/lastCapture/unconfirmedCapture": "Synthetic media port calls, stop results and exact attempt at the capture boundary",
+      "control/controlAttempt": "Agent-facing control promise and the recorder epoch it started"
+    },
+    "abstractions": [
+      "Mounted button and agent-facing recorder control across one saved audio session, two begin epochs and two canonical owners.",
+      "Controlled Chromium audio and microphone ports. The replay ends at capture admission or refusal. Native playback, permission, pause/resume journal, recording writes and arbitrary cross-surface speech remain separate."
+    ]
+  },
+  {
     "path": "specs/quint/application/BrowserFilesTrash.qnt",
     "module": "BrowserFilesTrash",
     "init": "init",
@@ -2486,5 +2681,32 @@
       "maxSteps": 80,
       "maxVerifyDepth": 8
     }
+  },
+  {
+    "path": "specs/quint/application/ChatAttachments.qnt",
+    "module": "ChatAttachments",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "reloadKeepsAttachmentTest",
+      "refusedSendRestoresDraftTest",
+      "ownerIsolationTest",
+      "conversationIsolationTest",
+      "imagePreviewDoesNotNavigateTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/agent-adapter.ts",
+      "apps/app/src/runtime/alpha-client.ts",
+      "apps/app/src/runtime/connection-ui.tsx",
+      "apps/app/src/runtime/local-agent.ts",
+      "apps/app/src/runtime/remote-protocol.ts",
+      "apps/app/src/runtime/development-cloud-agents.ts",
+      "apps/app/src/prototype/camera-adapter.ts"
+    ],
+    "abstractions": [
+      "Finite representative identities and successful storage writes only. Models are contract checks, not complete implementation refinement or cross-device persistence proof.",
+      "Source review recorded in specs/quint/ui-return-review-20261109.md."
+    ]
   }
 ]

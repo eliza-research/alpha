@@ -4,7 +4,7 @@ import {pathToFileURL} from 'node:url';
 import {tsImport} from 'tsx/esm/api';
 import {repositoryRoot, loadModels, sha256} from './quint-lib.mjs';
 import {verifyRefinementReceiptInputs} from '../specs/quint/refinement/check-traces.mjs';
-import {modelStateInventory, unobservedStateFields} from '../specs/quint/refinement/model-state.mjs';
+import {modelStateInventory, traceActionCoverage, unobservedStateFields} from '../specs/quint/refinement/model-state.mjs';
 
 const args = process.argv.slice(2);
 const runners = {
@@ -80,13 +80,14 @@ for (const model of models) {
     declaredStateVariables: inventory.variables,
     declaredStateFields: inventory.fields,
     observedFields: [...new Set(current.flatMap(receipt => receipt.observedFields))].sort(),
-    modelActions: [...new Set(current.flatMap(receipt => Object.keys(receipt.actions)))].sort(),
-    modelInitializers: [...new Set(current.flatMap(receipt => receipt.traceInputs.map(trace => trace.init?.name || 'init')))].sort(),
+    ...traceActionCoverage(current),
     scopes: [...new Set(current.map(receipt => receipt.scope))],
     receipts: current.map(receipt => receipt.receiptPath)};
   entry.unobservedStateFields = unobservedStateFields(inventory, entry.observedFields);
-  entry.unexercisedModelActions = inventory.actions.filter(action =>
-    !['init', 'step', 'check'].includes(action) && !entry.modelActions.includes(action) && !entry.modelInitializers.includes(action));
+  const modelOperations = inventory.actions.filter(action =>
+    !['init', 'step', 'check'].includes(action) && !entry.modelInitializers.includes(action));
+  entry.unexercisedModelActions = modelOperations.filter(action => !entry.modelActions.includes(action));
+  entry.unexercisedModelTransitions = modelOperations.filter(action => !entry.modelTransitionActions.includes(action));
   report.models.push(entry);
   if (!current.length && (model.family !== 'legacy' || requested.includes('legacy')))
     report.obligations.push({model: model.module, obligation: 'implementation transition relation', reason: 'No passing source-bound adapter receipt for this model revision in the selected campaigns.'});
@@ -99,6 +100,7 @@ if (runtimeFamilies.every(family => requested.includes(family)) && !report.runti
 report.reportingInputsUnchanged = reportingInputs.every(path => report.reportingInputHashes[path] === sha256(readFileSync(join(repositoryRoot, path))));
 if (!report.reportingInputsUnchanged) failed = true;
 report.unobservedStateFieldCount = report.models.reduce((count, model) => count + model.unobservedStateFields.length, 0);
+report.unexercisedModelTransitionCount = report.models.reduce((count, model) => count + model.unexercisedModelTransitions.length, 0);
 report.checksPassed = !failed;
 report.finishedAt = new Date().toISOString();
 report.obligations.push({obligation: 'unbounded implementation refinement', reason: 'Concrete trace campaigns establish their recorded finite/bounded projections. A universal simulation-relation proof requires separately discharged source semantics and environment assumptions.'});

@@ -189,9 +189,10 @@ test('calendar card shows the verified Agent Calendar event and its source witho
  const card=calendarCard(page);await expect(card).toBeVisible();
  const event=await page.evaluate(()=>{const date=new Date(Date.now()+2*86400000);date.setHours(9,30,0,0);const end=new Date(date.getTime()+1800000),time=(d:Date)=>d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});return{title:'Synthetic overview event',startAt:date.toISOString(),endAt:end.toISOString(),day:date.toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'}),footer:time(date)+' – '+time(end)};});
  await installHomeCalendar(page,event);await page.reload();await installHomeCalendar(page,event);
- // The shared overview card names the event, its day and time; its source stays visible on the card.
+ // The shared overview card names the event, its day and time; the visible footer contains only the event time.
  await expect(card).toHaveAccessibleName(`Open calendar event: Synthetic overview event, ${event.day}, ${event.footer}`);
  await expect(card.locator('.home-calendar-footer')).toHaveText(event.footer);
+ await expect(card).not.toContainText('Agent Calendar');
  await expect(card.locator('[data-alpha-home-calendar-source]')).toHaveCount(0);
  await expect(card).not.toContainText('In this app');await expect(card).toHaveAttribute('data-alpha-home-calendar-overdue','false');
  expect(await card.evaluate(element=>{const footer=element.querySelector<HTMLElement>('.home-calendar-footer')!,a=footer.getBoundingClientRect(),box=element.getBoundingClientRect();return{footerClipped:footer.scrollWidth>footer.clientWidth,inside:a.right<=box.right&&a.bottom<=box.bottom,overflow:element.scrollWidth-element.clientWidth};})).toEqual({footerClipped:false,inside:true,overflow:0});

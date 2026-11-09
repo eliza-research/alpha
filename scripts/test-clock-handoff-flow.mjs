@@ -18,9 +18,9 @@ const settle=async()=>{for(let i=0;i<20;i++)await Promise.resolve();};
 let flags={testMocksEnabled:true,devSurfacesEnabled:true};
 async function fixture(simulated=false){
  class Shell{componentDidMount(){}componentWillUnmount(){}vset(){}}
- const views={calendar:{render:()=>({})}};
+ const views={workflows:{render:()=>({})}};
  vm.runInNewContext(source+'\ninstallClockAdapter(Shell,views,{simulated});',{...flags,createClockHandoffHistory,clockHandoffLegacyKey,secureConnectionStore,createInlineModal,currentClockTimeZone,buildClockRequest,describeClockDays,DailyApps,Shell,views,simulated,document,window:{addEventListener(){},removeEventListener(){}},queueMicrotask,localStorage,crypto:{randomUUID},Date,Intl,console});
- const shell=new Shell();shell.componentDidMount();const render=()=>views.calendar.render({},{});render().openClock();await settle();return {shell,render,leave:()=>views.calendar.onLeave()};
+ const shell=new Shell();shell.componentDidMount();const render=()=>views.workflows.render({},{});render().openClock();await settle();return {shell,render,leave:()=>views.workflows.onLeave()};
 }
 for(const testMocksEnabled of [true,false]){
 flags={testMocksEnabled,devSurfacesEnabled:testMocksEnabled};writes=[];store=new Map();secure=new Map();failStorage=false;hidden=false;hold=undefined;response={status:'opened',message:'Clock request sent. Check Clock.'};

@@ -52,6 +52,8 @@ jobs:
       - name: Prepare pinned JSON dependency for host contract tests
         shell: bash
         run: bash scripts/ci/prepare-host-test-json.sh
+      - name: Prepare reviewed Kotlin compiler for native routing checks
+        run: node test/fixtures/kotlin-tools.mjs --prepare
       - name: Prepare pinned SDK for canonical host contract tests
         shell: bash
         run: |

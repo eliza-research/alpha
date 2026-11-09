@@ -1,6 +1,7 @@
 # View refresh TLA+ results (TLC 2026-11-06)
 
-Run: `design/view-refresh-2026-11/tla/check.sh <tla2tools.jar>` (writes <area>/results/, untracked).
+These historical TLC results precede the Quint translation. The current
+commands are in the [view refresh plan](../PLAN.md#view-refresh-models).
 
 | Spec | Config | Result | Distinct states |
 |---|---|---|---|

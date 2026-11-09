@@ -122,7 +122,7 @@ function releaseFile(dir, variant) {
 /** The packaged voice bundle and engine libraries against qualified-voice-host.json (scripts/voice-host.mjs). */
 function voiceHostAdmission(file) {
   const names = readApkEntries(file);
-  return voiceBundleAdmission({ names, read: entry => execFileSync("unzip", ["-p", file, entry], { maxBuffer: 1536 * 1024 * 1024 }) }, readVoiceHost("."));
+  return voiceBundleAdmission({ names, read: entry => execFileSync("unzip", ["-p", file, entry], { maxBuffer: 1536 * 1024 * 1024 }) }, () => readVoiceHost("."));
 }
 
 const results = [];

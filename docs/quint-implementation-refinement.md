@@ -1,10 +1,10 @@
 # Quint implementation refinement
 
-The current implementation refinement continues in draft PR 835 on SDK
+The current implementation refinement continues in [draft PR 839](https://github.com/eliza-research/alphaphone/pull/839) on SDK
 `99b49439ce9d0cb5607e9831b9f7f58d89525029`. The migration and its approved
-product-source prerequisite are in merged PR 825. The family manifests bind
-the reviewed source owners, and the source inventory lists the remaining
-review work.
+product-source prerequisite are in merged PR 825. PR 838 integrated the
+first refinement PR, 835, into main. The family manifests bind the reviewed
+source owners, and the source inventory lists the remaining review work.
 
 ## Original source baseline
 
@@ -28,9 +28,11 @@ fails the full campaign when a runtime model has no passing current receipt.
 
 `complete-finite-helper` applies only to the enumerated helper domain stated in
 its receipt. `bounded-component` and `bounded-orchestration` preserve their
-schedule and projection limits. The aggregate records unobserved fields and
-unexercised actions as open obligations. `--require-complete` fails while the
-universal application refinement obligation remains open.
+schedule and projection limits. The aggregate lists unobserved fields and
+declared actions that the source campaigns never traversed. A rejected
+action records guard evidence separately from evidence of a transition.
+`--require-complete` fails while the universal application refinement
+obligation remains open.
 
 ## First checked source milestone
 
@@ -145,6 +147,11 @@ verifier passed on commit `839325d966` for the standalone and launcher debug
 and unsigned release APKs. Both unsigned releases report
 `distributable: false`. The build also generated both instrumentation APKs.
 The same build and APK verification passed again on commit `b7d63199b8`.
+The 207-model follow-up at `4f3463f63d` passed the normal build and independent
+APK verifier for all four standalone and launcher APKs. Both instrumentation
+APKs were also archived with checksums. The APK verifier records 1,119 runtime
+entries per release and 1,120 per debug APK. Mocks were disabled and both
+unsigned releases remain non-distributable.
 Installed emulator HOME behavior, full AOSP boot, real integrations and
 physical-device acceptance each require their own evidence.
 
@@ -924,3 +931,270 @@ workflow worker publication, native Google artifact, mobile producer,
 Android profile and packaging scripts. Their model allocations describe
 the relevant owners. Individual stage, backup, interruption and QA
 launcher behaviors retain separate review obligations.
+
+`WorkflowWorkerStaging` replays 14 schedules and 55 checkpoints through
+the actual host artifact verifier and publication helper. It rehashes the target,
+extraction index and retained backup, and refuses coherent manifest
+replacement during copy. A refused publication restores the previous
+target when rollback succeeds. A refused rollback leaves the previous
+artifact in its backup. A failed backup cleanup can report failure
+after the new target was published. The fixtures use private scratch
+directories. Installed extraction and process interruption retain
+separate evidence.
+
+`NativeGmailBackground` replays 29 staged JVM schedules and 292
+checkpoints. The baseline let a held configuration commit after
+withdrawal of its grant. It also let an already captured tap consume
+after the grant's remote revocation. The authenticated repair retires
+the matching pending grant and preserves unrelated saved and pending
+state. Consumption rechecks the exact tap and authorization before
+publication. Local question cancellation remains available offline.
+The campaign uses synthetic transport, storage, scheduling and notice
+ports. A refused enqueue releases only its exact unadmitted selection,
+so the saved cursor resumes under a fresh epoch while earlier workers
+and newer selections preserve their own custody. Installed delivery,
+scheduler timing and accepted work draining remain open.
+
+The 200-model standard Android build produced both variants and reached
+the independent APK verifier. That verifier still had the prior core
+patch allowlist and rejected the connector transform. The corrected
+policy requires the exact connector patch and checks its independent
+target list against the reviewed manifest in the focused test.
+
+`NativeGoogleHostArtifact` checks 18 schedules and 148 checkpoints.
+The baseline admitted a receipt for different source bytes than the
+compiler consumed and could leave a changed module with the old
+manifest. The producer now binds concrete loader bytes and exact
+core preimages, verifies the private candidate, and compares the
+current pair before publication. A refused manifest rename restores
+the prior module under the serial producer contract. The two-rename
+intermediate state, process interruption and installed execution
+remain separate.
+
+`ModalScrimOwnership` checks 15 schedules and 85 checkpoints. The
+baseline let a captured raised-input scrim press survive a modal
+opening, including open-and-close before the old release. The
+repair retires the exact press at inert or native modal coverage and
+fences both release and compatibility fallback. Trusted mouse and
+touch, React's native event identity, unrelated mutations and a fresh
+press have separate controlled observations. Full product modal entry
+points and half-sheet ownership remain separately scoped.
+
+
+`PreparedSourceStamp` replays 10 local Git schedules and 43 checkpoints.
+The production preparer checks the exact checkout before accepting a stale
+stamp for supersession. The replay compares complete old and new stamp
+bytes, the external backup and preexisting lock or candidate bytes. An
+occupied external backup stays intact. A refused candidate open after backup
+preservation leaves the old stamp and its exact preserved copy. The modeled
+retry still refuses that occupied backup path. Concurrent qualification,
+interruption between durable operations and the dependency install remain open.
+
+At `4f3463f63d`, the normal worker producer requalified its SDK stamp while
+preserving the prior stamp and the earlier worker. The new Bun 1.4.2 artifact
+and independent host and worker verifiers passed. The 182,682-byte Google
+host records 59 inputs. Its module SHA-256 is
+`562ad5cfd5c302f691797a4665f9aa43ff5a907d967e4d38f959614218f4ca84`.
+The selected host graph used zero core transforms. The mobile runtime bundle
+binds its separate core transform selection.
+
+`NativeDigestConsent` checks 18 closed JVM schedules and 142 checkpoints.
+The historical baseline could return captured describe metadata after
+revocation or exact expiry during a held Calendar identity read. The native
+host now rechecks the current grant and clock after that verification,
+using the existing owner guard. The fixture confirms one Calendar identity
+query, exact response provenance, read bounds and rejected retired work.
+Installed providers and subsequent renderer or model use remain open.
+
+`CloudQaLauncher` checks 19 schedules and 127 checkpoints through the actual
+private profile and receipt implementation, using controlled child events.
+The historical launcher could change a linked log target's mode. The
+launcher now checks the opened descriptor for a regular single-link file
+before changing permissions or passing it to the child. The fixture observes
+unchanged foreign bytes and mode, refusal for a FIFO, retained regular log
+contents, and exact child cleanup on failed receipt publication. Cross-process
+profile races, kernel signal behavior and live service readiness remain open.
+
+The frozen strict run at `4fda14a9ec` credited 116 of 198 models. Services,
+native and composition passed. A cold shell mount timed out and the old
+application collector omitted earlier receipts. Independent revalidation of
+the retained artifacts recovered 39 application receipts for 36 models,
+306 traces and 1,767 checkpoints from that same revision. The strict result
+still records the failed run. The legacy collector retained 40 receipts
+despite separate Home mount and Google fixture failures.
+The Home replay now has its own navigation budget. Application campaigns
+retain results on either side of an individual failure while the aggregate
+still reports a failed run.
+
+`NotesRecorderMediaAdmission` checks five mounted schedules and 34
+checkpoints. Both the Notes button and the approved Notes recording control
+now wait for confirmed playback retirement before requesting capture. A
+refused stop leaves capture idle. Owner changes and Notes departure retire a
+held request. The approved action already requires the Notes view, and the
+replay checks fresh admission after reentry. Installed media focus, native
+microphone timing and broader playback and recording interleavings remain
+separate.
+
+The Google Connect fixture now runs through the same `tsImport` entry as the
+strict collector. Its browser initializer has no dependency on the host's
+transpiler helper. The mounted replay passed three matching traces and
+retained both expected historical differences.
+
+`RetainedReminderTapAdmission` checks eight schedules and 34 checkpoints
+through the actual renderer adapter. A held render used to acknowledge a
+tap after the chooser, a sensitive surface or a Calendar form took
+precedence. The commit now rechecks the same eligibility gates as the
+initial read. The closed replay confirms retry after the chooser closes
+and retains a newer native token when the old attempt is refused. Installed
+notification custody, question handling and legacy navigation remain separate.
+
+`BrowserCloudRequestCustody` checks three schedules and 25 checkpoints
+through the actual development bridge handler. The as-built rejection of a
+duplicate removed its incumbent's cancellation entry. The current bridge
+releases the entry only for the owning controller and keeps an aborted entry
+until that handler settles. Synthetic request, response and transport ports
+exercise exact cancellation and late response close. Authenticated routes,
+real HTTP and process restart remain separate.
+
+The real Google host manifest maps its 59 loader inputs to 57 canonical
+product and SDK paths and one installed dependency. One SDK configuration
+appears both in the prepared checkout and under `vendor/eliza`. The ledger
+records the raw inputs and their relevant model allocations. The compiler
+receipt retains the exact effective bytes for 12 prepared client inputs.
+The mailbox host and combined source helper are now part of the provisional
+runtime source inventory.
+
+The integrated Notes replay captured all five schedules and matched its
+pre-execution and post-execution source hashes. Its first checker process
+ended without output. Running the checker again on those exact observations
+passed all 34 checkpoints and 12 fields. Future receipts retain checker exit
+status or signal separately from source/model mismatches.
+
+The archived view-refresh sources retain their original 22 TLC
+configurations and historical results. Their active entry points now use
+the four Quint modules. The product and SDK TLA+ files remain available as
+translation evidence, and the pinned SDK checkout remains unchanged.
+
+The source ledger also enumerates the Vite and Capacitor inputs, Android
+host and asset staging, AOSP staging, Cloud deployment generation, the
+production bundle audit, test-mock selection and packaged license emission.
+These are provisional allocations for build and publication state.
+
+`GmailAgentMailboxRecovery` checks 45 schedules and 299 checkpoints through
+the actual mailbox host, Cloud protocol and shared mailbox client. Exact
+scope, turn, message revision, review digest, grant and expected label
+outcomes are observed through in-memory ports. Lost dispatch replies cause
+at most one readback in the invocation. A non-prepared prior receipt does
+not dispatch again. The prior prepared case can go through review again.
+Provider durability and concurrent invocations remain separate.
+
+The exact 211-model strict run produced passing Notes and ShellNavigation
+receipts before a Node segmentation fault ended its reporting process.
+Individual artifacts were retained. The crash record establishes a tool
+failure and leaves the faulting operation unresolved. The exact 213-model
+focused suite passed 29 Node tests, TypeScript, selected formal checks and
+the 409-file mock-disabled production bundle audit.
+
+`ReminderOpenIntent` checks 12 schedules and 56 checkpoints. A late legacy
+read may update its cache after navigation, while opening a detail requires
+the original visit or one direct Calendar transfer. The replay preserves the
+Workflows row handoff before the Calendar view commits, latest-refresh
+ownership, expiry and the exact occurrence. Mounted delivery and journal
+reconciliation remain separate.
+
+`NativeCalendarScopedReview` checks 19 schedules and 105 checkpoints. A
+held inspection previously could insert a stale ticket after pause cleared
+its epoch. Insertion now checks the captured epoch under the same monitor as
+pause. The closed JVM replay covers exact target identity, provider revision
+changes, confirmation and fresh-epoch review. The enqueue port is synthetic.
+Installed lifecycle timing and downstream Calendar effects remain separate.
+
+The exact 213-model commit `421bbd82a0` passed normal Android packaging and
+independent verification for both variants. Its two releases are unsigned
+and non-distributable. The four app APKs and both instrumentation APKs are
+retained under that revision.
+
+`DevelopmentDigestPending` checks seven schedules and 52 checkpoints. The
+old development store rejected the renderer's normal transition from review
+to dispatched. The repair permits that phase advance for the exact payload,
+including a legacy record without a phase. The host still compares the
+original stored bytes. The closed replay covers stale tabs, changed review
+payloads and failed or uncertain acknowledgement. Physical durability and
+provider effects remain separate.
+
+The older full verification exposed stale Power and notification JVM
+fixtures. Their stubs now match the current bridge entry and owner/agent
+requirements. The mounted reminder fixture also supplies the synthetic Agent
+access-preference method used at startup. These fixture changes preserve the
+real product methods in the checks.
+
+`FirstSendDraftMigration` checks 11 schedules and 83 checkpoints. Cleanup
+now checks the current owner after each read and confirms the copied text
+before clearing the exact source revision. The replay covers a changed
+destination, retirement and source CAS conflict. An independent destination
+write after final confirmation can still race the source CAS. The two slots
+retain separate storage and durability obligations.
+
+`NativeCalendarSyncEnable` checks nine closed schedules and 80 checkpoints.
+An older accepted review previously could enable durable consent after
+Calendar sync pause, even when pause left identical raw bytes. The bridge
+serializes the exact enable CAS with lease retirement. A completed pause
+fences that write, and an exhausted pause CAS reports unavailable while
+preserving the previous durable row. Provider dispatch, cross-instance
+ordering and installed lifecycle delivery remain separate.
+
+The 217-model focused run passed 14 Node tests, TypeScript and the
+selected digest formal checks. All ten mounted Chromium reminder cases
+passed with the closed Agent preference stub.
+
+`AndroidGzipAssetStage` runs the actual asset wrapper and byte audit with one
+selected gzip asset and two content identities. A one-layer merge fixture
+shows why an unprotected input loses its published name. The replay checks
+exact preservation, stale APK bytes, invalid input, idempotent wrapping and
+fresh sync after refused removal. Concurrent staging, partial wrapper writes
+and installed OCR remain separate.
+
+At `265d4145b5`, the normal Android build and independent verifier passed
+both standalone and launcher variants. The four app APKs and both
+instrumentation APKs are archived with checksums. Both releases are unsigned
+and non-distributable. The 219-model focused run passed 35 Node tests,
+TypeScript and the 409-file mock-disabled production bundle audit.
+
+The native Calendar apply admission boundary around Calendar sync pause
+remains open. The scoped deletion ticket and enable replays cover their own
+state and effects.
+
+`ShadeNoticeQuestionAdmission` checks 12 closed JSDOM schedules and 59
+checkpoints. The selected review owns its final list read after its own
+dialog closes. A successor, committed shade departure, lock or visibility
+loss retires that lease. Stale completion stays silent. Current revision,
+excerpt and list failures keep their existing messages. This replay covers
+the simulated shade. Installed Android delivery and uncommitted transition
+ordering remain separate.
+
+The extended `CloudQaLauncher` replay checks 22 schedules and 175
+checkpoints. It records the reviewed pin, synthetic child preload admission
+and the Git revision observed by the parent receipt separately. An admitted
+child can have a different recorded revision, and a matching receipt can
+precede preload rejection. The production schema remains the same.
+
+The full 219-model check stopped after a silent checker `SIGSEGV` in the
+listener lease scenarios. Those scenarios passed on an exact isolated replay.
+The next frozen run reported silent checker exits for BrowserSession,
+CredentialVault and DevelopmentSurfaces. All three passed on exact isolated
+replay. The checker now retries a silent `SIGSEGV` or `SIGILL` once and
+records the first signal. A second interruption, a timeout or a reported
+counterexample keeps its failure classification.
+
+The strict 214-model run credited 113 models before the service and native
+collectors returned compiler failures. Revalidation of 82 individual
+receipts from the same run added evidence for 54 more models. The original
+run remains failed. The credential compiler failure did not recur in its
+isolated replay. The native update composition test exposed a missing latch
+in its synthetic resident port. The port now mirrors the shared fixture's
+pause observation, and the closed composition replay passes.
+
+The service and native collectors retain completed receipts and obligations
+when a later adapter throws. They report the failed adapter and continue
+with subsequent campaigns. A failed replay still fails the aggregate. The
+collector cannot recover from termination of its own process.

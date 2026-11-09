@@ -5,17 +5,20 @@ import {returnToApps} from './app-navigation';
 async function filterType(page:Page,type:string){await page.getByRole('button',{name:'Filter workflows',exact:true}).click();const dialog=page.getByRole('dialog',{name:'Filter workflows',exact:true});await dialog.getByRole('radio',{name:type,exact:true}).click();await dialog.getByRole('button',{name:'Show workflows',exact:true}).click();}
 
 /** Fresh browser context and synthetic canonical API only. No provider or native effects. */
-async function setup(page:Page){
+async function setup(page:Page,recurring=false){
  const calls:Array<{path:string;method:string;body:any}>=[];
  const trigger={id:'prompt',displayName:'Document review',instructions:'Review the supplied text only.',enabled:false,triggerType:'cron',cronExpression:'0 9 * * 1',timezone:'UTC'};
  const flow={id:'flow',name:'Reviewed workflow',description:'Existing typed workflow',active:false,versionId:'version',steps:[]};
+ const schedule={taskId:'weekly',kind:'recap',promptInstructions:'Run only when requested.',trigger:recurring?{kind:'cron',expression:'0 8 * * *',tz:'UTC'}:{kind:'manual'},state:{status:'scheduled'},source:'default_pack',ownerVisible:true,metadata:{recordKey:'weekly-review'}};
  let created:any=null;
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
  await page.route('**/__unified_api/**',async route=>{
   const request=route.request(),path=new URL(request.url()).pathname.replace('/__unified_api','')+new URL(request.url()).search,method=request.method(),body=request.postDataJSON();calls.push({path,method,body});
   let result:any={};
   if(path==='/api/automations')result={automations:[{id:'workflow:flow',type:'workflow',title:flow.name,description:flow.description,status:'paused',enabled:false,workflowId:'flow',schedules:[]},...[trigger,...(created?[created]:[])].map(row=>({id:'trigger:'+row.id,type:'coordinator_text',title:row.displayName,description:row.instructions,status:row.enabled?'active':'paused',enabled:row.enabled,triggerId:row.id,schedules:[row]}))]};
-  else if(path==='/api/lifeops/scheduled-tasks?ownerVisibleOnly=1')result={tasks:[{taskId:'weekly',kind:'recap',promptInstructions:'Run only when requested.',trigger:{kind:'manual'},state:{status:'scheduled'},source:'default_pack',ownerVisible:true,metadata:{recordKey:'weekly-review'}}]};
+  else if(path==='/api/lifeops/scheduled-tasks?ownerVisibleOnly=1')result={tasks:[schedule]};
+  else if(path==='/api/lifeops/scheduled-tasks/weekly/fire'&&method==='POST')result={fire:{kind:'fired',task:schedule}};
+  else if(path==='/api/lifeops/scheduled-tasks/weekly/edit'&&method==='POST'){Object.assign(schedule,body);result={task:schedule};}
   else if(path==='/api/lifeops/reminders')result={reminders:[{definition:{id:'reminder',title:'Check the draft',description:'',status:'active',timezone:'UTC',cadence:{kind:'once',dueAt:'2026-12-01T10:00:00Z'}},occurrence:{id:'occurrence'}}]};
   else if(path==='/api/triggers'&&method==='POST'){created={id:'created',...body};result={trigger:created};}
   else if(path==='/api/triggers/prompt'&&method==='PUT'){Object.assign(trigger,body);result={trigger};}
@@ -73,4 +76,37 @@ test('a locked row shows the recovery line and Allow another asks before releasi
  const detail=page.locator('[data-alpha-subview=automations-detail]');await expect(detail.getByRole('alert').filter({hasText:'Couldn’t confirm the last change. Check it, then allow another.'})).toBeVisible();await expect(detail.getByRole('button',{name:'Run now',exact:true})).toBeDisabled();
  page.once('dialog',dialog=>{expect(dialog.message()).toBe('Check this automation first. Allowing another may repeat the change.');void dialog.accept();});await detail.getByRole('button',{name:'Allow another',exact:true}).click();
  await expect(detail.getByRole('button',{name:'Run now',exact:true})).toBeEnabled();
+});
+
+test('schedule time and instructions change only after confirmation',async({page})=>{
+ const calls=await setup(page,true);
+ await page.getByRole('region',{name:'Workflows',exact:true}).getByText('Weekly review',{exact:true}).click();
+ await expect(page.getByRole('button',{name:'Run now',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Reopen',exact:true})).toHaveCount(0);
+ await page.getByLabel('More schedule actions').click();
+ await page.getByRole('button',{name:'Edit schedule',exact:true}).click();
+ await page.getByLabel('Instructions',{exact:true}).fill('Review my week.');
+ await page.getByLabel('Schedule time',{exact:true}).fill('09:30');
+ await page.getByRole('button',{name:'Save',exact:true}).click();
+ const writes=()=>calls.filter(c=>c.method==='POST'&&c.path.endsWith('/weekly/edit'));
+ expect(writes()).toHaveLength(0);
+ await page.getByRole('button',{name:'Confirm Save schedule',exact:true}).click();
+ await expect.poll(()=>writes().length).toBe(1);
+ expect(writes()[0].body).toEqual({promptInstructions:'Review my week.',trigger:{kind:'cron',expression:'30 9 * * *',tz:'UTC'}});
+});
+
+test('workflow choices collapse and a confirmed schedule run fires once',async({page})=>{
+ const calls=await setup(page,true);
+ await page.getByRole('button',{name:'New automation',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Clock alarms'})).toBeVisible();
+ await page.getByRole('button',{name:'More options',exact:true}).click();
+ await page.getByRole('button',{name:'Fewer options',exact:true}).click();
+ await expect(page.getByRole('button',{name:/Build step by step/})).toHaveCount(0);
+ await page.getByLabel('Back to automations').click();
+ await page.getByRole('region',{name:'Workflows',exact:true}).getByText('Weekly review',{exact:true}).click();
+ await page.getByRole('button',{name:'Run now',exact:true}).click();
+ expect(calls.filter(c=>c.path.endsWith('/fire'))).toHaveLength(0);
+ await page.getByRole('button',{name:'Confirm Run now',exact:true}).click();
+ await expect(page.locator('[data-alpha-subview=automations-detail]').getByText('Run started.',{exact:true})).toBeVisible();
+ expect(calls.filter(c=>c.path.endsWith('/fire')&&c.method==='POST')).toHaveLength(1);
 });

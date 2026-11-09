@@ -1,3 +1,4 @@
+import {chooseCalendarEventAction} from './helpers/browser-calendar';
 import {test,expect} from '@playwright/test';
 test.use({timezoneId:'Asia/Tokyo'});
 test('browser reminder repeats in its saved zone after reload and rejects old decisions',async({page})=>{
@@ -56,10 +57,10 @@ for(const scenario of ['before-dst','resolved-dst-gap'] as const){
   const original=await page.evaluate(async ()=>JSON.parse((await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())!).reminders[0]);
   await page.getByRole('button',{name:'Calendar',exact:true}).click();
   await page.getByRole('button',{name:/^Retained zoned reminder,/}).click();
-  await page.getByRole('button',{name:'Edit event',exact:true}).click();
+  await chooseCalendarEventAction(page, 'Edit event');
   await page.getByRole('textbox',{name:'Title',exact:true}).fill('Renamed zoned reminder');
   await page.getByRole('button',{name:'Save event',exact:true}).click();
-  await expect(page.getByRole('button',{name:'Save event',exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Edit event',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Save event',exact:true})).toHaveCount(0);await expect(page.getByLabel('Event actions',{exact:true})).toBeVisible();
   const changed=await page.evaluate(async ()=>JSON.parse((await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())!).reminders[0]);
   expect(changed.title).toBe('Renamed zoned reminder');
   for(const key of ['at','dueAt','occurrenceId','recurrence','history','status','snoozedAt'])expect(changed[key],key).toEqual(original[key]);
@@ -77,7 +78,7 @@ test('explicit time edit uses canonical update and adopts reviewed phone zone',a
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
  await page.clock.setFixedTime(new Date('2027-03-13T00:00Z'));await page.goto('/');await page.getByRole('button',{name:'Calendar',exact:true}).waitFor();
  await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');await registerPlugin<any>('DailyApps').scheduleReminder({id:'edit-boundary',title:'Boundary reminder',at:Date.parse('2027-03-13T14:00Z'),recurrence:{rule:'daily',zone:'America/New_York',date:'2027-03-13',time:'09:00',leadMinutes:0}});});
- await page.reload();await page.getByRole('button',{name:'Calendar',exact:true}).click();await page.getByRole('button',{name:/^Boundary reminder,/}).click();await page.getByRole('button',{name:'Edit event',exact:true}).click();
+ await page.reload();await page.getByRole('button',{name:'Calendar',exact:true}).click();await page.getByRole('button',{name:/^Boundary reminder,/}).click();await chooseCalendarEventAction(page, 'Edit event');
  await page.evaluate(async()=>{const {BrowserDaily}=await import('/src/browser/daily.ts');const original=BrowserDaily.prototype.operateReminder;(window as any).updates=[];BrowserDaily.prototype.operateReminder=async function(input){(window as any).updates.push(input);return original.call(this,input);};BrowserDaily.prototype.scheduleReminder=async()=>{throw Error('Legacy edit must not execute');};});
  await page.getByRole('button',{name:'Start later',exact:true}).click();await page.getByRole('button',{name:'Save event',exact:true}).click();await expect(page.getByRole('button',{name:'Save event',exact:true})).toHaveCount(0);
  const saved=await page.evaluate(async ()=>({row:JSON.parse((await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())!).reminders[0],updates:(window as any).updates}));expect(saved.row.at).toBeGreaterThan(Date.parse('2027-03-13T14:00Z'));expect(saved.row.recurrence.zone).toBe('Asia/Tokyo');expect(saved.updates).toHaveLength(1);expect(saved.updates[0].operation.type).toBe('reminder_update');expect(saved.updates[0].operation.fields.schedule.at).toBe(saved.row.at);
@@ -87,7 +88,7 @@ test('closing the reminder editor during preparation cancels before mutation dis
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
  await page.clock.setFixedTime(new Date('2027-03-13T00:00Z'));await page.goto('/');await page.getByRole('button',{name:'Calendar',exact:true}).waitFor({state:'visible'});
  await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');await registerPlugin<any>('DailyApps').scheduleReminder({id:'cancel-before-dispatch',title:'Keep original title',at:Date.parse('2027-03-13T14:00Z')});});
- await page.reload();await page.getByRole('button',{name:'Calendar',exact:true}).click();await page.getByRole('button',{name:/^Keep original title,/}).click();await page.getByRole('button',{name:'Edit event',exact:true}).click();await page.getByRole('textbox',{name:'Title',exact:true}).fill('Cancelled title');
+ await page.reload();await page.getByRole('button',{name:'Calendar',exact:true}).click();await page.getByRole('button',{name:/^Keep original title,/}).click();await chooseCalendarEventAction(page, 'Edit event');await page.getByRole('textbox',{name:'Title',exact:true}).fill('Cancelled title');
  const before=await page.evaluate(async()=>{const {BrowserDaily}=await import('/src/browser/daily.ts');const operate=BrowserDaily.prototype.operateReminder;(window as any).dispatches=0;BrowserDaily.prototype.operateReminder=async function(input){(window as any).dispatches++;return operate.call(this,input);};const digest=crypto.subtle.digest.bind(crypto.subtle);crypto.subtle.digest=async function(algorithm,data){if(new TextDecoder().decode(data as ArrayBuffer).includes('reminder_update'))await new Promise<void>(resolve=>(window as any).releasePreparation=resolve);return digest(algorithm,data);};return (await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw());});
  await page.getByRole('button',{name:'Save event',exact:true}).click();await expect.poll(()=>page.evaluate(()=>typeof (window as any).releasePreparation)).toBe('function');await page.getByRole('button',{name:'Back to calendar',exact:true}).last().click();await expect(page.getByRole('button',{name:'Save event',exact:true})).toHaveCount(0);await page.evaluate(()=>(window as any).releasePreparation());await page.waitForTimeout(150);
  expect(await page.evaluate(()=>(window as any).dispatches)).toBe(0);expect(await page.evaluate(async ()=>(await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw()))).toBe(before);

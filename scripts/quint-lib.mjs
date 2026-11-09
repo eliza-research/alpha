@@ -19,12 +19,17 @@ export const runtimeScriptPaths = ['scripts/browser-cloud-dev-bridge.ts', 'scrip
   'scripts/build-workflow-worker.ts', 'scripts/prepared-workflow-worker.mjs',
   'scripts/workflow-worker-artifact.mjs', 'scripts/stage-workflow-worker.mjs',
   'scripts/native-google-host-artifact.mjs', 'scripts/build-native-google-host.ts',
+  'scripts/combined-agent-source.mjs', 'scripts/gmail-agent-mailbox-host.ts',
   'scripts/build-mobile-agent.mjs', 'scripts/mobile-uuid-adapter.mjs', 'scripts/mobile-bundle-smoke.mjs',
   'scripts/stage-local-agent-runtime.mjs', 'scripts/stage-local-agent-sources.mjs',
   'scripts/agent-bundle-dependencies.mjs', 'scripts/runtime-profile.mjs',
   'scripts/build-embedding-host.mjs', 'scripts/prepare-embedding-host.mjs',
   'scripts/stage-embedding-host.mjs', 'scripts/voice-host.mjs',
-  'scripts/android-build-preflight.mjs', 'scripts/build-android.mjs'];
+  'scripts/android-build-preflight.mjs', 'scripts/build-android.mjs',
+  'scripts/android-host.mjs', 'scripts/android-gzip-assets.mjs', 'scripts/stage-aosp.mjs',
+  'scripts/audit-production-bundle.mjs', 'scripts/generate-licenses.mjs',
+  'scripts/cloud-deployment.mjs', 'scripts/with-test-mocks.mjs', 'capacitor.config.ts', 'vite.config.ts',
+  'scripts/apk.mjs', 'scripts/source-snapshot.mjs', 'scripts/verify-apks.mjs', 'scripts/verify-packaged-runtime.py'];
 export const runtimeAssetPaths = ['apps/app/index.html'];
 const omittedDirectories = new Set(['node_modules', 'build', '.generated', '.gradle', '.cxx', '.kotlin', 'assets', 'jniLibs', 'capacitor-cordova-android-plugins']);
 const sourceExtensions = new Set(['.ts', '.tsx', '.js', '.java', '.kt', '.cpp', '.h', '.c', '.html', '.mjs', '.jsx', '.cc', '.hpp', '.rs', '.swift']);
@@ -150,6 +155,14 @@ export function detectedCounterexample(output) {
   if (/^error: \[QNT\d+\]|^error: Argument error\s*$|^\[failure\]/m.test(plain)) return false;
   return /^\[violation\] Found an issue(?: |$)/m.test(plain)
     && /^error: (?:found a counterexample|Invariant violated)\s*$/m.test(plain);
+}
+
+export async function runQuintChecker(run) {
+  const first = await run();
+  const silentFault = first.status === null && ['SIGSEGV', 'SIGILL'].includes(first.signal)
+    && !first.error && !first.stdout?.trim() && !first.stderr?.trim();
+  if (!silentFault) return {result: first};
+  return {result: await run(), interruptedAttempt: {exitCode: first.status, signal: first.signal}};
 }
 
 export function loadModels() {

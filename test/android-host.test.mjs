@@ -149,7 +149,8 @@ test('installed resident identities stay Alpha data-compatibility names', () => 
   assert.match(fs.readFileSync(path.join(ROOT, 'android/app/src/main/res/values/alpha-system-entry.xml'), 'utf8'), new RegExp(`<string name="${name}"`), name);
  // Shared helpers keep their packages; only the reviewed BuildConfig reader is rewritten for Alpha.
  assert.equal(new Set(descriptor.residentHost.helpers).size, descriptor.residentHost.helpers.length);
- assert.deepEqual(descriptor.residentHost.helpers.filter(helper => residentHelperKind(helper) !== 'verbatim').map(helper => path.posix.basename(helper)), ['ChromiumBrowserConnection.java']);
+ assert.deepEqual(descriptor.residentHost.helpers.filter(helper => residentHelperKind(helper) !== 'verbatim'), []);
+ assert.equal(descriptor.profile.modules.find(module=>module.name==='eliza-browser').source.path,'plugins/plugin-native-browser-surface/android','Chromium binding now uses its own authenticated module BuildConfig');
  for (const helper of descriptor.residentHost.helpers) assert.ok(fs.statSync(path.join(ROOT, 'vendor/eliza', helper)).isFile(), helper);
 });
 

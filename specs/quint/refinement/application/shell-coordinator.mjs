@@ -11,6 +11,9 @@ import {captureInputs, checkTraces} from '../check-traces.mjs';
 
 const root = resolve(fileURLToPath(new URL('../../../..', import.meta.url)));
 const self = fileURLToPath(import.meta.url);
+const stepTimeout = 45_000;
+// Each fresh browser context loads the module graph before the shell can establish a session.
+const mountTimeout = 120_000;
 
 /** Mount the real application and observe its installed shell/agent coordinator. */
 export async function generateShellCoordinatorTraces(extraSources = []) {
@@ -26,7 +29,7 @@ export async function generateShellCoordinatorTraces(extraSources = []) {
   let server, browser;
   try {
     process.env.ELIZA_DEV_ALLOW_TEST_MOCKS = '';
-    server = await createServer({configFile: resolve(root, 'vite.config.ts'), logLevel: 'error',
+    server = await createServer({root: resolve(root, 'apps/app'), configFile: resolve(root, 'vite.config.ts'), logLevel: 'error',
       cacheDir: resolve(root, 'test-results/quint-refinement/shell-cache'),
       server: {host: '127.0.0.1', port: 0, strictPort: false},
       define: {'import.meta.env.VITE_ELIZA_DEV_ALLOW_TEST_MOCKS': JSON.stringify('')},
@@ -57,7 +60,7 @@ export async function generateShellCoordinatorTraces(extraSources = []) {
     for (const name of ['navigation', 'back-keeps-reply', 'view-retires-reply', 'hidden-retires-reply', 'pagehide-retires-reply']) {
       console.log(`Checking mounted shell ${name}`);
       const page = await browser.newPage();
-      page.setDefaultTimeout(45000);
+      page.setDefaultTimeout(stepTimeout);
       const foreign = await fenceNetwork(page);
       // The TypeScript fixture callbacks carry esbuild's function-name helper. Install all
       // native boundary scripts together so their dependencies run in a fixed order.
@@ -79,12 +82,48 @@ export async function generateShellCoordinatorTraces(extraSources = []) {
       await page.addInitScript('const __name=(value,name)=>Object.defineProperty(value,"name",{value:name,configurable:true});\n' + initializers.join('\n'));
       const errors = [];
       page.on('pageerror', error => errors.push(error.message));
-      await page.goto(origin + '/', {waitUntil:'domcontentloaded'});
+      const pendingRequests = new Set();
+      const requestStarted = request => pendingRequests.add(request);
+      const requestEnded = request => pendingRequests.delete(request);
+      page.on('request', requestStarted);
+      page.on('requestfinished', requestEnded);
+      page.on('requestfailed', requestEnded);
+      const bootStarted = performance.now();
+      let stage = 'document', documentMs;
       try {
-        await page.waitForFunction(() => window.quintShell?.live && window.quintActors?.connectionController.getSnapshot().session);
-      } catch (error) {
-        const state = await page.evaluate(() => ({text:document.body.innerText,shell:!!window.quintShell,connection:window.quintActors?.connectionController.getSnapshot()}));
-        throw Error(JSON.stringify({name,state,errors}), {cause:error});
+        const response = await page.goto(origin + '/', {waitUntil:'commit', timeout:stepTimeout});
+        assert.ok(response?.ok(), `Shell fixture document HTTP status ${response?.status() ?? 'unavailable'}`);
+        documentMs = Math.round(performance.now() - bootStarted);
+        stage = 'mounted shell and session';
+        await page.waitForFunction(
+          () => window.quintShell?.live && !!window.quintActors?.connectionController.getSnapshot().session,
+          undefined,
+          {timeout: mountTimeout},
+        );
+      } catch (cause) {
+        let timer;
+        let state;
+        try {
+          state = await Promise.race([
+            page.evaluate(() => ({
+              readyState: document.readyState,
+              shell: !!window.quintShell,
+              live: !!window.quintShell?.live,
+              session: !!window.quintActors?.connectionController.getSnapshot().session,
+            })).catch(() => null),
+            new Promise(resolve => { timer = setTimeout(() => resolve(null), 2_000); }),
+          ]);
+        } finally { clearTimeout(timer); }
+        throw Error(`Shell fixture boot failed: ${JSON.stringify({
+          name, stage, elapsedMs:Math.round(performance.now() - bootStarted), documentMs, state,
+          pendingCount:pendingRequests.size,
+          pending:[...pendingRequests].slice(0, 12).map(request => new URL(request.url()).pathname),
+          errors:errors.slice(0, 8),
+        })}`, {cause});
+      } finally {
+        page.off('request', requestStarted);
+        page.off('requestfinished', requestEnded);
+        page.off('requestfailed', requestEnded);
       }
       // These schedules exercise the installed shell and reply coordinator independently of Notes storage.
       const observations = [];

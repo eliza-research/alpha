@@ -74,10 +74,10 @@ const model = (events) => ({
 		events,
 	},
 });
-test("past today leads even though the next-event endpoint is empty", () => {
+test("finished events do not displace the next upcoming event", () => {
 	const s = model([event("week", "2026-10-30"), event("today", "2026-10-29")]);
 	s.next = { event: null };
-	assert.equal(select(s, "UTC", new Set(), now).event.id, "today");
+	assert.equal(select(s, "UTC", new Set(), now).event.id, "week");
 });
 test("week then month fallback chooses chronological visible events", () => {
 	assert.equal(
@@ -137,7 +137,7 @@ test("hidden, missing and withdrawn sources cannot supply a Home event", () => {
 test("background arrival updates the same controller snapshot; retired owner clears it", () => {
 	const s = { ...model([]), status: "loading" };
 	assert.equal(select(s, "UTC", new Set(), now).verified, false);
-	Object.assign(s, model([event("arrived", "2026-10-29")]));
+	Object.assign(s, model([event("arrived", "2026-10-30")]));
 	assert.equal(select(s, "UTC", new Set(), now).event.id, "arrived");
 	s.ownerKey = null;
 	assert.equal(select(s, "UTC", new Set(), now).event, null);
@@ -177,20 +177,20 @@ test("an event ending exactly at today midnight belongs only to yesterday", () =
 		...event("yesterday", "2026-10-28"),
 		endAt: "2026-10-29T00:00:00Z",
 	};
-	assert.equal(select(model([e, event("today", "2026-10-29")]), "UTC", new Set(), now).event.id, "today");
+	assert.equal(select(model([e, event("today", "2026-10-29")]), "UTC", new Set(), new Date("2026-10-29T16:30Z")).event.id, "today");
 	e.endAt = "2026-10-29T00:01:00Z";
-	assert.equal(select(model([e]), "UTC", new Set(), now).event.id, "yesterday");
+	assert.equal(select(model([e]), "UTC", new Set(), now).event, null);
 });
 
 test("Oct 30 retains Oct 29 past-week event; past month is the next fallback", () => {
  const clock = new Date("2026-10-30T08:00:00Z");
- assert.equal(select(model([event("Thursday", "2026-10-29")]), "America/Los_Angeles", new Set(), clock).event.id, "Thursday");
- assert.equal(select(model([event("earlier month", "2026-10-10")]), "UTC", new Set(), clock).event.id, "earlier month");
+ assert.equal(select(model([event("Thursday", "2026-10-29")]), "America/Los_Angeles", new Set(), clock).event, null);
+ assert.equal(select(model([event("earlier month", "2026-10-10")]), "UTC", new Set(), clock).event, null);
 });
 test("each period prefers upcoming, otherwise the most recent past", () => {
  const clock = new Date("2026-10-30T08:00:00Z");
  const past = [event("Monday", "2026-10-26"), event("Thursday", "2026-10-29")];
- assert.equal(select(model(past), "UTC", new Set(), clock).event.id, "Thursday");
+ assert.equal(select(model(past), "UTC", new Set(), clock).event, null);
  assert.equal(select(model([...past, event("Saturday", "2026-10-31")]), "UTC", new Set(), clock).event.id, "Saturday");
 });
 test("week spilling before the month requires full week coverage to prove empty", () => {
@@ -233,7 +233,7 @@ test("known hidden, withdrawn and unreadable sources retain their empty display 
 	}
 });
 test("an unknown source does not displace a verified visible Home event", () => {
-	const known = event("verified today", "2026-10-29");
+	const known = event("verified today", "2026-10-30");
 	const s = model([{ ...event("unverified", "2026-10-29"), calendarId: "unknown" }, known]);
 	const before = structuredClone(s);
 	const result = select(s, "UTC", new Set(), now);

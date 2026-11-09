@@ -58,6 +58,8 @@ jobs:
       - name: Prepare normal host-test JSON
         timeout-minutes: 1
         run: bash scripts/ci/prepare-host-test-json.sh
+      - name: Prepare reviewed Kotlin compiler for native routing checks
+        run: node test/fixtures/kotlin-tools.mjs --prepare
       # npm run verify's prepared-SDK tests need the pinned Bun and SDK, as in browser.yml.
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         if: github.event_name == 'workflow_dispatch'

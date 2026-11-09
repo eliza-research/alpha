@@ -1356,6 +1356,9 @@ Version: androidx.activity:activity:1.10.1
          androidx.versionedparcelable:versionedparcelable:1.1.1
          androidx.viewpager:viewpager:1.0.0
          androidx.webkit:webkit:1.17.1
+         androidx.window:window-core-android:1.4.0
+         androidx.window:window-core:1.4.0
+         androidx.window:window:1.4.0
          androidx.work:work-runtime:2.11.0
 License: Apache-2.0
 Source: https://android.googlesource.com/platform/frameworks/support/
@@ -3111,9 +3114,9 @@ THIS SOFTWARE.
 
 ==============================================================================
 elizaOS
-Version: 2.0.4 (99b49439ce9d0cb5607e9831b9f7f58d89525029)
+Version: 2.0.4 (b1817660a0347ae19551b9ee296410fe55f02d59)
 License: MIT
-Source: https://github.com/elizaOS/eliza/tree/99b49439ce9d0cb5607e9831b9f7f58d89525029
+Source: https://github.com/elizaOS/eliza/tree/b1817660a0347ae19551b9ee296410fe55f02d59
 
 MIT License
 

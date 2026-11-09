@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-import {mkdirSync, mkdtempSync, readFileSync, rmSync} from 'node:fs';
+import {mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {isAbsolute, join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -33,7 +33,7 @@ function sourceInputs(extraSources) {
 
 function runScenario(name, bun) {
   if (bun) assert.ok(isAbsolute(bun), 'Use an explicit absolute Bun path');
-  const scratch = mkdtempSync(join(tmpdir(), 'reviewed-launch-'));
+  const scratch = realpathSync(mkdtempSync(join(tmpdir(), 'reviewed-launch-')));
   const home = join(scratch, 'home');
   try {
     mkdirSync(home, {mode: 0o700});

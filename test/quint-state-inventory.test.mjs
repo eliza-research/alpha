@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdtempSync,writeFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {modelStateInventory,unobservedStateFields} from '../specs/quint/refinement/model-state.mjs';
+import {modelStateInventory,traceActionCoverage,unobservedStateFields} from '../specs/quint/refinement/model-state.mjs';
 
 function fixture(run){
   const directory=mkdtempSync(join(tmpdir(),'quint-state-inventory-'));
@@ -57,3 +57,21 @@ test('state inventory refuses to invent a mapping for overridden state variables
   writeFileSync(path,'module Child { var flag: bool } module Main { import Child(flag = true) as C }');
   assert.throws(()=>modelStateInventory(path,'Main'),/Variable override needs an explicit state mapping/);
 }));
+
+test('trace action coverage separates guard refusals from traversed transitions', () => {
+  const receipts = [{traceInputs: [
+    {init: {name: 'ownedInit'}, steps: [
+      {action: [{name: 'publish', reject: true}, {name: 'clear'}]},
+      {action: {name: 'retry', reject: true}},
+      {action: {name: 'retry'}},
+      {expect: {s: 'ready'}},
+    ]},
+    {},
+  ]}];
+  assert.deepEqual(traceActionCoverage(receipts), {
+    modelInitializers: ['init', 'ownedInit'],
+    modelActions: ['clear', 'publish', 'retry'],
+    modelTransitionActions: ['clear', 'retry'],
+    modelRejectedActions: ['publish', 'retry'],
+  });
+});

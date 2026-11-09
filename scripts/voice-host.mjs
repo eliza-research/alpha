@@ -102,12 +102,14 @@ export function readVoiceHost(root) {
  * `names` lists the APK entries and `read(entry)` returns an entry's bytes. The bundle must list and
  * carry every recorded non-ASR file; the ASR slot is all or nothing (`asr` says which). Each ABI
  * that packages the voice JNI must carry every recorded library byte for byte. Records whether
- * on-device voice is packaged; qualification is never inferred from bytes.
+ * on-device voice is packaged; qualification is never inferred from bytes. A host loader is
+ * invoked only when native speech bytes are present in the APK.
  */
 export function voiceBundleAdmission({names, read}, host) {
   const root = `${VOICE_BUNDLE_ASSETS}/`, manifestEntry = `${root}manifest.json`;
   const bundle = names.filter(name => name.startsWith(root));
   if (!bundle.length) return {packaged: false, asr: false, differences: [], qualified: false};
+  if (typeof host === 'function') host = host();
   const differences = [];
   const digest = bytes => createHash('sha256').update(bytes).digest('hex');
   let manifest = null;

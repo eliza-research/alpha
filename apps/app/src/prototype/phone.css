@@ -372,7 +372,7 @@ html:not(.alpha-landscape) .alpha-phone [data-screen]:not([data-alpha-chat-half=
 .alpha-landscape .alpha-phone [data-alpha-layer="home"],.alpha-landscape .alpha-phone [data-alpha-layer="drawer"]{right:calc(var(--alpha-dock-width) + 16px)!important;padding-bottom:16px!important;scroll-padding-bottom:16px!important}
 .alpha-landscape .alpha-phone [data-alpha-layer="composer"]{left:auto!important;right:16px!important;width:calc(var(--alpha-dock-width) - 16px)}
 .alpha-landscape .alpha-phone [data-alpha-layer="pill"]{left:auto!important;width:var(--alpha-dock-width)}
-.alpha-landscape .alpha-phone [data-alpha-layer="conversation"]{left:auto!important;width:var(--alpha-dock-width);height:100%!important;border-radius:0!important;box-shadow:-1px 0 0 var(--line),-20px 0 60px var(--shc)!important}
+.alpha-landscape .alpha-phone [data-alpha-layer="conversation"]{left:auto!important;width:var(--alpha-dock-width);height:100%!important;border-radius:0!important;box-shadow:none!important}
 .alpha-landscape .alpha-phone>[data-screen]{width:var(--phone-width,412px)!important}
 
 /* Accessibility and resilience (MVP-48). Large text arrives as WebView text zoom, which CSS cannot
@@ -770,3 +770,69 @@ button[aria-label$=" on or off"][aria-pressed]::before { content:""; position:ab
 /* Recording controls each need a full line at large text; their labels are never clipped by the screen. */
 .alpha-text-xl [data-alpha-recorder-actions] { flex-direction:column; align-items:stretch!important; }
 .alpha-text-xl [data-alpha-recorder-actions] > button { flex:none!important; width:100%; min-width:0; box-sizing:border-box; }
+
+.schedule-controls { display:flex; align-items:center; gap:8px; }
+.schedule-controls > button,.schedule-controls summary { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:44px; border-radius:22px; cursor:pointer; }
+.schedule-controls > button { padding:0 16px; background:var(--fg); color:var(--bg); }
+.schedule-controls summary { width:44px; background:var(--s2); list-style:none; }
+.schedule-controls summary::-webkit-details-marker { display:none; }
+.schedule-controls details { position:relative; }
+.schedule-controls details > div { position:absolute; z-index:4; left:0; min-width:10em; padding:4px; background:var(--bg); box-shadow:0 4px 20px var(--shc); border:1px solid var(--line); border-radius:16px; }
+.schedule-controls details button { display:block; text-align:start; width:100%; min-height:44px; padding:4px 12px; }
+.schedule-instructions { display:grid; gap:6px; }
+.schedule-instructions textarea { min-height:6em; padding:12px; border-radius:12px; font:inherit; background:var(--s2);color:var(--fg); }
+
+.photo-import-menu { position:relative; z-index:3; }
+.photo-import-menu summary { display:grid; place-items:center; width:44px; height:44px; list-style:none; cursor:pointer; }
+.photo-import-menu summary::-webkit-details-marker { display:none; }
+.photo-import-menu > div { position:absolute; top:100%; right:0; width:max-content; padding:4px; border-radius:16px; color:var(--fg); background:var(--bg); box-shadow:0 4px 20px var(--shc); }
+.photo-import-menu button { display:block; min-height:44px; width:100%; padding:0 14px; text-align:start; }
+
+dialog.alarm-page{position:fixed;inset:0 auto auto 0;margin:0;width:100vw;height:100dvh;max-width:none;max-height:none;border:0;padding:20px;background:var(--bg)}
+.alarm-page::backdrop{background:transparent}.alarm-page .alpha-browser-dialog-content{flex:1}.alarm-page-header{display:flex;align-items:center;gap:16px;margin-bottom:16px}.alarm-page-header button{border:0!important;background:transparent!important}
+
+.sent-content-attachment{align-self:flex-end;max-width:80%;box-sizing:border-box;padding:10px 14px;margin-bottom:4px;border:1px solid var(--line);border-radius:18px;background:var(--s2);color:var(--fg);display:grid;gap:3px}
+.sent-content-attachment small{color:var(--mut);font-size:12px}.sent-content-attachment strong{font-size:14px;overflow-wrap:anywhere}.sent-content-attachment img{width:120px;max-height:150px;object-fit:contain;border-radius:10px}
+
+.photos-section-control{display:flex;gap:3px;margin:0 16px 12px;padding:4px;border-radius:15px;background:var(--s2);flex-shrink:0}
+.photos-section-button{display:flex;align-items:center;justify-content:center;gap:8px;flex:1;min-width:0;min-height:44px;padding:8px 12px;border-radius:11px;font-size:14px;font-weight:600;line-height:1.25;text-align:center;transition:background .2s}
+.photos-section-icon,.photo-album-icon{display:block;flex:none;width:18px;height:18px;background:currentColor;mask:url('/icons/lucide/folder.svg') center/contain no-repeat}
+.photo-album-label{display:flex;align-items:center;gap:7px;min-width:0;max-width:100%;font-size:15px;font-weight:600;line-height:1.35}
+.photo-album-label>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.photo-album-icon{width:16px;height:16px}
+
+/* App-owned action bars share the assistant's reserved bottom space. */
+[data-alpha-recorder-actions]{padding-bottom:calc(var(--alpha-dock-reserve,108px) + 16px)!important}
+[data-alpha-view-actions]{bottom:var(--alpha-dock-reserve,108px)!important}
+[data-alpha-photo-actions]>div{padding-bottom:12px!important}
+[data-alpha-popup] [role="dialog"],[data-alpha-album-manager]{bottom:var(--alpha-dock-reserve,108px)!important;max-height:calc(100% - var(--alpha-dock-reserve,108px) - 32px)!important;overflow-y:auto;box-sizing:border-box}
+
+.chat-image-preview{position:absolute;inset:0 0 var(--alpha-dock-reserve,108px);z-index:130;background:rgba(0,0,0,.94);color:white}
+.chat-image-preview>[role="dialog"]{height:100%;display:flex;align-items:center;justify-content:center;padding:64px 16px 16px;box-sizing:border-box}
+.chat-image-preview img{max-width:100%;max-height:100%;object-fit:contain}
+.chat-image-preview .ib{position:absolute;right:16px;top:16px;background:rgba(255,255,255,.15);border-radius:50%}
+
+[data-alpha-message-composer]{padding-bottom:calc(var(--alpha-dock-reserve,108px) + 12px)!important}
+[data-alpha-maps-guidance-controls]{bottom:max(var(--alpha-maps-guidance-bottom,26px),var(--alpha-dock-reserve,108px))!important}
+
+[data-alpha-chat-home]{background:transparent!important;box-shadow:none!important}
+
+.alpha-voice-startup-status { display:flex;align-items:center;gap:9px;font-size:14px;font-weight:600;color:var(--fg);white-space:nowrap; }
+[data-voice-state="starting"] .alpha-voice-startup-status::before,
+[data-voice-state="connecting"] .alpha-voice-startup-status::before,
+.alpha-pill-voice-synth[data-connecting="true"]::before { content:"";display:block;width:18px;height:18px;box-sizing:border-box;border:2px solid var(--line);border-top-color:var(--acc);border-radius:50%;animation:alpha-voice-connect-spin .9s linear infinite; }
+.alpha-pill-voice-controls .alpha-voice-startup-status {padding-right:8px;}
+@keyframes alpha-voice-connect-spin {to {transform:rotate(360deg);}}
+@media(prefers-reduced-motion:reduce){[data-voice-state="starting"] .alpha-voice-startup-status::before,[data-voice-state="connecting"] .alpha-voice-startup-status::before,.alpha-pill-voice-synth[data-connecting="true"]::before{animation:none;}}
+
+/* Native websites remain full-size under the host's assistant controls. */
+html[data-alpha-browser-underlay],html[data-alpha-browser-underlay] body,html[data-alpha-browser-underlay] #root,
+html[data-alpha-browser-underlay] .alpha-phone,html[data-alpha-browser-underlay] [data-screen]{background:transparent!important}
+html[data-alpha-browser-underlay] [data-alpha-layer="home"]{visibility:hidden!important}
+html[data-alpha-browser-underlay] [data-alpha-layer="app"]{background:linear-gradient(to bottom,var(--bg) 0 var(--alpha-browser-clear-top),transparent var(--alpha-browser-clear-top) var(--alpha-browser-clear-bottom),var(--bg) var(--alpha-browser-clear-bottom))!important}
+
+/* Keep the photo interaction and its frame above the persistent assistant. */
+[data-alpha-photo-viewport]{bottom:var(--alpha-dock-reserve,108px)!important;container-type:size}
+
+[data-alpha-backdrop],[data-alpha-clock-page]{bottom:var(--alpha-dock-reserve,108px)!important}
+[data-alpha-clock-page]{padding-bottom:24px!important}

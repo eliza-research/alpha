@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test';
+test.use({hasTouch:true});
 test.beforeEach(async({page})=>{
  await page.addInitScript(()=>{
   localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));
@@ -77,4 +78,18 @@ test('switching with flash on and zoom 2x keeps both reset when the switch fails
  await page.evaluate(()=>(window as any).failSwitch=false);await page.getByRole('button',{name:'Switch camera',exact:true}).click();
  await expect(page.getByRole('button',{name:'Flash off',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Zoom 2x',exact:true})).toHaveCount(0);
  expect(await calls()).toEqual(['switch front']);
+});
+
+test('two-finger preview pinch changes the real zoom crop without firing tap focus',async({page})=>{
+ const finder=page.locator('[data-alpha-camera="viewfinder"]'),box=(await finder.boundingBox())!;
+ await expect(page.getByRole('button',{name:'Zoom .5x',exact:true})).toHaveCount(0);
+ const x=box.x+box.width/2,y=box.y+box.height/2,cdp=await page.context().newCDPSession(page);
+ const points=(span:number)=>[{x:x-span/2,y,id:0},{x:x+span/2,y,id:1}];
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:points(80)});
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:points(160)});
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+ await expect.poll(()=>finder.locator('video').evaluate((video:HTMLVideoElement)=>video.style.transform)).toBe('scale(2, 2)');
+ await expect(page.locator('[data-alpha-camera-focus]')).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Zoom 2x',exact:true})).toHaveCSS('width','40px');
+ await cdp.detach();
 });

@@ -320,7 +320,7 @@ for (const outcome of ['opened', 'unavailable'] as const) {
     test.setTimeout(120_000);
     await android(page, { clock: outcome });
     await residentHome(page);
-    await button(page, 'Calendar').click();
+    await button(page, 'Workflows').click();
     await button(page, 'Clock alarms').click();
     const clock = page.getByRole('dialog', { name: 'Clock alarms', exact: true });
     await expect(clock).toContainText('Alarms are set in your Clock app. Check there to confirm.');
@@ -350,7 +350,7 @@ test('loop C on Android: snooze and dismiss are reviewed Clock requests, one han
   test.setTimeout(120_000);
   await android(page, { clock: 'opened' });
   await residentHome(page);
-  await button(page, 'Calendar').click();
+  await button(page, 'Workflows').click();
   await button(page, 'Clock alarms').click();
   const clock = page.getByRole('dialog', { name: 'Clock alarms', exact: true });
   const confirm = clock.getByRole('button', { name: 'Confirm Clock request', exact: true });
@@ -385,7 +385,7 @@ test('loop C on Android: a cancelled review sends nothing, and an unknown result
   test.setTimeout(120_000);
   await android(page, { clock: 'unknown' });
   await residentHome(page);
-  const openClock = async () => { await button(page, 'Calendar').click(); await button(page, 'Clock alarms').click(); return page.getByRole('dialog', { name: 'Clock alarms', exact: true }); };
+  const openClock = async () => { await button(page, 'Workflows').click(); await button(page, 'Clock alarms').click(); return page.getByRole('dialog', { name: 'Clock alarms', exact: true }); };
   let clock = await openClock();
   await clock.getByLabel('Alarm time', { exact: true }).fill('07:15');
   await clock.getByRole('button', { name: 'Review Clock request', exact: true }).click();
@@ -409,7 +409,7 @@ test('loop C on Android: a phone time zone that changes after review retires the
   test.setTimeout(120_000);
   await android(page);
   await residentHome(page);
-  await button(page, 'Calendar').click();
+  await button(page, 'Workflows').click();
   await button(page, 'Clock alarms').click();
   const clock = page.getByRole('dialog', { name: 'Clock alarms', exact: true });
   await clock.getByLabel('Alarm time', { exact: true }).fill('07:15');
@@ -446,7 +446,7 @@ test('loops B, C and J04 in the web build: Agent Calendar requires a connection,
   await expect(page.getByRole('region', {name: 'Maps'})).not.toContainText(/\d+ min|\d km/);
   // The independent browser alarm list remains a durable local feature.
   await page.goto('/');
-  await button(page, 'Calendar').click();
+  await button(page, 'Workflows').click();
   await button(page, 'Clock alarms').click();
   let clock = page.getByRole('dialog', {name: 'Clock alarms', exact: true});
   await clock.getByRole('textbox', {name: 'Alarm label'}).fill('Flag-off web alarm');
@@ -454,7 +454,7 @@ test('loops B, C and J04 in the web build: Agent Calendar requires a connection,
   await clock.getByRole('button', {name: 'Save alarm', exact: true}).click();
   await expect(clock.getByText('Flag-off web alarm', {exact: true})).toHaveCount(1);
   await page.reload();
-  await button(page, 'Calendar').click();
+  await button(page, 'Workflows').click();
   await button(page, 'Clock alarms').click();
   clock = page.getByRole('dialog', {name: 'Clock alarms', exact: true});
   await expect(clock.getByText('Flag-off web alarm', {exact: true})).toHaveCount(1);

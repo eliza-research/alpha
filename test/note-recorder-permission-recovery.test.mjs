@@ -13,11 +13,11 @@ function fixture(startRecording){
  return {driver:context.driver,events};
 }
 for(const error of [new DOMException('Blocked','NotAllowedError'),Object.assign(Error('Denied'),{code:'permission-denied'})])
- test(`Notes opens the existing microphone access panel after ${error.name}/${error.code}`,async()=>{
+ test(`Notes driver preserves ${error.name}/${error.code} without a duplicate UI event`,async()=>{
   let calls=0,allowed=false;const f=fixture(async()=>{calls++;if(!allowed)throw error;return {state:'recording',recordingId:'recording'};});
   await assert.rejects(f.driver.start({ownerDigest:'owner',folderId:null}),value=>value===error);
-  assert.equal(calls,1);assert.equal(f.events.length,1);assert.equal(f.events[0].type,'alpha:setup-permissions');assert.equal(f.events[0].detail.permission,'microphone');
-  allowed=true;assert.equal((await f.driver.start({ownerDigest:'owner',folderId:null})).state,'recording');assert.equal(calls,2);assert.equal(f.events.length,1,'a later granted start does not reopen setup or reset permissions');
+  assert.equal(calls,1);assert.equal(f.events.length,0,'the owned recorder session decides whether recovery is still current');
+  allowed=true;assert.equal((await f.driver.start({ownerDigest:'owner',folderId:null})).state,'recording');assert.equal(calls,2);assert.equal(f.events.length,0,'a later granted start does not reopen setup or reset permissions');
  });
 test('a recorder device failure does not misdirect the user to permission setup',async()=>{
  const error=Error('Audio device disconnected'),f=fixture(async()=>{throw error;});
