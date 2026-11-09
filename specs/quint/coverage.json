@@ -24,7 +24,32 @@
     "scripts/start-cloud-qa.mjs",
     "scripts/start-combined-agent.mjs",
     "scripts/launcher-child.mjs",
-    "scripts/native-google-host-artifact.mjs"
+    "scripts/local-agent-dev-bridge.ts",
+    "scripts/local-agent-dev-storage.ts",
+    "scripts/prepare-local-agent.mjs",
+    "scripts/local-agent-source.mjs",
+    "scripts/copy-file-clone.mjs",
+    "scripts/prepare-client-features.mjs",
+    "scripts/prepare-patched-native.mjs",
+    "scripts/build-workflow-worker.ts",
+    "scripts/prepared-workflow-worker.mjs",
+    "scripts/workflow-worker-artifact.mjs",
+    "scripts/stage-workflow-worker.mjs",
+    "scripts/native-google-host-artifact.mjs",
+    "scripts/build-native-google-host.ts",
+    "scripts/build-mobile-agent.mjs",
+    "scripts/mobile-uuid-adapter.mjs",
+    "scripts/mobile-bundle-smoke.mjs",
+    "scripts/stage-local-agent-runtime.mjs",
+    "scripts/stage-local-agent-sources.mjs",
+    "scripts/agent-bundle-dependencies.mjs",
+    "scripts/runtime-profile.mjs",
+    "scripts/build-embedding-host.mjs",
+    "scripts/prepare-embedding-host.mjs",
+    "scripts/stage-embedding-host.mjs",
+    "scripts/voice-host.mjs",
+    "scripts/android-build-preflight.mjs",
+    "scripts/build-android.mjs"
   ],
   "excludedDirectories": [
     ".cxx",
@@ -12356,7 +12381,8 @@
       "sha256": "4edcdf0e91bdeb642d8a134ac22d7ed8bbb6259d6bdf59f21a30f6397d9221c9",
       "models": [
         "BrowserSession",
-        "PreferencesAndPresentation"
+        "PreferencesAndPresentation",
+        "CloudConnectionNotices"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -40160,12 +40186,13 @@
       "models": [
         "Application",
         "IdentitySession",
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "CloudConnectionNotices"
       ],
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "cffc4c8c55ef1f7d0a30df4b02c400e6ae0ea0a133ee4191e6acc1cdfee65745",
+      "sha256": "4b22ff6e9118983c161cb1d0228b7b21a5619870e718bb16283a541e5de2403d",
       "stateAnchors": []
     },
     {
@@ -40177,12 +40204,13 @@
         "IdentitySession",
         "ControllerComposition",
         "ResidentLiveness",
-        "CanonicalNotificationTapAdmission"
+        "CanonicalNotificationTapAdmission",
+        "CloudConnectionNotices"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "85ff4157a733b8dc475d016a2cd64332d1229fd6a4a7b154cd1e8cf2fb8d13b0",
+      "sha256": "17c31f1780b450a2c6768a493fcd2a568fed73157e18271f523d3c5e77f2ee98",
       "stateAnchors": []
     },
     {
@@ -48816,6 +48844,30 @@
       ]
     },
     {
+      "path": "scripts/agent-bundle-dependencies.mjs",
+      "models": [
+        "MobileBundleAdmission",
+        "ResidentRuntime"
+      ],
+      "scope": "development-runtime",
+      "treatment": "runtime-preparation-and-admission",
+      "reviewStatus": "state-audit-required",
+      "sha256": "c6d59a969fe138b867801a81c7c5a8425da9c7d8a3b6d7dd609c68291a5d67cc",
+      "stateAnchors": []
+    },
+    {
+      "path": "scripts/android-build-preflight.mjs",
+      "models": [
+        "MobileBundleAdmission",
+        "ResidentRuntime"
+      ],
+      "scope": "development-runtime",
+      "treatment": "runtime-preparation-and-admission",
+      "reviewStatus": "state-audit-required",
+      "sha256": "9b59171e58fc405b00fa5c29e00b64accefe649cca9d59361f9b9921c61a8a60",
+      "stateAnchors": []
+    },
+    {
       "path": "scripts/browser-cloud-dev-bridge.ts",
       "sha256": "b780537b54035955e6c7112ee05af2b6b38d251b8ba42cb4e6ff5711d37d3d7d",
       "models": [
@@ -49528,6 +49580,66 @@
       ]
     },
     {
+      "path": "scripts/build-android.mjs",
+      "models": [
+        "MobileBundleAdmission",
+        "ResidentRuntime"
+      ],
+      "scope": "development-runtime",
+      "treatment": "runtime-preparation-and-admission",
+      "reviewStatus": "state-audit-required",
+      "sha256": "ce380067aa2aa02823b529552c6c170972935c3d5e70f3aa8c9993cd55825cfa",
+      "stateAnchors": []
+    },
+    {
+      "path": "scripts/build-embedding-host.mjs",
+      "models": [
+        "EmbeddingStoreIdentity",
+        "NamedEmbeddingProvenance"
+      ],
+      "scope": "development-runtime",
+      "treatment": "runtime-preparation-and-admission",
+      "reviewStatus": "state-audit-required",
+      "sha256": "51605fb5a38b9aed1f7d262ee8f284229c209f45db9a626900d3f1bef389bd10",
+      "stateAnchors": []
+    },
+    {
+      "path": "scripts/build-mobile-agent.mjs",
+      "models": [
+        "MobileBundleAdmission",
+        "ResidentRuntime"
+      ],
+      "scope": "development-runtime",
+      "treatment": "runtime-preparation-and-admission",
+      "reviewStatus": "state-audit-required",
+      "sha256": "a806e8eada974f400afe18e00e5cf275d3519ab00462615076e3d4124639a288",
+      "stateAnchors": []
+    },
+    {
+      "path": "scripts/build-native-google-host.ts",
+      "models": [
+        "NativeGoogleAccessFile",
+        "ServiceAuthorization"
+      ],
+      "scope": "development-runtime",
+      "treatment": "runtime-preparation-and-admission",
+      "reviewStatus": "state-audit-required",
+      "sha256": "7ef99aa093e8566620ce08b23a279c70bae5c5f003b336defff00c015f1ac851",
+      "stateAnchors": []
+    },
+    {
+      "path": "scripts/build-workflow-worker.ts",
+      "models": [
+        "WorkflowExecution",
+        "ReviewedWorkflowLauncher"
+      ],
+      "scope": "development-runtime",
+      "treatment": "runtime-preparation-and-admission",
+      "reviewStatus": "state-audit-required",
+      "sha256": "59362cbfb8799916eb8385c1b3fb9909d807010322e5537b35dfacc814350455",
+      "stateAnchors": []
+    },
+    {
       "path": "scripts/cloud-email-code.ts",
       "sha256": "1a2a7b898eb1eb216cc532f72d3d66c66ff9f2d7c45c1c5b0319770c3637f146",
       "models": [
@@ -49569,6 +49681,18 @@
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
       "sha256": "32cef11237df7302c43cc5790f5382c855116b68a3b600cbbf77d83c132246a5",
+      "stateAnchors": []
+    },
+    {
+      "path": "scripts/copy-file-clone.mjs",
+      "models": [
+        "DevelopmentHost",
+        "ResidentRuntime"
+      ],
+      "scope": "development-runtime",
+      "treatment": "runtime-preparation-and-admission",
+      "reviewStatus": "state-audit-required",
+      "sha256": "06d7e30ee87463d542ed419a38b230c4d88893c009fa0aab078d7dcfed863e71",
       "stateAnchors": []
     },
     {
@@ -50018,14 +50142,200 @@
       ]
     },
     {
-      "path": "scripts/native-google-host-artifact.mjs",
+      "path": "scripts/local-agent-dev-bridge.ts",
       "models": [
-        "Application"
+        "DevelopmentHost",
+        "ResidentRuntime"
       ],
       "scope": "development-runtime",
-      "treatment": "domain-contract-or-support",
+      "treatment": "runtime-preparation-and-admission",
+      "reviewStatus": "state-audit-required",
+      "sha256": "90d69b2d1ff4b804d4c2f72d7d176523ae5690eb043df600adb24c89c33286f9",
+      "stateAnchors": []
+    },
+    {
+      "path": "scripts/local-agent-dev-storage.ts",
+      "models": [
+        "DevelopmentSurfaces",
+        "DurableStore"
+      ],
+      "scope": "development-runtime",
+      "treatment": "runtime-preparation-and-admission",
+      "reviewStatus": "state-audit-required",
+      "sha256": "959162f7fcae47b7b650bd63556ac78dfcadf8bbed599e2a1f88a5696fad3fcf",
+      "stateAnchors": []
+    },
+    {
+      "path": "scripts/local-agent-source.mjs",
+      "models": [
+        "DevelopmentHost",
+        "ResidentRuntime",
+        "ReviewedWorkflowLauncher"
+      ],
+      "scope": "development-runtime",
+      "treatment": "runtime-preparation-and-admission",
+      "reviewStatus": "state-audit-required",
+      "sha256": "321abaf05f9e8cbf6e4ba642ec7ebf45a6c693331a637210610a1f7723662daa",
+      "stateAnchors": []
+    },
+    {
+      "path": "scripts/mobile-bundle-smoke.mjs",
+      "models": [
+        "MobileBundleAdmission",
+        "ResidentRuntime"
+      ],
+      "scope": "development-runtime",
+      "treatment": "runtime-preparation-and-admission",
+      "reviewStatus": "state-audit-required",
+      "sha256": "2e4f7ef05ae6f09285c2a6141876c14b5f30539c926a46864bf8862ae8d3b7bd",
+      "stateAnchors": []
+    },
+    {
+      "path": "scripts/mobile-uuid-adapter.mjs",
+      "models": [
+        "MobileBundleAdmission",
+        "ResidentRuntime"
+      ],
+      "scope": "development-runtime",
+      "treatment": "runtime-preparation-and-admission",
+      "reviewStatus": "state-audit-required",
+      "sha256": "5b2f99180a222f743367959b7ba0360d9d30597ba80d91ea126830074d190258",
+      "stateAnchors": []
+    },
+    {
+      "path": "scripts/native-google-host-artifact.mjs",
+      "models": [
+        "NativeGoogleAccessFile",
+        "ServiceAuthorization"
+      ],
+      "scope": "development-runtime",
+      "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
       "sha256": "65793e1ceacbc8b49c2733072d34827a20fc3082fe4fc1b8a4e351007c680b42",
+      "stateAnchors": []
+    },
+    {
+      "path": "scripts/prepare-client-features.mjs",
+      "models": [
+        "Application",
+        "BrowserFilesTrash",
+        "MapsRerouteOwnership",
+        "FilesPreview",
+        "InboxProviderDrafts"
+      ],
+      "scope": "development-runtime",
+      "treatment": "runtime-preparation-and-admission",
+      "reviewStatus": "state-audit-required",
+      "sha256": "3501fc1c8c31dd82b117749bbd4e2945cbae1357615f217fb5722632995b1f0e",
+      "stateAnchors": []
+    },
+    {
+      "path": "scripts/prepare-embedding-host.mjs",
+      "models": [
+        "EmbeddingStoreIdentity",
+        "NamedEmbeddingProvenance"
+      ],
+      "scope": "development-runtime",
+      "treatment": "runtime-preparation-and-admission",
+      "reviewStatus": "state-audit-required",
+      "sha256": "f98a20a4bd7a4fcb4a360cce496580a0ed33038a7fcfeb05fae5287b86cc4912",
+      "stateAnchors": []
+    },
+    {
+      "path": "scripts/prepare-local-agent.mjs",
+      "models": [
+        "DevelopmentHost",
+        "ResidentRuntime"
+      ],
+      "scope": "development-runtime",
+      "treatment": "runtime-preparation-and-admission",
+      "reviewStatus": "state-audit-required",
+      "sha256": "13462189190e3e7a796c834f8c780181c0e7c39b16721a8d59477318885ac98e",
+      "stateAnchors": []
+    },
+    {
+      "path": "scripts/prepare-patched-native.mjs",
+      "models": [
+        "NativeSmsDispatch",
+        "NativeMmsDispatch",
+        "NativeSettingsHandoff"
+      ],
+      "scope": "development-runtime",
+      "treatment": "runtime-preparation-and-admission",
+      "reviewStatus": "state-audit-required",
+      "sha256": "f0ea56c6f9d031b3bdc96a49b56ff49f42fcac5b207ed7bfcea44edd29396070",
+      "stateAnchors": []
+    },
+    {
+      "path": "scripts/prepared-workflow-worker.mjs",
+      "models": [
+        "WorkflowExecution",
+        "ReviewedWorkflowLauncher"
+      ],
+      "scope": "development-runtime",
+      "treatment": "runtime-preparation-and-admission",
+      "reviewStatus": "state-audit-required",
+      "sha256": "6df478b2ab982be895eb5a8f9f03c29b353453c4ea7851f98e9a76950e5c3bae",
+      "stateAnchors": []
+    },
+    {
+      "path": "scripts/runtime-profile.mjs",
+      "models": [
+        "MobileBundleAdmission",
+        "ResidentRuntime"
+      ],
+      "scope": "development-runtime",
+      "treatment": "runtime-preparation-and-admission",
+      "reviewStatus": "state-audit-required",
+      "sha256": "19f876a99a613653c193a307030e128e57b86daafbbd8459b5e05224b7185cc5",
+      "stateAnchors": []
+    },
+    {
+      "path": "scripts/stage-embedding-host.mjs",
+      "models": [
+        "EmbeddingStoreIdentity",
+        "NamedEmbeddingProvenance"
+      ],
+      "scope": "development-runtime",
+      "treatment": "runtime-preparation-and-admission",
+      "reviewStatus": "state-audit-required",
+      "sha256": "e19b5da9a836a643befafe2aa4825fd419e375361315cb3d332af7a312725e3b",
+      "stateAnchors": []
+    },
+    {
+      "path": "scripts/stage-local-agent-runtime.mjs",
+      "models": [
+        "MobileBundleAdmission",
+        "ResidentRuntime"
+      ],
+      "scope": "development-runtime",
+      "treatment": "runtime-preparation-and-admission",
+      "reviewStatus": "state-audit-required",
+      "sha256": "617ce74dc8a97be1221c16956a86133871217975eb11f98b6268f98fab7e788a",
+      "stateAnchors": []
+    },
+    {
+      "path": "scripts/stage-local-agent-sources.mjs",
+      "models": [
+        "MobileBundleAdmission",
+        "ResidentRuntime"
+      ],
+      "scope": "development-runtime",
+      "treatment": "runtime-preparation-and-admission",
+      "reviewStatus": "state-audit-required",
+      "sha256": "9fb41560c3c21a2b7b54add5c562f5f6e0140ee7a9f3d23b38a7a212f09f6f18",
+      "stateAnchors": []
+    },
+    {
+      "path": "scripts/stage-workflow-worker.mjs",
+      "models": [
+        "WorkflowExecution",
+        "ReviewedWorkflowLauncher"
+      ],
+      "scope": "development-runtime",
+      "treatment": "runtime-preparation-and-admission",
+      "reviewStatus": "state-audit-required",
+      "sha256": "e31076dade085ec4647e4ed26f7de5c18f38879ce5da19f842e2abb0f816186f",
       "stateAnchors": []
     },
     {
@@ -50123,6 +50433,31 @@
           "text": "if (retireFailedHandoff) await retireFailedHandoff();"
         }
       ]
+    },
+    {
+      "path": "scripts/voice-host.mjs",
+      "models": [
+        "NativeListenerInput",
+        "NativeSpeechWarmup",
+        "NativeRecognizerAvailability"
+      ],
+      "scope": "development-runtime",
+      "treatment": "runtime-preparation-and-admission",
+      "reviewStatus": "state-audit-required",
+      "sha256": "71f29af327b7905d23669988dd2df0795ec7f9fec3bfc4d42cb5fa8fd83a2ac9",
+      "stateAnchors": []
+    },
+    {
+      "path": "scripts/workflow-worker-artifact.mjs",
+      "models": [
+        "WorkflowExecution",
+        "ReviewedWorkflowLauncher"
+      ],
+      "scope": "development-runtime",
+      "treatment": "runtime-preparation-and-admission",
+      "reviewStatus": "state-audit-required",
+      "sha256": "eb9bc1665425ec4b3a7d5cbe4b4492a65e17957d55ef60b4b2568e7eb55aee68",
+      "stateAnchors": []
     },
     {
       "path": "vendor/eliza/packages/agent/scripts/build-mobile-bundle.ts",
@@ -619414,7 +619749,7 @@
       "models": [
         "Application"
       ],
-      "sha256": "ab352f9bea8a3881e5f29f8b58c71b7f1a25fc2fb92aa6c2e7c2c57ce2cdff23"
+      "sha256": "14daa2cc76676be09f1f5c4cba6b22ba158883c8c9ebc9fc9f05b8095ff9376d"
     },
     {
       "path": "specs/quint/legacy/core/source-inventory.json",

@@ -885,7 +885,7 @@ separate consumed-source discovery policy.
 | Workflow and scan | Workflow filters, typed layout, correction and review have mounted cases. Pending filter focus and the video review viewport still need their own projections. |
 | Browser dialogs | Calendar, document, review and attachment styles now have source allocations. Cross-dialog pointer and focus ownership remains open. |
 | Device and startup | Existing profile, inset and permission fixtures cover visible setup states. The audit keeps the style conditions for pending, disabled and short-height presentation. |
-| Membership, connection and Undo | Billing and Undo style inputs follow their operation owners. The two independently admitted connection notices and Settings suppression need a joint mounted projection. |
+| Membership, connection and Undo | Billing and Undo style inputs follow their operation owners. The mounted connection-notice model observes both notices, their independent dismissals and Settings suppression. |
 
 `MobileBundleAdmission` checks 11 source schedules and 191 checkpoints.
 The driver exercises the actual receipt producer and verifier with
@@ -895,3 +895,18 @@ missing, duplicate and altered transforms, and publication of a fresh
 receipt. The actual Android producer and its pre-provider smoke have
 separate provenance. Staging interruption and installed execution
 remain open.
+
+`CloudConnectionNotices` checks two mounted schedules and 16 checkpoints.
+The baseline shows the sign-in notice intercepting the plan notice's
+Redeem, Choose and Dismiss targets. The repaired stack preserves the
+two notices and their independent actions. The replay checks Settings
+suppression and return, pointer access, keyboard order and a scrollable
+360×480 viewport at 150% text. All account and billing effects use
+closed fixture ports.
+
+The runtime-source ledger also records the development bridge and
+storage, SDK preparation and copy, client/native patch projections,
+workflow worker publication, native Google artifact, mobile producer,
+Android profile and packaging scripts. Their model allocations describe
+the relevant owners. Individual stage, backup, interruption and QA
+launcher behaviors retain separate review obligations.
