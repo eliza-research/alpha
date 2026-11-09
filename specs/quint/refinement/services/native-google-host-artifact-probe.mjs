@@ -37,7 +37,8 @@ const productFiles = [
   'scripts/prepare-client-features.mjs', 'scripts/client-speech-patch.mjs', 'package.json', 'tsconfig.json',
   'vendor/eliza/tsconfig.json',
 ];
-const optionalFiles = ['patches/eliza/cloud-speech-client-manifest.json', 'patches/eliza/cloud-speech-client.patch'];
+const optionalFiles = ['patches/eliza/cloud-speech-client-manifest.json', 'patches/eliza/cloud-speech-client.patch',
+    'patches/eliza/managed-google-agent-manifest.json', 'patches/eliza/managed-google-agent.patch'];
 const workerFiles = ['node_modules/smthrs/package.json', 'node_modules/zod/package.json',
   'node_modules/effect/package.json', 'node_modules/@smthrs/engine/package.json', 'dependencies.json', 'lib/worker.js'];
 

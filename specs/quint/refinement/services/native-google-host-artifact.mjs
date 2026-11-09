@@ -35,7 +35,8 @@ export function checkNativeGoogleHostLoaderCompatibility(bun) {
 
 export async function checkNativeGoogleHostArtifact(extraSources = []) {
   const core = coreStateReceipt(repository);
-  const optional = ['patches/eliza/cloud-speech-client-manifest.json', 'patches/eliza/cloud-speech-client.patch']
+  const optional = ['patches/eliza/cloud-speech-client-manifest.json', 'patches/eliza/cloud-speech-client.patch',
+    'patches/eliza/managed-google-agent-manifest.json', 'patches/eliza/managed-google-agent.patch']
     .filter(name => existsSync(join(repository,name)));
   const sources = [
     fileURLToPath(import.meta.url), probe, 'test/fixtures/native-google-host-builder-port.mjs', 'test/fixtures/core-state-root.mjs',
