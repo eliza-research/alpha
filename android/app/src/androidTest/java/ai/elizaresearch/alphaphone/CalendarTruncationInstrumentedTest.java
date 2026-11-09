@@ -43,7 +43,9 @@ public final class CalendarTruncationInstrumentedTest {
    }
    try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
     AppNavigation.liveMode();js(AppNavigation.request("Calendar"));until(AppNavigation.selected("Calendar"));AppNavigation.declineStartupAccess();until("document.querySelector('[aria-label=\"Retry calendar and reminders\"]')?.textContent.includes('Calendar results incomplete')");
-    click("Month view");click(target.format(DateTimeFormatter.ofPattern("EEEE MMMM d",Locale.US)));
+    // Title -> views menu -> Month; a Month cell is labelled with the long date (plus its event count).
+    click("Calendar views");String month="[...document.querySelectorAll('[role=\"dialog\"][aria-label=\"Views and calendars\"] [role=\"radio\"]')].find(e=>e.textContent.trim()==='Month')";until(month);js("("+month+").click()");until("document.querySelector('[data-alpha-calendar-month]')");
+    String label=target.format(DateTimeFormatter.ofPattern("EEEE, MMMM d",Locale.US)),day="[...document.querySelectorAll('[data-alpha-calendar-month] button')].find(e=>{const l=e.getAttribute('aria-label')||'';return l==="+JSONObject.quote(label)+"||l.startsWith("+JSONObject.quote(label+", ")+");})";until(day);js("("+day+").click()");
     until("document.body.textContent.includes('Calendar results incomplete. Some events may be missing.')");assertEquals("Incomplete provider result never claims free all day","false",js("document.body.textContent.includes('Free all day')"));
     assertEquals("Known later row is genuinely beyond the limit","false",js("document.body.textContent.includes("+JSONObject.quote(hidden)+")"));
     click("Retry calendar and reminders");until("document.querySelector('[aria-label=\"Retry calendar and reminders\"]')?.textContent.includes('Calendar results incomplete')");

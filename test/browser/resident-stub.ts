@@ -194,8 +194,7 @@ export const setStub = (page: Page, patch: Record<string, unknown>) => page.eval
 export async function enterNativeEmailCode(page: Page, email='owner@example.invalid') {
   const panel=page.getByRole('main',{name:'Sign in',exact:true}).or(page.getByRole('dialog',{name:'Sign in',exact:true}));
   await expect(panel).toBeVisible();
-  await panel.getByRole('textbox',{name:'Email',exact:true}).fill(email);
-  await panel.getByRole('button',{name:'Email me a code',exact:true}).click();
+  await panel.getByRole('textbox',{name:/^Email( or phone number)?$/}).fill(email);
+  await panel.getByRole('button',{name:'Continue',exact:true}).click();
   await panel.getByLabel('Six-digit code').fill('123456');
-  await panel.getByRole('button',{name:'Verify',exact:true}).click();
 }

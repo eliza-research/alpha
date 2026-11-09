@@ -1,6 +1,7 @@
 import {productionCloud, stagingCloud, cloudStorageNamespace} from '../apps/app/src/runtime/cloud-deployment.generated.ts';
 import {createCloudResidentHost} from './cloud-resident-host.mjs';
 import {managedGoogleRequest,boundedServiceJson} from '../backend/managed-google-route-policy.ts';
+import {googleCalendarEvents} from '../apps/app/src/runtime/managed-service-routes.ts';
 import {CLOUD_EMAIL_CODE,emailCodeExpiresAt,emailCodeSendBody,emailCodeVerifyBody} from './cloud-email-code.ts';
 import {randomUUID,createHash,randomBytes} from 'node:crypto';
 import {mkdir,readFile,writeFile,rename,lstat} from 'node:fs/promises';
@@ -19,6 +20,29 @@ function environment(value:unknown):Environment{if(value!=='production'&&value!=
 function refusal(status:number,code:string){return Object.assign(Error(code),{status,code});}
 function requestId(value:unknown):string{if(typeof value!=='string'||!UUID.test(value))throw Error('Invalid request identity');return value;}
 function object(value:unknown):Record<string,any>{if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Invalid Cloud request');return value as Record<string,any>;}
+const GOOGLE_GRANT=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+/** Owner Google Calendar writes from the Calendar view (create, change, delete of one event), in
+ * Cloud's exact shapes. Renderer requests only: the agent ports below keep to sync-v1. */
+export function googleCalendarEventWrite(url:URL,method:string,body:string|undefined):boolean {
+ if(googleCalendarEvents(url.pathname,url.search,method,body!==undefined)!==true)return false;
+ const clean=(value:unknown,max=1024)=>typeof value==='string'&&value.trim().length>0&&value.length<=max&&!/[\u0000-\u001f\u007f]/.test(value);
+ if(method==='DELETE'){
+  const keys=[...url.searchParams.keys()];
+  if(new Set(keys).size!==keys.length||keys.slice().sort().join()!=='calendarId,grantId,side')return false;
+  return url.searchParams.get('side')==='owner'&&GOOGLE_GRANT.test(url.searchParams.get('grantId')??'')&&clean(url.searchParams.get('calendarId'));
+ }
+ if(typeof body!=='string'||Buffer.byteLength(body)>256*1024)return false;
+ let value:Record<string,any>;try{value=object(JSON.parse(body));}catch{return false;}
+ const allowed=method==='POST'?['side','grantId','calendarId','title','description','location','startAt','endAt','timeZone','attendees']:['side','grantId','calendarId','title','description','location','startAt','endAt','timeZone','responseStatus'];
+ if(Object.keys(value).some(key=>!allowed.includes(key))||value.side!=='owner'||!GOOGLE_GRANT.test(value.grantId)||!clean(value.calendarId))return false;
+ if(method==='POST'&&!['title','startAt','endAt','timeZone'].every(key=>clean(value[key],8192)))return false;
+ if(method==='PATCH'&&!Object.keys(value).some(key=>!['side','grantId','calendarId'].includes(key)))return false;
+ for(const key of ['title','startAt','endAt','timeZone'])if(key in value&&!clean(value[key],8192))return false;
+ for(const key of ['description','location'])if(key in value&&(typeof value[key]!=='string'||value[key].length>8192))return false;
+ if('responseStatus' in value&&!['accepted','declined','tentative'].includes(value.responseStatus))return false;
+ if('attendees' in value&&(!Array.isArray(value.attendees)||value.attendees.length>100||value.attendees.some((guest:any)=>!guest||typeof guest!=='object'||!clean(guest.email,320)||Object.keys(guest).some(key=>!['email','displayName','optional'].includes(key)))))return false;
+ return true;
+}
 /** DEV transport only. Canonical Cloud owns login, identity, plan entitlement and speech authorization. */
 export function createBrowserCloudDevHandler(options:{profile:string;request?:typeof fetch;environment?:Environment;diagnostic?:(event:{environment:Environment;operation:string;status:number;code?:string})=>void;resident?:{bind:(credential:{token:string;credentialId:string;reference:string;expiresAt?:number})=>Promise<unknown>;clear:()=>Promise<unknown>;status:(id?:string)=>unknown;ready:(signal:AbortSignal)=>Promise<unknown>}}){
  const profile=path.resolve(options.profile,cloudStorageNamespace.replaceAll(':','-')),stateFile=path.join(profile,'credentials.json'),initialFile=path.join(profile,'initial-credential.json'),fetchCloud=options.request??fetch;
@@ -196,7 +220,7 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
     if(redeem){const body=object(JSON.parse(input.body??'null'));if(Object.keys(body).sort().join()!=='code,idempotencyKey'||typeof body.code!=='string'||body.code.length>128||typeof body.idempotencyKey!=='string'||!/^[A-Za-z0-9._:-]{8,128}$/.test(body.idempotencyKey))throw Error('Invalid subscription redemption');}
     const accountRead=method==='GET'&&input.body===undefined&&['/api/v1/user','/api/v1/billing/limits','/api/v1/subscription/entitlement','/api/v1/subscription/entitlement-keys','/api/v1/maps/capabilities'].includes(route);
     const selfRevoke=method==='DELETE'&&route==='/api/v1/api-keys/current'&&input.body===undefined;
-    if(!selfRevoke&&!redeem&&!accountRead&&!mapsPost&&!managedGoogleRequest(url,method,input.body))throw Error('Unsupported Cloud route');
+    if(!selfRevoke&&!redeem&&!accountRead&&!mapsPost&&!managedGoogleRequest(url,method,input.body)&&!googleCalendarEventWrite(url,method,input.body))throw Error('Unsupported Cloud route');
     const c=await admitted(env,input.credentialReference);active.get(ownedId)!.credentialId=c.credentialId;if(selfRevoke)await current(env,c,controller.signal);const response=await canonical(env,route,controller.signal,{method,...(input.body===undefined?{}:{headers:{'Content-Type':'application/json',...(mapsRequestId?{'Idempotency-Key':mapsRequestId}:{})},body:input.body})},c);if(selfRevoke)options.diagnostic?.({environment:env,operation:route,status:response.status});let result=await boundedServiceJson(response);await current(env,c,controller.signal);if(response.ok&&route==='/api/v1/user'&&result.success===true){const who=object(result.data);result={success:true,data:{id:who.id,organization_id:who.organization_id,...(typeof who.email==='string'?{email:who.email}:{})}};}if(selfRevoke)result={success:result.success,...(typeof result.status==='string'?{status:result.status}:{}),...(typeof result.credentialId==='string'?{credentialId:result.credentialId}:{}),...(typeof result.revokedAt==='string'?{revokedAt:result.revokedAt}:{})};send(res,200,{status:response.status,data:result});return;
    }
    if(data.operation==='stt'||data.operation==='tts'){

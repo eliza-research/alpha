@@ -29,7 +29,7 @@ const memory = () => { const values = new Map(); return { getItem: key => values
   await maps.initializeCloudMaps();
   assert.equal(configured, 0, 'a provider Cloud never installed is not touched');
   assert.equal(maps.cloudMapsCoverage(), undefined);
-  assert.deepEqual(maps.cloudMapsDiagnostics(), { configured: true, error: 'unauthorized' });
+  assert.deepEqual(maps.cloudMapsDiagnostics(), { configured: true, error: 'unauthorized', message: 'Sign in to Eliza Cloud to use Maps.' });
 }
 
 // Signed in: coverage configures the provider and the shared controller plans a validated route.
@@ -86,6 +86,42 @@ assert.equal(cloudMapsFailure(cloudError(503, 'provider_unavailable'), AbortSign
   assert.equal(configured, 0, 'a provider Cloud never installed is not touched');
   assert.equal(maps.cloudMapsDiagnostics().error, 'invalid-response');
 }
+
+// Live traffic and scheduled transit are accepted exactly as Cloud advertises them.
+{
+  const live = { ...coverage, capabilities: { ...coverage.capabilities, modes: ['drive', 'walk', 'bicycle', 'transit'], traffic: 'live', transit: 'scheduled' } };
+  let config, provider;
+  const maps = createCloudMaps(() => async path => {
+    if (path === 'capabilities') return structuredClone(live);
+    if (path === 'places/details') return { place };
+    // 'none' (free flow) is always valid; a traffic kind Cloud did not advertise is not.
+    if (path === 'routes') return { routes: [{ ...route, mode: 'transit', traffic: 'approximated' }] };
+    throw new Error(`unexpected ${path}`);
+  }, (nextConfig, nextProvider) => { config = nextConfig; provider = nextProvider; });
+  await maps.initializeCloudMaps();
+  assert.equal(config.status, 'configured');
+  assert.deepEqual(config.capabilities.modes, ['drive', 'walk', 'bicycle', 'transit']);
+  assert.equal(config.capabilities.traffic, 'live');
+  assert.equal(config.capabilities.transit, 'scheduled');
+  // Cloud must stamp every route with the advertised traffic; the phone never rewrites it.
+  const controller = new MapsController(config, provider, new SavedPlaces('test.maps.live', memory()), location);
+  await controller.select(place);
+  controller.setOrigin(CASINO); controller.setMode('transit');
+  await controller.planRoute();
+  assert.equal(controller.snapshot().route.phase, 'error', 'a route whose traffic differs from the capabilities is refused');
+  assert.equal(controller.snapshot().route.error.code, 'invalid-response');
+}
+for (const capabilities of [
+  { traffic: 'approximated' }, { transit: 'approximated' }, { traffic: 'unknown' },
+  { modes: ['drive', 'transit'] },
+  { transit: 'scheduled' },
+]) {
+  let configured = 0;
+  const maps = createCloudMaps(() => async () => ({ ...coverage, capabilities: { ...coverage.capabilities, ...capabilities } }), () => configured++);
+  await maps.initializeCloudMaps();
+  assert.equal(configured, 0, JSON.stringify(capabilities));
+  assert.deepEqual(maps.cloudMapsDiagnostics(), { configured: true, error: 'invalid-response', message: 'Maps is unavailable right now.' }, JSON.stringify(capabilities));
+}
 console.log('PASS Cloud Maps device provider: coverage, search, details, route, failures');
 
 // A failed replacement and a late older response cannot leave a stale provider active.
@@ -125,25 +161,36 @@ console.log('PASS Cloud Maps device provider: coverage, search, details, route, 
 }
 
 assert.equal(cloudMapsFailure(cloudError(503,'maps_allowance_unconfigured')).code,'unconfigured');
-assert.match(cloudMapsFailure(cloudError(503,'maps_allowance_unconfigured')).message,/not available yet/);
-assert.match(cloudMapsFailure(cloudError(503,'maps_admission_unknown')).message,/not retry automatically/);
-assert.match(cloudMapsFailure(cloudError(409,'maps_request_already_admitted')).message,/not retry automatically/);
-assert.match(cloudMapsFailure(cloudError(429,'allowance_exhausted')).message,/used your Maps allowance/);
+assert.match(cloudMapsFailure(cloudError(503,'maps_allowance_unconfigured')).message,/available yet/);
+// An unconfirmed admission is not retried and does not invite a repeat that might be counted twice.
+assert.equal(cloudMapsFailure(cloudError(503,'maps_admission_unknown')).message,'Maps couldn’t finish that request.');
+assert.equal(cloudMapsFailure(cloudError(409,'maps_request_already_admitted')).message,'Maps couldn’t finish that request.');
+assert.match(cloudMapsFailure(cloudError(429,'allowance_exhausted')).message,/^Maps limit reached\./);
+// One short line each; none names the provider, its coverage or a response format.
+assert.equal(cloudMapsFailure(cloudError(403,'subscription_required')).message,'Maps comes with an Eliza Cloud plan.');
+assert.equal(cloudMapsFailure(cloudError(403,'forbidden')).message,'Maps isn’t available for this account.');
+assert.equal(cloudMapsFailure(cloudError(422,'unsupported_mode')).message,'This travel mode isn’t available here.');
+assert.equal(cloudMapsFailure(cloudError(422,'unsupported_region')).message,'Maps doesn’t cover this area yet.');
+assert.equal(cloudMapsFailure(cloudError(422,'no_route')).message,'No route is available between these places.');
+for (const error of [cloudError(500,'x'), cloudError(502,'provider_invalid_response'), Object.assign(new Error('x'), { name: 'CloudProtocolError', code: 'invalid-response' }), new Error('unexpected')])
+  assert.equal(cloudMapsFailure(error).message,'Maps is unavailable right now.');
+for (const error of [cloudError(403,'x'), cloudError(422,'x'), cloudError(500,'x'), cloudError(429,'rate_limited'), cloudError(429,'allowance_exhausted')])
+  assert.doesNotMatch(cloudMapsFailure(error).message,/Cloud Maps|provider|coverage|response|allowance/i);
 
 // Preserve server retry hints without borrowing AI allowance copy or retrying a request.
 {
  const error=(code,fields)=>Object.assign(cloudError(429,code),{data:{code,...fields}});
  assert.match(cloudMapsFailure(error('rate_limited',{retryAfterSeconds:42})).message,/Try again in about 42 seconds/);
- assert.match(cloudMapsFailure(error('allowance_exhausted',{retryAfterSeconds:120})).message,/Maps allowance.*resets in about 2 minutes/);
+ assert.equal(cloudMapsFailure(error('allowance_exhausted',{retryAfterSeconds:120})).message,'Maps limit reached. Resets in about 2 minutes.');
  const reset=Date.now()+3*86400000;
  const text=cloudMapsFailure(error('allowance_exhausted',{resetAt:new Date(reset).toISOString(),retryAfterSeconds:60})).message;
- assert.ok(text.includes(new Date(reset).toLocaleString()),'An explicit period reset wins over a short retry hint');
- assert.doesNotMatch(text,/AI|credits|purchase|resets in/);
- assert.match(cloudMapsFailure(error('allowance_exhausted',{retryAfterSeconds:3*86400})).message,/It resets /);
- assert.doesNotMatch(cloudMapsFailure(error('allowance_exhausted',{retryAfterSeconds:3*86400})).message,/resets in/);
+ assert.ok(text.includes(new Date(reset).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})),'An explicit period reset wins over a short retry hint');
+ assert.doesNotMatch(text,/AI|credits|purchase|Resets in/);
+ assert.match(cloudMapsFailure(error('allowance_exhausted',{retryAfterSeconds:3*86400})).message,/ Resets /);
+ assert.doesNotMatch(cloudMapsFailure(error('allowance_exhausted',{retryAfterSeconds:3*86400})).message,/Resets in/);
  for(const retryAfterSeconds of [-1,'bad',Infinity,900000000]) {
-  assert.equal(cloudMapsFailure(error('rate_limited',{retryAfterSeconds})).message,'Maps request limit reached. Try again later.');
-  assert.equal(cloudMapsFailure(error('allowance_exhausted',{retryAfterSeconds})).message,'You have used your Maps allowance for this period.');
+  assert.equal(cloudMapsFailure(error('rate_limited',{retryAfterSeconds})).message,'Too many Maps requests. Try again later.');
+  assert.equal(cloudMapsFailure(error('allowance_exhausted',{retryAfterSeconds})).message,'Maps limit reached.');
  }
  assert.equal(cloudMapsFailure(error('rate_limited',{retryAfterSeconds:42}),AbortSignal.abort()).code,'cancelled');
  let calls=0,provider;
@@ -153,8 +200,8 @@ assert.match(cloudMapsFailure(cloudError(429,'allowance_exhausted')).message,/us
  assert.equal(calls,1,'A retry hint never schedules another provider request');
 }
 
-assert.equal(cloudMapsFailure(Object.assign(cloudError(429,'allowance_exhausted'),{data:{code:'allowance_exhausted',resetAt:'9999-01-01T00:00:00Z',error:'private provider detail'}})).message,'You have used your Maps allowance for this period.');
-assert.equal(cloudMapsFailure(Object.assign(cloudError(429,'rate_limited'),{data:{code:'rate_limited',error:'private provider detail',retryAfterSeconds:'private provider detail'}})).message,'Maps request limit reached. Try again later.');
+assert.equal(cloudMapsFailure(Object.assign(cloudError(429,'allowance_exhausted'),{data:{code:'allowance_exhausted',resetAt:'9999-01-01T00:00:00Z',error:'private provider detail'}})).message,'Maps limit reached.');
+assert.equal(cloudMapsFailure(Object.assign(cloudError(429,'rate_limited'),{data:{code:'rate_limited',error:'private provider detail',retryAfterSeconds:'private provider detail'}})).message,'Too many Maps requests. Try again later.');
 
 // Rate-limit reset-only hints use a bounded future wait, never an unbounded date.
 {
@@ -165,7 +212,7 @@ assert.equal(cloudMapsFailure(Object.assign(cloudError(429,'rate_limited'),{data
   assert.match(cloudMapsFailure(refusal(new Date(now+42000).toISOString())).message,/Try again in about 42 seconds/);
   assert.match(cloudMapsFailure(refusal(new Date(now+86400000).toISOString())).message,/Try again in about 24 hours/);
   for(const reset of ['invalid','private provider detail',new Date(now-1000).toISOString(),new Date(now).toISOString(),new Date(now+86400001).toISOString(),'9999-01-01T00:00:00Z'])
-   assert.equal(cloudMapsFailure(refusal(reset)).message,'Maps request limit reached. Try again later.');
+   assert.equal(cloudMapsFailure(refusal(reset)).message,'Too many Maps requests. Try again later.');
  } finally {Date.now=originalNow;}
 }
 
@@ -185,3 +232,65 @@ assert.equal(cloudMapsFailure(Object.assign(cloudError(429,'rate_limited'),{data
  for (const id of ['', 'x'.repeat(513)]) assert.equal(await provider.detail(id, new AbortController().signal), null);
  assert.deepEqual(calls, ['provider:opaque/place-42', 'N0001234']);
 }
+
+// Only a failure that is retried says so; a search or route refusal is one plain line.
+{
+ const down = () => async () => { throw cloudError(503, 'maps_unavailable'); };
+ assert.equal(cloudMapsFailure(cloudError(503, 'maps_unavailable')).message, 'Maps is unavailable right now.');
+ const plain = createCloudMaps(down, () => {});
+ await plain.initializeCloudMaps();
+ assert.equal(plain.cloudMapsDiagnostics().message, 'Maps is unavailable right now.');
+ const retried = createCloudMaps(down, () => {}, code => code === 'unavailable');
+ await retried.initializeCloudMaps();
+ assert.equal(retried.cloudMapsDiagnostics().message, 'Maps is unavailable right now. Trying again automatically.');
+ const refused = createCloudMaps(() => async () => { throw cloudError(403, 'subscription_required'); }, () => {}, code => code === 'unavailable');
+ await refused.initializeCloudMaps();
+ assert.equal(refused.cloudMapsDiagnostics().message, 'Maps comes with an Eliza Cloud plan.', 'a refusal is not retried and does not say so');
+ // Signing out leaves the reason, not an endless "Connecting".
+ retried.retireCloudMaps();
+ assert.deepEqual(retried.cloudMapsDiagnostics(), { configured: true, error: 'unauthorized', message: 'Sign in to use Maps.' });
+}
+
+// The launch connection (cloud-maps.ts) with the account switched while its capabilities request is pending.
+{
+ const { stripTypeScriptTypes } = await import('node:module');
+ const { readFileSync } = await import('node:fs');
+ const vm = await import('node:vm');
+ const { captureMapsSession } = await import('../apps/app/src/maps/cloud-session.ts');
+ const source = stripTypeScriptTypes(readFileSync(new URL('../apps/app/src/maps/cloud-maps.ts', import.meta.url), 'utf8')
+  .replace(/^import .*;\n/gm, '').replace('export const {', 'const {').replace('export function cloudMapsConnecting', 'function cloudMapsConnecting'), { mode: 'strip' });
+ let release;
+ const asked = [];
+ const account = (id, mapsRequest) => ({ sessionId: id, credentialId: `key-${id}`, client: { mapsRequest } });
+ const first = account('A', route => { asked.push(['A', route]); return new Promise(resolve => { release = resolve; }); });
+ const second = account('B', async route => { asked.push(['B', route]); return structuredClone(coverage); });
+ let current = first; const listeners = new Set(); const configured = [];
+ const connectionController = { getCloudClient: () => current, subscribe: listener => { listeners.add(listener); return () => listeners.delete(listener); } };
+ const microtasks = [];
+ const context = vm.createContext({ createCloudMaps, captureMapsSession, configureMapsProvider: config => configured.push(config.status), connectionController,
+  setTimeout, clearTimeout, Date, Set, Promise, queueMicrotask: callback => microtasks.push(callback),
+  window: { addEventListener() {} }, document: { hidden: false, addEventListener() {} } });
+ vm.runInContext(`${source}\nglobalThis.cloud = { initializeCloudMaps, cloudMapsDiagnostics, cloudMapsConnecting };`, context);
+ const { cloudMapsDiagnostics, cloudMapsConnecting } = context.cloud;
+ for (const task of microtasks.splice(0)) task();
+ assert.deepEqual(asked, [['A', 'capabilities']], 'Maps connects at launch');
+ assert.ok(cloudMapsConnecting(), 'the launch connection is in flight');
+ // The account changes before the first capabilities answer arrives.
+ current = second;
+ for (const listener of listeners) listener();
+ const settled = cloudMapsConnecting();
+ assert.ok(settled);
+ release(structuredClone(coverage));
+ await settled;
+ assert.deepEqual(asked, [['A', 'capabilities'], ['B', 'capabilities']], 'the new account connects at once, not after the old request');
+ assert.deepEqual(cloudMapsDiagnostics(), { configured: true, error: '', message: '' });
+ assert.equal(configured.at(-1), 'configured', 'Maps is connected for the new account');
+ assert.equal(cloudMapsConnecting(), undefined);
+ // Signed out: nothing connects, and the reason is to sign in.
+ current = null;
+ for (const listener of listeners) listener();
+ assert.equal(cloudMapsConnecting(), undefined);
+ assert.deepEqual(cloudMapsDiagnostics(), { configured: true, error: 'unauthorized', message: 'Sign in to use Maps.' });
+ assert.equal(configured.at(-1), 'unconfigured');
+}
+console.log('PASS Cloud Maps launch connection: account switch while connecting, retry wording, sign-out');

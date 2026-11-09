@@ -55,29 +55,33 @@ test('ordinary transient startup failure retains normal Retry without recovery o
 
 test('a signed-out startup refusal keeps recovery review reachable on the mandatory sign-in page',async({page})=>{
  const gate=await boot(page,'success',true);
- await expect(gate.getByRole('form',{name:'Sign in with email'})).toHaveCount(0);
+ await expect(gate.getByRole('form',{name:'Sign in with email or phone'})).toHaveCount(0);
  await gate.getByRole('button',{name:'Review recovery',exact:true}).click();
  await expect(gate.getByText('Alpha will keep 8 old startup records, then restart your agent.',{exact:true})).toBeVisible();
  await gate.getByRole('button',{name:'Cancel',exact:true}).click();
  expect(await calls(page)).toEqual({starts:1,reviews:1,archives:[]});
- await expect(gate.getByRole('button',{name:'Sign in with Eliza Cloud',exact:true})).toBeEnabled();
+ await expect(gate.getByRole('button',{name:'Sign in',exact:true})).toBeEnabled();
  expect(await harness(page,f=>f.slots['cloud:production']??null)).toBeNull();
 });
 
 test('signed-out recovery stays reachable after backing out of sign-in or cancelling a code',async({page})=>{
  const gate=await boot(page,'success',true);
  await expect(gate.getByRole('button',{name:'Review recovery',exact:true})).toBeVisible();
- await gate.getByRole('button',{name:'Sign in with Eliza Cloud',exact:true}).click();
- await expect(gate.getByRole('form',{name:'Sign in with email'})).toBeVisible();
+ await gate.getByRole('button',{name:'Sign in',exact:true}).click();
+ await expect(gate.getByRole('form',{name:'Sign in with email or phone'})).toBeVisible();
  await gate.getByRole('button',{name:'Back',exact:true}).click();
  await expect(gate.getByRole('button',{name:'Review recovery',exact:true})).toBeVisible();
- await expect(gate.getByRole('form',{name:'Sign in with email'})).toHaveCount(0);
+ await expect(gate.getByRole('form',{name:'Sign in with email or phone'})).toHaveCount(0);
 
- await gate.getByRole('button',{name:'Sign in with Eliza Cloud',exact:true}).click();
- await gate.getByLabel('Email',{exact:true}).fill('recovery@example.invalid');
- await gate.getByRole('button',{name:'Email me a code',exact:true}).click();
+ await gate.getByRole('button',{name:'Sign in',exact:true}).click();
+ await gate.getByRole('textbox',{name:/^Email( or phone number)?$/}).fill('recovery@example.invalid');
+ await gate.getByRole('button',{name:'Continue',exact:true}).click();
  await expect(gate.getByRole('form',{name:'Enter your email code'})).toBeVisible();
- await gate.getByRole('button',{name:'Cancel sign-in',exact:true}).click();
+ // Back from the code step returns to the methods (to fix a mistyped address); Back again leaves.
+ await gate.getByRole('button',{name:'Back',exact:true}).click();
+ await expect(gate.getByRole('form',{name:'Sign in with email or phone'})).toBeVisible();
+ await expect(gate.getByRole('textbox',{name:/^Email( or phone number)?$/})).toBeEnabled();
+ await gate.getByRole('button',{name:'Back',exact:true}).click();
  await expect(gate.getByRole('button',{name:'Review recovery',exact:true})).toBeVisible();
  await expect(gate.getByRole('form',{name:'Enter your email code'})).toHaveCount(0);
  expect((await calls(page)).reviews).toBe(0);expect((await calls(page)).archives).toEqual([]);

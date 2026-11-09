@@ -139,10 +139,12 @@ test('native sign-in never falls back to hosted login when readiness fails',asyn
  const compiled=transformSync('const controller={'+method+'};',{loader:'ts'}).code;
  for(const methods of [null,{google:false},{google:true}]) {
   const updates=[];let ensured=false,checking='';
-  const run=new Function('operation','cloudEnvironmentAllowed','work','inAppSignInMethods','cloudSignIn','CloudSignInError','cloud','residentCloudFlow','state','update','ensureResident','cloudServiceName','RESIDENT_UNPACKAGED',
+  let refreshed=false;const connectionController={refreshSignInMethods(){refreshed=true;}};
+  const run=new Function('connectionController','signInFailureMessage','operation','cloudEnvironmentAllowed','work','inAppSignInMethods','cloudSignIn','CloudSignInError','cloud','residentCloudFlow','state','update','ensureResident','cloudServiceName','RESIDENT_UNPACKAGED',
    'let inAppGoogle=false,inAppPhone=false,inAppEmail=true,inAppMethodsUnconfirmed=true,inAppReturnToStart=false;'+compiled+';return controller.beginSignIn("production");');
-  await run(false,()=>true,async(message,action)=>{checking=message;return action(new AbortController().signal);},async()=>methods,{},Error,{environment:'production',cancelLogin(){}},()=>true,{purpose:'agent'},v=>updates.push(v),async()=>{ensured=true;},()=> 'Independent Service','Runtime unavailable');
-  assert.equal(updates.at(-1).signIn.step,'choose');assert.equal(ensured,true);assert.equal(checking,'Checking Independent Service sign-in…');
+  await run(connectionController,code=>code,false,()=>true,async(message,action)=>{checking=message;return action(new AbortController().signal);},async()=>methods,{},Error,{environment:'production',cancelLogin(){}},()=>true,{purpose:'agent'},v=>updates.push(v),async()=>{ensured=true;},()=> 'Independent Service','Runtime unavailable');
+  // The chooser opens at once (email and phone); readiness runs in the background and never opens hosted login.
+  assert.equal(updates.at(-1).signIn.step,'choose');assert.equal(ensured,true);assert.equal(checking,'');assert.equal(refreshed,true);
  }
  const plugin=read(native+'AlphaCloudSignInPlugin.java');
  const measure=between(plugin,'private CloudSignInReadiness.Result measure(','private boolean assetLinksGrant(');

@@ -188,8 +188,9 @@ test('a resident send the runtime no longer accepts (401) asks for an Eliza Clou
   await setStub(page, { stream: 'expired' });
   await send(page, 'Sent with an expired session');
   const dialog = page.getByRole('main',{name:'Sign in',exact:true});
-  await expect(dialog.getByRole('alert')).toBeVisible({ timeout: 30_000 });
-  await expect(dialog.getByRole('button', { name: 'Sign in with Eliza Cloud', exact: true })).toBeVisible();
+  await expect(dialog.getByRole('alert')).toHaveText('Your sign-in expired. Sign in again.', { timeout: 30_000 });
+  // This stub has no in-app sign-in host (AlphaCloudSignIn), so the page offers Sign in only.
+  await expect(dialog.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
   await expect(page.locator('body')).not.toContainText(/pair/i);
   expect(await stub(page, s => s.recoveries)).toEqual([]);
 });

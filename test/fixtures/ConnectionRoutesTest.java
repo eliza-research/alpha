@@ -113,6 +113,15 @@ public final class ConnectionRoutesTest {
   check(!ConnectionRoutes.managedService(sync+"/",null,"PATCH",true,false),"sync slash refused");
   check(!ConnectionRoutes.managedService(sync,null,"PUT",true,false),"sync PUT refused");
   check(!ConnectionRoutes.managedService("/api/v1/eliza/google/calendar/events",null,"GET",false,false),"unreviewed Google Calendar route refused");
+  // Owner-side Google Calendar writes: create, change and delete of one event, nothing else.
+  String events="/api/v1/eliza/google/calendar/events",one=events+"/abc123_20261013T150000Z";
+  check(ConnectionRoutes.managedService(events,null,"POST",true,false)&&ConnectionRoutes.googleCalendarEvents(events,null,"POST",true),"Google event create allowed");
+  check(ConnectionRoutes.managedService(one,null,"PATCH",true,false)&&ConnectionRoutes.googleCalendarEvents(one,null,"PATCH",true),"Google event change allowed");
+  check(ConnectionRoutes.managedService(one,"side=owner&grantId=g&calendarId=primary","DELETE",false,false)&&ConnectionRoutes.googleCalendarEvents(one,"side=owner","DELETE",false),"Google event delete allowed");
+  Object[][] refusedEvents={{events,null,"POST",false},{events,"side=owner","POST",true},{events+"/",null,"POST",true},{events,null,"PATCH",true},{events,"side=owner","DELETE",false},{events,null,"PUT",true},
+   {one,null,"PATCH",false},{one,"side=owner","PATCH",true},{one,"","PATCH",true},{one,null,"DELETE",false},{one,"","DELETE",false},{one,"side=owner","DELETE",true},{one,null,"PUT",true},{one,"side=owner","GET",false},{one,null,"POST",true},
+   {one+"/",null,"PATCH",true},{one+"/instances",null,"PATCH",true},{events+"/a%2Fb",null,"PATCH",true},{events+"/a-b",null,"PATCH",true},{events+"/"+"a".repeat(1025),null,"PATCH",true},{events+"//x",null,"PATCH",true},{events+"x",null,"POST",true}};
+  for(Object[] r:refusedEvents)check(!ConnectionRoutes.managedService((String)r[0],(String)r[1],(String)r[2],(Boolean)r[3],false),"Google event route refused "+r[2]+" "+r[0]+" "+r[1]+" "+r[3]);
   // Subscription plan gate (#410): code redemption is one POST with a body; the billing snapshot is read-only; credits are retired.
   check(ConnectionRoutes.managedService("/api/v1/subscription/redeem",null,"POST",true,false),"subscription code redemption allowed");
   check(!ConnectionRoutes.managedService("/api/v1/subscription/redeem",null,"POST",false,false),"redemption needs a body");

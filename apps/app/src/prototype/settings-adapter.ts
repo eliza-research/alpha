@@ -1,5 +1,7 @@
 import {cloudServiceName} from '../runtime/cloud-protocol';
 import {openCalendarSyncSettings} from '../runtime/calendar-sync-settings';
+import {calendarSyncHost} from '../runtime/calendar-sync-host';
+import {readGoogleCalendarSelection} from '../runtime/google-calendar-selection';
 import {browserDevProfile as devProfileQuery} from '../browser/dev-profile';
 import {testMocksEnabled,devSurfacesEnabled} from '../build-flags';
 import {openCalendarRecovery} from '../browser/calendar-recovery';
@@ -13,7 +15,7 @@ import { broaderPageNotice } from './native-adapter';
 import { Capacitor } from '@capacitor/core';
 import { DailyApps } from '../daily';
 import { connectionController } from '../runtime/connection-ui';
-import {googleConnectionController} from '../runtime/google-connection-ui';
+import {googleConnectionController,googleCalendarAccountKey} from '../runtime/google-connection-ui';
 import {GOOGLE_ACCOUNTS_CHANGED} from '../runtime/google-accounts';
 import type { GmailAccount } from '../runtime/cloud-protocol';
 import { clearCrashLog, describeCrashEntry, readCrashLog, recordCloudInferenceFailure, type CrashLog } from '../runtime/crash-log';
@@ -118,7 +120,7 @@ export function versionLabel(version: unknown, code: unknown): string {
   const name = typeof version === 'string' && version ? version : 'Unavailable';
   return Number.isSafeInteger(code) && (code as number) > 0 && name !== 'Unavailable' ? `${name} (${code})` : name;
 }
-/** Settings pages (docs/ui-refresh-2026-11, tla/SettingsNav.tla). Pages that only repeated Android
+/** Settings pages (docs/ui-refresh-2026-11, specs/quint/legacy/SettingsNav.qnt). Pages that only repeated Android
  * facts or another flow are gone; a stale or direct route to one opens the top level. */
 export const SETTINGS_PAGES: readonly string[] = ['account', 'agent-connection', 'history', 'listening', 'calendar', 'password-provider', 'password-entry', 'cross', 'about', 'problems', 'licenses'];
 export function settingsPage(page: string | null | undefined, developerSurfaces: boolean): string | null {
@@ -378,7 +380,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     if (key === 'settings') { void refresh(); void refreshCapabilities(true); }
     return result;
   };
-  // Android Back pops one level, the same parent as each page's on-screen back (tla/SettingsNav.tla).
+  // Android Back pops one level, the same parent as each page's on-screen back (specs/quint/legacy/SettingsNav.qnt).
   const SETTINGS_PARENT: Record<string, string> = { history: 'agent-connection', problems: 'about', licenses: 'about', 'password-entry': 'password-provider' };
   const back = definition.back;
   definition.back = (state: Bag, api: Bag) => {
@@ -555,7 +557,9 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         rows.push(row(display.native ? 'Refresh calendars' : 'Refresh calendar', display.connect, display.loading ? 'Loading…' : '', { busy: display.loading }));
         if (!display.native) for (const source of display.sources || []) rows.push({ kCalendarDisplay: true, label: source.name, sub: source.account, on: source.on, busy: display.loading, aria: `Show ${source.name} calendar`, track: api.track(source.on), kx: api.kx(source.on), toggle: () => void source.change('visibility'), color: () => void source.change('color'), colorLabel: `Change ${source.name} calendar color`, sw: ({ acc: 'var(--acct)', fg: 'var(--fg)', mut: 'var(--mut)' } as Bag)[source.color] || 'var(--acct)' });
       }
-      rows.push(row('Google Calendar sync', openCalendarSyncSettings));
+      // Linked sync is retired (flow redesign): the row stays only while an owner still has it on or a calendar chosen for it, so they can pause it.
+      const syncAccount = googleCalendarAccountKey();
+      if (calendarSyncHost.snapshot().enabled || (syncAccount && readGoogleCalendarSelection(syncAccount))) rows.push(row('Google Calendar sync', openCalendarSyncSettings));
       if (testMocksEnabled && !native) rows.push(row('Calendar backups', () => openCalendarRecovery()));
       stack.push(subpage('Calendars', [group(rows)]));
     }

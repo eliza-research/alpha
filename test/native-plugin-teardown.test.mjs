@@ -289,7 +289,24 @@ test("background navigation cannot be started by a call that arrives after its r
   assert.ok(start.indexOf(refused) > 0 && start.indexOf(refused) < start.indexOf("AlphaNavigationService.start("), "refused before the service is started");
   assert.match(start, /AlphaNavigationService\.start\([^\n]*\n[^\n]*\n\s*if\(destroyed\)\{AlphaNavigationService\.stop\(getContext\(\),session,"renderer-closed"\);call\.reject\(/, "a start that raced destruction retires its own session");
   const destroy = maps.slice(maps.indexOf("@Override protected void handleOnDestroy(){"));
-  assert.ok(destroy.indexOf("destroyed=true;") > 0 && destroy.indexOf("destroyed=true;") < destroy.indexOf("AlphaNavigationService.activeSession()"), "the flag is set before the active session is read and stopped");
+  assert.ok(destroy.indexOf("destroyed=true;") > 0 && destroy.indexOf("destroyed=true;") < destroy.indexOf("AlphaNavigationService.activeSessionOwnedBy(navigationStops)"), "the flag is set before the owned session is read and stopped");
+});
+
+test("closing the assistant window never ends the launcher's navigation session", () => {
+  const maps = read("AlphaMapsTransportPlugin.java");
+  const start = maps.slice(maps.indexOf("@PluginMethod public void startNavigation(PluginCall call){"), maps.indexOf("@PluginMethod public void updateNavigation(PluginCall call){"));
+  assert.ok(start.indexOf("getActivity() instanceof AlphaAssistActivity") > 0 && start.indexOf("getActivity() instanceof AlphaAssistActivity") < start.indexOf("AlphaNavigationService.start("), "the assistant window cannot start guidance");
+  assert.match(start, /AlphaNavigationService\.start\(getContext\(\),session,[^\n]*,navigationStops,getActivity\(\)/, "each session records the bridge and task that started it");
+  const destroy = maps.slice(maps.indexOf("@Override protected void handleOnDestroy(){"));
+  const stops = [...destroy.matchAll(/AlphaNavigationService\.stop\(getContext\(\),(\w+),/g)].map(match => match[1]);
+  assert.deepEqual(stops, ["owned"], "a closing bridge stops only the session it started");
+  assert.match(destroy, /String owned=AlphaNavigationService\.activeSessionOwnedBy\(navigationStops\);/);
+  assert.doesNotMatch(maps, /setStopListener\(|AlphaNavigationService\.activeSession\(\);if\(active/, "no process-wide stop listener a second bridge could replace");
+  const service = read("AlphaNavigationService.java");
+  const removed = service.slice(service.indexOf("@Override public void onTaskRemoved("), service.indexOf("@Override public void onDestroy()"));
+  assert.ok(removed.indexOf("AlphaAssistActivity.class.getName()") > 0 && removed.indexOf("ownerTaskAlive()") > 0, "task removal checks the assistant root and the owner's task");
+  assert.ok(removed.indexOf("ownerTaskAlive()") < removed.indexOf('finish(null, "task-removed")'), "the owner's task is checked before the session ends");
+  assert.match(service, /target = owner;/, "the stop is reported to the session's own bridge");
 });
 
 // Kotlin shared plugins are outside the Java scanner above. Inventory every plugin method

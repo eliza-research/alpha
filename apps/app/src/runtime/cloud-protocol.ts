@@ -106,6 +106,20 @@ export interface GoogleCalendarEvent {
   attendees:Array<{email:string|null;displayName:string|null;responseStatus:string|null;self:boolean;organizer:boolean;optional:boolean}>;
   metadata:Record<string,unknown>;
 }
+/** Fields Alpha sends when creating a Google event. Instants are ISO strings with `Z` or an offset;
+ * `timeZone` is the IANA zone Google stores. Guests are emails only; Google sends no invitations
+ * for owner-side writes (Cloud has no `sendUpdates`). */
+export interface GoogleCalendarEventInput {
+  title:string; description?:string; location?:string; startAt:string; endAt:string; timeZone:string;
+  attendees?:Array<{email:string;displayName?:string;optional?:boolean}>;
+}
+/** Fields of an update. Guests are deliberately absent: Cloud's PATCH replaces the whole guest list
+ * without anyone's answer, which would reset every reply. `responseStatus` is the owner's own RSVP;
+ * current Cloud drops it, so callers send it only behind a capability flag and check the result. */
+export interface GoogleCalendarEventPatch {
+  title?:string; description?:string; location?:string; startAt?:string; endAt?:string; timeZone?:string;
+  responseStatus?:'accepted'|'declined'|'tentative';
+}
 /** Core exhausts provider pages before returning; no client cursor exists. */
 export interface GoogleCalendarFeed { calendarId:string; events:GoogleCalendarEvent[]; syncedAt:string }
 export interface GoogleCalendarRange { timeMin:string; timeMax:string; timeZone:string }
@@ -203,6 +217,63 @@ export function delay(ms: number, signal: AbortSignal): Promise<void> {
   });
 }
 
+/** Event ids that may travel in a path. The route allow-lists refuse `%`, so ids that would need
+ * encoding stay read-only. */
+export const GOOGLE_CALENDAR_EVENT_ID=/^[A-Za-z0-9_]{1,1024}$/;
+function googleCalendarEventId(value:string):string {
+  if(typeof value!=='string'||!GOOGLE_CALENDAR_EVENT_ID.test(value))throw new TypeError('Calendar event cannot be changed');
+  return value;
+}
+function isoInstant(value:unknown,field:string):string {
+  if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2})$/.test(value)||!Number.isFinite(Date.parse(value)))throw new TypeError(`Invalid Calendar ${field}`);
+  return value;
+}
+function ianaZone(value:unknown):string {
+  if(typeof value!=='string'||!value.trim())throw new TypeError('Invalid Calendar time zone');
+  try{new Intl.DateTimeFormat('en-US',{timeZone:value}).format();}catch{throw new TypeError('Invalid Calendar time zone');}
+  return value;
+}
+/** Validates write fields and returns only those to send. `create` requires title, both instants and the zone. */
+function googleCalendarWriteFields(input:GoogleCalendarEventInput|GoogleCalendarEventPatch,create:boolean):Record<string,unknown> {
+  const out:Record<string,unknown>={};
+  if(!input||typeof input!=='object')throw new TypeError('Invalid Calendar change');
+  if(create||input.title!==undefined){
+    const title=typeof input.title==='string'?input.title.trim():'';
+    if(!title||title.length>1024)throw new TypeError('Calendar event needs a title');
+    out.title=title;
+  }
+  for(const key of ['description','location'] as const){
+    const value=input[key];
+    if(value===undefined)continue;
+    if(typeof value!=='string'||value.length>8192)throw new TypeError(`Invalid Calendar ${key}`);
+    out[key]=value;
+  }
+  if(create||input.startAt!==undefined)out.startAt=isoInstant(input.startAt,'start');
+  if(create||input.endAt!==undefined)out.endAt=isoInstant(input.endAt,'end');
+  if(create||input.timeZone!==undefined)out.timeZone=ianaZone(input.timeZone);
+  if(typeof out.startAt==='string'&&typeof out.endAt==='string'&&Date.parse(out.endAt)<Date.parse(out.startAt))throw new TypeError('Calendar event must end after it starts');
+  if(create&&'attendees' in input&&input.attendees!==undefined){
+    if(!Array.isArray(input.attendees)||input.attendees.length>100)throw new TypeError('Invalid Calendar guests');
+    out.attendees=input.attendees.map(guest=>{
+      if(!guest||typeof guest.email!=='string'||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guest.email.trim()))throw new TypeError('Invalid Calendar guest');
+      return {email:guest.email.trim(),...(typeof guest.displayName==='string'&&guest.displayName.trim()?{displayName:guest.displayName.trim()}:{}),...(guest.optional===true?{optional:true}:{})};
+    });
+  }
+  if(!create&&'responseStatus' in input&&input.responseStatus!==undefined){
+    if(!['accepted','declined','tentative'].includes(input.responseStatus))throw new TypeError('Invalid Calendar reply');
+    out.responseStatus=input.responseStatus;
+  }
+  return out;
+}
+/** One Cloud Google Calendar event (feed rows and write responses share this shape). The event
+ * must belong to `calendarId`; malformed rows are an invalid response. */
+export function parseGoogleCalendarEvent(value:unknown,calendarId:string):GoogleCalendarEvent {
+  const plain=(value:unknown)=>{if(typeof value!=='string')throw new CloudProtocolError('invalid-response');return value;};
+  const flag=(value:unknown)=>{if(typeof value!=='boolean')throw new CloudProtocolError('invalid-response');return value;};
+  const row=object(value),externalId=string(row.externalId);
+  if(row.calendarId!==calendarId||!Array.isArray(row.attendees)||timestamp(row.endAt)<timestamp(row.startAt))throw new CloudProtocolError('invalid-response');
+  return {externalId,calendarId,title:plain(row.title),description:plain(row.description),location:plain(row.location),status:string(row.status),startAt:string(row.startAt),endAt:string(row.endAt),isAllDay:flag(row.isAllDay),timezone:optionalString(row.timezone),htmlLink:optionalString(row.htmlLink),conferenceLink:optionalString(row.conferenceLink),organizer:row.organizer==null?null:object(row.organizer),metadata:object(row.metadata),attendees:row.attendees.map(value=>{const a=object(value);return {email:optionalString(a.email),displayName:optionalString(a.displayName),responseStatus:optionalString(a.responseStatus),self:flag(a.self),organizer:flag(a.organizer),optional:flag(a.optional)};})};
+}
 const GMAIL_CAPABILITIES: readonly string[] = ["google.basic_identity", "google.gmail.triage", "google.gmail.send", "google.gmail.drafts", "google.gmail.mailbox"];
 export class CloudProtocol {
   protected activeLogin: AbortController | null = null;
@@ -553,10 +624,13 @@ export class CloudProtocol {
     return { userId: uuid(data.id), ...(typeof data.email==='string'&&data.email.trim()&&data.email.length<=320?{email:data.email.trim()}:{}), ...(data.organization_id == null ? {} : { organizationId: uuid(data.organization_id) }) };
   }
   /** Read access by default; Calendar writes require explicit additional consent. */
-  async initiateGoogle(signal:AbortSignal, calendarPermission:'read'|'write'='read', gmailPermission:'read'|'modify'|'send'|'drafts'|'mailbox'='read'):Promise<string> {
+  async initiateGoogle(signal:AbortSignal, calendarPermission:'read'|'write'='read', gmailPermission:'read'|'modify'|'send'|'drafts'|'mailbox'='read', redirectUrl?:string):Promise<string> {
     if(!['read','write'].includes(calendarPermission))throw new TypeError('Invalid Calendar permission');
     if(!['read','modify','send','drafts','mailbox'].includes(gmailPermission))throw new TypeError('Invalid Gmail permission');
-    const response=object(await this.accountRequest('/api/v1/eliza/google/connect/initiate',signal,{side:'owner',capabilities:[
+    // An App Link return (https://eliza.app/alphaphone/google/return?state=…) brings Google's result
+    // straight back to Alpha instead of Cloud's web success page.
+    if(redirectUrl!==undefined&&!/^https:\/\/[a-z0-9.-]+\/alphaphone\/google\/return\?state=[A-Za-z0-9_-]{43}$/.test(redirectUrl))throw new TypeError('Invalid Google return');
+    const response=object(await this.accountRequest('/api/v1/eliza/google/connect/initiate',signal,{side:'owner',...(redirectUrl?{redirectUrl}:{}),capabilities:[
       ...gmailCapabilitiesFor(gmailPermission==='modify'?'modify':'read'),'google.calendar.read',...(calendarPermission==='write'?['google.calendar.write']:[]),
       ...(['read','modify'].includes(gmailPermission)?[]:[gmailPermission==='send'?'google.gmail.send':gmailPermission==='drafts'?'google.gmail.drafts':'google.gmail.mailbox']),
     ]}));
@@ -608,16 +682,37 @@ export class CloudProtocol {
     const data=object(await this.accountRequest(`/api/v1/eliza/google/calendar/feed?${params}`,signal));
     if(data.calendarId!==calendarId||!Array.isArray(data.events)||data.nextPageToken!=null||data.truncated===true)throw new CloudProtocolError('invalid-response');
     timestamp(data.syncedAt);
-    const plain=(value:unknown)=>{if(typeof value!=='string')throw new CloudProtocolError('invalid-response');return value;};
-    const flag=(value:unknown)=>{if(typeof value!=='boolean')throw new CloudProtocolError('invalid-response');return value;};
     const seen=new Set<string>();
     const events=data.events.map(value=>{
-      const row=object(value),externalId=string(row.externalId);
-      if(row.calendarId!==calendarId||seen.has(externalId)||!Array.isArray(row.attendees)||timestamp(row.endAt)<timestamp(row.startAt))throw new CloudProtocolError('invalid-response');
-      seen.add(externalId);
-      return {externalId,calendarId,title:plain(row.title),description:plain(row.description),location:plain(row.location),status:string(row.status),startAt:string(row.startAt),endAt:string(row.endAt),isAllDay:flag(row.isAllDay),timezone:optionalString(row.timezone),htmlLink:optionalString(row.htmlLink),conferenceLink:optionalString(row.conferenceLink),organizer:row.organizer==null?null:object(row.organizer),metadata:object(row.metadata),attendees:row.attendees.map(value=>{const a=object(value);return {email:optionalString(a.email),displayName:optionalString(a.displayName),responseStatus:optionalString(a.responseStatus),self:flag(a.self),organizer:flag(a.organizer),optional:flag(a.optional)};})};
+      const event=parseGoogleCalendarEvent(value,calendarId);
+      if(seen.has(event.externalId))throw new CloudProtocolError('invalid-response');
+      seen.add(event.externalId);return event;
     });
     return {calendarId,events,syncedAt:string(data.syncedAt)};
+  }
+  /** Creates an event on one Google calendar (owner side). Cloud answers `{event}` with the
+   * created event in the feed's shape; it must belong to the calendar that was asked for. */
+  async googleCalendarCreateEvent(grantId:string,calendarId:string,input:GoogleCalendarEventInput,signal:AbortSignal):Promise<GoogleCalendarEvent> {
+    uuid(grantId);string(calendarId);
+    const fields=googleCalendarWriteFields(input,true);
+    const data=object(await this.accountRequest('/api/v1/eliza/google/calendar/events',signal,{side:'owner',grantId,calendarId,...fields}));
+    return parseGoogleCalendarEvent(data.event,calendarId);
+  }
+  /** Changes the named fields of one event. Only fields present in `patch` are sent; Google keeps
+   * the rest. Answers `{event}` with the changed event. */
+  async googleCalendarUpdateEvent(grantId:string,calendarId:string,eventId:string,patch:GoogleCalendarEventPatch,signal:AbortSignal):Promise<GoogleCalendarEvent> {
+    uuid(grantId);string(calendarId);googleCalendarEventId(eventId);
+    const fields=googleCalendarWriteFields(patch,false);
+    if(!Object.keys(fields).length)throw new TypeError('Calendar change is empty');
+    const data=object(await this.accountRequest(`/api/v1/eliza/google/calendar/events/${eventId}`,signal,{side:'owner',grantId,calendarId,...fields},{method:'PATCH'}));
+    return parseGoogleCalendarEvent(data.event,calendarId);
+  }
+  /** Deletes one event. Cloud answers `{ok:true}`; anything else is an invalid response. */
+  async googleCalendarDeleteEvent(grantId:string,calendarId:string,eventId:string,signal:AbortSignal):Promise<void> {
+    uuid(grantId);string(calendarId);googleCalendarEventId(eventId);
+    const params=new URLSearchParams({side:'owner',grantId,calendarId});
+    const data=object(await this.accountRequest(`/api/v1/eliza/google/calendar/events/${eventId}?${params}`,signal,undefined,{method:'DELETE'}));
+    if(data.ok!==true)throw new CloudProtocolError('invalid-response');
   }
   /** Starts Google consent. `read` asks for read access only; `modify` is the one incremental step
    * for approved mailbox changes (gmail-grants.ts). The single-capability values remain for callers

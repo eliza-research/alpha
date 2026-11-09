@@ -134,7 +134,8 @@ for (const legacy of [{ name: 'remote agent', selection: { kind: 'remote', origi
     await expect.poll(async () => (await nativeCalls(page)).filter(call => call.plugin === 'Agent').map(call => call.method)).toContain('start');
     // Every Alpha Phone signs in to Eliza Cloud: no local-only bypass and no close while signed out.
     await expect(welcome.getByRole('button', { name: 'Use local apps without AI', exact: true })).toHaveCount(0);
-    await expect(welcome.getByRole('button', { name: 'Sign in with Eliza Cloud', exact: true })).toBeVisible();
+    // This fixture has no in-app sign-in host (AlphaCloudSignIn), so the page offers Sign in only.
+    await expect(welcome.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
     await expect(welcome.getByRole('button', { name: 'Close connection settings', exact: true })).toHaveCount(0);
     expectRemoteUntouched(await nativeCalls(page));
     expect((await secureValues(page))[remoteSlot]).toBe(saved[remoteSlot]);
@@ -234,22 +235,20 @@ for (const mode of ['revoked', 'unsupported', 'failed', 'refused-in-body', 'not-
     await expect.poll(async () => (await nativeCalls(page)).filter(call => call.plugin === 'Agent').map(call => call.method)).toContain('start');
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await page.getByRole('button', { name: 'Eliza Cloud account & plan',exact:true }).click();
-    await expect(page.getByRole('button', { name: 'Sign out of Eliza Cloud', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Sign out', exact: true })).toBeVisible();
     const before = (await nativeCalls(page)).length;
     if (mode === 'cancelled') await page.evaluate(() => { (window as any).holdStop = true; });
-    await page.getByRole('button', { name: 'Sign out of Eliza Cloud', exact: true }).click();
+    await page.getByRole('button', { name: 'Sign out', exact: true }).click();
     if (mode === 'cancelled') {
       // Cancel while Cloud AI is still being unbound: sign-out still removes the local key.
       await page.waitForFunction(() => typeof (window as any).releaseStop === 'function');
       await page.getByRole('button', { name: 'Cancel', exact: true }).click();
       await page.evaluate(() => { (window as any).holdStop = false; (window as any).releaseStop(); });
     }
-    const status = page.locator('.alpha-connection').getByRole('status').filter({ hasText: /Signed out|sign-in token was removed/ });
-    if (mode === 'revoked') await expect(status).toContainText('Signed out of Eliza Cloud. This sign-in was revoked.');
-    else {
-      await expect(status).toContainText('The sign-in token was removed here; Eliza Cloud did not confirm revoking it.');
-      await expect(page.getByText(/was revoked/)).toHaveCount(0);
-    }
+    // One short line whether or not Cloud confirmed the revocation; token internals are never shown.
+    const status = page.locator('.alpha-connection').getByRole('status').filter({ hasText: /Signed out/ });
+    await expect(status).toHaveText('Signed out.');
+    await expect(page.getByText(/was revoked|token was removed|did not confirm revoking/)).toHaveCount(0);
     const calls = await nativeCalls(page);
     const revocations = calls.filter(call => call.http === 'DELETE');
     // One attempt, to the fixed self-revocation route, presenting only the key being revoked.
@@ -263,9 +262,9 @@ for (const mode of ['revoked', 'unsupported', 'failed', 'refused-in-body', 'not-
     expect(calls.slice(before).some(call => call.plugin === 'AlphaHostedResults' && call.method === 'disableBackground')).toBe(true);
     if (mode !== 'cancelled') expect(stop).toBeLessThan(calls.indexOf(revocations[0]));
     expect(await secureValues(page)).not.toHaveProperty('cloud:production');
-    await expect(page.getByRole('main', { name: 'Sign in', exact: true }).getByRole('button', { name: 'Sign in with Eliza Cloud', exact: true })).toBeVisible();
+    await expect(page.getByRole('main', { name: 'Sign in', exact: true }).getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
     // P-43: sign-out unbinds inference only; the resident restarted and the outcome says so.
-    if (mode !== 'cancelled') await expect(status).toContainText('Your agent is running. Sign in to Eliza Cloud to turn AI back on.');
+    if (mode !== 'cancelled') await expect(status).toHaveText('Signed out.');
     await expect.poll(async () => (await nativeCalls(page)).slice(before).filter(call => call.plugin === 'Agent' && call.method === 'start').length).toBeGreaterThan(0);
     await page.reload();
     // Signed out after a restart: the sign-in dialog opens by itself while the resident runs.
@@ -301,7 +300,7 @@ for (const legacy of legacyWeb) {
     // Nothing is connected, no sign-in is offered or implied and no mock or development surface opens.
     await expect(chooser.getByText(/Connected ·/)).toHaveCount(0);
     await expect(chooser.getByRole('button', { name: 'Disconnect agent', exact: true })).toHaveCount(0);
-    await expect(chooser.getByText(/Sign in again|Sign in with Eliza Cloud to continue|sign in with Eliza Cloud,/i)).toHaveCount(0);
+    await expect(chooser.getByText(/Sign in again|Sign in to continue|Sign in with Eliza Cloud to continue|sign in with Eliza Cloud,/i)).toHaveCount(0);
     await expect(chooser.getByText('Development connections', { exact: true })).toHaveCount(0);
     await expect(page.locator('.mock-mode-banner')).toHaveCount(0);
     expect(new URL(page.url()).search).toBe('');
@@ -475,7 +474,7 @@ test('passive deletion failures stay quiet; known pending failures preserve sett
   await expect(notice).toContainText('Pending deletion status is unavailable');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByRole('button', { name: 'Eliza Cloud account & plan',exact:true }).click();
-  const signout = page.getByRole('button', { name: 'Sign out of Eliza Cloud', exact: true });
+  const signout = page.getByRole('button', { name: 'Sign out', exact: true });
   // Force geometric overlap without forcing the click: informational text must not consume it.
   await signout.evaluate(button => {
     const banner = document.querySelector<HTMLElement>('.alpha-deletion-undo')!, rect = button.getBoundingClientRect();

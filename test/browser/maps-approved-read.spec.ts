@@ -90,8 +90,8 @@ for (const mode of ['place', 'route', 'stale-before-approval', 'stale-after-read
     await page.getByRole('button',{name:/^Private fixture destination/}).first().click();
     if(mode==='route'){
       await page.getByRole('button',{name:'Directions',exact:true}).click();
-      const origin=page.getByRole('textbox',{name:'Route origin coordinates'});await origin.fill('43.738,7.424');await origin.press('Enter');
-      await expect(page.getByText(/no live traffic/).first()).toBeVisible();
+      const origin=page.getByRole('textbox',{name:'Starting point',exact:true});await origin.fill('43.738,7.424');await origin.press('Enter');
+      await expect(page.locator('[data-alpha-maps-start]')).toHaveAttribute('data-can-start','true');
     }
     if(mode==='basemap-ready'){
       const before=await page.evaluate(async()=>{const {getMapsSelectedObject}=await import('/src/maps/agent-context.ts');return getMapsSelectedObject();});

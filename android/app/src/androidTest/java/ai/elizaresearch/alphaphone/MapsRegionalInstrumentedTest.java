@@ -11,6 +11,10 @@ import static org.junit.Assert.*;
 /** Requires the explicitly configured real regional gateway; never uploads GPS. */
 @RunWith(AndroidJUnit4.class)
 public final class MapsRegionalInstrumentedTest {
+ /** The route sheet names only live traffic, so a planned route shows as an enabled Start. */
+ private static final String ROUTE_READY="document.querySelector('[data-alpha-maps-start]')?.dataset.canStart==='true'";
+ /** Guidance shows no status line unless there is a notice; its End control marks a running session. */
+ private static final String GUIDING="!!document.querySelector('[aria-label=\"End navigation\"]')";
  private String js(String script)throws Exception{return WebViewTestDriver.evaluate(script);}
  private void waitFor(String predicate)throws Exception{for(int i=0;i<300;i++){if("true".equals(js("Boolean("+predicate+")")))return;SystemClock.sleep(100);}fail("Regional Maps state missing: "+predicate+"; diagnostics="+js("JSON.stringify({view:document.documentElement.dataset.activeView,plane:!!document.querySelector('[data-alpha-map-plane]'),ready:document.querySelector('[data-alpha-map-plane]')?.dataset.mapReady,features:document.querySelector('[data-alpha-map-plane]')?.dataset.mapFeatureCount,error:document.querySelector('[data-alpha-map-plane]')?.dataset.mapError,capabilities:document.querySelector('[data-alpha-maps-root]')?.dataset.mapDiagnostics,status:document.querySelector('[data-alpha-maps-status]')?.textContent.slice(0,220)})"));}
  private void click(String label)throws Exception{String q="[...document.querySelectorAll('[data-alpha-maps-root] button')].find(e=>e.getAttribute('aria-label')==="+JSONObject.quote(label)+")";waitFor(q);js("("+q+").click()");}
@@ -43,17 +47,17 @@ public final class MapsRegionalInstrumentedTest {
    capture("maps-regional-map.png");
    input("Search places","Casino de Monte Carlo");
    String result="[...document.querySelectorAll('[data-alpha-maps-root] button')].find(e=>e.textContent.trim().startsWith('Casino de Monte Carlo'))";waitFor(result);js("("+result+").click()");
-   click("Directions");input("Route origin coordinates","43.7384, 7.4246");
-   waitFor("document.querySelector('[data-alpha-maps-root]').textContent.includes('no live traffic')");
-   for(String mode:new String[]{"Walk","Bike","Drive"}){click(mode);waitFor("document.querySelector('[data-alpha-maps-root]').textContent.includes('no live traffic')");}
+   click("Directions");input("Starting point","43.7384, 7.4246");
+   waitFor(ROUTE_READY);
+   for(String mode:new String[]{"Walk","Bike","Drive"}){click(mode);waitFor(ROUTE_READY);}
    waitFor("Number(document.querySelector('[data-alpha-map-plane]')?.dataset.mapFeatureCount)>0");
    capture("maps-regional-route.png");
-   input("Route origin coordinates","37, -122");waitFor("document.querySelector('[data-alpha-maps-root]').textContent.includes('Both endpoints must be inside the Monaco region.')");
-   assertEquals("Stale route removed","false",js("document.querySelector('[data-alpha-maps-root]').textContent.includes('no live traffic')"));
-   input("Route origin coordinates","43.7384, 7.4246");waitFor("document.querySelector('[data-alpha-maps-root]').textContent.includes('no live traffic')");
+   input("Starting point","37, -122");waitFor("document.querySelector('[data-alpha-maps-root]').textContent.includes('Both endpoints must be inside the Monaco region.')");
+   assertEquals("Stale route removed","false",js("Boolean("+ROUTE_READY+")"));
+   input("Starting point","43.7384, 7.4246");waitFor(ROUTE_READY);
    js(AppNavigation.request("Notes"));waitFor(AppNavigation.selected("Notes"));assertEquals("Map canvas disposed when leaving","false",js("!!document.querySelector('[data-alpha-map-plane] canvas')"));
    js(AppNavigation.request("Maps"));waitFor(AppNavigation.selected("Maps"));waitFor("document.querySelector('[data-alpha-map-plane]')?.dataset.mapReady==='true'");
-   assertEquals("Routes never resume automatically","false",js("document.querySelector('[data-alpha-maps-root]').textContent.includes('no live traffic')"));
+   assertEquals("Routes never resume automatically","false",js("Boolean("+ROUTE_READY+")||document.querySelector('[data-alpha-maps-root]').textContent.includes('no live traffic')"));
   }
  }
  private void navigationPhase(String phase)throws Exception{
@@ -82,15 +86,15 @@ public final class MapsRegionalInstrumentedTest {
    waitFor("document.querySelector('[data-alpha-map-plane]')?.dataset.mapReady==='true'");
    input("Search places","Casino de Monte Carlo");
    String result="[...document.querySelectorAll('[data-alpha-maps-root] button')].find(e=>e.textContent.trim().startsWith('Casino de Monte Carlo'))";waitFor(result);js("("+result+").click()");
-   click("Directions");input("Route origin coordinates","43.7384, 7.4246");
-   waitFor("document.querySelector('[data-alpha-maps-root]').textContent.includes('no live traffic')");
+   click("Directions");input("Starting point","43.7384, 7.4246");
+   waitFor(ROUTE_READY);
    navigationPhase("origin");startNavigation();watches(1);
-   waitFor("document.querySelector('[data-alpha-maps-status]')?.textContent.includes('Foreground guidance · location accuracy')");
-   navigationPhase("off-route");waitFor("document.querySelector('[data-alpha-maps-status]')?.textContent.includes('Off route. Stop and calculate a new route.')");
+   waitFor(GUIDING);waitFor("document.querySelector('[data-alpha-maps-root]').textContent.includes('no live traffic')");
+   navigationPhase("off-route");waitFor("document.querySelector('[data-alpha-maps-status]')?.textContent.includes('Off route. Reroute from here, or end navigation.')");
    navigationPhase("arrival");waitFor("document.querySelector('[data-alpha-maps-status]')?.textContent.includes('Destination reached.')");watches(0);
    click("End navigation");watches(0);
    navigationPhase("origin-again");startNavigation();watches(1);
-   waitFor("document.querySelector('[data-alpha-maps-status]')?.textContent.includes('Foreground guidance · location accuracy')");
+   waitFor(GUIDING);waitFor("document.querySelector('[data-alpha-maps-root]').textContent.includes('no live traffic')");
    click("End navigation");watches(0);
    startNavigation();watches(1);js(AppNavigation.request("Notes"));waitFor(AppNavigation.selected("Notes"));watches(0);
    js(AppNavigation.request("Maps"));waitFor(AppNavigation.selected("Maps"));
@@ -130,22 +134,22 @@ public final class MapsRegionalInstrumentedTest {
   org.junit.Assume.assumeTrue("Owned gateway interruption fixture only", "1".equals(InstrumentationRegistry.getArguments().getString("mapsOutage")));
   try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
    AppNavigation.liveMode();navigationPhase("capabilities-stop");js(AppNavigation.request("Maps"));waitFor(AppNavigation.selected("Maps"));
-   waitFor("document.querySelector('[data-alpha-maps-status]')?.textContent.includes('Submit a search to retry')");
+   waitFor("/Connecting Maps|unavailable/.test(document.querySelector('[data-alpha-maps-status]')?.textContent||'')");
    assertEquals("No invented map while provider is unreachable","false",js("!!document.querySelector('[data-alpha-map-plane] canvas')"));
    navigationPhase("capabilities-restore");input("Search places","Casino de Monte Carlo");
    String result="[...document.querySelectorAll('[data-alpha-maps-root] button')].find(e=>e.textContent.trim().startsWith('Casino de Monte Carlo'))";waitFor(result);js("("+result+").click()");
-   click("Directions");input("Route origin coordinates","43.7384, 7.4246");waitFor("document.querySelector('[data-alpha-maps-root]').textContent.includes('no live traffic')");
+   click("Directions");input("Starting point","43.7384, 7.4246");waitFor(ROUTE_READY);
    navigationPhase("route-stop");
    long failureStarted=SystemClock.elapsedRealtime();
    js("(()=>{window.__regionalOutageProbe={settled:0,rejected:0};const p=window.Capacitor.Plugins.AlphaMapsTransport;for(let i=0;i<6;i++)p.request({path:'/tiles/14/8530/5974.pbf',requestId:'outage_'+crypto.randomUUID()}).then(()=>{window.__regionalOutageProbe.settled++;},()=>{window.__regionalOutageProbe.settled++;window.__regionalOutageProbe.rejected++;});})()");
-   input("Route origin coordinates","43.7385, 7.4246");
+   input("Starting point","43.7385, 7.4246");
    waitFor("document.querySelector('[data-alpha-maps-status]')?.textContent.includes('Regional Maps is unavailable')");
    waitFor("window.__regionalOutageProbe?.settled===6 && window.__regionalOutageProbe.rejected===6");
    assertTrue("Native deadlines include queue time and settle within20seconds",SystemClock.elapsedRealtime()-failureStarted<20000);
    js("delete window.__regionalOutageProbe");
-   assertEquals("Failed request removes stale route","false",js("document.querySelector('[data-alpha-maps-root]').textContent.includes('no live traffic')"));
-   navigationPhase("route-restore");input("Route origin coordinates","43.7384, 7.4246");
-   waitFor("document.querySelector('[data-alpha-maps-root]').textContent.includes('no live traffic')");
+   assertEquals("Failed request removes stale route","false",js("Boolean("+ROUTE_READY+")"));
+   navigationPhase("route-restore");input("Starting point","43.7384, 7.4246");
+   waitFor(ROUTE_READY);
    js(AppNavigation.request("Notes"));waitFor(AppNavigation.selected("Notes"));watches(0);
   }
  }

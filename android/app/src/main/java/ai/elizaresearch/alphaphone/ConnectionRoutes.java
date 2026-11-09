@@ -69,6 +69,7 @@ final class ConnectionRoutes {
   if(testMocks)return true;
   if(path==null||path.contains("%")||path.contains("\\")||path.contains("//"))return false;
   if(calendarSync(path,query,method,hasBody))return true;
+  if(path.startsWith(CALENDAR_EVENTS))return googleCalendarEvents(path,query,method,hasBody);
   if("DELETE".equals(method))return "/api/v1/api-keys/current".equals(path)&&query==null&&!hasBody;
   // Eliza Cloud Maps (#412): queries and coordinates travel only in a JSON body; capabilities is a bare read.
   if("POST".equals(method)&&path.matches("/api/v1/maps/(geocode|reverse|places/search|places/details|routes)"))return query==null&&hasBody;
@@ -78,6 +79,24 @@ final class ConnectionRoutes {
   if("POST".equals(method))return query==null&&(java.util.Set.of("/api/auth/cli-session","/api/v1/eliza/google/connect/initiate","/api/v1/eliza/google/disconnect","/api/v1/eliza/google/gmail/inbox-v1/operations").contains(path)||path.matches("/api/v1/eliza/google/gmail/inbox-v1/operations/[A-Za-z0-9_-]{1,160}/dispatch"));
   if(!"GET".equals(method)||hasBody)return false;
   return path.matches("/api/auth/cli-session/[0-9a-fA-F-]{36}")||java.util.Set.of("/api/v1/user","/api/v1/billing/limits","/api/v1/subscription/entitlement","/api/v1/subscription/entitlement-keys","/api/v1/eliza/google/accounts","/api/v1/eliza/google/status","/api/v1/eliza/google/calendar/calendars","/api/v1/eliza/google/calendar/feed","/api/v1/eliza/google/gmail/search","/api/v1/eliza/google/gmail/read").contains(path)||path.matches("/api/v1/eliza/google/gmail/inbox-v1/(capabilities|thread|attachment|drafts|draft)")||path.matches("/api/v1/eliza/google/gmail/inbox-v1/operations/[A-Za-z0-9_-]{1,160}");
+ }
+ static final String CALENDAR_EVENTS="/api/v1/eliza/google/calendar/events";
+ /**
+  * Owner-side Google Calendar writes from the Calendar view (route review P-22/P-31):
+  * POST /events creates (JSON body, no query); PATCH /events/{id} changes one event (JSON body,
+  * no query); DELETE /events/{id} removes one (query names side, grant and calendar; no body).
+  * Event ids are [A-Za-z0-9_]{1,1024}; ids that need percent-encoding stay read-only. Unlike the
+  * sync-v1 routes these need no native CalendarSyncConsent: the owner makes each change by hand in
+  * the Calendar view (deletes wait out an Undo window), and Cloud admits them only for a grant that
+  * holds google.calendar.write, which the owner approved on Google's consent page.
+  */
+ static boolean googleCalendarEvents(String path,String query,String method,boolean hasBody){
+  if(path==null)return false;
+  if(CALENDAR_EVENTS.equals(path))return "POST".equals(method)&&query==null&&hasBody;
+  if(!path.matches("/api/v1/eliza/google/calendar/events/[A-Za-z0-9_]{1,1024}"))return false;
+  if("PATCH".equals(method))return query==null&&hasBody;
+  if("DELETE".equals(method))return query!=null&&!query.isEmpty()&&!hasBody;
+  return false;
  }
  static boolean calendarSync(String path,String query,String method,boolean hasBody){
   if("/api/v1/eliza/google/calendar/sync-v1/capabilities".equals(path))return "GET".equals(method)&&query!=null&&!query.isEmpty()&&!hasBody;

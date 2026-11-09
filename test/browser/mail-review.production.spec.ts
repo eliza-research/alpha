@@ -135,6 +135,8 @@ async function androidWithMailbox(page: Page) {
               return reply(m.operations[id]);
             }
             if (operation && !operation[2]) return m.operations[decodeURIComponent(operation[1])] ? reply(m.operations[decodeURIComponent(operation[1])]) : { status: 404, data: {} };
+            // Maps connects at sign-in (docs/flow-redesign-2026-11); this synthetic Cloud serves no Maps.
+            if (path === '/api/v1/maps/capabilities') return { status: 404, data: {} };
             f.unexpected.push('cloud ' + path); return { status: 404, data: {} };
           }
           return {};

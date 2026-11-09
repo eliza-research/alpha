@@ -66,7 +66,7 @@ function device() {
   assert.equal(d.remote.dispatches, 0, 'a withdrawn review is never dispatched');
   assert.ok(d.toasts.some(t => /withdrawn, so the unsent review was discarded/.test(t)), 'the user is told the review was discarded');
   await d.provider.prepare(archive);
-  assert.match(d.toasts.at(-1), /has not granted this provider action/, 'a new review needs the change grant again'); assert.equal(d.remote.prepares, 1);
+  assert.equal(d.toasts.at(-1), 'Reconnect Gmail, then try again.', 'a new review needs the change grant again'); assert.equal(d.remote.prepares, 1);
 }
 // A review still being prepared (a provider run is active): the withdrawal waits for the run and then discards it.
 {

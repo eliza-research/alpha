@@ -8,7 +8,7 @@ import {layoutBrowserDialog} from '../browser/dialog-layout';
  * autofill selection: no Keystore, no system prompt, nothing persisted. It honours the native
  * contract exactly: no method resolves with a password.
  */
-type Record_={id:string;label:string;username:string;bindings:string[];secret:string;updatedAt:number};
+type Record_={id:string;label:string;username:string;bindings:string[];secret:string;updatedAt:number;revision:number};
 const UNLOCK_MS=60_000;
 const fail=(code:string,message:string)=>Object.assign(new Error(message),{code});
 const display=(facet:string)=>facet.replace(/^https:\/\//,'');
@@ -16,12 +16,12 @@ const display=(facet:string)=>facet.replace(/^https:\/\//,'');
 export function createDevelopmentVault():ElizaPasswordsPlugin & {readonly selection:string;expire():void}{
  const records=new Map<string,Record_>();
  let unlockedUntil=0,selected:'none'|'this-app'='none',sequence=0;
- const seed=(label:string,username:string,origin:string)=>{const id=`dev-${++sequence}`;records.set(id,{id,label,username,bindings:[origin],secret:`synthetic-dev-${sequence}-not-real`,updatedAt:Date.now()});};
+ const seed=(label:string,username:string,origin:string)=>{const id=`dev-${++sequence}`;records.set(id,{id,label,username,bindings:[origin],secret:`synthetic-dev-${sequence}-not-real`,revision:1,updatedAt:Date.now()});};
  seed('Example sign-in','alex@example.test','https://example.test');
  seed('Library account','reader@example.test','https://library.example.test');
  const unlocked=()=>Date.now()<unlockedUntil;
  const need=()=>{if(!unlocked())throw fail('locked','Unlock saved passwords first');};
- const summary=(r:Record_):PasswordEntrySummary=>({id:r.id,label:r.label,username:r.username,updatedAt:r.updatedAt,bindings:r.bindings.map(facet=>({kind:'web' as const,facet,display:display(facet)}))});
+ const summary=(r:Record_):PasswordEntrySummary=>({id:r.id,label:r.label,username:r.username,updatedAt:r.updatedAt,revision:r.revision,bindings:r.bindings.map(facet=>({kind:'web' as const,facet,display:display(facet)}))});
  const surface=(title:string,text:string)=>{
   const dialog=document.createElement('dialog');dialog.setAttribute('aria-label','Development vault secret');
   dialog.style.cssText='box-sizing:border-box;width:min(92vw,360px);border:0;border-radius:20px;padding:22px;background:var(--bg,#fff);color:var(--fg,#111);font:16px system-ui';
@@ -50,7 +50,7 @@ export function createDevelopmentVault():ElizaPasswordsPlugin & {readonly select
    const secret=input.generate?Array.from({length},(_,index)=>'abcdefghjkmnpqrstuvw'[index%20]).join(''):input.password??existing?.secret;
    if(!secret)throw fail('invalid','Enter a password');
    const id=existing?.id||`dev-${++sequence}`;
-   records.set(id,{id,label,username:String(input.username||''),bindings,secret,updatedAt:Date.now()});
+   records.set(id,{id,label,username:String(input.username||''),bindings,secret,updatedAt:Date.now(),revision:(existing?.revision??0)+1});
    return input.generate?{id,generated:true as const,length}:{id};
   },
   async openEditor():Promise<never>{throw fail('unavailable','The protected native password editor is unavailable in browser development.');},

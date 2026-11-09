@@ -92,7 +92,7 @@ public final class InboxDraftInstrumentedTest {
    // Exercise the production sign-in control with a closed test-APK transport;
    // a developer-only environment selector is not part of this UI contract.
    nav("Settings");click("Agent connection");click("Sign in with Eliza Cloud");
-   until("document.querySelector('.alpha-cloud-sign-in input[name=email]')");js(InboxFixtureSignIn.DRIVE_EMAIL);
+   until("document.querySelector('.alpha-cloud-sign-in input[name=username]')");js(InboxFixtureSignIn.DRIVE_EMAIL);
    until("document.querySelector('.alpha-cloud-sign-in input[name=one-time-code]')");js(InboxFixtureSignIn.DRIVE_CODE);// The Android account panel names the signed-in state and offers Sign out only once /api/v1/user verified the session.
    until("document.querySelector('#connection-title')?.textContent==='Your agent'&&"+button("Sign out"));click("Close connection settings");
    // Inbox loads the signed-in mailbox by itself (the old explicit Load Inbox control is gone).

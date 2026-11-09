@@ -9,7 +9,7 @@ const ROOT = ['Inbox', 'Calendar', 'Browser', 'Camera', 'Photos', 'Maps', 'Notes
 type View = typeof ROOT[number] | 'Reminders' | 'Notifications';
 const VIEWS: View[] = [...ROOT, 'Reminders', 'Notifications'];
 const EMPTY: Record<View, RegExp> = {
-  Inbox: /Connect Eliza Cloud to use Gmail/,
+  Inbox: /Sign in to use Inbox\./,
   Calendar: /No visible events|Nothing scheduled/,
   Browser: /No open pages|New tab/,
   Camera: /^Camera unavailable$/,
@@ -20,7 +20,7 @@ const EMPTY: Record<View, RegExp> = {
   Workflows: /Connect your remote agent in Settings\. Reminders on this phone stay available/,
   // The account row names the Cloud service and offers sign-in.
   Settings: /\bSign in\b/,
-  Reminders: /No visible events or reminders/,
+  Reminders: /Nothing scheduled/,
   Notifications: /No notifications/,
 };
 // Fixture identities from the reference prototype must never appear in a live profile.

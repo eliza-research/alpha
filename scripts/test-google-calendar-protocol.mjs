@@ -12,11 +12,20 @@ const row={calendarId,summary:'Personal',description:null,primary:true,accessRol
 const event={externalId:'event-one',calendarId,title:'Fixture',description:'',location:'',status:'confirmed',startAt:'2026-10-13T15:00:00Z',endAt:'2026-10-13T16:00:00Z',isAllDay:false,timezone:'America/Los_Angeles',htmlLink:null,conferenceLink:null,organizer:null,attendees:[],metadata:{recurringEventId:null}};
 const range={timeMin:'2026-10-01T00:00:00Z',timeMax:'2026-11-01T00:00:00Z',timeZone:'America/Los_Angeles'};
 const signal=()=>new AbortController().signal;
+function writeResponse(input,url){
+ if(input.method==='DELETE'){assert.equal(input.body,undefined);assert.deepEqual(Object.fromEntries(url.searchParams),{side:'owner',grantId:grant,calendarId});return mode==='delete-bad'?{ok:'yes'}:{ok:true};}
+ assert.equal(url.search,'');assert.equal(input.body.side,'owner');assert.equal(input.body.grantId,grant);assert.equal(input.body.calendarId,calendarId);
+ const id=input.method==='POST'?'created_1':url.pathname.split('/').at(-1);
+ const written={...event,externalId:id,title:input.body.title??event.title,calendarId:mode==='write-wrong-calendar'?'other':calendarId};
+ if(mode==='write-malformed')delete written.attendees;
+ return {event:written};
+}
 const client=new CloudProtocol('production',async input=>{
  calls.push(input);assert.equal(input.headers.Authorization,'Bearer synthetic-only');assert.equal(input.redirect,'error');
  assert.equal(managedServiceRequest(input.url,input.method,input.body!==undefined),true);
  const url=new URL(input.url);let data;
  if(url.pathname.endsWith('/connect/initiate'))data={authUrl:mode==='bad-url'?'https://attacker.invalid':'https://accounts.google.com/o/oauth2/v2/auth?state=synthetic'};
+ else if(url.pathname.startsWith('/api/v1/eliza/google/calendar/events'))data=writeResponse(input,url);
  else{
   assert.equal(url.searchParams.get('side'),'owner');assert.equal(url.searchParams.get('grantId'),grant);
   if(url.pathname.endsWith('/calendars'))data=mode==='duplicate'?[row,row]:[{...row,...(mode==='malformed'?{primary:'yes'}:{})}];
@@ -57,10 +66,33 @@ await assert.rejects(client.googleCalendarFeed(grant,calendarId,{...range,timeMa
 await assert.rejects(client.googleCalendarFeed(grant,calendarId,{...range,timeZone:'not/a-zone'},signal()));
 const aborted=new AbortController();aborted.abort();await assert.rejects(client.googleCalendars(grant,aborted.signal));
 assert.equal(calls.length,before,'invalid and aborted input never dispatches');
+// Calendar writes: Cloud's exact shapes, validated before dispatch.
+const input={title:'  Lunch  ',startAt:'2026-11-06T12:00:00-08:00',endAt:'2026-11-06T13:00:00-08:00',timeZone:'America/Los_Angeles',attendees:[{email:' guest@example.invalid '}]};
+const created=await client.googleCalendarCreateEvent(grant,calendarId,input,signal());
+assert.equal(calls.at(-1).method,'POST');assert.equal(new URL(calls.at(-1).url).pathname,'/api/v1/eliza/google/calendar/events');
+assert.deepEqual(calls.at(-1).body,{side:'owner',grantId:grant,calendarId,title:'Lunch',startAt:input.startAt,endAt:input.endAt,timeZone:input.timeZone,attendees:[{email:'guest@example.invalid'}]});
+assert.equal(created.externalId,'created_1');assert.equal(created.title,'Lunch');assert.equal(calls.at(-1).headers['Idempotency-Key'],undefined,'no idempotency header: the route ignores it');
+const updated=await client.googleCalendarUpdateEvent(grant,calendarId,'abc_20261106T200000Z',{title:'Renamed',location:''},signal());
+assert.equal(calls.at(-1).method,'PATCH');assert.equal(new URL(calls.at(-1).url).pathname,'/api/v1/eliza/google/calendar/events/abc_20261106T200000Z');
+assert.deepEqual(calls.at(-1).body,{side:'owner',grantId:grant,calendarId,title:'Renamed',location:''});assert.equal(updated.title,'Renamed');
+await client.googleCalendarUpdateEvent(grant,calendarId,'abc',{responseStatus:'declined'},signal());assert.deepEqual(calls.at(-1).body,{side:'owner',grantId:grant,calendarId,responseStatus:'declined'});
+assert.equal(await client.googleCalendarDeleteEvent(grant,calendarId,'abc',signal()),undefined);
+assert.equal(calls.at(-1).method,'DELETE');assert.equal(calls.at(-1).body,undefined);
+for(const value of ['write-wrong-calendar','write-malformed']){mode=value;await assert.rejects(client.googleCalendarCreateEvent(grant,calendarId,input,signal()),e=>e.code==='invalid-response',value);await assert.rejects(client.googleCalendarUpdateEvent(grant,calendarId,'abc',{title:'x'},signal()),e=>e.code==='invalid-response',value);}
+mode='delete-bad';await assert.rejects(client.googleCalendarDeleteEvent(grant,calendarId,'abc',signal()),e=>e.code==='invalid-response');
+mode='ok';const beforeWrites=calls.length;
+for(const bad of [{...input,title:'  '},{...input,startAt:'2026-11-06T12:00:00'},{...input,endAt:'tomorrow'},{...input,timeZone:'Mars/Olympus'},{...input,endAt:'2026-11-06T11:00:00-08:00'},{...input,attendees:[{email:'not-an-email'}]},{...input,title:undefined}])
+ await assert.rejects(client.googleCalendarCreateEvent(grant,calendarId,bad,signal()),TypeError);
+await assert.rejects(client.googleCalendarCreateEvent('not-a-grant',calendarId,input,signal()));
+for(const id of ['a%2Fb','a/b','a-b','','x'.repeat(1025)]){await assert.rejects(client.googleCalendarUpdateEvent(grant,calendarId,id,{title:'x'},signal()),TypeError,id);await assert.rejects(client.googleCalendarDeleteEvent(grant,calendarId,id,signal()),TypeError,id);}
+await assert.rejects(client.googleCalendarUpdateEvent(grant,calendarId,'abc',{},signal()),TypeError,'an empty change never dispatches');
+await assert.rejects(client.googleCalendarUpdateEvent(grant,calendarId,'abc',{attendees:[]},signal()),TypeError,'updates never carry guests');
+await assert.rejects(client.googleCalendarUpdateEvent(grant,calendarId,'abc',{responseStatus:'maybe'},signal()),TypeError);
+assert.equal(calls.length,beforeWrites,'invalid writes never dispatch');
 for(const path of ['/api/v1/eliza/google/calendar/feed','/api/v1/eliza/google/calendar/calendars']){
  assert.equal(managedServiceRequest('https://api.eliza.app'+path+'?side=owner','GET'),true);
  assert.equal(managedServiceRequest('https://api.eliza.app'+path,'POST',true),false);
  assert.equal(managedServiceRequest('https://api.eliza.app'+path,'GET',true),false);
  assert.equal(managedServiceRequest('https://other.invalid'+path,'GET'),false);
 }
-console.log('Google Calendar protocol: combined consent, typed reads, account isolation, malformed and incomplete responses, and managed route boundaries passed.');
+console.log('Google Calendar protocol: combined consent, typed reads, owner writes, account isolation, malformed and incomplete responses, and managed route boundaries passed.');

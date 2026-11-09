@@ -54,9 +54,9 @@ function owner() {
 		account = state.cloudAccount;
 	if (!cloud || !account?.organizationId || !state.session)
 		throw Error(
-			"Connect your Cloud account and agent before enabling Calendar sync.",
+			"Sign in to sync your calendar.",
 		);
-	if(Capacitor.isNativePlatform()&&account.environment!=='production')throw Error('Device Calendar sync requires the production Cloud account; no other environment was used.');
+	if(Capacitor.isNativePlatform()&&account.environment!=='production')throw Error('Calendar sync isn’t available on this account.');
 	const selection = readGoogleCalendarSelection({
 		environment: account.environment,
 		userId: account.userId,
@@ -203,12 +203,12 @@ const controller = new CalendarSyncController(
 function message(error: unknown) {
 	const e = error as { status?: number; name?: string; message?: string };
 	if (e?.status === 404)
-		return "Calendar sync is not available on this server yet. Check linked events before retrying.";
+		return "Calendar sync isn’t available yet.";
 	if (e?.name === "AbortError")
-		return "Sync paused or the selected account changed. Check linked events before retrying.";
+		return "Sync paused. Try again.";
 	return (
 		e?.message ||
-		"Sync stopped. Check the selected Google calendar before retrying."
+		"Sync stopped. Try again."
 	);
 }
 async function work<T>(
@@ -236,8 +236,8 @@ async function work<T>(
 function report(result: CalendarSyncReport) {
 	const warnings = result.conflicted + result.quarantined + result.dirty;
 	return warnings
-		? `Sync needs review: ${result.conflicted} conflicts, ${result.quarantined} unconfirmed changes, ${result.dirty} refused changes.`
-		: `Synced: ${result.pushed} sent to Google, ${result.pulled} received, ${result.clean} unchanged.${result.paused?` ${result.paused} links paused.`:""}`;
+		? `${warnings} event${warnings === 1 ? " needs" : "s need"} review.`
+		: `Synced. ${result.pushed} sent to Google, ${result.pulled} received.${result.paused?` ${result.paused} links paused.`:""}`;
 }
 export const calendarSyncHost = {
 	subscribe(listener: () => void) {

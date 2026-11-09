@@ -24,7 +24,9 @@ export function affected(paths) {
       continue;
     }
     result.verify = true;
-    if (/^test\/browser\//.test(path) || path === 'playwright.config.ts' || path === 'scripts/storage-specs.mjs') {
+    if (/^specs\/quint\//.test(path) || /^scripts\/(check-quint|quint-lib)\.mjs$/.test(path)) {
+      // Executable formal models are checked by verify and do not change APK or browser bytes.
+    } else if (/^test\/browser\//.test(path) || path === 'playwright.config.ts' || path === 'scripts/storage-specs.mjs') {
       result.browser = true;
     } else if (/^test\//.test(path)) {
       // Host contract tests run in verify, not in an emulator.

@@ -60,7 +60,7 @@ export function inboxProviderControls(publish:()=>void,toast:(message:string)=>v
   if(failure==='stale'&&(record.phase==='preparing'||record.phase==='review')){await run(async(owned,check)=>{await owned.clear();check();visible=false;});if(!operation?.snapshot()){failure=null;onStale?.();}return;}
   if(record.phase==='preparing'){await run(owned=>owned.reloadReview());return;}
   await run(owned=>owned.refresh());}
- async function prepare(proposal:Bag,source?:{draftId:string}){if(!operation)return;const kind=proposal.kind;if(!gmailInboxAllows(caps,kind as GmailMailboxAction)){toast('The selected account has not granted this provider action. Authorize Gmail changes, then try again. Nothing was changed.');return;}visible=true;
+ async function prepare(proposal:Bag,source?:{draftId:string}){if(!operation)return;const kind=proposal.kind;if(!gmailInboxAllows(caps,kind as GmailMailboxAction)){toast('Reconnect Gmail, then try again.');return;}visible=true;
   // An unsent review of an earlier version of this email was never dispatched. Discard it and
   // prepare the current content under a new request ID; the same content reopens its own review.
   const pending=unsent();

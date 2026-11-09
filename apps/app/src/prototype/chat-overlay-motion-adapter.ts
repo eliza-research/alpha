@@ -546,7 +546,7 @@ export function installChatOverlayMotion(Component: Shell) {
 			});
 		};
 		out.scrimTap = out.closeChat;
-		// One rule for every raised dock (docs/ui-refresh-2026-11, tla/ChatInput.tla): the bar
+		// One rule for every raised dock (docs/ui-refresh-2026-11, specs/quint/legacy/ChatInput.qnt): the bar
 		// above a pill view's resting form, or any composer bar with the keyboard up, takes the
 		// first touch outside it. That touch lowers the dock to its resting form, closes the
 		// keyboard and reaches nothing underneath; the next touch is ordinary. The draft stays.

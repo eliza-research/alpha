@@ -32,3 +32,6 @@ android/.kotlin/
 __pycache__/
 # Android externalNativeBuild caches (CMake/ninja state with absolute build paths)
 .cxx/
+
+# Quint model-checker intermediate output
+/_apalache-out/

@@ -11,6 +11,10 @@ export const residentMapsNavigationPort = {
  register(navigation: MapsDeviceNavigation | null) { this.current = navigation; },
 };
 
+/** The current binding, for agent results shown in chat (maps-chat-adapter.ts). It goes through
+ * the same installation and account checks as relay requests; null whenever none is offered. */
+export const mapsAgentResultsPort = { current: null as AlphaMapsDeviceNavigation | null };
+
 /** The installed Eliza Cloud Maps coverage for the signed-in account, if any. */
 export type CloudInstallation = Readonly<{ providerId: string; attribution: string }> | undefined;
 export type AgentNavigationOptions = Readonly<{
@@ -21,6 +25,8 @@ export type AgentNavigationOptions = Readonly<{
  onChange(listener: () => void): () => void;
  surface: MapsNavigationSurface;
  port: MapsDeviceNavigationPort;
+ /** True when "Ask before agent actions" is off: an agent's route starts guidance at once. */
+ directStart?(): Promise<boolean>;
  limits?: Partial<NavigationLimits>;
 }>;
 
@@ -41,6 +47,7 @@ export function bindAgentNavigation(options: AgentNavigationOptions) {
   if (!current) return;
   const old = current; current = undefined;
   options.port.register(null);
+  if (mapsAgentResultsPort.current === old.binding) mapsAgentResultsPort.current = null;
   old.binding.retire();
  };
  const sync = () => {
@@ -53,9 +60,11 @@ export function bindAgentNavigation(options: AgentNavigationOptions) {
    providerId: installation.providerId,
    attribution: installation.attribution,
    current: () => current?.binding === binding && installed()?.provider === provider,
+   ...(options.directStart ? { directStart: options.directStart } : {}),
   }, options.limits);
   current = { binding, provider };
   options.port.register(binding);
+  mapsAgentResultsPort.current = binding;
  };
  const unsubscribe = options.onChange(sync);
  sync();
