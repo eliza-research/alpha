@@ -5,13 +5,12 @@ import {fileURLToPath} from 'node:url';
 import {isDeepStrictEqual} from 'node:util';
 import {expectedMobileUuidTransforms, mobileBuildInputs, mobileBuildReceipt, verifyMobileBuildReceipt,
   MOBILE_BUILD_INPUTS, MOBILE_BUILD_RECEIPT, MOBILE_UUID_POLICY} from '../../../../scripts/mobile-uuid-adapter.mjs';
-import {coreStateBuildPlugin, coreStateReceipt, PLUGIN_CONNECTOR_TARGET} from '../../../../scripts/core-state-patch.mjs';
+import {CORE_STATE_MANIFEST, coreStateBuildPlugin, coreStateReceipt, PLUGIN_CONNECTOR_TARGET} from '../../../../scripts/core-state-patch.mjs';
 import {actualPolicy, hash, mobileUuidFixture} from '../../../../test/fixtures/mobile-uuid-build.mjs';
 import {captureInputs, checkTraces} from '../check-traces.mjs';
 
 const repository = path.resolve(import.meta.dirname, '../../../..');
 const adapter = MOBILE_BUILD_INPUTS[0], otherAdapter = MOBILE_BUILD_INPUTS.at(-1);
-const connectorPatch = 'patches/eliza/plugin-connector-custody.patch';
 const zeroHash = '0'.repeat(64);
 const action = (name, ...args) => ({name, args});
 const idle = {operation: 'none', result: 'none'};
@@ -50,7 +49,7 @@ function refusal(error, files) {
     [/unexpected modules/, 'inventory'],
     [/input must be regular/, 'regular'],
     [/transform exactly the reviewed barrel/, 'uuid-transform'],
-    [/core patch transformation|selected core transformation|Core patch digest mismatch/i, 'core-transform'],
+    [/core source observation|selected core source observation|Core source catalog/i, 'core-transform'],
     [/receipt differs from reviewed producer or bundle/, 'stale'],
   ];
   const kind = results.find(([pattern]) => pattern.test(error.message))?.[1];
@@ -71,7 +70,7 @@ function fixture(f, alternate) {
     policy: atRoot(MOBILE_UUID_POLICY), producer: sdk(actualPolicy.builder.path),
     adapter: atRoot(adapter), otherAdapter: atRoot(otherAdapter), stamp: sdk('.alpha-runtime-source.json'),
     lock: sdk('bun.lock'), package: sdk(actualPolicy.package.root+'/dist-node/v4.js'),
-    inventory: sdk(actualPolicy.package.root+'/dist-node/unreviewed.js'), connectorPatch: atRoot(connectorPatch),
+    inventory: sdk(actualPolicy.package.root+'/dist-node/unreviewed.js'), coreCatalog: atRoot(CORE_STATE_MANIFEST),
   };
   if (alternate) {
     fs.mkdirSync(target);
@@ -181,7 +180,7 @@ function fixture(f, alternate) {
       return () => {fs.unlinkSync(files.package); fs.writeFileSync(files.package, before);};
     },
     adapter: () => replace(files.otherAdapter, null),
-    'core-auth': () => replace(files.connectorPatch, 'fixture changed connector patch'),
+    'core-auth': () => replace(files.coreCatalog, JSON.stringify({schema: 1, baseCommit: actualPolicy.baseCommit, files: {}})),
   };
   return {
     observe,

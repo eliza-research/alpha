@@ -34,10 +34,9 @@ const noAttempt = {projection: false, version: false, compile: false, moduleWrit
   previousHost: 0, previousReceipt: {bundle: 0, source: 0, connector: false}};
 const productFiles = [
   'scripts/build-native-google-host.ts', 'scripts/local-agent-source.mjs', 'scripts/native-google-host-artifact.mjs',
-  'scripts/prepare-client-features.mjs', 'scripts/client-speech-patch.mjs', 'package.json', 'tsconfig.json',
+  'scripts/prepare-client-features.mjs', 'package.json', 'tsconfig.json',
   'vendor/eliza/tsconfig.json',
 ];
-const optionalFiles = ['patches/eliza/cloud-speech-client-manifest.json', 'patches/eliza/cloud-speech-client.patch'];
 const workerFiles = ['node_modules/smthrs/package.json', 'node_modules/zod/package.json',
   'node_modules/effect/package.json', 'node_modules/@smthrs/engine/package.json', 'dependencies.json', 'lib/worker.js'];
 
@@ -53,7 +52,6 @@ function setup(number, simpleCore = false) {
   const json = (file, value) => write(file, JSON.stringify(value));
   const copy = name => write(path.join(root, name), fs.readFileSync(path.join(repository, name)));
   for (const name of productFiles) copy(name);
-  for (const name of optionalFiles) if (fs.existsSync(path.join(repository, name))) copy(name);
   writeCoreStateFixture(root, sdk, '0'.repeat(40), simpleCore);
   const sdkConfigBytes = '{"compilerOptions":{}}';
   write(sdkConfig, sdkConfigBytes);
@@ -73,7 +71,7 @@ function setup(number, simpleCore = false) {
   write(source, fixtureSource(1));
   write(path.join(root, 'linked-target.ts'), 'export const synthetic = true;');
   const transient = ['linked-input.ts', 'unavailable-input.ts'].map(name => path.join(root, name));
-  const fixedInput = path.join(root, 'scripts/client-speech-patch.mjs');
+  const fixedInput = path.join(root, 'scripts/prepare-client-features.mjs');
   const fixedInputBytes = fs.readFileSync(fixedInput);
   const readPair = () => ({
     host: fs.existsSync(modulePath) ? {bytes: fs.readFileSync(modulePath), mode: fs.statSync(modulePath).mode} : null,
@@ -139,7 +137,7 @@ function setup(number, simpleCore = false) {
       [/Unexpected runtime source change/, 'sdk'],
       [/Native host compilation failed/, 'compiler'], [/did not produce its module and source graph/, 'output'],
       [/SDK dependency escaped/, 'resolver'], [/source graph escaped|source graph lacks exact input bytes|compiler input graph is incomplete/, 'graph'],
-      [/selected core transformation/, 'transform'], [/EISDIR.*meta\.json/, 'metadata'],
+      [/selected core source observation/, 'transform'], [/EISDIR.*meta\.json/, 'metadata'],
       [/ENOENT.*unavailable-input/, 'input'],
       [/Fixture manifest publication refused/, 'manifest'], [/Fixture module publication refused/, 'module'],
       [/fixed build input changed/, 'fixed'], [/candidate bytes differ from compiler output/, 'candidate'], [/worker artifact changed during build/, 'worker'], [/artifact is missing/, 'missing'],
@@ -260,11 +258,11 @@ function bunCompatibility(bun) {
     assert.equal(host.inputs[name], digest(fs.readFileSync(path.join(root, name))), name);
   const connector = host.coreState.transforms.find(row => row.path === PLUGIN_CONNECTOR_TARGET);
   assert.deepEqual(connector, {path: PLUGIN_CONNECTOR_TARGET,
-    sourceSha256: digest('export const value = "before";\n'),
-    outputSha256: digest('export const value = "after";\n')});
+    sourceSha256: digest('export const value = "reviewed";\n'),
+    outputSha256: digest('export const value = "reviewed";\n')});
   const observed = JSON.parse(execFileSync(bun, ['-e', 'import {observed} from "./artifacts/worker/google-host.mjs"; console.log(JSON.stringify(observed))'],
     {cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']}));
-  assert.deepEqual(observed, [1, 2, 3, 4, 5, 6, 7, 8, 8, 'synthetic fixture text', 'after']);
+  assert.deepEqual(observed, [1, 2, 3, 4, 5, 6, 7, 8, 8, 'synthetic fixture text', 'reviewed']);
   assert.ok(!fs.readdirSync(path.join(root, 'artifacts')).some(name => name.startsWith('.native-google-host-build-')));
   return {bun: execFileSync(bun, ['--version'], {encoding: 'utf8'}).trim(), inputs: Object.keys(inputFiles),
     graphInputsChecked: Object.keys(inputFiles).length+3, rawCoreInput: connector.sourceSha256,

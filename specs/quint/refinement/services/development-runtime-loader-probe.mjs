@@ -70,7 +70,7 @@ function observer(f) {
     const receipt = JSON.parse(readFileSync(f.receipt));
     assert.equal(receipt.commit, f.head);
     verifyCoreStateBuildRecord(f.root, receipt.coreState, [CORE_STATE_TARGET]);
-    assert.equal(patched, 'after');
+    assert.equal(patched, 'reviewed');
     events.push({version: id(value), failed});
   };
   return {
@@ -147,7 +147,7 @@ function createBuildPort(f, observer) {
     const taskLoad = loaders.find(([filter]) => filter.test(taskPath));
     assert.ok(taskLoad);
     if (spec.kind !== 'missing-transform') {
-      assert.equal(taskLoad[1]({path: taskPath}).contents, 'export const value = "after";\n');
+      assert.equal(taskLoad[1]({path: taskPath}).contents, 'export const value = "reviewed";\n');
       observer.transform();
     }
     const inputs = Object.fromEntries([options.entrypoints[0], examplePath, taskPath].map(path => [path, {}]));
@@ -155,7 +155,7 @@ function createBuildPort(f, observer) {
     const marker = 'runtime-'+(spec.version === 1 ? 'first' : 'second');
     // This is the only artifact the closed build port can emit.
     f.write('backend/.generated/runtime.js', `const marker = "${marker}";
-const patched = "after";
+const patched = "reviewed";
 globalThis.runtimeLoaderEvaluation(marker, patched, ${spec.kind === 'import'});
 ${spec.kind === 'import' ? 'throw new Error("Closed fixture module failed");' : ''}
 export { marker, patched };
@@ -175,11 +175,11 @@ function boundary(options) {
 const failures = {
   disabled: /Development runtime is disabled/,
   pin: /Unexpected runtime source change|Unexpected untracked runtime source|Prepared runtime base commit changed/,
-  prebuild: /Duplicate source package|Core patch (digest|pin|schema)/,
+  prebuild: /Duplicate source package|Core source (catalog|differs)/,
   resolve: /Pinned runtime build failed/,
   'build-throw': /Closed fixture build threw/,
   'build-false': /Pinned runtime build failed/,
-  'missing-transform': /Missing or invalid selected core transformation/,
+  'missing-transform': /Missing or invalid selected core source observation/,
   'receipt-write': /EISDIR/,
   'state-dir': /EEXIST|ENOTDIR/,
   'salt-read': /EISDIR/,
@@ -215,7 +215,7 @@ async function synthetic(scratch, name, specs, settings = {}) {
       assert.ok(value, error?.message);
       assert.equal(value.head, f.head);
       assert.equal(value.dataDir, f.state);
-      assert.equal(value.module.patched, 'after');
+      assert.equal(value.module.patched, 'reviewed');
       o.returned(value.module.marker);
     } else {
       assert.ok(error, 'Closed fixture should be refused at '+kind);
@@ -276,7 +276,7 @@ async function actualBun(scratch) {
       const value = await pending;
       assert.equal(value.head, f.head);
       assert.equal(value.dataDir, f.state);
-      assert.equal(value.module.patched, 'after');
+      assert.equal(value.module.patched, 'reviewed');
       const receipt = JSON.parse(readFileSync(f.receipt, 'utf8'));
       const source = version === 1 ? 'first' : 'second';
       assert.equal(receipt.modules['@elizaos/example/'+source], 'packages/example/'+source+'.ts');
@@ -309,7 +309,7 @@ export async function driveLoader(scratch, real = false) {
     }}]],
     ['ignored_file', [{kind: 'pin', prepare: f => f.write('vendor/eliza/hidden/ignored.ts', 'export const extra = true;')}]],
     ['duplicate_source_registry', [{kind: 'prebuild'}], {duplicate: true}],
-    ['wrong_transform_patch_bytes', [{kind: 'prebuild', prepare: f => f.write('patches/eliza/task-service-stop.patch', 'Fixture wrong bytes')}]],
+    ['wrong_core_source_catalog', [{kind: 'prebuild', prepare: f => f.write(CORE_STATE_MANIFEST, JSON.stringify({schema: 1, baseCommit: f.head, files: {}}))}]],
     ['undeclared_source_export', [{kind: 'resolve'}]],
     ['build_rejects', [{kind: 'build-throw'}]],
     ['build_unsuccessful', [{kind: 'build-false'}]],

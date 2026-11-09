@@ -8,11 +8,11 @@ import {captureInputs, checkTraces} from '../check-traces.mjs';
 
 const root = resolve(import.meta.dirname, '../../../..');
 const probe = resolve(import.meta.dirname, 'development-runtime-loader-probe.mjs');
-const manifest = 'patches/eliza/core-state-manifest.json';
+const manifest = 'config/upstream-core-sources.json';
 const model = 'DevelopmentRuntimeLoader';
 
 function sourceInputs(extraSources) {
-  const {patches} = JSON.parse(readFileSync(join(root, manifest), 'utf8'));
+  const {files} = JSON.parse(readFileSync(join(root, manifest), 'utf8'));
   return [
     'backend/loader.ts', 'scripts/pinned-upstream-source.mjs', 'scripts/core-state-patch.mjs',
     'scripts/core-state-preload.mjs', 'scripts/combined-agent-source.mjs',
@@ -20,7 +20,7 @@ function sourceInputs(extraSources) {
     'upstream.lock.json', 'test/fixtures/core-state-root.mjs',
     ...['consumer-source-resolver.mjs', 'immutable-workspace-source.mjs', 'committed-source.mjs']
       .map(name => 'vendor/eliza/packages/app/scripts/lib/'+name),
-    ...patches.flatMap(patch => ['patches/eliza/'+patch.file, ...patch.targets.map(target => 'vendor/eliza/'+target.path)]),
+    ...Object.keys(files).map(name => 'vendor/eliza/'+name),
     probe, fileURLToPath(import.meta.url), ...extraSources,
   ];
 }

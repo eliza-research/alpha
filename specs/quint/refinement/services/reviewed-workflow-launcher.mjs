@@ -8,7 +8,7 @@ import {captureInputs, checkTraces} from '../check-traces.mjs';
 
 const root = resolve(import.meta.dirname, '../../../..');
 const probe = join(import.meta.dirname, 'reviewed-workflow-launcher-probe.mjs');
-const manifest = 'patches/eliza/core-state-manifest.json';
+const manifest = 'config/upstream-core-sources.json';
 const cases = [
   'relative-default', 'missing-deps', 'invalid-port', 'input-mode', 'unreviewed-profile', 'missing-entry',
   'routing', 'embedding-path', 'default-source', 'existing-profile', 'spawn-error', 'signal-int', 'signal-term',
@@ -16,7 +16,7 @@ const cases = [
 ];
 
 function sourceInputs(extraSources) {
-  const {patches} = JSON.parse(readFileSync(join(root, manifest), 'utf8'));
+  const {files} = JSON.parse(readFileSync(join(root, manifest), 'utf8'));
   return [
     'scripts/launcher-child.mjs', 'scripts/start-reviewed-workflow-agent.mjs', 'scripts/agent-embeddings.mjs', 'scripts/agent-identity.mjs',
     'scripts/agent-model.mjs', 'config/alpha-product.json', 'scripts/local-agent-source.mjs',
@@ -26,7 +26,7 @@ function sourceInputs(extraSources) {
     'vendor/eliza/packages/app/scripts/lib/committed-source.mjs',
     'vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs',
     'vendor/eliza/packages/agent/native-host/private-runtime-json.mjs',
-    ...patches.flatMap(patch => ['patches/eliza/'+patch.file, ...patch.targets.map(target => 'vendor/eliza/'+target.path)]),
+    ...Object.keys(files).map(name => 'vendor/eliza/'+name),
     'test/fixtures/core-state-root.mjs', probe, fileURLToPath(import.meta.url), ...extraSources,
   ];
 }

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-import {existsSync, mkdirSync, mkdtempSync, rmSync} from 'node:fs';
+import {mkdirSync, mkdtempSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -35,16 +35,14 @@ export function checkNativeGoogleHostLoaderCompatibility(bun) {
 
 export async function checkNativeGoogleHostArtifact(extraSources = []) {
   const core = coreStateReceipt(repository);
-  const optional = ['patches/eliza/cloud-speech-client-manifest.json', 'patches/eliza/cloud-speech-client.patch']
-    .filter(name => existsSync(join(repository,name)));
   const sources = [
     fileURLToPath(import.meta.url), probe, 'test/fixtures/native-google-host-builder-port.mjs', 'test/fixtures/core-state-root.mjs',
     'scripts/native-google-host-artifact.mjs', 'scripts/build-native-google-host.ts', 'scripts/workflow-worker-artifact.mjs',
     'scripts/local-agent-source.mjs', 'scripts/copy-file-clone.mjs', 'scripts/prepare-client-features.mjs',
-    'scripts/client-speech-patch.mjs', 'package.json', 'tsconfig.json', 'upstream.lock.json', 'vendor/eliza/tsconfig.json',
+    'package.json', 'tsconfig.json', 'upstream.lock.json', 'vendor/eliza/tsconfig.json',
     'vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs',
     'vendor/eliza/packages/app/scripts/lib/committed-source.mjs',
-    ...optional, ...Object.keys(core.inputHashes), ...Object.keys(core.files).map(name => 'vendor/eliza/'+name),
+    ...Object.keys(core.inputHashes), ...Object.keys(core.files).map(name => 'vendor/eliza/'+name),
     ...extraSources,
   ];
   const driverHashes = captureInputs(sources);
