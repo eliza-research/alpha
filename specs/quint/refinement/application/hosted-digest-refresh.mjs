@@ -46,15 +46,43 @@ const ports = {
   '../browser/development-digests': 'export const startDevelopmentDigestScheduler=()=>{throw Error("Unused development scheduler")};',
 };
 
-async function compile(extraSources) {
+const nativePorts = {
+  ...ports,
+  '../platform-plugins': 'export const registerPlugin=name=>new Proxy({}, {get:(_,key)=>globalThis.hostedDigestRefreshPorts.plugin(name)[key]});',
+  './hosted-background': 'export const NativeResultInbox=class {};export const configureHostedBackground=async()=>true;',
+  '../native': 'export const isAndroid=true;',
+  './cloud-delegation-ui': 'export const delegationNative={addListener:async()=>({remove(){}}),readDelegationCallback:async()=>({})};',
+};
+delete nativePorts['./source-renewal-question'];
+delete nativePorts['./hosted-notice-question'];
+
+async function compile(extraSources, native) {
+  const panelPorts = native ? nativePorts : ports;
   captureSources([driver, fixture, implementation, ...extraSources]);
   const built = await build({absWorkingDir: root, entryPoints: [fixture], bundle: true, platform: 'browser',
     format: 'iife', write: false, metafile: true, jsx: 'automatic',
     define: {'process.env.NODE_ENV': '"development"', 'import.meta.env': '{}'},
     plugins: [{name: 'hosted-digest-refresh-ports', setup(builder) {
-      builder.onResolve({filter: /^\./}, args => args.importer === panelPath && Object.hasOwn(ports, args.path)
-        ? {path: args.path, namespace: 'fixture-port'} : undefined);
-      builder.onLoad({filter: /.*/, namespace: 'fixture-port'}, args => ({contents: ports[args.path]}));
+      const intercepts = new Map([
+        [panelPath, panelPorts],
+        ...(native ? [
+          [resolve(root, 'apps/app/src/runtime/source-renewal-question.ts'),
+            {'./alpha-client': 'export const alphaClient={getState:()=>globalThis.hostedDigestRefreshPorts.context()};'}],
+          [resolve(root, 'apps/app/src/runtime/hosted-notice-question.ts'),
+            {'./alpha-client': 'export const alphaClient={getState:()=>globalThis.hostedDigestRefreshPorts.context()};'}],
+          [resolve(root, 'apps/app/src/browser/content-question.ts'),
+            {'../prototype/local-ocr': 'export const recognizeLocalText=()=>{throw Error("Unused image OCR")};'}],
+        ] : []),
+      ]);
+      const modules = new Map();
+      builder.onResolve({filter: /^\./}, args => {
+        const contents = intercepts.get(args.importer)?.[args.path];
+        if (!contents) return;
+        const path = args.importer+'#'+args.path;
+        modules.set(path, contents);
+        return {path, namespace: 'fixture-port'};
+      });
+      builder.onLoad({filter: /.*/, namespace: 'fixture-port'}, args => ({contents: modules.get(args.path)}));
       builder.onLoad({filter: /\/runtime\/hosted-digest-ui\.tsx$/}, ({path}) => {
         if (path !== panelPath) return undefined;
         const source = read(path), marker = '\tconst mounted = useRef(true);';
@@ -71,8 +99,8 @@ async function compile(extraSources) {
   return {code: built.outputFiles[0].text, sources};
 }
 
-export async function withHostedDigestRefresh(drive, extraSources = []) {
-  const compiled = await compile(extraSources);
+export async function withHostedDigestRefresh(drive, extraSources = [], {native = false} = {}) {
+  const compiled = await compile(extraSources, native);
   const browser = await chromium.launch({headless: true});
   try {
     async function scenario(execute) {
@@ -88,10 +116,10 @@ export async function withHostedDigestRefresh(drive, extraSources = []) {
       try {
         await page.goto('http://127.0.0.1/');
         await page.addScriptTag({content: compiled.code});
-        await command('mount');
+        await command('mount', native);
         return await execute(command);
       } finally {
-        try {await command('unmount');} finally {await page.close();}
+        try {await page.evaluate(() => globalThis.hostedDigestRefresh?.unmount());} finally {await page.close();}
         assert.deepEqual(errors, [], 'Mounted digest panel has no uncaught browser errors');
       }
     }
