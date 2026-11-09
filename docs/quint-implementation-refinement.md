@@ -1012,8 +1012,11 @@ profile races, kernel signal behavior and live service readiness remain open.
 
 The frozen strict run at `4fda14a9ec` credited 116 of 198 models. Services,
 native and composition passed. A cold shell mount timed out and the old
-application collector discarded earlier receipts. The legacy collector
-retained 40 receipts despite separate Home mount and Google fixture failures.
+application collector omitted earlier receipts. Independent revalidation of
+the retained artifacts recovered 39 application receipts for 36 models,
+306 traces and 1,767 checkpoints from that same revision. The strict result
+still records the failed run. The legacy collector retained 40 receipts
+despite separate Home mount and Google fixture failures.
 The Home replay now has its own navigation budget. Application campaigns
 retain results on either side of an individual failure while the aggregate
 still reports a failed run.
