@@ -9,7 +9,7 @@ diff --git a/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/
 
   public MailBackgroundDelivery(Host host,Scheduler scheduler,Notices poster,Config config){this(host,scheduler,poster,config,url->(HttpURLConnection)url.openConnection());}
   public MailBackgroundDelivery(Host host,Scheduler scheduler,Notices poster,Config config,Connections connections){
-@@ -74,7 +75,13 @@
+@@ -74,7 +75,17 @@
   }
   private JSONObject saved()throws Exception{String raw=host.readState();return raw==null?null:new JSONObject(raw);}
   /** Starts a foreground selection attempt; a later attempt supersedes it. */
@@ -21,10 +21,14 @@ diff --git a/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/
 +  return attempts.incrementAndGet();
 + }}
 + private void settleSelection(long attempt){admittedAttempt=attempt;pendingGrant=null;}
++ /** A bridge that could not enqueue this attempt releases only its own unadmitted selection. */
++ public void releaseUnadmittedAttempt(long attempt){synchronized(host.lock()){
++  if(attempts.get()==attempt&&admittedAttempt!=attempt)settleSelection(attempts.incrementAndGet());
++ }}
   private static String cloudId(String value){if(value==null||!value.matches("[A-Za-z0-9_-]{1,128}"))throw new SecurityException("Cloud owner required");return value;}
   private String accountRef(String user,String organization){return new JSONArray().put("cloud").put(config.environment).put(user).put(organization).toString();}
   private String credential(String credentialId)throws Exception{
-@@ -101,21 +108,37 @@
+@@ -101,21 +112,37 @@
    */
   public JSONObject configure(long attempt,String credentialId,String grant,String userId,String organizationId)throws Exception{
    try{
@@ -67,7 +71,7 @@ diff --git a/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/
   /** Host resume: reschedules a still-current selection, retires a stale one. */
   public void resume(){try{synchronized(host.lock()){if(admittedAttempt!=attempts.get())return;JSONObject s=saved();if(s==null)return;JSONObject binding=s.getJSONObject("binding");current(binding);scheduler.schedule(binding.getString("generation"));}}catch(Exception stale){try{withdraw(null);}catch(Exception ignored){/* Existing callback guards still fail closed. */}}}
   public JSONObject status()throws Exception{synchronized(host.lock()){JSONObject s=saved();if(s==null)return new JSONObject().put("status","disabled");return engine(s.getJSONObject("binding")).status().put("notificationsAllowed",poster.allowed());}}
-@@ -186,5 +209,29 @@
+@@ -186,5 +213,29 @@
    foreground.check();synchronized(host.lock()){foreground.check();return engine(binding).pending();}
   }
   public void releaseQuestion(String token,MailHistoryReconciliation.Guard foreground)throws Exception{foreground.check();synchronized(host.lock()){foreground.check();JSONObject s=saved();if(s==null)throw new SecurityException("Mail selection unavailable");engine(s.getJSONObject("binding")).releaseQuestion(token);}}

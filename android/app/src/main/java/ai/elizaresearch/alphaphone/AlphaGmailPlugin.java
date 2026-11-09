@@ -15,11 +15,14 @@ public final class AlphaGmailPlugin extends Plugin {
  private final ExecutorService io=Executors.newSingleThreadExecutor();
  private MailBackgroundDelivery delivery(){return GmailBackground.get(getContext());}
  private interface Work {JSObject run()throws Exception;}
- private void submit(PluginCall call,Work work){try{io.execute(()->{try{call.resolve(work.run());}catch(Exception unavailable){call.reject("Gmail background state could not be verified. Open Inbox and check the account.");}});}catch(RejectedExecutionException closed){call.reject("Gmail bridge closed");}}
+ private void submit(PluginCall call,Work work){submit(call,work,()->{});}
+ private void submit(PluginCall call,Work work,Runnable refused){PluginWorkers.submit(io,()->{
+  try{call.resolve(work.run());}catch(Exception unavailable){call.reject("Gmail background state could not be verified. Open Inbox and check the account.");}
+ },()->{refused.run();call.reject("Gmail bridge closed");});}
  private boolean foreground(){android.app.Activity activity=getActivity();return activity!=null&&!activity.isFinishing()&&!activity.isDestroyed()&&activity.hasWindowFocus()&&!getContext().getSystemService(KeyguardManager.class).isDeviceLocked();}
  /** Delivery calls this under the credential lifecycle lock, which the main thread also takes. */
  private void requireForeground(long epoch){if(epoch!=lifecycle||!foreground())throw new SecurityException("Unlock Gmail to continue");}
- @PluginMethod public void configure(PluginCall call){if(!foreground()){call.reject("Select Gmail on the unlocked phone");return;}String credential=call.getString("credentialId"),grant=call.getString("grantId"),user=call.getString("userId"),organization=call.getString("organizationId");long attempt=delivery().begin(grant);submit(call,()->new JSObject(delivery().configure(attempt,credential,grant,user,organization).toString()));}
+ @PluginMethod public void configure(PluginCall call){if(!foreground()){call.reject("Select Gmail on the unlocked phone");return;}String credential=call.getString("credentialId"),grant=call.getString("grantId"),user=call.getString("userId"),organization=call.getString("organizationId");MailBackgroundDelivery target=delivery();long attempt=target.begin(grant);submit(call,()->new JSObject(target.configure(attempt,credential,grant,user,organization).toString()),()->target.releaseUnadmittedAttempt(attempt));}
  @PluginMethod public void withdraw(PluginCall call){submit(call,()->{delivery().withdraw(call.getString("grantId"));return new JSObject();});}
  @PluginMethod public void status(PluginCall call){submit(call,()->new JSObject(delivery().status().toString()));}
  @PluginMethod public void pending(PluginCall call){if(!foreground()){call.resolve(new JSObject());return;}long epoch=lifecycle;submit(call,()->new JSObject(delivery().pending(()->requireForeground(epoch)).toString()));}

@@ -17,7 +17,9 @@ const nativeManifest='patches/eliza/native-manifest.json';
 const hostPath='android/consumer-host.json';
 const modulePath='plugins/plugin-native-notifications/android';
 const patchFile='gmail-background-retirement.patch';
-const scenarios=['continuation','retry','storage','resume-stale','rotation','stopped','reset','enqueue-refusal','enqueue-refusal-worker',
+const capacitor='node_modules/@capacitor/android/capacitor/src/main/java/com/getcapacitor/';
+const scenarios=['continuation','retry','storage','resume-stale','rotation', 'stopped','reset','enqueue-refusal','enqueue-refusal-worker','enqueue-refusal-newer',
+  'enqueue-refusal-newer-same','enqueue-refusal-newer-settled',
   'withdraw-during-configure','withdraw-queued','withdraw-queued-other','withdraw-current','withdraw-unrelated','withdraw-empty-other',
   'withdraw-empty-exact','withdraw-global','old-owner','remote-revoked-consume','remote-revoked-release',
   'offline-tap','consume-retoken','consume-locked','consume-owner-retired','uncertain','denied'];
@@ -33,11 +35,16 @@ export async function checkNativeGmailBackground(extraSources=[]) {
     const compiled=[...gmailProduct,...stagedSources];
     const sources=[...compiled,...gmailShared.map(path=>'vendor/eliza/'+path),'vendor/eliza/'+providerAdmission,app+'AlphaCredentialStore.java',
       hostPath,nativeManifest,'upstream.lock.json','scripts/upstream-native-source.mjs',
+      capacitor+'Bridge.java',capacitor+'BridgeActivity.java',
       'scripts/prepare-patched-native.mjs','patches/eliza/'+patchFile,'test/fixtures/native-source.mjs',
       'test/fixtures/jvm-tools.mjs',...(jsonJar?[jsonJar]:[]),...generatedSources,...extraSources,
       ...[harness,'Trace.java','java.mjs','gmail-background-platform.mjs'].map(name=>join(directory,name)),
       fileURLToPath(import.meta.url)];
     const driverHashes=captureInputs(sources);
+    const bridge=readFileSync(join(root,capacitor,'Bridge.java'),'utf8');
+    assert.match(bridge,/HandlerThread\("CapacitorPlugins"\)/);
+    assert.match(bridge,/taskHandler\.post\(currentThreadTask\)/);
+    assert.match(readFileSync(join(root,capacitor,'BridgeActivity.java'),'utf8'),/public void onDestroy\(\)[\s\S]*bridge\.onDestroy\(\)/);
     const catalog=JSON.parse(readFileSync(join(root,nativeManifest),'utf8'));
     const host=JSON.parse(readFileSync(join(root,hostPath),'utf8'));
     assert.deepEqual(host.profile.modules.find(item=>item.name==='eliza-notifications'),{
@@ -64,6 +71,7 @@ export async function checkNativeGmailBackground(extraSources=[]) {
       scope:'bounded-orchestration',assumptions:[
         'The app-owned AlphaGmailPlugin, GmailBackground, GmailDeliveryWorker and CloudDeployment run with authenticated staged MailBackgroundDelivery and MailHistoryReconciliation. The exact native verified Cloud identity helper runs over synthetic responses.',
         'Every JVM URL open is intercepted and accepts only the exact constructed Cloud routes. No network request, socket, real credential or provider action is used. One held transport callback and two serial bridge instances exercise owner retirement and readback.',
+        'The exact Activity/bridge teardown calls shut the real product executor in one schedule. A second schedule delays execute on a forwarding port backed by the real executor, then lets a later selection reach admission before delivering the older rejection. Accepted worker draining is outside this refusal boundary.',
         'Synthetic WorkManager records request generation, CONNECTED constraint, 15-minute UPDATE, KEEP catch-up and 30-second exponential backoff. WorkManager execution and platform notification delivery are external.',
         'One retained notification identity per active selection, selected decimal history boundaries and page continuations, closed storage outcomes before or after commit, and synthetic active-list evidence. Host credential replacement triggers the actual registered retirement closure before replacing the bytes.',
         'Tap capture enters the actual shared ledger directly with a synthetic opaque key. The actual product bridge resolves status/pending/consume/release. Android intent delivery and installed MailNoticePoster effects are outside the source replay.',

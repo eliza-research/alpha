@@ -7,7 +7,7 @@ module NativeGmailBackground {
     catchup: int, schedules: int, cancels: int, attempt: int, admitted: int, configuring: int,
     configOwner: int, configCredential: int, configAttempt: int, configGrantVerified: bool, configQueued: bool,
     workGeneration: int, workEpoch: int, workReply: str, bridgeReply: str, historyReads: int, process: int,
-    pendingGrant: int, online: bool, tapAuthorityReads: int, retiredBridge: bool, consumeGeneration: int, consumeEpoch: int, consumeCurrent: bool}
+    pendingGrant: int, online: bool, tapAuthorityReads: int, retiredBridge: bool, refusalAttempt: int, consumeGeneration: int, consumeEpoch: int, consumeCurrent: bool}
   var s: State
 
   val owners = Set(1,2)
@@ -25,7 +25,7 @@ module NativeGmailBackground {
     checked:false,notice:"none",tap:"none",visible:false,posts:0,periodic:0,catchup:0,schedules:0,cancels:0,
     attempt:0,admitted:0,configuring:0,configOwner:0,configCredential:0,configAttempt:0,configGrantVerified:false,configQueued:false,
     workGeneration:0,workEpoch:0,workReply:"none",bridgeReply:"none",historyReads:0,process:1,
-    pendingGrant:0,online:true,tapAuthorityReads:0,retiredBridge:false,consumeGeneration:0,consumeEpoch:0,consumeCurrent:false
+    pendingGrant:0,online:true,tapAuthorityReads:0,retiredBridge:false,refusalAttempt:0,consumeGeneration:0,consumeEpoch:0,consumeCurrent:false
   }
 
   pure def grantAllowed(grants: int, grant: int): bool =
@@ -68,11 +68,24 @@ module NativeGmailBackground {
     s'={...updated,configuring:0,configOwner:0,configCredential:0,configAttempt:0,configGrantVerified:false,configQueued:false,
       admitted:if (current) s.attempt else s.admitted,pendingGrant:if (current) 0 else s.pendingGrant,bridgeReply:if (eligible) "configured" else "refused"}
   }
-  // A closed worker refuses after begin has already advanced the process-wide attempt.
+  pure def abandon(st: State, refused: int): State =
+    if (st.attempt==refused and st.admitted!=refused)
+      {...st,attempt:st.attempt+1,admitted:st.attempt+1,pendingGrant:0}
+    else st
   action refuseConfigure(grant: int, owner: int): bool = all {
     grant.in(selections),owner==s.remoteOwner,not(s.locked or s.retiredBridge),
-    s.configuring==0,s.consumeGeneration==0,s.attempt<8,
-    s'={...s,attempt:s.attempt+1,pendingGrant:grant,retiredBridge:true,bridgeReply:"refused"}
+    s.configuring==0,s.consumeGeneration==0,s.attempt<7,
+    val started={...s,attempt:s.attempt+1,pendingGrant:grant}
+    s'={...abandon(started,started.attempt),retiredBridge:true,bridgeReply:"refused"}
+  }
+  action holdRefusal(grant: int, owner: int): bool = all {
+    grant.in(selections),owner==s.remoteOwner,not(s.locked or s.retiredBridge),
+    s.configuring==0,s.consumeGeneration==0,s.attempt<7,
+    s'={...s,attempt:s.attempt+1,pendingGrant:grant,refusalAttempt:s.attempt+1,retiredBridge:true}
+  }
+  action finishRefusal: bool = all {
+    s.refusalAttempt!=0,
+    s'={...abandon(s,s.refusalAttempt),refusalAttempt:0,bridgeReply:"refused"}
   }
   action withdraw(grant: int): bool = all {
     grant.in(Set(0,1,2,3)),s.attempt<8,
@@ -96,7 +109,7 @@ module NativeGmailBackground {
   action status: bool = s'={...s,bridgeReply:
     if (s.generation==0) "disabled" else if (local(s)) s.phase else "refused"}
   action recreate: bool = all {
-    s.process<3,s.configuring==0,s.workGeneration==0,s.consumeGeneration==0,
+    s.process<3,s.configuring==0,s.workGeneration==0,s.consumeGeneration==0,s.refusalAttempt==0,
     s'={...s,process:s.process+1,attempt:0,admitted:0,pendingGrant:0,retiredBridge:false,locked:false}
   }
 
@@ -219,11 +232,12 @@ module NativeGmailBackground {
   val AdmissionEpoch = s.admitted<=s.attempt and
     (s.configuring!=0 or (s.configAttempt==0 and s.configOwner==0 and s.configCredential==0))
   val PendingGrantOwnsAttempt = s.pendingGrant==0 or (s.admitted<s.attempt and
-    (s.pendingGrant==s.configuring and s.configAttempt==s.attempt or s.retiredBridge and s.configuring==0))
+    (s.pendingGrant==s.configuring and s.configAttempt==s.attempt or s.refusalAttempt==s.attempt))
+  val HeldRefusalOwnsClosedBridge = s.refusalAttempt==0 or (s.retiredBridge and s.refusalAttempt<=s.attempt)
   val HeldConsumeHasExactTap = not(s.consumeCurrent) or
     (s.consumeGeneration!=0 and s.consumeGeneration==s.generation and s.tap!="none")
   val safety=all {RetiredSelectionIsEmpty,ExactSchedule,ContinuationKeepsBaseline,
-    VisibleNoticeIsPosted,TapNeedsRetainedNotice,AdmissionEpoch,PendingGrantOwnsAttempt,HeldConsumeHasExactTap}
+    VisibleNoticeIsPosted,TapNeedsRetainedNotice,AdmissionEpoch,PendingGrantOwnsAttempt,HeldConsumeHasExactTap,HeldRefusalOwnsClosedBridge}
 
   action step = any {
     { nondet owner=owners.oneOf(); nondet grants=0.to(7).oneOf(); nondet reset=Bool.oneOf();
@@ -233,6 +247,8 @@ module NativeGmailBackground {
     { nondet grant=selections.oneOf(); queueConfigure(grant,s.remoteOwner) },
     finishConfigure,
     { nondet grant=selections.oneOf(); refuseConfigure(grant,s.remoteOwner) },
+    { nondet grant=selections.oneOf(); holdRefusal(grant,s.remoteOwner) },
+    finishRefusal,
     { nondet grant=Set(0,1,2,3).oneOf(); withdraw(grant) },
     { nondet value=credentialClasses.oneOf(); nondet notify=Bool.oneOf(); replaceCredential(value,notify) },
     resume,status,recreate,
@@ -296,15 +312,23 @@ module NativeGmailBackground {
     .then(work(1,"baseline",false,"none")).then(work(1,"notify",false,"none")).then(capture(false))
     .then(beginConsume).then(capture(true)).then(finishConsume)
     .expect(s.bridgeReply=="refused" and s.tap=="question" and s.visible)
-  run refusedEnqueueLeavesSavedSelectionFencedAsBuiltTest = init.then(beginConfigure(1,1)).then(finishConfigure)
+  run refusedEnqueueRestoresSavedSelectionTest = init.then(beginConfigure(1,1)).then(finishConfigure)
     .then(work(1,"baseline",false,"none")).then(work(1,"continued",false,"none"))
-    .then(refuseConfigure(2,1)).expect(s.pendingGrant==2 and s.attempt==2 and s.admitted==1)
-    .then(status).expect(s.bridgeReply=="refused")
-    .then(resume).then(work(1,"none",false,"none"))
-    .expect(s.workReply=="success" and s.historyReads==0 and s.cursor==1 and s.continuation==4 and s.schedules==1)
-  run refusedEnqueueFencesOldWorkerAsBuiltTest = init.then(beginConfigure(1,1)).then(finishConfigure)
+    .then(refuseConfigure(2,1)).expect(s.pendingGrant==0 and s.attempt==3 and s.admitted==3)
+    .then(status).expect(s.bridgeReply=="catching-up" and s.cursor==1 and s.continuation==4 and s.visible)
+    .then(resume).then(work(1,"final",false,"none"))
+    .expect(s.workReply=="success" and s.historyReads==1 and s.cursor==2 and s.schedules==2 and s.posts==1)
+  run refusedEnqueueKeepsOldWorkerRetiredTest = init.then(beginConfigure(1,1)).then(finishConfigure)
     .then(work(1,"baseline",false,"none")).then(beginWorker(1)).then(refuseConfigure(2,1))
-    .then(finishWorker(false)).expect(s.workReply=="success" and s.posts==0 and s.cursor==1 and s.pendingGrant==2)
+    .then(finishWorker(false)).expect(s.workReply=="success" and s.posts==0 and s.cursor==1 and s.pendingGrant==0)
+    .then(work(1,"notify",false,"none")).expect(s.workReply=="success" and s.posts==1 and s.cursor==2)
+  run refusedEnqueueCannotRetireLaterSameGrantTest = init.then(beginConfigure(1,1)).then(finishConfigure)
+    .then(holdRefusal(2,1)).then(beginConfigure(2,1)).then(finishRefusal)
+    .expect(s.pendingGrant==2 and s.attempt==3 and s.admitted==1)
+    .then(finishConfigure).expect(s.grant==2 and s.generation==2 and s.admitted==3)
+  run refusedEnqueueCannotRetireSettledSuccessorTest = init.then(beginConfigure(1,1)).then(finishConfigure)
+    .then(holdRefusal(2,1)).then(beginConfigure(3,1)).then(finishConfigure)
+    .then(finishRefusal).expect(s.grant==3 and s.generation==2 and s.attempt==3 and s.admitted==3)
   run uncertainNoticeNeverRepostsTest = init.then(beginConfigure(1,1)).then(finishConfigure)
     .then(work(1,"baseline",false,"none")).then(environment(1,3,false,true,false,false))
     .then(work(1,"notify",false,"none")).then(recreate).then(work(1,"final",false,"none"))

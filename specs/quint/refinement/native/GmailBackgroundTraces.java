@@ -41,6 +41,11 @@ public final class GmailBackgroundTraces {
  public static boolean allowed=true;
  private static Hold hold;
  private static CountDownLatch queuedConfiguration;
+ private static Thread refusedCaller;
+ private static PluginCall refusedCall;
+ private static CountDownLatch refusalRelease;
+ private static AtomicReference<Throwable> refusalError;
+ private static int refusalAttempt;
  private record Hold(String route,CountDownLatch entered,CountDownLatch released) {
   Hold(String route){this(route,new CountDownLatch(1),new CountDownLatch(1));}
   void waitAtPort()throws IOException {
@@ -262,7 +267,7 @@ public final class GmailBackgroundTraces {
    "configGrantVerified",configGrantVerified,"configQueued",queuedConfiguration!=null,"workGeneration",workGeneration,"workEpoch",workEpoch,"workReply",workReply,
    "bridgeReply",bridgeReply,"historyReads",historyReads,"process",process,
    "pendingGrant",pending==null?0:grantClass(pending),"online",online,"tapAuthorityReads",tapAuthorityReads,
-   "retiredBridge",secondary.activity.isDestroyed(),
+   "retiredBridge",secondary.activity.isDestroyed(),"refusalAttempt",refusalAttempt,
    "consumeGeneration",consumeGeneration,"consumeEpoch",consumeEpoch,
    "consumeCurrent",consumeToken!=null&&tap!=null&&consumeToken.equals(tap.getString("token")));
  }
@@ -350,6 +355,56 @@ public final class GmailBackgroundTraces {
   trace.step("refuseConfigure",observe(),g,selectedOwner);
  }
 
+
+ private static void holdRefusal(int g,int selectedOwner)throws Exception {
+  AlphaGmailPlugin closing=secondary;
+  ExecutorService original=(ExecutorService)Trace.read(closing,"io");
+  CountDownLatch atExecute=new CountDownLatch(1);
+  refusalRelease=new CountDownLatch(1);
+  CountDownLatch release=refusalRelease;
+  var field=AlphaGmailPlugin.class.getDeclaredField("io");field.setAccessible(true);
+  field.set(closing,new AbstractExecutorService(){
+   public void shutdown(){original.shutdown();}
+   public List<Runnable> shutdownNow(){return original.shutdownNow();}
+   public boolean isShutdown(){return original.isShutdown();}
+   public boolean isTerminated(){return original.isTerminated();}
+   public boolean awaitTermination(long time,TimeUnit unit)throws InterruptedException{return original.awaitTermination(time,unit);}
+   public void execute(Runnable command){
+    atExecute.countDown();
+    try {
+     if(!release.await(10,TimeUnit.SECONDS))throw new AssertionError("Executor refusal held too long");
+    } catch(InterruptedException e){Thread.currentThread().interrupt();throw new AssertionError(e);}
+    original.execute(command);
+   }
+  });
+  refusedCall=new PluginCall(new JSONObject().put("grantId",grant(g)).put("credentialId","fixture-credential")
+   .put("userId",OWNER[selectedOwner]).put("organizationId",ORG));
+  refusalError=new AtomicReference<>();
+  refusedCaller=new Thread(()->{
+   try {closing.configure(refusedCall);}
+   catch(Throwable error){refusalError.set(error);}
+  });
+  refusedCaller.start();
+  if(!atExecute.await(7,TimeUnit.SECONDS))throw new AssertionError("Configure missed executor boundary",refusalError.get());
+  closing.handleOnDestroy();
+  refusalAttempt=(int)((AtomicLong)Trace.read(GmailBackground.get(context),"attempts")).get();
+  trace.step("holdRefusal",observe(),g,selectedOwner);
+ }
+
+ private static void finishRefusal()throws Exception {
+  String prior=state;
+  int priorSchedules=schedules,priorCancels=cancels;
+  Set<String> priorShown=Set.copyOf(shown);
+  refusalRelease.countDown();refusedCaller.join(5000);
+  if(refusedCaller.isAlive()||refusalError.get()!=null)
+   throw new AssertionError("Refusal failed to settle",refusalError.get());
+  refusedCall.await();
+  if(!"Gmail bridge closed".equals(refusedCall.rejection))throw new AssertionError("Unexpected late refusal");
+  if(!Objects.equals(state,prior)||schedules!=priorSchedules||cancels!=priorCancels||!shown.equals(priorShown))
+   throw new AssertionError("Late refusal affected a later selection's resources");
+  refusalAttempt=0;refusalRelease=null;bridgeReply="refused";
+  trace.step("finishRefusal",observe());
+ }
 
  private static void withdraw(int g)throws Exception {
   PluginCall call=new PluginCall(g==0?new JSONObject():new JSONObject().put("grantId",grant(g)));
@@ -519,11 +574,20 @@ public final class GmailBackgroundTraces {
      env(1,3,true,true,true,false);finishWorker(false);resume();status();}
     case "enqueue-refusal" -> {
      configure(1);work(1,"baseline");work(1,"continued");refuseConfigure(2,1);
-     status();resume();work(1,"none");status();
+     status();resume();work(1,"final");status();
     }
     case "enqueue-refusal-worker" -> {
      configure(1);work(1,"baseline");beginWorker(1);refuseConfigure(2,1);
-     finishWorker(false);status();
+     finishWorker(false);status();work(1,"notify");status();
+    }
+    case "enqueue-refusal-newer", "enqueue-refusal-newer-same" -> {
+     configure(1);work(1,"baseline");holdRefusal(2,1);
+     beginConfigure(args[0].endsWith("same")?2:3,1);
+     finishRefusal();finishConfigure();status();
+    }
+    case "enqueue-refusal-newer-settled" -> {
+     configure(1);work(1,"baseline");holdRefusal(2,1);configure(3);
+     finishRefusal();status();
     }
     case "withdraw-during-configure" -> {configure(1);work(1,"baseline");work(1,"continued");beginConfigure(2,1);
      withdraw(2);finishConfigure();status();work(1,"final");status();}
@@ -574,6 +638,7 @@ public final class GmailBackgroundTraces {
   } finally {
    if(hold!=null)hold.released.countDown();
    if(queuedConfiguration!=null)queuedConfiguration.countDown();
+   if(refusalRelease!=null)refusalRelease.countDown();
    primary.handleOnDestroy();secondary.handleOnDestroy();
   }
  }

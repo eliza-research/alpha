@@ -4,7 +4,7 @@ import {tmpdir} from 'node:os';
 import {dirname,join} from 'node:path';
 import {app,root} from './java.mjs';
 
-export const gmailProduct=['GmailBackground','GmailDeliveryWorker','AlphaGmailPlugin','CloudDeployment','LocalAgentProviderAdmission'].map(name=>app+name+'.java');
+export const gmailProduct=['GmailBackground','GmailDeliveryWorker','AlphaGmailPlugin','CloudDeployment','LocalAgentProviderAdmission','PluginWorkers'].map(name=>app+name+'.java');
 const notificationSource='plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/';
 export const gmailShared=['MailBackgroundDelivery','MailHistoryReconciliation'].map(name=>notificationSource+name+'.java');
 export const providerAdmission='plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeProviderAdmission.java';

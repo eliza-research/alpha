@@ -831,9 +831,13 @@ bytes and alert state, and intercepts every child-JVM URL open. Installed
 WorkManager execution, notice delivery and live provider freshness remain
 outside the replay.
 
-The executor-refusal baseline closes the old bridge after its foreground
-check and before its configure call can acquire the lifecycle lock.
-The refusal leaves the attempted grant registered without an admitted
-worker. The saved cursor, continuation and visible notice survive, but the
-other bridge cannot read the selection, resume skips scheduling, and an
-old worker retires without fetching history.
+The executor-refusal baseline in commit `592074fd49` closes the old bridge
+after its foreground check and before its configure call can acquire the
+lifecycle lock. The rejected enqueue leaves an unadmitted grant registered
+and fences the saved selection. The repair releases only that exact
+unadmitted attempt into a fresh settled epoch. The saved cursor, work and
+visible notice survive. A subsequent worker can continue, and a worker
+that captured an earlier epoch remains retired. A delayed rejection cannot
+retire a newer pending or admitted selection, including a newer request for
+the same grant. Work that the executor accepted before teardown can still
+drain under the existing policy.

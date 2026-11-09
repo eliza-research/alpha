@@ -6,7 +6,7 @@ import {checkNativeGmailBackground} from '../specs/quint/refinement/native/gmail
 test('native Gmail worker refines selected scheduling, cursor and retirement boundaries', async () => {
   const {receipt}=await checkNativeGmailBackground();
   assert.equal(receipt.passed,true);
-  assert.equal(receipt.traces,26);
-  assert.equal(receipt.observedFields.length,46);
+  assert.equal(receipt.traces,29);
+  assert.equal(receipt.observedFields.length,47);
   assert.equal(verifyRefinementReceiptInputs(receipt),true);
 });
