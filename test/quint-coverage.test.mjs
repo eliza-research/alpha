@@ -4,7 +4,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { checkCoverage, detectedCounterexample, loadModels, readJson, repositoryRoot, runtimeScriptPaths, runtimeAssetPaths, sha256, sourceRoots } from '../scripts/quint-lib.mjs';
+import { checkCoverage, detectedCounterexample, loadModels, readJson, repositoryRoot, runQuintChecker, runtimeScriptPaths, runtimeAssetPaths, sha256, sourceRoots } from '../scripts/quint-lib.mjs';
 
 test('counterexample admission requires the pinned CLI violation markers and rejects tool errors', () => {
   assert.equal(detectedCounterexample('[violation] Found an issue (42ms).\nerror: found a counterexample\n'), true);
@@ -13,6 +13,28 @@ test('counterexample admission requires the pinned CLI violation markers and rej
   assert.equal(detectedCounterexample('Invariant safety violated\n'), false);
   assert.equal(detectedCounterexample('[violation] Found an issue (42ms).\nerror: found a counterexample\nerror: [QNT404] missing\n'), false);
   assert.equal(detectedCounterexample('[failure] TLC encountered an error\nerror: found a counterexample\n'), false);
+});
+
+test('only a silent native checker fault gets one retained retry', async () => {
+  const silent = {status: null, signal: 'SIGSEGV', stdout: '', stderr: ''};
+  const success = {status: 0, signal: null, stdout: '1 passing', stderr: ''};
+  const interruptedAttempt = {exitCode: null, signal: 'SIGSEGV'};
+  const cases = [
+    {attempts: [silent, success], expected: {result: success, interruptedAttempt}},
+    {attempts: [silent, silent], expected: {result: silent, interruptedAttempt}},
+    ...[
+      {...silent, signal: 'SIGTERM'},
+      {...silent, error: Error('timeout')},
+      {...silent, stderr: 'checker diagnostic'},
+      {...silent, status: 1, signal: null, stdout: 'Assertion failed'},
+      success,
+    ].map(result => ({attempts: [result], expected: {result}})),
+  ];
+  for (const {attempts, expected} of cases) {
+    let called = 0;
+    assert.deepEqual(await runQuintChecker(() => attempts[called++]), expected);
+    assert.equal(called, attempts.length);
+  }
 });
 
 test('runner records unexpected exceptions as failures and labels coverage evidence accurately', () => {

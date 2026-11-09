@@ -2,7 +2,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { checkCoverage, detectedCounterexample, loadModels, readJson, repositoryRoot, sha256 } from './quint-lib.mjs';
+import { checkCoverage, detectedCounterexample, loadModels, readJson, repositoryRoot, runQuintChecker, sha256 } from './quint-lib.mjs';
 
 const args = process.argv.slice(2);
 const command = args.shift() || 'check';
@@ -98,17 +98,23 @@ async function run(model, phase, options, expected = 'pass') {
   const argv = [cli, ...options];
   const modelSha256 = sha256(readFileSync(join(repositoryRoot, model.path)));
   const startedAt = new Date().toISOString();
-  const result = await runCommand(argv);
+  const {result, interruptedAttempt} = await runQuintChecker(() => runCommand(argv));
   const output = `${result.stdout || ''}${result.stderr || ''}`;
   const violation = detectedCounterexample(output);
   const modelChanged = modelSha256 !== sha256(readFileSync(join(repositoryRoot, model.path)));
-  const passed = !modelChanged && (expected === 'violation' ? result.status !== 0 && violation && !result.error : result.status === 0 && !result.error);
+  const completed = Number.isInteger(result.status) && !result.signal && !result.error;
+  const passed = !modelChanged && completed && (expected === 'violation' ? result.status !== 0 && violation : result.status === 0);
   receipt.results.push({ model: model.module, phase, expected, passed, exitCode: result.status,
-    startedAt, finishedAt: new Date().toISOString(), signal: result.signal,
+    startedAt, finishedAt: new Date().toISOString(), signal: result.signal, interruptedAttempt,
     error: modelChanged ? 'Model changed while its checker was running' : result.error?.message,
     argv: options, modelSha256, output });
   console.log(`${passed ? 'PASS' : 'FAIL'} ${model.module} ${phase}${expected === 'violation' ? ' (counterexample required)' : ''}`);
-  if (!passed) { failed = true; console.error(output || result.error?.message || 'Checker terminated without output'); }
+  if (interruptedAttempt) console.log(`Retried ${model.module} ${phase} after checker signal ${interruptedAttempt.signal}`);
+  if (!passed) {
+    failed = true;
+    const signal = result.signal ? ` (${result.signal})` : '';
+    console.error(output || result.error?.message || `Checker terminated without output${signal}`);
+  }
   return passed;
 }
 
@@ -143,9 +149,12 @@ try {
     try {
       const file = join(temporary, 'CounterexampleCanary.qnt');
       writeFileSync(file, 'module CounterexampleCanary { var n: int action init = n\' = 0 action step = n\' = n + 1 val safety = n == 0 }\n');
-      const result = spawnSync(process.execPath, [cli, 'run', file, '--backend=typescript', '--seed=1', '--max-samples=1', '--max-steps=1', '--invariant=safety'], { cwd: repositoryRoot, encoding: 'utf8', timeout: 30000 });
-      const detected = result.status !== 0 && detectedCounterexample(`${result.stdout}${result.stderr}`) && !result.error;
-      receipt.canary = { detected, exitCode: result.status };
+      const {result, interruptedAttempt} = await runQuintChecker(() => spawnSync(process.execPath,
+        [cli, 'run', file, '--backend=typescript', '--seed=1', '--max-samples=1', '--max-steps=1', '--invariant=safety'],
+        { cwd: repositoryRoot, encoding: 'utf8', timeout: 30000 }));
+      const detected = Number.isInteger(result.status) && result.status !== 0 && !result.signal && !result.error
+        && detectedCounterexample(`${result.stdout || ''}${result.stderr || ''}`);
+      receipt.canary = { detected, exitCode: result.status, signal: result.signal, interruptedAttempt };
       if (!detected) { failed = true; console.error('FAIL counterexample detection canary'); }
       else console.log('PASS counterexample detection canary');
     } finally { rmSync(temporary, { recursive: true, force: true }); }

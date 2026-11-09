@@ -157,6 +157,14 @@ export function detectedCounterexample(output) {
     && /^error: (?:found a counterexample|Invariant violated)\s*$/m.test(plain);
 }
 
+export async function runQuintChecker(run) {
+  const first = await run();
+  const silentFault = first.status === null && ['SIGSEGV', 'SIGILL'].includes(first.signal)
+    && !first.error && !first.stdout?.trim() && !first.stderr?.trim();
+  if (!silentFault) return {result: first};
+  return {result: await run(), interruptedAttempt: {exitCode: first.status, signal: first.signal}};
+}
+
 export function loadModels() {
   const models = ['application', 'services', 'native', 'legacy'].flatMap(family => {
     const document = readJson(join(quintRoot, family, 'manifest.json'));

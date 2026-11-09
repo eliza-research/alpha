@@ -1177,3 +1177,11 @@ checkpoints. It records the reviewed pin, synthetic child preload admission
 and the Git revision observed by the parent receipt separately. An admitted
 child can have a different recorded revision, and a matching receipt can
 precede preload rejection. The production schema remains the same.
+
+The full 219-model check stopped after a silent checker `SIGSEGV` in the
+listener lease scenarios. Those scenarios passed on an exact isolated replay.
+The next frozen run reported silent checker exits for BrowserSession,
+CredentialVault and DevelopmentSurfaces. All three passed on exact isolated
+replay. The checker now retries a silent `SIGSEGV` or `SIGILL` once and
+records the first signal. A second interruption, a timeout or a reported
+counterexample keeps its failure classification.
