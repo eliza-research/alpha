@@ -2588,6 +2588,50 @@
         "maxSteps": 80,
         "maxVerifyDepth": 4
       }
+    },
+    {
+      "path": "specs/quint/native/NativeDigestConsent.qnt",
+      "module": "NativeDigestConsent",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "describeCanReturnRevokedSnapshotAsBuiltTest",
+        "describeCanReturnExpiredSnapshotAsBuiltTest",
+        "heldContentRejectsRevokedGrantTest",
+        "expiredWhileReadingNeverPublishesTest",
+        "storeRefusalAfterCommitKeepsGrantTest",
+        "bothTemplatesReadOnlyApprovedProjectionTest",
+        "noCalendarPortForReminderOnlyTest"
+      ],
+      "invariants": [
+        "NoPayloadOnRefusal",
+        "ExactSelectionCustody",
+        "BoundedProjectedOutput",
+        "NoUnreviewedReminder"
+      ],
+      "sources": [
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeDigestSources.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeDigestHost.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/HostedDelivery.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/HostedResultNotices.java"
+      ],
+      "stateMapping": {
+        "rows/now/writes/restarts": "Selected durable consent, exact scope/revision, revocation and expiry across host reconstruction",
+        "owner/generation/foreground/transport/calendarRevision/calendarPermission": "Controlled admission, review foreground and source identity",
+        "readOwner/readSource/readGeneration/readKind/readProfile/readScope": "One retained read across controlled source suspension",
+        "reply/requestKind/grantReply/events/reminders/calendarReads/reminderReads": "Actual returned metadata and bounded projected result with source port counts"
+      },
+      "abstractions": [
+        "Two owners and two exact grant slots, opaque revision equality, one selected owner day, and one held source operation.",
+        "Preserves as-built stale describe after revoke or expiry, while actual content read repeats the consent check.",
+        "Synthetic storage, resident, Calendar and Reminder ports only. No device/provider action or model egress."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 4
+      }
     }
   ]
 }

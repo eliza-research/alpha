@@ -841,3 +841,19 @@ that captured an earlier epoch remains retired. A delayed rejection cannot
 retire a newer pending or admitted selection, including a newer request for
 the same grant. Work that the executor accepted before teardown can still
 drain under the existing policy.
+
+### Native digest consent and readback
+
+`NativeDigestConsent` follows reviewed native digest consent by exact owner,
+agent, installation, enrollment, source and revision. The replay executes
+the product host and grant store plus the exact hosted source admission
+method. It uses closed storage, resident and Calendar and Reminder ports.
+It checks scope refusal, same-revision replay, tombstones, expiry, write
+failures before and after commit, and selected owner-day projection.
+Source rows are synthetic and the result stays within the JVM observer.
+
+The as-built schedules hold Calendar identity verification after the
+host captures a grant. If the grant is revoked or reaches expiry during
+that check, the `describe` branch can still return its old metadata.
+Content reads take another exact grant check before returning their
+projected events and reminders.
