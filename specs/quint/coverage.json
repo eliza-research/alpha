@@ -45704,12 +45704,14 @@
     },
     {
       "path": "apps/app/src/runtime/share-panel.ts",
-      "sha256": "e50d4eebabcdadac4e72efd39f5ec94c00e9b42fc4b7dc2439d1399c4dc7a1e7",
       "models": [
-        "FilesAndSharing"
+        "FilesAndSharing",
+        "SharePanelAdmission"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "fb2264d0d1adc4a95f7b6e334af28d47fcb44017a93ebfd9a6f5d159e335e093",
       "stateAnchors": [
         {
           "line": 4,
@@ -45722,6 +45724,18 @@
         {
           "line": 7,
           "text": "let emailComposer:((title:string,text:string)=>void)|undefined;"
+        },
+        {
+          "line": 12,
+          "text": "export function openSharePanel(options:SharePanelOptions):Promise<void>{"
+        },
+        {
+          "line": 13,
+          "text": "openPanel?.();"
+        },
+        {
+          "line": 14,
+          "text": "if(document.hidden||!options.current())return Promise.resolve();"
         },
         {
           "line": 16,
@@ -45780,12 +45794,24 @@
           "text": "if(!run){button.disabled=true;button.style.opacity='.5';if(reason){const hint=document.createElement('p');hint.textContent=reason;hint.style.fontSize='13px';dialog.append(button,hint);return;}}"
         },
         {
+          "line": 32,
+          "text": "button.onclick=()=>{if(closed)return;if(document.hidden||!options.current()){status.textContent='The selection changed. Close and choose it again.';return;}finish();try{void Promise.res"
+        },
+        {
+          "line": 37,
+          "text": "action('Cancel',()=>{});dialog.append(status);dialog.addEventListener('cancel',event=>{event.preventDefault();finish();});dialog.addEventListener('close',finish);"
+        },
+        {
           "line": 39,
           "text": "dialog.addEventListener('keydown',event=>{if(event.key!=='Tab')return;const buttons=Array.from(dialog.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')),first=buttons[0],last=buttons.at(-1)"
         },
         {
           "line": 40,
           "text": "document.addEventListener('visibilitychange',hidden);window.addEventListener('alpha-back',back,true);window.addEventListener('pagehide',finish);for(const event of retirementEvents)window.addEventListe"
+        },
+        {
+          "line": 41,
+          "text": "try{dialog.showModal();dialog.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();}catch{finish();}"
         }
       ]
     },

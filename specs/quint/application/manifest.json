@@ -589,6 +589,29 @@
     ]
   },
   {
+    "path": "specs/quint/application/SharePanelAdmission.qnt",
+    "module": "SharePanelAdmission",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "replacementRetiresEarlierButtonsTest",
+      "changedSelectionIsRetiredWithoutFallbackTest",
+      "hiddenRequestAndCancellationCannotDispatchTest",
+      "exactDestinationFailureNeverFallsBackTest"
+    ],
+    "invariants": ["ActivePanelIsUnsettled", "EffectFollowsExactClose", "EachPanelDispatchesOnce", "NoticeBelongsToStaleSelection"],
+    "sources": ["apps/app/src/runtime/share-panel.ts"],
+    "stateMapping": {
+      "seen/active/hidden/invalid/emails": "Caller inputs and the actual mounted chooser and enabled destinations",
+      "settled/effects/notice/alerts": "Actual promises, destination callback invocations, stale status and visible failure alert"
+    },
+    "abstractions": [
+      "Up to three panels in a document. Exact destination functions use closed ports, with selected success, cancel and rejection outcomes.",
+      "This model covers renderer admission and handoff. Installed dispatch, browser top layer timing and arbitrary reentrant callers require separate checks."
+    ]
+  },
+  {
     "path": "specs/quint/application/ShadeNoticeQuestionAdmission.qnt",
     "module": "ShadeNoticeQuestionAdmission",
     "init": "init",
