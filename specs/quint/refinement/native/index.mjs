@@ -19,7 +19,7 @@ import {checkRendererCoordinator} from './renderer-coordinator.mjs';
 import {checkSharedRecording} from './shared-recording.mjs';
 import {checkLiveCapture} from './live-capture.mjs';
 
-import {modelStateInventory, unobservedStateFields} from '../model-state.mjs';
+import {modelStateInventory, traceActionCoverage, unobservedStateFields} from '../model-state.mjs';
 import {checkAsrPipe} from './asr-pipe.mjs';
 import {checkPipedCapture} from './piped-capture.mjs';
 import {checkCaptureFrames} from './capture-frames.mjs';
@@ -56,6 +56,7 @@ import {checkNativeSourceRenewal} from './source-renewal.mjs';
 import {checkNativeAssistantEntry} from './assistant-entry.mjs';
 import {checkNativeActionRecovery} from './action-recovery.mjs';
 import {checkNativeGmailBackground} from './gmail-background.mjs';
+import {checkNativeDigestConsent} from './native-digest.mjs';
 
 export async function runNativeRefinement() {
   const models = ['VadSegmentation', 'RendererRecovery', 'ResidentScheduling'];
@@ -201,6 +202,8 @@ export async function runNativeRefinement() {
   results.push(actionRecovery.receipt);
   const gmailBackground = await checkNativeGmailBackground(nativeInputs);
   results.push(gmailBackground.receipt);
+  const digestConsent = await checkNativeDigestConsent(nativeInputs);
+  results.push(digestConsent.receipt);
   const obligations = [
     ...updatePause.obligations,
     ...updateActivation.obligations,
@@ -221,6 +224,7 @@ export async function runNativeRefinement() {
     ...assistantEntry.obligations,
     ...actionRecovery.obligations,
     ...gmailBackground.obligations,
+    ...digestConsent.obligations,
     {model: 'GoogleBrowserReturnClaim', obligation: 'Installed callback delivery and durable credential custody',
       reason: 'The authenticated Java claim and grace functions execute under controlled queues, storage and HTTPS. Installed lifecycle, secure-store durability and intra-worker schedules remain separate.'},
     ...reviewedCopiesObligations,
@@ -260,10 +264,11 @@ export async function runNativeRefinement() {
   const modelPaths = new Map(loadModels().map(model => [model.module, model.path]));
   for (const model of new Set(results.map(receipt => receipt.model))) {
     const related = results.filter(receipt => receipt.model === model);
-    const coveredActions = new Set(related.flatMap(receipt => Object.keys(receipt.actions)));
+    const actionCoverage = traceActionCoverage(related);
+    const coveredActions = new Set([...actionCoverage.modelTransitionActions, ...actionCoverage.modelInitializers]);
     const coveredFields = new Set(related.flatMap(receipt => receipt.observedFields));
     const inventory = modelStateInventory(join(root, modelPaths.get(model)), model);
-    const missing = inventory.actions.filter(name => !['init', 'check', 'step', 'initFor', 'counterInit', 'budgetInit'].includes(name) && !coveredActions.has(name));
+    const missing = inventory.actions.filter(name => !['init', 'check', 'step'].includes(name) && !coveredActions.has(name));
     if (missing.length) obligations.push({model, obligation: 'Unexecuted model transitions', reason: missing.join(', ')});
     const unobserved = unobservedStateFields(inventory, [...coveredFields]);
     if (unobserved.length) obligations.push({model, obligation: 'Unobserved model fields', reason: unobserved.join(', ')});

@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "25e4953b1aa6508206b76c9d014e650c359267b00b3f4d3824cfb2bae16d23df",
+  "ledgerSha256": "f651fcd053fc7785238b273e737b1dbae935dcd10551ea2a5dbf3a67a4ffaa2e",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -22,16 +22,16 @@
     "The ledger supplies pinned source bytes. Effective client/native/runtime patch outputs require their separately authenticated source mappings."
   ],
   "counts": {
-    "files": 5728,
+    "files": 5729,
     "testSupportFiles": 285,
     "testSupportCandidates": 11383,
-    "parsedFiles": 5657,
+    "parsedFiles": 5658,
     "languageReview": 71,
     "parseErrors": 0,
-    "candidates": 67325,
-    "writeSites": 66893,
-    "writeAssociations": 60021,
-    "asynchronous": 8348,
+    "candidates": 67339,
+    "writeSites": 66909,
+    "writeAssociations": 60037,
+    "asynchronous": 8357,
     "unassignedWrites": 10273
   },
   "files": [
@@ -24535,7 +24535,8 @@
       "sha256": "0beb42ca42f2bd53ea0b2e92b7d3e1282b41c13814e4e633a476939e5dbb6d8d",
       "allocatedModels": [
         "NoticesAndCaches",
-        "NativeHostedInbox"
+        "NativeHostedInbox",
+        "NativeDigestConsent"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -25032,7 +25033,8 @@
       "allocatedModels": [
         "NoticesAndCaches",
         "NativeHostedResultNotices",
-        "NativeHostedInbox"
+        "NativeHostedInbox",
+        "NativeDigestConsent"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -25793,10 +25795,12 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeDigestHost.java",
-      "sha256": "b5ef73a23f167a779e9c3ae763ab3c740527e564419b6838830f81db8aacc852",
+      "sha256": "c06bbf6bb3525c5a569e4b89e6045f24cd4d01551682368a33011a44a64bc0be",
       "allocatedModels": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "NativeDigestConsent"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -25849,8 +25853,8 @@
           "writes": 0
         },
         {
-          "owner": "NativeDigestHost.read@17.lambda@20.Anonymous@30.calendar@31",
-          "line": 31,
+          "owner": "NativeDigestHost.read@17.lambda@20.Anonymous@31.calendar@32",
+          "line": 32,
           "bindings": 7,
           "writes": 0
         }
@@ -25863,7 +25867,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeDigestSources.java",
       "sha256": "21400c0d2a397cc466027623cfd800c569b22b22a49d61b5280132dfa77e16be",
       "allocatedModels": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "NativeDigestConsent"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -47059,9 +47064,10 @@
     },
     {
       "path": "scripts/start-cloud-qa.mjs",
-      "sha256": "eba2e7bc233def8ed3fe15106ca4251dcf09d966013400b6810449baf515ae64",
+      "sha256": "dcdca9567dfead874603e07ac657f6fa0b3bdf5ca80bd9021f873fb2448b0e76",
       "allocatedModels": [
-        "Application"
+        "Application",
+        "CloudQaLauncher"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -47292,6 +47298,51 @@
       ],
       "parseErrors": [],
       "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs",
+      "sha256": "23177bf57b40717d75a67d6bc01b5cfc85325b6f28e8ebc0641bbc65c88812a6",
+      "allocatedModels": [
+        "CloudQaLauncher"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "readPrivateRuntimeEnvironment",
+          "line": 21,
+          "bindings": 2,
+          "writes": 2
+        },
+        {
+          "owner": "privateFile",
+          "line": 40,
+          "bindings": 2,
+          "writes": 5
+        },
+        {
+          "owner": "runtimeEnvironment",
+          "line": 152,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "startPrivateRuntimeProcess",
+          "line": 181,
+          "bindings": 7,
+          "writes": 6
+        },
+        {
+          "owner": "RuntimeLaunchError",
+          "line": 9,
+          "bindings": 2,
+          "writes": 2
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 9,
       "unassignedWrites": 0
     },
     {
@@ -219831,6 +219882,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "e9b5e48da4a222c285e99ea96d2d77e36e9ac67c034cff580dfa7ef65b88f2c2"
+    "sha256": "219a1c4a907f9f5b83edb6d51143aa05d6681366348d1fce1ee6ffcde5d52c31"
   }
 }

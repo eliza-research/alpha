@@ -40,6 +40,7 @@ import {checkMobileBundleAdmission} from './mobile-bundle-admission.mjs';
 import {checkWorkflowWorkerStaging} from './workflow-worker-staging.mjs';
 import {checkNativeGoogleHostArtifact} from './native-google-host-artifact.mjs';
 import {checkPreparedSourceStamp} from './prepared-source-stamp.mjs';
+import {checkCloudQaLauncher} from './cloud-qa-launcher.mjs';
 
 export async function runServicesRefinement() {
   const receipts = [];
@@ -53,7 +54,8 @@ export async function runServicesRefinement() {
     () => checkMobileBundleAdmission([fileURLToPath(import.meta.url)]),
     () => checkWorkflowWorkerStaging([fileURLToPath(import.meta.url)]),
     () => checkNativeGoogleHostArtifact([fileURLToPath(import.meta.url)]),
-    () => checkPreparedSourceStamp([fileURLToPath(import.meta.url)])]) {
+    () => checkPreparedSourceStamp([fileURLToPath(import.meta.url)]),
+    () => checkCloudQaLauncher([fileURLToPath(import.meta.url)])]) {
     const result = await check();
     receipts.push(...(Array.isArray(result) ? result : [result]));
   }
@@ -72,6 +74,8 @@ export async function runServicesRefinement() {
       reason: 'The helper can leave a verified backup after a refused restore or failed cleanup. The scratch campaign observes the settled disk states. Process interruption, concurrent publishers and subsequent recovery remain separate.'},
     {model: 'PreparedSourceStamp', obligation: 'Concurrent qualification and interrupted stamp publication',
       reason: 'The source-only schedules observe settled outcomes and one candidate refusal on local disposable Git trees. Racing writers, restart after process loss and the full dependency install retain separate evidence.'},
+    {model: 'CloudQaLauncher', obligation: 'Concurrent launcher, kernel signal and live readiness behavior',
+      reason: 'Private files and receipts use the real implementation in scratch, with closed child events. Concurrent profile writers, kernel delivery and a running Cloud session retain separate evidence.'},
     {model: 'NativeGoogleHostArtifact', obligation: 'Cross-process publication, interruption and installed use',
       reason: 'The source replay verifies a private candidate and restore under the serial producer contract. Independent readers, process death between the two publication renames and installed host execution remain separate.'},
     {model: 'CoreTurnControllers', obligation: 'Detached callbacks, reentrant observers and provider composition', reason: 'The source campaign checks lookup, cancellation and closure in two registries. Arbitrary reentrant observers and detached callbacks require separate source schedules.'},

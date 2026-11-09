@@ -992,3 +992,28 @@ host records 59 inputs. Its module SHA-256 is
 `562ad5cfd5c302f691797a4665f9aa43ff5a907d967e4d38f959614218f4ca84`.
 The selected host graph used zero core transforms. The mobile runtime bundle
 binds its separate core transform selection.
+
+`NativeDigestConsent` checks 18 closed JVM schedules and 142 checkpoints.
+The historical baseline could return captured describe metadata after
+revocation or exact expiry during a held Calendar identity read. The native
+host now rechecks the current grant and clock after that verification,
+using the existing owner guard. The fixture confirms one Calendar identity
+query, exact response provenance, read bounds and rejected retired work.
+Installed providers and subsequent renderer or model use remain open.
+
+`CloudQaLauncher` checks 19 schedules and 127 checkpoints through the actual
+private profile and receipt implementation, using controlled child events.
+The historical launcher could change a linked log target's mode. The
+launcher now checks the opened descriptor for a regular single-link file
+before changing permissions or passing it to the child. The fixture observes
+unchanged foreign bytes and mode, refusal for a FIFO, retained regular log
+contents, and exact child cleanup on failed receipt publication. Cross-process
+profile races, kernel signal behavior and live service readiness remain open.
+
+The frozen strict run at `4fda14a9ec` credited 116 of 198 models. Services,
+native and composition passed. A cold shell mount timed out and the old
+application collector discarded earlier receipts. The legacy collector
+retained 40 receipts despite separate Home mount and Google fixture failures.
+The Home replay now has its own navigation budget. Application campaigns
+retain results on either side of an individual failure while the aggregate
+still reports a failed run.
