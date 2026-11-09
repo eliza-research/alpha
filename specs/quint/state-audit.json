@@ -12,7 +12,7 @@
   "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "5cce9c181aaf7180e6113ec279baf268b8588281740fef19fc5e00dc32373e7a",
+  "ledgerSha256": "617dbe6dfa72c96984036e4632a2be5a26ea08ad7a5d9378c96a0dc8b6797f0d",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -45784,7 +45784,8 @@
         "TaskSchedulerRuntime",
         "DevelopmentRuntimeLoader",
         "CombinedAgentLauncher",
-        "ReviewedWorkflowLauncher"
+        "ReviewedWorkflowLauncher",
+        "CoreConnectorCustody"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -78841,7 +78842,8 @@
         "WorkflowExecution",
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
-        "CoreServiceLifecycle"
+        "CoreServiceLifecycle",
+        "CoreConnectorCustody"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -79388,7 +79390,8 @@
         "CoreServiceLifecycle",
         "TaskServiceLifecycle",
         "EmbeddingStoreIdentity",
-        "FactWriteScope"
+        "FactWriteScope",
+        "CoreConnectorCustody"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -79951,7 +79954,8 @@
         "WorkflowExecution",
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
-        "CoreServiceLifecycle"
+        "CoreServiceLifecycle",
+        "CoreConnectorCustody"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -79982,7 +79986,8 @@
         "WorkflowExecution",
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
-        "CoreServiceLifecycle"
+        "CoreServiceLifecycle",
+        "CoreConnectorCustody"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -81683,7 +81688,8 @@
         "WorkflowExecution",
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
-        "CoreServiceLifecycle"
+        "CoreServiceLifecycle",
+        "CoreConnectorCustody"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -218679,6 +218685,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "a8053d6e8159b81727c0d735f07a043217fe68d60171afde4348e7536e9b4eac"
+    "sha256": "117b5d170de9f7ddb574d32cda6425798c4c108491bcd92bc74a76451a067117"
   }
 }

@@ -49392,7 +49392,8 @@
         "TaskSchedulerRuntime",
         "DevelopmentRuntimeLoader",
         "CombinedAgentLauncher",
-        "ReviewedWorkflowLauncher"
+        "ReviewedWorkflowLauncher",
+        "CoreConnectorCustody"
       ],
       "scope": "development-runtime",
       "treatment": "domain-contract-or-support",
@@ -174311,7 +174312,8 @@
         "WorkflowExecution",
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
-        "CoreServiceLifecycle"
+        "CoreServiceLifecycle",
+        "CoreConnectorCustody"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -176660,7 +176662,8 @@
         "CoreServiceLifecycle",
         "TaskServiceLifecycle",
         "EmbeddingStoreIdentity",
-        "FactWriteScope"
+        "FactWriteScope",
+        "CoreConnectorCustody"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -178966,7 +178969,8 @@
         "WorkflowExecution",
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
-        "CoreServiceLifecycle"
+        "CoreServiceLifecycle",
+        "CoreConnectorCustody"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -179014,7 +179018,8 @@
         "WorkflowExecution",
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
-        "CoreServiceLifecycle"
+        "CoreServiceLifecycle",
+        "CoreConnectorCustody"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -185182,7 +185187,8 @@
         "WorkflowExecution",
         "CoreRuntimeRetirement",
         "CoreRuntimeShutdown",
-        "CoreServiceLifecycle"
+        "CoreServiceLifecycle",
+        "CoreConnectorCustody"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -619107,7 +619113,8 @@
         "TaskSchedulerRuntime",
         "DevelopmentRuntimeLoader",
         "CombinedAgentLauncher",
-        "ReviewedWorkflowLauncher"
+        "ReviewedWorkflowLauncher",
+        "CoreConnectorCustody"
       ],
       "sha256": "331e2ce0df2c43a1f34969bc12b54d51292134320599e4a765e77b5129853171"
     },
@@ -619136,7 +619143,8 @@
       "models": [
         "TaskServiceLifecycle",
         "CanonicalNotesStore",
-        "CoreTurnControllers"
+        "CoreTurnControllers",
+        "CoreConnectorCustody"
       ],
       "sha256": "c857f206dfed8c329cb44259208937b5016e45ce81b108e8fdbee5df6222e862"
     },
@@ -619410,7 +619418,8 @@
       "models": [
         "TaskServiceLifecycle",
         "CanonicalNotesStore",
-        "CoreTurnControllers"
+        "CoreTurnControllers",
+        "CoreConnectorCustody"
       ],
       "sha256": "a0f840fa8572fae33dc3958769c4bd9a951e6f18d04c2345979147134a1473b2"
     }
