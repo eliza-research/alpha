@@ -372,7 +372,7 @@ html:not(.alpha-landscape) .alpha-phone [data-screen]:not([data-alpha-chat-half=
 .alpha-landscape .alpha-phone [data-alpha-layer="home"],.alpha-landscape .alpha-phone [data-alpha-layer="drawer"]{right:calc(var(--alpha-dock-width) + 16px)!important;padding-bottom:16px!important;scroll-padding-bottom:16px!important}
 .alpha-landscape .alpha-phone [data-alpha-layer="composer"]{left:auto!important;right:16px!important;width:calc(var(--alpha-dock-width) - 16px)}
 .alpha-landscape .alpha-phone [data-alpha-layer="pill"]{left:auto!important;width:var(--alpha-dock-width)}
-.alpha-landscape .alpha-phone [data-alpha-layer="conversation"]{left:auto!important;width:var(--alpha-dock-width);height:100%!important;border-radius:0!important;box-shadow:-1px 0 0 var(--line),-20px 0 60px var(--shc)!important}
+.alpha-landscape .alpha-phone [data-alpha-layer="conversation"]{left:auto!important;width:var(--alpha-dock-width);height:100%!important;border-radius:0!important;box-shadow:none!important}
 .alpha-landscape .alpha-phone>[data-screen]{width:var(--phone-width,412px)!important}
 
 /* Accessibility and resilience (MVP-48). Large text arrives as WebView text zoom, which CSS cannot
@@ -813,3 +813,5 @@ dialog.alarm-page{position:fixed;inset:0 auto auto 0;margin:0;width:100vw;height
 
 [data-alpha-message-composer]{padding-bottom:calc(var(--alpha-dock-reserve,108px) + 12px)!important}
 [data-alpha-maps-guidance-controls]{bottom:max(var(--alpha-maps-guidance-bottom,26px),var(--alpha-dock-reserve,108px))!important}
+
+[data-alpha-chat-home]{background:transparent!important;box-shadow:none!important}
