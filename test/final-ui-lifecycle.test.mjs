@@ -42,11 +42,12 @@ test('Settings row identity survives asynchronous insertion and nested Back reta
 });
 test('keyboard hide and background retire composer focus without changing the draft',()=>{
  const s=read('prototype/chat-overlay-motion-adapter.ts'),body=between(s,'\t\tconst free = keyboardFreeHeight();','\n\t};\n\tp.componentDidUpdate');
+ const clear=between(s,'function clearScrimPress(','function watchDockScrimPress(');
  let height=800,hidden=false,blurs=0;const listeners=new Map(),active={matches:()=>true,blur(){blurs++;}};
  const shell={chatInputFocused:true,chatScrimPress:{pointer:1},draft:'Keep this draft'};class Element{}Object.setPrototypeOf(active,Element.prototype);
  const window={innerWidth:400,get innerHeight(){return height;},visualViewport:{get height(){return height;},addEventListener:(type,fn)=>listeners.set('vv'+type,fn)},addEventListener(){}};
  const document={get hidden(){return hidden;},activeElement:active,documentElement:{dataset:{},clientWidth:400,get clientHeight(){return height;}},addEventListener:(type,fn)=>listeners.set(type,fn)};
- vm.runInNewContext('(function(){'+ts(body)+'}).call(shell)',{shell,window,document,HTMLElement:Element,keyboardFreeHeight:()=>{let max=0;return(_w,h,editing)=>{if(!editing)max=h;return max||h;};},isEditing:()=>true});
+ vm.runInNewContext('(function(){'+ts(clear+body)+'}).call(shell)',{shell,window,document,HTMLElement:Element,keyboardFreeHeight:()=>{let max=0;return(_w,h,editing)=>{if(!editing)max=h;return max||h;};},isEditing:()=>true});
  height=500;shell.dockKeyboardWatch();height=800;shell.dockKeyboardWatch();assert.equal(blurs,1);
  hidden=true;shell.dockHiddenWatch();assert.equal(shell.chatInputFocused,false);assert.equal(shell.chatScrimPress,undefined);assert.equal(shell.draft,'Keep this draft');
 });
