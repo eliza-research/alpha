@@ -402,12 +402,53 @@ html:not(.alpha-landscape) [data-alpha-maps-guidance="true"] {
 html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] {
   box-sizing:border-box; justify-content:flex-end; row-gap:8px; padding-bottom:var(--alpha-maps-guidance-bottom);
 }
-html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > :is([data-alpha-maps-status],.alpha-map-credits,[data-alpha-maps-guidance-controls]) {
+html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > :is(.alpha-map-credits,[data-alpha-maps-guidance-controls]),
+html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] [data-alpha-maps-status] {
   position:relative!important; inset:auto!important; flex:none;
 }
-html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > [data-alpha-maps-status] { margin-inline:20px; }
+html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] [data-alpha-maps-status] { margin-inline:20px; }
 html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > .alpha-map-credits { margin-inline:12px 76px; }
 html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > [data-alpha-maps-guidance-controls] { margin-inline:12px; }
+
+/* Keep the guidance controls and credits in flow on the clear side of the
+   landscape assistant. Status and maneuvers share the space above the right dock. */
+.alpha-landscape [data-alpha-maps-guidance="true"] {
+  box-sizing:border-box; justify-content:flex-end; row-gap:8px;
+  padding:0 calc(var(--alpha-dock-width) + 12px) 12px 12px;
+}
+.alpha-landscape [data-alpha-maps-guidance="true"] > [data-alpha-maps-guidance-head] {
+  display:flex!important; position:absolute; top:12px; right:12px;
+  left:calc(100% - var(--alpha-dock-width) + 12px);
+  max-height:calc(100% - var(--alpha-dock-clearance,82px) - 20px);
+  flex-direction:column; gap:8px; overflow-y:auto; z-index:5;
+}
+.alpha-landscape [data-alpha-maps-guidance="true"] > [data-alpha-maps-guidance-head] > div {
+  position:relative!important; inset:auto!important; width:auto; height:auto!important;
+  max-height:none!important; flex:none; padding:8px 12px!important;
+}
+.alpha-landscape [data-alpha-maps-guidance="true"] > :is(.alpha-map-credits,[data-alpha-maps-guidance-controls]) {
+  position:relative!important; inset:auto!important; width:auto; flex:none;
+}
+.alpha-landscape [data-alpha-maps-guidance-controls] {
+  display:grid!important; gap:4px 8px!important; padding:8px 10px!important;
+  grid-template-columns:48px minmax(0,1fr) 48px 48px;
+  grid-template-areas:"time time meta meta" "remaining remaining remaining remaining" "end reroute ask voice";
+}
+.alpha-landscape [data-alpha-maps-guidance-controls] > div { display:contents; }
+.alpha-landscape [data-alpha-maps-guidance-controls] > div > * { margin-top:0!important; }
+.alpha-landscape [data-alpha-maps-guidance-controls] > div > .serif { grid-area:time; font-size:24px!important; overflow-wrap:anywhere; }
+.alpha-landscape [data-alpha-maps-guidance-controls] > div > .serif + div { grid-area:meta; }
+.alpha-landscape [data-alpha-maps-guidance-controls] > div > [role="status"] { grid-area:remaining; }
+.alpha-landscape [data-alpha-maps-guidance-controls] > div > button { grid-area:reroute; }
+.alpha-landscape [data-alpha-maps-guidance-controls] > button { width:48px!important; height:48px!important; }
+.alpha-landscape [data-alpha-maps-guidance-controls] > button:first-child { grid-area:end; }
+.alpha-landscape [data-alpha-maps-guidance-controls] > button:nth-last-child(2) { grid-area:ask; }
+.alpha-landscape [data-alpha-maps-guidance-controls] > button:last-child { grid-area:voice; }
+.alpha-landscape [data-alpha-maps-guidance="true"] > .alpha-map-credits:has(details[open]) { z-index:6; }
+.alpha-landscape [data-alpha-maps-guidance="true"] .alpha-map-info {
+  top:0; right:44px; bottom:auto; width:min(320px,calc(100% - 52px)); max-height:160px;
+  box-sizing:border-box; overflow:auto;
+}
 
 /* Keep portrait capture controls above the assistant on short windows. */
 html:not(.alpha-landscape) [data-alpha-camera="capture"]{top:min(712px,calc(100% - var(--alpha-dock-clearance,102px) - 106px))!important}

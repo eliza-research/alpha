@@ -247,7 +247,7 @@ async function guidance(page) {
   ]};
 }
 
-async function portraitGuidance(page) {
+async function guidanceTargets(page, viewports) {
   const viewport = page.viewportSize();
   const settle = () => page.evaluate(() => new Promise(resolve =>
     requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(resolve)))));
@@ -263,10 +263,12 @@ async function portraitGuidance(page) {
   try {
     for (const percent of [100, 150]) {
       await setText(percent);
-      for (const [width, height] of [[412, 915], [360, 640]]) {
+      for (const [width, height] of viewports) {
         await page.setViewportSize({width, height});
+        await page.waitForFunction(landscape => document.documentElement.classList.contains('alpha-landscape') === landscape,
+          width > height);
         await settle();
-        const targets = await page.evaluate(() => {
+        const {targets, rightDock} = await page.evaluate(landscape => {
           const root = document.querySelector('[data-alpha-maps-root]');
           const end = root.querySelector('button[aria-label="End navigation"]');
           const owns = (node, x, y) => node.contains(document.elementFromPoint(x, y));
@@ -289,14 +291,39 @@ async function portraitGuidance(page) {
           const attribution = [...root.querySelectorAll('.alpha-map-credits a')].map(node =>
             ({label: node.textContent.trim(), owned: textLines(node)}));
           const notice = root.querySelector('[data-alpha-maps-status] [role="status"]');
-          return [...guidance, {label: 'Map information', owned: points(information, [0.05, 0.2, 0.5, 0.8, 0.95])},
-            ...attribution, {label: notice.textContent.trim(), owned: textLines(notice)}];
-        });
+          const pill = root.closest('[data-screen]').querySelector('[data-alpha-layer="pill"]');
+          const rail = pill?.getBoundingClientRect(), app = root.getBoundingClientRect();
+          const dockButtons = pill ? [...pill.querySelectorAll('button,[role="button"]')].filter(node =>
+            node.getClientRects().length && !node.closest('[aria-hidden="true"],[inert]')) : [];
+          return {
+            targets: [...guidance, {label: 'Map information', owned: points(information, [0.05, 0.2, 0.5, 0.8, 0.95])},
+              ...attribution, {label: notice.textContent.trim(), owned: textLines(notice)}],
+            rightDock: landscape && rail ? {
+              atRight: rail.left > app.left + app.width / 2 && Math.abs(rail.right - app.right) < 1,
+              controls: dockButtons.map(node => ({label: node.getAttribute('aria-label'), owned: points(node, [0.5])[1]})),
+            } : null,
+          };
+        }, width > height);
         assert.equal(targets.length, 9, 'Four guidance controls, Map information, three attribution links and status');
         for (const {label, owned} of targets) {
           assert.ok(owned.length && owned.every(Boolean), `${width}×${height} at ${percent}%: ${label} owns its sampled points`);
         }
-        observations.push({width, height, percent, targets});
+        if (width > height) {
+          assert.ok(rightDock?.atRight, 'The landscape assistant pill remains right-docked');
+          assert.ok(rightDock.controls.length && rightDock.controls.every(control => control.owned),
+            'The assistant pill still owns the centers of its controls');
+          const information = page.locator('[data-alpha-maps-root] summary[aria-label="Map information"]');
+          await information.tap();
+          await expect(information.locator('..')).toHaveAttribute('open', '');
+          const coordinates = information.locator('..').getByRole('button', {name:'Enter coordinates', exact:true});
+          assert.ok(await coordinates.evaluate(node => {
+            const box = node.getBoundingClientRect();
+            return node.contains(document.elementFromPoint(box.left+box.width/2, box.top+box.height/2));
+          }), 'The open disclosure owns its first action');
+          await information.tap();
+          await expect(information.locator('..')).not.toHaveAttribute('open', '');
+        }
+        observations.push({width, height, percent, targets, ...(rightDock ? {rightDock} : {})});
       }
     }
   } finally {
@@ -317,7 +344,8 @@ async function reroute(page) {
   await expect(rerouteButton).toBeVisible();
   assert.equal((await requests(page)).filter(row => row.endpoint === 'routes').length, 1);
   await t.point('An off-route fix preserves the route pending an explicit choice', action('OffRoute'));
-  const portrait = await portraitGuidance(page);
+  const portrait = await guidanceTargets(page, [[412, 915], [360, 640]]);
+  const landscape = await guidanceTargets(page, [[915, 412], [640, 360]]);
   await page.evaluate(() => {
     window.closedMaps.routeRefusal = true;
     document.addEventListener('pointerdown', event => {
@@ -344,7 +372,7 @@ async function reroute(page) {
     action: [action('CloudFault'), action('OffRoute')],
     expect: {'s.screen': after['s.screen'], 's.route': after['s.route'], 's.message': after['s.message']}});
   assert.equal(after['s.session'], 'ready');
-  return {trace: t.trace, differences: [['MapsHistoricalFailedRerouteKeepsRoute', failed]], portrait};
+  return {trace: t.trace, differences: [['MapsHistoricalFailedRerouteKeepsRoute', failed]], portrait, landscape};
 }
 
 export async function mountClosedMaps(extraSources, runs, holdRouteReplies = false) {
@@ -460,7 +488,7 @@ export async function checkMapsRefinement(extraSources = []) {
     'Actual flag-off Maps renderer, shared Maps screen/controller, Cloud provider and browser location run in Chromium. The account transport, external map style and precise fixes are closed synthetic ports. No geographic request leaves the fixture.',
     'Connection observations are scoped to the captured synthetic owner and its actual capability requests. The network, subscription and Cloud service facts are controlled inputs. Informational and unmodeled notices have no historical error category.',
     'The accepted Directions projection includes the owner entering explicit origin coordinates. The real Arrived projection checks the screen and released location separately from the accepted route retained in the arrival state.',
-    'Mounted hit tests cover the guidance bar, Map information, attribution links and status at two portrait sizes and text scales, followed by actual touch reroute admission.',
+    'Mounted hit tests cover guidance, Map information, attribution and status at two sizes per orientation and two text scales. Landscape checks the right-docked assistant and taps Map information. Portrait taps Reroute and observes its exact admission.',
     'Calendar return, native background service, remote agent requests, installed permission flow and fairness are independent obligations.',
   ]};
   const receipt = await checkTraces({...shared, traces: results.map(result => result.trace)});
@@ -473,5 +501,6 @@ export async function checkMapsRefinement(extraSources = []) {
     assert.ok(mismatch.driverInputsBound);
     mismatches.push({...mismatch, id, receiptPath});
   }
-  return {receipts: [receipt], mismatches, portrait: results.flatMap(result => result.portrait ?? [])};
+  return {receipts: [receipt], mismatches, portrait: results.flatMap(result => result.portrait ?? []),
+    landscape: results.flatMap(result => result.landscape ?? [])};
 }

@@ -2024,6 +2024,7 @@
       </sc-for>
     </div>
   </sc-if>
+  <div data-alpha-maps-guidance-head style="display:contents">
   <sc-if value="{{maps.nativeStatusVisible}}">
     <div data-alpha-maps-status data-location-state="{{maps.nativeLocationState}}" data-map-state="{{maps.nativeMapState}}" style="position: absolute; left: 20px; right: 20px; top: {{maps.nativeStatusTop}}px; max-height:calc(100% - {{maps.nativeStatusTop}}px - 110px); overflow-y:auto; box-sizing:border-box; z-index: 2; padding: 16px; border-radius: 22px; background: var(--bg); color: var(--mut); font-size: 14px; line-height: 1.45; box-shadow: 0 0 0 1px var(--line)">
       <p role="status" style="margin:0">{{maps.nativeStatus}}</p>
@@ -2070,6 +2071,7 @@
       <div style="position: absolute; left: 28px; top: 158px; height: 40px; padding: 0 14px; border-radius: 0 0 16px 16px; background: var(--alpha-blue-deep); color: var(--alpha-white); display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; z-index: 4">Then<svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{maps.dr.nav.thenD}}"></path></svg><sc-if value="{{maps.dr.nav.thenText}}"><span style="max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{maps.dr.nav.thenText}}</span></sc-if></div>
     </sc-if>
   </sc-if>
+  </div>
   <sc-if value="{{maps.hasNativeMap}}"><div ref="{{maps.mapRef}}" data-alpha-map-plane aria-label="{{maps.mapLabel}}" style="position:absolute;inset:0;z-index:1"></div>
     <div class="alpha-map-credits" style="bottom:{{maps.attributionBottom}}px">
       <sc-if value="{{maps.globalBasemap}}">
