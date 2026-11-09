@@ -1157,13 +1157,21 @@
         "cancelledOpenReleasedTest",
         "replacementRejectsOldPermissionTest",
         "explicitStopKeepsTailTest",
-        "lifecycleDiscardsTailTest"
+        "lifecycleDiscardsTailTest",
+        "permissionPromptPauseRetainsOnlyReservationTest",
+        "backgroundPermissionCannotOpenBeforeResumeTest",
+        "activePauseReportsEndBeforeRetirementTest",
+        "callInterruptRetiresOpeningWithBoundCauseTest",
+        "replacementDoesNotInheritCallCauseTest",
+        "deniedPermissionWhilePausedCannotResumeTest"
       ],
       "invariants": [
         "CurrentStartupGate",
         "ReleasedIsStopped",
         "PointerOwnership",
         "DiscardIsCancelled",
+        "PausedMicrophoneStopped",
+        "ResumeIsOnlyPermissionReservation",
         "Bounded"
       ],
       "abstractions": [
@@ -1218,12 +1226,19 @@
         "callDuringOpenRefusesPublicationTest",
         "retiredWarmCannotOpenTest",
         "discardClosesWithoutRendererAudioTest",
-        "failedPipeRetainsControllerUntilStopTest"
+        "failedPipeRetainsControllerUntilStopTest",
+        "failedWarmHeldUntilOwnedCloseTest",
+        "retiredWarmFailsWithoutForeignErrorTest",
+        "failedWarmCannotStartNativeCaptureTest",
+        "unconfirmedFailedWarmStillDiscardsTest"
       ],
       "invariants": [
         "WarmBeforeCapture",
         "NoPcmToRenderer",
         "CompletedStartHasNoPendingOpen",
+        "FailedWarmNeverOpens",
+        "UnstartedFailureEventsPrivate",
+        "SettledFailedWarmDiscards",
         "Bounded"
       ],
       "abstractions": [
@@ -1866,17 +1881,22 @@
       ],
       "tests": [
         "durableClaimPrecedesAcknowledgedPostTest",
-        "foregroundLossPreservesOnlyPreparedRouteTest",
+        "foregroundLossReleasesUnrecordedRouteTest",
         "uncertainClaimNeverRepostsTest",
         "lateExactActiveReadReconcilesWithoutRepostTest",
         "lostTerminalWriteCanBeRecoveredByExactReadTest",
         "explicitOwnerRejectsStaleQueuedRouteTest",
-        "withdrawalWriteFaultKeepsOwnerFenceTest"
+        "withdrawalWriteFaultKeepsOwnerFenceTest",
+        "beforeCommitRefusalReleasesRouteWithoutReceiptTest",
+        "unpublishedWithdrawalNeverAcknowledgesOrPostsTest",
+        "withdrawalTombstoneSurvivesOwnerReturnTest"
       ],
       "invariants": [
         "AtMostOneManagerPost",
         "PostedNoticeHasExactDurableClaim",
-        "ConfirmedReplyHasSucceededReceipt"
+        "ConfirmedReplyHasSucceededReceipt",
+        "NoRetainedFakeReceipt",
+        "UnpublishedWithdrawalNeverPosts"
       ],
       "abstractions": [
         "One ordinary workflow notice operation ID and route token, two owner and binding classes, three content classes, and a separate legacy ownerless mode.",
@@ -2155,7 +2175,8 @@
         "callbackMemoryDoesNotImplyDurableEvidenceTest",
         "dispatchMarkerRefusalRecoversUnknownTest",
         "providerReadbackRequiresReportAndUniqueRowTest",
-        "multipartReportDoesNotProveDeliveryTest"
+        "multipartReportDoesNotProveDeliveryTest",
+        "emptyDivisionCannotReviveReviewedIdTest"
       ],
       "invariants": [
         "OneRadioCallPerRecipient",
@@ -2636,7 +2657,9 @@
         "refusedEnqueueKeepsOldWorkerRetiredTest",
         "refusedEnqueueCannotRetireLaterSameGrantTest",
         "refusedEnqueueCannotRetireSettledSuccessorTest",
-        "uncertainNoticeNeverRepostsTest"
+        "uncertainNoticeNeverRepostsTest",
+        "historyRefusalBudgetResetsOnlyAfterAcceptedPageTest",
+        "unauthorizedHistoryStopsImmediatelyTest"
       ],
       "invariants": [
         "RetiredSelectionIsEmpty",
@@ -2647,7 +2670,8 @@
         "AdmissionEpoch",
         "PendingGrantOwnsAttempt",
         "HeldConsumeHasExactTap",
-        "HeldRefusalOwnsClosedBridge"
+        "HeldRefusalOwnsClosedBridge",
+        "HistoryAuthBudget"
       ],
       "sources": [
         "android/app/src/main/java/ai/alphacompute/alphaphone/GmailBackground.java",
@@ -2662,7 +2686,7 @@
       ],
       "stateMapping": {
         "credential/remoteOwner/grants/reset": "Synthetic raw credential classes, remotely reported owner/grants and pending reset",
-        "generation/grant/owner/boundCredential/cursor/continuation/phase/incomplete/checked": "Selected encrypted row, exact owner and decimal history progress",
+        "generation/grant/owner/boundCredential/cursor/continuation/phase/incomplete/checked/authFailures": "Selected encrypted row, exact owner, decimal history progress and durable history-route refusal count",
         "latestGeneration/attempt/admitted/configuring/configOwner/configCredential/configAttempt/configGrantVerified/configQueued/pendingGrant": "Actual generation assignment and admitted epoch with one held account response",
         "periodic/catchup/schedules/cancels": "Closed WorkManager command names, generations and request counts",
         "workGeneration/workEpoch/workReply/historyReads/process/retiredBridge/refusalAttempt": "Exact worker snapshot and result, page reads and reconstruction",
@@ -2670,7 +2694,7 @@
       },
       "abstractions": [
         "Three grants, two remote owners, three credential equality classes, one retained notice and one held transport callback across two bridge instances.",
-        "Four-page Worker checkpoint, 20-digit decimal cursor examples, synthetic work commands, selected HTTP outcomes and pre/postcommit storage failures.",
+        "Four-page Worker checkpoint, 20-digit decimal cursor examples, synthetic work commands, selected HTTP outcomes and pre/postcommit storage failures. History-only403/409 completes after three durable refusals; an accepted page resets the counter.401 and verified account/grant revocation remain immediate. Further deliveries of an already completed failing job are outside this bounded schedule.",
         "Targeted retirement fences only matching saved or pending grants. Consume checks the exact still-current tap after remote admission. Releasing a question remains local cancellation. Executor refusal releases only its own unadmitted attempt, advances the settled epoch and preserves the durable selection.",
         "Android and provider effects are closed. WorkManager delivery, real durable storage and installed notification/Activity enforcement remain outside the campaign."
       ],

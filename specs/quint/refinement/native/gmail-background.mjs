@@ -17,7 +17,7 @@ const nativeManifest='android/upstream-native-sources.json';
 const hostPath='android/consumer-host.json';
 const modulePath='plugins/plugin-native-notifications/android';
 const capacitor='node_modules/@capacitor/android/capacitor/src/main/java/com/getcapacitor/';
-const scenarios=['continuation','retry','storage','resume-stale','rotation', 'stopped','reset','enqueue-refusal','enqueue-refusal-worker','enqueue-refusal-newer',
+const scenarios=['continuation','retry','history-forbidden','history-conflict','storage','resume-stale','rotation', 'stopped','reset','enqueue-refusal','enqueue-refusal-worker','enqueue-refusal-newer',
   'enqueue-refusal-newer-same','enqueue-refusal-newer-settled',
   'withdraw-during-configure','withdraw-queued','withdraw-queued-other','withdraw-current','withdraw-unrelated','withdraw-empty-other',
   'withdraw-empty-exact','withdraw-global','old-owner','remote-revoked-consume','remote-revoked-release',
@@ -67,6 +67,7 @@ export async function checkNativeGmailBackground(extraSources=[]) {
         'The exact Activity/bridge teardown calls shut the real product executor in one schedule. A second schedule delays execute on a forwarding port backed by the real executor, then lets a later selection reach admission before delivering the older rejection. Accepted worker draining is outside this refusal boundary.',
         'Synthetic WorkManager records request generation, CONNECTED constraint, 15-minute UPDATE, KEEP catch-up and 30-second exponential backoff. WorkManager execution and platform notification delivery are external.',
         'One retained notification identity per active selection, selected decimal history boundaries and page continuations, closed storage outcomes before or after commit, and synthetic active-list evidence. Host credential replacement triggers the actual registered retirement closure before replacing the bytes.',
+        'A history-only403/409 has a three-refusal durable budget, reset by accepted pages;401 and verified owner/grant revocation stop immediately. The source replay covers each refusal through WorkManager completion, without further retries of that completed request.',
         'Tap capture enters the actual shared ledger directly with a synthetic opaque key. The actual product bridge resolves status/pending/consume/release. Android intent delivery and installed MailNoticePoster effects are outside the source replay.',
       ]});
     return {receipt,obligations:[

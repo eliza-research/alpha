@@ -240,3 +240,10 @@ for canonical volume-qualified identities and bounded refresh. Earlier foreign-m
 campaign evidence belongs to #437's catalog; it does not qualify the newly reconciled
 agent album. Exact-source APK, installed bridge, permission downgrade, reboot,
 large personal libraries, battery and physical-device acceptance remain separate.
+
+For an independent Chromium PNG/filter reference chart, run
+`ALPHA_BROWSER_MODULES=/absolute/node_modules ALPHA_FILTER_RESULTS=/absolute/output node scripts/test-photo-filter-png-reference.mjs`.
+The module directory must provide Playwright, its Chromium browser, and `pngjs`.
+The script writes source/CSS charts and pixel comparisons using synthetic
+colors. These browser reference results do not establish Android filter or
+installed Photos behavior.

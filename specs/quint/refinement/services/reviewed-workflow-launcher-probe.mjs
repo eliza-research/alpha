@@ -5,6 +5,7 @@ import {execFileSync, spawn} from 'node:child_process';
 import {basename, dirname, join, resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {CORE_STATE_MANIFEST} from '../../../../scripts/core-state-patch.mjs';
+import {parseBuildPolicy} from '../../../../scripts/build-policy-source.mjs';
 import {writeCoreStateFixture} from '../../../../test/fixtures/core-state-root.mjs';
 
 const repository = resolve(import.meta.dirname, '../../../..');
@@ -58,7 +59,7 @@ writeFileSync(${JSON.stringify(invoked)}, 'patched fixture entry', {mode: 0o600}
   const selected = scenario === 'actual-wrong-pin' ? '1'.repeat(40) : head;
   json(join(repo, 'upstream.lock.json'), {commit: selected});
   const patchManifest = join(repo, CORE_STATE_MANIFEST);
-  json(patchManifest, {...JSON.parse(fs.readFileSync(patchManifest, 'utf8')), baseCommit: selected});
+  write(patchManifest, 'export default '+JSON.stringify({...parseBuildPolicy(fs.readFileSync(patchManifest)), baseCommit: selected})+';\n');
   if (scenario === 'actual-dirty') fs.appendFileSync(entry, '// synthetic source drift\n');
   if (scenario !== 'missing-deps') fs.mkdirSync(join(source, 'node_modules'));
   write(input, 'synthetic-workflow-input', scenario === 'input-mode' ? 0o644 : 0o600);

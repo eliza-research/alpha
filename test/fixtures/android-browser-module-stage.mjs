@@ -35,7 +35,9 @@ function inputs() {
   assert.deepEqual(browser.source, {root: 'patchedNative', path: modulePath});
   assert.equal(browser.relocateBuild, true);
   for (const module of modules) assert.ok(inventory.modules.includes(module));
-  assert.deepEqual(inventory.patches, []);
+  assert.deepEqual(inventory.patches.filter(patch=>modules.includes(patch.module)||patch.targets.some(target=>
+    modules.some(module=>target.path===module||target.path.startsWith(module+'/')))), [],
+  'This browser fixture compiles exact unpatched browser sources; unrelated native module patches remain independent');
   assert.ok(!descriptor.residentHost.helpers.some(file => file.startsWith(modulePath+'/')));
   const productFiles = [...new Set([...profile.generationInputs.map(row => row.path).filter(path => path !== ownerRoutes),
     profile.manifest.path, ...profile.flavors.map(row => row.manifest.path), 'scripts/upstream-native-source.mjs'])];

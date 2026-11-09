@@ -11,5 +11,6 @@ export function prepareNativeFixture(root,directory) {
  cpSync(join(root,'upstream.lock.json'),join(fixture,'upstream.lock.json'));
  mkdirSync(join(fixture,'android'));
  cpSync(join(root,'android/upstream-native-sources.json'),join(fixture,'android/upstream-native-sources.json'));
+ cpSync(join(root,'patches/eliza'),join(fixture,'patches/eliza'),{recursive:true});
  return preparePatchedNative({root:fixture});
 }

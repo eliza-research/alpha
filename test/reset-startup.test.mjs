@@ -19,7 +19,7 @@ test('pending reset retries, shows bounded recovery instead of a launcher restar
   put('ai/eliza/auth/cloud/CloudKeyRevocation.java',`package ai.eliza.auth.cloud; public final class CloudKeyRevocation {public static int calls;public static long budget;public static java.util.function.Predicate<Object> pending;public interface Registration{CloudSignInConfig get();}public interface SavedSlots<C>{String read(C c,String s)throws Exception;}public interface ResetStep<C>{void run(C c,long ms);}public static <C> ResetStep<C> resetStep(Registration r,SavedSlots<C> s){return (c,ms)->{if(!pending.test(c))throw new AssertionError("Revocation must follow durable reset authorization");calls++;budget=ms;};}}`);
   put('ai/eliza/plugins/system/crash/CrashLog.java',`package ai.eliza.plugins.system.crash; public final class CrashLog {public static void install(android.content.Context c){ai.alphacompute.alphaphone.ResetStartupTest.started();}}`);
   put('android/app/Activity.java',`package android.app; public class Activity extends android.content.Context {}`);
-  put('ai/eliza/plugins/system/SenseListenerClient.java',`package ai.eliza.plugins.system; public final class SenseListenerClient {public static boolean resetSaved=true;public static int calls;public SenseListenerClient(android.content.Context c){}public boolean resetForData(){calls++;return resetSaved;}public void admitOwner(java.util.function.Supplier<String> owner){ai.alphacompute.alphaphone.ResetStartupTest.started();}}`);
+  put('ai/eliza/plugins/system/SenseListenerClient.java',`package ai.eliza.plugins.system; public final class SenseListenerClient {public static boolean resetSaved=true,unreachable;public static int calls;public SenseListenerClient(android.content.Context c){}public boolean blocksReset(){return unreachable;}public boolean resetForData(){calls++;return resetSaved;}public void admitOwner(java.util.function.Supplier<String> owner){ai.alphacompute.alphaphone.ResetStartupTest.started();}}`);
   put('android/content/Context.java',`package android.content; public class Context { public static java.io.File data; public static android.app.ActivityManager manager=new android.app.ActivityManager(); public Context createDeviceProtectedStorageContext(){return this;} public java.io.File getNoBackupFilesDir(){data.mkdirs();return data;} public <T>T getSystemService(Class<T> type){return type.cast(manager);} public String getPackageName(){return "fixture.alpha";} public static int recoveries; public void startActivity(Intent intent){if(!"ai.alphacompute.alphaphone.ResetRecoveryActivity".equals(intent.target.getName())||intent.flags!=(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TASK))throw new AssertionError("unexpected start");recoveries++;} }`);
   put('android/content/Intent.java',`package android.content; public class Intent {public static final int FLAG_ACTIVITY_NEW_TASK=0x10000000,FLAG_ACTIVITY_CLEAR_TASK=0x8000;public final Class<?> target;public int flags;public Intent(Context c,Class<?> t){target=t;}public Intent addFlags(int f){flags|=f;return this;} }`);
   put('android/app/Application.java',`package android.app; public class Application extends android.content.Context {protected void attachBaseContext(android.content.Context base){} public void onCreate(){} public static String process="fixture.alpha"; public static String getProcessName(){return process;} }`);
@@ -61,6 +61,11 @@ public class ResetStartupTest {
   ai.eliza.auth.cloud.CloudKeyRevocation.pending=c->AlphaDataReset.RESET.pending((android.content.Context)c);
   android.content.Context.data=new java.io.File(args[0]);AlphaApplication app=new AlphaApplication();
   check(!AlphaDataReset.RESET.pending(app));
+  // A present listener with no reachable same-signer reset endpoint cannot strand
+  // the app in recovery: reject before any pending marker or budget is written.
+  SenseListenerClient.unreachable=true;check(!AlphaDataReset.RESET.recordIfListenerReachable(app));
+  check(!AlphaDataReset.RESET.pending(app)&&android.content.Context.data.listFiles().length==0);
+  SenseListenerClient.unreachable=false;
   // A stale attempt without a confirmed request neither withdraws listener consent nor clears data,
   // even with an acknowledging listener, and recreates no reset state in fresh data.
   SenseListenerClient.resetSaved=true;check(AlphaDataReset.RESET.attempt(app,System.currentTimeMillis())==DataReset.Outcome.DEFERRED);check(SenseListenerClient.calls==0&&android.app.ActivityManager.calls==0);check(android.content.Context.data.listFiles().length==0);
@@ -68,13 +73,16 @@ public class ResetStartupTest {
   // Package-scoped: Android's own-package clear only; the sibling app's fixture data is untouched.
   check(new java.io.File(args[1],"keep").isFile());NativeSourceHost.started=0;
   AlphaDataReset.RESET.record(app);check(AlphaDataReset.RESET.pending(new AlphaApplication()));
-  for(int mode=0;mode<3;mode++){android.app.ActivityManager.mode=mode;try{AlphaApplication restarted=new AlphaApplication();restarted.attachBaseContext(app);throw new AssertionError("Providers would initialize before onCreate");}catch(android.os.Process.Exit stopped){}check(NativeSourceHost.started==0);check(AlphaDataReset.RESET.pending(app));}
-  check(android.app.ActivityManager.calls==3);
+  for(int mode=0;mode<3;mode++){android.app.ActivityManager.mode=mode;int before=android.app.ActivityManager.calls;try{AlphaApplication restarted=new AlphaApplication();restarted.attachBaseContext(app);throw new AssertionError("Providers would initialize before onCreate");}catch(android.os.Process.Exit stopped){}check(NativeSourceHost.started==0);check(AlphaDataReset.RESET.pending(app));
+   // Accepted dispatch leaves an open durable reservation until Android clears app data.
+   // If that clear was interrupted, the next automatic launch settles it without repeating it.
+   check(android.app.ActivityManager.calls==before+(mode==1?0:1));}
+  check(android.app.ActivityManager.calls==2);
   // Each interrupted reset revokes Cloud keys first, bounded by the startup budget, only while the marker is durable.
-  check(ai.eliza.auth.cloud.CloudKeyRevocation.calls==3&&ai.eliza.auth.cloud.CloudKeyRevocation.budget==DataReset.STARTUP_BEFORE_DISPATCH_MS&&ai.eliza.auth.cloud.CloudKeyRevocation.budget==4000);
+  check(ai.eliza.auth.cloud.CloudKeyRevocation.calls==2&&ai.eliza.auth.cloud.CloudKeyRevocation.budget==DataReset.STARTUP_BEFORE_DISPATCH_MS&&ai.eliza.auth.cloud.CloudKeyRevocation.budget==4000);
   SenseListenerClient.resetSaved=false;
   try{app.attachBaseContext(app);throw new AssertionError("Unacknowledged listener reset resumed");}catch(android.os.Process.Exit stopped){}
-  check(android.app.ActivityManager.calls==3);check(AlphaDataReset.RESET.pending(app));check(NativeSourceHost.started==0);
+  check(android.app.ActivityManager.calls==2);check(AlphaDataReset.RESET.pending(app));check(NativeSourceHost.started==0);
   // #409 launcher loop: an installed listener that never acknowledges. Android relaunches HOME each
   // time the process stops. Every launch must stop without clearing or initializing, must show the
   // recovery surface, and automatic listener attempts must be bounded rather than repeated forever.

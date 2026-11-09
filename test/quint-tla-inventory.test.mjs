@@ -6,9 +6,9 @@ import {resolve, join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {pathToFileURL} from 'node:url';
 import {loadModels, readJson, repositoryRoot, sha256} from '../scripts/quint-lib.mjs';
-import {authenticateFormalSources, materializeHistoricalFormalSources} from '../specs/quint/legacy/core/formal-source-inventory.mjs';
+import {authenticateFormalSources, materializeHistoricalFormalSources, materializeHistoricalSources} from '../specs/quint/legacy/core/formal-source-inventory.mjs';
 import {git as fixtureGit} from './fixtures/git-fixture.mjs';
-import {prepareQuintHistory} from '../scripts/prepare-quint-history.mjs';
+import {prepareQuintHistory, quintHistoryInventories} from '../scripts/prepare-quint-history.mjs';
 
 const sourcePath = 'specs/quint/legacy/core/source-inventory.json';
 const viewRefreshPath = 'specs/quint/legacy/view-refresh-configurations.json';
@@ -48,7 +48,7 @@ test('all tracked TLA+ specifications and configurations have Quint translations
   assert.deepEqual(gitPaths(repositoryRoot, ['ls-files', '-z', '--', '*.tla', '*.cfg']), productFiles.sort());
 });
 
-test('formal history preparation fetches only the missing revision in a shallow clone and preserves HEAD', () => {
+test('history preparation fetches each missing inventoried revision in a shallow clone and preserves HEAD', () => {
   const directory = mkdtempSync(join(tmpdir(), 'alpha-formal-history-'));
   try {
     const origin = join(directory, 'origin'), root = join(directory, 'product'), vendor = join(root, 'vendor/eliza');
@@ -58,6 +58,8 @@ test('formal history preparation fetches only the missing revision in a shallow 
     git('init', '-q');writeFileSync(join(origin, 'Fixture.tla'), original);
     git('add', '.');git('commit', '-qm', 'Original specification');
     const revision = git('rev-parse', 'HEAD');
+    writeFileSync(join(origin, 'Mms.java'), 'class HistoricalMms {}\n');git('add', '.');git('commit', '-qm', 'Historical MMS source');
+    const mmsRevision = git('rev-parse', 'HEAD');
     git('rm', 'Fixture.tla');writeFileSync(join(origin, 'current.txt'), 'Current application');
     git('add', '.');git('commit', '-qm', 'Current source retires specification');
     const head = git('rev-parse', 'HEAD');
@@ -65,18 +67,26 @@ test('formal history preparation fetches only the missing revision in a shallow 
     const metadata = join(root, 'specs/quint/legacy/core');mkdirSync(metadata, {recursive:true});
     const inventory = {revision,models:[{source:'Fixture.tla',sha256:sha256(original),configs:[]}]};
     writeFileSync(join(metadata, 'source-inventory.json'), JSON.stringify(inventory));
+    const mmsInventory=join(root,quintHistoryInventories[1]);mkdirSync(resolve(mmsInventory,'..'),{recursive:true});
+    writeFileSync(mmsInventory,JSON.stringify({revision:mmsRevision,historicalArtifacts:[{path:'Mms.java',sha256:sha256('class HistoricalMms {}\n')}]}));
     assert.throws(()=>fixtureGit(vendor, 'cat-file', '-e', revision+'^{commit}'));
-    assert.deepEqual(prepareQuintHistory(root), {revision, fetched:true});
+    assert.deepEqual(prepareQuintHistory(root), {revisions:[{revision,fetched:true},{revision:mmsRevision,fetched:true}]});
     assert.equal(fixtureGit(vendor, 'rev-parse', 'HEAD'), head);
     assert.equal(fixtureGit(vendor, 'rev-parse', '--is-shallow-repository'), 'true');
-    assert.deepEqual(prepareQuintHistory(root), {revision, fetched:false});
+    assert.deepEqual(prepareQuintHistory(root), {revisions:[{revision,fetched:false},{revision:mmsRevision,fetched:false}]});
     assert.equal(fixtureGit(vendor, 'rev-parse', 'HEAD'), head);
     const input = 'vendor/eliza/Fixture.tla';
     const history = materializeHistoricalFormalSources(root,[input]);
     assert.equal(readFileSync(history.resolveSource(input),'utf8'), original);
     assert.ok(history.resolveSource(input).startsWith(join(root,'.eliza/quint-historical',revision)));
     assert.equal(fixtureGit(vendor,'status','--short'), '', 'Historical materialization never writes to vendor');
-    assert.equal(readJson(join(root,'.eliza/quint-historical',revision,'.source.json')).revision,revision);
+    assert.equal(readJson(history.manifest).revision,revision);
+    const mmsHistory=materializeHistoricalSources(root,['vendor/eliza/Mms.java'],quintHistoryInventories[1]);
+    assert.equal(readFileSync(mmsHistory.resolveSource('vendor/eliza/Mms.java'),'utf8'),'class HistoricalMms {}\n');
+    assert.equal(readJson(mmsHistory.manifest).revision,mmsRevision);
+    assert.notEqual(mmsHistory.manifest,history.manifest);
+    writeFileSync(mmsInventory,JSON.stringify({revision:mmsRevision,historicalArtifacts:[{path:'Mms.java',sha256:'0'.repeat(64)}]}));
+    assert.throws(()=>materializeHistoricalSources(root,['vendor/eliza/Mms.java'],quintHistoryInventories[1]), /Historical specification differs/);
     writeFileSync(join(metadata, 'source-inventory.json'), JSON.stringify({...inventory,models:[{...inventory.models[0],sha256:'0'.repeat(64)}]}));
     assert.throws(()=>materializeHistoricalFormalSources(root,[input]), /Historical specification differs/);
   } finally {rmSync(directory, {recursive:true,force:true});}

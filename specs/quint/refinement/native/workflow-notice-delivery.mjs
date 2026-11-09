@@ -8,6 +8,7 @@ import {app, javaTraces, root} from './java.mjs';
 import {workflowNoticePlatform} from './workflow-notice-platform.mjs';
 import {jsonJar} from '../../../../test/fixtures/jvm-tools.mjs';
 import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.mjs';
+import {preparePatchedNative} from '../../../../scripts/prepare-patched-native.mjs';
 
 const model = 'WorkflowNoticeDelivery';
 const driver = fileURLToPath(import.meta.url);
@@ -23,18 +24,26 @@ const nativeManifest = 'android/upstream-native-sources.json';
 
 export async function checkWorkflowNoticeDelivery(extraSources = []) {
   assert.ok(jsonJar, 'the pinned org.json fixture is required');
+  const prepared=preparePatchedNative({root});
+  const catalog=JSON.parse(readFileSync(join(root,nativeManifest),'utf8'));
+  const staged=[host,...shared].filter(path=>Object.hasOwn(prepared.files,path));
   const paths = [driver, join(here, 'WorkflowNoticeTraces.java'), join(here, 'Trace.java'), join(here, 'java.mjs'),
     join(here, 'workflow-notice-platform.mjs'), 'test/fixtures/jvm-tools.mjs', 'scripts/upstream-native-source.mjs',
     'upstream.lock.json', nativeManifest, bridge, ...product,
-    ...[host, ...shared].map(path => 'vendor/eliza/'+path), jsonJar, ...extraSources];
+    ...[host, ...shared].map(path => 'vendor/eliza/'+path),
+    'scripts/prepare-patched-native.mjs',join(prepared.root,'.source.json'),
+    ...catalog.patches.map(patch=>'patches/eliza/'+patch.file),
+    ...staged.map(path=>join(prepared.root,path)),jsonJar, ...extraSources];
   const driverHashes = captureInputs(paths);
   const source = upstreamNativeSource(root);
-  const patched = new Set(JSON.parse(readFileSync(join(root, nativeManifest), 'utf8')).patches
-    .flatMap(patch => patch.targets.map(target => target.path)));
   const pinned = path => {
-    assert.ok(!patched.has(path), 'workflow fixture needs the selected native transform for '+path);
     const file = source.read(path).get(path);
     assert.equal(driverHashes[join(root, 'vendor/eliza', path)], file.sha256);
+    if(Object.hasOwn(prepared.files,path)){
+      const selected=join(prepared.root,path);
+      assert.equal(driverHashes[selected],prepared.files[path],'authenticated effective workflow native source');
+      return readFileSync(selected,'utf8');
+    }
     return file.bytes.toString('utf8');
   };
   const directory = mkdtempSync(join(tmpdir(), 'quint-workflow-notice-'));

@@ -73,11 +73,13 @@ public class LiveCaptureController {
  public static final String CANCELLED="Recording cancelled";
  public LiveCaptureController(Host host){}
  public void cancelAll(){}
+ public void pause(java.util.Collection<LiveCaptureAdmission.Ticket> waiting){if(!waiting.isEmpty())throw new AssertionError("Unexercised live permission reservation");}
  public void shutdown(){}
  public void interrupt(String reason){}
  public void onWorker(Runnable work,Runnable refused){throw new AssertionError("Unexercised live capture");}
  public LiveCaptureAdmission.Ticket reserve(String id,long epoch){throw new AssertionError("Unexercised live admission");}
  public boolean current(LiveCaptureAdmission.Ticket ticket){throw new AssertionError("Unexercised live admission");}
+ public void refuse(LiveCaptureAdmission.Ticket ticket,Started callback){throw new AssertionError("Unexercised live admission refusal");}
  public void start(LiveCaptureAdmission.Ticket ticket,boolean echo,Route route,String room,boolean reopen,Started callback){throw new AssertionError("Unexercised live capture");}
  public void stop(String id,boolean discard,double cutoff,Stopped callback){throw new AssertionError("Unexercised live stop");}
 }`,

@@ -58,7 +58,7 @@ export function preparePatchedNative({root=ROOT,manifestFile='native-manifest.js
  root=path.resolve(root);
  if(manifestFile!=='native-manifest.json')throw Error('Unknown native patch slot');
  const source=upstreamNativeSource(root),patchRoot=path.join(root,'patches/eliza'),manifestBytes=fs.readFileSync(path.join(root,NATIVE_SOURCE_MANIFEST)),configuration=JSON.parse(manifestBytes);
- if(configuration.schema!==1||!Array.isArray(configuration.modules)||!Array.isArray(configuration.patches)||configuration.patches.length!==0)throw Error('Expected pinned native source modules');
+ if(configuration.schema!==1||!Array.isArray(configuration.modules)||!Array.isArray(configuration.patches))throw Error('Expected pinned native source modules');
  const manifest={...configuration,baseCommit:source.pin};
  const key=sha(Buffer.concat([Buffer.from(source.pin),manifestBytes,fs.readFileSync(fileURLToPath(import.meta.url))]));
  const parent=path.join(root,'.eliza/patched-native'),destination=path.join(parent,key);

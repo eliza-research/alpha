@@ -144,6 +144,16 @@ voice evidence to public delivery. Its existing producer limits differ from the
 application's 2 GiB update limit; native speech releases use the admitted local
 delivery path until a native producer bridge is separately qualified.
 
+## Disposable Android platform probe
+
+Run `node scripts/test-automatic-update-platform.mjs --owned-emulator --serial=emulator-5554 --output=/absolute/new-output`
+only for a disposable, owned API 36 emulator. The script builds and installs its
+separate fixture package, exercises PackageInstaller self-update and retained
+state, writes receipts, and removes the package afterward. It requires the
+Android SDK/build tools and Java 21 described in the build setup. This measures
+the platform API; product APK, HOME, AOSP image, real-service and physical-device
+acceptance remain separate.
+
 ## Acceptance on the phone host
 
 Retain a baseline and candidate with the same production signing family, launcher

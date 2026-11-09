@@ -2110,6 +2110,36 @@
       "path": "packages/core/scripts/tla-graph.ts",
       "sha256": "46c60866499aea4f0315ed804876d9945fc1c4b54558ac7b4067fa14beaab47d",
       "classification": "historical-upstream-TLC-DOT-parser"
+    },
+    {
+      "path": "packages/core/src/runtime/embeddings.ts",
+      "sha256": "36605cc23b7e423f5dd0edd8cef4e7a7f91cb85860c864af9781b5fbd0f71176",
+      "classification": "historical-upstream-runtime-fragment",
+      "scope": "Original embedding provenance counterexample; not current runtime qualification"
+    },
+    {
+      "path": "packages/core/src/embedding-vector-space.ts",
+      "sha256": "111259f0bfde1673931851e45f4ef5330674a1f98a73b5490258c888461e1224",
+      "classification": "historical-upstream-runtime-fragment",
+      "scope": "Original embedding provenance counterexample; not current runtime qualification"
+    },
+    {
+      "path": "plugins/plugin-sql/src/base.ts",
+      "sha256": "7330514fd585fcb0389fbae0e3eaf802d4f2620dc74829ca522945ea836297ac",
+      "classification": "historical-upstream-runtime-fragment",
+      "scope": "Original embedding provenance counterexample; not current runtime qualification"
+    },
+    {
+      "path": "plugins/plugin-sql/src/embedding-space.ts",
+      "sha256": "6732221e4bfb103841cd1c7932baaef5f2c3c7e9c85384e3593a5ecd142fea9b",
+      "classification": "historical-upstream-runtime-fragment",
+      "scope": "Original embedding provenance counterexample; not current runtime qualification"
+    },
+    {
+      "path": "plugins/plugin-sql/src/pglite/adapter.ts",
+      "sha256": "cf2e58f0d7e4eb70514fcad151eb44af19970246a1904f0a4560eda60c786dfb",
+      "classification": "historical-upstream-runtime-fragment",
+      "scope": "Original embedding provenance counterexample; not current runtime qualification"
     }
   ],
   "currentUpstream": {

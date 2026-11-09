@@ -7,6 +7,7 @@ import {registerHooks} from 'node:module';
 import {basename, dirname, join, resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {CORE_STATE_MANIFEST} from '../../../../scripts/core-state-patch.mjs';
+import {parseBuildPolicy} from '../../../../scripts/build-policy-source.mjs';
 import {writeCoreStateFixture} from '../../../../test/fixtures/core-state-root.mjs';
 
 const repository = resolve(import.meta.dirname, '../../../..');
@@ -79,7 +80,7 @@ if (defaultSource) {
 }
 json(join(root, 'upstream.lock.json'), {commit: revision});
 const patchManifest = join(root, CORE_STATE_MANIFEST);
-json(patchManifest, {...read(patchManifest), baseCommit: revision});
+write(patchManifest, 'export default '+JSON.stringify({...parseBuildPolicy(fs.readFileSync(patchManifest)), baseCommit: revision})+';\n');
 write(key, input, scenario === 'key-mode' ? 0o644 : 0o600);
 Object.assign(process.env, {
   ALPHA_QA_PROFILE: scenario === 'relative-profile' ? 'relative-fixture-profile' : profile,

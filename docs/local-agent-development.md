@@ -335,6 +335,14 @@ An isolated redaction-on campaign on this source passes five real-provider crede
 
 Failed live attempts led to this repair and remain recorded under `test-results/current-redaction-live/`; passing results are in its `storage/` directory. `test-results/encoded-credential-review/` contains source/test evidence. The broader stage-one invalid-native-source failure was subsequently traced to a stale fixture that omitted the intentional single repair attempt. The fixture correction and combined 485-case campaign pass; production runtime behavior is unchanged. Native integration, wider model reliability and current-head full hosted qualification remain open. No Android build ran.
 
+## Source snapshot fingerprints
+
+For an independently reviewed combined-agent source snapshot, run
+`node scripts/fingerprint-combined-agent.mjs /absolute/source /absolute/new-manifest.json`.
+The output must be a new file outside the source tree. It records the source
+revision and per-entry hashes for comparison; generating it does not admit that
+snapshot as the current product runtime.
+
 ## Google service QA in a separate browser profile
 
 Use `ALPHA_BROWSER_CLOUD_PROFILE=/private/separate/profile npm run dev:ui -- --port 5209 --strictPort`

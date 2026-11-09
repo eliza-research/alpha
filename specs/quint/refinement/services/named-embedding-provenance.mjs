@@ -280,8 +280,12 @@ export async function runNamedEmbeddingProvenanceRefinement(extraSources = []) {
     const marked = await f.generate();
     assert.equal(await f.write('update', marked, 'new'), 'written');
     const stored = await f.read();
-    assert.equal(stored.embedding[representation], undefined);
-    assert.equal(await f.write('update', stored.embedding, 'old'), 'space');
+    assert.equal(stored.embedding[representation], space, 'SQL readback retains its authenticated representation');
+    assert.deepEqual(stored.embedding, marked, 'SQL readback preserves the exact numeric vector');
+    assert.equal(await f.write('update', stored.embedding, 'new'), 'written');
+    const serialized = JSON.parse(JSON.stringify(stored.embedding));
+    assert.equal(serialized[representation], undefined, 'Serialization carries no representation proof');
+    assert.equal(await f.write('update', serialized, 'old'), 'space');
     assert.equal(await f.write('update', undefined, 'new'), 'written');
   });
   await drive('held-named-cas-rechecks-source-text-after-a-winning-edit', async f => {
