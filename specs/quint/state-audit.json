@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "b1817660a0347ae19551b9ee296410fe55f02d59",
-  "ledgerSha256": "3be7b0b2f649726b8e51be816ab7df6db0de1df427333be036281a211239cee6",
+  "ledgerSha256": "b9221150d8230d0de5d2fbe8ee0431d5efc06e10c86581f9ca2f94029ad1eaa0",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -28,9 +28,9 @@
     "parsedFiles": 5656,
     "languageReview": 90,
     "parseErrors": 0,
-    "candidates": 67448,
-    "writeSites": 67029,
-    "writeAssociations": 60097,
+    "candidates": 67446,
+    "writeSites": 67027,
+    "writeAssociations": 60095,
     "asynchronous": 8345,
     "unassignedWrites": 10332
   },
@@ -41511,7 +41511,7 @@
     },
     {
       "path": "apps/app/src/runtime/cloud-protocol.ts",
-      "sha256": "18524f7ee144b3754e1d390b3ea50f70ff92bc7f190e28a8db00a42a1c65b1e6",
+      "sha256": "c2931211060ffaa80ee9d16758f87ed4b2bc672ff6c2eb4c3f22550e5039cbf6",
       "allocatedModels": [
         "Application",
         "ApplicationComposition",
@@ -41526,67 +41526,55 @@
       "owners": [
         {
           "owner": "<module>",
-          "line": 36,
+          "line": 37,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "CloudProtocolError",
-          "line": 117,
+          "line": 118,
           "bindings": 3,
           "writes": 1
         },
         {
           "owner": "CloudProtocol",
-          "line": 152,
+          "line": 153,
           "bindings": 10,
           "writes": 14
         },
         {
           "owner": "CloudProtocol.requestData",
-          "line": 166,
+          "line": 167,
           "bindings": 2,
           "writes": 3
         },
         {
           "owner": "CloudProtocol.signInStep",
-          "line": 289,
+          "line": 290,
           "bindings": 7,
           "writes": 9
         },
         {
           "owner": "CloudProtocol.handOffLogin",
-          "line": 348,
+          "line": 349,
           "bindings": 4,
           "writes": 7
         },
         {
           "owner": "CloudProtocol.revokeReplaced",
-          "line": 472,
+          "line": 473,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "CloudProtocol.googleAuthUrl",
-          "line": 518,
+          "line": 519,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "CloudProtocol.mapsTile",
-          "line": 544,
-          "bindings": 1,
-          "writes": 1
-        },
-        {
-          "owner": "CloudProtocol.googleCalendars",
-          "line": 555,
-          "bindings": 1,
-          "writes": 1
-        },
-        {
-          "owner": "CloudProtocol.googleCalendarFeed",
-          "line": 573,
+          "line": 545,
           "bindings": 1,
           "writes": 1
         }
@@ -220582,6 +220570,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "b285d7ce53188d5fc907815e7b2e0d01cc767c33b88965dbbe5bd4d74b292c2b"
+    "sha256": "6e91aa036dc45f93484423bf46a7a1c9c816e9cd70329fcfd2e0ba932ed11c68"
   }
 }

@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "baseCommit": "b1817660a0347ae19551b9ee296410fe55f02d59",
-  "sourceCommit": "9c215f67b04d5020b070aebd3191d8b3615e4163",
+  "sourceCommit": "e59d62f00e18bf30da0c8766f50211594b9c2d61",
   "patches": [
     {
       "file": "managed-google-agent.patch",
-      "sha256": "bee1b73951fd91467ea999c59aea9953cc43d8ec5c8c84e18031e081fa14b824",
+      "sha256": "13594c6d62f442957be5b465cbe2c46fb34a35dc12e484ccb066ca1645cb4e58",
       "targets": [
         {
           "path": "packages/app/src/runtime/managed-google-agent/calendar-read-timing.ts",
@@ -33,9 +33,14 @@
           "afterSha256": "4002afcaefdc347b2de013cb49523dc77545dd1cb896183d8d704678336ddc01"
         },
         {
+          "path": "packages/app/src/runtime/managed-google-agent/managed-google-calendar-read.ts",
+          "beforeSha256": null,
+          "afterSha256": "bad76db28c475778a98dcab5682d4bc321e75186639e37bdf71083e25916c55b"
+        },
+        {
           "path": "packages/app/src/runtime/managed-google-agent/managed-google-client.ts",
           "beforeSha256": null,
-          "afterSha256": "4551dfd287169faefdd0fbf8aae9fb5aa913b9b78cbeb8133101591c72e3c684"
+          "afterSha256": "b508b32b1b98ef7c0521dec6c1ee15b341ae628d8b3c25fec405abc74e34fdab"
         },
         {
           "path": "packages/app/src/runtime/managed-google-agent/managed-google-failure-stage.ts",
@@ -45,7 +50,7 @@
         {
           "path": "packages/app/src/runtime/managed-google-agent/managed-google-route-policy.ts",
           "beforeSha256": null,
-          "afterSha256": "4cbfa48ea775f22c0c937606792525973f109a7f726accde9ebee8f02fba4a57"
+          "afterSha256": "68d3cc45ce4558ef94c144756da3933748eca575fa351b4f668b1f0253a5345c"
         },
         {
           "path": "packages/app/src/runtime/managed-google-agent/native-google-agent-host.ts",
@@ -55,7 +60,7 @@
         {
           "path": "packages/app/src/runtime/managed-google-agent/native-google-cloud-port.ts",
           "beforeSha256": null,
-          "afterSha256": "36e63c0e42984bd74a346a9157bef9e2afdf90e669b68494e28d0026b303b70d"
+          "afterSha256": "cbfd0f67675663091044e74196ad4592e68bf691c38fab31fb933fefbf8bc053"
         }
       ]
     }

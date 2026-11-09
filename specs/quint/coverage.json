@@ -37794,7 +37794,7 @@
     },
     {
       "path": "apps/app/src/runtime/cloud-protocol.ts",
-      "sha256": "18524f7ee144b3754e1d390b3ea50f70ff92bc7f190e28a8db00a42a1c65b1e6",
+      "sha256": "c2931211060ffaa80ee9d16758f87ed4b2bc672ff6c2eb4c3f22550e5039cbf6",
       "models": [
         "Application",
         "ApplicationComposition",
@@ -618247,7 +618247,7 @@
     },
     {
       "path": "patches/eliza/managed-google-agent.patch",
-      "sha256": "bee1b73951fd91467ea999c59aea9953cc43d8ec5c8c84e18031e081fa14b824",
+      "sha256": "13594c6d62f442957be5b465cbe2c46fb34a35dc12e484ccb066ca1645cb4e58",
       "models": [
         "BrowserCloudRequestCustody",
         "GmailAgentMailboxRecovery",
@@ -618258,7 +618258,7 @@
     },
     {
       "path": "patches/eliza/managed-google-agent-manifest.json",
-      "sha256": "e46cfbe0831cd613aa0e60d22b64d3e19de2b6a40ec5739b787851d87f02ee80",
+      "sha256": "8b95f98aef271e13fac67916a03ecc6d270dce45a1685b9ffbeb8549feebfb3b",
       "models": [
         "BrowserCloudRequestCustody",
         "GmailAgentMailboxRecovery",
