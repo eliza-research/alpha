@@ -37935,7 +37935,7 @@
       "sha256": "6e9be965d3442e34d49a5e6d8b7f2f183b192f6d85daf817512ff76eba78e202"
     },
     {
-      "path": "patches/eliza/native-manifest.json",
+      "path": "android/upstream-native-sources.json",
       "models": [
         "DurableStore",
         "NoticesAndCaches"

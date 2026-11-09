@@ -1,11 +1,11 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import os from 'node:os';import path from 'node:path';import {execFileSync} from 'node:child_process';
 import {jsonJar,jsonJarSkip,javaBinary} from './fixtures/jvm-tools.mjs';
-import {materializeNativePatches} from '../scripts/prepare-patched-native.mjs';import {upstreamNativeSource} from '../scripts/upstream-native-source.mjs';
+import {materializeNativePatches,NATIVE_SOURCE_MANIFEST} from '../scripts/prepare-patched-native.mjs';import {upstreamNativeSource} from '../scripts/upstream-native-source.mjs';
 const root=path.resolve(import.meta.dirname,'..');
 test('conditional native Calendar plans preserve rich metadata and refuse unsupported mutations',{skip:jsonJarSkip},()=>{
  const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-calendar-sync-plan-')),sourceRoot=process.env.ALPHA_NATIVE_UPSTREAM_ROOT||root;
  try{
-  materializeNativePatches({source:upstreamNativeSource(sourceRoot),manifest:JSON.parse(fs.readFileSync(path.join(root,'patches/eliza/native-manifest.json'))),patchRoot:path.join(root,'patches/eliza'),temporary});
+  materializeNativePatches({source:upstreamNativeSource(sourceRoot),manifest:JSON.parse(fs.readFileSync(path.join(root,NATIVE_SOURCE_MANIFEST))),temporary});
   const shared=path.join(sourceRoot,'vendor/eliza/plugins/plugin-native-calendar/test/jvm/android');
   const values=path.join(temporary,'ContentValues.java');fs.writeFileSync(values,fs.readFileSync(path.join(shared,'content/ContentValues.java'),'utf8').replace('public void put(String key,Long value)','public int size(){return values.size();}public void put(String key,Integer value){values.put(key,value);}public void put(String key,Long value)'));
   const contract=path.join(temporary,'CalendarContract.java');const columns=['CALENDAR_ID','TITLE','DESCRIPTION','EVENT_LOCATION','DTSTART','EVENT_TIMEZONE','ALL_DAY','DTEND','RRULE','DURATION'];const names=['calendar_id','title','description','eventLocation','dtstart','eventTimezone','allDay','dtend','rrule','duration'];

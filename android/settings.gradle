@@ -27,7 +27,7 @@ project(':eliza-network-policy').projectDir = new File('../vendor/eliza/plugins/
 // Calendar and reminder engines come from the reviewed upstream pin.
 include ':eliza-calendar'
 include ':eliza-reminders'
-// Admission authenticates the pin, patch bytes and complete staged source before Gradle compiles it.
+// Admission authenticates the pin and complete staged source before Gradle compiles it.
 def nativePatchProcess = new ProcessBuilder('node', '../scripts/prepare-patched-native.mjs').directory(settingsDir).redirectError(ProcessBuilder.Redirect.INHERIT).start()
 def nativePatchOutput = nativePatchProcess.inputStream.getText('UTF-8')
 if (nativePatchProcess.waitFor() != 0) throw new GradleException('Native patch admission failed')

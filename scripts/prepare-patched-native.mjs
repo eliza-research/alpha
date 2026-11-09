@@ -5,6 +5,7 @@ import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {upstreamNativeSource,sha} from './upstream-native-source.mjs';
 const ROOT=fileURLToPath(new URL('../',import.meta.url));
+export const NATIVE_SOURCE_MANIFEST='android/upstream-native-sources.json';
 const HEX=/^[a-f0-9]{64}$/;
 const safe=name=>typeof name==='string'&&!name.startsWith('/')&&!name.split('/').some(x=>!x||x==='.'||x==='..')&&!name.includes('\\');
 function inventory(root){const files={};function visit(dir){for(const row of fs.readdirSync(dir,{withFileTypes:true})){const name=path.join(dir,row.name);if(row.isSymbolicLink())throw Error('Symlink in patched source');if(row.isDirectory())visit(name);else if(row.isFile())files[path.relative(root,name)]=sha(fs.readFileSync(name));else throw Error('Nonregular patched source');}}visit(root);return files;}
@@ -41,13 +42,15 @@ export function verifyNativePatchReceipt(raw,prepared){let receipt;try{receipt=J
 export function preparePatchedNative({root=ROOT,manifestFile='native-manifest.json'}={}){
  root=path.resolve(root);
  if(manifestFile!=='native-manifest.json')throw Error('Unknown native patch slot');
- const source=upstreamNativeSource(root),patchRoot=path.join(root,'patches/eliza'),manifestBytes=fs.readFileSync(path.join(patchRoot,manifestFile)),manifest=JSON.parse(manifestBytes);
+ const source=upstreamNativeSource(root);
+ const manifestBytes=fs.readFileSync(path.join(root,NATIVE_SOURCE_MANIFEST)),manifest=JSON.parse(manifestBytes);
+ if(!Array.isArray(manifest.patches)||manifest.patches.length)throw Error('Native source manifest must contain no patches');
  const key=sha(Buffer.concat([manifestBytes,fs.readFileSync(fileURLToPath(import.meta.url))]));
  const parent=path.join(root,'.eliza/patched-native'),destination=path.join(parent,key);
  for(let current=parent;current!==root;current=path.dirname(current))if(fs.existsSync(current)&&fs.lstatSync(current).isSymbolicLink())throw Error('Symlink in native staging parent');
  const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-native-patches-'));
  try{
-  const verified=materializeNativePatches({source,manifest,patchRoot,temporary});
+  const verified=materializeNativePatches({source,manifest,temporary});
   const receipt={baseCommit:source.pin,manifestSha256:sha(manifestBytes),preparerSha256:sha(fs.readFileSync(fileURLToPath(import.meta.url))),...verified};
   if(fs.existsSync(destination)){
    if(fs.lstatSync(destination).isSymbolicLink())throw Error('Symlink in staged native source');
