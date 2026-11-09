@@ -53,7 +53,7 @@ function provider(options = {}) {
 /** The Maps screen as prototype/maps-adapter.ts drives it: the user's Start is the only way guidance begins. */
 function screen(maps, options = {}) {
  const controller = new MapsController(config, maps, new SavedPlaces('test.maps.agent', memory()), noLocation);
- let navigating = false, routeId = '', fix, placeName = '', released = new Set(), sheet = 'base', rerouting = false, arrived = false;
+ let navigating = false, session = 0, routeId = '', fix, placeName = '', released = new Set(), sheet = 'base', rerouting = false, arrived = false;
  const located = [];
  const surface = {
   sheet: () => sheet,
@@ -63,14 +63,17 @@ function screen(maps, options = {}) {
   async showDirections(place, mode, resolve) { sheet = 'directions'; controller.clearOrigin(); controller.setMode(mode); await controller.select(place, resolve); placeName = controller.snapshot().selection.value?.name ?? place.name; },
   async locationGranted() { return options.granted ?? true; },
   locate(signal) { located.push(signal); return options.locate ? options.locate(signal) : Promise.resolve({ coordinate: CASINO, accuracyMeters: 8, timestamp: Date.now(), precision: 'precise' }); },
-  planFrom(origin) { controller.setOrigin(origin); return controller.planRoute(); },
+  async planFrom(origin) { controller.setOrigin(origin); await controller.planRoute(); },
   // As the adapter: the session lasts from the user's Start to End, through rerouting and arrival.
-  guidance: () => navigating ? { routeId, placeName, travelMode: controller.snapshot().mode, rerouting, arrived, ...(fix ? { fix } : {}) } : null,
+  guidance: () => navigating ? { session, routeId, placeName, travelMode: controller.snapshot().mode, rerouting, arrived, ...(fix ? { fix } : {}) } : null,
   async reroute(from) {
    rerouting = true;
-   try { await controller.reroute(from); } finally { rerouting = false; }
-   const route = controller.snapshot().route;
-   if (route.phase === 'ready') routeId = route.value.id; else navigating = false;
+   try {
+    const reply = await controller.reroute(from);
+    const route = controller.snapshot().route;
+    if (route.phase === 'ready') routeId = route.value.id; else navigating = false;
+    return reply;
+   } finally { rerouting = false; }
   },
   async stop() { navigating = false; routeId = ''; fix = undefined; rerouting = false; arrived = false; },
   onRelease(listener) { released.add(listener); return () => released.delete(listener); },
@@ -78,7 +81,7 @@ function screen(maps, options = {}) {
  return {
   controller, surface, located,
   /** The user's own Start on the reviewed route sheet. */
-  userStarts(position) { const route = controller.snapshot().route; assert.equal(route.phase, 'ready'); navigating = true; routeId = route.value.id; sheet = 'navigation'; fix = position; },
+  userStarts(position) { const route = controller.snapshot().route; assert.equal(route.phase, 'ready'); navigating = true; session++; routeId = route.value.id; sheet = 'navigation'; fix = position; },
   moveTo(position) { fix = position; },
   arrive() { arrived = true; },
   release() { for (const listener of [...released]) listener(); },
