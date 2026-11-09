@@ -10,7 +10,7 @@ import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.m
 
 const model='NativeDigestConsent';
 const harness='NativeDigestTraces.java';
-const nativeManifest='patches/eliza/native-manifest.json';
+const nativeManifest='android/upstream-native-sources.json';
 const scenarios=['describe-revoked-held','describe-expired-held','describe-current-held','describe-calendar-changed-held',
   'describe-owner-retired-held','consent','scope-refusal','storage','exact-owner',
   'projection','bounds','reminders-only','calendar-only','read-revoked','read-expired','read-calendar-changed',

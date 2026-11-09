@@ -14,16 +14,6 @@ function regular(file,root){
  for(let current=file;current!==root;current=path.dirname(current))if(fs.lstatSync(current).isSymbolicLink())throw Error('Linked client feature patch');
  if(!fs.lstatSync(file).isFile())throw Error('Nonregular client feature patch');
 }
-/** Explicit additions and a hash-bound assistant-controller patch; the vendor and resident stay immutable. */
-export function clientSpeechPatch(root,upstream){
- return clientFeaturePatch(root,upstream,{
-  manifest:'cloud-speech-client-manifest.json',
-  prefix:'packages/voice/src',
-  target:/^packages\/voice\/src\/[a-z0-9-]+\.ts$/,
-  editable:'packages/voice/src/voice-assistant-session.ts',
- });
-}
-
 /** Backport of the shared Google host. It can only add modules in its own source directory. */
 export function clientManagedGooglePatch(root,upstream){
  return clientFeaturePatch(root,upstream,{

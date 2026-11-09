@@ -11,11 +11,12 @@ export const sourceRoots = ['apps/app/src', 'apps/app/public', 'android'];
 export const runtimeScriptPaths = ['scripts/browser-cloud-dev-bridge.ts', 'scripts/cloud-resident-host.mjs',
   'scripts/cloud-email-code.ts', 'scripts/dev-cloud.mjs', 'scripts/dev-local.mjs',
   'scripts/start-local-voice-agent.mjs', 'scripts/start-local-remote.mjs',
-  'scripts/core-state-patch.mjs', 'scripts/core-state-preload.mjs', 'scripts/start-reviewed-workflow-agent.mjs',
+  'scripts/core-state-patch.mjs', 'scripts/core-state-preload.mjs', 'scripts/build-policy-source.mjs',
+  'scripts/start-reviewed-workflow-agent.mjs',
   'scripts/start-cloud-qa.mjs', 'scripts/start-combined-agent.mjs', 'scripts/launcher-child.mjs',
   'scripts/local-agent-dev-bridge.ts', 'scripts/local-agent-dev-storage.ts',
   'scripts/prepare-local-agent.mjs', 'scripts/local-agent-source.mjs', 'scripts/copy-file-clone.mjs',
-  'scripts/prepare-client-features.mjs', 'scripts/prepare-patched-native.mjs',
+  'scripts/prepare-client-features.mjs', 'scripts/managed-google-client-backport.mjs', 'scripts/prepare-patched-native.mjs',
   'scripts/build-workflow-worker.ts', 'scripts/prepared-workflow-worker.mjs',
   'scripts/workflow-worker-artifact.mjs', 'scripts/stage-workflow-worker.mjs',
   'scripts/native-google-host-artifact.mjs', 'scripts/build-native-google-host.ts',
@@ -115,7 +116,7 @@ export function sharedSourcePaths() {
   const client = readJson(join(repositoryRoot, '.eliza/client-features/.source.json'));
   if (client.baseCommit !== pin.commit) throw Error('Prepare client sources for the current upstream pin before checking Quint coverage');
   const host = readJson(join(repositoryRoot, 'android/consumer-host.json'));
-  const patches = readJson(join(repositoryRoot, 'patches/eliza/native-manifest.json'));
+  const patches = readJson(join(repositoryRoot, 'android/upstream-native-sources.json'));
   const prefixes = new Set([
     ...Object.keys(client.sourceFiles),
     ...host.profile.modules.filter(module => ['upstream', 'patchedNative'].includes(module.source.root)).map(module => module.source.path),

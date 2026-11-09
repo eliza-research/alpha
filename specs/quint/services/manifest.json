@@ -904,10 +904,7 @@
         "vendor/eliza/plugins/plugin-inbox/src/mailbox/drafts-controller.ts",
         "vendor/eliza/plugins/plugin-inbox/src/mailbox/operation-journal.ts",
         "vendor/eliza/plugins/plugin-inbox/src/mailbox/retained-draft.ts",
-        "patches/eliza/inbox-confirmation-client-manifest.json",
-        "patches/eliza/inbox-confirmation-client.patch",
-        "patches/eliza/inbox-cleanup-client-manifest.json",
-        "patches/eliza/inbox-cleanup-client.patch",
+        "upstream.lock.json",
         "scripts/prepare-client-features.mjs"
       ],
       "components": [
@@ -1338,7 +1335,6 @@
         "vendor/eliza/packages/core/src/runtime.ts",
         "vendor/eliza/plugins/plugin-sql/src/base.ts",
         "vendor/eliza/plugins/plugin-sql/src/stores/task-wake.ts",
-        "patches/eliza/task-service-stop.patch",
         "scripts/core-state-patch.mjs"
       ],
       "tests": [
@@ -1389,8 +1385,7 @@
         "vendor/eliza/plugins/plugin-notes/src/interact.ts",
         "vendor/eliza/plugins/plugin-notes/src/types.ts",
         "vendor/eliza/plugins/plugin-notes/src/validation.ts",
-        ".eliza/client-features/plugins/plugin-notes/src/client/notes-api.ts",
-        "patches/eliza/notes-state-runtime.patch"
+        ".eliza/client-features/plugins/plugin-notes/src/client/notes-api.ts"
       ],
       "tests": [
         "canonicalReplayTest",
@@ -1449,8 +1444,7 @@
       "sources": [
         "vendor/eliza/packages/core/src/runtime/turn-controller.ts",
         "vendor/eliza/packages/core/src/runtime/turn-aborted-error.ts",
-        "patches/eliza/turn-controller-isolation.patch",
-        "patches/eliza/core-state-manifest.json"
+        "upstream.lock.json"
       ],
       "stateMapping": {
         "active/results/registry/room/order/roomOrder": "Actual registry maps, controller identities and returned handler promises",
@@ -1479,7 +1473,6 @@
       "sources": [
         "vendor/eliza/packages/core/src/services/task-scheduler.ts",
         "vendor/eliza/packages/core/src/services/task.ts",
-        "patches/eliza/task-service-stop.patch",
         "scripts/core-state-patch.mjs"
       ],
       "tests": [
@@ -1579,7 +1572,6 @@
       ],
       "sources": [
         "vendor/eliza/packages/core/src/runtime/embeddings.ts",
-        "patches/eliza/embedding-store-identity.patch",
         "vendor/eliza/packages/core/src/runtime.ts",
         "vendor/eliza/packages/core/src/runtime/model-dispatch.ts",
         "vendor/eliza/plugins/plugin-sql/src/base.ts"
@@ -1714,8 +1706,7 @@
         "vendor/eliza/packages/core/src/runtime/model-dispatch.ts",
         "vendor/eliza/packages/core/src/runtime/data-mutations.ts",
         "vendor/eliza/packages/agent/src/api/conversation-routes.ts",
-        "vendor/eliza/plugins/plugin-assistant/src/features/advanced-capabilities/experience/service.ts",
-        "patches/eliza/named-embedding-provenance.patch"
+        "vendor/eliza/plugins/plugin-assistant/src/features/advanced-capabilities/experience/service.ts"
       ],
       "stateMapping": {
         "space/width": "Live adapter activation and vector column at SQL construction",
@@ -1864,8 +1855,7 @@
         "vendor/eliza/packages/core/src/runtime/connector-registration.ts",
         "vendor/eliza/packages/core/src/runtime/service-lifecycle.ts",
         "vendor/eliza/packages/core/src/runtime.ts",
-        "patches/eliza/plugin-connector-custody.patch",
-        "patches/eliza/core-state-manifest.json",
+        "upstream.lock.json",
         "scripts/core-state-patch.mjs"
       ],
       "stateMapping": {
@@ -1910,10 +1900,9 @@
         "scripts/core-state-patch.mjs",
         "scripts/build-mobile-agent.mjs",
         "scripts/mobile-bundle-smoke.mjs",
-        "patches/eliza/mobile-uuid-build.json",
-        "patches/eliza/core-state-manifest.json",
-        "patches/eliza/plugin-connector-custody.patch",
+        "vendor/eliza/packages/agent/scripts/mobile-uuid-exports.ts",
         "upstream.lock.json",
+        "vendor/eliza/packages/core/src/plugin-lifecycle.ts",
         "vendor/eliza/bun.lock",
         "vendor/eliza/packages/agent/scripts/build-mobile-bundle.ts"
       ],
@@ -2035,22 +2024,25 @@
         "scripts/native-google-product-host.ts",
         "apps/app/src/product/alpha-product-registration.ts",
         "package.json",
-        "patches/eliza/cloud-speech-client-manifest.json",
-        "patches/eliza/cloud-speech-client.patch",
-        "patches/eliza/core-state-manifest.json",
-        "patches/eliza/embedding-store-identity.patch",
-        "patches/eliza/named-embedding-provenance.patch",
-        "patches/eliza/notes-state-runtime.patch",
-        "patches/eliza/plugin-connector-custody.patch",
-        "patches/eliza/room-queue-admission.patch",
-        "patches/eliza/task-service-stop.patch",
-        "patches/eliza/turn-controller-isolation.patch",
-        "scripts/client-speech-patch.mjs",
+        "upstream.lock.json",
+        "vendor/eliza/packages/voice/src/native-cloud-speech.ts",
+        "vendor/eliza/packages/voice/src/cloud-speech-chunks.ts",
+        "vendor/eliza/packages/core/src/runtime/embeddings.ts",
+        "vendor/eliza/plugins/plugin-sql/src/base.ts",
+        "vendor/eliza/packages/agent/src/api/conversation-routes.ts",
+        "vendor/eliza/plugins/plugin-assistant/src/features/advanced-capabilities/experience/service.ts",
+        "vendor/eliza/plugins/plugin-notes/src/service.ts",
+        "vendor/eliza/plugins/plugin-notes/src/store.ts",
+        "vendor/eliza/plugins/plugin-notes/src/types.ts",
+        "vendor/eliza/plugins/plugin-notes/src/validation.ts",
+        "vendor/eliza/packages/core/src/plugin-lifecycle.ts",
+        "vendor/eliza/packages/core/src/runtime/room-handler-queue.ts",
+        "vendor/eliza/packages/core/src/services/task.ts",
+        "vendor/eliza/packages/core/src/runtime/turn-controller.ts",
         "scripts/combined-agent-source.mjs",
         "scripts/core-state-preload.mjs",
         "scripts/prepare-client-features.mjs",
         "tsconfig.json",
-        "upstream.lock.json",
         "vendor/eliza/packages/auth/src/auth/native-cloud-sign-in.ts",
         "vendor/eliza/packages/cloud/sdk/native-host/subscription-grant.mjs",
         "vendor/eliza/packages/cloud/sdk/src/cloud-account-billing.ts",
@@ -2373,22 +2365,22 @@
       "init": "init",
       "step": "step",
       "invariant": "safety",
-      "tests": ["publishAndReuseTest", "badPatchPreservesHostTest", "publicationFailurePreservesPriorTest",
+      "tests": ["publishAndReuseTest", "badSourcePreservesHostTest", "publicationFailurePreservesPriorTest",
         "cacheDriftRefusesReuseTest", "badRouteKeepsPriorHostTest", "markerAllowsInterruptedHostRetryTest",
         "unownedOutputIsPreservedTest", "receiptMustMatchCurrentGenerationTest"],
       "invariants": ["PublishedHostReferencesStagedModule", "SuccessBindsCurrentReviewedCache",
         "OwnedIncompleteHostHasProfile", "SuccessfulReceiptRequiresExactCurrentCache"],
       "sources": ["android/consumer-host.json", "scripts/android-host.mjs", "scripts/prepare-patched-native.mjs",
-        "scripts/upstream-native-source.mjs", "patches/eliza/native-manifest.json", "patches/eliza/browser-tab-underlay-native.patch",
+        "scripts/upstream-native-source.mjs", "android/upstream-native-sources.json",
         "vendor/eliza/packages/app/scripts/mobile/android/consumer-host.mjs",
         "vendor/eliza/packages/app/scripts/mobile/android/consumer-host/settings.gradle",
         "vendor/eliza/plugins/plugin-native-browser-surface/android/build.gradle"],
       "stateMapping": {
-        "selected/reviewed/patchValid": "Exact manifest byte identity, reviewed module route and authenticated patch bytes",
+        "selected/reviewed/sourceValid": "Exact source inventory byte identity, reviewed module route and authenticated Git source bytes",
         "stage1/stage2": "Keyed staged source and provenance receipts with observed cache drift",
         "host/hostGeneration/fresh/result": "Generated output ownership, module and asset path, input digest freshness and actual generator or receipt-verifier result"
       },
-      "abstractions": ["One independent browser module, two manifest byte identities and one reviewed patch with all pinned module files.",
+      "abstractions": ["One independent browser module, its resource directory, and two source inventory byte identities for the same pinned files.",
         "The source generator and exact receipt verification execute in scratch. Full Gradle, concurrent publication, arbitrary interruption and installed behavior remain separate."],
       "bounds": {"maxSamples": 1000, "maxSteps": 80, "maxVerifyDepth": 8}
     },

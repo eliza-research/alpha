@@ -9,6 +9,7 @@ export function prepareNativeFixture(root,directory) {
  mkdirSync(join(fixture,'vendor'),{recursive:true});
  symlinkSync(realpathSync(join(root,'vendor/eliza')),join(fixture,'vendor/eliza'),'dir');
  cpSync(join(root,'upstream.lock.json'),join(fixture,'upstream.lock.json'));
- cpSync(join(root,'patches/eliza'),join(fixture,'patches/eliza'),{recursive:true});
+ mkdirSync(join(fixture,'android'));
+ cpSync(join(root,'android/upstream-native-sources.json'),join(fixture,'android/upstream-native-sources.json'));
  return preparePatchedNative({root:fixture});
 }

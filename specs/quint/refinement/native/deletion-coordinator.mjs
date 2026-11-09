@@ -19,7 +19,7 @@ export function generateDeletionCoordinatorTraces(scenario,extraSources=[]){
  const deletionSources=[...deletionProductSources,...deletionSharedSources.map(name=>join(prepared.root,name))];
  const sources=[...deletionSources,`${directory}/DeletionTestPorts.java`,`${directory}/DeletionCoordinatorTraces.java`,
   `${directory}/Trace.java`,`${directory}/java.mjs`,`${directory}/deletion-platform.mjs`,
-  "patches/eliza/native-manifest.json","patches/eliza/deletion-owner-admission.patch",fileURLToPath(import.meta.url),...extraSources];
+  "android/upstream-native-sources.json",fileURLToPath(import.meta.url),...extraSources];
  try{
   const driverHashes=captureInputs(sources);
   const traces=(scenario?[scenario]:deletionScenarios).flatMap(name=>javaTraces('DeletionCoordinatorTraces.java',

@@ -87,8 +87,8 @@ export function writeRuntimeBundleGraph(root, source, observationPath, outputPat
         scope: target ? 'first-party' : imported.external ? 'external' : metadata.inputs[imported.path] ? 'bundled-dependency' : 'virtual-or-unresolved'};
     });
     const transform = observation.coreState.transforms.find(row => row.path === file.path);
-    if (transform && (file.sha256 !== transform.sourceSha256 || file.effectiveSourceSha256 !== transform.outputSha256)) throw Error('Core graph transformation differs from producer receipt');
-    if (!transform && file.effectiveSourceSha256) throw Error('Unexpected effective-source transformation');
+    if (transform && (file.sha256 !== transform.sourceSha256 || file.effectiveSourceSha256 !== transform.outputSha256)) throw Error('Core graph observation differs from producer receipt');
+    if (!transform && file.effectiveSourceSha256) throw Error('Unexpected effective-source observation');
     files[file.path] = {sha256: file.sha256,
       ...(transform ? {effectiveSourceSha256: file.effectiveSourceSha256, transformation: file.transformation} : {}), bytesInOutput: file.bytesInOutput, tracked: file.tracked,
       ...(file.gitObject ? {gitObject: file.gitObject} : {}), ...(generatedSource ? {generatedSource} : {}), imports};
@@ -103,7 +103,7 @@ export function writeRuntimeBundleGraph(root, source, observationPath, outputPat
     counts: {parsed: build.parsedInputs, firstParty: build.firstParty.length, emitted, tracked, generated,
       trackedEmitted, generatedEmitted: emitted - trackedEmitted, firstPartyEdges, boundaryEdges},
     generatedMappingCounts: {generated, declaredOutput, sourceMapped, unmapped},
-    limitations: ['sha256 binds raw pinned source. effectiveSourceSha256, when present, binds authenticated post-patch source before compiler transformation, not emitted JavaScript.',
+    limitations: ['sha256 binds pinned source. effectiveSourceSha256 records the same authenticated input consumed by the compiler. Emitted JavaScript has its own bundle hash.',
       'Parsed inputs with zero emitted contribution are marked separately.',
       'Generated-source maps and declared compiler output paths identify producer inputs and do not establish semantic equivalence or refinement.',
       'Compiled module inclusion does not establish runtime activation, model coverage or implementation refinement.',

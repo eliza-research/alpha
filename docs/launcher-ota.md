@@ -139,6 +139,10 @@ APK hashes, source pins and verification receipts. Use an owned test unit before
 the batch. The phone is on another machine; no physical-device acceptance has
 been observed from this workspace.
 
+Use the integrity readback helpers from `scripts/pilot-update.mjs` for the
+before/after receipts. That script's complete command uses `adb install -r`;
+running it instead of step 2 proves an ADB replacement, not the OTA path.
+
 1. Install the admitted baseline and select it as HOME. Enable install permission.
    Read back package, signer, code, source path and HOME. Save a local note, an
    unsent draft, settings and a resident conversation; retain content-free

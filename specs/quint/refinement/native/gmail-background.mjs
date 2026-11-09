@@ -13,10 +13,9 @@ import {prepareNativeFixture} from '../../../../test/fixtures/native-source.mjs'
 
 const model='NativeGmailBackground';
 const harness='GmailBackgroundTraces.java';
-const nativeManifest='patches/eliza/native-manifest.json';
+const nativeManifest='android/upstream-native-sources.json';
 const hostPath='android/consumer-host.json';
 const modulePath='plugins/plugin-native-notifications/android';
-const patchFile='gmail-background-retirement.patch';
 const capacitor='node_modules/@capacitor/android/capacitor/src/main/java/com/getcapacitor/';
 const scenarios=['continuation','retry','storage','resume-stale','rotation', 'stopped','reset','enqueue-refusal','enqueue-refusal-worker','enqueue-refusal-newer',
   'enqueue-refusal-newer-same','enqueue-refusal-newer-settled',
@@ -36,7 +35,7 @@ export async function checkNativeGmailBackground(extraSources=[]) {
     const sources=[...compiled,...gmailShared.map(path=>'vendor/eliza/'+path),'vendor/eliza/'+providerAdmission,app+'AlphaCredentialStore.java',
       hostPath,nativeManifest,'upstream.lock.json','scripts/upstream-native-source.mjs',
       capacitor+'Bridge.java',capacitor+'BridgeActivity.java',
-      'scripts/prepare-patched-native.mjs','patches/eliza/'+patchFile,'test/fixtures/native-source.mjs',
+      'scripts/prepare-patched-native.mjs','test/fixtures/native-source.mjs',
       'test/fixtures/jvm-tools.mjs',...(jsonJar?[jsonJar]:[]),...generatedSources,...extraSources,
       ...[harness,'Trace.java','java.mjs','gmail-background-platform.mjs'].map(name=>join(directory,name)),
       fileURLToPath(import.meta.url)];
@@ -45,7 +44,6 @@ export async function checkNativeGmailBackground(extraSources=[]) {
     assert.match(bridge,/HandlerThread\("CapacitorPlugins"\)/);
     assert.match(bridge,/taskHandler\.post\(currentThreadTask\)/);
     assert.match(readFileSync(join(root,capacitor,'BridgeActivity.java'),'utf8'),/public void onDestroy\(\)[\s\S]*bridge\.onDestroy\(\)/);
-    const catalog=JSON.parse(readFileSync(join(root,nativeManifest),'utf8'));
     const host=JSON.parse(readFileSync(join(root,hostPath),'utf8'));
     assert.deepEqual(host.profile.modules.find(item=>item.name==='eliza-notifications'),{
       name:'eliza-notifications',source:{root:'patchedNative',path:modulePath},relocateBuild:true,
@@ -53,17 +51,12 @@ export async function checkNativeGmailBackground(extraSources=[]) {
     const pinned=upstreamNativeSource(root);
     const inventory=pinned.read(modulePath);
     verifyNativePatchReceipt(readFileSync(stagedReceipt,'utf8'),staged);
-    const expected=catalog.patches.find(patch=>patch.file===patchFile);
-    assert.ok(expected,'Missing authenticated Gmail patch');
-    assert.deepEqual(expected.targets.map(target=>target.path),[gmailShared[0]]);
-    assert.equal(expected.module,modulePath);
     for(const path of [...gmailShared,providerAdmission]) {
-      const before=(inventory.get(path)??pinned.read(path).get(path)).sha256;
-      assert.equal(driverHashes[join(root,'vendor/eliza',path)],before);
+      const digest=(inventory.get(path)??pinned.read(path).get(path)).sha256;
+      assert.equal(driverHashes[join(root,'vendor/eliza',path)],digest);
       if(gmailShared.includes(path)) {
-        const after=path===gmailShared[0]?expected.targets[0].afterSha256:before;
-        assert.equal(staged.files[path],after);
-        assert.equal(driverHashes[join(staged.root,path)],after);
+        assert.equal(staged.files[path],digest);
+        assert.equal(driverHashes[join(staged.root,path)],digest);
       }
     }
     const traces=javaTraceCampaign(harness,[...compiled,...fixture.paths],scenarios.map(name=>[name]));

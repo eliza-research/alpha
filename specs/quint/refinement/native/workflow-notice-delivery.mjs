@@ -19,7 +19,7 @@ const shared = ['NoticeDelivery', 'NoticeOwner', 'NoticeRoutes', 'NoticeCoordina
   .map(name => notifications+'main/java/ai/eliza/plugins/notifications/'+name+'.java');
 const product = ['WorkflowNoticeDelivery', 'WorkflowNoticeTaps', 'WorkflowNoticeTapsFactory', 'WorkflowNoticePoster']
   .map(name => app+name+'.java');
-const nativeManifest = 'patches/eliza/native-manifest.json';
+const nativeManifest = 'android/upstream-native-sources.json';
 
 export async function checkWorkflowNoticeDelivery(extraSources = []) {
   assert.ok(jsonJar, 'the pinned org.json fixture is required');

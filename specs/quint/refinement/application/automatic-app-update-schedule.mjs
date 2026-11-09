@@ -12,11 +12,13 @@ export async function checkAutomaticAppUpdateSchedule() {
   const sources=[fileURLToPath(import.meta.url),'apps/app/src/prototype/settings-adapter.ts',
     'apps/app/src/main.tsx','vendor/eliza/'+shared,'.eliza/client-features/'+shared,
     '.eliza/client-features/.source.json','scripts/prepare-client-features.mjs',
-    'patches/eliza/app-update-resume-client.patch','patches/eliza/app-update-resume-client-manifest.json','upstream.lock.json'];
+    'upstream.lock.json'];
   captureSources([...sources,modelPath]);
   checkClientFeatures();
   const stamp=JSON.parse(read('.eliza/client-features/.source.json'));
-  assert.equal(stamp.appUpdateResumePatch.afterSha256,createHash('sha256').update(read('.eliza/client-features/'+shared)).digest('hex'));
+  assert.equal(stamp.sourceFiles[shared],createHash('sha256').update(read('vendor/eliza/'+shared)).digest('hex'));
+  assert.equal(stamp.files[shared],stamp.sourceFiles[shared],'update automation is consumed without an overlay');
+  assert.equal(stamp.files[shared],createHash('sha256').update(read('.eliza/client-features/'+shared)).digest('hex'));
   const traces=[];
   async function run(name,sequence){
     let now=0, next=0, current, pending;

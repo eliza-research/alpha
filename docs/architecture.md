@@ -150,17 +150,13 @@ Gmail attachments and PDF file creation remain available.
 | `scripts` | Consumer build orchestration and product acceptance scenarios |
 | `design` | Requirements and visual references, not executable instructions |
 
-Maps, Files and Notes implementations are copied from authenticated upstream
-source into a generated cache outside the submodule. Gradle includes the shared
-password manager directly from the reviewed pin. `patches/eliza/native-manifest.json` lists the
-staged native modules and two reviewed patches: `google-browser-sign-in.patch` for
-`packages/auth/android` and `cloud-speech-native.patch` for
-`plugins/plugin-local-inference/native/android`. The other listed modules are copied unchanged.
-Admission authenticates the pin, patch digest, target before/after hashes and complete staged
-module inventory. Gradle compiles the generated copy under `.eliza/patched-native`, never a
-modified submodule. Client builds also add the files of `cloud-speech-client.patch`, listed in
-`patches/eliza/cloud-speech-client-manifest.json`, to the prepared copy of `packages/voice`.
-Worker and resident-runtime builds apply no source patch. Photo edits, capture publication, the opt-in notification mirror and the delivery-receipt
+Maps, Files, Notes and speech client features are copied from the authenticated
+Eliza pin into a generated cache outside the submodule. The
+`android/upstream-native-sources.json` catalog selects the pinned modules for
+Android staging. Admission verifies the exact Git revision, bytes, executable
+modes and staged inventory. Gradle compiles the generated copy under
+`.eliza/patched-native`. Client, worker and resident builds use the pinned source.
+Photo edits, capture publication, the opt-in notification mirror and the delivery-receipt
 ledger for Alpha's own workflow and approval notices (`NoticeDelivery`, configured by
 `WorkflowNoticeDelivery`) also use shared native modules. Alpha wrappers retain installed storage names, media paths and Android components.
 The workflow notice tap routes, tap capture, owner fence, approval coordination, journal recovery and poster are the
@@ -190,8 +186,8 @@ runtime preparation also uses the locked upstream source without patch replay.
 Resident Java staging reads the exact locked upstream source, which now contains
 the reviewed IPC startup recovery pair. Its generated-source receipt binds original
 and generated hashes across host identity/resource/environment configuration; CI
-requires both recovery files and refuses resident patches. The retired patch and
-source equivalence are recorded in `patches/eliza/resident-ipc-recovery.md`.
+requires both recovery files. The [IPC source equivalence record](https://github.com/eliza-research/alphaphone/blob/f3b1db5cf1/patches/eliza/resident-ipc-recovery.md)
+records the earlier transition to the upstream implementation.
 The vendor checkout and prepared resident runtime stay unchanged.
 
 The Android Gradle setup itself is generated: the upstream consumer-host generator

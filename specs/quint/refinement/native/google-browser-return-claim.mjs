@@ -48,7 +48,7 @@ export async function checkGoogleBrowserReturnClaim(extraSources = []) {
   const pure = readdirSync(java).filter(name => name.endsWith('.java') &&
     !['CloudSignInPlugin.java', 'NativeGoogleCredential.java'].includes(name)).map(name => join(java, name));
   const registration = join(native.root, 'packages/auth/android/test/ai/eliza/auth/cloud/TestRegistration.java');
-  const manifest = 'patches/eliza/native-manifest.json';
+  const manifest = 'android/upstream-native-sources.json';
   const sources = [
     ...pure, plugin, registration, template, manifest,
     ...JSON.parse(readFileSync(join(root, manifest), 'utf8')).patches.map(row => 'patches/eliza/' + row.file),

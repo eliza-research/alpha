@@ -10,7 +10,7 @@ test('explicit native legacy recovery uses real encrypted slots and current toke
  const dir=mkdtempSync(join(tmpdir(),'alpha-legacy-recovery-'));
  try{
   const relative='plugins/plugin-native-secure-store/android-nativeonly/src/main/java/ai/eliza/plugins/securestore/nativeonly/JsonCredentialSlots.java';
-  const manifest=JSON.parse(readFileSync(join(root,'patches/eliza/native-manifest.json'),'utf8'));
+  const manifest=JSON.parse(readFileSync(join(root,'android/upstream-native-sources.json'),'utf8'));
   assert.ok(!manifest.patches.some(patch=>patch.module==='plugins/plugin-native-secure-store/android-nativeonly'),'this fixture requires the unpatched canonical slot implementation');
   assert.match(manifest.baseCommit,/^[a-f0-9]{40}$/);
   const prepared=join(root,'vendor/eliza');

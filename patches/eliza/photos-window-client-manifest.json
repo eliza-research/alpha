@@ -1,8 +1,0 @@
-{
-  "schema": 1,
-  "baseCommit": "b1817660a0347ae19551b9ee296410fe55f02d59",
-  "path": "packages/ui/src/mobile-shell/photos-view.ts",
-  "beforeSha256": "88f8e33e748b2491d6bb8bb1b6ece6088a5d8ae521e1f9551b339f8935c597b7",
-  "afterSha256": "bf8d36adeb3dab28a881145497c4c0f08743af91f959aa8154670d3959f329e1",
-  "patchSha256": "585b89c1ed5a23c3397d19a3303b89bef68c872849b46ba090d7b564b12421c5"
-}

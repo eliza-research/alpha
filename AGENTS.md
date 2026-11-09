@@ -3,7 +3,7 @@
 Read README.md, docs/architecture.md and docs/implementation-plan.md before changes.
 This is one independent product. Do not import the other product's UI or identity.
 `vendor/eliza` is a pinned upstream submodule. Never edit its checkout as a shortcut:
-use a reviewed upstream commit or an explicit tested patch in `patches/eliza`.
+make shared changes upstream and advance to a reviewed commit.
 `upstream.lock.json` records the shared source revision; `docs/architecture.md` defines ownership.
 `apps/app` owns this product's renderer; `android` owns its Android packaging.
 Run `npm run verify` and the Android build: `npm run android:build:local` (input check,

@@ -20,7 +20,7 @@ export async function checkNativeSourceRenewal(extraSources=[]) {
   try {
     const ports=sourceRenewalPlatform(temporary);
     const core='vendor/eliza/'+renewalOwner;
-    const nativeManifest='patches/eliza/native-manifest.json';
+    const nativeManifest='android/upstream-native-sources.json';
     const sources=[...product,core,renewalBridge,app+'NativeDigestHost.java',app+'NativeDigestSources.java',
       nativeManifest,'upstream.lock.json','scripts/upstream-native-source.mjs','test/fixtures/jvm-tools.mjs',
       join(directory,harness),join(directory,'Trace.java'),join(directory,'java.mjs'),join(directory,'source-renewal-platform.mjs'),

@@ -53,7 +53,7 @@ function createFixture(scratch, scenario) {
   const manifestFile = join(repo, CORE_STATE_MANIFEST);
   const manifestValue = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
   json(manifestFile, {...manifestValue, baseCommit: selectedPin});
-  if (scenario === 'core-refused') write(join(repo, 'patches/eliza/task-service-stop.patch'), 'Synthetic wrong patch bytes');
+  if (scenario === 'core-refused') json(manifestFile, {...manifestValue, baseCommit: '0'.repeat(40)});
   write(node, 'Private fixture version port only\n', 0o700);
   write(bun, 'Private fixture version and launch port only\n', 0o700);
   write(key, scenario === 'empty-input' ? '' : 'synthetic-model-port-input', scenario === 'key-mode' ? 0o644 : 0o600);
@@ -93,7 +93,7 @@ const refusals = {
   'bad-marker': /Wrong profile marker/,
   'bad-routing': /Profile routing differs/,
   'empty-input': /Required private credential is empty/,
-  'core-refused': /Core patch digest mismatch/,
+  'core-refused': /Core source catalog pin\/schema mismatch/,
   'metadata-write': /EISDIR/,
   'metadata-stubborn': /EISDIR/,
 };
@@ -366,7 +366,7 @@ export const execFileSync=(...args)=>globalThis.closedCombinedPorts.execFileSync
       point('Prepared identity and token survive refusal of the empty synthetic input',
         [action('prepareFiles'), action('failBeforeSpawn', scenario)]);
     } else if (scenario === 'core-refused') {
-      point('Patch refusal occurs after the private log opens and before child spawn', action('failBeforeSpawn', scenario));
+      point('Core source refusal occurs after the private log opens and before child spawn', action('failBeforeSpawn', scenario));
     } else point('Launcher refuses the selected closed preflight or profile condition', action('refuse', scenario));
     return;
   } finally {hooks.deregister();}

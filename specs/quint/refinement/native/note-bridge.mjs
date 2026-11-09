@@ -8,8 +8,8 @@ import {noteBridgePlatform} from './note-bridge-platform.mjs';
 import {readFileSync} from 'node:fs';
 import {preparePatchedNative} from '../../../../scripts/prepare-patched-native.mjs';
 const native = preparePatchedNative();
-const nativePatchInputs = ['patches/eliza/native-manifest.json', 'scripts/prepare-patched-native.mjs',
- join(native.root, '.source.json'), ...JSON.parse(readFileSync('patches/eliza/native-manifest.json', 'utf8')).patches.map(row => 'patches/eliza/' + row.file)];
+const nativePatchInputs = ['android/upstream-native-sources.json', 'scripts/prepare-patched-native.mjs',
+ join(native.root, '.source.json'), ...JSON.parse(readFileSync('android/upstream-native-sources.json', 'utf8')).patches.map(row => 'patches/eliza/' + row.file)];
 
 export const notePermissionScenarios=['direct','direct-call','permission-denied','permission-granted','permission-call',
  'permission-closed','permission-paused','queued-call','queued-paused','queued-closed','paused-resumed','start-failure',

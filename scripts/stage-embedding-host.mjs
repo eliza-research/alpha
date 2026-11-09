@@ -11,6 +11,23 @@ const names=['libelizainference.so','libelizavoicejni.so','libc++_shared.so'];
 const model={path:'android/app/src/main/assets/agent/models/bge-small-en-v1.5-f16.gguf',sha256:'f0b2fef971e8366438bfd2d9aefea1b0115919389448806d290237f638bae999',dimensions:384};
 const forkPath='plugins/plugin-local-inference/native/llama.cpp';
 
+// The merged pin adds Quint verification scripts and a development dependency to these two manifests.
+// Bind the exact manifest transition without relabeling the original native qualification.
+const formalOnlyManifestAdvance = {
+  qualifiedAt: '99b49439ce9d0cb5607e9831b9f7f58d89525029',
+  sourcePin: '099e2d27ad7268fac0832c4a7e84cc707d2cf03e',
+  files: {
+    'package.json': {
+      reviewed: 'd0c735b8ea487c192a9f6839a64db6c6185ec753f177836d96f73b86abf35f6a',
+      current: 'c8a29452b184cf5f1b0522338f4373d8996497ee946552988a5d140080867e67',
+    },
+    'packages/agent/package.json': {
+      reviewed: '1082dc34ec6894e19a43003528fd5701ebe53621f77c37d1bec37662bd822554',
+      current: '57e82902054db1719b2b27c4d2d66ece4faacc4c2d4e3ee1f1e43a4685006041',
+    },
+  },
+};
+
 /** Map original receipt paths onto a verified extracted artifact without rewriting the receipt. */
 export function embeddingLibrarySource(row,libraryRoot){
  if(libraryRoot===undefined)return row.path;
@@ -45,7 +62,13 @@ export function verifyEmbeddingInputs(productRoot,qualification,{requireProducer
   if(requireProducerInputs||producers!==undefined){
    if(!Array.isArray(producers)||producers.length!==embeddingProducerInputPaths.length||new Set(producers.map(row=>row?.path)).size!==embeddingProducerInputPaths.length||producers.some(row=>!embeddingProducerInputPaths.includes(row?.path)||!/^[a-f0-9]{64}$/.test(row.sha256)))throw Error('Embedding producer input qualification missing or changed');
    git('diff','--quiet','HEAD','--',...embeddingProducerInputPaths);
-   for(const row of producers)if(sha(git('show',pin+':'+row.path))!==row.sha256)throw Error('Embedding producer input changed: '+row.path);
+   const advance = pin === formalOnlyManifestAdvance.sourcePin && qualification.pin === formalOnlyManifestAdvance.qualifiedAt;
+   for (const row of producers) {
+    const current = sha(git('show', pin + ':' + row.path));
+    const change = advance ? formalOnlyManifestAdvance.files[row.path] : undefined;
+    const admitted = change ? row.sha256 === change.reviewed && current === change.current : current === row.sha256;
+    if (!admitted) throw Error('Embedding producer input changed: ' + row.path);
+   }
   }
   git('diff','--quiet','HEAD','--',...inputPaths,forkPath);
   const fork=git('ls-tree',pin,forkPath).toString().match(/^160000 commit ([a-f0-9]{40})\t/)?.[1];

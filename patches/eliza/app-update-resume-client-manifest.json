@@ -1,8 +1,0 @@
-{
-  "schema": 1,
-  "baseCommit": "b1817660a0347ae19551b9ee296410fe55f02d59",
-  "path": "packages/ui/src/state/app-update-gate.ts",
-  "beforeSha256": "3853f21241f34e1c7d0f5bfd6fb9b6893b187f700a1b33d5b9d9b2f4e8c9b81b",
-  "afterSha256": "579e5c8cb08d8fbcb4a07476f1ff0727b5cd2fb1a55498966d9ce4d66fc809c5",
-  "patchSha256": "caf5c7078e1d8b8e100970f3b473e7f2e7bccfd0c5643c3d55817d758d1cbe4d"
-}

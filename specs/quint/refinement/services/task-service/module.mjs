@@ -49,7 +49,7 @@ export async function loadTaskService(extraSources = []) {
   assert.doesNotMatch(built.outputFiles[0].text, /['"]file-type['"]/, 'Unprovided optional media dependency reached TaskService output');
   const sources = [...compiled.keys(), ...resources, fileURLToPath(import.meta.url), 'package-lock.json', ...CORE_STATE_INPUTS, ...extraSources];
   const driverHashes = captureInputs(sources);
-  for (const [file, digest] of Object.entries(core.receipt.inputHashes)) assert.equal(driverHashes[path.resolve(file)], digest, 'Core patch input changed before driver capture');
+  for (const [file, digest] of Object.entries(core.receipt.inputHashes)) assert.equal(driverHashes[path.resolve(file)], digest, 'Core source input changed before driver capture');
   for (const [file, digest] of compiled) assert.equal(driverHashes[path.resolve(file)], digest, 'Task source changed during compilation');
   const coreState = coreStateBuildRecord(root, transforms, coreStateRequiredTargets([...compiled.keys()]));
   const module = await import('data:text/javascript;base64,'+Buffer.from(built.outputFiles[0].text).toString('base64'));

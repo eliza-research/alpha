@@ -74,7 +74,7 @@ public final class AlphaVoiceCloudPlugin extends LocalSpeechBridgePlugin {
  // ---- Notes recording (AlphaNoteRecorder) ----------------------------------------------------
  // No length limit; finished segments survive process death, and AlphaNoteRecordingService keeps a
  // recording going with the screen off. Segments are transcribed through the same recordingId
- // lookups as a draft: LocalVoiceRecording.selectAlso (patches/eliza/notes-recording-segments.patch).
+ // lookups as a draft: the shared LocalVoiceRecording.selectAlso.
  private volatile boolean noteForeground=true;
  /** The shared bridge's refusal code for an active call, so the renderer shows its one call line. */
  private static final String CALL_ACTIVE_CODE="call-active";

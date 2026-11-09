@@ -27,7 +27,7 @@ export async function checkNativeCrashJournal(extraSources=[]) {
     const generatedSources=[core,sourceReceipt,...ports];
     const product=app+'PluginWorkers.java';
     const sources=[product,crashDeviceSource,crashCallSource,'vendor/eliza/'+crashLogPath,
-      'android/consumer-host.json','upstream.lock.json','patches/eliza/native-manifest.json','test/fixtures/native-source.mjs',
+      'android/consumer-host.json','upstream.lock.json','android/upstream-native-sources.json','test/fixtures/native-source.mjs',
       'test/fixtures/jvm-tools.mjs','scripts/prepare-patched-native.mjs','scripts/upstream-native-source.mjs',
       join(directory,harness),join(directory,'Trace.java'),join(directory,'java.mjs'),join(directory,'crash-journal-platform.mjs'),
       fileURLToPath(import.meta.url),...(jsonJar?[jsonJar]:[]),...generatedSources,...extraSources];
