@@ -782,7 +782,7 @@ isolated fixture adds three schedules and 27 checkpoints. The baseline
 records a live child after the receipt or post-spawn Git read fails. The
 launcher now reads the revision before spawn and shares child ownership
 and failed-receipt cleanup with the combined launcher. The receipt
-records spawn and does not establish workflow readiness.
+records spawn. Workflow readiness requires a separate HTTP observation.
 
 `NativeSettingsHandoff` checks nine JVM schedules and 155 checkpoints
 for all 15 allowlisted routes, explicit Settings home and the password
@@ -795,3 +795,27 @@ moving file's origin record during listing or lose a peer Trash record
 when Restore saved an earlier journal snapshot. Both exact synthetic
 schedules now preserve the records. The primary path uses an exclusive
 Web Lock. The fallback serializes the journal within one realm.
+
+`SourceRenewalQuestion` checks 11 mounted schedules and 81 checkpoints.
+The baseline reported an old question's failure into a replacement
+binding and asked the native bridge to settle a tap before checking
+composer admission. The repaired panel keeps the report in its exact
+binding and checks the composer before native settlement. The replay
+covers exact reread, owner replacement, explicit dismissal, lifecycle
+interruption, settlement refusal and the final composed text. A
+composer can still retire after settlement dispatch. The post-settlement
+check keeps the draft out of that retired conversation.
+
+`NativeSourceRenewal` checks 11 JVM schedules and 118 checkpoints.
+The baseline could report posted when the second permission read
+skipped the platform call. The repair keeps that row eligible for
+another attempt and preserves retry eligibility if saving the reset
+fails. Clear and owner withdrawal can cancel the platform alert before
+the journal write fails. Installed delivery and scheduling are separate.
+
+`BrowserFilesTrash` checks 12 schedules and 82 checkpoints over both
+locking paths. It observes queued operations, exact origin markers,
+restore, reviewed Empty and retention. A separate baseline records
+temporary names that survive a failed move or restore and can hide the
+original file. The fixture isolates library interleavings and journal
+writes. Browser process interruption remains open.

@@ -12,7 +12,7 @@
   "toolSha256": "403a33cab0dff7ace6219b29e7ffef373319677a7d8be6641466dd16a6750b5b",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "a6850fe7ccf96de780e7503c4ee296294cc871c96796b29a9a1eb46d6fff5e30",
+  "ledgerSha256": "332efbc1ed9f16cdc288cf764193c85d48990f2208585e044f60fad1ce075521",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -19336,7 +19336,8 @@
       "sha256": "df1bcf8f34e9cbf6eedcd87ee587ed18bb825c01cca49f1d27524bf885759c48",
       "allocatedModels": [
         "NoticesAndCaches",
-        "NativeHostedResultNotices"
+        "NativeHostedResultNotices",
+        "NativeSourceRenewal"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -24904,11 +24905,13 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/HostedNoticePoster.java",
-      "sha256": "ed2079506a3e0263c15fa08d470019497eacad19ad86b9fb1ffb3b44fc9b39bb",
+      "sha256": "89d93dcc121fd178745af8cbfabc4b53d6e51fec4349d4f2c01e13488f970efa",
       "allocatedModels": [
         "NoticesAndCaches",
-        "NativeHostedResultNotices"
+        "NativeHostedResultNotices",
+        "NativeSourceRenewal"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -24979,14 +24982,14 @@
           "writes": 0
         },
         {
-          "owner": "HostedNoticePoster.postRenewal@45",
-          "line": 45,
+          "owner": "HostedNoticePoster.postRenewal@46",
+          "line": 46,
           "bindings": 3,
           "writes": 0
         },
         {
-          "owner": "HostedNoticePoster.cancelRenewal@46",
-          "line": 46,
+          "owner": "HostedNoticePoster.cancelRenewal@51",
+          "line": 51,
           "bindings": 4,
           "writes": 1
         }
@@ -27218,10 +27221,12 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/SourceRenewalHost.java",
-      "sha256": "09fc49b756dd92b344d6ebb742daab70157e8dfe994d2f58544ec72d8b20d02a",
+      "sha256": "db32cf7463fa285e70a90246088bfeef2d044b62d30bbf798c1afaca38cbb3d2",
       "allocatedModels": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "NativeSourceRenewal"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -27270,7 +27275,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/SourceRenewalNotices.java",
       "sha256": "1afc6562e60713bfae93fe41603b7265b0da20c434f66ec6c486e3a5bd28fcfa",
       "allocatedModels": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "NativeSourceRenewal"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -29840,7 +29846,8 @@
       "allocatedModels": [
         "BrowserReadingState",
         "BrowserSession",
-        "HostedNoticeQuestion"
+        "HostedNoticeQuestion",
+        "SourceRenewalQuestion"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -30705,7 +30712,8 @@
       "path": "apps/app/src/browser/files.ts",
       "sha256": "79890f6d2d3adb963aca66b53e486e07c27a0fc7430d5be4f8d3311057dbbfe8",
       "allocatedModels": [
-        "BrowserSession"
+        "BrowserSession",
+        "BrowserFilesTrash"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -42893,11 +42901,12 @@
     },
     {
       "path": "apps/app/src/runtime/hosted-digest-ui.tsx",
-      "sha256": "6213425be96bf5b30f2aafc86459facb8ff5cfaf8b393dc0c11c049cd4c102b3",
+      "sha256": "a38977247f6a3240669b4e0a93748887d4e899c28a6a4ed5fdb5ce1a9e2704ea",
       "allocatedModels": [
         "NoticesAndCaches",
         "HostedDigestRefresh",
-        "HostedDigestMutation"
+        "HostedDigestMutation",
+        "SourceRenewalQuestion"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -42953,13 +42962,13 @@
         },
         {
           "owner": "HostedDigestPanel.submit",
-          "line": 424,
+          "line": 437,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "HostedDigestPanel.prepareNativeSource",
-          "line": 499,
+          "line": 512,
           "bindings": 1,
           "writes": 1
         }
@@ -43018,7 +43027,8 @@
       "sha256": "f4c9446427b08349ece36c40e684ff00ecdef3485f0d68fc93d61c18a3d5e2c0",
       "allocatedModels": [
         "NoticesAndCaches",
-        "HostedNoticeQuestion"
+        "HostedNoticeQuestion",
+        "SourceRenewalQuestion"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -44691,10 +44701,12 @@
     },
     {
       "path": "apps/app/src/runtime/source-renewal-question.ts",
-      "sha256": "fbb58a65a853fca52fee47779d0f80f5e9846ce5d5c68b08e5993824e748fe2e",
+      "sha256": "22d895760cc6ad01ebb4a94e05083b9f1207c4af11dd95506b50e08d90c95fc9",
       "allocatedModels": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "SourceRenewalQuestion"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -145318,7 +145330,8 @@
       "allocatedModels": [
         "FilesTree",
         "FilesPreview",
-        "FilesAndSharing"
+        "FilesAndSharing",
+        "BrowserFilesTrash"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -145365,7 +145378,8 @@
       "allocatedModels": [
         "FilesTree",
         "FilesPreview",
-        "FilesAndSharing"
+        "FilesAndSharing",
+        "BrowserFilesTrash"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -218645,6 +218659,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "84e8968351871cee7ae049f4abf7975c66da0cf1ae8f9960aaa1f9fdd2beaa02"
+    "sha256": "7c90b5dd1adaa203fb95e66324f903e417c519346bafc2d6dbc4f7f8b6ed5078"
   }
 }

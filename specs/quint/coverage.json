@@ -6702,7 +6702,8 @@
       "sha256": "df1bcf8f34e9cbf6eedcd87ee587ed18bb825c01cca49f1d27524bf885759c48",
       "models": [
         "NoticesAndCaches",
-        "NativeHostedResultNotices"
+        "NativeHostedResultNotices",
+        "NativeSourceRenewal"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -8010,13 +8011,15 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/HostedNoticePoster.java",
-      "sha256": "ed2079506a3e0263c15fa08d470019497eacad19ad86b9fb1ffb3b44fc9b39bb",
       "models": [
         "NoticesAndCaches",
-        "NativeHostedResultNotices"
+        "NativeHostedResultNotices",
+        "NativeSourceRenewal"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "89d93dcc121fd178745af8cbfabc4b53d6e51fec4349d4f2c01e13488f970efa",
       "stateAnchors": [
         {
           "line": 16,
@@ -8025,6 +8028,14 @@
         {
           "line": 21,
           "text": "private NotificationManager manager(){return context.getSystemService(NotificationManager.class);}"
+        },
+        {
+          "line": 47,
+          "text": "if(!allowed()||expiresAt<=now)return false;"
+        },
+        {
+          "line": 48,
+          "text": "manager().notify(renewalTag(sourceId),0,renewal(sourceId,expiresAt,now).build());"
         }
       ]
     },
@@ -8815,12 +8826,14 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/SourceRenewalHost.java",
-      "sha256": "09fc49b756dd92b344d6ebb742daab70157e8dfe994d2f58544ec72d8b20d02a",
       "models": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "NativeSourceRenewal"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "db32cf7463fa285e70a90246088bfeef2d044b62d30bbf798c1afaca38cbb3d2",
       "stateAnchors": [
         {
           "line": 5,
@@ -8832,7 +8845,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/SourceRenewalNotices.java",
       "sha256": "1afc6562e60713bfae93fe41603b7265b0da20c434f66ec6c486e3a5bd28fcfa",
       "models": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "NativeSourceRenewal"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -10982,7 +10996,8 @@
       "models": [
         "BrowserReadingState",
         "BrowserSession",
-        "HostedNoticeQuestion"
+        "HostedNoticeQuestion",
+        "SourceRenewalQuestion"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -12452,7 +12467,8 @@
       "path": "apps/app/src/browser/files.ts",
       "sha256": "79890f6d2d3adb963aca66b53e486e07c27a0fc7430d5be4f8d3311057dbbfe8",
       "models": [
-        "BrowserSession"
+        "BrowserSession",
+        "BrowserFilesTrash"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -42324,12 +42340,13 @@
       "models": [
         "NoticesAndCaches",
         "HostedDigestRefresh",
-        "HostedDigestMutation"
+        "HostedDigestMutation",
+        "SourceRenewalQuestion"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "6213425be96bf5b30f2aafc86459facb8ff5cfaf8b393dc0c11c049cd4c102b3",
+      "sha256": "a38977247f6a3240669b4e0a93748887d4e899c28a6a4ed5fdb5ce1a9e2704ea",
       "stateAnchors": [
         {
           "line": 64,
@@ -42676,155 +42693,167 @@
           "text": "const current=()=>mounted.current&&binding.current===b&&b.notices.current()&&canSyncResults()&&!connectionController.getSnapshot().open&&renewalSources.current.some(source=>!source.revoked&&source.liv"
         },
         {
-          "line": 388,
-          "text": "useEffect(()=>{if(!isAndroid)return;const listener=nativeSources.addListener('renewSource',()=>{void checkRenewal();}).catch(()=>null);void checkRenewal();return()=>{void listener.then(l=>l?.remove())"
+          "line": 386,
+          "text": "questionClose.current=reviewSourceRenewalQuestion({"
         },
         {
-          "line": 391,
-          "text": "useEffect(()=>{if(!isAndroid)return;for(const source of sources){if(source.live?.provider!=='native')continue;const bound=loops.some(l=>!l.removed&&l.spec.enabled&&l.spec.sourceId===source.id);if(boun"
+          "line": 390,
+          "text": "canCompose:()=>canComposeQuestion?.(b.sessionId)===true,"
         },
         {
           "line": 392,
-          "text": "function clearRenewal(id:string){const selection=renewalSources.current.find(source=>source.id===id)?.live;if(selection?.provider==='native')void nativeSources.clearSourceRenewal({selection}).catch(()"
-        },
-        {
-          "line": 394,
-          "text": "const source=sources.find(s=>s.id===id);if(!source)return;setRenewing(id);setReview(null);setSourceId('');"
-        },
-        {
-          "line": 395,
-          "text": "const bound=loops.find(l=>!l.removed&&l.spec.sourceId===id);if(bound)setZone(bound.spec.timeZone);"
-        },
-        {
-          "line": 400,
-          "text": "const renewalLoops=(id:string|null)=>id?loops.filter(l=>!l.removed&&l.spec.enabled&&l.spec.sourceId===id).map(l=>({id:l.id,expectedVersionId:l.versionId,mutationId:crypto.randomUUID(),spec:{version:1,"
+          "text": "report:value=>{if(mounted.current&&binding.current===b&&b.notices.current())setMessage(value);},"
         },
         {
           "line": 401,
-          "text": "const renewalNote=(id:string|null)=>{const moved=renewalLoops(id);return moved.length?`\\nRenewal: ${moved.map(l=>l.spec.template+' at '+l.spec.localTime).join(', ')} ${moved.length===1?'moves':'move'}"
+          "text": "useEffect(()=>{if(!isAndroid)return;const listener=nativeSources.addListener('renewSource',()=>{void checkRenewal();}).catch(()=>null);void checkRenewal();return()=>{void listener.then(l=>l?.remove())"
         },
         {
-          "line": 403,
-          "text": "const billing=interactiveDevelopment?'Digests use the configured development reply.':isAndroid&&connection.kind==='resident'?`Model usage counts against your ${cloudServiceName(connectionController.ge"
+          "line": 404,
+          "text": "useEffect(()=>{if(!isAndroid)return;for(const source of sources){if(source.live?.provider!=='native')continue;const bound=loops.some(l=>!l.removed&&l.spec.enabled&&l.spec.sourceId===source.id);if(boun"
         },
         {
           "line": 405,
+          "text": "function clearRenewal(id:string){const selection=renewalSources.current.find(source=>source.id===id)?.live;if(selection?.provider==='native')void nativeSources.clearSourceRenewal({selection}).catch(()"
+        },
+        {
+          "line": 407,
+          "text": "const source=sources.find(s=>s.id===id);if(!source)return;setRenewing(id);setReview(null);setSourceId('');"
+        },
+        {
+          "line": 408,
+          "text": "const bound=loops.find(l=>!l.removed&&l.spec.sourceId===id);if(bound)setZone(bound.spec.timeZone);"
+        },
+        {
+          "line": 413,
+          "text": "const renewalLoops=(id:string|null)=>id?loops.filter(l=>!l.removed&&l.spec.enabled&&l.spec.sourceId===id).map(l=>({id:l.id,expectedVersionId:l.versionId,mutationId:crypto.randomUUID(),spec:{version:1,"
+        },
+        {
+          "line": 414,
+          "text": "const renewalNote=(id:string|null)=>{const moved=renewalLoops(id);return moved.length?`\\nRenewal: ${moved.map(l=>l.spec.template+' at '+l.spec.localTime).join(', ')} ${moved.length===1?'moves':'move'}"
+        },
+        {
+          "line": 416,
+          "text": "const billing=interactiveDevelopment?'Digests use the configured development reply.':isAndroid&&connection.kind==='resident'?`Model usage counts against your ${cloudServiceName(connectionController.ge"
+        },
+        {
+          "line": 418,
           "text": "const missedOffers=available?missedRunNowOffers(binding.current?.sessionId===connection.session?.sessionId?results:[],loops,sources):new Map<string,MissedRunNow>();"
         },
         {
-          "line": 412,
+          "line": 425,
           "text": "const b = binding.current;"
         },
         {
-          "line": 420,
+          "line": 433,
           "text": "const reviewed:Pending = value===pending&&!digestPendingDiscardable(value) ? {...value,phase:'dispatched'} : {...value,phase:'review'};"
         },
         {
-          "line": 424,
+          "line": 437,
           "text": "let body=value.body;"
         },
         {
-          "line": 427,
+          "line": 440,
           "text": "const grant=await nativeSources.nativeSourceConsent({sessionId:b.sessionId,...value.nativeConsent,confirmed:true});"
         },
         {
-          "line": 432,
+          "line": 445,
           "text": "const source=sources.find(source=>source.id===body.id);"
         },
         {
-          "line": 445,
+          "line": 458,
           "text": "const dispatched:Pending={...value,phase:'dispatched'};"
         },
         {
-          "line": 449,
+          "line": 462,
           "text": "const saved=await b.client.mutate(value.path, body, b.controller.signal);"
         },
         {
-          "line": 453,
+          "line": 466,
           "text": "const source=(saved as {source?:{id?:unknown;revision?:unknown}}).source;"
         },
         {
-          "line": 455,
+          "line": 468,
           "text": "for(const loop of value.rebind){if(binding.current!==b)return;await b.client.mutate('loops',{spec:{...loop.spec,sourceId:source.id,sourceRevision:source.revision},mutationId:loop.mutationId,confirmed:"
         },
         {
-          "line": 461,
+          "line": 474,
           "text": "if(value.missedRunId&&binding.current===b){const id=value.missedRunId;setRanMissed(prior=>new Set([...prior,id]));}"
         },
         {
-          "line": 486,
+          "line": 499,
           "text": "const b=binding.current;if(!b||busy||!pending||!digestPendingDiscardable(pending))return;"
         },
         {
-          "line": 490,
+          "line": 503,
           "text": "async function loadNativeCalendars(){const b=binding.current;if(!b||busy)return;setBusy(true);try{const permission=await nativeCalendars.requestWorkflowReadAccess();if(permission.status!=='granted')th"
         },
         {
-          "line": 493,
+          "line": 506,
           "text": "const b=binding.current;if(!b||busy)return;"
         },
         {
-          "line": 499,
+          "line": 512,
           "text": "let expectedBinding:Record<string,unknown>;try{expectedBinding=await nativeSources.nativeSourceIdentity({sessionId:b.sessionId});if(binding.current!==b)return;}catch{setMessage('Reconnect your agent, "
         },
         {
-          "line": 501,
+          "line": 514,
           "text": "const sourceId=crypto.randomUUID(),reviewedAt=Date.now(),observedAt=new Date(reviewedAt).toISOString(),expiresAt=reviewedAt+hours*3600000;"
         },
         {
-          "line": 502,
+          "line": 515,
           "text": "const scope={calendars:selectedCalendars.map(id=>({id,revision:calendarChoices.find(calendar=>calendar.id===id)!.sourceRevision})),reminders:selectedReminders,timeZone:zone,window:'owner_day_and_overd"
         },
         {
-          "line": 503,
+          "line": 516,
           "text": "const renews=renewing&&sources.find(s=>s.id===renewing)?.live?.provider==='native'?renewing:null,rebind=renewalLoops(renews);"
         },
         {
-          "line": 507,
+          "line": 520,
           "text": "const old = loops.find((l) => !l.removed && l.spec.template === template);"
         },
         {
-          "line": 532,
+          "line": 545,
           "text": "const source = sources.find((s) => s.id === (sourceId || old?.spec.sourceId));"
         },
         {
-          "line": 545,
+          "line": 558,
           "text": "const spec = {"
         },
         {
-          "line": 554,
+          "line": 567,
           "text": "const changed = old && (old.spec.localTime !== spec.localTime || old.spec.timeZone !== zone) ? ` Changes ${old.spec.localTime} (${old.spec.timeZone}) to ${spec.localTime} (${zone}).` : \"\";"
         },
         {
-          "line": 555,
+          "line": 568,
           "text": "const native = source.live?.provider === \"native\";"
         },
         {
-          "line": 567,
+          "line": 580,
           "text": "const liveBinding = binding.current;"
         },
         {
-          "line": 568,
+          "line": 581,
           "text": "const now=Date.now(),renewals=digestRenewals(sources,loops,now);"
         },
         {
-          "line": 570,
+          "line": 583,
           "text": "const deviceZone=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone;}catch{return '';}})();"
         },
         {
-          "line": 643,
+          "line": 656,
           "text": "{liveBinding && <HostedLiveSourcePicker key={liveBinding.sessionId} client={liveBinding.client} scope={liveBinding.notices.scope} signal={liveBinding.controller.signal} current={() => binding.current "
         },
         {
-          "line": 705,
+          "line": 718,
           "text": "const reviewedAt = Date.now(),"
         },
         {
-          "line": 710,
+          "line": 723,
           "text": "const renews=renewing&&!sources.find(s=>s.id===renewing)?.live?renewing:null;"
         },
         {
-          "line": 747,
+          "line": 760,
           "text": "{features.dossier&&sources.find(s=>s.id===sourceId)?.live?.provider==='native'&&<button disabled={busy} onClick={()=>{const source=sources.find(s=>s.id===sourceId)!;setReview({path:'dossier',body:{sou"
         }
       ]
@@ -42897,7 +42926,8 @@
       "sha256": "f4c9446427b08349ece36c40e684ff00ecdef3485f0d68fc93d61c18a3d5e2c0",
       "models": [
         "NoticesAndCaches",
-        "HostedNoticeQuestion"
+        "HostedNoticeQuestion",
+        "SourceRenewalQuestion"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -46109,12 +46139,14 @@
     },
     {
       "path": "apps/app/src/runtime/source-renewal-question.ts",
-      "sha256": "fbb58a65a853fca52fee47779d0f80f5e9846ce5d5c68b08e5993824e748fe2e",
       "models": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "SourceRenewalQuestion"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "22d895760cc6ad01ebb4a94e05083b9f1207c4af11dd95506b50e08d90c95fc9",
       "stateAnchors": [
         {
           "line": 9,
@@ -46133,8 +46165,32 @@
           "text": "const done=()=>{if(ended)return;ended=true;window.removeEventListener('blur',abort);window.removeEventListener('launcher-home',abort);o.closed();};let abort=()=>{};"
         },
         {
-          "line": 14,
-          "text": "const close=reviewContentQuestion({signal:o.signal,name:'Scheduled source renewal notification',text,question:'Help me understand this source renewal.',current,validate:value=>!sensitiveReadingText(va"
+          "line": 19,
+          "text": "if(dismissed&&!interrupted)void o.settle(true).catch(()=>{});"
+        },
+        {
+          "line": 20,
+          "text": "interrupted=true;done();"
+        },
+        {
+          "line": 23,
+          "text": "composing=true;"
+        },
+        {
+          "line": 27,
+          "text": "const next=await o.recheck();"
+        },
+        {
+          "line": 30,
+          "text": "!o.canCompose())throw Error();"
+        },
+        {
+          "line": 31,
+          "text": "await o.settle(false);"
+        },
+        {
+          "line": 32,
+          "text": "if(interrupted||!current()||!o.compose(draft))throw Error();"
         }
       ]
     },
@@ -49707,10 +49763,59 @@
         "ReviewedWorkflowLauncher"
       ],
       "scope": "development-runtime",
-      "treatment": "domain-contract-or-support",
+      "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
       "sha256": "d07650ac73236ad81a1bb7b327fdbcf69a299ba3fb59f9181a5813cdcf33d303",
-      "stateAnchors": []
+      "stateAnchors": [
+        {
+          "line": 3,
+          "text": "const forwards = {SIGINT: () => child.kill('SIGINT'), SIGTERM: () => child.kill('SIGTERM')};"
+        },
+        {
+          "line": 4,
+          "text": "const closed = new Promise(resolve => child.once('close', () => {"
+        },
+        {
+          "line": 5,
+          "text": "for (const [signal, listener] of Object.entries(forwards)) process.off(signal, listener);"
+        },
+        {
+          "line": 6,
+          "text": "closeLog();"
+        },
+        {
+          "line": 9,
+          "text": "child.on('error', error => {"
+        },
+        {
+          "line": 11,
+          "text": "process.exitCode = 1;"
+        },
+        {
+          "line": 13,
+          "text": "for (const [signal, listener] of Object.entries(forwards)) process.on(signal, listener);"
+        },
+        {
+          "line": 14,
+          "text": "child.once('exit', code => {process.exitCode = code ?? 1;});"
+        },
+        {
+          "line": 18,
+          "text": "if (child.pid) {"
+        },
+        {
+          "line": 19,
+          "text": "child.kill('SIGTERM');"
+        },
+        {
+          "line": 20,
+          "text": "force = setTimeout(() => child.kill('SIGKILL'), 5000);"
+        },
+        {
+          "line": 22,
+          "text": "try {await closed;} finally {clearTimeout(force);}"
+        }
+      ]
     },
     {
       "path": "scripts/native-google-host-artifact.mjs",
@@ -49741,10 +49846,23 @@
         "CombinedAgentLauncher"
       ],
       "scope": "development-runtime",
-      "treatment": "domain-contract-or-support",
+      "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
       "sha256": "ab5ceaac2df907fc7f96c4b19f516d296ccf0e1eb87b5592028ad002a00baef9",
-      "stateAnchors": []
+      "stateAnchors": [
+        {
+          "line": 56,
+          "text": "retireFailedHandoff=superviseLauncherChild(child,()=>fs.closeSync(log),()=>{"
+        },
+        {
+          "line": 60,
+          "text": "fs.writeFileSync(path.join(profile,'process.json'),JSON.stringify(metadata,null,2),{mode:0o600});"
+        },
+        {
+          "line": 63,
+          "text": "if (retireFailedHandoff) await retireFailedHandoff();"
+        }
+      ]
     },
     {
       "path": "scripts/start-local-agent.mjs",
@@ -49788,10 +49906,23 @@
         "ReviewedWorkflowLauncher"
       ],
       "scope": "development-runtime",
-      "treatment": "domain-contract-or-support",
+      "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
       "sha256": "6e68d0e39b6994eb9e11052eb73a794470e832e38b369832df659bbddb9ed879",
-      "stateAnchors": []
+      "stateAnchors": [
+        {
+          "line": 56,
+          "text": "retireFailedHandoff = superviseLauncherChild(child, () => fs.closeSync(log), error => console.error(error.message));"
+        },
+        {
+          "line": 58,
+          "text": "fs.writeFileSync(path.join(profile,'process.json'), JSON.stringify(metadata,null,2), {mode:0o600});"
+        },
+        {
+          "line": 61,
+          "text": "if (retireFailedHandoff) await retireFailedHandoff();"
+        }
+      ]
     },
     {
       "path": "vendor/eliza/packages/agent/scripts/mobile-stubs/argon2.ts",
@@ -427346,7 +427477,8 @@
       "models": [
         "FilesTree",
         "FilesPreview",
-        "FilesAndSharing"
+        "FilesAndSharing",
+        "BrowserFilesTrash"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -427504,7 +427636,8 @@
       "models": [
         "FilesTree",
         "FilesPreview",
-        "FilesAndSharing"
+        "FilesAndSharing",
+        "BrowserFilesTrash"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -618816,7 +618949,8 @@
       "path": "patches/eliza/files-storage-query-client.patch",
       "models": [
         "FilesTree",
-        "DeviceActions"
+        "DeviceActions",
+        "BrowserFilesTrash"
       ],
       "sha256": "e7c5766ca8ad68e734f63c756a8643fb4ffda4a59b1ef868758da60e0e0b0dbf"
     },
