@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "dec170f861bdb756c2edb8a92f71f15f0d86288c",
-  "ledgerSha256": "8d6743bdea12ed0f4c6a7ce5de133e9725489916f3df04604c4abc1444244bff",
+  "ledgerSha256": "7d1b077f5b99b1f6dddcabaa8aa6940e592a28c18c8f4b6ec3bde62c894247ea",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -22,13 +22,13 @@
     "The ledger supplies pinned source bytes. Effective client/native/runtime patch outputs require their separately authenticated source mappings."
   ],
   "counts": {
-    "files": 5790,
+    "files": 5791,
     "testSupportFiles": 302,
     "testSupportCandidates": 11458,
-    "parsedFiles": 5699,
+    "parsedFiles": 5700,
     "languageReview": 91,
     "parseErrors": 0,
-    "candidates": 68875,
+    "candidates": 68876,
     "writeSites": 68128,
     "writeAssociations": 61150,
     "asynchronous": 8521,
@@ -46626,6 +46626,22 @@
       "unassignedWrites": 3
     },
     {
+      "path": "scripts/build-policy-source.mjs",
+      "sha256": "3512c1e3a1c4d0c2c1dec2d3b99d12752edf2f90af9b35aba10ffb1cdffb09bb",
+      "allocatedModels": [
+        "MobileBundleAdmission",
+        "TaskServiceLifecycle",
+        "NativeGoogleHostArtifact"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
       "path": "scripts/build-workflow-worker.ts",
       "sha256": "59362cbfb8799916eb8385c1b3fb9909d807010322e5537b35dfacc814350455",
       "allocatedModels": [
@@ -46791,7 +46807,7 @@
     },
     {
       "path": "scripts/core-state-patch.mjs",
-      "sha256": "e90711641fd39b29c47b46ca8536d75f707cbccfb517b422ce832c79e14a9de1",
+      "sha256": "9ff01918776f2f60336fb1e119092863095b9459e1df6ee23c1a708124626550",
       "allocatedModels": [
         "TaskServiceLifecycle",
         "TaskSchedulerRuntime",
@@ -46808,31 +46824,31 @@
       "owners": [
         {
           "owner": "<module>",
-          "line": 12,
+          "line": 13,
           "bindings": 4,
           "writes": 0
         },
         {
           "owner": "readRegular",
-          "line": 34,
+          "line": 35,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "coreStateReceipt",
-          "line": 50,
+          "line": 51,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "coreStatePatch",
-          "line": 68,
+          "line": 69,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "coreStateBuildPlugin",
-          "line": 84,
+          "line": 85,
           "bindings": 2,
           "writes": 1
         }
@@ -47285,7 +47301,7 @@
     },
     {
       "path": "scripts/mobile-uuid-adapter.mjs",
-      "sha256": "f02d7259c77ea96c1d9262a9a145e05b5a7594b07ade64bc16e582ec816ece60",
+      "sha256": "821d33c77787d3069b3e18c1eeac05ab2b2d00f2691824663577acee0366884d",
       "allocatedModels": [
         "MobileBundleAdmission",
         "ResidentRuntime",
@@ -47297,13 +47313,13 @@
       "owners": [
         {
           "owner": "<module>",
-          "line": 10,
+          "line": 11,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "readRegular",
-          "line": 17,
+          "line": 18,
           "bindings": 1,
           "writes": 1
         }
@@ -47560,7 +47576,7 @@
     },
     {
       "path": "scripts/source-snapshot.mjs",
-      "sha256": "2c2f29ab358e04a292e8a33bb4d2207cb19ef5cb16b337734ae4a76565cf2ba9",
+      "sha256": "0af215e7c2de0c0014676b9a51de3c1740bdc87beab1b2b55e6db03e38815938",
       "allocatedModels": [
         "Application",
         "MobileBundleAdmission",
@@ -47619,7 +47635,7 @@
     },
     {
       "path": "scripts/stage-embedding-host.mjs",
-      "sha256": "e19b5da9a836a643befafe2aa4825fd419e375361315cb3d332af7a312725e3b",
+      "sha256": "bdcfd00f9c4c3996465af997c44c8d85dea2f221e52673a04248d500c9ee98a9",
       "allocatedModels": [
         "EmbeddingStoreIdentity",
         "NamedEmbeddingProvenance",
@@ -47632,7 +47648,7 @@
         {
           "owner": "<module>",
           "line": 10,
-          "bindings": 3,
+          "bindings": 4,
           "writes": 0
         }
       ],
@@ -47861,7 +47877,7 @@
     },
     {
       "path": "scripts/verify-packaged-runtime.py",
-      "sha256": "c6d576e4f7cdeeb14ce7b6f4af1202b7681cf02d812f9fd6bb5df449dce2dd74",
+      "sha256": "eb12627ad00b2e44677485bcdb9f1fc3f459f741e854141254c94dc927a5ae5b",
       "allocatedModels": [
         "Application",
         "MobileBundleAdmission",
@@ -223635,6 +223651,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "636808434312f85319ae9d7ed9e2f10e825af52f656e7f770e37d39ffe726f4b"
+    "sha256": "a71883dc692494a3a1dcadcfce5d7a6692515739b097cbf51e4c5b1219399ced"
   }
 }

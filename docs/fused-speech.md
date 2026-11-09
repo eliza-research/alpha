@@ -492,6 +492,17 @@ The attached rebuild workspace retains receipts, conversion scripts, logs and
 model hashes under `test-results/rebuild-oct14` and `.eliza/native-oct14`.
 These are development build inputs, not a production qualification declaration.
 
+### Embedding host source admission at the merged SDK pin
+
+The existing ARM64 embedding qualification stays bound to SDK `99b49439ce`.
+For SDK `dec170f861`, the root and agent package manifests differ from the
+qualified producer inputs only in formal verification scripts and the root
+Quint development dependency. The staging verifier admits the two exact
+before and after digest pairs for this source transition. It still checks
+every other producer and JNI input, the native engine gitlink, the model and
+the recorded libraries. This source admission leaves the historical receipt
+and device evidence at their original revisions.
+
 ### Owner-bound wake invocation
 
 The shared ElizaSense bridge binds wake invocations to the active authenticated

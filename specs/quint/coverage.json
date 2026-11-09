@@ -20,6 +20,7 @@
     "scripts/start-local-remote.mjs",
     "scripts/core-state-patch.mjs",
     "scripts/core-state-preload.mjs",
+    "scripts/build-policy-source.mjs",
     "scripts/start-reviewed-workflow-agent.mjs",
     "scripts/start-cloud-qa.mjs",
     "scripts/start-combined-agent.mjs",
@@ -48499,6 +48500,19 @@
       "stateAnchors": []
     },
     {
+      "path": "scripts/build-policy-source.mjs",
+      "models": [
+        "MobileBundleAdmission",
+        "TaskServiceLifecycle",
+        "NativeGoogleHostArtifact"
+      ],
+      "scope": "development-runtime",
+      "treatment": "runtime-preparation-and-admission",
+      "reviewStatus": "state-audit-required",
+      "sha256": "3512c1e3a1c4d0c2c1dec2d3b99d12752edf2f90af9b35aba10ffb1cdffb09bb",
+      "stateAnchors": []
+    },
+    {
       "path": "scripts/build-workflow-worker.ts",
       "models": [
         "WorkflowExecution",
@@ -48613,7 +48627,7 @@
       "scope": "development-runtime",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "e90711641fd39b29c47b46ca8536d75f707cbccfb517b422ce832c79e14a9de1",
+      "sha256": "9ff01918776f2f60336fb1e119092863095b9459e1df6ee23c1a708124626550",
       "stateAnchors": []
     },
     {
@@ -49134,7 +49148,7 @@
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
-      "sha256": "f02d7259c77ea96c1d9262a9a145e05b5a7594b07ade64bc16e582ec816ece60",
+      "sha256": "821d33c77787d3069b3e18c1eeac05ab2b2d00f2691824663577acee0366884d",
       "stateAnchors": []
     },
     {
@@ -49310,7 +49324,7 @@
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
-      "sha256": "2c2f29ab358e04a292e8a33bb4d2207cb19ef5cb16b337734ae4a76565cf2ba9",
+      "sha256": "0af215e7c2de0c0014676b9a51de3c1740bdc87beab1b2b55e6db03e38815938",
       "stateAnchors": []
     },
     {
@@ -49337,7 +49351,7 @@
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
-      "sha256": "e19b5da9a836a643befafe2aa4825fd419e375361315cb3d332af7a312725e3b",
+      "sha256": "bdcfd00f9c4c3996465af997c44c8d85dea2f221e52673a04248d500c9ee98a9",
       "stateAnchors": []
     },
     {
@@ -49621,7 +49635,7 @@
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
-      "sha256": "c6d576e4f7cdeeb14ce7b6f4af1202b7681cf02d812f9fd6bb5df449dce2dd74",
+      "sha256": "eb12627ad00b2e44677485bcdb9f1fc3f459f741e854141254c94dc927a5ae5b",
       "stateAnchors": []
     },
     {
@@ -615233,7 +615247,7 @@
         "NativeSpeechWarmup",
         "NativeRecognizerAvailability"
       ],
-      "sha256": "69a4ec977624b8860709197fa580faad26bede0ff669a9342dc77ad0bccd5bf0"
+      "sha256": "b41437c7db6a92ee00996633d594fc86e8aa24da826d7c39dc59a66dd08f4959"
     },
     {
       "path": "app.config.json",
@@ -615253,7 +615267,7 @@
       "integrationReview": "Build/source admission support only. Domain allocation does not establish complete state coverage or source-model refinement."
     },
     {
-      "path": "config/upstream-core-sources.json",
+      "path": "scripts/upstream-core-sources.mjs",
       "models": [
         "TaskServiceLifecycle",
         "CanonicalNotesStore",
@@ -615262,15 +615276,15 @@
         "MobileBundleAdmission",
         "NativeGoogleHostArtifact"
       ],
-      "sha256": "c87d825810a0964ab87fbfbed46de08f162f486e71675f637e5eb67d09ec2e0b"
+      "sha256": "fe298330a3150dcf161a735c2a982574a70a731f15ccad905927bc56e8197d95"
     },
     {
-      "path": "config/upstream-mobile-build.json",
+      "path": "scripts/upstream-mobile-build.mjs",
       "models": [
         "Application",
         "MobileBundleAdmission"
       ],
-      "sha256": "bc39ffbd80e391a99ddc1b69e6b95f2116889ffee96a664850f255ea50ba1efe"
+      "sha256": "2188418d9101d37c7a71f6f9b01a8c198e8f1331107c89c954efa1da6c79b698"
     },
     {
       "path": "android/upstream-native-sources.json",
@@ -615394,7 +615408,7 @@
         "MobileBundleAdmission",
         "NativeGoogleHostArtifact"
       ],
-      "sha256": "e90711641fd39b29c47b46ca8536d75f707cbccfb517b422ce832c79e14a9de1"
+      "sha256": "9ff01918776f2f60336fb1e119092863095b9459e1df6ee23c1a708124626550"
     },
     {
       "path": "scripts/core-state-preload.mjs",
@@ -615441,7 +615455,7 @@
         "MobileBundleAdmission",
         "AndroidBuildInputReadiness"
       ],
-      "sha256": "f02d7259c77ea96c1d9262a9a145e05b5a7594b07ade64bc16e582ec816ece60"
+      "sha256": "821d33c77787d3069b3e18c1eeac05ab2b2d00f2691824663577acee0366884d"
     },
     {
       "path": "scripts/prepare-patched-native.mjs",
@@ -615487,7 +615501,7 @@
       "models": [
         "Application"
       ],
-      "sha256": "126869635ee1ac20f06727f531852336c8e259dc79015422d767963d52318d88",
+      "sha256": "0f224df0b807c886b6f5fc317958d0e95b093a9e9e2a6b8569ea94fcf4ee4b1c",
       "integrationReview": "Reviewed integration input; current source identity does not establish runtime behavior or source-model refinement."
     },
     {
@@ -615530,7 +615544,7 @@
         "CoreRuntimeShutdown",
         "CoreServiceLifecycle"
       ],
-      "sha256": "a900379c5969890284214b3aed73bac5327313e50e4e20bddaf122a3a8cbe5cc"
+      "sha256": "0527954e0c6a927698e6351b0150eb3bb660e573a7570330d38d80e6f8bd9f67"
     },
     {
       "path": "specs/quint/refinement/services/runtime-bundle-graph.mjs",
@@ -615549,7 +615563,7 @@
         "CoreServiceLifecycle",
         "ApplicationComposition"
       ],
-      "sha256": "c7d9a558bad6c300a9a5af178b31c276837dab978a8f3ec679fc9f72b70d84da"
+      "sha256": "668b10f10881ccbfa7973eff001307f331e2f6d03a34cbe4ecb49660ae14a8db"
     },
     {
       "path": "upstream.lock.json",

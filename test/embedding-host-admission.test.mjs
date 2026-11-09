@@ -179,6 +179,21 @@ test('complete producer closure is required for new embedding-capable admission 
   const built=f.manifest.pin;assert.doesNotThrow(()=>verifyEmbeddingInputs(f.dir,f.manifest,{requireProducerInputs:true}));assert.equal(f.manifest.pin,built);
  }finally{f.close();}
 });
+test('the formal-only SDK advance admits only the exact reviewed and current manifest digests', {
+ skip:lockCommit!=='dec170f861bdb756c2edb8a92f71f15f0d86288c',
+},()=>{
+ const verify=receipt=>verifyEmbeddingInputs(root,receipt,{requireProducerInputs:true});
+ assert.doesNotThrow(()=>verify(committed));
+ assert.equal(committed.pin,'99b49439ce9d0cb5607e9831b9f7f58d89525029');
+ for(const name of ['package.json','packages/agent/package.json']){
+  const current=sha(execFileSync('git',['-C',path.join(root,'vendor/eliza'),'show',lockCommit+':'+name]));
+  for(const sha256 of [current,'0'.repeat(64)]){
+   const changed=structuredClone(committed);
+   changed.producerInputs.find(row=>row.path===name).sha256=sha256;
+   assert.throws(()=>verify(changed),{message:'Embedding host source admission changed: Embedding producer input changed: '+name});
+  }
+ }
+});
 test('missing, duplicated or changed producer records cannot qualify embeddings',()=>{
  for(const mutate of [r=>r.producerInputs.pop(),r=>r.producerInputs.push(r.producerInputs[0]),r=>r.producerInputs[0].sha256='0'.repeat(64)]){
   const f=fixture({producerInputs:true});try{mutate(f.manifest);assert.throws(()=>verifyEmbeddingInputs(f.dir,f.manifest,{requireProducerInputs:true}),/producer input/);}finally{f.close();}
