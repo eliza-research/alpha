@@ -47496,13 +47496,31 @@
       "models": [
         "MobileBundleAdmission",
         "NativeViewSubscription",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "AndroidBrowserModuleStage"
       ],
       "scope": "build-and-runtime",
       "treatment": "configuration-and-publication-audit",
       "reviewStatus": "state-audit-required",
       "sha256": "519f5023bff0d6655d57e558945ce0165ca520e17e9c30f23c16e9749128ef94",
-      "stateAnchors": []
+      "stateAnchors": [
+        {
+          "line": 17,
+          "text": "import {fileURLToPath} from 'node:url';"
+        },
+        {
+          "line": 26,
+          "text": "export function readHostDescriptor(root = ROOT) {"
+        },
+        {
+          "line": 31,
+          "text": "}"
+        },
+        {
+          "line": 45,
+          "text": "if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, mapReferences(item, map)]));"
+        }
+      ]
     },
     {
       "path": "scripts/apk.mjs",
@@ -48851,7 +48869,8 @@
       "models": [
         "NativeSmsDispatch",
         "NativeMmsDispatch",
-        "NativeSettingsHandoff"
+        "NativeSettingsHandoff",
+        "AndroidBrowserModuleStage"
       ],
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
@@ -48859,16 +48878,36 @@
       "sha256": "12ca1c60028cedf07b9ddf7f63d901fcb542d3f28a228392d64096be54c618d0",
       "stateAnchors": [
         {
+          "line": 14,
+          "text": "const SPEECH_JNI_SOURCE='packages/app/platforms/android/app/src/main/elizavoice-jni';"
+        },
+        {
+          "line": 25,
+          "text": "for(const module of modules){if(module!==AUTH_ANDROID_MODULE&&module!==SPEECH_ANDROID_MODULE&&module!==SPEECH_JNI_SOURCE&&module!==SECURE_STORE_NATIVE_ONLY_MODULE&&module!==SENSE_ANDROI"
+        },
+        {
           "line": 32,
           "text": "for(let current=filename;current!==patchRoot;current=path.dirname(current))if(fs.lstatSync(current).isSymbolicLink())throw Error('Symlink in native patch path');"
+        },
+        {
+          "line": 36,
+          "text": "const speechTarget=patch.module===SPEECH_ANDROID_MODULE&&typeof target.path==='string'&&target.path.startsWith(patch.module+'/speech-bridge/src/main/java/ai/eliza/voice/')&&/\\/[^/]+\\.ja"
         },
         {
           "line": 54,
           "text": "export function verifyNativePatchReceipt(raw,prepared){let receipt;try{receipt=JSON.parse(raw);}catch{throw Error('Missing or invalid packaged native patch receipt');}if(JSON.stringify(receipt)!==JSON.stringify(nativePatchReceipt(prepared)))throw Error('Packaged native patch receipt mismatch');return receipt;}"
         },
         {
+          "line": 55,
+          "text": "export function preparePatchedNative({root=ROOT,manifestFile='native-manifest.json'}={}){"
+        },
+        {
           "line": 61,
           "text": "for(let current=parent;current!==root;current=path.dirname(current))if(fs.existsSync(current)&&fs.lstatSync(current).isSymbolicLink())throw Error('Symlink in native staging parent');"
+        },
+        {
+          "line": 62,
+          "text": "const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-native-patches-'));"
         }
       ],
       "integrationReview": "specs/quint/pixel-native-review-20261109.md Reviewed integration source. Domain allocation is retained; source-hash refresh does not establish semantic refinement. See targeted validation and remaining obligations."
@@ -132747,6 +132786,17 @@
           "text": "if (!allowedGenerated(file))"
         }
       ]
+    },
+    {
+      "path": "vendor/eliza/packages/app/scripts/mobile/android/consumer-host.mjs",
+      "models": [
+        "AndroidBrowserModuleStage"
+      ],
+      "scope": "shared-upstream",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "sha256": "4241d3cf14ac6e5b919537ed84943d6a630c614c00f6f19b5a253977f8be178e",
+      "stateAnchors": []
     },
     {
       "path": "vendor/eliza/packages/app/scripts/mobile/android/resident-host-sources.mjs",
@@ -588571,7 +588621,8 @@
     {
       "path": "vendor/eliza/plugins/plugin-scheduling/src/routes/scheduled-tasks.ts",
       "models": [
-        "Application"
+        "Application",
+        "LifeOpsScheduledTaskRoute"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -588595,6 +588646,22 @@
           "text": "const m = /^\\/api\\/lifeops\\/scheduled-tasks\\/([^/]+)\\/fire\\/?$/.exec("
         },
         {
+          "line": 115,
+          "text": "function serializeFireResult("
+        },
+        {
+          "line": 126,
+          "text": "return {"
+        },
+        {
+          "line": 133,
+          "text": "return {"
+        },
+        {
+          "line": 140,
+          "text": "};"
+        },
+        {
           "line": 153,
           "text": "const RUNNER_INVALID_OPERATION_RE ="
         },
@@ -588613,6 +588680,18 @@
         {
           "line": 207,
           "text": "const allowed = new Set(["
+        },
+        {
+          "line": 220,
+          "text": "export function makeScheduledTasksRouteHandler("
+        },
+        {
+          "line": 226,
+          "text": "} catch (err) {"
+        },
+        {
+          "line": 234,
+          "text": "};"
         },
         {
           "line": 241,
@@ -588655,6 +588734,10 @@
           "text": "const found = tasks.find((t) => t.taskId === hist.id);"
         },
         {
+          "line": 305,
+          "text": "// List."
+        },
+        {
           "line": 307,
           "text": "const url = ctx.url;"
         },
@@ -588667,12 +588750,20 @@
           "text": "const requestedOwnerVisible = requestedOwnerVisibleValues[0];"
         },
         {
+          "line": 318,
+          "text": "res,"
+        },
+        {
           "line": 324,
           "text": "const runner = await deps.resolveRunner(ctx);"
         },
         {
           "line": 326,
           "text": "const filterParse = scheduledTaskFilterSchema.safeParse({"
+        },
+        {
+          "line": 330,
+          "text": "firedSince: url.searchParams.get(\"firedSince\") ?? undefined,"
         },
         {
           "line": 343,
@@ -588743,6 +588834,14 @@
           "text": "const { status, message } = classifyRunnerError(err);"
         },
         {
+          "line": 450,
+          "text": "// Fire now — the interactive HITL live-test trigger. Runs the task"
+        },
+        {
+          "line": 454,
+          "text": "// dispatch_failed / raced) plus the post-fire task. Placed before the"
+        },
+        {
           "line": 457,
           "text": "const fireMatch = matchTaskFire(pathname);"
         },
@@ -588751,8 +588850,16 @@
           "text": "const runner = await deps.resolveRunner(ctx);"
         },
         {
+          "line": 460,
+          "text": "if (!runner) return true;"
+        },
+        {
           "line": 462,
           "text": "const result = await runner.fireWithResult(fireMatch.id, {"
+        },
+        {
+          "line": 466,
+          "text": "} catch (err) {"
         },
         {
           "line": 469,
@@ -588765,6 +588872,10 @@
         {
           "line": 480,
           "text": "const verb = applyVerbToString(verbed.verb);"
+        },
+        {
+          "line": 483,
+          "text": "error(res, `unknown verb: ${verbed.verb}`, 400);"
         },
         {
           "line": 487,
@@ -588795,8 +588906,16 @@
           "text": "const parsed = scheduledTaskSnoozePayloadSchema.safeParse(body ?? {});"
         },
         {
+          "line": 519,
+          "text": "// already gets. Unvalidated, a caller writes wrong-typed fields"
+        },
+        {
           "line": 529,
           "text": "const raw = body as Record<string, unknown>;"
+        },
+        {
+          "line": 543,
+          "text": ");"
         },
         {
           "line": 550,
@@ -588807,12 +588926,20 @@
           "text": "const parsed = scheduledTaskEditPayloadSchema.safeParse(raw);"
         },
         {
+          "line": 565,
+          "text": ");"
+        },
+        {
           "line": 571,
           "text": "const updated = await runner.apply("
         },
         {
           "line": 580,
           "text": "const { status, message } = classifyRunnerError(err);"
+        },
+        {
+          "line": 583,
+          "text": "return true;"
         },
         {
           "line": 591,
@@ -590855,13 +590982,18 @@
     {
       "path": "vendor/eliza/plugins/plugin-scheduling/src/scheduled-task/runner.ts",
       "models": [
-        "Application"
+        "Application",
+        "LifeOpsScheduledTaskRoute"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
       "sha256": "17a2adc96410df5298fc7c0398df9f1ba331a70d83e75233e8edd8a59723df06",
       "stateAnchors": [
+        {
+          "line": 266,
+          "text": "export function createInMemoryScheduledTaskStore(): ScheduledTaskStore {"
+        },
         {
           "line": 267,
           "text": "const map = new Map<string, ScheduledTask>();"
@@ -590875,16 +591007,36 @@
           "text": "const existing = map.get(task.taskId);"
         },
         {
+          "line": 281,
+          "text": "stableStringify(options.expectedState)) ||"
+        },
+        {
+          "line": 309,
+          "text": "expectedState === undefined ||"
+        },
+        {
           "line": 320,
           "text": "const existing = map.get(taskId);"
+        },
+        {
+          "line": 329,
+          "text": "expectedState !== undefined &&"
         },
         {
           "line": 339,
           "text": "const cutoverStatus = ("
         },
         {
+          "line": 347,
+          "text": "existing.state.status !== expected.status ||"
+        },
+        {
           "line": 355,
           "text": "const next: ScheduledTask = structuredClone(existing);"
+        },
+        {
+          "line": 361,
+          "text": "return { kind: \"fired\", task: structuredClone(next) };"
         },
         {
           "line": 371,
@@ -591215,6 +591367,10 @@
           "text": "const ended = !pause.active && (await occurredDuringPause(task, pause));"
         },
         {
+          "line": 1434,
+          "text": "* Persist a task snapshot. Pass `expectedStatus` on post-claim writes: the"
+        },
+        {
           "line": 1444,
           "text": "const mutation = mutationSnapshots.get(task);"
         },
@@ -591233,6 +591389,10 @@
         {
           "line": 1454,
           "text": "const expectedStatus = opts?.expectedStatus ?? observed?.state.status;"
+        },
+        {
+          "line": 1455,
+          "text": "if (expectedStatus !== undefined) {"
         },
         {
           "line": 1456,
@@ -591607,8 +591767,16 @@
           "text": "const persisted = await persist(claimed, { expectedStatus: \"fired\" });"
         },
         {
+          "line": 2571,
+          "text": "async function fireWithResult("
+        },
+        {
           "line": 2580,
           "text": "let task = await deps.store.get(taskId);"
+        },
+        {
+          "line": 2584,
+          "text": "task: structuredClone(task),"
         },
         {
           "line": 2592,
@@ -591617,6 +591785,10 @@
         {
           "line": 2601,
           "text": "const expectedMetadata ="
+        },
+        {
+          "line": 2609,
+          "text": ": fireLoadedTaskWithResult(task, args, expectedMetadata);"
         },
         {
           "line": 2622,
@@ -591731,8 +591903,16 @@
           "text": "const dispatchIdempotencyKey ="
         },
         {
+          "line": 2892,
+          "text": "? persistedDispatchKey.trim()"
+        },
+        {
           "line": 2920,
           "text": "const pending = readPendingDispatch(claimed);"
+        },
+        {
+          "line": 2928,
+          "text": "dispatchIdempotencyKey: `${claimed.taskId}:${fireAtIso}`,"
         },
         {
           "line": 2934,
@@ -591745,6 +591925,10 @@
         {
           "line": 2948,
           "text": "const claimedPersisted = await persist(claimed, {"
+        },
+        {
+          "line": 2954,
+          "text": "await logger.log(claimed.taskId, \"fired\");"
         },
         {
           "line": 2961,
@@ -591775,8 +591959,16 @@
           "text": "let dispatchResult: DispatchResult | undefined;"
         },
         {
+          "line": 3023,
+          "text": "assertStillFired: async () => {"
+        },
+        {
           "line": 3024,
           "text": "const current = await deps.store.get(claimed.taskId);"
+        },
+        {
+          "line": 3031,
+          "text": "},"
         },
         {
           "line": 3034,
@@ -591797,6 +591989,10 @@
         {
           "line": 3079,
           "text": "const current = await deps.store.get(claimed.taskId);"
+        },
+        {
+          "line": 3081,
+          "text": "}"
         },
         {
           "line": 3085,
@@ -591959,7 +592155,8 @@
     {
       "path": "vendor/eliza/plugins/plugin-scheduling/src/scheduled-task/schema.ts",
       "models": [
-        "Application"
+        "Application",
+        "LifeOpsScheduledTaskRoute"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -592255,7 +592452,8 @@
     {
       "path": "vendor/eliza/plugins/plugin-scheduling/src/scheduled-task/state-log.ts",
       "models": [
-        "Application"
+        "Application",
+        "LifeOpsScheduledTaskRoute"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -619032,7 +619230,8 @@
         "NativeCrashJournal",
         "NativeSettingsHandoff",
         "NativeAssistantEntry",
-        "ResidentJavaSourceStage"
+        "ResidentJavaSourceStage",
+        "AndroidBrowserModuleStage"
       ],
       "sha256": "cf0146eab41d40b6c298d168f1bbb3e9329b0889bedfab966321dfe28f4eef39",
       "integrationReview": "specs/quint/pixel-native-review-20261109.md"
@@ -619481,7 +619680,8 @@
         "NativeSpeechOutputPreparation",
         "GoogleBrowserReturnClaim",
         "NativeSmsDispatch",
-        "NativeMmsDispatch"
+        "NativeMmsDispatch",
+        "AndroidBrowserModuleStage"
       ],
       "sha256": "726a8932ca34d9f662f8fb3b2656279dbdedbe67fbd8edd5e192b9b19872be7d",
       "integrationReview": "specs/quint/pixel-native-review-20261109.md"
@@ -619868,7 +620068,8 @@
         "NativeNotePermission",
         "ControllerComposition",
         "SharedRecordingAdmission",
-        "NativeLiveCapture"
+        "NativeLiveCapture",
+        "AndroidBrowserModuleStage"
       ],
       "sha256": "12ca1c60028cedf07b9ddf7f63d901fcb542d3f28a228392d64096be54c618d0",
       "integrationReview": "specs/quint/pixel-native-review-20261109.md"
@@ -619901,7 +620102,8 @@
         "Application",
         "ApplicationComposition",
         "ResidentRuntime",
-        "IdentitySession"
+        "IdentitySession",
+        "AndroidBrowserModuleStage"
       ],
       "sha256": "2b8c03c5747cd2dbdd5d66ceb222b51294d2584c58c16f02b3df63a8c4afe31c",
       "integrationReview": "Retains the reviewed source boundary and authenticated patch catalog; integration also admits installed dependency ranges and bounded source-copy helpers. Configuration identity alone is not runtime/refinement evidence."
@@ -620013,7 +620215,8 @@
     {
       "path": "patches/eliza/browser-tab-underlay-native.patch",
       "models": [
-        "Application"
+        "Application",
+        "AndroidBrowserModuleStage"
       ],
       "sha256": "766476a1546b4b556e55e2e2dd63581b6c4c1d4510225568c93c312dd8d257e3"
     }
@@ -620022,7 +620225,7 @@
     "apps/app/index.html"
   ],
   "sharedSourceDiscovery": {
-    "sharedSourceCount": 4868,
+    "sharedSourceCount": 4869,
     "producer": "specs/quint/refinement/services/runtime-bundle-inputs.json",
     "sourcePin": "b1817660a0347ae19551b9ee296410fe55f02d59",
     "meaning": "Authenticated source identities and domain allocations. Runtime activation and implementation refinement require separate evidence."

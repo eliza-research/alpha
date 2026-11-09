@@ -1271,3 +1271,19 @@ read cannot start a draft-slot read. Owner retirement clears the retained
 view before calling the canonical refresh. The replay uses actual probe
 code with read-only ports and a synthetic already-selected legacy view.
 Record opening, platform delivery and installed storage remain separate.
+
+`AndroidBrowserModuleStage` checks eight schedules and 43 checkpoints in
+one disposable module host. It exercises the reviewed native patch,
+authenticated source cache, Gradle host generation and receipt readback.
+The replay covers refusal, prior-output retention, interrupted host
+recovery and stale receipts. Gradle execution and installed behavior
+remain separate.
+
+`LifeOpsScheduledTaskRoute` checks 13 schedules and 81 checkpoints against
+the pinned route, generic runner and SDK in-memory store. One schedule
+holds an old dispatch, completes and reopens the task, then claims a new
+occurrence. The old assertion admits against the new occurrence, and its
+status-only write can replace the newer snapshot. The model records this
+counterexample. An atomic, unique occurrence identity remains necessary
+at claim, dispatch admission and conditional settlement. The replay uses
+closed dispatch and does not establish the configured host's SQL behavior.

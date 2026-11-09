@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "b1817660a0347ae19551b9ee296410fe55f02d59",
-  "ledgerSha256": "939048b085b313e687315d82f311ad64b553445d1d65ae3c216936d9a32d2be1",
+  "ledgerSha256": "6ac6c4683df1936c17dc6b711a70fd193d23a7901f6d2344848dcfbfa1eeb27b",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -22,17 +22,17 @@
     "The ledger supplies pinned source bytes. Effective client/native/runtime patch outputs require their separately authenticated source mappings."
   ],
   "counts": {
-    "files": 5768,
+    "files": 5769,
     "testSupportFiles": 297,
     "testSupportCandidates": 11402,
-    "parsedFiles": 5678,
+    "parsedFiles": 5679,
     "languageReview": 90,
     "parseErrors": 0,
-    "candidates": 67722,
-    "writeSites": 67286,
-    "writeAssociations": 60341,
+    "candidates": 67744,
+    "writeSites": 67314,
+    "writeAssociations": 60364,
     "asynchronous": 8387,
-    "unassignedWrites": 10366
+    "unassignedWrites": 10373
   },
   "files": [
     {
@@ -46258,7 +46258,8 @@
       "allocatedModels": [
         "MobileBundleAdmission",
         "NativeViewSubscription",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "AndroidBrowserModuleStage"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -47387,7 +47388,8 @@
       "allocatedModels": [
         "NativeSmsDispatch",
         "NativeMmsDispatch",
-        "NativeSettingsHandoff"
+        "NativeSettingsHandoff",
+        "AndroidBrowserModuleStage"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -67749,6 +67751,57 @@
       "parseErrors": [],
       "asynchronous": 0,
       "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/packages/app/scripts/mobile/android/consumer-host.mjs",
+      "sha256": "4241d3cf14ac6e5b919537ed84943d6a630c614c00f6f19b5a253977f8be178e",
+      "allocatedModels": [
+        "AndroidBrowserModuleStage"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "<module>",
+          "line": 35,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "fields",
+          "line": 63,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "generateAndroidConsumerHost",
+          "line": 139,
+          "bindings": 16,
+          "writes": 19
+        },
+        {
+          "owner": "generateAndroidConsumerHost.input",
+          "line": 232,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "generateAndroidConsumerHost.ArrowFunction@389",
+          "line": 390,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "AndroidConsumerHostError",
+          "line": 44,
+          "bindings": 1,
+          "writes": 1
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 7
     },
     {
       "path": "vendor/eliza/packages/app/scripts/mobile/android/resident-host-sources.mjs",
@@ -214193,7 +214246,8 @@
       "path": "vendor/eliza/plugins/plugin-scheduling/src/routes/scheduled-tasks.ts",
       "sha256": "84fd87d0ee67aff682b46f825b84623352b3cf1b95b69de0071366d327804001",
       "allocatedModels": [
-        "Application"
+        "Application",
+        "LifeOpsScheduledTaskRoute"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -214845,7 +214899,8 @@
       "path": "vendor/eliza/plugins/plugin-scheduling/src/scheduled-task/runner.ts",
       "sha256": "17a2adc96410df5298fc7c0398df9f1ba331a70d83e75233e8edd8a59723df06",
       "allocatedModels": [
-        "Application"
+        "Application",
+        "LifeOpsScheduledTaskRoute"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -214986,7 +215041,8 @@
       "path": "vendor/eliza/plugins/plugin-scheduling/src/scheduled-task/schema.ts",
       "sha256": "a9b2cf7697554f491a4cfdaf1fd4a04b293b6c8cd4a2c5bed7fd1ab2a33ff07e",
       "allocatedModels": [
-        "Application"
+        "Application",
+        "LifeOpsScheduledTaskRoute"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -215074,7 +215130,8 @@
       "path": "vendor/eliza/plugins/plugin-scheduling/src/scheduled-task/state-log.ts",
       "sha256": "613bc04dca28137be5a0623ca839c3b114d94f5c1fe77091f0eb74f6501139fc",
       "allocatedModels": [
-        "Application"
+        "Application",
+        "LifeOpsScheduledTaskRoute"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -221446,6 +221503,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "4163b205ad637dbcc6693d48e49242a6645df0ec3649046cee6ad13fc353cf67"
+    "sha256": "22784f2d363d2df6b8f14921d326353e616ed74a4992c2cddfc8eb560148d3eb"
   }
 }
