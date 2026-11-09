@@ -1198,3 +1198,36 @@ The service and native collectors retain completed receipts and obligations
 when a later adapter throws. They report the failed adapter and continue
 with subsequent campaigns. A failed replay still fails the aggregate. The
 collector cannot recover from termination of its own process.
+
+`SharePanelAdmission` checks 11 source schedules and 57 checkpoints. A
+retained destination button previously dispatched after replacement or
+retirement. A repeat event could also dispatch twice from the same panel.
+The button now checks the exact panel's closed flag before it checks the
+selection or invokes a destination. The closed replay covers disabled email,
+selection changes, explicit choices, cancellation, failure reporting and
+seven retirement events. Installed destinations and arbitrary caller
+reentrancy remain separate.
+
+`AppearancePreferenceAdmission` checks 11 source schedules and 74
+checkpoints. Startup and Settings now use the same gate for a development
+theme preview. An ignored production query previously disabled native and
+browser System updates and browser storage readback. The closed replay also
+checks two queued reads, write echoes, write failure and teardown. Native
+platform delivery and arbitrary browser storage schedules remain separate.
+
+`ResidentJavaSourceStage` checks nine source schedules and 49 checkpoints.
+The wrapper now prepares the generated Java tree and its source manifest
+in a private candidate. A failed publication restores the prior pair. A
+failed restoration retains both generations in the transaction directory.
+The pinned generator runs unchanged. Concurrent readers, interruption
+between publication renames and actual Gradle consumption remain separate.
+
+The frozen 221-model `npm run verify` passed Quint and TypeScript, then
+finished the Node suite with 4,976 passing, 13 failing and six skipped.
+The Notes fixture's source markers are repaired, and all ten of its focused
+tests pass. The Calendar transport test passes with the prepared SDK inside
+its owning worktree. Nine isolated JVM checks pass, including the four
+tests that reported compiler aborts during the broad run. The original
+closed Camera recovery fixture also passes in isolation. The broad result
+remains failed. The Share model passes depth-eight symbolic verification
+and the common Share panel passes its Chromium fixture.

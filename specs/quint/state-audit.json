@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "b1817660a0347ae19551b9ee296410fe55f02d59",
-  "ledgerSha256": "38148d17bb39d10a6612551c30b45706b130b0c98327d78acd1574a28f633f9a",
+  "ledgerSha256": "5840f096bbd36b3ecea78bc15c1a5c1913a338aaaff08b7720e7c8db23845d6b",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -22,17 +22,17 @@
     "The ledger supplies pinned source bytes. Effective client/native/runtime patch outputs require their separately authenticated source mappings."
   ],
   "counts": {
-    "files": 5766,
+    "files": 5767,
     "testSupportFiles": 297,
     "testSupportCandidates": 11402,
-    "parsedFiles": 5676,
+    "parsedFiles": 5677,
     "languageReview": 90,
     "parseErrors": 0,
-    "candidates": 67709,
-    "writeSites": 67261,
-    "writeAssociations": 60319,
+    "candidates": 67717,
+    "writeSites": 67278,
+    "writeAssociations": 60333,
     "asynchronous": 8387,
-    "unassignedWrites": 10363
+    "unassignedWrites": 10366
   },
   "files": [
     {
@@ -32808,7 +32808,7 @@
     },
     {
       "path": "apps/app/src/main.tsx",
-      "sha256": "6bd9f5e8eb3ac838ec92fa5bb7d050a801982632dfb66674f7cb170f2bf79ce1",
+      "sha256": "040b43ceb5f45ef3c1407636978e382af38248abdd39d47eb0d831f47c1e24bf",
       "allocatedModels": [
         "Application",
         "AccessibleToastLifetime",
@@ -32818,8 +32818,10 @@
         "MountedUpdateAdmission",
         "StartupUpdateAdmission",
         "CanonicalNotificationTapAdmission",
-        "ShadeNoticeQuestionAdmission"
+        "ShadeNoticeQuestionAdmission",
+        "AppearancePreferenceAdmission"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -35807,7 +35809,8 @@
         "CanonicalCalendarEditorClose",
         "CameraPreviewRetirement",
         "RetainedReminderTapAdmission",
-        "ReminderOpenIntent"
+        "ReminderOpenIntent",
+        "AppearancePreferenceAdmission"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -39881,12 +39884,13 @@
     },
     {
       "path": "apps/app/src/prototype/settings-adapter.ts",
-      "sha256": "06f4eedc5fd1d70fb76dbc1fd955170f131a4b7941cc5abc816a23a30d7390d2",
+      "sha256": "f30de9846f5ab69fc1b778dd42a52ccf53de626fc83e76c546feb751f208e3b1",
       "allocatedModels": [
         "PreferencesAndPresentation",
         "SettingsNav",
         "NativeUpdateStaging",
-        "CalendarPreservationConfirmation"
+        "CalendarPreservationConfirmation",
+        "AppearancePreferenceAdmission"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -39906,43 +39910,43 @@
         },
         {
           "owner": "installSettingsAdapter",
-          "line": 241,
+          "line": 244,
           "bindings": 34,
           "writes": 107
         },
         {
           "owner": "installSettingsAdapter.refreshResidentDiagnostics",
-          "line": 279,
+          "line": 282,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installSettingsAdapter.refreshCapabilities",
-          "line": 295,
+          "line": 298,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installSettingsAdapter.exportDiagnostics",
-          "line": 405,
+          "line": 408,
           "bindings": 1,
           "writes": 3
         },
         {
-          "owner": "installSettingsAdapter.FunctionExpression@448",
-          "line": 471,
+          "owner": "installSettingsAdapter.FunctionExpression@451",
+          "line": 474,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installSettingsAdapter.ArrowFunction@521",
-          "line": 526,
+          "owner": "installSettingsAdapter.ArrowFunction@524",
+          "line": 529,
           "bindings": 37,
           "writes": 638
         },
         {
-          "owner": "installSettingsAdapter.ArrowFunction@521.ArrowFunction@888",
-          "line": 890,
+          "owner": "installSettingsAdapter.ArrowFunction@524.ArrowFunction@891",
+          "line": 893,
           "bindings": 1,
           "writes": 1
         }
@@ -45057,10 +45061,12 @@
     },
     {
       "path": "apps/app/src/runtime/share-panel.ts",
-      "sha256": "e50d4eebabcdadac4e72efd39f5ec94c00e9b42fc4b7dc2439d1399c4dc7a1e7",
+      "sha256": "fb2264d0d1adc4a95f7b6e334af28d47fcb44017a93ebfd9a6f5d159e335e093",
       "allocatedModels": [
-        "FilesAndSharing"
+        "FilesAndSharing",
+        "SharePanelAdmission"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -47096,7 +47102,8 @@
         "ResidentRuntime",
         "ReviewedWorkflowLauncher",
         "NativeGoogleHostArtifact",
-        "PreparedSourceStamp"
+        "PreparedSourceStamp",
+        "ResidentJavaSourceStage"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -47519,10 +47526,11 @@
     },
     {
       "path": "scripts/stage-local-agent-sources.mjs",
-      "sha256": "9fb41560c3c21a2b7b54add5c562f5f6e0140ee7a9f3d23b38a7a212f09f6f18",
+      "sha256": "cb927eaaaaf0a8479d0d34b943ffaef964ee92b42fed0220dc8bf4a942f4135d",
       "allocatedModels": [
         "MobileBundleAdmission",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "ResidentJavaSourceStage"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -47530,9 +47538,9 @@
       "owners": [
         {
           "owner": "<module>",
-          "line": 23,
-          "bindings": 1,
-          "writes": 0
+          "line": 26,
+          "bindings": 3,
+          "writes": 4
         }
       ],
       "parseErrors": [],
@@ -67673,7 +67681,8 @@
       "allocatedModels": [
         "DevelopmentRuntimeLoader",
         "NativeGoogleHostArtifact",
-        "PreparedSourceStamp"
+        "PreparedSourceStamp",
+        "ResidentJavaSourceStage"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -67689,6 +67698,51 @@
       "parseErrors": [],
       "asynchronous": 0,
       "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/packages/app/scripts/mobile/android/resident-host-sources.mjs",
+      "sha256": "b04b9d5144c6f5be05dad9c84b09d9ce64ecf8face015ac6264d4d5d6f1097b1",
+      "allocatedModels": [
+        "ResidentJavaSourceStage"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "residentHostIdentity",
+          "line": 219,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "rewriteResidentClass",
+          "line": 268,
+          "bindings": 2,
+          "writes": 6
+        },
+        {
+          "owner": "readSource",
+          "line": 373,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "stageResidentHostSources",
+          "line": 424,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "ResidentHostSourceError",
+          "line": 130,
+          "bindings": 1,
+          "writes": 1
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 3
     },
     {
       "path": "vendor/eliza/packages/app/src/api/auth-pairing-routes.ts",
@@ -221340,6 +221394,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "cfd2a575f05df2c9b28e7a2853e271864440882f61ca17d5ff45aad469d101b2"
+    "sha256": "c557f13d5b9ae28513b41bcb0140c7ad8fd9e6d93187252cc7a4932d1552a61d"
   }
 }

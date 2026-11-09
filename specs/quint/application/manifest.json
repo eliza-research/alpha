@@ -318,6 +318,37 @@
     ]
   },
   {
+    "path": "specs/quint/application/AppearancePreferenceAdmission.qnt",
+    "module": "AppearancePreferenceAdmission",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "productionQueryCannotSuppressSystemTest",
+      "explicitDevelopmentPreviewTest",
+      "queuedReadCannotEchoTest",
+      "settingsPickWritesOnceTest",
+      "failedWritePreservesStoredChoiceTest",
+      "retiredListenersIgnoreEventsTest"
+    ],
+    "invariants": ["ListenerAdmission", "PreviewBoot", "ReadMarkerIdentity", "Presentation", "BoundedWrites"],
+    "sources": [
+      "apps/app/src/main.tsx",
+      "apps/app/src/prototype/settings-adapter.ts",
+      "apps/app/src/prototype/model.js"
+    ],
+    "stateMapping": {
+      "testMocks/native/query/phase/boot": "Controlled build, platform, stable URL and shell lifetime inputs with actual startup theme selection",
+      "system/stored/blocked/storageListener/resumeListener/schemeListener": "Media scheme, storage port, and registered event listeners",
+      "theme/marker/markerTheme/serial/pending": "Queued and committed shell theme patches with exact storage-marker identity",
+      "attempts/failures/displayed/selection": "Storage attempts and failure toasts, actual shell view theme and Settings row selection"
+    },
+    "abstractions": [
+      "One non-fixture shell, two visual themes and three persisted choices. Bounded batches contain up to three theme patches and at most four write attempts per trace.",
+      "Actual source fragments execute with controlled browser events and state commits. Startup URL changes, React scheduling, installed WebView delivery and physical persistence are separate."
+    ]
+  },
+  {
     "path": "specs/quint/application/DurableStore.qnt",
     "module": "DurableStore",
     "init": "init",
@@ -589,6 +620,29 @@
     "abstractions": [
       "Hold requires a durable matching saved draft. Per-binding sending markers survive process restart and require review, while confirmed non-dispatch unmarks the original binding.",
       "Atomic hold abstracts the serialized marking write and its current-binding check. Storage failure, ownership changes and unsettled recovery retain source regression coverage."
+    ]
+  },
+  {
+    "path": "specs/quint/application/SharePanelAdmission.qnt",
+    "module": "SharePanelAdmission",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "replacementRetiresEarlierButtonsTest",
+      "changedSelectionIsRetiredWithoutFallbackTest",
+      "hiddenRequestAndCancellationCannotDispatchTest",
+      "exactDestinationFailureNeverFallsBackTest"
+    ],
+    "invariants": ["ActivePanelIsUnsettled", "EffectFollowsExactClose", "EachPanelDispatchesOnce", "NoticeBelongsToStaleSelection"],
+    "sources": ["apps/app/src/runtime/share-panel.ts"],
+    "stateMapping": {
+      "seen/active/hidden/invalid/emails": "Caller inputs and the actual mounted chooser and enabled destinations",
+      "settled/effects/notice/alerts": "Actual promises, destination callback invocations, stale status and visible failure alert"
+    },
+    "abstractions": [
+      "Up to three panels in a document. Exact destination functions use closed ports, with selected success, cancel and rejection outcomes.",
+      "This model covers renderer admission and handoff. Installed dispatch, browser top layer timing and arbitrary reentrant callers require separate checks."
     ]
   },
   {

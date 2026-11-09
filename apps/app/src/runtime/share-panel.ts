@@ -29,7 +29,7 @@ export function openSharePanel(options:SharePanelOptions):Promise<void>{
   const action=(label:string,run?:()=>unknown|Promise<unknown>,reason?:string)=>{
    const button=document.createElement('button');button.type='button';button.textContent=label;Object.assign(button.style,{display:'block',width:'100%',minHeight:'48px',padding:'12px 16px',marginTop:'8px',border:'0',borderRadius:'14px',background:'var(--s2,#eee)',color:'inherit',textAlign:'left',font:'inherit'});
    if(!run){button.disabled=true;button.style.opacity='.5';if(reason){const hint=document.createElement('p');hint.textContent=reason;hint.style.fontSize='13px';dialog.append(button,hint);return;}}
-   button.onclick=()=>{if(document.hidden||!options.current()){status.textContent='The selection changed. Close and choose it again.';return;}finish();try{void Promise.resolve(run?.()).catch(destinationFailure);}catch(error){destinationFailure(error);}};dialog.append(button);
+   button.onclick=()=>{if(closed)return;if(document.hidden||!options.current()){status.textContent='The selection changed. Close and choose it again.';return;}finish();try{void Promise.resolve(run?.()).catch(destinationFailure);}catch(error){destinationFailure(error);}};dialog.append(button);
   };
   dialog.append(heading,title);if(options.email||options.emailUnavailable!==null)action('Share to email',options.email,options.emailUnavailable||'Email is unavailable for this selection.');action('Share externally',options.external);
   if(options.copy)action(options.copyLabel||'Copy text',options.copy);
