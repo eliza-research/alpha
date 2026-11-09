@@ -15726,7 +15726,6 @@
     },
     {
       "path": "apps/app/src/prototype/agent-adapter.ts",
-      "sha256": "8bf683a65a4010137a8fb9df9abb543ef90272155445bc07963d16527777e332",
       "models": [
         "Application",
         "AssistantConversation",
@@ -15739,6 +15738,8 @@
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "66829c3bea670ed5eace8320ea13f8ad6cf2fce3db3be40815b1a7615f0f4db6",
       "stateAnchors": [
         {
           "line": 77,
@@ -16846,207 +16847,229 @@
         },
         {
           "line": 1685,
-          "text": "const attempt:SendAttempt=this.sendAttempt={transportCalled:false,preDispatch:false,streamed:false};"
-        },
-        {
-          "line": 1686,
           "text": "const userId=crypto.randomUUID(),streamedId=crypto.randomUUID();let streamed=false;"
         },
         {
-          "line": 1693,
-          "text": "const replaceStream=(value:string,streaming=true)=>this.setState((previous:Shell)=>({msgs:previous.msgs.map((message:Shell)=>message.id===streamedId?{...message,text:value,streaming}:message)}));"
+          "line": 1686,
+          "text": "const sentAttachment=fromComposer?{transcriptAttachment:transcript,cameraAttachment:this.cameraAttachment,displayText:text,requestText}:null;"
         },
         {
-          "line": 1694,
-          "text": "let streamFrame=0,latestStream:string|undefined;"
+          "line": 1687,
+          "text": "if(sentAttachment&&(transcript||this.cameraAttachment)&&connection.session&&conversationId){"
+        },
+        {
+          "line": 1688,
+          "text": "try{await saveAttachment(connection.session,conversationId,userId,sentAttachment);}"
+        },
+        {
+          "line": 1691,
+          "text": "if(!current()||this.composerDraft.binding!==heldKey||!transcriptCurrent()||this.cameraAttachment!==sentAttachment.cameraAttachment){"
+        },
+        {
+          "line": 1692,
+          "text": "if(this.live)releaseComposerSend(this,heldKey,heldText);else this.composerDraft?.release();"
+        },
+        {
+          "line": 1693,
+          "text": "return;"
+        },
+        {
+          "line": 1697,
+          "text": "const attempt:SendAttempt=this.sendAttempt={transportCalled:false,preDispatch:false,streamed:false};"
         },
         {
           "line": 1698,
-          "text": "let navigation:ReturnType<typeof connectionController.captureViewNavigation>|undefined,readyNavigation:readonly unknown[]|undefined;"
+          "text": "const replaceStream=(value:string,streaming=true)=>this.setState((previous:Shell)=>({msgs:previous.msgs.map((message:Shell)=>message.id===streamedId?{...message,text:value,streaming}:message)}));"
         },
         {
           "line": 1699,
+          "text": "let streamFrame=0,latestStream:string|undefined;"
+        },
+        {
+          "line": 1703,
+          "text": "let navigation:ReturnType<typeof connectionController.captureViewNavigation>|undefined,readyNavigation:readonly unknown[]|undefined;"
+        },
+        {
+          "line": 1704,
           "text": "const deliverNavigation=(results:readonly unknown[]|undefined)=>deliverChatNavigation(this,navigation,results);"
         },
         {
-          "line": 1706,
+          "line": 1711,
           "text": "const sourceSession=connectionController.getSnapshot().session;"
         },
         {
-          "line": 1712,
+          "line": 1717,
           "text": "const showStatus=(event:Event)=>{if(this.live&&!streamed&&this.sendAttempt===attempt)this.setState({turnStatus:(event as CustomEvent<string>).detail});};"
         },
         {
-          "line": 1731,
+          "line": 1736,
           "text": "const identity=reply.messageBinding;"
         },
         {
-          "line": 1736,
+          "line": 1741,
           "text": "const planCard=planActionCard(reply.planAction);"
         },
         {
-          "line": 1752,
+          "line": 1757,
           "text": "let cameraOpened=false,cameraReceipts=0;"
         },
         {
-          "line": 1754,
+          "line": 1759,
           "text": "for (const proposal of reply.proposals || []) {retainReadReply(this,proposal,identity,reply.userMessageId);this.agentSay(proposal.description,proposalCard(proposal));}"
         },
         {
-          "line": 1760,
+          "line": 1765,
           "text": "const delivered=await deliverNavigation(reply.actionResults);"
         },
         {
-          "line": 1763,
+          "line": 1768,
           "text": "const results=await connectionController.continueRequestedCamera(reply.userMessageId,new AbortController().signal);"
         },
         {
-          "line": 1765,
+          "line": 1770,
           "text": "for(const result of results)if(this.live)this.agentSay(result.summary,undefined,{id:`device-receipt:${result.proposalId}`,deviceReceipt:true});"
         },
         {
-          "line": 1769,
+          "line": 1774,
           "text": "const cameraReview=cameraOpened&&alphaClient.getState().context.view==='camera'&&this.S().msgs.some((m:Shell)=>m.card?.proposalId&&!m.card.done);"
         },
         {
-          "line": 1776,
+          "line": 1781,
           "text": "if(identity&&completedActions?.length)this.setState({},()=>{if(this.live&&sameChat())for(const receipt of completedActions)publishCommittedDeviceChanges(receipt,alphaClient,identity.session);});"
         },
         {
-          "line": 1778,
+          "line": 1783,
           "text": "let opened=false;"
         },
         {
-          "line": 1780,
+          "line": 1785,
           "text": "const message=opened?'The screen opened, but the conversation response was interrupted. Check history before sending again.':e instanceof Error?e.message:'The agent could not complete this request.';"
         },
         {
-          "line": 1793,
+          "line": 1798,
           "text": "const recorded=e&&typeof e==='object'?e as {userMessageId?:unknown;messageBinding?:unknown}:{};"
         },
         {
-          "line": 1796,
+          "line": 1801,
           "text": "const reconciling=!!connectionController.getSnapshot().replyNotice&&e instanceof AlphaClientError&&e.code==='cancelled';"
         },
         {
-          "line": 1805,
+          "line": 1810,
           "text": "const failureKind=(e as {failureKind?:unknown}).failureKind as string,limit=(e as {serviceLimit?:unknown}).serviceLimit;"
         },
         {
-          "line": 1808,
+          "line": 1813,
           "text": "const planCard=planActionCard((e as {planAction?:unknown}).planAction)??managePlan;"
         },
         {
-          "line": 1810,
+          "line": 1815,
           "text": "const beforeOutput=limit!==undefined||REFUSED_BEFORE_OUTPUT.has(failureKind);"
         },
         {
-          "line": 1817,
+          "line": 1822,
           "text": "const recoveryText=message==='The agent request failed. Check connection and action history before sending another request.'?'Sorry, I couldn’t finish that reply.':message;"
         },
         {
-          "line": 1823,
+          "line": 1828,
           "text": "const noticeBinding=recorded.messageBinding&&typeof recorded.messageBinding==='object'?recorded.messageBinding as {conversationId?:unknown;session?:unknown}:null;"
         },
         {
-          "line": 1825,
+          "line": 1830,
           "text": "if(noticeCurrent())for(const [index,notice] of replyNotices(e).entries()){"
         },
         {
-          "line": 1836,
+          "line": 1841,
           "text": "const delivered=(previous.msgs||[]).find((message:Shell)=>message.id===identity.id);"
         },
         {
-          "line": 1839,
+          "line": 1844,
           "text": "const chat = previous.chat === 'full' ? 'full' : 'sheet';"
         },
         {
-          "line": 1851,
+          "line": 1856,
           "text": "const sessionId=connectionController.getSnapshot().session?.sessionId;"
         },
         {
-          "line": 1853,
+          "line": 1858,
           "text": "let result:{ok:boolean;message:string};"
         },
         {
-          "line": 1877,
+          "line": 1882,
           "text": "let id:unknown;"
         },
         {
-          "line": 1885,
+          "line": 1890,
           "text": "const review=card.sourceSummary,recording=recordingSourceOf(review.source);"
         },
         {
-          "line": 1886,
+          "line": 1891,
           "text": "const recordingNote=recording&&this.vget('notes').list.find((n:Shell)=>n.id===recording.noteId);"
         },
         {
-          "line": 1887,
+          "line": 1892,
           "text": "const expectedRecording=recordingNote&&JSON.stringify(recordingNote);"
         },
         {
-          "line": 1893,
+          "line": 1898,
           "text": "const update=(title:string,sub:string)=>{if(this.live)this.setState({msgs:this.S().msgs.map((m:Shell)=>m.id===message.id?{...m,card:{...m.card,done:true,title,sub}}:m)});};"
         },
         {
-          "line": 1895,
+          "line": 1900,
           "text": "const canonical=this.notesSourceMode!=='legacy'&&!recording?this.canonicalNotesUi:null;"
         },
         {
-          "line": 1899,
+          "line": 1904,
           "text": "const saved=await canonical.saveCard(fields.title?fields.title+(fields.body?'\\n'+fields.body:''):fields.body,this.api('notes'));"
         },
         {
-          "line": 1905,
+          "line": 1910,
           "text": "const existing=this.vget('notes').list;"
         },
         {
-          "line": 1931,
+          "line": 1936,
           "text": "const expectedTarget=notesTarget(card.reviewNoteTarget);"
         },
         {
-          "line": 1932,
+          "line": 1937,
           "text": "const store=this.notesStore,expectedContext=JSON.stringify(alphaClient.getState().context),expectedSession=JSON.stringify(session);"
         },
         {
-          "line": 1937,
+          "line": 1942,
           "text": "current();const target=await store.target(expectedTarget.noteId);current();"
         },
         {
-          "line": 1944,
+          "line": 1949,
           "text": "const approval=this.pendingActionApproval=new AbortController();"
         },
         {
-          "line": 1947,
+          "line": 1952,
           "text": "const sessionId = session?.sessionId;"
         },
         {
-          "line": 1948,
+          "line": 1953,
           "text": "const beforeView = this.S().view;"
         },
         {
-          "line": 1949,
+          "line": 1954,
           "text": "let receipt;"
         },
         {
-          "line": 1950,
+          "line": 1955,
           "text": "const readLease=this.readReplyLeases?.get(card.proposalId);"
         },
         {
-          "line": 1980,
+          "line": 1985,
           "text": "const result = await DailyApps.perform({ action: 'voice' });"
         },
         {
-          "line": 1987,
+          "line": 1992,
           "text": "const out = notesRender({ ...state, record: false }, api);"
         },
         {
-          "line": 1992,
+          "line": 1997,
           "text": "const failed=Boolean((activeShell?.notesStorageFailed&&document.documentElement.dataset.notesStorageState!=='opening')||activeShell?.notesStore?.needsRecovery);"
         }
-      ],
-      "reviewStatus": "state-audit-required",
-      "integrationReview": "2026-11-09 UI and browser-return delta reviewed against existing domain models and new ChatAttachments/BrowserGoogleReturn contracts; see ui-return-review-20261109.md. Source-model refinement and device acceptance remain separate."
+      ]
     },
     {
       "path": "apps/app/src/prototype/agent-calendar-adapter.ts",

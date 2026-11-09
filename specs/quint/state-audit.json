@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "b1817660a0347ae19551b9ee296410fe55f02d59",
-  "ledgerSha256": "6ac6c4683df1936c17dc6b711a70fd193d23a7901f6d2344848dcfbfa1eeb27b",
+  "ledgerSha256": "2fc85612542eac36a5a98b293d1d98ef7fcb58e9f466f000aec2b1f2e3f4d446",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -33357,7 +33357,7 @@
     },
     {
       "path": "apps/app/src/prototype/agent-adapter.ts",
-      "sha256": "8bf683a65a4010137a8fb9df9abb543ef90272155445bc07963d16527777e332",
+      "sha256": "66829c3bea670ed5eace8320ea13f8ad6cf2fce3db3be40815b1a7615f0f4db6",
       "allocatedModels": [
         "Application",
         "AssistantConversation",
@@ -33553,20 +33553,20 @@
           "writes": 16
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1847",
-          "line": 1853,
+          "owner": "installAgentAdapter.FunctionExpression@1852",
+          "line": 1858,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1859",
-          "line": 1877,
+          "owner": "installAgentAdapter.FunctionExpression@1864",
+          "line": 1882,
           "bindings": 2,
           "writes": 4
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1986",
-          "line": 1987,
+          "owner": "installAgentAdapter.FunctionExpression@1991",
+          "line": 1992,
           "bindings": 1,
           "writes": 12
         }
@@ -221503,6 +221503,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "22784f2d363d2df6b8f14921d326353e616ed74a4992c2cddfc8eb560148d3eb"
+    "sha256": "84a2162524fbeb37ebce8d18207a5f656c9ea68615aed831e482a0e8ed3ce1db"
   }
 }

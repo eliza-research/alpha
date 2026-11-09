@@ -1287,3 +1287,16 @@ status-only write can replace the newer snapshot. The model records this
 counterexample. An atomic, unique occurrence identity remains necessary
 at claim, dispatch admission and conditional settlement. The replay uses
 closed dispatch and does not establish the configured host's SQL behavior.
+
+The configured Personal Assistant supplies full expected-state write
+guards and still calls the status-only pre-dispatch assertion. The current
+Alpha runtime patch allowlist and Android receipt verifier exclude scheduler
+source. A shared repair needs a reviewed SDK change and new authenticated
+build evidence for each consuming pin.
+
+The extended `ChatAttachments` replay checks 12 schedules and 70
+checkpoints. A held browser transcript save previously repainted the
+composer after an owner or conversation change. Its post-save guard now
+checks the exact composer binding and attachment before publication. The
+original row stays under its scoped storage key. Browser image preview,
+native preview timing and deferred React commits remain separate.
