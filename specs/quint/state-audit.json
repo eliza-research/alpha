@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "dec170f861bdb756c2edb8a92f71f15f0d86288c",
-  "ledgerSha256": "15cb33c99910507280a491336c03f1656792dba696d78ef33af62be288548d34",
+  "ledgerSha256": "e19975bf42a507df85b74553ccc2af5433c67c464403eaaab0efd002eedc4cf0",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -29413,7 +29413,7 @@
     },
     {
       "path": "apps/app/src/browser/calendar-editor-draft.ts",
-      "sha256": "6d4477895c623905164c2ee9ce1ceedcb80ad495a2a0c9537486e8bab2907627",
+      "sha256": "a9f9d7aae0e5f554a716f811e7cace307ce72b02c46c4240f864a752760d868d",
       "allocatedModels": [
         "CalendarSync"
       ],
@@ -34291,7 +34291,7 @@
     },
     {
       "path": "apps/app/src/prototype/calendar-edit-draft-adapter.ts",
-      "sha256": "62811f4fc9cd27393b86f531af86f47c2c15432c6cd9e0336a965254f30841a4",
+      "sha256": "284c3866d0c92d8e3befa3f333c58c8df295dc65b21095eef9e028a6285213d1",
       "allocatedModels": [
         "CalendarSync"
       ],
@@ -34317,7 +34317,7 @@
     },
     {
       "path": "apps/app/src/prototype/calendar-form-draft-adapter.ts",
-      "sha256": "45956455f90b0f3a4d54d1468f95955b709ce481065225216d72f7b36197dd92",
+      "sha256": "fe699b5348fb3b32478cf07fcf985f6efcae51fb883daa7d84709bdc3dc3838a",
       "allocatedModels": [
         "CalendarSync"
       ],
@@ -34574,7 +34574,7 @@
     },
     {
       "path": "apps/app/src/prototype/canonical-calendar-drafts.ts",
-      "sha256": "4dce9c067b3f18c1e6dd9a6a09837416526ff3016c06226d7fc6d935378af3a3",
+      "sha256": "13f865c1c25c3d27f18b51b1fc47ea8701357bddd83806f8a5a375b29cb029ad",
       "allocatedModels": [
         "CalendarPresentation",
         "CanonicalCalendarDraft",
@@ -35478,7 +35478,7 @@
     },
     {
       "path": "apps/app/src/prototype/inbox-unsaved.ts",
-      "sha256": "33336fb2c1b952a75270928b2feb141f6b0918c92c46b5da4f0c6cfe5fb80ef3",
+      "sha256": "f8df9f07908b8a00e7c162dd59ebb31cb38f1e4ffea54475b203cd16a4596153",
       "allocatedModels": [
         "InboxDelivery",
         "InboxCoordinator",
@@ -35705,7 +35705,7 @@
     },
     {
       "path": "apps/app/src/prototype/maps-adapter.ts",
-      "sha256": "f952be1d936ccb677e4d98f9c9da22ad6734ca66d33c100c529b81548ab7ede1",
+      "sha256": "5008c5a98147e06dae2c70ad076cffa179a693171e2c629d6fc89639d46ea543",
       "allocatedModels": [
         "Maps",
         "MapsNavigation",
@@ -40270,7 +40270,7 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "1c94732bcaf76e4a09ba7a4945dcc81332b59a282f0c27c121f7fa478029a309",
+      "sha256": "8aabc9bdc9bfc07acb68ab3e3d0e948ee096cd2d216cb4fd244d62298f75f482",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -223635,6 +223635,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "7e43cfcfbad32aaf1fb1c42dd01c8b6d61e52f139a1929f333109929857213f5"
+    "sha256": "635e2f1dc1953acb4e11a89c7688c832d7a1c7d578719f0b49280eb1d136d148"
   }
 }

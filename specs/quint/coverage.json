@@ -9565,22 +9565,13 @@
     },
     {
       "path": "apps/app/src/browser/calendar-editor-draft.ts",
-      "sha256": "6d4477895c623905164c2ee9ce1ceedcb80ad495a2a0c9537486e8bab2907627",
+      "sha256": "a9f9d7aae0e5f554a716f811e7cace307ce72b02c46c4240f864a752760d868d",
       "models": [
         "CalendarSync"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
-      "stateAnchors": [
-        {
-          "line": 19,
-          "text": "let alive=true,opened=false,offered=false,applying=false,invalid=false,saving=false,saved=false,text='',revision=identity.revision,recoveryAbort:AbortController"
-        },
-        {
-          "line": 27,
-          "text": "const recover=button('Recover editor storage',()=>{const recovery=controller.recovery();if(!recovery)return;recoveryAbort?.abort();recoveryAbort=new AbortContro"
-        }
-      ]
+      "stateAnchors": []
     },
     {
       "path": "apps/app/src/browser/calendar-editor.css",
@@ -19580,7 +19571,7 @@
     },
     {
       "path": "apps/app/src/prototype/calendar-edit-draft-adapter.ts",
-      "sha256": "62811f4fc9cd27393b86f531af86f47c2c15432c6cd9e0336a965254f30841a4",
+      "sha256": "284c3866d0c92d8e3befa3f333c58c8df295dc65b21095eef9e028a6285213d1",
       "models": [
         "CalendarSync"
       ],
@@ -19600,28 +19591,12 @@
           "text": "let owner:any;"
         },
         {
-          "line": 15,
-          "text": "this.calendarEditDraft=new AssistantDraftController(async binding=>{const store=await assistantDraftStore(binding);return {...store,read:async()=>{const row=await store.read();if(row?.text)decodeCalen"
-        },
-        {
-          "line": 17,
-          "text": "if(this.calendarEditDraftRestore&&text){const restored=decodeCalendarEdit(text);this.calendarEditDraftAnchor=new Date();this.calendarEditDraftIdentity=calendarEditIdentity(restored.form);this.vset('ca"
-        },
-        {
-          "line": 22,
-          "text": "update.call(this,previous);if(!enabled(this))return;if(!this.calendarEditDraftBound){this.calendarEditDraftBound=true;void this.calendarEditDraft.open(JSON.stringify(['calendar-inline-edit-form',brows"
-        },
-        {
           "line": 25,
           "text": "const today=new Date(),anchor=this.calendarEditDraftAnchor as Date;"
         },
         {
           "line": 26,
           "text": "const civil=(date:Date)=>Date.UTC(date.getFullYear(),date.getMonth(),date.getDate());"
-        },
-        {
-          "line": 28,
-          "text": "try{const text=encodeCalendarEdit(form,this.calendarEditDraftAnchor);const wasInvalid=this.calendarEditFormValidationError;this.calendarEditFormValidationError=false;if(wasInvalid)this.vset('calendar'"
         },
         {
           "line": 32,
@@ -19644,18 +19619,6 @@
           "text": "const active=!!state.form?.id&&!!(state.form.alphaCalendarId||state.form.alphaReminderId);"
         },
         {
-          "line": 50,
-          "text": "const restore=(saved=false)=>{try{shell.calendarEditDraftRestore=true;if(saved)controller.restoreSaved();else{const restored=decodeCalendarEdit(shell.calendarEditDraftText);shell.calendarEditDraftAnch"
-        },
-        {
-          "line": 51,
-          "text": "out.discardEditDraft=()=>{if(state.form||!window.confirm('Discard these unsaved edits? Saved events and reminders won’t change.'))return;const text=shell.calendarEditDraftText;void controller.consume("
-        },
-        {
-          "line": 53,
-          "text": "out.recoverEditDraft=()=>{const recovery=controller.recovery();if(!recovery)return;shell.calendarEditDraftRecovery?.abort();const abort=shell.calendarEditDraftRecovery=new AbortController();openDomain"
-        },
-        {
           "line": 54,
           "text": "if(out.ev?.edit){const edit=out.ev.edit;out.ev.edit=()=>{if(shell.calendarEditDraftText&&!window.confirm('Replace your unsaved edits with a fresh editor?'))return;return edit();};}"
         }
@@ -19663,7 +19626,7 @@
     },
     {
       "path": "apps/app/src/prototype/calendar-form-draft-adapter.ts",
-      "sha256": "45956455f90b0f3a4d54d1468f95955b709ce481065225216d72f7b36197dd92",
+      "sha256": "fe699b5348fb3b32478cf07fcf985f6efcae51fb883daa7d84709bdc3dc3838a",
       "models": [
         "CalendarSync"
       ],
@@ -19683,28 +19646,12 @@
           "text": "let owner:any;"
         },
         {
-          "line": 15,
-          "text": "this.calendarDraft=new AssistantDraftController(async binding=>{const store=await assistantDraftStore(binding);return {...store,read:async()=>{const row=await store.read();if(row?.text)decodeCalendarF"
-        },
-        {
-          "line": 17,
-          "text": "if(this.calendarDraftRestore&&text){const restored=decodeCalendarForm(text);this.calendarDraftAnchor=new Date();this.calendarDraftIdentity=restored.form.creationId;this.vset('calendar',{form:restored."
-        },
-        {
-          "line": 22,
-          "text": "update.call(this,previous);if(!enabled(this))return;if(!this.calendarDraftBound){this.calendarDraftBound=true;void this.calendarDraft.open(JSON.stringify(['calendar-creation-form',browserDevProfile?'d"
-        },
-        {
           "line": 25,
           "text": "const today=new Date(),anchor=this.calendarDraftAnchor as Date;"
         },
         {
           "line": 26,
           "text": "const civil=(date:Date)=>Date.UTC(date.getFullYear(),date.getMonth(),date.getDate());"
-        },
-        {
-          "line": 28,
-          "text": "try{const text=encodeCalendarForm(form,this.calendarDraftAnchor);const wasInvalid=this.calendarFormValidationError;this.calendarFormValidationError=false;if(wasInvalid)this.vset('calendar',{});if(text"
         },
         {
           "line": 32,
@@ -19723,24 +19670,12 @@
           "text": "const active=!!state.form&&!state.form.id;"
         },
         {
-          "line": 49,
-          "text": "const restore=(saved=false)=>{try{shell.calendarDraftRestore=true;if(saved)controller.restoreSaved();else{const restored=decodeCalendarForm(shell.calendarDraftText);shell.calendarDraftAnchor=new Date("
-        },
-        {
           "line": 51,
           "text": "const form=state.form;if(!active||!window.confirm('Discard this draft? Saved events and reminders won’t change.'))return;"
         },
         {
           "line": 52,
           "text": "const text=shell.calendarDraftText;"
-        },
-        {
-          "line": 53,
-          "text": "const current=()=>owner===shell&&shell.live&&api.isActive()&&shell.vget('calendar').form===form&&shell.calendarDraftText===text;"
-        },
-        {
-          "line": 59,
-          "text": "out.recoverFormDraft=()=>{const recovery=controller.recovery();if(!recovery)return;shell.calendarDraftRecovery?.abort();const abort=shell.calendarDraftRecovery=new AbortController();openDomainRecovery"
         },
         {
           "line": 60,
@@ -20298,7 +20233,7 @@
       "scope": "application",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "4dce9c067b3f18c1e6dd9a6a09837416526ff3016c06226d7fc6d935378af3a3",
+      "sha256": "13f865c1c25c3d27f18b51b1fc47ea8701357bddd83806f8a5a375b29cb029ad",
       "stateAnchors": [
         {
           "line": 8,
@@ -20307,10 +20242,6 @@
         {
           "line": 9,
           "text": "const submittedForm=(form:Bag)=>{const fields=snapshotCalendarForm(form);delete fields.reminderCreationId;return JSON.stringify(fields);};"
-        },
-        {
-          "line": 12,
-          "text": "const p=Component.prototype,mount=p.componentDidMount,update=p.componentDidUpdate,unmount=p.componentWillUnmount,render=views.calendar.render,committed=p.calendarFormCommitted,destinationChanged=p.cal"
         },
         {
           "line": 14,
@@ -23904,7 +23835,7 @@
     },
     {
       "path": "apps/app/src/prototype/inbox-unsaved.ts",
-      "sha256": "33336fb2c1b952a75270928b2feb141f6b0918c92c46b5da4f0c6cfe5fb80ef3",
+      "sha256": "f8df9f07908b8a00e7c162dd59ebb31cb38f1e4ffea54475b203cd16a4596153",
       "models": [
         "InboxDelivery",
         "InboxCoordinator",
@@ -23950,28 +23881,12 @@
           "text": "const domain=native?null:new (await import('../browser/json-domain-document')).BrowserJsonDomainDocument('alpha.browser.'+slot);"
         },
         {
-          "line": 28,
-          "text": "const check=(row:any):AssistantDraft|null=>{if(row===null)return null;if(!row||Object.keys(row).sort().join(',')!=='binding,revision,text,version'||row.version!==1||row.binding!==binding||typeof row.r"
-        },
-        {
           "line": 29,
           "text": "const read=readStored=async()=>check(native?await secureConnectionStore.read(slot):await domain!.readJson());"
         },
         {
           "line": 30,
           "text": "const empty=()=>({version:1,binding,revision:crypto.randomUUID(),text:''});"
-        },
-        {
-          "line": 34,
-          "text": "save:async(expected:AssistantDraft|null,nextText:string)=>{const value={version:1 as const,binding,revision:crypto.randomUUID(),text:nextText};check(value);if(new TextEncoder().encode(JSON.stringify(v"
-        },
-        {
-          "line": 57,
-          "text": "async clear(){const expected=text;if(expected)await controller.consume(expected,()=>alive&&text===expected);},"
-        },
-        {
-          "line": 58,
-          "text": "recover(current:unknown){const recovery=controller.recovery();if(!recovery)return;recoveryAbort?.abort();recoveryAbort=new AbortController();openDomainRecovery({capture:async signal=>{const captured=a"
         },
         {
           "line": 61,
@@ -24617,7 +24532,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "f952be1d936ccb677e4d98f9c9da22ad6734ca66d33c100c529b81548ab7ede1",
+      "sha256": "5008c5a98147e06dae2c70ad076cffa179a693171e2c629d6fc89639d46ea543",
       "stateAnchors": [
         {
           "line": 27,
@@ -24864,7 +24779,7 @@
           "text": "const open=!!choice&&index===msgs.length-1&&!done.has(id)&&current();"
         }
       ],
-      "integrationReview": "Domain allocation retained after merging the audit fixes. The refreshed source hash and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations."
+      "integrationReview": "Domain allocation retained after merging the audit fixes. The refreshed source hash and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations. 2026-11-09: suppress only duplicate navigation metadata when it equals remaining-distance status. Distinct arrival/background notices remain. Four-trace mounted Maps comparison and five existing accessibility scenarios passed on the parent composition; current-main replay follows. No action or permission transition changed."
     },
     {
       "path": "apps/app/src/prototype/maps-chat-adapter.ts",
@@ -34776,13 +34691,14 @@
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "1c94732bcaf76e4a09ba7a4945dcc81332b59a282f0c27c121f7fa478029a309",
+      "sha256": "8aabc9bdc9bfc07acb68ab3e3d0e948ee096cd2d216cb4fd244d62298f75f482",
       "stateAnchors": [
         {
           "line": 3359,
           "text": "<sc-if value=\"{{workflows.automation.editingSchedule}}\"><sc-if value=\"{{workflows.automation.scheduleClockEditable}}\"><label class=\"schedule-instructions\">Time ({{workflows.automation.e"
         }
-      ]
+      ],
+      "integrationReview": " 2026-11-09: suppress only duplicate navigation metadata when it equals remaining-distance status. Distinct arrival/background notices remain. Four-trace mounted Maps comparison and five existing accessibility scenarios passed on the parent composition; current-main replay follows. No action or permission transition changed."
     },
     {
       "path": "apps/app/src/prototype/use-in-email-review.ts",
