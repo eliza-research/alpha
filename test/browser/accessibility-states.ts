@@ -1,3 +1,4 @@
+import {chooseCalendarEventAction} from './helpers/browser-calendar';
 import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import { expect, type Page } from '@playwright/test';
 import {openCanonicalCalendarForm} from './helpers/canonical-calendar';
@@ -30,7 +31,7 @@ const settle = async (page: Page) => {
   await settled(page);
 };
 
-const press = async (page: Page, steps: string[]) => { for (const step of steps) await (step === 'Photos tools' ? page.getByLabel(step, { exact: true }) : page.getByRole('button', { name: step, exact: true }).first()).click(); };
+const press = async (page: Page, steps: string[]) => { for (const step of steps) { if(step==='Edit event'||step==='Delete event') await chooseCalendarEventAction(page,step); else await (step === 'Photos tools' ? page.getByLabel(step, { exact: true }) : page.getByRole('button', { name: step, exact: true }).first()).click(); } };
 /** The named subview is on screen and exposed (not retired behind another subview). */
 const showing = async (page: Page, subview?: string) => {
   if (subview) await expect(page.locator(`[data-alpha-subview="${subview}"]:not([inert])`)).toBeVisible();

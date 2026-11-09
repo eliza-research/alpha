@@ -805,7 +805,7 @@ dialog.alarm-page{position:fixed;inset:0 auto auto 0;margin:0;width:100vw;height
 [data-alpha-recorder-actions]{padding-bottom:calc(var(--alpha-dock-reserve,108px) + 16px)!important}
 [data-alpha-view-actions]{bottom:var(--alpha-dock-reserve,108px)!important}
 [data-alpha-photo-actions]>div{padding-bottom:12px!important}
-[data-alpha-popup] [role="dialog"],[data-alpha-album-manager]{bottom:var(--alpha-dock-reserve,108px)!important;max-height:calc(100% - var(--alpha-dock-reserve,108px) - 32px)}
+[data-alpha-popup] [role="dialog"],[data-alpha-album-manager]{bottom:var(--alpha-dock-reserve,108px)!important;max-height:calc(100% - var(--alpha-dock-reserve,108px) - 32px)!important;overflow-y:auto;box-sizing:border-box}
 
 .chat-image-preview{position:absolute;inset:0 0 var(--alpha-dock-reserve,108px);z-index:130;background:rgba(0,0,0,.94);color:white}
 .chat-image-preview>[role="dialog"]{height:100%;display:flex;align-items:center;justify-content:center;padding:64px 16px 16px;box-sizing:border-box}
@@ -830,3 +830,9 @@ html[data-alpha-browser-underlay],html[data-alpha-browser-underlay] body,html[da
 html[data-alpha-browser-underlay] .alpha-phone,html[data-alpha-browser-underlay] [data-screen]{background:transparent!important}
 html[data-alpha-browser-underlay] [data-alpha-layer="home"]{visibility:hidden!important}
 html[data-alpha-browser-underlay] [data-alpha-layer="app"]{background:linear-gradient(to bottom,var(--bg) 0 var(--alpha-browser-clear-top),transparent var(--alpha-browser-clear-top) var(--alpha-browser-clear-bottom),var(--bg) var(--alpha-browser-clear-bottom))!important}
+
+/* Keep the photo interaction and its frame above the persistent assistant. */
+[data-alpha-photo-viewport]{bottom:var(--alpha-dock-reserve,108px)!important;container-type:size}
+
+[data-alpha-backdrop],[data-alpha-clock-page]{bottom:var(--alpha-dock-reserve,108px)!important}
+[data-alpha-clock-page]{padding-bottom:24px!important}

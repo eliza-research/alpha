@@ -10456,90 +10456,90 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "d59815a84b0d969db84cc19aae4a06d78c47eaabbf8f01909ccab22273b04c65",
+      "sha256": "d06f7d6578d69e7a0e6fa7962a4a43780e4d95e6ef4594b0abaff411480309f1",
       "stateAnchors": [
         {
-          "line": 46,
+          "line": 47,
           "text": "const notices=(await this.notifications.list()).items.filter(n=>!n.id.startsWith('alarm_'));"
         },
         {
-          "line": 48,
+          "line": 49,
           "text": "const active=notices.map(n=>n.source+':'+n.id+':'+n.revision.split(':')[0]),initial=()=>({seen:[] as string[]}),before=await alertSoundDocument.read(initial);"
         },
         {
-          "line": 51,
+          "line": 52,
           "text": "const fresh=await alertSoundDocument.edit(initial,data=>{const fresh=active.some(key=>!data.seen.includes(key));data.seen=[...data.seen.filter(key=>!active.includes(key)).slice(-(500-active.length)),."
         },
         {
-          "line": 54,
+          "line": 55,
           "text": "private ring(key:string){this.ringing=key;this.stopSound();this.open();this.audio.play('alarm');const started=performance.now();this.soundTimer=setInterval(()=>{if(!this.owns||!this.allowed()||perform"
         },
         {
-          "line": 55,
+          "line": 56,
           "text": "private async run(task:()=>Promise<string|void>){if(this.busy)return;this.busy=true;this.render();try{const message=await task();if(this.status)this.status.textContent=message||'';await this.poll();}c"
         },
         {
-          "line": 56,
+          "line": 57,
           "text": "private render(){if(this.save)this.save.disabled=this.busy;if(!this.list)return;const key=JSON.stringify([this.rows,this.busy,this.loaded]);if(key===this.rendered)return;this.rendered=key;this.list.re"
         },
         {
-          "line": 57,
+          "line": 58,
           "text": "private button(label:string){const b=document.createElement('button');b.textContent=label;b.style.cssText='min-height:44px;margin:4px;padding:10px 14px;border:1px solid #aaa;border-radius:12px;font:in"
         },
         {
-          "line": 60,
+          "line": 61,
           "text": "const dialog=this.dialog=document.createElement('dialog');dialog.setAttribute('aria-label','Clock alarms');dialog.style.cssText='box-sizing:border-box;width:min(380px,94vw);max-height:85dvh;overflow:a"
         },
         {
-          "line": 61,
+          "line": 62,
           "text": "const title=document.createElement('h2');title.textContent='Alarms';title.style.cssText='font-size:24px;margin:0 0 8px';"
         },
         {
-          "line": 63,
+          "line": 64,
           "text": "const caveat=document.createElement('p');caveat.textContent='Alarms ring only while this page is open in the foreground.';caveat.style.cssText='font-size:14px;margin:0 0 16px;color:var(--mut,currentCo"
         },
         {
-          "line": 65,
+          "line": 66,
           "text": "const saved=document.createElement('section'),savedTitle=document.createElement('h3');savedTitle.textContent='Saved alarms';savedTitle.style.cssText='font-size:17px;margin:0 0 8px';"
         },
         {
-          "line": 67,
+          "line": 68,
           "text": "const form=document.createElement('section'),formTitle=document.createElement('h3');formTitle.textContent='New alarm';formTitle.style.cssText='font-size:17px;margin:20px 0 8px';form.append(formTitle);"
         },
         {
-          "line": 68,
+          "line": 69,
           "text": "const time=document.createElement('input');time.type='time';time.value='07:00';time.setAttribute('aria-label','Alarm time');"
         },
         {
-          "line": 69,
+          "line": 70,
           "text": "const label=document.createElement('input');label.maxLength=200;label.placeholder='Optional label';label.setAttribute('aria-label','Alarm label');"
         },
         {
-          "line": 70,
+          "line": 71,
           "text": "const snooze=document.createElement('input');snooze.type='number';snooze.min='1';snooze.max='60';snooze.value=this.snooze;snooze.setAttribute('aria-label','Snooze minutes');snooze.oninput=()=>{this.sn"
         },
         {
-          "line": 71,
+          "line": 72,
           "text": "for(const [name,field] of [['Time',time],['Label',label]] as const){const row=document.createElement('label');row.textContent=name;row.style.cssText='display:block;margin:10px 0';row.append(field);for"
         },
         {
-          "line": 72,
+          "line": 73,
           "text": "const snoozeLabel=document.createElement('label');snoozeLabel.textContent='Snooze (min)';snoozeLabel.style.cssText='display:block;margin:16px 0 0';snoozeLabel.append(snooze);"
         },
         {
-          "line": 74,
+          "line": 75,
           "text": "for(const field of [time,label,snooze])field.style.cssText='box-sizing:border-box;width:100%;min-height:44px;margin:4px 0 0;padding:8px 10px;border:1px solid var(--line,#aaa);border-radius:10px;font:i"
         },
         {
-          "line": 75,
+          "line": 76,
           "text": "const save=this.save=this.button('Save alarm');save.style.cssText+=';background:var(--acc,#0000ff);border-color:transparent;color:#fff';"
         },
         {
-          "line": 76,
+          "line": 77,
           "text": "save.onclick=()=>{if(!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(time.value)){this.status!.textContent='Choose an alarm time.';return;}const [hour,minute]=time.value.split(':').map(Number);void this.run(async()"
         }
       ],
-      "integrationReview": "2026-11-09: Alarm presentation uses the existing inline modal owner and assistantFromSheet transition; save, delete, expiry and foreground alarm ownership are unchanged. Browser tests cover retained records, keyboard return and assistant access. State-audit and source-to-model refinement remain separate."
+      "integrationReview": "2026-11-09: Alarm presentation uses the existing inline modal owner and assistantFromSheet transition; save, delete, expiry and foreground alarm ownership are unchanged. Browser tests cover retained records, keyboard return and assistant access. State-audit and source-to-model refinement remain separate. 2026-11-09: shared overlay bounds, retained dismiss controls and alarm reading order validated in browser layout and interaction checks; storage and handoff transitions are unchanged."
     },
     {
       "path": "apps/app/src/browser/cloud-connection.ts",
@@ -32853,9 +32853,9 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "b18bbe9509b5873133dcb0d1680e08b63368a7a7eecef78ee54e6f6021560c2e",
+      "sha256": "f718ef2e3a262826e177090ad31b319d472cd10a42ee0da4ca661355268493ea",
       "stateAnchors": [],
-      "integrationReview": "2026-11-09: tested native below-host presentation keeps page size and identity through chat, blocks page input beneath host controls, and fences stale backdrop cleanup. TypeScript and isolated renderer pass; exact Android/Pixel acceptance remains open."
+      "integrationReview": "2026-11-09: tested native below-host presentation keeps page size and identity through chat, blocks page input beneath host controls, and fences stale backdrop cleanup. TypeScript and isolated renderer pass; exact Android/Pixel acceptance remains open. 2026-11-09: shared overlay bounds, retained dismiss controls and alarm reading order validated in browser layout and interaction checks; storage and handoff transitions are unchanged."
     },
     {
       "path": "apps/app/src/prototype/photo-library-adapter.ts",
@@ -35141,9 +35141,9 @@
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "3f1e5975605acf65ec252a63bfb4fc1c2e303f1676fb512c7f62b108ecdb9c79",
+      "sha256": "ba60b7103fe70df2e67865fb8f545edbf1ac7468f423cd1fa5b5d718d8f49a92",
       "stateAnchors": [],
-      "integrationReview": "2026-11-09: direct month/year selectors map to the existing calendar month offset; event email removed and editable actions grouped without changing permission guards. Four browser keyboard/light/dark/height scenarios passed. State-audit obligations remain."
+      "integrationReview": "2026-11-09: direct month/year selectors map to the existing calendar month offset; event email removed and editable actions grouped without changing permission guards. Four browser keyboard/light/dark/height scenarios passed. State-audit obligations remain. 2026-11-09: shared overlay bounds, retained dismiss controls and alarm reading order validated in browser layout and interaction checks; storage and handoff transitions are unchanged."
     },
     {
       "path": "apps/app/src/prototype/use-in-email-review.ts",

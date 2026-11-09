@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "b1817660a0347ae19551b9ee296410fe55f02d59",
-  "ledgerSha256": "4aeb43c39c64ebfd3a73ebdaa791603f79de9e269d4a29d1d2e0bdd913b918d5",
+  "ledgerSha256": "0f9e26f09a4a7ae48dc8e3a680c4818559d3fd1f82bcf6c25614902c8d48c4dd",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -29831,7 +29831,7 @@
     },
     {
       "path": "apps/app/src/browser/clock.ts",
-      "sha256": "d59815a84b0d969db84cc19aae4a06d78c47eaabbf8f01909ccab22273b04c65",
+      "sha256": "d06f7d6578d69e7a0e6fa7962a4a43780e4d95e6ef4594b0abaff411480309f1",
       "allocatedModels": [
         "DeviceActions",
         "BrowserReminderOrphan",
@@ -39303,7 +39303,7 @@
     },
     {
       "path": "apps/app/src/prototype/phone.css",
-      "sha256": "b18bbe9509b5873133dcb0d1680e08b63368a7a7eecef78ee54e6f6021560c2e",
+      "sha256": "f718ef2e3a262826e177090ad31b319d472cd10a42ee0da4ca661355268493ea",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -40120,7 +40120,7 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "3f1e5975605acf65ec252a63bfb4fc1c2e303f1676fb512c7f62b108ecdb9c79",
+      "sha256": "ba60b7103fe70df2e67865fb8f545edbf1ac7468f423cd1fa5b5d718d8f49a92",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -220585,6 +220585,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "a2340230e00bf4ebc5882013511e9bc150959e3793d17f4a118abb9febc41f3f"
+    "sha256": "26e8a49e189616c9a584a7b87d8837189cb03267414edb0ab79bdb2a9fa82f51"
   }
 }

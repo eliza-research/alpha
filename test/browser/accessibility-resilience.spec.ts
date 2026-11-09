@@ -212,8 +212,11 @@ test.describe('menus and sheets over a scrim own focus', () => {
         await expect(dialog.getByRole('button',{name:'Share externally',exact:true})).toBeVisible();
       }else{
         const exposed = await page.evaluate(() => Array.from(document.querySelectorAll('.os button, .os input, .os textarea, .os a[href]'))
-          .filter(el => el.getClientRects().length && !el.closest('[inert],[aria-hidden="true"]') && !el.closest('[data-alpha-popup],[role="dialog"]')).map(el => el.getAttribute('aria-label') || el.textContent));
+          .filter(el => el.getClientRects().length && !el.closest('[inert],[aria-hidden="true"]') && !el.closest('[data-alpha-popup],[role="dialog"],[data-alpha-layer="pill"],[data-alpha-layer="composer"],[data-alpha-layer="conversation"]')).map(el => el.getAttribute('aria-label') || el.textContent));
         expect(exposed).toEqual([]);
+        // Live provider views keep the assistant available. Pure prototype fixtures
+        // can use a placeholder dock; they still must isolate the underlying app.
+        if(start==='live'||start==='files-storage'||ownedInfo)await expect(page.getByRole('button',{name:'Open conversation',exact:true})).toBeVisible();
       }
       await expect(page.getByRole('button', { name: scrim, exact: true })).toHaveCount(1);
       const stops = await dialog.locator('button:not(:disabled), input, textarea, select').count();

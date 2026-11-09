@@ -1414,7 +1414,7 @@
 
   <sc-if value="{{browser.menu}}">
     <div ref="{{browser.menuModal}}" data-alpha-popup style="display: contents">
-    <button tabindex="-1" aria-label="Close menu" onClick="{{browser.closeMenu}}" style="position: absolute; inset: 0; z-index: 7; background: transparent"></button>
+    <button data-alpha-backdrop tabindex="-1" aria-label="Close menu" onClick="{{browser.closeMenu}}" style="position: absolute; inset: 0; z-index: 7; background: transparent"></button>
     <div class="drop" role="dialog" aria-label="Browser menu" data-alpha-browser-menu style="position: absolute; top: 98px; right: 10px; z-index: 8; width: min(calc(236px * max(1, var(--alpha-text-scale, 1))), calc(100% - 20px)); box-sizing: border-box; border-radius: 24px; background: var(--s1); box-shadow: 0 0 0 1px var(--line), 0 20px 50px var(--shc); padding: 6px; display: flex; flex-direction: column; max-height: calc(100% - 120px); overflow-y: auto">
       <sc-if value="{{browser.nativeControls}}">
         <sc-if value="{{browser.externalBrowserAvailable}}">
@@ -1443,7 +1443,7 @@
 
   <sc-if value="{{browser.share}}">
     <div ref="{{browser.shareModal}}" data-alpha-popup style="display: contents">
-    <button tabindex="-1" aria-label="Close share" onClick="{{browser.closeShare}}" style="position: absolute; inset: 0; z-index: 7; background: var(--scrim)"></button>
+    <button data-alpha-backdrop tabindex="-1" aria-label="Close share" onClick="{{browser.closeShare}}" style="position: absolute; inset: 0; z-index: 7; background: var(--scrim)"></button>
     <div class="enter" role="dialog" aria-label="Share page" style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 8; background: var(--bg); border-radius: 28px 28px 0 0; padding: 12px 20px 36px; box-shadow: 0 -20px 60px var(--shc)">
       <div style="display: flex; justify-content: center; margin-bottom: 14px"><span style="width: 40px; height: 4px; border-radius: 2px; background: var(--mut); opacity: .4"></span></div>
       <div style="display: flex; align-items: flex-start; gap: 8px">
@@ -1789,7 +1789,7 @@
 
   <sc-if value="{{photos.viewing}}">
     <div ref="{{photos.viewerFocus}}" data-alpha-subview="photos-viewer" inert="{{photos.viewerCovered}}" aria-hidden="{{photos.viewerCovered}}" class="fadein" style="position: absolute; inset: 0; z-index: 10; background: var(--alpha-black); color: var(--alpha-white); overflow: hidden">
-      <button aria-label="{{photos.v.viewerLabel}}" onClick="{{photos.v.tap}}" onPointerDown="{{photos.v.down}}" onPointerUp="{{photos.v.up}}" style="position: absolute; inset: 0; display: block; touch-action: none">
+      <button data-alpha-photo-viewport aria-label="{{photos.v.viewerLabel}}" onClick="{{photos.v.tap}}" onPointerDown="{{photos.v.down}}" onPointerUp="{{photos.v.up}}" style="position: absolute; inset: 0; display: block; touch-action: none">
         <span data-alpha-photo-frame style="position: absolute; left: 0; right: 0; top: 50%; height: 549px; margin-top: -275px; overflow: hidden; display: block; {{photos.v.slide}}">
           <span style="position: absolute; inset: 0; display: block; background: {{photos.v.bg}}; transform: {{photos.v.tf}}; filter: {{photos.v.flt}}; transition: transform .3s"></span>
           <sc-if value="{{photos.v.playing}}">
@@ -1855,7 +1855,7 @@
 
   <sc-if value="{{photos.infoOpen}}">
     <div ref="{{photos.infoModal}}" data-alpha-popup style="display: contents">
-    <button tabindex="-1" aria-label="Close info" onClick="{{photos.closeSheet}}" style="position: absolute; inset: 0; z-index: 12; background: rgba(0,0,0,.35)"></button>
+    <button data-alpha-backdrop tabindex="-1" aria-label="Close info" onClick="{{photos.closeSheet}}" style="position: absolute; inset: 0; z-index: 12; background: rgba(0,0,0,.35)"></button>
     <div class="enter" role="dialog" aria-label="{{photos.v.infoLabel}}" style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 13; background: var(--s1); color: var(--fg); border-radius: 28px 28px 0 0; padding: 12px 24px 44px">
       <div style="display: flex; justify-content: center; padding-bottom: 14px"><span style="width: 40px; height: 4px; border-radius: 2px; background: var(--mut); opacity: .45"></span></div>
       <div class="serif" style="font-size: 26px; line-height: 1.1">{{photos.v.info2.date}}</div>
@@ -1920,7 +1920,7 @@
 
   <sc-if value="{{photos.shareOpen}}">
     <div ref="{{photos.shareModal}}" data-alpha-popup style="display: contents">
-    <button tabindex="-1" aria-label="Close share" onClick="{{photos.closeSheet}}" style="position: absolute; inset: 0; z-index: 20; background: rgba(0,0,0,.35)"></button>
+    <button data-alpha-backdrop tabindex="-1" aria-label="Close share" onClick="{{photos.closeSheet}}" style="position: absolute; inset: 0; z-index: 20; background: rgba(0,0,0,.35)"></button>
     <div class="enter" role="dialog" aria-label="Share photo" style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 21; background: var(--s1); color: var(--fg); border-radius: 28px 28px 0 0; padding: 12px 0 44px">
       <div style="display: flex; justify-content: center; padding-bottom: 10px"><span style="width: 40px; height: 4px; border-radius: 2px; background: var(--mut); opacity: .45"></span></div>
       <sc-if value="{{photos.shareTitle}}">
@@ -2775,7 +2775,7 @@
   </sc-if>
   <sc-if value="{{files.menuOpen}}">
     <div ref="{{files.menuModal}}" data-alpha-popup style="display: contents">
-    <button tabindex="-1" aria-label="Close menu" onClick="{{files.closeMenu}}" style="position: absolute; inset: 0; z-index: 7"></button>
+    <button data-alpha-backdrop tabindex="-1" aria-label="Close menu" onClick="{{files.closeMenu}}" style="position: absolute; inset: 0; z-index: 7"></button>
     <div class="drop" role="dialog" aria-label="Sort and more" style="position: absolute; top: 96px; right: 12px; width: 220px; max-width: calc(100% - 24px); max-height: calc(100% - 108px); overflow-y: auto; box-sizing: border-box; z-index: 8; background: var(--bg); border-radius: 22px; padding: 6px; box-shadow: 0 0 0 1px var(--line), 0 16px 40px var(--shc)">
       <sc-for list="{{files.fd.menuRows}}" as="m" key="{{m.id}}">
         <button onClick="{{m.go}}" aria-label="{{m.label}}" aria-pressed="{{m.on}}" class="tap" style="display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 0 12px; border-radius: 16px; font-size: 15px; text-align: left">
@@ -2897,7 +2897,7 @@
   
   <sc-if value="{{files.moveSheet}}">
     <div ref="{{files.moveModal}}" data-alpha-popup style="display: contents">
-    <button tabindex="-1" aria-label="Close move" onClick="{{files.closeSheet}}" style="position: absolute; inset: 0; z-index: 8; background: var(--scrim)"></button>
+    <button data-alpha-backdrop tabindex="-1" aria-label="Close move" onClick="{{files.closeSheet}}" style="position: absolute; inset: 0; z-index: 8; background: var(--scrim)"></button>
     <div class="enter" role="dialog" aria-label="Move to" style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 9; max-height: 100%; overflow-y: auto; box-sizing: border-box; background: var(--bg); border-radius: 28px 28px 0 0; padding: 8px 12px 40px; box-shadow: 0 -10px 40px var(--shc)">
       <div style="width: 36px; height: 4px; border-radius: 2px; background: var(--s3); margin: 0 auto 6px"></div>
       <div style="display: flex; align-items: center; padding-left: 12px; margin-bottom: 6px"><h2 class="serif" style="margin: 0; flex-grow: 1; font-size: 26px; font-weight: 300">Move to</h2><button class="ib" aria-label="Close" onClick="{{files.closeSheet}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.x}}"></path></svg></button></div>
@@ -2915,7 +2915,7 @@
   
   <sc-if value="{{files.shareSheet}}">
     <div ref="{{files.shareModal}}" data-alpha-popup style="display: contents">
-    <button tabindex="-1" aria-label="Close share" onClick="{{files.closeSheet}}" style="position: absolute; inset: 0; z-index: 8; background: var(--scrim)"></button>
+    <button data-alpha-backdrop tabindex="-1" aria-label="Close share" onClick="{{files.closeSheet}}" style="position: absolute; inset: 0; z-index: 8; background: var(--scrim)"></button>
     <div class="enter" role="dialog" aria-label="Share file" style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 9; background: var(--bg); border-radius: 28px 28px 0 0; padding: 8px 20px 40px; box-shadow: 0 -10px 40px var(--shc)">
       <div style="width: 36px; height: 4px; border-radius: 2px; background: var(--s3); margin: 0 auto 6px"></div>
       <div style="display: flex; align-items: center; margin-right: -8px"><h2 class="serif" style="margin: 0; flex-grow: 1; font-size: 26px; font-weight: 300">Share</h2><button class="ib" aria-label="Close" onClick="{{files.closeSheet}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.x}}"></path></svg></button></div>
@@ -3266,7 +3266,7 @@
 <sc-if value="{{is.workflows}}">
 <div onFocusCapture="{{workflows.captureSubviewFocus}}" style="display: flex; flex-direction: column; height: 100%; position: relative; background:var(--bg)">
   <sc-if value="{{workflows.clock}}">
-    <div ref="{{workflows.clock.modalRef}}" role="dialog" aria-modal="true" aria-label="Clock alarms" style="position:absolute;inset:0;z-index:35;background:var(--bg);display:flex;flex-direction:column;padding:{{workflows.clock.topPadding}} 24px 120px;overflow:auto;box-sizing:border-box">
+    <div data-alpha-clock-page ref="{{workflows.clock.modalRef}}" role="dialog" aria-modal="true" aria-label="Clock alarms" style="position:absolute;inset:0;z-index:35;background:var(--bg);display:flex;flex-direction:column;padding:{{workflows.clock.topPadding}} 24px 120px;overflow:auto;box-sizing:border-box">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px"><button class="ib" aria-label="Close Clock" aria-disabled="{{workflows.clock.busy}}" onClick="{{workflows.clock.close}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button><h2 class="serif" style="font-size:26px;margin:0">Alarms</h2></div>
       <p style="font-size:14px;line-height:1.5;color:var(--mut);margin:0 0 18px">Alarms are set in your Clock app. Check there to confirm.</p>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:24px"><sc-for list="{{workflows.clock.actions}}" as="item"><button class="tap" onClick="{{item.pick}}" style="padding:14px;border-radius:18px;font-size:15px;font-weight:600;{{item.css}}">{{item.label}}</button></sc-for></div>
@@ -3600,7 +3600,7 @@
 
       <sc-if value="{{workflows.b.sheetOn}}">
         <div ref="{{workflows.stepModal}}" data-alpha-popup style="display: contents">
-        <button tabindex="-1" aria-label="Close" onClick="{{workflows.b.closeSheet}}" style="position: absolute; inset: 0; background: var(--scrim); z-index: 8"></button>
+        <button data-alpha-backdrop tabindex="-1" aria-label="Close" onClick="{{workflows.b.closeSheet}}" style="position: absolute; inset: 0; background: var(--scrim); z-index: 8"></button>
         <div class="enter" role="dialog" aria-label="Step editor" style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 9; background: var(--bg); border-radius: 28px 28px 0 0; padding: 10px 20px 32px; box-shadow: 0 -12px 30px var(--shc); max-height: min(720px, 100%); overflow-y: auto; box-sizing: border-box">
           <div style="display: flex; align-items: center; justify-content: space-between; min-height: 44px; padding-bottom: 6px">
             <span style="width: 44px" aria-hidden="true"></span>
@@ -3914,7 +3914,7 @@
 
   <sc-if value="{{settings.hasSheet}}">
     <div ref="{{settings.sheetModal}}" data-alpha-popup style="display: contents">
-    <button tabindex="-1" aria-label="Close sheet" onClick="{{settings.sheet.close}}" style="position: absolute; inset: 0; z-index: 20; background: var(--scrim)"></button>
+    <button data-alpha-backdrop tabindex="-1" aria-label="Close sheet" onClick="{{settings.sheet.close}}" style="position: absolute; inset: 0; z-index: 20; background: var(--scrim)"></button>
     <div class="enter" role="dialog" aria-label="{{settings.sheet.title}}" style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 21; background: var(--bg); border-radius: 28px 28px 0 0; padding: 12px 20px 38px; box-shadow: 0 -20px 60px var(--shc); display: flex; flex-direction: column; gap: 12px">
       <span style="align-self: center; width: 40px; height: 4px; border-radius: 2px; background: var(--mut); opacity: .4; margin-bottom: 6px"></span>
       <div style="display: flex; align-items: flex-start; gap: 8px">
