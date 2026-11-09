@@ -3,7 +3,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {formatHour} from '../apps/app/src/prototype/locale-time.ts';
 import {stripTypeScriptTypes} from '../test/support/strip-types.mjs';
 import {formatHour} from '../apps/app/src/prototype/locale-time.ts';
 const pending=[],calls=[];
