@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {CloudProtocol, CloudProtocolError} from '../../../../apps/app/src/runtime/cloud-protocol.ts';
+import {createManagedGoogleClient, CloudProtocolError} from '../../../../.eliza/client-features/packages/app/src/runtime/managed-google-agent/managed-google-client.ts';
 import {productionCloud} from '../../../../apps/app/src/runtime/cloud-deployment.generated.ts';
-import {gmailAgentMailbox} from '../../../../scripts/gmail-agent-mailbox-host.ts';
+import {gmailAgentMailbox} from '../../../../.eliza/client-features/packages/app/src/runtime/managed-google-agent/gmail-agent-mailbox-host.ts';
 
 globalThis.fetch = async () => {throw Error('Network is closed in the mailbox replay');};
 const grant = '33333333-3333-4333-8333-333333333333';
@@ -183,15 +183,13 @@ function campaign(name, {seedRequest = 1, seedState = 'none', kind: seedKind = '
     }
   }
 
-  const forbidden = async () => {throw Error('External launch and store mutation are outside this replay');};
-  const client = new CloudProtocol('production', request, {acceptsReferences: true, async read(environment) {
-    assert.equal(environment, 'production');
-    if (invocation.options.abortBeforeDispatch && invocation.calls.at(-1) === 'accounts') {
-      invocation.controller.abort();
-      point('Abort before the reviewed transport dispatch is admitted', action('abortBeforeDispatch'));
-    }
-    return {credentialReference: reference};
-  }, write: forbidden, clear: forbidden}, forbidden);
+  const client = createManagedGoogleClient({apiOrigin: productionCloud.api,
+    credential: {credentialReference: reference}, request, async current() {
+      if (invocation.options.abortBeforeDispatch && invocation.calls.at(-1) === 'accounts') {
+        invocation.controller.abort();
+        point('Abort before the reviewed transport dispatch is admitted', action('abortBeforeDispatch'));
+      }
+    }});
 
   return {trace, async invoke(options = {}) {
     const scopeMatched = options.scopeMatched ?? true, message = options.message ?? seedMessage;

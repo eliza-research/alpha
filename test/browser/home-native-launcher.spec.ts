@@ -121,7 +121,7 @@ test('a mounted Android WebView freezes input and waits for draft readback befor
     w.updateState = {...update,pending:true,phase:'preparing'};
     w.releaseDraftRead();
   }, update);
-  await expect.poll(() => calls(page,'AlphaDevice','activateUpdate')).toEqual([{...update,ready:true}]);
+  await expect.poll(() => calls(page,'AlphaDevice','activateUpdate')).toEqual([{...update,ready:true,resumeEligible:true}]);
   await page.evaluate(update => { (window as any).updateState = {...update,pending:false,outcome:'canceled',resume:true}; }, update);
   await expect(dialog).toHaveCount(0);
   await expect(input).toHaveValue('Keep this draft');
@@ -145,7 +145,7 @@ test('native idle restores a mounted editor after a newer result without replayi
   }, update);
   const dialog = page.getByRole('dialog',{name:'App update'});
   await expect(dialog).toBeVisible();
-  await expect.poll(() => calls(page,'AlphaDevice','activateUpdate')).toEqual([{...update,ready:true}]);
+  await expect.poll(() => calls(page,'AlphaDevice','activateUpdate')).toEqual([{...update,ready:true,resumeEligible:true}]);
   await page.evaluate(update => {
     (window as any).updateState = {...update,activationId:'33333333-2222-4333-8444-555555555555',pending:false,idle:true,outcome:'canceled',resume:true};
   }, update);

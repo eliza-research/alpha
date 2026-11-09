@@ -107,12 +107,20 @@ async function scenario(module, name, drive) {
           input.vector, input.vector, input.provider);
         await point('actual runtime validates the untagged output', 'validateEmbedding', 'e1');
       },
-      async write() {
-        await adapter.createMemory({id: memoryId, agentId: agent, entityId: null, unique: true,
+      async write(refused = false) {
+        const writing = adapter.createMemory({id: memoryId, agentId: agent, entityId: null, unique: true,
           content: {text: 'Synthetic memory'}, embedding: input.vector}, 'fixture');
+        if (refused) {
+          await assert.rejects(writing, {code: 'EMBEDDING_SPACE_MISMATCH'});
+          assert.equal((await db.query('SELECT id FROM memories WHERE id = $1', [memoryId])).rows.length, 0);
+          assert.equal((await db.query('SELECT memory_id FROM embeddings WHERE memory_id = $1', [memoryId])).rows.length, 0);
+          await point('current SQL refuses the stale identity without writing memory or vector', 'currentSqlWrite', 'e1', true);
+          return;
+        }
+        await writing;
         assert.equal((await db.query('SELECT id FROM memories WHERE id = $1', [memoryId])).rows.length, 1);
         dropped = (await db.query('SELECT id FROM embeddings WHERE memory_id = $1', [memoryId])).rows.length === 0 ? 1 : 0;
-        await point('actual SQL memory write accepts or drops its vector', 'writeEmbedding', 'e1');
+        await point('actual SQL memory write accepts or drops its vector', 'currentSqlWrite', 'e1', false);
       },
       async activate() {
         const initialization = embeddings.ensureEmbeddingDimension();
@@ -146,14 +154,13 @@ export async function checkEmbeddingSqlRefinement(extraSources = []) {
   `, [driver, 'package-lock.json', 'upstream.lock.json', ...extraSources], [sqlDependencies]);
   const module = bundle.instantiate({});
   const traces = [
-    await scenario(module, 'old-untagged-vector-can-be-retagged-during-activation', async f => {
+    await scenario(module, 'old-untagged-vector-is-refused-during-activation', async f => {
       await f.call('plain');
       // Activation deliberately waits before returning to the pin owner.
       const {complete} = await f.activate();
       try {
         await f.validate();
-        await f.write();
-        await f.checkDatabaseFence();
+        await f.write(true);
       } finally {
         f.publish();
         await complete;
@@ -166,8 +173,9 @@ export async function checkEmbeddingSqlRefinement(extraSources = []) {
   return checkTraces({model: 'CoreEmbeddingDimension', traces, sources: bundle.sources,
     driverHashes: bundle.driverHashes, scope: 'bounded-component', assumptions: [
       `Actual RuntimeEmbeddings and PGliteDatabaseAdapter from authenticated upstream ${bundle.revision}.`,
+      'This checks selected named current-wrapper actions, including currentSqlWrite. It does not establish refinement of historical M::Step or Spec, or exhaustive refinement of a current global step relation.',
       'The physical PGlite columns 384 and 512 project to widths two and three. A controlled runtime supplies vector bytes and provider identity. The real adapter executes in a temporary database with the selected memory and embedding columns.',
-      'The translated design intentionally preserves the known provenance counterexample. The real SQL trigger blocks a stale direct UPDATE while the current adapter can still tag a delayed unmarked input at insertion.',
+      'The historical translated template retains its known counterexample. The current wrapper adds an explicit refusal transition, and the actual SQL adapter rejects the delayed unmarked input before writing either memory or embedding.',
       'Full migrations, concurrent database processes, foreign agent isolation, and index re-embedding remain separate.',
     ]});
 }

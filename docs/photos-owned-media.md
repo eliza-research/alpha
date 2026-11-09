@@ -219,6 +219,21 @@ operation types, so the phone code is inert and `photos.view.v1` is not offered.
 Eliza still must emit the library operations and negotiate the capabilities, so source
 registration does not establish live agent acceptance.
 
+## Chromium filter reference
+
+For the independent Chromium CSS-filter PNG reference, run from the repository
+root with the installed `playwright` and `pngjs` modules:
+
+```sh
+ALPHA_BROWSER_MODULES="$PWD/node_modules" \
+  ALPHA_FILTER_RESULTS=test-results/photo-filter-png-reference \
+  node scripts/test-photo-filter-png-reference.mjs
+```
+
+This writes the synthetic source/chart PNGs, expected pixels and summary. It
+compares actual Chromium CSS filtering with candidate pixel math; it does not
+change app media or establish Android filter equivalence or device acceptance.
+
 ## Native Photos patch
 
 `patches/eliza/photos-library.patch` (listed in `patches/eliza/native-manifest.json`,

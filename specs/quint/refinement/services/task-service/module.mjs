@@ -6,6 +6,7 @@ import {createRequire} from 'node:module';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import {build} from 'esbuild';
 import {captureInputs} from '../../check-traces.mjs';
+import {bindLegacyCoreSources} from '../../../legacy/core/source-support.mjs';
 import {CORE_STATE_INPUTS, coreStatePatch, coreStateBuildRecord, coreStateRequiredTargets} from '../../../../../scripts/core-state-patch.mjs';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 
@@ -47,7 +48,7 @@ export async function loadTaskService(extraSources = []) {
     }}],
   });
   assert.doesNotMatch(built.outputFiles[0].text, /['"]file-type['"]/, 'Unprovided optional media dependency reached TaskService output');
-  const sources = [...compiled.keys(), ...resources, fileURLToPath(import.meta.url), 'package-lock.json', ...CORE_STATE_INPUTS, ...extraSources];
+  const sources = [...compiled.keys(), ...resources, fileURLToPath(import.meta.url), 'package-lock.json', ...CORE_STATE_INPUTS, ...bindLegacyCoreSources(extraSources)];
   const driverHashes = captureInputs(sources);
   for (const [file, digest] of Object.entries(core.receipt.inputHashes)) assert.equal(driverHashes[path.resolve(file)], digest, 'Core source input changed before driver capture');
   for (const [file, digest] of compiled) assert.equal(driverHashes[path.resolve(file)], digest, 'Task source changed during compilation');

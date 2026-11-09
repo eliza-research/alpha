@@ -46,9 +46,9 @@ test('runner records unexpected exceptions as failures and labels coverage evide
   };
   try {
     for (const path of [...sourceRoots, 'scripts']) mkdirSync(join(root, path), { recursive: true });
-    for (const name of ['check-quint.mjs', 'quint-lib.mjs', 'core-state-patch.mjs']) copyFileSync(join(repositoryRoot, 'scripts', name), join(root, 'scripts', name));
+    for (const name of ['check-quint.mjs', 'quint-lib.mjs', 'core-state-patch.mjs', 'build-policy-source.mjs']) copyFileSync(join(repositoryRoot, 'scripts', name), join(root, 'scripts', name));
     const fixtureSources = [...runtimeScriptPaths, ...runtimeAssetPaths];
-    for (const path of fixtureSources) if (path !== 'scripts/core-state-patch.mjs') write(path, '');
+    for (const path of fixtureSources) if (!['scripts/core-state-patch.mjs','scripts/build-policy-source.mjs'].includes(path)) write(path, '');
     const model = { module: 'Fixture', path: 'specs/quint/application/Fixture.qnt', init: 'init', step: 'step', invariant: 'safety', tests: ['exampleTest'], currentChecks: [null] };
     write(model.path, 'module Fixture { run exampleTest = true }');
     for (const family of ['application', 'services', 'native', 'legacy']) {
@@ -114,7 +114,7 @@ test('every tracked TLA module and TLC configuration has an authenticated Quint 
   for (const row of product) assert.equal(sha256(readFileSync(join(repositoryRoot, row.path))), row.sha256, row.path);
 
   const upstream = readJson(join(repositoryRoot, 'specs/quint/legacy/core/source-inventory.json'));
-  const sourcePin = readJson(join(repositoryRoot, 'upstream.lock.json')).commit;
+  const sourcePin = upstream.revision;
   const vendor = join(repositoryRoot, 'vendor/eliza');
   const shared = upstream.models.flatMap(model => {
     assert.ok(registered.has(model.quintModule), model.quintModule);
@@ -122,6 +122,13 @@ test('every tracked TLA module and TLC configuration has an authenticated Quint 
   });
   assert.deepEqual(formalPaths(git(vendor, ['ls-tree', '-r', '--name-only', '-z', sourcePin])), shared.map(row => row.path).sort());
   for (const row of shared) assert.equal(sha256(git(vendor, ['cat-file', 'blob', `${sourcePin}:${row.path}`])), row.sha256, row.path);
+  const currentPin = readJson(join(repositoryRoot, 'upstream.lock.json')).commit;
+  const currentFiles = formalPaths(git(vendor, ['ls-tree', '-r', '--name-only', '-z', currentPin]));
+  for (const path of currentFiles) {
+    const translated = shared.find(row => row.path === path);
+    assert.ok(translated, 'A new current TLA input needs an authenticated translation: '+path);
+    assert.equal(sha256(git(vendor, ['cat-file', 'blob', `${currentPin}:${path}`])), translated.sha256, path);
+  }
 });
 
 test('coverage admission detects changed, removed and unassigned source records', () => {
@@ -145,7 +152,7 @@ test('source discovery follows consumed shared modules and rejects a stale clien
   try {
     for (const path of sourceRoots) mkdirSync(join(root, path), {recursive: true});
     mkdirSync(join(root, 'scripts'), {recursive: true});
-    for (const name of ['quint-lib.mjs', 'core-state-patch.mjs']) copyFileSync(join(repositoryRoot, 'scripts', name), join(root, 'scripts', name));
+    for (const name of ['quint-lib.mjs', 'core-state-patch.mjs', 'build-policy-source.mjs']) copyFileSync(join(repositoryRoot, 'scripts', name), join(root, 'scripts', name));
     write('upstream.lock.json', {commit: 'fixture', appSource: 'packages/app'});
     write('.eliza/client-features/.source.json', {baseCommit: 'fixture', sourceFiles: {'packages/ui/src/state.ts': 'fixture'}});
     write('android/consumer-host.json', {profile: {modules: [{source: {root: 'upstream', path: 'plugins/fixture/android'}}]}, residentHost: {helpers: ['packages/runtime/Owner.java']}});

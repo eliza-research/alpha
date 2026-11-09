@@ -280,8 +280,8 @@ export async function runNamedEmbeddingProvenanceRefinement(extraSources = []) {
     const marked = await f.generate();
     assert.equal(await f.write('update', marked, 'new'), 'written');
     const stored = await f.read();
-    assert.equal(stored.embedding[representation], undefined);
-    assert.equal(await f.write('update', stored.embedding, 'old'), 'space');
+    assert.equal(stored.embedding[representation], space);
+    assert.equal(await f.write('update', stored.embedding, 'old'), 'written');
     assert.equal(await f.write('update', undefined, 'new'), 'written');
   });
   await drive('held-named-cas-rechecks-source-text-after-a-winning-edit', async f => {

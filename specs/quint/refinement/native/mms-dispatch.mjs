@@ -53,7 +53,7 @@ async function campaign(scenarios, extraSources, check, {pinnedProbe=false} = {}
       assert.equal(driverHashes[join(staged.root,path)],staged.files[path]);
     }
     const patchTarget=shared+'TelephonyPlugin.java';
-    assert.notEqual(staged.files[patchTarget],pinned.get(patchTarget).sha256);
+    assert.equal(staged.files[patchTarget],pinned.get(patchTarget).sha256);
     const host=JSON.parse(readFileSync(join(root,'android/consumer-host.json'),'utf8'));
     assert.deepEqual(host.profile.modules.find(module=>module.name==='eliza-messages'),{
       name:'eliza-messages',source:{root:'patchedNative',path:'plugins/plugin-native-messages/android'},relocateBuild:true,

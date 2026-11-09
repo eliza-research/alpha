@@ -117,6 +117,11 @@ module CoreEmbeddingDimension {
   action callEmbedding(e, p) = M::EmbedCall(e, p)
   action validateEmbedding(e) = M::EmbedValidate(e)
   action writeEmbedding(e) = M::EmbedWrite(e)
+  // Current SQL refuses a vector whose retained identity differs from the active space.
+  // The historical template and its documented counterexample remain unchanged.
+  action currentSqlWrite(e: str, refused: bool): bool =
+    if (M::s.aspace == M::Space.get(M::s.eprov.get(e))) all {not(refused), M::EmbedWrite(e)}
+    else all {refused, M::s.epc.get(e) == "valid", M::s' = {...M::s, epc: M::s.epc.set(e, "done")}}
   temporal CheckedTemporal = M::PinSpaceStable
   run pinRefusesDifferentProviderTest = init.then(M::ProbeStart("named")).then(M::ProbeResize).then(M::ProbeSpace)
     .then(M::ProbePin).then(M::ProbeClearAs(true)).then(M::ProbeStart("wide")).then(M::ProbeResize)

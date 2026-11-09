@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import {parseBuildPolicy} from '../../../../scripts/build-policy-source.mjs';
+import {policySource} from '../../../../test/fixtures/core-state-root.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -92,12 +94,12 @@ function fixture(f, alternate) {
     bundle: [null, fs.readFileSync(files.bundle), Buffer.from('fixture replacement bundle')],
   };
   const policyBytes = fs.readFileSync(files.policy);
-  const revisedPolicy = JSON.parse(policyBytes);
+  const revisedPolicy = parseBuildPolicy(policyBytes);
   revisedPolicy.builder.sha256 = hash(versions.producer[1]);
-  const policyVersions = [policyBytes, Buffer.from(JSON.stringify(revisedPolicy))];
+  const policyVersions = [policyBytes, Buffer.from(policySource(revisedPolicy))];
   const labels = Object.fromEntries(Object.entries(versions).map(([name, entries]) =>
     [name, entries.map(fingerprint)]));
-  const readPolicy = () => JSON.parse(fs.readFileSync(files.policy, 'utf8'));
+  const readPolicy = () => parseBuildPolicy(fs.readFileSync(files.policy));
   const read = file => fs.existsSync(file) ? fs.readFileSync(file) : null;
   const writeReceipt = value => fs.writeFileSync(files.receipt, JSON.stringify(value));
   const versionOf = (name, digest) => {
@@ -166,7 +168,7 @@ function fixture(f, alternate) {
     };
   }
   const faults = {
-    policy: () => replace(files.policy, JSON.stringify({...readPolicy(), schema: 2})),
+    policy: () => replace(files.policy, policySource({...readPolicy(), schema: 2})),
     stamp: () => replace(files.stamp, JSON.stringify({...JSON.parse(fs.readFileSync(files.stamp)), base: 'f'.repeat(40)})),
     producer: () => replace(files.producer, versions.producer[1]),
     lock: () => replace(files.lock, 'fixture unreviewed lock'),
@@ -180,7 +182,7 @@ function fixture(f, alternate) {
       return () => {fs.unlinkSync(files.package); fs.writeFileSync(files.package, before);};
     },
     adapter: () => replace(files.otherAdapter, null),
-    'core-auth': () => replace(files.coreCatalog, JSON.stringify({schema: 1, baseCommit: actualPolicy.baseCommit, files: {}})),
+    'core-auth': () => replace(files.coreCatalog, policySource({schema: 1, baseCommit: actualPolicy.baseCommit, files: {}})),
   };
   return {
     observe,

@@ -8,6 +8,16 @@ and [pilot runbook](pilot-acceptance-runbook.md) for remaining product acceptanc
 ## Source and packaging
 
 Run `npm ci` and `npm run verify` with the toolchain documented in the README.
+The verification command explicitly prepares retained historical Core design inputs
+before running Quint. On a fresh checkout, it fetches only the immutable revision in
+`specs/quint/legacy/core/source-inventory.json`, verifies every recorded file hash,
+and materializes the files under ignored `test-results/quint-legacy-core-source/`.
+It keeps the current pinned checkout unchanged. Imported refinement helpers never
+fetch source. To prepare these inputs before a targeted legacy test, run
+`node specs/quint/legacy/core/source-support.mjs --prepare`; an already cached
+revision needs no network access. Historical design translations and current
+implementation checks retain separate source bindings.
+
 Build and stage the libelizainference voice host as described in [fused speech](fused-speech.md),
 then run `npm run agent:prepare`, `npm run agent:build-workflow-worker`,
 `npm run agent:stage-android` and `npm run android:build` with JDK 21 and the configured Android SDK. Plain

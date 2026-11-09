@@ -13,7 +13,7 @@ const gitPaths = (directory, args) => execFileSync('git', ['-C', directory, ...a
 test('all tracked TLA+ specifications and configurations have Quint translations', () => {
   const models = new Map(loadModels().map(model => [model.module, model]));
   const core = readJson(resolve(repositoryRoot, sourcePath));
-  const pin = readJson(resolve(repositoryRoot, 'upstream.lock.json')).commit;
+  const pin = core.revision;
   const upstream = resolve(repositoryRoot, 'vendor/eliza');
   const coreFiles = [];
   for (const source of core.models) {
@@ -27,6 +27,13 @@ test('all tracked TLA+ specifications and configurations have Quint translations
     }
   }
   assert.deepEqual(gitPaths(upstream, ['ls-tree', '-r', '--name-only', '-z', pin]), coreFiles.sort());
+  const currentPin = readJson(resolve(repositoryRoot, 'upstream.lock.json')).commit;
+  const currentFiles = gitPaths(upstream, ['ls-tree', '-r', '--name-only', '-z', currentPin]);
+  assert.deepEqual(currentFiles.filter(path => !coreFiles.includes(path)), [], 'New current TLA inputs need an authenticated translation');
+  for (const path of currentFiles) {
+    assert.deepEqual(execFileSync('git', ['-C', upstream, 'cat-file', 'blob', `${currentPin}:${path}`]),
+      execFileSync('git', ['-C', upstream, 'cat-file', 'blob', `${pin}:${path}`]), 'A changed current TLA input needs renewed translation evidence');
+  }
   assert.equal(core.models.length, core.modelCount);
   assert.equal(coreFiles.length - core.models.length, core.configurationCount);
 

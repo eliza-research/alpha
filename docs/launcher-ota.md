@@ -140,6 +140,21 @@ delivery path until a native producer bridge is separately qualified.
 
 ## Acceptance on the phone host
 
+The isolated API 36 PackageInstaller fixture can be rerun on an owned disposable
+emulator with SDK 36 build tools and JDK 21:
+
+```sh
+node scripts/test-automatic-update-platform.mjs --owned-emulator \
+  --serial=emulator-NNNN --output=test-results/automatic-update-platform/NEW_RUN
+```
+
+Use its actual emulator serial and a new output directory. The runner refuses
+physical devices and an existing fixture package. It installs its own tiny test
+APK and attempts a same-signer replacement; complete callback and successor/data
+readback are required for success. This does not install Alpha, use the public
+update feed or qualify either deployment mode. Earlier incomplete attempts remain
+recorded in the [native evidence](evidence/launcher-ota-native-validation-20261109.json).
+
 Retain a baseline and candidate with the same production signing family, launcher
 flavor and runtime profile; the candidate has a strictly higher code. Store their
 APK hashes, source pins and verification receipts. Use an owned test unit before
@@ -149,6 +164,15 @@ been observed from this workspace.
 Use the integrity readback helpers from `scripts/pilot-update.mjs` for the
 before/after receipts. That script's complete command uses `adb install -r`;
 running it instead of step 2 proves an ADB replacement, not the OTA path.
+
+For the production image, stage the exact admitted launcher APK against the
+reviewed image certificate policy. The shared overlay uses `PRESIGNED` and
+`preprocessed` imports to preserve the APK signing family. The Cuttlefish
+[`product.json`](../android/aosp/product.json) and Pixel 10a
+[`pixel10a-product.json`](../android/aosp/pixel10a-product.json) still contain
+`UNSET` platform/release signing identities; production image staging and image
+acceptance remain open. Resolve those through the signing review, then verify
+the installed image APK and its later same-family update on the phone host.
 
 1. Install the admitted baseline and select it as HOME. Enable install permission.
    Read back package, signer, code, source path and HOME. Save a local note, an

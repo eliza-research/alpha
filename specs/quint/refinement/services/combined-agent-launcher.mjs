@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {parseBuildPolicy} from '../../../../scripts/build-policy-source.mjs';
 import {spawnSync} from 'node:child_process';
 import {mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
@@ -16,12 +17,12 @@ const scenarios = [
 ];
 
 function sourceInputs(extraSources) {
-  const {files} = JSON.parse(readFileSync(join(root, manifest), 'utf8'));
+  const {files} = parseBuildPolicy(readFileSync(join(root, manifest)));
   return [
     'scripts/launcher-child.mjs', 'scripts/start-combined-agent.mjs', 'scripts/combined-agent-source.mjs',
     'scripts/host-speech-admission.mjs', 'scripts/host-speech-assets.json', 'scripts/agent-model.mjs',
     'scripts/agent-identity.mjs', 'apps/app/src/product/alpha-product-registration.ts',
-    'scripts/core-state-patch.mjs', 'scripts/core-state-preload.mjs',
+    'scripts/build-policy-source.mjs', 'scripts/core-state-patch.mjs', 'scripts/core-state-preload.mjs',
     'scripts/local-agent-source.mjs', 'scripts/copy-file-clone.mjs', manifest, 'upstream.lock.json',
     'vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs',
     'vendor/eliza/packages/agent/native-host/private-runtime-json.mjs',

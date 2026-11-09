@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "9add52f6b83efa77241fb72ae769729121944cac",
-  "ledgerSha256": "2c887136a3b74b6bc3cb53b64c3f22f97d251782e288bc3193d5cfac27d0c04c",
+  "ledgerSha256": "015083b676aa5034a9e515c96315e8ea3f4aa7d9bbff95a4ea9840229e7a1504",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -44413,7 +44413,7 @@
     },
     {
       "path": "apps/app/src/runtime/owner-route-policy.ts",
-      "sha256": "448e557733c85eeedf137bdaa914cc5d59bb397c2fb42ad8aba67d0708eb12f1",
+      "sha256": "02b2c0eae477e00b87f6e88cf366be2353918c6a2498d72269c15ff0ae923502",
       "allocatedModels": [
         "Application",
         "CalendarPresentation",
@@ -223134,6 +223134,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "1628b0595256858349f2995a7b196db8a28a2fbad74fdd7e14047ef267e6a8df"
+    "sha256": "b0e71ea7ca64caf4c52c50a2ed5f6953385e036b741427691eb3f6579c87d541"
   }
 }

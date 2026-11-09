@@ -11,9 +11,8 @@ test('native MMS review, shared ID collisions and PDU custody refine authenticat
   assert.equal(verifyRefinementReceiptInputs(receipt),true);
 });
 
-test('pinned MMS recovery reproduces the conflicting attachment and cross-kind receipts', async () => {
-  await assert.rejects(mmsSourceProbe(['mms-attachment-conflict'],{pinnedProbe:true}),
-    /Conflicting MMS approval must reject: submitted\/mms-send\/1/);
-  await assert.rejects(mmsSourceProbe(['sms-first-mms-receives-sms'],{pinnedProbe:true}),
-    /Cross-kind MMS approval must reject: submitted\/sms-send\/3/);
+test('pinned MMS rejects conflicting attachments and cross-kind receipts without an overlay', async () => {
+  for (const scenario of ['mms-attachment-conflict','sms-first-mms-receives-sms']) {
+    assert.equal((await mmsSourceProbe([scenario],{pinnedProbe:true})).length,1);
+  }
 });

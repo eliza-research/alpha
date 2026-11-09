@@ -19,9 +19,14 @@ test('native admission cancels permission/start before the serialized worker can
  // and gating events on its own lifecycle epoch (LiveCaptureControllerTest covers the ordering).
  const controller=fs.readFileSync(upstreamVoiceSource('LiveCaptureController.java'),'utf8');
  assert.match(controller,/admission\.attach\(ticket,[\s\S]*next\.start\(\)/);
- assert.match(controller,/admission\.stop\(id\);\s*submit\(worker/);
- assert.match(controller,/next\.start\(\);\s*if\(!host\.open\(epoch\)\|\|!admission\.current\(ticket\)\)/);
+ const stopStart=controller.indexOf(' public void stop(String id,boolean discard,double cutoffMs,Stopped result){');
+ assert.ok(stopStart>=0,'the shared Stop entry is present');
+ const stop=controller.slice(stopStart,controller.indexOf(' public void cancelAll()',stopStart));
+ const admission=stop.indexOf('admission.stop(id,discard);'),cancelPipe=stop.indexOf('pipe.close(true,cutoff);'),worker=stop.indexOf('submit(worker,');
+ assert.ok(admission>=0&&cancelPipe>admission&&worker>cancelPipe,'Stop publishes cancellation and the discard choice before cancelling transport or queueing worker cleanup');
+ assert.match(controller,/next\.start\(\);\s*if\(!host\.canStart\(epoch\)\|\|!admission\.current\(ticket\)\)/);
  const plugin=fs.readFileSync(upstreamBridgeSource('LocalSpeechBridgePlugin.java'),'utf8');
  assert.match(plugin,/LiveCaptureAdmission\.Ticket ticket=live\.reserve\(id,epoch\.get\(\)\);\s*if\(getPermissionState\("microphone"\)/);
  assert.match(plugin,/public boolean open\(long admitted\)\{return !destroyed&&speechForeground&&admitted==epoch\.get\(\);\}/);
+ assert.match(plugin,/public boolean canStart\(long admitted\)\{return open\(admitted\)&&!sensitiveSurfaceActive\(\)&&\(focus==null\|\|!focus\.callActive\(\)\);\}/);
 });

@@ -90,7 +90,8 @@ module CanonicalCalendarDraft {
     s' = if (job.kind == "write") {...settled, slots: s.slots.set(owner, row(job.draft))}
       else if (s.bound == owner and s.lease == job.lease and selected(s) and s.text == job.draft)
         {...settled, consuming: false, text: NoDraft, slots: s.slots.set(owner, row(NoDraft))}
-      else if (s.bound == owner and s.lease == job.lease)
+      // A late clear cannot erase the returned same-owner editor; it requires review.
+      else if (s.bound == owner)
         {...settled, consuming: false, conflict: true, savedText: s.slots.get(owner).draft}
       else settled}
   action openRecovery = s' = if (selected(s) and recovery) {...s, recoveryOpen: true} else s

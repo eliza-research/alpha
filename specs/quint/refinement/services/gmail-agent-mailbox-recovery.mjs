@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {serviceInputs} from './source-inputs.mjs';
 import {spawnSync} from 'node:child_process';
 import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -12,10 +13,10 @@ const observations = row => ({...row, 's.durable': qmap(row['s.durable'])});
 export async function checkGmailAgentMailboxRecovery(extraSources = []) {
   const graph = buildSync({absWorkingDir: root, entryPoints: [probe], bundle: true, packages: 'external',
     platform: 'node', format: 'esm', write: false, metafile: true}).metafile.inputs;
-  const sources = [...new Set([...Object.keys(graph), fileURLToPath(import.meta.url), probe,
+  const sources = serviceInputs([...new Set([...Object.keys(graph), fileURLToPath(import.meta.url), probe,
     'vendor/eliza/plugins/plugin-inbox/src/mailbox/managed-gmail-client.ts',
     'scripts/prepare-client-features.mjs', 'upstream.lock.json', 'package.json', 'package-lock.json', 'tsconfig.json',
-    ...extraSources])];
+    ...extraSources])]);
   const driverHashes = captureInputs(sources);
   const run = spawnSync(process.execPath, ['--import=tsx', probe], {
     cwd: root, encoding: 'utf8', timeout: 10000, maxBuffer: 2*1024*1024,
@@ -29,7 +30,7 @@ export async function checkGmailAgentMailboxRecovery(extraSources = []) {
   }));
   return checkTraces({model: 'GmailAgentMailboxRecovery', scope: 'bounded-orchestration', sources, driverHashes, traces,
     assumptions: [
-      'Actual gmailAgentMailbox, CloudProtocol and the staged upstream Gmail client execute against an in-memory request and read-only opaque reference port. No socket, credential file, native plugin or real provider is used.',
+      'Actual gmailAgentMailbox, its staged ManagedGoogleClient and the shared Gmail client execute against an in-memory request and a fixed host-owned opaque credential reference. No socket, credential file, native plugin or real provider is used.',
       'The fixture binds the exact selected grant, message, turn, expected history and review digest from the actual wire arguments. Prepared and terminal durable receipt rows are port inputs, with two representative IDs and up to two sequential invocations.',
       'No non-prepared prior receipt is resubmitted. A prior prepared receipt can be reviewed again. This campaign checks caller dispatch count and recovery order, without assuming provider exactly-once or installed-account effects.',
     ]});

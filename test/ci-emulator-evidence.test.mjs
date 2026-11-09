@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
+import YAML from 'yaml';
 import {AVD,FUSED_SPEECH_CLASSES,READING_CLASSES,READING_TEST_MOCKS_CLASSES,SERIAL,disableEmulatorNetwork,runSuite,suitePlan,summarize} from '../scripts/ci/emulator-suite.mjs';
 import {CANONICAL_TEST,asrPackaged,candidateProblems,packageSpeechRun} from '../scripts/ci/speech-candidate.mjs';
 import {CLASS_REGISTRY,DEFAULT_CLASSES,parseInstrumentationArgs} from '../scripts/android-instrumentation.mjs';
@@ -109,8 +110,29 @@ test('every action in every workflow is pinned to an exact commit, one commit pe
   }
  }
  assert.deepEqual([...pins.keys()].filter(name=>!name.startsWith('actions/')).sort(),['android-actions/setup-android','gradle/actions/setup-gradle','oven-sh/setup-bun','reactivecircus/android-emulator-runner'],'a new third-party action needs its own review');
- // No step runs from a container image reference (which a commit pin does not cover), and no workflow grants a write permission.
- for(const file of files){const text=read(path.join('.github/workflows',file));assert.doesNotMatch(text,/\bdocker:\/\//,file);assert.doesNotMatch(text,/^\s+[a-z-]+: write\s*$/m,`${file} grants a write permission`);}
+ // Container images are outside the commit pin contract. Only the reviewed,
+ // protected publication job may write; ordinary verification stays read-only.
+ for(const file of files){
+  const text=read(path.join('.github/workflows',file));
+  assert.doesNotMatch(text,/\bdocker:\/\//,file);
+  const writes=[...text.matchAll(/^\s+([a-z-]+): write\s*$/gm)].map(match=>match[1]);
+  if(file!=='publish-qualified-app-update.yml'){
+   assert.deepEqual(writes,[],`${file} grants a write permission`);
+   continue;
+  }
+  const publication=YAML.parse(text);
+  assert.deepEqual(writes,['contents'],'only publication contents may be writable');
+  assert.deepEqual(publication.permissions,{});
+  assert.deepEqual(Object.keys(publication.on),['workflow_dispatch']);
+  assert.deepEqual(Object.keys(publication.jobs),['admit','publish']);
+  assert.deepEqual(publication.jobs.admit.permissions,{contents:'read',actions:'read'});
+  assert.equal(publication.jobs.admit.if,"github.repository == 'eliza-research/alphaphone' && github.ref == 'refs/heads/main' && inputs.workflow_commit == github.sha");
+  assert.equal(publication.jobs.publish.needs,'admit');
+  assert.equal(publication.jobs.publish.if,"needs.admit.result == 'success' && needs.admit.outputs.qualification_sha256 != '' && inputs.workflow_commit == github.sha");
+  assert.equal(publication.jobs.publish.environment,'release');
+  assert.deepEqual(publication.jobs.publish.permissions,{actions:'read',contents:'write'});
+  assert.deepEqual(publication.concurrency,{group:'alpha-app-stable-publication','cancel-in-progress':false});
+ }
 });
 
 test('a change to the emulator evidence workflow selects no automatic lane of its own',()=>{

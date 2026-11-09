@@ -13,7 +13,6 @@ test('native SMS review, radio admission and callback readback refine authentica
   assert.equal(verifyRefinementReceiptInputs(receipt), true);
 });
 
-test('pinned SMS positive recovery still reproduces the conflicting binding regression', () => {
-  assert.throws(() => smsSourceTraces(['cross-dialog-binding'],join(root,'vendor/eliza')),
-    /Conflicting reviewed tuple cannot receive the retained receipt or repeat radio dispatch/);
+test('pinned SMS rejects a conflicting retained binding without an overlay', () => {
+  assert.equal(smsSourceTraces(['cross-dialog-binding'],join(root,'vendor/eliza')).length,1);
 });

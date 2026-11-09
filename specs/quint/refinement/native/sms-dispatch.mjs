@@ -69,7 +69,7 @@ export async function checkNativeSmsDispatch(extraSources = []) {
       assert.equal(driverHashes[join(prepared.root,path)],prepared.files[path]);
     }
     const patchTarget=shared+'TelephonyPlugin.java';
-    assert.notEqual(prepared.files[patchTarget],pinned.get(patchTarget).sha256);
+    assert.equal(prepared.files[patchTarget],pinned.get(patchTarget).sha256);
     const traces=runScenarios([
       'cross-dialog-binding','exact-dialog-replay','pruned-exact-dialog','pruned-conflicting-dialog',
       'exact-cancel-and-retired-button','background-cancellation','screen-off-cancellation','initial-permission-denied',
