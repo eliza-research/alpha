@@ -707,6 +707,28 @@
     ]
   },
   {
+    "path": "specs/quint/application/WorkflowClockAdmission.qnt",
+    "module": "WorkflowClockAdmission",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": ["exactWorkflowsVisitTest", "contextReturnsOnCloseTest", "departureRetiresOpeningTest",
+      "requestedMockModeRetiresOpeningTest", "hiddenVisitRetiresOpeningTest",
+      "dispatchedReceiptSettlesAfterDepartureTest", "browserOpensShowWithoutDraftTest"],
+    "invariants": ["WorkflowsOwnsClockDraft", "ReviewNeedsVisibleIdleDraft", "DispatchHasOpeningReceipt",
+      "RetiredOpeningCannotDispatch", "BrowserShowCannotWriteAlarmReceipt"],
+    "sources": ["apps/app/src/prototype/clock-adapter.ts", "apps/app/src/prototype/agent-adapter.ts",
+      "apps/app/src/prototype/template.html", "apps/app/src/prototype/model.js", "apps/app/src/main.tsx",
+      "apps/app/src/runtime/clock-handoff-history.ts"],
+    "stateMapping": {
+      "view/shown/review/selection": "Committed Workflows or Home, actual Clock render model and agent context input",
+      "hidden/mock/opener/retired": "Synthetic visibility and mode, retained entry callback and opening request custody",
+      "phase/record/handoffs/shows": "Exact controlled opening write, persisted shared envelope and synthetic Clock calls"
+    },
+    "abstractions": ["Two bounded handoffs or browser show calls. The opening receipt and Clock result are separately controlled.",
+      "Template action bindings and shell leave execute in a closed fixture. Physical focus, full renderer transitions, real Android intents and browser alarm behavior are separate."]
+  },
+  {
     "path": "specs/quint/application/NotificationCollection.qnt",
     "module": "NotificationCollection",
     "init": "init",

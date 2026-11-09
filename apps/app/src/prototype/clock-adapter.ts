@@ -12,6 +12,7 @@ export function installClockAdapter(Component:any,views:Bag,options:{simulated:b
  const draftId=crypto.randomUUID();let draftRevision=0;
  const selection=()=>open?{kind:'clock-draft',id:draftId,revision:String(draftRevision)}:undefined;
  let owner:any,open=false,action:ClockRequest['action']='set',time='07:00',label='',snooze='10',days:ClockDay[]=[],review:ClockRequest|null=null,busy=false,message='',generation=0;
+ let visit=0;
  // Repeat days reach Clock only when the native handoff reports it carries EXTRA_DAYS
  // (surfaceInfo clockRepeatDaysVersion 1 or later). Otherwise the chips are hidden and a repeat is refused,
  // so a reviewed repeat is never sent as, or silently reduced to, a one-time alarm.
@@ -39,12 +40,13 @@ export function installClockAdapter(Component:any,views:Bag,options:{simulated:b
  const close=()=>{if(!busy){open=false;review=null;publish();}};
  const back=(event:Event)=>{if(!open)return;event.preventDefault();event.stopImmediatePropagation();close();};
  const modal=createInlineModal(close,()=>document.querySelector<HTMLElement>('button[aria-label="Clock alarms"]'));
- views.workflows.onLeave=(...args:any[])=>{open=false;review=null;++generation;return leave?.(...args);};
  const retireReview=()=>{review=null;++generation;};
+ const retireVisit=()=>{open=false;++visit;retireReview();};
+ views.workflows.onLeave=(...args:any[])=>{retireVisit();return leave?.(...args);};
  const hidden=()=>{if(document.hidden)retireReview();else if(open&&!busy)void restore();};
  const mount=p.componentDidMount,unmount=p.componentWillUnmount;
  p.componentDidMount=function(){mount.call(this);owner=this;this.clockSelection=selection;void restore();window.addEventListener('alpha-back',back,true);window.addEventListener('pagehide',retireReview);document.addEventListener('visibilitychange',hidden);};
- p.componentWillUnmount=function(){if(owner===this){window.removeEventListener('alpha-back',back,true);window.removeEventListener('pagehide',retireReview);document.removeEventListener('visibilitychange',hidden);delete this.clockSelection;owner=null;open=false;review=null;++generation;}unmount.call(this);};
+ p.componentWillUnmount=function(){if(owner===this){window.removeEventListener('alpha-back',back,true);window.removeEventListener('pagehide',retireReview);document.removeEventListener('visibilitychange',hidden);delete this.clockSelection;owner=null;retireVisit();}unmount.call(this);};
  const change=(fn:()=>void)=>{if(busy)return;fn();review=null;publish();};
  const build=():ClockRequest=>{
   if(action==='set'&&days.length&&!repeatAvailable())throw Error('Repeating alarms are not available in this version. Clear the repeat days, or set the repeat in Clock.');
@@ -65,7 +67,7 @@ export function installClockAdapter(Component:any,views:Bag,options:{simulated:b
   try {retained=await history.save(expected,{id,action:request.action,status:'opening',at:new Date().toISOString()});}
   catch {busy=false;snapshot=null;if(token===generation){message='Can’t reach Clock. Reopen it and try again.';publish();}return;}
   // Admission is asynchronous. A retired review must never dispatch after it completes.
-  let cancelled=token!==generation||document.hidden||simulated();
+  let cancelled=token!==generation||document.hidden||mockRequested();
   try{if(request.action==='set'&&request.timeZone!==currentClockTimeZone())cancelled=true;}catch{cancelled=true;}
   let result:ClockResult;
   if(cancelled)result={action:request.action,status:'failed',message:'Clock request was not sent. Return to Alpha Phone and review again.'};
@@ -83,7 +85,15 @@ export function installClockAdapter(Component:any,views:Bag,options:{simulated:b
  };
  views.workflows.render=(state:Bag,api:Bag)=>{
   const out=render(state,api);
-  out.openClock=()=>{if(busy)return;if(options.browser&&!simulated()&&!blocked()){void DailyApps.clockHandoff({action:'show',reviewed:true}).catch(()=>api.toast('Clock could not be opened. Try again.'));return;}open=true;review=null;void restore();publish();};
+  const renderedVisit=visit;
+  out.openClock=()=>{
+   if(busy||document.hidden||renderedVisit!==visit||!api.isActive())return;
+   if(options.browser&&!simulated()&&!blocked()){
+    void DailyApps.clockHandoff({action:'show',reviewed:true}).catch(()=>api.toast('Clock could not be opened. Try again.'));
+    return;
+   }
+   open=true;review=null;void restore();publish();
+  };
   const currentReview=review;
   out.clock=open?{
    modalRef:modal.ref,title:'Clock',topPadding:simulated()?'76px':'var(--native-top-inset,0px)',message,busy:busy||loading,isSet:action==='set',isSnooze:action==='snooze',time,label,snooze,
