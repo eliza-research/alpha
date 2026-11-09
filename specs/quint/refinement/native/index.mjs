@@ -55,6 +55,7 @@ import {checkNativeSettingsHandoff} from './settings-handoff.mjs';
 import {checkNativeSourceRenewal} from './source-renewal.mjs';
 import {checkNativeAssistantEntry} from './assistant-entry.mjs';
 import {checkNativeActionRecovery} from './action-recovery.mjs';
+import {checkBrowserUnderlay} from './browser-underlay.mjs';
 
 export async function runNativeRefinement() {
   const models = ['VadSegmentation', 'RendererRecovery', 'ResidentScheduling'];
@@ -198,7 +199,9 @@ export async function runNativeRefinement() {
   results.push(assistantEntry.receipt);
   const actionRecovery = await checkNativeActionRecovery(nativeInputs);
   results.push(actionRecovery.receipt);
+  results.push(await checkBrowserUnderlay(nativeInputs));
   const obligations = [
+    {model: 'BrowserUnderlay', obligation: 'Android lifecycle, rendering, rounded geometry and physical input', reason: 'The production Kotlin touch path runs with controlled Android ports. Native presentation, split delivery, hover and drag need separate installed evidence.'},
     ...updatePause.obligations,
     ...updateActivation.obligations,
     ...updateComposition.obligations,
