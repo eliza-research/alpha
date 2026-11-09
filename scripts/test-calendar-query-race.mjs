@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import {formatHour} from '../apps/app/src/prototype/locale-time.ts';
 import {stripTypeScriptTypes} from '../test/support/strip-types.mjs';
+import {formatHour} from '../apps/app/src/prototype/locale-time.ts';
 const pending=[],calls=[];
 const calendar={list:range=>{calls.push(range);return new Promise(resolve=>pending.push(resolve));}};
 const DailyApps={addListener:async()=>({remove(){}})};

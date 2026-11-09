@@ -10409,7 +10409,7 @@
     },
     {
       "path": "apps/app/src/browser/camera-focus.ts",
-      "sha256": "d38671fb84c39db4d2194a88613fdf88db48573ae2eba3f0ec320d94365c8e4e",
+      "sha256": "e1bdeda311af772768176830b9b1618a082b82bd7363340f3181628e7eb1434b",
       "models": [
         "MediaLifecycle"
       ],
@@ -10417,30 +10417,24 @@
       "treatment": "state-and-transition-projection",
       "stateAnchors": [
         {
-          "line": 5,
+          "line": 10,
           "text": "private epoch=0;"
         },
         {
-          "line": 6,
+          "line": 11,
           "text": "private writes=new WeakMap<MediaStreamTrack,Promise<void>>();"
         },
         {
-          "line": 7,
+          "line": 12,
           "text": "private reticle:HTMLElement|undefined;"
         },
         {
-          "line": 8,
-          "text": "clear(){++this.epoch;this.reticle?.remove();this.reticle=undefined;}"
-        },
-        {
-          "line": 11,
-          "text": "this.clear();const token=this.epoch,{frame,video,track,zoom,mirror,development}=options;"
-        },
-        {
-          "line": 16,
-          "text": "const alive=()=>token===this.epoch&&target.isConnected&&track.readyState==='live';"
+          "line": 30,
+          "text": "const previous=this.writes.get(track);let release!:()=>void;"
         }
-      ]
+      ],
+      "reviewStatus": "state-audit-required",
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md"
     },
     {
       "path": "apps/app/src/browser/camera-frame.ts",
@@ -20211,9 +20205,350 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "863205a0deafdcae1be1f3a8b562cfaf41fa6ed2aeaaff899193f98e749b617c",
-      "stateAnchors": [],
-      "integrationReview": "2026-11-09 UI and browser-return delta reviewed against existing domain models and new ChatAttachments/BrowserGoogleReturn contracts; see ui-return-review-20261109.md. Source-model refinement and device acceptance remain separate."
+      "sha256": "6d707480b8fff997b1eea5f40ccc6d59916be60a80eb96f9d7d41b46e5b3c7ce",
+      "stateAnchors": [
+        {
+          "line": 31,
+          "text": "let requestedPhoto:((operationId:string,signal:AbortSignal,current:()=>void)=>Promise<CameraCaptureAttempt>)|undefined;"
+        },
+        {
+          "line": 102,
+          "text": "let captureQuestion:((item?:{id:string})=>boolean)|undefined;"
+        },
+        {
+          "line": 103,
+          "text": "let frameQuestion:((question:string)=>boolean)|undefined;"
+        },
+        {
+          "line": 105,
+          "text": "let scanRequest:(()=>boolean)|undefined;"
+        },
+        {
+          "line": 161,
+          "text": "let installed = true;"
+        },
+        {
+          "line": 198,
+          "text": "let closeQuestion:(()=>void)|undefined;"
+        },
+        {
+          "line": 202,
+          "text": "let closeScan:(()=>void)|undefined;"
+        },
+        {
+          "line": 204,
+          "text": "let api: Bag | undefined;"
+        },
+        {
+          "line": 205,
+          "text": "let direction: 'front' | 'back' = 'back';"
+        },
+        {
+          "line": 206,
+          "text": "let flash = false, disposed = false;"
+        },
+        {
+          "line": 207,
+          "text": "let lens: Lens = { minZoom: 1, maxZoom: 1, hasFlash: false, zoom: 1, flash: false }, zoomRatio = 1;"
+        },
+        {
+          "line": 209,
+          "text": "let lastCapture: SavedPhoto | undefined, lastEpoch=0;"
+        },
+        {
+          "line": 212,
+          "text": "let accessPanel: HTMLElement | undefined;"
+        },
+        {
+          "line": 213,
+          "text": "let duration = 0;"
+        },
+        {
+          "line": 214,
+          "text": "let video: HTMLVideoElement | undefined, videoId = '';"
+        },
+        {
+          "line": 216,
+          "text": "let captures: SavedPhoto[] = [];"
+        },
+        {
+          "line": 217,
+          "text": "let photosApi: Bag | undefined, loaded = false, loading = false, next = '', libraryEpoch = 0;"
+        },
+        {
+          "line": 218,
+          "text": "let libraryAccess:LibraryAccess|undefined,requestingLibraryAccess=false;"
+        },
+        {
+          "line": 224,
+          "text": "let photosFilter:(PhotosFilter&{label:string})|undefined;"
+        },
+        {
+          "line": 225,
+          "text": "let gridColumns:number=GRID_COLUMNS.default;"
+        },
+        {
+          "line": 227,
+          "text": "let drag:{anchor:string;base:SavedPhoto[];order:SavedPhoto[];moved:boolean}|undefined;"
+        },
+        {
+          "line": 229,
+          "text": "let albumReview:{name:string;items:SavedPhoto[];missing:number}|undefined;"
+        },
+        {
+          "line": 231,
+          "text": "let shareReview:{items:SavedPhoto[];missing:number}|undefined;"
+        },
+        {
+          "line": 233,
+          "text": "let preview: SavedPhoto | undefined, reading = '', sharing = false;"
+        },
+        {
+          "line": 234,
+          "text": "let photoReadEpoch=0;"
+        },
+        {
+          "line": 236,
+          "text": "let edit: (EditPreview & {source:string;rotation:number;crop:boolean;busy:boolean;uncertain?:boolean})|undefined,editEpoch=0;"
+        },
+        {
+          "line": 237,
+          "text": "let editRecoveryChecked=false,copyRecovery:AbortController|undefined;"
+        },
+        {
+          "line": 238,
+          "text": "let closeVideoEdit:(()=>void)|undefined,videoEditSource:string|undefined,nativeVideoSession:string|undefined,nativeVideoOpening:number|undefined;"
+        },
+        {
+          "line": 240,
+          "text": "let pendingNativeVideoCopy:PendingNativeVideoCopy|undefined;"
+        },
+        {
+          "line": 244,
+          "text": "cancelEdit();closeVideo();const token=editEpoch;let videoSessionId:string|undefined,copyIntentChecked=false;"
+        },
+        {
+          "line": 258,
+          "text": "const ticket:EditCompletion={token:operationId,epoch:token,source:row.id};let pendingCopy:PendingNativeVideoCopy|undefined;"
+        },
+        {
+          "line": 300,
+          "text": "let recoveringEdit=false,automaticEditRecovery='';"
+        },
+        {
+          "line": 303,
+          "text": "const epoch=editEpoch,source=owner.get('photos').open;let ticket:EditCompletion|undefined;"
+        },
+        {
+          "line": 330,
+          "text": "let counts: {favorites:number;videos:number;camera?:number;screenshots?:number;trash:number;canFavorite:boolean} | undefined, countsBusy = false, countsError = false, countsEpoch = 0;"
+        },
+        {
+          "line": 331,
+          "text": "let albumRows: SavedPhoto[] = [], albumKey = '', albumNext = '', albumBusy = false, albumEpoch = 0;"
+        },
+        {
+          "line": 332,
+          "text": "let customAlbums: OwnedAlbum[] = [], albumsLoaded=false, albumsBusy=false, albumsEpoch=0;"
+        },
+        {
+          "line": 334,
+          "text": "let manager: {media?:SavedPhoto;items?:SavedPhoto[];album?:OwnedAlbum;name:string;creating?:boolean;choosing?:boolean;confirmDelete?:boolean}|undefined;"
+        },
+        {
+          "line": 335,
+          "text": "let albumTrigger:HTMLElement|null=null;"
+        },
+        {
+          "line": 337,
+          "text": "let selection: SavedPhoto[]|undefined;let holdTimer:number|undefined;let swallowedTap='';"
+        },
+        {
+          "line": 338,
+          "text": "let selectionTab:'lib'|'alb'|undefined;"
+        },
+        {
+          "line": 344,
+          "text": "let prepared: {confirmation:string;count:number;items?:{id:string;revision:string}[]} | undefined;"
+        },
+        {
+          "line": 345,
+          "text": "let trash: SavedPhoto[] = [], trashNext = '', trashLoaded = false, trashLoading = false, mutating = false, refreshAgain = false, trashRefreshAgain = false, trashEpoch = 0;"
+        },
+        {
+          "line": 424,
+          "text": "selecting:!!selection,on,pressed:selection?on:undefined,selCss:on?'background:var(--acc);box-shadow:0 0 0 2px #ffffff':'background:rgba(0,0,0,.35);box-shadow:inset 0 0 0 2px #ffffff',tileCss:on?'transform:scale(.88);border-radius:6px':'',"
+        },
+        {
+          "line": 449,
+          "text": "const verified:SavedPhoto[]=[],changed:SavedPhoto[]=[];let failed=0,unverified=false,declined=false;"
+        },
+        {
+          "line": 478,
+          "text": "let albumsRecovery=false;"
+        },
+        {
+          "line": 496,
+          "text": "let revision=album.revision,added=0,skipped=0;"
+        },
+        {
+          "line": 505,
+          "text": "let note='';"
+        },
+        {
+          "line": 508,
+          "text": "const [first,...rest]=items;let base:{id:string;revision:string};"
+        },
+        {
+          "line": 586,
+          "text": "let result:{deletedIds:string[];skippedIds:string[];failedIds:string[]};"
+        },
+        {
+          "line": 664,
+          "text": "[data-alpha-camera-screen]{background:linear-gradient(to bottom,#000 0px,#000 var(--alpha-camera-top),transparent var(--alpha-camera-top),transparent var(--alpha-camera-bottom),#000 var(--alpha-camera-bottom))!important}"
+        },
+        {
+          "line": 672,
+          "text": "let maskCache: { vf: HTMLElement; screen: HTMLElement; top: string; bottom: string } | undefined;"
+        },
+        {
+          "line": 673,
+          "text": "let screenChildren: MutationObserver | undefined;"
+        },
+        {
+          "line": 690,
+          "text": "for (let el: HTMLElement | null = vf; el; el = el.parentElement) { el.setAttribute('data-alpha-camera-clear', ''); marked.add(el); }"
+        },
+        {
+          "line": 695,
+          "text": "let branch: HTMLElement = vf;"
+        },
+        {
+          "line": 723,
+          "text": "let requestedCaptureHolds=0;"
+        },
+        {
+          "line": 724,
+          "text": "let pendingShot:number|undefined;"
+        },
+        {
+          "line": 728,
+          "text": "let chatCoveredAt: number | undefined, chatTimer: number | undefined;"
+        },
+        {
+          "line": 730,
+          "text": "let chatGraceOver = false;"
+        },
+        {
+          "line": 739,
+          "text": "let photoWrite: Promise<unknown> | undefined;"
+        },
+        {
+          "line": 741,
+          "text": "let previewReceipt: PreviewReceipt | undefined;"
+        },
+        {
+          "line": 743,
+          "text": "let modeChange: Promise<void> = Promise.resolve();"
+        },
+        {
+          "line": 745,
+          "text": "let previewReleased = false;"
+        },
+        {
+          "line": 775,
+          "text": "let limitStop = false;"
+        },
+        {
+          "line": 776,
+          "text": "let nativeFocus:HTMLElement|undefined,focusTimer:number|undefined;"
+        },
+        {
+          "line": 778,
+          "text": "let pinchStart=0,pinchZoom=1,pinchUsed=false;"
+        },
+        {
+          "line": 779,
+          "text": "let pendingZoom:{ratio:number;token:number}|undefined;"
+        },
+        {
+          "line": 806,
+          "text": "let noticeTimer:number|undefined,noticeGeneration=0;"
+        },
+        {
+          "line": 861,
+          "text": "let value:T|undefined;"
+        },
+        {
+          "line": 1002,
+          "text": "let agentRequest:{queued:boolean;refused:boolean}|undefined;"
+        },
+        {
+          "line": 1005,
+          "text": "let dispatched=false,request:{queued:boolean;refused:boolean}|undefined;"
+        },
+        {
+          "line": 1051,
+          "text": "let scanning=false;"
+        },
+        {
+          "line": 1157,
+          "text": "const ZOOM_ON='background-color:var(--alpha-white);color:var(--alpha-black);width:40px;height:40px;padding:2px;box-sizing:content-box;background-clip:content-box;font-size:13px';"
+        },
+        {
+          "line": 1158,
+          "text": "const ZOOM_OFF='background-color:rgba(0,0,0,.65);color:var(--alpha-white);width:34px;height:34px;padding:5px;box-sizing:content-box;background-clip:content-box;font-size:12px';"
+        },
+        {
+          "line": 1219,
+          "text": "let gridEl:HTMLElement|undefined,gridView={scrollTop:0,viewport:0,width:0,header:40,key:''};"
+        },
+        {
+          "line": 1244,
+          "text": "let start=0,startColumns=gridColumns;"
+        },
+        {
+          "line": 1254,
+          "text": "let thumbTimer:number|undefined;const thumbFetching=new Set<string>();"
+        },
+        {
+          "line": 1255,
+          "text": "let coverIds=new Set<string>();"
+        },
+        {
+          "line": 1307,
+          "text": "const imageCss=(row:SavedPhoto)=>row.image?`url(\"${row.image}\") center / cover no-repeat`:'var(--s2)';"
+        },
+        {
+          "line": 1410,
+          "text": "const cover=(rows:SavedPhoto[])=>{covers.push(rows[0]);return rows[0]?.image?`url(\"${rows[0].image}\") center / cover no-repeat`:'var(--s2)';};"
+        },
+        {
+          "line": 1497,
+          "text": "let gesture: { x: number; y: number } | undefined, swiped = false;"
+        },
+        {
+          "line": 1563,
+          "text": "let polling = false;"
+        },
+        {
+          "line": 1571,
+          "text": "let queued = false;"
+        },
+        {
+          "line": 1572,
+          "text": "let libraryWatching=false;"
+        },
+        {
+          "line": 1585,
+          "text": "let libraryChangeHandle:{remove():Promise<void>}|undefined;"
+        },
+        {
+          "line": 1626,
+          "text": "let resumeHandle:{remove():Promise<void>}|undefined;"
+        }
+      ],
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md"
     },
     {
       "path": "apps/app/src/prototype/canonical-calendar-drafts.ts",
@@ -34805,7 +35140,7 @@
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "080b2bce484ef4f8ad4fb38afb768d02807439eb35011f8b8c515c0a75046ac4",
+      "sha256": "3f1e5975605acf65ec252a63bfb4fc1c2e303f1676fb512c7f62b108ecdb9c79",
       "stateAnchors": [],
       "integrationReview": "2026-11-09: direct month/year selectors map to the existing calendar month offset; event email removed and editable actions grouped without changing permission guards. Four browser keyboard/light/dark/height scenarios passed. State-audit obligations remain."
     },
@@ -45484,73 +45819,22 @@
       "scope": "application",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "e86fbe8b0ce4331af464255341553b011349a47c0338578255a0306f2b2b85c2",
+      "sha256": "35956ecd77cbec189d86a0a3729eddc30441ef19fd1dba98f4aa9d28946e7fe6",
       "stateAnchors": [
-        {
-          "line": 24,
-          "text": "const TITLE = '[data-alpha-app-title]';"
-        },
-        {
-          "line": 25,
-          "text": "const HOME = '[data-alpha-layer=\"home\"]';"
-        },
-        {
-          "line": 26,
-          "text": "const APP = '[data-alpha-layer=\"app\"][role=\"region\"]';"
-        },
-        {
-          "line": 28,
-          "text": "const SELF_FOCUSED = '[aria-label=\"Voice conversation\"],[data-alpha-layer=\"conversation\"][aria-hidden=\"false\"],[data-alpha-voice-panel]';"
-        },
-        {
-          "line": 35,
-          "text": "const view = doc.documentElement.dataset.activeView || 'home';"
-        },
-        {
-          "line": 37,
-          "text": "const home = doc.querySelector(HOME);"
-        },
-        {
-          "line": 40,
-          "text": "for (const title of doc.querySelectorAll(TITLE)) if (isExposed(title) && (title.textContent || '').trim()) return title;"
-        },
-        {
-          "line": 41,
-          "text": "const region = doc.querySelector(APP);"
-        },
         {
           "line": 45,
           "text": "let installed: (() => void) | null = null;"
         },
         {
-          "line": 49,
-          "text": "const view = doc.defaultView!;"
-        },
-        {
-          "line": 50,
-          "text": "const focus = createScreenFocus({"
-        },
-        {
-          "line": 57,
-          "text": "let current = doc.documentElement.dataset.activeView;"
-        },
-        {
-          "line": 58,
-          "text": "const changes = new MutationObserver(() => {"
-        },
-        {
-          "line": 59,
-          "text": "const next = doc.documentElement.dataset.activeView;"
-        },
-        {
           "line": 61,
-          "text": "const previous = current; current = next;"
+          "text": "style.textContent = '[data-screen-focus]:focus{outline:none}html[data-alpha-keyboard-navigation] [data-screen-focus]:focus-visible{outline:2px solid var(--acc,#0000ff);outline-offset:-2px;border-radius:6px}';"
         },
         {
-          "line": 66,
-          "text": "const home = () => focus.screenChanged();"
+          "line": 69,
+          "text": "let current = doc.documentElement.dataset.activeView;"
         }
-      ]
+      ],
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md"
     },
     {
       "path": "apps/app/src/runtime/view-navigation.ts",
@@ -49142,9 +49426,22 @@
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
-      "sha256": "5308ee484c0ca5a880ff9f4ef63b286dae5c2112de9e67970387cdc6762178c1",
-      "stateAnchors": [],
-      "integrationReview": "Reviewed integration source. Domain allocation is retained; source-hash refresh does not establish semantic refinement. See targeted validation and remaining obligations."
+      "sha256": "12ca1c60028cedf07b9ddf7f63d901fcb542d3f28a228392d64096be54c618d0",
+      "stateAnchors": [
+        {
+          "line": 32,
+          "text": "for(let current=filename;current!==patchRoot;current=path.dirname(current))if(fs.lstatSync(current).isSymbolicLink())throw Error('Symlink in native patch path');"
+        },
+        {
+          "line": 54,
+          "text": "export function verifyNativePatchReceipt(raw,prepared){let receipt;try{receipt=JSON.parse(raw);}catch{throw Error('Missing or invalid packaged native patch receipt');}if(JSON.stringify(receipt)!==JSON.stringify(nativePatchReceipt(prepared)))throw Error('Packaged native patch receipt mismatch');return receipt;}"
+        },
+        {
+          "line": 61,
+          "text": "for(let current=parent;current!==root;current=path.dirname(current))if(fs.existsSync(current)&&fs.lstatSync(current).isSymbolicLink())throw Error('Symlink in native staging parent');"
+        }
+      ],
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md"
     },
     {
       "path": "scripts/prepared-workflow-worker.mjs",
@@ -617536,6 +617833,1452 @@
           "text": "const sent = await service.sendDirectMessageForAccount(accountId, {"
         }
       ]
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/androidTest/java/ai/eliza/plugins/browsersurface/BelowHostLayerInstrumentedTest.kt",
+      "models": [
+        "BrowserSession",
+        "BrowserSiteState",
+        "BrowserUnderlay"
+      ],
+      "scope": "test-support",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "stateAnchors": [
+        {
+          "line": 28,
+          "text": "private class Recorder(context: Context) : View(context) {"
+        },
+        {
+          "line": 30,
+          "text": "private fun record(event: MotionEvent): Boolean {"
+        },
+        {
+          "line": 39,
+          "text": "private val context = InstrumentationRegistry.getInstrumentation().targetContext"
+        },
+        {
+          "line": 40,
+          "text": "private val host = FrameLayout(context)"
+        },
+        {
+          "line": 41,
+          "text": "private val hostWebView = Recorder(context)"
+        },
+        {
+          "line": 42,
+          "text": "private val website = Recorder(context)"
+        },
+        {
+          "line": 43,
+          "text": "private val page = OccludingSurfaceLayout(context, SurfaceLayer.BELOW_HOST)"
+        },
+        {
+          "line": 44,
+          "text": "private val live = mutableListOf(page)"
+        },
+        {
+          "line": 45,
+          "text": "private val router = BelowHostInputRouter(context) { live.toList() }"
+        },
+        {
+          "line": 68,
+          "text": "private fun touch(action: Int, x: Float, y: Float, downTime: Long = 0): Boolean {"
+        },
+        {
+          "line": 78,
+          "text": "private fun twoFingers(action: Int, first: Pair<Float, Float>, second: Pair<Float, Float>, downTime: Long) {"
+        },
+        {
+          "line": 89,
+          "text": "private fun mouse(action: Int, x: Float, y: Float) {"
+        },
+        {
+          "line": 249,
+          "text": "private fun add(into: FrameLayout, branch: View, layer: SurfaceLayer): OccludingSurfaceLayout ="
+        }
+      ],
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md",
+      "sha256": "21c6cfea9474e300a084af7789a26add912427019a2df15f72102273ddce39bb"
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/androidTest/java/ai/eliza/plugins/browsersurface/BelowHostWebViewInstrumentedTest.kt",
+      "models": [
+        "BrowserSession",
+        "BrowserSiteState",
+        "BrowserUnderlay"
+      ],
+      "scope": "test-support",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "stateAnchors": [
+        {
+          "line": 33,
+          "text": "private val instrumentation = InstrumentationRegistry.getInstrumentation()"
+        },
+        {
+          "line": 34,
+          "text": "private val context = instrumentation.targetContext"
+        },
+        {
+          "line": 35,
+          "text": "private val windows = context.getSystemService(WindowManager::class.java)"
+        },
+        {
+          "line": 36,
+          "text": "private lateinit var root: FrameLayout"
+        },
+        {
+          "line": 37,
+          "text": "private lateinit var site: WebView"
+        },
+        {
+          "line": 38,
+          "text": "private lateinit var host: WebView"
+        },
+        {
+          "line": 39,
+          "text": "private lateinit var page: OccludingSurfaceLayout"
+        },
+        {
+          "line": 42,
+          "text": "private var dragsStarted = 0"
+        },
+        {
+          "line": 53,
+          "text": "private fun js(view: WebView, script: String): String {"
+        },
+        {
+          "line": 55,
+          "text": "var result = \"\""
+        },
+        {
+          "line": 66,
+          "text": "private fun waitFor(view: WebView, script: String) {"
+        },
+        {
+          "line": 74,
+          "text": "private fun tap(x: Int, y: Int) {"
+        },
+        {
+          "line": 174,
+          "text": "var seen = emptyList<Int>()"
+        },
+        {
+          "line": 185,
+          "text": "var capture: android.graphics.Bitmap? = null"
+        },
+        {
+          "line": 199,
+          "text": "var focused = false"
+        },
+        {
+          "line": 229,
+          "text": "private fun hideKeyboard() {"
+        },
+        {
+          "line": 234,
+          "text": "var shown = true"
+        },
+        {
+          "line": 245,
+          "text": "private fun drag(to: Pair<Int, Int>) {"
+        },
+        {
+          "line": 249,
+          "text": "var startedBefore = 0"
+        },
+        {
+          "line": 260,
+          "text": "var started = 0"
+        },
+        {
+          "line": 273,
+          "text": "private fun hover(x: Int, y: Int) {"
+        }
+      ],
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md",
+      "sha256": "c093ff4bc431c9eef4df2c55507c3a9d440e9180a813f13dc74350a36177f0a4"
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/androidTest/java/ai/eliza/plugins/browsersurface/BrowserSurfaceIsolationInstrumentedTest.kt",
+      "models": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "scope": "test-support",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "stateAnchors": [
+        {
+          "line": 33,
+          "text": "private val urlA = \"https://eliza-surface-a.example/\""
+        },
+        {
+          "line": 34,
+          "text": "private val urlShared = \"https://eliza-surface-shared.example/\""
+        },
+        {
+          "line": 108,
+          "text": "lateinit var webView: WebView"
+        }
+      ],
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md",
+      "sha256": "98336d2a45a3d979c332be2352ff87f2a1092c045f27cb82becb23863446386b"
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/androidTest/java/ai/eliza/plugins/browsersurface/SurfacePauseInstrumentedTest.kt",
+      "models": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "scope": "test-support",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "stateAnchors": [
+        {
+          "line": 31,
+          "text": "private val instrumentation = InstrumentationRegistry.getInstrumentation()"
+        },
+        {
+          "line": 32,
+          "text": "private val context = instrumentation.targetContext"
+        },
+        {
+          "line": 33,
+          "text": "private val windows = context.getSystemService(WindowManager::class.java)"
+        },
+        {
+          "line": 34,
+          "text": "private lateinit var root: FrameLayout"
+        },
+        {
+          "line": 35,
+          "text": "private lateinit var site: WebView"
+        },
+        {
+          "line": 45,
+          "text": "private fun js(script: String): String {"
+        },
+        {
+          "line": 47,
+          "text": "var result = \"\""
+        },
+        {
+          "line": 58,
+          "text": "private fun waitFor(script: String) {"
+        },
+        {
+          "line": 66,
+          "text": "private fun shell(command: String): String ="
+        },
+        {
+          "line": 71,
+          "text": "private fun sandboxedPids(): Set<Int> = shell(\"ps -A -o PID,ARGS\").lines()"
+        },
+        {
+          "line": 77,
+          "text": "private fun cpuTicks(pid: Int): Long? = shell(\"cat /proc/$pid/stat\").substringAfterLast(')')"
+        },
+        {
+          "line": 78,
+          "text": ".trim().split(' ').let { fields -> if (fields.size > 12) fields[11].toLong() + fields[12].toLong() else null }"
+        },
+        {
+          "line": 80,
+          "text": "private fun counters(): Pair<Long, Long> {"
+        },
+        {
+          "line": 85,
+          "text": "private fun measure(state: String, renderer: Int?): Pair<Long, Long> {"
+        },
+        {
+          "line": 88,
+          "text": "val rendererBefore = renderer?.let(::cpuTicks)"
+        },
+        {
+          "line": 92,
+          "text": "val rendererAfter = renderer?.let(::cpuTicks)"
+        },
+        {
+          "line": 157,
+          "text": "var canGoBack = false"
+        },
+        {
+          "line": 168,
+          "text": "private companion object {"
+        }
+      ],
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md",
+      "sha256": "3fdf1be0abcf17d6babd9bd7d872dcaa1481c7333db8e963c6904679acbec5d6"
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BelowHostLayer.kt",
+      "models": [
+        "BrowserSession",
+        "BrowserSiteState",
+        "BrowserUnderlay"
+      ],
+      "scope": "shared-module-dependency",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "stateAnchors": [
+        {
+          "line": 69,
+          "text": "var current: View = view"
+        },
+        {
+          "line": 142,
+          "text": "private val pages: () -> List<OccludingSurfaceLayout>,"
+        },
+        {
+          "line": 144,
+          "text": "private var touchTarget: OccludingSurfaceLayout? = null"
+        },
+        {
+          "line": 147,
+          "text": "private var touchRouted = false"
+        },
+        {
+          "line": 148,
+          "text": "private var hoverTarget: OccludingSurfaceLayout? = null"
+        },
+        {
+          "line": 151,
+          "text": "private var hostDownTime = Long.MIN_VALUE"
+        },
+        {
+          "line": 159,
+          "text": "private fun isLive(page: OccludingSurfaceLayout): Boolean ="
+        },
+        {
+          "line": 163,
+          "text": "private fun pageAt(x: Float, y: Float): OccludingSurfaceLayout? {"
+        },
+        {
+          "line": 167,
+          "text": "var best: OccludingSurfaceLayout? = null"
+        },
+        {
+          "line": 168,
+          "text": "var bestIndex = -1"
+        },
+        {
+          "line": 180,
+          "text": "private fun forward(page: View, event: MotionEvent, action: Int? = null, send: (MotionEvent) -> Boolean): Boolean {"
+        },
+        {
+          "line": 224,
+          "text": "previous?.let {"
+        },
+        {
+          "line": 261,
+          "text": "private fun hostBelow(): View? {"
+        },
+        {
+          "line": 267,
+          "text": "private fun forwardDrag(target: View, event: DragEvent): Boolean {"
+        }
+      ],
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md",
+      "sha256": "775788796a5a88fa298bc33ce595cd0a307de740d47ad6b9d73e5d7065150c77"
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserCapturePolicy.java",
+      "models": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "scope": "shared-module-dependency",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "stateAnchors": [
+        {
+          "line": 16,
+          "text": "private BrowserCapturePolicy() {}"
+        }
+      ],
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md",
+      "sha256": "cd6d7673ab1adf9f4b47328cedc717259136e3f9ee718a449ce26afb8dbc9fd8"
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserDockController.kt",
+      "models": [
+        "BrowserSession",
+        "BrowserSiteState",
+        "BrowserUnderlay"
+      ],
+      "scope": "shared-module-dependency",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "stateAnchors": [
+        {
+          "line": 23,
+          "text": "private const val TAG = \"eliza-browser-dock\""
+        },
+        {
+          "line": 24,
+          "text": "private class Session(val panelWidthDp: Int)"
+        },
+        {
+          "line": 25,
+          "text": "private val sessions = WeakHashMap<Activity, Session>()"
+        }
+      ],
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md",
+      "sha256": "30e19ed92e19b15c627467a8881024f6a4db40397e7abdb14a8c51446b900177"
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserEffectWatch.java",
+      "models": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "scope": "shared-module-dependency",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "stateAnchors": [
+        {
+          "line": 18,
+          "text": "* commit a grant consents is let through once, known from the grant and from the page's click"
+        },
+        {
+          "line": 57,
+          "text": "private static final class Request {"
+        },
+        {
+          "line": 74,
+          "text": "private static final class Allowed {"
+        },
+        {
+          "line": 86,
+          "text": "private static final class Watch {"
+        },
+        {
+          "line": 117,
+          "text": "private Watch watch;"
+        },
+        {
+          "line": 195,
+          "text": "private static void settlePrevious(Watch watch) {"
+        },
+        {
+          "line": 203,
+          "text": "private static void merge(Watch watch, Handoff handoff) {"
+        },
+        {
+          "line": 213,
+          "text": "private static void settle(Watch watch) {"
+        },
+        {
+          "line": 225,
+          "text": "private static boolean violates(Request request, boolean mainFrame, Watch watch) {"
+        },
+        {
+          "line": 241,
+          "text": "private static boolean sameSite(String host, String page) {"
+        },
+        {
+          "line": 245,
+          "text": "private static String tail(String host, int count) {"
+        },
+        {
+          "line": 250,
+          "text": "private static boolean byPerson(long at, Watch watch) {"
+        },
+        {
+          "line": 256,
+          "text": "private static boolean allowed(Request request, List<Allowed> granted) {"
+        },
+        {
+          "line": 265,
+          "text": "private static String resolve(String origin, String url) {"
+        },
+        {
+          "line": 273,
+          "text": "private static boolean sameAddress(String url, String other) {"
+        },
+        {
+          "line": 283,
+          "text": "private static boolean samePath(String url, String other) {"
+        }
+      ],
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md",
+      "sha256": "535c76a0d8d20606ae1d4911b72792f98027f106e716d8fcddb17acd38258aa0"
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserEmbeddingTrust.kt",
+      "models": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "scope": "shared-module-dependency",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "stateAnchors": [],
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md",
+      "sha256": "5fb47ac341b79e2ae69c4db88c1c3df336f5e1f6246e9198145ba32aebeef146"
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserHelperEntry.kt",
+      "models": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "scope": "shared-module-dependency",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "stateAnchors": [
+        {
+          "line": 20,
+          "text": "private val activity: Activity,"
+        },
+        {
+          "line": 21,
+          "text": "private val webView: WebView,"
+        },
+        {
+          "line": 22,
+          "text": "private val returned: () -> Unit,"
+        },
+        {
+          "line": 23,
+          "text": "private val failed: () -> Unit,"
+        },
+        {
+          "line": 24,
+          "text": "private val revoked: () -> Unit"
+        },
+        {
+          "line": 26,
+          "text": "private val manager = activity.getSystemService(WindowManager::class.java)"
+        },
+        {
+          "line": 27,
+          "text": "private var entry: View? = null"
+        },
+        {
+          "line": 28,
+          "text": "private var full: FrameLayout? = null"
+        },
+        {
+          "line": 29,
+          "text": "private var parent: ViewGroup? = null"
+        },
+        {
+          "line": 30,
+          "text": "private var parentIndex = 0"
+        },
+        {
+          "line": 31,
+          "text": "private var parentLayout: ViewGroup.LayoutParams? = null"
+        },
+        {
+          "line": 32,
+          "text": "private var label = \"Helper\""
+        },
+        {
+          "line": 33,
+          "text": "private var description = \"Return to helper\""
+        },
+        {
+          "line": 35,
+          "text": "private var destroyed = false"
+        },
+        {
+          "line": 36,
+          "text": "private val appOps = activity.getSystemService(AppOpsManager::class.java)"
+        },
+        {
+          "line": 37,
+          "text": "private val permissionWatcher = AppOpsManager.OnOpChangedListener { operation, packageName ->"
+        },
+        {
+          "line": 99,
+          "text": "entry?.let { if (it.isAttachedToWindow || it.parent != null) manager.removeViewImmediate(it) }"
+        },
+        {
+          "line": 103,
+          "text": "private fun showFullScreen() {"
+        }
+      ],
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md",
+      "sha256": "ca306c4162384073291aa1044e5f4ac2bd267fb1d11d9debbebcf4beb4ea111f"
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserMainFrameGate.java",
+      "models": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "scope": "shared-module-dependency",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "stateAnchors": [
+        {
+          "line": 44,
+          "text": "private String committed;"
+        },
+        {
+          "line": 45,
+          "text": "private final Set<String> approved = new HashSet<>();"
+        },
+        {
+          "line": 46,
+          "text": "private Set<String> taskOrigins = Collections.emptySet();"
+        },
+        {
+          "line": 70,
+          "text": "private static String upgrade(String origin) {"
+        },
+        {
+          "line": 75,
+          "text": "private static boolean covers(String allowed, String origin) {"
+        },
+        {
+          "line": 79,
+          "text": "private boolean pending(String origin) {"
+        }
+      ],
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md",
+      "sha256": "19705a7f03bd50b6a7eccf233163b1bf15624d18f129a4747fb2c3ba3d9efe4f"
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserNativeMessagingService.java",
+      "models": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "scope": "shared-module-dependency",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "stateAnchors": [
+        {
+          "line": 2,
+          "text": "* Relays the verified browser extension to the same-UID agent over a private"
+        },
+        {
+          "line": 35,
+          "text": "private static final String EXTENSION_ID = \"pmldpcoefklbdbgmggcejkfoinmjfeio\";"
+        },
+        {
+          "line": 36,
+          "text": "private static final String BROWSER = BuildConfig.ELIZA_CHROMIUM_PACKAGE_NAME;"
+        },
+        {
+          "line": 38,
+          "text": "private static final int MAX_FRAME_BYTES = 64 * 1024;"
+        },
+        {
+          "line": 39,
+          "text": "private volatile Relay active;"
+        },
+        {
+          "line": 41,
+          "text": "private void requireBrowser() {"
+        },
+        {
+          "line": 51,
+          "text": "private final IBrowserNativeMessageService.Stub browserService = new IBrowserNativeMessageService.Stub() {"
+        },
+        {
+          "line": 61,
+          "text": "private Relay owned;"
+        },
+        {
+          "line": 85,
+          "text": "portCallback.onError(\"The private browser transport is unavailable\");"
+        },
+        {
+          "line": 99,
+          "text": "private final class Relay {"
+        },
+        {
+          "line": 188,
+          "text": "private static byte[] readExactly(InputStream input, int length) throws IOException {"
+        },
+        {
+          "line": 199,
+          "text": "private static void writeFrame(OutputStream output, byte[] bytes) throws IOException {"
+        }
+      ],
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md",
+      "sha256": "e17950fe624879ed4ed6c5063875f7de04aa734fb0987ec20e4ff4b2694d0693"
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserNavigationPolicy.kt",
+      "models": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "scope": "shared-module-dependency",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "stateAnchors": [],
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md",
+      "sha256": "56e5e919c8009b2da4b9a636ebcd623071bf0b28ef2b64917d3298639c92ea37"
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserPageHandoffs.java",
+      "models": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "scope": "shared-module-dependency",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "stateAnchors": [
+        {
+          "line": 25,
+          "text": "private BrowserPageHandoffs() {}"
+        },
+        {
+          "line": 65,
+          "text": "private final Map<String, T> pending = new LinkedHashMap<>();"
+        },
+        {
+          "line": 123,
+          "text": "private static String pathOf(String url) {"
+        }
+      ],
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md",
+      "sha256": "1ebc7b38657ece2a37ff62b310a940935ce049f644a75e41a23b0d1f2edef012"
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserSurfacePlugin.kt",
+      "models": [
+        "BrowserSession",
+        "BrowserSiteState",
+        "BrowserUnderlay"
+      ],
+      "scope": "shared-module-dependency",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "stateAnchors": [
+        {
+          "line": 91,
+          "text": "private data class Lease(val session: String, val epoch: Long)"
+        },
+        {
+          "line": 93,
+          "text": "private val leases = HashMap<String, Lease>()"
+        },
+        {
+          "line": 128,
+          "text": "private var helperEntry: BrowserHelperEntry? = null"
+        },
+        {
+          "line": 129,
+          "text": "private fun entry(): BrowserHelperEntry = helperEntry ?: BrowserHelperEntry(activity, bridge.webView,"
+        },
+        {
+          "line": 204,
+          "text": "private val dockScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)"
+        },
+        {
+          "line": 220,
+          "text": "keyboardListener?.let { activity.window.decorView.viewTreeObserver.removeOnGlobalLayoutListener(it) }"
+        },
+        {
+          "line": 224,
+          "text": "inputRouter?.let { (it.parent as? ViewGroup)?.removeView(it) }"
+        },
+        {
+          "line": 327,
+          "text": "private companion object {"
+        },
+        {
+          "line": 332,
+          "text": "private data class HostOuterClip("
+        },
+        {
+          "line": 343,
+          "text": "private data class HostOcclusionRect("
+        },
+        {
+          "line": 351,
+          "text": "private data class Surface("
+        },
+        {
+          "line": 360,
+          "text": "var foregrounded: Boolean,"
+        },
+        {
+          "line": 361,
+          "text": "var control: SurfaceControlChannel? = null,"
+        },
+        {
+          "line": 362,
+          "text": "var disposed: Boolean = false,"
+        },
+        {
+          "line": 363,
+          "text": "var pageRevision: Long = 0,"
+        },
+        {
+          "line": 364,
+          "text": "var historyObservation: HistoryObservation? = null,"
+        },
+        {
+          "line": 365,
+          "text": "var pageError: String? = null,"
+        },
+        {
+          "line": 366,
+          "text": "var x: Double = 0.0,"
+        },
+        {
+          "line": 367,
+          "text": "var y: Double = 0.0,"
+        },
+        {
+          "line": 368,
+          "text": "var outerClip: HostOuterClip? = null,"
+        },
+        {
+          "line": 369,
+          "text": "var occlusions: List<HostOcclusionRect> = emptyList(),"
+        },
+        {
+          "line": 375,
+          "text": "var pendingExternalLink: String? = null,"
+        },
+        {
+          "line": 382,
+          "text": "var paused: Boolean = false,"
+        },
+        {
+          "line": 385,
+          "text": "private data class HistoryObservation("
+        },
+        {
+          "line": 393,
+          "text": "private fun historyUrls(view: WebView): List<Pair<String?, String?>> {"
+        },
+        {
+          "line": 396,
+          "text": "history.getItemAtIndex(it).let { entry -> entry.url to entry.originalUrl }"
+        },
+        {
+          "line": 400,
+          "text": "private fun historyReady(surface: Surface): Boolean ="
+        },
+        {
+          "line": 405,
+          "text": "private val surfaces = HashMap<String, Surface>()"
+        },
+        {
+          "line": 406,
+          "text": "private var inputRouter: BelowHostInputRouter? = null"
+        },
+        {
+          "line": 407,
+          "text": "private var keyboardListener: ViewTreeObserver.OnGlobalLayoutListener? = null"
+        },
+        {
+          "line": 408,
+          "text": "private var keyboardVisible = false"
+        },
+        {
+          "line": 409,
+          "text": "private val activeOwners = ActiveOwnerRegistry()"
+        },
+        {
+          "line": 410,
+          "text": "private val retiredProfiles = HashSet<String>()"
+        },
+        {
+          "line": 411,
+          "text": "private val profileProcessNonce = UUID.randomUUID().toString()"
+        },
+        {
+          "line": 412,
+          "text": "private var profileSerial = 0L"
+        },
+        {
+          "line": 413,
+          "text": "private val pageReader by lazy {"
+        },
+        {
+          "line": 416,
+          "text": "private val pageControl by lazy {"
+        },
+        {
+          "line": 419,
+          "text": "private val captureMask by lazy {"
+        },
+        {
+          "line": 422,
+          "text": "private val mainHandler by lazy { Handler(Looper.getMainLooper()) }"
+        },
+        {
+          "line": 424,
+          "text": "private val profilePrefs by lazy { context.getSharedPreferences(PROFILE_PREFS, Context.MODE_PRIVATE) }"
+        },
+        {
+          "line": 459,
+          "text": "private fun density(): Float = activity.resources.displayMetrics.density"
+        },
+        {
+          "line": 461,
+          "text": "private fun requireIdentity(call: PluginCall, operation: String): NativeOwnerIdentity? {"
+        },
+        {
+          "line": 478,
+          "text": "private fun requireActiveIdentity(call: PluginCall, operation: String): NativeOwnerIdentity? {"
+        },
+        {
+          "line": 487,
+          "text": "private fun ownedSurface("
+        },
+        {
+          "line": 513,
+          "text": "private fun digest(value: String): String = MessageDigest"
+        },
+        {
+          "line": 518,
+          "text": "private fun profileName(owner: String, session: String, epoch: Long, id: String): String {"
+        },
+        {
+          "line": 524,
+          "text": "private fun keyedProfileName(owner: String, key: String): String ="
+        },
+        {
+          "line": 527,
+          "text": "private fun touchProfile(name: String) {"
+        },
+        {
+          "line": 535,
+          "text": "private fun clearProfileData(name: String, done: ((Boolean) -> Unit)? = null) {"
+        },
+        {
+          "line": 557,
+          "text": "private fun profileClean(name: String, profile: Profile): Boolean = try {"
+        },
+        {
+          "line": 563,
+          "text": "private fun retireProfile(name: String, done: ((Boolean) -> Unit)? = null) {"
+        },
+        {
+          "line": 569,
+          "text": "private fun deleteWhenReleased(name: String, attempt: Int) {"
+        },
+        {
+          "line": 593,
+          "text": "private fun releaseProfile(surface: Surface) {"
+        },
+        {
+          "line": 598,
+          "text": "private fun purgeKeyedProfile(name: String, done: ((Boolean) -> Unit)? = null) {"
+        },
+        {
+          "line": 604,
+          "text": "private fun closeProfileSurfaces(name: String) {"
+        },
+        {
+          "line": 622,
+          "text": "private fun isLive(surface: Surface): Boolean ="
+        },
+        {
+          "line": 625,
+          "text": "private fun surfaceEvent(id: String, surface: Surface): JSObject = JSObject().apply {"
+        },
+        {
+          "line": 633,
+          "text": "private fun dismissDialogs(surface: Surface) {"
+        },
+        {
+          "line": 642,
+          "text": "private fun handOff(id: String, surface: Surface, target: String, userGesture: Boolean): Boolean {"
+        },
+        {
+          "line": 643,
+          "text": "BrowserPageHandoffs.identityProvider(target)?.let { provider ->"
+        },
+        {
+          "line": 653,
+          "text": "var action: String? = null"
+        },
+        {
+          "line": 654,
+          "text": "var dataScheme: String? = null"
+        },
+        {
+          "line": 655,
+          "text": "var targetPackage: String? = null"
+        },
+        {
+          "line": 656,
+          "text": "var fallback: String? = null"
+        },
+        {
+          "line": 684,
+          "text": "private fun holdDialog("
+        },
+        {
+          "line": 711,
+          "text": "private fun disposeSurface(surface: Surface) {"
+        },
+        {
+          "line": 867,
+          "text": "surfaces.values.firstOrNull { it.webView === view }?.let {"
+        },
+        {
+          "line": 957,
+          "text": "surface.profileName?.let { WebViewCompat.setProfile(catcher, it) }"
+        },
+        {
+          "line": 959,
+          "text": "var settled = false"
+        },
+        {
+          "line": 1037,
+          "text": "var profileName: String? = null"
+        },
+        {
+          "line": 1073,
+          "text": "if (profileKey == null) profileName?.let(::retireProfile)"
+        },
+        {
+          "line": 1101,
+          "text": "if (profileKey == null) profileName?.let(::retireProfile)"
+        },
+        {
+          "line": 1454,
+          "text": "parsed.`package`?.let { setPackage(it) }"
+        },
+        {
+          "line": 1553,
+          "text": "private fun approveHistoryStep(surface: Surface, step: Int) {"
+        },
+        {
+          "line": 1555,
+          "text": "history.getItemAtIndex(history.currentIndex + step)?.url?.let(surface.gate::approve)"
+        },
+        {
+          "line": 1600,
+          "text": "var purged = 0"
+        },
+        {
+          "line": 1608,
+          "text": "var pending = names.size"
+        },
+        {
+          "line": 1609,
+          "text": "var clean = true"
+        },
+        {
+          "line": 1691,
+          "text": "var settled = false"
+        },
+        {
+          "line": 1692,
+          "text": "var masked: JSONObject? = null"
+        },
+        {
+          "line": 1697,
+          "text": "lateinit var timeout: Runnable"
+        },
+        {
+          "line": 1717,
+          "text": "val (scaledWidth, scaledHeight) = BrowserCapturePolicy.scaled(width, height, maxEdge).let { it[0] to it[1] }"
+        },
+        {
+          "line": 1810,
+          "text": "var settled = false"
+        },
+        {
+          "line": 1881,
+          "text": "val selected = id?.let {"
+        },
+        {
+          "line": 1896,
+          "text": "selected?.let { surface ->"
+        },
+        {
+          "line": 1897,
+          "text": "(surface.container.parent as? ViewGroup)?.let { host ->"
+        },
+        {
+          "line": 1921,
+          "text": "private fun setSurfacePaused(call: PluginCall, paused: Boolean) {"
+        },
+        {
+          "line": 2094,
+          "text": "private fun surfaceState(id: String, surface: Surface): JSObject = JSObject().apply {"
+        },
+        {
+          "line": 2105,
+          "text": "put(\"title\", surface.webView.title?.let(BrowserPageHandoffs::text) ?: JSObject.NULL)"
+        },
+        {
+          "line": 2113,
+          "text": "private fun HostOuterClip.hasValidGeometry(): Boolean ="
+        },
+        {
+          "line": 2121,
+          "text": "private fun ensureInputRouter(): BelowHostInputRouter = inputRouter ?: BelowHostInputRouter(activity) {"
+        },
+        {
+          "line": 2126,
+          "text": "private fun placeInputRouter(host: ViewGroup, branch: View) = placeRouter(host, branch, ensureInputRouter())"
+        },
+        {
+          "line": 2129,
+          "text": "private fun releaseUnusedRouter() {"
+        },
+        {
+          "line": 2131,
+          "text": "inputRouter?.let { (it.parent as? ViewGroup)?.removeView(it) }"
+        },
+        {
+          "line": 2135,
+          "text": "private fun applyGeometry(surface: Surface, density: Float) {"
+        },
+        {
+          "line": 2137,
+          "text": "surface.outerClip?.let { clip ->"
+        },
+        {
+          "line": 2153,
+          "text": "private fun applyOcclusions(surface: Surface, density: Float) {"
+        },
+        {
+          "line": 2178,
+          "text": "private val normalizedRadii: FloatArray = run {"
+        },
+        {
+          "line": 2279,
+          "text": "private var outerClip: RoundedOuterClip? = null"
+        },
+        {
+          "line": 2280,
+          "text": "private var occlusions: List<RoundedOcclusionRect> = emptyList()"
+        },
+        {
+          "line": 2281,
+          "text": "private val clipPath = Path()"
+        },
+        {
+          "line": 2299,
+          "text": "var hostRectsReceived = false"
+        },
+        {
+          "line": 2319,
+          "text": "outerClip?.let { clip ->"
+        },
+        {
+          "line": 2354,
+          "text": "outerClip?.let { clip ->"
+        },
+        {
+          "line": 2382,
+          "text": "var current = view.parent"
+        }
+      ],
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md",
+      "sha256": "171a8b0cd1cef2b425d92bd29233d274a2e77d5a90f201ca86cc292871b7b2f0"
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/ChromiumBrowserLauncher.kt",
+      "models": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "scope": "shared-module-dependency",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "stateAnchors": [],
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md",
+      "sha256": "d0ccead968914a0f3890e458bccd04e85e8d801d9443e63538cdf5b14d64fe9e"
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/ElizaBridgeActivity.java",
+      "models": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "scope": "shared-module-dependency",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "stateAnchors": [
+        {
+          "line": 36,
+          "text": "private boolean rendererGone;"
+        },
+        {
+          "line": 37,
+          "text": "private boolean started;"
+        }
+      ],
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md",
+      "sha256": "e91696479b796ca2f344dac7ebff59fb21e723a42fb84332c13a07abad15e7ae"
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/SurfaceControlChannel.kt",
+      "models": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "scope": "shared-module-dependency",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "stateAnchors": [
+        {
+          "line": 15,
+          "text": "private val webView: WebView,"
+        },
+        {
+          "line": 17,
+          "text": "private val effects: BrowserEffectWatch,"
+        },
+        {
+          "line": 19,
+          "text": "private var documentId: String? = null"
+        },
+        {
+          "line": 20,
+          "text": "private var documentOrigin: Uri? = null"
+        },
+        {
+          "line": 21,
+          "text": "private var proxy: JavaScriptReplyProxy? = null"
+        },
+        {
+          "line": 22,
+          "text": "private var snapshotId: String? = null"
+        },
+        {
+          "line": 23,
+          "text": "private var sequence = 0L"
+        },
+        {
+          "line": 24,
+          "text": "private data class Pending("
+        },
+        {
+          "line": 37,
+          "text": "private var pending: Pending? = null"
+        },
+        {
+          "line": 40,
+          "text": "private data class WatchedEffect(val documentId: String, val sequence: Long, val scope: String)"
+        },
+        {
+          "line": 41,
+          "text": "private var watchedEffect: WatchedEffect? = null"
+        },
+        {
+          "line": 66,
+          "text": "}?.let { watched ->"
+        },
+        {
+          "line": 69,
+          "text": "data.optJSONObject(\"result\")?.let { reply ->"
+        },
+        {
+          "line": 70,
+          "text": "reply.optJSONObject(\"watchHandoff\")?.let { handoff ->"
+        },
+        {
+          "line": 73,
+          "text": "previous?.optString(\"scope\"), previous?.let { handoffOf(it) })"
+        },
+        {
+          "line": 98,
+          "text": "if (error.optString(\"kind\") != \"UNCERTAIN_OUTCOME\") request.watchToken?.let(effects::cancel)"
+        },
+        {
+          "line": 102,
+          "text": "if (request.observation) request.watchScope?.let { scope -> reportWatch(result, scope, handoff) }"
+        },
+        {
+          "line": 127,
+          "text": "documentOrigin?.let { sameOrigin(it, webView.url) } != true || !isCurrent()) {"
+        },
+        {
+          "line": 154,
+          "text": "target?.let { (it.opt(\"url\") ?: it.opt(\"path\")) as? String },"
+        },
+        {
+          "line": 193,
+          "text": "private fun handoffOf(handoff: JSONObject?): BrowserEffectWatch.Handoff {"
+        },
+        {
+          "line": 195,
+          "text": "?.let { list -> LongArray(list.length()) { list.optLong(it) } } ?: LongArray(0)"
+        },
+        {
+          "line": 198,
+          "text": "?.let { list -> (0 until list.length()).map { list.optString(it) } } ?: emptyList()"
+        },
+        {
+          "line": 206,
+          "text": "private fun reportWatch(result: JSONObject, scope: String, handoff: JSONObject?) {"
+        },
+        {
+          "line": 217,
+          "text": "private fun outcomeCode(effect: Boolean) = if (effect) \"UNCERTAIN_OUTCOME\" else \"STALE_REF\""
+        },
+        {
+          "line": 218,
+          "text": "private fun sameOrigin(origin: Uri, address: String?): Boolean {"
+        },
+        {
+          "line": 219,
+          "text": "val current = address?.let(Uri::parse) ?: return false"
+        }
+      ],
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md",
+      "sha256": "a1adb4cf474918c7ee305c243be389f8fe894e05c3ec259ea4f753ec5277918d"
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/test/java/ai/eliza/plugins/browsersurface/ActiveOwnerRegistryTest.kt",
+      "models": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "scope": "test-support",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "stateAnchors": [],
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md",
+      "sha256": "d7b5455a510db57de154112f153c084ca57d38eac8675bf684ec7ad19cc2174f"
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/test/java/ai/eliza/plugins/browsersurface/BelowHostLayerTest.kt",
+      "models": [
+        "BrowserSession",
+        "BrowserSiteState",
+        "BrowserUnderlay"
+      ],
+      "scope": "test-support",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "stateAnchors": [
+        {
+          "line": 11,
+          "text": "private val clip = RoundedOuterClip(0f, 0f, 200f, 100f, 20f, 20f, 20f, 20f)"
+        },
+        {
+          "line": 12,
+          "text": "private val tab = RoundedOcclusionRect(150f, 0f, 200f, 40f, 10f)"
+        },
+        {
+          "line": 14,
+          "text": "private fun owns(x: Float, y: Float, rects: List<RoundedOcclusionRect> = listOf(tab), outer: RoundedOuterClip? = clip) ="
+        }
+      ],
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md",
+      "sha256": "362eea510af60d724527599c8689e113fbfd067ab7ee5bdf63feb5874e11ed13"
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/test/java/ai/eliza/plugins/browsersurface/BrowserDockGeometryTest.kt",
+      "models": [
+        "BrowserSession",
+        "BrowserSiteState",
+        "BrowserUnderlay"
+      ],
+      "scope": "test-support",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "stateAnchors": [],
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md",
+      "sha256": "3f4f44de8f5fced442bad923612c329dc21f2f8311f87d0933b5d58375eb535d"
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/test/java/ai/eliza/plugins/browsersurface/BrowserEmbeddingTrustTest.kt",
+      "models": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "scope": "test-support",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "stateAnchors": [
+        {
+          "line": 7,
+          "text": "private val host = \"ab\".repeat(32)"
+        },
+        {
+          "line": 8,
+          "text": "private val other = \"cd\".repeat(32)"
+        },
+        {
+          "line": 9,
+          "text": "private fun accepted(bytes: ByteArray) = bytes.all { it == 0xab.toByte() }"
+        }
+      ],
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md",
+      "sha256": "14ec1c3634a018dfe31b3b7b720e1e8d8195f28b3fd792aba117fac45a0503d8"
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/test/java/ai/eliza/plugins/browsersurface/BrowserNavigationPolicyTest.kt",
+      "models": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "scope": "test-support",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "stateAnchors": [
+        {
+          "line": 9,
+          "text": "private fun decide(current: String?, target: String, mainFrame: Boolean = true) ="
+        }
+      ],
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md",
+      "sha256": "2d00cd9228e220bae1ae115bc05fda3333a878b54a4adc3a966adf163dd5ab0c"
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/test/java/ai/eliza/plugins/browsersurface/ChromiumBrowserIdentityTest.java",
+      "models": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "scope": "test-support",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "stateAnchors": [
+        {
+          "line": 8,
+          "text": "private static final String DIGEST = \"ab\".repeat(32);"
+        }
+      ],
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md",
+      "sha256": "ca356be018541934d76643a228a53d71820d091dfaf9fb158ff759261f9c86dd"
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/test/java/ai/eliza/plugins/browsersurface/ChromiumBrowserLauncherTest.kt",
+      "models": [
+        "BrowserSession",
+        "BrowserSiteState"
+      ],
+      "scope": "test-support",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "stateAnchors": [],
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md",
+      "sha256": "f2f2a3ddf919c8be8e0a0573774f07ac08c7eafd6db45ce8cb086e861ce06786"
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-browser-surface/android/src/test/java/ai/eliza/plugins/browsersurface/RoundedOcclusionRectTest.kt",
+      "models": [
+        "BrowserSession",
+        "BrowserSiteState",
+        "BrowserUnderlay"
+      ],
+      "scope": "test-support",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "stateAnchors": [
+        {
+          "line": 9,
+          "text": "private val rounded = RoundedOcclusionRect(10f, 20f, 110f, 80f, 20f)"
+        }
+      ],
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md",
+      "sha256": "ea80cc4c38531e4e199e2451d396be1e7de37528fb359b5f0b8c0564e65ea16f"
     }
   ],
   "configurationInputs": [

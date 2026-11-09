@@ -7,6 +7,7 @@ import {upstreamNativeSource,sha} from './upstream-native-source.mjs';
 const ROOT=fileURLToPath(new URL('../',import.meta.url));
 const HEX=/^[a-f0-9]{64}$/;
 const AUTH_ANDROID_MODULE='packages/auth/android';
+const BROWSER_ANDROID_MODULE='plugins/plugin-native-browser-surface/android';
 const SENSE_ANDROID_MODULE='packages/app/platforms/android/sense';
 const SPEECH_ANDROID_MODULE='plugins/plugin-local-inference/native/android';
 const SECURE_STORE_NATIVE_ONLY_MODULE='plugins/plugin-native-secure-store/android-nativeonly';
@@ -15,7 +16,7 @@ const safe=name=>typeof name==='string'&&!name.startsWith('/')&&!name.split('/')
 function inventory(root){const files={};function visit(dir){for(const row of fs.readdirSync(dir,{withFileTypes:true})){const name=path.join(dir,row.name);if(row.isSymbolicLink())throw Error('Symlink in patched source');if(row.isDirectory())visit(name);else if(row.isFile())files[path.relative(root,name)]=sha(fs.readFileSync(name));else throw Error('Nonregular patched source');}}visit(root);return files;}
 function verifyModes(root,modes){for(const [name,mode] of Object.entries(modes))if(Boolean(fs.statSync(path.join(root,name)).mode&0o100)!==(mode==='100755'))throw Error('Native staged source mode drift');}
 function same(a,b){return JSON.stringify(Object.entries(a).sort())===JSON.stringify(Object.entries(b).sort());}
-/** Verify every input/output byte: existing native sources, the auth descriptor, and explicit shared speech Java additions. */
+/** Verify every input/output byte: native sources, admitted module descriptors and shared speech Java additions. */
 export function materializeNativePatches({source,manifest,patchRoot,temporary}){
  if(manifest.schema!==1||manifest.baseCommit!==source.pin||!Array.isArray(manifest.patches))throw Error('Native patch manifest pin/schema mismatch');
  // Modules with no remaining patch are still staged from the pin so Gradle compiles authenticated source.
@@ -33,10 +34,10 @@ export function materializeNativePatches({source,manifest,patchRoot,temporary}){
   for(const target of patch.targets){
    const sourceTarget=typeof target.path==='string'&&target.path.startsWith(patch.module+'/src/main/java/')&&/\.(?:java|kt)$/.test(target.path);
    const speechTarget=patch.module===SPEECH_ANDROID_MODULE&&typeof target.path==='string'&&target.path.startsWith(patch.module+'/speech-bridge/src/main/java/ai/eliza/voice/')&&/\/[^/]+\.java$/.test(target.path);
-   const authDescriptor=patch.module===AUTH_ANDROID_MODULE&&target.path===AUTH_ANDROID_MODULE+'/build.gradle';
+   const moduleDescriptor=[AUTH_ANDROID_MODULE,BROWSER_ANDROID_MODULE].includes(patch.module)&&target.path===patch.module+'/build.gradle';
    const addition=target.beforeSha256===null;
    const beforeMatches=addition?speechTarget&&expected[target.path]===undefined:HEX.test(target.beforeSha256)&&expected[target.path]===target.beforeSha256;
-   if(!safe(target.path)||(!sourceTarget&&!speechTarget&&!authDescriptor)||targets.has(target.path)||!beforeMatches||!HEX.test(target.afterSha256))throw Error('Native patch target/source mismatch');targets.add(target.path);expected[target.path]=target.afterSha256;if(addition)addedModes[target.path]='100644';
+   if(!safe(target.path)||(!sourceTarget&&!speechTarget&&!moduleDescriptor)||targets.has(target.path)||!beforeMatches||!HEX.test(target.afterSha256))throw Error('Native patch target/source mismatch');targets.add(target.path);expected[target.path]=target.afterSha256;if(addition)addedModes[target.path]='100644';
   }
   const headers=bytes.toString('utf8').split('\n').filter(line=>line.startsWith('--- ')||line.startsWith('+++ '));
   const wanted=patch.targets.flatMap(target=>[target.beforeSha256===null?'--- /dev/null':'--- a/'+target.path,'+++ b/'+target.path]);

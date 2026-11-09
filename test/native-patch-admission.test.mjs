@@ -62,6 +62,12 @@ for(const module of [nativeOnlyModule+'-other',nativeOnlyModule+'/../android'])
  },nativeOnlyModule));
 
 const authModule='packages/auth/android';
+const browserModule='plugins/plugin-native-browser-surface/android';
+test('shared browser descriptor is hash-bound without admitting other descriptors',()=>fixture(args=>{
+ const output=materializeNativePatches(args);
+ assert.equal(output.files[browserModule+'/build.gradle'],sha('new\n'));
+ assert.equal(fs.readFileSync(path.join(args.temporary,browserModule+'/build.gradle'),'utf8'),'new\n');
+},browserModule,browserModule+'/build.gradle'));
 for(const authTarget of [authModule+'/src/main/java/CloudSignInPlugin.java',authModule+'/build.gradle'])test(`shared auth admission authenticates ${authTarget}`,()=>fixture(args=>{
  const descriptor=authModule+'/settings.gradle',unchanged=Buffer.from('unchanged descriptor\n'),read=args.source.read;
  args.source.read=prefix=>{assert.equal(prefix,authModule);return new Map([...read(),[descriptor,{bytes:unchanged,mode:'100644',sha256:sha(unchanged)}]]);};
