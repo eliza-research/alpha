@@ -2077,6 +2077,43 @@
         "maxSteps": 50,
         "maxVerifyDepth": 12
       }
+    },
+    {
+      "path": "specs/quint/services/BrowserCloudRequestCustody.qnt",
+      "module": "BrowserCloudRequestCustody",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "rejectedDuplicateCannotRetireTheIncumbentTest",
+        "cancelledSlotCannotBeReusedUntilSettlementTest",
+        "disconnectedHandlerCannotRetireItsSuccessorTest",
+        "independentSlotRetainsItsOwnReplyTest"
+      ],
+      "invariants": [
+        "PendingInvocationsOwnTheirExactSlots",
+        "OccupiedSlotsHaveTheirPendingInvocation",
+        "DuplicateNeverDispatches",
+        "AbortedInvocationsCannotSucceed",
+        "DisconnectedPendingInvocationsAreAborted"
+      ],
+      "sources": [
+        "scripts/browser-cloud-dev-bridge.ts",
+        "backend/managed-google-route-policy.ts"
+      ],
+      "stateMapping": {
+        "owners/slots": "Private active map ownership, with source admission and cancellation observed indirectly",
+        "dispatched/pending/aborted/closed/status": "Closed injected request dispatch, actual response-close listener, exact abort signal and observed response status"
+      },
+      "abstractions": [
+        "Two request IDs, four one-shot invocation identities and one host instance. The credential-free public entitlement-key route exercises the same active request map without profile I/O.",
+        "Aborted requests keep their ID until settlement. The fixture controls upstream release and inbound response closure. Real sockets, authenticated route-specific effects, other login and resident state, and process restart are separate."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 50,
+        "maxVerifyDepth": 8
+      }
     }
   ]
 }

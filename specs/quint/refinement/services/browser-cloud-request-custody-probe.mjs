@@ -118,24 +118,47 @@ function fixture() {
   };
 }
 
-async function baseline() {
+async function scenario(name, run) {
   const f = fixture();
-  const steps = [];
-  const point = async (name, ...args) => {
-    await f[name](...args);
-    steps.push({name, args, state: f.observe()});
+  const trace = {name, initial: f.observe(), steps: []};
+  const point = async (label, action, ...args) => {
+    await f[action](...args);
+    trace.steps.push({label, name: action, args, state: f.observe()});
   };
-  await point('start', 1, 1);
-  await point('start', 2, 1);
-  await point('cancel', 1);
-  await point('start', 3, 1);
-  await point('finish', 1);
-  await point('cancel', 1);
-  await point('finish', 3);
-  return steps;
+  await run(point);
+  assert.deepEqual(f.observe().pending, [], 'All fixture handlers settled');
+  return trace;
 }
 
-assert.equal(process.argv[2], 'baseline');
-const result = await baseline();
+assert.equal(process.argv[2], 'current');
+const traces = [];
+traces.push(await scenario('duplicate rejection preserves targeted cancellation and holds the ID until settlement', async point => {
+  await point('Admit the incumbent and hold its upstream response', 'start', 1, 1);
+  await point('Reject a duplicate without dispatch', 'start', 2, 1);
+  await point('Cancel reaches the exact live incumbent', 'cancel', 1);
+  await point('The aborted but unsettled slot still refuses a new generation', 'start', 3, 1);
+  await point('A late success from the port becomes an abort response', 'finish', 1);
+  await point('A new generation can now reuse the slot', 'start', 4, 1);
+  await point('Late close from a rejected invocation does not touch the successor', 'close', 3);
+  await point('The successor returns its own public reply', 'finish', 4);
+}));
+traces.push(await scenario('cancel misses an empty slot and only targets the selected active ID', async point => {
+  await point('Cancel before admission cannot affect a future handler', 'cancel', 1);
+  await point('Hold two requests with separate IDs', 'start', 1, 1);
+  await point('The second ID owns its independent handler', 'start', 2, 2);
+  await point('Reject one duplicate while both incumbents are held', 'start', 3, 1);
+  await point('Cancel only the first ID', 'cancel', 1);
+  await point('The second ID finishes successfully', 'finish', 2);
+  await point('The first ID finishes with cancellation', 'finish', 1);
+}));
+traces.push(await scenario('closing a response aborts and retains its slot until the actual handler settles', async point => {
+  await point('Hold the first response', 'start', 1, 1);
+  await point('Close that response before its upstream reply', 'close', 1);
+  await point('Reject reuse while the disconnected handler is still settling', 'start', 2, 1);
+  await point('Late upstream reply cannot write to the closed response', 'finish', 1);
+  await point('The settled slot admits a replacement', 'start', 3, 1);
+  await point('Closing the duplicate response cannot cancel the replacement', 'close', 2);
+  await point('The replacement settles normally', 'finish', 3);
+}));
 assert.equal(globalThis.browserCloudProfileAccess, 0);
-console.log(JSON.stringify(result));
+console.log(JSON.stringify(traces));
