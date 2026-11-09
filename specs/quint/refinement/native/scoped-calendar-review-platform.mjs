@@ -10,7 +10,7 @@ const calendarSource=module+'/src/main/java/ai/eliza/plugins/calendar/';
 const shared='vendor/eliza/plugins/plugin-native-calendar/test/jvm/android/';
 const fixtures='test/fixtures/';
 const manifest='patches/eliza/native-manifest.json';
-const platform={
+export const calendarReviewPorts={
   'android/Manifest.java': `package android;
 public final class Manifest {public static final class permission {
  public static final String READ_CALENDAR="read",WRITE_CALENDAR="write";
@@ -163,7 +163,7 @@ export function scopedCalendarReviewPlatform(){
     const contentValues=shared+'content/ContentValues.java';
     const values=readFileSync(join(root,contentValues),'utf8').replace('public void put(String key,Long value)',
       'public int size(){return values.size();}public void put(String key,Integer value){values.put(key,value);}public void put(String key,Long value)');
-    const generated=[...Object.entries(platform).map(([name,bytes])=>put(name,bytes)),
+    const generated=[...Object.entries(calendarReviewPorts).map(([name,bytes])=>put(name,bytes)),
       put('android/content/ContentValues.java',values),...guardFiles.map(name=>join(staged,name))];
     const providerFiles=[...['content/ContentUris.java','database/Cursor.java','net/Uri.java'].map(name=>shared+name),
       ...['ContentResolver.java','ContentProviderOperation.java'].map(name=>fixtures+'scoped-calendar-jvm/android/content/'+name),

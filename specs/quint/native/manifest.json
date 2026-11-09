@@ -2687,6 +2687,61 @@
         "maxSteps": 80,
         "maxVerifyDepth": 4
       }
+    },
+    {
+      "path": "specs/quint/native/NativeCalendarSyncEnable.qnt",
+      "module": "NativeCalendarSyncEnable",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "currentEnablePersistsExactConsentTest",
+        "pauseAfterCommittedEnableRevokesTest",
+        "asBuiltPauseBeforeReadResurrectsTest",
+        "asBuiltSameDisabledBytesResurrectTest",
+        "changedCasSnapshotRefusesStaleEnableTest",
+        "pauseRetriesExactCasTest",
+        "pauseCasExhaustionIsUnavailableTest"
+      ],
+      "invariants": [
+        "LeaseOwnsEpoch",
+        "HeldOwnsPendingReply",
+        "BothGatesUseCommittedConsent",
+        "CommittedConsentHasOwner"
+      ],
+      "sources": [
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncBridge.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncConsent.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncSnapshot.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncMutation.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncReceiptRecovery.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeDeletionCoordinator.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCredentialStore.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCalendarPlugin.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaConnectionPlugin.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/LocalAgentProviderAdmission.java"
+      ],
+      "sharedSources": [
+        "plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/write/CalendarEventOptions.java",
+        "plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeferredDeletionJournal.java",
+        "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeProviderAdmission.java"
+      ],
+      "stateMapping": {
+        "epoch/lease/leaseEpoch/dialog/prepareResult/enableResult/pauseResult/statusResult": "Actual bridge epoch, current lease, observed dialog and bridge results",
+        "durable/writes/compareAttempts/pauseRefusals": "Closed store bytes, accepted CAS sequence, attempt counts and injected contention",
+        "held/heldExpected/claimedEpoch/enabledEpoch": "Final enable read suspension, captured CAS snapshot class, lease generation and committed enable provenance",
+        "cloudWriteAllowed/deletionAllowed": "Actual exact saved-consent and deletion-refusal outputs"
+      },
+      "abstractions": [
+        "One bridge, one exact owner/destination, pre-marked local source with no events and one held consent worker. Synthetic platform and credential store, no provider writes.",
+        "Saved bytes are partitioned into absent, unchanged disabled, and enabled classes for this schedule. Enabled operation provenance is observed via accepted store writes.",
+        "Baseline deliberately permits retired consent CAS after successful pause. PausedConsentNotResurrected records the divergence."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 4
+      }
     }
   ]
 }
