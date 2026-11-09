@@ -1,0 +1,137 @@
+name: Publish qualified launcher update
+run-name: Publish reviewed launcher qualification on ${{ inputs.workflow_commit }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      workflow_commit:
+        description: Exact reviewed publication workflow commit on main
+        type: string
+        required: true
+      qualification:
+        description: Reviewed alpha-qualified-app-update/v1 JSON (no credentials)
+        type: string
+        required: true
+
+permissions: {}
+concurrency:
+  group: alpha-app-stable-publication
+  cancel-in-progress: false
+
+jobs:
+  admit:
+    if: github.repository == 'eliza-research/alphaphone' && github.ref == 'refs/heads/main' && inputs.workflow_commit == github.sha
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      qualification_sha256: ${{ steps.admit.outputs.qualification_sha256 }}
+      source_commit: ${{ steps.admit.outputs.source_commit }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Admit reviewed record and exact signing-run receipt without private access
+        id: admit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          QUALIFICATION: ${{ inputs.qualification }}
+        run: |
+          set -euo pipefail
+          umask 077
+          printf '%s' "$QUALIFICATION" > "$RUNNER_TEMP/qualification.json"
+          unset QUALIFICATION
+          python3 -B scripts/ci/qualified-app-update.py "$RUNNER_TEMP/qualification.json" \
+            --workflow-commit "$GITHUB_SHA" --work "$RUNNER_TEMP/qualification-admission"
+
+  publish:
+    needs: admit
+    if: needs.admit.result == 'success' && needs.admit.outputs.qualification_sha256 != '' && inputs.workflow_commit == github.sha
+    environment: release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          submodules: true
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.admit.outputs.source_commit }}
+          submodules: true
+          path: qualified-product
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3.2.2
+        with:
+          packages: platforms;android-36 build-tools;36.0.0
+          log-accepted-android-sdk-licenses: false
+      - name: Re-admit and restore the exact producer and signed private object
+        env:
+          GH_TOKEN: ${{ github.token }}
+          QUALIFICATION: ${{ inputs.qualification }}
+          EXPECTED_QUALIFICATION: ${{ needs.admit.outputs.qualification_sha256 }}
+          ALPHA_PRIVATE_STORAGE_TOKEN: ${{ secrets.ALPHA_PRIVATE_APK_STORAGE_TOKEN }}
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+          test "$(printf '%s' "$QUALIFICATION" | sha256sum | cut -d ' ' -f 1)" = "$EXPECTED_QUALIFICATION"
+          printf '%s' "$QUALIFICATION" > "$RUNNER_TEMP/qualification.json"
+          unset QUALIFICATION
+          python3 -B scripts/ci/qualified-app-update.py "$RUNNER_TEMP/qualification.json" \
+            --workflow-commit "$GITHUB_SHA" --work "$RUNNER_TEMP/qualified-stage" \
+            --product "$GITHUB_WORKSPACE/qualified-product"
+      - name: Install locked verifier dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts
+      - name: Install locked product verifier dependencies without lifecycle scripts
+        working-directory: qualified-product
+        run: npm ci --ignore-scripts
+      - name: Project the exact product's reviewed client sources
+        working-directory: qualified-product
+        run: npm run upstream:prepare-client
+      - name: Reverify all signed bytes and exact reviewed Cloud voice evidence
+        working-directory: qualified-product
+        run: node scripts/verify-apks.mjs --runtime-profile=cloud --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json"
+      - name: Require both qualified release rows before publication
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          summary = json.loads((Path(os.environ['RUNNER_TEMP']) / 'qualified-stage/qualification-summary.json').read_text())
+          manifest = json.loads(Path('qualified-product/artifacts/apk-manifest.json').read_text())
+          assert manifest['testMocks'] is False and manifest['runtimeProfile'] == 'cloud'
+          assert manifest['updateChannel']['kind'] == 'public'
+          rows = [row for row in manifest['results'] if row['mode'] == 'release']
+          assert len(rows) == 2 and {row['variant'] for row in rows} == {'launcher', 'standalone'}
+          for row in rows:
+              assert row['distributable'] is True and row['versionCode'] == summary['versionCode']
+              assert row['sha256'] == summary['signedApkSHA256'][row['variant']]
+              assert row['cloudVoice']['evidenceSha256'] == summary['voiceEvidenceSHA256']
+          PY
+      - name: Publish launcher APK first and anonymously verify the stable pointer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/deliver-app-update.mjs --variant launcher --apk-manifest qualified-product/artifacts/apk-manifest.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: qualified-launcher-publication-${{ github.run_id }}-${{ github.run_attempt }}
+          retention-days: 30
+          if-no-files-found: warn
+          path: |
+            ${{ runner.temp }}/qualified-stage/qualification-summary.json
+            artifacts/app-update-delivery.json

@@ -89,6 +89,18 @@ current source already implements them. Speech is on-device by default; Cloud sp
 used only in the `cloud` runtime profile or with an owner Cartesia key.
 See [speech research](docs/local-speech-research-2026-10-12.md) for native candidates.
 
+## Launcher application updates
+
+The [launcher update runbook](docs/launcher-ota.md) covers both the AOSP launcher
+and the launcher APK on stock Android. Production Android checks while active,
+every 15 minutes, and requests unattended self-install on supported Android with
+existing install permission, only from idle Home and after draft/runtime barriers.
+Android can still require confirmation. A qualified signed APK must be delivered
+to the public channel; a merged source change alone is not a published release.
+Use `scripts/deliver-app-update.mjs` for APK-first publication and anonymous
+readback. APK updates, independent crash recovery and AOSP OS OTA acceptance are
+separate gates. No phones had shipped when this path was reviewed on November 9.
+
 ## Cloud release qualification — November 6
 
 The release scope is Cloud voice with Cartesia. Keep Android microphone capture,

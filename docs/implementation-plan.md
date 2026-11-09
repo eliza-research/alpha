@@ -76,6 +76,13 @@ by a source pin; never modify the vendor checkout.
 | 4 / scope cleanup | #422: remove Wallet from all current MVP obligations and capabilities | Wallet disabled in UI/deep links/agent/native in both distributions; no payment fixtures in production |
 | 5 / AP8 complete-product acceptance | Parent #381 app completion, #377 AOSP, #378 final QA | Continuous journeys, controlled release and target-user sign-off at exact source/image/config hashes |
 
+November 9 application-update implementation adds foreground periodic discovery,
+idle automatic APK self-install requests, model/refinement coverage and guarded
+public delivery ([runbook](launcher-ota.md)). Both the image and stock-Android
+delivery requested by the owner use the launcher flavor. No batch phones have
+been distributed yet. This does not complete AP7's separate `update_engine`
+component, production release qualification or physical update/recovery drills.
+
 Independent preparation can proceed concurrently; these rows are not instructions
 to defer AOSP listening or Cloud Maps out of MVP. Complete prerequisite contracts
 before integrating a consumer. Subscription pricing/quotas and final model/backend

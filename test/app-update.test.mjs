@@ -35,6 +35,7 @@ test('the update flow runs one attempt per process, fences a session Android sti
   const members=join(dir,'AlphaDevicePlugin.java');
   // The update flow opens the unknown-sources page through the plugin's own hand-off helper.
   const handOff=/ private static Intent handOff\(Intent intent\)\{[^\n]*/.exec(plugin)?.[0];assert.ok(handOff,'AlphaDevicePlugin.handOff');
+  const foreground=/ static boolean shareForeground\(android\.app\.Activity activity\)\{[\s\S]*?\n \}/.exec(plugin)?.[0];assert.ok(foreground,'AlphaDevicePlugin.shareForeground');
   writeFileSync(members,`package ai.elizaresearch.alphaphone;
 import android.content.Context;
 import android.content.Intent;
@@ -46,6 +47,7 @@ import com.getcapacitor.*;
 final class AlphaDevicePlugin extends Plugin {
  private final java.util.concurrent.ExecutorService diagnosticsWorker=java.util.concurrent.Executors.newSingleThreadExecutor();
 ${handOff}
+${foreground}
 ${plugin.slice(start,end).replace(deadline,'static long UPDATE_DEADLINE_NANOS=java.util.concurrent.TimeUnit.SECONDS.toNanos(3)')}}
 `);
   assert.match(runJvm([members,join(root,'vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/updater/RuntimeUpdatePause.java'),nativeSource('PluginWorkers.java'),...javaFiles(fixture('app-update-jvm')),fixture('UpdateFlowTest.java')],'ai.elizaresearch.alphaphone.UpdateFlowTest',{timeout:240000}),/^PASS update flow/);
@@ -65,8 +67,8 @@ test('Android installs only the offered newer build of this package, and only wh
  assert.equal(plugin.match(/setStagingProgress\(/g).length,1);
  assert.equal(install.match(/getProgress\(\)==0f/g).length,1);
  assert.ok(install.includes('if(binding!=null&&!listed.isSealed()&&(!binding.group(4).equals(String.valueOf(updateBoot()))||binding.group(5)!=null&&"REL".equals(Build.VERSION.CODENAME)&&(Build.VERSION.SDK_INT<=30||Build.VERSION.SDK_INT>=33&&Build.VERSION.SDK_INT<=37)&&listed.getProgress()==0f))continue;'),'the unsealed fence clears only what is proven');
- assert.ok(plugin.includes('/([0-9a-f]{64})/([0-9]+)(/intent)?");'),'a binding reads with or without the mark');
- assert.ok(install.includes('+"/"+updateBoot()+"/intent";'),'this build binds with the mark');
+ assert.ok(plugin.includes('/([0-9a-f]{64})/([0-9]+)(/intent)?(/automatic)?");'),'a binding reads with or without the commit and automatic marks');
+ assert.ok(install.includes('+"/"+updateBoot()+"/intent"+(automatic?"/automatic":"");'),'this build binds the commit and its automatic mode');
  assert.doesNotMatch(plugin,/refused\)\{updateOwner=null|commitUpdate|getUpdatedMillis|elapsedRealtime/);
  assert.match(install,/params\.setAppPackageName\(getContext\(\)\.getPackageName\(\)\);/);
  // The status intent reaches only this app's receiver, and Android must be able to add the session result to it.
@@ -80,13 +82,15 @@ test('Android installs only the offered newer build of this package, and only wh
  assert.match(plugin,/if\(status==404\)\{call\.resolve\(new JSObject\(\)\);return;\}\s*if\(status!=200\)throw/);
  assert.match(plugin,/updateConnection\(BuildConfig\.ALPHA_UPDATE_MANIFEST_URL\)/);
  assert.match(plugin,/handleOnDestroy\(\)\{[^}]*updateWorker\.shutdownNow\(\);[^}]*getContext\(\)\.unregisterReceiver\(updateStatus\);[^}]*if\(updateOwner==this\)/);
- assert.doesNotMatch(plugin,/setRequireUserAction|INSTALL_PACKAGES"|toast|Toast/);
+ assert.doesNotMatch(plugin,/INSTALL_PACKAGES"|toast|Toast/);
+ assert.match(install,/if\(automatic&&Build\.VERSION\.SDK_INT>=31\)params\.setRequireUserAction\(PackageInstaller\.SessionParams\.USER_ACTION_NOT_REQUIRED\)/);
 });
 
 test('Alpha stays nonprivileged and reads one configured HTTPS manifest from its own rolling release',()=>{
  const manifestXml=readFileSync(join(root,'android/app/src/main/AndroidManifest.xml'),'utf8');
  assert.match(manifestXml,/<uses-permission android:name="android\.permission\.REQUEST_INSTALL_PACKAGES" \/>/);
- assert.doesNotMatch(manifestXml,/android\.permission\.(INSTALL_PACKAGES|UPDATE_PACKAGES_WITHOUT_USER_ACTION|DELETE_PACKAGES)"/);
+ assert.match(manifestXml,/<uses-permission android:name="android\.permission\.UPDATE_PACKAGES_WITHOUT_USER_ACTION" \/>/);
+ assert.doesNotMatch(manifestXml,/android\.permission\.(INSTALL_PACKAGES|DELETE_PACKAGES)"/);
  const url=JSON.parse(readFileSync(join(root,'app.config.json'),'utf8')).updateManifestUrl;
  assert.equal(new URL(url).protocol,'https:');
  // Not releases/latest: any newer release of the repository without the manifest would answer 404 and withdraw a valid offer.

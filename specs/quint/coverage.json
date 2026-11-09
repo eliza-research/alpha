@@ -66,7 +66,13 @@
     "scripts/apk.mjs",
     "scripts/source-snapshot.mjs",
     "scripts/verify-apks.mjs",
-    "scripts/verify-packaged-runtime.py"
+    "scripts/verify-packaged-runtime.py",
+    "scripts/provision-unit.mjs",
+    "scripts/publish-update-manifest.mjs",
+    "scripts/deliver-app-update.mjs",
+    "scripts/update-apk-admission.mjs",
+    "scripts/update-artifact.mjs",
+    "scripts/owner/InspectUpdateApk.java"
   ],
   "excludedDirectories": [
     ".cxx",
@@ -5022,13 +5028,22 @@
     },
     {
       "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/SettingsSystemFactsInstrumentedTest.java",
-      "sha256": "91df0ed3fda4facf922ee75ad016037b4367662a8f6d86c435419a8291fcd1ac",
+      "sha256": "eeb81f732a8a04dd32bc32c6d9a746c98ef38c6d3d4c9a4425039c259f603b7d",
       "models": [
         "PreferencesAndPresentation"
       ],
       "scope": "test-support",
       "treatment": "test-harness",
-      "stateAnchors": []
+      "stateAnchors": [
+        {
+          "line": 66,
+          "text": "assertEquals(AlphaDevicePlugin.automaticUpdateStatus(context),facts.getString(\"appAutomaticUpdates\"));"
+        },
+        {
+          "line": 68,
+          "text": "java.util.Set<String> allowed=new java.util.HashSet<>(java.util.Arrays.asList(\"wifiEnabled\",\"bluetoothEnabled\",\"airplaneMode\",\"locationEnabled\",\"mobileDataEnabled\",\"interruptionFil"
+        }
+      ]
     },
     {
       "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ShareFlowAssertions.java",
@@ -6230,107 +6245,327 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "57adae65fb01675362a0afd228bf516d0b37b4e57225c462d73daadd1be56293",
+      "sha256": "5cbc8021d014680111892621060cc419a068148407b781d7bd1f66cccc15c668",
       "stateAnchors": [
         {
-          "line": 153,
+          "line": 82,
+          "text": "// Only permissions Alpha declares. Contacts is removed from the manifest, so it is not reported."
+        },
+        {
+          "line": 95,
+          "text": "SystemFacts.fact(facts,\"appAutomaticUpdates\",()->automaticUpdateStatus(context));"
+        },
+        {
+          "line": 154,
           "text": "private final java.util.concurrent.ExecutorService diagnosticsWorker=java.util.concurrent.Executors.newSingleThreadExecutor();"
         },
         {
-          "line": 254,
+          "line": 195,
+          "text": "out.put(\"appVersion\",BuildConfig.VERSION_NAME);out.put(\"versionCode\",BuildConfig.VERSION_CODE);"
+        },
+        {
+          "line": 200,
+          "text": "for(String asset:new String[]{\"agent/alpha-source.json\",\"agent/agent-bundle.js\",\"agent/workflow-worker/manifest.json\",\"agent/workflow-worker/files.sha256\"}){String hash=assetSha256"
+        },
+        {
+          "line": 233,
+          "text": "/** Largest update APK admitted; UPDATE_MAX_BYTES in settings-adapter.ts is the same bound. */"
+        },
+        {
+          "line": 234,
+          "text": "static final long UPDATE_MAX_BYTES=2L<<30;"
+        },
+        {
+          "line": 243,
+          "text": "if(sizeBytes<=0||sizeBytes>UPDATE_MAX_BYTES||sha256==null||!sha256.matches(\"[0-9a-f]{64}\"))throw new java.io.IOException(\"Update not admitted\");"
+        },
+        {
+          "line": 252,
+          "text": "if(total!=sizeBytes||!hex(digest.digest()).equals(sha256))throw new java.io.IOException(\"Update does not match its manifest\");"
+        },
+        {
+          "line": 255,
           "text": "private static final String UPDATE_STATUS=\"ai.elizaresearch.alphaphone.UPDATE_STATUS\";"
         },
         {
-          "line": 269,
-          "text": "private static final java.util.regex.Pattern UPDATE_BINDING=java.util.regex.Pattern.compile(\"alpha-update://([^/]+)/([1-9][0-9]{0,17})/[0-9a-f]{64}/([0-9a-f]{64})/([0-9]+)(/intent)?\");"
+          "line": 257,
+          "text": "static String automaticUpdateStatus(Context context){"
         },
         {
-          "line": 323,
-          "text": "var record=store().read();if(record==null||record.id.equals(liveOwner))return null;"
+          "line": 261,
+          "text": "/** SHA-256 of the original certificate of Alpha's one signer (apksigner's digest), which key rotation never changes: an update manifest offers an APK only to installs of that sign"
+        },
+        {
+          "line": 271,
+          "text": "* A session's binding: package, versionCode, SHA-256, signer and boot. It is the session's referrer, so it sits in the record Android"
+        },
+        {
+          "line": 273,
+          "text": "* A build that states its commit intent ends it with /intent; automatic attempts add /automatic so a later"
+        },
+        {
+          "line": 276,
+          "text": "private static final java.util.regex.Pattern UPDATE_BINDING=java.util.regex.Pattern.compile(\"alpha-update://([^/]+)/([1-9][0-9]{0,17})/[0-9a-f]{64}/([0-9a-f]{64})/([0-9]+)(/intent)"
         },
         {
           "line": 326,
+          "text": "return session!=null&&(expected.equals(String.valueOf(session.getReferrerUri()))||(expected+\"/automatic\").equals(String.valueOf(session.getReferrerUri())));"
+        },
+        {
+          "line": 330,
+          "text": "var record=store().read();if(record==null||record.id.equals(liveOwner))return null;"
+        },
+        {
+          "line": 331,
+          "text": "PackageInstaller installer=context.getPackageManager().getPackageInstaller();"
+        },
+        {
+          "line": 332,
+          "text": "PackageInstaller.SessionInfo session=installer.getSessionInfo(record.session);"
+        },
+        {
+          "line": 333,
           "text": "var observation=ai.eliza.plugins.agent.updater.RuntimeUpdatePause.Session.PENDING;"
         },
         {
-          "line": 339,
+          "line": 346,
           "text": "var installed=context.getPackageManager().getPackageInfo(context.getPackageName(),0);"
         },
         {
-          "line": 365,
+          "line": 349,
+          "text": "if(shutdownRequest>=0){AlphaLocalAgentPlugin.releaseUpdateShutdown(shutdownRequest);shutdownRequest=-1;}"
+        },
+        {
+          "line": 356,
+          "text": "final boolean automatic;"
+        },
+        {
+          "line": 362,
+          "text": "UpdateActivation(AlphaDevicePlugin owner,boolean automatic){this.owner=owner;this.automatic=automatic;waiting.addAll(updateBridges);}"
+        },
+        {
+          "line": 373,
           "text": "private static final Object updateBarrier=new Object();"
         },
         {
-          "line": 366,
+          "line": 374,
           "text": "private static final java.util.Set<AlphaDevicePlugin> updateBridges=new java.util.HashSet<>();"
         },
         {
-          "line": 367,
+          "line": 375,
           "text": "private final String updateBridgeId=java.util.UUID.randomUUID().toString();"
         },
         {
-          "line": 368,
+          "line": 376,
           "text": "private static volatile UpdateActivation activation;"
         },
         {
-          "line": 440,
+          "line": 379,
+          "text": "private JSObject preparation(UpdateActivation pending){return new JSObject().put(\"activationId\",pending.id).put(\"bridgeId\",updateBridgeId).put(\"automatic\",pending.automatic).put(\"p"
+        },
+        {
+          "line": 385,
+          "text": "// A completed barrier cannot grow. Its installer must retry preparation;"
+        },
+        {
+          "line": 448,
           "text": "var session=getContext().getPackageManager().getPackageInstaller().getSessionInfo(record.session);"
         },
         {
-          "line": 460,
-          "text": "try{var settled=UpdatePause.reconcile();if(settled!=null){settleUpdate(settled.id,BuildConfig.VERSION_CODE==settled.targetCode?\"installed\":\"canceled\");return true;}}catch(Exception unavailable){/* Unk"
-        },
-        {
-          "line": 467,
+          "line": 475,
           "text": "private final java.util.concurrent.ExecutorService updateWorker=java.util.concurrent.Executors.newSingleThreadExecutor();"
         },
         {
-          "line": 469,
+          "line": 477,
           "text": "private static volatile int updateSession;"
         },
         {
-          "line": 474,
+          "line": 482,
           "text": "private static volatile Intent updateConfirm;"
         },
         {
-          "line": 476,
+          "line": 484,
           "text": "private static volatile boolean updateDue;"
         },
         {
-          "line": 478,
+          "line": 486,
           "text": "private static volatile boolean updateOpen;"
         },
         {
-          "line": 480,
+          "line": 487,
+          "text": "/** Automatic attempts never open Android's optional confirmation without an explicit Continue/Install tap. */"
+        },
+        {
+          "line": 488,
+          "text": "private static volatile boolean updateAutomatic;"
+        },
+        {
+          "line": 490,
           "text": "private static volatile long updateAsked;"
         },
         {
-          "line": 482,
+          "line": 492,
           "text": "private static volatile AlphaDevicePlugin updateOwner;"
         },
         {
-          "line": 484,
+          "line": 494,
           "text": "private final android.content.BroadcastReceiver updateStatus=new android.content.BroadcastReceiver(){"
         },
         {
-          "line": 523,
+          "line": 501,
+          "text": "if(binding!=null&&binding.group(4).equals(String.valueOf(updateBoot()))){updateAutomatic=binding.group(6)!=null;updateOwner=AlphaDevicePlugin.this;updateSession=id;}"
+        },
+        {
+          "line": 506,
+          "text": "if(inFront()&&!updateAutomatic)confirmUpdate();"
+        },
+        {
+          "line": 533,
           "text": "var current=getContext().getPackageManager().getPackageInstaller().getSessionInfo(id);"
         },
         {
-          "line": 538,
+          "line": 536,
+          "text": "updateAutomatic=false;updateOwner=this;updateOpen=false;updateDue=true;"
+        },
+        {
+          "line": 548,
           "text": "var pending=getContext().getPackageManager().getPackageInstaller().getSessionInfo(record.session);"
         },
         {
-          "line": 568,
+          "line": 570,
+          "text": "if(!updateAutomatic)confirmUpdate();"
+        },
+        {
+          "line": 578,
           "text": "private static final java.util.concurrent.atomic.AtomicBoolean updating=new java.util.concurrent.atomic.AtomicBoolean();"
         },
         {
-          "line": 574,
+          "line": 584,
           "text": "private static final java.util.concurrent.atomic.AtomicInteger updatesCommitted=new java.util.concurrent.atomic.AtomicInteger();"
         },
         {
-          "line": 584,
+          "line": 589,
+          "text": "// Deletes the download a killed process left (up to UPDATE_MAX_BYTES), never one in flight on another bridge."
+        },
+        {
+          "line": 594,
           "text": "private volatile javax.net.ssl.HttpsURLConnection updateActive;"
+        },
+        {
+          "line": 603,
+          "text": "* Software update (Settings; policy in settings-adapter.ts): the one configured manifest, app.config.json"
+        },
+        {
+          "line": 604,
+          "text": "* updateManifestUrl as BuildConfig. Resolves {manifest} for 200 and {} for 404, which means nothing is"
+        },
+        {
+          "line": 605,
+          "text": "* published or the release was withdrawn. Anything else rejects; the next start, resume or tap checks again."
+        },
+        {
+          "line": 616,
+          "text": "try(java.io.InputStream in=connection.getInputStream()){call.resolve(new JSObject().put(\"manifest\",new String(ai.eliza.plugins.agent.connection.ConnectionTransport.readBounded(in,6"
+        },
+        {
+          "line": 622,
+          "text": "* Manual Install update or an automatic idle-Home attempt. An automatic attempt requires API 31+ and existing"
+        },
+        {
+          "line": 626,
+          "text": "* versionCode, above the installed one. API 31+ automatic sessions request USER_ACTION_NOT_REQUIRED through"
+        },
+        {
+          "line": 627,
+          "text": "* Android's nonprivileged self-update API. Android may still require confirmation; for an automatic session"
+        },
+        {
+          "line": 638,
+          "text": "Object automaticValue=call.getData().opt(\"automatic\");"
+        },
+        {
+          "line": 639,
+          "text": "if(automaticValue!=null&&!(automaticValue instanceof Boolean)){call.reject(\"Update request is invalid\");return;}"
+        },
+        {
+          "line": 640,
+          "text": "final boolean automatic=Boolean.TRUE.equals(automaticValue);"
+        },
+        {
+          "line": 641,
+          "text": "if(automatic){"
+        },
+        {
+          "line": 642,
+          "text": "String status=automaticUpdateStatus(getContext());"
+        },
+        {
+          "line": 652,
+          "text": "final String apkUrl=call.getString(\"apkUrl\"),sha256=call.getString(\"sha256\");final long size=call.getData().optLong(\"sizeBytes\"),versionCode=call.getData().optLong(\"versionCode\");"
+        },
+        {
+          "line": 663,
+          "text": "PackageInstaller installer=getContext().getPackageManager().getPackageInstaller();"
+        },
+        {
+          "line": 669,
+          "text": "// another lock, and a later level is unread, as is a build that is not a release: it reports the level it branched from"
+        },
+        {
+          "line": 670,
+          "text": "// (CODENAME is REL only on a release). There it fences until the next boot, as does a session an earlier build bound without the mark."
+        },
+        {
+          "line": 676,
+          "text": "for(PackageInstaller.SessionInfo listed:installer.getMySessions()){"
+        },
+        {
+          "line": 683,
+          "text": "if(!automatic)reopenUpdateConfirmation(pending);"
+        },
+        {
+          "line": 692,
+          "text": "// Android would also accept a same-versionCode reinstall; only the offered, newer build of this package goes on."
+        },
+        {
+          "line": 695,
+          "text": "if(archive==null||!getContext().getPackageName().equals(archive.packageName)||archive.getLongVersionCode()!=versionCode||versionCode<=BuildConfig.VERSION_CODE)throw new java.io.IOE"
+        },
+        {
+          "line": 697,
+          "text": "// The release verifier requires READ_CONTACTS only in the launcher manifest."
+        },
+        {
+          "line": 704,
+          "text": "String binding=\"alpha-update://\"+getContext().getPackageName()+\"/\"+versionCode+\"/\"+sha256+\"/\"+signer+\"/\"+updateBoot()+\"/intent\"+(automatic?\"/automatic\":\"\");"
+        },
+        {
+          "line": 708,
+          "text": "if(automatic&&Build.VERSION.SDK_INT>=31)params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED);"
+        },
+        {
+          "line": 709,
+          "text": "int id=installer.createSession(params);"
+        },
+        {
+          "line": 711,
+          "text": "try(PackageInstaller.Session session=installer.openSession(id)){"
+        },
+        {
+          "line": 715,
+          "text": "synchronized(updateBarrier){preparation=new UpdateActivation(this,automatic);activation=preparation;participants=new java.util.ArrayList<>(updateBridges);}"
+        },
+        {
+          "line": 724,
+          "text": "pauseOwned=true;UpdatePause.acquire(preparation.id,id,versionCode,sha256,updateBoot());"
+        },
+        {
+          "line": 736,
+          "text": "updateAutomatic=automatic;"
+        },
+        {
+          "line": 744,
+          "text": "if(!commitAttempted)try{installer.abandonSession(id);}catch(RuntimeException cleanup){failed.addSuppressed(cleanup);}"
         }
       ],
       "integrationReview": "Domain allocation retained after merged fixes. Source identity and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations."
@@ -14586,13 +14821,18 @@
         "ShadeNoticeQuestionAdmission",
         "AppearancePreferenceAdmission",
         "WorkflowClockAdmission",
-        "NotesTrashReadPublication"
+        "NotesTrashReadPublication",
+        "AutomaticAppUpdateSchedule"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "040b43ceb5f45ef3c1407636978e382af38248abdd39d47eb0d831f47c1e24bf",
+      "sha256": "85b619de8b5e407651f234ab050091b5d800b49bea670e2044a29d97b087d24f",
       "stateAnchors": [
+        {
+          "line": 65,
+          "text": "import { automaticUpdateIdle, hasAppearancePreview, installSettingsAdapter, readAppearanceChoice, resolveAppearance } from './prototype/settings-adapter';"
+        },
         {
           "line": 92,
           "text": "const browserDevProfile=devSurfacesEnabled&&devProfileQuery;"
@@ -14604,14 +14844,6 @@
         {
           "line": 94,
           "text": "const BrowserDeviceControls=devSurfacesEnabled?DevDeviceControls:null;"
-        },
-        {
-          "line": 95,
-          "text": "const MOCK_BANNER_STYLE=\".mock-mode-banner{position:fixed;top:0;left:0;right:0;z-index:2000;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 10px;background:#0000ff;co"
-        },
-        {
-          "line": 97,
-          "text": "if(!isAndroid)bindBrowserDeletionOwner(()=>{const session=connectionController.getSnapshot().session,device=connectionController.getWorkflowDeviceTarget();return session&&device?'agent:'+JSON.stringif"
         },
         {
           "line": 98,
@@ -14666,16 +14898,8 @@
           "text": "const homeSourcesChanged=()=>window.dispatchEvent(new Event(HOME_SOURCES_CHANGED));"
         },
         {
-          "line": 159,
-          "text": "attention:()=>{const value=inboxAttention();return {state:value.state,unread:value.unread,...(value.source?{source:value.source}:{}),...(value.updatedAt?{updatedAt:value.updatedAt}:{})};},"
-        },
-        {
           "line": 183,
           "text": "const appInventory = isAndroid ? 'android' : testMocksEnabled ? 'simulated' : undefined;"
-        },
-        {
-          "line": 185,
-          "text": "aliases: appInventory === 'simulated' ? Object.fromEntries(browserApps.flatMap(app => { const view = alphaViews.find(app.view); return view ? [[app.packageName, alphaViews.launcherKey(view)]] : []; })"
         },
         {
           "line": 189,
@@ -14688,10 +14912,6 @@
         {
           "line": 192,
           "text": "const out=render.call(this);"
-        },
-        {
-          "line": 193,
-          "text": "const tiles=(out.tiles||[]).map((tile:any)=>managed.has(tile.label)?{...tile,on:false,pressed:undefined,disabled:true,css:'background:var(--s2);color:var(--fg);opacity:.55',toggle:()=>{}}:tile);"
         },
         {
           "line": 198,
@@ -14712,10 +14932,6 @@
         {
           "line": 213,
           "text": "let pendingNotice: string | undefined;"
-        },
-        {
-          "line": 215,
-          "text": "function questionTarget(sessionId:string){const snapshot=connectionController.getSnapshot();return Boolean(shell?.live&&!document.hidden&&!snapshot.open&&snapshot.session?.sessionId===sessionId);}"
         },
         {
           "line": 216,
@@ -14744,10 +14960,6 @@
         {
           "line": 239,
           "text": "const [homeShown, setHomeShown] = useState(fixture || !residentAlwaysPresent);"
-        },
-        {
-          "line": 240,
-          "text": "const startupPending = !homeShown && !connection.startupResolved && !connection.cloudAccount && connection.residentPlanNotice !== 'offline' && !connectionChooserVisible(connection);"
         },
         {
           "line": 243,
@@ -14826,10 +15038,6 @@
           "text": "const available = Math.max(1, height - banner - (desktop ? 48 : 0) - toolsInset);"
         },
         {
-          "line": 286,
-          "text": "const input = { width, layoutHeight, available, desktop, fluid: isAndroid || coarse, launcher: launcherPresentation, screenShort: Math.min(window.screen.width, window.screen.height), editing: isEditin"
-        },
-        {
           "line": 287,
           "text": "const keyboardFree=freeHeight(width,layoutHeight,input.editing);"
         },
@@ -14838,24 +15046,12 @@
           "text": "const geometry = canvasGeometry(input,keyboardFree,banner);"
         },
         {
-          "line": 291,
-          "text": "const homeGeometry=input.editing?canvasGeometry({...input,layoutHeight:keyboardFree,available:Math.max(1,keyboardFree-banner-(desktop?48:0)-toolsInset),editing:false},keyboardFree,banner):geometry;"
-        },
-        {
           "line": 293,
           "text": "const homeBottomInset=document.documentElement.style.getPropertyValue('--native-bottom-inset');"
         },
         {
-          "line": 308,
-          "text": "const bannerObserver=new ResizeObserver(size);const bannerElement=testMocksEnabled&&mock?document.querySelector('.mock-mode-banner'):null;if(bannerElement)bannerObserver.observe(bannerElement);"
-        },
-        {
-          "line": 327,
-          "text": "}}/>}{testMocksEnabled && mock && <div className=\"mock-mode-banner\" role=\"status\"><span>Mock mode · simulated data and actions</span><button onClick={() => { void connectionController.offline().then(("
-        },
-        {
-          "line": 332,
-          "text": "try { const info = await System.getLocaleInfo(); setLocalePreferences({ locale: info.locale, hourCycle: info.hour24 === true ? 'h23' : info.hour24 === false ? 'h12' : undefined }); }"
+          "line": 335,
+          "text": "async function prepareMountedUpdate(activationCurrent: () => boolean, automatic = false, editingAtFreeze = false) {"
         },
         {
           "line": 336,
@@ -14863,58 +15059,54 @@
         },
         {
           "line": 337,
-          "text": "const current = () => activationCurrent() && shell === owner && owner?.live === true;"
+          "text": "const idle = () => automaticUpdateIdle(owner.S(),connectionController.getSnapshot(),"
         },
         {
-          "line": 341,
+          "line": 339,
+          "text": "const current = () => activationCurrent() && shell === owner && owner?.live === true && (!automatic || !editingAtFreeze && idle());"
+        },
+        {
+          "line": 343,
           "text": "const reconnect = connectionController.captureAppUpdateReconnect();"
         },
         {
-          "line": 342,
+          "line": 344,
           "text": "const flush = ["
         },
         {
-          "line": 351,
+          "line": 353,
           "text": "let nativeAppUpdateGate: Promise<void> | undefined;"
         },
         {
-          "line": 352,
+          "line": 354,
           "text": "const appUpdatePresentation = {"
         },
         {
-          "line": 358,
+          "line": 360,
           "text": "const capacitor = Capacitor as typeof Capacitor & {PluginHeaders?:unknown};"
         },
         {
-          "line": 361,
+          "line": 363,
           "text": "const device = registerPlugin<Parameters<typeof watchMountedAppUpdates>[0]>('AlphaDevice');"
         },
         {
-          "line": 369,
-          "text": "const refreshImage=async()=>{const image=await DeviceApps.platformCapabilities().catch(()=>({aospImage:false,contacts:false}));const admitted=image.aospImage===true&&image.contacts===true;admitImageCo"
-        },
-        {
-          "line": 398,
+          "line": 400,
           "text": "const { pauseLiveActivityForMock } = await import('./runtime/mock-admission');"
         },
         {
-          "line": 399,
+          "line": 401,
           "text": "const root=document.getElementById('root')!;"
         },
         {
-          "line": 406,
+          "line": 408,
           "text": "const retry=document.createElement('button');retry.textContent='Retry mock mode';"
         },
         {
-          "line": 415,
+          "line": 417,
           "text": "const notice = 'Wake listening could not be confirmed off. Turn it off in Android settings.';"
         },
         {
-          "line": 419,
-          "text": "if (externalVoiceInvocationEnabled && isAndroid && assistantSurface) installListenerInvocation(() => shell, { authority: () => { const port=connectionController.getAppRecordClient(); if(!port)return n"
-        },
-        {
-          "line": 423,
+          "line": 425,
           "text": "const notice = (event as CustomEvent<unknown>).detail;"
         }
       ]
@@ -34031,83 +34223,260 @@
         "SettingsNav",
         "NativeUpdateStaging",
         "CalendarPreservationConfirmation",
-        "AppearancePreferenceAdmission"
+        "AppearancePreferenceAdmission",
+        "AutomaticAppUpdateSchedule"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "f30de9846f5ab69fc1b778dd42a52ccf53de626fc83e76c546feb751f208e3b1",
+      "sha256": "c87370b568c30d7a9f4f3f21e0f2de4c2604559aa9595b427456ad648538c52f",
       "stateAnchors": [
         {
-          "line": 204,
-          "text": "export function hasAppearancePreview(query: URLSearchParams): boolean {"
+          "line": 112,
+          "text": "checkForUpdate(): Promise<{ manifest?: string }>;"
         },
         {
-          "line": 205,
-          "text": "return testMocksEnabled && query.has('theme');"
+          "line": 114,
+          "text": "installUpdate(input: Pick<AppUpdate, 'apkUrl' | 'sha256' | 'sizeBytes' | 'versionCode'> & {automatic?: true}): Promise<{status?: string}>;"
         },
         {
-          "line": 206,
+          "line": 139,
+          "text": "* Software update manifest (app.config.json updateManifestUrl, fetched by AlphaDevice.checkForUpdate):"
+        },
+        {
+          "line": 140,
+          "text": "* {schema: \"alpha-update/v1\", versionCode, versionName (optional; shown only as 1 to 64 characters without"
+        },
+        {
+          "line": 147,
+          "text": "/** AlphaDevicePlugin.UPDATE_MAX_BYTES, which the native download enforces, is the same bound. */"
+        },
+        {
+          "line": 148,
+          "text": "export const UPDATE_MAX_BYTES = 2 * 1024 * 1024 * 1024;"
+        },
+        {
+          "line": 149,
+          "text": "export const UPDATE_CHECK_INTERVAL_MS = 15 * 60 * 1000;"
+        },
+        {
+          "line": 150,
+          "text": "type AppUpdate = {versionCode: number; versionName: string; apkUrl: string; sha256: string; sizeBytes: number; notes: string};"
+        },
+        {
+          "line": 152,
+          "text": "* The update a manifest offers this install, or null unless it is complete and HTTPS, newer than the"
+        },
+        {
+          "line": 153,
+          "text": "* installed versionCode, and for this flavor and signer. Android refuses another signer after the whole"
+        },
+        {
+          "line": 156,
+          "text": "export function parseUpdateManifest(value: unknown, installed: {versionCode: unknown; launcher: unknown; signerSha256: unknown}): AppUpdate | null {"
+        },
+        {
+          "line": 162,
+          "text": "if (!Array.isArray(offer.releases) || offer.releases.length < 1 || offer.releases.length > 16) return null;"
+        },
+        {
+          "line": 165,
+          "text": "for (const entry of offer.releases) {"
+        },
+        {
+          "line": 177,
+          "text": "const {schema, versionCode, versionName, variant, signerSha256, apkUrl, sha256, sizeBytes, notes} = offer;"
+        },
+        {
+          "line": 178,
+          "text": "if (schema !== UPDATE_SCHEMA || !Number.isSafeInteger(installed.versionCode) || !Number.isSafeInteger(versionCode) || (versionCode as number) <= (installed.versionCode as number)) "
+        },
+        {
+          "line": 180,
+          "text": "if (typeof sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(sha256) || !Number.isSafeInteger(sizeBytes) || (sizeBytes as number) <= 0 || (sizeBytes as number) > UPDATE_MAX_BYTES || ty"
+        },
+        {
+          "line": 182,
+          "text": "return {versionCode: versionCode as number, versionName: typeof versionName === 'string' && /^[^\\u0000-\\u001f\\u007f]{1,64}$/.test(versionName) ? versionName : '', apkUrl, sha256, s"
+        },
+        {
+          "line": 186,
+          "text": "return !(now >= checkedAt && now - checkedAt < UPDATE_CHECK_INTERVAL_MS);"
+        },
+        {
+          "line": 189,
+          "text": "export function automaticUpdateIdle(shell: {screen?:unknown;view?:unknown;voice?:unknown;typing?:unknown;chat?:unknown;drawer?:unknown;shade?:unknown}, connection: {busy?:unknown;o"
+        },
+        {
+          "line": 207,
           "text": "}"
         },
         {
-          "line": 459,
-          "text": "if(!hasAppearancePreview(new URLSearchParams(location.search))){"
+          "line": 212,
+          "text": "export function hasAppearancePreview(query: URLSearchParams): boolean {"
         },
         {
-          "line": 460,
-          "text": "// A read from storage or the system scheme carries a marker, so componentDidUpdate never writes it back."
+          "line": 213,
+          "text": "return testMocksEnabled && query.has('theme');"
         },
         {
-          "line": 461,
-          "text": "const apply=()=>{const theme=resolveAppearance(readAppearanceChoice());this.setState({theme,appearanceStorageRead:{theme}});};"
+          "line": 226,
+          "text": "/** The last manifest a check was answered with, and when, so a restart offers it without checking again; and the check in flight. */"
         },
         {
-          "line": 462,
-          "text": "if(!Capacitor.isNativePlatform()){"
+          "line": 227,
+          "text": "let lastUpdate: {checkedAt: number; manifest: unknown} | undefined, updateCheck: Promise<boolean> | undefined;"
         },
         {
-          "line": 464,
-          "text": "this.appearanceResumeListener=apply;"
+          "line": 232,
+          "text": "if (value && typeof value === 'object' && Number.isFinite(value.checkedAt)) return lastUpdate = {checkedAt: value.checkedAt, manifest: value.manifest};"
         },
         {
-          "line": 467,
-          "text": "apply();"
+          "line": 234,
+          "text": "return lastUpdate = {checkedAt: Number.NaN, manifest: null};"
+        },
+        {
+          "line": 237,
+          "text": "* At most one answered automatic check per interval and one at a time; `force` is the owner's"
+        },
+        {
+          "line": 243,
+          "text": "updateCheck = device.checkForUpdate().then(({ manifest }) => {"
+        },
+        {
+          "line": 244,
+          "text": "lastUpdate = { checkedAt: Date.now(), manifest: typeof manifest === 'string' ? JSON.parse(manifest) : null };"
+        },
+        {
+          "line": 271,
+          "text": "let automaticUpdates: ReturnType<typeof createAppUpdateScheduler> | undefined;"
+        },
+        {
+          "line": 272,
+          "text": "const automaticUpdateActive = () => automaticUpdates?.setActive(!document.hidden);"
+        },
+        {
+          "line": 273,
+          "text": "async function pollAutomaticUpdate(current: () => boolean) {"
+        },
+        {
+          "line": 277,
+          "text": "if (updateBusy || !automaticUpdateIdle(owner?.S?.() ?? {},connectionController.getSnapshot(),"
+        },
+        {
+          "line": 282,
+          "text": "if (pending.pending || installed.appAutomaticUpdates !== 'supported') return;"
+        },
+        {
+          "line": 283,
+          "text": "const update = parseUpdateManifest(savedUpdate().manifest, {versionCode: installed.appVersionCode,"
+        },
+        {
+          "line": 289,
+          "text": "sizeBytes:update.sizeBytes,versionCode:update.versionCode,automatic:true});"
+        },
+        {
+          "line": 365,
+          "text": "/** Explicit, confirmed disconnect followed by a read-back; never retried automatically. */"
+        },
+        {
+          "line": 409,
+          "text": "app: native ? { version: value.appVersion, versionCode: value.versionCode, variant: value.variant, buildType: value.buildType, testMocks: value.testMocks } : { version: buildVersio"
         },
         {
           "line": 489,
-          "text": "// The marker travels with React state, so queued external reads cannot echo an older theme."
+          "text": "automaticUpdates = createAppUpdateScheduler({run:pollAutomaticUpdate,intervalMs:UPDATE_CHECK_INTERVAL_MS});"
         },
         {
           "line": 490,
-          "text": "const external=this.state?.appearanceStorageRead;"
+          "text": "document.addEventListener('visibilitychange',automaticUpdateActive);"
+        },
+        {
+          "line": 491,
+          "text": "automaticUpdateActive();"
         },
         {
           "line": 494,
-          "text": "catch { this.toast('Theme changed for this session, but could not be saved.'); }"
+          "text": "if(!hasAppearancePreview(new URLSearchParams(location.search))){"
+        },
+        {
+          "line": 495,
+          "text": "// A read from storage or the system scheme carries a marker, so componentDidUpdate never writes it back."
         },
         {
           "line": 496,
-          "text": "};"
+          "text": "const apply=()=>{const theme=resolveAppearance(readAppearanceChoice());this.setState({theme,appearanceStorageRead:{theme}});};"
+        },
+        {
+          "line": 497,
+          "text": "if(!Capacitor.isNativePlatform()){"
         },
         {
           "line": 499,
+          "text": "this.appearanceResumeListener=apply;"
+        },
+        {
+          "line": 502,
+          "text": "apply();"
+        },
+        {
+          "line": 517,
+          "text": "this.deviceResume = DailyApps.addListener('appResumed', () => { void refresh(); void refreshCapabilities(); void checkForUpdate(false)?.then(changed); automaticUpdateActive(); }).c"
+        },
+        {
+          "line": 518,
+          "text": "};"
+        },
+        {
+          "line": 524,
+          "text": "// The marker travels with React state, so queued external reads cannot echo an older theme."
+        },
+        {
+          "line": 525,
+          "text": "const external=this.state?.appearanceStorageRead;"
+        },
+        {
+          "line": 529,
+          "text": "catch { this.toast('Theme changed for this session, but could not be saved.'); }"
+        },
+        {
+          "line": 533,
+          "text": "automaticUpdates?.dispose(); automaticUpdates = undefined;"
+        },
+        {
+          "line": 534,
+          "text": "document.removeEventListener('visibilitychange',automaticUpdateActive);"
+        },
+        {
+          "line": 536,
           "text": "window.removeEventListener('alpha:settings-page',this.settingsNavigation);"
         },
         {
-          "line": 907,
+          "line": 728,
+          "text": "// Install update only for the version the last manifest offers this install, and an explicit check. No error or \"up to date\" claim."
+        },
+        {
+          "line": 729,
+          "text": "const update=parseUpdateManifest(savedUpdate().manifest,{versionCode:facts.appVersionCode,launcher,signerSha256:facts.appSigner});"
+        },
+        {
+          "line": 731,
+          "text": "...(update?[{...action(updateBusy==='install'?'Downloading update…':'Install update',()=>void updateAction('install',()=>device.installUpdate({apkUrl:update.apkUrl,sha256:update.sh"
+        },
+        {
+          "line": 944,
           "text": "if(row.label==='Theme'&&row.kSeg){"
         },
         {
-          "line": 909,
+          "line": 946,
           "text": "const stored=readAppearanceChoice(),choice:AppearanceChoice=resolveAppearance(stored)===api.theme?stored:api.theme==='dark'?'dark':'light';"
         },
         {
-          "line": 912,
+          "line": 949,
           "text": "try{localStorage.setItem(APPEARANCE_KEY,next);}"
         },
         {
-          "line": 915,
+          "line": 952,
           "text": "owner?.setState({theme,appearanceStorageRead:{theme}});"
         }
       ]
@@ -279719,7 +280088,8 @@
         "ShellNavigation",
         "PreferencesAndPresentation",
         "MountedUpdateAdmission",
-        "StartupUpdateAdmission"
+        "StartupUpdateAdmission",
+        "AutomaticAppUpdateSchedule"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -619683,6 +620053,656 @@
       "reviewStatus": "state-audit-required",
       "sha256": "f646ded3903339759197c4d36bfacd7ed7d5017b5d50e8e70a4cf4a999798735",
       "stateAnchors": []
+    },
+    {
+      "path": "scripts/deliver-app-update.mjs",
+      "models": [
+        "PilotApkUpdate"
+      ],
+      "scope": "release-support",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "sha256": "692894c077d4a39e6d88a877d7aeb66e28929ee4cb8dbbd7949a18ab533ac7f4",
+      "stateAnchors": [
+        {
+          "line": 2,
+          "text": "/** Publish an admitted release APK first, verify anonymous download, then move"
+        },
+        {
+          "line": 3,
+          "text": "* the stable manifest. No keys, builds or private QA URLs enter this command."
+        },
+        {
+          "line": 4,
+          "text": "* GitHub asset replacement is not atomic: a manifest upload failure is reported"
+        },
+        {
+          "line": 13,
+          "text": "import {main as prepare, MANIFEST_NAME} from './publish-update-manifest.mjs';"
+        },
+        {
+          "line": 14,
+          "text": "import {updateArtifactDigest} from './update-artifact.mjs';"
+        },
+        {
+          "line": 44,
+          "text": "// Only manifests are retained; APK readback never buffers an entire APK."
+        },
+        {
+          "line": 56,
+          "text": "!Number.isSafeInteger(value.versionCode) || value.versionCode < 1 || !/^[0-9a-f]{64}$/.test(value.signerSha256 || '') ||"
+        },
+        {
+          "line": 66,
+          "text": "if (allowMissing && /release not found|HTTP 404/.test(String(failed.stderr))) return null;"
+        },
+        {
+          "line": 67,
+          "text": "throw Error('GitHub update publication failed; inspect the release before retrying');"
+        },
+        {
+          "line": 71,
+          "text": "/** All inputs have already passed prepare's release and actual-APK admission."
+        },
+        {
+          "line": 74,
+          "text": "export async function deliver({directory, manifestUrl, source}, {run = gh, read = publicObject, wait = sleep} = {}) {"
+        },
+        {
+          "line": 75,
+          "text": "const parsed = new URL(manifestUrl);"
+        },
+        {
+          "line": 76,
+          "text": "const match = /^\\/([\\w.-]+\\/[\\w.-]+)\\/releases\\/download\\/app-stable\\/alpha-update-stable.json$/.exec(parsed.pathname);"
+        },
+        {
+          "line": 80,
+          "text": "const manifestFile = path.join(directory, MANIFEST_NAME);"
+        },
+        {
+          "line": 81,
+          "text": "const manifestBytes = fs.readFileSync(manifestFile), offer = parseOffer(manifestBytes);"
+        },
+        {
+          "line": 82,
+          "text": "const apkName = `alpha-phone-${offer.versionCode}.apk`;"
+        },
+        {
+          "line": 83,
+          "text": "if (offer.apkUrl !== new URL(apkName, manifestUrl).href) throw Error('APK URL differs from the configured stable release');"
+        },
+        {
+          "line": 84,
+          "text": "const apk = path.join(directory, apkName), artifact = updateArtifactDigest(apk);"
+        },
+        {
+          "line": 85,
+          "text": "if (artifact.size !== offer.sizeBytes || artifact.sha256 !== offer.sha256) throw Error('Staged APK differs from its admitted manifest');"
+        },
+        {
+          "line": 88,
+          "text": "const readManifest = () => read(manifestUrl, {maxBytes: 32768, missing: true});"
+        },
+        {
+          "line": 93,
+          "text": "if (current.versionCode > offer.versionCode) throw Error('Refusing to roll back the published versionCode');"
+        },
+        {
+          "line": 94,
+          "text": "if (current.versionCode === offer.versionCode && sha(previous.bytes) !== sha(manifestBytes)) throw Error('A published versionCode is immutable; allocate a higher version');"
+        },
+        {
+          "line": 96,
+          "text": "const releaseJson = run(['release','view','app-stable','--repo',repo,'--json','isDraft,assets'], {allowMissing: true});"
+        },
+        {
+          "line": 97,
+          "text": "const release = releaseJson === null ? null : JSON.parse(releaseJson);"
+        },
+        {
+          "line": 98,
+          "text": "if (release?.isDraft !== false && release !== null) throw Error('The stable update release must be public, not a draft');"
+        },
+        {
+          "line": 101,
+          "text": "const retainedCodes = (release?.assets || []).map(asset => /^alpha-phone-([1-9][0-9]*)\\.apk$/.exec(asset.name)?.[1])"
+        },
+        {
+          "line": 103,
+          "text": "if (retainedCodes.some(code => !Number.isSafeInteger(code) || code > offer.versionCode)) throw Error('Candidate is below the retained stable APK version floor');"
+        },
+        {
+          "line": 104,
+          "text": "if (!previous && release?.assets?.some(asset => asset.name === MANIFEST_NAME)) throw Error('Stable manifest exists but is not publicly readable; resolve visibility before publishin"
+        },
+        {
+          "line": 105,
+          "text": "if (release === null) run(['release','create','app-stable','--repo',repo,'--target',source,'--title','Alpha Phone app updates','--notes','Signed Alpha Phone application updates.','"
+        },
+        {
+          "line": 107,
+          "text": "if (!release?.assets?.some(asset => asset.name === apkName)) run(['release','upload','app-stable',apk,'--repo',repo]);"
+        },
+        {
+          "line": 110,
+          "text": "if (!remote || remote.size !== offer.sizeBytes || remote.sha256 !== offer.sha256) throw Error('Anonymous APK readback differs from the admitted release');"
+        },
+        {
+          "line": 121,
+          "text": "if (!previous || previous.sha256 !== sha(manifestBytes)) run(['release','upload','app-stable',manifestFile,'--repo',repo,'--clobber']);"
+        },
+        {
+          "line": 125,
+          "text": "if (published?.sha256 === sha(manifestBytes)) {visible = true; break;}"
+        },
+        {
+          "line": 128,
+          "text": "if (!visible) throw Error('Stable manifest readback failed; retry this same candidate to repair publication');"
+        },
+        {
+          "line": 129,
+          "text": "return {schema: 'alpha-app-update-delivery/v1', publisherCommit: source, sourceScope: 'publication-tooling-only', variant: offer.variant, versionCode: offer.versionCode,"
+        },
+        {
+          "line": 130,
+          "text": "apkSha256: offer.sha256, manifestSha256: sha(manifestBytes), anonymousReadback: true};"
+        },
+        {
+          "line": 133,
+          "text": "export async function main(argv, {root = process.cwd(), log = console.log} = {}) {"
+        },
+        {
+          "line": 136,
+          "text": "let variant, apkManifest = 'artifacts/apk-manifest.json', notes;"
+        },
+        {
+          "line": 139,
+          "text": "if (!value || value.startsWith('--')) throw Error('Usage: node scripts/deliver-app-update.mjs --variant launcher|standalone [--apk-manifest FILE] [--notes TEXT]');"
+        },
+        {
+          "line": 141,
+          "text": "else if (flag === '--apk-manifest') apkManifest = value;"
+        },
+        {
+          "line": 148,
+          "text": "const args = ['--variant',variant,'--apk-manifest',apkManifest,'--out-dir',directory,...(notes === undefined ? [] : ['--notes',notes])];"
+        },
+        {
+          "line": 152,
+          "text": "const receipt = await deliver({directory, manifestUrl: updateManifestUrl, source});"
+        },
+        {
+          "line": 156,
+          "text": "log(`Published and anonymously verified ${variant} versionCode ${receipt.versionCode}. Receipt: ${destination}`);"
+        }
+      ],
+      "reviewNotes": "Reviewed OTA admission/publication or platform-probe support. Focused executable tests establish their declared contracts; this allocation does not claim complete transition refinement."
+    },
+    {
+      "path": "scripts/owner/InspectUpdateApk.java",
+      "models": [
+        "PilotApkUpdate"
+      ],
+      "scope": "release-support",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "sha256": "a0d09b290cc56192038b37e9571b463eccd933a898e4a1dc15402443182e698e",
+      "stateAnchors": [
+        {
+          "line": 14,
+          "text": "* from an unverified proof-of-rotation attribute or a caller's manifest row. */"
+        },
+        {
+          "line": 42,
+          "text": "var manifest = ApkUtils.getAndroidManifest(bytes);"
+        },
+        {
+          "line": 43,
+          "text": "require(args[2].equals(ApkUtils.getPackageNameFromBinaryAndroidManifest(manifest.duplicate())), \"Wrong update package\");"
+        },
+        {
+          "line": 44,
+          "text": "long version = ApkUtils.getLongVersionCodeFromBinaryAndroidManifest(manifest.duplicate());"
+        },
+        {
+          "line": 45,
+          "text": "require(version > 0, \"Update versionCode must be positive\");"
+        },
+        {
+          "line": 49,
+          "text": "int targetSdk = ApkUtils.getTargetSdkVersionFromBinaryAndroidManifest(manifest.duplicate());"
+        },
+        {
+          "line": 51,
+          "text": "require(!ApkUtils.getDebuggableFromBinaryAndroidManifest(manifest.duplicate()), \"Update APK is debuggable\");"
+        },
+        {
+          "line": 58,
+          "text": "require(ApkUtils.getMinSdkVersionFromBinaryAndroidManifest(manifest.duplicate()) <= api, \"Update minSdk exceeds a supported Android API\");"
+        },
+        {
+          "line": 82,
+          "text": "System.out.printf(\"{\\\"verified\\\":true,\\\"packageName\\\":\\\"%s\\\",\\\"versionCode\\\":%d,\\\"targetSdkVersion\\\":%d,\\\"activeSignerSha256\\\":\\\"%s\\\",\\\"signerRootSha256\\\":\\\"%s\\\",\\\"lineageSize\\\":%d"
+        }
+      ],
+      "reviewNotes": "Reviewed OTA admission/publication or platform-probe support. Focused executable tests establish their declared contracts; this allocation does not claim complete transition refinement."
+    },
+    {
+      "path": "scripts/provision-unit.mjs",
+      "models": [
+        "PilotApkUpdate"
+      ],
+      "scope": "release-support",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "sha256": "88093b61fe8f75d1a94d534f85995a4cedf3cef8aab5a85b5c60e8148ea1d036",
+      "stateAnchors": [
+        {
+          "line": 6,
+          "text": "*     --apk-manifest artifacts/apk-manifest.json [--variant launcher|standalone] \\"
+        },
+        {
+          "line": 7,
+          "text": "*     [--build release|debug] [--output test-results/pilot-units] [--home-wait-ms 0]"
+        },
+        {
+          "line": 9,
+          "text": "* Steps: admit the APK from the verify-apks manifest (a release must be distributable:"
+        },
+        {
+          "line": 10,
+          "text": "* signed by android/release-signer.json's certificate with an advancing versionCode,"
+        },
+        {
+          "line": 15,
+          "text": "* installed bytes and versionCode, open the default-HOME chooser for the operator"
+        },
+        {
+          "line": 30,
+          "text": "import { readReleaseSigner, releaseAdmission } from \"./build-android.mjs\";"
+        },
+        {
+          "line": 31,
+          "text": "import { releaseBlockers } from \"./release-blockers.mjs\";"
+        },
+        {
+          "line": 33,
+          "text": "import { updateArtifactDigest } from \"./update-artifact.mjs\";"
+        },
+        {
+          "line": 39,
+          "text": "const options = { serial: null, alias: null, apkManifest: null, variant: \"launcher\", build: \"release\", output: \"test-results/pilot-units\", homeWaitMs: 0 };"
+        },
+        {
+          "line": 45,
+          "text": "else if (flag === \"--apk-manifest\") options.apkManifest = next();"
+        },
+        {
+          "line": 54,
+          "text": "if (!options.apkManifest) throw new Error(\"--apk-manifest <path to verify-apks apk-manifest.json> is required\");"
+        },
+        {
+          "line": 56,
+          "text": "if (![\"release\", \"debug\"].includes(options.build)) throw new Error(\"--build must be release or debug\");"
+        },
+        {
+          "line": 62,
+          "text": "* Pick and admit the APK row from a verify-apks manifest. A release must be distributable"
+        },
+        {
+          "line": 63,
+          "text": "* with no named blocker (scripts/release-blockers.mjs) against the committed signer"
+        },
+        {
+          "line": 66,
+          "text": "export function admitUnitApk(manifestFile, { variant, build }, { descriptor = readReleaseSigner() } = {}) {"
+        },
+        {
+          "line": 67,
+          "text": "const manifest = JSON.parse(fs.readFileSync(manifestFile, \"utf8\"));"
+        },
+        {
+          "line": 68,
+          "text": "if (manifest.testMocks !== false) throw new Error(`${manifestFile} is a test-mocks build; pilot units get distribution builds only`);"
+        },
+        {
+          "line": 69,
+          "text": "const row = manifest.results?.find(entry => entry.variant === variant && entry.mode === build);"
+        },
+        {
+          "line": 70,
+          "text": "if (!row) throw new Error(`${manifestFile} has no ${variant} ${build} APK`);"
+        },
+        {
+          "line": 71,
+          "text": "const file = path.resolve(path.dirname(manifestFile), path.basename(row.file));"
+        },
+        {
+          "line": 73,
+          "text": "const actual = updateArtifactDigest(file).sha256;"
+        },
+        {
+          "line": 74,
+          "text": "if (actual !== row.sha256) throw new Error(`${file} does not match its verified manifest row`);"
+        },
+        {
+          "line": 75,
+          "text": "// The manifest-level flag is checked above; a row that disagrees with it is refused for either build."
+        },
+        {
+          "line": 77,
+          "text": "if (build === \"release\") {"
+        },
+        {
+          "line": 79,
+          "text": "// signing, versionCode, flag-off audit, packaged runtime, speech qualification and the one"
+        },
+        {
+          "line": 81,
+          "text": "const recorded = row.releaseAdmission ? [...(row.releaseAdmission.failures ?? []), ...(row.releaseAdmission.blockers ?? [])] : [];"
+        },
+        {
+          "line": 82,
+          "text": "const blockers = [...new Set([...releaseBlockers(row, { manifestTestMocks: manifest.testMocks, admission: releaseAdmission(row, descriptor) }), ...recorded])];"
+        },
+        {
+          "line": 84,
+          "text": "\"Pilot and acceptance units get distributable releases only; --build debug rehearses the same steps on a disposable emulator.\");"
+        },
+        {
+          "line": 86,
+          "text": "return { file, sha256: actual, variant, build, versionCode: row.versionCode, versionName: row.versionName, signed: row.signed === true,"
+        },
+        {
+          "line": 102,
+          "text": "* Ways the admitted file contradicts the manifest row that admitted it. apk-manifest.json is an"
+        },
+        {
+          "line": 103,
+          "text": "* unsigned record, so a row edited by hand (and re-hashed) could describe a release the file is"
+        },
+        {
+          "line": 106,
+          "text": "* android/release-signer.json. Speech qualification and licence blockers cannot be re-derived"
+        },
+        {
+          "line": 107,
+          "text": "* from the file; for those the manifest written by verify-apks remains the record."
+        },
+        {
+          "line": 112,
+          "text": "if (apk.build === \"release\") {"
+        },
+        {
+          "line": 113,
+          "text": "if (facts.debuggable !== false) problems.push(\"it is debuggable or its build type could not be read, so it is not a release build\");"
+        },
+        {
+          "line": 116,
+          "text": "problems.push(`it is signed by ${facts.signerSha256 ?? \"no verified signer\"}, not the certificate in android/release-signer.json`);"
+        },
+        {
+          "line": 124,
+          "text": "if (problems.length) throw new Error(`${apk.file} contradicts the manifest row that admitted it:\\n${problems.map(item => `  - ${item}`).join(\"\\n\")}`);"
+        },
+        {
+          "line": 130,
+          "text": "const versionCode = /versionCode=(\\d+)/.exec(dumpsys)?.[1];"
+        },
+        {
+          "line": 131,
+          "text": "return { versionCode: versionCode ? Number(versionCode) : null, versionName: field(\"versionName\"), firstInstallTime: /firstInstallTime=([^\\n]+)/.exec(dumpsys)?.[1]?.trim() ?? null,"
+        },
+        {
+          "line": 166,
+          "text": "// withStderr keeps device-side refusals (such as run-as on a release) visible to the caller."
+        },
+        {
+          "line": 192,
+          "text": "async function main() {"
+        },
+        {
+          "line": 200,
+          "text": "if (apk.rehearsal && !device.emulator) throw new Error(\"--build debug is an emulator rehearsal; physical pilot units get the signed release\");"
+        },
+        {
+          "line": 212,
+          "text": "if (installed.versionCode !== apk.versionCode) throw new Error(`Installed versionCode ${installed.versionCode} differs from ${apk.versionCode}`);"
+        },
+        {
+          "line": 231,
+          "text": "apk: { variant: apk.variant, build: apk.build, sha256: apk.sha256, versionCode: apk.versionCode, versionName: apk.versionName,"
+        },
+        {
+          "line": 233,
+          "text": "installed: { sha256: installedSha256, versionCode: installed.versionCode, versionName: installed.versionName, firstInstallTime: installed.firstInstallTime },"
+        }
+      ],
+      "reviewNotes": "Reviewed OTA admission/publication or platform-probe support. Focused executable tests establish their declared contracts; this allocation does not claim complete transition refinement."
+    },
+    {
+      "path": "scripts/publish-update-manifest.mjs",
+      "models": [
+        "PilotApkUpdate"
+      ],
+      "scope": "release-support",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "sha256": "ae24d2a573f2894d9833621a36d0422db290ae36b87933249452b4997d4072a0",
+      "stateAnchors": [
+        {
+          "line": 3,
+          "text": "* Write the one-tap update manifest (docs/android-and-aosp.md, Publish an update) from a verified release."
+        },
+        {
+          "line": 5,
+          "text": "*   node scripts/publish-update-manifest.mjs --variant launcher|standalone [--apk-manifest FILE] [--out-dir DIR] [--notes TEXT]"
+        },
+        {
+          "line": 7,
+          "text": "* Phones install whatever alpha-update-stable.json names, so it is written only for a release row of"
+        },
+        {
+          "line": 8,
+          "text": "* the verify-apks manifest that is distributable, signed and signed by android/release-signer.json, and"
+        },
+        {
+          "line": 10,
+          "text": "* copied to DIR as alpha-phone-<versionCode>.apk, and the manifest's sha256 and sizeBytes are read from"
+        },
+        {
+          "line": 13,
+          "text": "* nothing: the owner runs gh release upload with the two files it names."
+        },
+        {
+          "line": 21,
+          "text": "import { updateArtifactDigest } from \"./update-artifact.mjs\";"
+        },
+        {
+          "line": 24,
+          "text": "// parseUpdateManifest's UPDATE_MAX_BYTES: phones silently drop a manifest naming a larger APK."
+        },
+        {
+          "line": 25,
+          "text": "const UPDATE_MAX_BYTES = 2 * 1024 * 1024 * 1024;"
+        },
+        {
+          "line": 26,
+          "text": "const USAGE = \"Usage: node scripts/publish-update-manifest.mjs --variant launcher|standalone [--apk-manifest FILE] [--out-dir DIR] [--notes TEXT]\";"
+        },
+        {
+          "line": 29,
+          "text": "const options = { variant: null, apkManifest: \"artifacts/apk-manifest.json\", outDir: \"artifacts/app-stable\", notes: null };"
+        },
+        {
+          "line": 30,
+          "text": "const names = { \"--variant\": \"variant\", \"--apk-manifest\": \"apkManifest\", \"--out-dir\": \"outDir\", \"--notes\": \"notes\" };"
+        },
+        {
+          "line": 40,
+          "text": "/** The release row behind an update, or the reasons it may not be offered to phones. */"
+        },
+        {
+          "line": 41,
+          "text": "export function updateRow(manifestFile, variant, descriptor) {"
+        },
+        {
+          "line": 44,
+          "text": "try { admitted = admitUnitApk(manifestFile, { variant, build: \"release\" }, { descriptor }); }"
+        },
+        {
+          "line": 46,
+          "text": "const row = JSON.parse(fs.readFileSync(manifestFile, \"utf8\")).results?.find(entry => entry.variant === variant && entry.mode === \"release\");"
+        },
+        {
+          "line": 48,
+          "text": "if (row.distributable !== true) problems.push(`the ${variant} release is not distributable in ${manifestFile}`);"
+        },
+        {
+          "line": 49,
+          "text": "if (row.signed !== true) problems.push(`the ${variant} release is unsigned`);"
+        },
+        {
+          "line": 50,
+          "text": "if (row.releaseAdmission?.signerMatches !== true) problems.push(`the ${variant} release is not recorded as signed by ${RELEASE_SIGNER_FILE}`);"
+        },
+        {
+          "line": 55,
+          "text": "export function main(argv, { root = process.cwd(), log = console.log, error = console.error, inspectApk = inspectUpdateApk } = {}) {"
+        },
+        {
+          "line": 60,
+          "text": "const manifestFile = path.resolve(root, options.apkManifest);"
+        },
+        {
+          "line": 61,
+          "text": "const { row, admitted, problems } = updateRow(manifestFile, options.variant, descriptor);"
+        },
+        {
+          "line": 64,
+          "text": "const apkName = `alpha-phone-${row.versionCode}.apk`;"
+        },
+        {
+          "line": 70,
+          "text": "const {size,sha256} = updateArtifactDigest(apk);"
+        },
+        {
+          "line": 71,
+          "text": "if (sha256 !== row.sha256) { fs.rmSync(apk, { force: true }); error(`${apk} does not match its verified manifest row`); return 1; }"
+        },
+        {
+          "line": 72,
+          "text": "if (size > UPDATE_MAX_BYTES) { fs.rmSync(apk, { force: true }); error(`${apk} is over 2 GiB; phones do not offer it.`); return 1; }"
+        },
+        {
+          "line": 73,
+          "text": "// A release row is not an authority for its own assertions. Inspect the copy"
+        },
+        {
+          "line": 85,
+          "text": "versionCode: row.versionCode,"
+        },
+        {
+          "line": 95,
+          "text": "log(`Wrote ${path.relative(root, apk)} and ${path.relative(root, path.join(outDir, MANIFEST_NAME))} for ${options.variant} ${row.versionName} (${row.versionCode}). Upload the APK f"
+        }
+      ],
+      "reviewNotes": "Reviewed OTA admission/publication or platform-probe support. Focused executable tests establish their declared contracts; this allocation does not claim complete transition refinement."
+    },
+    {
+      "path": "scripts/update-apk-admission.mjs",
+      "models": [
+        "PilotApkUpdate"
+      ],
+      "scope": "release-support",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "sha256": "db42288cb0f9f9c0f8d5f0e386ff0a0479c7cfcb75a94b24f23299d8a85ad6d0",
+      "stateAnchors": [
+        {
+          "line": 1,
+          "text": "/** Bind a release offer to the actual APK and its verified original signer."
+        },
+        {
+          "line": 2,
+          "text": "* Active release signing and installed signing-family selection are different"
+        },
+        {
+          "line": 3,
+          "text": "* facts after rotation; neither is accepted from apk-manifest.json alone. */"
+        },
+        {
+          "line": 12,
+          "text": "import {updateArtifactDigest} from './update-artifact.mjs';"
+        },
+        {
+          "line": 20,
+          "text": "/** Public distribution must inspect the compiled channel, not a release row's"
+        },
+        {
+          "line": 23,
+          "text": "requireValue(typeof publicUrl === 'string' && publicUrl.length > 0, 'the configured public manifest URL is required');"
+        },
+        {
+          "line": 25,
+          "text": "requireValue(channel.kind === 'public' && channel.manifestUrlSha256 ==="
+        },
+        {
+          "line": 34,
+          "text": "requireValue(apk.build === 'release' && ['launcher','standalone'].includes(apk.variant), 'a release distribution is required');"
+        },
+        {
+          "line": 35,
+          "text": "requireValue(HEX.test(descriptor?.signerSha256 ?? ''), 'an enrolled release signer is required');"
+        },
+        {
+          "line": 37,
+          "text": "requireValue(signing.activeSignerSha256 === descriptor.signerSha256, 'active signer differs from the enrolled release signer');"
+        },
+        {
+          "line": 39,
+          "text": "requireValue(Number.isSafeInteger(apk.versionCode) && apk.versionCode > 0 && signing.versionCode === apk.versionCode, 'archive versionCode differs from its release row');"
+        },
+        {
+          "line": 43,
+          "text": "'archive HOME or flavor marker differs from its release row');"
+        },
+        {
+          "line": 50,
+          "text": "Number.isSafeInteger(rotation.versionCode) && rotation.versionCode > rotation.fromVersionCode &&"
+        },
+        {
+          "line": 51,
+          "text": "apk.versionCode >= rotation.versionCode,"
+        },
+        {
+          "line": 75,
+          "text": "export function inspectUpdateApk(apk, {descriptor} = {}) {"
+        },
+        {
+          "line": 82,
+          "text": "requireValue(updateArtifactDigest(apk.file).sha256 === apk.sha256, 'APK bytes changed during admission');"
+        }
+      ],
+      "reviewNotes": "Reviewed OTA admission/publication or platform-probe support. Focused executable tests establish their declared contracts; this allocation does not claim complete transition refinement."
+    },
+    {
+      "path": "scripts/update-artifact.mjs",
+      "models": [
+        "PilotApkUpdate"
+      ],
+      "scope": "release-support",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "sha256": "7dc68e5d332733af5c9f6ee69bb7b0e5b5560270e00ed4a22aab2a9481c58e50",
+      "stateAnchors": [
+        {
+          "line": 5,
+          "text": "export function updateArtifactDigest(file) {"
+        }
+      ],
+      "reviewNotes": "Reviewed OTA admission/publication or platform-probe support. Focused executable tests establish their declared contracts; this allocation does not claim complete transition refinement."
     }
   ],
   "configurationInputs": [
@@ -619705,7 +620725,7 @@
         "NativeTextScaleLifecycle",
         "NativeAssistantEntry"
       ],
-      "sha256": "5988c10458b25bbda549955ea2c89161e19a262a50cf17eb313c420f38d0c058"
+      "sha256": "f6a3389cb5359f4e899a43d32e05761a51b8981b33f83dd01621c21e9e1a4fd0"
     },
     {
       "path": "android/app/src/standalone/AndroidManifest.xml",
@@ -620581,7 +621601,7 @@
       "models": [
         "Application"
       ],
-      "sha256": "050a2c48375750d3e4c9c87ffa5d0432dd5d6a91480dd3db75b5aa06567b6b08",
+      "sha256": "4e35f236971f31eb67b0c41591bed5106d5b803deb9e0bf370c22a4bdd26b2e9",
       "integrationReview": "Reviewed integration input; current source identity does not establish runtime behavior or source-model refinement."
     },
     {
@@ -620714,6 +621734,24 @@
         "ServiceAuthorization"
       ],
       "sha256": "aca18a41c51f4eacc0525407a64e3abb470a9068eab01a6fad6d768dc90e7961"
+    },
+    {
+      "path": "patches/eliza/app-update-resume-client.patch",
+      "models": [
+        "AutomaticAppUpdateSchedule",
+        "MountedUpdateAdmission",
+        "StartupUpdateAdmission"
+      ],
+      "sha256": "ba502dabbe2be69f7cca70530e0bdbd58d8f4ffe64148c3473bc9034f77746a2"
+    },
+    {
+      "path": "patches/eliza/app-update-resume-client-manifest.json",
+      "models": [
+        "AutomaticAppUpdateSchedule",
+        "MountedUpdateAdmission",
+        "StartupUpdateAdmission"
+      ],
+      "sha256": "cf806d370ccab4e31b15de7755ad6a64cca439433f5ec90dd32de494825a8df8"
     }
   ],
   "runtimeAssets": [

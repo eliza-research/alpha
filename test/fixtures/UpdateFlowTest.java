@@ -129,7 +129,7 @@ public final class UpdateFlowTest {
   AlphaDevicePlugin plugin=new AlphaDevicePlugin();
   fixtureBridges.add(plugin);
   if(AlphaDevicePlugin.UpdatePause.context!=context){AlphaDevicePlugin.UpdatePause.journal=null;AlphaDevicePlugin.UpdatePause.configure(context);}
-  plugin.context=context;plugin.activity=new Activity();plugin.activity.state=state;plugin.load();
+  plugin.context=context;plugin.activity=new MainActivity();plugin.activity.state=state;plugin.load();
   return plugin;
  }
  private static PackageInfo archive(String packageName,long versionCode){
@@ -206,7 +206,7 @@ public final class UpdateFlowTest {
   plugin("activation",null);plugin("updateResume",null);plugin("settledActivation",null);plugin("settledOutcome",null);plugin("settledResumeBridge",null);
   var registry=AlphaDevicePlugin.class.getDeclaredField("updateBridges");
   registry.setAccessible(true);((java.util.Set<?>)registry.get(null)).clear();
-  plugin("updateOwner",null);plugin("updateConfirm",null);plugin("updateSession",0);plugin("updateDue",false);plugin("updateOpen",false);plugin("updateAsked",0L);
+  plugin("updateOwner",null);plugin("updateConfirm",null);plugin("updateSession",0);plugin("updateDue",false);plugin("updateOpen",false);plugin("updateAutomatic",false);plugin("updateAsked",0L);
   java.lang.reflect.Field attempt=AlphaDevicePlugin.class.getDeclaredField("updating");
   attempt.setAccessible(true);((java.util.concurrent.atomic.AtomicBoolean)attempt.get(null)).set(false);
  }
@@ -1840,6 +1840,123 @@ public final class UpdateFlowTest {
  static void serveFixtureHttps(){
   URL.setURLStreamHandlerFactory(protocol->!"https".equals(protocol)?null:new URLStreamHandler(){@Override protected URLConnection openConnection(URL url){return new Served(url);}});
  }
+ private static PluginCall automatic(AlphaDevicePlugin owner)throws Exception{
+  PluginCall call=offered();call.getData().put("automatic",true);owner.installUpdate(call);call.awaitAnswer();return call;
+ }
+ private static void automaticUpdatesRequireSupportedAndroidAndExistingConsent(File cache)throws Exception{
+  for(int sdk:new int[]{29,30,31,37})for(boolean consent:new boolean[]{false,true}){
+   Context context=installing(cache);Build.VERSION.SDK_INT=sdk;context.packages.installsAllowed=consent;
+   AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);connections.clear();
+   String expected=sdk<31?"unsupported":consent?"supported":"permission-required";
+   check(expected.equals(AlphaDevicePlugin.automaticUpdateStatus(context)),"capability reports Android support and existing install consent");
+   if(!"supported".equals(expected)){
+    PluginCall result=automatic(owner);
+    check(result.resolved.get()==1&&result.result!=null&&expected.equals(result.result.optString("status")),"automatic refusal is explicit");
+    check(owner.activity.started.isEmpty()&&connections.isEmpty()&&context.packages.installer.sessions.isEmpty()&&AlphaDevicePlugin.UpdatePause.store().read()==null,"automatic admission never opens settings, downloads, stages or pauses without support and consent");
+   }else{
+    check(automatic(owner).resolved.get()==1,"supported automatic attempt stages once");
+    int session=committed(context);
+    check(context.packages.installer.internals.get(session).requireUserAction==PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED,"automatic commit requests Android's self-update path");
+    check(String.valueOf(context.packages.installer.getSessionInfo(session).getReferrerUri()).endsWith("/intent/automatic"),"quiet handling is bound to the exact Android session across restart");
+    check(owner.activity.started.isEmpty(),"a committed automatic attempt opens nothing");
+    context.packages.installer.destroy(session);
+   }
+  }
+ }
+ private static void automaticPendingActionWaitsForAnExplicitContinue(File cache)throws Exception{
+  for(boolean restart:new boolean[]{false,true}){
+   Context context=installing(cache);AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);
+   check(automatic(owner).resolved.get()==1,"automatic attempt commits");
+   int session=committed(context);
+   if(restart)owner=restarted(context);
+   Intent confirm=confirmation(context,session);settled();resume(owner);
+   check(owner.activity.started.isEmpty(),"optional Android action is quiet, including after process restart and resume");
+   connections.clear();check(automatic(owner).resolved.get()==1,"an automatic retry reads the same pending session");
+   check(owner.activity.started.isEmpty()&&connections.isEmpty()&&context.packages.installer.committed.equals(List.of(session)),"automatic retry cannot open, download or commit the pending update again");
+   PluginCall read=new PluginCall(new JSObject());owner.updateState(read);read.awaitAnswer();
+   check(Boolean.TRUE.equals(read.result.opt("pending"))&&Boolean.TRUE.equals(read.result.opt("canContinue")),"the existing update gate exposes the kept Android action");
+   check(AlphaDevicePlugin.UpdatePause.store().read()!=null,"an automatic pending Android action retains durable resident ownership");
+   boolean blocked=false;try{ai.eliza.plugins.agent.updater.RuntimeUpdatePause.beforeStart();}catch(IllegalStateException expected){blocked=true;}
+   check(blocked,"automatic pending user action cannot restart the resident before terminal reconciliation");
+   PluginCall proceed=new PluginCall(new JSObject().put("activationId",read.result.optString("activationId")).put("bridgeId",read.result.optString("bridgeId")));
+   owner.continueUpdate(proceed);proceed.awaitAnswer();
+   check(proceed.resolved.get()==1&&owner.activity.started.equals(List.of(confirm)),"explicit Continue opens the existing confirmation exactly once");
+   check(context.packages.installer.committed.equals(List.of(session))&&connections.isEmpty(),"Continue neither downloads nor commits again");
+  }
+ }
+ private static void automaticSuccessReconcilesTheExactInstalledSuccessor(File cache)throws Exception{
+  Context context=installing(cache);AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);
+  check(automatic(owner).resolved.get()==1,"automatic attempt commits");int session=committed(context);
+  check(AlphaDevicePlugin.UpdatePause.store().read()!=null,"runtime remains fenced until Android's installed outcome is established");
+  context.packages.installed.versionCode=8;Files.write(new File(context.data,"base.apk").toPath(),APK);BuildConfig.VERSION_CODE=8;
+  context.packages.installer.destroy(session);AlphaDevicePlugin successor=restarted(context);
+  PluginCall state=new PluginCall(new JSObject());successor.updateState(state);state.awaitAnswer();
+  check(Boolean.FALSE.equals(state.result.opt("pending"))&&Boolean.TRUE.equals(state.result.opt("idle"))&&AlphaDevicePlugin.UpdatePause.store().read()==null,"only the exact installed and executing successor clears the runtime pause");
+  check(successor.activity.started.isEmpty(),"silent success needs no activity handoff");
+ }
+ private static void automaticDraftRefusalNeverStopsOrCommits(File cache)throws Exception{
+  var original=com.getcapacitor.Plugin.ready;
+  try{
+   Context context=installing(cache);AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);AlphaLocalAgentPlugin.stops=0;
+   com.getcapacitor.Plugin.ready=(plugin,value)->((AlphaDevicePlugin)plugin).activateUpdate(new PluginCall(value.put("ready",false)));
+   check(automatic(owner).rejected.get()==1,"automatic preparation respects a refused draft flush");
+   check(AlphaLocalAgentPlugin.stops==0&&context.packages.installer.committed.isEmpty()&&context.packages.installer.sessions.isEmpty()&&AlphaDevicePlugin.UpdatePause.store().read()==null,"refusal preserves resident state and abandons only its own uncommitted session");
+   check(owner.activity.started.isEmpty(),"a refused automatic attempt opens nothing");
+  }finally{com.getcapacitor.Plugin.ready=original;}
+ }
+ private static void automaticModeIsStrictAndExplicitFalseKeepsManualBehavior(File cache)throws Exception{
+  for(Object malformed:new Object[]{"true","false",1,0,new JSObject(),new Object[]{true}}){
+   Context context=installing(cache);AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);connections.clear();
+   PluginCall invalid=offered();invalid.getData().put("automatic",malformed);owner.installUpdate(invalid);invalid.awaitAnswer();
+   check(invalid.rejected.get()==1&&connections.isEmpty()&&context.packages.installer.sessions.isEmpty()&&owner.activity.started.isEmpty(),"nonboolean automatic mode has no side effects");
+  }
+  Context context=installing(cache);AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);
+  PluginCall manual=offered();manual.getData().put("automatic",false);owner.installUpdate(manual);manual.awaitAnswer();
+  int session=committed(context);Intent confirm=confirmation(context,session);
+  check(manual.resolved.get()==1&&context.packages.installer.internals.get(session).requireUserAction==0,"explicit false keeps the manual Android session policy");
+  check(owner.activity.started.equals(List.of(confirm)),"a manual attempt still opens Android's requested confirmation");
+ }
+ private static void automaticUpdatesRequireForegroundUnlockedMainAndKnownImageCallState(File cache)throws Exception{
+  for(String condition:List.of("assistant","background","focus","locked","user-locked","image-call","image-call-unknown","image-call-missing")){
+   Context context=installing(cache);AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);AlphaLocalAgentPlugin.stops=0;connections.clear();
+   switch(condition){
+    case "assistant":owner.activity=new Activity();break;
+    case "background":owner.activity.state=Lifecycle.State.STARTED;break;
+    case "focus":owner.activity.focused=false;break;
+    case "locked":owner.activity.keyguard.locked=true;break;
+    case "user-locked":owner.activity.users.unlocked=false;break;
+    case "image-call":context.imageAdmitted=true;context.calls.active=true;break;
+    case "image-call-unknown":context.imageAdmitted=true;context.calls.unavailable=true;break;
+    case "image-call-missing":context.imageAdmitted=true;context.calls=null;break;
+   }
+   check(automatic(owner).rejected.get()==1,"automatic admission defers active or unknown use: "+condition);
+   check(connections.isEmpty()&&context.packages.installer.sessions.isEmpty()&&AlphaLocalAgentPlugin.stops==0&&AlphaDevicePlugin.UpdatePause.store().read()==null,"deferred automatic work cannot download, stage, pause or commit: "+condition);
+   if(condition.equals("image-call"))check(tap(owner).resolved.get()==1&&context.packages.installer.committed.size()==1,"the explicit manual path retains its existing behavior");
+  }
+  for(boolean image:new boolean[]{false,true}){
+   Context context=installing(cache);context.imageAdmitted=image;if(!image)context.calls=null;
+   AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);
+   check(automatic(owner).resolved.get()==1&&context.packages.installer.committed.size()==1,image?"a known idle image call state admits automatic replacement":"sideloaded apps need no telephony permission or service");
+  }
+ }
+ private static void automaticUpdatesRecheckUseAfterDownloadAndBeforeCommit(File cache)throws Exception{
+  for(String cut:List.of("download-focus","staging-background","stop-focus","stop-call","stop-call-unknown")){
+   Context context=installing(cache);AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);AlphaLocalAgentPlugin.stops=0;
+   if(cut.equals("download-focus"))context.packages.archiveRead=()->owner.activity.focused=false;
+   if(cut.equals("staging-background"))context.packages.installer.staging=()->owner.activity.state=Lifecycle.State.STARTED;
+   if(cut.startsWith("stop-call"))context.imageAdmitted=true;
+   if(cut.startsWith("stop-"))AlphaLocalAgentPlugin.pauseObserver=()->{
+    if(cut.equals("stop-focus"))owner.activity.focused=false;
+    else{context.calls.active=cut.equals("stop-call");context.calls.unavailable=cut.equals("stop-call-unknown");}
+   };
+   try{
+    check(automatic(owner).rejected.get()==1,"automatic use is read again at cutpoint "+cut);
+    check(context.packages.installer.committed.isEmpty()&&context.packages.installer.sessions.isEmpty()&&AlphaDevicePlugin.UpdatePause.store().read()==null,"only uncommitted staging is abandoned and any acquired pause reconciles: "+cut);
+    check(AlphaLocalAgentPlugin.stops==(cut.startsWith("stop-")?1:0),"foreground loss before activation never stops the resident: "+cut);
+    ai.eliza.plugins.agent.updater.RuntimeUpdatePause.beforeStart();
+   }finally{AlphaLocalAgentPlugin.pauseObserver=()->{};}
+  }
+ }
  public static void main(String[] args)throws Exception{
   serveFixtureHttps();
   // A retired crash unwinds its worker by design; anything else a worker throws is still printed.
@@ -1847,6 +1964,13 @@ public final class UpdateFlowTest {
   File cache=Files.createTempDirectory("alpha-update-flow").toFile();
   int status=1;
   try{
+   automaticUpdatesRequireSupportedAndroidAndExistingConsent(cache);
+   automaticPendingActionWaitsForAnExplicitContinue(cache);
+   automaticSuccessReconcilesTheExactInstalledSuccessor(cache);
+   automaticDraftRefusalNeverStopsOrCommits(cache);
+   automaticModeIsStrictAndExplicitFalseKeepsManualBehavior(cache);
+   automaticUpdatesRequireForegroundUnlockedMainAndKnownImageCallState(cache);
+   automaticUpdatesRecheckUseAfterDownloadAndBeforeCommit(cache);
    applicationAttachBeforePublicationDoesNotFenceOrdinaryStartup(cache);
    onlyTheInstalledFlavorAndLineageReachAndroid(cache);
    updateWaitsForDraftsAndExactShutdown(cache);

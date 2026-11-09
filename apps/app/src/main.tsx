@@ -62,7 +62,7 @@ import { DailyApps } from './daily';
 import { installPrototypeVoiceAdapter } from './prototype/voice-adapter';
 import { installPrototypeBrowserAdapter } from './prototype/browser-adapter';
 import { installCalendarAdapter } from './prototype/calendar-adapter';
-import { hasAppearancePreview, installSettingsAdapter, readAppearanceChoice, resolveAppearance } from './prototype/settings-adapter';
+import { automaticUpdateIdle, hasAppearancePreview, installSettingsAdapter, readAppearanceChoice, resolveAppearance } from './prototype/settings-adapter';
 import { ConnectionChooser, connectionController, connectionChooserVisible, residentAlwaysPresent } from './runtime/connection-ui';
 import { protectedPowerLaunchState } from './runtime/power-launch-state';
 import { installListenerInvocation, stopWakeListenerForChatOnly } from './runtime/always-on-listener';
@@ -332,9 +332,11 @@ async function applyDeviceLocale() {
   try { const info = await System.getLocaleInfo(); setLocalePreferences({ locale: info.locale, hourCycle: info.hour24 === true ? 'h23' : info.hour24 === false ? 'h12' : undefined }); }
   catch { /* Keep the WebView's default locale formatting. */ }
 }
-async function prepareMountedUpdate(activationCurrent: () => boolean) {
+async function prepareMountedUpdate(activationCurrent: () => boolean, automatic = false, editingAtFreeze = false) {
   const owner = shell;
-  const current = () => activationCurrent() && shell === owner && owner?.live === true;
+  const idle = () => automaticUpdateIdle(owner.S(),connectionController.getSnapshot(),
+    !!document.querySelector('input:focus,textarea:focus,[contenteditable="true"]:focus,[data-alpha-chat-recorder],[data-alpha-subview="notes-recorder"]'));
+  const current = () => activationCurrent() && shell === owner && owner?.live === true && (!automatic || !editingAtFreeze && idle());
   if (!current()) throw Error('App is still opening');
   if (connectionController.getSnapshot().busy || document.querySelector('[data-alpha-chat-recorder],[data-alpha-subview="notes-recorder"]'))
     throw Error('Finish the current activity before updating');

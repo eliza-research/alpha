@@ -1,24 +1,96 @@
 --- a/packages/ui/src/state/app-update-gate.ts
 +++ b/packages/ui/src/state/app-update-gate.ts
-@@ -1,7 +1,7 @@
- type Activation = { activationId: string; bridgeId: string };
- type StartupPort = {
-   updateState(): Promise<unknown>;
+@@ -4 +4 @@
 -  activateUpdate(input: Activation & { ready: boolean }): Promise<unknown>;
 +  activateUpdate(input: Activation & { ready: boolean; resumeEligible?: true }): Promise<unknown>;
-   continueUpdate(input: Activation): Promise<unknown>;
- };
- type UpdateOutcome = "canceled" | "failed" | "installed";
-@@ -255,7 +255,11 @@
-                 reconnect = prepared;
-                 localRefusal = !prepared;
-                 await port
+@@ -23,0 +24 @@
++  automatic: boolean;
+@@ -49,0 +51 @@
++    automatic: "automatic" in value && value.automatic === true,
+@@ -196,0 +199,2 @@
++    automatic?: boolean,
++    editingAtFreeze?: boolean,
+@@ -206,0 +211,2 @@
++  let editingAtFreeze = false;
++  const editing = () => !!document.querySelector('input:focus,textarea:focus,[contenteditable="true"]:focus');
+@@ -224,0 +231 @@
++            if (!active || active.activationId !== next.activationId) editingAtFreeze = editing();
+@@ -250 +257 @@
+-                    .then(() => prepare(current))
++                    .then(() => prepare(current, next.automatic, editingAtFreeze))
+@@ -258 +265,5 @@
 -                  .activateUpdate({ ...binding, ready: !!prepared })
 +                  .activateUpdate({
 +                    ...binding,
 +                    ready: !!prepared,
 +                    ...(prepared ? { resumeEligible: true } : {}),
 +                  })
-                   .catch(() => {});
-               });
-             }
+@@ -309,0 +321 @@
++      editingAtFreeze = editing();
+@@ -321,0 +334,66 @@
++}
++
++export type AppUpdateSchedule = {
++  active: boolean;
++  disposed: boolean;
++  busy: boolean;
++  failures: number;
++  wakeAt: number;
++};
++
++/** Foreground upkeep. Native owns package admission, draft receipts and installation.
++ * A suspended/disposed owner cannot start a later effect after an awaited read.
++ * Never overlap a still-running native call, even across background/resume.
++ */
++export function createAppUpdateScheduler(options: {
++  run(current: () => boolean): Promise<void>;
++  now?: () => number;
++  schedule?: (callback: () => void, delay: number) => unknown;
++  cancel?: (timer: unknown) => void;
++  intervalMs?: number;
++  retryMs?: number;
++}) {
++  const now = options.now ?? (() => performance.now());
++  const schedule = options.schedule ?? ((callback, delay) => setTimeout(callback, delay));
++  const cancel = options.cancel ?? ((timer) => clearTimeout(timer as ReturnType<typeof setTimeout>));
++  const interval = options.intervalMs ?? 15 * 60 * 1000;
++  const retry = options.retryMs ?? 60 * 1000;
++  if (!Number.isSafeInteger(interval) || interval <= 0 || !Number.isSafeInteger(retry) || retry <= 0 || retry > interval)
++    throw Error("Invalid app update schedule");
++  let state: AppUpdateSchedule = {active: false, disposed: false, busy: false, failures: 0, wakeAt: 0};
++  let timer: unknown;
++  let generation = 0;
++  const clear = () => { if (timer !== undefined) cancel(timer); timer = undefined; };
++  const arm = () => {
++    clear();
++    if (!state.active || state.disposed || state.busy) return;
++    timer = schedule(() => { timer = undefined; void poll(); }, Math.max(0, state.wakeAt - now()));
++  };
++  async function poll() {
++    if (!state.active || state.disposed || state.busy) return;
++    if (now() < state.wakeAt) { arm(); return; }
++    clear();
++    state = {...state, busy: true};
++    const owner = generation;
++    const current = () => !state.disposed && state.active && owner === generation;
++    let failed = false;
++    try { await options.run(current); } catch { failed = true; }
++    const failures = failed ? Math.min(state.failures + 1, 20) : 0;
++    state = {...state, busy: false, failures,
++      wakeAt: owner !== generation ? now() : now() + (failed ? Math.min(interval, retry * 2 ** (failures - 1)) : interval)};
++    arm();
++  }
++  return {
++    snapshot: (): AppUpdateSchedule => ({...state}),
++    setActive(active: boolean) {
++      if (state.disposed) return;
++      if (state.active !== active) generation++;
++      state = {...state, active};
++      if (active) arm(); else clear();
++    },
++    dispose() {
++      generation++;
++      state = {...state, active: false, disposed: true};
++      clear();
++    },
++  };

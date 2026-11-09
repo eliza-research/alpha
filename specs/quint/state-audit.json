@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "b1817660a0347ae19551b9ee296410fe55f02d59",
-  "ledgerSha256": "0b2f3ac4beb7fe187870c706381cb16813294dceed2203b9b730ba5df6cc573b",
+  "ledgerSha256": "e73eb3d35ada9de206298351bd88527ad68ea3766c5a60dcbaa00ed6601dc8f8",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -22,17 +22,17 @@
     "The ledger supplies pinned source bytes. Effective client/native/runtime patch outputs require their separately authenticated source mappings."
   ],
   "counts": {
-    "files": 5773,
+    "files": 5779,
     "testSupportFiles": 297,
     "testSupportCandidates": 11402,
-    "parsedFiles": 5683,
+    "parsedFiles": 5689,
     "languageReview": 90,
     "parseErrors": 0,
-    "candidates": 67748,
-    "writeSites": 67313,
-    "writeAssociations": 60368,
-    "asynchronous": 8387,
-    "unassignedWrites": 10372
+    "candidates": 67807,
+    "writeSites": 67385,
+    "writeAssociations": 60429,
+    "asynchronous": 8395,
+    "unassignedWrites": 10385
   },
   "files": [
     {
@@ -14266,7 +14266,7 @@
     },
     {
       "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/SettingsSystemFactsInstrumentedTest.java",
-      "sha256": "91df0ed3fda4facf922ee75ad016037b4367662a8f6d86c435419a8291fcd1ac",
+      "sha256": "eeb81f732a8a04dd32bc32c6d9a746c98ef38c6d3d4c9a4425039c259f603b7d",
       "allocatedModels": [
         "PreferencesAndPresentation"
       ],
@@ -14286,8 +14286,8 @@
           "writes": 1
         },
         {
-          "owner": "SettingsSystemFactsInstrumentedTest.everySettingsPageHasASpecificFirstChoice@70",
-          "line": 71,
+          "owner": "SettingsSystemFactsInstrumentedTest.everySettingsPageHasASpecificFirstChoice@71",
+          "line": 72,
           "bindings": 5,
           "writes": 1
         }
@@ -18264,7 +18264,7 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java",
-      "sha256": "57adae65fb01675362a0afd228bf516d0b37b4e57225c462d73daadd1be56293",
+      "sha256": "5cbc8021d014680111892621060cc419a068148407b781d7bd1f66cccc15c668",
       "allocatedModels": [
         "Application",
         "AccessibleToastLifetime",
@@ -18379,411 +18379,417 @@
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.handOff@98",
-          "line": 98,
+          "owner": "AlphaDevicePlugin.handOff@99",
+          "line": 99,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.openPasswordProvider@99",
-          "line": 99,
+          "owner": "AlphaDevicePlugin.openPasswordProvider@100",
+          "line": 100,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.openPasswordProvider@99.lambda@101",
-          "line": 103,
+          "owner": "AlphaDevicePlugin.openPasswordProvider@100.lambda@102",
+          "line": 104,
           "bindings": 5,
           "writes": 4
         },
         {
-          "owner": "AlphaDevicePlugin.openNotificationShade@121",
-          "line": 121,
+          "owner": "AlphaDevicePlugin.openNotificationShade@122",
+          "line": 122,
           "bindings": 3,
           "writes": 3
         },
         {
-          "owner": "AlphaDevicePlugin.openNotificationShade@121.lambda@124",
-          "line": 125,
+          "owner": "AlphaDevicePlugin.openNotificationShade@122.lambda@125",
+          "line": 126,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "AlphaDevicePlugin.openSettings@131",
-          "line": 131,
+          "owner": "AlphaDevicePlugin.openSettings@132",
+          "line": 132,
           "bindings": 3,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.openSettings@131.lambda@137",
-          "line": 139,
+          "owner": "AlphaDevicePlugin.openSettings@132.lambda@138",
+          "line": 140,
           "bindings": 2,
           "writes": 3
         },
         {
-          "owner": "AlphaDevicePlugin.openSettings@131.lambda@145",
-          "line": 147,
+          "owner": "AlphaDevicePlugin.openSettings@132.lambda@146",
+          "line": 148,
           "bindings": 2,
           "writes": 3
         },
         {
-          "owner": "AlphaDevicePlugin.openSettings@131.lambda@145.lambda@147",
-          "line": 147,
+          "owner": "AlphaDevicePlugin.openSettings@132.lambda@146.lambda@148",
+          "line": 148,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "AlphaDevicePlugin",
-          "line": 153,
-          "bindings": 19,
-          "writes": 46
+          "line": 154,
+          "bindings": 20,
+          "writes": 49
         },
         {
-          "owner": "AlphaDevicePlugin.diagnostics@160",
-          "line": 160,
+          "owner": "AlphaDevicePlugin.diagnostics@161",
+          "line": 161,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.crashLog@164",
-          "line": 164,
+          "owner": "AlphaDevicePlugin.crashLog@165",
+          "line": 165,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.crashLog@164.lambda@165",
-          "line": 167,
+          "owner": "AlphaDevicePlugin.crashLog@165.lambda@166",
+          "line": 168,
           "bindings": 10,
           "writes": 4
         },
         {
-          "owner": "AlphaDevicePlugin.recordRendererFailure@183",
-          "line": 183,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "AlphaDevicePlugin.recordRendererFailure@183.lambda@184",
+          "owner": "AlphaDevicePlugin.recordRendererFailure@184",
           "line": 184,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.clearCrashLog@186",
-          "line": 186,
+          "owner": "AlphaDevicePlugin.recordRendererFailure@184.lambda@185",
+          "line": 185,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.clearCrashLog@186.lambda@187",
+          "owner": "AlphaDevicePlugin.clearCrashLog@187",
           "line": 187,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.diagnosticsFacts@190",
-          "line": 190,
+          "owner": "AlphaDevicePlugin.clearCrashLog@187.lambda@188",
+          "line": 188,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.diagnosticsFacts@190.lambda@191",
-          "line": 193,
+          "owner": "AlphaDevicePlugin.diagnosticsFacts@191",
+          "line": 191,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaDevicePlugin.diagnosticsFacts@191.lambda@192",
+          "line": 194,
           "bindings": 12,
           "writes": 13
         },
         {
-          "owner": "AlphaDevicePlugin.assetSha256@211",
-          "line": 211,
+          "owner": "AlphaDevicePlugin.assetSha256@212",
+          "line": 212,
           "bindings": 6,
           "writes": 1
         },
         {
-          "owner": "AlphaDevicePlugin.shareDiagnostics@219",
-          "line": 219,
+          "owner": "AlphaDevicePlugin.shareDiagnostics@220",
+          "line": 220,
           "bindings": 4,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.shareDiagnostics@219.lambda@224",
-          "line": 226,
+          "owner": "AlphaDevicePlugin.shareDiagnostics@220.lambda@225",
+          "line": 227,
           "bindings": 3,
           "writes": 3
         },
         {
-          "owner": "AlphaDevicePlugin.hex@237",
-          "line": 237,
+          "owner": "AlphaDevicePlugin.hex@238",
+          "line": 238,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.copyVerified@241",
-          "line": 241,
+          "owner": "AlphaDevicePlugin.copyVerified@242",
+          "line": 242,
           "bindings": 10,
           "writes": 3
         },
         {
-          "owner": "AlphaDevicePlugin.appSigner@256",
-          "line": 256,
+          "owner": "AlphaDevicePlugin.automaticUpdateStatus@257",
+          "line": 257,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.signingRoot@259",
-          "line": 259,
+          "owner": "AlphaDevicePlugin.appSigner@262",
+          "line": 262,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaDevicePlugin.signingRoot@265",
+          "line": 265,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.updateBinding@271",
-          "line": 271,
+          "owner": "AlphaDevicePlugin.updateBinding@278",
+          "line": 278,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "AlphaDevicePlugin.UpdatePause",
-          "line": 279,
+          "line": 286,
           "bindings": 5,
           "writes": 6
         },
         {
-          "owner": "AlphaDevicePlugin.UpdatePause.configure@284",
-          "line": 284,
+          "owner": "AlphaDevicePlugin.UpdatePause.configure@291",
+          "line": 291,
           "bindings": 3,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.UpdatePause.configure@284.lambda@288",
-          "line": 289,
+          "owner": "AlphaDevicePlugin.UpdatePause.configure@291.lambda@295",
+          "line": 296,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.UpdatePause.digest@298",
-          "line": 298,
+          "owner": "AlphaDevicePlugin.UpdatePause.digest@305",
+          "line": 305,
           "bindings": 5,
           "writes": 1
         },
         {
-          "owner": "AlphaDevicePlugin.UpdatePause.acquire@303",
-          "line": 303,
+          "owner": "AlphaDevicePlugin.UpdatePause.acquire@310",
+          "line": 310,
           "bindings": 5,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.UpdatePause.stop@307",
-          "line": 310,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "AlphaDevicePlugin.UpdatePause.committing@316",
-          "line": 316,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "AlphaDevicePlugin.UpdatePause.binds@317",
+          "owner": "AlphaDevicePlugin.UpdatePause.stop@314",
           "line": 317,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaDevicePlugin.UpdatePause.committing@323",
+          "line": 323,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaDevicePlugin.UpdatePause.binds@324",
+          "line": 324,
           "bindings": 3,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.UpdatePause.reconcile@322",
-          "line": 323,
+          "owner": "AlphaDevicePlugin.UpdatePause.reconcile@329",
+          "line": 330,
           "bindings": 7,
           "writes": 2
         },
         {
           "owner": "AlphaDevicePlugin.UpdateActivation",
-          "line": 348,
-          "bindings": 7,
-          "writes": 2
-        },
-        {
-          "owner": "AlphaDevicePlugin.UpdateActivation.<init>@354",
-          "line": 354,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "AlphaDevicePlugin.UpdateResume",
-          "line": 358,
-          "bindings": 3,
+          "line": 355,
+          "bindings": 8,
           "writes": 3
         },
         {
-          "owner": "AlphaDevicePlugin.UpdateResume.<init>@360",
-          "line": 360,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "AlphaDevicePlugin.preparation@371",
-          "line": 371,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "AlphaDevicePlugin.registerUpdateBridge@372",
-          "line": 373,
-          "bindings": 1,
-          "writes": 3
-        },
-        {
-          "owner": "AlphaDevicePlugin.retireUpdateBridge@385",
-          "line": 389,
-          "bindings": 1,
-          "writes": 2
-        },
-        {
-          "owner": "AlphaDevicePlugin.activateUpdate@394",
-          "line": 394,
-          "bindings": 4,
-          "writes": 6
-        },
-        {
-          "owner": "AlphaDevicePlugin.settleUpdate@410",
-          "line": 410,
-          "bindings": 6,
-          "writes": 1
-        },
-        {
-          "owner": "AlphaDevicePlugin.settleUpdate@410.lambda@422",
-          "line": 422,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "AlphaDevicePlugin.readUpdateState@430",
-          "line": 432,
-          "bindings": 6,
-          "writes": 4
-        },
-        {
-          "owner": "AlphaDevicePlugin.updateState@453",
-          "line": 453,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "AlphaDevicePlugin.updateState@453.lambda@454",
-          "line": 456,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "AlphaDevicePlugin.reconcileUpdate@459",
-          "line": 460,
+          "owner": "AlphaDevicePlugin.UpdateActivation.<init>@362",
+          "line": 362,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.reconcileUpdate@463",
-          "line": 463,
+          "owner": "AlphaDevicePlugin.UpdateResume",
+          "line": 366,
+          "bindings": 3,
+          "writes": 3
+        },
+        {
+          "owner": "AlphaDevicePlugin.UpdateResume.<init>@368",
+          "line": 368,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.reconcileUpdate@463.lambda@464",
+          "owner": "AlphaDevicePlugin.preparation@379",
+          "line": 379,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaDevicePlugin.registerUpdateBridge@380",
+          "line": 381,
+          "bindings": 1,
+          "writes": 3
+        },
+        {
+          "owner": "AlphaDevicePlugin.retireUpdateBridge@393",
+          "line": 397,
+          "bindings": 1,
+          "writes": 2
+        },
+        {
+          "owner": "AlphaDevicePlugin.activateUpdate@402",
+          "line": 402,
+          "bindings": 4,
+          "writes": 6
+        },
+        {
+          "owner": "AlphaDevicePlugin.settleUpdate@418",
+          "line": 418,
+          "bindings": 6,
+          "writes": 1
+        },
+        {
+          "owner": "AlphaDevicePlugin.settleUpdate@418.lambda@430",
+          "line": 430,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaDevicePlugin.readUpdateState@438",
+          "line": 440,
+          "bindings": 6,
+          "writes": 4
+        },
+        {
+          "owner": "AlphaDevicePlugin.updateState@461",
+          "line": 461,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaDevicePlugin.updateState@461.lambda@462",
           "line": 464,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.Anonymous@484.onReceive@485",
-          "line": 485,
+          "owner": "AlphaDevicePlugin.reconcileUpdate@467",
+          "line": 468,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaDevicePlugin.reconcileUpdate@471",
+          "line": 471,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaDevicePlugin.reconcileUpdate@471.lambda@472",
+          "line": 472,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaDevicePlugin.Anonymous@494.onReceive@495",
+          "line": 495,
           "bindings": 6,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.pastConfirmation@507",
-          "line": 507,
+          "owner": "AlphaDevicePlugin.pastConfirmation@517",
+          "line": 517,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.reopenUpdateConfirmation@511",
-          "line": 511,
+          "owner": "AlphaDevicePlugin.reopenUpdateConfirmation@521",
+          "line": 521,
           "bindings": 5,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.reopenUpdateConfirmation@511.lambda@518",
-          "line": 523,
+          "owner": "AlphaDevicePlugin.reopenUpdateConfirmation@521.lambda@528",
+          "line": 533,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.continueUpdate@532",
-          "line": 532,
+          "owner": "AlphaDevicePlugin.continueUpdate@542",
+          "line": 542,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.continueUpdate@532.lambda@533",
-          "line": 536,
+          "owner": "AlphaDevicePlugin.continueUpdate@542.lambda@543",
+          "line": 546,
           "bindings": 3,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.confirmUpdate@548",
-          "line": 551,
+          "owner": "AlphaDevicePlugin.confirmUpdate@558",
+          "line": 561,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.handleOnResume@554",
-          "line": 559,
+          "owner": "AlphaDevicePlugin.handleOnResume@564",
+          "line": 569,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.updateConnection@586",
-          "line": 586,
+          "owner": "AlphaDevicePlugin.updateConnection@596",
+          "line": 596,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.checkForUpdate@597",
-          "line": 597,
+          "owner": "AlphaDevicePlugin.checkForUpdate@607",
+          "line": 607,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.checkForUpdate@597.lambda@598",
-          "line": 601,
+          "owner": "AlphaDevicePlugin.checkForUpdate@607.lambda@608",
+          "line": 611,
           "bindings": 4,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.installUpdate@624",
-          "line": 624,
+          "owner": "AlphaDevicePlugin.installUpdate@637",
+          "line": 637,
+          "bindings": 3,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaDevicePlugin.installUpdate@637.lambda@646",
+          "line": 648,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaDevicePlugin.installUpdate@624.lambda@626",
-          "line": 628,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "AlphaDevicePlugin.installUpdate@624.lambda@634",
-          "line": 638,
+          "owner": "AlphaDevicePlugin.installUpdate@637.lambda@654",
+          "line": 658,
           "bindings": 27,
           "writes": 6
         },
         {
-          "owner": "AlphaDevicePlugin.handleOnDestroy@741",
-          "line": 741,
+          "owner": "AlphaDevicePlugin.handleOnDestroy@763",
+          "line": 763,
           "bindings": 2,
           "writes": 1
         }
       ],
       "parseErrors": [],
       "asynchronous": 9,
-      "unassignedWrites": 20
+      "unassignedWrites": 22
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java",
@@ -32811,7 +32817,7 @@
     },
     {
       "path": "apps/app/src/main.tsx",
-      "sha256": "040b43ceb5f45ef3c1407636978e382af38248abdd39d47eb0d831f47c1e24bf",
+      "sha256": "85b619de8b5e407651f234ab050091b5d800b49bea670e2044a29d97b087d24f",
       "allocatedModels": [
         "Application",
         "AccessibleToastLifetime",
@@ -32824,7 +32830,8 @@
         "ShadeNoticeQuestionAdmission",
         "AppearancePreferenceAdmission",
         "WorkflowClockAdmission",
-        "NotesTrashReadPublication"
+        "NotesTrashReadPublication",
+        "AutomaticAppUpdateSchedule"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -32862,7 +32869,7 @@
         },
         {
           "owner": "mountPhone",
-          "line": 399,
+          "line": 401,
           "bindings": 2,
           "writes": 5
         }
@@ -39955,13 +39962,14 @@
     },
     {
       "path": "apps/app/src/prototype/settings-adapter.ts",
-      "sha256": "f30de9846f5ab69fc1b778dd42a52ccf53de626fc83e76c546feb751f208e3b1",
+      "sha256": "c87370b568c30d7a9f4f3f21e0f2de4c2604559aa9595b427456ad648538c52f",
       "allocatedModels": [
         "PreferencesAndPresentation",
         "SettingsNav",
         "NativeUpdateStaging",
         "CalendarPreservationConfirmation",
-        "AppearancePreferenceAdmission"
+        "AppearancePreferenceAdmission",
+        "AutomaticAppUpdateSchedule"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -39969,61 +39977,61 @@
       "owners": [
         {
           "owner": "<module>",
-          "line": 45,
+          "line": 46,
           "bindings": 6,
           "writes": 8
         },
         {
           "owner": "parseUpdateManifest",
-          "line": 156,
+          "line": 158,
           "bindings": 3,
           "writes": 3
         },
         {
           "owner": "installSettingsAdapter",
-          "line": 244,
-          "bindings": 34,
-          "writes": 107
+          "line": 253,
+          "bindings": 35,
+          "writes": 109
         },
         {
           "owner": "installSettingsAdapter.refreshResidentDiagnostics",
-          "line": 282,
+          "line": 312,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installSettingsAdapter.refreshCapabilities",
-          "line": 298,
+          "line": 328,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installSettingsAdapter.exportDiagnostics",
-          "line": 408,
+          "line": 438,
           "bindings": 1,
           "writes": 3
         },
         {
-          "owner": "installSettingsAdapter.FunctionExpression@451",
-          "line": 474,
+          "owner": "installSettingsAdapter.FunctionExpression@481",
+          "line": 509,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installSettingsAdapter.ArrowFunction@524",
-          "line": 529,
+          "owner": "installSettingsAdapter.ArrowFunction@561",
+          "line": 566,
           "bindings": 37,
           "writes": 638
         },
         {
-          "owner": "installSettingsAdapter.ArrowFunction@524.ArrowFunction@891",
-          "line": 893,
+          "owner": "installSettingsAdapter.ArrowFunction@561.ArrowFunction@928",
+          "line": 930,
           "bindings": 1,
           "writes": 1
         }
       ],
       "parseErrors": [],
-      "asynchronous": 43,
+      "asynchronous": 46,
       "unassignedWrites": 54
     },
     {
@@ -114044,7 +114052,8 @@
         "ShellNavigation",
         "PreferencesAndPresentation",
         "MountedUpdateAdmission",
-        "StartupUpdateAdmission"
+        "StartupUpdateAdmission",
+        "AutomaticAppUpdateSchedule"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -221618,10 +221627,189 @@
       "parseErrors": [],
       "asynchronous": 0,
       "unassignedWrites": 2
+    },
+    {
+      "path": "scripts/deliver-app-update.mjs",
+      "sha256": "692894c077d4a39e6d88a877d7aeb66e28929ee4cb8dbbd7949a18ab533ac7f4",
+      "allocatedModels": [
+        "PilotApkUpdate"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "publicObject",
+          "line": 22,
+          "bindings": 5,
+          "writes": 6
+        },
+        {
+          "owner": "deliver",
+          "line": 113,
+          "bindings": 4,
+          "writes": 6
+        },
+        {
+          "owner": "main",
+          "line": 136,
+          "bindings": 4,
+          "writes": 5
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 4,
+      "unassignedWrites": 3
+    },
+    {
+      "path": "scripts/owner/InspectUpdateApk.java",
+      "sha256": "a0d09b290cc56192038b37e9571b463eccd933a898e4a1dc15402443182e698e",
+      "allocatedModels": [
+        "PilotApkUpdate"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "InspectUpdateApk.require@16",
+          "line": 16,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "InspectUpdateApk.sha@19",
+          "line": 19,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "InspectUpdateApk.digest@22",
+          "line": 22,
+          "bindings": 3,
+          "writes": 1
+        },
+        {
+          "owner": "InspectUpdateApk.main@32",
+          "line": 32,
+          "bindings": 20,
+          "writes": 8
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "scripts/provision-unit.mjs",
+      "sha256": "88093b61fe8f75d1a94d534f85995a4cedf3cef8aab5a85b5c60e8148ea1d036",
+      "allocatedModels": [
+        "PilotApkUpdate"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "parseUnitArgs",
+          "line": 39,
+          "bindings": 2,
+          "writes": 9
+        },
+        {
+          "owner": "apkContradictions",
+          "line": 110,
+          "bindings": 1,
+          "writes": 5
+        },
+        {
+          "owner": "entrySha256",
+          "line": 141,
+          "bindings": 2,
+          "writes": 2
+        },
+        {
+          "owner": "main",
+          "line": 213,
+          "bindings": 1,
+          "writes": 3
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 1,
+      "unassignedWrites": 3
+    },
+    {
+      "path": "scripts/publish-update-manifest.mjs",
+      "sha256": "ae24d2a573f2894d9833621a36d0422db290ae36b87933249452b4997d4072a0",
+      "allocatedModels": [
+        "PilotApkUpdate"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "parseArgs",
+          "line": 29,
+          "bindings": 2,
+          "writes": 3
+        },
+        {
+          "owner": "updateRow",
+          "line": 42,
+          "bindings": 2,
+          "writes": 5
+        },
+        {
+          "owner": "main",
+          "line": 76,
+          "bindings": 1,
+          "writes": 0
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 5
+    },
+    {
+      "path": "scripts/update-apk-admission.mjs",
+      "sha256": "db42288cb0f9f9c0f8d5f0e386ff0a0479c7cfcb75a94b24f23299d8a85ad6d0",
+      "allocatedModels": [
+        "PilotApkUpdate"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "scripts/update-artifact.mjs",
+      "sha256": "7dc68e5d332733af5c9f6ee69bb7b0e5b5560270e00ed4a22aab2a9481c58e50",
+      "allocatedModels": [
+        "PilotApkUpdate"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "updateArtifactDigest",
+          "line": 8,
+          "bindings": 2,
+          "writes": 2
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
     }
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "860f726e127bd447229246bf3d2b76629da255e903fc162e11c88ed5fffd3af5"
+    "sha256": "9ffa2fc95278d2fa8def816e93f629926561328cabd2b1387643a9690b21dc68"
   }
 }
