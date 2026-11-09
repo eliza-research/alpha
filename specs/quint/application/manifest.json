@@ -533,6 +533,35 @@
     ]
   },
   {
+    "path": "specs/quint/application/FirstSendDraftMigration.qnt",
+    "module": "FirstSendDraftMigration",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "matchingDestinationClearsExactSourceTest",
+      "retiredBindingCannotDispatchClearTest",
+      "destinationDisagreementRetainsSourceTest",
+      "changedSourceConflictsWithClearReceiptTest",
+      "destinationReplacementAfterDispatchRemainsIndependentTest"
+    ],
+    "invariants": ["ClearDispatchWasAuthorized", "ClearUsesExactSourceReceipt", "ConfirmedClearIsRevisioned"],
+    "sources": [
+      "apps/app/src/prototype/agent-adapter.ts",
+      "apps/app/src/runtime/assistant-draft-store.ts",
+      "vendor/eliza/packages/ui/src/state/durable-draft.ts"
+    ],
+    "stateMapping": {
+      "phase/live/binding/retries": "Actual migration call and held raw slot or timer, controlled shell owner binding and observed retry schedule",
+      "source/destination/sourceReceipt/destinationReceipt": "Raw slot record text, mark and revision and actual read receipt",
+      "attempts/dispatched/result": "Observed CAS admission, expected source revision, destination at dispatch and actual slot result"
+    },
+    "abstractions": [
+      "One first-send cleanup, two separately stored binding records, a bounded competing revision on each slot, and actual source CAS over in-memory bytes.",
+      "Destination is rechecked before dispatch. A destination write after a source CAS is dispatched remains independent. Composer/send authorization, installed persistence and cross-store atomicity are separate."
+    ]
+  },
+  {
     "path": "specs/quint/application/DraftDispatch.qnt",
     "module": "DraftDispatch",
     "init": "init",

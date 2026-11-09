@@ -130,10 +130,16 @@ function settleFirstSendSlot(shell:Shell,slot:string,conversation:string,text:st
       for(const delay of [0,150,600,1500]){
         if(delay)await new Promise(resolve=>setTimeout(resolve,delay));
         if(!current())return;
-        if((await to.read())?.text!==text)continue;
+        const destination=await to.read();
+        if(!current())return;
+        if(destination?.text!==text)continue;
         const saved=await from.read();
-        if(!saved||saved.text!==text)return;
+        if(!current()||!saved||saved.text!==text)return;
         if(saved.sending===true)continue;
+        // The source read can outlive the copy that first admitted this migration.
+        const confirmed=await to.read();
+        if(!current())return;
+        if(confirmed?.text!==text)continue;
         try{await from.save(saved,'');return;}catch{/* A newer write won; read it again. */}
       }
     }catch{/* Storage review stays with the slot's own recovery. */}
