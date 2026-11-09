@@ -1104,24 +1104,17 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   function askCapture(selected:SavedPhoto,owner:Bag):boolean{
     if(selected.kind==='video'||selected.trashed)return false;
     closeQuestion?.();
-    const live=()=>!disposed&&!document.hidden&&owner.isActive()&&owner.get('photos').open===selected.id&&sameCapture(selected);
-    // The library row is read again at send time; a photo another app rewrote in place differs in contentRevision.
-    const unchanged=(row:SavedPhoto)=>captureUnchanged(selected,row);
-    closeQuestion=reviewContentQuestion({name:'Selected photo',text:'',current:live,compose:draft=>{void (async()=>{
-      // The library is read again before the draft is placed: an item trashed, edited or removed
-      // since the review started (here or by another app) adds nothing to the conversation.
-      let row:SavedPhoto|undefined;
-      try{row=await library.read({id:nativeId(selected.id)});}catch{/* removed or unreadable: handled as changed below */}
-      if(disposed||!owner.isActive())return;
-      if(owner.get('photos').open!==selected.id||document.hidden){owner.toast('The photo view changed. Nothing was added to your conversation.');return;}
-      if(row&&unchanged(row)&&live()){owner.composeContentQuestion(draft);return;}
-      owner.toast('This photo changed or is no longer available. Nothing was added to your conversation.');
-      // Leave the stale viewer so the changed item is neither shown nor shared as it was.
-      closeVideo();if(preview?.id===selected.id)preview=undefined;retirePhotoRead();owner.set({open:null,nativePhotoSelection:null,sheet:null,nativeCaptureRevision:Date.now()});
-      void refresh();void loadTrash(owner);void loadCounts(owner);
-    })();},image:async signal=>{const row=await library.read({id:nativeId(selected.id)});signal.throwIfAborted();if(!unchanged(row))throw Error('Photo changed.');if(!/^(blob:|data:image\/)/.test(row.image))throw Error('Choose a local image.');return (await fetch(row.image,{signal})).blob();}});
+    const current=()=>!disposed&&!document.hidden&&owner.isActive()&&owner.get('photos').open===selected.id&&sameCapture(selected);
+    void library.read({id:nativeId(selected.id)}).then(row=>{
+      if(!current()||!captureUnchanged(selected,row)||row.kind==='video'||row.trashed){
+        if(owner.isActive())owner.toast('This photo changed. Open it again.');
+        return;
+      }
+      owner.attachCameraPhoto(selected.id,row.image);
+    }).catch(()=>{if(current())owner.toast('This photo could not be opened. Try again.');});
     return true;
   }
+
   captureQuestion=item=>{
     if(disposed)return false;
     if(!item){const owner=api;return !!owner?.isActive()&&askCameraFrame(owner);}
@@ -1369,7 +1362,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     const cover=(rows:SavedPhoto[])=>{covers.push(rows[0]);return rows[0]?.image?`url("${rows[0].image}") center / cover no-repeat`:'var(--s2)';};
     const openAlbum=(key:string)=>{currentApi.set({album:key,open:null,nativePhotoSelection:null});closeVideo();void loadAlbum(key,currentApi);};
     const builtIn:[string,string,string,number|undefined][]=[['fav','Favorites','favorites',counts?.favorites],['video','Videos','videos',counts?.videos],['camera','Camera','camera',counts?.camera],['shot','Screenshots','screenshots',counts?.screenshots]];
-    data.tiles=builtIn.filter(([key,,,count])=>key==='fav'||count===undefined&&captures.some(row=>albumOf(row,ALBUM_KEYS[key]))||!!count).map(([key,name,album,count])=>({id:'album:'+key,name,count:count??'',bg:cover(captures.filter(row=>albumOf(row,album))),tf:'',flt:'',open:()=>openAlbum(key)}));
+    data.tiles=builtIn.filter(([key,,,count])=>key==='fav'||count===undefined&&captures.some(row=>albumOf(row,ALBUM_KEYS[key]))||!!count).map(([key,name,album,count])=>({id:'album:'+key,name,count:count??'',bg:cover(browserMode&&album==='camera'?captures:captures.filter(row=>albumOf(row,album))),tf:'',flt:'',open:()=>openAlbum(key)}));
     data.tiles.push(...customAlbums.map(album=>({id:'custom:'+album.id,name:album.name,count:album.count,bg:cover(captures.filter(row=>album.memberIds.includes(nativeId(row.id)))),tf:'',flt:'',open:()=>{openAlbum('custom:'+album.id);void loadCustomAlbums(currentApi);}})));
     if(onAlbums)keepCovers(covers);
     data.hasPeople=false;
@@ -1481,6 +1474,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       data.infoOpen=st.sheet==='photo-info'||!!data.infoOpen;
       if(edit?.source===selected.id){const current=edit;data.v.ed={bg:`url("${current.image}") center / contain no-repeat`,tf:'',flt:'none',cropOn:current.crop,cropCss:current.crop?'background:#ffffff;color:#000000':'background:rgba(255,255,255,.12);color:#ffffff',status:current.uncertain?'Save outcome unknown. Tap Save copy to check it.':'',saveLabel:'Save copy',saveDisabled:current.busy,canReplace:!!current.canReplace&&!current.uncertain,replace:()=>void saveEdit(currentApi,true),rotate:()=>void transformEdit(currentApi,true),crop:()=>void transformEdit(currentApi,false),cancel:()=>{cancelEdit();currentApi.set({nativeEditRevision:Date.now()});},save:()=>void saveEdit(currentApi),filters:[['none','Original'],['vivid','Vivid'],['warm','Warm'],['cool','Cool'],['mono','Mono'],['fade','Fade'],['noir','Noir']].map(([id,label])=>({id,label,bg:`url("${selected.image}") center / cover no-repeat`,flt:({none:'none',vivid:'saturate(1.55) contrast(1.08)',warm:'sepia(.3) saturate(1.35) hue-rotate(-8deg)',cool:'saturate(1.1) hue-rotate(14deg) brightness(1.03)',mono:'grayscale(1) contrast(1.05)',fade:'contrast(.78) brightness(1.12) saturate(.75)',noir:'grayscale(1) contrast(1.55) brightness(.88)'} as Record<string,string>)[id],on:current.filter===id,ring:current.filter===id?'box-shadow:0 0 0 2px #000,0 0 0 4px #fff':'',lc:current.filter===id?'#fff':'rgba(255,255,255,.6)',pick:()=>void transformEdit(currentApi,false,id)}))};}
     }
+    if(data.alb)data.alb.menu=!!(data.alb.canSelect||data.alb.isCustom||data.alb.canEmpty);
     return data;
   };
   if (views.photos) views.photos.back = (st: Bag, currentApi: Bag) => { if(edit){cancelEdit();currentApi.set({nativeEditRevision:Date.now()});return true;}if(selection){cancelPhotoSelection(currentApi);return true;}if(st.sheet==='owned-album'){manager=undefined;currentApi.set({sheet:null});return true;}if(st.sheet==='empty'){cancelPermanent(currentApi);return true;}if(st.sheet)return photosBack?.(st,currentApi); if (preview?.id === st.open || captures.some(c => c.id === st.open) || albumRows.some(c => c.id === st.open)) { retirePhotoRead();currentApi.set({ open: null, nativePhotoSelection: null }); preview = undefined; closeVideo(); return true; } return photosBack?.(st, currentApi); };

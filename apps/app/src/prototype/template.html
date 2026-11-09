@@ -1609,11 +1609,11 @@
       <h1 data-alpha-app-title class="serif" style="margin: 0; font-size: 32px; flex-grow: 1; letter-spacing: -.01em">{{photos.title}}</h1>
       <sc-if value="{{photos.importAvailable}}">
         <details class="photo-import-menu"><summary aria-label="Photos tools"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.more}}"></path></svg></summary><div>
+          <sc-if value="{{photos.libTab}}"><button aria-label="Select photos" onClick="{{photos.selStart}}">Select</button></sc-if>
           <button onClick="{{photos.importImage}}">Choose image</button>
-          <button onClick="{{photos.scanDocument}}">Scan document</button>
         </div></details>
       </sc-if>
-      <sc-if value="{{photos.libTab}}"><button class="tap" aria-label="Select photos" onClick="{{photos.selStart}}" style="min-height: 44px; padding: 0 12px; font-size: 16px; font-weight: 600; color: var(--acct)">Select</button></sc-if>
+
     </div>
     <div role="group" aria-label="Photos sections" style="display: flex; gap: 2px; margin: 0 16px 4px; padding: 2px; border-radius: 24px; background: var(--s2); flex-shrink: 0">
       <sc-for list="{{photos.tabs}}" key="{{t.id}}" as="t">
@@ -1739,11 +1739,14 @@
         <button class="ib" aria-label="{{photos.albumBackLabel}}" disabled="{{photos.selectionBusy}}" onClick="{{photos.alb.close}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button>
         <h1 data-alpha-app-title class="serif" style="margin: 0 0 0 4px; font-size: 26px; letter-spacing: -.01em; flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{photos.alb.title}}</h1>
         <span style="font-size: 13px; color: var(--mut); padding: 0 8px">{{photos.alb.count}}</span>
-        <sc-if value="{{photos.alb.canSelect}}"><button class="tap" aria-label="Select items" disabled="{{photos.selectionBusy}}" onClick="{{photos.alb.select}}" style="min-height:44px;padding:0 12px;font-size:16px;font-weight:600;color:var(--acct)">Select</button></sc-if><sc-if value="{{photos.selAll}}"><button class="tap" aria-label="{{photos.selAllLabel}}" disabled="{{photos.selectionBusy}}" onClick="{{photos.selAll}}" style="min-height:44px;padding:0 12px;font-size:16px;font-weight:600;color:var(--acct);white-space:nowrap">{{photos.selAllLabel}}</button></sc-if>
-        <sc-if value="{{photos.alb.isCustom}}"><button class="ib" aria-label="Manage album" onClick="{{photos.alb.manage}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.more}}"></path></svg></button></sc-if>
-        <sc-if value="{{photos.alb.canEmpty}}">
-          <button class="ib" aria-label="Delete all forever" onClick="{{photos.alb.emptyTrash}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.trash}}"></path></svg></button>
+        <sc-if value="{{photos.alb.menu}}">
+          <details class="photo-import-menu"><summary aria-label="Album options"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.more}}"></path></svg></summary><div>
+            <sc-if value="{{photos.alb.canSelect}}"><button aria-label="Select items" disabled="{{photos.selectionBusy}}" onClick="{{photos.alb.select}}">Select</button></sc-if>
+            <sc-if value="{{photos.alb.isCustom}}"><button aria-label="Manage album" onClick="{{photos.alb.manage}}">Manage album</button></sc-if>
+            <sc-if value="{{photos.alb.canEmpty}}"><button aria-label="Delete all forever" onClick="{{photos.alb.emptyTrash}}">Delete all forever</button></sc-if>
+          </div></details>
         </sc-if>
+        <sc-if value="{{photos.selAll}}"><button class="tap" aria-label="{{photos.selAllLabel}}" disabled="{{photos.selectionBusy}}" onClick="{{photos.selAll}}" style="min-height:44px;padding:0 12px;font-size:16px;font-weight:600;color:var(--acct)">{{photos.selAllLabel}}</button></sc-if>
       </div>
       <div class="scr" ref="{{photos.gridRef}}" data-alpha-app-scroll="photos" style="flex-grow: 1; overflow-y: auto; overflow-anchor: none; touch-action: pan-y; padding: 12px 0 180px">
         <div class="photo-grid" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; {{photos.gridCss}}">

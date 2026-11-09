@@ -33,6 +33,35 @@ export function createInlineModal(close:()=>void,returnFocus?:()=>HTMLElement|nu
   };
   const back=(event:Event)=>{if(!ownsFocus())return;event.preventDefault();event.stopImmediatePropagation();close();};
   const contain=()=>{if(ownsFocus()&&!dialog.contains(document.activeElement))focus();};
+  const isSheet=getComputedStyle(dialog).bottom==='0px'&&parseFloat(getComputedStyle(dialog).borderTopLeftRadius)>0;
+  const grip=isSheet?dialog.firstElementChild as HTMLElement|null:null;
+  const oldTouchAction=grip?.style.touchAction;
+  if(grip)grip.style.touchAction='none';
+  let drag:{id:number;x:number;y:number;distance:number}|null=null;
+  const resetDrag=()=>{drag=null;dialog.style.translate='';};
+  const pointerDown=(event:PointerEvent)=>{
+   if(!isSheet||!ownsFocus()||event.button!==0||event.clientY>dialog.getBoundingClientRect().top+80||(event.target as Element).closest('button,input,textarea,select,a'))return;
+   drag={id:event.pointerId,x:event.clientX,y:event.clientY,distance:0};
+   dialog.setPointerCapture(event.pointerId);
+  };
+  const pointerMove=(event:PointerEvent)=>{
+   if(!drag||drag.id!==event.pointerId)return;
+   const distance=event.clientY-drag.y;
+   if(Math.abs(event.clientX-drag.x)>Math.max(16,Math.abs(distance))){resetDrag();return;}
+   drag.distance=Math.max(0,distance);
+   dialog.style.translate='0 '+drag.distance+'px';
+   event.preventDefault();
+  };
+  const pointerUp=(event:PointerEvent)=>{
+   if(!drag||drag.id!==event.pointerId)return;
+   const dismiss=drag.distance>=72;
+   resetDrag();
+   if(dismiss&&ownsFocus()){event.preventDefault();event.stopPropagation();close();}
+  };
+  dialog.addEventListener('pointerdown',pointerDown);
+  dialog.addEventListener('pointermove',pointerMove);
+  dialog.addEventListener('pointerup',pointerUp);
+  dialog.addEventListener('pointercancel',resetDrag);
   window.addEventListener('alpha-back',back,true);
   // The shell routes Back to the topmost inline dialog through a cancel event.
   dialog.addEventListener('cancel',back);
@@ -47,6 +76,12 @@ export function createInlineModal(close:()=>void,returnFocus?:()=>HTMLElement|nu
    releases.push(()=>{release();if(sibling.getAttribute('aria-hidden')==='true'){if(hidden===null)sibling.removeAttribute('aria-hidden');else sibling.setAttribute('aria-hidden',hidden);}});
   }
   dispose=()=>{
+   resetDrag();
+   if(grip)grip.style.touchAction=oldTouchAction||'';
+   dialog.removeEventListener('pointerdown',pointerDown);
+   dialog.removeEventListener('pointermove',pointerMove);
+   dialog.removeEventListener('pointerup',pointerUp);
+   dialog.removeEventListener('pointercancel',resetDrag);
    observer.disconnect();window.removeEventListener('alpha-back',back,true);dialog.removeEventListener('cancel',back);document.removeEventListener('keydown',key,true);document.removeEventListener('focusin',contain);
    releases.reverse().forEach(release=>release());
    // Renderer-owned inert flags are removed later in the same DOM commit.
