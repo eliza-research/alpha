@@ -50,6 +50,7 @@ import {checkAndroidGzipAssetStage} from './android-gzip-asset-stage.mjs';
 import {checkResidentJavaSourceStage} from './resident-java-source-stage.mjs';
 import {checkAndroidBrowserModuleStage} from './android-browser-module-stage.mjs';
 import {checkLifeOpsScheduledTaskRoute} from './lifeops-scheduled-task-route.mjs';
+import {checkPersonalAssistantScheduledTaskCustody} from './personal-assistant-scheduled-task-custody.mjs';
 
 export async function runServicesRefinement() {
   const driver = fileURLToPath(import.meta.url);
@@ -65,7 +66,7 @@ export async function runServicesRefinement() {
       checkCoreConnectorCustody, checkMobileBundleAdmission, checkWorkflowWorkerStaging, checkNativeGoogleHostArtifact,
       checkPreparedSourceStamp, checkCloudQaLauncher, checkBrowserCloudRequestCustody, checkGmailAgentMailboxRecovery,
       checkDevelopmentDigestPending, checkAndroidGzipAssetStage, checkResidentJavaSourceStage,
-      checkAndroidBrowserModuleStage, checkLifeOpsScheduledTaskRoute].map(withDriver),
+      checkAndroidBrowserModuleStage, checkLifeOpsScheduledTaskRoute, checkPersonalAssistantScheduledTaskCustody].map(withDriver),
     ...[runInboxCoordinatorRefinement, runInboxCleanupRefinement, runInboxProviderDraftsRefinement,
       runWorkflowEngineRefinement, runWorkflowWakeupRefinement, runWorkflowTaskRefinement, runCanonicalNotesRefinement,
       runTaskServiceRefinement, runTaskSchedulerRuntimeRefinement, runPilotApkUpdateRefinement,
