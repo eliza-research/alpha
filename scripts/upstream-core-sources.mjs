@@ -1,4 +1,4 @@
-{
+export default {
   "schema": 1,
   "baseCommit": "dec170f861bdb756c2edb8a92f71f15f0d86288c",
   "files": {
@@ -15,4 +15,4 @@
     "plugins/plugin-assistant/src/features/advanced-capabilities/experience/service.ts": "183053f31c514ab444823e2d3966619f920af3fed212e884d0f23802585e9f47",
     "packages/core/src/plugin-lifecycle.ts": "80c0394b7f625052e1d55112cee6d295ec76c0f7465dd81dbe38843fa946f9a8"
   }
-}
+};

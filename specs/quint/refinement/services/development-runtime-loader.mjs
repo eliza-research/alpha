@@ -8,7 +8,7 @@ import {captureInputs, checkTraces} from '../check-traces.mjs';
 
 const root = resolve(import.meta.dirname, '../../../..');
 const probe = resolve(import.meta.dirname, 'development-runtime-loader-probe.mjs');
-const manifest = 'config/upstream-core-sources.json';
+const manifest = 'scripts/upstream-core-sources.mjs';
 const model = 'DevelopmentRuntimeLoader';
 
 function sourceInputs(extraSources) {

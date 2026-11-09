@@ -3,6 +3,7 @@ import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {CORE_STATE_INPUTS, CORE_STATE_TARGETS, CORE_STATE_TARGET, PLUGIN_CONNECTOR_TARGET, CORE_STATE_MANIFEST} from '../../scripts/core-state-patch.mjs';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
+export const policySource = value => 'export default ' + JSON.stringify(value, null, 2) + ';\n';
 const repository = path.resolve(import.meta.dirname, '../..');
 
 /** A private source tree and reviewed manifest, with the same production verifier. */
@@ -24,5 +25,5 @@ export function writeCoreStateFixture(root, source, pin, simple = false) {
     files[name] = hash(bytes);
   }
   const manifest = {schema: 1, baseCommit: pin, files};
-  write(CORE_STATE_MANIFEST, JSON.stringify(manifest, null, 2));
+  write(CORE_STATE_MANIFEST, policySource(manifest));
 }

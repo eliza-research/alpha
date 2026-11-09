@@ -8,7 +8,7 @@ import {captureInputs, checkTraces} from '../check-traces.mjs';
 
 const root = resolve(import.meta.dirname, '../../../..');
 const probe = join(import.meta.dirname, 'combined-agent-launcher-probe.mjs');
-const manifest = 'config/upstream-core-sources.json';
+const manifest = 'scripts/upstream-core-sources.mjs';
 const scenarios = [
   'node-version', 'source-mismatch', 'port-busy', 'profile-source', 'key-mode', 'speech',
   'unmarked', 'bad-marker', 'bad-routing', 'validate', 'validate-bad-marker', 'empty-input', 'core-refused',

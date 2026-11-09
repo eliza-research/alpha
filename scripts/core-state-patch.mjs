@@ -2,8 +2,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {isDeepStrictEqual} from 'node:util';
+import {parseBuildPolicy} from './build-policy-source.mjs';
 
-export const CORE_STATE_MANIFEST = 'config/upstream-core-sources.json';
+export const CORE_STATE_MANIFEST = 'scripts/upstream-core-sources.mjs';
 export const CORE_STATE_TARGET = 'packages/core/src/services/task.ts';
 export const TURN_STATE_TARGET = 'packages/core/src/runtime/turn-controller.ts';
 export const ROOM_QUEUE_TARGET = 'packages/core/src/runtime/room-handler-queue.ts';
@@ -23,7 +24,7 @@ export const CORE_STATE_TARGETS = [
   PLUGIN_CONNECTOR_TARGET,
 ];
 export const CORE_STATE_INPUTS = ['scripts/core-state-patch.mjs', 'scripts/core-state-preload.mjs',
-  'scripts/combined-agent-source.mjs', CORE_STATE_MANIFEST];
+  'scripts/combined-agent-source.mjs', 'scripts/build-policy-source.mjs', CORE_STATE_MANIFEST];
 const sha = value => createHash('sha256').update(value).digest('hex');
 const hex = /^[a-f0-9]{64}$/;
 const exact = (value, keys) => value && typeof value === 'object' && !Array.isArray(value) &&
@@ -42,7 +43,7 @@ function readRegular(root, name) {
 /** Bind runtime and bundle producers to the same reviewed upstream source. */
 export function coreStateReceipt(root) {
   const manifestBytes = readRegular(root, CORE_STATE_MANIFEST);
-  const manifest = JSON.parse(manifestBytes);
+  const manifest = parseBuildPolicy(manifestBytes);
   const pin = JSON.parse(readRegular(root, 'upstream.lock.json')).commit;
   if (!exact(manifest, ['schema', 'baseCommit', 'files']) || manifest.schema !== 1 ||
       manifest.baseCommit !== pin || !/^[a-f0-9]{40}$/.test(pin) ||

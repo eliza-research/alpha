@@ -7,21 +7,22 @@ import {execFileSync} from 'node:child_process';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import {preparedSourceEnv, sourceDirectory, verifySource} from '../../../../scripts/local-agent-source.mjs';
 import {CORE_STATE_INPUTS, coreStatePatch} from '../../../../scripts/core-state-patch.mjs';
-import {verifyMobileBuildReceipt} from '../../../../scripts/mobile-uuid-adapter.mjs';
+import {MOBILE_BUILD_INPUTS, MOBILE_UUID_POLICY, verifyMobileBuildReceipt} from '../../../../scripts/mobile-uuid-adapter.mjs';
+import {parseBuildPolicy} from '../../../../scripts/build-policy-source.mjs';
 import {writeRuntimeBundleGraph} from './runtime-bundle-graph.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
 const source = sourceDirectory(root, {ALPHA_LOCAL_AGENT_SOURCE_DIR: path.resolve(process.argv[2] ?? '')});
 const output = path.join(root, 'test-results/quint-runtime-bundle-core-state');
 const pin = JSON.parse(fs.readFileSync(path.join(root, 'upstream.lock.json'), 'utf8')).commit;
-const policy = JSON.parse(fs.readFileSync(path.join(root, 'config/upstream-mobile-build.json'), 'utf8'));
+const policy = parseBuildPolicy(fs.readFileSync(path.join(root, MOBILE_UUID_POLICY)));
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 if (Bun.version !== policy.bun.version || Bun.revision !== policy.bun.revision) throw Error('Audit requires the exact reviewed Bun build');
 verifySource(source, pin);
 fs.mkdirSync(output, {recursive: true});
-const inputFiles = [fileURLToPath(import.meta.url), 'specs/quint/refinement/services/runtime-bundle-graph.mjs', 'upstream.lock.json', 'config/upstream-mobile-build.json',
-  'scripts/build-mobile-agent.mjs', 'scripts/mobile-uuid-adapter.mjs', 'scripts/mobile-bundle-smoke.mjs',
-  'scripts/local-agent-source.mjs', ...CORE_STATE_INPUTS].map(file => path.resolve(root, file));
+const inputNames = [fileURLToPath(import.meta.url), 'specs/quint/refinement/services/runtime-bundle-graph.mjs', 'upstream.lock.json', MOBILE_UUID_POLICY,
+  'scripts/local-agent-source.mjs', ...MOBILE_BUILD_INPUTS, ...CORE_STATE_INPUTS];
+const inputFiles = [...new Set(inputNames)].map(file => path.resolve(root, file));
 const core = coreStatePatch(root, source);
 const before = Object.fromEntries(inputFiles.map(file => [file, hash(fs.readFileSync(file))]));
 const tracked = new Map(execFileSync('git', ['ls-tree', '-r', '-z', pin], {cwd: source, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024})

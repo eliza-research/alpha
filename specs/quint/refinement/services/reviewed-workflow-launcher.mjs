@@ -8,7 +8,7 @@ import {captureInputs, checkTraces} from '../check-traces.mjs';
 
 const root = resolve(import.meta.dirname, '../../../..');
 const probe = join(import.meta.dirname, 'reviewed-workflow-launcher-probe.mjs');
-const manifest = 'config/upstream-core-sources.json';
+const manifest = 'scripts/upstream-core-sources.mjs';
 const cases = [
   'relative-default', 'missing-deps', 'invalid-port', 'input-mode', 'unreviewed-profile', 'missing-entry',
   'routing', 'embedding-path', 'default-source', 'existing-profile', 'spawn-error', 'signal-int', 'signal-term',

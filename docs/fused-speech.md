@@ -506,7 +506,7 @@ never start capture.
 The Cloud speech investigation found a separate first-turn agent failure in the
 Android mobile bundle: Bun 1.4.2 lowered UUID's named re-export barrel into an
 undeclared `default10` binding. The bundle loaded, but creating a message response
-ID failed before any model request. `config/upstream-mobile-build.json` admits
+ID failed before any model request. `scripts/upstream-mobile-build.mjs` admits
 the exact upstream producer, Bun revision, dependency lock, and UUID 14.0.2
 module hashes. The upstream Android producer imports the real UUID algorithms
 through a CommonJS namespace and records the source and bridge hashes.

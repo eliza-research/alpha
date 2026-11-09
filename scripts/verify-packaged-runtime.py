@@ -45,6 +45,14 @@ def digest(stream):
     return value.hexdigest()
 
 
+def read_build_policy_source(file):
+    source = file.read_text(encoding='utf-8').strip()
+    prefix = 'export default '
+    if not source.startswith(prefix) or not source.endswith(';'):
+        raise ValueError('Invalid build policy source')
+    return json.loads(source[len(prefix):-1])
+
+
 def file_hash(path):
     with path.open('rb') as stream:
         return digest(stream)
@@ -185,11 +193,11 @@ def verify(apk, release=False, runtime_profile="native", local_embeddings=False)
         # Explicit build adapters are separate from the unmodified source stamp.
         # If this build declares one, bind its receipt and producer input hashes too.
         mobile_receipt_file = staged / 'alpha-mobile-build.json'
-        mobile_policy_file = ROOT / 'config/upstream-mobile-build.json'
+        mobile_policy_file = ROOT / 'scripts/upstream-mobile-build.mjs'
         if mobile_policy_file.exists() or mobile_receipt_file.exists() or 'assets/agent/alpha-mobile-build.json' in names:
             check('assets/agent/alpha-mobile-build.json', mobile_receipt_file)
             mobile_receipt = json.loads(archive.read('assets/agent/alpha-mobile-build.json'))
-            mobile_policy = json.loads(mobile_policy_file.read_text())
+            mobile_policy = read_build_policy_source(mobile_policy_file)
             if (mobile_receipt.get('format') != 'alpha-mobile-build-v1' or
                     mobile_receipt.get('sourcePin') != pin or
                     mobile_policy.get('baseCommit') != pin or
@@ -208,12 +216,13 @@ def verify(apk, release=False, runtime_profile="native", local_embeddings=False)
                     transforms[0].get('sourceSha256') != mobile_policy['package']['files']['dist-node/index.js'] or
                     not re.fullmatch('[a-f0-9]{64}', str(transforms[0].get('bridgeSha256', '')))):
                 raise ValueError('Packaged mobile UUID transform differs')
-            expected_adapters = ['scripts/build-mobile-agent.mjs', 'scripts/mobile-uuid-adapter.mjs', 'scripts/mobile-bundle-smoke.mjs']
+            expected_adapters = ['scripts/build-mobile-agent.mjs', 'scripts/mobile-uuid-adapter.mjs', 'scripts/mobile-bundle-smoke.mjs',
+                                 'scripts/build-policy-source.mjs']
             if mobile_receipt.get('adapterFiles') != {name: file_hash(ROOT / name) for name in expected_adapters}:
                 raise ValueError('Packaged mobile producer adapter changed')
-            core_catalog_name = 'config/upstream-core-sources.json'
+            core_catalog_name = 'scripts/upstream-core-sources.mjs'
             core_catalog_file = ROOT / core_catalog_name
-            core_catalog = json.loads(core_catalog_file.read_text())
+            core_catalog = read_build_policy_source(core_catalog_file)
             core_digests = core_catalog.get('files')
             if (set(core_catalog) != {'schema', 'baseCommit', 'files'} or
                     core_catalog.get('schema') != 1 or core_catalog.get('baseCommit') != pin or
@@ -230,7 +239,7 @@ def verify(apk, release=False, runtime_profile="native", local_embeddings=False)
                 core_transforms.append({'path': target, 'sourceSha256': expected_hash,
                                         'outputSha256': expected_hash})
             core_inputs = ['scripts/core-state-patch.mjs', 'scripts/core-state-preload.mjs',
-                           'scripts/combined-agent-source.mjs', core_catalog_name]
+                           'scripts/combined-agent-source.mjs', 'scripts/build-policy-source.mjs', core_catalog_name]
             expected_core = {'version': 2, 'baseCommit': pin,
                              'manifestSha256': file_hash(core_catalog_file),
                              'inputHashes': {name: file_hash(ROOT / name) for name in core_inputs},

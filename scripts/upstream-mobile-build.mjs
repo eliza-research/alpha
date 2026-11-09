@@ -1,4 +1,4 @@
-{
+export default {
   "schema": 1,
   "baseCommit": "dec170f861bdb756c2edb8a92f71f15f0d86288c",
   "bun": {
@@ -40,4 +40,4 @@
     }
   },
   "lockSha256": "7e301d5135b063140f4016a7316953a821a5c4e9b280390a07ee4ff45dd71bec"
-}
+};

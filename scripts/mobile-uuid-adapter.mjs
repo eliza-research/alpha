@@ -2,12 +2,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {isDeepStrictEqual} from 'node:util';
+import {parseBuildPolicy} from './build-policy-source.mjs';
 
 import {coreStateBuildRecord,CORE_STATE_TARGET,NOTES_STATE_TARGETS,TURN_STATE_TARGET,ROOM_QUEUE_TARGET,EMBEDDING_STATE_TARGET,NAMED_EMBEDDING_TARGETS,PLUGIN_CONNECTOR_TARGET} from './core-state-patch.mjs';
 
 export const MOBILE_BUILD_RECEIPT='alpha-mobile-build.json';
-export const MOBILE_UUID_POLICY='config/upstream-mobile-build.json';
-export const MOBILE_BUILD_INPUTS=['scripts/build-mobile-agent.mjs','scripts/mobile-uuid-adapter.mjs','scripts/mobile-bundle-smoke.mjs'];
+export const MOBILE_UUID_POLICY='scripts/upstream-mobile-build.mjs';
+export const MOBILE_BUILD_INPUTS=['scripts/build-mobile-agent.mjs','scripts/mobile-uuid-adapter.mjs','scripts/mobile-bundle-smoke.mjs','scripts/build-policy-source.mjs'];
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 const json=file=>JSON.parse(fs.readFileSync(file,'utf8'));
 const safe=name=>typeof name==='string'&&!path.isAbsolute(name)&&name.split('/').every(part=>part&&part!=='.'&&part!=='..');
@@ -33,7 +34,7 @@ export function uuidCommonJsBridge(contents,indexPath){
 
 export function mobileBuildInputs(root,source){
  root=path.resolve(root);source=path.resolve(source);
- const policyBytes=readRegular(root,MOBILE_UUID_POLICY),policy=JSON.parse(policyBytes);
+ const policyBytes=readRegular(root,MOBILE_UUID_POLICY),policy=parseBuildPolicy(policyBytes);
  const pin=json(path.join(root,'upstream.lock.json')).commit;
  if(policy.schema!==1||policy.baseCommit!==pin||policy.package?.name!=='uuid'||policy.package.version!=='14.0.2'||policy.package.root!=='node_modules/.bun/uuid@14.0.2/node_modules/uuid')throw Error('Unreviewed mobile UUID build policy');
  if(policy.bun?.version!=='1.4.2'||!policy.bun.revision||policy.builder?.path!=='packages/agent/scripts/build-mobile-bundle.ts')throw Error('Unreviewed mobile UUID producer');

@@ -8,7 +8,8 @@ import {createHash} from 'node:crypto';
 import {CORE_STATE_TARGET, NOTES_STATE_TARGET, ROOM_QUEUE_TARGET, EMBEDDING_STATE_TARGET, PLUGIN_CONNECTOR_TARGET, CORE_STATE_MANIFEST, coreStatePatch, coreStateReceipt,
   coreStateBuildPlugin, coreStateBuildRecord, verifyCoreStateBuildRecord, coreRuntimeArguments, combinedCoreRuntime, coreStateRequiredTargets} from '../scripts/core-state-patch.mjs';
 import {sourceManifest} from '../scripts/combined-agent-source.mjs';
-import {writeCoreStateFixture} from './fixtures/core-state-root.mjs';
+import {parseBuildPolicy} from '../scripts/build-policy-source.mjs';
+import {policySource, writeCoreStateFixture} from './fixtures/core-state-root.mjs';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 function fixture(t, simple = false) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-core-state-')));
@@ -17,8 +18,8 @@ function fixture(t, simple = false) {
   writeCoreStateFixture(root, source, pin, simple);
   fs.writeFileSync(path.join(root, 'upstream.lock.json'), JSON.stringify({commit: pin}));
   return {root, source, file: path.join(source, CORE_STATE_TARGET),
-    manifest: () => JSON.parse(fs.readFileSync(path.join(root, CORE_STATE_MANIFEST))),
-    save: value => fs.writeFileSync(path.join(root, CORE_STATE_MANIFEST), JSON.stringify(value))};
+    manifest: () => parseBuildPolicy(fs.readFileSync(path.join(root, CORE_STATE_MANIFEST))),
+    save: value => fs.writeFileSync(path.join(root, CORE_STATE_MANIFEST), policySource(value))};
 }
 test('reviewed core files are read without changing their bytes', t => {
   const f = fixture(t), before = fs.readFileSync(f.file), prepared = coreStatePatch(f.root, f.source);
@@ -34,7 +35,7 @@ test('reviewed core files are read without changing their bytes', t => {
 test('the independent APK verifier admits exactly the reviewed Android core inputs', () => {
   const root = path.resolve(import.meta.dirname, '..');
   coreStateReceipt(root);
-  const manifest = JSON.parse(fs.readFileSync(path.join(root, CORE_STATE_MANIFEST), 'utf8'));
+  const manifest = parseBuildPolicy(fs.readFileSync(path.join(root, CORE_STATE_MANIFEST)));
   const targets = Object.keys(manifest.files);
   const verifier = path.join(root, 'scripts/verify-packaged-runtime.py');
   const policy = execFileSync('python3', ['-c',
@@ -43,9 +44,10 @@ test('the independent APK verifier admits exactly the reviewed Android core inpu
   assert.deepEqual(JSON.parse(policy), targets);
 });
 test('missing, modified and wrong-pin core inputs fail closed', t => {
-  for (const mode of ['missing', 'digest', 'pin', 'target', 'input', 'linked']) {
+  for (const mode of ['missing', 'digest', 'pin', 'target', 'input', 'linked', 'program']) {
     const f = fixture(t), catalog = path.join(f.root, CORE_STATE_MANIFEST), manifest = f.manifest();
     if (mode === 'missing') fs.unlinkSync(catalog);
+    if (mode === 'program') fs.appendFileSync(catalog, '\nprocess.exit(0);');
     if (mode === 'digest') { manifest.files[CORE_STATE_TARGET] = '0'.repeat(64); f.save(manifest); }
     if (mode === 'pin') { manifest.baseCommit = '2'.repeat(40); f.save(manifest); }
     if (mode === 'target') { delete manifest.files[CORE_STATE_TARGET]; manifest.files['packages/core/src/other.ts'] = '0'.repeat(64); f.save(manifest); }
