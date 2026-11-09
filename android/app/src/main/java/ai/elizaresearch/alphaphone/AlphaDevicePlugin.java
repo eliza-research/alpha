@@ -17,7 +17,7 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
-/** Device facts, allowlisted settings, explicit bounded text handoffs to Android, and the owner's one-tap app update. */
+/** Device facts, allowlisted settings, explicit bounded text handoffs and verified app self-updates. */
 @CapacitorPlugin(name="AlphaDevice")
 public final class AlphaDevicePlugin extends Plugin {
  /** Explicit bounded text handoff; chooser opening never claims a sent message. */
@@ -92,6 +92,7 @@ public final class AlphaDevicePlugin extends Plugin {
   SystemFacts.fact(facts,"appVersionCode",()->BuildConfig.VERSION_CODE);
   SystemFacts.fact(facts,"appUpdatedAt",()->{long at=context.getPackageManager().getPackageInfo(context.getPackageName(),0).lastUpdateTime;return at>0?at:null;});
   SystemFacts.fact(facts,"appSigner",()->appSigner(context));
+  SystemFacts.fact(facts,"appAutomaticUpdates",()->automaticUpdateStatus(context));
   for(java.util.Map.Entry<String,Object> fact:facts.entrySet())out.put(fact.getKey(),fact.getValue());
  }
  /** As HOME, an outside screen gets its own task, as stock launchers do, so HOME does not clear it. Never for a result start. */
@@ -230,8 +231,8 @@ public final class AlphaDevicePlugin extends Plugin {
  }
 
  /** Largest update APK admitted; UPDATE_MAX_BYTES in settings-adapter.ts is the same bound. */
- static final long UPDATE_MAX_BYTES=1L<<30;
- /** Soft ceiling on one update download, checked only when a read returns: the read timeout bounds only silence, and a trickle never goes silent. A read in flight can outlast it by up to that 60 s timeout unless handleOnDestroy disconnects it first. Fits a 1 GiB APK from about 0.4 Mbit/s, so it ends only a stalled link's trickle. */
+ static final long UPDATE_MAX_BYTES=2L<<30;
+ /** Soft ceiling on one update download, checked only when a read returns: the read timeout bounds only silence, and a trickle never goes silent. A read in flight can outlast it by up to that 60 s timeout unless handleOnDestroy disconnects it first. Fits a 2 GiB APK from about 0.8 Mbit/s, so it ends only a stalled link's trickle. */
  static final long UPDATE_DEADLINE_NANOS=java.util.concurrent.TimeUnit.HOURS.toNanos(6);
  /** 64 lowercase hex characters of a SHA-256 digest. */
  static String hex(byte[] digest){return String.format(java.util.Locale.ROOT,"%064x",new java.math.BigInteger(1,digest));}
@@ -252,6 +253,24 @@ public final class AlphaDevicePlugin extends Plugin {
  }
 
  private static final String UPDATE_STATUS="ai.elizaresearch.alphaphone.UPDATE_STATUS";
+ /** Self-update without a system dialog is supported from Android 12. Android still decides at commit. */
+ static String automaticUpdateStatus(Context context){
+  if(Build.VERSION.SDK_INT<31)return "unsupported";
+  return context.getPackageManager().canRequestPackageInstalls()?"supported":"permission-required";
+ }
+ /** A downloaded automatic update may only replace idle, unlocked Home. The image also hosts calls. */
+ private boolean automaticUpdateReady(){
+  android.app.Activity activity=getActivity();
+  if(!(activity instanceof MainActivity)||((MainActivity)activity).isAssistantSurface()||!shareForeground(activity))return false;
+  try{
+   if(AlphaImageCapability.verified(getContext())){
+    android.telecom.TelecomManager calls=getContext().getSystemService(android.telecom.TelecomManager.class);
+    if(calls==null||calls.isInCall())return false;
+   }
+   return true;
+  }catch(SecurityException denied){return false;}
+  catch(RuntimeException unknown){return false;}
+ }
  /** SHA-256 of the original certificate of Alpha's one signer (apksigner's digest), which key rotation never changes: an update manifest offers an APK only to installs of that signing lineage. */
  static String appSigner(Context context)throws Exception{
   return signingRoot(context.getPackageManager().getPackageInfo(context.getPackageName(),PackageManager.GET_SIGNING_CERTIFICATES).signingInfo);
@@ -264,9 +283,10 @@ public final class AlphaDevicePlugin extends Plugin {
  /**
   * A session's binding: package, versionCode, SHA-256, signer and boot. It is the session's referrer, so it sits in the record Android
   * writes with the seal and goes with the session, and a session comes back from a kill or a reboot with it or not at all (AOSP 10 to 17).
-  * A build that states its commit intent ends it with /intent; an earlier bound build wrote the same shape without it.
+  * A build that states its commit intent ends it with /intent; automatic attempts add /automatic so a later
+  * process keeps optional Android confirmation quiet. Earlier bound builds wrote the shape without these marks.
   */
- private static final java.util.regex.Pattern UPDATE_BINDING=java.util.regex.Pattern.compile("alpha-update://([^/]+)/([1-9][0-9]{0,17})/[0-9a-f]{64}/([0-9a-f]{64})/([0-9]+)(/intent)?");
+ private static final java.util.regex.Pattern UPDATE_BINDING=java.util.regex.Pattern.compile("alpha-update://([^/]+)/([1-9][0-9]{0,17})/[0-9a-f]{64}/([0-9a-f]{64})/([0-9]+)(/intent)?(/automatic)?");
  /** The session's binding if it reads whole and names this package and signer. Null is unknown: no binding (an earlier build staged it), a part of one, or another target. Unknown fences. */
  private java.util.regex.Matcher updateBinding(PackageInstaller.SessionInfo session)throws Exception{
   java.util.regex.Matcher binding=UPDATE_BINDING.matcher(String.valueOf(session.getReferrerUri()));
@@ -316,7 +336,7 @@ public final class AlphaDevicePlugin extends Plugin {
   static void committing(String id)throws Exception{store().committing(id);}
   static boolean binds(ai.eliza.plugins.agent.updater.RuntimeUpdatePause.Record record,PackageInstaller.SessionInfo session){
    String expected="alpha-update://"+context.getPackageName()+"/"+record.targetCode+"/"+record.targetDigest+"/"+record.signer+"/"+record.boot+"/intent";
-   return session!=null&&expected.equals(String.valueOf(session.getReferrerUri()));
+   return session!=null&&(expected.equals(String.valueOf(session.getReferrerUri()))||(expected+"/automatic").equals(String.valueOf(session.getReferrerUri())));
   }
   /** Returns only a proven settled owner. It never starts the runtime or retains a provider credential. */
   static synchronized ai.eliza.plugins.agent.updater.RuntimeUpdatePause.Record reconcile()throws Exception {
@@ -346,12 +366,13 @@ public final class AlphaDevicePlugin extends Plugin {
  private static final class UpdateActivation {
   final String id=java.util.UUID.randomUUID().toString();
   final AlphaDevicePlugin owner;
+  final boolean automatic;
   final java.util.concurrent.CompletableFuture<Boolean> ready=new java.util.concurrent.CompletableFuture<>();
   final java.util.Set<AlphaDevicePlugin> waiting=new java.util.HashSet<>();
   final java.util.Set<AlphaDevicePlugin> acknowledged=new java.util.HashSet<>();
   final java.util.Set<String> resumeEligible=new java.util.HashSet<>();
   boolean sealed,invalid;
-  UpdateActivation(AlphaDevicePlugin owner){this.owner=owner;waiting.addAll(updateBridges);}
+  UpdateActivation(AlphaDevicePlugin owner,boolean automatic){this.owner=owner;this.automatic=automatic;waiting.addAll(updateBridges);}
  }
  /** Captured reconnect authority is separate from Android confirmation and keeps no WebView alive. */
  private static final class UpdateResume {
@@ -368,7 +389,7 @@ public final class AlphaDevicePlugin extends Plugin {
  private static volatile UpdateActivation activation;
  private static UpdateResume updateResume;
  private static String settledActivation,settledOutcome,settledResumeBridge;
- private JSObject preparation(UpdateActivation pending){return new JSObject().put("activationId",pending.id).put("bridgeId",updateBridgeId).put("phase",pending.sealed?"paused":"preparing");}
+ private JSObject preparation(UpdateActivation pending){return new JSObject().put("activationId",pending.id).put("bridgeId",updateBridgeId).put("automatic",pending.automatic).put("phase",pending.sealed?"paused":"preparing");}
  private void registerUpdateBridge(){
   UpdateActivation pending;
   synchronized(updateBarrier){
@@ -476,6 +497,8 @@ public final class AlphaDevicePlugin extends Plugin {
  private static volatile boolean updateDue;
  /** updateConfirm has started and its owner has not resumed since, so the confirmation may still be up, in a task another bridge cannot see. */
  private static volatile boolean updateOpen;
+ /** Automatic attempts never open Android's optional confirmation without an explicit Continue/Install tap. */
+ private static volatile boolean updateAutomatic;
  /** System.nanoTime() of Alpha's last exchange with Android on this session (a commit, a confirmation opened, or the owner's return from one), 0 with none. */
  private static volatile long updateAsked;
  /** The bridge that last committed a session, reconnected to one or opened its confirmation, until its destroy: the one that opens what Android asks next. A commit that threw keeps it. The fence is Android's list. */
@@ -488,12 +511,12 @@ public final class AlphaDevicePlugin extends Plugin {
    if(updateOwner==null)try{
     PackageInstaller.SessionInfo session=getContext().getPackageManager().getPackageInstaller().getSessionInfo(id);
     java.util.regex.Matcher binding=session==null?null:updateBinding(session);
-    if(binding!=null&&binding.group(4).equals(String.valueOf(updateBoot()))){updateOwner=AlphaDevicePlugin.this;updateSession=id;}
+    if(binding!=null&&binding.group(4).equals(String.valueOf(updateBoot()))){updateAutomatic=binding.group(6)!=null;updateOwner=AlphaDevicePlugin.this;updateSession=id;}
    }catch(Exception unanswered){/* Unknown stays fenced. */}
    if(updateOwner!=AlphaDevicePlugin.this||id!=updateSession)return;
    updateDue=intent.getIntExtra(PackageInstaller.EXTRA_STATUS,PackageInstaller.STATUS_FAILURE)==PackageInstaller.STATUS_PENDING_USER_ACTION;
    updateConfirm=updateDue?androidx.core.content.IntentCompat.getParcelableExtra(intent,Intent.EXTRA_INTENT,Intent.class):null;
-   if(inFront())confirmUpdate();
+   if(inFront()&&!updateAutomatic)confirmUpdate();
    PluginWorkers.submit(updateWorker,()->reconcileUpdate(),()->{});
   }
  };
@@ -523,7 +546,7 @@ public final class AlphaDevicePlugin extends Plugin {
      var current=getContext().getPackageManager().getPackageInstaller().getSessionInfo(id);
      if(pastConfirmation(current,confirm))return;
     }catch(RuntimeException unavailable){return;}
-    updateOwner=this;updateOpen=false;updateDue=true;
+    updateAutomatic=false;updateOwner=this;updateOpen=false;updateDue=true;
     confirmUpdate();
    });
   }
@@ -557,7 +580,7 @@ public final class AlphaDevicePlugin extends Plugin {
   if(updateOwner!=this)return;
   if(updateOpen){updateOpen=false;updateAsked=System.nanoTime();}
   try{if(updateDue&&pastConfirmation(getContext().getPackageManager().getPackageInstaller().getSessionInfo(updateSession),updateConfirm))updateDue=false;}catch(RuntimeException unanswered){/* It opens as kept. */}
-  confirmUpdate();
+  if(!updateAutomatic)confirmUpdate();
  }
  /** The update download in the cache, deleted once the session has its copy or the download is refused. */
  private java.io.File updateApk(){return new java.io.File(getContext().getCacheDir(),"alpha-update.apk");}
@@ -609,11 +632,14 @@ public final class AlphaDevicePlugin extends Plugin {
   },()->call.reject("Update unavailable"));
  }
  /**
-  * From the owner's Install update tap only. Without Android's install-unknown-apps permission for Alpha,
-  * only that Android page opens. Otherwise the HTTPS APK is downloaded to the cache and admitted by size and
+  * Manual Install update or an automatic idle-Home attempt. An automatic attempt requires API 31+ and existing
+  * install-unknown-apps consent; it never opens the settings page. A manual tap without that consent opens
+  * only Android's page. Otherwise the HTTPS APK is downloaded to the cache and admitted by size and
   * SHA-256 (copyVerified), then by Android's reading of the archive: this package at exactly the offered
-  * versionCode, above the installed one. Android shows its own confirmation and installs only an APK signed
-  * like Alpha. Nothing is privileged, silent or in the background; a failure settles quietly. One attempt runs
+  * versionCode, above the installed one. API 31+ automatic sessions request USER_ACTION_NOT_REQUIRED through
+  * Android's nonprivileged self-update API. Android may still require confirmation; for an automatic session
+  * only an explicit Continue/Install tap opens that request. Android installs only an APK signed like Alpha.
+  * Both paths retain the draft and resident shutdown barriers; a failure settles quietly. One attempt runs
   * per process: a tap while one runs on another bridge, or that a commit overtook while it waited, changes nothing;
   * queued behind one that failed before its commit, it retries. A session is committed once, by the attempt that staged it. One Android
   * lists as sealed, or unsealed with nothing proving that no commit of it is queued (an intent; a level or build whose AOSP does not order a read
@@ -622,7 +648,17 @@ public final class AlphaDevicePlugin extends Plugin {
   * signer are what is installed, or, still unsealed and bound, a boot has ended any commit queued for it. Only a failure of this attempt's own before its commit gives up what it staged.
   */
  @PluginMethod public void installUpdate(PluginCall call){
+  Object automaticValue=call.getData().opt("automatic");
+  if(automaticValue!=null&&!(automaticValue instanceof Boolean)){call.reject("Update request is invalid");return;}
+  final boolean automatic=Boolean.TRUE.equals(automaticValue);
+  if(automatic){
+   String status=automaticUpdateStatus(getContext());
+   if(!"supported".equals(status)){call.resolve(new JSObject().put("status",status));return;}
+  }
   if(!getContext().getPackageManager().canRequestPackageInstalls()){
+   // Consent can be revoked between the automatic capability read and this read.
+   // Only an explicit manual request may open Android's settings page.
+   if(automatic){call.resolve(new JSObject().put("status","permission-required"));return;}
    getActivity().runOnUiThread(()->{
     try{getActivity().startActivity(handOff(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,android.net.Uri.parse("package:"+getContext().getPackageName()))));call.resolve();}
     catch(RuntimeException unavailable){call.reject("Update unavailable");}
@@ -660,9 +696,10 @@ public final class AlphaDevicePlugin extends Plugin {
      }
      if(pending!=null){
       throwIfDestroyed();
-      reopenUpdateConfirmation(pending);
+      if(!automatic)reopenUpdateConfirmation(pending);
      }else{
       if(UpdatePause.store().read()!=null)throw new java.io.IOException("Update outcome is pending");
+      if(automatic&&!automaticUpdateReady())throw new java.io.IOException("Automatic update deferred");
       long deadline=System.nanoTime()+UPDATE_DEADLINE_NANOS;
       javax.net.ssl.HttpsURLConnection connection=updateConnection(apkUrl);
       try{
@@ -681,17 +718,19 @@ public final class AlphaDevicePlugin extends Plugin {
        signer==null||!signer.equals(signingRoot(archive.signingInfo)))
        throw new java.io.IOException("Update does not match this installation");
       throwIfDestroyed();
-      String binding="alpha-update://"+getContext().getPackageName()+"/"+versionCode+"/"+sha256+"/"+signer+"/"+updateBoot()+"/intent";
+      String binding="alpha-update://"+getContext().getPackageName()+"/"+versionCode+"/"+sha256+"/"+signer+"/"+updateBoot()+"/intent"+(automatic?"/automatic":"");
       if(!UPDATE_BINDING.matcher(binding).matches())throw new java.io.IOException("Update not admitted");
       PackageInstaller.SessionParams params=new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
       params.setAppPackageName(getContext().getPackageName());params.setSize(size);params.setReferrerUri(android.net.Uri.parse(binding));
+      if(automatic&&Build.VERSION.SDK_INT>=31)params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED);
       int id=installer.createSession(params);
       boolean commitAttempted=false;
       try(PackageInstaller.Session session=installer.openSession(id)){
        try(java.io.OutputStream out=session.openWrite("base.apk",0,size)){java.nio.file.Files.copy(apk.toPath(),out);session.fsync(out);}
        throwIfDestroyed();
+       if(automatic&&!automaticUpdateReady())throw new java.io.IOException("Automatic update deferred");
        java.util.List<AlphaDevicePlugin> participants;
-       synchronized(updateBarrier){preparation=new UpdateActivation(this);activation=preparation;participants=new java.util.ArrayList<>(updateBridges);}
+       synchronized(updateBarrier){preparation=new UpdateActivation(this,automatic);activation=preparation;participants=new java.util.ArrayList<>(updateBridges);}
        for(AlphaDevicePlugin bridge:participants)bridge.notifyListeners("alphaUpdateReady",bridge.preparation(preparation));
        if(!preparation.ready.get(30,java.util.concurrent.TimeUnit.SECONDS))throw new java.io.IOException("Update preparation refused");
        synchronized(updateBarrier){
@@ -703,6 +742,7 @@ public final class AlphaDevicePlugin extends Plugin {
        pauseOwned=true;UpdatePause.acquire(preparation.id,id,versionCode,sha256,updateBoot());
        UpdatePause.stop();
        throwIfDestroyed();
+       if(automatic&&!automaticUpdateReady())throw new java.io.IOException("Automatic update deferred");
        UpdatePause.committing(preparation.id);
        android.content.IntentSender status=android.app.PendingIntent.getBroadcast(getContext(),id,new Intent(UPDATE_STATUS).setPackage(getContext().getPackageName()),android.app.PendingIntent.FLAG_UPDATE_CURRENT|android.app.PendingIntent.FLAG_MUTABLE).getIntentSender();
        // The commit intent. Android holds this before the call returns, so on a level that orders a later read after it (above), a
@@ -712,6 +752,7 @@ public final class AlphaDevicePlugin extends Plugin {
        // Owned before commit, because Android's status can arrive as soon as commit reaches it. From here nothing proves refusal:
        // a commit can succeed ahead of a lost reply and the close after it can throw, and no exception class means the same on
        // every Android, so the session and its owner stay, and what happened comes from Android's status or list.
+       updateAutomatic=automatic;
        updateOwner=this;updateSession=id;updateConfirm=null;updateDue=false;updateOpen=false;updateAsked=System.nanoTime();
        // A destroy past the last check cannot stop this commit, and a dead owner would keep every live receiver from its status. handleOnDestroy interrupts ahead of reading updateOwner, so one side always sees the other.
        if(Thread.currentThread().isInterrupted())updateOwner=null;

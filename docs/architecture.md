@@ -436,6 +436,17 @@ permissions. OS staging admits the product APK separately from Eliza's full app;
 release provisioning owns default roles, signing, update compatibility and
 recovery policy.
 
+The [application update path](launcher-ota.md) now checks periodically while the
+production Android renderer is active and requests Android's nonprivileged
+self-update API from idle Home. Its scheduler and automatic preparation flag are
+an authenticated patch to the shared `app-update-gate` client; Alpha binds its
+Home/voice/editor policy. The native plugin retains package/flavor/signing-family
+and exact-byte admission, all-renderer draft receipts, resident shutdown and the
+durable unknown-session fence. Android may still require confirmation. An APK
+release is published only after actual-archive inspection and anonymous readback;
+the separate P-75 privileged OS updater and independent launcher recovery remain
+unqualified work.
+
 Image staging, APK release records and update tooling are shared `packages/os` modules that
 Alpha binds with its policy only. `image-apk-admission.mjs` admits the launcher APK and the
 reviewed source overrides for `scripts/stage-aosp.mjs`; `apk-release-record.mjs` names a

@@ -28,7 +28,8 @@ export function exactUpdateMembers(source) {
   const start = source.indexOf(' static final long UPDATE_MAX_BYTES=');
   const end = source.lastIndexOf('}');
   const handOff = /^ private static Intent handOff\(Intent intent\)\{[^\n]*$/m.exec(source)?.[0];
-  assert.ok(start > 0 && end > start && handOff, 'Exact updater method slice exists');
+  const foreground = / static boolean shareForeground\(android\.app\.Activity activity\)\{[\s\S]*?\n \}/.exec(source)?.[0];
+  assert.ok(start > 0 && end > start && handOff && foreground, 'Exact updater method slice exists');
   return `package ai.elizaresearch.alphaphone;
 import android.content.Context;
 import android.content.Intent;
@@ -40,6 +41,7 @@ import com.getcapacitor.*;
 final class AlphaDevicePlugin extends Plugin {
  private final java.util.concurrent.ExecutorService diagnosticsWorker=java.util.concurrent.Executors.newSingleThreadExecutor();
 ${handOff}
+${foreground}
 ${source.slice(start, end)}}
 `;
 }

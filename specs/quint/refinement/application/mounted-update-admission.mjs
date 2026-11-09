@@ -28,14 +28,14 @@ async function fixture(name, code) {
   const {window} = dom, {document} = window;
   const reads = [], waits = [], positive = new Set(), negative = new Set();
   const pending = new Map(), restarts = [], continues = [];
-  let listener, continuation, notices = 0, failModal = false;
+  let listener, continuation, notices = 0, failModal = false, busy = false;
   window.HTMLDialogElement.prototype.showModal = function () {
     if (failModal) throw Error('Fixture modal refused');
     this.setAttribute('open', '');
   };
   window.HTMLDialogElement.prototype.close = function () { this.removeAttribute('open'); };
   const currentActivation = () => activations.indexOf(context.inspect().active?.activationId ?? '');
-  const owner = {live: true};
+  const owner = {live: true,S:()=>({screen:'home',view:null,voice:'off',typing:busy,chat:'input'}),voiceConversationActive:()=>false};
   for (const name of draftOwners) {
     owner['flush' + name + 'ForAppUpdate'] = current => {
       assert.equal(current(), true);
@@ -105,6 +105,7 @@ async function fixture(name, code) {
     assert.equal(block('alpha-back'), block('launcher-home'));
     for (const request of pending.values()) assert.deepEqual(request.flushes, draftOwners);
     return {
+      'state.automatic': active?.automatic === true,
       'state.active': currentActivation(),
       'state.bridge': bridges.indexOf(active?.bridgeId ?? ''),
       'state.phase': active?.phase ?? 'idle',
@@ -144,15 +145,15 @@ async function fixture(name, code) {
   return {
     result,
     end: () => window.close(),
-    async notify(id, bridge, phase, show = true) {
+    async notify(id, bridge, phase, show = true, automatic = false) {
       failModal = !show;
-      listener(entry(id, bridge, phase));
-      await save('an exact Android readiness event freezes mounted navigation', 'notify', id, bridge, phase, show);
+      listener({...entry(id, bridge, phase),automatic});
+      await save('an exact Android readiness event freezes mounted navigation', 'notify', id, bridge, phase, show, automatic);
     },
-    async pending(id, bridge, phase, canContinue = false, show = true) {
+    async pending(id, bridge, phase, canContinue = false, show = true, automatic = false) {
       failModal = !show;
-      await readBack({pending: true, ...entry(id, bridge, phase), canContinue});
-      await save('the native readback owns the mounted activation and local draft flush', 'readPending', id, bridge, phase, canContinue, show);
+      await readBack({pending: true, ...entry(id, bridge, phase), canContinue, automatic});
+      await save('the native readback owns the mounted activation and local draft flush', 'readPending', id, bridge, phase, canContinue, show, automatic);
     },
     async finish(id, ready, replaceOwner = false) {
       const request = pending.get(id);
@@ -162,6 +163,11 @@ async function fixture(name, code) {
       if (ready || replaceOwner) request.barrier.resolve();
       else request.barrier.reject(Error('Fixture draft flush refused'));
       await save('the five mounted draft owners settle, with exact shell and activation guards', 'prepared', id, ready);
+    },
+    async finishWhileBusy(id) {
+      const request = pending.get(id); assert.ok(request);
+      pending.delete(id); busy = true; request.barrier.resolve();
+      await save('new foreground work retires automatic readiness after draft flush', 'prepared', id, false);
     },
     async terminal(id, bridge, outcome, idle = false, resume = false) {
       await readBack({pending: false, bridgeId: bridges[bridge], activationId: activations[id],
@@ -191,19 +197,24 @@ async function fixture(name, code) {
 }
 
 export async function checkMountedUpdateAdmission() {
-  const sources = [fileURLToPath(import.meta.url), main, 'vendor/eliza/' + shared, effective, projection,
+  const sources = [fileURLToPath(import.meta.url), main, 'apps/app/src/prototype/settings-adapter.ts', 'vendor/eliza/' + shared, effective, projection,
     'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java',
-    'upstream.lock.json', 'scripts/prepare-client-features.mjs', 'scripts/pinned-upstream-source.mjs'];
+    'upstream.lock.json', 'scripts/prepare-client-features.mjs', 'scripts/pinned-upstream-source.mjs',
+    'patches/eliza/app-update-resume-client.patch', 'patches/eliza/app-update-resume-client-manifest.json'];
   captureSources([...sources, modelPath]);
   checkClientFeatures();
   const gate = read(effective);
   const stamp = JSON.parse(read(projection));
   const digest = createHash('sha256').update(gate).digest('hex');
   assert.equal(stamp.files[shared], digest);
+  assert.equal(stamp.appUpdateResumePatch.afterSha256, digest);
   const pinned = createHash('sha256').update(read('vendor/eliza/' + shared)).digest('hex');
   assert.equal(stamp.sourceFiles[shared], pinned);
-  assert.equal(pinned, digest);
+  assert.equal(stamp.appUpdateResumePatch.beforeSha256, pinned);
   const text = read(main);
+  const settings = read('apps/app/src/prototype/settings-adapter.ts');
+  const idleStart=settings.indexOf('export function automaticUpdateIdle(');
+  const idlePolicy=settings.slice(idleStart,settings.indexOf('\n}',idleStart)+2).replace(/^export /,'');
   const start = text.indexOf('async function prepareMountedUpdate(');
   const end = text.indexOf('\nlet nativeAppUpdateGate', start);
   assert.ok(start > 0 && end > start);
@@ -213,6 +224,7 @@ export async function checkMountedUpdateAdmission() {
   const prepared = gate.replace(marker, marker + '\n' + inspect).replace(/^export /gm, '');
   const code = new vm.Script(stripTypeScriptTypes(`
 let shell = fixtureShell;
+${idlePolicy}
 ${text.slice(start, end)}
 ${prepared}
 globalThis.watch = watchMountedAppUpdates;
@@ -258,6 +270,11 @@ globalThis.replace = () => { shell = {live: true}; };
   });
   await run('shell_replacement_refuses_before_acknowledgement', async f => {
     await f.pending(1, 1, 'preparing'); await f.finish(1, false, true);
+    await f.terminal(1, 1, 'failed');
+  });
+  await run('automatic_download_cannot_interrupt_new_foreground_work', async f => {
+    await f.pending(1, 1, 'preparing',false,true,true);
+    await f.finishWhileBusy(1);
     await f.terminal(1, 1, 'failed');
   });
 

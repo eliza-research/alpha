@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {createHash} from 'node:crypto';
 import {buildSync} from 'esbuild';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -94,7 +95,7 @@ test('copied client features fail on an unmet dependency range unless a reviewed
  assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/exception has no reason: plugins\/plugin-maps maplibre-gl/);
 }));
 test('direct local development launcher prepares a clean client tree before starting services',()=>fixture(({root,commit})=>{
- for(const file of ['scripts/dev-local.mjs','scripts/dev-speech-settings.mjs','scripts/speech-env.mjs','scripts/local-agent-source.mjs','scripts/copy-file-clone.mjs','scripts/prepare-client-features.mjs','scripts/upstream-native-source.mjs']){const target=path.join(root,file);fs.mkdirSync(path.dirname(target),{recursive:true});fs.copyFileSync(file,target);}
+ for(const file of ['scripts/dev-local.mjs','scripts/dev-speech-settings.mjs','scripts/speech-env.mjs','scripts/local-agent-source.mjs','scripts/copy-file-clone.mjs','scripts/prepare-client-features.mjs','scripts/managed-google-client-backport.mjs','scripts/upstream-native-source.mjs']){const target=path.join(root,file);fs.mkdirSync(path.dirname(target),{recursive:true});fs.copyFileSync(file,target);}
  // The generic copier fixture explicitly tests the non-voice projection path.
  const prep=path.join(root,'scripts/prepare-client-features.mjs');fs.writeFileSync(prep,fs.readFileSync(prep,'utf8').replace('projectVoice = true','projectVoice = false'));
  // Source hashing and materialization can exceed 20 seconds on a loaded build host.
@@ -148,7 +149,16 @@ assert.equal(stamp.baseCommit,JSON.parse(fs.readFileSync('upstream.lock.json','u
  assert.equal(stamp.sourceFiles[mapPath],stamp.files[mapPath]);
  assert.match(fs.readFileSync(path.join(source,mapPath),'utf8'),/export interface GlobalBasemap/);
  const calendarPath='packages/contracts/src/calendar-linked-sync.ts';
- assert.deepEqual(Object.keys(stamp).sort(), ['baseCommit','files','projectionVersion','sourceFiles']);
+ assert.deepEqual(Object.keys(stamp).sort(), ['appUpdateResumePatch','baseCommit','files','managedGooglePatch','projectionVersion','sourceFiles']);
+ const updatePath='packages/ui/src/state/app-update-gate.ts';
+ const updateManifestBytes=fs.readFileSync('patches/eliza/app-update-resume-client-manifest.json');
+ const updateManifest=JSON.parse(updateManifestBytes);
+ assert.deepEqual(stamp.appUpdateResumePatch,{...updateManifest,manifestSha256:createHash('sha256').update(updateManifestBytes).digest('hex')});
+ assert.equal(updateManifest.baseCommit,stamp.baseCommit);
+ assert.equal(updateManifest.beforeSha256,stamp.sourceFiles[updatePath]);
+ assert.equal(updateManifest.afterSha256,stamp.files[updatePath]);
+ assert.notEqual(stamp.sourceFiles[updatePath],stamp.files[updatePath],'automatic update scheduling carries its reviewed patch');
+ assert.match(fs.readFileSync(path.join(source,updatePath),'utf8'),/export function createAppUpdateScheduler/);
  for(const file of [
   calendarPath,
   'plugins/plugin-inbox/src/mailbox/review-controller.ts',
@@ -157,7 +167,6 @@ assert.equal(stamp.baseCommit,JSON.parse(fs.readFileSync('upstream.lock.json','u
   'plugins/plugin-native-system/src/client/launcher.ts',
   'packages/ui/src/mobile-shell/view-registry.ts',
   'packages/ui/src/accessibility/screen-focus.ts',
-  'packages/ui/src/state/app-update-gate.ts',
   'packages/ui/src/mobile-shell/InstalledAppsGridDrawer.tsx',
   'plugins/plugin-files/src/browser/files-browser-adapter.ts',
   'plugins/plugin-files/src/browser/storage-volume.ts',
@@ -202,3 +211,34 @@ assert.equal(stamp.baseCommit,JSON.parse(fs.readFileSync('upstream.lock.json','u
  assert.equal(Object.keys(bundle.metafile.inputs).some(file=>/csrf-client|steward|persistence|core\/src\/logger|api\//.test(file)),false);
 
 });
+
+test('automatic update client patch requires its exact source, digest and target without replacing an admitted cache',()=>fixture(({root,vendor,commit})=>{
+ const file='packages/ui/src/state/app-update-gate.ts';
+ const before='export const value = 1;\n',after='export const value = 2;\n';
+ assert.equal(fs.readFileSync(path.join(vendor,file),'utf8'),before);
+ const digest=value=>createHash('sha256').update(value).digest('hex');
+ const patch=`--- a/${file}\n+++ b/${file}\n@@ -1 +1 @@\n-export const value = 1;\n+export const value = 2;\n`;
+ const patchRoot=path.join(root,'patches/eliza');fs.mkdirSync(patchRoot,{recursive:true});
+ const patchFile=path.join(patchRoot,'app-update-resume-client.patch');
+ const manifestFile=path.join(patchRoot,'app-update-resume-client-manifest.json');
+ const manifest={schema:1,baseCommit:commit,path:file,beforeSha256:digest(before),afterSha256:digest(after),patchSha256:digest(patch)};
+ const write=value=>fs.writeFileSync(manifestFile,JSON.stringify(value));
+ fs.writeFileSync(patchFile,patch);write(manifest);
+ const projected=prepareClientFeatures({root,projectVoice:false});
+ assert.equal(fs.readFileSync(path.join(projected,file),'utf8'),after);
+ const stamp=fs.readFileSync(path.join(projected,'.source.json'));
+ assert.deepEqual(JSON.parse(stamp).appUpdateResumePatch,{...manifest,manifestSha256:digest(fs.readFileSync(manifestFile))});
+ const unchanged=()=>assert.deepEqual(fs.readFileSync(path.join(projected,'.source.json')),stamp,'refused patches preserve the admitted cache');
+ for(const invalid of [{...manifest,baseCommit:'0'.repeat(40)},{...manifest,beforeSha256:'0'.repeat(64)},{...manifest,path:'unreviewed.ts'}]){
+  write(invalid);assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/patch source mismatch/);unchanged();
+ }
+ write({...manifest,afterSha256:'0'.repeat(64)});
+ assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/patch output mismatch/);unchanged();
+ const wrongTarget=patch.replaceAll(file,'packages/ui/src/state/unreviewed.ts');
+ fs.writeFileSync(patchFile,wrongTarget);write({...manifest,patchSha256:digest(wrongTarget)});
+ assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/patch digest or target mismatch/);unchanged();
+ fs.writeFileSync(patchFile,patch+'changed');write(manifest);
+ assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/patch digest or target mismatch/);unchanged();
+ fs.writeFileSync(patchFile,patch);
+ assert.equal(prepareClientFeatures({root,projectVoice:false,check:true}),projected);
+}));

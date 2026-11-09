@@ -63,8 +63,9 @@ public final class SettingsSystemFactsInstrumentedTest {
   assertEquals(BuildConfig.VERSION_CODE,facts.getInt("appVersionCode"));
   assertTrue("Android recorded an install time",facts.getLong("appUpdatedAt")>0);
   assertTrue("the signing certificate digest is 64 lowercase hex characters",facts.getString("appSigner").matches("[0-9a-f]{64}"));
+  assertEquals(AlphaDevicePlugin.automaticUpdateStatus(context),facts.getString("appAutomaticUpdates"));
   // Only these keys: the snapshot never carries a guessed or default switch.
-  java.util.Set<String> allowed=new java.util.HashSet<>(java.util.Arrays.asList("wifiEnabled","bluetoothEnabled","airplaneMode","locationEnabled","mobileDataEnabled","interruptionFilter","adaptiveBrightness","wifiActive","cellularActive","internetValidated","batteryPercent","charging","powerSave","appVersionCode","appUpdatedAt","appSigner"));
+  java.util.Set<String> allowed=new java.util.HashSet<>(java.util.Arrays.asList("wifiEnabled","bluetoothEnabled","airplaneMode","locationEnabled","mobileDataEnabled","interruptionFilter","adaptiveBrightness","wifiActive","cellularActive","internetValidated","batteryPercent","charging","powerSave","appVersionCode","appUpdatedAt","appSigner","appAutomaticUpdates"));
   for(java.util.Iterator<String> keys=facts.keys();keys.hasNext();)assertTrue(allowed.contains(keys.next()));
  }
  @Test public void everySettingsPageHasASpecificFirstChoice(){

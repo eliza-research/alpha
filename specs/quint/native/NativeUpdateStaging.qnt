@@ -27,7 +27,7 @@ module NativeUpdateStaging {
   val offers = Set(1, 2)
   val bridgeIds = Set(1, 2, 3)
   val validOffer = if (offers.contains(s.cached)) s.cached else 0
-  val checkDue = not(s.clock >= s.checkedAt and s.checkedAt >= 0 and s.clock - s.checkedAt < 24)
+  val checkDue = not(s.clock >= s.checkedAt and s.checkedAt >= 0 and s.clock - s.checkedAt < 15)
 
   action init = s' = {
     clock: 0, checkedAt: -1, cached: 0, storedAt: -1, stored: 0, checking: false,
@@ -35,9 +35,9 @@ module NativeUpdateStaging {
     stagedBytes: 0, connected: false, fetches: 0, created: 0, abandoned: 0, outcome: "none"
   }
 
-  action clockAt(hour: int): bool = all {
-    Set(0, 23, 24, 48).contains(hour),
-    s' = { ...s, clock: hour }
+  action clockAt(minute: int): bool = all {
+    Set(0, 14, 15, 30).contains(minute),
+    s' = { ...s, clock: minute }
   }
   action requestCheck(force: bool): bool = all {
     not(s.checking),
@@ -129,8 +129,8 @@ module NativeUpdateStaging {
   val safety = CacheCustody and NoUnverifiedStaging and CleanupBound and ConnectionCustody
 
   action step = any {
-    nondet hour = Set(0, 23, 24, 48).oneOf()
-    clockAt(hour),
+    nondet minute = Set(0, 14, 15, 30).oneOf()
+    clockAt(minute),
     requestCheck(false), requestCheck(true),
     nondet answer = Set("offer1", "offer2", "invalid", "withdrawn", "malformed", "transport").oneOf()
     nondet saved = Bool.oneOf()
@@ -154,7 +154,7 @@ module NativeUpdateStaging {
 
   action offered = init.then(requestCheck(false)).then(answerCheck("offer1", true))
 
-  run failedRefreshRetainsOldOfferTest = offered.then(clockAt(24))
+  run failedRefreshRetainsOldOfferTest = offered.then(clockAt(15))
     .then(requestCheck(false)).then(answerCheck("transport", false))
     .expect(checkDue and validOffer == 1 and s.checkedAt == 0)
     .then(requestCheck(false)).then(answerCheck("withdrawn", true))

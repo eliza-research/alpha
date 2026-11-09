@@ -1839,7 +1839,8 @@
       "staleReadAndPreparationCannotRetireSuccessorTest",
       "onlyExactCancelCanReconnectTest",
       "pauseCoalescesContinueTest",
-      "refusalExplainedOnlyAtExactFailureTest"
+      "refusalExplainedOnlyAtExactFailureTest",
+      "automaticRefusalStaysQuietTest"
     ],
     "invariants": [
       "owner",
@@ -3203,5 +3204,36 @@
     "abstractions": [
       "Closed bridge and two representative notification revisions, shade visits and lock transitions. Android delivery and pointer ownership remain separate."
     ]
+  },
+  {
+    "path": "specs/quint/application/AutomaticAppUpdateSchedule.qnt",
+    "module": "AutomaticAppUpdateSchedule",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "staysForegroundAndFindsLaterReleaseTest",
+      "offlineRetriesAreBoundedAndRecoverTest",
+      "backgroundInvalidatesBeforeLaterEffectTest",
+      "disposedInFlightCannotAcquireAnotherAttemptTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/settings-adapter.ts",
+      "vendor/eliza/packages/ui/src/state/app-update-gate.ts"
+    ],
+    "stateMapping": {
+      "active/disposed/busy/failures/wakeAt": "Actual shared foreground scheduler snapshot",
+      "valid": "Authority of the actual in-flight scheduler callback",
+      "now": "Controlled clock supplied to the scheduler"
+    },
+    "abstractions": [
+      "One minute is one unit, normal interval four units. Native bridge completions and timer delivery are controlled.",
+      "Retries and periodic foreground progress are checked; eventual network service and Android background execution are separate obligations."
+    ],
+    "bounds": {
+      "maxSamples": 1000,
+      "maxSteps": 80,
+      "maxVerifyDepth": 6
+    }
   }
 ]

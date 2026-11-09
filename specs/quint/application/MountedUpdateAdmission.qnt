@@ -3,29 +3,29 @@ module MountedUpdateAdmission {
   pure val Bridges = Set(1, 2)
   pure val Phases = Set("preparing", "paused")
   pure val Outcomes = Set("canceled", "failed", "installed", "unknown")
-  type State = {active: int, bridge: int, phase: str, panel: bool, canContinue: bool,
+  type State = {automatic: bool, active: int, bridge: int, phase: str, panel: bool, canContinue: bool,
     acknowledged: int, pending: Set[int], positive: Set[int], negative: Set[int],
     reconnect: int, localRefusal: bool, restarts: List[int], notices: int,
     continuing: bool, continues: List[int]}
   var state: State
 
-  action init = state' = {active: 0, bridge: 0, phase: "idle", panel: false, canContinue: false,
+  action init = state' = {automatic: false, active: 0, bridge: 0, phase: "idle", panel: false, canContinue: false,
     acknowledged: 0, pending: Set(), positive: Set(), negative: Set(), reconnect: 0,
     localRefusal: false, restarts: [], notices: 0, continuing: false, continues: []}
 
-  action notify(id: int, bridge: int, phase: str, show: bool): bool = all {
+  action notify(id: int, bridge: int, phase: str, show: bool, automatic: bool): bool = all {
     id.in(Activations), bridge.in(Bridges), phase.in(Phases),
     if (state.active == 0)
-      state' = {...state, active: id, bridge: bridge, phase: phase, panel: show}
+      state' = {...state, automatic: automatic, active: id, bridge: bridge, phase: phase, panel: show}
     else state' = state
   }
 
-  action readPending(id: int, bridge: int, phase: str, canContinue: bool, show: bool): bool = all {
+  action readPending(id: int, bridge: int, phase: str, canContinue: bool, show: bool, automatic: bool): bool = all {
     id.in(Activations), bridge.in(Bridges), phase.in(Phases),
     if (state.active != 0 and state.bridge != bridge) state' = state
     else {
       val opened = state.panel or show
-      val updated = {...state, active: id, bridge: bridge, phase: phase, panel: opened,
+      val updated = {...state, automatic: automatic, active: id, bridge: bridge, phase: phase, panel: opened,
         canContinue: opened and phase == "paused" and canContinue}
       if (phase != "preparing" or id == state.acknowledged) state' = updated
       else all {
@@ -52,11 +52,11 @@ module MountedUpdateAdmission {
     val terminal = id == state.active and result != "unknown"
     val matching = state.acknowledged == state.active
     if (state.active != 0 and bridge == state.bridge and (terminal or idle))
-      state' = {...state, active: 0, bridge: 0, phase: "idle", panel: false,
+      state' = {...state, automatic: false, active: 0, bridge: 0, phase: "idle", panel: false,
         canContinue: false, reconnect: 0, localRefusal: false,
         restarts: if (terminal and matching and result == "canceled" and resume and state.reconnect == id)
           state.restarts.append(id) else state.restarts,
-        notices: state.notices + (if (terminal and matching and result == "failed" and state.localRefusal) 1 else 0)}
+        notices: state.notices + (if (terminal and matching and result == "failed" and state.localRefusal and not(state.automatic)) 1 else 0)}
     else state' = state
   }
 
@@ -78,7 +78,8 @@ module MountedUpdateAdmission {
     nondet phase = Phases.oneOf()
     nondet show = Set(true, false).oneOf()
     nondet canContinue = Set(true, false).oneOf()
-    any {notify(id, bridge, phase, show), readPending(id, bridge, phase, canContinue, show)},
+    nondet automatic = Set(true, false).oneOf()
+    any {notify(id, bridge, phase, show, automatic), readPending(id, bridge, phase, canContinue, show, automatic)},
     nondet id = Activations.oneOf()
     nondet ready = Set(true, false).oneOf()
     prepared(id, ready),
@@ -93,29 +94,32 @@ module MountedUpdateAdmission {
 
   val navigationBlocked = state.active != 0
   val owner = if (navigationBlocked) state.bridge.in(Bridges) and state.phase.in(Phases)
-    else state.bridge == 0 and state.phase == "idle" and not(state.panel) and state.reconnect == 0
+    else not(state.automatic) and state.bridge == 0 and state.phase == "idle" and not(state.panel) and state.reconnect == 0
   val continuation = not(state.canContinue) or (navigationBlocked and state.panel and state.phase == "paused")
   val exactAcknowledgement = state.positive.intersect(state.negative) == Set()
     and state.pending.intersect(state.positive.union(state.negative)) == Set()
   val safety = owner and continuation and exactAcknowledgement and state.notices >= 0
 
-  run staleReadAndPreparationCannotRetireSuccessorTest = init.then(notify(1, 1, "preparing", true))
-    .then(readPending(1, 1, "preparing", false, true))
-    .then(readPending(2, 1, "preparing", false, true)).then(prepared(1, true))
+  run staleReadAndPreparationCannotRetireSuccessorTest = init.then(notify(1, 1, "preparing", true, false))
+    .then(readPending(1, 1, "preparing", false, true, false))
+    .then(readPending(2, 1, "preparing", false, true, false)).then(prepared(1, true))
     .then(readTerminal(2, 2, "canceled", true, true))
     .expect(safety and state.active == 2 and state.positive == Set())
-  run onlyExactCancelCanReconnectTest = init.then(readPending(1, 1, "preparing", false, true))
+  run onlyExactCancelCanReconnectTest = init.then(readPending(1, 1, "preparing", false, true, false))
     .then(prepared(1, true)).then(readTerminal(2, 1, "canceled", false, true))
     .expect(safety and navigationBlocked and state.restarts.length() == 0)
     .then(readTerminal(1, 1, "canceled", false, true))
     .expect(safety and not(navigationBlocked) and state.restarts == [1])
-  run pauseCoalescesContinueTest = init.then(readPending(1, 1, "paused", true, true))
+  run pauseCoalescesContinueTest = init.then(readPending(1, 1, "paused", true, true, false))
     .then(clickContinue).then(clickContinue).then(continued)
     .expect(safety and state.continues == [1] and navigationBlocked)
     .then(readTerminal(2, 1, "unknown", true, true))
     .expect(safety and not(navigationBlocked) and state.restarts.length() == 0)
-  run refusalExplainedOnlyAtExactFailureTest = init.then(readPending(1, 1, "preparing", false, false))
+  run refusalExplainedOnlyAtExactFailureTest = init.then(readPending(1, 1, "preparing", false, false, false))
     .expect(safety and state.negative == Set(1) and navigationBlocked)
     .then(readUncertain).then(readTerminal(1, 1, "failed", false, false))
     .expect(safety and state.notices == 1 and not(navigationBlocked))
+  run automaticRefusalStaysQuietTest = init.then(readPending(1, 1, "preparing", false, true, true))
+    .then(prepared(1, false)).then(readTerminal(1, 1, "failed", false, false))
+    .expect(safety and state.notices == 0 and not(navigationBlocked))
 }
