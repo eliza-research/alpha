@@ -17,3 +17,11 @@ for(const width of [360,412])for(const unsupported of [true,false])test(`Browser
  await expect(address).toBeEditable();await expect(address).toHaveValue('https://example.invalid/');expect(await page.evaluate(()=>(window as any).browserFailureCalls.filter((m:string)=>['navigate','share','openExternalBrowser'].includes(m)))).toEqual([]);
  await page.keyboard.press('Escape');await expect(page.getByRole('button',{name:'Edit address',exact:true})).toBeVisible();if(unsupported)await expect(notice).toBeVisible();await page.evaluate(()=>window.dispatchEvent(new Event('alpha-back',{cancelable:true})));await expect(page.getByRole('button',{name:'Browser',exact:true})).toBeVisible();
 });
+
+// The existing Android fixture has no AlphaBrowser implementation. Capacitor's real proxy
+// throws CapacitorException(Unimplemented); this is renderer evidence, not a device failure.
+test('missing Browser implementation reports plain language without the internal plugin name',async({page})=>{
+ await fenceNetwork(page);await flagOffAndroid(page);await residentHome(page);await page.getByRole('button',{name:'Browser',exact:true}).click();
+ await expect(page.getByText('This feature isn’t available in this version of Alpha.',{exact:true})).toBeVisible();
+ await expect(page.getByText('"AlphaBrowser" plugin is not implemented on android',{exact:true})).toHaveCount(0);
+});
