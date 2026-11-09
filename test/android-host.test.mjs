@@ -9,7 +9,9 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {generateAndroidConsumerHost} from '../vendor/eliza/packages/app/scripts/mobile/android/consumer-host.mjs';
 import {RESIDENT_NOTIFICATION_CLASSES, residentHelperKind, residentHostIdentity} from '../vendor/eliza/packages/app/scripts/mobile/android/resident-host-sources.mjs';
-import {HOST_DESCRIPTOR, PATCHED_NATIVE_ROOT, hostIdentity, hostProfile, mapReferences, readHostDescriptor} from '../scripts/android-host.mjs';
+import {HOST_DESCRIPTOR, PATCHED_NATIVE_ROOT, hostIdentity, hostProfile, mapReferences, readHostDescriptor, stageOwnerRouteAsset} from '../scripts/android-host.mjs';
+
+import {serializeOwnerRouteTable} from '../apps/app/src/product/owner-route-table.ts';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const identity = JSON.parse(fs.readFileSync(path.join(ROOT, 'app.config.json'), 'utf8'));
@@ -29,11 +31,13 @@ function consumer(t) {
  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-android-host-'));
  t.after(() => fs.rmSync(root, {recursive: true, force: true}));
  const staging = path.join(root, '.eliza/patched-native/test');
+ const ownerRouteAsset = stageOwnerRouteAsset(root);
  for (const reference of references(descriptor.profile)) {
   const base = reference.root === 'consumer' ? root : reference.root === PATCHED_NATIVE_ROOT ? staging : null;
   if (!base || reference.path === '.') continue;
   const source = reference.root === 'consumer' ? path.join(ROOT, reference.path) : path.join(ROOT, 'vendor/eliza', reference.path);
   const target = path.join(base, reference.path);
+  if (target === ownerRouteAsset) continue;
   if (reference.path === '.source.json') { fs.mkdirSync(path.dirname(target), {recursive: true}); fs.writeFileSync(target, '{}\n'); }
   else if (fs.statSync(source).isDirectory()) fs.mkdirSync(target, {recursive: true});
   else { fs.mkdirSync(path.dirname(target), {recursive: true}); fs.copyFileSync(source, target); }
@@ -94,12 +98,13 @@ test('test mocks reach debug variants only and product admission runs before eve
  assert.deepEqual(profile.settingsAdmission.map(step => step.command), [['node', 'scripts/prepare-patched-native.mjs']]);
  assert.deepEqual(profile.assetFiles, [
   {source: fs.realpathSync(path.join(staging, '.source.json')), name: 'native-patches.json'},
-  {source: fs.realpathSync(path.join(root, 'config/owner-routes.json')), name: 'owner-routes.json'},
+  {source: fs.realpathSync(path.join(root, '.eliza/generated-android/owner-routes.json')), name: 'owner-routes.json'},
  ]);
+ assert.equal(fs.readFileSync(profile.assetFiles[1].source, 'utf8'), serializeOwnerRouteTable());
  assert.deepEqual(profile.generatedSources, [{sourceSet: 'main', kind: 'java', path: 'generated/local-agent/java'}]);
  assert.deepEqual(profile.appScripts, [fs.realpathSync(path.join(root, 'android/app/product.gradle'))]);
  assert.deepEqual(profile.generationInputs.map(input => path.relative(fs.realpathSync(root), input.file)).sort(),
-  ['android/consumer-host.json', 'app.config.json', 'patches/eliza/native-manifest.json', 'scripts/android-host.mjs', 'scripts/prepare-patched-native.mjs', 'upstream.lock.json']);
+  ['.eliza/generated-android/owner-routes.json', 'android/consumer-host.json', 'app.config.json', 'apps/app/src/product/owner-route-table.ts', 'patches/eliza/native-manifest.json', 'scripts/android-host.mjs', 'scripts/prepare-patched-native.mjs', 'upstream.lock.json']);
  // Product admission that depends on Gradle properties stays in Alpha's product script.
  const product = fs.readFileSync(path.join(ROOT, 'android/app/product.gradle'), 'utf8');
  for (const task of ['verifyEmbeddingHost', 'verifyParadeeAppLinkage', 'verifyVoiceHost', 'verifyRuntimeWebProfile'])

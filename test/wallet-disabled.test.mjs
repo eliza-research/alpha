@@ -4,6 +4,7 @@ import {readFileSync,readdirSync,statSync,existsSync} from 'node:fs';
 import {join,resolve,dirname} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
+import {nativeViewDeclarationsJson} from '../scripts/native-view-policy.mjs';
 // AP-13 / #422: Wallet is outside the MVP in both distributions and on the Alpha AOSP image. Its
 // views, deep links, native/payment adapters and agent actions stay unavailable; no payment, card
 // or pass-wallet effect can be reached from a product build.
@@ -69,7 +70,7 @@ test('neither APK distribution declares a native Wallet, payment or NFC adapter'
 
 test('the resident agent profile used by Alpha loads no Wallet actions in either distribution',async()=>{
  // Product view launch policy names no Wallet view.
- const views=JSON.parse(read('config/native-view-declarations.json'));
+ const views=JSON.parse(nativeViewDeclarationsJson);
  assert.ok(Array.isArray(views)&&views.length>0);
  for(const view of views)assert.doesNotMatch(`${view.id} ${view.path} ${view.fallbackFor}`,/wallet|payment/i);
  // The pinned upstream resident restricts every Android runtime (stock APK and the AOSP image

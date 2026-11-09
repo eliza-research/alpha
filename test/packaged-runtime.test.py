@@ -2,7 +2,9 @@
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
 import warnings
@@ -12,6 +14,9 @@ spec = importlib.util.spec_from_file_location('packaged_runtime', Path(__file__)
 verifier = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(verifier)
 sha = lambda data: hashlib.sha256(data).hexdigest()
+NATIVE_VIEW_POLICY = verifier.ROOT / 'scripts/native-view-policy.mjs'
+NATIVE_VIEW_DECLARATIONS = subprocess.check_output(
+    [os.environ.get('ALPHA_NODE', 'node'), NATIVE_VIEW_POLICY], timeout=30)
 
 
 class PackagedRuntimeTest(unittest.TestCase):
@@ -35,8 +40,8 @@ class PackagedRuntimeTest(unittest.TestCase):
         worker = b'worker payload'
         manifest = json.dumps({'version': 1, 'sourceStampSha256': sha(stamp_bytes), 'files': {'worker.js': sha(worker)}}).encode()
         index = f'{sha(worker)}\tworker.js\n{sha(manifest)}\tmanifest.json\n'.encode()
-        self.write('config/native-view-declarations.json', b'[]')
-        self.entries = {'assets/agent/native-view-declarations.json': b'[]',
+        self.write('scripts/native-view-policy.mjs', NATIVE_VIEW_POLICY.read_bytes())
+        self.entries = {'assets/agent/native-view-declarations.json': NATIVE_VIEW_DECLARATIONS,
                         'assets/agent/alpha-source.json': stamp_bytes,
                         'assets/agent/agent-bundle.js': b'agent payload',
                         'assets/agent/agent-bundle-dependencies.json': json.dumps({
@@ -69,9 +74,10 @@ class PackagedRuntimeTest(unittest.TestCase):
         return self.apk
 
     def test_native_policy_must_match_reviewed_product_source(self):
-        self.write('config/native-view-declarations.json', b'["changed"]')
-        with self.assertRaises(ValueError):
-            verifier.verify(self.package(self.entries))
+        name = 'assets/agent/native-view-declarations.json'
+        self.write('android/app/src/main/' + name, b'[]')
+        with self.assertRaisesRegex(ValueError, 'Packaged runtime mismatch: ' + name):
+            verifier.verify(self.package({**self.entries, name: b'[]'}))
 
     def test_valid_payload_is_byte_verified_without_execution_claim(self):
         result = verifier.verify(self.package())

@@ -11,7 +11,7 @@ const repository = resolve(import.meta.dirname, '../../../..');
 const launcher = 'scripts/start-reviewed-workflow-agent.mjs';
 const support = [
   'scripts/launcher-child.mjs',
-  'scripts/agent-model.mjs', 'scripts/agent-identity.mjs', 'scripts/agent-embeddings.mjs', 'config/alpha-product.json',
+  'scripts/agent-model.mjs', 'scripts/agent-identity.mjs', 'scripts/agent-embeddings.mjs', 'apps/app/src/product/alpha-product-registration.ts',
   'vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs',
   'vendor/eliza/packages/agent/native-host/private-runtime-json.mjs',
 ];

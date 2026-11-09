@@ -15,7 +15,7 @@ const shared = 'vendor/eliza/packages/agent/native-host/private-runtime-launch.m
 const support = [
   launcher, shared, 'vendor/eliza/packages/agent/native-host/private-runtime-json.mjs',
   'scripts/cloud-sdk-authority.mjs', 'scripts/native-view-policy.mjs',
-  'config/cloud-deployment.json', 'config/native-view-declarations.json',
+  'scripts/cloud-deployment-policy.mjs',
 ];
 const input = 'synthetic-staging-fixture-input';
 const model = 'reviewed/fixture-model';

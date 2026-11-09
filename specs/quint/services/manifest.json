@@ -1961,7 +1961,7 @@
         "patches/eliza/managed-google-agent.patch",
         "apps/app/src/product/native-cloud-runtime.ts",
         "scripts/native-google-product-host.ts",
-        "config/alpha-product.json",
+        "apps/app/src/product/alpha-product-registration.ts",
         "package.json",
         "patches/eliza/cloud-speech-client-manifest.json",
         "patches/eliza/cloud-speech-client.patch",
@@ -2087,8 +2087,7 @@
         "scripts/core-state-preload.mjs",
         "scripts/cloud-sdk-authority.mjs",
         "scripts/native-view-policy.mjs",
-        "config/cloud-deployment.json",
-        "config/native-view-declarations.json",
+        "scripts/cloud-deployment-policy.mjs",
         "vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs"
       ],
       "stateMapping": {

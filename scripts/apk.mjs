@@ -1,3 +1,4 @@
+import { serializeOwnerRouteTable } from "../apps/app/src/product/owner-route-table.ts";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
@@ -146,13 +147,13 @@ export function readBuildFlags(publicDir) {
   return flags;
 }
 
-/** OwnerRoutes reads assets/owner-routes.json; it must be config/owner-routes.json, the table the renderer imports. */
+/** Check that the packaged Android owner-route table is generated from the renderer source. */
 export function verifyOwnerRouteTable(file) {
   let packaged;
   try { packaged = execFileSync("unzip", ["-p", file, "assets/owner-routes.json"], { stdio: ["ignore", "pipe", "pipe"] }); }
   catch { throw new Error("assets/owner-routes.json is missing"); }
-  if (!packaged.equals(fs.readFileSync(new URL("../config/owner-routes.json", import.meta.url))))
-    throw new Error("assets/owner-routes.json differs from config/owner-routes.json");
+  if (!packaged.equals(Buffer.from(serializeOwnerRouteTable())))
+    throw new Error("assets/owner-routes.json differs from the generated owner-route table");
 }
 
 export const AUDIT_SCRIPT = "scripts/audit-production-bundle.mjs";

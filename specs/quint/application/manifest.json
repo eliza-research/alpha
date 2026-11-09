@@ -1418,7 +1418,7 @@
       ".eliza/client-features/packages/ui/src/mobile-shell/view-id-migration.ts",
       ".eliza/client-features/packages/ui/src/mobile-shell/view-registry.ts",
       "apps/app/src/product/alpha-product.ts",
-      "config/alpha-product.json",
+      "apps/app/src/product/alpha-product-registration.ts",
       "patches/eliza/launcher-legacy-view-key-client.patch",
       "patches/eliza/launcher-legacy-view-key-client-manifest.json"
     ],

@@ -55,6 +55,8 @@
     "scripts/audit-production-bundle.mjs",
     "scripts/generate-licenses.mjs",
     "scripts/cloud-deployment.mjs",
+    "scripts/cloud-deployment-policy.mjs",
+    "scripts/native-view-policy.mjs",
     "scripts/with-test-mocks.mjs",
     "capacitor.config.ts",
     "vite.config.ts",
@@ -7402,7 +7404,7 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/CloudDeployment.java",
-      "sha256": "c42767d8d5c6226f8398e5d22fa3aa007b0c26811d8ad44fabc4bf164cb561dc",
+      "sha256": "5127a68e20cd53b3ddfcce2cf907767be4535fdec2a3b32dc4deef2d2a4048f3",
       "models": [
         "ServiceAuthorization",
         "NativeGmailBackground"
@@ -7458,7 +7460,7 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/ConnectionRoutes.java",
-      "sha256": "12cf0481c5a2ea85c5c0fd0581b444cf25d0a7a1f94a693ee83d28848ac4805a",
+      "sha256": "6ea01a27d1204ae8008d81fe851ce041d819d4e399b6b8e1c17812de5324b6ca",
       "models": [
         "ServiceAuthorization"
       ],
@@ -8169,14 +8171,14 @@
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
-      "sha256": "d52356a21a8d9d21c9cf05ebbdfd17de065add96cda691a72881843dde28a845",
+      "sha256": "f8266638fa048f83c49347daa84a5f1ef5539e0bd11a0a801e7b8e84756f0478",
       "stateAnchors": [
         {
-          "line": 10,
+          "line": 8,
           "text": "private static final OwnerRoutePolicy.Shipped SHIPPED=new OwnerRoutePolicy.Shipped(ASSET);"
         },
         {
-          "line": 11,
+          "line": 9,
           "text": "private final OwnerRoutePolicy policy;"
         }
       ]
@@ -8208,7 +8210,7 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/PasswordProviderSupport.java",
-      "sha256": "04a6649d2a722d734bcfa2179907114d42f09dc86e1140cc30b090b2cb312cd8",
+      "sha256": "8d7c6f32527999bd06e94509741971d6d5cfafb9c36d1364086849d12d8fb313",
       "models": [
         "CredentialVault",
         "NativeSettingsHandoff"
@@ -15534,6 +15536,18 @@
       ]
     },
     {
+      "path": "apps/app/src/product/alpha-product-registration.ts",
+      "sha256": "d8f601f74392ea87cdfa15ff3dee9dae0c31956d8bb71d5ef27215ee0aa7b512",
+      "models": [
+        "ShellNavigation",
+        "LauncherFavorites",
+        "NativeGoogleHostArtifact"
+      ],
+      "scope": "application",
+      "treatment": "domain-contract-or-support",
+      "stateAnchors": []
+    },
+    {
       "path": "apps/app/src/product/alpha-product.ts",
       "models": [
         "ShellNavigation",
@@ -15541,12 +15555,8 @@
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
-      "sha256": "48c4a1801d7ff5f0d223d9eae3f6ad5719168c08f67ce6f623f782fcc193b1d0",
+      "sha256": "af292ba9b8c02912afd98c089cc78a95243b1775ac19c7408f36e66bf0449aaf",
       "stateAnchors": [
-        {
-          "line": 20,
-          "text": "export const ALPHA_PRODUCT = defineMobileProductRegistration(record as MobileProductRegistration);"
-        },
         {
           "line": 27,
           "text": "const views = createMobileViewRegistry(ALPHA_PRODUCT, {available: view => available(views.hostKey(view))});"
@@ -15601,7 +15611,7 @@
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
-      "sha256": "eaa0d722bcdf7a8bfaaf626a896eba6d0e5a019297031e7e21de7384987c6b3a",
+      "sha256": "365980c009f5048ef4d641076b68edb6229c2ae324e1d76ff39fba29c129d81f",
       "stateAnchors": [
         {
           "line": 7,
@@ -15612,6 +15622,20 @@
           "text": "export const nativeCloudRuntime=Object.freeze({apiBaseUrl:productionCloud.api+'/api/v1',productCharacter:Object.freeze({name:characterName,bio:Object.freeze([`The assistant built into ${appName} for w"
         }
       ]
+    },
+    {
+      "path": "apps/app/src/product/owner-route-table.ts",
+      "sha256": "0b4e1edd289b2fc124baa59be09ec815fa577aa4b8448794ac7ea4063c603e35",
+      "models": [
+        "Application",
+        "CalendarPresentation",
+        "NotesLifecycle",
+        "ServiceAuthorization",
+        "MobileBundleAdmission"
+      ],
+      "scope": "application",
+      "treatment": "domain-contract-or-support",
+      "stateAnchors": []
     },
     {
       "path": "apps/app/src/prototype/agent-adapter.ts",
@@ -24524,7 +24548,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "eadab21fe6bfe9fbbed044bcb6f4ff8c0d3a03f508184c8efe2d637ef9f4f254",
+      "sha256": "f0732b60104f594a47ab2811f6c7bc3149481c65236225bf1cf62460726e5ba1",
       "stateAnchors": [
         {
           "line": 26,
@@ -37620,7 +37644,7 @@
     },
     {
       "path": "apps/app/src/runtime/cloud-deployment.generated.ts",
-      "sha256": "0c9ba401ee40ab7c25aea7de846375b9d805fd33b0932f0ebb965c126972f8da",
+      "sha256": "645f8482e15794835b74236ac1c034c40b88419043f915fd2729df7e46d9e6e9",
       "models": [
         "ServiceAuthorization",
         "NativeGoogleHostArtifact"
@@ -43524,58 +43548,58 @@
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
-      "sha256": "0fec5bba181ab63f3b7f9d1aaee2213f246ce1deb755d614bb5d81ff4dc764a2",
+      "sha256": "448e557733c85eeedf137bdaa914cc5d59bb397c2fb42ad8aba67d0708eb12f1",
       "stateAnchors": [
         {
-          "line": 5,
+          "line": 3,
           "text": "const unsafe = new RegExp(table.unsafe);"
         },
         {
-          "line": 7,
+          "line": 5,
           "text": "const groups = new Map(Object.entries(table.groups as Record<string, {prefixes: string[]; id?: string; routes: {methods: string[]; paths: string[]; query?: string[]}[]}>).map(([name, {id, ...group}]) "
         },
         {
-          "line": 14,
+          "line": 12,
           "text": "let claimant: OwnerRouteGroup | undefined, longest = -1;"
         },
         {
-          "line": 15,
+          "line": 13,
           "text": "for(const name of among.length ? among : [...groups.keys()] as OwnerRouteGroup[])for(const prefix of named(name).prefixes)"
         },
         {
-          "line": 20,
+          "line": 18,
           "text": "const group = named(name);"
         },
         {
-          "line": 22,
+          "line": 20,
           "text": "const parts = path.split('?');"
         },
         {
-          "line": 24,
+          "line": 22,
           "text": "const keys: string[] = [];"
         },
         {
-          "line": 25,
+          "line": 23,
           "text": "if(parts[1])for(const pair of parts[1].split('&')){const key = decode(pair.split('=')[0]);if(key === undefined || keys.includes(key))return false;keys.push(key);}"
         },
         {
-          "line": 27,
+          "line": 25,
           "text": "const id = segment(pattern, query ? parts[0] : path), value = id && query ? decode(id) : id;"
         },
         {
-          "line": 33,
+          "line": 31,
           "text": "const group = groups.get(name);"
         },
         {
-          "line": 39,
+          "line": 37,
           "text": "const at = pattern.indexOf('{id}');"
         },
         {
-          "line": 41,
+          "line": 39,
           "text": "const head = pattern.slice(0, at), tail = pattern.slice(at + 4);"
         },
         {
-          "line": 43,
+          "line": 41,
           "text": "const id = path.slice(head.length, path.length - tail.length);"
         }
       ]
@@ -45933,7 +45957,7 @@
       "scope": "build-and-runtime",
       "treatment": "configuration-and-publication-audit",
       "reviewStatus": "state-audit-required",
-      "sha256": "519f5023bff0d6655d57e558945ce0165ca520e17e9c30f23c16e9749128ef94",
+      "sha256": "47de0acd27320f927a0aca4ef6c017431a0aa342d5448531bfec177878477eb3",
       "stateAnchors": []
     },
     {
@@ -45944,7 +45968,7 @@
       "scope": "development-runtime",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "1536f16768a33c741f00301517a35625e223b92f61332cd84e9a8f493cdef380",
+      "sha256": "79fcd4729105025cc3afcba7453c8afa57920b83e91b7470b4e167474e51e59a",
       "stateAnchors": []
     },
     {
@@ -46574,6 +46598,19 @@
       "stateAnchors": []
     },
     {
+      "path": "scripts/cloud-deployment-policy.mjs",
+      "sha256": "cd5b66f87defd234e447f8ad6e02e6de9ec901ae7b3b4dd18af552192d7db771",
+      "models": [
+        "IdentitySession",
+        "ServiceAuthorization",
+        "DevelopmentHost",
+        "CloudQaLauncher"
+      ],
+      "scope": "build-and-runtime",
+      "treatment": "configuration-and-publication-audit",
+      "stateAnchors": []
+    },
+    {
       "path": "scripts/cloud-deployment.mjs",
       "models": [
         "ServiceAuthorization",
@@ -46582,12 +46619,12 @@
       "scope": "build-and-runtime",
       "treatment": "configuration-and-publication-audit",
       "reviewStatus": "state-audit-required",
-      "sha256": "c3a9ddc001aad5affcdd084bf3b84dc91b63017b934f65b5459088dbfb8684f6",
+      "sha256": "3750c819311e0fa705fabd8478b57b0b2aee00ff6fbe72f02a10571080dae041",
       "stateAnchors": []
     },
     {
       "path": "scripts/cloud-email-code.ts",
-      "sha256": "1a2a7b898eb1eb216cc532f72d3d66c66ff9f2d7c45c1c5b0319770c3637f146",
+      "sha256": "6e2223bfcd4c774bbdade2835d93baa4cbbec58b83ce7c1b0628afecde19d099",
       "models": [
         "Application",
         "DevelopmentHost"
@@ -46596,24 +46633,16 @@
       "treatment": "domain-contract-or-support",
       "stateAnchors": [
         {
-          "line": 12,
-          "text": "export const CLOUD_EMAIL_CODE=JSON.parse(readFileSync(new URL('../config/cloud-email-code.json',import.meta.url),'utf8')) as {sendPath:string;verifyPath:string;client:string};"
-        },
-        {
-          "line": 21,
+          "line": 27,
           "text": "const value=typeof reported==='number'?reported:typeof reported==='string'?Date.parse(reported):NaN;"
         },
         {
-          "line": 26,
+          "line": 32,
           "text": "const timestamp=typeof reported==='number'?reported:typeof reported==='string'?Date.parse(reported):NaN;"
         },
         {
-          "line": 27,
+          "line": 33,
           "text": "const value=retryAfter?.trim();"
-        },
-        {
-          "line": 28,
-          "text": "const retry=value&&/^[0-9]{1,9}$/.test(value)?now+Number(value)*1000:value?Date.parse(value):NaN;"
         }
       ]
     },
@@ -47029,6 +47058,20 @@
       ]
     },
     {
+      "path": "scripts/native-view-policy.mjs",
+      "sha256": "f8766f91d465b939c6eaad65e7f066a79d0ec1140c54948ecb24930aa758195d",
+      "models": [
+        "DevelopmentHost",
+        "CloudQaLauncher",
+        "MobileBundleAdmission",
+        "NativeViewSubscription",
+        "ResidentRuntime"
+      ],
+      "scope": "build-and-runtime",
+      "treatment": "configuration-and-publication-audit",
+      "stateAnchors": []
+    },
+    {
       "path": "scripts/prepare-client-features.mjs",
       "models": [
         "Application",
@@ -47160,7 +47203,7 @@
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
-      "sha256": "477ba7a2848b76c4f2b74743f5970858c4f87a279507ac2fa00b5220d76f951e",
+      "sha256": "83a37c7f0ada9f0dcbbaf701f7b99562ca1fd2ecb11268cb4c568441bdfea51d",
       "stateAnchors": []
     },
     {
@@ -47198,7 +47241,7 @@
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
-      "sha256": "617ce74dc8a97be1221c16956a86133871217975eb11f98b6268f98fab7e788a",
+      "sha256": "88d8764420c5f1f0e08e71f6c797fa33cad0533507e0de8ffadbe26eaa13db2d",
       "stateAnchors": []
     },
     {
@@ -47446,7 +47489,7 @@
       "scope": "development-runtime",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "57d3f5124fc3ed64e7e2e5b626aec6dfb77f2830c121cc5e6314c4f6bfccafd9",
+      "sha256": "bdccc1d009d27ff8ba67f1ee2e9c8e0198bda49f1b83c57b9bfef53a62abe876",
       "stateAnchors": []
     },
     {
@@ -47459,7 +47502,7 @@
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
-      "sha256": "a812a2508ff230207f3663f44994bbc1fcffea4f5fcc232e07171ca94b6df41b",
+      "sha256": "c40c57454965f945c835bbe4e3ddacfc471732e79eabe17d89cca3802eb0ccba",
       "stateAnchors": []
     },
     {
@@ -617209,7 +617252,7 @@
       "scope": "build-and-runtime",
       "treatment": "configuration-and-publication-audit",
       "reviewStatus": "state-audit-required",
-      "sha256": "3df051169be3a388ed557ea45afd0cde28dc8072741ff62fca34e33f9946779d",
+      "sha256": "f646ded3903339759197c4d36bfacd7ed7d5017b5d50e8e70a4cf4a999798735",
       "stateAnchors": []
     }
   ],
@@ -617263,7 +617306,7 @@
         "NativeAssistantEntry",
         "ResidentJavaSourceStage"
       ],
-      "sha256": "cf0146eab41d40b6c298d168f1bbb3e9329b0889bedfab966321dfe28f4eef39",
+      "sha256": "124e27dbaa5a653212d5a1d2d4508be38fee3a8c4e27d03b55cde90559b6aec5",
       "integrationReview": "specs/quint/pixel-native-review-20261109.md"
     },
     {
@@ -617283,16 +617326,6 @@
         "ResidentJavaSourceStage"
       ],
       "sha256": "c31484ec76141dc78cf7dc28fa4c60d8c62885e31f27e18755e87f0c18119bb0"
-    },
-    {
-      "path": "config/cloud-deployment.json",
-      "models": [
-        "IdentitySession",
-        "ServiceAuthorization",
-        "DevelopmentHost",
-        "CloudQaLauncher"
-      ],
-      "sha256": "ee4802ccd24647c4c25779d47d1f5a3327b692a7084de0810ade1e09fa2683af"
     },
     {
       "path": "docs/client-feature-dependency-exceptions.json",
@@ -618113,7 +618146,7 @@
       "models": [
         "Application"
       ],
-      "sha256": "9108e03ce391ab8e31d38cb50e98b4713d133e529578d90b9fbb93af90b6d18f",
+      "sha256": "be1c47156ab3f1beab059bfa9a452ab42acc5410b7a7ac1d7bdb81ce5f970d1a",
       "integrationReview": "Reviewed integration input; current source identity does not establish runtime behavior or source-model refinement."
     },
     {
@@ -618203,14 +618236,6 @@
       "sha256": "5e5201b471dfc9d823788953828206f0b1c3a26483a4405398105e8ebaa6085c"
     },
     {
-      "path": "config/alpha-product.json",
-      "models": [
-        "NativeGoogleHostArtifact",
-        "LauncherFavorites"
-      ],
-      "sha256": "711cf8a3e94c14d5094c842feb2613cf28b562278bf070dff87b17b03be713f3"
-    },
-    {
       "path": "package.json",
       "models": [
         "NativeGoogleHostArtifact"
@@ -618266,6 +618291,14 @@
         "NativeGoogleHostArtifact",
         "ServiceAuthorization"
       ]
+    },
+    {
+      "path": "android/app/cloud-deployment.generated.gradle",
+      "models": [
+        "IdentitySession",
+        "ServiceAuthorization"
+      ],
+      "sha256": "aca18a41c51f4eacc0525407a64e3abb470a9068eab01a6fad6d768dc90e7961"
     }
   ],
   "runtimeAssets": [

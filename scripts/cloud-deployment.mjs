@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import {createHash} from 'node:crypto';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {CLOUD_DEPLOYMENT} from './cloud-deployment-policy.mjs';
 import {CLOUD_SDK_BASES,cloudSdkBases} from './cloud-sdk-authority.mjs';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
@@ -35,12 +36,16 @@ export function storageFingerprint(config){
 export function deploymentOutputs(config){
  validateCloudDeployment(config);
  const fingerprint=storageFingerprint(config);
- const java=['package ai.elizaresearch.alphaphone;','','/** Generated from config/cloud-deployment.json. Run node scripts/cloud-deployment.mjs. */','final class CloudDeployment {',' private CloudDeployment() {}'];
- const ts=['// Generated from config/cloud-deployment.json. Run node scripts/cloud-deployment.mjs.'];
+ const generated='Generated from scripts/cloud-deployment-policy.mjs. Run node scripts/cloud-deployment.mjs.';
+ const java=['package ai.elizaresearch.alphaphone;','','/** '+generated+' */','final class CloudDeployment {',' private CloudDeployment() {}'];
+ const ts=['// '+generated];
+ const gradle=['// '+generated,'ext.alphaCloudWebHosts = ['];
  for(const env of ['production','staging']){
   const row=config[env];
+  const webHost=new URL(row.web).host;
+  gradle.push(` ${env}: ${JSON.stringify(webHost)},`);
   ts.push(`export const ${env}Cloud = ${JSON.stringify({name:row.name??new URL(row.api).hostname,entitlementAudience:row.entitlementAudience??'cloud-subscription',api:row.api,web:row.web,agents:new URL(row.services).host,tenant:row.tenant})} as const;`);
-  for(const [key,value] of Object.entries({...row,name:row.name??new URL(row.api).hostname,apiHost:new URL(row.api).host,webHost:new URL(row.web).host,servicesHost:new URL(row.services).host}))java.push(` static final String ${env.toUpperCase()}_${key.replace(/[A-Z]/g,c=>'_'+c).toUpperCase()} = ${JSON.stringify(value)};`);
+  for(const [key,value] of Object.entries({...row,name:row.name??new URL(row.api).hostname,apiHost:new URL(row.api).host,webHost,servicesHost:new URL(row.services).host}))java.push(` static final String ${env.toUpperCase()}_${key.replace(/[A-Z]/g,c=>'_'+c).toUpperCase()} = ${JSON.stringify(value)};`);
  }
  java.push(` static final String STORAGE_NAMESPACE = "cloud-deployment:${fingerprint}:";`,
   ' static String storageSlot(String name) {',
@@ -48,10 +53,14 @@ export function deploymentOutputs(config){
   ' }','}');
  ts.push(`export const cloudStorageNamespace = "cloud-deployment:${fingerprint}:";`,
   'export function cloudStorageSlot(name:string):string { return name.startsWith("cloud:") || name.startsWith("cloud-signin:") || name === "local-agent-provider:v1" ? cloudStorageNamespace + name : name; }');
- return {'apps/app/src/runtime/cloud-deployment.generated.ts':ts.join('\n')+'\n','android/app/src/main/java/ai/elizaresearch/alphaphone/CloudDeployment.java':java.join('\n')+'\n'};
+ gradle.push(']');
+ return {
+  'apps/app/src/runtime/cloud-deployment.generated.ts':ts.join('\n')+'\n',
+  'android/app/src/main/java/ai/elizaresearch/alphaphone/CloudDeployment.java':java.join('\n')+'\n',
+  'android/app/cloud-deployment.generated.gradle':gradle.join('\n')+'\n',
+ };
 }
-export function checkCloudDeployment(directory=root,sdkBases=CLOUD_SDK_BASES,namespaces=STORAGE_NAMESPACES){
- const config=JSON.parse(fs.readFileSync(path.join(directory,'config/cloud-deployment.json'),'utf8'));
+export function checkCloudDeployment(directory=root,{config=CLOUD_DEPLOYMENT,sdkBases=CLOUD_SDK_BASES,namespaces=STORAGE_NAMESPACES}={}){
  const outputs=deploymentOutputs(config);
  for(const [name,contents] of Object.entries(outputs)){
   const file=path.join(directory,name);
@@ -59,9 +68,9 @@ export function checkCloudDeployment(directory=root,sdkBases=CLOUD_SDK_BASES,nam
  }
  if(storageFingerprint(config)!==namespaces.at(-1))throw Error('Cloud storage namespace would change: every installed phone loses its production credential; add a tested migration (LegacyCloudRecovery) and append the new namespace to STORAGE_NAMESPACES in scripts/cloud-deployment.mjs');
  // The resident agent's inference base (ELIZAOS_CLOUD_BASE_URL) must be the configured API, never a second authority.
- if(JSON.stringify(sdkBases)!==JSON.stringify(cloudSdkBases(config)))throw Error('Cloud SDK bases (scripts/cloud-sdk-authority.mjs) disagree with config/cloud-deployment.json');
+ if(JSON.stringify(sdkBases)!==JSON.stringify(cloudSdkBases(config)))throw Error('Cloud SDK bases (scripts/cloud-sdk-authority.mjs) disagree with the Cloud deployment policy');
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  if(process.argv.includes('--check'))checkCloudDeployment();
- else for(const [name,contents] of Object.entries(deploymentOutputs(JSON.parse(fs.readFileSync(path.join(root,'config/cloud-deployment.json'),'utf8')))))fs.writeFileSync(path.join(root,name),contents);
+ else for(const [name,contents] of Object.entries(deploymentOutputs(CLOUD_DEPLOYMENT)))fs.writeFileSync(path.join(root,name),contents);
 }
