@@ -15688,7 +15688,7 @@
     },
     {
       "path": "apps/app/src/prototype/agent-adapter.ts",
-      "sha256": "ba69bd17a0571aea778e4b5bbbb417b049d28d1697a5a1ec63cbfff79287a786",
+      "sha256": "abd9ec348137cd2fcb6c5f470fa6dc5a1f3fcce1083187df0414acefd7ce2308",
       "models": [
         "Application",
         "AssistantConversation",
@@ -16940,7 +16940,8 @@
           "text": "const failed=Boolean((activeShell?.notesStorageFailed&&document.documentElement.dataset.notesStorageState!=='opening')||activeShell?.notesStore?.needsRecovery);"
         }
       ],
-      "reviewStatus": "state-audit-required"
+      "reviewStatus": "state-audit-required",
+      "integrationReview": "Reviewed merged source and upstream contract integration. Existing domain allocation is retained; refreshed hashes do not establish implementation refinement or device acceptance."
     },
     {
       "path": "apps/app/src/prototype/agent-calendar-adapter.ts",
@@ -17567,7 +17568,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "e0f14dbf070ec814130e49729ddd82cb3a41b8454608a06128799dc479a40e04",
+      "sha256": "d8eddb116d668166ccadb1ce7aad8f1c1d2ff484368a2e9bc7b458699797c26e",
       "stateAnchors": [
         {
           "line": 19,
@@ -17973,7 +17974,8 @@
           "line": 562,
           "text": "const timer=window.setInterval(update,100);"
         }
-      ]
+      ],
+      "integrationReview": "Reviewed merged source and upstream contract integration. Existing domain allocation is retained; refreshed hashes do not establish implementation refinement or device acceptance."
     },
     {
       "path": "apps/app/src/prototype/browser-camera.ts",
@@ -19587,7 +19589,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "ff7aa68cca00e79ea01307bbe1b7a6516774be6dcf75c1ed8b284fe2fd920c69",
+      "sha256": "4930d99c2bc8c0f38c9a5a39166069f9d9af083401751f8d8f8070fff9ce9f30",
       "stateAnchors": [
         {
           "line": 31,
@@ -19870,63 +19872,63 @@
           "text": "let dispatched=false,request:{queued:boolean;refused:boolean}|undefined;"
         },
         {
-          "line": 1051,
+          "line": 1053,
           "text": "let scanning=false;"
         },
         {
-          "line": 1157,
+          "line": 1159,
           "text": "const ZOOM_ON='background-color:var(--alpha-white);color:var(--alpha-black);width:40px;height:40px;padding:2px;box-sizing:content-box;background-clip:content-box;font-size:13px';"
         },
         {
-          "line": 1158,
+          "line": 1160,
           "text": "const ZOOM_OFF='background-color:rgba(0,0,0,.65);color:var(--alpha-white);width:34px;height:34px;padding:5px;box-sizing:content-box;background-clip:content-box;font-size:12px';"
         },
         {
-          "line": 1219,
+          "line": 1221,
           "text": "let gridEl:HTMLElement|undefined,gridView={scrollTop:0,viewport:0,width:0,header:40,key:''};"
         },
         {
-          "line": 1244,
+          "line": 1246,
           "text": "let start=0,startColumns=gridColumns;"
         },
         {
-          "line": 1254,
+          "line": 1256,
           "text": "let thumbTimer:number|undefined;const thumbFetching=new Set<string>();"
         },
         {
-          "line": 1255,
+          "line": 1257,
           "text": "let coverIds=new Set<string>();"
         },
         {
-          "line": 1307,
+          "line": 1309,
           "text": "const imageCss=(row:SavedPhoto)=>row.image?`url(\"${row.image}\") center / cover no-repeat`:'var(--s2)';"
         },
         {
-          "line": 1410,
+          "line": 1412,
           "text": "const cover=(rows:SavedPhoto[])=>{covers.push(rows[0]);return rows[0]?.image?`url(\"${rows[0].image}\") center / cover no-repeat`:'var(--s2)';};"
         },
         {
-          "line": 1515,
+          "line": 1517,
           "text": "let gesture: { x: number; y: number } | undefined, swiped = false;"
         },
         {
-          "line": 1581,
+          "line": 1583,
           "text": "let polling = false;"
         },
         {
-          "line": 1589,
+          "line": 1591,
           "text": "let queued = false;"
         },
         {
-          "line": 1590,
+          "line": 1592,
           "text": "let libraryWatching=false;"
         },
         {
-          "line": 1603,
+          "line": 1605,
           "text": "let libraryChangeHandle:{remove():Promise<void>}|undefined;"
         },
         {
-          "line": 1644,
+          "line": 1646,
           "text": "let resumeHandle:{remove():Promise<void>}|undefined;"
         }
       ],
@@ -20798,7 +20800,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "3c8ed25e07cd7cab53f235875b974f21caf2c55e37bc7da431f788be0b08b424",
+      "sha256": "b37f2b0fb32da9973ae4c96050c2d11f3c59af0caeb3e95d3415be90d599e5a8",
       "stateAnchors": [
         {
           "line": 8,
@@ -20944,7 +20946,8 @@
           "line": 97,
           "text": "const currentReview=review;"
         }
-      ]
+      ],
+      "integrationReview": "Reviewed merged source and upstream contract integration. Existing domain allocation is retained; refreshed hashes do not establish implementation refinement or device acceptance."
     },
     {
       "path": "apps/app/src/prototype/contacts-adapter.ts",
@@ -24260,254 +24263,254 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "5008c5a98147e06dae2c70ad076cffa179a693171e2c629d6fc89639d46ea543",
+      "sha256": "8fa1d2468330bcbf37f74df094df62ecb443bc53f4919457234e63a95b04e4c0",
       "stateAnchors": [
         {
-          "line": 27,
+          "line": 29,
           "text": "const PIN = 'M20 10c0 6-8 11-8 11S4 16 4 10a8 8 0 1 1 16 0zM15 10a3 3 0 1 1-6 0a3 3 0 1 1 6 0z';"
         },
         {
-          "line": 28,
+          "line": 30,
           "text": "const coordLabel = (point: Coordinate) => `${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)}`;"
         },
         {
-          "line": 29,
+          "line": 31,
           "text": "const mapsConnected = () => mapsConnection().config.status === 'configured';"
         },
         {
-          "line": 39,
+          "line": 41,
           "text": "const device=registerPlugin<{openSettings(input:{page:string}):Promise<unknown>}>('AlphaDevice');"
         },
         {
-          "line": 40,
+          "line": 42,
           "text": "const module = views.maps; if (!module) return () => {};"
         },
         {
-          "line": 41,
+          "line": 43,
           "text": "const original = { render: module.render, back: module.back, onLeave: module.onLeave, reply: module.reply, suggestions: module.suggestions, ongoing: module.ongoing };"
         },
         {
-          "line": 42,
+          "line": 44,
           "text": "let api: Bag | undefined, disposed=false, renders=0;"
         },
         {
-          "line": 43,
+          "line": 45,
           "text": "let planeBasemap:MapBasemap|undefined, plane: MapPlane | undefined, planeElement: HTMLElement | undefined;"
         },
         {
-          "line": 44,
+          "line": 46,
           "text": "let mapGeneration=0,mapFailed=false,mapObserver:MutationObserver|undefined;"
         },
         {
-          "line": 45,
+          "line": 47,
           "text": "let mapCopyright='';"
         },
         {
-          "line": 46,
+          "line": 48,
           "text": "let pendingHandoff: {query:string}|undefined, mapsController:MapsController|undefined;"
         },
         {
-          "line": 47,
+          "line": 49,
           "text": "const active=()=>!disposed&&!document.hidden&&!!api?.isActive();"
         },
         {
-          "line": 48,
+          "line": 50,
           "text": "const dropPlane=()=>{++mapGeneration;mapObserver?.disconnect();mapObserver=undefined;mapFailed=false;mapCopyright='';plane?.destroy();plane=undefined;planeElement=undefined;planeBasemap=undefined;};"
         },
         {
-          "line": 49,
+          "line": 51,
           "text": "const navigationVoice=new NavigationVoice(error=>screen.notify((error instanceof Error?error.message+' ':'')+'Voice guidance paused. Tap Enable voice guidance to retry.'));"
         },
         {
-          "line": 50,
+          "line": 52,
           "text": "const background=new BackgroundNavigation(registerPlugin<NavigationBridge>('AlphaMapsTransport'),()=>Capacitor.isNativePlatform());"
         },
         {
-          "line": 53,
+          "line": 55,
           "text": "const readCloudMaps = () => { const read = cloudMapsDiagnostics(); return read.configured && !read.error ? Promise.resolve() : initializeCloudMaps(); };"
         },
         {
-          "line": 54,
+          "line": 56,
           "text": "const screen: MapsScreenController = new MapsScreenController({"
         },
         {
-          "line": 60,
+          "line": 62,
           "text": "const region=regionalMap();"
         },
         {
-          "line": 62,
+          "line": 64,
           "text": "const cloud=cloudMapsCoverage();"
         },
         {
-          "line": 96,
+          "line": 98,
           "text": "const calendarPlugin=registerPlugin<{list(input:{begin:number;end:number}):Promise<{status:string;events?:unknown[]}>}>('AlphaCalendar');"
         },
         {
-          "line": 112,
+          "line": 114,
           "text": "let outcome:'found'|'missing'|'permission'|'unknown'='unknown';"
         },
         {
-          "line": 126,
+          "line": 128,
           "text": "const stack=(api?.S.stack||[]).slice(0,-1);"
         },
         {
-          "line": 149,
+          "line": 151,
           "text": "const handoff=pendingHandoff={query:st.query};"
         },
         {
-          "line": 153,
+          "line": 155,
           "text": "const fromEvent=!!currentApi.get('maps').fromEvent;"
         },
         {
-          "line": 157,
+          "line": 159,
           "text": "const view = screen.view();"
         },
         {
-          "line": 160,
+          "line": 162,
           "text": "const data = original.render({ ...st, query: null, place: null, directions: null, nav: false, saved: [], pan: null }, currentApi);"
         },
         {
-          "line": 165,
+          "line": 167,
           "text": "const route = directionsOpen ? mapsController?.snapshot().route : undefined;"
         },
         {
-          "line": 166,
+          "line": 168,
           "text": "const text = (route?.phase === 'ready' && route.value?.attribution) || cloudMapsCoverage()?.attribution || '';"
         },
         {
-          "line": 170,
+          "line": 172,
           "text": "const status = view.status, region = regionalMap(), raster=cloudMapsBasemap(), basemap = region || raster || globalBasemap, globalMap = !region&&!raster;"
         },
         {
-          "line": 173,
+          "line": 175,
           "text": "const cloudFailure = cloudMapsDiagnostics();"
         },
         {
-          "line": 174,
+          "line": 176,
           "text": "const statusText = !regionalMapsConfigured && cloudFailure.error === 'unconfigured' &&"
         },
         {
-          "line": 177,
+          "line": 179,
           "text": "const directionsOpen = view.mode === 'directions' || view.mode === 'origin' || view.mode === 'navigation';"
         },
         {
-          "line": 178,
+          "line": 180,
           "text": "const isPlace = view.mode === 'place', isResults = view.mode === 'results' || view.mode === 'origin', isNav = view.mode === 'navigation';"
         },
         {
-          "line": 179,
+          "line": 181,
           "text": "const sheetHeight = directionsOpen ? 300+(view.directions?.routes.length??0)*50 : isPlace ? 400 : 520;"
         },
         {
-          "line": 188,
+          "line": 190,
           "text": "mapObserver?.disconnect();plane?.destroy();mapFailed=false;mapCopyright='';planeElement=element;planeBasemap=basemap;const generation=++mapGeneration;delete element.dataset.mapReady;delete element.dat"
         },
         {
-          "line": 189,
+          "line": 191,
           "text": "const current=()=>generation===mapGeneration&&planeElement===element&&!disposed&&!!api?.isActive();"
         },
         {
-          "line": 224,
+          "line": 226,
           "text": "const place = view.place;"
         },
         {
-          "line": 245,
+          "line": 247,
           "text": "const directions = view.directions;"
         },
         {
-          "line": 252,
+          "line": 254,
           "text": "const nav = view.navigation;"
         },
         {
-          "line": 254,
+          "line": 256,
           "text": "modes:data.nativeModeMetadata.map((reference:{mode:'drive'|'walk'|'bike'|'transit';label:string;d:string})=>{const mode:TravelMode=reference.mode==='bike'?'bicycle':reference.mode;const on=!!direction"
         },
         {
-          "line": 264,
+          "line": 266,
           "text": "const eventOrigin=mapsEventReturnOffered(st.fromEvent,currentApi.S.stack,isNav);"
         },
         {
-          "line": 272,
+          "line": 274,
           "text": "let shell: Bag | undefined;"
         },
         {
-          "line": 273,
+          "line": 275,
           "text": "const renderVals=Component.prototype.renderVals;"
         },
         {
-          "line": 278,
+          "line": 280,
           "text": "const surface = screen.surface(async () => {"
         },
         {
-          "line": 279,
+          "line": 281,
           "text": "const showable=()=>{"
         },
         {
-          "line": 280,
+          "line": 282,
           "text": "const value=shell?.S?.();"
         },
         {
-          "line": 292,
+          "line": 294,
           "text": "const agentNavigation=bindAgentNavigation({"
         },
         {
-          "line": 295,
+          "line": 297,
           "text": "installation:()=>{const coverage=cloudMapsCoverage();return coverage&&{providerId:coverage.providerId,attribution:coverage.attribution};},"
         },
         {
-          "line": 300,
+          "line": 302,
           "text": "const stopCoverage=keepCloudMapsCoverage({"
         },
         {
-          "line": 308,
+          "line": 310,
           "text": "const retireShare=()=>screen.retireShare();"
         },
         {
-          "line": 309,
+          "line": 311,
           "text": "const shareEvents=['launcher-home','alpha:device-state','alpha:dev-incoming-call'];for(const event of shareEvents)window.addEventListener(event,retireShare);"
         },
         {
-          "line": 328,
+          "line": 330,
           "text": "const p=Component.prototype,render=p.renderVals;"
         },
         {
-          "line": 329,
+          "line": 331,
           "text": "const answered=new WeakMap<object,Set<string>>();"
         },
         {
-          "line": 330,
+          "line": 332,
           "text": "const answers=(shell:Bag)=>{let value=answered.get(shell);if(!value){value=new Set();answered.set(shell,value);}return value;};"
         },
         {
-          "line": 332,
+          "line": 334,
           "text": "const snapshot=connectionController.getSnapshot(),done=answers(shell);"
         },
         {
-          "line": 341,
+          "line": 343,
           "text": "const out=render.call(this),msgs=out.msgs||[],done=answers(this);"
         },
         {
-          "line": 344,
+          "line": 346,
           "text": "const source=String(message.displayText??message.text??''),parsed=mapsChatText(source);"
         },
         {
-          "line": 347,
+          "line": 349,
           "text": "const choice=parsed.choice,id=choice?String(message.id)+':'+choice.id:'',snapshot=connectionController.getSnapshot(),session=snapshot.session,conversation=connectionController.getSelectedConversationI"
         },
         {
-          "line": 348,
+          "line": 350,
           "text": "const saved=this.S().msgs?.find((row:Bag)=>row.id===message.id),savedText=saved?String(saved.displayText??saved.text??''):undefined;"
         },
         {
-          "line": 349,
+          "line": 351,
           "text": "const current=()=>{const latest=this.S().msgs?.at(-1);return !!session&&connectionController.getSnapshot().session===session&&connectionController.getSelectedConversationId()===conversation&&latest?.i"
         },
         {
-          "line": 350,
+          "line": 352,
           "text": "const open=!!choice&&index===msgs.length-1&&!done.has(id)&&current();"
         }
       ],
-      "integrationReview": "Domain allocation retained after merging the audit fixes. The refreshed source hash and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations. 2026-11-09: suppress only duplicate navigation metadata when it equals remaining-distance status. Distinct arrival/background notices remain. Four-trace mounted Maps comparison and five existing accessibility scenarios passed on the parent composition; current-main replay follows. No action or permission transition changed."
+      "integrationReview": "Reviewed merged source and upstream contract integration. Existing domain allocation is retained; refreshed hashes do not establish implementation refinement or device acceptance."
     },
     {
       "path": "apps/app/src/prototype/maps-chat-adapter.ts",
@@ -32097,9 +32100,9 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "e9e52df7bc41f3d176f7c784db75727bec8de5a0bce41efd793cc9f1e28a1e5f",
+      "sha256": "3c5b9b882805c34374051fffd7eeaf6b7ed00cb99aede7d1b74b3d4838f31019",
       "stateAnchors": [],
-      "integrationReview": "2026-11-09: landscape Maps guidance uses the same left-to-right flex order as portrait. The change removes grid placement only; no interaction, storage, request, focus, or lifecycle transition changes. Five existing accessibility checks cover portrait, landscape and 200 percent text; the landscape search/start/mute/enable flow also passes. Existing model allocations and unresolved refinement limits are unchanged. 2026-11-09: tested native below-host presentation keeps page size and identity through chat, blocks page input beneath host controls, and fences stale backdrop cleanup. TypeScript and isolated renderer pass; exact Android/Pixel acceptance remains open. 2026-11-09: shared overlay bounds, retained dismiss controls and alarm reading order validated in browser layout and interaction checks; storage and handoff transitions are unchanged. Reviewed integration source. Domain allocation is retained; source-hash refresh does not establish semantic refinement. See targeted validation and remaining obligations."
+      "integrationReview": "Reviewed merged source and upstream contract integration. Existing domain allocation is retained; refreshed hashes do not establish implementation refinement or device acceptance."
     },
     {
       "path": "apps/app/src/prototype/photo-library-adapter.ts",
@@ -33665,7 +33668,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "6426f56e312ffd7daa1bb8a7921119b7d8872f3e1f66f177177bc99d5ec45a7c",
+      "sha256": "c85044b36ae548a0beccafff269d303889e94e8e5b5a831ff4b7657d72df48cf",
       "stateAnchors": [
         {
           "line": 213,
@@ -34407,14 +34410,14 @@
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "8aabc9bdc9bfc07acb68ab3e3d0e948ee096cd2d216cb4fd244d62298f75f482",
+      "sha256": "546ae37828d255e20cfbccf874f8890a971d2d440bca664f9360c967f1cbcc98",
       "stateAnchors": [
         {
           "line": 3359,
           "text": "<sc-if value=\"{{workflows.automation.editingSchedule}}\"><sc-if value=\"{{workflows.automation.scheduleClockEditable}}\"><label class=\"schedule-instructions\">Time ({{workflows.automation.e"
         }
       ],
-      "integrationReview": " 2026-11-09: suppress only duplicate navigation metadata when it equals remaining-distance status. Distinct arrival/background notices remain. Four-trace mounted Maps comparison and five existing accessibility scenarios passed on the parent composition; current-main replay follows. No action or permission transition changed."
+      "integrationReview": "Reviewed merged source and upstream contract integration. Existing domain allocation is retained; refreshed hashes do not establish implementation refinement or device acceptance."
     },
     {
       "path": "apps/app/src/prototype/use-in-email-review.ts",
@@ -38679,9 +38682,9 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "c49f5cf1e8986a52842d8a272617c16e1e788017483eaebf7076b68db85cb41c",
+      "sha256": "1b0c263b43f27edb41ef812b58cf307cbf155cc4053b6da40e9c38dfbe785b21",
       "stateAnchors": [],
-      "integrationReview": "2026-11-09 UI and browser-return delta reviewed against existing domain models and new ChatAttachments/BrowserGoogleReturn contracts; see ui-return-review-20261109.md. Source-model refinement and device acceptance remain separate. Domain allocation retained after merged fixes. Source identity and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations."
+      "integrationReview": "Reviewed merged source and upstream contract integration. Existing domain allocation is retained; refreshed hashes do not establish implementation refinement or device acceptance."
     },
     {
       "path": "apps/app/src/runtime/conversation-selection.ts",
@@ -40695,9 +40698,9 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "9e9bf2d5586a8f06145680033648db4279eb2fcd6f821a23ecfe17d9ee96f361",
+      "sha256": "998b86964facaa14168055ad21bb05431ef29e29c59f8e4ebe047601bb8ca0a5",
       "stateAnchors": [],
-      "integrationReview": "2026-11-09 UI and browser-return delta reviewed against existing domain models and new ChatAttachments/BrowserGoogleReturn contracts; see ui-return-review-20261109.md. Source-model refinement and device acceptance remain separate."
+      "integrationReview": "Reviewed merged source and upstream contract integration. Existing domain allocation is retained; refreshed hashes do not establish implementation refinement or device acceptance."
     },
     {
       "path": "apps/app/src/runtime/google-workspace-return.ts",
