@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "dfe73ed72d291001273e5e59e7cc3d92bb5f5932f542662d9793df1a2f4537b6",
+  "ledgerSha256": "1239478ebf9fe6ad73835c86bc778caa741cddd96becca40690805afc3655252",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -28,9 +28,9 @@
     "parsedFiles": 5669,
     "languageReview": 71,
     "parseErrors": 0,
-    "candidates": 67426,
-    "writeSites": 67096,
-    "writeAssociations": 60159,
+    "candidates": 67428,
+    "writeSites": 67092,
+    "writeAssociations": 60155,
     "asynchronous": 8361,
     "unassignedWrites": 10346
   },
@@ -17051,7 +17051,8 @@
       "sha256": "4ba9ec0cbbb773855838b3ba45a59b97476a15f1d07983a3b5a039fcb00c7845",
       "allocatedModels": [
         "CalendarSync",
-        "NativeCalendarScopedReview"
+        "NativeCalendarScopedReview",
+        "NativeCalendarSyncEnable"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -17481,7 +17482,8 @@
       "sha256": "ae30280d76f209655db63906b950b32ea8670795f79a30c9955c3d5d0f2d81f3",
       "allocatedModels": [
         "Application",
-        "NativeCredentialMutation"
+        "NativeCredentialMutation",
+        "NativeCalendarSyncEnable"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -17835,7 +17837,8 @@
       "allocatedModels": [
         "IdentitySession",
         "NativeCredentialMutation",
-        "NativeGmailBackground"
+        "NativeGmailBackground",
+        "NativeCalendarSyncEnable"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -23146,10 +23149,12 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncBridge.java",
-      "sha256": "7b35fa6d9827ffdb99929ecaa6d04f07545949ed7fdf04a7314a8b03b830eb7c",
+      "sha256": "6a69b3ce6ae442347425b4603e12299d1ba008e7ca839c1b1719db1f657536e5",
       "allocatedModels": [
-        "CalendarSync"
+        "CalendarSync",
+        "NativeCalendarSyncEnable"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -23157,7 +23162,7 @@
           "owner": "CalendarSyncBridge",
           "line": 23,
           "bindings": 10,
-          "writes": 16
+          "writes": 12
         },
         {
           "owner": "CalendarSyncBridge.Anonymous@31.onChange@31",
@@ -23214,146 +23219,152 @@
           "writes": 0
         },
         {
-          "owner": "CalendarSyncBridge.digest@59",
-          "line": 59,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "CalendarSyncBridge.same@60",
+          "owner": "CalendarSyncBridge.saveEnabled@60",
           "line": 60,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "CalendarSyncBridge.scope@61",
-          "line": 61,
-          "bindings": 4,
-          "writes": 1
+          "owner": "CalendarSyncBridge.digest@64",
+          "line": 64,
+          "bindings": 1,
+          "writes": 0
         },
         {
-          "owner": "CalendarSyncBridge.enabled@66",
-          "line": 66,
+          "owner": "CalendarSyncBridge.same@65",
+          "line": 65,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "CalendarSyncBridge.check@67",
-          "line": 67,
+          "owner": "CalendarSyncBridge.scope@66",
+          "line": 66,
+          "bindings": 4,
+          "writes": 1
+        },
+        {
+          "owner": "CalendarSyncBridge.enabled@71",
+          "line": 71,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "CalendarSyncBridge.check@72",
+          "line": 72,
           "bindings": 3,
           "writes": 1
         },
         {
-          "owner": "CalendarSyncBridge.read@76",
-          "line": 76,
+          "owner": "CalendarSyncBridge.read@81",
+          "line": 81,
           "bindings": 4,
           "writes": 0
         },
         {
-          "owner": "CalendarSyncBridge.events@82",
-          "line": 82,
+          "owner": "CalendarSyncBridge.events@87",
+          "line": 87,
           "bindings": 6,
           "writes": 2
         },
         {
-          "owner": "CalendarSyncBridge.prepare@89",
-          "line": 89,
+          "owner": "CalendarSyncBridge.prepare@94",
+          "line": 94,
           "bindings": 17,
           "writes": 15
         },
         {
-          "owner": "CalendarSyncBridge.prepare@89.lambda@104",
-          "line": 104,
+          "owner": "CalendarSyncBridge.prepare@94.lambda@109",
+          "line": 109,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "CalendarSyncBridge.projection@121",
-          "line": 121,
+          "owner": "CalendarSyncBridge.projection@126",
+          "line": 126,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "CalendarSyncBridge.call@122",
-          "line": 122,
+          "owner": "CalendarSyncBridge.call@127",
+          "line": 127,
           "bindings": 8,
           "writes": 3
         },
         {
-          "owner": "CalendarSyncBridge.call@122.lambda@124",
-          "line": 128,
+          "owner": "CalendarSyncBridge.call@127.lambda@129",
+          "line": 133,
           "bindings": 23,
           "writes": 19
         },
         {
-          "owner": "CalendarSyncBridge.cloudFailure@152",
-          "line": 152,
+          "owner": "CalendarSyncBridge.cloudFailure@157",
+          "line": 157,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "CalendarSyncBridge.snapshot@153",
-          "line": 153,
+          "owner": "CalendarSyncBridge.snapshot@158",
+          "line": 158,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "CalendarSyncBridge.link@154",
-          "line": 154,
+          "owner": "CalendarSyncBridge.link@159",
+          "line": 159,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "CalendarSyncBridge.consent@155",
-          "line": 155,
+          "owner": "CalendarSyncBridge.consent@160",
+          "line": 160,
           "bindings": 5,
           "writes": 2
         },
         {
-          "owner": "CalendarSyncBridge.consent@155.lambda@158",
-          "line": 158,
+          "owner": "CalendarSyncBridge.consent@160.lambda@163",
+          "line": 163,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "CalendarSyncBridge.consent@155.lambda@159",
-          "line": 159,
+          "owner": "CalendarSyncBridge.consent@160.lambda@164",
+          "line": 164,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "CalendarSyncBridge.consent@155.lambda@160",
-          "line": 160,
+          "owner": "CalendarSyncBridge.consent@160.lambda@165",
+          "line": 165,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "CalendarSyncBridge.enable@167",
-          "line": 167,
+          "owner": "CalendarSyncBridge.enable@172",
+          "line": 172,
           "bindings": 9,
           "writes": 5
         },
         {
-          "owner": "CalendarSyncBridge.mutate@181",
-          "line": 181,
+          "owner": "CalendarSyncBridge.mutate@186",
+          "line": 186,
           "bindings": 21,
           "writes": 15
         },
         {
-          "owner": "CalendarSyncBridge.mutate@181.lambda@194",
-          "line": 194,
+          "owner": "CalendarSyncBridge.mutate@186.lambda@199",
+          "line": 199,
           "bindings": 3,
           "writes": 0
         },
         {
-          "owner": "CalendarSyncBridge.dispatchDeletion@213",
-          "line": 213,
+          "owner": "CalendarSyncBridge.dispatchDeletion@218",
+          "line": 218,
           "bindings": 8,
           "writes": 2
         },
         {
-          "owner": "CalendarSyncBridge.deletionRefusal@222",
-          "line": 222,
+          "owner": "CalendarSyncBridge.deletionRefusal@227",
+          "line": 227,
           "bindings": 6,
           "writes": 0
         }
@@ -23366,7 +23377,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncConsent.java",
       "sha256": "9041ce3d58d4ba2ce60c50832dfb200f61aa030e2e7adb4c57e74bf2da1f207a",
       "allocatedModels": [
-        "CalendarSync"
+        "CalendarSync",
+        "NativeCalendarSyncEnable"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -23430,7 +23442,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncMutation.java",
       "sha256": "a956e9bc8b208d9e0126e9634f6b25b17fdceb42a4d3a3bac7150f4b4dceed28",
       "allocatedModels": [
-        "CalendarSync"
+        "CalendarSync",
+        "NativeCalendarSyncEnable"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -23486,7 +23499,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncReceiptRecovery.java",
       "sha256": "873f6e9d7fdbce4c3f065769e001a54f3a9004a5526086865c94922d962605c1",
       "allocatedModels": [
-        "CalendarSync"
+        "CalendarSync",
+        "NativeCalendarSyncEnable"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -23524,7 +23538,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncSnapshot.java",
       "sha256": "363360cc4a536c21e3beca24aa970429a2651318a439a561ff52c59ab9d9b57e",
       "allocatedModels": [
-        "CalendarSync"
+        "CalendarSync",
+        "NativeCalendarSyncEnable"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -25483,7 +25498,8 @@
         "ApplicationComposition",
         "NativeCredentialMutation",
         "ResidentRuntime",
-        "NativeGmailBackground"
+        "NativeGmailBackground",
+        "NativeCalendarSyncEnable"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -25664,7 +25680,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeDeletionCoordinator.java",
       "sha256": "9ef18e9c57dbf9470adb2371a392d532ef32204af45f02ec9adf36f7a61065ea",
       "allocatedModels": [
-        "DeletionJournal"
+        "DeletionJournal",
+        "NativeCalendarSyncEnable"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -33325,11 +33342,12 @@
     },
     {
       "path": "apps/app/src/prototype/agent-adapter.ts",
-      "sha256": "a0e09e0a7326410e56640539e4a662461078aa82e6155c4bb9bd99b0c1a2f731",
+      "sha256": "fa9d38f36ee764a1ef3218a4174c3bc2342553c45dc99e0c1b1507b3ae955785",
       "allocatedModels": [
         "Application",
         "AssistantConversation",
-        "NotesLifecycle"
+        "NotesLifecycle",
+        "FirstSendDraftMigration"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -33355,181 +33373,181 @@
         },
         {
           "owner": "trackDispatch",
-          "line": 176,
+          "line": 182,
           "bindings": 1,
           "writes": 3
         },
         {
           "owner": "installAgentAdapter",
-          "line": 225,
+          "line": 231,
           "bindings": 3,
           "writes": 38
         },
         {
           "owner": "installAgentAdapter.sizeComposer",
-          "line": 250,
+          "line": 256,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "installAgentAdapter.keepNotesDraft",
-          "line": 263,
+          "line": 269,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAgentAdapter.keepNotesDraft.ArrowFunction@265",
-          "line": 266,
+          "owner": "installAgentAdapter.keepNotesDraft.ArrowFunction@271",
+          "line": 272,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installAgentAdapter.resumeNotesDraft",
-          "line": 277,
+          "line": 283,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installAgentAdapter.openNativeNotesRecovery",
-          "line": 320,
+          "line": 326,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@355",
-          "line": 356,
+          "owner": "installAgentAdapter.FunctionExpression@361",
+          "line": 362,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "installAgentAdapter.completeReadReply",
-          "line": 365,
+          "line": 371,
           "bindings": 1,
           "writes": 3
         },
         {
-          "owner": "installAgentAdapter.recoverPendingActions.ArrowFunction@415.ArrowFunction@418",
-          "line": 420,
+          "owner": "installAgentAdapter.recoverPendingActions.ArrowFunction@421.ArrowFunction@424",
+          "line": 426,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "installAgentAdapter.syncCanonicalNotes",
-          "line": 503,
+          "line": 509,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installAgentAdapter.syncPreviousNotesAvailability",
-          "line": 530,
+          "line": 536,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "installAgentAdapter.selectNotesSource",
-          "line": 553,
+          "line": 559,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAgentAdapter.selectNotesSource.ArrowFunction@566",
-          "line": 572,
+          "owner": "installAgentAdapter.selectNotesSource.ArrowFunction@572",
+          "line": 578,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installAgentAdapter.context",
-          "line": 607,
+          "line": 613,
           "bindings": 1,
           "writes": 11
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@652.ArrowFunction@667",
-          "line": 669,
+          "owner": "installAgentAdapter.FunctionExpression@658.ArrowFunction@673",
+          "line": 675,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@652.ArrowFunction@802",
-          "line": 804,
+          "owner": "installAgentAdapter.FunctionExpression@658.ArrowFunction@808",
+          "line": 810,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@652.ArrowFunction@859",
-          "line": 897,
+          "owner": "installAgentAdapter.FunctionExpression@658.ArrowFunction@865",
+          "line": 903,
           "bindings": 15,
           "writes": 16
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1137",
-          "line": 1140,
+          "owner": "installAgentAdapter.FunctionExpression@1143",
+          "line": 1146,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1236",
-          "line": 1237,
+          "owner": "installAgentAdapter.FunctionExpression@1242",
+          "line": 1243,
           "bindings": 1,
           "writes": 15
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1236.ArrowFunction@1248.ArrowFunction@1248",
-          "line": 1249,
+          "owner": "installAgentAdapter.FunctionExpression@1242.ArrowFunction@1254.ArrowFunction@1254",
+          "line": 1255,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAgentAdapter.recheckCloudFromCard.ArrowFunction@1322",
-          "line": 1323,
+          "owner": "installAgentAdapter.recheckCloudFromCard.ArrowFunction@1328",
+          "line": 1329,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installAgentAdapter.sendFromComposer",
-          "line": 1343,
+          "line": 1349,
           "bindings": 3,
           "writes": 3
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1363",
-          "line": 1364,
+          "owner": "installAgentAdapter.FunctionExpression@1369",
+          "line": 1370,
           "bindings": 3,
           "writes": 35
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1495",
-          "line": 1499,
+          "owner": "installAgentAdapter.FunctionExpression@1501",
+          "line": 1505,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1510",
-          "line": 1511,
+          "owner": "installAgentAdapter.FunctionExpression@1516",
+          "line": 1517,
           "bindings": 5,
           "writes": 5
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1579",
-          "line": 1580,
+          "owner": "installAgentAdapter.FunctionExpression@1585",
+          "line": 1586,
           "bindings": 13,
           "writes": 16
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1775",
-          "line": 1781,
+          "owner": "installAgentAdapter.FunctionExpression@1781",
+          "line": 1787,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1787",
-          "line": 1805,
+          "owner": "installAgentAdapter.FunctionExpression@1793",
+          "line": 1811,
           "bindings": 2,
           "writes": 4
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1914",
-          "line": 1915,
+          "owner": "installAgentAdapter.FunctionExpression@1920",
+          "line": 1921,
           "bindings": 1,
           "writes": 12
         }
@@ -41095,7 +41113,8 @@
         "AssistantConversation",
         "DraftDispatch",
         "CanonicalCalendarEditorClose",
-        "CanonicalCalendarDraftHandoff"
+        "CanonicalCalendarDraftHandoff",
+        "FirstSendDraftMigration"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -114407,7 +114426,8 @@
       "sha256": "10978b5da6c44130f683379c013595d54ee388b464b0b727ac82999aa6e779d9",
       "allocatedModels": [
         "Application",
-        "DurableStore"
+        "DurableStore",
+        "FirstSendDraftMigration"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -167888,7 +167908,8 @@
         "DeletionJournal",
         "DurableStore",
         "ResetRecovery",
-        "CalendarSync"
+        "CalendarSync",
+        "NativeCalendarSyncEnable"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -169142,7 +169163,8 @@
       "allocatedModels": [
         "ResidentRuntime",
         "ApplicationComposition",
-        "NativeCredentialMutation"
+        "NativeCredentialMutation",
+        "NativeCalendarSyncEnable"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -174287,7 +174309,8 @@
       "allocatedModels": [
         "CalendarSync",
         "CalendarLinkedSync",
-        "DeviceActions"
+        "DeviceActions",
+        "NativeCalendarSyncEnable"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -220381,6 +220404,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "e1467754b6e9b97cb4d8f063bde9e7f2ab48589efb8dd08f9cb56dce09fe67a2"
+    "sha256": "6707440360eb209bdbaca500229e7343d82f55cab646be949350c2a33f182ec7"
   }
 }

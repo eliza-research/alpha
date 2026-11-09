@@ -1127,3 +1127,22 @@ fixtures. Their stubs now match the current bridge entry and owner/agent
 requirements. The mounted reminder fixture also supplies the synthetic Agent
 access-preference method used at startup. These fixture changes preserve the
 real product methods in the checks.
+
+`FirstSendDraftMigration` checks 11 schedules and 83 checkpoints. Cleanup
+now checks the current owner after each read and confirms the copied text
+before clearing the exact source revision. The replay covers a changed
+destination, retirement and source CAS conflict. An independent destination
+write after final confirmation can still race the source CAS. The two slots
+retain separate storage and durability obligations.
+
+`NativeCalendarSyncEnable` checks nine closed schedules and 80 checkpoints.
+An older accepted review previously could enable durable consent after
+Calendar sync pause, even when pause left identical raw bytes. The bridge
+serializes the exact enable CAS with lease retirement. A completed pause
+fences that write, and an exhausted pause CAS reports unavailable while
+preserving the previous durable row. Provider dispatch, cross-instance
+ordering and installed lifecycle delivery remain separate.
+
+The 217-model focused run passed 14 Node tests, TypeScript and the
+selected digest formal checks. All ten mounted Chromium reminder cases
+passed with the closed Agent preference stub.
