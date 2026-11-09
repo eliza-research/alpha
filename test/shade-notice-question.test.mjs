@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {shadeNoticeQuestionFixture} from './fixtures/shade-notice-question.mjs';
+import {checkShadeNoticeQuestionAdmission} from '../specs/quint/refinement/application/shade-notice-question-admission.mjs';
 
 test('an uninterrupted own notice question reaches the draft after its dialog closes', async () => {
   const f = shadeNoticeQuestionFixture();
@@ -29,3 +30,8 @@ for (const condition of ['successor', 'reopened shade', 'lock', 'foreground loss
     } finally {f.close();}
   });
 }
+
+test('the simulated shade refines the Quint review and readback boundary', async () => {
+  const receipt = await checkShadeNoticeQuestionAdmission();
+  assert.equal(receipt.traces, 12);
+});

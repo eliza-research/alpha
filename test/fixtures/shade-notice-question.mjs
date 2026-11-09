@@ -36,6 +36,10 @@ export function shadeNoticeQuestionFixture() {
   const rows = ['a', 'b'].map(id => ({id: 'reminder:' + id, revision: 'revision-' + id, source: 'own', kind: 'reminder',
     title: 'Saved ' + id, text: 'Synthetic text ' + id, appLabel: 'Alpha Phone', at: 0, canOpen: true}));
   const requests = [], drafts = [], toasts = [];
+  const leases = new WeakMap(), dialogs = new WeakMap(), reviews = [], composed = [], reported = [];
+  let settling = 0, staleEffect = false;
+  const leaseId = () => leases.get(shell.alphaNoticeQuestionLease) ?? 0;
+  const observeEffect = () => {if (settling && leaseId() !== settling) staleEffect = true;};
   class Shell {
     state = {shade: true, view: 'home', screen: 'home'};
     S() {return this.state;}
@@ -51,15 +55,26 @@ export function shadeNoticeQuestionFixture() {
     }
     swallowed() {return false;}
     sw() {return {};}
-    toast(message) {toasts.push(message);}
+    toast(message) {
+      toasts.push(message);
+      if (!settling) return;
+      observeEffect();
+      assert.ok(['This notification changed or is no longer shown. Nothing was added to your conversation.',
+        'This notification could not be checked. Nothing was added to your conversation.'].includes(message));
+      reported.push({id: settling, result: message.includes('could not be checked') ? 'unavailable' : 'changed'});
+    }
     api() {return {composeContentQuestion: text => {
       drafts.push(text);
+      observeEffect();
+      const notice = rows.find(row => text.endsWith(row.title + '\n' + row.text));
+      assert.ok(notice, 'The actual dialog sends the selected synthetic excerpt to the closed composer');
+      composed.push({id: settling, notice: notice.id.slice(-1)});
       this.setState({shade: false, draft: text});
     }};}
   }
   const native = {list() {
     if (shell.alphaNoticesBusy) return Promise.resolve({items: structuredClone(rows)});
-    return new Promise((resolve, reject) => requests.push({resolve, reject}));
+    return new Promise((resolve, reject) => requests.push({id: leaseId(), pending: true, resolve, reject}));
   }};
   const box = vm.createContext({Shell, window, document, HTMLElement: window.HTMLElement, AbortController, queueMicrotask,
     native, Capacitor: {isNativePlatform: () => false}, sensitiveReadingText: () => false,
@@ -69,12 +84,26 @@ export function shadeNoticeQuestionFixture() {
   shell.componentDidMount();
   shell.alphaNotices = structuredClone(rows);
   const content = () => document.querySelector('dialog [aria-label="Content excerpt"]')?.value || '';
+  const settle = async (index, result) => {
+    const request = requests[index];
+    assert.ok(request?.pending);
+    request.pending = false;
+    settling = request.id;
+    result(request);
+    await tick();
+    settling = 0;
+  };
   return {rows, requests, drafts, toasts, content,
     ask(id) {
       const row = shell.renderVals().shadeN.find(row => row.id === 'reminder:' + id);
       assert.ok(row?.canAsk);
       row.ask();
       assert.equal(content(), 'Saved ' + id + '\nSynthetic text ' + id);
+      const review = reviews.length + 1;
+      assert.ok(shell.alphaNoticeQuestionLease);
+      leases.set(shell.alphaNoticeQuestionLease, review);
+      dialogs.set(document.querySelector('dialog'), review);
+      reviews.push([review, id]);
     },
     async approve() {
       const button = document.querySelector('[aria-label="Use in conversation"]');
@@ -83,14 +112,27 @@ export function shadeNoticeQuestionFixture() {
       await tick();
       assert.equal(content(), '');
     },
-    async finish(index, items = rows) {requests[index].resolve({items: structuredClone(items)});await tick();},
-    async refuse(index) {requests[index].reject(Error('Synthetic list unavailable'));await tick();},
+    async cancel() {
+      const button = [...document.querySelectorAll('dialog button')].find(button => button.textContent === 'Cancel');
+      assert.ok(button);button.click();await tick();assert.equal(content(), '');
+    },
+    finish: (index, items = rows) => settle(index, request => request.resolve({items: structuredClone(items)})),
+    refuse: index => settle(index, request => request.reject(Error('Synthetic list unavailable'))),
     async set(patch) {shell.setState(patch);await tick();},
     async visibility(value) {
       hidden = value;
       document.dispatchEvent(new window.Event('visibilitychange'));
       await tick();
     },
-    close() {shell.componentWillUnmount();window.close();},
+    async deviceState() {window.dispatchEvent(new window.Event('alpha:device-state'));await tick();},
+    unmount() {shell.componentWillUnmount();},
+    observe() {
+      const displayed = document.querySelector('dialog');
+      return {shade: shell.state.shade, screen: shell.state.screen, hidden, live: shell.alphaNoticesLive,
+        epoch: shell.alphaNoticeEpoch, owner: leaseId(), dialog: displayed ? dialogs.get(displayed) : 0,
+        reviews: [...reviews], pending: requests.filter(request => request.pending).map(request => request.id),
+        composed: [...composed], reported: [...reported], staleEffect};
+    },
+    close() {if (shell.alphaNoticesLive) shell.componentWillUnmount();window.close();},
   };
 }
