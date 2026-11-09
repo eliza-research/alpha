@@ -2399,6 +2399,30 @@
       }
     },
     {
+      "path": "specs/quint/services/AndroidBuildInputReadiness.qnt",
+      "module": "AndroidBuildInputReadiness",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": ["earlyAdmissionDoesNotAdmitFullBuildTest", "onlyCurrentOrDescendantPinAdmitsTest",
+        "missingWorkerAndStalePayloadRefuseTest", "payloadReportDoesNotAdmitCloudProfileTest",
+        "missingMobileReceiptPrecedesGoogleHostTest", "embeddingHumanActionDependsOnReceiptAndToolchainTest",
+        "signerNeedsIdentityAndEnvironmentTest", "completeReportIncludesQualificationButIsNotBuildTest"],
+      "invariants": ["FullAdmissionRequiresEarlyAdmission", "ReportedPayloadRequiresExactStamp",
+        "GoogleCheckFollowsPayloadAdmission", "HumanAttentionNeverReady"],
+      "sources": ["scripts/android-build-preflight.mjs", "scripts/build-embedding-host.mjs",
+        "scripts/mobile-uuid-adapter.mjs", "scripts/stage-embedding-host.mjs", "scripts/voice-host.mjs"],
+      "stateMapping": {
+        "input": "Selected disposable checkout, reviewed-byte, stamp, profile, receipt and qualification fixtures",
+        "ready/attention/notices": "Real report rows and formatting for native build readiness and human actions",
+        "before/full/googleChecked": "Actual early and full preflight problem classes and order of the Google host admission port"
+      },
+      "abstractions": ["Two synthetic SDK commits and controlled external voice, embedding and Google host admission results.",
+        "Source stamps, worker and profile presence are private fixture bytes. The mobile receipt projection covers refusal of a missing mandatory receipt.",
+        "Cloud runtime verification, signing, build execution and actual Android artifacts remain separate."],
+      "bounds": {"maxSamples": 1000, "maxSteps": 80, "maxVerifyDepth": 8}
+    },
+    {
       "path": "specs/quint/services/AndroidBrowserModuleStage.qnt",
       "module": "AndroidBrowserModuleStage",
       "init": "init",
