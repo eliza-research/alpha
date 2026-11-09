@@ -20163,7 +20163,7 @@
     },
     {
       "path": "apps/app/src/prototype/calendar-month-focus.ts",
-      "sha256": "980535689c68ff1b944fd262cf08dd943a047a679ff5a13722edc922c77cdf43",
+      "sha256": "22d10de0bfe4a99b8fc0c8a467ad47a79fe42a5a41f693d02a9a4ea3eff9e71b",
       "models": [
         "CalendarPresentation",
         "CalendarSync"
@@ -20195,7 +20195,8 @@
           "line": 10,
           "text": "const back=(event:Event)=>{if(!container?.isConnected||container.closest('[inert]'))return;event.preventDefault();event.stopImmediatePropagation();close();};"
         }
-      ]
+      ],
+      "integrationReview": "2026-11-09: direct month/year selectors map to the existing calendar month offset; event email removed and editable actions grouped without changing permission guards. Four browser keyboard/light/dark/height scenarios passed. State-audit obligations remain."
     },
     {
       "path": "apps/app/src/prototype/camera-adapter.ts",
@@ -34804,9 +34805,9 @@
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "131f8e1b5864838d672bfe8e783a1f50307adc5844bf42f0e17944759b6fc7b6",
+      "sha256": "080b2bce484ef4f8ad4fb38afb768d02807439eb35011f8b8c515c0a75046ac4",
       "stateAnchors": [],
-      "integrationReview": "2026-11-09: Owner-requested removal of Prep me affordance, generated preparation panel and redundant read-only/provider paragraphs. Event identity, time, calendar, notes and all mutation/uncertainty guards remain unchanged."
+      "integrationReview": "2026-11-09: direct month/year selectors map to the existing calendar month offset; event email removed and editable actions grouped without changing permission guards. Four browser keyboard/light/dark/height scenarios passed. State-audit obligations remain."
     },
     {
       "path": "apps/app/src/prototype/use-in-email-review.ts",
