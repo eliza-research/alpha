@@ -2,25 +2,31 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "2aec00f196ab780a66e96ed4cb880249c04d2096",
-  "head": "099e2d27ad7268fac0832c4a7e84cc707d2cf03e",
+  "baseCommit": "03aebab7faec61d20c0bc214166eccd012596693",
+  "head": "9add52f6b83efa77241fb72ae769729121944cac",
   "recordedAt": "2026-11-09",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...099e2d27ad7268fac0832c4a7e84cc707d2cf03e",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...9add52f6b83efa77241fb72ae769729121944cac",
   "status": "diverged",
-  "aheadBy": 1,
-  "behindBy": 332,
+  "aheadBy": 2,
+  "behindBy": 369,
   "mergeBase": "5500c73b3d8ff8395999bbb620e7e3fc0ebb1df4",
   "pinOnlyCommits": [
     {
       "sha": "099e2d27ad7268fac0832c4a7e84cc707d2cf03e",
       "subject": "feat(ui): coordinate foreground app update attempts"
+    },
+    {
+      "sha": "9add52f6b83efa77241fb72ae769729121944cac",
+      "subject": "fix(ui): backport reviewed app update gate admission fixes"
     }
   ],
-  "pullRequests": [],
-  "pendingPullRequest": {
-    "url": "https://github.com/elizaOS/eliza/pull/39166",
-    "head": "ad6ec5d5ad6afaa3cb5f384b930736058caf5029",
-    "retainedPin": "099e2d27ad7268fac0832c4a7e84cc707d2cf03e",
-    "note": "The rebased PR and retained pin contain byte-identical feature files; the retained pin stays on the previously admitted SDK baseline."
-  }
+  "pullRequests": [
+    {
+      "url": "https://github.com/elizaOS/eliza/pull/39166",
+      "state": "MERGED",
+      "reviewedHead": "1676cbac3ad1479beffd9f4194ef96a8f0999ec1",
+      "retainedPin": "9add52f6b83efa77241fb72ae769729121944cac",
+      "note": "Five shared feature files byte-match the reviewed merged head. The retained pin preserves the previously admitted SDK baseline; no native qualification transfers."
+    }
+  ]
 }

@@ -34,7 +34,7 @@ not an OS background scheduler or an independent recovery supervisor.
 
 The shared scheduler and mounted update gate are implemented in
 [Eliza PR 39166](https://github.com/elizaOS/eliza/pull/39166). Alpha pins the
-reviewed, source-identical commit `099e2d27ad7268fac0832c4a7e84cc707d2cf03e`
+reviewed, source-identical commit `9add52f6b83efa77241fb72ae769729121944cac`
 on its admitted SDK baseline, without a consumer source overlay. The
 [source comparison receipt](evidence/launcher-ota-upstream-source-20261109.json)
 does not transfer native, APK or device qualification.

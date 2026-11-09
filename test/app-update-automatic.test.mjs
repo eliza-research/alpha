@@ -52,7 +52,7 @@ test('a focused editor is remembered before either native readiness path freezes
     window.HTMLDialogElement.prototype.close=function(){this.removeAttribute('open');};
     const waits=[],acknowledgments=[];let notify,prepared,notices=0;
     let state=event?{pending:false,bridgeId}:{pending:true,phase:'preparing',activationId,bridgeId,automatic};
-    const context=vm.createContext({window,document,setTimeout(callback){waits.push(callback);}});
+    const context=vm.createContext({window,document,HTMLElement:window.HTMLElement,setTimeout(callback){waits.push(callback);}});
     vm.runInContext(stripTypeScriptTypes(gate.replace(/^export /gm,'')+'\nglobalThis.watch=watchMountedAppUpdates;',{mode:'strip'}),context);
     await context.watch({async updateState(){return state;},async addListener(_,callback){notify=callback;return {remove:async()=>{}};},
       async activateUpdate(input){acknowledgments.push(input);},continueUpdate:async()=>{}},
@@ -98,7 +98,7 @@ async function mountedVoiceGate(owner,automatic,{holdFlush=false}={}){
   const main=readFileSync('apps/app/src/main.tsx','utf8'),start=main.indexOf('async function prepareMountedUpdate(');
   const preparer=main.slice(start,main.indexOf('\nlet nativeAppUpdateGate',start));
   const gate=readFileSync('.eliza/client-features/packages/ui/src/state/app-update-gate.ts','utf8');
-  const context=vm.createContext({window,document,fixtureShell:owner,
+  const context=vm.createContext({window,document,HTMLElement:window.HTMLElement,fixtureShell:owner,
     connectionController:{getSnapshot:()=>({busy:false,open:false}),captureAppUpdateReconnect:()=>async()=>{}},
     setTimeout(callback){waits.push(callback);}});
   vm.runInContext(stripTypeScriptTypes('let shell=fixtureShell;\n'+facts.replace(/^export /gm,'')+'\n'+preparer+'\n'+gate.replace(/^export /gm,'')+'\nglobalThis.prepare=prepareMountedUpdate;globalThis.watch=watchMountedAppUpdates;',{mode:'strip'}),context);

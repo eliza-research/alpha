@@ -184,7 +184,7 @@ test('complete producer closure is required for new embedding-capable admission 
  }finally{f.close();}
 });
 test('the formal-only SDK advance admits only the exact reviewed and current manifest digests', {
- skip:lockCommit!=='099e2d27ad7268fac0832c4a7e84cc707d2cf03e',
+ skip:lockCommit!=='9add52f6b83efa77241fb72ae769729121944cac',
 },()=>{
  const verify=receipt=>verifyEmbeddingInputs(root,receipt,{requireProducerInputs:true});
  assert.doesNotThrow(()=>verify(committed));

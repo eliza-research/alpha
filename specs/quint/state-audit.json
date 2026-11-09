@@ -11,8 +11,8 @@
   },
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
-  "sourcePin": "099e2d27ad7268fac0832c4a7e84cc707d2cf03e",
-  "ledgerSha256": "97d885fa776308bce2e023c390e2c99326fb6bf2d16af97248fe31826562ae08",
+  "sourcePin": "9add52f6b83efa77241fb72ae769729121944cac",
+  "ledgerSha256": "2c887136a3b74b6bc3cb53b64c3f22f97d251782e288bc3193d5cfac27d0c04c",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -46873,7 +46873,7 @@
     },
     {
       "path": "scripts/stage-embedding-host.mjs",
-      "sha256": "4a4cd064fd1b3a0277df3100d876ed8f41264c8f881cdfbf6c2fe998cfd4f84e",
+      "sha256": "0be1f231a27c4ce43626b7a9f17462225d94414dbcd3bc63b05ad77e491bbffb",
       "allocatedModels": [
         "EmbeddingStoreIdentity",
         "NamedEmbeddingProvenance",
@@ -113522,7 +113522,7 @@
     },
     {
       "path": "vendor/eliza/packages/ui/src/state/app-update-gate.ts",
-      "sha256": "9d9b63ad355e4e2454adff7160f5eb5927ebd9e3a382058494a8f727bfb8b98f",
+      "sha256": "89dc78042b8808e4bd264732ac06bb4fb43a3da35d397a5f126c73896f23eca5",
       "allocatedModels": [
         "Application",
         "ShellNavigation",
@@ -113555,19 +113555,19 @@
         },
         {
           "owner": "watchMountedAppUpdates.check",
-          "line": 243,
+          "line": 246,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "createAppUpdateScheduler",
-          "line": 384,
+          "line": 388,
           "bindings": 3,
           "writes": 9
         },
         {
           "owner": "createAppUpdateScheduler.poll",
-          "line": 419,
+          "line": 423,
           "bindings": 1,
           "writes": 1
         }
@@ -223134,6 +223134,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "689a92fecb31c3495c7d13f1f12418117207dde9d4cca13013e63c88402991dc"
+    "sha256": "1628b0595256858349f2995a7b196db8a28a2fbad74fdd7e14047ef267e6a8df"
   }
 }

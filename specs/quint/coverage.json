@@ -89,7 +89,7 @@
   ],
   "upstream": {
     "url": "https://github.com/elizaOS/eliza.git",
-    "commit": "099e2d27ad7268fac0832c4a7e84cc707d2cf03e",
+    "commit": "9add52f6b83efa77241fb72ae769729121944cac",
     "appSource": "packages/app",
     "nativeSystemSource": "plugins/plugin-native-system",
     "osSource": "packages/os"
@@ -48049,7 +48049,7 @@
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
-      "sha256": "4a4cd064fd1b3a0277df3100d876ed8f41264c8f881cdfbf6c2fe998cfd4f84e",
+      "sha256": "0be1f231a27c4ce43626b7a9f17462225d94414dbcd3bc63b05ad77e491bbffb",
       "stateAnchors": []
     },
     {
@@ -276458,7 +276458,7 @@
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "9d9b63ad355e4e2454adff7160f5eb5927ebd9e3a382058494a8f727bfb8b98f",
+      "sha256": "89dc78042b8808e4bd264732ac06bb4fb43a3da35d397a5f126c73896f23eca5",
       "stateAnchors": [
         {
           "line": 29,
@@ -276574,138 +276574,142 @@
         },
         {
           "line": 214,
-          "text": "const editing = () =>"
+          "text": "const editing = () => {"
         },
         {
-          "line": 218,
+          "line": 215,
+          "text": "const element = document.activeElement;"
+        },
+        {
+          "line": 221,
           "text": "const stopNavigation = (event: Event) => {"
         },
         {
-          "line": 223,
+          "line": 226,
           "text": "for (const event of appearance.navigationEvents)"
         },
         {
-          "line": 226,
+          "line": 229,
           "text": "const check = async () => {"
         },
         {
-          "line": 232,
+          "line": 235,
           "text": "const value = await port.updateState().catch(() => undefined);"
         },
         {
-          "line": 234,
+          "line": 237,
           "text": "const next = value.pending === true ? preparation(value) : undefined;"
         },
         {
-          "line": 237,
+          "line": 240,
           "text": "editingAtFreeze = editing();"
         },
         {
-          "line": 239,
+          "line": 242,
           "text": "const binding = {"
         },
         {
-          "line": 243,
+          "line": 246,
           "text": "let frozen = true;"
         },
         {
-          "line": 256,
+          "line": 259,
           "text": "const current = () =>"
         },
         {
-          "line": 261,
+          "line": 264,
           "text": "const ready = frozen"
         },
         {
-          "line": 287,
+          "line": 290,
           "text": "const ended = active.activationId;"
         },
         {
-          "line": 288,
+          "line": 291,
           "text": "const terminal ="
         },
         {
-          "line": 298,
+          "line": 301,
           "text": "const matching = acknowledged === ended;"
         },
         {
-          "line": 299,
+          "line": 302,
           "text": "const restart ="
         },
         {
-          "line": 306,
+          "line": 309,
           "text": "const explain ="
         },
         {
-          "line": 330,
+          "line": 333,
           "text": "const pending = preparation(value);"
         },
         {
-          "line": 333,
+          "line": 336,
           "text": "editingAtFreeze = editing();"
         },
         {
-          "line": 360,
+          "line": 363,
           "text": "export function createAppUpdateScheduler(options: {"
         },
         {
-          "line": 368,
+          "line": 371,
           "text": "const now = options.now ?? (() => performance.now());"
         },
         {
-          "line": 369,
+          "line": 372,
           "text": "const schedule ="
         },
         {
-          "line": 371,
+          "line": 374,
           "text": "const cancel ="
         },
         {
-          "line": 374,
+          "line": 377,
           "text": "const interval = options.intervalMs ?? 15 * 60 * 1000;"
         },
         {
-          "line": 375,
+          "line": 378,
           "text": "const retry = options.retryMs ?? 60 * 1000;"
         },
         {
-          "line": 384,
+          "line": 388,
           "text": "let state: AppUpdateSchedule = {"
         },
         {
-          "line": 391,
+          "line": 395,
           "text": "let timer: unknown;"
         },
         {
-          "line": 392,
+          "line": 396,
           "text": "let generation = 0;"
         },
         {
-          "line": 393,
+          "line": 397,
           "text": "const clear = () => {"
         },
         {
-          "line": 397,
+          "line": 401,
           "text": "const arm = () => {"
         },
         {
-          "line": 408,
+          "line": 412,
           "text": "async function poll() {"
         },
         {
-          "line": 416,
+          "line": 420,
           "text": "const owner = generation;"
         },
         {
-          "line": 417,
+          "line": 421,
           "text": "const current = () =>"
         },
         {
-          "line": 419,
+          "line": 423,
           "text": "let failed = false;"
         },
         {
-          "line": 425,
+          "line": 429,
           "text": "const failures = failed ? Math.min(state.failures + 1, 20) : 0;"
         }
       ]
@@ -614919,7 +614923,7 @@
         "NativeSpeechWarmup",
         "NativeRecognizerAvailability"
       ],
-      "sha256": "1ed471ec764cd5a60f9f427b6991653eb0390418eebb47bc4d256fb07ff3c60a"
+      "sha256": "afba8a60a9d5a92dafb8d5cfe0b414b8ff360372b32164de45f60e30abfcfd3a"
     },
     {
       "path": "app.config.json",
@@ -614948,7 +614952,7 @@
         "MobileBundleAdmission",
         "NativeGoogleHostArtifact"
       ],
-      "sha256": "10d878811c10c645af380b5d0ad84a8232e56e5aa348fb1cc950a04389603ace"
+      "sha256": "8b312661cf901a601251846397d9beaabc1b390359c8bc9dd16da174ce94fe21"
     },
     {
       "path": "scripts/upstream-mobile-build.mjs",
@@ -614956,7 +614960,7 @@
         "Application",
         "MobileBundleAdmission"
       ],
-      "sha256": "c347de810b97e3bbbdb535ea36c7be56a91528ef854e7801ff88cbc09170bded"
+      "sha256": "de8685201893c47e4eea230856a83413ed9de0e7bb0c8342c373a884d2c11bf4"
     },
     {
       "path": "android/upstream-native-sources.json",
@@ -615234,7 +615238,7 @@
         "CoreServiceLifecycle",
         "ApplicationComposition"
       ],
-      "sha256": "89902730eb7815e4c03935d6bd2ba29da0fcb357106171f53b09cc73ddbb3a5d"
+      "sha256": "f9ae3c425179b41858fc2c69a8fdbd9e6a76ae68abbdcf07f9d06de6bca0c22e"
     },
     {
       "path": "upstream.lock.json",
@@ -615246,7 +615250,7 @@
         "NativeGoogleHostArtifact",
         "ResidentJavaSourceStage"
       ],
-      "sha256": "73ef6a201b3e689d1c8f00bbbddbb4c80804a4258ea575c97f0b4c77e2b8bcc6"
+      "sha256": "fec79dc301ae5e6d29ce614d6c9de6f43ad05eee6dca9cdfbbb012e7fef27363"
     },
     {
       "path": "vendor/eliza/packages/app/platforms/android/sense/src/main/AndroidManifest.xml",
@@ -615304,7 +615308,7 @@
     },
     {
       "path": "patches/eliza/managed-google-agent-manifest.json",
-      "sha256": "8ece23563e4a600d1642c73ec16ea3a7f7473bab5813c113edf4e74dd7e50fd9",
+      "sha256": "cbb01f482198ca28a1ede4a444da97e230cf53fd3d39273d12a6c550db72f666",
       "models": [
         "BrowserCloudRequestCustody",
         "GmailAgentMailboxRecovery",
@@ -615327,7 +615331,7 @@
   "sharedSourceDiscovery": {
     "sharedSourceCount": 4886,
     "producer": "specs/quint/refinement/services/runtime-bundle-inputs.json",
-    "sourcePin": "099e2d27ad7268fac0832c4a7e84cc707d2cf03e",
+    "sourcePin": "9add52f6b83efa77241fb72ae769729121944cac",
     "meaning": "Authenticated source identities and domain allocations. Runtime activation and implementation refinement require separate evidence."
   }
 }
