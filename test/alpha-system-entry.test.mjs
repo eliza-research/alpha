@@ -109,11 +109,15 @@ test('notification projection changes fixed product presentation while preservin
  assert.ok(generated.includes('case "running":')&&generated.includes('case "stop-failed":'));
  assert.ok(generated.includes('.addAction(0, "Stop", stopPending)'));
  assert.equal((generated.match(/\.setColor\(0xff0000ff\)/g)||[]).length,2);
- // Suspend the previous transport atomically before exposing a rotated root, and resume
- // canonical notification recovery on all four running paths, after readiness only.
+ // Suspend the previous transport atomically before exposing a rotated root. Upstream now
+ // shares markRunning between its startup and watchdog probes; detached adoption has its own
+ // health-confirmed transition. Every assignment must resume canonical notification recovery.
  assert.equal(generated.split('            AlphaLocalAgentPlugin.publishNotificationRoot(() -> { currentLocalAgentToken = token; });').length,2);
- assert.equal(generated.split('currentStatus = "running"; AlphaCanonicalNotifications.resumeExisting(getApplicationContext());').length,5);
- assert.equal(generated.split('currentStatus = "running";').length,5);
+ const runningAssignments=[...original.matchAll(/currentStatus = "running";/g)];
+ assert.equal(runningAssignments.length,2,'review changed upstream readiness transitions');
+ const resumed='currentStatus = "running"; AlphaCanonicalNotifications.resumeExisting(getApplicationContext());';
+ assert.equal(generated.split(resumed).length-1,runningAssignments.length);
+ assert.doesNotMatch(generated.replaceAll(resumed,''),/currentStatus = "running";/,'no running transition escapes the recovery hook');
  const bootstrap=generated.slice(generated.indexOf('private Notification buildBootstrapNotification('),generated.indexOf('    private void pushNotification()'));
  assert.ok(!bootstrap.includes('PendingIntent'),'preserve startup binder-free notification path');
  const nativeTitles=['alpha_runtime_title','alpha_runtime_running','alpha_runtime_starting','alpha_runtime_stopped','alpha_runtime_asset_error','alpha_runtime_missing_files','alpha_runtime_spawn_failed','alpha_runtime_restart_blocked'];

@@ -102,7 +102,17 @@ test("the telephony plugin is registered and answers only on the verified image"
   assert.equal(methods.length, (plugin.match(/@PluginMethod/g) || []).length, "no plugin method escapes the check");
   assert.deepEqual(methods.map(m => m[1]).sort(), ["cancelSmsReview", "checkPermissions", "composeSms", "dial", "imageCapability", "listMessages", "listRecentCalls", "listThreads", "markThreadRead", "mmsSendResult", "observeMessages", "requestAccess", "requestPermissions", "requestRole", "searchContacts", "sendMms", "sendSms", "smsSendHistory", "smsSendResult", "status"]);
   for (const [, name, first] of methods) assert.match(first, /^if \(!?refused\(call\)\)/, `${name} re-checks the capability before anything else`);
-  for (const callback of plugin.matchAll(/@(?:Permission|Activity)Callback private void (\w+)\([^)]*\) \{ (.*)/g)) assert.match(callback[2], /refused\(call\)/, `${callback[1]} re-checks the capability`);
+  // Android can deliver a permission/role result before the activity resumes. The shared answer
+  // path still rejects a lost image admission or closed plugin, but returns only permission/role
+  // state while backgrounded rather than rejecting a permission that was successfully granted.
+  const callbacks=[...plugin.matchAll(/@(?:Permission|Activity)Callback private void (\w+)\([^)]*\) \{ (.*)/g)];
+  assert.deepEqual(callbacks.map(match=>match[1]).sort(),['accessResult','roleResult']);
+  assert.equal(callbacks.length,(plugin.match(/@(?:Permission|Activity)Callback/g)||[]).length,'no callback escapes the capability check');
+  for(const callback of callbacks)assert.match(callback[2],/answer\(call\);/,`${callback[1]} uses the revalidated answer path`);
+  assert.match(callbacks.find(match=>match[1]==='accessResult')[2],/^invalidateReads\(\); answer\(call\);/,'permission changes retire queued reads before answering');
+  const answer=plugin.slice(plugin.indexOf('private void answer(PluginCall call)'),plugin.indexOf('@PermissionCallback'));
+  assert.match(answer,/if \(!admitted\(\) \|\| closed\) \{ call\.reject\(unavailableMessage\(\), "unavailable"\); return; \}\s*JSObject value = statusObject\(\);/,'the image and lifecycle are checked before preparing the answer');
+  assert.match(answer,/if \(!unlockedForeground\(\)\) \{ value\.put\("subscriptions", JSONObject\.NULL\); value\.put\("defaultSmsSubscriptionId", JSONObject\.NULL\); \}\s*call\.resolve\(value\);/,'a background or locked callback publishes no SIM identifiers');
   assert.doesNotMatch(plugin, /sendTextMessage|sendMultipartTextMessage|ACTION_CALL\b|placeCall|WRITE_CONTACTS|insert\(|applyBatch/, "no direct call or contact write; native SMS dispatch lives only in the shared SmsTelephony behind the native review");
   assert.equal((plugin.match(/SmsTelephony\.dispatch\(/g) || []).length, 1, "one dispatch site, inside the owner's Send decision");
   assert.match(plugin, /Intent\.ACTION_DIAL/); assert.match(plugin, /Intent\.ACTION_SENDTO/);

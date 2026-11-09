@@ -255,7 +255,7 @@ test('library operations are registered in Alpha device actions: Photos-only, ne
  const out=JSON.parse(execFileSync(process.execPath,['--import=tsx','--input-type=module','-e',script],{cwd:root,encoding:'utf8',timeout:120000}));
  assert.deepEqual(out.search,{type:'photo_library_search',limit:5});
  assert.equal(out.query,'refused');
- assert.equal(out.home,'Open Photos > Device library to review this action.');
+ assert.equal(out.home,'Open Photos to review this action.');
  assert.equal(out.locked,'Unlock the phone to review this action.');
  assert.equal(out.photos,null);
  const {DeviceActions}=await import('./fixtures/device-action-policy.mjs');

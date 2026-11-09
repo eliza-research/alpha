@@ -40,7 +40,13 @@ function harness({native=false,origin='notes',receiptFailure=false,dispatchFailu
  const globals={Error,Date,JSON,deviceJournalContext,createDeviceActionExecution,crypto:{randomUUID},contextKey:JSON.stringify,actionScope:async()=> 'hash',assertProposalContext(){}};
  for(const name of ['isClockOperation','isNativeNotesQuery','isSmsSend','isPhoneDial','isMapsOperation','isCameraCapture','isLibraryOperation','isReminderCreate','isReminderOperation','isNotesOperation','isCalendarOperation','isForegroundReview','isOriginalDeviceReadOperationType'])globals[name]=()=>false;
 
- const journal={async reserve(input){events.push('reserve');return {created:true,entry:{...input,phase:'reserved'}};},async markApplying(){events.push('applying');},async finish(record){journalResults.push(record);events.push('finish');if(finishFailure)throw Error('journal failed');}};
+ const journalEntries=new Map();
+ const journal={
+  async get({proposalId}){return {entry:journalEntries.get(proposalId)??null};},
+  async reserve(input){events.push('reserve');const existing=journalEntries.get(input.proposalId);if(existing)return {created:false,entry:existing};const entry={...input,phase:'reserved'};journalEntries.set(input.proposalId,entry);return {created:true,entry};},
+  async markApplying(input){events.push('applying');Object.assign(journalEntries.get(input.proposalId),{phase:'applying',attemptId:input.attemptId});},
+  async finish(record){journalResults.push(record);events.push('finish');if(finishFailure)throw Error('journal failed');Object.assign(journalEntries.get(record.proposalId),record,{phase:'terminal'});},
+ };
  const owner=new DeviceActions(session,{installationId:'i',enrollmentId:'e'},'c'.repeat(64),async()=>{},journal,async(op,_id,context,signal)=>executor(op,signal,context));
  owner.proposals.set(p.id,{proposal:p,context:initial});
  owner.mutation=async(proposal,suffix,body)=>{if(suffix==='receipt')receiptBodies.push(body);events.push(suffix);if(suffix==='receipt')await beforeReceipt?.({controller,document,session:connection,externalView(){currentContext={view:'calendar',sensitive:false,revision:3};cancel();}});controller.signal.throwIfAborted();if(suffix==='receipt'&&receiptFailure)throw Error('network unavailable');return {...proposal,state:suffix==='claim'?'executing':'done',attemptId:'attempt'};};
@@ -60,10 +66,10 @@ for(const native of [false,true])for(const origin of ['notes','browser']){
   assert.equal(h.receiptBodies[0].attemptId,'attempt');assert.equal(h.receiptBodies[0].receipt.outcome,'applied');
  });
  test(`${label}: genuine receipt failure remains pending with one dispatch and no automatic retry`,async()=>{
-  const h=harness({native,origin,receiptFailure:true}),r=await h.run();assert.match(r.summary,/Server receipt is pending/);assert.equal(h.events.filter(e=>e==='receipt').length,1);assert.equal(h.events.filter(e=>e==='dispatch').length,1);assert.equal(h.events.at(-1),'present');
+  const h=harness({native,origin,receiptFailure:true}),r=await h.run();assert.equal(r.status,'succeeded');assert.equal(r.summary,'Opened example.com. Not synced yet; open action history to retry.');assert.equal(h.events.filter(e=>e==='receipt').length,1);assert.equal(h.events.filter(e=>e==='dispatch').length,1);assert.equal(h.events.at(-1),'present');
  });
  test(`${label}: pre-effect cancellation never dispatches or presents`,async()=>{const h=harness({native,origin});h.controller.abort();const r=await h.run();assert.equal(r.status,'unknown');assert.deepEqual(h.events,[]);});
- test(`${label}: cancelled external view change during receipt never forces Browser foreground`,async()=>{const h=harness({native,origin,beforeReceipt:({externalView})=>externalView()}),r=await h.run();assert.match(r.summary,/pending/);assert.equal(h.events.filter(e=>e==='dispatch').length,1);assert.ok(!h.events.includes('present'));});
+ test(`${label}: cancelled external view change during receipt never forces Browser foreground`,async()=>{const h=harness({native,origin,beforeReceipt:({externalView})=>externalView()}),r=await h.run();assert.equal(r.status,'succeeded');assert.equal(r.summary,'Opened example.com. Not synced yet; open action history to retry.');assert.equal(h.events.filter(e=>e==='dispatch').length,1);assert.ok(!h.events.includes('present'));});
  test(`${label}: durable journal failure never presents or uploads`,async()=>{const h=harness({native,origin,finishFailure:true}),r=await h.run();assert.equal(r.status,'unknown');assert.ok(!h.events.includes('present'));assert.ok(!h.events.includes('receipt'));});
  test(`${label}: failed dispatch never presents and is not repeated`,async()=>{const h=harness({native,origin,dispatchFailure:true}),r=await h.run();assert.equal(r.status,'unknown');assert.equal(h.events.filter(e=>e==='dispatch').length,1);assert.ok(!h.events.includes('present'));});
  for(const change of ['changeTab','dispose'])test(`${label}: ${change} after dispatch cannot redirect presentation`,async()=>{const h=harness({native,origin,afterDispatch:args=>args[change]()}),r=await h.run();assert.equal(r.status,'succeeded');assert.ok(!h.events.includes('present'));});

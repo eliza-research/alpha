@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "86ab55fd81f68a2c5dd4fd32e1c1431723648c58",
-  "ledgerSha256": "ed85ca8315901d2451270c14ba158a17dca7d4f68b36f7e3e162d05f9c6f47ab",
+  "ledgerSha256": "1b99cf58f8bf9bc12f56fa0526c4faf9e63b7289e0ecace89ddaaed828705b67",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -46743,7 +46743,7 @@
     },
     {
       "path": "scripts/prepare-client-features.mjs",
-      "sha256": "1d5ad86f370f5d74584b9a525aaca14e3171700bd69c1818a5d450a13031169b",
+      "sha256": "29916f68cac2070a46ec6188ec4ce5f10161bf96c8e2ac8b18638b81354f5ec1",
       "allocatedModels": [
         "Application",
         "BrowserFilesTrash",
@@ -46795,7 +46795,7 @@
         },
         {
           "owner": "prepareClientFeatures.current",
-          "line": 492,
+          "line": 502,
           "bindings": 1,
           "writes": 1
         }
@@ -225228,6 +225228,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "d8302085ae0c75339e15e9214217d83ca8d19e38c5be2b817cac57ae93e90d19"
+    "sha256": "a24f0bc042d341cdf665291b4875fb8691585f7992aa5b6e5ed820b2b77f9812"
   }
 }

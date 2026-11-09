@@ -47911,7 +47911,7 @@
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
-      "sha256": "1d5ad86f370f5d74584b9a525aaca14e3171700bd69c1818a5d450a13031169b",
+      "sha256": "29916f68cac2070a46ec6188ec4ce5f10161bf96c8e2ac8b18638b81354f5ec1",
       "stateAnchors": [],
       "integrationReview": "Reviewed merged source and upstream contract integration. Existing domain allocation is retained; refreshed hashes do not establish implementation refinement or device acceptance."
     },
@@ -618391,7 +618391,7 @@
         "ScanDocument",
         "VoiceSession"
       ],
-      "sha256": "1d5ad86f370f5d74584b9a525aaca14e3171700bd69c1818a5d450a13031169b",
+      "sha256": "29916f68cac2070a46ec6188ec4ce5f10161bf96c8e2ac8b18638b81354f5ec1",
       "integrationReview": "Retains the reviewed source boundary and authenticated patch catalog; integration also admits installed dependency ranges and bounded source-copy helpers. Configuration identity alone is not runtime/refinement evidence."
     },
     {

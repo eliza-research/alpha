@@ -435,6 +435,16 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
     if (content.split(before).length !== 2) throw Error('Review changed browser address re-export: ' + name);
     project(name, content.replace(before, 'from "../../../packages/contracts/src/browser-address-input.ts";'));
   }
+  // The browser command parser reads the turn observation through the contracts
+  // package. Plain Node has no package alias, so bind that one reviewed value
+  // import to the exact authenticated leaf in this prepared tree.
+  {
+    const name = 'plugins/plugin-browser/src/native-client-command.ts';
+    const before = 'import { readClientTurnObservation } from "@elizaos/contracts/client-turn-observation";';
+    const content = text(name);
+    if (content.split(before).length !== 2) throw Error('Review changed browser observation import: ' + name);
+    project(name, content.replace(before, 'import { readClientTurnObservation } from "../../../packages/contracts/src/client-turn-observation.ts";'));
+  }
   // Upstream voice sessions import the shared random-id helper by its emitted .js name. Plain
   // Node (tests and scripts that strip types) cannot map that to the copied .ts source, so the
   // one reviewed value import is pointed at the .ts file; type-only .js imports are erased.
@@ -480,7 +490,7 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
   }
   const files = Object.fromEntries([...source].map(([name, file]) => [name, file.sha256]));
   const provenance = {
-    baseCommit: upstream.pin, sourceFiles, projectionVersion:projectVoice?13:0, files,
+    baseCommit: upstream.pin, sourceFiles, projectionVersion:projectVoice?14:0, files,
     ...clientPatches,
   };
   const parent = path.join(root, '.eliza'), destination = path.join(parent, 'client-features');

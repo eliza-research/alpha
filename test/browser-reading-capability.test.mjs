@@ -68,14 +68,16 @@ test("the native side reports the capability and refuses a review with the unava
   assert.match(plugin, /@PluginMethod public void readingSupport\(PluginCall call\) \{ JSObject out=new JSObject\(\);out\.put\("available",BrowserReadingWorld\.supported\(\)\);call\.resolve\(out\); \}/);
   // Unavailable is the first answer of a review: before a speech route is asked for, before the
   // page is judged, before extraction, and it is not the "reload this page" answer.
-  const review = reading.slice(reading.indexOf("private void review(PluginCall call,WebView web,BrowserReadingWorld world,BooleanSupplier stillCurrent,boolean question){"));
+  const reviewStart=reading.indexOf("private void review(PluginCall call,String tab,WebView web,BrowserReadingWorld world,BooleanSupplier stillCurrent,boolean question){");
+  assert.ok(reviewStart>0,'the tab-bound shared review entry exists');
+  const review = reading.slice(reviewStart);
   const unsupported = review.indexOf("if(world==null||!world.available()){call.reject(BrowserPageReading.UNSUPPORTED_MESSAGE,BrowserPageReading.READING_UNSUPPORTED);return;}");
   const route = review.indexOf('call.reject("Select an available speech route before reading")');
   const sensitive = review.indexOf('call.reject("Reading unavailable on a sensitive or unverified page",BrowserPageReading.SENSITIVE_PAGE)');
   const notReady = review.indexOf('if(!world.ready()){call.reject("This page is not ready for private reading. Reload this page, then try again.",BrowserPageReading.READING_NOT_READY);return;}');
   const extract = review.indexOf("world.evaluate(BrowserPageReading.EXTRACT,");
   assert.ok(unsupported > 0 && route > unsupported && sensitive > route && notReady > sensitive && extract > notReady, "unsupported, then speech route, sensitive page, not ready, then extraction");
-  assert.match(review, /^[^\n]*\n\s*cancel\(\);final long expected=generation;\n\s*\/\/[^\n]*\n\s*if\(world==null\|\|!world\.available\(\)\)/, "nothing but the cancellation of an earlier review precedes it");
+  assert.match(review, /^[^\n]*\n\s*cancel\(\);final long expected=generation;tabId=tab;\n\s*\/\/[^\n]*\n\s*if\(world==null\|\|!world\.available\(\)\)/, "only earlier-review cancellation and tab binding precede the capability refusal");
   assert.match(policy, /public static final String READING_UNSUPPORTED = "reading-unsupported";/);
 });
 

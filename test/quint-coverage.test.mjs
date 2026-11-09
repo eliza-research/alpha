@@ -47,9 +47,10 @@ test('runner records unexpected exceptions as failures and labels coverage evide
   };
   try {
     for (const path of [...sourceRoots, 'scripts']) mkdirSync(join(root, path), { recursive: true });
-    for (const name of ['check-quint.mjs', 'quint-lib.mjs', 'core-state-patch.mjs']) copyFileSync(join(repositoryRoot, 'scripts', name), join(root, 'scripts', name));
+    const runnerModules = ['check-quint.mjs', 'quint-lib.mjs', 'core-state-patch.mjs', 'build-policy-source.mjs'];
+    for (const name of runnerModules) copyFileSync(join(repositoryRoot, 'scripts', name), join(root, 'scripts', name));
     const fixtureSources = [...runtimeScriptPaths, ...runtimeAssetPaths];
-    for (const path of fixtureSources) if (path !== 'scripts/core-state-patch.mjs') write(path, '');
+    for (const path of fixtureSources) if (!runnerModules.some(name => path === `scripts/${name}`)) write(path, '');
     const model = { module: 'Fixture', path: 'specs/quint/application/Fixture.qnt', init: 'init', step: 'step', invariant: 'safety', tests: ['exampleTest'], currentChecks: [null] };
     write(model.path, 'module Fixture { run exampleTest = true }');
     for (const family of ['application', 'services', 'native', 'legacy']) {

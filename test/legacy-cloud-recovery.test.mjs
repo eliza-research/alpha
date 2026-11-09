@@ -6,17 +6,18 @@ import {tmpdir} from 'node:os';
 import {execFileSync} from 'node:child_process';
 import {root,nativeSource,upstreamAgentRuntime,runJvm,jsonJarSkip} from './fixtures/jvm-tools.mjs';
 import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
+import {upstreamNativeSource} from '../scripts/upstream-native-source.mjs';
 test('explicit native legacy recovery uses real encrypted slots and current token validation',{skip:jsonJarSkip},()=>{
  const dir=mkdtempSync(join(tmpdir(),'alpha-legacy-recovery-'));
  try{
   const relative='plugins/plugin-native-secure-store/android-nativeonly/src/main/java/ai/eliza/plugins/securestore/nativeonly/JsonCredentialSlots.java';
   const manifest=JSON.parse(readFileSync(join(root,'android/upstream-native-sources.json'),'utf8'));
   assert.ok(!manifest.patches.some(patch=>patch.module==='plugins/plugin-native-secure-store/android-nativeonly'),'this fixture requires the unpatched canonical slot implementation');
-  assert.match(manifest.baseCommit,/^[a-f0-9]{40}$/);
-  const prepared=join(root,'vendor/eliza');
-  const pinned=execFileSync('git',['-C',process.env.ALPHA_TEST_SDK_OBJECTS||prepared,'-c','core.hooksPath=/dev/null','-c','core.fsmonitor=false','show',manifest.baseCommit+':'+relative],{env:{...process.env,GIT_NO_LAZY_FETCH:'1',GIT_NO_REPLACE_OBJECTS:'1'}});
-  assert.ok(readFileSync(join(prepared,relative)).equals(pinned),'current slot source must equal the manifest-pinned bytes; this does not qualify the broader native packaging pin');
-  let source=readFileSync(join(prepared,relative),'utf8').replace('import android.security.keystore.KeyGenParameterSpec;','').replace('import android.security.keystore.KeyProperties;','');
+  assert.ok(manifest.modules.includes('plugins/plugin-native-secure-store/android-nativeonly'),'the tested slot implementation is selected for native packaging');
+  const admitted=upstreamNativeSource(root),prepared=admitted.directory;
+  const pinned=admitted.read(relative).get(relative).bytes;
+  assert.ok(readFileSync(join(prepared,relative)).equals(pinned),'current slot source must equal the locked, authenticated bytes; this does not qualify broader native packaging');
+  let source=pinned.toString('utf8').replace('import android.security.keystore.KeyGenParameterSpec;','').replace('import android.security.keystore.KeyProperties;','');
   const start=source.indexOf(' private SecretKey key()'),end=source.indexOf(' private static Object parseJson',start);assert.ok(start>0&&end>start);
   // Host-only key acquisition adapter. AES-GCM/AAD, parsing, hashing, committed readback and CAS remain real.
   source=source.slice(0,start)+' private SecretKey key(){return new javax.crypto.spec.SecretKeySpec(new byte[32],"AES");}\n'+source.slice(end);

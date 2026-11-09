@@ -44,8 +44,12 @@ test('Reset Alpha data records the reset, revokes Cloud keys best effort within 
  // deadline that resets even when revocation hangs (behavior tested upstream in reset.test.mjs).
  const plugin=readFileSync(resolve(import.meta.dirname,'../vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset/DataResetPlugin.java'),'utf8');
  const authenticated=plugin.slice(plugin.indexOf('private void authenticated('));
- const record=authenticated.indexOf('reset.record(context);'),notice=authenticated.indexOf('showProgress(text);'),dispatch=authenticated.indexOf('reset.dispatchAfterBeforeDispatch(context, DataReset.INTERACTIVE_DEADLINE_MS');
+ const record=authenticated.indexOf('reset.recordIfListenerReachable(context)'),notice=authenticated.indexOf('showProgress(text);'),dispatch=authenticated.indexOf('reset.dispatchAfterBeforeDispatch(context, DataReset.INTERACTIVE_DEADLINE_MS',notice);
  assert.ok(record>0&&notice>record&&dispatch>notice,'recorded before any network request, with a blocking notice over the revocation window');
+ assert.match(authenticated,/if \(!reset\.recordIfListenerReachable\(context\)\) \{\s*result\(call, "unavailable", text\.listenerOff\);\s*return;/,'an unreachable listener refuses before a reset can be recorded');
+ const coordinator=readFileSync(resolve(import.meta.dirname,'../vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset/DataReset.java'),'utf8');
+ assert.match(coordinator,/public boolean recordIfListenerReachable\(Context context\) throws Exception \{\s*if \(new SenseListenerClient\(context\)\.blocksReset\(\)\) return false;\s*record\(context\);\s*return true;/,'successful listener preflight persists the confirmed reset before returning');
+ assert.match(authenticated,/if \(reset\.pending\(context\)\) reset\.dispatchAfterBeforeDispatch\(context, DataReset\.INTERACTIVE_DEADLINE_MS, scheduler\);/,'a marker persisted before a later failure still runs bounded revocation');
  const registration=readFileSync(resolve(import.meta.dirname,'../android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDataReset.java'),'utf8');
  assert.ok(registration.includes('.beforeDispatch(ResetBeforeDispatch.STEP)'),'the live and startup paths run the same before-dispatch step');
  const steps=readFileSync(resolve(import.meta.dirname,'../android/app/src/main/java/ai/alphacompute/alphaphone/ResetBeforeDispatch.java'),'utf8');

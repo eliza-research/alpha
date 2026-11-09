@@ -253,7 +253,7 @@ test('a mail context switched, deleted or changed during its review cannot send 
 test('calendar source discovery coalesces per owner, retries failures and fences old sources',async()=>{
  const {stripTypeScriptTypes}=await import('./support/strip-types.mjs');const vm=await import('node:vm');
  const core=readFileSync(new URL('../vendor/eliza/packages/core/src/runtime/single-flight-memo.ts',import.meta.url),'utf8').replace(/^export /gm,'');
- const SingleFlightMemo=vm.runInNewContext(stripTypeScriptTypes(core,{mode:'strip'})+';SingleFlightMemo');
+ const SingleFlightMemo=vm.runInNewContext(stripTypeScriptTypes(core,{mode:'strip'})+';SingleFlightMemo',{performance});
  const ui=readFileSync(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
  const source=ui.slice(ui.indexOf('type CalendarAgendaSourceObservation='),ui.indexOf('async function deviceCapabilities'));
  const deferred=()=>{let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no;});return {promise,resolve,reject};};

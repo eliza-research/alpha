@@ -1,11 +1,13 @@
-Current source pin: `99b49439ce9d0cb5607e9831b9f7f58d89525029`. Previous prepared source: `db96bb0a0371dca92707867245bf0bb119b5b4f5`. The previous inventory binding was `b23a23c2ef4f83d15591c6368c00f1e9547f7743`. The original 53-item inventory below is preserved; source composition does not establish build, device or human acceptance.
+Current source composition pin: `86ab55fd81f68a2c5dd4fd32e1c1431723648c58`. This identifies the reviewed integrated sources, not renewed qualification of the historical evidence below. Distribution, device and owner acceptance remain separate.
 
-Current integration candidate: SDK `3d76ff5acacb369e2c58fc8512e69e59f53ce69b` is the eliza `develop` tip (2026-10-18), which contains elizaOS/eliza#36598 (native Google host, Calendar approvals and Gmail host operations) and replaced `985322b5df96`. Upstream's Calendar delete, native Gmail send and Gmail mailbox-change paths are default-off flags that Alpha removes from the agent environment. Existing JNI/build inputs are unchanged from `9365c9bb0d`; recorded qualified native bytes are retained. New end-of-turn, heard-content, allowance and Maps behavior still needs current-source qualification. Historical source-bound evidence follows.
+Historical source pin: `99b49439ce9d0cb5607e9831b9f7f58d89525029`. Previous prepared source: `db96bb0a0371dca92707867245bf0bb119b5b4f5`. The previous inventory binding was `b23a23c2ef4f83d15591c6368c00f1e9547f7743`. The original 53-item inventory below is preserved; source composition does not establish build, device or human acceptance.
+
+Historical integration candidate: SDK `3d76ff5acacb369e2c58fc8512e69e59f53ce69b` is the eliza `develop` tip (2026-10-18), which contains elizaOS/eliza#36598 (native Google host, Calendar approvals and Gmail host operations) and replaced `985322b5df96`. Upstream's Calendar delete, native Gmail send and Gmail mailbox-change paths are default-off flags that Alpha removes from the agent environment. Existing JNI/build inputs are unchanged from `9365c9bb0d`; recorded qualified native bytes are retained. New end-of-turn, heard-content, allowance and Maps behavior still needs current-source qualification. Historical source-bound evidence follows.
 
 <!-- Integration 9e7a1553f378a570be3fe74c021e71710a1c96eb combines main Maps and Calendar; native qualification remains pending. -->
 # MVP remaining-work inventory — policy reconciled October 12, 2026
 
-Current consumer runtime source pin: `9365c9bb0d177` (2026-10-16 Android Google host entry-point wiring). Native build and device acceptance remain pending. The earlier PR #531 pin was `968348d792d3`, llama.cpp `3e5f73922ee8`.
+Historical consumer runtime source pin: `9365c9bb0d177` (2026-10-16 Android Google host entry-point wiring). Native build and device acceptance remain pending. The earlier PR #531 pin was `968348d792d3`, llama.cpp `3e5f73922ee8`.
 Native source/provenance changed; voice remains unqualified and the prior embedding-host
 receipt remains refused pending requalification. Historical evidence below is not promoted.
 

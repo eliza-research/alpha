@@ -34,6 +34,10 @@ test('packaged shared Google browser sign-in preserves lifecycle and credential 
     cpSync(join(root, 'vendor/eliza/packages/app/platforms/android'), join(temporary, 'packages/app/platforms/android'), {recursive:true});
     cpSync(join(root, 'vendor/eliza/packages/app/scripts/mobile/android/templates'), join(temporary, 'packages/app/scripts/mobile/android/templates'), {recursive:true});
     cpSync(join(root, 'vendor/eliza/packages/ui/src/android-cloud'), join(temporary, 'packages/ui/src/android-cloud'), {recursive:true});
+    // The current shared suite also executes the resident credential mutation conductor and its
+    // exact stop lease. Keep those owning source regressions alongside Alpha's browser cases.
+    for(const source of ['plugins/plugin-native-secure-store/android-nativeonly','plugins/plugin-native-agent/android'])
+      cpSync(join(root,'vendor/eliza',source),join(temporary,source),{recursive:true});
     const env={...process.env};
     delete env.NODE_TEST_CONTEXT;
     const output=execFileSync(process.execPath, ['--test', '--test-reporter=tap', join(module, 'test/native-sign-in.test.mjs')], {timeout:170000, env, encoding:'utf8'});

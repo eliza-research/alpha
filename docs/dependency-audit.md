@@ -1,5 +1,24 @@
 # Dependency and artifact supply chain
 
+## Current source and built static review — November 9
+
+SDK `86ab55fd81f68a2c5dd4fd32e1c1431723648c58` has a fresh npm bulk audit of
+3,694 exact registry versions: 103 findings (12 low, 44 moderate, 46 high and one
+critical). The 19 added versions introduce no reported finding; all existing
+finding rows and affected package dependency/integrity records are unchanged.
+All 84 exception objects, their original review deadlines and all 12 pending
+upstream fixes remain unchanged. The full-lock audit still exits nonzero for
+the pending findings.
+
+The normal producer built the current workflow worker and native Google host.
+Authenticated agent/worker inventories contain 457 unique registry versions;
+only the existing moderate UUID advisory matches this built subset. Fresh token
+analysis of the exact emitted agent bytes found no live callers of the affected
+legacy v3/v5 APIs. See the [source and built static evidence](security/resident-source-review-86ab55fd-2026-11-09.json).
+These are build and static-analysis results. Historical staged-runtime reviews
+retain their original identities; current APK, device, security, signing, user
+and release acceptance remain separate.
+
 ## Staged Cloud runtime review — November 7
 
 The Android Cloud payload at Alpha `6f9e00c2` and SDK `9237023aee38`
