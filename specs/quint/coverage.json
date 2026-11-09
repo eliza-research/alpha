@@ -5944,7 +5944,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCalendarPlugin.java",
       "sha256": "4ba9ec0cbbb773855838b3ba45a59b97476a15f1d07983a3b5a039fcb00c7845",
       "models": [
-        "CalendarSync"
+        "CalendarSync",
+        "NativeCalendarScopedReview"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -7166,7 +7167,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarDeletionIdentity.java",
       "sha256": "8e4179e018cbbd1c2bc0366055190afa00f50941e576a332baa09d91c9dc58e3",
       "models": [
-        "CalendarSync"
+        "CalendarSync",
+        "NativeCalendarScopedReview"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -7187,12 +7189,14 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarScopedDeletionReview.java",
-      "sha256": "44b34b89a4347b38343b9b7c53a6b81e4c65deb7a23207126702a0d3de19e8f2",
       "models": [
-        "CalendarSync"
+        "CalendarSync",
+        "NativeCalendarScopedReview"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "85ed1ad2851b6c480271eec1e2271cda48fb9c69c3d2a20f9841bfab57a56b85",
       "stateAnchors": [
         {
           "line": 15,
@@ -17729,7 +17733,8 @@
       "path": "apps/app/src/prototype/automations-adapter.ts",
       "sha256": "a3270932efe68e9b2da938e60e748afd1c2078ceee4cabd5042224fff97bec48",
       "models": [
-        "WorkflowExecution"
+        "WorkflowExecution",
+        "ReminderOpenIntent"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -24935,7 +24940,8 @@
         "CalendarPreservationConfirmation",
         "CanonicalCalendarEditorClose",
         "CameraPreviewRetirement",
-        "RetainedReminderTapAdmission"
+        "RetainedReminderTapAdmission",
+        "ReminderOpenIntent"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -33145,12 +33151,13 @@
       "path": "apps/app/src/prototype/reminder-adapter.ts",
       "models": [
         "DeviceActions",
-        "RetainedReminderTapAdmission"
+        "RetainedReminderTapAdmission",
+        "ReminderOpenIntent"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "19d0bc38c6667ee05ee27930d1899a60d491ce0b83e48bb0a3d2db657a82f2d7",
+      "sha256": "70774fa211433a7beb52de46b5197800e6c1d253833e2f2132c91b4d08ccdb6d",
       "stateAnchors": [
         {
           "line": 14,
@@ -33189,451 +33196,447 @@
           "text": "const interaction=()=>{tapInteraction++;};"
         },
         {
-          "line": 29,
-          "text": "for(const name of ['openView','goHome','back']){const original=p[name];p[name]=function(...args:Bag[]){tapInteraction++;return original.apply(this,args);};}"
-        },
-        {
-          "line": 30,
+          "line": 45,
           "text": "const sameTarget=(a:Bag,b:Bag)=>!!a&&!!b&&Object.keys(a).length===Object.keys(b).length&&Object.entries(a).every(([key,value])=>b[key]===value);"
         },
         {
-          "line": 34,
+          "line": 49,
           "text": "const shell=owner;"
         },
         {
-          "line": 37,
+          "line": 52,
           "text": "const initialView=shell.S().view, initialOpen=shell.vget('calendar').open, interactionAt=tapInteraction;"
         },
         {
-          "line": 41,
+          "line": 56,
           "text": "const capability=await DailyApps.surfaceInfo();"
         },
         {
-          "line": 43,
+          "line": 58,
           "text": "const pending=await DailyApps.pendingReminderTap();"
         },
         {
-          "line": 48,
+          "line": 63,
           "text": "const result=await DailyApps.listReminders();"
         },
         {
-          "line": 50,
+          "line": 65,
           "text": "const selected=result.reminders.find(row=>sameTarget(row.target,pending.target));"
         },
         {
-          "line": 52,
+          "line": 67,
           "text": "const confirmation=await DailyApps.pendingReminderTap();"
         },
         {
-          "line": 54,
+          "line": 69,
           "text": "const rows=[...(shell.nativeCalendarRows||[]),...events(result.reminders)];"
         },
         {
-          "line": 55,
+          "line": 70,
           "text": "const target=rows.find(row=>row.alphaReminderId===selected.id&&sameTarget(row.reminderTarget,pending.target));"
         },
         {
-          "line": 58,
+          "line": 73,
           "text": "const openingInteraction=tapInteraction;"
         },
         {
-          "line": 64,
+          "line": 79,
           "text": "const session=connectionController.getSnapshot().session,enrollment=JSON.stringify(connectionController.getWorkflowDeviceTarget());"
         },
         {
-          "line": 66,
+          "line": 81,
           "text": "const live=()=>owner===shell&&shell.live&&!document.hidden&&!connectionController.getSnapshot().open&&!alphaClient.getState().context.sensitive&&connectionController.getSnapshot().session===session&&J"
         },
         {
-          "line": 68,
+          "line": 83,
           "text": "const again=await DailyApps.pendingReminderTap();if(!live()||again.token!==pending.token||!again.question||!again.retained||!sameTarget(again.target,pending.target))return false;"
         },
         {
-          "line": 69,
+          "line": 84,
           "text": "const fresh=await DailyApps.listReminders();return live()&&fresh.reminders.some(row=>sameTarget(row.target,pending.target)&&row.title===selected.title&&(row.body||'')===(selected.body||''));"
         },
         {
-          "line": 82,
+          "line": 97,
           "text": "return overdueReminders(this.reminderRows||[]).map(r=>{const row=reminderEvents([r])[0];return row?{id:row.id,title:r.title,off:row.off,at:dueOf(r)}:null;}).filter(Boolean);"
         },
         {
-          "line": 89,
+          "line": 104,
           "text": "const generation = this.reminderRefreshGeneration = (this.reminderRefreshGeneration || 0) + 1;"
         },
         {
-          "line": 91,
+          "line": 106,
           "text": "const reminderDeleteUnknown=await reconcileReminderDeletions();"
         },
         {
-          "line": 92,
+          "line": 107,
           "text": "let reminderCreateUnknown=Object.values(await reminderCreations()).filter(r=>r.state==='pending').length;"
         },
         {
-          "line": 101,
+          "line": 116,
           "text": "const result = await DailyApps.listReminders();"
         },
         {
-          "line": 105,
+          "line": 120,
           "text": "const rows = [...(this.nativeCalendarRows || []), ...events(result.reminders)];"
         },
         {
-          "line": 108,
+          "line": 123,
           "text": "const open = this.pendingReminderOpen;"
         },
         {
-          "line": 110,
+          "line": 125,
           "text": "const view = this.S().view;"
         },
         {
-          "line": 112,
+          "line": 127,
           "text": "const target = rows.find(e => e.alphaReminderId === open.id && (!open.occurrenceId || e.reminderOccurrence===open.occurrenceId));"
         },
         {
-          "line": 127,
+          "line": 142,
           "text": "let chooserOpen=connectionController.getSnapshot().open;"
         },
         {
-          "line": 128,
+          "line": 143,
           "text": "this.reminderTapConnection=connectionController.subscribe(()=>{const next=connectionController.getSnapshot().open;if(chooserOpen&&!next)queueMicrotask(()=>void checkReminderTap(true));chooserOpen=next"
         },
         {
-          "line": 149,
+          "line": 164,
           "text": "const out = render(state,api);"
         },
         {
-          "line": 153,
+          "line": 168,
           "text": "const shell=owner,token=state.reminderTapToken;"
         },
         {
-          "line": 155,
+          "line": 170,
           "text": "const epoch=tapInteraction;"
         },
         {
-          "line": 158,
+          "line": 173,
           "text": "const pending=await DailyApps.pendingReminderTap();"
         },
         {
-          "line": 164,
+          "line": 179,
           "text": "const rows:Reminder[]=owner?.reminderRows||[];"
         },
         {
-          "line": 165,
+          "line": 180,
           "text": "out.overdueReminders=overdueReminders(rows,api.now??Date.now()).map(r=>({title:r.title,label:'Overdue',due:new Date(dueOf(r)).toLocaleString(undefined,{weekday:'short',month:'short',day:'numeric',hour"
         },
         {
-          "line": 169,
+          "line": 184,
           "text": "const todoBusy=()=>!!owner?.reminderSaving;"
         },
         {
-          "line": 170,
+          "line": 185,
           "text": "const todoDecision=async(r:Reminder,action:'done'|'reopen'|'cancel')=>{"
         },
         {
-          "line": 171,
+          "line": 186,
           "text": "const todoOwner=owner;if(!todoOwner||todoBusy()||!r.target)return;"
         },
         {
-          "line": 175,
+          "line": 190,
           "text": "const result=await DailyApps.todoDecision({target:r.target,action});"
         },
         {
-          "line": 176,
+          "line": 191,
           "text": "const saved=(await DailyApps.listReminders()).reminders.find(row=>row.id===r.id);"
         },
         {
-          "line": 177,
+          "line": 192,
           "text": "const expected=action==='done'?'completed':action==='reopen'?'todo':'cancelled';"
         },
         {
-          "line": 186,
+          "line": 201,
           "text": "const todoOwner=owner,text=String(title||'').trim();if(!todoOwner||!text||todoBusy())return;"
         },
         {
-          "line": 189,
+          "line": 204,
           "text": "const attempt=todoOwner.todoAttempt?.title===text&&todoOwner.todoAttempt?.body===body?todoOwner.todoAttempt:{id:crypto.randomUUID(),title:text,body};"
         },
         {
-          "line": 192,
+          "line": 207,
           "text": "let response:{status:string}|undefined;"
         },
         {
-          "line": 194,
+          "line": 209,
           "text": "const saved=(await DailyApps.listReminders()).reminders.find(r=>r.id===attempt.id);"
         },
         {
-          "line": 205,
+          "line": 220,
           "text": "const f=state.form;"
         },
         {
-          "line": 207,
+          "line": 222,
           "text": "out.f.cals.push({domain:'reminders',name:'Reminders',dot:'var(--acc)',on:f.cal==='alpha-reminders',css:f.cal==='alpha-reminders'?'background:var(--fg);color:var(--bg)':'background:var(--bg)',pick:()=>"
         },
         {
-          "line": 210,
+          "line": 225,
           "text": "const current=api.get('calendar').form;"
         },
         {
-          "line": 213,
+          "line": 228,
           "text": "const formAdmission=owner?.calendarFormAdmitted?.(current);"
         },
         {
-          "line": 215,
+          "line": 230,
           "text": "const unchangedSchedule=current.alphaReminderId&&current.reminderEditSchedule&&JSON.stringify([current.off,current.t,current.repeat,current.alert])===JSON.stringify(current.reminderEditSchedule);"
         },
         {
-          "line": 216,
+          "line": 231,
           "text": "const saveEdit=async(schedule?:{at:number;recurrence:any;dueAt:number;alertMinutes:number|null})=>{"
         },
         {
-          "line": 218,
+          "line": 233,
           "text": "const editSession=current.reminderEditSession,saveOwner=owner;"
         },
         {
-          "line": 220,
+          "line": 235,
           "text": "const draftSignature=(form:Bag)=>JSON.stringify([form?.title,form?.notes,form?.off,form?.t,form?.repeat,form?.alert,form?.cal]);"
         },
         {
-          "line": 221,
+          "line": 236,
           "text": "const signature=draftSignature(current);"
         },
         {
-          "line": 222,
+          "line": 237,
           "text": "const sameEditor=()=>owner===saveOwner&&saveOwner.live&&!document.hidden&&api.isActive()&&api.get('calendar').form?.reminderEditSession===editSession&&draftSignature(api.get('calendar').form)===signat"
         },
         {
-          "line": 225,
+          "line": 240,
           "text": "let createdInput:Bag=null,dispatched=false,editSaved=false;"
         },
         {
-          "line": 227,
+          "line": 242,
           "text": "const operation={type:'reminder_update' as const,target:current.reminderEditTarget,fields:{title:current.title.trim(),body:current.notes||'',...(schedule?{schedule}:{})}};"
         },
         {
-          "line": 228,
+          "line": 243,
           "text": "const pending=Object.values(await pendingReminderDeletions()).find(input=>Object.entries(operation.target).every(([key,value])=>input.operation.target[key as keyof typeof input.operation.target]===val"
         },
         {
-          "line": 230,
+          "line": 245,
           "text": "let input=editSession.attempt||pending;"
         },
         {
-          "line": 233,
+          "line": 248,
           "text": "const selected=await DailyApps.selectedReminder({id:current.alphaReminderId});"
         },
         {
-          "line": 238,
+          "line": 253,
           "text": "const bindingHash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(operation))))).map(v=>v.toString(16).padStart(2,'0')).join('');"
         },
         {
-          "line": 244,
+          "line": 259,
           "text": "let response;"
         },
         {
-          "line": 249,
+          "line": 264,
           "text": "const active=sameEditor();"
         },
         {
-          "line": 263,
+          "line": 278,
           "text": "const date=reminderWallTime(Number(current.off||0),Number(current.t)),alertMinutes=current.alert===null?null:Number(current.alert||0),lead=alertMinutes??0;"
         },
         {
-          "line": 266,
+          "line": 281,
           "text": "const recurrence = current.repeat==='none' ? undefined : {"
         },
         {
-          "line": 272,
+          "line": 287,
           "text": "const dueAt=date.getTime();date.setTime(dueAt-lead*60000);"
         },
         {
-          "line": 274,
+          "line": 289,
           "text": "const createOwner=owner;if(!createOwner)return;"
         },
         {
-          "line": 276,
+          "line": 291,
           "text": "const id=current.reminderCreationId||crypto.randomUUID();"
         },
         {
-          "line": 277,
+          "line": 292,
           "text": "const request={id,title:current.title.trim(),body:current.notes||'',at:date.getTime(),dueAt,alertMinutes,...(recurrence?{recurrence}:{})};"
         },
         {
-          "line": 278,
+          "line": 293,
           "text": "const signature=JSON.stringify([current.title,current.notes,current.off,current.t,current.repeat,current.alert,current.cal]);"
         },
         {
-          "line": 279,
+          "line": 294,
           "text": "let matchesAttempt=true;"
         },
         {
-          "line": 280,
+          "line": 295,
           "text": "const active=()=>matchesAttempt&&owner===createOwner&&createOwner.live&&!document.hidden&&api.isActive()&&api.get('calendar').form?.reminderCreationId===id&&JSON.stringify([api.get('calendar').form.ti"
         },
         {
-          "line": 281,
+          "line": 296,
           "text": "let created:ReminderCreation|null=null,dispatched=false,scheduled=false,notificationsBlocked=false;"
         },
         {
-          "line": 284,
+          "line": 299,
           "text": "let timingVersion:unknown;"
         },
         {
-          "line": 288,
+          "line": 303,
           "text": "const pending=Object.values(await reminderCreations()).filter(row=>row.state==='pending');"
         },
         {
-          "line": 297,
+          "line": 312,
           "text": "let refusal:ReminderRefusal|undefined;"
         },
         {
-          "line": 298,
+          "line": 313,
           "text": "try{const response=await DailyApps.scheduleReminder(request);scheduled=(response.status==='scheduled'||response.status==='pending')&&response.id===id;notificationsBlocked=response.status==='permission"
         },
         {
-          "line": 306,
+          "line": 321,
           "text": "const retained=(await reminderCreations())[id];"
         },
         {
-          "line": 308,
+          "line": 323,
           "text": "const found=await checkReminderCreation(id);"
         },
         {
-          "line": 329,
+          "line": 344,
           "text": "const event=(state.events||[]).find((e:Bag)=>e.id===state.open);"
         },
         {
-          "line": 332,
+          "line": 347,
           "text": "const requireFresh=()=>{if(!api.get('calendar').reminderStale&&!owner?.reminderRefreshFailed)return true;api.toast('Refresh reminders before changing this saved reminder.');void owner?.refreshReminder"
         },
         {
-          "line": 338,
+          "line": 353,
           "text": "const renderedDecisionTarget=event.reminderTarget?structuredClone(event.reminderTarget):undefined;"
         },
         {
-          "line": 339,
+          "line": 354,
           "text": "const decide=async(action:'done'|'snooze')=>{"
         },
         {
-          "line": 343,
+          "line": 358,
           "text": "const decisionOwner=owner;"
         },
         {
-          "line": 344,
+          "line": 359,
           "text": "const stillSelected=()=>owner===decisionOwner&&decisionOwner?.live&&!document.hidden&&api.isActive()&&api.get('calendar').open===event.id&&!api.get('calendar').form;"
         },
         {
-          "line": 347,
+          "line": 362,
           "text": "let createdInput:Bag=null,dispatched=false;"
         },
         {
-          "line": 349,
+          "line": 364,
           "text": "const operation={type:action==='done'?'reminder_complete' as const:'reminder_snooze' as const,target:renderedDecisionTarget};"
         },
         {
-          "line": 350,
+          "line": 365,
           "text": "const pending=Object.values(await pendingReminderDeletions()).find(input=>Object.keys(renderedDecisionTarget).every(key=>input.operation.target[key as keyof typeof input.operation.target]===renderedDe"
         },
         {
-          "line": 352,
+          "line": 367,
           "text": "let input=pending;"
         },
         {
-          "line": 354,
+          "line": 369,
           "text": "const current=await DailyApps.selectedReminder({id:event.alphaReminderId});"
         },
         {
-          "line": 357,
+          "line": 372,
           "text": "const bindingHash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(operation))))).map(v=>v.toString(16).padStart(2,'0')).join('');"
         },
         {
-          "line": 363,
+          "line": 378,
           "text": "let response;"
         },
         {
-          "line": 370,
+          "line": 385,
           "text": "const status=response.result.status;"
         },
         {
-          "line": 383,
+          "line": 398,
           "text": "const reopen=async(mode:'open'|'tomorrow')=>{"
         },
         {
-          "line": 386,
+          "line": 401,
           "text": "const schedule=reopenSchedule({dueAt:Number(event.reminderDueAt),alertMinutes:event.alert===null?null:Number(event.alert||0)},mode);"
         },
         {
-          "line": 388,
+          "line": 403,
           "text": "const reopenOwner=owner;"
         },
         {
-          "line": 389,
+          "line": 404,
           "text": "const stillSelected=()=>owner===reopenOwner&&reopenOwner?.live&&!document.hidden&&api.isActive()&&api.get('calendar').open===event.id&&!api.get('calendar').form;"
         },
         {
-          "line": 391,
+          "line": 406,
           "text": "const when=new Date(schedule.dueAt).toLocaleString(undefined,{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});"
         },
         {
-          "line": 397,
+          "line": 412,
           "text": "let createdInput:Bag=null,dispatched=false;"
         },
         {
-          "line": 399,
+          "line": 414,
           "text": "const operation={type:'reminder_update' as const,target:renderedDecisionTarget,fields:{title:event.title,body:event.reminderBody||'',schedule}};"
         },
         {
-          "line": 400,
+          "line": 415,
           "text": "const pending=Object.values(await pendingReminderDeletions()).find(input=>Object.keys(renderedDecisionTarget).every(key=>input.operation.target[key as keyof typeof input.operation.target]===renderedDe"
         },
         {
-          "line": 402,
+          "line": 417,
           "text": "let input=pending;"
         },
         {
-          "line": 404,
+          "line": 419,
           "text": "const current=await DailyApps.selectedReminder({id:event.alphaReminderId});"
         },
         {
-          "line": 407,
+          "line": 422,
           "text": "const bindingHash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(operation))))).map(v=>v.toString(16).padStart(2,'0')).join('');"
         },
         {
-          "line": 413,
+          "line": 428,
           "text": "let response;"
         },
         {
-          "line": 419,
+          "line": 434,
           "text": "const saved=(await DailyApps.listReminders()).reminders.find(r=>r.id===event.alphaReminderId);"
         },
         {
-          "line": 435,
+          "line": 450,
           "text": "out.ev.edit=()=>{if(!requireFresh())return;const repeat=event.reminderRecurrence?.rule||'none',target=event.reminderTarget;api.set({form:{...event,repeat,id:event.id,cal:'alpha-reminders',where:'',vid"
         },
         {
-          "line": 436,
+          "line": 451,
           "text": "const renderedTarget=event.reminderTarget?structuredClone(event.reminderTarget):undefined;"
         },
         {
-          "line": 440,
+          "line": 455,
           "text": "const deleteOwner=owner;"
         },
         {
-          "line": 441,
+          "line": 456,
           "text": "const stillSelected=()=>owner===deleteOwner&&deleteOwner?.live&&!document.hidden&&api.isActive()&&api.get('calendar').open===event.id;"
         },
         {
-          "line": 445,
+          "line": 460,
           "text": "const pending=Object.values(await pendingReminderDeletions()).find(input=>Object.keys(renderedTarget).every(key=>input.operation.target[key as keyof typeof input.operation.target]===renderedTarget[key"
         },
         {
-          "line": 448,
+          "line": 463,
           "text": "const reviewed=await deletions.reviewReminder({target:renderedTarget});"
         },
         {
-          "line": 452,
+          "line": 467,
           "text": "const refusal=reminderDeletionRefusal(reviewed.status);"
         },
         {
-          "line": 457,
+          "line": 472,
           "text": "const input=pending,result=await DailyApps.reminderOperationReceipt(input);"
         }
       ]
@@ -45266,7 +45269,8 @@
       "sha256": "d0e28b7a0ee10dc8547c1d0a32c9a2391f03865e1712b166c43b7d202e3a5a89",
       "models": [
         "DeviceActions",
-        "RetainedReminderTapAdmission"
+        "RetainedReminderTapAdmission",
+        "ReminderOpenIntent"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -490380,7 +490384,8 @@
       "models": [
         "CalendarSync",
         "CalendarLinkedSync",
-        "DeviceActions"
+        "DeviceActions",
+        "NativeCalendarScopedReview"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -490495,7 +490500,8 @@
       "path": "vendor/eliza/plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/read/CalendarSourceIdentity.java",
       "models": [
         "CalendarLinkedSync",
-        "CalendarPresentation"
+        "CalendarPresentation",
+        "NativeCalendarScopedReview"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",

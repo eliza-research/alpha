@@ -1094,3 +1094,22 @@ Individual artifacts were retained. The crash record establishes a tool
 failure and leaves the faulting operation unresolved. The exact 213-model
 focused suite passed 29 Node tests, TypeScript, selected formal checks and
 the 409-file mock-disabled production bundle audit.
+
+`ReminderOpenIntent` checks 12 schedules and 56 checkpoints. A late legacy
+read may update its cache after navigation, while opening a detail requires
+the original visit or one direct Calendar transfer. The replay preserves the
+Workflows row handoff before the Calendar view commits, latest-refresh
+ownership, expiry and the exact occurrence. Mounted delivery and journal
+reconciliation remain separate.
+
+`NativeCalendarScopedReview` checks 19 schedules and 105 checkpoints. A
+held inspection previously could insert a stale ticket after pause cleared
+its epoch. Insertion now checks the captured epoch under the same monitor as
+pause. The closed JVM replay covers exact target identity, provider revision
+changes, confirmation and fresh-epoch review. The enqueue port is synthetic.
+Installed lifecycle timing and downstream Calendar effects remain separate.
+
+The exact 213-model commit `421bbd82a0` passed normal Android packaging and
+independent verification for both variants. Its two releases are unsigned
+and non-distributable. The four app APKs and both instrumentation APKs are
+retained under that revision.

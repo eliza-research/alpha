@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "467d098f4680be5652b945976a85bff26c344fad10adb27c9d9868df37973662",
+  "ledgerSha256": "44eff6bf0ae51addef1cc2bd99688566e0659b432a099882f85fb4a00481dbd8",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -28,11 +28,11 @@
     "parsedFiles": 5669,
     "languageReview": 71,
     "parseErrors": 0,
-    "candidates": 67424,
-    "writeSites": 67093,
-    "writeAssociations": 60157,
+    "candidates": 67426,
+    "writeSites": 67096,
+    "writeAssociations": 60159,
     "asynchronous": 8361,
-    "unassignedWrites": 10345
+    "unassignedWrites": 10346
   },
   "files": [
     {
@@ -17050,7 +17050,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCalendarPlugin.java",
       "sha256": "4ba9ec0cbbb773855838b3ba45a59b97476a15f1d07983a3b5a039fcb00c7845",
       "allocatedModels": [
-        "CalendarSync"
+        "CalendarSync",
+        "NativeCalendarScopedReview"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -22960,7 +22961,8 @@
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarDeletionIdentity.java",
       "sha256": "8e4179e018cbbd1c2bc0366055190afa00f50941e576a332baa09d91c9dc58e3",
       "allocatedModels": [
-        "CalendarSync"
+        "CalendarSync",
+        "NativeCalendarScopedReview"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -23008,10 +23010,12 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarScopedDeletionReview.java",
-      "sha256": "44b34b89a4347b38343b9b7c53a6b81e4c65deb7a23207126702a0d3de19e8f2",
+      "sha256": "85ed1ad2851b6c480271eec1e2271cda48fb9c69c3d2a20f9841bfab57a56b85",
       "allocatedModels": [
-        "CalendarSync"
+        "CalendarSync",
+        "NativeCalendarScopedReview"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -23060,78 +23064,78 @@
         {
           "owner": "CalendarScopedDeletionReview.remember@27",
           "line": 27,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "CalendarScopedDeletionReview.key@28",
-          "line": 28,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "CalendarScopedDeletionReview.ticket@29",
-          "line": 29,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "CalendarScopedDeletionReview.target@30",
-          "line": 30,
-          "bindings": 2,
-          "writes": 0
-        },
-        {
-          "owner": "CalendarScopedDeletionReview.read@34",
+          "owner": "CalendarScopedDeletionReview.key@34",
           "line": 34,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "CalendarScopedDeletionReview.ticket@35",
+          "line": 35,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "CalendarScopedDeletionReview.target@36",
+          "line": 36,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "CalendarScopedDeletionReview.read@40",
+          "line": 40,
           "bindings": 3,
           "writes": 0
         },
         {
-          "owner": "CalendarScopedDeletionReview.inspect@38",
-          "line": 38,
+          "owner": "CalendarScopedDeletionReview.inspect@44",
+          "line": 44,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "CalendarScopedDeletionReview.inspect@38.lambda@40",
-          "line": 41,
+          "owner": "CalendarScopedDeletionReview.inspect@44.lambda@46",
+          "line": 47,
           "bindings": 6,
           "writes": 5
         },
         {
-          "owner": "CalendarScopedDeletionReview.review@47",
-          "line": 47,
+          "owner": "CalendarScopedDeletionReview.review@54",
+          "line": 54,
           "bindings": 3,
           "writes": 0
         },
         {
-          "owner": "CalendarScopedDeletionReview.review@47.lambda@49",
-          "line": 50,
+          "owner": "CalendarScopedDeletionReview.review@54.lambda@56",
+          "line": 57,
           "bindings": 4,
           "writes": 0
         },
         {
-          "owner": "CalendarScopedDeletionReview.show@55",
-          "line": 55,
+          "owner": "CalendarScopedDeletionReview.show@62",
+          "line": 62,
           "bindings": 11,
           "writes": 8
         },
         {
-          "owner": "CalendarScopedDeletionReview.show@55.lambda@64",
-          "line": 64,
+          "owner": "CalendarScopedDeletionReview.show@62.lambda@71",
+          "line": 71,
           "bindings": 5,
           "writes": 0
         },
         {
-          "owner": "CalendarScopedDeletionReview.show@55.lambda@68",
-          "line": 68,
+          "owner": "CalendarScopedDeletionReview.show@62.lambda@75",
+          "line": 75,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "CalendarScopedDeletionReview.dispatch@73",
-          "line": 73,
+          "owner": "CalendarScopedDeletionReview.dispatch@80",
+          "line": 80,
           "bindings": 6,
           "writes": 1
         }
@@ -33629,7 +33633,8 @@
       "path": "apps/app/src/prototype/automations-adapter.ts",
       "sha256": "a3270932efe68e9b2da938e60e748afd1c2078ceee4cabd5042224fff97bec48",
       "allocatedModels": [
-        "WorkflowExecution"
+        "WorkflowExecution",
+        "ReminderOpenIntent"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -35769,7 +35774,8 @@
         "CalendarPreservationConfirmation",
         "CanonicalCalendarEditorClose",
         "CameraPreviewRetirement",
-        "RetainedReminderTapAdmission"
+        "RetainedReminderTapAdmission",
+        "ReminderOpenIntent"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -39408,10 +39414,11 @@
     },
     {
       "path": "apps/app/src/prototype/reminder-adapter.ts",
-      "sha256": "19d0bc38c6667ee05ee27930d1899a60d491ce0b83e48bb0a3d2db657a82f2d7",
+      "sha256": "70774fa211433a7beb52de46b5197800e6c1d253833e2f2132c91b4d08ccdb6d",
       "allocatedModels": [
         "DeviceActions",
-        "RetainedReminderTapAdmission"
+        "RetainedReminderTapAdmission",
+        "ReminderOpenIntent"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -39424,69 +39431,75 @@
           "writes": 17
         },
         {
-          "owner": "installReminderAdapter.FunctionExpression@84",
-          "line": 92,
-          "bindings": 1,
-          "writes": 1
-        },
-        {
-          "owner": "installReminderAdapter.FunctionExpression@123",
-          "line": 127,
-          "bindings": 1,
-          "writes": 1
-        },
-        {
-          "owner": "installReminderAdapter.FunctionExpression@148",
-          "line": 149,
-          "bindings": 1,
-          "writes": 31
-        },
-        {
-          "owner": "installReminderAdapter.FunctionExpression@148.todoDecision",
-          "line": 171,
+          "owner": "installReminderAdapter.FunctionExpression@31",
+          "line": 36,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "installReminderAdapter.FunctionExpression@148.ArrowFunction@185",
+          "owner": "installReminderAdapter.FunctionExpression@99",
+          "line": 107,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "installReminderAdapter.FunctionExpression@138",
+          "line": 142,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "installReminderAdapter.FunctionExpression@163",
+          "line": 164,
+          "bindings": 1,
+          "writes": 31
+        },
+        {
+          "owner": "installReminderAdapter.FunctionExpression@163.todoDecision",
           "line": 186,
+          "bindings": 1,
+          "writes": 2
+        },
+        {
+          "owner": "installReminderAdapter.FunctionExpression@163.ArrowFunction@200",
+          "line": 201,
           "bindings": 2,
           "writes": 6
         },
         {
-          "owner": "installReminderAdapter.FunctionExpression@148.ArrowFunction@208.saveEdit",
-          "line": 218,
+          "owner": "installReminderAdapter.FunctionExpression@163.ArrowFunction@223.saveEdit",
+          "line": 233,
           "bindings": 7,
           "writes": 11
         },
         {
-          "owner": "installReminderAdapter.FunctionExpression@148.ArrowFunction@208",
-          "line": 274,
+          "owner": "installReminderAdapter.FunctionExpression@163.ArrowFunction@223",
+          "line": 289,
           "bindings": 9,
           "writes": 14
         },
         {
-          "owner": "installReminderAdapter.FunctionExpression@148.decide",
-          "line": 343,
+          "owner": "installReminderAdapter.FunctionExpression@163.decide",
+          "line": 358,
           "bindings": 5,
           "writes": 9
         },
         {
-          "owner": "installReminderAdapter.FunctionExpression@148.reopen",
-          "line": 388,
+          "owner": "installReminderAdapter.FunctionExpression@163.reopen",
+          "line": 403,
           "bindings": 5,
           "writes": 9
         },
         {
-          "owner": "installReminderAdapter.FunctionExpression@148.ArrowFunction@437",
-          "line": 440,
+          "owner": "installReminderAdapter.FunctionExpression@163.ArrowFunction@452",
+          "line": 455,
           "bindings": 1,
           "writes": 3
         }
       ],
       "parseErrors": [],
       "asynchronous": 26,
-      "unassignedWrites": 40
+      "unassignedWrites": 41
     },
     {
       "path": "apps/app/src/prototype/scan-correction-review.ts",
@@ -44802,7 +44815,8 @@
       "sha256": "d0e28b7a0ee10dc8547c1d0a32c9a2391f03865e1712b166c43b7d202e3a5a89",
       "allocatedModels": [
         "DeviceActions",
-        "RetainedReminderTapAdmission"
+        "RetainedReminderTapAdmission",
+        "ReminderOpenIntent"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -173564,7 +173578,8 @@
       "allocatedModels": [
         "CalendarSync",
         "CalendarLinkedSync",
-        "DeviceActions"
+        "DeviceActions",
+        "NativeCalendarScopedReview"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -174128,7 +174143,8 @@
       "sha256": "bf1580e4a3a3b0b92cb28edef77a4f66652174ed1e0fc1306cd71a1b95acfa41",
       "allocatedModels": [
         "CalendarLinkedSync",
-        "CalendarPresentation"
+        "CalendarPresentation",
+        "NativeCalendarScopedReview"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -220361,6 +220377,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "3bb51366360caee8607b037cd19becd12f6e51950e6c76e9bead67f31ce82758"
+    "sha256": "a398b9478177d11023d433490b84c6926f7e0539253603368a95e1aa7a86db23"
   }
 }

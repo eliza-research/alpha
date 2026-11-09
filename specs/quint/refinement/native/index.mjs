@@ -57,6 +57,7 @@ import {checkNativeAssistantEntry} from './assistant-entry.mjs';
 import {checkNativeActionRecovery} from './action-recovery.mjs';
 import {checkNativeGmailBackground} from './gmail-background.mjs';
 import {checkNativeDigestConsent} from './native-digest.mjs';
+import {checkNativeCalendarScopedReview} from './scoped-calendar-review.mjs';
 
 export async function runNativeRefinement() {
   const models = ['VadSegmentation', 'RendererRecovery', 'ResidentScheduling'];
@@ -204,6 +205,8 @@ export async function runNativeRefinement() {
   results.push(gmailBackground.receipt);
   const digestConsent = await checkNativeDigestConsent(nativeInputs);
   results.push(digestConsent.receipt);
+  const calendarScopedReview = await checkNativeCalendarScopedReview(nativeInputs);
+  results.push(calendarScopedReview.receipt);
   const obligations = [
     ...updatePause.obligations,
     ...updateActivation.obligations,
@@ -225,6 +228,7 @@ export async function runNativeRefinement() {
     ...actionRecovery.obligations,
     ...gmailBackground.obligations,
     ...digestConsent.obligations,
+    ...calendarScopedReview.obligations,
     {model: 'GoogleBrowserReturnClaim', obligation: 'Installed callback delivery and durable credential custody',
       reason: 'The authenticated Java claim and grace functions execute under controlled queues, storage and HTTPS. Installed lifecycle, secure-store durability and intra-worker schedules remain separate.'},
     ...reviewedCopiesObligations,
