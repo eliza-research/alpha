@@ -95,7 +95,7 @@
         "apps/app/src/runtime/subscription-entitlement.ts",
         "apps/app/src/runtime/managed-service-routes.ts",
         "apps/app/src/runtime/cloud-environment-selection.ts",
-        "patches/eliza/managed-google-agent.patch"
+        "vendor/eliza/packages/app/src/runtime/managed-google-agent/managed-google-route-policy.ts"
       ],
       "stateMapping": {
         "plan/validFor/refresh/failures": "EntitlementRefresher cached signed entitlement, expiry and background retry",
@@ -1133,7 +1133,10 @@
         "completionAfterEgressTest",
         "occurrenceFenceGapTest"
       ],
-      "invariants": ["EgressHasClaimAndGuard", "FireReplyIdentity"],
+      "invariants": [
+        "EgressHasClaimAndGuard",
+        "FireReplyIdentity"
+      ],
       "stateMapping": {
         "state/at/completed/text/cron/zone": "Actual task-store snapshot and bounded clock instant",
         "slots/claims/writes/guards/egress": "Held SDK calls and actual in-memory conditional write and claim outcomes at controlled dispatch boundaries",
@@ -1144,7 +1147,11 @@
         "The as-built model preserves the occurrence ABA witness. ExactOccurrenceEgress and NoOlderOccurrenceRestore are desired properties with a directed violation witness, not passing invariants.",
         "Route framing and host authorization, real SQL, configured host admission and provider dispatch remain separate."
       ],
-      "bounds": {"maxSamples": 1000, "maxSteps": 80, "seed": "123"}
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "seed": "123"
+      }
     },
     {
       "path": "specs/quint/services/PersonalAssistantScheduledTaskCustody.qnt",
@@ -1171,7 +1178,10 @@
         "sameStateMetadataFenceTest",
         "sameStateDefinitionFenceTest"
       ],
-      "invariants": ["ClaimConsumesProposedDay", "ConditionalWritesUseClaimSnapshot"],
+      "invariants": [
+        "ClaimConsumesProposedDay",
+        "ConditionalWritesUseClaimSnapshot"
+      ],
       "stateMapping": {
         "managed/clock/state/at/completed/dossier/lastActivity/lastDispatch/metadataRevised/definitionRevised": "Stored SQL task and dossier state, controlled clock and activity outcome",
         "slots/claims/writes/guards/egress": "Held attempts, atomic SQL claim, full conditional write, status guard and synthetic egress",
@@ -1182,7 +1192,11 @@
         "ExactOccurrenceEgress remains a desired property. A directed witness shows an old guard still permits synthetic egress while the SQL write rejects its stale snapshot.",
         "Production runtime construction, family wrappers, PostgreSQL deployment, real provider dispatch and external authentication remain separate."
       ],
-      "bounds": {"maxSamples": 1000, "maxSteps": 80, "seed": "123"}
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "seed": "123"
+      }
     },
     {
       "path": "specs/quint/services/WorkflowScheduleTasks.qnt",
@@ -1659,7 +1673,7 @@
         "android/app/src/main/java/ai/alphacompute/alphaphone/GoogleAgentAccessFile.java",
         "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
         "scripts/native-google-product-host.ts",
-        "patches/eliza/managed-google-agent.patch"
+        "vendor/eliza/packages/app/src/runtime/managed-google-agent/native-google-agent-host.ts"
       ],
       "stateMapping": {
         "file/access/sidecars": "Canonical file type and bits, with observed sibling artifacts",
@@ -2019,7 +2033,7 @@
         "apps/app/src/runtime/google-workspace-return.ts",
         "apps/app/src/runtime/inbox-attachment.ts",
         "apps/app/src/runtime/managed-service-routes.ts",
-        "patches/eliza/managed-google-agent.patch",
+        "vendor/eliza/packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts",
         "apps/app/src/product/native-cloud-runtime.ts",
         "scripts/native-google-product-host.ts",
         "apps/app/src/product/alpha-product-registration.ts",
@@ -2194,7 +2208,7 @@
       ],
       "sources": [
         "scripts/browser-cloud-dev-bridge.ts",
-        "patches/eliza/managed-google-agent.patch"
+        "vendor/eliza/packages/app/src/runtime/managed-google-agent/managed-google-agent-broker.ts"
       ],
       "stateMapping": {
         "owners/slots": "Private active map ownership, with source admission and cancellation observed indirectly",
@@ -2232,7 +2246,7 @@
         "AbortedInvocationNeverReportsSuccess"
       ],
       "sources": [
-        "patches/eliza/managed-google-agent.patch",
+        "vendor/eliza/packages/app/src/runtime/managed-google-agent/gmail-agent-mailbox-host.ts",
         "apps/app/src/runtime/cloud-protocol.ts",
         "vendor/eliza/plugins/plugin-inbox/src/mailbox/managed-gmail-client.ts"
       ],
@@ -2341,23 +2355,44 @@
       "init": "init",
       "step": "step",
       "invariant": "safety",
-      "tests": ["earlyAdmissionDoesNotAdmitFullBuildTest", "onlyCurrentOrDescendantPinAdmitsTest",
-        "missingWorkerAndStalePayloadRefuseTest", "payloadReportDoesNotAdmitCloudProfileTest",
-        "missingMobileReceiptPrecedesGoogleHostTest", "embeddingHumanActionDependsOnReceiptAndToolchainTest",
-        "signerNeedsIdentityAndEnvironmentTest", "completeReportIncludesQualificationButIsNotBuildTest"],
-      "invariants": ["FullAdmissionRequiresEarlyAdmission", "ReportedPayloadRequiresExactStamp",
-        "GoogleCheckFollowsPayloadAdmission", "HumanAttentionNeverReady"],
-      "sources": ["scripts/android-build-preflight.mjs", "scripts/build-embedding-host.mjs",
-        "scripts/mobile-uuid-adapter.mjs", "scripts/stage-embedding-host.mjs", "scripts/voice-host.mjs"],
+      "tests": [
+        "earlyAdmissionDoesNotAdmitFullBuildTest",
+        "onlyCurrentOrDescendantPinAdmitsTest",
+        "missingWorkerAndStalePayloadRefuseTest",
+        "payloadReportDoesNotAdmitCloudProfileTest",
+        "missingMobileReceiptPrecedesGoogleHostTest",
+        "embeddingHumanActionDependsOnReceiptAndToolchainTest",
+        "signerNeedsIdentityAndEnvironmentTest",
+        "completeReportIncludesQualificationButIsNotBuildTest"
+      ],
+      "invariants": [
+        "FullAdmissionRequiresEarlyAdmission",
+        "ReportedPayloadRequiresExactStamp",
+        "GoogleCheckFollowsPayloadAdmission",
+        "HumanAttentionNeverReady"
+      ],
+      "sources": [
+        "scripts/android-build-preflight.mjs",
+        "scripts/build-embedding-host.mjs",
+        "scripts/mobile-uuid-adapter.mjs",
+        "scripts/stage-embedding-host.mjs",
+        "scripts/voice-host.mjs"
+      ],
       "stateMapping": {
         "input": "Selected disposable checkout, reviewed-byte, stamp, profile, receipt and qualification fixtures",
         "ready/attention/notices": "Real report rows and formatting for native build readiness and human actions",
         "before/full/googleChecked": "Actual early and full preflight problem classes and order of the Google host admission port"
       },
-      "abstractions": ["Two synthetic SDK commits and controlled external voice, embedding and Google host admission results.",
+      "abstractions": [
+        "Two synthetic SDK commits and controlled external voice, embedding and Google host admission results.",
         "Source stamps, worker and profile presence are private fixture bytes. The mobile receipt projection covers refusal of a missing mandatory receipt.",
-        "Cloud runtime verification, signing, build execution and actual Android artifacts remain separate."],
-      "bounds": {"maxSamples": 1000, "maxSteps": 80, "maxVerifyDepth": 8}
+        "Cloud runtime verification, signing, build execution and actual Android artifacts remain separate."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 8
+      }
     },
     {
       "path": "specs/quint/services/AndroidBrowserModuleStage.qnt",
@@ -2365,24 +2400,46 @@
       "init": "init",
       "step": "step",
       "invariant": "safety",
-      "tests": ["publishAndReuseTest", "badSourcePreservesHostTest", "publicationFailurePreservesPriorTest",
-        "cacheDriftRefusesReuseTest", "badRouteKeepsPriorHostTest", "markerAllowsInterruptedHostRetryTest",
-        "unownedOutputIsPreservedTest", "receiptMustMatchCurrentGenerationTest"],
-      "invariants": ["PublishedHostReferencesStagedModule", "SuccessBindsCurrentReviewedCache",
-        "OwnedIncompleteHostHasProfile", "SuccessfulReceiptRequiresExactCurrentCache"],
-      "sources": ["android/consumer-host.json", "scripts/android-host.mjs", "scripts/prepare-patched-native.mjs",
-        "scripts/upstream-native-source.mjs", "android/upstream-native-sources.json",
+      "tests": [
+        "publishAndReuseTest",
+        "badSourcePreservesHostTest",
+        "publicationFailurePreservesPriorTest",
+        "cacheDriftRefusesReuseTest",
+        "badRouteKeepsPriorHostTest",
+        "markerAllowsInterruptedHostRetryTest",
+        "unownedOutputIsPreservedTest",
+        "receiptMustMatchCurrentGenerationTest"
+      ],
+      "invariants": [
+        "PublishedHostReferencesStagedModule",
+        "SuccessBindsCurrentReviewedCache",
+        "OwnedIncompleteHostHasProfile",
+        "SuccessfulReceiptRequiresExactCurrentCache"
+      ],
+      "sources": [
+        "android/consumer-host.json",
+        "scripts/android-host.mjs",
+        "scripts/prepare-patched-native.mjs",
+        "scripts/upstream-native-source.mjs",
+        "android/upstream-native-sources.json",
         "vendor/eliza/packages/app/scripts/mobile/android/consumer-host.mjs",
         "vendor/eliza/packages/app/scripts/mobile/android/consumer-host/settings.gradle",
-        "vendor/eliza/plugins/plugin-native-browser-surface/android/build.gradle"],
+        "vendor/eliza/plugins/plugin-native-browser-surface/android/build.gradle"
+      ],
       "stateMapping": {
         "selected/reviewed/sourceValid": "Exact source inventory byte identity, reviewed module route and authenticated Git source bytes",
         "stage1/stage2": "Keyed staged source and provenance receipts with observed cache drift",
         "host/hostGeneration/fresh/result": "Generated output ownership, module and asset path, input digest freshness and actual generator or receipt-verifier result"
       },
-      "abstractions": ["One independent browser module, its resource directory, and two source inventory byte identities for the same pinned files.",
-        "The source generator and exact receipt verification execute in scratch. Full Gradle, concurrent publication, arbitrary interruption and installed behavior remain separate."],
-      "bounds": {"maxSamples": 1000, "maxSteps": 80, "maxVerifyDepth": 8}
+      "abstractions": [
+        "One independent browser module, its resource directory, and two source inventory byte identities for the same pinned files.",
+        "The source generator and exact receipt verification execute in scratch. Full Gradle, concurrent publication, arbitrary interruption and installed behavior remain separate."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 8
+      }
     },
     {
       "path": "specs/quint/services/ResidentJavaSourceStage.qnt",
