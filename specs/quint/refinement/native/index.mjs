@@ -53,6 +53,7 @@ import {checkNativeMmsDispatch} from './mms-dispatch.mjs';
 import {checkNativeTextScaleLifecycle} from './text-scale-lifecycle.mjs';
 import {checkNativeCrashJournal} from './crash-journal.mjs';
 import {checkNativeSettingsHandoff} from './settings-handoff.mjs';
+import {checkNativeAppInfoHandoff} from './app-info-handoff.mjs';
 import {checkNativeSourceRenewal} from './source-renewal.mjs';
 import {checkNativeAssistantEntry} from './assistant-entry.mjs';
 import {checkNativeActionRecovery} from './action-recovery.mjs';
@@ -180,7 +181,7 @@ export async function runNativeRefinement() {
       checkNativeUpdateStaging, checkCanonicalNotificationTap, checkWorkflowNoticeDelivery,
       checkNativeHostedResultNotices, checkNativeHostedInbox, checkNativeReminderDelivery, checkNativeClockReview,
       checkNativeSmsDispatch, checkNativeMmsDispatch, checkNativeTextScaleLifecycle, checkNativeCrashJournal,
-      checkNativeSettingsHandoff, checkNativeSourceRenewal, checkNativeAssistantEntry, checkNativeActionRecovery,
+      checkNativeSettingsHandoff, checkNativeAppInfoHandoff, checkNativeSourceRenewal, checkNativeAssistantEntry, checkNativeActionRecovery,
       checkNativeGmailBackground, checkNativeDigestConsent, checkNativeCalendarScopedReview,
       checkNativeCalendarSyncEnable, checkBrowserUnderlay].map(withInputs(nativeInputs)),
   ];
