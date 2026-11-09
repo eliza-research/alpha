@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "b1817660a0347ae19551b9ee296410fe55f02d59",
-  "ledgerSha256": "e676baf365222499bd2705a0acd654cbbf3882e8a11d4fbd9b3a83466608986f",
+  "ledgerSha256": "68931c693cd7697d7878f89f52fc895e085788bcc8faf7381c0de9520b7c7bdd",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -29,10 +29,10 @@
     "languageReview": 89,
     "parseErrors": 0,
     "candidates": 67570,
-    "writeSites": 66988,
+    "writeSites": 66989,
     "writeAssociations": 60106,
     "asynchronous": 8371,
-    "unassignedWrites": 10274
+    "unassignedWrites": 10275
   },
   "files": [
     {
@@ -47103,7 +47103,7 @@
     },
     {
       "path": "scripts/voice-host.mjs",
-      "sha256": "71f29af327b7905d23669988dd2df0795ec7f9fec3bfc4d42cb5fa8fd83a2ac9",
+      "sha256": "ce25437081590f9523cb23d179a6be5c50add4fc6e8cd967854a8143468e3501",
       "allocatedModels": [
         "NativeListenerInput",
         "NativeSpeechWarmup",
@@ -47121,26 +47121,26 @@
         },
         {
           "owner": "voiceBundleAdmission",
-          "line": 111,
+          "line": 113,
           "bindings": 4,
           "writes": 9
         },
         {
           "owner": "voiceStagingState.at",
-          "line": 147,
+          "line": 149,
           "bindings": 3,
           "writes": 3
         },
         {
           "owner": "verifyVoiceHost",
-          "line": 225,
+          "line": 227,
           "bindings": 1,
           "writes": 0
         }
       ],
       "parseErrors": [],
       "asynchronous": 0,
-      "unassignedWrites": 5
+      "unassignedWrites": 6
     },
     {
       "path": "scripts/workflow-worker-artifact.mjs",
@@ -220585,6 +220585,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "3671eeb1cf16452890ddfc8e93dbf0c01416c2f8fe2e1ba1ce559839b711cfa6"
+    "sha256": "51714da2a817ef7efa6eede8006242d6534e85fbc39e8b268ba1cf7b24656639"
   }
 }
