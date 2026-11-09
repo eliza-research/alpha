@@ -3073,10 +3073,14 @@
       "viewDepartureDuringFinalPresentationTest",
       "selectedTabChangeBeforeDispatchTest",
       "hiddenDocumentCannotDispatchTest",
+      "reopenedBrowserCannotReviveOldVisitTest",
+      "lockedScreenCannotDispatchTest",
+      "retiredPrivateHandoffCannotOpenReviewTest",
       "missingHttpsNeverPreparesTest"
     ],
     "sources": [
       "apps/app/src/prototype/browser-external-handoff.ts",
+      "apps/app/src/prototype/browser-adapter.ts",
       "vendor/eliza/plugins/plugin-native-browser-surface/src/tab-host.ts"
     ],
     "abstractions": [

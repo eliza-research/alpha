@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {existsSync, readFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
 import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {deferred, root, sourceContext, tick} from '../../specs/quint/refinement/application/support.mjs';
@@ -7,9 +8,14 @@ import {deferred, root, sourceContext, tick} from '../../specs/quint/refinement/
 const source = 'apps/app/src/prototype/browser-external-handoff.ts';
 const tabHostSource = 'plugins/plugin-native-browser-surface/src/tab-host.ts';
 const tabHost = `vendor/eliza/${tabHostSource}`;
-const preparedTabHost = resolve(root, '.eliza/client-features', tabHostSource);
+const projection = '.eliza/client-features';
+const preparedTabHost = projection + '/' + tabHostSource;
+const stampPath = projection + '/.source.json';
+const exists = path => existsSync(resolve(root, path));
+const read = path => readFileSync(resolve(root, path));
 export const browserExternalHandoffSources = [
-  source, tabHost, 'upstream.lock.json', fileURLToPath(import.meta.url),
+  source, 'apps/app/src/prototype/browser-adapter.ts', ...(exists(tabHost) ? [tabHost] : []), ...(exists(preparedTabHost) ? [preparedTabHost, stampPath] : []),
+  'upstream.lock.json', fileURLToPath(import.meta.url),
   'test/support/strip-types.mjs', 'specs/quint/refinement/application/support.mjs',
 ];
 const addresses = {
@@ -24,20 +30,26 @@ const refusals = new Map([
 ]);
 
 export async function browserExternalHandoffFixture({privateTab = false, https = true} = {}) {
-  if (existsSync(preparedTabHost)) {
-    assert.ok(readFileSync(preparedTabHost).equals(readFileSync(resolve(root, tabHost))),
-      'The replayed shared tab host must match the prepared renderer source');
+  if (exists(preparedTabHost)) {
+    const stamp = JSON.parse(read(stampPath));
+    const hash = createHash('sha256').update(read(preparedTabHost)).digest('hex');
+    assert.equal(stamp.baseCommit, JSON.parse(read('upstream.lock.json')).commit);
+    assert.equal(hash, stamp.sourceFiles[tabHostSource], 'The replay uses the authenticated shared tab host');
+    assert.equal(hash, stamp.files[tabHostSource], 'The replay uses the exact prepared renderer file');
+    if (exists(tabHost)) assert.ok(read(preparedTabHost).equals(read(tabHost)));
   }
   const document = {hidden: false};
   const {createExternalBrowserHandoff, BrowserTabSession} = sourceContext(
-    [source, tabHost], ['createExternalBrowserHandoff', 'BrowserTabSession'], {document});
+    [source, exists(preparedTabHost) ? preparedTabHost : tabHost], ['createExternalBrowserHandoff', 'BrowserTabSession'], {document});
   const tabs = new BrowserTabSession({session: 'fixture-session'});
   const state = {cur: 'primary', menu: true};
   const flags = {sharing: false, confirming: false, lastGeometry: 'previous', disposed: false};
-  const view = {view: 'browser'};
+  const view = {view: 'browser', screen: 'home'};
   const shell = {S: () => view, vset(name, patch) {assert.equal(name, 'browser'); Object.assign(state, patch);}};
   const launches = [], errors = [];
   let gate, captured, guarded, requestError, updates = 0, reviews = 0, requests = 0, approved = false;
+  let visit = 0, boundVisit = 0;
+  const retire = () => {visit++; handoff.retire();};
   const hold = phase => {
     assert.equal(gate, undefined, 'The selected schedules use one outstanding port');
     gate = {phase, ...deferred()};
@@ -50,10 +62,11 @@ export async function browserExternalHandoffFixture({privateTab = false, https =
   await tabs.ensure('other', false, async () => ({}));
   annotate('primary', https ? addresses.primary : 'http://handoff.invalid/primary');
   annotate('other');
-  const open = createExternalBrowserHandoff({
+  const handoff = createExternalBrowserHandoff({
     tabs: {
       pageBinding(id, options) {
         captured = tabs.pageBinding(id, options);
+        boundVisit = captured ? visit : 0;
         if (captured) approved = false;
         return captured;
       },
@@ -76,7 +89,8 @@ export async function browserExternalHandoffFixture({privateTab = false, https =
       assert.deepEqual({...input}, {session: 'fixture-session', id: guarded.id, url: addresses[guarded.id],
         navigation: navigation[guarded.id], privateConfirmed: guarded.private});
       launches.push({tab: guarded.id, revision: guarded.revision, privateConfirmed: input.privateConfirmed, approved,
-        exact: !flags.disposed && !document.hidden && view.view === 'browser' && tabs.current(guarded, state.cur)});
+        exact: boundVisit === visit && !flags.disposed && !document.hidden &&
+          view.screen === 'home' && view.view === 'browser' && tabs.current(guarded, state.cur)});
       return hold('dispatch');
     }},
     state: () => state, isPrivate: id => tabs.isPrivate(id),
@@ -105,7 +119,7 @@ export async function browserExternalHandoffFixture({privateTab = false, https =
   return {
     async start() {
       requests++;
-      void open().catch(error => {requestError = error;});
+      void handoff.open().catch(error => {requestError = error;});
       await tick();
       assert.ifError(requestError);
     },
@@ -116,8 +130,15 @@ export async function browserExternalHandoffFixture({privateTab = false, https =
     review(value) {approved = value; return release('review', value);},
     complete(accepted) {return release('dispatch', accepted ? undefined : Error('Synthetic chooser refused.'), !accepted);},
     selectTab(tab) {state.cur = tab;},
-    hide(hidden) {document.hidden = hidden;},
-    leave(left) {view.view = left ? 'home' : 'browser';},
+    hide(hidden) {
+      if (hidden && !document.hidden) retire();
+      document.hidden = hidden;
+    },
+    leave(left) {
+      if (left && view.view === 'browser') retire();
+      view.view = left ? 'home' : 'browser';
+    },
+    lock(locked) {view.screen = locked ? 'lock' : 'home';},
     dispose() {flags.disposed = true; tabs.dispose();},
     navigate(settled) {
       tabs.beginNavigation('primary', addresses.primary);
@@ -125,6 +146,7 @@ export async function browserExternalHandoffFixture({privateTab = false, https =
     },
     observe() {
       return {privateTab, https, hidden: document.hidden, left: view.view !== 'browser', disposed: flags.disposed,
+        locked: view.screen === 'lock', visit, boundVisit,
         selected: state.cur, revision: tabs.revision('primary'), settled: !!tabs.pageBinding('primary'),
         sharing: flags.sharing, confirming: flags.confirming, phase: gate?.phase ?? 'idle',
         menu: state.menu, clearedGeometry: flags.lastGeometry === '', updates, reviews, requests, approved,

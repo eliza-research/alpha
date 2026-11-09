@@ -17,10 +17,11 @@ async function fixture(page:any,priv=true){
   const state={cur:'owned',menu:true};
   const flags={sharing:false,confirming:false,lastGeometry:'',disposed:false};
   const env:any={flags,calls:[],errors:[],updates:0,tabs};
+  const shell={S:()=>({view:'browser',screen:'home'}),vset:(_view:string,patch:any)=>Object.assign(state,patch)};
   env.open=createExternalBrowserHandoff({tabs,reviews:new BrowserReviews(),state:()=>state,isPrivate:(id:string)=>tabs.isPrivate(id),
-   shell:()=>({S:()=>({view:'browser'}),vset:(_view:string,patch:any)=>Object.assign(state,patch)}),
+   shell:()=>shell,
    report:(error:any)=>env.errors.push(error.message),update:async()=>{env.updates++;screen.hidden=flags.confirming;},
-   Browser:{openExternalBrowser:async(input:any)=>{env.calls.push(input);if(env.unavailable)throw Error('No other installed browser can open this page.');}},flags});
+   Browser:{openExternalBrowser:async(input:any)=>{env.calls.push(input);if(env.unavailable)throw Error('No other installed browser can open this page.');}},flags}).open;
   (window as any).handoff=env;
  },priv);
  expect(await page.evaluate(()=>(window as any).handoff.tabs.pageBinding('owned',{https:true}))).toEqual({id:'owned',url:'https://accounts.example/signin',navigation:'7',revision:0,private:priv});

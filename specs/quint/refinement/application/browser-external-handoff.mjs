@@ -34,6 +34,12 @@ export async function checkBrowserExternalHandoff(extraSources = []) {
     [start, update, approved, ['navigate', true], update, update]);
   await scenario('the final presentation cannot hand off from another view', {},
     [start, ['leave', true], update, update]);
+  await scenario('the exact tab cannot revive a private handoff from a preceding Browser visit', privateTab,
+    [start, update, approved, ['leave', true], ['leave', false], update, update]);
+  await scenario('the lock screen cannot dispatch a public handoff', {},
+    [start, ['lock', true], update, update]);
+  await scenario('backgrounding and returning before private review retires its admission', privateTab,
+    [start, ['hide', true], ['hide', false], update, update]);
   await scenario('the final presentation cannot hand off after the selected tab changes', {},
     [start, ['selectTab', 'other'], update, update, start, update, complete, update]);
   await scenario('the final presentation cannot hand off a now-loading page', {},
