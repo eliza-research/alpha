@@ -54,6 +54,7 @@ import {checkHostedBackgroundAdmission} from './hosted-background-admission.mjs'
 import {checkHostedDigestRefresh} from './hosted-digest-refresh.mjs';
 import {checkHostedDigestMutation} from './hosted-digest-mutation.mjs';
 import {checkSourceRenewalQuestion} from './source-renewal-question.mjs';
+import {checkBrowserFilesTrash} from './browser-files-trash.mjs';
 import {checkRendererDigestQueue} from './renderer-digest-queue.mjs';
 import {checkRetainedHomeBrief} from './retained-home-brief.mjs';
 import {checkHomeFailureNotice} from './home-failure-notice.mjs';
@@ -76,7 +77,7 @@ const adapters = [application, shellNavigation, startupPermissions, assistantCon
   permissionWalkthrough, developmentDevice, permanentVoiceDeletion, developmentHost, filesTree,
   calendarPresentation, draftDispatch, notificationCollection, callbackLanding,
   checkBrowserHostedResultNotice, checkHostedNoticeQuestion, checkRendererHostedInbox, checkHostedBackgroundAdmission,
-  checkRendererDigestQueue, checkHostedDigestRefresh, checkHostedDigestMutation, checkSourceRenewalQuestion,
+  checkRendererDigestQueue, checkHostedDigestRefresh, checkHostedDigestMutation, checkSourceRenewalQuestion, checkBrowserFilesTrash,
   checkRetainedHomeBrief,
   checkCalendarPreservationConfirmation,
   checkCanonicalCalendarEditorClose,
