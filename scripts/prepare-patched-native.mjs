@@ -9,6 +9,7 @@ export const NATIVE_SOURCE_MANIFEST='android/upstream-native-sources.json';
 const HEX=/^[a-f0-9]{64}$/;
 const AUTH_ANDROID_MODULE='packages/auth/android';
 const BROWSER_ANDROID_MODULE='plugins/plugin-native-browser-surface/android';
+const BROWSER_ANDROID_RESOURCES='plugins/plugin-native-browser-surface/resources';
 const SENSE_ANDROID_MODULE='packages/app/platforms/android/sense';
 const SPEECH_ANDROID_MODULE='plugins/plugin-local-inference/native/android';
 const SECURE_STORE_NATIVE_ONLY_MODULE='plugins/plugin-native-secure-store/android-nativeonly';
@@ -23,7 +24,7 @@ export function materializeNativePatches({source,manifest,patchRoot,temporary}){
  // Modules with no remaining patch are still staged from the pin so Gradle compiles authenticated source.
  if(manifest.modules!==undefined&&(!Array.isArray(manifest.modules)||manifest.modules.some(m=>typeof m!=='string')))throw Error('Invalid native patch modules');
  const modules=[...new Set([...(manifest.modules||[]),...manifest.patches.map(p=>p.module)])].sort(),files=new Map(),expected={},addedModes={};
- for(const module of modules){if(module!==AUTH_ANDROID_MODULE&&module!==SPEECH_ANDROID_MODULE&&module!==SPEECH_JNI_SOURCE&&module!==SECURE_STORE_NATIVE_ONLY_MODULE&&module!==SENSE_ANDROID_MODULE&&!/^plugins\/plugin-native-[a-z-]+\/android$/.test(module))throw Error('Invalid native patch module');for(const [name,file] of source.read(module)){files.set(name,file);expected[name]=file.sha256;}}
+ for(const module of modules){if(module!==AUTH_ANDROID_MODULE&&module!==BROWSER_ANDROID_RESOURCES&&module!==SPEECH_ANDROID_MODULE&&module!==SPEECH_JNI_SOURCE&&module!==SECURE_STORE_NATIVE_ONLY_MODULE&&module!==SENSE_ANDROID_MODULE&&!/^plugins\/plugin-native-[a-z-]+\/android$/.test(module))throw Error('Invalid native patch module');for(const [name,file] of source.read(module)){files.set(name,file);expected[name]=file.sha256;}}
  for(const [name,file] of files){const dest=path.join(temporary,name);fs.mkdirSync(path.dirname(dest),{recursive:true});fs.writeFileSync(dest,file.bytes,{mode:parseInt(file.mode,8)});}
  const targets=new Set();
  for(const patch of manifest.patches){

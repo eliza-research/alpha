@@ -6,6 +6,8 @@
     "packages/auth/android",
     "plugins/plugin-local-inference/native/android",
     "plugins/plugin-native-action-journal/android",
+    "plugins/plugin-native-browser-surface/android",
+    "plugins/plugin-native-browser-surface/resources",
     "plugins/plugin-native-calendar/android",
     "plugins/plugin-native-camera/android",
     "plugins/plugin-native-filesystem/android",
