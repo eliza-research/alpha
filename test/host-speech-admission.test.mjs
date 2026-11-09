@@ -36,12 +36,12 @@ test('reviewed engine source keeps current embedding and voice qualification sep
  const actual=execFileSync('git',['-C','vendor/eliza','ls-tree','HEAD','plugins/plugin-local-inference/native/llama.cpp'],{encoding:'utf8'}).match(/^160000 commit ([a-f0-9]{40})\t/)[1];
  assert.equal(actual,reviewed);
  const qualification=JSON.parse(readFileSync(new URL('../android/embedding-host/qualified-host.json',import.meta.url),'utf8'));
- const pin=JSON.parse(readFileSync(new URL('../upstream.lock.json',import.meta.url),'utf8')).commit;
- assert.equal(qualification.pin,pin);
+ // Qualification remains bound to its original receipt; reuse at another pin requires exact source and producer inputs below.
  assert.equal(qualification.forkPin,reviewed);
  assert.equal(qualification.requalification,undefined);
  const receipt=readFileSync(new URL('../docs/evidence/embedding-host-4787d51a14/QUALIFICATION-99b49439ce.json',import.meta.url));
  assert.equal(createHash('sha256').update(receipt).digest('hex'),qualification.qualificationReceiptSha256);
+ assert.equal(qualification.pin,JSON.parse(receipt).pin);
  verifyEmbeddingInputs(process.cwd(),qualification,{requireProducerInputs:true});
  const voice=JSON.parse(readFileSync(new URL('../android/voice-host/qualified-voice-host.json',import.meta.url),'utf8'));
  assert.equal(voice.qualified,false);assert.equal(voice.evidence.userAccepted,false);

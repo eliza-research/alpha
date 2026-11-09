@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "b1817660a0347ae19551b9ee296410fe55f02d59",
-  "ledgerSha256": "f155a3223dae0ba0b3c546b344bc9a9304a6578666c6f676537b91f5c2ad83d5",
+  "ledgerSha256": "e676baf365222499bd2705a0acd654cbbf3882e8a11d4fbd9b3a83466608986f",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -28,9 +28,9 @@
     "parsedFiles": 5660,
     "languageReview": 89,
     "parseErrors": 0,
-    "candidates": 67569,
-    "writeSites": 66987,
-    "writeAssociations": 60105,
+    "candidates": 67570,
+    "writeSites": 66988,
+    "writeAssociations": 60106,
     "asynchronous": 8371,
     "unassignedWrites": 10274
   },
@@ -45975,7 +45975,7 @@
     },
     {
       "path": "scripts/android-build-preflight.mjs",
-      "sha256": "9b59171e58fc405b00fa5c29e00b64accefe649cca9d59361f9b9921c61a8a60",
+      "sha256": "4a083bcd66cbaf363a4d8501af933344fb3e20bd90f4fc4cba97b56519f41306",
       "allocatedModels": [
         "MobileBundleAdmission",
         "ResidentRuntime"
@@ -46016,15 +46016,15 @@
         },
         {
           "owner": "formatReport",
-          "line": 260,
+          "line": 266,
           "bindings": 1,
           "writes": 4
         },
         {
           "owner": "main",
-          "line": 280,
-          "bindings": 2,
-          "writes": 2
+          "line": 288,
+          "bindings": 3,
+          "writes": 3
         }
       ],
       "parseErrors": [],
@@ -220585,6 +220585,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "02d4f463b1d4291be1b5e7610998baa44a7382639617ab5be81c301f45fea938"
+    "sha256": "3671eeb1cf16452890ddfc8e93dbf0c01416c2f8fe2e1ba1ce559839b711cfa6"
   }
 }
