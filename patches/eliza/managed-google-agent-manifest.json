@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "baseCommit": "b1817660a0347ae19551b9ee296410fe55f02d59",
+  "sourceCommit": "cbe7e4676314bdf86cdee99cafefc8d7cac044d3",
+  "patches": [
+    {
+      "file": "managed-google-agent.patch",
+      "sha256": "6c615a5639e930f9402bbcbf99fbd869cf8c760eb5a5d0d2a13cc5d68325d031",
+      "targets": [
+        {
+          "path": "packages/app/src/runtime/managed-google-agent/calendar-read-timing.ts",
+          "beforeSha256": null,
+          "afterSha256": "757a082dcff5aea0724cfe8bcdb011d5bfe0f9d26c21ce6c4cda4d3d6f9e5e26"
+        },
+        {
+          "path": "packages/app/src/runtime/managed-google-agent/gmail-agent-mailbox-host.ts",
+          "beforeSha256": null,
+          "afterSha256": "804a265a03d5d52b913bed6efc97ca21528123aa98f1424ddbb3e726618c3004"
+        },
+        {
+          "path": "packages/app/src/runtime/managed-google-agent/index.ts",
+          "beforeSha256": null,
+          "afterSha256": "03cde6b09044b99d80d5b01be80a662b290b167925b840db0f4041d6c89c92f4"
+        },
+        {
+          "path": "packages/app/src/runtime/managed-google-agent/managed-google-agent-broker.ts",
+          "beforeSha256": null,
+          "afterSha256": "e47963de440095f836360bd508d00df7ec1981f8f16d94c10a419f1af3edff8c"
+        },
+        {
+          "path": "packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts",
+          "beforeSha256": null,
+          "afterSha256": "fa7dfd610635e965b66f024235be7f53da88e744e4624183948ed4c35db89748"
+        },
+        {
+          "path": "packages/app/src/runtime/managed-google-agent/managed-google-client.ts",
+          "beforeSha256": null,
+          "afterSha256": "4551dfd287169faefdd0fbf8aae9fb5aa913b9b78cbeb8133101591c72e3c684"
+        },
+        {
+          "path": "packages/app/src/runtime/managed-google-agent/managed-google-failure-stage.ts",
+          "beforeSha256": null,
+          "afterSha256": "e1c443bd01eced742ec0526553f1d12fcebd1c6268385f08fb1e9d233bd814e6"
+        },
+        {
+          "path": "packages/app/src/runtime/managed-google-agent/managed-google-route-policy.ts",
+          "beforeSha256": null,
+          "afterSha256": "4cbfa48ea775f22c0c937606792525973f109a7f726accde9ebee8f02fba4a57"
+        },
+        {
+          "path": "packages/app/src/runtime/managed-google-agent/native-google-agent-host.ts",
+          "beforeSha256": null,
+          "afterSha256": "9c631b8cd11524b4ccf198d366cbdadcb690587dc8f907fe86bc5cbd0f1fdb73"
+        },
+        {
+          "path": "packages/app/src/runtime/managed-google-agent/native-google-cloud-port.ts",
+          "beforeSha256": null,
+          "afterSha256": "36e63c0e42984bd74a346a9157bef9e2afdf90e669b68494e28d0026b303b70d"
+        }
+      ]
+    }
+  ]
+}

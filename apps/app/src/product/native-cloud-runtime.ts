@@ -1,5 +1,5 @@
-import product from '../config/alpha-product.json' with { type: 'json' };
-import {productionCloud} from '../apps/app/src/runtime/cloud-deployment.generated.ts';
+import product from '../../../../config/alpha-product.json' with { type: 'json' };
+import {productionCloud} from '../runtime/cloud-deployment.generated.ts';
 
 /** Alpha's admitted Cloud deployment for the resident's text inference. The shared
  * upstream runtime profile (packages/app native-runtime-profile.ts) owns every routing

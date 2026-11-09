@@ -1,8 +1,8 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {Readable} from 'node:stream';import {EventEmitter} from 'node:events';
 import {spawnSync} from 'node:child_process';
 if(!process.versions.bun&&!process.execArgv.some(arg=>arg==='--import=tsx'||arg==='tsx')){const child=spawnSync(process.execPath,['--conditions=eliza-source','--import','tsx',process.argv[1]],{stdio:'inherit',timeout:60000});if(child.error)throw child.error;process.exit(child.status??1);}
-const {createManagedGoogleAgentBroker}=await import('../backend/managed-google-agent-broker.ts');
-const {createManagedGoogleAgentHost}=await import('../backend/managed-google-agent-host.ts');
+const {createManagedGoogleAgentBroker}=await import('../.eliza/client-features/packages/app/src/runtime/managed-google-agent/managed-google-agent-broker.ts');
+const {createManagedGoogleAgentHost}=await import('./support/managed-google-agent.mjs');
 const secret='NEVER_LOG_TOKEN_ACCOUNT_QUERY';
 const credential={credentialReference:'private-reference',credentialId:'11111111-1111-4111-8111-111111111111',userId:'22222222-2222-4222-8222-222222222222',organizationId:'33333333-3333-4333-8333-333333333333'};
 async function run(errorKind,{logThrows=false,input={calendar:{operation:'sources'}}}={}){

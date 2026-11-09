@@ -6,17 +6,17 @@ import {Readable} from 'node:stream';
 import {EventEmitter} from 'node:events';
 // Actual broker + exact shared codec, with only external error-class identities
 // replaced. No real host/SDK graph, provider, native bridge, or socket is loaded.
-const strip=source=>stripTypeScriptTypes(source.replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'strip'});
-const brokerSource=readFileSync('backend/managed-google-agent-broker.ts','utf8');
-const contractImport=brokerSource.match(/^import \{calendarReadBrokerDiagnosticHeader\} from '([^']+)';$/m);
-assert.equal(contractImport?.[1],'../vendor/eliza/packages/contracts/src/calendar.ts','broker must consume the actual pinned shared source');
-const contract=readFileSync(new URL(contractImport[1],new URL('../backend/managed-google-agent-broker.ts',import.meta.url)),'utf8');
+const strip=source=>stripTypeScriptTypes(source.replace(/^import [\s\S]*?;\n/gm,'').replace(/^export /gm,''),{mode:'strip'});
+const brokerSource=readFileSync('.eliza/client-features/packages/app/src/runtime/managed-google-agent/managed-google-agent-broker.ts','utf8');
+const contractImport=brokerSource.match(/^import \{\s*calendarReadBrokerDiagnosticHeader,?\s*\} from ["']([^"']+)["'];$/m);
+assert.equal(contractImport?.[1],'../../../../contracts/src/calendar.ts','broker must consume the actual pinned shared source');
+const contract=readFileSync(new URL(contractImport[1],new URL('../.eliza/client-features/packages/app/src/runtime/managed-google-agent/managed-google-agent-broker.ts',import.meta.url)),'utf8');
 const start=contract.indexOf('const calendarReadBrokerStages =');
 const object=contract.indexOf('export const calendarReadBrokerDiagnosticHeader =',start);
 const end=contract.indexOf('\n});',object);
 assert(start>=0&&object>start&&end>object,'exact shared codec source must be present');
 const codec=new Function(strip(contract.slice(start,end+5))+';return calendarReadBrokerDiagnosticHeader;')();
-const helper=new Function(strip(readFileSync('backend/managed-google-failure-stage.ts','utf8'))+';return {managedGoogleFailureStage,managedGoogleTransportCodes,recordManagedGoogleFailure};')();
+const helper=new Function(strip(readFileSync('.eliza/client-features/packages/app/src/runtime/managed-google-agent/managed-google-failure-stage.ts','utf8'))+';return {managedGoogleFailureStage,managedGoogleTransportCodes,recordManagedGoogleFailure};')();
 class CloudProtocolError extends Error{constructor(code,status,data){super('private synthetic error');this.code=code;this.status=status;this.data=data;}}
 class CalendarAgentWriteRefused extends Error{constructor(){super('private refusal');this.refusal={code:'SYNTHETIC_UNCHANGED_REFUSAL'};}}
 const brokerCode=strip(brokerSource);

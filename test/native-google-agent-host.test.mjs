@@ -6,8 +6,8 @@ import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {createHash,randomUUID} from 'node:crypto';
 if(!process.execArgv.some(arg=>arg==='--import=tsx'||arg==='tsx')){const child=spawnSync(process.execPath,['--import','tsx',process.argv[1]],{stdio:'inherit',timeout:60000});if(child.error)throw child.error;process.exit(child.status??1);}
-const {startNativeGoogleAgentHost,startManagedGoogleAgentHost}=await import('../backend/native-google-agent-host.ts');
-const {createNativeGoogleCloudPort}=await import('../backend/native-google-cloud-port.ts');
+const {startNativeGoogleAgentHost,startManagedGoogleAgentHost}=await import('./support/managed-google-agent.mjs');
+const {createNativeGoogleCloudPort}=await import('./support/managed-google-agent.mjs');
 const user='11111111-1111-4111-8111-111111111111',org='22222222-2222-4222-8222-222222222222',grant='33333333-3333-4333-8333-333333333333';
 const binding=()=>({credentialId:'44444444-4444-4444-8444-444444444444',userId:user,organizationId:org,accountRef:JSON.stringify(['cloud','production',user,org]),sessionGeneration:'native-generation-1',token:'synthetic-native-cloud-key'});
 // The Android SDK emits 48 random bytes as 64 URL-safe Base64 characters.

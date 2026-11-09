@@ -5,7 +5,6 @@
   "sourceRoots": [
     "apps/app/src",
     "apps/app/public",
-    "backend",
     "android"
   ],
   "runtimeScripts": [
@@ -36,7 +35,7 @@
     "scripts/native-google-host-artifact.mjs",
     "scripts/build-native-google-host.ts",
     "scripts/combined-agent-source.mjs",
-    "scripts/gmail-agent-mailbox-host.ts",
+    "scripts/native-google-product-host.ts",
     "scripts/build-mobile-agent.mjs",
     "scripts/mobile-uuid-adapter.mjs",
     "scripts/mobile-bundle-smoke.mjs",
@@ -7540,7 +7539,7 @@
       "scope": "application",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "0ee5f2fbdc940209f508482d8c85bb4c582d209b7ad9dd4448b8cc89acce7208",
+      "sha256": "8fe78af57be52d482a480a27df92070497014869dd0000db5d3ae8e26203c69b",
       "stateAnchors": []
     },
     {
@@ -15591,6 +15590,26 @@
         {
           "line": 65,
           "text": "const color = ALPHA_PRODUCT.theme.palette?.[name];"
+        }
+      ]
+    },
+    {
+      "path": "apps/app/src/product/native-cloud-runtime.ts",
+      "models": [
+        "ResidentRuntime",
+        "NativeGoogleHostArtifact"
+      ],
+      "scope": "application",
+      "treatment": "domain-contract-or-support",
+      "sha256": "eaa0d722bcdf7a8bfaaf626a896eba6d0e5a019297031e7e21de7384987c6b3a",
+      "stateAnchors": [
+        {
+          "line": 7,
+          "text": "const {characterName,appName}=product.identity;"
+        },
+        {
+          "line": 10,
+          "text": "export const nativeCloudRuntime=Object.freeze({apiBaseUrl:productionCloud.api+'/api/v1',productCharacter:Object.freeze({name:characterName,bio:Object.freeze([`The assistant built into ${appName} for w"
         }
       ]
     },
@@ -45856,659 +45875,6 @@
       ]
     },
     {
-      "path": "backend/calendar-read-timing.ts",
-      "models": [
-        "CalendarPresentation",
-        "NativeGoogleHostArtifact"
-      ],
-      "scope": "application",
-      "treatment": "domain-contract-or-support",
-      "sha256": "6c182fd47e3711d5a37a475691cfd168c34f9be21f83c5ab72605262618c65f5",
-      "stateAnchors": [
-        {
-          "line": 7,
-          "text": "const routes:Record<string,RouteBucket>={"
-        },
-        {
-          "line": 13,
-          "text": "const rounded=(n:number)=>Number.isFinite(n)?Math.min(Number.MAX_SAFE_INTEGER,Math.max(0,Math.round(n))):0;"
-        },
-        {
-          "line": 18,
-          "text": "const record=(value:CalendarReadTiming)=>{try{emit(value);}catch{/* Diagnostics cannot change reads or errors. */}};"
-        },
-        {
-          "line": 23,
-          "text": "let bucket:RouteBucket|undefined;"
-        },
-        {
-          "line": 26,
-          "text": "const start=performance.now();let status:number|null=null;"
-        },
-        {
-          "line": 27,
-          "text": "try{const result=await read(input);status=Number.isInteger(result.status)&&result.status>=100&&result.status<=599?result.status:null;return result;}"
-        }
-      ]
-    },
-    {
-      "path": "backend/managed-google-agent-broker.ts",
-      "sha256": "7063562ae9f4305828afb1252ce3d9d9868b6a28ae7ff4d308adcc1741409965",
-      "models": [
-        "ServiceAuthorization",
-        "NativeGoogleAccessFile",
-        "NativeGoogleHostArtifact"
-      ],
-      "scope": "application",
-      "treatment": "state-and-transition-projection",
-      "stateAnchors": [
-        {
-          "line": 13,
-          "text": "const cloud=error instanceof CloudProtocolError;"
-        },
-        {
-          "line": 14,
-          "text": "const allowed=['invalid-response','http','expired','credentials-missing','credential-consumed','login-active','account-changed'];"
-        },
-        {
-          "line": 15,
-          "text": "const code=cloud&&allowed.includes(error.code)?error.code:'unclassified';"
-        },
-        {
-          "line": 16,
-          "text": "const status=cloud&&Number.isInteger(error.status)&&error.status!>=100&&error.status!<=599?error.status:undefined;"
-        },
-        {
-          "line": 17,
-          "text": "const errorClass=cloud?'CloudProtocolError':error instanceof CalendarAgentWriteRefused?'CalendarAgentWriteRefused':typeof DOMException!=='undefined'&&error instanceof DOMException&&error.name==='Abort"
-        },
-        {
-          "line": 18,
-          "text": "const stage=managedGoogleFailureStage(error);"
-        },
-        {
-          "line": 19,
-          "text": "const capabilities={abortAny:typeof AbortSignal!=='undefined'&&typeof AbortSignal.any==='function',abortTimeout:typeof AbortSignal!=='undefined'&&typeof AbortSignal.timeout==='function',fetch:typeof f"
-        },
-        {
-          "line": 24,
-          "text": "const reader=options.host;"
-        },
-        {
-          "line": 26,
-          "text": "const send=(status:number,data:unknown,readDiagnostic?:string)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store',...(status===409&&readDiagnostic?{[calendarReadBroke"
-        },
-        {
-          "line": 27,
-          "text": "const controller=new AbortController();const closed=()=>{if(!res.writableEnded)controller.abort();};res.once('close',closed);"
-        },
-        {
-          "line": 28,
-          "text": "let operation:BrokerOperation='request';"
-        },
-        {
-          "line": 32,
-          "text": "const chunks:Buffer[]=[];let bytes=0;for await(const chunk of req){const part=Buffer.from(chunk);bytes+=part.length;if(bytes>256*1024)throw new GoogleAgentRefusal('request-too-large','Agent request to"
-        },
-        {
-          "line": 33,
-          "text": "let input:any;try{input=JSON.parse(Buffer.concat(chunks).toString('utf8'));}catch{throw new GoogleAgentRefusal('invalid-request','Invalid Google tool request');}"
-        },
-        {
-          "line": 36,
-          "text": "const writesContent=input.send!==undefined||!!input.calendar&&typeof input.calendar==='object'&&['write-execute','linked-sync'].includes(input.calendar.operation);"
-        },
-        {
-          "line": 39,
-          "text": "let result:unknown;"
-        },
-        {
-          "line": 45,
-          "text": "const s=input.send,keys=Object.keys(s).sort().join();"
-        },
-        {
-          "line": 52,
-          "text": "const c=input.calendar;"
-        },
-        {
-          "line": 58,
-          "text": "controller.signal.throwIfAborted();const body=JSON.stringify(result);if(Buffer.byteLength(body)>GOOGLE_AGENT_RESULT_MAX)throw new GoogleAgentRefusal('result-too-large','Google result too large');"
-        },
-        {
-          "line": 61,
-          "text": "let readDiagnostic:string|undefined;"
-        },
-        {
-          "line": 73,
-          "text": "const failure=error as {code?:unknown;status?:unknown;data?:{error?:unknown}}|null;"
-        },
-        {
-          "line": 74,
-          "text": "const unavailable=failure?.code==='http'&&failure.status===404&&failure.data?.error==='Not found';"
-        }
-      ]
-    },
-    {
-      "path": "backend/managed-google-agent-host.ts",
-      "sha256": "6b4629eb2c8adeb4ffefaf4fcf14b6367483dbb917e5ecceeb59e5890e76f115",
-      "models": [
-        "ServiceAuthorization",
-        "NativeGoogleAccessFile",
-        "NativeGoogleHostArtifact"
-      ],
-      "scope": "application",
-      "treatment": "domain-contract-or-support",
-      "stateAnchors": [
-        {
-          "line": 16,
-          "text": "export const GOOGLE_AGENT_RESULT_MAX=256*1024;"
-        },
-        {
-          "line": 18,
-          "text": "const GMAIL_BODY_MAX=32_000;"
-        },
-        {
-          "line": 19,
-          "text": "const permissionText:Record<string,string>={'google.gmail.mailbox':'Gmail mailbox changes need permission. Enable Gmail changes in Settings → Connections.','google.gmail.send':'Sending Gmail needs per"
-        },
-        {
-          "line": 28,
-          "text": "const CALENDAR_READ_STEP_MS=5_000;"
-        },
-        {
-          "line": 30,
-          "text": "const timing=createCalendarReadTiming(process.env.ALPHA_CALENDAR_READ_TIMING==='1');"
-        },
-        {
-          "line": 31,
-          "text": "const allowed=(kind:keyof GoogleAgentAccess)=>{if(access()[kind]!==true)throw new GoogleAgentRefusal('changes-off',kind==='gmailChanges'?'Gmail changes are turned off in Settings › Google accounts. Go"
-        },
-        {
-          "line": 32,
-          "text": "const refuseWrite=()=>{throw Error('Gmail agent reads cannot change credentials or mail.');};"
-        },
-        {
-          "line": 36,
-          "text": "const shared=new Map<string,{monotonic:number;wall:number;pending:boolean;value:Promise<unknown>}>();"
-        },
-        {
-          "line": 37,
-          "text": "let sharedOwner:string|undefined;"
-        },
-        {
-          "line": 39,
-          "text": "const entry=shared.get(key);"
-        },
-        {
-          "line": 41,
-          "text": "const age=entry?Math.max(performance.now()-entry.monotonic,Date.now()-entry.wall):null;"
-        },
-        {
-          "line": 42,
-          "text": "const young=entry&&age!==null&&age<CALENDAR_READ_STEP_MS;"
-        },
-        {
-          "line": 46,
-          "text": "const value=read(),next={monotonic:performance.now(),wall:Date.now(),pending:true,value};shared.set(key,next);"
-        },
-        {
-          "line": 47,
-          "text": "const drop=()=>{if(shared.get(key)===next)shared.delete(key);};"
-        },
-        {
-          "line": 51,
-          "text": "const googleCalendars=(client:CloudProtocol,grantId:string,scope:string,signal:AbortSignal,reuseFinished:boolean)=>sharedLookup(`${scope}:calendars`,()=>client.googleCalendars(grantId,signal),reuseFin"
-        },
-        {
-          "line": 54,
-          "text": "let stage:ManagedGoogleFailureStage='credential';"
-        },
-        {
-          "line": 56,
-          "text": "const credential=await host.agentCredential();if(!credential)throw new GoogleAgentRefusal('signed-out','Sign in to Eliza Cloud before reading Gmail.');"
-        },
-        {
-          "line": 58,
-          "text": "const identity=JSON.stringify(credential),signal=parent?AbortSignal.any([parent,AbortSignal.timeout(30000)]):AbortSignal.timeout(30000);"
-        },
-        {
-          "line": 59,
-          "text": "const current=async()=>{signal.throwIfAborted();if(JSON.stringify(await host.agentCredential())!==identity)throw Error('Cloud account changed while reading Gmail.');};"
-        },
-        {
-          "line": 61,
-          "text": "const calendarRead=capability==='google.calendar.read';"
-        },
-        {
-          "line": 62,
-          "text": "const transport=operation==='calendar'?host.agentCalendarOperation:operation?host.agentGmailOperation:host.agentRead;"
-        },
-        {
-          "line": 63,
-          "text": "const client=new CloudProtocol(environment,calendarRead?timing.request(transport):transport,{acceptsReferences:true,read:async()=>{await current();return credential;},write:async()=>refuseWrite(),clea"
-        },
-        {
-          "line": 64,
-          "text": "const ownerKey=createHash('sha256').update(identity).digest('hex');"
-        },
-        {
-          "line": 65,
-          "text": "const listOwned=async()=>{"
-        },
-        {
-          "line": 67,
-          "text": "const owner=await client.identity(signal);await current();"
-        },
-        {
-          "line": 73,
-          "text": "const listed=calendarRead?await sharedLookup(ownerKey,listOwned,reuseFinished,'owner-cache'):await listOwned();"
-        },
-        {
-          "line": 75,
-          "text": "const connected=listed.filter(a=>a.connected&&a.connectionId).map(account=>({account,grantId:account.connectionId!,scope:createHash('sha256').update(identity+':'+account.connectionId).digest('hex')}))"
-        },
-        {
-          "line": 76,
-          "text": "const accounts=connected.filter(a=>a.account.grantedCapabilities.includes(capability));"
-        },
-        {
-          "line": 80,
-          "text": "const confirm=async(grantIds:string[])=>{try{const latest=await client.gmailAccounts(signal);if(grantIds.some(id=>!latest.some(a=>a.connectionId===id&&a.connected&&a.grantedCapabilities.includes(capab"
-        },
-        {
-          "line": 85,
-          "text": "const idScope=(id:unknown,kind:'alpha-gmail'|'alpha-gmail-send')=>{const match=typeof id==='string'?new RegExp(`^${kind}:([a-f0-9]{64}):`).exec(id):null;if(!match)throw new GoogleAgentRefusal('invalid"
-        },
-        {
-          "line": 89,
-          "text": "const {client,signal,accounts,connected,confirm}=await ownerAccounts(parent,capability,operation);"
-        },
-        {
-          "line": 90,
-          "text": "const needed=()=>new GoogleAgentRefusal('permission-needed',permissionText[capability]??'Gmail reads need permission. Reconnect Gmail in Settings → Connections.');"
-        },
-        {
-          "line": 91,
-          "text": "let selected=accounts;"
-        },
-        {
-          "line": 97,
-          "text": "const value=await run(client,selected[0].grantId,selected[0].scope,signal);"
-        },
-        {
-          "line": 105,
-          "text": "const {client,signal,accounts,confirm}=await ownerAccounts(parent,'google.calendar.write','calendar');"
-        },
-        {
-          "line": 106,
-          "text": "const selected=accounts.filter(account=>input.grantId===`alpha-google:${account.scope}`);"
-        },
-        {
-          "line": 108,
-          "text": "const account=selected[0],result=await calendarAgentWrite(client,account.grantId,account.scope,input,signal,'alpha-google');"
-        },
-        {
-          "line": 114,
-          "text": "allowed('gmailChanges');const proposal=sendProposal(input);if(!/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(input.requestId))throw new GoogleAgentRefusal('invalid-requ"
-        },
-        {
-          "line": 116,
-          "text": "const prepared=await client.gmailPrepareOperation(grantId,input.requestId,proposal,signal);"
-        },
-        {
-          "line": 117,
-          "text": "const digest=createHash('sha256').update(JSON.stringify(prepared.review)).digest('hex');"
-        },
-        {
-          "line": 125,
-          "text": "const prefix=`alpha-gmail-send:${scope}:`,requestId=id.slice(prefix.length);"
-        },
-        {
-          "line": 127,
-          "text": "const receipt=await client.gmailOperation(grantId,requestId,signal);if(receipt.kind!=='send')throw Error('This is not an email send receipt.');return receipt;"
-        },
-        {
-          "line": 131,
-          "text": "allowed('gmailChanges');const proposal=sendProposal(input);if(!/^[a-f0-9]{64}$/.test(input.reviewDigest))throw new GoogleAgentRefusal('invalid-request','An exact prepared review is required.');"
-        },
-        {
-          "line": 133,
-          "text": "const prefix=`alpha-gmail-send:${scope}:`,requestId=input.id.slice(prefix.length);"
-        },
-        {
-          "line": 135,
-          "text": "const prior=await client.gmailOperation(grantId,requestId,signal);"
-        },
-        {
-          "line": 150,
-          "text": "const {client,signal,accounts,confirm}=await ownerAccounts(parent,'google.calendar.read','calendar');"
-        },
-        {
-          "line": 151,
-          "text": "const sources=(await Promise.all(accounts.map(async({account,grantId,scope})=>(await googleCalendars(client,grantId,scope,signal,false)).filter(row=>['reader','writer','owner'].includes(row.accessRole"
-        },
-        {
-          "line": 156,
-          "text": "const {client,signal,accounts,confirm}=await ownerAccounts(parent,'google.calendar.read','calendar',true);"
-        },
-        {
-          "line": 158,
-          "text": "const owned=accounts.find(a=>input.grantId===`alpha-google:${a.scope}`);if(!owned)throw Error('Select a calendar from the current owner connection.');"
-        },
-        {
-          "line": 159,
-          "text": "const {grantId,scope}=owned,readable=(rows:Awaited<ReturnType<typeof googleCalendars>>)=>rows.find(row=>row.calendarId===input.calendarId&&['reader','writer','owner'].includes(row.accessRole));"
-        },
-        {
-          "line": 161,
-          "text": "let calendar=readable(await googleCalendars(client,grantId,scope,signal,true));"
-        },
-        {
-          "line": 164,
-          "text": "const result=await client.googleCalendarFeed(grantId,input.calendarId,{timeMin:input.timeMin,timeMax:input.timeMax,timeZone:input.timeZone},signal);"
-        },
-        {
-          "line": 165,
-          "text": "const key={provider:'google',side:'owner',grantId:input.grantId,connectorAccountId:input.grantId,calendarId:input.calendarId};"
-        },
-        {
-          "line": 169,
-          "text": "const feed={...result,source:'synced',state:'complete',timeMin:input.timeMin,timeMax:input.timeMax,"
-        },
-        {
-          "line": 178,
-          "text": "const parts=[query||'in:inbox'];if(since!==undefined){const date=Date.parse(since);if(!Number.isFinite(date))throw new GoogleAgentRefusal('invalid-request','Invalid Gmail read date.');parts.push(`afte"
-        },
-        {
-          "line": 181,
-          "text": "const result=await client.gmailSearch(grantId,parts.join(' '),signal,limit<=10?10:limit<=25?25:50);"
-        },
-        {
-          "line": 182,
-          "text": "const rows=[...result.messages];"
-        },
-        {
-          "line": 185,
-          "text": "const next=await client.gmailSearch(grantId,parts.join(' '),signal,10,result.nextPageToken);"
-        },
-        {
-          "line": 187,
-          "text": "const ids=new Set(rows.map(row=>row.id));for(const row of next.messages)if(!ids.has(row.id)){ids.add(row.id);rows.push(row);}"
-        },
-        {
-          "line": 194,
-          "text": "const prefix=`alpha-gmail:${scope}:`;if(!messageId.startsWith(prefix))throw Error('Select an email from the current owner and Gmail account.');"
-        },
-        {
-          "line": 195,
-          "text": "const providerId=messageId.slice(prefix.length);if(!/^[A-Za-z0-9_-]{1,160}$/.test(providerId))throw new GoogleAgentRefusal('invalid-request','Invalid Gmail message identity.');"
-        },
-        {
-          "line": 196,
-          "text": "const result=await client.gmailRead(grantId,providerId,signal),truncated=result.bodyText.length>GMAIL_BODY_MAX;"
-        }
-      ]
-    },
-    {
-      "path": "backend/managed-google-failure-stage.ts",
-      "models": [
-        "ServiceAuthorization",
-        "NativeGoogleHostArtifact"
-      ],
-      "scope": "application",
-      "treatment": "domain-contract-or-support",
-      "sha256": "209d8a2d4c3a8c95a1545c5a018b8107ff352099694b92defc1c0e177cffa604",
-      "stateAnchors": [
-        {
-          "line": 3,
-          "text": "const stages=new WeakMap<object,ManagedGoogleFailureStage>();"
-        },
-        {
-          "line": 11,
-          "text": "const transportCodes=["
-        },
-        {
-          "line": 20,
-          "text": "const allowedTransportCodes=new Set<string>(transportCodes);"
-        },
-        {
-          "line": 22,
-          "text": "try{if(value===null||(typeof value!=='object'&&typeof value!=='function'))return;const property=Object.getOwnPropertyDescriptor(value,key);return property&&'value'in property?property.value:undefined;"
-        },
-        {
-          "line": 27,
-          "text": "const message=ownData(error,'message');"
-        },
-        {
-          "line": 38,
-          "text": "const cause=ownData(error,'cause'),code=ownData(error,'code'),causeCode=ownData(cause,'code');"
-        },
-        {
-          "line": 39,
-          "text": "const family=transportMessageFamily(error),causeFamily=transportMessageFamily(cause);"
-        }
-      ]
-    },
-    {
-      "path": "backend/managed-google-route-policy.ts",
-      "sha256": "96a07cf0d4adbf372be56f93419a9bb662477cbe1221fb828e77fa0685be4ac3",
-      "models": [
-        "ServiceAuthorization",
-        "NativeGoogleHostArtifact",
-        "BrowserCloudRequestCustody"
-      ],
-      "scope": "application",
-      "treatment": "state-and-transition-projection",
-      "stateAnchors": [
-        {
-          "line": 5,
-          "text": "export const GMAIL_QUERY_MAX=2048;"
-        },
-        {
-          "line": 6,
-          "text": "const GOOGLE_UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;"
-        },
-        {
-          "line": 10,
-          "text": "const prefix='/api/v1/eliza/google/',route=url.pathname.slice(prefix.length);"
-        },
-        {
-          "line": 13,
-          "text": "const clean=(value:unknown,max=2048)=>typeof value==='string'&&value.length>0&&value.length<=max&&!/[\\u0000-\\u001f\\u007f]/.test(value);"
-        },
-        {
-          "line": 14,
-          "text": "let value:Record<string,any>;"
-        },
-        {
-          "line": 18,
-          "text": "const keys=Object.keys(value).sort().join();"
-        },
-        {
-          "line": 28,
-          "text": "let value:Record<string,any>;try{value=object(JSON.parse(body));}catch{return false;}"
-        },
-        {
-          "line": 31,
-          "text": "const prepare=route==='gmail/inbox-v1/operations',dispatch=/^gmail\\/inbox-v1\\/operations\\/[A-Za-z0-9_-]{1,160}\\/dispatch$/.test(route);"
-        },
-        {
-          "line": 42,
-          "text": "const allowed=new Set(['google.basic_identity','google.gmail.triage','google.gmail.send','google.gmail.drafts','google.gmail.mailbox','google.calendar.read','google.calendar.write']);"
-        },
-        {
-          "line": 46,
-          "text": "const params=url.searchParams,keys=[...params.keys()];"
-        },
-        {
-          "line": 48,
-          "text": "const clean=(key:string,max=1024)=>{const value=params.get(key);return value!==null&&value.length>0&&value.length<=max&&!/[\\u0000-\\u001f\\u007f]/.test(value);};"
-        },
-        {
-          "line": 49,
-          "text": "const exact=(allowed:string[])=>keys.every(key=>allowed.includes(key));"
-        },
-        {
-          "line": 51,
-          "text": "const grant=params.get('grantId');if(!grant||!GOOGLE_UUID.test(grant))return false;"
-        },
-        {
-          "line": 56,
-          "text": "const start=Date.parse(params.get('timeMin')!),end=Date.parse(params.get('timeMax')!);if(!Number.isFinite(start)||!Number.isFinite(end)||end<=start)return false;"
-        },
-        {
-          "line": 69,
-          "text": "const reader=response.body?.getReader();if(!reader)throw Error('Empty Cloud response');"
-        },
-        {
-          "line": 70,
-          "text": "const chunks:Uint8Array[]=[];let size=0;"
-        },
-        {
-          "line": 71,
-          "text": "try{for(;;){const part=await reader.read();if(part.done)break;size+=part.value.byteLength;if(size>16*1024*1024)throw Error('Cloud response too large');chunks.push(part.value);}}finally{await reader.ca"
-        },
-        {
-          "line": 72,
-          "text": "const value=JSON.parse(Buffer.concat(chunks).toString('utf8'));"
-        },
-        {
-          "line": 74,
-          "text": "const inspect=(item:unknown):void=>{if(item&&typeof item==='object')for(const [key,nested]of Object.entries(item)){if(/^(?:access_?token|refresh_?token|api_?key|authorization|credentialReference|crede"
-        }
-      ]
-    },
-    {
-      "path": "backend/native-cloud-runtime.ts",
-      "models": [
-        "ResidentRuntime",
-        "NativeGoogleHostArtifact"
-      ],
-      "scope": "application",
-      "treatment": "domain-contract-or-support",
-      "sha256": "95cf46c7db11a7ebb7b0cb4efa5a8a210951f52184a14831be7f6aba88f01347",
-      "stateAnchors": [
-        {
-          "line": 7,
-          "text": "const {characterName,appName}=product.identity;"
-        },
-        {
-          "line": 10,
-          "text": "export const nativeCloudRuntime=Object.freeze({apiBaseUrl:productionCloud.api+'/api/v1',productCharacter:Object.freeze({name:characterName,bio:Object.freeze([`The assistant built into ${appName} for w"
-        }
-      ]
-    },
-    {
-      "path": "backend/native-google-agent-host.ts",
-      "models": [
-        "ResidentRuntime",
-        "NativeGoogleAccessFile",
-        "NativeGoogleHostArtifact"
-      ],
-      "scope": "application",
-      "treatment": "state-and-transition-projection",
-      "reviewStatus": "state-audit-required",
-      "sha256": "f58b8a2be174148b5f7fe9c5f147a6615697a226c654e27fb57efa8139464d9e",
-      "stateAnchors": [
-        {
-          "line": 15,
-          "text": "const off={gmailChanges:false,calendarEdits:false};"
-        },
-        {
-          "line": 34,
-          "text": "const retired=new AbortController();"
-        },
-        {
-          "line": 35,
-          "text": "const port=createNativeGoogleCloudPort(options.binding,()=>{retired.signal.throwIfAborted();options.assertCurrent?.();},options.request);"
-        },
-        {
-          "line": 36,
-          "text": "const host=await startManagedGoogleAgentHost({port,apiToken:options.apiToken,access:()=>savedGoogleAgentAccess()});"
-        },
-        {
-          "line": 43,
-          "text": "const broker=createManagedGoogleAgentBroker({host:createManagedGoogleAgentHost(options.port,options.access,options.environment),async authorized(value){"
-        },
-        {
-          "line": 44,
-          "text": "const actual=Buffer.from(value??''),expected=Buffer.from('Bearer '+options.apiToken);"
-        },
-        {
-          "line": 47,
-          "text": "const server=createServer({maxHeaderSize:8192},(req,res)=>void broker(req,res));"
-        },
-        {
-          "line": 49,
-          "text": "let closing:Promise<void>|undefined;"
-        },
-        {
-          "line": 50,
-          "text": "const close=()=>closing??=(new Promise<void>((resolve,reject)=>{"
-        },
-        {
-          "line": 56,
-          "text": "const address=server.address();if(!address||typeof address==='string')throw Error('Private Google host did not bind');"
-        }
-      ]
-    },
-    {
-      "path": "backend/native-google-cloud-port.ts",
-      "sha256": "8f008c1d720e0609c12443b99d9a2493ac74e55e11d311b06b06b80cc45dda2a",
-      "models": [
-        "ResidentRuntime",
-        "NativeGoogleHostArtifact"
-      ],
-      "scope": "application",
-      "treatment": "state-and-transition-projection",
-      "stateAnchors": [
-        {
-          "line": 12,
-          "text": "const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;"
-        },
-        {
-          "line": 13,
-          "text": "const readPaths=new Set(['/api/v1/eliza/google/accounts','/api/v1/eliza/google/gmail/search','/api/v1/eliza/google/gmail/read','/api/v1/eliza/google/calendar/calendars','/api/v1/eliza/google/calendar/"
-        },
-        {
-          "line": 21,
-          "text": "const reference='native-google-reference:'+binding.credentialId;"
-        },
-        {
-          "line": 22,
-          "text": "const credential={credentialReference:reference,credentialId:binding.credentialId,userId:binding.userId,organizationId:binding.organizationId,"
-        },
-        {
-          "line": 24,
-          "text": "const current=()=>{assertCurrent();if(binding.expiresAt!==undefined&&binding.expiresAt<=Date.now())throw Error('Native Google provider binding expired');};"
-        },
-        {
-          "line": 26,
-          "text": "let stage:ManagedGoogleFailureStage='request-validation';"
-        },
-        {
-          "line": 29,
-          "text": "const url=new URL(input.url),body=input.body===undefined?undefined:JSON.stringify(input.body);"
-        },
-        {
-          "line": 31,
-          "text": "const read=input.method==='GET'&&body===undefined&&(url.pathname==='/api/v1/user'&&!url.search||readPaths.has(url.pathname)&&managedGoogleRequest(url,'GET',undefined));"
-        },
-        {
-          "line": 32,
-          "text": "let permitted=read;"
-        },
-        {
-          "line": 40,
-          "text": "const response=await request(url.toString(),{method:input.method,redirect:'error',signal:input.signal,"
-        },
-        {
-          "line": 44,
-          "text": "const data=await boundedServiceJson(response);current();input.signal.throwIfAborted();"
-        }
-      ]
-    },
-    {
       "path": "capacitor.config.ts",
       "models": [
         "MobileBundleAdmission",
@@ -46595,7 +45961,7 @@
     },
     {
       "path": "scripts/browser-cloud-dev-bridge.ts",
-      "sha256": "cc954b5564cfad600a0ee77cf666879070c633bc1964f39e033513068008adc7",
+      "sha256": "92c930e1546b80298c772ae9fa2f1fb0b0fd280a97b15b1e34825b9ff95d9718",
       "models": [
         "DevelopmentHost",
         "DevelopmentSurfaces",
@@ -47192,7 +46558,7 @@
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
-      "sha256": "3b4390d9ac72eaa39bcce8b0ab7dd515040c07e115d02217edf2f8302a3a8147",
+      "sha256": "91542a4b1cb48a575f5a882f8ab0b50288c0589136445d98316e5f7907462cb1",
       "stateAnchors": []
     },
     {
@@ -47469,18 +46835,6 @@
       "stateAnchors": []
     },
     {
-      "path": "scripts/gmail-agent-mailbox-host.ts",
-      "models": [
-        "NativeGoogleHostArtifact",
-        "GmailAgentMailboxRecovery"
-      ],
-      "scope": "development-runtime",
-      "treatment": "domain-contract-or-support",
-      "reviewStatus": "state-audit-required",
-      "sha256": "a976b952421e93fa83bd06cb6e6115702618caf910c018472adad626c74e40ce",
-      "stateAnchors": []
-    },
-    {
       "path": "scripts/launcher-child.mjs",
       "models": [
         "CombinedAgentLauncher",
@@ -47617,8 +46971,62 @@
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
-      "sha256": "f22eed6561ab217c1171ea8df46ad2aed17c2450833ee55d9767679821abf808",
+      "sha256": "a5d88ef9ae4b7a57c5cea6cddcda18ec2680745a122a8983ba1166a0503b2c89",
       "stateAnchors": []
+    },
+    {
+      "path": "scripts/native-google-product-host.ts",
+      "models": [
+        "ResidentRuntime",
+        "NativeGoogleAccessFile",
+        "NativeGoogleHostArtifact"
+      ],
+      "scope": "application",
+      "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "bfbe4eb1c5c3569fa0b42a7e0bbb2e66ed3245d9874ca47cff6d58ad6b6a9904",
+      "stateAnchors": [
+        {
+          "line": 15,
+          "text": "const off={gmailChanges:false,calendarEdits:false};"
+        },
+        {
+          "line": 34,
+          "text": "const retired=new AbortController();"
+        },
+        {
+          "line": 35,
+          "text": "const port=createNativeGoogleCloudPort(options.binding,()=>{retired.signal.throwIfAborted();options.assertCurrent?.();},options.request);"
+        },
+        {
+          "line": 36,
+          "text": "const host=await startManagedGoogleAgentHost({port,apiToken:options.apiToken,access:()=>savedGoogleAgentAccess()});"
+        },
+        {
+          "line": 43,
+          "text": "const broker=createManagedGoogleAgentBroker({host:createManagedGoogleAgentHost(options.port,options.access,options.environment),async authorized(value){"
+        },
+        {
+          "line": 44,
+          "text": "const actual=Buffer.from(value??''),expected=Buffer.from('Bearer '+options.apiToken);"
+        },
+        {
+          "line": 47,
+          "text": "const server=createServer({maxHeaderSize:8192},(req,res)=>void broker(req,res));"
+        },
+        {
+          "line": 49,
+          "text": "let closing:Promise<void>|undefined;"
+        },
+        {
+          "line": 50,
+          "text": "const close=()=>closing??=(new Promise<void>((resolve,reject)=>{"
+        },
+        {
+          "line": 56,
+          "text": "const address=server.address();if(!address||typeof address==='string')throw Error('Private Google host did not bind');"
+        }
+      ]
     },
     {
       "path": "scripts/prepare-client-features.mjs",
@@ -47633,7 +47041,7 @@
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
-      "sha256": "95929125edde207ea6948e5da90bf47ec8c1652c2f634781265493d98f2fc19f",
+      "sha256": "e4d7a4c50aef1a86e6b5594d5d08fbae40e6745b7a031bd95fd13549aebf6236",
       "stateAnchors": [],
       "integrationReview": "Reviewed integration source. Domain allocation is retained; source-hash refresh does not establish semantic refinement. See targeted validation and remaining obligations."
     },
@@ -618558,7 +617966,7 @@
         "ApplicationComposition",
         "NativeGoogleHostArtifact"
       ],
-      "sha256": "917e98981b129b6170ff3db4b6c343b8ba169eea8aa4dbfbc8baad08b9cb69ed"
+      "sha256": "42bedec48f4507c4de48d45bd960f7a26d4577b2d904e6083cdcba4961bca26a"
     },
     {
       "path": "scripts/combined-agent-source.mjs",
@@ -618659,7 +618067,7 @@
         "InboxProviderDrafts",
         "NativeGoogleHostArtifact"
       ],
-      "sha256": "95929125edde207ea6948e5da90bf47ec8c1652c2f634781265493d98f2fc19f",
+      "sha256": "e4d7a4c50aef1a86e6b5594d5d08fbae40e6745b7a031bd95fd13549aebf6236",
       "integrationReview": "Retains the reviewed source boundary and authenticated patch catalog; integration also admits installed dependency ranges and bounded source-copy helpers. Configuration identity alone is not runtime/refinement evidence."
     },
     {
@@ -618705,7 +618113,7 @@
       "models": [
         "Application"
       ],
-      "sha256": "2bf90e52dfc1f65382f4fa3dc34873bad85ac3f94864312804292c40c85f056d",
+      "sha256": "9108e03ce391ab8e31d38cb50e98b4713d133e529578d90b9fbb93af90b6d18f",
       "integrationReview": "Reviewed integration input; current source identity does not establish runtime behavior or source-model refinement."
     },
     {
@@ -618723,7 +618131,7 @@
         "ResidentRuntime",
         "IdentitySession"
       ],
-      "sha256": "2b8c03c5747cd2dbdd5d66ceb222b51294d2584c58c16f02b3df63a8c4afe31c",
+      "sha256": "7f4a16a1a2d91c224483ae76d513d56ad0fb45d3e7dfc9ff9c04d18c339a501e",
       "integrationReview": "Retains the reviewed source boundary and authenticated patch catalog; integration also admits installed dependency ranges and bounded source-copy helpers. Configuration identity alone is not runtime/refinement evidence."
     },
     {
@@ -618836,6 +618244,28 @@
         "Application"
       ],
       "sha256": "766476a1546b4b556e55e2e2dd63581b6c4c1d4510225568c93c312dd8d257e3"
+    },
+    {
+      "path": "patches/eliza/managed-google-agent.patch",
+      "sha256": "6c615a5639e930f9402bbcbf99fbd869cf8c760eb5a5d0d2a13cc5d68325d031",
+      "models": [
+        "BrowserCloudRequestCustody",
+        "GmailAgentMailboxRecovery",
+        "NativeGoogleAccessFile",
+        "NativeGoogleHostArtifact",
+        "ServiceAuthorization"
+      ]
+    },
+    {
+      "path": "patches/eliza/managed-google-agent-manifest.json",
+      "sha256": "81eb6b3d1c183a051f457b115a12d074477cca632e4a12a687e789d3c868f05e",
+      "models": [
+        "BrowserCloudRequestCustody",
+        "GmailAgentMailboxRecovery",
+        "NativeGoogleAccessFile",
+        "NativeGoogleHostArtifact",
+        "ServiceAuthorization"
+      ]
     }
   ],
   "runtimeAssets": [

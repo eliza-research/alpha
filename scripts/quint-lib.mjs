@@ -7,7 +7,7 @@ import { CORE_STATE_MANIFEST, coreStateRequiredTargets, verifyCoreStateBuildReco
 
 export const repositoryRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
 export const quintRoot = join(repositoryRoot, 'specs/quint');
-export const sourceRoots = ['apps/app/src', 'apps/app/public', 'backend', 'android'];
+export const sourceRoots = ['apps/app/src', 'apps/app/public', 'android'];
 export const runtimeScriptPaths = ['scripts/browser-cloud-dev-bridge.ts', 'scripts/cloud-resident-host.mjs',
   'scripts/cloud-email-code.ts', 'scripts/dev-cloud.mjs', 'scripts/dev-local.mjs',
   'scripts/start-local-voice-agent.mjs', 'scripts/start-local-remote.mjs',
@@ -19,7 +19,7 @@ export const runtimeScriptPaths = ['scripts/browser-cloud-dev-bridge.ts', 'scrip
   'scripts/build-workflow-worker.ts', 'scripts/prepared-workflow-worker.mjs',
   'scripts/workflow-worker-artifact.mjs', 'scripts/stage-workflow-worker.mjs',
   'scripts/native-google-host-artifact.mjs', 'scripts/build-native-google-host.ts',
-  'scripts/combined-agent-source.mjs', 'scripts/gmail-agent-mailbox-host.ts',
+  'scripts/combined-agent-source.mjs', 'scripts/native-google-product-host.ts',
   'scripts/build-mobile-agent.mjs', 'scripts/mobile-uuid-adapter.mjs', 'scripts/mobile-bundle-smoke.mjs',
   'scripts/stage-local-agent-runtime.mjs', 'scripts/stage-local-agent-sources.mjs',
   'scripts/agent-bundle-dependencies.mjs', 'scripts/runtime-profile.mjs',
