@@ -1,7 +1,8 @@
 # Quint implementation refinement
 
-The current implementation refinement continues in
-[draft PR 843](https://github.com/eliza-research/alphaphone/pull/843) on SDK
+The implementation refinement in
+[merged PR 843](https://github.com/eliza-research/alphaphone/pull/843) and its
+follow-up work use SDK
 `b1817660a0347ae19551b9ee296410fe55f02d59`. The migration and its approved
 product-source prerequisite are in merged PR 825. PRs 835, 838, 839 and 842
 contain earlier source-refinement work. The family manifests bind the reviewed
@@ -1415,3 +1416,26 @@ controls now bind the exact dialog and stage, and late completion leaves
 a successor alone. The replay observes exact album and media mutation
 payloads. Durable storage, multi-item batches and device behavior remain
 separate.
+
+
+`BrowserAlbumStorage` checks four schedules and 24 checkpoints. In actual
+Chromium IndexedDB, another tab could previously advance a photo's
+revision after validation and before the album commit. Photo writes and
+media-bound album edits now share an origin Web Lock. The replay covers
+both orderings, stale album revision refusal, and a rendered three-item
+batch that skips one stale photo. Mixed-version tabs and browser process
+interruption remain separate.
+
+`ShadeRowCustody` checks 10 schedules and 119 checkpoints through the
+actual renderer with a closed notification bridge. Reads belong to a
+shade visit. Open, swipe and Clear All use the displayed row revisions.
+Leaving or locking the view retires queued controls and suppresses late
+completion notices or refresh. Pointer ownership and installed Android
+delivery remain separate.
+
+A scheduler scratch replay also guards the Personal Assistant no-reply
+timeout against the original fired row, and a separate replay guards
+pipeline child linkage against the exact observed child. The candidates
+preserve same-clock recovery, recurring retries and stable child IDs in
+closed store tests. Cross-row event admission, installed delivery and
+reviewed SDK integration remain open.
