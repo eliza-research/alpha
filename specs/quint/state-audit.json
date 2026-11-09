@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "1239478ebf9fe6ad73835c86bc778caa741cddd96becca40690805afc3655252",
+  "ledgerSha256": "8148bc3d15c830d72fd40c26984f09f82fc69d9fc50e36436fe36a5866fdbbe2",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -46138,7 +46138,8 @@
       "sha256": "713a46033f082c27ad4335d08506e9e5d5a1db40ca02303d2fe582bb79b468e5",
       "allocatedModels": [
         "MobileBundleAdmission",
-        "WorkflowWorkerStaging"
+        "WorkflowWorkerStaging",
+        "AndroidGzipAssetStage"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -46363,7 +46364,8 @@
       "sha256": "ce380067aa2aa02823b529552c6c170972935c3d5e70f3aa8c9993cd55825cfa",
       "allocatedModels": [
         "MobileBundleAdmission",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "AndroidGzipAssetStage"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -47652,7 +47654,8 @@
       "path": "scripts/verify-apks.mjs",
       "sha256": "fabcfe3274e189248b191704e95aa798f6ccdfdd62f73db3b67ca5177a06b598",
       "allocatedModels": [
-        "Application"
+        "Application",
+        "AndroidGzipAssetStage"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -147310,7 +147313,8 @@
       "path": "vendor/eliza/plugins/plugin-files/src/documents/local-ocr.ts",
       "sha256": "38b788b1fc106a270f83a25ec8f02f83a8a34248dc98c81d9ac375125c492a61",
       "allocatedModels": [
-        "FilesAndSharing"
+        "FilesAndSharing",
+        "AndroidGzipAssetStage"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -220404,6 +220408,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "6707440360eb209bdbaca500229e7343d82f55cab646be949350c2a33f182ec7"
+    "sha256": "61a46b5b3e5123e56dbbe8406d549cb4e43f94fce4d598862653124324b3a65f"
   }
 }

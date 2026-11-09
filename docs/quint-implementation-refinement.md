@@ -1146,3 +1146,20 @@ ordering and installed lifecycle delivery remain separate.
 The 217-model focused run passed 14 Node tests, TypeScript and the
 selected digest formal checks. All ten mounted Chromium reminder cases
 passed with the closed Agent preference stub.
+
+`AndroidGzipAssetStage` runs the actual asset wrapper and byte audit with one
+selected gzip asset and two content identities. A one-layer merge fixture
+shows why an unprotected input loses its published name. The replay checks
+exact preservation, stale APK bytes, invalid input, idempotent wrapping and
+fresh sync after refused removal. Concurrent staging, partial wrapper writes
+and installed OCR remain separate.
+
+At `265d4145b5`, the normal Android build and independent verifier passed
+both standalone and launcher variants. The four app APKs and both
+instrumentation APKs are archived with checksums. Both releases are unsigned
+and non-distributable. The 219-model focused run passed 35 Node tests,
+TypeScript and the 409-file mock-disabled production bundle audit.
+
+The native Calendar apply admission boundary around Calendar sync pause
+remains open. The scoped deletion ticket and enable replays cover their own
+state and effects.

@@ -2251,6 +2251,47 @@
         "maxSteps": 50,
         "maxVerifyDepth": 12
       }
+    },
+    {
+      "path": "specs/quint/services/AndroidGzipAssetStage.qnt",
+      "module": "AndroidGzipAssetStage",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "unprotectedLosesPublishedNameTest",
+        "wrappedAssetRoundTripsTest",
+        "previousPackageFailsAfterWebSyncTest",
+        "refusedRemovalRequiresFreshSyncTest",
+        "invalidInputIsNotWrappedTest",
+        "absentStageIsUnchangedTest"
+      ],
+      "invariants": [
+        "ProtectedAssetHasSingleStagedRepresentation",
+        "RefusedRemovalRetainsExactInput",
+        "PublishedAssetHasSingleRepresentation",
+        "SuccessfulAuditRequiresExactBytes"
+      ],
+      "sources": [
+        "scripts/android-gzip-assets.mjs",
+        "scripts/build-android.mjs",
+        "scripts/verify-apks.mjs",
+        "vendor/eliza/plugins/plugin-files/src/documents/local-ocr.ts"
+      ],
+      "stateMapping": {
+        "web/raw/wrapper": "Exact selected web bytes and staged single or double gzip layers",
+        "packaged/plain": "Retained gzip bytes or the unwrapped name from the simulated merger",
+        "protection/audit": "Actual wrapping and package comparison outcomes"
+      },
+      "abstractions": [
+        "One selected gzip asset and two content identities, with missing and invalid input. The simulated asset merger unwraps one layer.",
+        "Source removal can fail after wrapper publication. Concurrent staging, wrapper write interruption, real Gradle and installed OCR are separate."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 7
+      }
     }
   ]
 }

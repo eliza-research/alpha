@@ -48372,7 +48372,8 @@
       "path": "scripts/android-gzip-assets.mjs",
       "models": [
         "MobileBundleAdmission",
-        "WorkflowWorkerStaging"
+        "WorkflowWorkerStaging",
+        "AndroidGzipAssetStage"
       ],
       "scope": "build-and-runtime",
       "treatment": "configuration-and-publication-audit",
@@ -49134,7 +49135,8 @@
       "path": "scripts/build-android.mjs",
       "models": [
         "MobileBundleAdmission",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "AndroidGzipAssetStage"
       ],
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
@@ -50111,7 +50113,8 @@
     {
       "path": "scripts/verify-apks.mjs",
       "models": [
-        "Application"
+        "Application",
+        "AndroidGzipAssetStage"
       ],
       "scope": "development-runtime",
       "treatment": "domain-contract-or-support",
@@ -428233,7 +428236,8 @@
     {
       "path": "vendor/eliza/plugins/plugin-files/src/documents/local-ocr.ts",
       "models": [
-        "FilesAndSharing"
+        "FilesAndSharing",
+        "AndroidGzipAssetStage"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
