@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "baseCommit": "b1817660a0347ae19551b9ee296410fe55f02d59",
-  "sourceCommit": "cbe7e4676314bdf86cdee99cafefc8d7cac044d3",
+  "sourceCommit": "9c215f67b04d5020b070aebd3191d8b3615e4163",
   "patches": [
     {
       "file": "managed-google-agent.patch",
-      "sha256": "6c615a5639e930f9402bbcbf99fbd869cf8c760eb5a5d0d2a13cc5d68325d031",
+      "sha256": "bee1b73951fd91467ea999c59aea9953cc43d8ec5c8c84e18031e081fa14b824",
       "targets": [
         {
           "path": "packages/app/src/runtime/managed-google-agent/calendar-read-timing.ts",
@@ -30,7 +30,7 @@
         {
           "path": "packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts",
           "beforeSha256": null,
-          "afterSha256": "fa7dfd610635e965b66f024235be7f53da88e744e4624183948ed4c35db89748"
+          "afterSha256": "4002afcaefdc347b2de013cb49523dc77545dd1cb896183d8d704678336ddc01"
         },
         {
           "path": "packages/app/src/runtime/managed-google-agent/managed-google-client.ts",

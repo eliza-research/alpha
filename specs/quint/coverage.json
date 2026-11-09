@@ -618247,7 +618247,7 @@
     },
     {
       "path": "patches/eliza/managed-google-agent.patch",
-      "sha256": "6c615a5639e930f9402bbcbf99fbd869cf8c760eb5a5d0d2a13cc5d68325d031",
+      "sha256": "bee1b73951fd91467ea999c59aea9953cc43d8ec5c8c84e18031e081fa14b824",
       "models": [
         "BrowserCloudRequestCustody",
         "GmailAgentMailboxRecovery",
@@ -618258,7 +618258,7 @@
     },
     {
       "path": "patches/eliza/managed-google-agent-manifest.json",
-      "sha256": "81eb6b3d1c183a051f457b115a12d074477cca632e4a12a687e789d3c868f05e",
+      "sha256": "e46cfbe0831cd613aa0e60d22b64d3e19de2b6a40ec5739b787851d87f02ee80",
       "models": [
         "BrowserCloudRequestCustody",
         "GmailAgentMailboxRecovery",

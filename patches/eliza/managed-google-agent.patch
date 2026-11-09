@@ -717,7 +717,7 @@ index 0000000000..1b6b094d4c
 +}
 diff --git a/packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts b/packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts
 new file mode 100644
-index 0000000000..426ed15efb
+index 0000000000..7156be75fb
 --- /dev/null
 +++ b/packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts
 @@ -0,0 +1,834 @@
@@ -765,11 +765,11 @@ index 0000000000..426ed15efb
 +  | "result-too-large"
 +  | "outcome-unconfirmed";
 +export class GoogleAgentRefusal extends Error {
-+  constructor(
-+    readonly reason: GoogleAgentRefusalReason,
-+    message: string,
-+  ) {
++  readonly reason: GoogleAgentRefusalReason;
++
++  constructor(reason: GoogleAgentRefusalReason, message: string) {
 +    super(message);
++    this.reason = reason;
 +  }
 +}
 +/** The agent transport reads at most this much of one result. */
