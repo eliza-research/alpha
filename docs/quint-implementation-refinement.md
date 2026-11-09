@@ -1079,3 +1079,18 @@ The source ledger also enumerates the Vite and Capacitor inputs, Android
 host and asset staging, AOSP staging, Cloud deployment generation, the
 production bundle audit, test-mock selection and packaged license emission.
 These are provisional allocations for build and publication state.
+
+`GmailAgentMailboxRecovery` checks 45 schedules and 299 checkpoints through
+the actual mailbox host, Cloud protocol and shared mailbox client. Exact
+scope, turn, message revision, review digest, grant and expected label
+outcomes are observed through in-memory ports. Lost dispatch replies cause
+at most one readback in the invocation. A non-prepared prior receipt does
+not dispatch again. The prior prepared case can go through review again.
+Provider durability and concurrent invocations remain separate.
+
+The exact 211-model strict run produced passing Notes and ShellNavigation
+receipts before a Node segmentation fault ended its reporting process.
+Individual artifacts were retained. The crash record establishes a tool
+failure and leaves the faulting operation unresolved. The exact 213-model
+focused suite passed 29 Node tests, TypeScript, selected formal checks and
+the 409-file mock-disabled production bundle audit.

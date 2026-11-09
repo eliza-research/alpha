@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "c20d67bb32fb800c9f0acd8482b585bbe1c7234c404acb01d22ca47c6ef82736",
+  "ledgerSha256": "467d098f4680be5652b945976a85bff26c344fad10adb27c9d9868df37973662",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -41781,7 +41781,8 @@
         "GoogleConnect",
         "InboxProviderDrafts",
         "ControllerComposition",
-        "NativeGoogleHostArtifact"
+        "NativeGoogleHostArtifact",
+        "GmailAgentMailboxRecovery"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -46899,7 +46900,8 @@
       "path": "scripts/gmail-agent-mailbox-host.ts",
       "sha256": "a976b952421e93fa83bd06cb6e6115702618caf910c018472adad626c74e40ce",
       "allocatedModels": [
-        "NativeGoogleHostArtifact"
+        "NativeGoogleHostArtifact",
+        "GmailAgentMailboxRecovery"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -152221,7 +152223,8 @@
         "InboxCoordinator",
         "InboxDelivery",
         "InboxProviderDrafts",
-        "NativeGoogleHostArtifact"
+        "NativeGoogleHostArtifact",
+        "GmailAgentMailboxRecovery"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -220358,6 +220361,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "d913688f49acd2303032aa0e0d55c135d25353efcef9f4a4c76b5d5238a29626"
+    "sha256": "3bb51366360caee8607b037cd19becd12f6e51950e6c76e9bead67f31ce82758"
   }
 }

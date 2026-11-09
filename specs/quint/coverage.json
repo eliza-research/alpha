@@ -39049,7 +39049,8 @@
         "GoogleConnect",
         "InboxProviderDrafts",
         "ControllerComposition",
-        "NativeGoogleHostArtifact"
+        "NativeGoogleHostArtifact",
+        "GmailAgentMailboxRecovery"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -49655,7 +49656,8 @@
     {
       "path": "scripts/gmail-agent-mailbox-host.ts",
       "models": [
-        "NativeGoogleHostArtifact"
+        "NativeGoogleHostArtifact",
+        "GmailAgentMailboxRecovery"
       ],
       "scope": "development-runtime",
       "treatment": "domain-contract-or-support",
@@ -448135,7 +448137,8 @@
         "InboxCoordinator",
         "InboxDelivery",
         "InboxProviderDrafts",
-        "NativeGoogleHostArtifact"
+        "NativeGoogleHostArtifact",
+        "GmailAgentMailboxRecovery"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
