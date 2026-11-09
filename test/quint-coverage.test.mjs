@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -77,6 +77,29 @@ test('every authored application source and every Quint module has a current cov
     assert.match(source, /\baction\s+step\b/);
     assert.ok(model.tests.length >= 2, `${model.module} must exercise multiple scenarios`);
   }
+});
+
+test('every tracked TLA module and TLC configuration has an authenticated Quint translation', () => {
+  const git = (directory, args) => execFileSync('git', ['-C', directory, ...args], {maxBuffer: 16 * 1024 * 1024});
+  const formalPaths = bytes => bytes.toString('utf8').split('\0').filter(path => /\.(tla|cfg)$/i.test(path)).sort();
+  const registered = new Set(loadModels().map(model => model.module));
+  const view = readJson(join(repositoryRoot, 'specs/quint/legacy/view-refresh-configurations.json'));
+  const product = view.models.flatMap(model => {
+    assert.ok(registered.has(model.module), model.module);
+    return [model.legacySource, ...model.configurations.map(config => config.legacyConfiguration)];
+  });
+  assert.deepEqual(formalPaths(git(repositoryRoot, ['ls-files', '-z'])), product.map(row => row.path).sort());
+  for (const row of product) assert.equal(sha256(readFileSync(join(repositoryRoot, row.path))), row.sha256, row.path);
+
+  const upstream = readJson(join(repositoryRoot, 'specs/quint/legacy/core/source-inventory.json'));
+  const sourcePin = readJson(join(repositoryRoot, 'upstream.lock.json')).commit;
+  const vendor = join(repositoryRoot, 'vendor/eliza');
+  const shared = upstream.models.flatMap(model => {
+    assert.ok(registered.has(model.quintModule), model.quintModule);
+    return [{path: model.source, sha256: model.sha256}, ...model.configs];
+  });
+  assert.deepEqual(formalPaths(git(vendor, ['ls-tree', '-r', '--name-only', '-z', sourcePin])), shared.map(row => row.path).sort());
+  for (const row of shared) assert.equal(sha256(git(vendor, ['cat-file', 'blob', `${sourcePin}:${row.path}`])), row.sha256, row.path);
 });
 
 test('coverage admission detects changed, removed and unassigned source records', () => {
