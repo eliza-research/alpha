@@ -8,6 +8,7 @@ final class AlphaLocalAgentPlugin {
  static final CredentialShutdownLease lease = new CredentialShutdownLease();
  static volatile boolean confirmed = true;
  static volatile int stops, releases;
+ static volatile java.util.concurrent.CountDownLatch pauseRequested = new java.util.concurrent.CountDownLatch(0);
  static volatile Runnable acquiring = () -> {};
  static volatile Runnable confirming = () -> {};
 
@@ -15,6 +16,7 @@ final class AlphaLocalAgentPlugin {
   acquiring.run();
   long request = lease.acquire();
   stops++;
+  pauseRequested.countDown();
   return request;
  }
 

@@ -19,6 +19,7 @@ const virtual = {
     getCloudClient:()=>globalThis.googleLinkPorts.getCloudClient(), rejectCloudSession(){}, openCloudAccount(){throw Error('Unexpected fixture sign-in')}
   };`,
   './google-accounts': `export const GOOGLE_ACCOUNTS_CHANGED='alpha:fixture-google-accounts';
+    export function notifyGoogleAccountsChanged(){window.dispatchEvent(new Event(GOOGLE_ACCOUNTS_CHANGED));}
     export function createGoogleAccounts(...args){return globalThis.googleLinkPorts.createAccounts(...args)}
     export function linkGoogleCalendar(...args){return globalThis.googleLinkPorts.link(...args)}
     export function googleCalendarDisconnectLifecycle(){throw Error('Unexpected fixture disconnect')}

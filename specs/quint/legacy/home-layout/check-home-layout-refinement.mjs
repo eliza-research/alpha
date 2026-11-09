@@ -127,7 +127,7 @@ async function snapshot(page) {
         : /No automations yet/.test(text('workflows')) ? 'none' : undefined,
       mail: text('inbox').includes(expected.mail) ? 'unread'
         : /Connect email/.test(text('inbox')) ? 'unconnected' : /No unread email/.test(text('inbox')) ? 'none' : undefined,
-      brief: /No brief yet/.test(text('brief')) ? false : text('brief').includes(expected.brief) ? true : undefined,
+      brief: !get('brief') || /No brief yet/.test(text('brief')) ? false : text('brief').includes(expected.brief) ? true : undefined,
       insets: document.documentElement.style.getPropertyValue('--native-top-inset') ? 'native' : 'pending',
       dock: focused && viewport < 800 ? 'keyboard' : document.querySelector('[data-alpha-input-bar]')?.getBoundingClientRect().height ? 'bar' : undefined,
       gridTop: Math.round(grid.top-top+element.scrollTop),
@@ -206,7 +206,7 @@ async function collect(page) {
   }
   await expect(card(page, 'workflows')).toContainText('Open to view');
   await expect(card(page, 'inbox')).toContainText('Connect email');
-  await expect(card(page, 'brief')).toContainText('No brief yet');
+  await expect(card(page, 'brief')).toHaveCount(0);
   const pending = await point('Mounted Home has honest shells before the workflow and inset readbacks');
   assert.equal(pending.insets, 'pending');
   await page.evaluate(() => window.homeFixture.releaseInsets());
@@ -221,12 +221,12 @@ async function collect(page) {
   await expect(card(page, 'workflows')).toContainText('No automations yet');
   await installHomeCalendar(page);
   await expect(card(page, 'calendar')).toContainText(/Nothing planned|No upcoming events/);
-  const empty = await point('Authoritative empty Calendar and Workflows plus disconnected Inbox retain four shells');
+  const empty = await point('Empty Calendar and Workflows plus disconnected Inbox remain visible without an empty brief');
   assert.equal(empty.cal, 'none');
   assert.equal(empty.flows, 'none');
   assert.equal(empty.mail, 'unconnected');
   assert.equal(empty.brief, false);
-  assert.deepEqual(empty.shown, ['calendar', 'workflows', 'inbox', 'brief']);
+  assert.deepEqual(empty.shown, ['calendar', 'workflows', 'inbox']);
   const emptyIndex = events.length-1;
 
   await tile(page, 'Settings').click();
@@ -312,15 +312,13 @@ async function collect(page) {
     ['HomeLayoutCurrentReplay', replay('mounted_launcher_content_and_measured_inset_arrival', 'current', events,
       (observation, index) => ({
         ...(index <= 1 ? {GridStable: observation.gridTop === pending.gridTop} : {}),
-        ...(index === fullIndex ? {Shown: qset(observation.shown)} : {}),
+        Shown: qset(observation.shown),
       }))],
     ['HomeLayout', replay('mounted_launcher_source_and_dock_projection', 'proposed', events,
       (observation, index) => index === fullIndex ? {Shown: qset(observation.shown)} : {})],
   ];
   const emptyEvents = events.slice(0, emptyIndex+1);
   const differences = [
-    ['HomeLayoutCurrentEmptyBrief', 'HomeLayoutCurrentReplay', 'historical_current_omits_empty_brief_shell',
-      observation => ({Shown: qset(observation.shown)})],
     ['HomeLayoutProposedEmptyShells', 'HomeLayout', 'historical_proposed_hides_empty_card_shells',
       observation => ({Shown: qset(observation.shown)})],
     ['HomeLayoutProposedDateLine', 'HomeLayout', 'historical_proposed_shows_date_when_no_content',
@@ -403,7 +401,7 @@ export async function checkHomeLayoutRefinement(extraSources = []) {
     'Actual flag-off Home and Settings run in Chromium with synthetic native role, inset, canonical Calendar, resident workflow, managed mail and retained-digest ports. Network traffic outside loopback is fenced.',
     'Content states are derived from mounted card copy, visibility, event identity and retained-result presentation. Unknown transient copy is left unobserved. Actual Home grid movement is compared as a boolean at inset readback, without identifying CSS pixels with the historical constants.',
     'The reduced focused viewport represents the keyboard. HOME offer, decline, readback grant and standalone absence are checked at visible Settings controls. Role status itself is outside the historical Home model.',
-    'The historical current replay compares core card shell membership and separately records its missing empty brief shell. The proposed replay compares all card membership only when all four have content. Proposed empty-screen differences have their own receipts.',
+    'The historical current replay compares all card membership, including the owner-requested absence of an empty brief. The proposed replay compares all card membership only when all four have content. Other proposed empty-screen differences have their own receipts.',
   ]};
   const modelOptions = model => ({model, ...(model === 'HomeLayout' ? {} : {modelPath: comparison})});
   const receipts = [];
