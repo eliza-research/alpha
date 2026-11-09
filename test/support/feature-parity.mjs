@@ -575,6 +575,7 @@ export const featureParityAllowlist = {
     "apps/app/src/runtime/workflow-presentation.ts",
     "apps/app/src/runtime/workflow-protocol.ts",
     "apps/app/src/runtime/workflow-reminder-read.ts",
+    "apps/app/src/runtime/workflow-request-recovery.ts",
     "apps/app/src/startup-browser-permissions.ts",
     "apps/app/src/startup-permission-flow.ts",
     "apps/app/src/startup-permission-progress.ts",

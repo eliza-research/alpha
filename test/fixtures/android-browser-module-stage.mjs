@@ -64,6 +64,8 @@ export function loadAndroidBrowserModuleFixture() {
 }
 
 function fixture({directory, descriptor, patch, browser, browserFiles, wrapperInputs, patchBytes, expected, manifests}) {
+  // The host generator records canonical paths, including macOS's /var -> /private/var alias.
+  directory = fs.realpathSync(directory);
   const upstream = join(directory, sdk), output = join(directory, 'android');
   const patchRoot = join(directory, patchPath), manifestPath = join(directory, nativeManifest);
   const profilePath = join(output, '.eliza-consumer-profile.json');
