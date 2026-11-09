@@ -2820,6 +2820,35 @@
         "maxSteps": 80,
         "maxVerifyDepth": 4
       }
+    },
+    {
+      "path": "specs/quint/native/KeyboardDictation.qnt",
+      "module": "KeyboardDictation",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/KeyboardDictationPolicy.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/KeyboardDictationCloud.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaKeyboardDictationService.java",
+        "android/app/src/launcher/res/xml/alpha_keyboard_dictation.xml",
+        "android/app/src/launcher/res/values/alpha_keyboard_dictation.xml"
+      ],
+      "tests": [
+        "currentStopInsertsOnceTest",
+        "cancelledResultNeverInsertsTest",
+        "replacedCaptureRejectsOldResultTest",
+        "fieldOrAccountChangedTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "AtMostOneInsertPerCapture"
+      ],
+      "abstractions": [
+        "One current editor and account; eligibility and same-editor/account checks are input facts. Exact Android InputConnection behavior and physical Cartesia output remain device gates.",
+        "Six bounded generation advances; every emitted Quint transition is compared with the actual Java gate in test/keyboard-dictation.test.mjs. The recording-id fence and sensitive field admission have separate host Java scenarios.",
+        "Network transport, Android media capture and framework voice IME selection are not established by this gate model."
+      ]
     }
   ]
 }

@@ -22,8 +22,23 @@ import com.getcapacitor.WebViewListener;
 public class MainActivity extends BridgeActivity {
  private volatile int bottomInsetDp = 0;
  private volatile int topInsetDp = 0;
+ private boolean keyboardReturnPending;
  public int getTopInsetDp() { return topInsetDp; }
  public int getBottomInsetDp() { return bottomInsetDp; }
+ static void refreshKeyboardInsets() {
+  MainActivity activity = liveInstance.get();
+  if (activity != null && !activity.isDestroyed())
+   ViewCompat.requestApplyInsets(activity.getWindow().getDecorView());
+ }
+ static void beginKeyboardReturn() {
+  MainActivity activity = liveInstance.get();
+  if (activity != null && !activity.isDestroyed()) activity.keyboardReturnPending = true;
+ }
+ private boolean voiceKeyboardSelected() {
+  String selected = android.provider.Settings.Secure.getString(getContentResolver(), android.provider.Settings.Secure.DEFAULT_INPUT_METHOD);
+  android.content.ComponentName component = selected == null ? null : android.content.ComponentName.unflattenFromString(selected);
+  return new android.content.ComponentName(this, AlphaKeyboardDictationService.class).equals(component);
+ }
  protected boolean isAssistantSurface() { return false; }
  // Renderer recovery is process-wide so a crash loop backs off instead of spinning (RendererRecoveryBudget).
  private static final RendererRecoveryBudget recoveryBudget = new RendererRecoveryBudget();
@@ -349,8 +364,15 @@ public class MainActivity extends BridgeActivity {
   getWindow().setNavigationBarColor(android.graphics.Color.TRANSPARENT);
   if (android.os.Build.VERSION.SDK_INT >= 29) getWindow().setNavigationBarContrastEnforced(false);
   ViewCompat.setOnApplyWindowInsetsListener(getWindow().getDecorView(), (view, insets) -> {
-   int bottom = insets.isVisible(WindowInsetsCompat.Type.ime())
+   boolean imeVisible = insets.isVisible(WindowInsetsCompat.Type.ime());
+   int bottom = imeVisible
      ? insets.getInsets(WindowInsetsCompat.Type.ime()).bottom : 0;
+   // IME dismissal does not blur a WebView text field. Publish actual visibility instead of
+   // requiring the renderer to infer it from a size change (floating IMEs need not resize).
+   if (imeVisible) keyboardReturnPending = false;
+   boolean handoff = !imeVisible && (voiceKeyboardSelected() || keyboardReturnPending);
+   getBridge().getWebView().evaluateJavascript("(() => { const root = document.documentElement; if (!root) return; const visible = " + imeVisible
+     + ", handoff = " + handoff + "; if (root.dataset.alphaKeyboardVisible === String(visible) && root.dataset.alphaKeyboardHandoff === String(handoff)) return; root.dataset.alphaKeyboardVisible = String(visible); root.dataset.alphaKeyboardHandoff = String(handoff); window.dispatchEvent(new CustomEvent('alpha-keyboard-visibility', { detail: { visible, handoff } })); })()", null);
    boolean fitContent = !BuildConfig.IS_LAUNCHER || isAssistantSurface();
    Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
    Insets safe = insets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
@@ -400,6 +422,10 @@ public class MainActivity extends BridgeActivity {
  @Override public void onStart() {
   super.onStart();
   if (pendingRebuild && !isFinishing() && !isDestroyed()) { pendingRebuild = false; recreate(); }
+ }
+ @Override public void onStop() {
+  keyboardReturnPending = false;
+  super.onStop();
  }
  @Override public void onDestroy() {
   if (liveInstance.get() == this) liveInstance = new java.lang.ref.WeakReference<>(null);
