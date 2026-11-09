@@ -93,7 +93,7 @@ const refusals = {
   'bad-marker': /Wrong profile marker/,
   'bad-routing': /Profile routing differs/,
   'empty-input': /Required private credential is empty/,
-  'core-refused': /Core source catalog pin/schema mismatch/,
+  'core-refused': /Core source catalog pin\/schema mismatch/,
   'metadata-write': /EISDIR/,
   'metadata-stubborn': /EISDIR/,
 };
