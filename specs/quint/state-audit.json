@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "e92da6e1bf3d744dc67162ed4dfcfb44e128fd66b606e8f7446ab831e5a86e62",
+  "ledgerSha256": "6fbdda4f2af9289642a56e83b66199b3f902dcc2cb12da434060c952e4a0d721",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -28,11 +28,11 @@
     "parsedFiles": 5653,
     "languageReview": 70,
     "parseErrors": 0,
-    "candidates": 67289,
-    "writeSites": 66824,
-    "writeAssociations": 59944,
-    "asynchronous": 8344,
-    "unassignedWrites": 10260
+    "candidates": 67299,
+    "writeSites": 66874,
+    "writeAssociations": 59984,
+    "asynchronous": 8362,
+    "unassignedWrites": 10273
   },
   "files": [
     {
@@ -29824,7 +29824,7 @@
     },
     {
       "path": "apps/app/src/browser/clock.ts",
-      "sha256": "818c4a1bbddbb4fd30a43cdd9ab0df599a4bdc1d35990cd86999c705a96f275f",
+      "sha256": "ef1d6dc9c7e72ebdeb64f7141b24f7f7e40ba9d653d61cf00c78dcd90d24c2a7",
       "allocatedModels": [
         "DeviceActions",
         "BrowserReminderOrphan"
@@ -29865,7 +29865,7 @@
         }
       ],
       "parseErrors": [],
-      "asynchronous": 13,
+      "asynchronous": 16,
       "unassignedWrites": 3
     },
     {
@@ -33298,11 +33298,12 @@
     },
     {
       "path": "apps/app/src/prototype/agent-adapter.ts",
-      "sha256": "a0e09e0a7326410e56640539e4a662461078aa82e6155c4bb9bd99b0c1a2f731",
+      "sha256": "489a190c36ad71a6055b980ca904c603079684a1d5304764350ef6170bd73e9a",
       "allocatedModels": [
         "Application",
         "AssistantConversation",
-        "NotesLifecycle"
+        "NotesLifecycle",
+        "ChatAttachments"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -33310,210 +33311,210 @@
       "owners": [
         {
           "owner": "<module>",
-          "line": 88,
+          "line": 91,
           "bindings": 3,
           "writes": 2
         },
         {
           "owner": "firstSendReview",
-          "line": 102,
+          "line": 105,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "settleFirstSendSlot",
-          "line": 126,
+          "line": 129,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "trackDispatch",
-          "line": 176,
+          "line": 199,
           "bindings": 1,
           "writes": 3
         },
         {
           "owner": "installAgentAdapter",
-          "line": 225,
+          "line": 248,
           "bindings": 3,
           "writes": 38
         },
         {
           "owner": "installAgentAdapter.sizeComposer",
-          "line": 250,
+          "line": 273,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "installAgentAdapter.keepNotesDraft",
-          "line": 263,
+          "line": 286,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAgentAdapter.keepNotesDraft.ArrowFunction@265",
-          "line": 266,
+          "owner": "installAgentAdapter.keepNotesDraft.ArrowFunction@288",
+          "line": 289,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installAgentAdapter.resumeNotesDraft",
-          "line": 277,
+          "line": 300,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installAgentAdapter.openNativeNotesRecovery",
-          "line": 320,
+          "line": 343,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@355",
-          "line": 356,
+          "owner": "installAgentAdapter.FunctionExpression@378",
+          "line": 379,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "installAgentAdapter.completeReadReply",
-          "line": 365,
+          "line": 388,
           "bindings": 1,
           "writes": 3
         },
         {
-          "owner": "installAgentAdapter.recoverPendingActions.ArrowFunction@415.ArrowFunction@418",
-          "line": 420,
+          "owner": "installAgentAdapter.recoverPendingActions.ArrowFunction@438.ArrowFunction@441",
+          "line": 443,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "installAgentAdapter.syncCanonicalNotes",
-          "line": 503,
+          "line": 526,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installAgentAdapter.syncPreviousNotesAvailability",
-          "line": 530,
+          "line": 553,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "installAgentAdapter.selectNotesSource",
-          "line": 553,
+          "line": 576,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAgentAdapter.selectNotesSource.ArrowFunction@566",
-          "line": 572,
+          "owner": "installAgentAdapter.selectNotesSource.ArrowFunction@589",
+          "line": 595,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installAgentAdapter.context",
-          "line": 607,
+          "line": 630,
           "bindings": 1,
           "writes": 11
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@652.ArrowFunction@667",
-          "line": 669,
+          "owner": "installAgentAdapter.FunctionExpression@675.ArrowFunction@690",
+          "line": 692,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@652.ArrowFunction@802",
-          "line": 804,
+          "owner": "installAgentAdapter.FunctionExpression@675.ArrowFunction@834",
+          "line": 836,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@652.ArrowFunction@859",
-          "line": 897,
+          "owner": "installAgentAdapter.FunctionExpression@675.ArrowFunction@891",
+          "line": 929,
           "bindings": 15,
           "writes": 16
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1137",
-          "line": 1140,
+          "owner": "installAgentAdapter.FunctionExpression@1169",
+          "line": 1172,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1236",
-          "line": 1237,
+          "owner": "installAgentAdapter.FunctionExpression@1269",
+          "line": 1270,
           "bindings": 1,
-          "writes": 15
+          "writes": 16
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1236.ArrowFunction@1248.ArrowFunction@1248",
-          "line": 1249,
+          "owner": "installAgentAdapter.FunctionExpression@1269.ArrowFunction@1281.ArrowFunction@1281",
+          "line": 1282,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAgentAdapter.recheckCloudFromCard.ArrowFunction@1322",
-          "line": 1323,
+          "owner": "installAgentAdapter.recheckCloudFromCard.ArrowFunction@1359",
+          "line": 1360,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installAgentAdapter.sendFromComposer",
-          "line": 1343,
+          "line": 1380,
           "bindings": 3,
           "writes": 3
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1363",
-          "line": 1364,
+          "owner": "installAgentAdapter.FunctionExpression@1400",
+          "line": 1401,
           "bindings": 3,
-          "writes": 35
+          "writes": 41
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1495",
-          "line": 1499,
+          "owner": "installAgentAdapter.FunctionExpression@1549",
+          "line": 1553,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1510",
-          "line": 1511,
+          "owner": "installAgentAdapter.FunctionExpression@1564",
+          "line": 1565,
           "bindings": 5,
           "writes": 5
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1579",
-          "line": 1580,
+          "owner": "installAgentAdapter.FunctionExpression@1633",
+          "line": 1634,
           "bindings": 13,
           "writes": 16
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1775",
-          "line": 1781,
+          "owner": "installAgentAdapter.FunctionExpression@1840",
+          "line": 1846,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1787",
-          "line": 1805,
+          "owner": "installAgentAdapter.FunctionExpression@1852",
+          "line": 1870,
           "bindings": 2,
           "writes": 4
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1914",
-          "line": 1915,
+          "owner": "installAgentAdapter.FunctionExpression@1979",
+          "line": 1980,
           "bindings": 1,
           "writes": 12
         }
       ],
       "parseErrors": [],
-      "asynchronous": 109,
-      "unassignedWrites": 254
+      "asynchronous": 112,
+      "unassignedWrites": 266
     },
     {
       "path": "apps/app/src/prototype/agent-calendar-adapter.ts",
-      "sha256": "7b6e9e25556a1ed38871cf5133a7ac40c553e3a7dd530a93486c82c2de44c54e",
+      "sha256": "90100540874ae21a8fd109fe9ef30cf06c9d9b6ab280ffe02ece9c38f909a3b6",
       "allocatedModels": [
         "CalendarPresentation",
         "AgentCalendarRefresh",
@@ -33604,7 +33605,7 @@
     },
     {
       "path": "apps/app/src/prototype/automations-adapter.ts",
-      "sha256": "a3270932efe68e9b2da938e60e748afd1c2078ceee4cabd5042224fff97bec48",
+      "sha256": "88db562cc08559eb128aa1790c0c4c46f6571cb148fd0bec410b11e1e3ba5167",
       "allocatedModels": [
         "WorkflowExecution"
       ],
@@ -33620,44 +33621,44 @@
         {
           "owner": "installAutomationsAdapter",
           "line": 41,
-          "bindings": 27,
-          "writes": 125
+          "bindings": 29,
+          "writes": 134
         },
         {
-          "owner": "installAutomationsAdapter.settled.ArrowFunction@64",
-          "line": 65,
+          "owner": "installAutomationsAdapter.settled.ArrowFunction@66",
+          "line": 67,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installAutomationsAdapter.refresh",
-          "line": 80,
+          "line": 82,
           "bindings": 2,
           "writes": 6
         },
         {
           "owner": "installAutomationsAdapter.work",
-          "line": 99,
+          "line": 101,
           "bindings": 4,
           "writes": 3
         },
         {
           "owner": "installAutomationsAdapter.allowAnother",
-          "line": 111,
+          "line": 113,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "installAutomationsAdapter.save",
-          "line": 130,
+          "line": 132,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAutomationsAdapter.ArrowFunction@144",
-          "line": 152,
+          "owner": "installAutomationsAdapter.ArrowFunction@146",
+          "line": 154,
           "bindings": 4,
-          "writes": 13
+          "writes": 14
         }
       ],
       "parseErrors": [],
@@ -33666,7 +33667,7 @@
     },
     {
       "path": "apps/app/src/prototype/automations.css",
-      "sha256": "4eaffea25299c2af04464e5c69ac6e413edf79f33570a09ae2ff711ec8c29f99",
+      "sha256": "db32bf5adbf8fda7ac689b98e6d9f07b6d87a37617a11a8ed7d4116db8ab4a08",
       "allocatedModels": [
         "WorkflowExecution"
       ],
@@ -33680,7 +33681,7 @@
     },
     {
       "path": "apps/app/src/prototype/browser-adapter.ts",
-      "sha256": "ca2057dae81d730131669090ba12100110bb9db949c1eb0ce0d309c1f9a5ff05",
+      "sha256": "2eb9b5e0f59484eeabf97719becb1ab31f4fe613bd57783425bc0725c3e2a1cb",
       "allocatedModels": [
         "BrowserSession"
       ],
@@ -34262,13 +34263,14 @@
     },
     {
       "path": "apps/app/src/prototype/camera-adapter.ts",
-      "sha256": "f4fbdb7c6e372d4823b61287fce50742f6d43b3ff8a984f88c9f578a04d82530",
+      "sha256": "863205a0deafdcae1be1f3a8b562cfaf41fa6ed2aeaaff899193f98e749b617c",
       "allocatedModels": [
         "MediaLifecycle",
         "PhotosWindow",
         "PhotosTrash",
         "CanonicalCalendarDraftHandoff",
-        "CameraPreviewRetirement"
+        "CameraPreviewRetirement",
+        "ChatAttachments"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -34290,7 +34292,7 @@
           "owner": "installPrototypeCameraAdapter",
           "line": 179,
           "bindings": 102,
-          "writes": 417
+          "writes": 418
         },
         {
           "owner": "installPrototypeCameraAdapter.FunctionExpression@184",
@@ -34390,62 +34392,56 @@
         },
         {
           "owner": "installPrototypeCameraAdapter.takeRequestedPhoto",
-          "line": 966,
+          "line": 973,
           "bindings": 2,
           "writes": 4
         },
         {
-          "owner": "installPrototypeCameraAdapter.askCapture.compose.ArrowFunction@1102",
-          "line": 1105,
+          "owner": "installPrototypeCameraAdapter.ArrowFunction@1127",
+          "line": 1129,
           "bindings": 1,
-          "writes": 1
-        },
-        {
-          "owner": "installPrototypeCameraAdapter.ArrowFunction@1126",
-          "line": 1128,
-          "bindings": 1,
-          "writes": 31
+          "writes": 30
         },
         {
           "owner": "installPrototypeCameraAdapter.attachGrid",
-          "line": 1194,
+          "line": 1196,
           "bindings": 2,
           "writes": 3
         },
         {
           "owner": "installPrototypeCameraAdapter.settleThumbnails",
-          "line": 1213,
+          "line": 1215,
           "bindings": 6,
           "writes": 1
         },
         {
           "owner": "installPrototypeCameraAdapter.loadCoverThumbnails",
-          "line": 1240,
+          "line": 1242,
           "bindings": 3,
           "writes": 1
         },
         {
           "owner": "installPrototypeCameraAdapter.run",
-          "line": 1269,
+          "line": 1271,
           "bindings": 2,
           "writes": 5
         },
         {
-          "owner": "installPrototypeCameraAdapter.ArrowFunction@1332",
-          "line": 1340,
+          "owner": "installPrototypeCameraAdapter.ArrowFunction@1334",
+          "line": 1342,
           "bindings": 5,
-          "writes": 104
+          "writes": 109
         },
         {
-          "owner": "installPrototypeCameraAdapter.ArrowFunction@1550",
-          "line": 1552,
+          "owner": "installPrototypeCameraAdapter.ArrowFunction@1564",
+          "line": 1566,
           "bindings": 1,
           "writes": 1
         }
       ],
       "parseErrors": [],
-      "asynchronous": 94,
-      "unassignedWrites": 115
+      "asynchronous": 96,
+      "unassignedWrites": 116
     },
     {
       "path": "apps/app/src/prototype/canonical-calendar-drafts.ts",
@@ -34694,7 +34690,7 @@
     },
     {
       "path": "apps/app/src/prototype/clock-adapter.ts",
-      "sha256": "9c977981b37ba1688e39ade8997d5b1f85c4e91e0ac4af9f6f26a34c03ad0f62",
+      "sha256": "77b9c7c49f1ff59abfdcc24ec8e5a0c86d7c8404463b122dd859ae8de551e260",
       "allocatedModels": [
         "DeviceActions"
       ],
@@ -35089,7 +35085,7 @@
     },
     {
       "path": "apps/app/src/prototype/home-overview-cards.ts",
-      "sha256": "a6a98d827d80ceab8a025d3b96cbccb27a2e058b38fe71ecb0eb155358b1ca99",
+      "sha256": "f3cc88163789a0f1bb6eed3132075f480ba88ede8b541c18a9142cff100aff5d",
       "allocatedModels": [
         "PreferencesAndPresentation"
       ],
@@ -35105,7 +35101,7 @@
         },
         {
           "owner": "installHomeOverviewCards",
-          "line": 92,
+          "line": 93,
           "bindings": 1,
           "writes": 1
         }
@@ -35724,7 +35720,7 @@
     },
     {
       "path": "apps/app/src/prototype/model.js",
-      "sha256": "cd16c0361d79a1c834747bbf882047898a90dfa3f1eccceeed959db8c89124b5",
+      "sha256": "eadab21fe6bfe9fbbed044bcb6f4ff8c0d3a03f508184c8efe2d637ef9f4f254",
       "allocatedModels": [
         "Application",
         "CalendarPresentation",
@@ -39292,7 +39288,7 @@
     },
     {
       "path": "apps/app/src/prototype/phone.css",
-      "sha256": "e2f628a02b219ac7957e6f059597b5bf7bb168381af635d5ed312871478bb5c0",
+      "sha256": "85cc07c20f3fd3a8f3fd5154752a099ff8c8639ba66da868dbc9657c78dc6038",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -40109,7 +40105,7 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "6ee0fabc343d4743dcdc15443d692827ae0351131f8397ca2b95f4e02780331b",
+      "sha256": "f16ad7f8c3c0c2541f7eeb9942d9bcac3f96d5acc61270ccff8b1c09521d63a4",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -40235,7 +40231,7 @@
     },
     {
       "path": "apps/app/src/prototype/voice-adapter.ts",
-      "sha256": "97901e111fea4895ed87c7b2e7f6e68990ff41d5a0a970de927248f4d3242032",
+      "sha256": "29f31ef7389546e336c6b808fb1f32c8c7e59e8aa8abc35e7916c3cc5549ffc8",
       "allocatedModels": [
         "VoiceSession",
         "ControllerComposition",
@@ -40393,7 +40389,7 @@
           "owner": "installPrototypeVoiceAdapter.FunctionExpression@1341",
           "line": 1342,
           "bindings": 3,
-          "writes": 40
+          "writes": 41
         }
       ],
       "parseErrors": [],
@@ -40402,7 +40398,7 @@
     },
     {
       "path": "apps/app/src/prototype/workflow-adapter.ts",
-      "sha256": "c8e2796a00889458f404852a766bfd90bafd8afe628253390bb3e8764fc3d0e3",
+      "sha256": "2ef2b5ab283825eee06f440cea6683692900deb5aba9d16d7f36280ab6d02337",
       "allocatedModels": [
         "WorkflowExecution",
         "NoticesAndCaches"
@@ -40419,8 +40415,8 @@
         {
           "owner": "installWorkflowAdapter",
           "line": 66,
-          "bindings": 44,
-          "writes": 234
+          "bindings": 43,
+          "writes": 230
         },
         {
           "owner": "installWorkflowAdapter.work",
@@ -40435,62 +40431,62 @@
           "writes": 1
         },
         {
-          "owner": "installWorkflowAdapter.refresh.ArrowFunction@184",
-          "line": 184,
+          "owner": "installWorkflowAdapter.refresh.ArrowFunction@177",
+          "line": 177,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installWorkflowAdapter.open.ArrowFunction@207",
-          "line": 210,
+          "owner": "installWorkflowAdapter.open.ArrowFunction@200",
+          "line": 203,
           "bindings": 3,
           "writes": 4
         },
         {
           "owner": "installWorkflowAdapter.restore",
-          "line": 277,
+          "line": 270,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "installWorkflowAdapter.submitRun.ArrowFunction@323",
-          "line": 324,
+          "owner": "installWorkflowAdapter.submitRun.ArrowFunction@316",
+          "line": 317,
           "bindings": 2,
           "writes": 2
         },
         {
-          "owner": "installWorkflowAdapter.resubmitRun.ArrowFunction@334",
-          "line": 337,
+          "owner": "installWorkflowAdapter.resubmitRun.ArrowFunction@327",
+          "line": 330,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installWorkflowAdapter.read.ArrowFunction@360",
-          "line": 361,
+          "owner": "installWorkflowAdapter.read.ArrowFunction@353",
+          "line": 354,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installWorkflowAdapter.saveMetadata.ArrowFunction@384",
-          "line": 385,
+          "owner": "installWorkflowAdapter.saveMetadata.ArrowFunction@377",
+          "line": 378,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installWorkflowAdapter.lifecycle.ArrowFunction@394",
-          "line": 394,
+          "owner": "installWorkflowAdapter.lifecycle.ArrowFunction@387",
+          "line": 387,
           "bindings": 2,
           "writes": 2
         },
         {
-          "owner": "installWorkflowAdapter.ArrowFunction@396",
-          "line": 399,
+          "owner": "installWorkflowAdapter.ArrowFunction@389",
+          "line": 392,
           "bindings": 1,
-          "writes": 6
+          "writes": 5
         },
         {
-          "owner": "installWorkflowAdapter.FunctionExpression@417",
-          "line": 419,
+          "owner": "installWorkflowAdapter.FunctionExpression@409",
+          "line": 411,
           "bindings": 1,
           "writes": 1
         }
@@ -40844,41 +40840,42 @@
     },
     {
       "path": "apps/app/src/runtime/alpha-client.ts",
-      "sha256": "0a13728c4df274cf8a31781cfbf6a17a10d38bf5cbae67c3cbe059d33cc70372",
+      "sha256": "4f1b14427cf3e40fe9b1935f5733ea4ef1f54f2ff3cf7ed35ca5b2d0ef46d0ef",
       "allocatedModels": [
         "Application",
-        "AssistantConversation"
+        "AssistantConversation",
+        "ChatAttachments"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
         {
           "owner": "AlphaClientError",
-          "line": 152,
+          "line": 153,
           "bindings": 2,
           "writes": 1
         },
         {
           "owner": "AlphaClient",
-          "line": 192,
+          "line": 193,
           "bindings": 8,
           "writes": 25
         },
         {
           "owner": "AlphaClient.attachVerifiedTransport",
-          "line": 220,
+          "line": 221,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "AlphaClient.run",
-          "line": 299,
+          "line": 300,
           "bindings": 3,
           "writes": 2
         },
         {
-          "owner": "AlphaClient.send.ArrowFunction@376",
-          "line": 377,
+          "owner": "AlphaClient.send.ArrowFunction@377",
+          "line": 378,
           "bindings": 3,
           "writes": 3
         }
@@ -41062,7 +41059,7 @@
     },
     {
       "path": "apps/app/src/runtime/automations-protocol.ts",
-      "sha256": "415242b0557f695f5aafd6210bddb5c6e5e221ed723b1709961e432512d847f4",
+      "sha256": "b1b1e229c87702bfa1c60e8fe82f2e4697da670e569d5b2edd217748452e13bc",
       "allocatedModels": [
         "WorkflowExecution"
       ],
@@ -41113,7 +41110,7 @@
         },
         {
           "owner": "AutomationsProtocol.editReminder",
-          "line": 143,
+          "line": 150,
           "bindings": 1,
           "writes": 1
         }
@@ -41947,7 +41944,7 @@
     },
     {
       "path": "apps/app/src/runtime/connection-ui.tsx",
-      "sha256": "7ddc6888f1d0244d80025b5714396e2816683d0d7c233fd9f3cebcbd605cd9fd",
+      "sha256": "3e9a951a1a43dc2cd5e078c285d66b833afa8150c4f697c2f1dd584ae9167f3a",
       "allocatedModels": [
         "Application",
         "ApplicationComposition",
@@ -41956,7 +41953,8 @@
         "ControllerComposition",
         "ResidentLiveness",
         "CanonicalNotificationTapAdmission",
-        "CloudConnectionNotices"
+        "CloudConnectionNotices",
+        "ChatAttachments"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -42504,7 +42502,7 @@
     },
     {
       "path": "apps/app/src/runtime/development-cartesia-conversation.ts",
-      "sha256": "bea5bccfb9a382198abc7b5d4237955b849258addaeb539b8f9299428f9fa8a3",
+      "sha256": "e0567afa559337d619a218058c82dc7bd4e6d082f6488141d7fd9cbc757f031f",
       "allocatedModels": [
         "DevelopmentSurfaces"
       ],
@@ -42549,9 +42547,10 @@
     },
     {
       "path": "apps/app/src/runtime/development-cloud-agents.ts",
-      "sha256": "f802cd31875e138da131015b4af1af03ff11b7b3494f94ad09e53cc478f4cf39",
+      "sha256": "b87d10c539708c9993a78b7096cd9517ffee6aac4d5e772693ccca6d9b43df7b",
       "allocatedModels": [
-        "DevelopmentSurfaces"
+        "DevelopmentSurfaces",
+        "ChatAttachments"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -43065,13 +43064,14 @@
     },
     {
       "path": "apps/app/src/runtime/google-connection-ui.tsx",
-      "sha256": "f89743ecf42447a7fac50692d2c5368e5de6cfd737c0a47d6102b1ae04b78e4f",
+      "sha256": "9e9bf2d5586a8f06145680033648db4279eb2fcd6f821a23ecfe17d9ee96f361",
       "allocatedModels": [
         "GoogleAccounts",
         "GoogleConnect",
         "GoogleConsentAdmission",
         "GoogleCalendarLinkPublication",
-        "GoogleCalendarAccessChoice"
+        "GoogleCalendarAccessChoice",
+        "BrowserGoogleReturn"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -43086,8 +43086,8 @@
         {
           "owner": "GoogleConnectionsPanel",
           "line": 51,
-          "bindings": 26,
-          "writes": 26
+          "bindings": 28,
+          "writes": 34
         },
         {
           "owner": "GoogleConnectionsPanel.ArrowFunction@52",
@@ -43096,26 +43096,32 @@
           "writes": 1
         },
         {
-          "owner": "GoogleConnectionsPanel.ArrowFunction@72.ArrowFunction@72",
-          "line": 73,
+          "owner": "GoogleConnectionsPanel.ArrowFunction@73.ArrowFunction@73",
+          "line": 74,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "GoogleConnectionsPanel.load",
-          "line": 95,
+          "line": 96,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "GoogleConnectionsPanel.ArrowFunction@145",
+          "line": 147,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "GoogleConnectionsPanel.connect",
-          "line": 162,
+          "line": 174,
           "bindings": 3,
           "writes": 5
         },
         {
           "owner": "GoogleConnectionsPanel.disconnect",
-          "line": 195,
+          "line": 208,
           "bindings": 2,
           "writes": 1
         }
@@ -43147,7 +43153,7 @@
     },
     {
       "path": "apps/app/src/runtime/home-calendar-selection.ts",
-      "sha256": "cb0164cc9bc97ddc1f3ce0fed8e7926a2d232c420953ba08faa4a50392b3d17f",
+      "sha256": "f86fabc5229dac1e920d2c6d9cf4b629a0d06eb15e2fff9a78f04f3787ac4b7c",
       "allocatedModels": [
         "CalendarPresentation"
       ],
@@ -43453,7 +43459,7 @@
     },
     {
       "path": "apps/app/src/runtime/inline-modal.ts",
-      "sha256": "661a0c7607ffba9bf7359650c6997f08ee12cc0969136d88574c5a8abaf8018e",
+      "sha256": "d7973391b03bbd35276b9b824cbe55fd9a15fbe53df58158dc7f545fed0dd71d",
       "allocatedModels": [
         "ShellNavigation"
       ],
@@ -43469,12 +43475,12 @@
         {
           "owner": "createInlineModal.ref",
           "line": 10,
-          "bindings": 4,
-          "writes": 5
+          "bindings": 6,
+          "writes": 12
         }
       ],
       "parseErrors": [],
-      "asynchronous": 13,
+      "asynchronous": 23,
       "unassignedWrites": 0
     },
     {
@@ -43638,11 +43644,12 @@
     },
     {
       "path": "apps/app/src/runtime/local-agent.ts",
-      "sha256": "af398afff3ca3f8823ee9fffdd5d5b496136b28d8ec75f42265f3de95c6213d1",
+      "sha256": "8700d5c2e1a534ec96a8e465704d4f8ba13abe2fb06863dc27b99f5684ced5e6",
       "allocatedModels": [
         "ApplicationComposition",
         "ResidentRuntime",
-        "ResidentLiveness"
+        "ResidentLiveness",
+        "ChatAttachments"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -44782,9 +44789,10 @@
     },
     {
       "path": "apps/app/src/runtime/remote-protocol.ts",
-      "sha256": "9a867fc0dfe0b7e07c70ec4007907f210a932179e316f2f0434c59a8822c3abc",
+      "sha256": "3beac820bbc6425ddba13d4aa111ad5550e9e7393f3e61bbdc223f198116b241",
       "allocatedModels": [
-        "Application"
+        "Application",
+        "ChatAttachments"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -46010,10 +46018,11 @@
     },
     {
       "path": "scripts/browser-cloud-dev-bridge.ts",
-      "sha256": "b780537b54035955e6c7112ee05af2b6b38d251b8ba42cb4e6ff5711d37d3d7d",
+      "sha256": "0c1a7543ea8c6cac4486c11e3bc2d17053c2d2f22360b68723bf15937643ff6f",
       "allocatedModels": [
         "DevelopmentHost",
-        "DevelopmentSurfaces"
+        "DevelopmentSurfaces",
+        "BrowserGoogleReturn"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -46027,84 +46036,84 @@
         {
           "owner": "createBrowserCloudDevHandler",
           "line": 45,
-          "bindings": 10,
-          "writes": 25
+          "bindings": 11,
+          "writes": 28
         },
         {
           "owner": "createBrowserCloudDevHandler.retire",
-          "line": 65,
+          "line": 66,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "createBrowserCloudDevHandler.canonical",
-          "line": 66,
+          "line": 67,
           "bindings": 1,
           "writes": 3
         },
         {
           "owner": "createBrowserCloudDevHandler.signInCall",
-          "line": 77,
+          "line": 78,
           "bindings": 3,
           "writes": 2
         },
         {
           "owner": "createBrowserCloudDevHandler.scopedSignInCredential",
-          "line": 101,
+          "line": 102,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "createBrowserCloudDevHandler.cancelGoogleAttempt",
-          "line": 126,
+          "line": 127,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "createBrowserCloudDevHandler.completeGoogleAttempt.ArrowFunction@150",
-          "line": 151,
+          "owner": "createBrowserCloudDevHandler.completeGoogleAttempt.ArrowFunction@151",
+          "line": 152,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "createBrowserCloudDevHandler.signInOperation",
-          "line": 182,
+          "line": 183,
           "bindings": 11,
           "writes": 137
         },
         {
-          "owner": "createBrowserCloudDevHandler.signInOperation.ArrowFunction@295",
-          "line": 296,
+          "owner": "createBrowserCloudDevHandler.signInOperation.ArrowFunction@296",
+          "line": 297,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "createBrowserCloudDevHandler.handler",
-          "line": 317,
-          "bindings": 18,
-          "writes": 41
+          "line": 312,
+          "bindings": 22,
+          "writes": 45
         },
         {
-          "owner": "createBrowserCloudDevHandler.handler.ArrowFunction@330",
-          "line": 337,
+          "owner": "createBrowserCloudDevHandler.handler.ArrowFunction@344",
+          "line": 351,
           "bindings": 2,
           "writes": 8
         },
         {
-          "owner": "createBrowserCloudDevHandler.handler.ArrowFunction@367",
-          "line": 368,
+          "owner": "createBrowserCloudDevHandler.handler.ArrowFunction@381",
+          "line": 382,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "createBrowserCloudDevHandler.startGoogleHost",
-          "line": 445,
+          "line": 466,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "browserCloudDevBridge.configureServer",
-          "line": 479,
+          "line": 500,
           "bindings": 1,
           "writes": 1
         }
@@ -46261,7 +46270,7 @@
     },
     {
       "path": "scripts/cloud-resident-host.mjs",
-      "sha256": "9f69ec6855fe910c9b240769c8f78eede66e55ad4ec89956956e947b053a5265",
+      "sha256": "03dace20e6b26b35651dcade3139ddcd18e223c39f56d3d2e2fed900d6d81497",
       "allocatedModels": [
         "DevelopmentHost",
         "ResidentRuntime"
@@ -219658,6 +219667,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "c2a66d4cf64c6994bd2a91a147d08e1bee5b7446590126e2ed5da9651c7770c3"
+    "sha256": "de2100443c4e4b2466f0379e88c0301058d51ac7ee713c8c4e2f85bb5ad8ba5d"
   }
 }

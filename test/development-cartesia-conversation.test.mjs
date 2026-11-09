@@ -112,7 +112,7 @@ test('an unexpected active renderer disconnect still retires voice and does not 
  assert.equal(h.stops,1);assert.equal(h.sockets.length,1);assert.equal(h.timers.size,0);assert.equal(h.errors.length,1);
 });
 
-test('Cloud realtime uses canonical client and renderer only after attested session-start admission',async()=>{const h=await setup({cloudRealtime:true,attestation:{speechRoute:'cloud',speechProvider:'cartesia',providerAdmission:'at-session-start'}});await h.controller.start();assert.equal(h.options.maxReconnects,0,'Cloud transport loss must not mint automatic paid retries');assert(h.calls.some(c=>c.path==='/api/views/voice-channel'));h.options.onServerEvent({t:'stt_partial',text:'partial'});await h.controller.stop();assert.equal(h.stops,1);assert.equal(h.calls.filter(c=>c.path.includes('/revoke')).length,1);});
+test('Cloud realtime uses canonical client and renderer only after attested session-start admission',async()=>{const h=await setup({cloudRealtime:true,attestation:{speechRoute:'cloud',speechProvider:'cartesia',providerAdmission:'at-session-start'}});await h.controller.start();assert.equal(h.options.maxReconnects,undefined,'Cloud retains canonical bounded recovery after an admitted session; every replacement still needs normal admission');assert(h.calls.some(c=>c.path==='/api/views/voice-channel'));h.options.onServerEvent({t:'stt_partial',text:'partial'});await h.controller.stop();assert.equal(h.stops,1);assert.equal(h.calls.filter(c=>c.path.includes('/revoke')).length,1);});
 test('Cloud realtime refuses legacy, direct or deferred provider attestation',async()=>{for(const attestation of [{},{speechRoute:'direct',speechProvider:'cartesia',providerAdmission:'at-session-start'},{speechRoute:'cloud',speechProvider:'other',providerAdmission:'at-session-start'},{speechRoute:'cloud',speechProvider:'cartesia',providerAdmission:'deferred'}])await assert.rejects(setup({cloudRealtime:true,attestation}),/not attested/);});
 
 const settleActions=async()=>{for(let i=0;i<30;i++)await Promise.resolve();};
@@ -200,7 +200,7 @@ test('accepted session reset retires busy traces and old frames cannot revive th
 // the prepared SDK (npm run agent:prepare). npm test skips it without one; npm run verify in CI sets
 // ALPHA_REQUIRE_PREPARED_SDK=1 with ALPHA_CLOUD_COLLECTOR_SOURCE, where a missing SDK fails.
 const skipUnprepared=!process.env.ALPHA_CLOUD_COLLECTOR_SOURCE&&process.env.ALPHA_REQUIRE_PREPARED_SDK!=='1'?'Prepared SDK unavailable; run npm run agent:prepare and export ALPHA_CLOUD_COLLECTOR_SOURCE':false;
-test('actual SDK and Alpha preserve A queued playback while B failure settles once',{skip:skipUnprepared},async()=>{
+for (const cloudRealtime of [false,true]) test(`actual SDK ${cloudRealtime?'Cloud':'Direct'} preserves playback and recovers an admitted socket`,{skip:skipUnprepared},async()=>{
  assert.ok(process.env.ALPHA_CLOUD_COLLECTOR_SOURCE,'ALPHA_REQUIRE_PREPARED_SDK=1 needs ALPHA_CLOUD_COLLECTOR_SOURCE');
  const observed=[];let readAutomaticMute;
  const observe=row=>{if(observed.length<32&&Buffer.byteLength(JSON.stringify([...observed,row]))<=7168)observed.push(row);};
@@ -229,7 +229,7 @@ test('actual SDK and Alpha preserve A queued playback while B failure settles on
   send(value){if(typeof value==='string'&&JSON.parse(value).t==='hello')queueMicrotask(()=>this.frame({t:'ready',turnTerminal:true,sessionId:'fixture-session',traceId:'ready',playbackCompletion:true}));}
   close(){if(this.readyState===3)return;this.readyState=3;this.emit('close',{});}
  }
- const h=await setup({askBefore:false,clientFactory:options=>createVoiceSessionClient({...options,rotationLeadMs:0,
+ const h=await setup({askBefore:false,cloudRealtime,attestation:cloudRealtime?{speechRoute:'cloud',speechProvider:'cartesia',providerAdmission:'at-session-start'}:{},clientFactory:options=>createVoiceSessionClient({...options,rotationLeadMs:0,
   onState:(state,status)=>{options.onState?.(state,status);observe({kind:'state-delivered',phase:state.phase,trace:state.traceId?.slice(0,160)??null,playback:state.playbackTraceId?.slice(0,160)??null,muted:readAutomaticMute?.()??null});},
   onServerEvent:event=>{options.onServerEvent?.(event);observe({kind:'event-delivered',type:event.t,trace:'traceId'in event&&typeof event.traceId==='string'?event.traceId.slice(0,160):null,muted:readAutomaticMute?.()??null});},
   webSocketFactory:()=>new Socket(),
@@ -256,6 +256,11 @@ test('actual SDK and Alpha preserve A queued playback while B failure settles on
   socket.frame({t:'speaking_end',traceId:'A'});await flush();assert.equal(h.controller.microphoneAutomaticallyMuted,true);
   for(const processor of playbackProcessors)processor.onaudioprocess?.({outputBuffer:{numberOfChannels:1,getChannelData:()=>new Float32Array(4096)}});
   await flush();assert.equal(h.controller.microphoneAutomaticallyMuted,false);assert.equal(tracks[0].enabled,true);
+  socket.close();
+  for(let i=0;i<8;i++){await new Promise(resolve=>setImmediate(resolve));await flush();}
+  assert.equal(sockets.length,2,'an admitted Cloud/Direct session uses the SDK recovery instead of silently stopping');
+  assert.equal(tracks.at(-1).enabled,true,'the recovered socket has live capture');
+  assert.deepEqual(h.errors,[]);
  }catch(error){if(error instanceof Error)error.message+='\nActual paired SDK callback trace: '+JSON.stringify(observed);throw error;}finally{await h.controller.stop();}
 });
 

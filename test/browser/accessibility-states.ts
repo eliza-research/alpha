@@ -30,7 +30,7 @@ const settle = async (page: Page) => {
   await settled(page);
 };
 
-const press = async (page: Page, steps: string[]) => { for (const step of steps) await page.getByRole('button', { name: step, exact: true }).first().click(); };
+const press = async (page: Page, steps: string[]) => { for (const step of steps) await (step === 'Photos tools' ? page.getByLabel(step, { exact: true }) : page.getByRole('button', { name: step, exact: true }).first()).click(); };
 /** The named subview is on screen and exposed (not retired behind another subview). */
 const showing = async (page: Page, subview?: string) => {
   if (subview) await expect(page.locator(`[data-alpha-subview="${subview}"]:not([inert])`)).toBeVisible();
@@ -126,7 +126,7 @@ export const LIVE_STATES: State[] = [
   live('Settings password manager', ['Settings', 'Apps', 'Passwords']),
   live('Browser menu', ['Browser', 'Menu']),
   live('Browser address', ['Browser', 'Edit address']),
-  live('Workflow alarms', ['Workflows', 'Clock alarms']),
+  live('Workflow alarms', ['Workflows', 'New automation', 'Clock alarms']),
   legacyNotes('Notes note menu', ['New note', 'More']),
   {name:'live Notes source document',open:async(page,theme)=>{await page.addInitScript(offline);await page.goto(theme ? `/?theme=${theme}` : '/');await openLegacyAttachment(page);await settle(page);}},
   legacyNotes('Notes recorder', ['Record voice note'], 'notes-recorder'),
@@ -174,7 +174,7 @@ export const MOCK_STATES: State[] = [
   mock('photos:viewer', ['Edit photo'], 'photos-edit'),
   mock('photos:viewer', ['Photo info']),
   mock('photos:viewer', ['Share photo']),
-  mock('photos', ['Select photos']),
+  mock('photos', ['Photos tools', 'Select photos']),
   // Earlier folder-creation controls were retired; the live retained-record state above covers recovery.
   mock('notes', ['Open The case for on-device agents'], 'notes-link'),
   mock('notes:editor', ['More', 'Share note']),

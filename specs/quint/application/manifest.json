@@ -42,14 +42,17 @@
       "hiddenRetiresSendTest",
       "suspendedRetiresSendTest",
       "suspendedClaimRefusedTest",
-      "resumedClaimTest"
+      "resumedClaimTest",
+      "sheetGripDismissTest",
+      "assistantAboveSheetTest"
     ],
     "sources": [
       "apps/app/src/prototype/model.js",
       "apps/app/src/runtime/view-navigation.ts",
       "apps/app/src/prototype/subview-accessibility.ts",
       "apps/app/src/runtime/inline-modal.ts",
-      "apps/app/src/runtime/modal-inert.ts"
+      "apps/app/src/runtime/modal-inert.ts",
+      "apps/app/src/browser/clock.ts"
     ],
     "abstractions": [
       "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",
@@ -2486,5 +2489,32 @@
       "maxSteps": 80,
       "maxVerifyDepth": 8
     }
+  },
+  {
+    "path": "specs/quint/application/ChatAttachments.qnt",
+    "module": "ChatAttachments",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "reloadKeepsAttachmentTest",
+      "refusedSendRestoresDraftTest",
+      "ownerIsolationTest",
+      "conversationIsolationTest",
+      "imagePreviewDoesNotNavigateTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/agent-adapter.ts",
+      "apps/app/src/runtime/alpha-client.ts",
+      "apps/app/src/runtime/connection-ui.tsx",
+      "apps/app/src/runtime/local-agent.ts",
+      "apps/app/src/runtime/remote-protocol.ts",
+      "apps/app/src/runtime/development-cloud-agents.ts",
+      "apps/app/src/prototype/camera-adapter.ts"
+    ],
+    "abstractions": [
+      "Finite representative identities and successful storage writes only. Models are contract checks, not complete implementation refinement or cross-device persistence proof.",
+      "Source review recorded in specs/quint/ui-return-review-20261109.md."
+    ]
   }
 ]
