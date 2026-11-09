@@ -1,10 +1,10 @@
 # Quint implementation refinement
 
-The current implementation refinement continues in draft PR 835 on SDK
+The current implementation refinement continues in [draft PR 839](https://github.com/eliza-research/alphaphone/pull/839) on SDK
 `99b49439ce9d0cb5607e9831b9f7f58d89525029`. The migration and its approved
-product-source prerequisite are in merged PR 825. The family manifests bind
-the reviewed source owners, and the source inventory lists the remaining
-review work.
+product-source prerequisite are in merged PR 825. PR 838 integrated the
+first refinement PR, 835, into main. The family manifests bind the reviewed
+source owners, and the source inventory lists the remaining review work.
 
 ## Original source baseline
 
@@ -972,3 +972,21 @@ fences both release and compatibility fallback. Trusted mouse and
 touch, React's native event identity, unrelated mutations and a fresh
 press have separate controlled observations. Full product modal entry
 points and half-sheet ownership remain separately scoped.
+
+
+`PreparedSourceStamp` replays 10 local Git schedules and 43 checkpoints.
+The production preparer checks the exact checkout before accepting a stale
+stamp for supersession. The replay compares complete old and new stamp
+bytes, the external backup and preexisting lock or candidate bytes. An
+occupied external backup stays intact. A refused candidate open after backup
+preservation leaves the old stamp and its exact preserved copy. The modeled
+retry still refuses that occupied backup path. Concurrent qualification,
+interruption between durable operations and the dependency install remain open.
+
+At `4f3463f63d`, the normal worker producer requalified its SDK stamp while
+preserving the prior stamp and the earlier worker. The new Bun 1.4.2 artifact
+and independent host and worker verifiers passed. The 182,682-byte Google
+host records 59 inputs. Its module SHA-256 is
+`562ad5cfd5c302f691797a4665f9aa43ff5a907d967e4d38f959614218f4ca84`.
+The selected host graph used zero core transforms. The mobile runtime bundle
+binds its separate core transform selection.

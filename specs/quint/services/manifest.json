@@ -1987,6 +1987,47 @@
         "maxSteps": 80,
         "maxVerifyDepth": 6
       }
+    },
+    {
+      "path": "specs/quint/services/PreparedSourceStamp.qnt",
+      "module": "PreparedSourceStamp",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "exactThenOrdinaryReuseTest",
+        "staleAndDefaultRequireCurrentTest",
+        "dirtyOrWrongCommitRefusesTest",
+        "ownedLockAndOccupiedBackupAreKeptTest",
+        "occupiedCandidateFailsSourceAdmissionTest",
+        "refusedCandidateWriteLeavesPreservedPriorTest",
+        "invalidLocationsRefuseTest"
+      ],
+      "invariants": [
+        "CurrentHasPriorStamp",
+        "SuccessRequiresCurrentVerifiedSource"
+      ],
+      "sources": [
+        "scripts/prepare-local-agent.mjs",
+        "scripts/local-agent-source.mjs",
+        "scripts/copy-file-clone.mjs",
+        "vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs",
+        "vendor/eliza/packages/app/scripts/lib/committed-source.mjs"
+      ],
+      "stateMapping": {
+        "source": "Checked-out commit, tracked bytes and selected untracked sidecars",
+        "stamp/backup": "Exact source-only live stamp and external preserved or preexisting peer bytes",
+        "outcome": "Actual preparer process result after final source verification"
+      },
+      "abstractions": [
+        "An existing local prepared source, two synthetic Git revisions, one backup slot and settled source-only operations. Existing sidecars are observed without modeling the independent process that created them.",
+        "The selected candidate open can fail after preserving the prior stamp. Source checkout creation, concurrent producers, full dependency installation and interruption remain separate."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 7
+      }
     }
   ]
 }

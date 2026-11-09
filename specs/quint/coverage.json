@@ -49124,7 +49124,8 @@
       "path": "scripts/copy-file-clone.mjs",
       "models": [
         "DevelopmentHost",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "PreparedSourceStamp"
       ],
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
@@ -49610,7 +49611,8 @@
         "DevelopmentHost",
         "ResidentRuntime",
         "ReviewedWorkflowLauncher",
-        "NativeGoogleHostArtifact"
+        "NativeGoogleHostArtifact",
+        "PreparedSourceStamp"
       ],
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
@@ -49688,13 +49690,43 @@
       "path": "scripts/prepare-local-agent.mjs",
       "models": [
         "DevelopmentHost",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "PreparedSourceStamp"
       ],
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
       "sha256": "13462189190e3e7a796c834f8c780181c0e7c39b16721a8d59477318885ac98e",
-      "stateAnchors": []
+      "stateAnchors": [
+        {
+          "line": 15,
+          "text": "const requalifyFrom=requalifyAt<0?null:process.argv[requalifyAt+1];"
+        },
+        {
+          "line": 34,
+          "text": "verifySource(directory,lock.commit);"
+        },
+        {
+          "line": 36,
+          "text": "const lockFd=fs.openSync(lockFile,'wx',0o600);"
+        },
+        {
+          "line": 40,
+          "text": "const backupFd=fs.openSync(preservedStamp,'wx',0o600);"
+        },
+        {
+          "line": 45,
+          "text": "const nextFd=fs.openSync(nextStamp,'wx',0o600);"
+        },
+        {
+          "line": 47,
+          "text": "fs.renameSync(nextStamp,stampFile);"
+        },
+        {
+          "line": 49,
+          "text": "fs.closeSync(lockFd);fs.unlinkSync(lockFile);"
+        }
+      ]
     },
     {
       "path": "scripts/prepare-patched-native.mjs",
@@ -133377,6 +133409,17 @@
       ]
     },
     {
+      "path": "vendor/eliza/packages/app/scripts/lib/committed-source.mjs",
+      "models": [
+        "PreparedSourceStamp"
+      ],
+      "scope": "shared-upstream",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "sha256": "477f43708fb99ef992af002b8b2fb81a8da09dc5ab2286dd54127ca64dcee71f",
+      "stateAnchors": []
+    },
+    {
       "path": "vendor/eliza/packages/app/scripts/lib/consumer-source-resolver.mjs",
       "models": [
         "DevelopmentRuntimeLoader"
@@ -133391,13 +133434,27 @@
       "path": "vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs",
       "models": [
         "DevelopmentRuntimeLoader",
-        "NativeGoogleHostArtifact"
+        "NativeGoogleHostArtifact",
+        "PreparedSourceStamp"
       ],
       "scope": "shared-upstream",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
       "sha256": "10b43806d93aa4e7bba53cc33df975afa69f39aa760507b7aeff9cfeb026fc2b",
-      "stateAnchors": []
+      "stateAnchors": [
+        {
+          "line": 49,
+          "text": "if (git([\"rev-parse\", \"HEAD\"]).trim() !== commit)"
+        },
+        {
+          "line": 52,
+          "text": "const entries = git([\"ls-tree\", \"-r\", \"-z\", \"HEAD\"])"
+        },
+        {
+          "line": 150,
+          "text": "if (!allowedGenerated(file))"
+        }
+      ]
     },
     {
       "path": "vendor/eliza/packages/app/src/api/auth-pairing-routes.ts",
@@ -618898,7 +618955,8 @@
       "sha256": "b1cf1b54d803d75a9dd091e8aa130e78f30af90ea897208f9672d378fa0b4b37",
       "models": [
         "Application",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "PreparedSourceStamp"
       ],
       "integrationReview": "Build/source admission support only. Domain allocation does not establish complete state coverage or source-model refinement."
     },
@@ -618935,7 +618993,8 @@
         "CanonicalNotesStore",
         "CoreTurnControllers",
         "ReviewedWorkflowLauncher",
-        "NativeGoogleHostArtifact"
+        "NativeGoogleHostArtifact",
+        "PreparedSourceStamp"
       ],
       "sha256": "bd5c0ae286c2802fed48f8e51150d4f2de75fb4c8563cfdcdd4d1347fb888c5f",
       "integrationReview": "Retains the reviewed source boundary and authenticated patch catalog; integration also admits installed dependency ranges and bounded source-copy helpers. Configuration identity alone is not runtime/refinement evidence."
@@ -619114,7 +619173,7 @@
     "apps/app/index.html"
   ],
   "sharedSourceDiscovery": {
-    "sharedSourceCount": 4839,
+    "sharedSourceCount": 4840,
     "producer": "specs/quint/refinement/services/runtime-bundle-inputs.json",
     "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
     "meaning": "Authenticated source identities and domain allocations. Runtime activation and implementation refinement require separate evidence."

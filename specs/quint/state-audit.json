@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "c1b4905446a6f69ee097539a8dea79315110e07effe622a38d46f0ab093dc710",
+  "ledgerSha256": "25e4953b1aa6508206b76c9d014e650c359267b00b3f4d3824cfb2bae16d23df",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -22,17 +22,17 @@
     "The ledger supplies pinned source bytes. Effective client/native/runtime patch outputs require their separately authenticated source mappings."
   ],
   "counts": {
-    "files": 5727,
+    "files": 5728,
     "testSupportFiles": 285,
     "testSupportCandidates": 11383,
-    "parsedFiles": 5656,
+    "parsedFiles": 5657,
     "languageReview": 71,
     "parseErrors": 0,
-    "candidates": 67324,
-    "writeSites": 66890,
-    "writeAssociations": 60020,
+    "candidates": 67325,
+    "writeSites": 66893,
+    "writeAssociations": 60021,
     "asynchronous": 8348,
-    "unassignedWrites": 10271
+    "unassignedWrites": 10273
   },
   "files": [
     {
@@ -46365,7 +46365,8 @@
       "sha256": "b1cf1b54d803d75a9dd091e8aa130e78f30af90ea897208f9672d378fa0b4b37",
       "allocatedModels": [
         "DevelopmentHost",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "PreparedSourceStamp"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -46633,7 +46634,8 @@
         "DevelopmentHost",
         "ResidentRuntime",
         "ReviewedWorkflowLauncher",
-        "NativeGoogleHostArtifact"
+        "NativeGoogleHostArtifact",
+        "PreparedSourceStamp"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -46841,7 +46843,8 @@
       "sha256": "13462189190e3e7a796c834f8c780181c0e7c39b16721a8d59477318885ac98e",
       "allocatedModels": [
         "DevelopmentHost",
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "PreparedSourceStamp"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -67057,6 +67060,27 @@
       "unassignedWrites": 1
     },
     {
+      "path": "vendor/eliza/packages/app/scripts/lib/committed-source.mjs",
+      "sha256": "477f43708fb99ef992af002b8b2fb81a8da09dc5ab2286dd54127ca64dcee71f",
+      "allocatedModels": [
+        "PreparedSourceStamp"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "ConsumerSourceError",
+          "line": 50,
+          "bindings": 1,
+          "writes": 1
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 2
+    },
+    {
       "path": "vendor/eliza/packages/app/scripts/lib/consumer-source-resolver.mjs",
       "sha256": "79743fd6f2ed6a8b20e50d4bc2dfcc9d9d0975be512863bebc7622ca1ebb92fd",
       "allocatedModels": [
@@ -67088,7 +67112,8 @@
       "sha256": "10b43806d93aa4e7bba53cc33df975afa69f39aa760507b7aeff9cfeb026fc2b",
       "allocatedModels": [
         "DevelopmentRuntimeLoader",
-        "NativeGoogleHostArtifact"
+        "NativeGoogleHostArtifact",
+        "PreparedSourceStamp"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -219806,6 +219831,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "4c7860d7c76d16ad2b3f1d72787d7e40fcf4d4925cf334a689c6eb2c74b1ba6c"
+    "sha256": "e9b5e48da4a222c285e99ea96d2d77e36e9ac67c034cff580dfa7ef65b88f2c2"
   }
 }
