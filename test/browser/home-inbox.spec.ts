@@ -128,6 +128,26 @@ test('opening Inbox consumes the same in-flight Home discovery and header page',
  expect(await page.evaluate(()=>{const f=(window as any).homeInboxFixture;return [f.reads,f.accountReads];})).toEqual([1,1]);
 });
 
+test('opening Inbox shows saved mail while the same-owner Home refresh is pending',async({page})=>{
+ await fixture(page);await load(page);
+ await expect.poll(()=>page.evaluate(async()=>{
+  const {serviceReadCache}=await import('/src/runtime/service-read-cache-store.ts');
+  const cache=await serviceReadCache({environment:'production',userId:'fixture-a',organizationId:'fixture-org',credentialId:'fixture-only'});
+  return !!(await cache.get('gmail:mailbox'));
+ })).toBe(true);
+ await fixture(page);
+ await page.evaluate(()=>{const f=(window as any).homeInboxFixture;f.hold=true;f.rows=f.rows.map((m:any)=>({...m,subject:'Refreshed subject'}));});
+ await notifyHomeOwner(page);
+ await expect(tile(page)).toContainText('Synthetic quarterly planning subject');
+ await expect.poll(()=>page.evaluate(()=>typeof(window as any).homeInboxFixture.release)).toBe('function');
+ await page.getByRole('button',{name:'Inbox',exact:true}).click();
+ await expect(page.getByRole('button',{name:/Unread, Synthetic sender A.*Synthetic quarterly planning subject/})).toBeVisible();
+ expect(await page.evaluate(()=>(window as any).homeInboxFixture.reads)).toBe(1);
+ await page.evaluate(()=>(window as any).homeInboxFixture.release());
+ await expect(page.getByRole('button',{name:/Unread, Synthetic sender A.*Refreshed subject/})).toBeVisible();
+ expect(await page.evaluate(()=>(window as any).homeInboxFixture.reads)).toBe(1);
+});
+
 for(const failOld of [false,true])test(`Home retires another owner's delayed ${failOld?'failure':'success'} without publishing it`,async({page})=>{
  await fixture(page);await page.evaluate(fail=>{const f=(window as any).homeInboxFixture;f.hold=true;f.fail=fail;},failOld);await notifyHomeOwner(page);
  await expect.poll(()=>page.evaluate(()=>typeof(window as any).homeInboxFixture.releases?.a)).toBe('function');

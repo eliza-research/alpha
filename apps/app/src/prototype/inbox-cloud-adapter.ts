@@ -265,10 +265,10 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
   }
   function restoreAndWarmHome(resumed=false){void restoreHomeMailbox().finally(()=>warmHomeMailbox(resumed));}
   async function restoreMailbox(){
-    const binding=connectionController.getCloudClient(),token=generation;
+    const binding=connectionController.getCloudClient(),token=generation,cacheEpoch=mailCacheEpoch;
     try{
       const cache=await offlineStore(),saved=await cache?.get<CachedMailbox>('gmail:mailbox');
-      const active=connectionController.getCloudClient();if(!saved||generation!==token||binding?.client!==active?.client||binding?.sessionId!==active?.sessionId||!api?.isActive())return false;
+      const active=connectionController.getCloudClient();if(!saved||generation!==token||cacheEpoch!==mailCacheEpoch||binding?.client!==active?.client||binding?.sessionId!==active?.sessionId||!api?.isActive())return false;
       const value=readSavedMailbox<MailBody>(saved.value,readGmailAccountChoice(connectionController.getSnapshot().cloudAccount));if(!value)return false;
       const chosen=value.chosen;
       accounts=value.accounts;selected=value.selected;accountsChecked=true;accountsSession=binding!.sessionId;spamTrashSearch=value.spamTrashSearch;
@@ -278,14 +278,18 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
     }catch{return false;}
   }
   async function openMailbox(){
-    const pending=homeLoad;if(pending){status='Checking Gmail connection…';publish();await pending.task;}
+    // Show this owner's saved mailbox while the existing Home refresh finishes.
+    // A withdrawn grant invalidates the cache epoch and the visible rows together.
+    let restored=await restoreMailbox();
+    if(!api?.isActive())return;
+    const pending=homeLoad;if(pending){if(!restored){status='Checking Gmail connection…';publish();}await pending.task;restored=restored&&cachedListShown&&!!selected&&readable().some(account=>account.connectionId===selected);}
     if(!api?.isActive())return;
     const binding=connectionController.getCloudClient(),preview=homePreview;
     if(binding&&preview&&preview.owner===homeSummaryOwner()&&preview.sessionId===binding.sessionId&&preview.key===gmailReadCacheKey(binding.sessionId,accounts.find(a=>a.connectionId===preview.accountId))&&currentQuery()==='in:inbox'&&Date.now()-(preview.readAt??0)<60000){
       selected=preview.accountId;
       if(restoreList()){phase='ready';saveGmailAccountChoice(connectionController.getSnapshot().cloudAccount,selected);watchSelectedMail();publish();void provider.bind(selected);void drafts.bind(selected,preview.label);return;}
     }
-    const restored=await restoreMailbox();if(!api?.isActive())return;if(!restored)phase='ready';if(!restored||Date.now()-listReadAt>=60000)await refreshAccounts(restored);
+    if(!api?.isActive())return;if(!restored)phase='ready';if(!restored||Date.now()-listReadAt>=60000)await refreshAccounts(restored);
   }
 
   function rememberList(){if(operation||failure)return;if(folderLists.remember({key:listKey(),at:listReadAt,firstPageRevision,messages,query:loadedQuery,cursor:nextPageToken,revision,cursors:[...seenCursors],newerMail,status}))persistMailbox();}
