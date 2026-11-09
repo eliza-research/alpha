@@ -32,9 +32,10 @@ export function installReminderAdapter(Component: Bag, views: Bag) {
     if(closeNoticeQuestion)return;
     if(tapBusy){if(explicit)tapRequested=true;return;}
     const shell=owner;
-    if(!Capacitor.isNativePlatform()||!shell?.live||document.hidden||connectionController.getSnapshot().open||alphaClient.getState().context.sensitive||shell.vget('calendar').form)return;
+    const eligible=()=>owner===shell&&shell?.live&&!document.hidden&&!connectionController.getSnapshot().open&&!alphaClient.getState().context.sensitive&&!shell.vget('calendar').form;
+    if(!Capacitor.isNativePlatform()||!eligible())return;
     const initialView=shell.S().view, initialOpen=shell.vget('calendar').open, interactionAt=tapInteraction;
-    const current=()=>tapInteraction===interactionAt&&owner===shell&&shell.live&&!document.hidden&&!connectionController.getSnapshot().open&&!alphaClient.getState().context.sensitive&&!shell.vget('calendar').form&&shell.S().view===initialView&&shell.vget('calendar').open===initialOpen;
+    const current=()=>tapInteraction===interactionAt&&eligible()&&shell.S().view===initialView&&shell.vget('calendar').open===initialOpen;
     tapBusy=true;
     try {
       const capability=await DailyApps.surfaceInfo();
@@ -58,7 +59,7 @@ export function installReminderAdapter(Component: Bag, views: Bag) {
       await new Promise<void>(resolve=>shell.setState({},resolve));
       // Consume only after the exact detail is visible. Native rechecks the current
       // source, occurrence and revision; a newer queued tap cannot be consumed here.
-      if(tapInteraction!==openingInteraction||owner!==shell||!shell.live||document.hidden||shell.S().view!=='calendar'||shell.vget('calendar').open!==target.id)return;
+      if(tapInteraction!==openingInteraction||!eligible()||shell.S().view!=='calendar'||shell.vget('calendar').open!==target.id)return;
       if(pending.question){
         const session=connectionController.getSnapshot().session,enrollment=JSON.stringify(connectionController.getWorkflowDeviceTarget());
         if(!session){shell.toast("Your agent isn't ready. Try again.");return;}

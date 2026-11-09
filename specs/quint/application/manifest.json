@@ -1716,6 +1716,38 @@
     ]
   },
   {
+    "path": "specs/quint/application/RetainedReminderTapAdmission.qnt",
+    "module": "RetainedReminderTapAdmission",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "uninterruptedDetailConsumesTest",
+      "chooserCloseRechecksRetainedTokenTest",
+      "sensitiveAndFormRetainTest",
+      "changedVisitRefusesSameDetailTest",
+      "nativeReplacementKeepsNewTokenTest"
+    ],
+    "invariants": ["ProtectedCommitKeepsCustody", "CommitOwnsPublishedVisit", "ConsumesExactToken"],
+    "sources": [
+      "apps/app/src/prototype/reminder-adapter.ts",
+      "apps/app/src/runtime/reminder-creations.ts",
+      "apps/app/src/runtime/connection-ui.tsx",
+      "apps/app/src/runtime/alpha-client.ts",
+      "apps/app/src/prototype/model.js"
+    ],
+    "stateMapping": {
+      "view/visit/detail/capturedVisit": "Shell port view and navigation generation with equality against the exact reminder detail",
+      "captured/waiting": "Exact token passed through the real adapter to the held Calendar render callback",
+      "chooser/sensitive/form/foreground": "Controlled connection, context, Calendar form and document state read by the actual adapter",
+      "pending/attempts/consumed/blockedConsume": "Synthetic native custody and exact token dispatch observations"
+    },
+    "abstractions": [
+      "Retained non-question reminder link, real adapter read and render boundaries, one exact occurrence and two synthetic native tokens.",
+      "Shell commits and native token custody are controlled ports. Mounted DOM visibility, Android delivery and storage, question drafting and legacy refresh navigation have separate obligations."
+    ]
+  },
+  {
     "path": "specs/quint/application/CanonicalNotificationTapAdmission.qnt",
     "module": "CanonicalNotificationTapAdmission",
     "init": "init",

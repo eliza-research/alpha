@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {retainedReminderTapFixture} from './fixtures/retained-reminder-tap.mjs';
+import {checkRetainedReminderTapAdmission} from '../specs/quint/refinement/application/retained-reminder-tap-admission.mjs';
 
 test('the retained reminder is consumed after an uninterrupted exact detail render', async () => {
   const f = await retainedReminderTapFixture();
@@ -22,3 +23,8 @@ for (const [field, value] of [['chooser', true], ['sensitive', true], ['form', t
     assert.equal(f.observe().pending, 'original-token');
   });
 }
+
+test('the retained reminder adapter refines the Quint render admission boundary', async () => {
+  const receipt = await checkRetainedReminderTapAdmission();
+  assert.equal(receipt.traces, 8);
+});
