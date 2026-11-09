@@ -768,3 +768,26 @@ PendingIntent on API 34 and later. No installed package, Activity, capture or
 device Settings are used. Android caller identity disclosure, component
 availability, permission enforcement, task placement and unlock scheduling
 remain platform obligations.
+
+### Native action journal recovery
+
+`NativeActionRecovery` covers the product action journal's exact
+notification, Calendar deletion and reminder receipt recovery and passive
+history projection. The fixture runs the actual product recovery methods
+on the pinned shared worker and journal. It also runs the shared
+notification receipt ledger and exact reminder receipt lookup and hashing.
+It checks an action can settle from matching evidence only when it has a
+recorded attempt. Notification receipt promotion and action journal
+settlement can commit separately, including a storage error reported after
+either commit. Missing, conflicting, pending and exact retained evidence
+are observed alongside legacy unknown rows and retired bridges.
+
+The as-built replay observed two boundaries. A synthetic reminder receipt
+with a binding from another owner and proposal could be read back when
+the caller supplied that binding and the operation matched. Passive history
+also returned synthetic selected-reminder title, body and schedule fields.
+Exact `get` retained those fields independently of history projection.
+
+The ports provide one selected journal row, storage interruption, deletion
+receipt evidence and notification active-list matches. No notification,
+reminder, deletion, provider or Android device action executes.
