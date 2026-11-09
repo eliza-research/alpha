@@ -1908,6 +1908,30 @@
         "maxSteps": 80,
         "maxVerifyDepth": 6
       }
+    },
+    {
+      "path": "specs/quint/services/BrowserGoogleReturn.qnt",
+      "module": "BrowserGoogleReturn",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "normalReturnTest",
+        "wrongHostTest",
+        "replayTest",
+        "expiredTest",
+        "changedOwnerTest",
+        "unverifiedConnectionTest",
+        "returnedOwnerDoesNotReviveAttemptTest"
+      ],
+      "sources": [
+        "scripts/browser-cloud-dev-bridge.ts",
+        "apps/app/src/runtime/google-connection-ui.tsx"
+      ],
+      "abstractions": [
+        "Finite representative identities and successful storage writes only. Models are contract checks, not complete implementation refinement or cross-device persistence proof.",
+        "Source review recorded in specs/quint/ui-return-review-20261109.md."
+      ]
     }
   ]
 }

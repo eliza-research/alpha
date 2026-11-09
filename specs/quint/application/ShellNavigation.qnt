@@ -56,6 +56,8 @@ module ShellNavigation {
       pending: false,
       settingsRows: List(), focusedSetting: "", intendedSetting: "" }
     else s' = s
+  action dismissSheet = all {s.modal, s' = {...s, modal: false}}
+  action assistantFromSheet = all {s.modal, not(s.contextSensitive), s' = {...s, modal: false, chat: "sheet", focus: true, shade: false, drawer: false}}
   action capture = all { not(s.contextSensitive), s.claim == "none",
     s' = { ...s, captured: s.revision, claim: "captured" } }
   action claim = all { s.claim == "captured", s.captured == s.revision, not(s.contextSensitive),
@@ -87,7 +89,7 @@ module ShellNavigation {
     nondet view = Views.oneOf()
     nondet rows = SettingRows.oneOf()
     nondet row = Set("about", "setup", "default-apps", "request-home").oneOf()
-    any { open(view), expand, edit, showShade, showModal, back, capture, claim, acknowledge,
+    any { open(view), expand, edit, showShade, showModal, dismissSheet, assistantFromSheet, back, capture, claim, acknowledge,
       hide, resume, pageHide, pageShow, send, reply(1), reply(2),
       settingsRowsChanged(rows), focusSetting(row), activateSetting, activateExternalSetting, s' = s }
   }
@@ -98,6 +100,8 @@ module ShellNavigation {
     (s.focusedSetting == "" or containsSetting(s.settingsRows, s.focusedSetting))
   val CurrentSend = s.pending implies (not(s.contextSensitive) and s.sendRevision == s.revision)
   val safety = CurrentClaim and VisibleFocus and DraftBound and FocusedSettingIdentity and CurrentSend
+  run sheetGripDismissTest = init.then(showModal).then(dismissSheet).expect(not(s.modal) and safety)
+  run assistantAboveSheetTest = init.then(showModal).then(assistantFromSheet).expect(not(s.modal) and s.chat == "sheet" and safety)
   run backOrderTest = init.then(edit).then(expand).then(showShade).then(showModal)
     .then(back).expect(s.shade).then(back).expect(s.chat == "full")
     .then(back).expect(s.chat == "sheet" and s.draft == "draft" and safety)
