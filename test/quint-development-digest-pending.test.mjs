@@ -1,20 +1,20 @@
 import assert from 'node:assert/strict';
-import {spawnSync} from 'node:child_process';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
+import {verifyRefinementReceiptInputs} from '../specs/quint/refinement/check-traces.mjs';
+import {checkDevelopmentDigestPending} from '../specs/quint/refinement/services/development-digest-pending.mjs';
 
-const probe = fileURLToPath(new URL('../specs/quint/refinement/services/development-digest-pending-probe.mjs', import.meta.url));
-
-test('as-built development digest storage refuses exact dispatch and legacy normalization', () => {
-  const run = spawnSync(process.execPath, ['--import=tsx', probe, 'baseline'], {encoding: 'utf8', timeout: 10000});
-  if (run.error) throw run.error;
-  assert.equal(run.status, 0, run.stderr);
-  const rows = JSON.parse(run.stdout);
-  assert.deepEqual(rows.map(row => row.phase), ['review', 'legacy']);
-  for (const row of rows) {
-    assert.match(row.error, /awaiting recovery/);
-    assert.equal(row.current, row.before);
-    assert.equal(row.reachedHost, false);
-    assert.equal(row.commits, 1);
-  }
+test('development digest phase changes retain exact reviewed payload and raw CAS', {timeout: 30000}, async () => {
+  const receipt = await checkDevelopmentDigestPending([fileURLToPath(import.meta.url)]);
+  assert.equal(receipt.traces, 7);
+  assert.equal(receipt.checkpoints, 52);
+  assert.ok(receipt.passed && receipt.driverInputsBound && verifyRefinementReceiptInputs(receipt));
+  const trace = name => receipt.traceInputs.find(row => row.name === name);
+  const legacy = trace('legacy retry retains original expected bytes').steps[1].expect;
+  assert.equal(legacy['s.expected'].pretty, true);
+  assert.equal(legacy['s.result'], 'saved');
+  const lost = trace('lost acknowledgement preserves host commit and stale renderer view').steps;
+  assert.equal(lost[2].expect['s.stored'].phase, 'dispatched');
+  assert.equal(lost[2].expect['s.result'], 'lost');
+  assert.equal(lost[3].expect['s.result'], 'conflict');
 });

@@ -2209,6 +2209,48 @@
         "maxSteps": 50,
         "maxVerifyDepth": 12
       }
+    },
+    {
+      "path": "specs/quint/services/DevelopmentDigestPending.qnt",
+      "module": "DevelopmentDigestPending",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "reviewedIntentAdvancesWithoutPayloadChangeTest",
+        "legacyRetryUsesOriginalNoncanonicalBytesTest",
+        "changedPayloadAndDowngradeCannotReachHostTest",
+        "staleTabCannotAdvanceOrClearAnotherCommitTest",
+        "lostAcknowledgementRequiresReadbackTest",
+        "rawByteDriftRejectsEquivalentLegacyRetryTest"
+      ],
+      "invariants": [
+        "ExistingIntentOnlyAdvancesPhase",
+        "RefusedWritesLeaveExactBytes",
+        "CommittedWritesUseExactExpectedBytes",
+        "ConflictMeansDifferentExpectedBytes",
+        "LostAcknowledgementKeepsObservedBytes",
+        "GuardNeverReachesHost"
+      ],
+      "sources": [
+        "apps/app/src/runtime/local-agent-storage.ts",
+        "scripts/local-agent-dev-storage.ts",
+        "apps/app/src/runtime/hosted-digest-ui.tsx"
+      ],
+      "stateMapping": {
+        "stored/before/proposed/expected": "Actual host JSON string and transport CAS payload, with distinct ordered payloads and legacy encoding",
+        "actor/caches": "Two independent renderer storage instances with private observed bytes, inferred through the next CAS",
+        "result/casAttempted/reads/compares/commits": "Actual adapter return or refusal, transport requests and in-memory rename count"
+      },
+      "abstractions": [
+        "One selected pending slot, two renderer store instances, six payload encodings and three phases. A synthetic host writer may re-encode the same legacy payload.",
+        "Exact client and host storage code run with closed in-memory filesystem and request ports. Selected before-commit and lost-ack faults are transport events. Real profile I/O, crash durability, same-tab concurrent reads and downstream provider mutation are separate."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 50,
+        "maxVerifyDepth": 12
+      }
     }
   ]
 }
