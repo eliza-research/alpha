@@ -1,9 +1,10 @@
 # Quint implementation refinement
 
-The current implementation refinement continues in [draft PR 839](https://github.com/eliza-research/alphaphone/pull/839) on SDK
-`99b49439ce9d0cb5607e9831b9f7f58d89525029`. The migration and its approved
-product-source prerequisite are in merged PR 825. PR 838 integrated the
-first refinement PR, 835, into main. The family manifests bind the reviewed
+The current implementation refinement continues in
+[draft PR 843](https://github.com/eliza-research/alphaphone/pull/843) on SDK
+`b1817660a0347ae19551b9ee296410fe55f02d59`. The migration and its approved
+product-source prerequisite are in merged PR 825. PRs 835, 838, 839 and 842
+contain earlier source-refinement work. The family manifests bind the reviewed
 source owners, and the source inventory lists the remaining review work.
 
 ## Original source baseline
@@ -1199,6 +1200,21 @@ when a later adapter throws. They report the failed adapter and continue
 with subsequent campaigns. A failed replay still fails the aggregate. The
 collector cannot recover from termination of its own process.
 
+The strict command writes an atomic progress record next to its final JSON
+report. It binds the current registries, family drivers, source ledger and
+candidate audit, then records each finished family's receipt paths and
+failure count. While a component family runs, the record also preserves the
+receipt paths and failure count after each completed campaign. An interrupted
+process can leave a running progress record.
+The final report still revalidates source receipts and records the open
+application-wide proof obligation separately.
+
+The frozen 221-model collector rerun ended before its aggregate was
+written. Independent revalidation preserved 185 passing receipts for
+154 models, with 3,132 traces and 21,626 checkpoints. The receipts cover
+87 application, 45 service and 22 native models. Their archive records
+the exact revision and per-receipt hashes.
+
 `SharePanelAdmission` checks 11 source schedules and 57 checkpoints. A
 retained destination button previously dispatched after replacement or
 retirement. A repeat event could also dispatch twice from the same panel.
@@ -1231,3 +1247,171 @@ tests that reported compiler aborts during the broad run. The original
 closed Camera recovery fixture also passes in isolation. The broad result
 remains failed. The Share model passes depth-eight symbolic verification
 and the common Share panel passes its Chromium fixture.
+
+The main integration pins SDK `b1817660a`. Its resident host descriptor
+moves 28 Java helpers into the separate Android browser library. Normal
+source-only preparation and staging generated 41 resident Java entries.
+Independent readback matched every generated file to its manifest and
+pinned source. This run does not exercise Gradle or APK installation.
+
+`WorkflowRequestRecoveryAdmission` checks seven schedules and 54
+checkpoints. The unified Workflows view exposes browser request recovery
+using its current account's request store. Replacement, view departure
+and refresh retire the old review. The closed replay checks delayed
+document and dialog preparation, retained callbacks and reset completion.
+The separate mounted fixture covers the visible dialog and IndexedDB.
+
+`NotesTrashReadPublication` checks seven schedules and 41 checkpoints.
+Only the newest read from the current Previous Notes source epoch may
+publish rows or errors. The replay holds successful and failed responses
+through a successor read and a source switch. Durable storage, restore,
+erasure and React commit timing remain separate.
+
+`WorkflowClockAdmission` checks ten schedules and 78 checkpoints. The
+Clock opener belongs to the current Workflows visit, including a browser
+handoff that uses the direct show route. A flag-off renderer rechecks mock
+admission after saving the opening receipt and before dispatch. Installed
+Clock behavior and physical focus remain separate.
+
+`ScheduledTaskControls` checks 18 schedules and 114 checkpoints. The
+renderer keeps terminal manual tasks out of the active menu and rejects
+fire receipts for another task. It distinguishes an unavailable schedule
+source from an authoritative missing row, including partial failure in
+another source. Server scheduling, browser persistence and actual dispatch
+remain separate from these closed renderer and protocol traces.
+
+`PreviousNotesAvailability` checks eight schedules and 40 checkpoints.
+The current probe owns the visible availability result even when an owner
+leaves and returns with the same identity. A retired native collection
+read cannot start a draft-slot read. Owner retirement clears the retained
+view before calling the canonical refresh. The replay uses actual probe
+code with read-only ports and a synthetic already-selected legacy view.
+Record opening, platform delivery and installed storage remain separate.
+
+`PreviousNotesSourceOpening` checks 14 schedules and 88 checkpoints. An
+older opening previously could return success after a later source visit
+opened successfully. The settled return now checks the exact opening
+owner and epoch. The replay holds collection, fingerprint and draft reads
+and covers absent, unreadable and draft-only outcomes, plus canonical
+return. The read-only presence probe and Trash publication use separate
+models.
+
+`CommittedViewObservation` checks 18 schedules and 54 checkpoints through
+the actual renderer observer, host waiter and history-commit callback. It
+covers the same-view cache, explicit retry, stale and ambiguous claims,
+exact negative settlement, genuine timeout and lost positive confirmation.
+The closed request port leaves actual transport and history persistence
+as separate obligations.
+
+`AndroidBrowserModuleStage` checks eight schedules and 43 checkpoints in
+one disposable module host. It exercises the reviewed native patch,
+authenticated source cache, Gradle host generation and receipt readback.
+The replay covers refusal, prior-output retention, interrupted host
+recovery and stale receipts. Gradle execution and installed behavior
+remain separate.
+
+`AndroidBuildInputReadiness` checks eight schedules and 55 checkpoints.
+The actual preflight distinguishes reportable inputs, readiness before
+preparation and strict prepared-payload admission. The closed source
+replay uses disposable Git checkouts and exact synthetic stamps. It keeps
+voice qualification and signing separate from staged input availability.
+
+`LifeOpsScheduledTaskRoute` checks 13 schedules and 81 checkpoints against
+the pinned route, generic runner and SDK in-memory store. One schedule
+holds an old dispatch, completes and reopens the task, then claims a new
+occurrence. The old assertion admits against the new occurrence, and its
+status-only write can replace the newer snapshot. The model records this
+counterexample. An atomic, unique occurrence identity remains necessary
+at claim, dispatch admission and conditional settlement. The replay uses
+closed dispatch and does not establish the configured host's SQL behavior.
+
+The configured Personal Assistant supplies full expected-state write
+guards and still calls the status-only pre-dispatch assertion. The current
+Alpha runtime patch allowlist and Android receipt verifier exclude scheduler
+source. A shared repair needs a reviewed SDK change and new authenticated
+build evidence for each consuming pin.
+
+On the exact SDK pin, scratch replays exercised occurrence claims in the
+memory store and PGlite, including two concurrent recoveries at the same
+clock instant. Both recovery producers can pass the observed token, and
+the candidate rotates it while preserving the delivery key. On the
+original source, recovering a legacy tokenless claim twice after an
+interruption can change that key. The candidate preserves the fallback in
+the atomic claim. A separate scratch replay reproduces stale
+receipt-bearing writes in the SDK memory, PGlite and record stores. An
+occurrence-specific guard preserved both same-key snooze replay and
+distinct completion receipts from the same occurrence. The record store
+ran through a closed transaction port. Direct writers, terminal receipt
+replay and the final check at each delivery boundary remain open.
+
+`PersonalAssistantScheduledTaskCustody` checks eight schedules and 60
+checkpoints through selected actual Personal Assistant policies and the
+SDK SQL store in private PGlite. Managed claim commits the admitted day
+with the fired row. An older manual dispatch can pass the status-only
+pre-dispatch check after a refire. Its full expected-state write is refused
+and the route returns the newer row. Metadata-only and definition-only
+replacement also fence the stale write. Production family wrappers and
+same-clock occurrence identity remain separate.
+
+The extended `ChatAttachments` replay checks 12 schedules and 70
+checkpoints. A held browser transcript save previously repainted the
+composer after an owner or conversation change. Its post-save guard now
+checks the exact composer binding and attachment before publication. The
+original row stays under its scoped storage key. Browser image preview,
+native preview timing and deferred React commits remain separate.
+
+`EmailSuggestionReview` checks 17 schedules and 142 checkpoints in the
+actual renderer review with the pinned shared Inbox fitting rules. The
+rendered opener retains the reply text and agent session. Confirm and
+Cancel belong to the displayed review. Changing the destination requires
+a new Confirm, even when a retained callback fires before the next render.
+Closing the conversation retires the review before insertion. The replay
+records local draft insertion at a closed Inbox port. The composer,
+actual DOM focus and provider delivery remain separate.
+
+`BrowserExternalHandoff` checks 16 schedules and 98 checkpoints using the
+actual renderer handoff and byte-matched shared tab host. Leaving the
+Browser view or backgrounding the document retires the originating visit.
+The handoff checks the unlocked screen and exact navigation after waiting
+for presentation and before opening a private review or calling the
+bridge. The replay covers returning to the same tab, locking and a
+same-address recommit. Android chooser delivery remains separate.
+
+`ClientObservationSupport` checks 21 schedules and 114 checkpoints in the
+actual optional-field handshake, observing all nine modeled fields. The
+replay observes the learned support cache and the status calls through
+shared learning, abort and connection replacement. A retired session
+retains its settled handshake promise. A replaced connection clears the
+failed promise if the session has yet to retire. Real transport, broader
+concurrent turn schedules and remote handling of the field remain separate.
+
+`NativeAppInfoHandoff` checks 12 schedules and 79 checkpoints against the
+actual Android bridge and authenticated launcher validation. It covers
+stale packages and profiles, disabled applications, malformed arguments
+and the exact component, user profile and flags sent to the closed
+launcher port. A real Android Settings launch and device policy remain
+separate.
+
+`ObservationTurnDispatch` checks 20 schedules and 93 checkpoints through the
+actual connection controller's send method, optional-field handshake and
+local protocol. The replay captures both JSON and streaming request bodies
+at a closed bridge. Unsupported peers preserve ordinary context. Caller
+Stop and recognized connection replacement prevent dispatch. Silent
+process replacement after the fresh status comparison and remote request
+handling remain separate.
+
+`AppInfoHandoffComposition` checks 10 schedules and 76 checkpoints. The
+actual mounted drawer calls the Home handler and Capacitor proxy. A
+closed Android fixture forwards the captured request to the exact Java
+bridge, then returns its reply to the original renderer promise. The
+replay observes package inventory refresh, notices and drawer ownership.
+Installed Settings behavior and task placement remain separate.
+
+
+`PhotosOwnedAlbumDialog` checks 10 schedules and 98 checkpoints in the
+actual Photos album manager with a closed library. A retained Save
+previously used the replacement dialog's album and revision. The rendered
+controls now bind the exact dialog and stage, and late completion leaves
+a successor alone. The replay observes exact album and media mutation
+payloads. Durable storage, multi-item batches and device behavior remain
+separate.

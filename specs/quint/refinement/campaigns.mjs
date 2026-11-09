@@ -1,4 +1,4 @@
-export async function collectRefinementCampaigns(campaigns, baseObligations = []) {
+export async function collectRefinementCampaigns(campaigns, baseObligations = [], onProgress) {
   const receipts = [], obligations = [...baseObligations], failures = [];
   const record = result => {
     const checked = result?.receipts ?? (Array.isArray(result) ? result : [result?.receipt ?? result]);
@@ -18,6 +18,7 @@ export async function collectRefinementCampaigns(campaigns, baseObligations = []
     } catch (error) {
       failures.push({campaign, error});
     }
+    onProgress?.({receipts, failures});
   }
   return {receipts, obligations, failures};
 }
