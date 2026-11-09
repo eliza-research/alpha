@@ -33,6 +33,15 @@ The old Pixel v44 reproduced hidden IME with retained composer focus and a faile
 The new native bridge still requires installation and physical verification; a model/test pass
 does not establish that result.
 
+The first controlled Android run exposed an additional interaction: changing the selected IME
+briefly hides its window and the initial dismissal handler blurred the composer. The corrected
+bridge publishes an explicit auxiliary-IME handoff, and the voice panel restores the prior IME
+on Back while Cancel keeps typing active. The actual corrected Android bridge/renderer retained
+an unsent neutral draft across panel entry, Cancel, Back and one-tap reopening. That emulator
+used Gboard with the production renderer's sign-in overlay hidden and shell inert removed only
+for input testing; it proves neither account admission nor Pixel LatinIME or live transcription.
+The negative and corrected screenshots/observations are retained in the evidence receipts.
+
 The launcher adds an auxiliary voice IME for LatinIME's microphone shortcut. Dictation owns a
 bounded recording and inserts only into the unchanged original editor after current provider
 authority is checked. It does not submit text. The KeyboardDictation model is refined against

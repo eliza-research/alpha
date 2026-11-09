@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "7025409def3daf064f4c3ac9a0c2798bb00468c543d4b25740f6e70afaffd71e",
+  "ledgerSha256": "54032a7fbe2f31beb899d9a9acab193df8b3cf700294208ba555d7474a569689",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -28,9 +28,9 @@
     "parsedFiles": 5663,
     "languageReview": 89,
     "parseErrors": 0,
-    "candidates": 67673,
-    "writeSites": 67027,
-    "writeAssociations": 60142,
+    "candidates": 67688,
+    "writeSites": 67033,
+    "writeAssociations": 60148,
     "asynchronous": 8379,
     "unassignedWrites": 10277
   },
@@ -25475,7 +25475,7 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/MainActivity.java",
-      "sha256": "b2ecd0f978d487a73792cf2c8a3d271b1e6484fe041f120b6be2ce0bf569281b",
+      "sha256": "9da14ad592a01d33c8c6040237cc6af19ffda34f602d5ef3ddd0051e033fa9bd",
       "allocatedModels": [
         "Application",
         "RendererRecovery",
@@ -25490,150 +25490,168 @@
         {
           "owner": "MainActivity",
           "line": 23,
-          "bindings": 12,
-          "writes": 17
+          "bindings": 13,
+          "writes": 19
         },
         {
-          "owner": "MainActivity.isCurrentHome@42",
-          "line": 43,
-          "bindings": 5,
-          "writes": 2
-        },
-        {
-          "owner": "MainActivity.showRendererEscape@64",
-          "line": 65,
-          "bindings": 6,
-          "writes": 0
-        },
-        {
-          "owner": "MainActivity.showRendererEscape@64.lambda@78",
-          "line": 78,
+          "owner": "MainActivity.refreshKeyboardInsets@28",
+          "line": 29,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "MainActivity.addEscapeButton@86",
-          "line": 86,
-          "bindings": 4,
-          "writes": 0
-        },
-        {
-          "owner": "MainActivity.addEscapeButton@86.lambda@90",
-          "line": 90,
+          "owner": "MainActivity.beginKeyboardReturn@33",
+          "line": 34,
           "bindings": 1,
-          "writes": 0
+          "writes": 1
         },
         {
-          "owner": "MainActivity.openSettings@93",
-          "line": 93,
+          "owner": "MainActivity.voiceKeyboardSelected@37",
+          "line": 38,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "MainActivity.Anonymous@97.onPageLoaded@98",
-          "line": 98,
+          "owner": "MainActivity.isCurrentHome@57",
+          "line": 58,
+          "bindings": 5,
+          "writes": 2
+        },
+        {
+          "owner": "MainActivity.showRendererEscape@79",
+          "line": 80,
+          "bindings": 6,
+          "writes": 0
+        },
+        {
+          "owner": "MainActivity.showRendererEscape@79.lambda@93",
+          "line": 93,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "MainActivity.Anonymous@97.onRenderProcessGone@102",
-          "line": 102,
+          "owner": "MainActivity.addEscapeButton@101",
+          "line": 101,
+          "bindings": 4,
+          "writes": 0
+        },
+        {
+          "owner": "MainActivity.addEscapeButton@101.lambda@105",
+          "line": 105,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "MainActivity.openSettings@108",
+          "line": 108,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "MainActivity.Anonymous@112.onPageLoaded@113",
+          "line": 113,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "MainActivity.Anonymous@112.onRenderProcessGone@117",
+          "line": 117,
           "bindings": 4,
           "writes": 0
         },
         {
           "owner": "MainActivity.TaskKind",
-          "line": 163,
+          "line": 178,
           "bindings": 2,
           "writes": 2
         },
         {
-          "owner": "MainActivity.TaskKind.<init>@165",
-          "line": 165,
+          "owner": "MainActivity.TaskKind.<init>@180",
+          "line": 180,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "MainActivity.isHomeIntent@170",
-          "line": 170,
+          "owner": "MainActivity.isHomeIntent@185",
+          "line": 185,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "MainActivity.isHomeTypeStart@174",
-          "line": 174,
+          "owner": "MainActivity.isHomeTypeStart@189",
+          "line": 189,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "MainActivity.liveInstance@180",
-          "line": 181,
+          "owner": "MainActivity.liveInstance@195",
+          "line": 196,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "MainActivity.hasFrontMarker@195",
-          "line": 195,
+          "owner": "MainActivity.hasFrontMarker@210",
+          "line": 210,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "MainActivity.handOff@203",
-          "line": 203,
+          "owner": "MainActivity.handOff@218",
+          "line": 218,
           "bindings": 6,
           "writes": 2
         },
         {
-          "owner": "MainActivity.moveLiveTaskToFront@245",
-          "line": 245,
+          "owner": "MainActivity.moveLiveTaskToFront@260",
+          "line": 260,
           "bindings": 4,
           "writes": 0
         },
         {
-          "owner": "MainActivity.onCreate@259",
-          "line": 259,
+          "owner": "MainActivity.onCreate@274",
+          "line": 274,
           "bindings": 7,
           "writes": 2
         },
         {
-          "owner": "MainActivity.onCreate@259.lambda@356",
-          "line": 356,
-          "bindings": 11,
+          "owner": "MainActivity.onCreate@274.lambda@371",
+          "line": 371,
+          "bindings": 12,
           "writes": 1
         },
         {
-          "owner": "MainActivity.onCreate@259.Anonymous@380.handleOnBackPressed@381",
-          "line": 386,
+          "owner": "MainActivity.onCreate@274.Anonymous@397.handleOnBackPressed@398",
+          "line": 403,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "MainActivity.onCreate@259.Anonymous@380.handleOnBackPressed@381.lambda@389",
-          "line": 389,
+          "owner": "MainActivity.onCreate@274.Anonymous@397.handleOnBackPressed@398.lambda@406",
+          "line": 406,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "MainActivity.onNewIntent@397",
-          "line": 397,
+          "owner": "MainActivity.onNewIntent@414",
+          "line": 414,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "MainActivity.onDestroy@414",
-          "line": 416,
+          "owner": "MainActivity.onDestroy@435",
+          "line": 437,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "MainActivity.onWindowFocusChanged@425",
-          "line": 425,
+          "owner": "MainActivity.onWindowFocusChanged@446",
+          "line": 446,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "MainActivity.onConfigurationChanged@435",
-          "line": 435,
+          "owner": "MainActivity.onConfigurationChanged@456",
+          "line": 456,
           "bindings": 1,
           "writes": 0
         }
@@ -34612,7 +34630,7 @@
     },
     {
       "path": "apps/app/src/prototype/chat-overlay-motion-adapter.ts",
-      "sha256": "4809f702aa045175a2754a1b78c5fc2ce541a5ac014202d34ab64787e9fce670",
+      "sha256": "4138af94d5b8e8c1577ae143a4cdc5139365cce7431050c15b0d5ca4504fab1d",
       "allocatedModels": [
         "Application",
         "ChatInput",
@@ -34658,38 +34676,38 @@
           "writes": 2
         },
         {
-          "owner": "installChatOverlayMotion.FunctionExpression@381",
-          "line": 399,
+          "owner": "installChatOverlayMotion.FunctionExpression@382",
+          "line": 400,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installChatOverlayMotion.FunctionExpression@429",
-          "line": 430,
+          "owner": "installChatOverlayMotion.FunctionExpression@430",
+          "line": 431,
           "bindings": 2,
           "writes": 6
         },
         {
-          "owner": "installChatOverlayMotion.FunctionExpression@497",
-          "line": 498,
+          "owner": "installChatOverlayMotion.FunctionExpression@498",
+          "line": 499,
           "bindings": 3,
           "writes": 45
         },
         {
-          "owner": "installChatOverlayMotion.FunctionExpression@497.ArrowFunction@516",
-          "line": 524,
+          "owner": "installChatOverlayMotion.FunctionExpression@498.ArrowFunction@517",
+          "line": 525,
           "bindings": 2,
           "writes": 2
         },
         {
-          "owner": "installChatOverlayMotion.FunctionExpression@497.move",
-          "line": 680,
+          "owner": "installChatOverlayMotion.FunctionExpression@498.move",
+          "line": 681,
           "bindings": 2,
           "writes": 3
         },
         {
-          "owner": "installChatOverlayMotion.FunctionExpression@497.up",
-          "line": 692,
+          "owner": "installChatOverlayMotion.FunctionExpression@498.up",
+          "line": 693,
           "bindings": 1,
           "writes": 2
         }
@@ -220579,7 +220597,7 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaKeyboardDictationService.java",
-      "sha256": "5a1f6b89f5d15e4c6de893ae7b0bb3cf159264fe8ee20963361ff166a99d02f9",
+      "sha256": "9e16f0fab0d003b221ceaaa70c43fc37236ee501188de47a1d6acdd0b41cfb68",
       "allocatedModels": [
         "KeyboardDictation"
       ],
@@ -220589,102 +220607,120 @@
         {
           "owner": "AlphaKeyboardDictationService",
           "line": 28,
-          "bindings": 18,
-          "writes": 27
+          "bindings": 19,
+          "writes": 29
         },
         {
-          "owner": "AlphaKeyboardDictationService.onCreate@48.lambda@50",
-          "line": 50,
+          "owner": "AlphaKeyboardDictationService.onCreate@49.lambda@51",
+          "line": 51,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaKeyboardDictationService.onCreateInputView@56",
-          "line": 57,
+          "owner": "AlphaKeyboardDictationService.onCreateInputView@57",
+          "line": 58,
           "bindings": 6,
           "writes": 0
         },
         {
-          "owner": "AlphaKeyboardDictationService.onCreateInputView@56.lambda@66",
-          "line": 66,
+          "owner": "AlphaKeyboardDictationService.onCreateInputView@57.lambda@67",
+          "line": 67,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "AlphaKeyboardDictationService.onCreateInputView@56.lambda@73",
-          "line": 73,
+          "owner": "AlphaKeyboardDictationService.onCreateInputView@57.lambda@74",
+          "line": 74,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaKeyboardDictationService.onStartInput@82",
-          "line": 82,
+          "owner": "AlphaKeyboardDictationService.onStartInputView@83",
+          "line": 83,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "AlphaKeyboardDictationService.allowedNow@88",
-          "line": 89,
+          "owner": "AlphaKeyboardDictationService.onWindowHidden@87",
+          "line": 88,
           "bindings": 3,
           "writes": 0
         },
         {
-          "owner": "AlphaKeyboardDictationService.renderReady@97",
-          "line": 99,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "AlphaKeyboardDictationService.text@106",
-          "line": 106,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "AlphaKeyboardDictationService.start@107",
-          "line": 114,
-          "bindings": 3,
-          "writes": 0
-        },
-        {
-          "owner": "AlphaKeyboardDictationService.sameField@124",
-          "line": 125,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "AlphaKeyboardDictationService.transcribe@131",
-          "line": 131,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "AlphaKeyboardDictationService.transcribe@131.lambda@139",
-          "line": 141,
+          "owner": "AlphaKeyboardDictationService.onStartInput@100",
+          "line": 100,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "AlphaKeyboardDictationService.transcribe@131.lambda@139.lambda@142",
-          "line": 154,
+          "owner": "AlphaKeyboardDictationService.allowedNow@106",
+          "line": 107,
+          "bindings": 3,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaKeyboardDictationService.renderReady@115",
+          "line": 117,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaKeyboardDictationService.fail@160",
-          "line": 160,
+          "owner": "AlphaKeyboardDictationService.text@124",
+          "line": 124,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "AlphaKeyboardDictationService.onUpdateSelection@171",
-          "line": 171,
+          "owner": "AlphaKeyboardDictationService.start@125",
+          "line": 132,
+          "bindings": 3,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaKeyboardDictationService.sameField@142",
+          "line": 143,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaKeyboardDictationService.transcribe@149",
+          "line": 149,
+          "bindings": 3,
+          "writes": 1
+        },
+        {
+          "owner": "AlphaKeyboardDictationService.transcribe@149.lambda@157",
+          "line": 159,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaKeyboardDictationService.transcribe@149.lambda@157.lambda@160",
+          "line": 172,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaKeyboardDictationService.fail@181",
+          "line": 181,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaKeyboardDictationService.keyboard@191",
+          "line": 191,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaKeyboardDictationService.onUpdateSelection@195",
+          "line": 195,
           "bindings": 6,
           "writes": 0
         },
         {
-          "owner": "AlphaKeyboardDictationService.onFinishInputView@177",
-          "line": 177,
+          "owner": "AlphaKeyboardDictationService.onFinishInputView@201",
+          "line": 201,
           "bindings": 1,
           "writes": 0
         }
@@ -220820,6 +220856,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "f817c8c8d2200047a4d569a1afb1f43004c1d75a7dd2b0c37ee17624eaec166e"
+    "sha256": "8505b49b8ed13550f099047b1b57a24db295691b585bb5912320d978a2ef0ea0"
   }
 }

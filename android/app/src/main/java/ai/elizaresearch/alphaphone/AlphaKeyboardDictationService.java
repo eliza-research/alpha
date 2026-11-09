@@ -38,6 +38,7 @@ public final class AlphaKeyboardDictationService extends InputMethodService {
  private TextView status;
  private Button action;
  private volatile boolean destroyed;
+ private boolean inputViewVisible;
  private final Runnable monitor = new Runnable() {
   public void run() {
    if (policy.state() != KeyboardDictationPolicy.State.RECORDING && policy.state() != KeyboardDictationPolicy.State.TRANSCRIBING) return;
@@ -70,7 +71,7 @@ public final class AlphaKeyboardDictationService extends InputMethodService {
    } else start();
   });
   controls.addView(action, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
-  Button cancel = new Button(this); cancel.setText("Cancel"); cancel.setOnClickListener(v -> { cancel(); keyboard(); });
+  Button cancel = new Button(this); cancel.setText("Cancel"); cancel.setOnClickListener(v -> { cancel(); keyboard(true); });
   controls.addView(cancel, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1)); panel.addView(controls);
   renderReady(); return panel;
  }
@@ -78,6 +79,23 @@ public final class AlphaKeyboardDictationService extends InputMethodService {
   super.onEvaluateInputViewShown();
   // A deliberately selected voice panel must remain visible with a hardware keyboard too.
   return true;
+ }
+ @Override public void onStartInputView(EditorInfo info, boolean restarting) {
+  super.onStartInputView(info, restarting);
+  inputViewVisible = true;
+ }
+ @Override public void onWindowHidden() {
+  boolean wasVisible = inputViewVisible; inputViewVisible = false;
+  cancel();
+  super.onWindowHidden();
+  // Back closes dictation and restores the normal IME for the next tap. A switch caused by
+  // Cancel already selected that keyboard and must keep its newly opening window visible.
+  String selected = android.provider.Settings.Secure.getString(getContentResolver(), android.provider.Settings.Secure.DEFAULT_INPUT_METHOD);
+  android.content.ComponentName component = selected == null ? null : android.content.ComponentName.unflattenFromString(selected);
+  if (wasVisible && new android.content.ComponentName(this, AlphaKeyboardDictationService.class).equals(component)) {
+   keyboard(false); requestHideSelf(0);
+  }
+  MainActivity.refreshKeyboardInsets();
  }
  @Override public void onStartInput(EditorInfo info, boolean restarting) {
   cancel(); super.onStartInput(info, restarting); editor = info; target = getCurrentInputConnection();
@@ -136,7 +154,7 @@ public final class AlphaKeyboardDictationService extends InputMethodService {
   status.setText("Transcribing…"); action.setEnabled(false);
   // A bound deadline cancels transport and fences late callbacks without blocking the keyboard.
   main.postDelayed(() -> { if (policy.is(owned, KeyboardDictationPolicy.State.TRANSCRIBING)) fail("Dictation timed out. Tap Start to try again."); }, 90000);
-  worker.execute(() -> {
+  try { worker.execute(() -> {
    try {
     String result = request.transcribe(audio);
     main.post(() -> {
@@ -150,12 +168,15 @@ public final class AlphaKeyboardDictationService extends InputMethodService {
       }
       target.finishComposingText();
       if (!target.commitText(result, 1)) { fail("Text could not be inserted. Please try again."); return; }
-      cancel(); keyboard();
+      cancel(); keyboard(true);
      } catch (Exception error) { fail("Your voice provider changed. Please start again."); }
     });
    } catch (Exception error) { main.post(() -> { if (policy.is(owned, KeyboardDictationPolicy.State.TRANSCRIBING)) fail("Could not transcribe. Check your Alpha voice settings and try again."); }); }
    finally { capture.discard(recordingId); }
-  });
+  }); } catch (java.util.concurrent.RejectedExecutionException closed) {
+   request.cancel(); capture.discard(recordingId);
+   if (policy.is(owned, KeyboardDictationPolicy.State.TRANSCRIBING)) fail("Voice typing closed. Please start again.");
+  }
  }
  private void fail(String message) {
   cancel(); policy.open();
@@ -167,7 +188,10 @@ public final class AlphaKeyboardDictationService extends InputMethodService {
   if (capture != null) capture.cancel();
   before = null; after = null; selected = null;
  }
- private void keyboard() { if (!switchToPreviousInputMethod()) { switchToNextInputMethod(false); requestHideSelf(0); } }
+ private void keyboard(boolean keepTyping) {
+  if (keepTyping && editor != null && getPackageName().equals(editor.packageName)) MainActivity.beginKeyboardReturn();
+  if (!switchToPreviousInputMethod() && !switchToNextInputMethod(false)) requestHideSelf(0);
+ }
  @Override public void onUpdateSelection(int oldStart, int oldEnd, int newStart, int newEnd, int candidateStart, int candidateEnd) {
   super.onUpdateSelection(oldStart,oldEnd,newStart,newEnd,candidateStart,candidateEnd);
   if ((policy.state() == KeyboardDictationPolicy.State.RECORDING || policy.state() == KeyboardDictationPolicy.State.TRANSCRIBING)

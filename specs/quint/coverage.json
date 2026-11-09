@@ -7864,7 +7864,7 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/MainActivity.java",
-      "sha256": "b2ecd0f978d487a73792cf2c8a3d271b1e6484fe041f120b6be2ce0bf569281b",
+      "sha256": "9da14ad592a01d33c8c6040237cc6af19ffda34f602d5ef3ddd0051e033fa9bd",
       "models": [
         "Application",
         "RendererRecovery",
@@ -7885,55 +7885,55 @@
           "text": "private volatile int topInsetDp = 0;"
         },
         {
-          "line": 29,
+          "line": 44,
           "text": "private static final RendererRecoveryBudget recoveryBudget = new RendererRecoveryBudget();"
         },
         {
-          "line": 30,
+          "line": 45,
           "text": "private boolean recoveringRenderer = false;"
         },
         {
-          "line": 32,
+          "line": 47,
           "text": "private boolean pendingRebuild = false;"
         },
         {
-          "line": 97,
+          "line": 112,
           "text": "private final WebViewListener rendererRecovery = new WebViewListener() {"
         },
         {
-          "line": 157,
+          "line": 172,
           "text": "private static java.lang.ref.WeakReference<MainActivity> liveInstance = new java.lang.ref.WeakReference<>(null);"
         },
         {
-          "line": 159,
+          "line": 174,
           "text": "private static int unackedFrontStarts = 0;"
         },
         {
-          "line": 160,
+          "line": 175,
           "text": "private static final int MAX_UNACKED_FRONT_STARTS = 3;"
         },
         {
-          "line": 167,
+          "line": 182,
           "text": "private static final java.util.Map<Integer,TaskKind> taskKinds = new java.util.HashMap<>();"
         },
         {
-          "line": 168,
+          "line": 183,
           "text": "private boolean handedOff = false;"
         },
         {
-          "line": 169,
+          "line": 184,
           "text": "private boolean startedAsHome = false;"
         },
         {
-          "line": 187,
+          "line": 202,
           "text": "private static final String EXTRA_FRONT_START = \"alpha.frontStart\";"
         },
         {
-          "line": 189,
+          "line": 204,
           "text": "private static final String FRONT_START_TOKEN = java.util.UUID.randomUUID().toString();"
         },
         {
-          "line": 194,
+          "line": 209,
           "text": "private static boolean handOffUnreliable = false;"
         }
       ],
@@ -20971,7 +20971,7 @@
     },
     {
       "path": "apps/app/src/prototype/chat-overlay-motion-adapter.ts",
-      "sha256": "4809f702aa045175a2754a1b78c5fc2ce541a5ac014202d34ab64787e9fce670",
+      "sha256": "4138af94d5b8e8c1577ae143a4cdc5139365cce7431050c15b0d5ca4504fab1d",
       "models": [
         "Application",
         "ChatInput",
@@ -21189,23 +21189,23 @@
           "text": "const free = keyboardFreeHeight();"
         },
         {
-          "line": 349,
+          "line": 350,
           "text": "const visible = () => {"
         },
         {
-          "line": 350,
+          "line": 351,
           "text": "const width = document.documentElement.clientWidth || window.innerWidth,"
         },
         {
-          "line": 358,
+          "line": 359,
           "text": "const seed = visible();"
         },
         {
-          "line": 360,
+          "line": 361,
           "text": "let keyboardOpen = false;"
         },
         {
-          "line": 362,
+          "line": 363,
           "text": "const now = visible(),"
         },
         {
@@ -21217,199 +21217,199 @@
           "text": "const active = document.activeElement;"
         },
         {
-          "line": 383,
+          "line": 384,
           "text": "const drag: Drag | undefined = this.chatMotion,"
         },
         {
-          "line": 386,
+          "line": 387,
           "text": "const previousView = args[1]?.view;"
         },
         {
-          "line": 399,
+          "line": 400,
           "text": "const change = this.chatChange;"
         },
         {
-          "line": 420,
+          "line": 421,
           "text": "const d: Drag | undefined = this.chatMotion;"
         },
         {
-          "line": 422,
+          "line": 423,
           "text": "const action = d.tap;"
         },
         {
-          "line": 420,
+          "line": 421,
           "text": "const d: Drag | undefined = this.chatMotion;"
         },
         {
-          "line": 432,
+          "line": 433,
           "text": "const shell = this,"
         },
         {
-          "line": 435,
+          "line": 436,
           "text": "const firstMove = !d.moved;"
         },
         {
-          "line": 444,
+          "line": 445,
           "text": "const panel = document.querySelector<HTMLElement>("
         },
         {
-          "line": 447,
+          "line": 448,
           "text": "const share = collapseShare(d);"
         },
         {
-          "line": 457,
+          "line": 458,
           "text": "const dock = dockStyle(d);"
         },
         {
-          "line": 458,
+          "line": 459,
           "text": "const pill = document.querySelector<HTMLElement>("
         },
         {
-          "line": 461,
+          "line": 462,
           "text": "const input = document.querySelector<HTMLElement>(\"[data-alpha-input-bar]\");"
         },
         {
-          "line": 462,
+          "line": 463,
           "text": "for (const element of [pill, input])"
         },
         {
-          "line": 464,
+          "line": 465,
           "text": "for (const [name, value] of Object.entries(dock))"
         },
         {
-          "line": 469,
+          "line": 470,
           "text": "const d: Drag | undefined = this.chatMotion;"
         },
         {
-          "line": 471,
+          "line": 472,
           "text": "const travel = Math.abs(d.offset / d.scale),"
         },
         {
-          "line": 478,
+          "line": 479,
           "text": "const next = chatRelease({"
         },
         {
-          "line": 498,
+          "line": 499,
           "text": "const out = render.call(this),"
         },
         {
-          "line": 517,
+          "line": 518,
           "text": "const target = event.target;"
         },
         {
-          "line": 524,
+          "line": 525,
           "text": "const scroll = target.closest<HTMLElement>("
         },
         {
-          "line": 528,
+          "line": 529,
           "text": "const box = target.getBoundingClientRect();"
         },
         {
-          "line": 529,
+          "line": 530,
           "text": "const sheet = shell.S().chat === \"sheet\";"
         },
         {
-          "line": 533,
+          "line": 534,
           "text": "const covers ="
         },
         {
-          "line": 541,
+          "line": 542,
           "text": "let hidden = 0;"
         },
         {
-          "line": 542,
+          "line": 543,
           "text": "for (const cover of covers) {"
         },
         {
-          "line": 543,
+          "line": 544,
           "text": "const over = cover.getBoundingClientRect();"
         },
         {
-          "line": 550,
+          "line": 551,
           "text": "const isOpen = (mode: unknown) => mode === \"sheet\" || mode === \"full\";"
         },
         {
-          "line": 552,
+          "line": 553,
           "text": "const from = shell.chatRenderedMode;"
         },
         {
-          "line": 555,
+          "line": 556,
           "text": "const tap = !shell.chatSettledByDrag && s.voice === \"off\";"
         },
         {
-          "line": 574,
+          "line": 575,
           "text": "const dock = drag?.moved"
         },
         {
-          "line": 593,
+          "line": 594,
           "text": "const rest = shell.rest();"
         },
         {
-          "line": 597,
+          "line": 598,
           "text": "const binding = shell.props.chatPullBinding;"
         },
         {
-          "line": 598,
+          "line": 599,
           "text": "const handlers = {"
         },
         {
-          "line": 609,
+          "line": 610,
           "text": "const emptyInput ="
         },
         {
-          "line": 631,
+          "line": 632,
           "text": "const g = bounds(),"
         },
         {
-          "line": 680,
+          "line": 681,
           "text": "const d: Drag | undefined = shell.chatMotion;"
         },
         {
-          "line": 692,
+          "line": 693,
           "text": "const d: Drag = shell.chatMotion;"
         },
         {
-          "line": 697,
+          "line": 698,
           "text": "const speed = releaseVelocity(d.track, event.timeStamp) / d.scale;"
         },
         {
-          "line": 725,
+          "line": 726,
           "text": "for (const name of [\"openSheet\", \"toInput\", \"startVoice\"]) {"
         },
         {
-          "line": 726,
+          "line": 727,
           "text": "const action = out[name];"
         },
         {
-          "line": 731,
+          "line": 732,
           "text": "const grabTap = out.grabTap;"
         },
         {
-          "line": 735,
+          "line": 736,
           "text": "const toolbar=event.currentTarget instanceof HTMLElement&&event.currentTarget.hasAttribute('data-alpha-chat-size');"
         },
         {
-          "line": 738,
+          "line": 739,
           "text": "const next = shell.S().chat === \"full\" ? \"sheet\" : \"full\";"
         },
         {
-          "line": 758,
+          "line": 759,
           "text": "const setInputFocus = (focused: boolean) => {"
         },
         {
-          "line": 765,
+          "line": 766,
           "text": "const dockScrim ="
         },
         {
-          "line": 773,
+          "line": 774,
           "text": "const active = document.activeElement;"
         },
         {
-          "line": 802,
+          "line": 803,
           "text": "const press = shell.chatScrimPress;"
         },
         {
-          "line": 802,
+          "line": 803,
           "text": "const press = shell.chatScrimPress;"
         }
       ],
@@ -619926,7 +619926,7 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaKeyboardDictationService.java",
-      "sha256": "5a1f6b89f5d15e4c6de893ae7b0bb3cf159264fe8ee20963361ff166a99d02f9",
+      "sha256": "9e16f0fab0d003b221ceaaa70c43fc37236ee501188de47a1d6acdd0b41cfb68",
       "models": [
         "KeyboardDictation"
       ],

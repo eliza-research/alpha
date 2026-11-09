@@ -338,12 +338,13 @@ export function installChatOverlayMotion(Component: Shell) {
 			this.chatInputFocused = false;
 		};
 		const initialVisibility = document.documentElement.dataset.alphaKeyboardVisible;
-		let nativeKeyboardVisible: boolean | undefined = initialVisibility === undefined ? undefined : initialVisibility === "true";
-		this.dockNativeKeyboardWatch = (event: CustomEvent<{ visible: boolean }>) => {
+		let nativeKeyboardVisible: boolean | undefined = initialVisibility === undefined ? undefined : initialVisibility === "true" || document.documentElement.dataset.alphaKeyboardHandoff === "true";
+		this.dockNativeKeyboardWatch = (event: CustomEvent<{ visible: boolean; handoff?: boolean }>) => {
 			const visible = event.detail?.visible;
 			if (typeof visible !== "boolean") return;
-			if (nativeKeyboardVisible === true && !visible) releaseComposer();
-			nativeKeyboardVisible = visible;
+			const open = visible || event.detail.handoff === true;
+			if (nativeKeyboardVisible === true && !open) releaseComposer();
+			nativeKeyboardVisible = open;
 		};
 		window.addEventListener("alpha-keyboard-visibility", this.dockNativeKeyboardWatch);
 		const visible = () => {

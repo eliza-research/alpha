@@ -2528,14 +2528,15 @@
       "initialHiddenDoesNotStealFocusTest",
       "otherFieldRetainsFocusTest",
       "browserFallbackTest",
-      "nativeOwnsResizeOrderingTest"
+      "nativeOwnsResizeOrderingTest",
+      "voiceHandoffPreservesEditorTest"
     ],
     "sources": [
       "apps/app/src/prototype/chat-overlay-motion-adapter.ts",
       "android/app/src/main/java/ai/elizaresearch/alphaphone/MainActivity.java"
     ],
     "stateMapping": {
-      "native": "MainActivity IME insets and renderer nativeKeyboardVisible; -1 means browser fallback",
+      "native": "MainActivity IME visibility or explicit auxiliary-IME handoff; -1 is browser fallback",
       "covered": "viewport keyboard coverage, independent of native IME visibility",
       "focus/draft/selection": "composer active element and retained editing state"
     },

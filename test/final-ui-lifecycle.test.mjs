@@ -72,6 +72,23 @@ for(const dock of [true,false])test(`native Back releases ${dock?'Home':'full ch
  }finally{dom.window.close();}
 });
 
+test('voice keyboard handoff preserves composer until the voice panel is actually dismissed',()=>{
+ const dom=new JSDOM('<textarea data-alpha-composer>Keep this draft</textarea>');
+ const {window}=dom,{document}=window,shell={chatInputFocused:true};
+ const body=between(read('prototype/chat-overlay-motion-adapter.ts'),'\t\tconst free = keyboardFreeHeight();','\n\t};\n\tp.componentDidUpdate');
+ try {
+  vm.runInNewContext('(function(){'+ts(body)+'}).call(shell)',{shell,window,document,HTMLElement:window.HTMLElement,keyboardFreeHeight:()=>()=>800,isEditing:()=>true});
+  const composer=document.querySelector('textarea');composer.focus();composer.setSelectionRange(4,9);
+  const visibility=(visible,handoff=false)=>window.dispatchEvent(new window.CustomEvent('alpha-keyboard-visibility',{detail:{visible,handoff}}));
+  visibility(true);visibility(false,true);
+  assert.equal(document.activeElement,composer,'transient hide while the auxiliary IME starts keeps the editor');
+  visibility(true);assert.equal(document.activeElement,composer);
+  visibility(false);
+  assert.notEqual(document.activeElement,composer,'Back closes typing after the voice IME restores the normal keyboard');
+  assert.equal(composer.value,'Keep this draft');assert.equal(composer.selectionStart,4);assert.equal(composer.selectionEnd,9);
+ }finally{dom.window.close();}
+});
+
 test('a composer mounted while the native keyboard is already up still releases on Back',()=>{
  const dom=new JSDOM('<html data-alpha-keyboard-visible="true"><body><textarea data-alpha-composer>Retained</textarea></body></html>');
  const {window}=dom,{document}=window,shell={chatInputFocused:true};document.querySelector('textarea').focus();

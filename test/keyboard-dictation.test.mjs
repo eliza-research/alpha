@@ -50,6 +50,7 @@ test('voice IME and Cloud adapter compile against Android API and shared real re
  try {
   const stubs={
    'BuildConfig.java':'final class BuildConfig {static final String ELIZA_RUNTIME_PROFILE="cloud";}',
+   'MainActivity.java':'final class MainActivity {static void refreshKeyboardInsets(){} static void beginKeyboardReturn(){}}',
    'AlphaLocalAgentPlugin.java':'final class AlphaLocalAgentPlugin {static long credentialAuthorityEpoch(){return 0;} static <T>T withCredentialAuthority(long epoch,java.util.concurrent.Callable<T> body)throws Exception{return body.call();}}',
    'AlphaCredentialStore.java':'final class AlphaCredentialStore {AlphaCredentialStore(android.content.Context c){} String readCredentialSlot(String slot){return null;}}',
    'LocalAgentProviderAdmission.java':'final class LocalAgentProviderAdmission {static void requireCloudVoiceSelection(String s,String id){} static boolean validProviderToken(String s,int max){return true;}}',
