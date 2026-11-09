@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "80fbb1d25937585b24fd85132d623d5391c8ca07",
-  "ledgerSha256": "95aea5d36e2fdf77db29292607f465f9343f70db1325a639c266fbb02e0bc700",
+  "ledgerSha256": "9f6e99a856682e8350303ca571fdfb0f44240b1ffa35e428b75c067b5f321a16",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -30,9 +30,9 @@
     "parseErrors": 0,
     "candidates": 67496,
     "writeSites": 67108,
-    "writeAssociations": 60173,
-    "asynchronous": 8361,
-    "unassignedWrites": 10341
+    "writeAssociations": 60166,
+    "asynchronous": 8364,
+    "unassignedWrites": 10348
   },
   "files": [
     {
@@ -33094,7 +33094,7 @@
     },
     {
       "path": "apps/app/src/prototype/agent-adapter.ts",
-      "sha256": "d6d5d67d9a238182d4c104cec2d37393ecea906c9c5659f00302a31e5804931f",
+      "sha256": "9ba397e7e8fd99b9ed888acb7def72ae2c79c32a51149f4bbb23644eab29357a",
       "allocatedModels": [
         "Application",
         "AssistantConversation",
@@ -33130,182 +33130,182 @@
         },
         {
           "owner": "trackDispatch",
-          "line": 205,
+          "line": 207,
           "bindings": 1,
           "writes": 3
         },
         {
           "owner": "installAgentAdapter",
-          "line": 254,
+          "line": 256,
           "bindings": 3,
           "writes": 38
         },
         {
           "owner": "installAgentAdapter.sizeComposer",
-          "line": 279,
+          "line": 281,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "installAgentAdapter.keepNotesDraft",
-          "line": 292,
+          "line": 294,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAgentAdapter.keepNotesDraft.ArrowFunction@294",
-          "line": 295,
+          "owner": "installAgentAdapter.keepNotesDraft.ArrowFunction@296",
+          "line": 297,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installAgentAdapter.resumeNotesDraft",
-          "line": 306,
+          "line": 308,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installAgentAdapter.openNativeNotesRecovery",
-          "line": 349,
+          "line": 351,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@384",
-          "line": 385,
+          "owner": "installAgentAdapter.FunctionExpression@386",
+          "line": 387,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "installAgentAdapter.completeReadReply",
-          "line": 394,
+          "line": 396,
           "bindings": 1,
           "writes": 3
         },
         {
-          "owner": "installAgentAdapter.recoverPendingActions.ArrowFunction@444.ArrowFunction@447",
-          "line": 449,
+          "owner": "installAgentAdapter.recoverPendingActions.ArrowFunction@446.ArrowFunction@449",
+          "line": 451,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "installAgentAdapter.syncCanonicalNotes",
-          "line": 532,
+          "line": 534,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installAgentAdapter.syncPreviousNotesAvailability",
-          "line": 559,
+          "line": 561,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "installAgentAdapter.selectNotesSource",
-          "line": 582,
+          "line": 584,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAgentAdapter.selectNotesSource.ArrowFunction@595",
-          "line": 601,
+          "owner": "installAgentAdapter.selectNotesSource.ArrowFunction@597",
+          "line": 603,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installAgentAdapter.context",
-          "line": 636,
+          "line": 638,
           "bindings": 1,
           "writes": 11
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@681.ArrowFunction@696",
-          "line": 698,
+          "owner": "installAgentAdapter.FunctionExpression@683.ArrowFunction@698",
+          "line": 700,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@681.ArrowFunction@868",
-          "line": 906,
+          "owner": "installAgentAdapter.FunctionExpression@683.ArrowFunction@870",
+          "line": 908,
           "bindings": 15,
           "writes": 16
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1146",
-          "line": 1149,
+          "owner": "installAgentAdapter.FunctionExpression@1148",
+          "line": 1151,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1246",
-          "line": 1247,
+          "owner": "installAgentAdapter.FunctionExpression@1248",
+          "line": 1249,
           "bindings": 1,
           "writes": 16
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1246.ArrowFunction@1258.ArrowFunction@1258",
-          "line": 1259,
+          "owner": "installAgentAdapter.FunctionExpression@1248.ArrowFunction@1260.ArrowFunction@1260",
+          "line": 1261,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAgentAdapter.recheckCloudFromCard.ArrowFunction@1336",
-          "line": 1337,
+          "owner": "installAgentAdapter.recheckCloudFromCard.ArrowFunction@1337",
+          "line": 1338,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installAgentAdapter.sendFromComposer",
-          "line": 1357,
+          "line": 1358,
           "bindings": 3,
           "writes": 3
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1377",
-          "line": 1378,
+          "owner": "installAgentAdapter.FunctionExpression@1378",
+          "line": 1379,
           "bindings": 3,
-          "writes": 41
+          "writes": 43
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1526",
-          "line": 1530,
+          "owner": "installAgentAdapter.FunctionExpression@1529",
+          "line": 1533,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1541",
-          "line": 1542,
+          "owner": "installAgentAdapter.FunctionExpression@1544",
+          "line": 1545,
           "bindings": 5,
           "writes": 5
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1610",
-          "line": 1611,
-          "bindings": 13,
-          "writes": 16
+          "owner": "installAgentAdapter.FunctionExpression@1613",
+          "line": 1614,
+          "bindings": 14,
+          "writes": 17
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1822",
-          "line": 1828,
+          "owner": "installAgentAdapter.FunctionExpression@1831",
+          "line": 1837,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1834",
-          "line": 1852,
+          "owner": "installAgentAdapter.FunctionExpression@1843",
+          "line": 1861,
           "bindings": 2,
           "writes": 4
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1961",
-          "line": 1962,
+          "owner": "installAgentAdapter.FunctionExpression@1970",
+          "line": 1971,
           "bindings": 1,
           "writes": 12
         }
       ],
       "parseErrors": [],
       "asynchronous": 111,
-      "unassignedWrites": 265
+      "unassignedWrites": 270
     },
     {
       "path": "apps/app/src/prototype/agent-calendar-adapter.ts",
@@ -34996,7 +34996,7 @@
     },
     {
       "path": "apps/app/src/prototype/inbox-cloud-adapter.ts",
-      "sha256": "43df199d31d2cf4b43365c42d5af35f01c8ad71cb0ab925f7e661d83a7fc73f7",
+      "sha256": "2a85648f3d8af42e5d829b9916cfeee04252038fb0b4bcafbe8b40c47bfa984a",
       "allocatedModels": [
         "InboxDelivery",
         "InboxCoordinator",
@@ -35015,8 +35015,8 @@
         {
           "owner": "installInboxCloudAdapter",
           "line": 56,
-          "bindings": 62,
-          "writes": 355
+          "bindings": 59,
+          "writes": 343
         },
         {
           "owner": "installInboxCloudAdapter.openNotice",
@@ -35085,51 +35085,63 @@
           "writes": 3
         },
         {
-          "owner": "installInboxCloudAdapter.openAttachment.ArrowFunction@654",
-          "line": 654,
+          "owner": "installInboxCloudAdapter.openAttachment.ArrowFunction@672",
+          "line": 672,
           "bindings": 1,
           "writes": 5
         },
         {
-          "owner": "installInboxCloudAdapter.saveOpaque.ArrowFunction@665",
-          "line": 666,
+          "owner": "installInboxCloudAdapter.saveOpaque.ArrowFunction@683",
+          "line": 684,
           "bindings": 1,
           "writes": 5
         },
         {
           "owner": "installInboxCloudAdapter.openLink",
-          "line": 692,
+          "line": 710,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installInboxCloudAdapter.ArrowFunction@794",
-          "line": 832,
+          "owner": "installInboxCloudAdapter.ArrowFunction@718",
+          "line": 722,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "installInboxCloudAdapter.ArrowFunction@812",
+          "line": 850,
           "bindings": 4,
           "writes": 6
         },
         {
-          "owner": "installInboxCloudAdapter.ArrowFunction@794.linkRows",
-          "line": 870,
+          "owner": "installInboxCloudAdapter.ArrowFunction@812.linkRows",
+          "line": 888,
           "bindings": 2,
           "writes": 2
         },
         {
-          "owner": "installInboxCloudAdapter.ArrowFunction@794.htmlLoaded",
-          "line": 883,
+          "owner": "installInboxCloudAdapter.ArrowFunction@812.htmlLoaded",
+          "line": 901,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installInboxCloudAdapter.FunctionExpression@912.ArrowFunction@934",
-          "line": 938,
+          "owner": "installInboxCloudAdapter.ArrowFunction@812.menuKey",
+          "line": 915,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "installInboxCloudAdapter.FunctionExpression@930.ArrowFunction@954",
+          "line": 958,
           "bindings": 1,
           "writes": 2
         }
       ],
       "parseErrors": [],
-      "asynchronous": 61,
-      "unassignedWrites": 14
+      "asynchronous": 64,
+      "unassignedWrites": 16
     },
     {
       "path": "apps/app/src/prototype/inbox-drafts.ts",
@@ -39141,7 +39153,7 @@
     },
     {
       "path": "apps/app/src/prototype/phone.css",
-      "sha256": "f6f1f94522158dc0e906c52b085e55088eabd7174c10d2f9e71dc1f3e09d2e1a",
+      "sha256": "0c5aee1d4f858d869ef0cf8980763f1bb4a5a3fad517872a1208d0831600bdc4",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -39819,7 +39831,7 @@
     },
     {
       "path": "apps/app/src/prototype/subview-accessibility.ts",
-      "sha256": "f1ce374b0455bba558449b5e48ff8911d82cadbea55422a39a0c02c41421db46",
+      "sha256": "1c2c1f6caab770dd6cdadc43b263a797654c66fe4c59c56e39dca658422728a1",
       "allocatedModels": [
         "ShellNavigation",
         "ListFocus",
@@ -39847,44 +39859,44 @@
           "writes": 9
         },
         {
-          "owner": "installSubviewAccessibility.ArrowFunction@59",
-          "line": 62,
+          "owner": "installSubviewAccessibility.ArrowFunction@58",
+          "line": 61,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "subviewFocus",
-          "line": 80,
+          "line": 79,
           "bindings": 3,
           "writes": 5
         },
         {
-          "owner": "subviewFocus.ArrowFunction@81",
-          "line": 85,
+          "owner": "subviewFocus.ArrowFunction@80",
+          "line": 84,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "subviewFocus.ArrowFunction@81.ArrowFunction@92",
-          "line": 94,
+          "owner": "subviewFocus.ArrowFunction@80.ArrowFunction@91",
+          "line": 93,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "reviewFocus",
-          "line": 109,
+          "line": 108,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "focusHistory",
-          "line": 134,
+          "line": 133,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installReplyAnnouncer.FunctionExpression@191",
-          "line": 204,
+          "owner": "installReplyAnnouncer.FunctionExpression@190",
+          "line": 203,
           "bindings": 1,
           "writes": 0
         }
@@ -39969,7 +39981,7 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "e98f7b9e5edd13ca8733dc3438b378e69f79a8aad94c4b8262c34ffe275f7874",
+      "sha256": "a5db4baac9fa027b5adc0899375ef0489db5317dba08eff59483492958d4e0c9",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -220861,6 +220873,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "e0ee3c37a563232763db5fe35baf52de845db5f7906f5e0682169a26c44e81eb"
+    "sha256": "5adf8b67aefffa0f32d8b3e18327cb942a0d1c5168a7088771454261ceaaf304"
   }
 }

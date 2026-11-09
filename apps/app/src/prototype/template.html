@@ -632,22 +632,26 @@
       <div data-alpha-app-header="detail" style="display: flex; align-items: center; height: 56px; margin-top: 44px; padding: 0 8px; gap: 2px; flex-shrink: 0">
         <button class="ib" aria-label="Back to inbox" onClick="{{back}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button>
         <span style="flex-grow: 1"></span>
-        <button class="ib" aria-label="Reply" disabled="{{inbox.d.loading}}" onClick="{{inbox.d.reply}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.reply}}"></path></svg></button>
-        <sc-if value="{{inbox.d.canReplyAll}}"><button aria-label="Reply all" disabled="{{inbox.d.loading}}" onClick="{{inbox.d.replyAll}}" style="padding:8px;font-size:12px">Reply all</button></sc-if>
-        <sc-if value="{{inbox.d.canToggleRead}}"><button onClick="{{inbox.d.toggleRead}}" style="padding:8px;font-size:12px">{{inbox.d.readLabel}}</button></sc-if>
-        <button class="ib" aria-label="Forward" disabled="{{inbox.d.loading}}" onClick="{{inbox.d.forward}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.inboxFwd}}"></path></svg></button>
-        <sc-if value="{{inbox.d.canArchive}}">
-          <button class="ib" aria-label="Archive" onClick="{{inbox.d.archive}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.archive}}"></path></svg></button>
-        </sc-if>
-        <sc-if value="{{inbox.d.canTrash}}"><button class="ib" aria-label="Move to Trash" onClick="{{inbox.d.del}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.trash}}"></path></svg></button></sc-if>
+        <details class="photo-import-menu mail-message-menu" onKeyDown="{{inbox.d.menuKey}}">
+          <summary aria-label="Message actions"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.more}}"></path></svg></summary>
+          <div onClick="{{inbox.d.closeMenu}}">
+            <button disabled="{{inbox.d.loading}}" onClick="{{inbox.d.reply}}"><span class="mail-toolbar-icon" style="mask-image:url('/icons/lucide/reply.svg')"></span>Reply</button>
+            <sc-if value="{{inbox.d.canReplyAll}}"><button disabled="{{inbox.d.loading}}" onClick="{{inbox.d.replyAll}}"><span class="mail-toolbar-icon" style="mask-image:url('/icons/lucide/reply.svg')"></span>Reply all</button></sc-if>
+            <button disabled="{{inbox.d.loading}}" onClick="{{inbox.d.forward}}"><span class="mail-toolbar-icon" style="mask-image:url('/icons/lucide/forward.svg')"></span>Forward</button>
+            <sc-if value="{{inbox.d.canAsk}}"><button onClick="{{inbox.d.ask}}"><span class="alpha-compute-mark" aria-hidden="true"></span>Ask Alpha</button></sc-if>
+            <sc-if value="{{inbox.d.canToggleRead}}"><button onClick="{{inbox.d.toggleRead}}"><span class="mail-toolbar-icon" style="mask-image:url('/icons/lucide/mail.svg')"></span>{{inbox.d.readLabel}}</button></sc-if>
+            <sc-if value="{{inbox.d.canArchive}}"><button onClick="{{inbox.d.archive}}"><span class="mail-toolbar-icon" style="mask-image:url('/icons/lucide/archive.svg')"></span>Archive</button></sc-if>
+            <sc-if value="{{inbox.d.canTrash}}"><button onClick="{{inbox.d.del}}"><span class="mail-toolbar-icon" style="mask-image:url('/icons/lucide/trash-2.svg')"></span>Move to Trash</button></sc-if>
+          </div>
+        </details>
       </div>
       <div class="scr inbox-message-content" role="region" aria-label="Email message" tabindex="0" style="flex-grow: 1; overflow-y: auto; padding: 4px 24px 130px; touch-action: pan-y">
-        <sc-if value="{{inbox.d.canLoadThread}}"><button onClick="{{inbox.d.loadThread}}" style="min-height:44px;padding:8px 0;color:var(--acct)">Show conversation</button></sc-if><sc-if value="{{inbox.d.hasThread}}"><p style="font-size:12px;color:var(--mut)">{{inbox.d.threadStatus}}</p>
-        <div class="scr" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:10px">
-          <sc-for list="{{inbox.d.threadRows}}" as="message"><button onClick="{{message.pick}}" style="padding:8px 12px;border-radius:18px;background:var(--s2);white-space:nowrap">{{message.label}}</button></sc-for>
-          <sc-if value="{{inbox.d.hasPreviousThread}}"><button onClick="{{inbox.d.previousThread}}" style="padding:8px 12px;white-space:nowrap">Previous thread page</button></sc-if>
-          <sc-if value="{{inbox.d.hasNextThread}}"><button onClick="{{inbox.d.nextThread}}" style="padding:8px 12px;white-space:nowrap">Next thread page</button></sc-if>
-        </div>
+        <sc-if value="{{inbox.d.hasThread}}">
+          <div class="mail-thread" role="group" aria-label="Conversation">
+            <sc-if value="{{inbox.d.hasPreviousThread}}"><button class="mail-thread-page" onClick="{{inbox.d.previousThread}}">Earlier messages</button></sc-if>
+            <sc-for list="{{inbox.d.threadRows}}" as="message"><button class="mail-thread-message" onClick="{{message.pick}}"><span><strong>{{message.name}}</strong><small>{{message.date}}</small></span><span>{{message.preview}}</span></button></sc-for>
+            <sc-if value="{{inbox.d.hasNextThread}}"><button class="mail-thread-page" onClick="{{inbox.d.nextThread}}">More messages</button></sc-if>
+          </div>
         </sc-if><h1 class="serif" style="margin: 0; font-size: 32px; line-height: 1.1; letter-spacing: -.01em">{{inbox.d.subj}}</h1>
         <div style="display: flex; align-items: flex-start; gap: 12px; margin-top: 20px">
           <sc-if value="{{inbox.d.hasPerson}}">
@@ -679,9 +683,7 @@
             </sc-for>
           </div>
         </sc-if>
-        <sc-if value="{{inbox.d.canAsk}}">
-          <button onClick="{{inbox.d.ask}}" style="margin-top: 26px; min-height: 36px; padding: 0 16px 0 14px; border-radius: 18px; background: var(--s2); display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600"><span style="color: var(--acct); font-family: Denton, Fraunces, Georgia, serif; font-style: italic; font-size: 19px; line-height: 1"><span class="alpha-compute-mark" aria-hidden="true"></span></span>Review email with agent</button>
-        </sc-if>
+
       </div>
     </div>
   </sc-if>
@@ -763,7 +765,7 @@
     </div>
   </sc-if>
 
-  <sc-if value="{{inbox.contextReviewOpen}}"><div ref="{{inbox.contextModal}}" class="scr inbox-review-modal" role="dialog" aria-modal="true" aria-label="Review email sharing" style="position:absolute;inset:0;z-index:10;background:var(--bg);padding:54px 20px 30px;overflow:auto;box-sizing:border-box"><button onClick="{{inbox.contextReview.close}}" style="padding:10px">Cancel</button><h2 class="serif">Share this email with your agent?</h2><p style="overflow-wrap:anywhere">Destination: {{inbox.contextReview.destination}}</p><p>The complete text below will be sent. Attachments are excluded.</p><div style="white-space:pre-wrap;overflow-wrap:anywhere">{{inbox.contextReview.source}}</div><button disabled="{{inbox.contextReview.busy}}" onClick="{{inbox.contextReview.send}}" style="padding:14px;border-radius:24px;background:var(--acc);color:white">Send reviewed email to agent</button></div></sc-if>
+
   <sc-if value="{{inbox.attachmentOpen}}">
     <div ref="{{inbox.attachmentModal}}" class="inbox-attachment-review inbox-review-modal" role="dialog" aria-modal="true" aria-label="Review attachment">
       <div class="inbox-attachment-actions"><button onClick="{{inbox.attachment.close}}">Back to message</button><button onClick="{{inbox.attachment.save}}" disabled="{{inbox.attachment.saveDisabled}}">Save to Files</button><sc-if value="{{inbox.attachment.external}}"><button onClick="{{inbox.attachment.open}}">Open reviewed file</button></sc-if></div>
@@ -4015,6 +4017,7 @@
     <sc-for list="{{msgs}}" as="m">
       <div data-alpha-message-id="{{m.id}}" style="display: flex; flex-direction: column">
         <sc-if value="{{m.isUser}}">
+          <sc-if value="{{m.sentMail}}"><div class="sent-content-attachment" aria-label="Sent email"><small>Email</small><strong>{{m.sentMail}}</strong></div></sc-if>
           <sc-if value="{{m.sentTranscript}}"><div class="sent-content-attachment" aria-label="Sent transcript"><small>Transcript</small><strong>{{m.sentTranscript}}</strong></div></sc-if>
           <sc-if value="{{m.sentPhoto}}"><button class="sent-content-attachment" aria-label="Preview sent photo" onClick="{{m.openPhotoPreview}}"><img src="{{m.sentPhoto}}" alt="Sent photo" /></button></sc-if>
 
@@ -4156,6 +4159,7 @@
   <sc-if value="{{messageComposeContext}}"><div style="display:flex;align-items:center;gap:8px;padding:6px 16px;font-size:13px;background:var(--s2);border-radius:14px"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{messageComposeContext}}</span><button class="tap" aria-label="Cancel reply or edit" onClick="{{cancelMessageContext}}" style="min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center"><svg class="i" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="{{ic.x}}"></path></svg></button></div></sc-if>
 
     <sc-if value="{{attachedCameraPhoto}}"><div class="note-transcript-chip" aria-label="Attached photo"><button aria-label="Preview attached photo" onClick="{{openDraftPhoto}}"><img alt="Captured photo" width="48" height="48" src="{{attachedCameraPhoto}}" style="object-fit:cover;border-radius:8px"></button><span>Photo</span><button aria-label="Remove photo" onClick="{{removeCameraPhoto}}">×</button></div></sc-if>
+    <sc-if value="{{attachedMail}}"><div class="note-transcript-chip" aria-label="Attached email"><div><small>Email</small><strong>{{attachedMail}}</strong></div><button aria-label="Remove email" onClick="{{removeMail}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.x}}"></path></svg></button></div></sc-if>
     <sc-if value="{{attachedTranscript}}"><div class="note-transcript-chip" role="group" aria-label="Attached transcript"><span class="note-transcript-chip-label"><small>Transcript</small><strong>{{attachedTranscript}}</strong></span><button type="button" aria-label="Remove transcript" onClick="{{removeTranscript}}"><i aria-hidden="true" class="note-transcript-remove-icon"></i></button></div></sc-if>
     <div class="alpha-chat-composer">
       <textarea disabled="{{draftOpening}}" onPointerDown="{{composerPointer}}" data-alpha-composer="true" rows="1" aria-label="Message {{name}}" placeholder="Message {{name}}" value="{{draft}}" onChange="{{onDraft}}" onKeyDown="{{onKey}}" style="flex-grow: 1; min-width: 0; height: 44px; min-height:44px; max-height:min(168px,28dvh); resize:none; overflow-y:auto; font-family:inherit; line-height:22px; padding-top:11px; padding-bottom:11px; box-sizing:border-box; border: 0; outline: 0; background: transparent; color: var(--fg); font-size: 16px"></textarea>

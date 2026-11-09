@@ -15678,7 +15678,7 @@
     },
     {
       "path": "apps/app/src/prototype/agent-adapter.ts",
-      "sha256": "d6d5d67d9a238182d4c104cec2d37393ecea906c9c5659f00302a31e5804931f",
+      "sha256": "9ba397e7e8fd99b9ed888acb7def72ae2c79c32a51149f4bbb23644eab29357a",
       "models": [
         "Application",
         "AssistantConversation",
@@ -16931,7 +16931,7 @@
         }
       ],
       "reviewStatus": "state-audit-required",
-      "integrationReview": "2026-11-09 image preview covers the assistant as an opaque modal. Default inline dialogs retain existing assistant behavior. Image zoom/pan stays local to the viewer and is discarded on close; draft and attachment are retained. ModalScrimOwnership image scenario and browser pointer/layout tests qualify this scope."
+      "integrationReview": "2026-11-09 mail reader: automatic same-account thread read preserves the fresher selected body and all operation receipts. Compact menu changes presentation only. Email chat attachment reuses message persistence, validates the exact selected source and destination before sending, and leaves provider text untrusted. Existing models remain projections; complete mail rendering and revision/expiry checks are tested separately."
     },
     {
       "path": "apps/app/src/prototype/agent-calendar-adapter.ts",
@@ -22404,7 +22404,7 @@
     },
     {
       "path": "apps/app/src/prototype/inbox-cloud-adapter.ts",
-      "sha256": "43df199d31d2cf4b43365c42d5af35f01c8ad71cb0ab925f7e661d83a7fc73f7",
+      "sha256": "2a85648f3d8af42e5d829b9916cfeee04252038fb0b4bcafbe8b40c47bfa984a",
       "models": [
         "InboxDelivery",
         "InboxCoordinator",
@@ -23454,7 +23454,7 @@
           "text": "void restoreHomeMailbox().finally(() => warmHomeMailbox(true).then(() => { const hint = readGmailAccountChoice(connectionController.getSnapshot().cloudAccount); if (hint && hint === selected && accoun"
         }
       ],
-      "integrationReview": "2026-11-09 removed duplicate Inbox retry/banner; the existing refresh icon reuses the same read-only retry and retained messages remain visible. Provider errors and permission invalidation stay enforced. Existing model allocation retained; browser and source-model evidence remain distinct.",
+      "integrationReview": "2026-11-09 mail reader: automatic same-account thread read preserves the fresher selected body and all operation receipts. Compact menu changes presentation only. Email chat attachment reuses message persistence, validates the exact selected source and destination before sending, and leaves provider text untrusted. Existing models remain projections; complete mail rendering and revision/expiry checks are tested separately.",
       "reviewStatus": "state-audit-required"
     },
     {
@@ -32067,9 +32067,9 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "f6f1f94522158dc0e906c52b085e55088eabd7174c10d2f9e71dc1f3e09d2e1a",
+      "sha256": "0c5aee1d4f858d869ef0cf8980763f1bb4a5a3fad517872a1208d0831600bdc4",
       "stateAnchors": [],
-      "integrationReview": "2026-11-09 image preview covers the assistant as an opaque modal. Default inline dialogs retain existing assistant behavior. Image zoom/pan stays local to the viewer and is discarded on close; draft and attachment are retained. ModalScrimOwnership image scenario and browser pointer/layout tests qualify this scope."
+      "integrationReview": "2026-11-09 mail reader: automatic same-account thread read preserves the fresher selected body and all operation receipts. Compact menu changes presentation only. Email chat attachment reuses message persistence, validates the exact selected source and destination before sending, and leaves provider text untrusted. Existing models remain projections; complete mail rendering and revision/expiry checks are tested separately."
     },
     {
       "path": "apps/app/src/prototype/photo-library-adapter.ts",
@@ -33942,7 +33942,7 @@
     },
     {
       "path": "apps/app/src/prototype/subview-accessibility.ts",
-      "sha256": "f1ce374b0455bba558449b5e48ff8911d82cadbea55422a39a0c02c41421db46",
+      "sha256": "1c2c1f6caab770dd6cdadc43b263a797654c66fe4c59c56e39dca658422728a1",
       "models": [
         "ShellNavigation",
         "ListFocus",
@@ -34199,7 +34199,8 @@
           "line": 208,
           "text": "const text = String(last.text || last.card?.title || '').trim();"
         }
-      ]
+      ],
+      "integrationReview": "2026-11-09 mail reader: automatic same-account thread read preserves the fresher selected body and all operation receipts. Compact menu changes presentation only. Email chat attachment reuses message persistence, validates the exact selected source and destination before sending, and leaves provider text untrusted. Existing models remain projections; complete mail rendering and revision/expiry checks are tested separately."
     },
     {
       "path": "apps/app/src/prototype/summary-note-review.ts",
@@ -34380,14 +34381,14 @@
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "e98f7b9e5edd13ca8733dc3438b378e69f79a8aad94c4b8262c34ffe275f7874",
+      "sha256": "a5db4baac9fa027b5adc0899375ef0489db5317dba08eff59483492958d4e0c9",
       "stateAnchors": [
         {
           "line": 3358,
           "text": "<sc-if value=\"{{workflows.automation.editingSchedule}}\"><sc-if value=\"{{workflows.automation.scheduleClockEditable}}\"><label class=\"schedule-instructions\">Time ({{workflows.automation.e"
         }
       ],
-      "integrationReview": "2026-11-09 removed duplicate Inbox retry/banner; the existing refresh icon reuses the same read-only retry and retained messages remain visible. Provider errors and permission invalidation stay enforced. Existing model allocation retained; browser and source-model evidence remain distinct."
+      "integrationReview": "2026-11-09 mail reader: automatic same-account thread read preserves the fresher selected body and all operation receipts. Compact menu changes presentation only. Email chat attachment reuses message persistence, validates the exact selected source and destination before sending, and leaves provider text untrusted. Existing models remain projections; complete mail rendering and revision/expiry checks are tested separately."
     },
     {
       "path": "apps/app/src/prototype/use-in-email-review.ts",

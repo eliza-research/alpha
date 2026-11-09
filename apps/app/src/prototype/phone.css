@@ -828,3 +828,15 @@ html[data-alpha-browser-underlay] [data-alpha-layer="app"]{background:linear-gra
 
 [data-alpha-backdrop],[data-alpha-clock-page]{bottom:var(--alpha-dock-reserve,108px)!important}
 [data-alpha-clock-page]{padding-bottom:24px!important}
+
+/* Message actions share the existing compact overflow menu. */
+.mail-message-menu > div { min-width:200px; max-width:calc(100vw - 40px); }
+.mail-message-menu > div button { display:flex; align-items:center; gap:12px; }
+.mail-message-menu .alpha-compute-mark { width:20px; height:20px; flex-shrink:0; }
+.mail-thread { margin-bottom:20px; }
+.mail-thread-message { display:flex; flex-direction:column; gap:5px; width:100%; padding:14px 0; text-align:left; border-bottom:1px solid var(--line); }
+.mail-thread-message > span:first-child { display:flex; align-items:baseline; gap:12px; justify-content:space-between; }
+.mail-thread-message strong { font-size:14px; }
+.mail-thread-message small { color:var(--mut); white-space:nowrap; }
+.mail-thread-message > span:last-child { color:var(--mut); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; font-size:14px; }
+.mail-thread-page { min-height:44px; color:var(--acct); }

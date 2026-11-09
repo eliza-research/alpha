@@ -16,7 +16,8 @@ async function install(page:Page,caps:Record<string,unknown>){
    gmailAccounts:async()=>[{connectionId:'fixture-grant',label:'Fixture mailbox',connected:true,grantedCapabilities:['google.gmail.triage']}],
    gmailInboxCapabilities:async()=>({version:1,from:'owner@example.invalid',threads:false,send:true,providerDrafts:true,mailboxMutations:true,attachments:true,providerExactlyOnce:false,atomicDraftReplacement:false,readState:false,draftsList:false,forwardAttachments:false,opaqueAttachments:false,searchTrash:false,attachmentPolicy:{maximumOutgoing:1,maximumBytes:5242880,maximumTotalBytes:5242880},...caps}),
    gmailSearch:async(_g:string,query:string)=>{f.searches.push(query);return {messages:query==='in:archive'?[message('a1','Archived fixture')]:query==='in:trash'?[message('t1','Trashed fixture')]:[message('i1','Inbox fixture')],syncedAt:'2026-10-08T12:00:00Z',nextPageToken:null};},
-   gmailRead:async(_g:string,id:string)=>({message:message(id,'Inbox fixture'),bodyText:'Synthetic body',links:[]}),
+   gmailRead:async(_g:string,id:string)=>({message:message(id,'Inbox fixture'),bodyText:'Synthetic body',historyId:'mail-r1',links:[]}),
+   gmailThread:async(_g:string,threadId:string)=>{f.threadReads=(f.threadReads||0)+1;return {offset:0,historyId:'thread-r1',nextOffset:null,total:2,messages:[{message:message('earlier','Inbox fixture'),bodyText:'Earlier message body',historyId:'mail-r0'},{message:message('i1','Inbox fixture'),bodyText:'Stale thread body',historyId:'mail-r0'}]};},
    gmailDrafts:async()=>{f.drafts++;return {drafts:[{draftId:'draft-1',messageId:'dm-1',subject:'Quarterly plan',to:['friend@example.invalid'],snippet:'Draft text',updatedAt:'2026-10-07T10:00:00Z'},{draftId:'draft-2',messageId:'dm-2',subject:'Re: Thread reply',to:['friend@example.invalid'],snippet:'',updatedAt:null}],nextPageToken:null};},
    gmailDraftContent:async(_g:string,draftId:string)=>{f.draftReads.push(draftId);return {draftId,messageId:'dm',providerDigest:(draftId==='draft-1'?'a':'b').repeat(64),to:['friend@example.invalid'],cc:[],bcc:[],subject:draftId==='draft-1'?'Quarterly plan':'Re: Thread reply',bodyText:'Draft text',threaded:draftId!=='draft-1',attachmentCount:0,plainText:true};},
    gmailPrepareOperation:async(_g:string,requestId:string,proposal:any)=>{f.prepared.push(structuredClone(proposal));const review={...proposal,from:'owner@example.invalid',attachments:[]};return {receipt:{requestId,kind:proposal.kind,state:'prepared',reviewDigest:await digest(JSON.stringify(review)),providerResult:null,rejectionCode:null},review};},
@@ -107,4 +108,34 @@ test.describe('wide Cloud Inbox layout',()=>{
   await expect(page.getByRole('region',{name:'Email message',exact:true})).toContainText('Synthetic body');
   expect((await fixture(page)).dispatches).toBe(0);
  });
+});
+
+
+test('real thread loads automatically and message actions keep one compact menu',async({page},info)=>{
+ await install(page,{threads:true});
+ await page.getByText('Inbox fixture',{exact:true}).click();
+ await expect(page.getByRole('button',{name:'Show conversation',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('group',{name:'Conversation',exact:true})).toBeVisible();
+ await expect.poll(async()=>(await fixture(page)).threadReads).toBe(1);
+ await expect(page.getByText('Synthetic body',{exact:true})).toBeVisible();
+ await page.locator('.mail-thread-message').click();
+ await expect(page.getByText('Earlier message body',{exact:true})).toBeVisible();
+ await page.locator('.mail-thread-message').click();
+ await expect(page.getByText('Synthetic body',{exact:true})).toBeVisible();
+ await expect(page.getByText('Stale thread body',{exact:true})).toHaveCount(0);
+ await page.getByLabel('Message actions',{exact:true}).click();
+ await expect(page.getByRole('button',{name:'Reply',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Forward',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Reply all',exact:true})).toHaveCount(0);
+ await page.screenshot({path:info.outputPath('mail-actions-mobile.png')});
+ await page.setViewportSize({width:1280,height:800});
+ await expect(page.getByRole('button',{name:'Reply',exact:true})).toBeVisible();
+ expect(await page.locator('.mail-message-menu > div').evaluate(el=>{const r=el.getBoundingClientRect();return r.left>=0&&r.right<=innerWidth;})).toBe(true);
+ await page.screenshot({path:info.outputPath('mail-actions-desktop.png')});
+ await page.getByLabel('Message actions',{exact:true}).press('Escape');
+ await expect(page.getByRole('button',{name:'Reply',exact:true})).toBeHidden();
+ await page.getByLabel('Message actions',{exact:true}).click();
+ await page.getByRole('button',{name:'Reply',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'Subject',exact:true})).toHaveValue('Re: Inbox fixture');
+ expect((await fixture(page)).dispatches).toBe(0);
 });

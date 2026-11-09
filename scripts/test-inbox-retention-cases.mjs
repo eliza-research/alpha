@@ -37,10 +37,10 @@ test('3. A 503 on an attachment, the conversation or its next page keeps the rea
  await open(t,0);t.client.gmailAttachment=async()=>{throw http(503);};
  t.render().d.atts[0].open();await t.tick();
  assert.ok(t.render().d,'attachment failure keeps the reader');assert.equal(t.render().attachment,null);assert.equal(t.shell.st.open,'m1');
- t.client.gmailThread=async()=>{throw http(503);};t.render().d.loadThread();await t.tick();
+ t.client.gmailThread=async()=>{throw http(503);};await open(t,0);
  assert.ok(t.render().d,'conversation failure keeps the reader');
  const m1=inboxPage[0];t.client.gmailThread=async(_grant,_thread,_signal,cursor)=>{if(cursor)throw http(503);return {messages:[{message:m1,bodyText:'Body m1',links:[],historyId:'h-m1',attachments:[notes]}],total:2,offset:0,historyId:'th',nextOffset:1};};
- t.render().d.loadThread();await t.tick();assert.equal(t.render().d.hasThread,true);
+ t.render().refresh();await t.tick();assert.equal(t.render().d.hasThread,true);
  t.render().d.nextThread();await t.tick();
  assert.ok(t.render().d,'page failure keeps the reader');assert.equal(t.render().d.hasThread,true,'and the thread');
  t.shell.componentWillUnmount();
@@ -100,9 +100,9 @@ test('8. A failed refresh keeps the offline snapshot and says the saved mail cou
  t.setActive(false);t.views.inbox.onLeave();await t.tick();t.advance(2*60000);
  t.client.gmailSearch=async()=>{throw http(503);};
  t.setActive(true);t.render();await t.tick();
- assert.equal(t.render().rows.length,3);assert.equal(t.render().cachedListNotice,'Saved mail · Could not update');
+ assert.equal(t.render().rows.length,3);assert.equal(t.render().cachedListShown,true);
  t.render().refresh();await t.tick();
- assert.equal(t.render().rows.length,3);assert.equal(t.render().cachedListNotice,'Saved mail · Could not update');
+ assert.equal(t.render().rows.length,3);assert.equal(t.render().cachedListShown,true);
  assert.ok(saved.get('gmail:mailbox'),'the offline snapshot is kept');
  t.shell.componentWillUnmount();
 });
