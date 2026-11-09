@@ -5,6 +5,7 @@ import {captureInputs} from '../../refinement/check-traces.mjs';
 import {loadTaskService} from '../../refinement/services/task-service/module.mjs';
 
 const sibling = 'sibling';
+const action = (name, ...args) => ({name, args});
 const denyFetch = async () => {throw Error('The connector custody fixture forbids external requests');};
 
 async function fixture(runtime, identity, {detached = false, eager = false, heldDisposal = false} = {}) {
@@ -17,14 +18,21 @@ async function fixture(runtime, identity, {detached = false, eager = false, held
   const after = Promise.withResolvers(), dispose = Promise.withResolvers(), disposing = Promise.withResolvers();
   const legacy = source+'-legacy';
   let continuation, onDetached, unloading, loading, stopCalls = 0;
+  let continuationState = 'none', disposeHeld = false;
+  const actions = [];
+  const transition = (name, ...args) => actions.push(action(name, 1, ...args));
   const service = {name: 'HeldConnectorService', serviceType: type, async start(owner) {
     started.resolve();
     await start.promise;
-    if (detached) continuation = after.promise.then(async () => {
-      register(owner, 'late');
-      await onDetached?.();
-    });
-    else register(owner, 'late');
+    if (detached) {
+      continuationState = 'waiting';
+      continuation = after.promise.then(async () => {
+        register(owner, 'late');
+        continuationState = 'done';
+        transition('continueDetached');
+        await onDetached?.();
+      });
+    } else register(owner, 'late');
     return {async stop() {
       stopCalls++;
       stopping.resolve();
@@ -38,7 +46,12 @@ async function fixture(runtime, identity, {detached = false, eager = false, held
       if (!eager) await owner.registerService(service);
     },
     ...(eager ? {services: [service]} : {}),
-    ...(heldDisposal ? {async dispose() {disposing.resolve(); await dispose.promise;}} : {}),
+    ...(heldDisposal ? {async dispose() {
+      disposeHeld = true;
+      disposing.resolve();
+      try {await dispose.promise;}
+      finally {disposeHeld = false;}
+    }} : {}),
   };
   const rival = {name: b, init(_config, owner) {
     register(owner, 'rival');
@@ -113,25 +126,35 @@ async function fixture(runtime, identity, {detached = false, eager = false, held
     throw error;
   }
   return {
-    runtime, observe, cleanup, first, a, b,
-    registerRival: () => runtime.registerPlugin(rival),
-    registerHost: () => register(runtime, 'host'),
-    registerReplacement(label) {
-      return runtime.registerPlugin({name: a, init(_config, owner) {if (label) register(owner, label);}});
+    runtime, observe, cleanup, first, a,
+    drainActions: () => actions.splice(0),
+    observeScheduling: () => ({
+      classPresent: runtime.serviceTypes.get(type)?.includes(service) ?? false,
+      disposing: disposeHeld, continuation: continuationState,
+    }),
+    async registerRival() {await runtime.registerPlugin(rival); transition('registerRival');},
+    registerHost() {register(runtime, 'host'); transition('hostClaim');},
+    async registerReplacement(label) {
+      await runtime.registerPlugin({name: a, init(_config, owner) {if (label) register(owner, label);}});
+      transition('registerReplacement', Boolean(label));
     },
+    async unloadReplacement() {await runtime.unloadPlugin(a); transition('unloadReplacement');},
+    async unloadRival() {await runtime.unloadPlugin(b); transition('unloadRival');},
     async withdraw() {
       unloading = runtime.unloadPlugin(a);
       assert.equal(runtime.serviceTypes.has(type), false, 'Unload withdrew the class before yielding');
       await assert.rejects(runtime.getServiceLoadPromise(type), /not found or failed to start/);
+      transition('withdraw');
     },
-    async returnStart() {start.resolve(); await stopping.promise;},
-    async beginDispose() {unloading = runtime.unloadPlugin(a); await disposing.promise;},
-    async publishBeforeCordon() {start.resolve(); assert.ok((await loading).service);},
-    async completeDispose() {dispose.resolve(); await stopping.promise;},
+    async returnStart() {start.resolve(); await stopping.promise; transition('returnStart');},
+    async beginDispose() {unloading = runtime.unloadPlugin(a); await disposing.promise; transition('beginDispose');},
+    async publishBeforeCordon() {start.resolve(); assert.ok((await loading).service); transition('returnStart');},
+    async completeDispose() {dispose.resolve(); await stopping.promise; transition('withdraw');},
     async finish() {
       stop.resolve();
       const ownership = await unloading;
       if (loading && !heldDisposal) assert.match((await loading).error?.message, /not found or failed to start/);
+      transition('finishUnload');
       return ownership;
     },
     async completeDetached(run) {assert.ok(continuation); onDetached = run; after.resolve(); await continuation;},
@@ -167,10 +190,10 @@ async function sharedClassRuntimeIsolation(sql, left) {
       stopped: stopped.get(runtime) ?? 0,
     };
   };
-  function point(label, expected) {
+  function point(label, expected, ...actions) {
     const actual = [observe(left), observe(right)];
     assert.deepEqual(actual, expected, label);
-    checkpoints.push({label, actual});
+    checkpoints.push({label, actual, actions});
   }
   const active = runtime => ({route: owners.get(runtime), owned: true, published: true, stopped: 0});
   const inactive = stopped => ({route: 'missing', owned: false, published: false, stopped});
@@ -179,13 +202,17 @@ async function sharedClassRuntimeIsolation(sql, left) {
     for (const [runtime, name] of owners) await runtime.registerPlugin({
       name, init: (_config, runtime) => runtime.registerService(definition),
     });
+    point('both runtimes register the same class before either starts', [inactive(0), inactive(0)]);
     await left.getServiceLoadPromise(serviceType);
-    point('left start captures its owner even after right registers the same class', [active(left), inactive(0)]);
+    point('left start captures its owner even after right registers the same class', [active(left), inactive(0)],
+      action('beginStart', 1), action('returnStart', 1));
     await right.getServiceLoadPromise(serviceType);
-    point('each runtime publishes its own exact route', [active(left), active(right)]);
+    point('each runtime publishes its own exact route', [active(left), active(right)],
+      action('beginStart', 2), action('returnStart', 2));
     await left.unloadPlugin(owners.get(left));
-    point('left unload keeps right service and route untouched', [inactive(1), active(right)]);
-    return {name: 'shared service class keeps runtime-local owner custody', checkpoints};
+    point('left unload keeps right service and route untouched', [inactive(1), active(right)],
+      action('withdraw', 1), action('finishUnload', 1));
+    return {name: 'shared service class keeps runtime-local owner custody', init: action('initIsolation'), checkpoints};
   } finally {
     try {
       await left.unloadPlugin(owners.get(left));
@@ -208,11 +235,11 @@ export async function checkPluginConnectorCustody(extraSources = []) {
       const point = async (label, snapshot) => {
         const actual = await f.observe();
         assert.deepEqual(actual, snapshot, name+' '+label);
-        checkpoints.push({label, actual});
+        checkpoints.push({label, actual: {...actual, ...f.observeScheduling()}, actions: f.drainActions()});
       };
       await point('initial registration while service start is held', expected('first', ['default'], null, 'initial', 'missing', 0));
       await run(f, point);
-      records.push({name, checkpoints});
+      records.push({name, init: action('initHeld', options.detached ?? false), checkpoints});
     } finally {await f.cleanup();}
   }
 
@@ -228,7 +255,7 @@ export async function checkPluginConnectorCustody(extraSources = []) {
       assert.equal(await f.runtime.unloadPlugin(f.a), null);
       await f.registerReplacement();
       await point('same-name registration has no stale key', expected('replacement', [], null, 'missing'));
-      await f.runtime.unloadPlugin(f.a);
+      await f.unloadReplacement();
       await point('second unload also leaves no route', expected('absent', null, null, 'missing'));
     });
 
@@ -240,7 +267,7 @@ export async function checkPluginConnectorCustody(extraSources = []) {
       await point('retired publication leaves both rival keys intact', expected('first', [], ['default', sibling], 'rival', 'sibling'));
       await f.finish();
       await point('both exact routes outlive the unrelated unload', expected('absent', null, ['default', sibling], 'rival', 'sibling'));
-      await f.runtime.unloadPlugin(f.b);
+      await f.unloadRival();
       await point('rival unload removes both of its own keys', expected('absent', null, null, 'missing'));
     });
 
@@ -263,7 +290,7 @@ export async function checkPluginConnectorCustody(extraSources = []) {
       await point('old continuation has no publication authority', expected('absent', null, null, 'missing'));
       await f.registerReplacement('replacement');
       await point('a deliberate current claim works', expected('replacement', ['default'], null, 'replacement'));
-      await f.runtime.unloadPlugin(f.a);
+      await f.unloadReplacement();
       await point('current claim is removed by its own unload', expected('absent', null, null, 'missing'));
     });
 
@@ -277,7 +304,7 @@ export async function checkPluginConnectorCustody(extraSources = []) {
           await point('replacement owns its own connector', expected('replacement', ['default'], null, 'replacement'));
           await f.completeDetached();
           await point('retired continuation preserves replacement route and ownership', expected('replacement', ['default'], null, 'replacement'));
-          await f.runtime.unloadPlugin(f.a);
+          await f.unloadReplacement();
           await point('replacement unload removes only its own route', expected('absent', null, null, 'missing'));
         });
     }
@@ -317,5 +344,5 @@ export async function checkPluginConnectorCustody(extraSources = []) {
 
   const sourceHashesAfter = captureInputs(sql.sources);
   assert.deepEqual(sourceHashesAfter, sql.driverHashes, 'Pinned runtime and source-fixture bytes stayed unchanged');
-  return {records, sourceHashesAfter};
+  return {records, sources: sql.sources, driverHashes: sql.driverHashes};
 }
