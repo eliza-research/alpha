@@ -1,5 +1,5 @@
 import type {Page} from '@playwright/test';
-import {installNativeNavigationFixture} from './native-navigation-protocol';
+import {installNativeNavigationFixture} from './native-navigation-protocol.ts';
 
 /**
  * Test-boundary model of the Android resident `Agent` Capacitor plugin, never product code.
