@@ -6,7 +6,7 @@ import {checkNativeAssistantEntry} from '../specs/quint/refinement/native/assist
 test('native assistant Activities and tile refine the exact closed-source entry paths', async () => {
   const {receipt}=await checkNativeAssistantEntry();
   assert.equal(receipt.passed,true);
-  assert.equal(receipt.traces,29);
+  assert.equal(receipt.traces,35);
   assert.equal(receipt.observedFields.length,14);
   assert.equal(verifyRefinementReceiptInputs(receipt),true);
 });

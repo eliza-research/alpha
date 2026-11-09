@@ -18,7 +18,8 @@ const appSources=['AlphaAssistActivity','AlphaPowerVoiceActivity','AlphaQuickSet
 const sharedSources=assistantShared.map(path=>'vendor/eliza/'+path);
 const ports=[join(directory,'MainActivityPorts.java')];
 const scenarios=[
-  ...['cold-listener','cold-system','restored-and-warm','cold-no-bridge','locked-warm',
+  ...['cold-listener','cold-system','cold-exact-deadline','cold-expired','cold-rebound','cold-locked',
+    'public-same-object','copy-during-load','restored-and-warm','cold-no-bridge','locked-warm',
     'power-exact','power-focus','power-pause','power-destroy','power-expired','power-wrong-account',
     'power-replaced-account','power-replaced-epoch','power-mic-revoked','power-restored','power-locked',
     'power-unprotected','stale-power'].map(name=>[name,'36']),
@@ -55,6 +56,7 @@ export async function checkNativeAssistantEntry(extraSources=[]) {
     const bridge=readFileSync(join(root,capacitor,'BridgeActivity.java'),'utf8');
     const load=bridge.slice(bridge.indexOf('    protected void load()'),bridge.indexOf('    public void registerPlugin('));
     assert.match(load,/bridge = bridgeBuilder[^;]*\.create\(\);[\s\S]*this\.onNewIntent\(getIntent\(\)\);/);
+    assert.match(bridge,/protected void onNewIntent\(Intent intent\)[\s\S]*this\.bridge\.onNewIntent\(intent\);/);
     const traces=javaTraceCampaign(harness,[...appSources,...sharedSources,...ports,...fixture.paths],scenarios);
     for(const trace of traces) {
       mapSurfaces(trace.expect);
@@ -63,14 +65,14 @@ export async function checkNativeAssistantEntry(extraSources=[]) {
     const receipt=await checkTraces({model,sources,driverHashes,generatedSources:fixture.paths,traces,
       scope:'bounded-orchestration',assumptions:[
         'Actual Alpha assistant and Power Activity subclasses, MainActivity and tile compile with unmodified pinned SenseInvocation, SenseListenerClient and AssistantEntryTile. Exact AlphaLocalAgentPlugin PowerLaunchPin and two legacy readbacks are extracted with closed credential ports.',
-        'Closed Capacitor BridgeActivity recreates the installed bridge assignment and virtual one-argument intent reentry. The API 35 port forwards the ComponentCaller overload to the one-argument override. Actual Android caller disclosure, signer enforcement, Activity delivery and lifecycle scheduling are external.',
+        'Closed Capacitor BridgeActivity recreates the installed bridge assignment and virtual one-argument intent reentry. One adversarial schedule passes a copied object through the same hook. The API 35 port forwards the ComponentCaller overload to the one-argument override. Actual Android caller disclosure, signer enforcement, Activity delivery and lifecycle scheduling are external.',
         'Two Activity and bridge identities, one fixed renderer generation, exact and foreign binding classes, checked synthetic account/generation and mutation values, and selected elapsed-time boundaries. Host admission, exact bind/attach/release calls and foreground observations are controlled rather than running the whole Sense plugin.',
         'The Power PackageManager port supplies an exported/enabled permission-protected image component only where the scenario permits. No installed variant availability is established. No app process, capture, permission grant, device Settings or Android launch is performed.',
         'The tile port holds at most one platform unlock callback, models successful delivery and cancellation, and captures explicit launch requests. Android determines real callback delivery and accepts or rejects the requested launch.',
       ]});
     return {receipt,obligations:[
       {model,obligation:'Android authority and delivery of assistant entry',reason:'Closed ports do not prove OS caller disclosure, installed protected component availability, tile unlock/lifecycle delivery or Android task placement.'},
-      {model,obligation:'Live Sense/renderer binding and capture',reason:'Host replay uses controlled lease, foreground and credential inputs and performs no audio capture. The cold trusted-origin replacement is preserved as observed at the installed Capacitor call boundary.'},
+      {model,obligation:'Live Sense/renderer binding and capture',reason:'Host replay uses controlled lease, foreground and credential inputs and performs no audio capture. The exact bridge-load guard and public delivery replay are checked against installed Capacitor call ordering.'},
     ]};
   } finally {fixture.close();}
 }

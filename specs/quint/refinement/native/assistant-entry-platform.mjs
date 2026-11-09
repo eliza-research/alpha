@@ -112,16 +112,21 @@ public record Icon(int id) {public static Icon createWithResource(android.conten
     const activity='com/getcapacitor/BridgeActivity.java';
     edit(activity,'public class BridgeActivity {',`public class BridgeActivity extends android.app.Activity {
   public String launchedFrom;
+  public boolean copyLoadIntent;
   public String getLaunchedFromPackage(){return launchedFrom;}
   public void onPause(){}
   public void onNewIntent(android.content.Intent intent,android.app.ComponentCaller caller){onNewIntent(intent);}`);
     edit(activity,'    onNewIntent(getIntent());',`    ai.elizaresearch.alphaphone.AssistantEntryTraces.beforeBridgeReentry(this);
-    onNewIntent(getIntent());`);
+    onNewIntent(copyLoadIntent ? new android.content.Intent(getIntent()) : getIntent());`);
+    edit(activity,'  public void onNewIntent(android.content.Intent value) {}',`  public void onNewIntent(android.content.Intent value) {
+    if(bridge!=null&&value!=null)bridge.intentDeliveries.add(value);
+  }`);
     edit(activity,'  public void onWindowFocusChanged(boolean value) {}','  public void onWindowFocusChanged(boolean value) {focused=value;}');
     edit(activity,'    return new android.content.pm.PackageManager();','    return super.getPackageManager();');
     edit(activity,'    return "ai.elizaresearch.alphaphone";','    return super.getPackageName();');
     edit(activity,'    return kind.cast(new android.app.ActivityManager());','    return kind==android.app.ActivityManager.class?kind.cast(new android.app.ActivityManager()):super.getSystemService(kind);');
     edit('com/getcapacitor/Bridge.java','public class Bridge {',`public class Bridge {
+  public final java.util.List<android.content.Intent> intentDeliveries=new java.util.ArrayList<>();
   public final java.util.List<String> windowEvents=new java.util.ArrayList<>();
   public void triggerWindowJSEvent(String event){windowEvents.add(event);}`);
     put('com/getcapacitor/Plugin.java',`package com.getcapacitor;

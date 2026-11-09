@@ -745,15 +745,22 @@ product Power pin and legacy readback members with controlled credential and
 permission inputs. It observes sanitized intents, event count, the actual
 private invocation and grant records, and the exact tile launch request.
 
-The baseline reproduces a trusted cold listener or System UI receipt becoming
-a plain assistant receipt. `AlphaAssistActivity.onCreate` records the caller
-before `MainActivity` loads the bridge. Installed Capacitor assigns the bridge
-and calls the virtual one-argument `onNewIntent(getIntent())`. The fixture
-reproduces that call order and observes both origins. Warm API 35 caller
-delivery can still be consumed by the exact foreground binding. Legacy
-readback supplies a navigation hint. Cold Power is a separate one-shot grant
-that can be spent or invalidated by its own Activity, native credential
-replacement, focus loss, pause or destruction.
+The baseline in commit `8d5b94f635` reproduces a trusted cold listener or
+System UI receipt becoming a plain assistant receipt. Installed Capacitor
+assigns the bridge and calls virtual `onNewIntent(getIntent())`, recording a
+second origin after the initial Android caller observation. The repaired
+Activity forwards only the exact current sanitized object during the scoped
+load call without recording a second origin. The bridge still receives the
+intent and renderer event. A copied intent during load and a public
+same-object delivery after load take the ordinary delivery path.
+
+The exact owner can adopt a cold receipt through the inclusive 15-second
+window. A different owner, a late bind, or an initially locked device cannot
+use it for a voice origin. Warm API 35 caller delivery still requires the
+exact foreground binding. Legacy readback supplies a navigation hint. Cold
+Power remains a separate one-shot grant that can be spent or invalidated by
+its own Activity, native credential replacement, focus loss, pause or
+destruction.
 
 The tile fixture checks inactive presentation, canceled and delivered unlock
 callbacks, direct Intent dispatch before API 34, and the explicit immutable

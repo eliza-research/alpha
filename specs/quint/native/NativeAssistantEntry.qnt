@@ -3,7 +3,7 @@ module NativeAssistantEntry {
   type Grant = {present: bool, invalid: bool, focused: bool, bridge: int,
     bound: bool, at: int, account: int, epoch: int}
   type Surface = {kind: str, live: bool, bridge: bool, clean: bool, focus: bool,
-    events: int, beforeLoad: str, beforeCold: int, activityBinding: int, grant: Grant}
+    events: int, beforeLoad: str, beforeCold: int, retainedLoadIntent: bool, activityBinding: int, grant: Grant}
   type Invocation = {origin: str, locked: bool, at: int, coldOwner: int, adopted: bool}
   type Tile = {updates: int, subtitle: str, inactive: bool, awaitingUnlock: bool,
     launches: int, dispatch: str, clean: bool}
@@ -19,7 +19,7 @@ module NativeAssistantEntry {
   val times = Set(100, 5100, 5101, 15100, 15101)
   val emptyGrant: Grant = {present:false,invalid:false,focused:false,bridge:0,bound:false,at:0,account:0,epoch:0}
   val emptySurface: Surface = {kind:"none",live:false,bridge:false,clean:false,focus:false,events:0,
-    beforeLoad:"none",beforeCold:0,activityBinding:0,grant:emptyGrant}
+    beforeLoad:"none",beforeCold:0,retainedLoadIntent:false,activityBinding:0,grant:emptyGrant}
   val emptyInvocation: Invocation = {origin:"none",locked:true,at:0,coldOwner:0,adopted:false}
   val emptyTile: Tile = {updates:0,subtitle:"none",inactive:false,awaitingUnlock:false,
     launches:0,dispatch:"none",clean:false}
@@ -46,10 +46,9 @@ module NativeAssistantEntry {
   }
   action tick(now: int): bool = all { now.in(times), now>=s.now, s'={...s,now:now} }
 
-  // BridgeActivity.load calls the virtual one-argument onNewIntent after assigning its bridge.
-  // For ordinary assist this records a second origin with no Android caller. Power only offers a
-  // warm receipt and has no Activity binding on this first callback.
-  action create(id: int, kind: str, restored: bool, bridge: bool, caller: str): bool = all {
+  // Exact sanitized intent forwarding during Capacitor's load keeps the first origin.
+  // An adversarial copied argument takes the ordinary Activity delivery path.
+  action createWithLoad(id: int, kind: str, restored: bool, bridge: bool, caller: str, exactLoad: bool): bool = all {
     id.in(ids), s.surfaces.get(id).kind=="none",
     kind.in(Set("assist","power")), caller.in(callers),
     val origin = if (kind=="assist" and not(restored) and s.sdk>=34) classify(s,caller) else "assist"
@@ -57,10 +56,13 @@ module NativeAssistantEntry {
     val grant = if (kind=="power" and not(restored) and s.protected and not(s.locked) and s.policy=="current")
       {...emptyGrant,present:true,at:s.now,account:s.account,epoch:s.epoch} else emptyGrant
     val surface = {...emptySurface,kind:kind,live:true,bridge:bridge,clean:true,events:if (bridge) 1 else 0,
-      beforeLoad:if (bridge) first.origin else "none",beforeCold:if (bridge) first.coldOwner else 0,grant:grant}
+      beforeLoad:if (bridge) first.origin else "none",beforeCold:if (bridge) first.coldOwner else 0,
+      retainedLoadIntent:bridge and exactLoad,grant:grant}
     s'={...s,surfaces:s.surfaces.set(id,surface),
-      invocation:if (bridge and kind=="assist") record(s,"assist") else first}
+      invocation:if (bridge and kind=="assist" and not(exactLoad)) record(s,"assist") else first}
   }
+  action create(id: int, kind: str, restored: bool, bridge: bool, caller: str): bool =
+    createWithLoad(id,kind,restored,bridge,caller,true)
   action offer(id: int, caller: str, modern: bool): bool = all {
     id.in(ids), caller.in(callers), not(modern) or s.sdk>=35,
     val view = s.surfaces.get(id)
@@ -166,7 +168,8 @@ module NativeAssistantEntry {
 
   action step = any {
     { nondet id=ids.oneOf(); nondet kind=Set("assist","power").oneOf();
-      nondet restored=Bool.oneOf(); nondet bridge=Bool.oneOf(); nondet caller=callers.oneOf(); create(id,kind,restored,bridge,caller) },
+      nondet restored=Bool.oneOf(); nondet bridge=Bool.oneOf(); nondet caller=callers.oneOf();
+      nondet exactLoad=Bool.oneOf(); createWithLoad(id,kind,restored,bridge,caller,exactLoad) },
     { nondet id=ids.oneOf(); nondet caller=callers.oneOf(); nondet modern=Bool.oneOf(); offer(id,caller,modern) },
     { nondet id=ids.oneOf(); bind(id) },
     { nondet id=ids.oneOf(); nondet value=Bool.oneOf(); focus(id,value) },
@@ -184,10 +187,16 @@ module NativeAssistantEntry {
     s'=s,
   }
 
-  run coldTrustedAttributionLostAtBridgeLoadTest = initWith(36)
+  run coldTrustedAttributionSurvivesBridgeLoadTest = initWith(36)
     .then(create(1,"assist",false,true,"listener"))
-    .expect(s.surfaces.get(1).beforeLoad=="listener" and s.surfaces.get(1).beforeCold==1 and s.invocation.origin=="assist")
-    .then(bind(1)).then(take(1,true,true)).expect(s.reply.origin=="none")
+    .expect(s.surfaces.get(1).retainedLoadIntent and s.surfaces.get(1).beforeCold==1 and s.invocation.origin=="listener")
+    .then(bind(1)).then(take(1,true,true)).expect(s.reply.origin=="listener")
+    .then(take(1,true,true)).expect(s.reply.origin=="none")
+  run distinctLoadArgumentStillRecordsTest = initWith(36)
+    .then(createWithLoad(1,"assist",false,true,"listener",false))
+    .expect(not(s.surfaces.get(1).retainedLoadIntent) and s.invocation.origin=="assist")
+  run coldAttributionDoesNotTransferTest = initWith(36).then(create(1,"assist",false,true,"system"))
+    .then(replaceAuthority(2)).then(bind(1)).then(take(1,true,true)).expect(s.reply.origin=="none")
   run modernWarmListenerReadOnceTest = initWith(36).then(create(1,"assist",false,true,"none")).then(bind(1))
     .then(offer(1,"listener",true)).then(readSurface(1)).expect(s.reply.origin=="assist" and s.invocation.origin=="listener")
     .then(take(1,true,false)).expect(s.reply.origin=="none" and s.invocation.origin=="listener")

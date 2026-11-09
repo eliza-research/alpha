@@ -22,6 +22,8 @@ public final class AssistantEntryTraces {
  private static final String OTHER_OWNER = "44444444-4444-4444-8444-444444444444";
  private static final String SESSION = "c".repeat(64);
  private static final AlphaAssistActivity[] views = new AlphaAssistActivity[3];
+ private static final boolean[] retainedLoadIntent = new boolean[3];
+ private static final Intent[] loadIntent = new Intent[3];
  private static final JSONObject[] beforeLoad = new JSONObject[3];
  private static final AlphaQuickSettingsTile tile = new AlphaQuickSettingsTile();
  private static JSONObject result = reply("none", null, false, true);
@@ -51,7 +53,10 @@ public final class AssistantEntryTraces {
  }
 
  public static void beforeBridgeReentry(BridgeActivity activity) {
-  try { beforeLoad[activity.taskId] = invocation(); }
+  try {
+   beforeLoad[activity.taskId] = invocation();
+   loadIntent[activity.taskId] = activity.getIntent();
+  }
   catch (Exception error) { throw new AssertionError(error); }
  }
 
@@ -81,8 +86,15 @@ public final class AssistantEntryTraces {
   AlphaAssistActivity view = views[id];
   JSONObject before = beforeLoad[id];
   Object activityBinding = view == null ? null : mapEntry("activityBridges", view);
-  if (view != null && view.getBridge() != null && view.getBridge().windowEvents.stream()
-      .anyMatch(event -> !event.equals("alpha:assist-invocation"))) throw new AssertionError("Unexpected window event");
+  if (view != null && view.getBridge() != null) {
+   var bridge = view.getBridge();
+   if (bridge.windowEvents.stream().anyMatch(event -> !event.equals("alpha:assist-invocation")))
+    throw new AssertionError("Unexpected window event");
+   if (bridge.intentDeliveries.size() != bridge.windowEvents.size()
+       || bridge.intentDeliveries.stream().anyMatch(intent -> !clean(intent, view.getClass(), true))
+       || !bridge.intentDeliveries.isEmpty() && bridge.intentDeliveries.getLast() != view.getIntent())
+    throw new AssertionError("Capacitor must receive each exact sanitized Intent");
+  }
   return new JSONObject()
     .put("kind", view == null ? "none" : view instanceof AlphaPowerVoiceActivity ? "power" : "assist")
     .put("live", view != null && !view.isDestroyed()).put("bridge", view != null && view.getBridge() != null)
@@ -91,6 +103,7 @@ public final class AssistantEntryTraces {
     .put("events", view == null || view.getBridge() == null ? 0 : view.getBridge().windowEvents.size())
     .put("beforeLoad", before == null ? "none" : before.getString("origin"))
     .put("beforeCold", before == null ? 0 : before.getInt("coldOwner"))
+    .put("retainedLoadIntent", retainedLoadIntent[id])
     .put("activityBinding", activityBinding == null ? 0 : activityBinding)
     .put("grant", grant(view));
  }
@@ -160,14 +173,22 @@ public final class AssistantEntryTraces {
  }
 
  private static void create(int id, String kind, boolean restored, boolean bridge, String caller) throws Exception {
+  createWithLoad(id, kind, restored, bridge, caller, true);
+ }
+
+ private static void createWithLoad(int id, String kind, boolean restored, boolean bridge, String caller,
+                                    boolean exactLoad) throws Exception {
   MainActivityPorts.bridgeAvailable = bridge;
   AlphaAssistActivity view = kind.equals("power") ? new AlphaPowerVoiceActivity() : new AlphaAssistActivity();
   views[id] = view;
   view.taskId = id;
+  view.copyLoadIntent = !exactLoad;
   view.launchedFrom = callerPackage(caller);
   view.setIntent(hostile());
   view.onCreate(restored ? new Bundle() : null);
-  trace.step("create", observe(), id, kind, restored, bridge, caller);
+  retainedLoadIntent[id] = loadIntent[id] != null && loadIntent[id] == view.getIntent();
+  if (exactLoad) trace.step("create", observe(), id, kind, restored, bridge, caller);
+  else trace.step("createWithLoad", observe(), id, kind, restored, bridge, caller, false);
  }
 
  private static void offer(int id, String caller, boolean modern) throws Exception {
@@ -299,7 +320,35 @@ public final class AssistantEntryTraces {
   switch (name) {
    case "cold-listener", "cold-system" -> {
     create(1, "assist", false, true, name.substring(5));
-    readSurface(1); bind(1); take(1, true, true);
+    readSurface(1); bind(1); take(1, true, true); take(1, true, true);
+   }
+   case "cold-exact-deadline", "cold-expired" -> {
+    create(1, "assist", false, true, "listener");
+    tick(name.equals("cold-exact-deadline") ? 15100 : 15101);
+    bind(1); take(1, true, true);
+   }
+   case "cold-rebound" -> {
+    create(1, "assist", false, true, "system");
+    replaceAuthority(2); bind(1); take(1, true, true);
+   }
+   case "cold-locked" -> {
+    env(true, "current", true, true);
+    create(1, "assist", false, true, "system");
+    env(false, "current", true, true); bind(1); take(1, true, true);
+   }
+   case "public-same-object" -> {
+    create(1, "assist", false, true, "listener");
+    AlphaAssistActivity view = views[1];
+    view.onNewIntent(view.getIntent());
+    trace.macro("Public one-argument same-object delivery after load", observe(), Trace.action("offer", 1, "none", false));
+    bind(1); take(1, true, true);
+    view.onNewIntent(view.getIntent(), new ComponentCaller(callerPackage("system")));
+    trace.macro("Public caller delivery with same object after load", observe(), Trace.action("offer", 1, "system", true));
+    take(1, true, true);
+   }
+   case "copy-during-load" -> {
+    createWithLoad(1, "assist", false, true, "listener", false);
+    bind(1); take(1, true, true);
    }
    case "restored-and-warm" -> {
     readSurface(1);

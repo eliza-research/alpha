@@ -2419,7 +2419,9 @@
       "step": "step",
       "invariant": "safety",
       "tests": [
-        "coldTrustedAttributionLostAtBridgeLoadTest",
+        "coldTrustedAttributionSurvivesBridgeLoadTest",
+        "distinctLoadArgumentStillRecordsTest",
+        "coldAttributionDoesNotTransferTest",
         "modernWarmListenerReadOnceTest",
         "coldPowerExactOnceTest",
         "coldPowerNeverReturnsAfterFocusLossTest",
@@ -2455,7 +2457,7 @@
       },
       "abstractions": [
         "Two Activity/bridge identities, fixed renderer generation, exact or foreign binding, one bound account snapshot and selected elapsed-time boundaries.",
-        "Closed bridge port mirrors installed Capacitor bridge assignment and virtual intent reentry. The baseline preserves overwrite of a trusted cold caller receipt by that reentry.",
+        "Closed bridge port mirrors installed Capacitor bridge assignment and virtual intent reentry. Exact sanitized object forwarding during load preserves the authenticated cold receipt. A copied argument or public delivery takes the ordinary path.",
         "Power entry uses exact product pin and readback members with controlled credential and Android permission ports. Tile has at most one pending controlled unlock callback.",
         "No Activity launches, microphone capture, Android Settings or app runtime process. OS authority and delivery are external."
       ],

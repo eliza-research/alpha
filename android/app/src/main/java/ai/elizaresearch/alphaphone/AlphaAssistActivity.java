@@ -12,25 +12,42 @@ public class AlphaAssistActivity extends MainActivity {
  protected boolean isProtectedPowerEntry() { return false; }
  @Override protected boolean isAssistantSurface() { return true; }
  private String newIntentCaller;
+ private Intent sanitizedIntent;
+ private Intent bridgeLoadIntent;
  /** This launch's origin until the renderer takes it; see {@link #takeInvocation}. */
  /** Window event the renderer listens for: a new invocation reached the already open surface. */
  static final String INVOCATION_EVENT = "alpha:assist-invocation";
  @Override public void onCreate(Bundle state) {
   // A recreated activity (configuration change, process restore) is not a new invocation: the
   // launching package Android reports is still the original one, so it is ignored.
-  setIntent(cleanIntent(state == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE ? getLaunchedFromPackage() : null, false));
+  sanitizedIntent = cleanIntent(state == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE ? getLaunchedFromPackage() : null, false);
+  setIntent(sanitizedIntent);
   super.onCreate(state);
+ }
+ @Override protected void load() {
+  // Capacitor forwards getIntent() through onNewIntent during bridge load. Forward that exact
+  // sanitized object without recording a second invocation with no Android caller.
+  bridgeLoadIntent = getIntent() == sanitizedIntent ? sanitizedIntent : null;
+  try { super.load(); }
+  finally { bridgeLoadIntent = null; }
  }
  /** Android 15+ reports who sent each new intent to this single-task surface. */
  @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
  @Override public void onNewIntent(Intent intent, ComponentCaller caller) {
+  bridgeLoadIntent = null;
   newIntentCaller = caller == null ? null : caller.getPackage();
   super.onNewIntent(intent, caller);
  }
  @Override public void onNewIntent(Intent ignored) {
-  Intent clean = cleanIntent(newIntentCaller, true);
-  newIntentCaller = null;
-  setIntent(clean);
+  Intent clean = ignored;
+  if (ignored != null && ignored == bridgeLoadIntent && ignored == getIntent()) {
+   bridgeLoadIntent = null;
+  } else {
+   clean = cleanIntent(newIntentCaller, true);
+   newIntentCaller = null;
+   sanitizedIntent = clean;
+   setIntent(clean);
+  }
   super.onNewIntent(clean);
   // The surface may already be in front (no visibility change): tell the renderer to read it now.
   if (getBridge() != null) getBridge().triggerWindowJSEvent(INVOCATION_EVENT);
