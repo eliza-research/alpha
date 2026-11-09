@@ -2143,7 +2143,7 @@
     }
   ],
   "currentUpstream": {
-    "revision": "6f414658b08cf8075d8fb12ece2ec968a221af7e",
+    "revision": "dae11e0b7e3f40e5434fea21fd7c127e416f7016",
     "classification": "current-upstream-formal-specifications",
     "models": [],
     "note": "The current upstream tree has no tracked TLA modules or TLC configurations. Historical translations and source hashes above remain bound to revision 4787d51a142c63c98371c832997184c53f7218d3; this current inventory must separately allocate any future formal source."

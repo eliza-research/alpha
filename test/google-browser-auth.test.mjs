@@ -9,7 +9,7 @@ import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
 
 // Run the shared browser, callback and credential-ownership regressions against
 // exactly the authenticated source that Gradle packages, without editing vendor.
-test('packaged shared Google browser sign-in preserves lifecycle and credential ownership', {timeout: 180000}, () => {
+test('packaged shared Google browser sign-in preserves lifecycle and credential ownership', {timeout: 360000}, () => {
   const root=resolve(import.meta.dirname, '..');
   const staged=preparePatchedNative({root});
   const temporary=mkdtempSync(join(tmpdir(), 'alpha-browser-auth-'));
@@ -28,7 +28,6 @@ test('packaged shared Google browser sign-in preserves lifecycle and credential 
       const actual=existsSync(upstream) ? createHash('sha256').update(readFileSync(upstream)).digest('hex') : null;
       assert.equal(actual, sha256, `upstream sign-in tests changed; rebase the Alpha fork (${name})`);
     }
-    cpSync(overlay, join(module, 'test'), {recursive:true, filter:(source) => source!==join(overlay, 'upstream-base.json')});
     // The shared suite also checks that its existing first-party host retains
     // native mode. These are test inputs only, never Alpha application sources.
     cpSync(join(root, 'vendor/eliza/packages/app/platforms/android'), join(temporary, 'packages/app/platforms/android'), {recursive:true});
@@ -40,9 +39,16 @@ test('packaged shared Google browser sign-in preserves lifecycle and credential 
       cpSync(join(root,'vendor/eliza',source),join(temporary,source),{recursive:true});
     const env={...process.env};
     delete env.NODE_TEST_CONTEXT;
-    const output=execFileSync(process.execPath, ['--test', '--test-reporter=tap', join(module, 'test/native-sign-in.test.mjs')], {timeout:170000, env, encoding:'utf8'});
-    assert.ok(Number(/# tests (\d+)/.exec(output)?.[1]) >= 12, 'the shared suite actually ran');
-    assert.match(output, /# fail 0\b/);
-    assert.match(output, /# skipped 0\b/);
+    const runSuite=(label,minimumTests)=>{
+      const output=execFileSync(process.execPath, ['--test', '--test-reporter=tap', join(module, 'test/native-sign-in.test.mjs')], {timeout:170000, env, encoding:'utf8'});
+      assert.ok(Number(/# tests (\d+)/.exec(output)?.[1]) >= minimumTests, `${label} suite actually ran`);
+      assert.match(output, /# fail 0\b/);
+      assert.match(output, /# skipped 0\b/);
+    };
+    // Keep the pin's own recovery coverage, including retry/receipt failures,
+    // before exercising Alpha's additional browser and credential-owner cases.
+    runSuite('pinned upstream',12);
+    cpSync(overlay, join(module, 'test'), {recursive:true, filter:(source) => source!==join(overlay, 'upstream-base.json')});
+    runSuite('Alpha browser',13);
   } finally { rmSync(temporary, {recursive:true, force:true}); }
 });

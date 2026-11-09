@@ -9,6 +9,7 @@ roots.push('android/app/src/launcher','android/app/src/standalone','android/app/
  // The Gradle host the pinned upstream generator writes from android/consumer-host.json.
  'android/consumer-host.json','android/app/product.gradle','scripts/android-host.mjs',
  'android/app/cloud-deployment.generated.gradle','scripts/cloud-deployment.mjs','scripts/cloud-deployment-policy.mjs',
+ 'config/pages-native-auth-callbacks.generated.json',
  'android/.eliza-consumer-profile.json','android/eliza-consumer-host',
  'vendor/eliza/packages/app/scripts/mobile/android/consumer-host.mjs',
  'vendor/eliza/packages/app/scripts/mobile/android/consumer-host',

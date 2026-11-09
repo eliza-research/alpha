@@ -116,6 +116,8 @@ test('every action in every workflow is pinned to an exact commit, one commit pe
   const text=read(path.join('.github/workflows',file));assert.doesNotMatch(text,/\bdocker:\/\//,file);
   if(file!=='publish-qualified-app-update.yml'){assert.doesNotMatch(text,/^\s+[a-z-]+: write\s*$/m,`${file} grants a write permission`);continue;}
   const publication=parseYaml(text);
+  assert.deepEqual([...text.matchAll(/^\s+([a-z-]+): write\s*$/gm)].map(match=>match[1]),['contents'],
+    'only publication contents may be writable');
   assert.deepEqual(publication.permissions,{});
   assert.deepEqual(Object.keys(publication.on),['workflow_dispatch']);
   assert.deepEqual(Object.keys(publication.jobs).sort(),['admit','publish']);
@@ -126,6 +128,7 @@ test('every action in every workflow is pinned to an exact commit, one commit pe
   assert.equal(publish.environment,'release');
   assert.equal(publish.needs,'admit');
   assert.equal(publish.if,"needs.admit.result == 'success' && needs.admit.outputs.qualification_sha256 != '' && inputs.workflow_commit == github.sha");
+  assert.deepEqual(publication.concurrency,{group:'alpha-app-stable-publication','cancel-in-progress':false});
  }
 });
 

@@ -11,27 +11,48 @@ the earlier merged cleanup sources and the historical persona signatures needed
 to recognize existing default profiles; the original rename-only branch pin is
 not the final admitted source.
 
-The earlier follow-up pin `ac18377c5a9e4eb7afeac1c62a026ad3be95733e`
-([elizaOS/eliza#39173](https://github.com/elizaOS/eliza/pull/39173)) completes
-the remaining callback and default-persona references. A SHA-256 fingerprint
-retains exact recognition of historical default biographies without retaining
-the former company text in source. This four-file update changes no native,
-model or dependency input and transfers no earlier qualification.
+The callback and persona follow-up
+([elizaOS/eliza#39173](https://github.com/elizaOS/eliza/pull/39173)) merged as
+`1f02663576bab24e7cace610247270aab927b7a0` from reviewed head
+`2b1fec8d91661d4380ddce02b5ec0c8073e9f101`. Review removed the overly broad
+default-biography matcher in the earlier `ac18377c` candidate. A SHA-256
+fingerprint recognizes the exact retired stock biography; caller-edited profiles
+remain caller-owned.
 
-The earlier pin `450087e00e6dc1c289aab0c3e424560b7040d163` retains that
-callback identity and the original stock-biography fingerprint. It preserves
-edited biographies and includes the reviewed foreground updater gate and scheduler
-with their source tests and bounded model. The six-file delta from `ac18377c5a`
-changes no native source or dependency lock. The source is published on
+The earlier reviewed pin `489efc0b0e53ccbf9554f6017ac0d7b94f7056e8`
+([elizaOS/eliza#39181](https://github.com/elizaOS/eliza/pull/39181)) includes
+that reviewed repair and the consumer configuration refactor. Alpha owns its OS
+descriptor and browser sign-in registration. Shared code selects explicit
+consumer configuration without an Alpha package or route switch. The merged
+develop source also changes live-capture admission and cancellation and adds the
+resident producer's migrated PGlite snapshot. The dependency lock and recorded
+engine/model bytes are unchanged; native, device and user qualification do not
+transfer to this application.
+
+The current pin `dae11e0b7e3f40e5434fea21fd7c127e416f7016`
+([elizaOS/eliza#39180](https://github.com/elizaOS/eliza/pull/39180)) merges
+those sources with the reviewed notice-publication cleanup and Unicode-safe Gmail
+body bound. Shared code takes an optional caller-owned body limit; Alpha selects
+32,000 characters in its own host entrypoints. The consumer uses upstream behavior
+directly and carries no source patches. The dependency lock, recorded engine/model
+bytes and shared speech inputs are unchanged from `489efc0b`; historical built
+reviews retain their original pins. Current native, device and user qualification
+remain pending.
+
+The separately reviewed source `450087e00e6dc1c289aab0c3e424560b7040d163`
+retains the callback identity and exact stock-biography fingerprint, preserves
+edited biographies and includes the reviewed foreground updater gate, scheduler,
+source tests and bounded model. Its six-file delta from `ac18377c5a` changes no
+native source or dependency lock. The source is published on
 [`codex/alphaphone-identity-ota-reviewed-20261109`](https://github.com/elizaOS/eliza/tree/450087e00e6dc1c289aab0c3e424560b7040d163).
 
-The current pin `6f414658b08cf8075d8fb12ece2ec968a221af7e`
-([elizaOS/eliza#39180](https://github.com/elizaOS/eliza/pull/39180)) is its reviewed
-child. It adds exact shared notice-cleanup and Unicode-safe Gmail body-limit fixes
-plus owning-module regressions. The three production files match the prior reviewed
-postimages, and all local behavior patches are retired. The dependency lock is
-unchanged. Current build and installed qualification remain separate from this
-source review.
+Its reviewed child `6f414658b08cf8075d8fb12ece2ec968a221af7e`
+([elizaOS/eliza#39180](https://github.com/elizaOS/eliza/pull/39180)) adds shared
+notice-cleanup and Unicode-safe Gmail body-limit fixes with owning-module
+regressions. The three production postimages match the prior reviewed fixes;
+that source selection retires its local behavior patches. These source-only
+reviews retain their exact records and do not qualify new built artifacts or
+transfer device, security or user acceptance.
 
 Android treats the renamed package as a separate installation. It cannot replace
 an APK from the earlier namespace or inherit that package's private data, Android

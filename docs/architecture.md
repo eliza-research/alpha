@@ -72,6 +72,13 @@ Android builds declare the configured production web host by default.
 requires the exact sign-in return filter. The staging return uses the configured staging web host in test-mocks
 builds only. Changing the backend does not import another product's identity.
 
+The consumer also owns the protected Pages browser return registration. The
+public `config/pages-native-auth-callbacks.generated.json` is generated with the
+other deployment outputs and binds each environment's exact callback, API origin,
+tenant, browser-start/loopback-return paths and session storage key. An operator
+merges its entry into the corresponding protected Pages registry; generation
+does not deploy it. See the [browser sign-in runbook](runbooks/pages-browser-sign-in.md).
+
 Cloud credentials, pending sign-in state, acknowledgments and the local agent's
 provider binding are scoped to a fingerprint of both deployment records.
 Changing an authority, tenant or entitlement audience requires a fresh sign-in; credentials from the
@@ -144,6 +151,7 @@ Gmail attachments and PDF file creation remain available.
 | `apps/app/src` | Alpha UI, product policy and adapters to shared features |
 | `android` | Product identity, Activity, permissions, resources and standalone/HOME packaging. `android/consumer-host.json` is the descriptor the pinned upstream consumer-host generator turns into the git-ignored Gradle host; `android/app/product.gradle` holds Gradle-time product admission |
 | `android/sense` | Product identity wrappers for the upstream Sense listener; shared implementation and SystemUI policy live in `vendor/eliza/packages/app/platforms/android/sense` and `vendor/eliza/packages/os/android/sense` ([ADR 0001](adr/0001-privileged-listener.md)); never in the standalone or launcher APK |
+| `android/aosp/pixel10a-composition.json` | Alpha's Pixel product, launcher, listener and Pixel configuration identities, including the installed `alphaphone` vendor directory; composed by the pinned upstream OS tooling. `pixel10a-product.json` remains the separate release qualification descriptor |
 | `app.config.json` | Package ID, display name, version and orientation |
 | `apps/app/src/product/alpha-product-registration.ts` | Versioned product record of the shared mobile shell (`@elizaos/ui/mobile-shell`, schema `elizaos.mobile-product` v1): identity, theme and stylesheet aliases, icons, view order and labels, older view ids migrated once, and installed storage names (the launcher favorites record with its `alpha:` prefix and `alpha-apps` default policy, and the other names the app keeps reading). Home, the app grid, the view registry and navigation state (open view, Back stack, drawer and the assistant's pill, composer, sheet or full detent) render from the upstream shell with this record; runtime code such as agent navigation reads the React-free `@elizaos/ui/mobile-shell/core` entry |
 | `vendor/eliza` | Pinned shared platform source; never modified by consumer builds (temporary exception: the pinned voice builder's untracked `.cache/elizavoice-android`, see [fused speech](fused-speech.md)) |
@@ -282,8 +290,10 @@ The resident Google host is shared Eliza source. The product entry
 character and installed Google consent settings. The host uses Eliza Cloud's
 owner-scoped Gmail and Calendar services, and browser development uses the same
 host with its own credential and consent ports. The pinned Alpha SDK consumes
-the shared source directly from the reviewed pin, including the 32,000-character,
-surrogate-safe Gmail body limit and truncation marker. The prepared host is
+the shared source directly from the reviewed pin. Its native and browser host entries
+supply `gmailReadBodyMaxCharacters: 32000` as Alpha's product policy; upstream leaves
+bodies complete by default and retains its explicit result-size refusal. A configured
+limit remains surrogate-safe and marks truncated results. The prepared host is
 byte-identical to upstream; product behavior patches are not admitted.
 `scripts/build-native-google-host.ts` bundles the product entry into
 `google-host.mjs`; Android stages and verifies the artifact before loading it

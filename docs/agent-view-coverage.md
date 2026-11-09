@@ -41,7 +41,7 @@ Checked against source at the pin; where this section differs from the tables be
 - **Files has model operations.** Under `files.browser.v1` (Android only) the agent has `files_filter`, `files_open`, `files_share`, `files_move`, `files_trash` and `files_folder_create` (`files-browser-contract.ts`). Share, move, trash and folder creation are reviewed. The filter returns a count, not names or paths.
 - **Maps publishes `map-route`** (`plugin-maps/src/client/maps-screen.ts`), and the agent has a navigation tier that shows a route for the owner to start.
 - **Workflows.** The resident agent loads the shared model-callable `WORKFLOW` action (`plugin-workflow/src/actions/workflow.ts`). The statement "no model workflow create/run" below describes the phone's device-action list only.
-- **Photos.** `DEVICE_PHOTOS_FILTER` is not registered at this pin: a missing tuple boundary in `device-actions/tools.ts` folds it into the `DEVICE_NOTES_RECORD` entry.
+- **Photos.** The reviewed upstream `device-actions/tools.ts` registers `DEVICE_PHOTOS_FILTER` separately from `DEVICE_NOTES_RECORD`. The phone still does not negotiate `photos.view.v1`, so registration alone does not enable a Photos operation on this product.
 - **Camera.** An agent-requested photo now closes the chat first, so the viewfinder is visible when the capture happens (`camera-adapter.ts` `takeRequestedPhoto`).
 - **Not modeled.** The shared coordinator's direct-request path has no Quint model or conformance adapter; `Application.qnt` `ReviewedDispatch` describes the review-first setting only.
 

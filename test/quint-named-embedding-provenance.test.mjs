@@ -8,6 +8,8 @@ import {sql} from 'drizzle-orm';
 import {coreStateBuildPlugin, NAMED_EMBEDDING_TARGETS} from '../scripts/core-state-patch.mjs';
 import {loadEmbeddingStoreDatabase} from '../specs/quint/refinement/services/embedding-store-pglite.mjs';
 import {runNamedEmbeddingProvenanceRefinement} from '../specs/quint/refinement/services/named-embedding-provenance.mjs';
+import {captureInputs} from '../specs/quint/refinement/check-traces.mjs';
+import {deferred} from '../specs/quint/refinement/services/support.mjs';
 
 test('named embedding admission preserves SQL provenance and rolls back rejected mutations', {timeout: 120000}, async () => {
   const {receipts, obligations} = await runNamedEmbeddingProvenanceRefinement([fileURLToPath(import.meta.url)]);
@@ -16,6 +18,69 @@ test('named embedding admission preserves SQL provenance and rolls back rejected
   assert.equal(receipts[0].passed, true);
   assert.equal(receipts[0].traces, 8);
   assert.equal(obligations.length, 2);
+});
+
+// A current-source scheduling probe, separate from both the eight Named model
+// traces and the immutable historical CoreEmbeddingDimension counterexample.
+test('current SQL refuses a delayed unmarked insert before the runtime publishes its named pin', {timeout: 120000}, async () => {
+  const loaded = await loadEmbeddingStoreDatabase([fileURLToPath(import.meta.url)]);
+  const setup = await loaded.createIsolatedTestDatabase('current-embedding-publication-'+randomUUID(), [], {postgresUrl: null});
+  const {runtime, adapter} = setup;
+  const embeddings = runtime.embeddings;
+  const provider = 'quint-activation-window';
+  const space = 'BAAI/bge-small-en-v1.5:cls:l2:384:hf-bert-v1:tail-v1';
+  const owner = {agentId: runtime.agentId, entityId: runtime.agentId, roomId: runtime.agentId};
+  const id = randomUUID(), activated = deferred(), publish = deferred();
+  const ensureSpace = adapter.ensureEmbeddingSpace.bind(adapter);
+  runtime.character.settings = {...runtime.character.settings,
+    ELIZA_EMBEDDING_PROVIDER: provider, EMBEDDING_PROVIDER: 'test'};
+  runtime.registerModel('TEXT_EMBEDDING', async () => {
+    const vector = Array(384).fill(0.125);
+    Object.defineProperty(vector, Symbol.for('@elizaos/core/embedding-vector-space'), {value: space});
+    return vector;
+  }, provider, 10);
+  adapter.ensureEmbeddingSpace = async value => {
+    const result = await ensureSpace(value);
+    activated.resolve();
+    await publish.promise;
+    return result;
+  };
+  let initialization;
+  try {
+    await runtime.ensureConnection({...owner, worldId: runtime.agentId, source: 'current-embedding-publication'});
+    assert.equal(embeddings.getPinnedProvider(), undefined);
+    initialization = embeddings.ensureEmbeddingDimension();
+    await Promise.race([activated.promise, initialization.then(() => {
+      assert.fail('Runtime initialization must remain held after SQL activation');
+    })]);
+    assert.equal(adapter.embeddingSpace, space);
+    assert.equal(embeddings.getPinnedProvider(), undefined, 'SQL is active before the runtime publishes its provider');
+    assert.equal(embeddings.pinnedEmbeddingSpace, undefined);
+    const unmarked = Array(384).fill(0.25);
+    await embeddings.validateProviderOutput('TEXT_EMBEDDING', {text: 'Synthetic delayed vector'}, unmarked, unmarked, 'legacy');
+    const connection = await adapter.getConnection();
+    const rows = async () => (await connection.execute(sql`
+      SELECT (SELECT count(*)::int FROM memories WHERE id = ${id}) AS memories,
+        (SELECT count(*)::int FROM embeddings WHERE memory_id = ${id}) AS embeddings
+    `)).rows;
+    assert.deepEqual(await rows(), [{memories: 0, embeddings: 0}]);
+    await assert.rejects(adapter.createMemory({id, ...owner,
+      content: {text: 'Synthetic delayed vector'}, embedding: unmarked}, 'messages'),
+    {code: 'EMBEDDING_SPACE_MISMATCH'});
+    assert.deepEqual(await rows(), [{memories: 0, embeddings: 0}], 'Refusal writes neither memory nor vector');
+    assert.equal(embeddings.getPinnedProvider(), undefined, 'The refusal occurs inside the held publication window');
+    publish.resolve();
+    await initialization;
+    assert.equal(embeddings.getPinnedProvider(), provider);
+    assert.equal(embeddings.pinnedEmbeddingSpace, space);
+  } finally {
+    publish.resolve();
+    await initialization?.catch(() => {});
+    adapter.ensureEmbeddingSpace = ensureSpace;
+    await runtime.stop();
+    await setup.cleanup();
+    assert.deepEqual(captureInputs(loaded.sources), loaded.driverHashes, 'Current probe source bytes remain unchanged');
+  }
 });
 
 test('experience reload and metadata flush retain the stored vector without restamping it', {timeout: 120000}, async () => {

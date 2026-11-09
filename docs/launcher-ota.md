@@ -40,11 +40,9 @@ and [Cloud APK build receipt](evidence/launcher-ota-cloud-apk-build-20261109.jso
 remain historical evidence: the APK receipt names product commit `e359d8d928`
 and upstream `b1817660a0`, while the source comparison names `099e2d27ad`.
 Neither describes the integrated package identity. The integrated
-Alpha Compute branch pins `6f414658b08cf8075d8fb12ece2ec968a221af7e`, which contains
-the final reviewed scheduler and mounted gate directly. The earlier authenticated
-`app-update-resume-client` patch is retired. The shared gate captures focused
-editing before modal focus changes and keeps automatic refusal quiet while
-retaining exact native activation acknowledgements. Earlier build evidence does
+Alpha Compute branch pins merged upstream `dae11e0b7e3f40e5434fea21fd7c127e416f7016`
+and consumes the reviewed scheduler directly. The superseded client update patch
+has been removed. Earlier build evidence does
 not transfer native, APK or device qualification to this integration.
 
 Automatic installation requires Android 12/API 31 or newer and Android's existing
@@ -96,6 +94,48 @@ qualification evidence. Both standalone and launcher distribution variants remai
 build/verification obligations. For these two delivery surfaces, publish the
 **launcher** variant: a standalone APK over the image would remove HOME behavior.
 
+On the phone build host, use Alpha's Node 26.13.0, Bun 1.4.2, JDK 21 and Android
+SDK/build tools from the README. Set `ELIZAOS_VERSION_CODE` and
+`ELIZAOS_VERSION_NAME` to reviewed values before building. Each code must exceed
+the installed baseline, `android/release-signer.json`'s `lastRelease` and every
+retained `alpha-phone-<code>.apk` on `app-stable`. Build a baseline and a separate,
+higher-code candidate; do not use `app.config.json`'s default code 1 for both.
+
+The current native voice record remains `qualified: false`. Native releases need
+the source-matched voice inputs and qualification in [fused speech](fused-speech.md);
+changing the qualification field is not a substitute. For the explicit Cloud
+release profile, prepare the genuine resident and public channel as follows:
+
+```sh
+: "${ELIZAOS_VERSION_CODE:?Set the reviewed positive version code}"
+: "${ELIZAOS_VERSION_NAME:?Set the reviewed version name}"
+export ELIZAOS_VERSION_CODE ELIZAOS_VERSION_NAME
+export ALPHA_UPDATE_CHANNEL=public
+unset ALPHA_PRIVATE_UPDATE_MANIFEST_FILE ALPHA_PRIVATE_UPDATE_MANIFEST_SHA256
+npm run agent:prepare
+npm run agent:build-workflow-worker
+npm run agent:stage-android -- --runtime-profile=cloud
+npm run licenses:packaged-runtime
+npm run android:build -- --runtime-profile=cloud
+```
+
+Use the existing protected signing route and the enrolled production certificate.
+Keep the complete build tree and producer receipts. Restore the signed releases
+to that same tree and remove their unsigned counterparts, while retaining the
+matching debug APKs needed by the four-variant verifier. After genuine Cartesia
+qualification on the exact signed APKs, run:
+
+```sh
+node scripts/verify-apks.mjs --runtime-profile=cloud \
+  --cloud-voice-evidence=/absolute/qualified/cloud-voice.json
+```
+
+Both release rows must say `distributable: true`; signing alone does not do that.
+Archive each version's four APKs, build/runtime provenance, voice receipt and
+`apk-manifest.json` separately before preparing another version. Publish and finish
+the unit checks before `record-release.mjs --write` advances `lastRelease`: that
+advance makes the recorded version ineligible for a new publication admission.
+
 To inspect a candidate without uploading:
 
 ```sh
@@ -146,17 +186,22 @@ voice evidence to public delivery. Its existing producer limits differ from the
 application's 2 GiB update limit; native speech releases use the admitted local
 delivery path until a native producer bridge is separately qualified.
 
-## Disposable Android platform probe
-
-Run `node scripts/test-automatic-update-platform.mjs --owned-emulator --serial=emulator-5554 --output=/absolute/new-output`
-only for a disposable, owned API 36 emulator. The script builds and installs its
-separate fixture package, exercises PackageInstaller self-update and retained
-state, writes receipts, and removes the package afterward. It requires the
-Android SDK/build tools and Java 21 described in the build setup. This measures
-the platform API; product APK, HOME, AOSP image, real-service and physical-device
-acceptance remain separate.
-
 ## Acceptance on the phone host
+
+The isolated API 36 PackageInstaller fixture can be rerun on an owned disposable
+emulator with SDK 36 build tools and JDK 21:
+
+```sh
+node scripts/test-automatic-update-platform.mjs --owned-emulator \
+  --serial=emulator-NNNN --output=test-results/automatic-update-platform/NEW_RUN
+```
+
+Use its actual emulator serial and a new output directory. The runner refuses
+physical devices and an existing fixture package. It installs its own tiny test
+APK and attempts a same-signer replacement; complete callback and successor/data
+readback are required for success. This does not install Alpha, use the public
+update feed or qualify either deployment mode. Earlier incomplete attempts remain
+recorded in the [native evidence](evidence/launcher-ota-native-validation-20261109.json).
 
 Retain a baseline and candidate with the same production signing family, launcher
 flavor and runtime profile; the candidate has a strictly higher code. Store their
@@ -168,7 +213,37 @@ Use the integrity readback helpers from `scripts/pilot-update.mjs` for the
 before/after receipts. That script's complete command uses `adb install -r`;
 running it instead of step 2 proves an ADB replacement, not the OTA path.
 
-1. Install the admitted baseline and select it as HOME. Enable install permission.
+For the production image, stage the exact admitted launcher APK against the
+reviewed image certificate policy. The shared overlay uses `PRESIGNED` and
+`preprocessed` imports to preserve the APK signing family. The Cuttlefish
+[`product.json`](../android/aosp/product.json) and Pixel 10a
+[`pixel10a-product.json`](../android/aosp/pixel10a-product.json) still contain
+`UNSET` platform/release signing identities; production image staging and image
+acceptance remain open. Resolve those through the signing review, then verify
+the installed image APK and its later same-family update on the phone host.
+Pixel 10a also needs the reviewed AVB and OTA identities in
+[`pixel10a-ota-channel.json`](../android/aosp/pixel10a-ota-channel.json), plus its
+known-good release and executed recovery drills. APK signing does not fill those
+fields or qualify an image.
+
+Use two separate baseline setups:
+
+- **Stock Android sideload:** on an owned unit without Alpha installed, run
+  `node scripts/provision-unit.mjs --serial SERIAL --alias ota-sideload --apk-manifest /absolute/baseline/apk-manifest.json --variant launcher --build release`.
+  The operator selects HOME in Android's chooser. The command refuses an existing
+  installation; do not uninstall it to work around a signer or data mismatch.
+- **Image preinstall:** build and boot the reviewed production image with the
+  admitted baseline already in `/product`. Use the image staging/release procedure
+  in [Android and AOSP](android-and-aosp.md) and [Pixel 10a staging](pixel10a-staging.md).
+  Do not ADB-install the baseline over the image: that would start the drill from a
+  `/data` replacement instead of the preinstalled APK. Verify the system-install
+  flag, provisioning overlay, HOME and `ai.alphacompute.alphaphone.aosp_image`
+  feature before the candidate update. The later APK replacement should resolve
+  under `/data` while the admitted image capability remains available.
+
+1. Prepare one of those baselines and enable Alpha's install permission in Android.
+   On the image, grant the required Phone access through the normal owner flow so
+   the native call guard can establish an idle call state; unknown state defers.
    Read back package, signer, code, source path and HOME. Save a local note, an
    unsent draft, settings and a resident conversation; retain content-free
    integrity receipts with `scripts/pilot-update.mjs`'s per-domain readback tools.
@@ -176,6 +251,9 @@ running it instead of step 2 proves an ADB replacement, not the OTA path.
    without tapping Install. Observe automatic discovery, native preparation,
    Android replacement and return to HOME. Independently read the installed APK
    hash/code/signer, role holder and resident runtime identity.
+   Record whether HOME returns without a manual launch. A lost terminal callback
+   can still settle from the exact installed/executing successor; a pending session
+   cannot be treated as canceled or committed again.
 3. Confirm notes, drafts, preferences, credentials and conversation history remain
    usable. Exercise genuine sign-in/inference/voice against the installed signed
    candidate. A fixture or an OS-only installer probe cannot establish these.
@@ -183,9 +261,15 @@ running it instead of step 2 proves an ADB replacement, not the OTA path.
    during download, low storage, permission revoked, process death, reboot and
    Android confirmation fallback. Restore connectivity and verify progress or
    an honest pending outcome, with no repeated commit or lost state.
+   Byte inventories taken while the resident runs are not a transaction snapshot;
+   retain them as diagnostics and verify logical data/Keystore usability after
+   restart. Do not label normal database or schema-migration changes as data loss.
 5. Reject wrong signer, package, flavor, hash, size, same/older version and malformed
    manifest. Verify a later higher-code release reaches a phone that skipped one.
    Repeat for an image-preinstalled launcher and a sideloaded launcher.
+   Use an isolated reviewed QA feed and disposable test installation for malformed
+   offers and invalid APKs; never put them on public `app-stable`. Private-QA builds
+   remain non-distributable and do not replace the public-channel drill.
 
 APK recovery is a separately qualified, higher-version installation with compatible
 data schemas, not an Android downgrade. The AOSP OS OTA requirement P-75 still

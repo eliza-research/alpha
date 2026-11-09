@@ -2,29 +2,19 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "1f02663576bab24e7cace610247270aab927b7a0",
-  "head": "6f414658b08cf8075d8fb12ece2ec968a221af7e",
+  "baseCommit": "dae11e0b7e3f40e5434fea21fd7c127e416f7016",
+  "head": "dae11e0b7e3f40e5434fea21fd7c127e416f7016",
   "recordedAt": "2026-11-09",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...6f414658b08cf8075d8fb12ece2ec968a221af7e",
-  "status": "diverged",
-  "aheadBy": 2,
-  "behindBy": 70,
-  "mergeBase": "ac18377c5a9e4eb7afeac1c62a026ad3be95733e",
-  "pinOnlyCommits": [
-    {
-      "sha": "450087e00e6dc1c289aab0c3e424560b7040d163",
-      "subject": "Integrate reviewed persona custody and final foreground update gate"
-    },
-    {
-      "sha": "6f414658b08cf8075d8fb12ece2ec968a221af7e",
-      "subject": "fix: preserve notice errors and bound Gmail body reads"
-    }
-  ],
+  "command": "gh api repos/elizaOS/eliza/compare/develop...dae11e0b7e3f40e5434fea21fd7c127e416f7016",
+  "status": "identical",
+  "aheadBy": 0,
+  "behindBy": 0,
+  "mergeBase": "dae11e0b7e3f40e5434fea21fd7c127e416f7016",
+  "pinOnlyCommits": [],
   "pullRequests": [
     "https://github.com/elizaOS/eliza/pull/39153",
-    "https://github.com/elizaOS/eliza/pull/39166",
     "https://github.com/elizaOS/eliza/pull/39173",
+    "https://github.com/elizaOS/eliza/pull/39181",
     "https://github.com/elizaOS/eliza/pull/39180"
-  ],
-  "pendingPullRequest": "https://github.com/elizaOS/eliza/pull/39180"
+  ]
 }

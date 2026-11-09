@@ -11,8 +11,8 @@
   },
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
-  "sourcePin": "6f414658b08cf8075d8fb12ece2ec968a221af7e",
-  "ledgerSha256": "955b797ce92514f83b101638f9a3176eec109eff41f9f9dff5c36b74658e9c90",
+  "sourcePin": "dae11e0b7e3f40e5434fea21fd7c127e416f7016",
+  "ledgerSha256": "870c203926c48c3452f249cdf78a20b0c648c225947bfc50ce253437006d8c25",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -22,17 +22,17 @@
     "The ledger supplies pinned source bytes. Effective client/native/runtime patch outputs require their separately authenticated source mappings."
   ],
   "counts": {
-    "files": 5801,
+    "files": 5803,
     "testSupportFiles": 305,
     "testSupportCandidates": 11609,
-    "parsedFiles": 5707,
+    "parsedFiles": 5709,
     "languageReview": 94,
     "parseErrors": 0,
-    "candidates": 69678,
-    "writeSites": 68575,
-    "writeAssociations": 61521,
-    "asynchronous": 8569,
-    "unassignedWrites": 10507
+    "candidates": 69687,
+    "writeSites": 68592,
+    "writeAssociations": 61533,
+    "asynchronous": 8571,
+    "unassignedWrites": 10512
   },
   "files": [
     {
@@ -45987,7 +45987,7 @@
     },
     {
       "path": "scripts/cloud-deployment-policy.mjs",
-      "sha256": "cd5b66f87defd234e447f8ad6e02e6de9ec901ae7b3b4dd18af552192d7db771",
+      "sha256": "64969469b5eebe3629d440c4bbc698a02db5ee1010869b342df0e9c394e4a5fd",
       "allocatedModels": [
         "CloudQaLauncher",
         "DevelopmentHost",
@@ -46003,7 +46003,7 @@
     },
     {
       "path": "scripts/cloud-deployment.mjs",
-      "sha256": "60221d6ef3ba3e14f89e5bd73adda8ab271ee0618ba6d10fe87b8802c2da433a",
+      "sha256": "8760190f830c39aebce779a07e4f14445f89a1f9be5803639c5c66a8e9fa2707",
       "allocatedModels": [
         "BrowserCloudRequestCustody",
         "ServiceAuthorization"
@@ -46014,19 +46014,19 @@
       "owners": [
         {
           "owner": "<module>",
-          "line": 10,
+          "line": 12,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "validateCloudDeployment",
-          "line": 22,
+          "line": 24,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "deploymentOutputs",
-          "line": 40,
+          "line": 53,
           "bindings": 3,
           "writes": 6
         }
@@ -46671,7 +46671,7 @@
     },
     {
       "path": "scripts/native-google-product-host.ts",
-      "sha256": "bfbe4eb1c5c3569fa0b42a7e0bbb2e66ed3245d9874ca47cff6d58ad6b6a9904",
+      "sha256": "adb06b7ccc2b77e92b007b84c0909e10491dc20937946bf0265c0d7a78e0f707",
       "allocatedModels": [
         "NativeGoogleAccessFile",
         "NativeGoogleHostArtifact",
@@ -47009,7 +47009,7 @@
     },
     {
       "path": "scripts/source-snapshot.mjs",
-      "sha256": "4982851e12745c10985c4410bc394374c315c38148b08e1668ad4d9819b7784f",
+      "sha256": "bc8fa9de8dabeb6ec59be9ead8d35f3faa7d713c1974ae43c5d6a6281b6feee7",
       "allocatedModels": [
         "Application",
         "MobileBundleAdmission",
@@ -47032,7 +47032,7 @@
     },
     {
       "path": "scripts/stage-aosp.mjs",
-      "sha256": "64be96d6c9bb8c92760a17737a51b0395e179bd80bbcc9eac9b7803a7cc1d693",
+      "sha256": "052e936c982ff6d09977daa5d894af8e2df1aae3ee5b3c15816807d85d258953",
       "allocatedModels": [
         "AlwaysOnListener",
         "LauncherOwnership",
@@ -47058,8 +47058,8 @@
         {
           "owner": "main",
           "line": 121,
-          "bindings": 4,
-          "writes": 5
+          "bindings": 5,
+          "writes": 6
         }
       ],
       "parseErrors": [],
@@ -47479,7 +47479,7 @@
     },
     {
       "path": "vendor/eliza/packages/agent/scripts/build-mobile-bundle.ts",
-      "sha256": "f8ae2ca56eef598c8f2acffca82a6e4c8609d9d9c48b4ca8459884ff2cc4bbef",
+      "sha256": "e69f129507bdbff5a3536994473da06b19018bc0193f18cfca2d23fe022c38e8",
       "allocatedModels": [
         "MobileBundleAdmission"
       ],
@@ -49166,7 +49166,7 @@
     },
     {
       "path": "vendor/eliza/packages/agent/src/api/chat-routes.ts",
-      "sha256": "2c2b071e7b5d0cb3be368b32ffbf4ad0de16b908b79e6035b5178ab0d52b1025",
+      "sha256": "12b0fbd9942a8cd3a0fa6a2757277caa6a471d21de05b1fd519463b5c3fe3a7e",
       "allocatedModels": [
         "ApplicationComposition",
         "CoreRuntimeShutdown",
@@ -49243,68 +49243,62 @@
           "writes": 2
         },
         {
-          "owner": "findRecentInsufficientCreditsLog",
-          "line": 1406,
-          "bindings": 1,
-          "writes": 1
-        },
-        {
           "owner": "runWithGenerationTimeout",
-          "line": 1488,
+          "line": 1474,
           "bindings": 2,
           "writes": 3
         },
         {
           "owner": "persistUnpersistedChatReply",
-          "line": 2168,
+          "line": 2154,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "generateChatResponseWithTiming",
-          "line": 2523,
+          "line": 2509,
           "bindings": 27,
           "writes": 37
         },
         {
           "owner": "generateChatResponseWithTiming.appendIncomingText",
-          "line": 2669,
+          "line": 2655,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "generateChatResponseWithTiming.ArrowFunction@2818.ArrowFunction@2820",
-          "line": 3123,
+          "owner": "generateChatResponseWithTiming.ArrowFunction@2804.ArrowFunction@2806",
+          "line": 3109,
           "bindings": 2,
           "writes": 2
         },
         {
-          "owner": "generateChatResponseWithTiming.ArrowFunction@3434",
-          "line": 3435,
+          "owner": "generateChatResponseWithTiming.ArrowFunction@3420",
+          "line": 3421,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "generateConversationTitle",
-          "line": 3756,
+          "line": 3742,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "ensureCompatChatConnection.ArrowFunction@3856",
-          "line": 3857,
+          "owner": "ensureCompatChatConnection.ArrowFunction@3842",
+          "line": 3843,
           "bindings": 1,
           "writes": 3
         },
         {
           "owner": "grantSessionUserWorldRole",
-          "line": 3910,
+          "line": 3896,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "handleChatRoutes",
-          "line": 4020,
+          "line": 4006,
           "bindings": 16,
           "writes": 38
         }
@@ -53542,7 +53536,7 @@
     },
     {
       "path": "vendor/eliza/packages/agent/src/api/server-state.ts",
-      "sha256": "26285fb7e2bf2bf244292b573f06a08a0ee921eef8ad4de5dc7efdff4d028be5",
+      "sha256": "adf730b396a887af45b32994c0cd24c5749e34b8942b5778968be6b070cbad18",
       "allocatedModels": [
         "AssistantConversation",
         "ResidentRuntime"
@@ -53550,14 +53544,21 @@
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
-      "owners": [],
+      "owners": [
+        {
+          "owner": "findRecentInsufficientCreditsLog",
+          "line": 33,
+          "bindings": 1,
+          "writes": 1
+        }
+      ],
       "parseErrors": [],
       "asynchronous": 0,
-      "unassignedWrites": 0
+      "unassignedWrites": 3
     },
     {
       "path": "vendor/eliza/packages/agent/src/api/server.ts",
-      "sha256": "1c4f7228ba74ba9e0fb5c56883f0d0c3aeaab4bc65b96fb9e91bf3d468e2cef3",
+      "sha256": "b6b742645932e8a07033e1d588303ad26bd9e7362e4997e218bff79a910c7e7a",
       "allocatedModels": [
         "ApplicationComposition",
         "CoreRuntimeShutdown",
@@ -53569,133 +53570,133 @@
       "owners": [
         {
           "owner": "<module>",
-          "line": 416,
+          "line": 420,
           "bindings": 15,
           "writes": 15
         },
         {
           "owner": "persistAgentAutomationMode",
-          "line": 997,
+          "line": 1001,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "acquireWalletKeyMutation",
-          "line": 1387,
+          "line": 1391,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "handleRequest",
-          "line": 1418,
+          "line": 1422,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "handleRequestForViewClient",
-          "line": 1457,
+          "line": 1461,
           "bindings": 7,
           "writes": 9
         },
         {
           "owner": "handleRequestForViewClient.resolveHostSessionAuthorization",
-          "line": 1548,
+          "line": 1552,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "handleRequestForViewClient.tryAcquireTerminalRunSlot",
-          "line": 3284,
+          "line": 3288,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "handleRequestForViewClient.resolveConversationRoomId",
-          "line": 3367,
+          "line": 3371,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "startApiServer",
-          "line": 3656,
+          "line": 3660,
           "bindings": 26,
-          "writes": 76
+          "writes": 74
         },
         {
           "owner": "startApiServer.addLog",
-          "line": 3788,
+          "line": 3793,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "startApiServer.invalidateSessionSocket",
-          "line": 4033,
+          "line": 4044,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "startApiServer.validateSessionSocket",
-          "line": 4039,
+          "line": 4050,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "startApiServer.ArrowFunction@4071",
-          "line": 4072,
+          "owner": "startApiServer.ArrowFunction@4082",
+          "line": 4083,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "startApiServer.bindRuntimeStreams",
-          "line": 4153,
+          "line": 4164,
           "bindings": 2,
           "writes": 3
         },
         {
-          "owner": "startApiServer.ArrowFunction@4391",
-          "line": 4424,
+          "owner": "startApiServer.ArrowFunction@4402",
+          "line": 4435,
           "bindings": 3,
           "writes": 3
         },
         {
-          "owner": "startApiServer.ArrowFunction@4545",
-          "line": 4548,
+          "owner": "startApiServer.ArrowFunction@4556",
+          "line": 4559,
           "bindings": 6,
           "writes": 10
         },
         {
-          "owner": "startApiServer.ArrowFunction@4545.activateAuthenticatedConnection",
-          "line": 4675,
+          "owner": "startApiServer.ArrowFunction@4556.activateAuthenticatedConnection",
+          "line": 4686,
           "bindings": 2,
           "writes": 2
         },
         {
-          "owner": "startApiServer.ArrowFunction@4545.ArrowFunction@4750",
-          "line": 4764,
+          "owner": "startApiServer.ArrowFunction@4556.ArrowFunction@4761",
+          "line": 4775,
           "bindings": 5,
           "writes": 13
         },
         {
-          "owner": "startApiServer.ArrowFunction@4545.ArrowFunction@4989",
-          "line": 4996,
+          "owner": "startApiServer.ArrowFunction@4556.ArrowFunction@5000",
+          "line": 5007,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "startApiServer.ArrowFunction@4545.ArrowFunction@5007",
-          "line": 5016,
+          "owner": "startApiServer.ArrowFunction@4556.ArrowFunction@5018",
+          "line": 5027,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "startApiServer.broadcastStatus",
-          "line": 5029,
+          "line": 5040,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "startApiServer.overlayDbCharacter",
-          "line": 5155,
+          "line": 5166,
           "bindings": 1,
           "writes": 7
         }
@@ -53835,7 +53836,7 @@
     },
     {
       "path": "vendor/eliza/packages/agent/src/api/tee-attestation-routes.ts",
-      "sha256": "bd0e8850e3f95dd38fa127cc9aeb902a4473bcb7d1000e510d425e46ebf790f5",
+      "sha256": "21732c51e32caea3e75595e4eff4604062d35a60c3493822f64436229464269d",
       "allocatedModels": [
         "AssistantConversation",
         "ResidentRuntime"
@@ -57153,8 +57154,31 @@
       "unassignedWrites": 3
     },
     {
+      "path": "vendor/eliza/packages/agent/src/runtime/eliza-plugin-schema.ts",
+      "sha256": "8e0f6ea1dc12a46b5cbb8ae2b1a89e19b2c0a8479e4765eb0a61e186fcfc7302",
+      "allocatedModels": [
+        "ApplicationComposition",
+        "DurableStore",
+        "ResidentRuntime"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "<module>",
+          "line": 12,
+          "bindings": 1,
+          "writes": 0
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
       "path": "vendor/eliza/packages/agent/src/runtime/eliza-plugin.ts",
-      "sha256": "2d3621bc426894bbbf923a45b5f342faaa53d8de4cf3f6ccb61e17e5a2d76c8c",
+      "sha256": "41283ce04cfd753adcd6de49107bfe9fe2fe46108380cb05cd717ce509ff4a16",
       "allocatedModels": [
         "AssistantConversation",
         "ResidentRuntime"
@@ -68341,7 +68365,7 @@
     },
     {
       "path": "vendor/eliza/packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts",
-      "sha256": "4002afcaefdc347b2de013cb49523dc77545dd1cb896183d8d704678336ddc01",
+      "sha256": "45f81315269621657a84d1a67a4769405c3ef5cee8cfda44ee911bb4fa36d2a2",
       "allocatedModels": [
         "NativeGoogleHostArtifact"
       ],
@@ -68351,49 +68375,49 @@
       "owners": [
         {
           "owner": "<module>",
-          "line": 56,
+          "line": 54,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "createManagedGoogleAgentHost",
-          "line": 129,
+          "line": 138,
           "bindings": 2,
           "writes": 6
         },
         {
           "owner": "createManagedGoogleAgentHost.sharedLookup",
-          "line": 164,
+          "line": 173,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "createManagedGoogleAgentHost.ownerAccounts",
-          "line": 200,
+          "line": 209,
           "bindings": 1,
           "writes": 6
         },
         {
           "owner": "createManagedGoogleAgentHost.verified",
-          "line": 349,
+          "line": 358,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "createManagedGoogleAgentHost.calendarFeed",
-          "line": 640,
+          "line": 649,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "createManagedGoogleAgentHost.list",
-          "line": 732,
+          "line": 741,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "createManagedGoogleAgentHost.list.ArrowFunction@748",
-          "line": 755,
+          "owner": "createManagedGoogleAgentHost.list.ArrowFunction@757",
+          "line": 764,
           "bindings": 2,
           "writes": 2
         },
@@ -68512,7 +68536,7 @@
     },
     {
       "path": "vendor/eliza/packages/app/src/runtime/managed-google-agent/native-google-agent-host.ts",
-      "sha256": "9c631b8cd11524b4ccf198d366cbdadcb690587dc8f907fe86bc5cbd0f1fdb73",
+      "sha256": "4ca6a44d1bc3bcce3b908258f4c3fe7bf0413b68ebc34861857bb3dff6ea059b",
       "allocatedModels": [
         "NativeGoogleAccessFile"
       ],
@@ -68528,7 +68552,7 @@
         },
         {
           "owner": "startManagedGoogleAgentHost",
-          "line": 120,
+          "line": 121,
           "bindings": 2,
           "writes": 3
         }
@@ -86631,7 +86655,7 @@
     },
     {
       "path": "vendor/eliza/packages/core/src/services/pii-scrub.ts",
-      "sha256": "5ab7b1dbb8e60f3f6ad9619eabca8e875e06fcb030979b2d4f5541e42c9daa3f",
+      "sha256": "5668bc70c25e982bc48a4ee312a5b8fd4dceff72f4319290afb0b466259405ae",
       "allocatedModels": [
         "Application",
         "CoreRuntimeRetirement",
@@ -86646,30 +86670,36 @@
         {
           "owner": "PiiScrubService",
           "line": 53,
-          "bindings": 3,
-          "writes": 4
+          "bindings": 6,
+          "writes": 9
         },
         {
           "owner": "PiiScrubService.start",
-          "line": 68,
+          "line": 71,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "PiiScrubService.scrubItem",
-          "line": 199,
+          "line": 220,
           "bindings": 6,
           "writes": 6
         },
         {
           "owner": "PiiScrubService.assembleContextStage",
-          "line": 300,
+          "line": 321,
           "bindings": 1,
           "writes": 0
+        },
+        {
+          "owner": "PiiScrubService.finishStop",
+          "line": 412,
+          "bindings": 1,
+          "writes": 1
         }
       ],
       "parseErrors": [],
-      "asynchronous": 1,
+      "asynchronous": 2,
       "unassignedWrites": 0
     },
     {
@@ -89198,7 +89228,7 @@
     },
     {
       "path": "vendor/eliza/packages/core/src/utils/batch-queue.ts",
-      "sha256": "f4750ce683722ad45b5cb2a92061177b1050987c2efcb38874d9bf5266ce0685",
+      "sha256": "d383a03c6c082097fb425662ae8eec831784b630f93c1306610d7baf4c82ceb7",
       "allocatedModels": [
         "Application",
         "CoreRuntimeRetirement",
@@ -89214,7 +89244,7 @@
           "owner": "BatchQueue",
           "line": 77,
           "bindings": 8,
-          "writes": 12
+          "writes": 13
         },
         {
           "owner": "BatchQueue.drain",
@@ -89230,31 +89260,31 @@
         },
         {
           "owner": "PriorityQueue",
-          "line": 355,
+          "line": 364,
           "bindings": 8,
           "writes": 18
         },
         {
           "owner": "PriorityQueue.dequeueBatch",
-          "line": 418,
+          "line": 427,
           "bindings": 2,
           "writes": 5
         },
         {
           "owner": "PriorityQueue.drain.drainArray",
-          "line": 455,
+          "line": 464,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "BatchProcessor.processOne",
-          "line": 622,
+          "line": 631,
           "bindings": 4,
           "writes": 4
         },
         {
           "owner": "BatchProcessor",
-          "line": 600,
+          "line": 609,
           "bindings": 7,
           "writes": 7
         }
@@ -92975,7 +93005,7 @@
     },
     {
       "path": "vendor/eliza/packages/os/scripts/android/apk-release-record.mjs",
-      "sha256": "30d94bb5af54094e10a62388f55b12cf968bbcd0b39f6a99b49d30c64c86a12d",
+      "sha256": "d99b83833b040d11b91551d766581174b5bfed8dd99cef6ea5761f2ff4b81733",
       "allocatedModels": [
         "PilotApkUpdate"
       ],
@@ -92984,44 +93014,50 @@
       "classification": "syntactic-candidates",
       "owners": [
         {
+          "owner": "<module>",
+          "line": 24,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
           "owner": "cloudVoiceBlockers",
-          "line": 70,
+          "line": 76,
           "bindings": 1,
           "writes": 6
         },
         {
           "owner": "apkReleaseBlockers",
-          "line": 123,
+          "line": 129,
           "bindings": 2,
           "writes": 17
         },
         {
           "owner": "apkUpdateAdmission",
-          "line": 214,
+          "line": 220,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "parseDomainInventory",
-          "line": 241,
+          "line": 247,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "compareDomains",
-          "line": 255,
+          "line": 261,
           "bindings": 1,
           "writes": 4
         },
         {
           "owner": "parseIntegrityExport",
-          "line": 325,
+          "line": 331,
           "bindings": 3,
           "writes": 4
         },
         {
           "owner": "inPlaceUpdateFailures",
-          "line": 367,
+          "line": 373,
           "bindings": 1,
           "writes": 6
         }
@@ -128381,7 +128417,7 @@
     },
     {
       "path": "vendor/eliza/plugins/plugin-assistant/src/features/secrets/services/plugin-activator.ts",
-      "sha256": "aa2c26bb5cf66475061956868a755432d552986eaad59d02ec63bbc289049b9f",
+      "sha256": "a0b4f70051f8d43804492ea8098049a0e26c48fc9034e36b832a423cc1ebc12b",
       "allocatedModels": [
         "AssistantConversation"
       ],
@@ -128398,85 +128434,85 @@
         {
           "owner": "PluginActivatorService",
           "line": 77,
-          "bindings": 14,
-          "writes": 31
+          "bindings": 15,
+          "writes": 32
         },
         {
           "owner": "PluginActivatorService.start",
-          "line": 127,
+          "line": 128,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "PluginActivatorService.waitForSecretsService",
-          "line": 192,
+          "line": 188,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "PluginActivatorService.registerPlugin",
-          "line": 326,
+          "line": 322,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "PluginActivatorService.unregisterPlugin",
-          "line": 345,
+          "line": 342,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "PluginActivatorService.getPluginStatuses",
-          "line": 504,
+          "line": 506,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "PluginActivatorService.getRequiredSecrets",
-          "line": 801,
+          "line": 822,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "PluginActivatorService.onSecretsReady",
-          "line": 834,
+          "line": 855,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "PluginActivatorService.onSecretsReady.ArrowFunction@858",
-          "line": 859,
+          "owner": "PluginActivatorService.onSecretsReady.ArrowFunction@879",
+          "line": 880,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "PluginActivatorService.onSecretChangedKey",
-          "line": 888,
+          "line": 909,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "PluginActivatorService.onSecretChangedKey.ArrowFunction@892",
-          "line": 893,
+          "owner": "PluginActivatorService.onSecretChangedKey.ArrowFunction@913",
+          "line": 914,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "PluginActivatorService.onAnySecretChanged",
-          "line": 922,
+          "line": 943,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "PluginActivatorService.onAnySecretChanged.ArrowFunction@926",
-          "line": 927,
+          "owner": "PluginActivatorService.onAnySecretChanged.ArrowFunction@947",
+          "line": 948,
           "bindings": 1,
           "writes": 1
         }
       ],
       "parseErrors": [],
       "asynchronous": 9,
-      "unassignedWrites": 2
+      "unassignedWrites": 3
     },
     {
       "path": "vendor/eliza/plugins/plugin-assistant/src/features/secrets/services/secrets.ts",
@@ -129339,7 +129375,7 @@
     },
     {
       "path": "vendor/eliza/plugins/plugin-assistant/src/features/trajectories/TrajectoriesService.ts",
-      "sha256": "514c90b17acd28c451e0362b5c491aae1a159bbe761e15699a2456ba8eb4d7bc",
+      "sha256": "f9b629069e89d673b44f72d53ec34b2128fa0ae79785a5a117badab78f3f4fbc",
       "allocatedModels": [
         "AssistantConversation"
       ],
@@ -129349,206 +129385,206 @@
       "owners": [
         {
           "owner": "normalizeEnvironmentState",
-          "line": 322,
+          "line": 323,
           "bindings": 1,
           "writes": 6
         },
         {
           "owner": "normalizeLlmCall",
-          "line": 366,
+          "line": 367,
           "bindings": 1,
           "writes": 12
         },
         {
           "owner": "normalizeProviderAccess",
-          "line": 441,
+          "line": 442,
           "bindings": 1,
           "writes": 4
         },
         {
           "owner": "normalizeActionAttempt",
-          "line": 507,
+          "line": 508,
           "bindings": 1,
           "writes": 5
         },
         {
           "owner": "normalizeTrajectoryStep",
-          "line": 569,
+          "line": 570,
           "bindings": 4,
           "writes": 5
         },
         {
           "owner": "parseTrajectorySteps",
-          "line": 618,
+          "line": 619,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "parseRewardComponents",
-          "line": 640,
+          "line": 641,
           "bindings": 2,
           "writes": 6
         },
         {
           "owner": "parseTrajectoryMetrics",
-          "line": 688,
+          "line": 689,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "boundStepsForPersistence.ArrowFunction@738",
-          "line": 754,
+          "owner": "boundStepsForPersistence.ArrowFunction@739",
+          "line": 755,
           "bindings": 4,
           "writes": 4
         },
         {
           "owner": "TrajectoriesService",
-          "line": 993,
-          "bindings": 12,
-          "writes": 32
+          "line": 994,
+          "bindings": 14,
+          "writes": 35
         },
         {
           "owner": "TrajectoriesService.exposeBoundMethods",
-          "line": 1182,
+          "line": 1185,
           "bindings": 1,
           "writes": 13
         },
         {
           "owner": "TrajectoriesService.start",
-          "line": 1215,
+          "line": 1218,
           "bindings": 1,
-          "writes": 0
+          "writes": 2
         },
         {
           "owner": "TrajectoriesService.getTableColumnNames",
-          "line": 1442,
+          "line": 1477,
           "bindings": 2,
           "writes": 3
         },
         {
           "owner": "TrajectoriesService.ensureTrajectoryColumnsExist",
-          "line": 1495,
+          "line": 1530,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "TrajectoriesService.computeTotals",
-          "line": 1719,
+          "line": 1754,
           "bindings": 6,
           "writes": 6
         },
         {
           "owner": "TrajectoriesService.ensureStepExists",
-          "line": 2020,
+          "line": 2055,
           "bindings": 1,
           "writes": 3
         },
         {
-          "owner": "TrajectoriesService._persistLlmCall.ArrowFunction@2127",
-          "line": 2146,
+          "owner": "TrajectoriesService._persistLlmCall.ArrowFunction@2162",
+          "line": 2181,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "TrajectoriesService.logSemanticStage",
-          "line": 2240,
+          "line": 2275,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "TrajectoriesService._persistSemanticStage.ArrowFunction@2294",
-          "line": 2304,
+          "owner": "TrajectoriesService._persistSemanticStage.ArrowFunction@2329",
+          "line": 2339,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "TrajectoriesService._persistProviderAccess.ArrowFunction@2585",
-          "line": 2604,
+          "owner": "TrajectoriesService._persistProviderAccess.ArrowFunction@2620",
+          "line": 2639,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "TrajectoriesService.startAcceptedTrajectory",
-          "line": 2724,
+          "line": 2760,
           "bindings": 1,
           "writes": 3
         },
         {
-          "owner": "TrajectoriesService.startStep.ArrowFunction@2836",
-          "line": 2837,
+          "owner": "TrajectoriesService.startStep.ArrowFunction@2872",
+          "line": 2873,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "TrajectoriesService.startStep.ArrowFunction@2836.ArrowFunction@2839",
-          "line": 2840,
+          "owner": "TrajectoriesService.startStep.ArrowFunction@2872.ArrowFunction@2875",
+          "line": 2876,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "TrajectoriesService.completeStep.ArrowFunction@2936",
-          "line": 2937,
+          "owner": "TrajectoriesService.completeStep.ArrowFunction@2972",
+          "line": 2973,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "TrajectoriesService.completeStep.ArrowFunction@2936.ArrowFunction@2938",
-          "line": 2939,
+          "owner": "TrajectoriesService.completeStep.ArrowFunction@2972.ArrowFunction@2974",
+          "line": 2975,
           "bindings": 2,
           "writes": 5
         },
         {
           "owner": "TrajectoriesService.applyReward",
-          "line": 3042,
+          "line": 3078,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "TrajectoriesService.applyReward.ArrowFunction@3043.ArrowFunction@3044",
-          "line": 3045,
+          "owner": "TrajectoriesService.applyReward.ArrowFunction@3079.ArrowFunction@3080",
+          "line": 3081,
           "bindings": 1,
           "writes": 3
         },
         {
-          "owner": "TrajectoriesService.endTrajectoryAfterResolution.ArrowFunction@3118.ArrowFunction@3119",
-          "line": 3120,
+          "owner": "TrajectoriesService.endTrajectoryAfterResolution.ArrowFunction@3154.ArrowFunction@3155",
+          "line": 3156,
           "bindings": 1,
           "writes": 3
         },
         {
           "owner": "TrajectoriesService.listTrajectories",
-          "line": 3182,
+          "line": 3218,
           "bindings": 1,
           "writes": 12
         },
         {
           "owner": "TrajectoriesService.getStats",
-          "line": 3390,
+          "line": 3426,
           "bindings": 3,
           "writes": 3
         },
         {
           "owner": "TrajectoriesService.buildZipSummary",
-          "line": 3563,
+          "line": 3599,
           "bindings": 6,
           "writes": 6
         },
         {
           "owner": "TrajectoriesService.exportTrajectoriesZip",
-          "line": 3617,
+          "line": 3653,
           "bindings": 5,
           "writes": 7
         },
         {
           "owner": "TrajectoriesService.exportTrajectories",
-          "line": 3744,
+          "line": 3780,
           "bindings": 1,
           "writes": 10
         }
       ],
       "parseErrors": [],
-      "asynchronous": 15,
-      "unassignedWrites": 3
+      "asynchronous": 16,
+      "unassignedWrites": 4
     },
     {
       "path": "vendor/eliza/plugins/plugin-assistant/src/features/trajectories/action-interceptor.ts",
@@ -156464,7 +156500,7 @@
     },
     {
       "path": "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureController.java",
-      "sha256": "f1edb868ae92d96bd458637ade5f0d654db8d794e4eaac0ec1861ab13f923bb6",
+      "sha256": "b7b0ae46c563bb35770ca791e1b6dd5ca3bfb06cb7a2ed729f80419eb00886cb",
       "allocatedModels": [
         "AssistantConversation",
         "MediaLifecycle",
@@ -190438,7 +190474,7 @@
     },
     {
       "path": "vendor/eliza/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NoticeCoordinator.java",
-      "sha256": "7808f64944fa3f9f9868dc4aaa6462d7ab8462fd86e08e46192d933fddec0419",
+      "sha256": "9105c37aee0e5ebb02d3256a28bab3160d83666a96f0664740999f978f01697a",
       "allocatedModels": [
         "DeviceActions",
         "NoticesAndCaches",
@@ -217936,7 +217972,7 @@
     },
     {
       "path": "vendor/eliza/plugins/plugin-scheduling/src/index.ts",
-      "sha256": "d4dbbffb57c0bd3672a3b203b05d8ee97620f6dd28b7ab4b3118fbaedaba92ea",
+      "sha256": "036ba6f78a1844d7d8cadcaf66ca3823b9e42183725fd7c6c4558f23962330d8",
       "allocatedModels": [
         "Application"
       ],
@@ -217950,7 +217986,7 @@
     },
     {
       "path": "vendor/eliza/plugins/plugin-scheduling/src/plugin.ts",
-      "sha256": "f2b1475107c3b37fd612c9152d606a033f69a44c46d27837b048f4f25506b17d",
+      "sha256": "0c9e1ed1d5f4a84d9b1438e598491db71a74ddb48a2d8ae130c08e61a820d45f",
       "allocatedModels": [
         "Application"
       ],
@@ -217960,15 +217996,9 @@
       "owners": [
         {
           "owner": "<module>",
-          "line": 228,
-          "bindings": 2,
-          "writes": 0
-        },
-        {
-          "owner": "registerOptInDefaultPacks",
-          "line": 246,
+          "line": 215,
           "bindings": 1,
-          "writes": 1
+          "writes": 0
         }
       ],
       "parseErrors": [],
@@ -218035,27 +218065,6 @@
       ],
       "parseErrors": [],
       "asynchronous": 2,
-      "unassignedWrites": 0
-    },
-    {
-      "path": "vendor/eliza/plugins/plugin-scheduling/src/scheduled-task/alpha-routines-pack.ts",
-      "sha256": "a1cc683dfe6f08af0df97d48e679bb9c0604f37b8eb9b58cd5b856fb20a969be",
-      "allocatedModels": [
-        "Application"
-      ],
-      "sourceReview": "state-audit-required",
-      "sourcePathClass": "other-source-path",
-      "classification": "syntactic-candidates",
-      "owners": [
-        {
-          "owner": "<module>",
-          "line": 30,
-          "bindings": 1,
-          "writes": 0
-        }
-      ],
-      "parseErrors": [],
-      "asynchronous": 0,
       "unassignedWrites": 0
     },
     {
@@ -218228,6 +218237,21 @@
       "parseErrors": [],
       "asynchronous": 0,
       "unassignedWrites": 1
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-scheduling/src/scheduled-task/daily-routines-pack.ts",
+      "sha256": "6b1a55360f7c0da5e57b8d88dc3f7a3e3bb70e3d1804a834725a97eb2d2896cb",
+      "allocatedModels": [
+        "Application",
+        "ResidentScheduling"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
     },
     {
       "path": "vendor/eliza/plugins/plugin-scheduling/src/scheduled-task/db-schema.ts",
@@ -218805,7 +218829,7 @@
     },
     {
       "path": "vendor/eliza/plugins/plugin-scheduling/src/scheduled-task/seed-registry.ts",
-      "sha256": "0dea7e2f1d8596f8d613e87a386709656e5cca24ec4f5d295ea07ebf0267e026",
+      "sha256": "1bf1da19b55cc5366ea58816d1cf5bb457734c34b1c2a3794e83dccac7a7aa52",
       "allocatedModels": [
         "Application"
       ],
@@ -218815,19 +218839,19 @@
       "owners": [
         {
           "owner": "<module>",
-          "line": 45,
+          "line": 44,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "packMap",
-          "line": 51,
+          "line": 50,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "seedRegisteredTaskPacks",
-          "line": 120,
+          "line": 119,
           "bindings": 4,
           "writes": 4
         }
@@ -219809,7 +219833,7 @@
     },
     {
       "path": "vendor/eliza/plugins/plugin-sql/src/index.ts",
-      "sha256": "4ac7f8ebdd0a2b0888716a31ca936da8b1948f18fda25b909a272d1586f440f3",
+      "sha256": "34f4fb395f008d753642bad77215265e730c0320e1ae016f85c699d3917d090e",
       "allocatedModels": [
         "Application"
       ],
@@ -219819,19 +219843,19 @@
       "owners": [
         {
           "owner": "<module>",
-          "line": 156,
+          "line": 161,
           "bindings": 3,
           "writes": 3
         },
         {
           "owner": "createDatabaseAdapter",
-          "line": 181,
+          "line": 186,
           "bindings": 4,
           "writes": 4
         },
         {
           "owner": "closePgliteSingleton",
-          "line": 347,
+          "line": 352,
           "bindings": 3,
           "writes": 3
         }
@@ -219904,7 +219928,7 @@
     },
     {
       "path": "vendor/eliza/plugins/plugin-sql/src/migrations.ts",
-      "sha256": "0f66b1c976aec11cf5e93fda612a64341de8127dcc6173194a6ac3310e3afb97",
+      "sha256": "9a7c9c08066b3dd0844464d7dab915fb43222c7e5f0678bb1af17dcb13872ecc",
       "allocatedModels": [
         "Application"
       ],
@@ -219914,7 +219938,7 @@
       "owners": [
         {
           "owner": "migrateToEntityRLS",
-          "line": 46,
+          "line": 66,
           "bindings": 1,
           "writes": 1
         }
@@ -220056,7 +220080,7 @@
     },
     {
       "path": "vendor/eliza/plugins/plugin-sql/src/pglite/initdb-snapshot.ts",
-      "sha256": "d439cfac8feb463c74b9cbffce697ad6e02db17dea2bac87cbb698cb88dad54a",
+      "sha256": "cfaf1aa89b097967f329d0e2ecce8583e4819a6d5fcee88e79b84b98db95cbbf",
       "allocatedModels": [
         "CoreRuntimeShutdown",
         "CoreServiceLifecycle",
@@ -220068,7 +220092,7 @@
       "owners": [
         {
           "owner": "readInitdbSnapshot",
-          "line": 64,
+          "line": 81,
           "bindings": 1,
           "writes": 1
         }
@@ -220159,6 +220183,29 @@
         {
           "owner": "parseMemorySettings",
           "line": 36,
+          "bindings": 1,
+          "writes": 1
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-sql/src/pglite/migrated-snapshot.ts",
+      "sha256": "a589acbef2a4ae595672ef1baa15135c3d5904533a729831cab7f946df34eab6",
+      "allocatedModels": [
+        "CoreServiceLifecycle",
+        "DurableStore",
+        "MobileBundleAdmission"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "createMigratedSnapshot",
+          "line": 46,
           "bindings": 1,
           "writes": 1
         }
@@ -225240,6 +225287,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "20b8e2d325ea1b59653e8c4fa2bba7fdda6b2f0125774b067a712d273c59403e"
+    "sha256": "07e4d306d04b0bcbe6f3d556e9c18377227387df67f9b67b5af562c80d60bcf7"
   }
 }

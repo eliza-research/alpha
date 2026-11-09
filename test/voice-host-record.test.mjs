@@ -68,7 +68,18 @@ test('only a voice record for the current SDK can admit the native profile', () 
 
 test('current upstream voice source admission keeps historical patch and qualification evidence', () => {
   const {sourceIntegration: current, historicalPatchedSourceIntegration: historical} = committed.sourceAdmission;
-  assert.equal(current.admittedAt, committed.pin);
+  let admittedAt = current.admittedAt;
+  const advances = [...(committed.sourceAdmission.launcherOtaSourceAdvanceHistory ?? []),
+    ...(committed.sourceAdmission.launcherOtaSourceAdvance ? [committed.sourceAdmission.launcherOtaSourceAdvance] : [])];
+  for (const advance of advances) {
+    assert.equal(advance.priorPin, admittedAt, 'source advances keep an exact historical chain');
+    assert.equal(advance.nativeBuildInputsUnchanged, true);
+    assert.equal(advance.nativeQualificationTransferred, false);
+    assert.ok(advance.changedPaths.length > 0 && advance.changedPaths.every(file => file.startsWith('packages/ui/')),
+      'the launcher gate advance changes only shared UI source and verification');
+    admittedAt = advance.admittedAt;
+  }
+  assert.equal(admittedAt, committed.pin);
   assert.equal(current.priorPin, historical.admittedAt);
   assert.equal(current.engineCommit, committed.forkPin);
   assert.ok(historical.speechPatches.every(row => row.module === 'plugins/plugin-local-inference/native/android'));

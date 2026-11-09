@@ -59,7 +59,7 @@ Other prepared checks:
    exit 0; `node scripts/cloud-readiness.mjs probe` App Links gate must pass.
 4. Staging keeps the debug signer of test-mocks builds (`node scripts/cloud-readiness.mjs probe --environment staging --signer <SHA-256>`
    names a specific build's certificate).
-5. Keep Alpha's `ELIZA_NATIVE_AUTH_CALLBACKS_JSON` entry (printed by `cloud-readiness.mjs registration`).
+5. Keep Alpha's `ELIZA_NATIVE_AUTH_CALLBACKS_JSON` entry (printed by `cloud-readiness.mjs registration`), including its optional browser sign-in registration from the [consumer Pages runbook](pages-browser-sign-in.md).
 6. On an installed release build:
    `adb shell pm get-app-links ai.alphacompute.alphaphone > pm-get-app-links.txt`, then
    `node scripts/owner/app-links-evidence.mjs pm-get-app-links.txt` must exit 0. If the state is not

@@ -62,6 +62,7 @@ the required evidence rather than treating a successful APK build as acceptance.
 - [current product status](docs/mvp-current-status.md)
 - [Production readiness record, 2026-10-04](https://github.com/eliza-research/alphaphone/blob/51c8157533353a805afd2811f4e3f41b66b7b9fa/docs/production-readiness-2026-10-04.md)
 - [Cloud deployment and authentication findings](docs/cloud-production-validation.md)
+- [Consumer Pages browser sign-in registration](docs/runbooks/pages-browser-sign-in.md)
 - [Browser autofill and Proton integration](docs/browser-autofill-integration.md)
 - [Calendar and reminder contracts](docs/calendar-reminder-contract.md)
 - [Gesture zones, the chat dock and the notifications panel](docs/gesture-zones.md)

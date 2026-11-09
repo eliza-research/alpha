@@ -350,15 +350,16 @@ observed policy. Clock rechecks for a pending deletion while it holds the
 ringing lock. Undo of a valid paired deletion can restore ordinary ringing.
 Recovery of older markers without a receipt remains an open policy.
 
-The current named embedding provenance campaign checks eight real PGlite
-schedules against SDK `86ab55fd81`. The authenticated upstream source validates
+The historical named embedding provenance campaign at SDK `86ab55fd81` checked
+eight real PGlite schedules. That authenticated upstream source validates
 a named vector at the actual write or search boundary and rejects a delayed
 resize after named activation. A rejected text-and-vector edit rolls back
 together. SQL readback retains the exact stored vector's representation;
 serializing its numbers loses that proof, and the reconstructed vector is
 refused. The translated counterexample retains its original historical source
-fragments, and existing named rows require separate provenance evidence. The
-current Android mobile producer authenticates committed upstream source; its
+fragments, and existing named rows require separate provenance evidence. This
+campaign record does not transfer to a later SDK pin. The current Android mobile
+producer authenticates committed upstream source; its
 source input audit is separate from installed runtime qualification.
 
 The Agent Calendar refresh campaign checks 25 schedules and 237 checkpoints
