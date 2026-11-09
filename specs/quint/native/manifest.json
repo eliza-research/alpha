@@ -75,8 +75,8 @@
         "apps/app/src/runtime/app-speech.ts",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeVoiceBinding.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/VoiceEventAdmission.java",
-        "patches/eliza/voice-assistant-streaming.patch",
-        "patches/eliza/cloud-speech-client-manifest.json",
+        "vendor/eliza/packages/voice/src/voice-assistant-session.ts",
+        "upstream.lock.json",
         "scripts/client-speech-patch.mjs"
       ],
       "tests": [
@@ -124,9 +124,14 @@
       "invariant": "safety",
       "sources": [
         "apps/app/src/local-speech-playback.ts",
-        "patches/eliza/cloud-speech-native.patch",
-        "patches/eliza/local-speech-streaming.patch",
-        "patches/eliza/native-manifest.json"
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechStreamBridgePlugin.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechTimings.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechWire.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechOutputWarmup.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechLeadTrim.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/FirstWriteSpeechOutput.java",
+        "android/upstream-native-sources.json"
       ],
       "tests": [
         "queueBackpressureTest",
@@ -216,8 +221,10 @@
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaApplication.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaResetPlugin.java",
         "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListenerControlProvider.java",
-        "patches/eliza/reset-admission.patch",
-        "patches/eliza/native-manifest.json"
+        "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset/DataReset.java",
+        "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset/DataResetRecoveryActivity.java",
+        "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset/DataResetCopy.java",
+        "android/upstream-native-sources.json"
       ],
       "tests": [
         "prepared",
@@ -283,8 +290,8 @@
         "apps/app/src/runtime/deletions.ts",
         "apps/app/src/runtime/note-audio-deletions.ts",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeOwnerReminderHost.java",
-        "patches/eliza/native-manifest.json",
-        "patches/eliza/deletion-owner-admission.patch"
+        "android/upstream-native-sources.json",
+        "vendor/eliza/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeferredDeletionCoordinator.java"
       ],
       "tests": [
         "undoBeforeExpiryTest",
@@ -517,8 +524,8 @@
         "apps/app/src/maps/agent-navigation.ts",
         "apps/app/src/maps/screen.ts",
         "apps/app/src/maps/state.ts",
-        "patches/eliza/maps-hidden-fallback-client.patch",
-        "patches/eliza/maps-hidden-fallback-client-manifest.json"
+        "vendor/eliza/plugins/plugin-maps/src/client/maps-screen.ts",
+        "upstream.lock.json"
       ],
       "stateMapping": {
         "navStep/displayedStep/follow": "MapsScreenController.onFix, stopFollowing, recenter and view",
@@ -632,9 +639,14 @@
       "step": "step",
       "invariant": "safety",
       "sources": [
-        "patches/eliza/cloud-speech-native.patch",
-        "patches/eliza/local-speech-streaming.patch",
-        "patches/eliza/native-manifest.json"
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechStreamBridgePlugin.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechTimings.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechWire.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechOutputWarmup.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechLeadTrim.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/FirstWriteSpeechOutput.java",
+        "android/upstream-native-sources.json"
       ],
       "stateMapping": {
         "started/terminal/stopped/writer/outputOpen": "StreamingSpeechPlayback.start, settle, stop, run/finally",
@@ -978,8 +990,7 @@
       "step": "step",
       "invariant": "safety",
       "sources": [
-        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalVoiceRecording.java",
-        "patches/eliza/notes-recording-segments.patch"
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalVoiceRecording.java"
       ],
       "tests": [
         "stoppedDraftSelectableTest",
@@ -1090,10 +1101,13 @@
         "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java",
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalVoiceRecording.java",
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechRequestGate.java",
-        "patches/eliza/speech-recording-admission.patch",
-        "patches/eliza/native-manifest.json",
-        "patches/eliza/local-speech-streaming.patch",
-        "patches/eliza/notes-recording-segments.patch"
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureController.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureAdmission.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveVoiceCapture.java",
+        "android/upstream-native-sources.json",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechOutputWarmup.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechLeadTrim.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/FirstWriteSpeechOutput.java"
       ],
       "tests": [
         "lateCallRejectsPermissionStartTest",
@@ -1132,9 +1146,10 @@
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveVoiceCapture.java",
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureAdmission.java",
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureResource.java",
-        "patches/eliza/speech-recording-admission.patch",
-        "patches/eliza/native-manifest.json",
-        "patches/eliza/local-speech-streaming.patch"
+        "android/upstream-native-sources.json",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechOutputWarmup.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechLeadTrim.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/FirstWriteSpeechOutput.java"
       ],
       "tests": [
         "permissionDuringCallTest",
@@ -1163,8 +1178,7 @@
       "step": "step",
       "invariant": "safety",
       "sources": [
-        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveSegmentPipe.java",
-        "patches/eliza/speech-pipe-settlement.patch"
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveSegmentPipe.java"
       ],
       "tests": [
         "warmThenConfirmedCloseTest",
@@ -1226,7 +1240,8 @@
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveVoiceCapture.java",
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveVadGate.java",
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureResource.java",
-        "patches/eliza/speech-recording-admission.patch"
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureController.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureAdmission.java"
       ],
       "tests": [
         "tenWindowPrerollTest",
@@ -1253,7 +1268,6 @@
       "sources": [
         "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/IndicatorLeaseProvider.java",
         "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/IndicatorLease.java",
-        "patches/eliza/indicator-provider-generation.patch",
         "android/sense/build.gradle"
       ],
       "tests": [
@@ -1319,8 +1333,7 @@
         "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListenerStore.java",
         "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListeningEpoch.java",
         "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/IndicatorLease.java",
-        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListenerPolicy.java",
-        "patches/eliza/listener-service-cleanup.patch"
+        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListenerPolicy.java"
       ],
       "tests": [
         "failedDurableMarkerCannotArmRecognitionTest",
@@ -1350,7 +1363,10 @@
       "step": "step",
       "invariant": "safety",
       "sources": [
-        "patches/eliza/local-speech-streaming.patch"
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechOutputWarmup.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechLeadTrim.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/FirstWriteSpeechOutput.java"
       ],
       "tests": [
         "closeFencesLateOpenTest",
@@ -1404,8 +1420,7 @@
       "invariant": "safety",
       "sources": [
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/OnDeviceRecognizer.java",
-        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/RecognizerAvailability.java",
-        "patches/eliza/recognizer-retired-callback.patch"
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/RecognizerAvailability.java"
       ],
       "tests": [
         "retiredResultCannotDemoteTest",
@@ -1440,8 +1455,7 @@
         "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/IndicatorLease.java",
         "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListenerPolicy.java",
         "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/SpeechGate.java",
-        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/WakePhrase.java",
-        "patches/eliza/listener-service-cleanup.patch"
+        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/WakePhrase.java"
       ],
       "tests": [
         "callInvalidatesHeldRecognitionTest",
@@ -1497,9 +1511,11 @@
       "step": "step",
       "invariant": "safety",
       "sources": [
-        "patches/eliza/local-speech-streaming.patch",
-        "patches/eliza/native-manifest.json",
         "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechOutputWarmup.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechLeadTrim.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/FirstWriteSpeechOutput.java",
+        "android/upstream-native-sources.json",
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalSpeechEngine.java",
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/VoiceLatencyProbe.java",
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/StreamingSpeechPlayback.java",
@@ -1598,8 +1614,11 @@
         "vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java",
         "vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java",
         "vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudCredentialSlots.java",
-        "patches/eliza/google-browser-sign-in.patch",
-        "patches/eliza/native-manifest.json"
+        "vendor/eliza/packages/auth/android/build.gradle",
+        "vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java",
+        "vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java",
+        "vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInRoutes.java",
+        "android/upstream-native-sources.json"
       ],
       "tests": [
         "ownResultSurvivesResumeGraceTest",
@@ -2152,8 +2171,7 @@
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaImageCapability.java",
         "android/app/src/launcher/AndroidManifest.xml",
         "android/consumer-host.json",
-        "patches/eliza/native-manifest.json",
-        "patches/eliza/sms-reviewed-binding.patch",
+        "android/upstream-native-sources.json",
         "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/TelephonyPlugin.java",
         "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsTelephony.java",
         "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsTelephonyConfiguration.java",
@@ -2215,8 +2233,7 @@
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaImageCapability.java",
         "android/app/src/launcher/AndroidManifest.xml",
         "android/consumer-host.json",
-        "patches/eliza/native-manifest.json",
-        "patches/eliza/sms-reviewed-binding.patch",
+        "android/upstream-native-sources.json",
         "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/TelephonyPlugin.java",
         "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsTelephony.java",
         "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsTelephonyConfiguration.java",
@@ -2595,8 +2612,7 @@
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCredentialStore.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/LocalAgentProviderAdmission.java",
         "vendor/eliza/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/MailBackgroundDelivery.java",
-        "vendor/eliza/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/MailHistoryReconciliation.java",
-        "patches/eliza/gmail-background-retirement.patch"
+        "vendor/eliza/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/MailHistoryReconciliation.java"
       ],
       "stateMapping": {
         "credential/remoteOwner/grants/reset": "Synthetic raw credential classes, remotely reported owner/grants and pending reset",

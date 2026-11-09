@@ -99,7 +99,7 @@ test('test mocks reach debug variants only and product admission runs before eve
  assert.deepEqual(profile.generatedSources, [{sourceSet: 'main', kind: 'java', path: 'generated/local-agent/java'}]);
  assert.deepEqual(profile.appScripts, [fs.realpathSync(path.join(root, 'android/app/product.gradle'))]);
  assert.deepEqual(profile.generationInputs.map(input => path.relative(fs.realpathSync(root), input.file)).sort(),
-  ['android/consumer-host.json', 'app.config.json', 'android/upstream-native-sources.json', 'scripts/android-host.mjs', 'scripts/prepare-patched-native.mjs', 'upstream.lock.json']);
+  ['android/consumer-host.json', 'android/upstream-native-sources.json', 'app.config.json', 'scripts/android-host.mjs', 'scripts/prepare-patched-native.mjs', 'upstream.lock.json']);
  // Product admission that depends on Gradle properties stays in Alpha's product script.
  const product = fs.readFileSync(path.join(ROOT, 'android/app/product.gradle'), 'utf8');
  for (const task of ['verifyEmbeddingHost', 'verifyParadeeAppLinkage', 'verifyVoiceHost', 'verifyRuntimeWebProfile'])
