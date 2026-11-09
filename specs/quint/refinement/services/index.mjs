@@ -38,6 +38,7 @@ import {checkReviewedWorkflowLauncher} from './reviewed-workflow-launcher.mjs';
 import {checkCoreConnectorCustody} from './core-runtime/connector-custody.mjs';
 import {checkMobileBundleAdmission} from './mobile-bundle-admission.mjs';
 import {checkWorkflowWorkerStaging} from './workflow-worker-staging.mjs';
+import {checkNativeGoogleHostArtifact} from './native-google-host-artifact.mjs';
 
 export async function runServicesRefinement() {
   const receipts = [];
@@ -49,7 +50,8 @@ export async function runServicesRefinement() {
     () => checkReviewedWorkflowLauncher([fileURLToPath(import.meta.url)]),
     () => checkCoreConnectorCustody([fileURLToPath(import.meta.url)]),
     () => checkMobileBundleAdmission([fileURLToPath(import.meta.url)]),
-    () => checkWorkflowWorkerStaging([fileURLToPath(import.meta.url)])]) {
+    () => checkWorkflowWorkerStaging([fileURLToPath(import.meta.url)]),
+    () => checkNativeGoogleHostArtifact([fileURLToPath(import.meta.url)])]) {
     const result = await check();
     receipts.push(...(Array.isArray(result) ? result : [result]));
   }
@@ -66,6 +68,8 @@ export async function runServicesRefinement() {
       reason: 'The producer functions and readback execute against reviewed inputs and synthetic bundle generations. The full mobile compiler, staged copy under interruption and installed execution are separate.'},
     {model: 'WorkflowWorkerStaging', obligation: 'Interruption and recovery after partial worker publication',
       reason: 'The helper can leave a verified backup after a refused restore or failed cleanup. The scratch campaign observes the settled disk states. Process interruption, concurrent publishers and subsequent recovery remain separate.'},
+    {model: 'NativeGoogleHostArtifact', obligation: 'Cross-process publication, interruption and installed use',
+      reason: 'The source replay verifies a private candidate and restore under the serial producer contract. Independent readers, process death between the two publication renames and installed host execution remain separate.'},
     {model: 'CoreTurnControllers', obligation: 'Detached callbacks, reentrant observers and provider composition', reason: 'The source campaign checks lookup, cancellation and closure in two registries. Arbitrary reentrant observers and detached callbacks require separate source schedules.'},
     {model: 'IdentitySession', obligation: 'Installed sign-in integration and physical storage', reason: 'The patched shared sign-in coordinator executes callback claim, credential/receipt commit, acknowledgement, cancellation and replacement under controlled ports. App Link trust, real HTTPS, Keystore durability and process recreation remain external.'},
     {model: 'ServiceAuthorization', obligation: 'Managed-service dispatch authorization', reason: 'Entitlement refresh and admission views execute; exact route validation and server authorization still need their own dispatch trace adapter.'},
