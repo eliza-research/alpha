@@ -15,7 +15,11 @@ test('service components and coordinators check real-source traces and preserve 
       import {writeSync} from 'node:fs';
       import {runServicesRefinement} from './specs/quint/refinement/services/index.mjs';
       const result = await runServicesRefinement();
-      if (result.receipts.some(receipt => !receipt.passed)) throw Error('Incomplete service model checks');
+      if (result.failures.length) {
+        const names = result.failures.map(({campaign}) => campaign);
+        const errors = result.failures.map(({campaign, error}) => new Error(campaign, {cause: error}));
+        throw new AggregateError(errors, 'Service refinement campaigns failed: ' + names.join(', '));
+      }
       writeSync(3, JSON.stringify({
         models: result.receipts.map(receipt => receipt.model),
         traces: result.receipts.reduce((sum, receipt) => sum + receipt.traces, 0),
