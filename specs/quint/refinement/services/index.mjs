@@ -41,6 +41,7 @@ import {checkWorkflowWorkerStaging} from './workflow-worker-staging.mjs';
 import {checkNativeGoogleHostArtifact} from './native-google-host-artifact.mjs';
 import {checkPreparedSourceStamp} from './prepared-source-stamp.mjs';
 import {checkCloudQaLauncher} from './cloud-qa-launcher.mjs';
+import {checkBrowserCloudRequestCustody} from './browser-cloud-request-custody.mjs';
 
 export async function runServicesRefinement() {
   const receipts = [];
@@ -55,7 +56,8 @@ export async function runServicesRefinement() {
     () => checkWorkflowWorkerStaging([fileURLToPath(import.meta.url)]),
     () => checkNativeGoogleHostArtifact([fileURLToPath(import.meta.url)]),
     () => checkPreparedSourceStamp([fileURLToPath(import.meta.url)]),
-    () => checkCloudQaLauncher([fileURLToPath(import.meta.url)])]) {
+    () => checkCloudQaLauncher([fileURLToPath(import.meta.url)]),
+    () => checkBrowserCloudRequestCustody([fileURLToPath(import.meta.url)])]) {
     const result = await check();
     receipts.push(...(Array.isArray(result) ? result : [result]));
   }
@@ -76,6 +78,8 @@ export async function runServicesRefinement() {
       reason: 'The source-only schedules observe settled outcomes and one candidate refusal on local disposable Git trees. Racing writers, restart after process loss and the full dependency install retain separate evidence.'},
     {model: 'CloudQaLauncher', obligation: 'Concurrent launcher, kernel signal and live readiness behavior',
       reason: 'Private files and receipts use the real implementation in scratch, with closed child events. Concurrent profile writers, kernel delivery and a running Cloud session retain separate evidence.'},
+    {model: 'BrowserCloudRequestCustody', obligation: 'Authenticated requests, real HTTP and process restart',
+      reason: 'Closed request and response ports drive the real handler on the public entitlement route. Authenticated routes, Node socket delivery and process restart remain separate.'},
     {model: 'NativeGoogleHostArtifact', obligation: 'Cross-process publication, interruption and installed use',
       reason: 'The source replay verifies a private candidate and restore under the serial producer contract. Independent readers, process death between the two publication renames and installed host execution remain separate.'},
     {model: 'CoreTurnControllers', obligation: 'Detached callbacks, reentrant observers and provider composition', reason: 'The source campaign checks lookup, cancellation and closure in two registries. Arbitrary reentrant observers and detached callbacks require separate source schedules.'},

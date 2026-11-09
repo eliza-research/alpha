@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-  "ledgerSha256": "a0254f942c3a5e2319979e1d4adadbb19e89af3bcd66df81d2aef256e0693680",
+  "ledgerSha256": "45c53af7e7d6748424653459de819c2a0f347af3d02b44d7374930c093758972",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -22,17 +22,17 @@
     "The ledger supplies pinned source bytes. Effective client/native/runtime patch outputs require their separately authenticated source mappings."
   ],
   "counts": {
-    "files": 5729,
+    "files": 5731,
     "testSupportFiles": 285,
     "testSupportCandidates": 11383,
-    "parsedFiles": 5658,
+    "parsedFiles": 5660,
     "languageReview": 71,
     "parseErrors": 0,
-    "candidates": 67339,
-    "writeSites": 66909,
-    "writeAssociations": 60037,
+    "candidates": 67344,
+    "writeSites": 66918,
+    "writeAssociations": 60046,
     "asynchronous": 8358,
-    "unassignedWrites": 10273
+    "unassignedWrites": 10274
   },
   "files": [
     {
@@ -29654,7 +29654,8 @@
       "path": "apps/app/src/browser/calendar-sync-fields.ts",
       "sha256": "e45806a45e8231d7e3955486cc2e18c5f7df08c3806688ce79036f957e338038",
       "allocatedModels": [
-        "CalendarSync"
+        "CalendarSync",
+        "NativeGoogleHostArtifact"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -35767,7 +35768,8 @@
         "AccessibleToastLifetime",
         "CalendarPreservationConfirmation",
         "CanonicalCalendarEditorClose",
-        "CameraPreviewRetirement"
+        "CameraPreviewRetirement",
+        "RetainedReminderTapAdmission"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -39406,10 +39408,12 @@
     },
     {
       "path": "apps/app/src/prototype/reminder-adapter.ts",
-      "sha256": "ce1c796751c65918009d3e6456011c4dbcd3ba3e961ced34362bfa99a5140631",
+      "sha256": "19d0bc38c6667ee05ee27930d1899a60d491ce0b83e48bb0a3d2db657a82f2d7",
       "allocatedModels": [
-        "DeviceActions"
+        "DeviceActions",
+        "RetainedReminderTapAdmission"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -39420,62 +39424,62 @@
           "writes": 17
         },
         {
-          "owner": "installReminderAdapter.FunctionExpression@83",
-          "line": 91,
+          "owner": "installReminderAdapter.FunctionExpression@84",
+          "line": 92,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installReminderAdapter.FunctionExpression@122",
-          "line": 126,
+          "owner": "installReminderAdapter.FunctionExpression@123",
+          "line": 127,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installReminderAdapter.FunctionExpression@147",
-          "line": 148,
+          "owner": "installReminderAdapter.FunctionExpression@148",
+          "line": 149,
           "bindings": 1,
           "writes": 31
         },
         {
-          "owner": "installReminderAdapter.FunctionExpression@147.todoDecision",
-          "line": 170,
+          "owner": "installReminderAdapter.FunctionExpression@148.todoDecision",
+          "line": 171,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "installReminderAdapter.FunctionExpression@147.ArrowFunction@184",
-          "line": 185,
+          "owner": "installReminderAdapter.FunctionExpression@148.ArrowFunction@185",
+          "line": 186,
           "bindings": 2,
           "writes": 6
         },
         {
-          "owner": "installReminderAdapter.FunctionExpression@147.ArrowFunction@207.saveEdit",
-          "line": 217,
+          "owner": "installReminderAdapter.FunctionExpression@148.ArrowFunction@208.saveEdit",
+          "line": 218,
           "bindings": 7,
           "writes": 11
         },
         {
-          "owner": "installReminderAdapter.FunctionExpression@147.ArrowFunction@207",
-          "line": 273,
+          "owner": "installReminderAdapter.FunctionExpression@148.ArrowFunction@208",
+          "line": 274,
           "bindings": 9,
           "writes": 14
         },
         {
-          "owner": "installReminderAdapter.FunctionExpression@147.decide",
-          "line": 342,
+          "owner": "installReminderAdapter.FunctionExpression@148.decide",
+          "line": 343,
           "bindings": 5,
           "writes": 9
         },
         {
-          "owner": "installReminderAdapter.FunctionExpression@147.reopen",
-          "line": 387,
+          "owner": "installReminderAdapter.FunctionExpression@148.reopen",
+          "line": 388,
           "bindings": 5,
           "writes": 9
         },
         {
-          "owner": "installReminderAdapter.FunctionExpression@147.ArrowFunction@436",
-          "line": 439,
+          "owner": "installReminderAdapter.FunctionExpression@148.ArrowFunction@437",
+          "line": 440,
           "bindings": 1,
           "writes": 3
         }
@@ -40886,7 +40890,8 @@
       "sha256": "0a13728c4df274cf8a31781cfbf6a17a10d38bf5cbae67c3cbe059d33cc70372",
       "allocatedModels": [
         "Application",
-        "AssistantConversation"
+        "AssistantConversation",
+        "RetainedReminderTapAdmission"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -41185,7 +41190,8 @@
       "path": "apps/app/src/runtime/browser-cloud-resident.ts",
       "sha256": "272b423b5684b104bcf6a95ff3caa0081d9344199d4ba822adef7c357fb18fba",
       "allocatedModels": [
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "NativeGoogleHostArtifact"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -41350,7 +41356,8 @@
       "path": "apps/app/src/runtime/calendar-linked-provider.ts",
       "sha256": "4f30bf83e2a8d30be7768138a13da7e85438e1f78ad9d376a63c85d15b34176b",
       "allocatedModels": [
-        "CalendarSync"
+        "CalendarSync",
+        "NativeGoogleHostArtifact"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -41611,7 +41618,8 @@
       "path": "apps/app/src/runtime/cloud-deployment.generated.ts",
       "sha256": "0c9ba401ee40ab7c25aea7de846375b9d805fd33b0932f0ebb965c126972f8da",
       "allocatedModels": [
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "NativeGoogleHostArtifact"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -41772,7 +41780,8 @@
         "ApplicationComposition",
         "GoogleConnect",
         "InboxProviderDrafts",
-        "ControllerComposition"
+        "ControllerComposition",
+        "NativeGoogleHostArtifact"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -41886,7 +41895,8 @@
       "path": "apps/app/src/runtime/cloud-sign-in.ts",
       "sha256": "1faf20fcf8f38f77c37e9a877e6cdb68b01928d8368a6b3d254fbf37d4aae7c0",
       "allocatedModels": [
-        "IdentitySession"
+        "IdentitySession",
+        "NativeGoogleHostArtifact"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -41995,7 +42005,8 @@
         "ControllerComposition",
         "ResidentLiveness",
         "CanonicalNotificationTapAdmission",
-        "CloudConnectionNotices"
+        "CloudConnectionNotices",
+        "RetainedReminderTapAdmission"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -42931,7 +42942,8 @@
         "InboxDelivery",
         "InboxCoordinator",
         "InboxProviderDrafts",
-        "GoogleConsentAdmission"
+        "GoogleConsentAdmission",
+        "NativeGoogleHostArtifact"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -43168,7 +43180,8 @@
       "sha256": "30cdcd481c794b3846fdf97d6f7a4f2a18500b6df5e55b13eb27f924f269bfdb",
       "allocatedModels": [
         "IdentitySession",
-        "GoogleAccounts"
+        "GoogleAccounts",
+        "NativeGoogleHostArtifact"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -43422,7 +43435,8 @@
       "allocatedModels": [
         "FilesAndSharing",
         "InboxDelivery",
-        "InboxCoordinator"
+        "InboxCoordinator",
+        "NativeGoogleHostArtifact"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -43933,7 +43947,8 @@
       "path": "apps/app/src/runtime/managed-service-routes.ts",
       "sha256": "a9a958d5a27cf66d51e5327d62f605d81af3f6aff5cd4af1b80b2f39350506fe",
       "allocatedModels": [
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "NativeGoogleHostArtifact"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -44785,7 +44800,8 @@
       "path": "apps/app/src/runtime/reminder-creations.ts",
       "sha256": "d0e28b7a0ee10dc8547c1d0a32c9a2391f03865e1712b166c43b7d202e3a5a89",
       "allocatedModels": [
-        "DeviceActions"
+        "DeviceActions",
+        "RetainedReminderTapAdmission"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -45626,7 +45642,8 @@
       "path": "backend/calendar-read-timing.ts",
       "sha256": "6c182fd47e3711d5a37a475691cfd168c34f9be21f83c5ab72605262618c65f5",
       "allocatedModels": [
-        "CalendarPresentation"
+        "CalendarPresentation",
+        "NativeGoogleHostArtifact"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -45668,7 +45685,8 @@
       "sha256": "7063562ae9f4305828afb1252ce3d9d9868b6a28ae7ff4d308adcc1741409965",
       "allocatedModels": [
         "ServiceAuthorization",
-        "NativeGoogleAccessFile"
+        "NativeGoogleAccessFile",
+        "NativeGoogleHostArtifact"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -45689,7 +45707,8 @@
       "sha256": "6b4629eb2c8adeb4ffefaf4fcf14b6367483dbb917e5ecceeb59e5890e76f115",
       "allocatedModels": [
         "ServiceAuthorization",
-        "NativeGoogleAccessFile"
+        "NativeGoogleAccessFile",
+        "NativeGoogleHostArtifact"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -45757,7 +45776,8 @@
       "path": "backend/managed-google-failure-stage.ts",
       "sha256": "209d8a2d4c3a8c95a1545c5a018b8107ff352099694b92defc1c0e177cffa604",
       "allocatedModels": [
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "NativeGoogleHostArtifact"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -45777,7 +45797,9 @@
       "path": "backend/managed-google-route-policy.ts",
       "sha256": "96a07cf0d4adbf372be56f93419a9bb662477cbe1221fb828e77fa0685be4ac3",
       "allocatedModels": [
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "NativeGoogleHostArtifact",
+        "BrowserCloudRequestCustody"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -45803,7 +45825,8 @@
       "path": "backend/native-cloud-runtime.ts",
       "sha256": "95cf46c7db11a7ebb7b0cb4efa5a8a210951f52184a14831be7f6aba88f01347",
       "allocatedModels": [
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "NativeGoogleHostArtifact"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -45817,7 +45840,8 @@
       "sha256": "f58b8a2be174148b5f7fe9c5f147a6615697a226c654e27fb57efa8139464d9e",
       "allocatedModels": [
         "ResidentRuntime",
-        "NativeGoogleAccessFile"
+        "NativeGoogleAccessFile",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -45844,7 +45868,8 @@
       "path": "backend/native-google-cloud-port.ts",
       "sha256": "8f008c1d720e0609c12443b99d9a2493ac74e55e11d311b06b06b80cc45dda2a",
       "allocatedModels": [
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "NativeGoogleHostArtifact"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -46084,11 +46109,13 @@
     },
     {
       "path": "scripts/browser-cloud-dev-bridge.ts",
-      "sha256": "b780537b54035955e6c7112ee05af2b6b38d251b8ba42cb4e6ff5711d37d3d7d",
+      "sha256": "5e7a4828706ce2760517a64f79858bf4cfb548d00da2b144303ab862657e75f4",
       "allocatedModels": [
         "DevelopmentHost",
-        "DevelopmentSurfaces"
+        "DevelopmentSurfaces",
+        "BrowserCloudRequestCustody"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -46172,13 +46199,13 @@
         },
         {
           "owner": "createBrowserCloudDevHandler.startGoogleHost",
-          "line": 445,
+          "line": 446,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "browserCloudDevBridge.configureServer",
-          "line": 479,
+          "line": 480,
           "bindings": 1,
           "writes": 1
         }
@@ -46375,6 +46402,28 @@
       "unassignedWrites": 2
     },
     {
+      "path": "scripts/combined-agent-source.mjs",
+      "sha256": "a2f4d279f3f98ff078f3aedd6b9dc2dc5c3396ecdc7fb7f09b0da7e0c085062e",
+      "allocatedModels": [
+        "CombinedAgentLauncher",
+        "NativeGoogleHostArtifact"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "sourceManifest",
+          "line": 11,
+          "bindings": 4,
+          "writes": 8
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 1
+    },
+    {
       "path": "scripts/copy-file-clone.mjs",
       "sha256": "b1cf1b54d803d75a9dd091e8aa130e78f30af90ea897208f9672d378fa0b4b37",
       "allocatedModels": [
@@ -46454,7 +46503,8 @@
       "sha256": "c5368c9075aa8c7660bee01338185fbe673c9b8dd6889dd1ab01d195efa17c10",
       "allocatedModels": [
         "Application",
-        "ReviewedWorkflowLauncher"
+        "ReviewedWorkflowLauncher",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -46538,6 +46588,27 @@
       "parseErrors": [],
       "asynchronous": 6,
       "unassignedWrites": 2
+    },
+    {
+      "path": "scripts/gmail-agent-mailbox-host.ts",
+      "sha256": "a976b952421e93fa83bd06cb6e6115702618caf910c018472adad626c74e40ce",
+      "allocatedModels": [
+        "NativeGoogleHostArtifact"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "gmailAgentMailbox",
+          "line": 16,
+          "bindings": 1,
+          "writes": 1
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
     },
     {
       "path": "scripts/launcher-child.mjs",
@@ -46777,7 +46848,8 @@
         "BrowserFilesTrash",
         "MapsRerouteOwnership",
         "FilesPreview",
-        "InboxProviderDrafts"
+        "InboxProviderDrafts",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -70528,7 +70600,8 @@
       "path": "vendor/eliza/packages/auth/src/auth/native-cloud-sign-in.ts",
       "sha256": "c993e0343316953ba421155098317c1092c85fcc6fbce6267cd27599596920e8",
       "allocatedModels": [
-        "IdentitySession"
+        "IdentitySession",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -72300,7 +72373,8 @@
       "sha256": "6b9bf34bfb8f0d6bdc9d0e0bf0cfbb6a4f7f75e3fc18ad3e824067fb2d11bc11",
       "allocatedModels": [
         "IdentitySession",
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -72747,7 +72821,8 @@
       "path": "vendor/eliza/packages/cloud/sdk/src/cloud-account-billing.ts",
       "sha256": "d7757db327445266be5b76fda7918920f378b5a326bc276c9a620719e79ca63d",
       "allocatedModels": [
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -73034,7 +73109,8 @@
       "sha256": "d2f8a876850bb959cda20972399a60331e716d0b40fec769b79adeaebe64f5e6",
       "allocatedModels": [
         "IdentitySession",
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -73252,7 +73328,8 @@
       "allocatedModels": [
         "CalendarLinkedSync",
         "CalendarPresentation",
-        "CalendarSync"
+        "CalendarSync",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -73292,7 +73369,8 @@
       "sha256": "6bdc734b82075968c4801f02ec5dcc002fac8fec2d787a77276cb6a0e2286010",
       "allocatedModels": [
         "CalendarLinkedSync",
-        "CalendarPresentation"
+        "CalendarPresentation",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -136299,7 +136377,8 @@
       "path": "vendor/eliza/plugins/plugin-assistant/src/utils/html-entities.ts",
       "sha256": "6087cede2d200d05126151a6eaf1473ce93b06776e7230bd0a2c32de97c60c01",
       "allocatedModels": [
-        "AssistantConversation"
+        "AssistantConversation",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -139342,7 +139421,8 @@
         "CalendarLinkedSync",
         "CalendarPresentation",
         "GoogleAccounts",
-        "InboxDelivery"
+        "InboxDelivery",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -140745,7 +140825,8 @@
       "sha256": "cb846fbdbd0885711dedfb9f94a39ddaeef1adb949f0e76ac301601948020da0",
       "allocatedModels": [
         "CalendarLinkedSync",
-        "CalendarPresentation"
+        "CalendarPresentation",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -146428,7 +146509,8 @@
       "allocatedModels": [
         "BrowserSession",
         "BrowserSiteState",
-        "FilesAndSharing"
+        "FilesAndSharing",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -151499,7 +151581,8 @@
       "allocatedModels": [
         "InboxCoordinator",
         "InboxDelivery",
-        "InboxProviderDrafts"
+        "InboxProviderDrafts",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -151617,7 +151700,8 @@
       "allocatedModels": [
         "InboxCoordinator",
         "InboxDelivery",
-        "InboxProviderDrafts"
+        "InboxProviderDrafts",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -151652,7 +151736,8 @@
       "allocatedModels": [
         "InboxCoordinator",
         "InboxDelivery",
-        "InboxProviderDrafts"
+        "InboxProviderDrafts",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -151684,7 +151769,8 @@
       "allocatedModels": [
         "InboxCoordinator",
         "InboxDelivery",
-        "InboxProviderDrafts"
+        "InboxProviderDrafts",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -151777,7 +151863,8 @@
         "GoogleAccounts",
         "InboxCoordinator",
         "InboxDelivery",
-        "InboxProviderDrafts"
+        "InboxProviderDrafts",
+        "NativeGoogleHostArtifact"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -219891,6 +219978,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "63d91074172e683983f89dd0493d8c5c4c04164e8c6564cad7a7a5c2dbdd1bd4"
+    "sha256": "91d3973244e8063e98f1b0474e615991108778b6e00275939e378160a78557d2"
   }
 }

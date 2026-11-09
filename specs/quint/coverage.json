@@ -37,6 +37,8 @@
     "scripts/stage-workflow-worker.mjs",
     "scripts/native-google-host-artifact.mjs",
     "scripts/build-native-google-host.ts",
+    "scripts/combined-agent-source.mjs",
+    "scripts/gmail-agent-mailbox-host.ts",
     "scripts/build-mobile-agent.mjs",
     "scripts/mobile-uuid-adapter.mjs",
     "scripts/mobile-bundle-smoke.mjs",
@@ -9925,7 +9927,8 @@
       "path": "apps/app/src/browser/calendar-sync-fields.ts",
       "sha256": "e45806a45e8231d7e3955486cc2e18c5f7df08c3806688ce79036f957e338038",
       "models": [
-        "CalendarSync"
+        "CalendarSync",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -24922,7 +24925,8 @@
         "AccessibleToastLifetime",
         "CalendarPreservationConfirmation",
         "CanonicalCalendarEditorClose",
-        "CameraPreviewRetirement"
+        "CameraPreviewRetirement",
+        "RetainedReminderTapAdmission"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -33130,12 +33134,14 @@
     },
     {
       "path": "apps/app/src/prototype/reminder-adapter.ts",
-      "sha256": "ce1c796751c65918009d3e6456011c4dbcd3ba3e961ced34362bfa99a5140631",
       "models": [
-        "DeviceActions"
+        "DeviceActions",
+        "RetainedReminderTapAdmission"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "19d0bc38c6667ee05ee27930d1899a60d491ce0b83e48bb0a3d2db657a82f2d7",
       "stateAnchors": [
         {
           "line": 14,
@@ -33186,443 +33192,439 @@
           "text": "const shell=owner;"
         },
         {
-          "line": 36,
+          "line": 37,
           "text": "const initialView=shell.S().view, initialOpen=shell.vget('calendar').open, interactionAt=tapInteraction;"
         },
         {
-          "line": 37,
-          "text": "const current=()=>tapInteraction===interactionAt&&owner===shell&&shell.live&&!document.hidden&&!connectionController.getSnapshot().open&&!alphaClient.getState().context.sensitive&&!shell.vget('calenda"
-        },
-        {
-          "line": 40,
+          "line": 41,
           "text": "const capability=await DailyApps.surfaceInfo();"
         },
         {
-          "line": 42,
+          "line": 43,
           "text": "const pending=await DailyApps.pendingReminderTap();"
         },
         {
-          "line": 47,
+          "line": 48,
           "text": "const result=await DailyApps.listReminders();"
         },
         {
-          "line": 49,
+          "line": 50,
           "text": "const selected=result.reminders.find(row=>sameTarget(row.target,pending.target));"
         },
         {
-          "line": 51,
+          "line": 52,
           "text": "const confirmation=await DailyApps.pendingReminderTap();"
         },
         {
-          "line": 53,
+          "line": 54,
           "text": "const rows=[...(shell.nativeCalendarRows||[]),...events(result.reminders)];"
         },
         {
-          "line": 54,
+          "line": 55,
           "text": "const target=rows.find(row=>row.alphaReminderId===selected.id&&sameTarget(row.reminderTarget,pending.target));"
         },
         {
-          "line": 57,
+          "line": 58,
           "text": "const openingInteraction=tapInteraction;"
         },
         {
-          "line": 63,
+          "line": 64,
           "text": "const session=connectionController.getSnapshot().session,enrollment=JSON.stringify(connectionController.getWorkflowDeviceTarget());"
         },
         {
-          "line": 65,
+          "line": 66,
           "text": "const live=()=>owner===shell&&shell.live&&!document.hidden&&!connectionController.getSnapshot().open&&!alphaClient.getState().context.sensitive&&connectionController.getSnapshot().session===session&&J"
         },
         {
-          "line": 67,
+          "line": 68,
           "text": "const again=await DailyApps.pendingReminderTap();if(!live()||again.token!==pending.token||!again.question||!again.retained||!sameTarget(again.target,pending.target))return false;"
         },
         {
-          "line": 68,
+          "line": 69,
           "text": "const fresh=await DailyApps.listReminders();return live()&&fresh.reminders.some(row=>sameTarget(row.target,pending.target)&&row.title===selected.title&&(row.body||'')===(selected.body||''));"
         },
         {
-          "line": 81,
+          "line": 82,
           "text": "return overdueReminders(this.reminderRows||[]).map(r=>{const row=reminderEvents([r])[0];return row?{id:row.id,title:r.title,off:row.off,at:dueOf(r)}:null;}).filter(Boolean);"
         },
         {
-          "line": 88,
+          "line": 89,
           "text": "const generation = this.reminderRefreshGeneration = (this.reminderRefreshGeneration || 0) + 1;"
         },
         {
-          "line": 90,
+          "line": 91,
           "text": "const reminderDeleteUnknown=await reconcileReminderDeletions();"
         },
         {
-          "line": 91,
+          "line": 92,
           "text": "let reminderCreateUnknown=Object.values(await reminderCreations()).filter(r=>r.state==='pending').length;"
         },
         {
-          "line": 100,
+          "line": 101,
           "text": "const result = await DailyApps.listReminders();"
         },
         {
-          "line": 104,
+          "line": 105,
           "text": "const rows = [...(this.nativeCalendarRows || []), ...events(result.reminders)];"
         },
         {
-          "line": 107,
+          "line": 108,
           "text": "const open = this.pendingReminderOpen;"
         },
         {
-          "line": 109,
+          "line": 110,
           "text": "const view = this.S().view;"
         },
         {
-          "line": 111,
+          "line": 112,
           "text": "const target = rows.find(e => e.alphaReminderId === open.id && (!open.occurrenceId || e.reminderOccurrence===open.occurrenceId));"
         },
         {
-          "line": 126,
+          "line": 127,
           "text": "let chooserOpen=connectionController.getSnapshot().open;"
         },
         {
-          "line": 127,
+          "line": 128,
           "text": "this.reminderTapConnection=connectionController.subscribe(()=>{const next=connectionController.getSnapshot().open;if(chooserOpen&&!next)queueMicrotask(()=>void checkReminderTap(true));chooserOpen=next"
         },
         {
-          "line": 148,
+          "line": 149,
           "text": "const out = render(state,api);"
         },
         {
-          "line": 152,
+          "line": 153,
           "text": "const shell=owner,token=state.reminderTapToken;"
         },
         {
-          "line": 154,
+          "line": 155,
           "text": "const epoch=tapInteraction;"
         },
         {
-          "line": 157,
+          "line": 158,
           "text": "const pending=await DailyApps.pendingReminderTap();"
         },
         {
-          "line": 163,
+          "line": 164,
           "text": "const rows:Reminder[]=owner?.reminderRows||[];"
         },
         {
-          "line": 164,
+          "line": 165,
           "text": "out.overdueReminders=overdueReminders(rows,api.now??Date.now()).map(r=>({title:r.title,label:'Overdue',due:new Date(dueOf(r)).toLocaleString(undefined,{weekday:'short',month:'short',day:'numeric',hour"
         },
         {
-          "line": 168,
+          "line": 169,
           "text": "const todoBusy=()=>!!owner?.reminderSaving;"
         },
         {
-          "line": 169,
+          "line": 170,
           "text": "const todoDecision=async(r:Reminder,action:'done'|'reopen'|'cancel')=>{"
         },
         {
-          "line": 170,
+          "line": 171,
           "text": "const todoOwner=owner;if(!todoOwner||todoBusy()||!r.target)return;"
         },
         {
-          "line": 174,
+          "line": 175,
           "text": "const result=await DailyApps.todoDecision({target:r.target,action});"
         },
         {
-          "line": 175,
+          "line": 176,
           "text": "const saved=(await DailyApps.listReminders()).reminders.find(row=>row.id===r.id);"
         },
         {
-          "line": 176,
+          "line": 177,
           "text": "const expected=action==='done'?'completed':action==='reopen'?'todo':'cancelled';"
         },
         {
-          "line": 185,
+          "line": 186,
           "text": "const todoOwner=owner,text=String(title||'').trim();if(!todoOwner||!text||todoBusy())return;"
         },
         {
-          "line": 188,
+          "line": 189,
           "text": "const attempt=todoOwner.todoAttempt?.title===text&&todoOwner.todoAttempt?.body===body?todoOwner.todoAttempt:{id:crypto.randomUUID(),title:text,body};"
         },
         {
-          "line": 191,
+          "line": 192,
           "text": "let response:{status:string}|undefined;"
         },
         {
-          "line": 193,
+          "line": 194,
           "text": "const saved=(await DailyApps.listReminders()).reminders.find(r=>r.id===attempt.id);"
         },
         {
-          "line": 204,
+          "line": 205,
           "text": "const f=state.form;"
         },
         {
-          "line": 206,
+          "line": 207,
           "text": "out.f.cals.push({domain:'reminders',name:'Reminders',dot:'var(--acc)',on:f.cal==='alpha-reminders',css:f.cal==='alpha-reminders'?'background:var(--fg);color:var(--bg)':'background:var(--bg)',pick:()=>"
         },
         {
-          "line": 209,
+          "line": 210,
           "text": "const current=api.get('calendar').form;"
         },
         {
-          "line": 212,
+          "line": 213,
           "text": "const formAdmission=owner?.calendarFormAdmitted?.(current);"
         },
         {
-          "line": 214,
+          "line": 215,
           "text": "const unchangedSchedule=current.alphaReminderId&&current.reminderEditSchedule&&JSON.stringify([current.off,current.t,current.repeat,current.alert])===JSON.stringify(current.reminderEditSchedule);"
         },
         {
-          "line": 215,
+          "line": 216,
           "text": "const saveEdit=async(schedule?:{at:number;recurrence:any;dueAt:number;alertMinutes:number|null})=>{"
         },
         {
-          "line": 217,
+          "line": 218,
           "text": "const editSession=current.reminderEditSession,saveOwner=owner;"
         },
         {
-          "line": 219,
+          "line": 220,
           "text": "const draftSignature=(form:Bag)=>JSON.stringify([form?.title,form?.notes,form?.off,form?.t,form?.repeat,form?.alert,form?.cal]);"
         },
         {
-          "line": 220,
+          "line": 221,
           "text": "const signature=draftSignature(current);"
         },
         {
-          "line": 221,
+          "line": 222,
           "text": "const sameEditor=()=>owner===saveOwner&&saveOwner.live&&!document.hidden&&api.isActive()&&api.get('calendar').form?.reminderEditSession===editSession&&draftSignature(api.get('calendar').form)===signat"
         },
         {
-          "line": 224,
+          "line": 225,
           "text": "let createdInput:Bag=null,dispatched=false,editSaved=false;"
         },
         {
-          "line": 226,
+          "line": 227,
           "text": "const operation={type:'reminder_update' as const,target:current.reminderEditTarget,fields:{title:current.title.trim(),body:current.notes||'',...(schedule?{schedule}:{})}};"
         },
         {
-          "line": 227,
+          "line": 228,
           "text": "const pending=Object.values(await pendingReminderDeletions()).find(input=>Object.entries(operation.target).every(([key,value])=>input.operation.target[key as keyof typeof input.operation.target]===val"
         },
         {
-          "line": 229,
+          "line": 230,
           "text": "let input=editSession.attempt||pending;"
         },
         {
-          "line": 232,
+          "line": 233,
           "text": "const selected=await DailyApps.selectedReminder({id:current.alphaReminderId});"
         },
         {
-          "line": 237,
+          "line": 238,
           "text": "const bindingHash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(operation))))).map(v=>v.toString(16).padStart(2,'0')).join('');"
         },
         {
-          "line": 243,
+          "line": 244,
           "text": "let response;"
         },
         {
-          "line": 248,
+          "line": 249,
           "text": "const active=sameEditor();"
         },
         {
-          "line": 262,
+          "line": 263,
           "text": "const date=reminderWallTime(Number(current.off||0),Number(current.t)),alertMinutes=current.alert===null?null:Number(current.alert||0),lead=alertMinutes??0;"
         },
         {
-          "line": 265,
+          "line": 266,
           "text": "const recurrence = current.repeat==='none' ? undefined : {"
         },
         {
-          "line": 271,
+          "line": 272,
           "text": "const dueAt=date.getTime();date.setTime(dueAt-lead*60000);"
         },
         {
-          "line": 273,
+          "line": 274,
           "text": "const createOwner=owner;if(!createOwner)return;"
         },
         {
-          "line": 275,
+          "line": 276,
           "text": "const id=current.reminderCreationId||crypto.randomUUID();"
         },
         {
-          "line": 276,
+          "line": 277,
           "text": "const request={id,title:current.title.trim(),body:current.notes||'',at:date.getTime(),dueAt,alertMinutes,...(recurrence?{recurrence}:{})};"
         },
         {
-          "line": 277,
+          "line": 278,
           "text": "const signature=JSON.stringify([current.title,current.notes,current.off,current.t,current.repeat,current.alert,current.cal]);"
         },
         {
-          "line": 278,
+          "line": 279,
           "text": "let matchesAttempt=true;"
         },
         {
-          "line": 279,
+          "line": 280,
           "text": "const active=()=>matchesAttempt&&owner===createOwner&&createOwner.live&&!document.hidden&&api.isActive()&&api.get('calendar').form?.reminderCreationId===id&&JSON.stringify([api.get('calendar').form.ti"
         },
         {
-          "line": 280,
+          "line": 281,
           "text": "let created:ReminderCreation|null=null,dispatched=false,scheduled=false,notificationsBlocked=false;"
         },
         {
-          "line": 283,
+          "line": 284,
           "text": "let timingVersion:unknown;"
         },
         {
-          "line": 287,
+          "line": 288,
           "text": "const pending=Object.values(await reminderCreations()).filter(row=>row.state==='pending');"
         },
         {
-          "line": 296,
+          "line": 297,
           "text": "let refusal:ReminderRefusal|undefined;"
         },
         {
-          "line": 297,
+          "line": 298,
           "text": "try{const response=await DailyApps.scheduleReminder(request);scheduled=(response.status==='scheduled'||response.status==='pending')&&response.id===id;notificationsBlocked=response.status==='permission"
         },
         {
-          "line": 305,
+          "line": 306,
           "text": "const retained=(await reminderCreations())[id];"
         },
         {
-          "line": 307,
+          "line": 308,
           "text": "const found=await checkReminderCreation(id);"
         },
         {
-          "line": 328,
+          "line": 329,
           "text": "const event=(state.events||[]).find((e:Bag)=>e.id===state.open);"
         },
         {
-          "line": 331,
+          "line": 332,
           "text": "const requireFresh=()=>{if(!api.get('calendar').reminderStale&&!owner?.reminderRefreshFailed)return true;api.toast('Refresh reminders before changing this saved reminder.');void owner?.refreshReminder"
         },
         {
-          "line": 337,
+          "line": 338,
           "text": "const renderedDecisionTarget=event.reminderTarget?structuredClone(event.reminderTarget):undefined;"
         },
         {
-          "line": 338,
+          "line": 339,
           "text": "const decide=async(action:'done'|'snooze')=>{"
         },
         {
-          "line": 342,
+          "line": 343,
           "text": "const decisionOwner=owner;"
         },
         {
-          "line": 343,
+          "line": 344,
           "text": "const stillSelected=()=>owner===decisionOwner&&decisionOwner?.live&&!document.hidden&&api.isActive()&&api.get('calendar').open===event.id&&!api.get('calendar').form;"
         },
         {
-          "line": 346,
+          "line": 347,
           "text": "let createdInput:Bag=null,dispatched=false;"
-        },
-        {
-          "line": 348,
-          "text": "const operation={type:action==='done'?'reminder_complete' as const:'reminder_snooze' as const,target:renderedDecisionTarget};"
         },
         {
           "line": 349,
+          "text": "const operation={type:action==='done'?'reminder_complete' as const:'reminder_snooze' as const,target:renderedDecisionTarget};"
+        },
+        {
+          "line": 350,
           "text": "const pending=Object.values(await pendingReminderDeletions()).find(input=>Object.keys(renderedDecisionTarget).every(key=>input.operation.target[key as keyof typeof input.operation.target]===renderedDe"
         },
         {
-          "line": 351,
+          "line": 352,
           "text": "let input=pending;"
         },
         {
-          "line": 353,
+          "line": 354,
           "text": "const current=await DailyApps.selectedReminder({id:event.alphaReminderId});"
         },
         {
-          "line": 356,
+          "line": 357,
           "text": "const bindingHash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(operation))))).map(v=>v.toString(16).padStart(2,'0')).join('');"
         },
         {
-          "line": 362,
+          "line": 363,
           "text": "let response;"
         },
         {
-          "line": 369,
+          "line": 370,
           "text": "const status=response.result.status;"
         },
         {
-          "line": 382,
+          "line": 383,
           "text": "const reopen=async(mode:'open'|'tomorrow')=>{"
         },
         {
-          "line": 385,
+          "line": 386,
           "text": "const schedule=reopenSchedule({dueAt:Number(event.reminderDueAt),alertMinutes:event.alert===null?null:Number(event.alert||0)},mode);"
         },
         {
-          "line": 387,
+          "line": 388,
           "text": "const reopenOwner=owner;"
         },
         {
-          "line": 388,
+          "line": 389,
           "text": "const stillSelected=()=>owner===reopenOwner&&reopenOwner?.live&&!document.hidden&&api.isActive()&&api.get('calendar').open===event.id&&!api.get('calendar').form;"
         },
         {
-          "line": 390,
+          "line": 391,
           "text": "const when=new Date(schedule.dueAt).toLocaleString(undefined,{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});"
         },
         {
-          "line": 396,
+          "line": 397,
           "text": "let createdInput:Bag=null,dispatched=false;"
         },
         {
-          "line": 398,
+          "line": 399,
           "text": "const operation={type:'reminder_update' as const,target:renderedDecisionTarget,fields:{title:event.title,body:event.reminderBody||'',schedule}};"
         },
         {
-          "line": 399,
+          "line": 400,
           "text": "const pending=Object.values(await pendingReminderDeletions()).find(input=>Object.keys(renderedDecisionTarget).every(key=>input.operation.target[key as keyof typeof input.operation.target]===renderedDe"
         },
         {
-          "line": 401,
+          "line": 402,
           "text": "let input=pending;"
         },
         {
-          "line": 403,
+          "line": 404,
           "text": "const current=await DailyApps.selectedReminder({id:event.alphaReminderId});"
         },
         {
-          "line": 406,
+          "line": 407,
           "text": "const bindingHash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(operation))))).map(v=>v.toString(16).padStart(2,'0')).join('');"
         },
         {
-          "line": 412,
+          "line": 413,
           "text": "let response;"
         },
         {
-          "line": 418,
+          "line": 419,
           "text": "const saved=(await DailyApps.listReminders()).reminders.find(r=>r.id===event.alphaReminderId);"
         },
         {
-          "line": 434,
+          "line": 435,
           "text": "out.ev.edit=()=>{if(!requireFresh())return;const repeat=event.reminderRecurrence?.rule||'none',target=event.reminderTarget;api.set({form:{...event,repeat,id:event.id,cal:'alpha-reminders',where:'',vid"
         },
         {
-          "line": 435,
+          "line": 436,
           "text": "const renderedTarget=event.reminderTarget?structuredClone(event.reminderTarget):undefined;"
         },
         {
-          "line": 439,
+          "line": 440,
           "text": "const deleteOwner=owner;"
         },
         {
-          "line": 440,
+          "line": 441,
           "text": "const stillSelected=()=>owner===deleteOwner&&deleteOwner?.live&&!document.hidden&&api.isActive()&&api.get('calendar').open===event.id;"
         },
         {
-          "line": 444,
+          "line": 445,
           "text": "const pending=Object.values(await pendingReminderDeletions()).find(input=>Object.keys(renderedTarget).every(key=>input.operation.target[key as keyof typeof input.operation.target]===renderedTarget[key"
         },
         {
-          "line": 447,
+          "line": 448,
           "text": "const reviewed=await deletions.reviewReminder({target:renderedTarget});"
         },
         {
-          "line": 451,
+          "line": 452,
           "text": "const refusal=reminderDeletionRefusal(reviewed.status);"
         },
         {
-          "line": 456,
+          "line": 457,
           "text": "const input=pending,result=await DailyApps.reminderOperationReceipt(input);"
         }
       ]
@@ -37174,7 +37176,8 @@
       "sha256": "0a13728c4df274cf8a31781cfbf6a17a10d38bf5cbae67c3cbe059d33cc70372",
       "models": [
         "Application",
-        "AssistantConversation"
+        "AssistantConversation",
+        "RetainedReminderTapAdmission"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -37818,7 +37821,8 @@
       "path": "apps/app/src/runtime/browser-cloud-resident.ts",
       "sha256": "272b423b5684b104bcf6a95ff3caa0081d9344199d4ba822adef7c357fb18fba",
       "models": [
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -38143,7 +38147,8 @@
       "path": "apps/app/src/runtime/calendar-linked-provider.ts",
       "sha256": "4f30bf83e2a8d30be7768138a13da7e85438e1f78ad9d376a63c85d15b34176b",
       "models": [
-        "CalendarSync"
+        "CalendarSync",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -38856,7 +38861,8 @@
       "path": "apps/app/src/runtime/cloud-deployment.generated.ts",
       "sha256": "0c9ba401ee40ab7c25aea7de846375b9d805fd33b0932f0ebb965c126972f8da",
       "models": [
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -39033,7 +39039,8 @@
         "ApplicationComposition",
         "GoogleConnect",
         "InboxProviderDrafts",
-        "ControllerComposition"
+        "ControllerComposition",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -39478,7 +39485,8 @@
       "path": "apps/app/src/runtime/cloud-sign-in.ts",
       "sha256": "1faf20fcf8f38f77c37e9a877e6cdb68b01928d8368a6b3d254fbf37d4aae7c0",
       "models": [
-        "IdentitySession"
+        "IdentitySession",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -39637,7 +39645,8 @@
         "ControllerComposition",
         "ResidentLiveness",
         "CanonicalNotificationTapAdmission",
-        "CloudConnectionNotices"
+        "CloudConnectionNotices",
+        "RetainedReminderTapAdmission"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -41284,7 +41293,8 @@
         "InboxDelivery",
         "InboxCoordinator",
         "InboxProviderDrafts",
-        "GoogleConsentAdmission"
+        "GoogleConsentAdmission",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -41809,7 +41819,8 @@
       "path": "apps/app/src/runtime/google-workspace-return.ts",
       "models": [
         "IdentitySession",
-        "GoogleAccounts"
+        "GoogleAccounts",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -42650,7 +42661,8 @@
       "models": [
         "FilesAndSharing",
         "InboxDelivery",
-        "InboxCoordinator"
+        "InboxCoordinator",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -43439,7 +43451,8 @@
       "path": "apps/app/src/runtime/managed-service-routes.ts",
       "sha256": "a9a958d5a27cf66d51e5327d62f605d81af3f6aff5cd4af1b80b2f39350506fe",
       "models": [
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -45242,7 +45255,8 @@
       "path": "apps/app/src/runtime/reminder-creations.ts",
       "sha256": "d0e28b7a0ee10dc8547c1d0a32c9a2391f03865e1712b166c43b7d202e3a5a89",
       "models": [
-        "DeviceActions"
+        "DeviceActions",
+        "RetainedReminderTapAdmission"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -47266,7 +47280,8 @@
     {
       "path": "backend/calendar-read-timing.ts",
       "models": [
-        "CalendarPresentation"
+        "CalendarPresentation",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -47315,7 +47330,8 @@
       "sha256": "7063562ae9f4305828afb1252ce3d9d9868b6a28ae7ff4d308adcc1741409965",
       "models": [
         "ServiceAuthorization",
-        "NativeGoogleAccessFile"
+        "NativeGoogleAccessFile",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -47411,7 +47427,8 @@
       "sha256": "6b4629eb2c8adeb4ffefaf4fcf14b6367483dbb917e5ecceeb59e5890e76f115",
       "models": [
         "ServiceAuthorization",
-        "NativeGoogleAccessFile"
+        "NativeGoogleAccessFile",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -47669,7 +47686,8 @@
     {
       "path": "backend/managed-google-failure-stage.ts",
       "models": [
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -47709,7 +47727,9 @@
       "path": "backend/managed-google-route-policy.ts",
       "sha256": "96a07cf0d4adbf372be56f93419a9bb662477cbe1221fb828e77fa0685be4ac3",
       "models": [
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "NativeGoogleHostArtifact",
+        "BrowserCloudRequestCustody"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -47795,7 +47815,8 @@
     {
       "path": "backend/native-cloud-runtime.ts",
       "models": [
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -47815,7 +47836,8 @@
       "path": "backend/native-google-agent-host.ts",
       "models": [
         "ResidentRuntime",
-        "NativeGoogleAccessFile"
+        "NativeGoogleAccessFile",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -47868,7 +47890,8 @@
       "path": "backend/native-google-cloud-port.ts",
       "sha256": "8f008c1d720e0609c12443b99d9a2493ac74e55e11d311b06b06b80cc45dda2a",
       "models": [
-        "ResidentRuntime"
+        "ResidentRuntime",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -48317,13 +48340,15 @@
     },
     {
       "path": "scripts/browser-cloud-dev-bridge.ts",
-      "sha256": "b780537b54035955e6c7112ee05af2b6b38d251b8ba42cb4e6ff5711d37d3d7d",
       "models": [
         "DevelopmentHost",
-        "DevelopmentSurfaces"
+        "DevelopmentSurfaces",
+        "BrowserCloudRequestCustody"
       ],
       "scope": "development-runtime",
       "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "5e7a4828706ce2760517a64f79858bf4cfb548d00da2b144303ab862657e75f4",
       "stateAnchors": [
         {
           "line": 16,
@@ -48814,215 +48839,215 @@
           "text": "const claimed=claim.credential;"
         },
         {
-          "line": 381,
+          "line": 382,
           "text": "const input=object(data.input);if(typeof input.url!=='string'||input.url.length>12000||/[\\\\#\\s]/.test(input.url))throw Error('Invalid Cloud URL');const rawPath=input.url.split('?')[0];if(rawPath.inclu"
         },
         {
-          "line": 382,
+          "line": 383,
           "text": "const route=url.pathname+url.search;const method=input.method;"
         },
         {
-          "line": 383,
+          "line": 384,
           "text": "const mapsPost=method==='POST'&&['/api/v1/maps/geocode','/api/v1/maps/reverse','/api/v1/maps/places/search','/api/v1/maps/places/details','/api/v1/maps/routes','/api/v1/maps/tiles/viewport'].includes("
         },
         {
-          "line": 384,
+          "line": 385,
           "text": "const mapsTile=method==='GET'&&input.body===undefined&&mapsTilePath(route);"
         },
         {
-          "line": 385,
+          "line": 386,
           "text": "const headers=object(input.headers??{}),identityHeaders=Object.keys(headers).filter(k=>k.toLowerCase()==='idempotency-key');"
         },
         {
-          "line": 387,
+          "line": 388,
           "text": "let mapsRequestId:string|undefined;"
         },
         {
-          "line": 389,
+          "line": 390,
           "text": "const create=method==='POST'&&route==='/api/auth/cli-session',poll=method==='GET'&&/^\\/api\\/auth\\/cli-session\\/[0-9a-f-]{36}$/i.test(route);"
         },
         {
-          "line": 394,
+          "line": 395,
           "text": "const response=await canonical(env,route,controller.signal),result=await boundedServiceJson(response);send(res,200,{status:response.status,data:result});return;"
         },
         {
-          "line": 397,
+          "line": 398,
           "text": "const redeem=method==='POST'&&route==='/api/v1/subscription/redeem';"
         },
         {
-          "line": 398,
+          "line": 399,
           "text": "if(redeem){const body=object(JSON.parse(input.body??'null'));if(Object.keys(body).sort().join()!=='code,idempotencyKey'||typeof body.code!=='string'||body.code.length>128||typeof body.idempotencyKey!="
         },
         {
-          "line": 399,
+          "line": 400,
           "text": "const accountRead=method==='GET'&&input.body===undefined&&['/api/v1/user','/api/v1/billing/limits','/api/v1/subscription/entitlement','/api/v1/subscription/entitlement-keys','/api/v1/maps/capabilities"
         },
         {
-          "line": 400,
+          "line": 401,
           "text": "const selfRevoke=method==='DELETE'&&route==='/api/v1/api-keys/current'&&input.body===undefined;"
         },
         {
-          "line": 402,
+          "line": 403,
           "text": "const c=await admitted(env,input.credentialReference);active.get(ownedId)!.credentialId=c.credentialId;if(selfRevoke)await current(env,c,controller.signal);const response=await canonical(env,route,con"
         },
         {
-          "line": 405,
+          "line": 406,
           "text": "const c=await admitted(env,data.credentialReference,data.credentialId);active.get(ownedId)!.credentialId=c.credentialId;"
         },
         {
-          "line": 406,
+          "line": 407,
           "text": "let init:RequestInit;"
         },
         {
-          "line": 407,
+          "line": 408,
           "text": "if(data.operation==='stt'){if(!audio)throw Error('Speech audio required');const form=new FormData();form.append('provider','cartesia');form.append('audio',audio,'recording.'+(audio.type.includes('ogg'"
         },
         {
-          "line": 409,
+          "line": 410,
           "text": "const response=await canonical(env,'/api/v1/voice/'+data.operation,controller.signal,init,c);"
         },
         {
-          "line": 412,
+          "line": 413,
           "text": "let limit:CloudVoiceLimitFacts|undefined;"
         },
         {
-          "line": 413,
+          "line": 414,
           "text": "if(response.status===429){let body:unknown=null;const reader=response.body?.getReader();try{if(reader){const chunks:Uint8Array[]=[];let size=0;for(;;){const part=await reader.read();if(part.done)break"
         },
         {
-          "line": 416,
+          "line": 417,
           "text": "if(data.operation==='stt'){if(response.headers.get('X-Eliza-STT-Provider')!=='cartesia'){await response.body?.cancel();throw Error('Cloud transcription provider was not verified');}const result=object"
         },
         {
-          "line": 417,
+          "line": 418,
           "text": "const type=response.headers.get('content-type')?.split(';')[0];if(!['audio/mpeg','audio/wav','audio/mp3'].includes(type??'')){await response.body?.cancel();throw Error('Invalid Cloud speech response')"
         },
         {
-          "line": 418,
+          "line": 419,
           "text": "const reader=response.body?.getReader();if(!reader)throw Error('Empty Cloud speech');const output:Uint8Array[]=[];let total=0;try{for(;;){const value=await reader.read();if(value.done)break;total+=val"
         },
         {
-          "line": 427,
+          "line": 428,
           "text": "const agentRead=async(input:{url:string;method:string;body?:unknown;credentialReference?:string;signal:AbortSignal})=>{"
         },
         {
-          "line": 428,
+          "line": 429,
           "text": "const url=new URL(input.url);"
         },
         {
-          "line": 430,
-          "text": "const c=await admitted(agentEnvironment,input.credentialReference);"
-        },
-        {
           "line": 431,
-          "text": "const response=await canonical(agentEnvironment,url.pathname+url.search,input.signal,{},c);"
+          "text": "const c=await admitted(agentEnvironment,input.credentialReference);"
         },
         {
           "line": 432,
+          "text": "const response=await canonical(agentEnvironment,url.pathname+url.search,input.signal,{},c);"
+        },
+        {
+          "line": 433,
           "text": "const data=await boundedServiceJson(response);await current(agentEnvironment,c,input.signal);"
         },
         {
-          "line": 435,
+          "line": 436,
           "text": "const agentCalendarOperation=async(input:Parameters<typeof agentRead>[0])=>{"
         },
         {
-          "line": 436,
+          "line": 437,
           "text": "const url=new URL(input.url),body=input.body===undefined?undefined:JSON.stringify(input.body);"
         },
         {
-          "line": 439,
+          "line": 440,
           "text": "const c=await admitted(agentEnvironment,input.credentialReference);"
         },
         {
-          "line": 440,
+          "line": 441,
           "text": "const response=await canonical(agentEnvironment,url.pathname+url.search,input.signal,{method:input.method,...(body===undefined?{}:{headers:{'Content-Type':'application/json'},body})},c);"
         },
         {
-          "line": 441,
+          "line": 442,
           "text": "const data=await boundedServiceJson(response);await current(agentEnvironment,c,input.signal);return {status:response.status,data};"
         },
         {
-          "line": 445,
+          "line": 446,
           "text": "let retired=false;const generation=resetCalendarAccess();"
         },
         {
-          "line": 446,
+          "line": 447,
           "text": "const current=async()=>{if(retired||generation!==calendarGeneration)throw refusal(409,'account-changed');const c=(await load())[agentEnvironment];if(retired||generation!==calendarGeneration||!c||c.cre"
         },
         {
-          "line": 447,
+          "line": 448,
           "text": "const read=async(input:Parameters<typeof agentRead>[0])=>{await current();const result=await agentRead(input);await current();return result;};"
         },
         {
-          "line": 448,
+          "line": 449,
           "text": "const calendar=async(input:Parameters<typeof agentCalendarOperation>[0])=>{if(!new URL(input.url).pathname.startsWith('/api/v1/eliza/google/calendar/sync-v1/'))return read(input);await current();if(!c"
         },
         {
-          "line": 449,
+          "line": 450,
           "text": "const port={agentCredential:current,agentRead:read,agentGmailOperation:read,agentCalendarOperation:calendar};"
         },
         {
-          "line": 450,
+          "line": 451,
           "text": "await current();const host=await startManagedGoogleAgentHost({port,apiToken,environment:agentEnvironment,access:()=>({gmailChanges:false,calendarEdits:calendarAllowed(binding,generation)})});"
         },
         {
-          "line": 456,
+          "line": 457,
           "text": "async agentCredential(){const c=(await load()).production;return c?publicCredential(c):null;},"
         },
         {
-          "line": 460,
+          "line": 461,
           "text": "const url=new URL(input.url),route=url.pathname,body=input.body===undefined?undefined:JSON.stringify(input.body);"
         },
         {
-          "line": 461,
+          "line": 462,
           "text": "const operation=/^\\/api\\/v1\\/eliza\\/google\\/gmail\\/inbox-v1\\/operations(?:\\/[A-Za-z0-9_-]{1,160}(?:\\/dispatch)?)?$/.test(route);"
         },
         {
-          "line": 465,
+          "line": 466,
           "text": "const c=await admitted('production',input.credentialReference);"
         },
         {
-          "line": 466,
+          "line": 467,
           "text": "const response=await canonical('production',route+url.search,input.signal,{method:input.method,...(body===undefined?{}:{headers:{'Content-Type':'application/json'},body})},c);"
         },
         {
-          "line": 467,
+          "line": 468,
           "text": "const data=await boundedServiceJson(response);await current('production',c,input.signal);return {status:response.status,data};"
         },
         {
-          "line": 473,
+          "line": 474,
           "text": "const cloudResident=process.env.VITE_ALPHA_CLOUD_RESIDENT==='1';"
         },
         {
-          "line": 474,
+          "line": 475,
           "text": "const privatePreview=process.env.ALPHA_PRIVATE_LOCAL_PREVIEW==='1'&&process.env.VITE_ALPHA_PRIVATE_LOCAL_PREVIEW==='1'&&process.env.VITE_LOCAL_AGENT==='1'&&!!process.env.ALPHA_BROWSER_CLOUD_PROFILE;"
         },
         {
-          "line": 477,
+          "line": 478,
           "text": "const profile=path.resolve(process.env.ALPHA_BROWSER_CLOUD_PROFILE??path.join(homedir(),'.local/share/alphaphone/browser-cloud'));"
         },
         {
-          "line": 478,
+          "line": 479,
           "text": "const selected=environment(process.env.VITE_ALPHA_CLOUD_ENVIRONMENT??'production');"
         },
         {
-          "line": 479,
+          "line": 480,
           "text": "let resident:Awaited<ReturnType<typeof createCloudResidentHost>>|undefined;"
         },
         {
-          "line": 480,
+          "line": 481,
           "text": "const currentResident=()=>{if(!resident)throw Error('Cloud resident host is unavailable');return resident;};"
         },
         {
-          "line": 481,
+          "line": 482,
           "text": "const residentPort=cloudResident?{selectProvider:(input:ProviderSelection,signal?:AbortSignal)=>currentResident().selectProvider(input,signal),editProviderKeys:(input:ProviderKeyEdit,signal?:AbortSign"
         },
         {
-          "line": 482,
+          "line": 483,
           "text": "const handler=createBrowserCloudDevHandler({profile,resident:residentPort,...(cloudResident?{environment:selected,diagnostic:(event:unknown)=>console.info('[alpha-cloud-auth]',JSON.stringify(event))}:"
         },
         {
-          "line": 484,
+          "line": 485,
           "text": "const profileMode=process.env.ALPHA_CLOUD_RESIDENT_PROFILE??'lean';"
         }
       ]
@@ -49134,6 +49159,18 @@
       "integrationReview": "Domain allocation retained after merging the audit fixes. The refreshed source hash and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations."
     },
     {
+      "path": "scripts/combined-agent-source.mjs",
+      "models": [
+        "CombinedAgentLauncher",
+        "NativeGoogleHostArtifact"
+      ],
+      "scope": "development-runtime",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "sha256": "a2f4d279f3f98ff078f3aedd6b9dc2dc5c3396ecdc7fb7f09b0da7e0c085062e",
+      "stateAnchors": []
+    },
+    {
       "path": "scripts/copy-file-clone.mjs",
       "models": [
         "DevelopmentHost",
@@ -49169,7 +49206,8 @@
       "path": "scripts/core-state-preload.mjs",
       "models": [
         "Application",
-        "ReviewedWorkflowLauncher"
+        "ReviewedWorkflowLauncher",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "development-runtime",
       "treatment": "domain-contract-or-support",
@@ -49534,6 +49572,17 @@
       ]
     },
     {
+      "path": "scripts/gmail-agent-mailbox-host.ts",
+      "models": [
+        "NativeGoogleHostArtifact"
+      ],
+      "scope": "development-runtime",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "sha256": "a976b952421e93fa83bd06cb6e6115702618caf910c018472adad626c74e40ce",
+      "stateAnchors": []
+    },
+    {
       "path": "scripts/launcher-child.mjs",
       "models": [
         "CombinedAgentLauncher",
@@ -49678,7 +49727,8 @@
         "BrowserFilesTrash",
         "MapsRerouteOwnership",
         "FilesPreview",
-        "InboxProviderDrafts"
+        "InboxProviderDrafts",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
@@ -141383,7 +141433,8 @@
     {
       "path": "vendor/eliza/packages/auth/src/auth/native-cloud-sign-in.ts",
       "models": [
-        "IdentitySession"
+        "IdentitySession",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -147672,7 +147723,8 @@
       "path": "vendor/eliza/packages/cloud/sdk/native-host/subscription-grant.mjs",
       "models": [
         "IdentitySession",
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -148433,7 +148485,8 @@
     {
       "path": "vendor/eliza/packages/cloud/sdk/src/cloud-account-billing.ts",
       "models": [
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -149060,7 +149113,8 @@
       "path": "vendor/eliza/packages/cloud/sdk/src/subscription-entitlement.ts",
       "models": [
         "IdentitySession",
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -150136,7 +150190,8 @@
       "models": [
         "CalendarLinkedSync",
         "CalendarPresentation",
-        "CalendarSync"
+        "CalendarSync",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -150241,7 +150296,8 @@
       "path": "vendor/eliza/packages/contracts/src/calendar.ts",
       "models": [
         "CalendarLinkedSync",
-        "CalendarPresentation"
+        "CalendarPresentation",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -379305,7 +379361,8 @@
     {
       "path": "vendor/eliza/plugins/plugin-assistant/src/utils/html-entities.ts",
       "models": [
-        "AssistantConversation"
+        "AssistantConversation",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -393425,7 +393482,8 @@
         "CalendarLinkedSync",
         "CalendarPresentation",
         "GoogleAccounts",
-        "InboxDelivery"
+        "InboxDelivery",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -401400,7 +401458,8 @@
       "path": "vendor/eliza/plugins/plugin-calendar/src/service/managed-calendar-host.ts",
       "models": [
         "CalendarLinkedSync",
-        "CalendarPresentation"
+        "CalendarPresentation",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -426535,7 +426594,8 @@
       "models": [
         "BrowserSession",
         "BrowserSiteState",
-        "FilesAndSharing"
+        "FilesAndSharing",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -447036,7 +447096,8 @@
       "models": [
         "InboxCoordinator",
         "InboxDelivery",
-        "InboxProviderDrafts"
+        "InboxProviderDrafts",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -447583,7 +447644,8 @@
       "models": [
         "InboxCoordinator",
         "InboxDelivery",
-        "InboxProviderDrafts"
+        "InboxProviderDrafts",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -447645,7 +447707,8 @@
       "models": [
         "InboxCoordinator",
         "InboxDelivery",
-        "InboxProviderDrafts"
+        "InboxProviderDrafts",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -447728,7 +447791,8 @@
       "models": [
         "InboxCoordinator",
         "InboxDelivery",
-        "InboxProviderDrafts"
+        "InboxProviderDrafts",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -447963,7 +448027,8 @@
         "GoogleAccounts",
         "InboxCoordinator",
         "InboxDelivery",
-        "InboxProviderDrafts"
+        "InboxProviderDrafts",
+        "NativeGoogleHostArtifact"
       ],
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
@@ -618343,7 +618408,8 @@
       "path": "patches/eliza/cloud-speech-client-manifest.json",
       "models": [
         "VoiceSession",
-        "SpeechResources"
+        "SpeechResources",
+        "NativeGoogleHostArtifact"
       ],
       "sha256": "afe24aa9ea99ca02b9503586195007bf5bf2b4570a3c7c03422192b0b1531d54"
     },
@@ -618351,7 +618417,8 @@
       "path": "patches/eliza/cloud-speech-client.patch",
       "models": [
         "VoiceSession",
-        "SpeechResources"
+        "SpeechResources",
+        "NativeGoogleHostArtifact"
       ],
       "sha256": "b2f6aaff65bda36723865284e413e22fd46736a7cd9bf72b809ab73df8c45bcb"
     },
@@ -618372,7 +618439,8 @@
         "CanonicalNotesStore",
         "CoreTurnControllers",
         "CoreConnectorCustody",
-        "MobileBundleAdmission"
+        "MobileBundleAdmission",
+        "NativeGoogleHostArtifact"
       ],
       "sha256": "c857f206dfed8c329cb44259208937b5016e45ce81b108e8fdbee5df6222e862"
     },
@@ -618405,7 +618473,8 @@
         "TaskServiceLifecycle",
         "CanonicalNotesStore",
         "CoreTurnControllers",
-        "EmbeddingStoreIdentity"
+        "EmbeddingStoreIdentity",
+        "NativeGoogleHostArtifact"
       ],
       "sha256": "358327f35c37bd5862ec6dcaa7657c4db545a548e4d5de63cf8efd8120f01d1e"
     },
@@ -618676,7 +618745,8 @@
         "TaskServiceLifecycle",
         "CanonicalNotesStore",
         "CoreTurnControllers",
-        "NamedEmbeddingProvenance"
+        "NamedEmbeddingProvenance",
+        "NativeGoogleHostArtifact"
       ],
       "sha256": "8e874337cbcebe3e3fb69112db3b36c881ca0bc9737399818a06bb9fabf67f70"
     },
@@ -618752,7 +618822,8 @@
       "models": [
         "TaskServiceLifecycle",
         "CanonicalNotesStore",
-        "CoreTurnControllers"
+        "CoreTurnControllers",
+        "NativeGoogleHostArtifact"
       ],
       "sha256": "5f62c6742a0c8f85f47aec6a629a1454d7cc74c5060d75a72b5c3d77a43dda18"
     },
@@ -618816,7 +618887,8 @@
         "CanonicalNotesStore",
         "CoreTurnControllers",
         "CoreConnectorCustody",
-        "MobileBundleAdmission"
+        "MobileBundleAdmission",
+        "NativeGoogleHostArtifact"
       ],
       "sha256": "a0f840fa8572fae33dc3958769c4bd9a951e6f18d04c2345979147134a1473b2"
     },
@@ -618842,7 +618914,8 @@
         "TaskServiceLifecycle",
         "CanonicalNotesStore",
         "CoreTurnControllers",
-        "CoreRoomHandlerQueue"
+        "CoreRoomHandlerQueue",
+        "NativeGoogleHostArtifact"
       ],
       "sha256": "343e39a3c756e3679b8a1e577352638119e0f17b1d0535023cbd1720fdddedde"
     },
@@ -618909,7 +618982,8 @@
         "TaskServiceLifecycle",
         "CanonicalNotesStore",
         "CoreTurnControllers",
-        "TaskSchedulerRuntime"
+        "TaskSchedulerRuntime",
+        "NativeGoogleHostArtifact"
       ],
       "sha256": "d3b80ffb0dad32e3a17b50dbbb0d4c0dfb3f60b0f2a35f577be4612aa2f9db1e"
     },
@@ -618918,7 +618992,8 @@
       "models": [
         "TaskServiceLifecycle",
         "CanonicalNotesStore",
-        "CoreTurnControllers"
+        "CoreTurnControllers",
+        "NativeGoogleHostArtifact"
       ],
       "sha256": "d587459e0123599d17f886fcc855eb90ce7ec20b286a42ce47a02a1ab1bd110b"
     },
@@ -618961,7 +619036,8 @@
       "path": "scripts/client-speech-patch.mjs",
       "models": [
         "VoiceSession",
-        "ApplicationComposition"
+        "ApplicationComposition",
+        "NativeGoogleHostArtifact"
       ],
       "sha256": "917e98981b129b6170ff3db4b6c343b8ba169eea8aa4dbfbc8baad08b9cb69ed"
     },
@@ -618971,7 +619047,8 @@
         "TaskServiceLifecycle",
         "CanonicalNotesStore",
         "CoreTurnControllers",
-        "CombinedAgentLauncher"
+        "CombinedAgentLauncher",
+        "NativeGoogleHostArtifact"
       ],
       "sha256": "a2f4d279f3f98ff078f3aedd6b9dc2dc5c3396ecdc7fb7f09b0da7e0c085062e"
     },
@@ -619007,7 +619084,8 @@
         "TaskServiceLifecycle",
         "CanonicalNotesStore",
         "CoreTurnControllers",
-        "ReviewedWorkflowLauncher"
+        "ReviewedWorkflowLauncher",
+        "NativeGoogleHostArtifact"
       ],
       "sha256": "c5368c9075aa8c7660bee01338185fbe673c9b8dd6889dd1ab01d195efa17c10"
     },
@@ -619058,7 +619136,8 @@
         "FilesPreview",
         "PermissionChoices",
         "CalendarLinkedSync",
-        "InboxProviderDrafts"
+        "InboxProviderDrafts",
+        "NativeGoogleHostArtifact"
       ],
       "sha256": "95929125edde207ea6948e5da90bf47ec8c1652c2f634781265493d98f2fc19f",
       "integrationReview": "Retains the reviewed source boundary and authenticated patch catalog; integration also admits installed dependency ranges and bounded source-copy helpers. Configuration identity alone is not runtime/refinement evidence."
@@ -619106,7 +619185,7 @@
       "models": [
         "Application"
       ],
-      "sha256": "d5a4cb2a443f4ace00a59ccb970d71c1296f216916643692cfd9d40077c530b9",
+      "sha256": "905f0129e28866a86cd6c117f1249ff9ca0518b3f50920916662356bbd9014fd",
       "integrationReview": "Reviewed integration input; current source identity does not establish runtime behavior or source-model refinement."
     },
     {
@@ -619175,7 +619254,8 @@
         "TaskServiceLifecycle",
         "CanonicalNotesStore",
         "CoreTurnControllers",
-        "MobileBundleAdmission"
+        "MobileBundleAdmission",
+        "NativeGoogleHostArtifact"
       ],
       "sha256": "62682bc4e49ea7c2f187a3b688f65289b4092c0438fd1cc210b5892ab306ee9d"
     },
@@ -619192,6 +619272,42 @@
         "NativeGmailBackground"
       ],
       "sha256": "5e5201b471dfc9d823788953828206f0b1c3a26483a4405398105e8ebaa6085c"
+    },
+    {
+      "path": "config/alpha-product.json",
+      "models": [
+        "NativeGoogleHostArtifact",
+        "LauncherFavorites"
+      ],
+      "sha256": "711cf8a3e94c14d5094c842feb2613cf28b562278bf070dff87b17b03be713f3"
+    },
+    {
+      "path": "package.json",
+      "models": [
+        "NativeGoogleHostArtifact"
+      ],
+      "sha256": "85b9bf41beca44d16e8c394042689b2909abf2bf366bf4434ad8b033190ea859"
+    },
+    {
+      "path": "package-lock.json",
+      "models": [
+        "NativeGoogleHostArtifact"
+      ],
+      "sha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf"
+    },
+    {
+      "path": "tsconfig.json",
+      "models": [
+        "NativeGoogleHostArtifact"
+      ],
+      "sha256": "492c2912d6e798e9a42aca98219b46e942441187eccbf84a3eef6afa6adfdf26"
+    },
+    {
+      "path": "vendor/eliza/tsconfig.json",
+      "models": [
+        "NativeGoogleHostArtifact"
+      ],
+      "sha256": "41acc142aab04535ae7ced0827b159b8d7fbefe0096f96282085d47682e57576"
     }
   ],
   "runtimeAssets": [

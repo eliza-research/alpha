@@ -1039,3 +1039,33 @@ The Google Connect fixture now runs through the same `tsImport` entry as the
 strict collector. Its browser initializer has no dependency on the host's
 transpiler helper. The mounted replay passed three matching traces and
 retained both expected historical differences.
+
+`RetainedReminderTapAdmission` checks eight schedules and 34 checkpoints
+through the actual renderer adapter. A held render used to acknowledge a
+tap after the chooser, a sensitive surface or a Calendar form took
+precedence. The commit now rechecks the same eligibility gates as the
+initial read. The closed replay confirms retry after the chooser closes
+and retains a newer native token when the old attempt is refused. Installed
+notification custody, question handling and legacy navigation remain separate.
+
+`BrowserCloudRequestCustody` checks three schedules and 25 checkpoints
+through the actual development bridge handler. The as-built rejection of a
+duplicate removed its incumbent's cancellation entry. The current bridge
+releases the entry only for the owning controller and keeps an aborted entry
+until that handler settles. Synthetic request, response and transport ports
+exercise exact cancellation and late response close. Authenticated routes,
+real HTTP and process restart remain separate.
+
+The real Google host manifest maps its 59 loader inputs to 57 canonical
+product and SDK paths and one installed dependency. One SDK configuration
+appears both in the prepared checkout and under `vendor/eliza`. The ledger
+records the raw inputs and their relevant model allocations. The compiler
+receipt retains the exact effective bytes for 12 prepared client inputs.
+The mailbox host and combined source helper are now part of the provisional
+runtime source inventory.
+
+The integrated Notes replay captured all five schedules and matched its
+pre-execution and post-execution source hashes. Its first checker process
+ended without output. Running the checker again on those exact observations
+passed all 34 checkpoints and 12 fields. Future receipts retain checker exit
+status or signal separately from source/model mismatches.

@@ -225,11 +225,17 @@ export async function checkTraces({model, modelPath, sources, traces, assumption
       const result = spawnSync(process.execPath, args, {cwd: root, encoding: 'utf8', timeout: 120000, maxBuffer: 16 * 1024 * 1024});
       const output = `${result.stdout || ''}${result.stderr || ''}`;
       const checked = Number(output.match(/(\d+) passing/)?.[1] || 0);
-      const kind = result.status === 0 ? 'passed' : /\[QNT508\]|Assertion failed/.test(output) ? 'observation-mismatch' : 'tool-failure';
-      receipt.results.push({offset, count: batch.length, generatedCases: definitions.length, checked, exitCode: result.status, kind,
+      const passed = !result.error && !result.signal && result.status === 0 && checked === definitions.length;
+      const mismatched = !result.error && !result.signal && /\[QNT508\]|Assertion failed/.test(output);
+      const kind = passed ? 'passed' : mismatched ? 'observation-mismatch' : 'tool-failure';
+      receipt.results.push({offset, count: batch.length, generatedCases: definitions.length, checked, exitCode: result.status, signal: result.signal, kind,
         error: result.error?.message, output,
         names: batch.map(trace => trace.name)});
-      if (result.status !== 0 || result.error || checked !== definitions.length) throw new Error(`Source/model trace mismatch in ${model} batch ${offset}\n${result.stdout || ''}${result.stderr || ''}`);
+      if (kind === 'observation-mismatch') throw new Error(`Source/model trace mismatch in ${model} batch ${offset}\n${output}`);
+      if (!passed) {
+        const exit = result.signal ? `signal ${result.signal}` : `exit ${result.status}, checked ${checked} of ${definitions.length}`;
+        throw new Error(`Quint checker failed in ${model} batch ${offset} (${result.error?.message ?? exit})\n${output}`);
+      }
     }
   } catch (error) {
     failure = error;
