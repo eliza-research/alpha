@@ -619330,7 +619330,8 @@
         "NativeSettingsHandoff",
         "NativeAssistantEntry"
       ],
-      "sha256": "0bce8e83df6cf39ec58ebda94cdd0976c2558f346e8c0988e4fa904f6578d7cd"
+      "sha256": "cf0146eab41d40b6c298d168f1bbb3e9329b0889bedfab966321dfe28f4eef39",
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md"
     },
     {
       "path": "android/voice-host/qualified-voice-host.json",
@@ -619391,7 +619392,8 @@
       "models": [
         "MediaLifecycle"
       ],
-      "sha256": "50b8fa55d2f016bd475134ecde94fd2ce26649d67914f1c0f91875f06b15a913"
+      "sha256": "53f53221ee1cd2e73b42e0b383dab3c5d4587570208daf60c4bc28b462ad839d",
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md"
     },
     {
       "path": "patches/eliza/cloud-speech-client-manifest.json",
@@ -619770,7 +619772,8 @@
         "NativeSmsDispatch",
         "NativeMmsDispatch"
       ],
-      "sha256": "df0c167ef389466f9e9e83384d2da3af4072b999e06a8518f81728843aecac1c"
+      "sha256": "cd6a16e696aa24fdf6d7ed6d3e32db98d6f3e2b315453d3a34f7171b96315d52",
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md"
     },
     {
       "path": "patches/eliza/notes-organize-agent.patch",
@@ -620141,8 +620144,8 @@
         "SharedRecordingAdmission",
         "NativeLiveCapture"
       ],
-      "sha256": "5308ee484c0ca5a880ff9f4ef63b286dae5c2112de9e67970387cdc6762178c1",
-      "integrationReview": "Retains the reviewed source boundary and authenticated patch catalog; integration also admits installed dependency ranges and bounded source-copy helpers. Configuration identity alone is not runtime/refinement evidence."
+      "sha256": "12ca1c60028cedf07b9ddf7f63d901fcb542d3f28a228392d64096be54c618d0",
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md"
     },
     {
       "path": "scripts/quint-java-state-audit.mjs",
