@@ -23,7 +23,8 @@ test('native admission cancels permission/start before the serialized worker can
  assert.match(stop,/admission\.stop\(id,discard\);/);
  assert.ok(stop.indexOf('admission.stop(id,discard)')<stop.indexOf('pipe.close(true,cutoff)'), 'Stop is published before transport cancellation can wake startup');
  assert.ok(stop.indexOf('admission.stop(id,discard)')<stop.indexOf('submit(worker'), 'Stop is published before queued worker cleanup');
- assert.match(controller,/next\.start\(\);[\s\S]*?current=next;\s*if\(!host\.canStart\(epoch\)\|\|!admission\.run\(ticket\)\|\|!startup\.report\(\)\)\{current=null;next\.stop\(\);/);
+ assert.match(controller,/next\.start\(\);[\s\S]*?current=next;\s*if\(!host\.canStart\(epoch\)\|\|!admission\.run\(ticket\)\|\|!startup\.report\(\)\)\{admission\.discard\(ticket\);current=null;next\.stop\(\);/,
+  'A refused late startup discards its event admission before clearing the published capture and stopping its source');
  const plugin=fs.readFileSync(upstreamBridgeSource('LocalSpeechBridgePlugin.java'),'utf8');
  assert.match(plugin,/LiveCaptureAdmission\.Ticket ticket=live\.reserve\(id,epoch\.get\(\)\);\s*if\(getPermissionState\("microphone"\)/);
  assert.match(plugin,/public boolean open\(long admitted\)\{return !destroyed&&speechForeground&&admitted==epoch\.get\(\);\}/);

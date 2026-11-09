@@ -1239,6 +1239,7 @@
         "FailedWarmNeverOpens",
         "UnstartedFailureEventsPrivate",
         "SettledFailedWarmDiscards",
+        "RefusedStartHasNoAdmission",
         "Bounded"
       ],
       "abstractions": [
