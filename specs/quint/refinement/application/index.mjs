@@ -42,6 +42,7 @@ import {checkWorkflowRequestRecoveryAdmission} from './workflow-request-recovery
 import {checkAppearancePreferenceAdmission} from './appearance-preference-admission.mjs';
 import {checkNotesTrashReadPublication} from './notes-trash-read-publication.mjs';
 import {checkPreviousNotesAvailability} from './previous-notes-availability.mjs';
+import {checkCommittedViewObservation} from './committed-view-observation.mjs';
 import {checkScheduledTaskControls} from './scheduled-task-controls.mjs';
 import {checkAgentCalendarSyncControl} from './agent-calendar-sync-control.mjs';
 import {checkGoogleCalendarLinkFlow} from './google-calendar-link-flow.mjs';
@@ -106,6 +107,7 @@ const adapters = [checkChatAttachments, application, shellNavigation, startupPer
   checkAppearancePreferenceAdmission,
   checkNotesTrashReadPublication,
   checkPreviousNotesAvailability,
+  checkCommittedViewObservation,
   checkScheduledTaskControls,
   runStartupPermissionsCoordinatorRefinement, checkVaultCoordinator, checkNotesCoordinator, listFocus, checkRecoveryUI, checkShellCoordinator, checkNativeViewSubscription, filesPreview, runPermissionChoicesRefinement, checkCanonicalNotesController, checkCanonicalNotesDraft,
   checkCanonicalNotesFeedback, checkCanonicalNotesMutation, checkCanonicalNotesView, checkCanonicalCalendarDraft, checkAgentCalendarRefresh, checkAgentCalendarMutation, checkAgentCalendarEventReturn, checkMapsEventReturn, checkMapsRerouteOwnership, checkCloudConnectionNotices, checkModalScrimOwnership, checkAgentCalendarSyncControl, checkGoogleCalendarLinkFlow, checkGoogleCalendarDisconnect, checkGoogleCalendarLinkPublication, checkGoogleCalendarAccessChoice, checkFilesBrowserController, checkFilesFilter, checkPhotosWindow, checkPhotosTrash, checkGoogleConsentAdmission, checkGoogleAccessPublication, checkBrowserDeletionPoll, checkBrowserJournalRetention, checkBrowserReminderOrphan, checkBrowserOwnerReminderRead, checkBrowserOwnerReminderAction, checkHomeFailureNotice, checkHomeGesture, checkDrawerInteraction, checkLauncherOwnership, checkLauncherObserver, checkLauncherFavorites, checkAccessibleToastLifetime, checkModalToastForwarding, checkScreenFocusOwnership, checkDockClearanceOwnership, checkMountedUpdateAdmission, checkStartupUpdateAdmission, checkCanonicalNotificationTapAdmission, checkResidentLiveness];

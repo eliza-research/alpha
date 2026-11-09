@@ -23,6 +23,36 @@
     ]
   },
   {
+    "path": "specs/quint/application/CommittedViewObservation.qnt",
+    "module": "CommittedViewObservation",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": ["exactSuccessCachesOneReceiptTest", "staleClaimSettlesNegativeTest", "lostClaimWaitsForGenuineTimeoutTest",
+      "lostPositiveNeverSendsOppositeReceiptTest", "supersededClaimReleasesNextObservationTest", "failedCacheRequiresExplicitRetryTest"],
+    "invariants": ["RepliesFollowClaim", "HistoryFollowsHostCommit", "AcceptedObservationHasHostCommit"],
+    "sources": [
+      "apps/app/src/runtime/view-navigation.ts",
+      "vendor/eliza/packages/core/src/events.ts",
+      "vendor/eliza/packages/core/src/views/view-interact-protocol.ts",
+      "vendor/eliza/packages/core/src/views/view-action-handoff.ts",
+      "vendor/eliza/packages/core/src/views/completed-action-navigation.ts",
+      "vendor/eliza/packages/agent/src/api/view-installations.ts",
+      "vendor/eliza/packages/agent/src/api/pending-request-map.ts",
+      "vendor/eliza/packages/agent/src/api/view-interaction-host.ts",
+      "vendor/eliza/packages/agent/src/api/views-routes.ts"
+    ],
+    "stateMapping": {
+      "view/hidden/session/disposed": "Controlled renderer context and actual client retirement",
+      "cacheView/accepted/returned": "Actual manual observation cache and settled call return",
+      "host/lastReply/prepares/claims/replies/history": "Real waiter, recorded closed request calls and history-commit callback"
+    },
+    "abstractions": [
+      "Two manual views, two attempts, controlled timers and request replies. A model observation is one actual settled renderer call.",
+      "Transport, host role lookup, real history persistence and arbitrary view schedules remain separate."
+    ]
+  },
+  {
     "path": "specs/quint/application/ShellNavigation.qnt",
     "module": "ShellNavigation",
     "init": "init",
