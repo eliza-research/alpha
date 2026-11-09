@@ -21,6 +21,11 @@ bun run dev
 
 Before starting, configure `CEREBRAS_API_KEY` in the host environment or the owner-only file `~/.config/alphaphone/cerebras-key`. Do not put it in a `VITE_` variable, checked-in file, browser field, URL or command-line argument. The existing private key file is supported. The current model defaults to `qwen-3.8-27b`.
 
+For a content fingerprint of a reviewed combined-agent source checkout, run
+`node scripts/fingerprint-combined-agent.mjs /absolute/source /absolute/new-source-manifest.json`.
+The output must be a new file outside the source tree. The helper records source
+identity and bytes; it does not start the agent or qualify a build or device.
+
 `bun run dev` starts the agent on this computer in the background together with the development server (`npm run dev:local` is the same command). Open `http://127.0.0.1:5317`: the app always connects to that local agent in the background (P-43: there is no offline mode); if it is not running Home shows a recovering state, and **Settings › Agent connection › Try again** reconnects. The connection sheet is the product **Alpha connection** sheet; `ALPHA_DEV_CONNECTION_TOOLS=1 bun run dev` restores the development connection sheet (development profiles, mock mode, subscription gate QA, development Cloud and pairing tools), where **Start local agent** reconnects. Extra arguments go to Vite, for example `bun run dev --port 5199` for the Alpha comparison preview. The default port is 5317. Conversation history comes from the agent's local database. Use `npm run dev:ui` for a renderer-only development server with no agent.
 
 To regenerate the bundled icons after changing `apps/app/src/icon-catalog.json`, run `node scripts/vendor-lucide-icons.mjs <installed lucide-react package directory>`; the package must match the catalog's pinned version.

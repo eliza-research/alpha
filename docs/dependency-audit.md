@@ -776,3 +776,27 @@ findings are the three moderate `uuid`/`xcode`/`@capacitor/cli` paths already co
 existing exception. The registry now offers `@capacitor/cli` 8.6.0 as a fix for that advisory;
 taking it means moving `@capacitor/core` and `@capacitor/android` with it, which this change does
 not do.
+
+### Historical November 9 launcher SDK source refresh at 9add52f6
+
+The actual `node scripts/dependency-audit.mjs --resident --write` query at SDK
+`9add52f6b83efa77241fb72ae769729121944cac` audits 3,694 registry package versions.
+The upstream lock changed since the recorded `b1817660` audit: 19 versions were
+added alongside the upstream Quint development tooling, and none were removed.
+The normalized input SHA-256 at that source is
+`05c0f82c62f6e3e7eeda16e0f24d1d36da84a995dcaac0aa7a60d863dd63b5d7`.
+
+All 103 finding objects are unchanged: one critical, 46 high, 44 moderate and 12
+low. Exact lock entries for the affected packages and historical UUID consumers
+also match. All 84 exception objects, original review/expiry dates and 12 pending
+upstream-fix records were retained. Only that source's full-lock binding advanced;
+no exception is added or renewed. The dedicated audit remains red on the known
+pending findings. The offline test permits those explicitly recorded findings.
+
+[Source comparison evidence](security/resident-full-lock-9add52f6-2026-11-09.json)
+records the historical input and the five UI/model/test paths between the reviewed
+`5500` baseline and `9add`. Historical packaged inventories and static UUID review
+remain at their original sources. This refresh does not establish current
+packaged reachability, APK security, voice qualification or device acceptance.
+The current DAE source and artifact review at the top of this document remains
+the current binding.

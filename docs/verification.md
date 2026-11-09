@@ -8,6 +8,16 @@ and [pilot runbook](pilot-acceptance-runbook.md) for remaining product acceptanc
 ## Source and packaging
 
 Run `npm ci` and `npm run verify` with the toolchain documented in the README.
+The verification command explicitly prepares retained historical design and
+regression inputs before running Quint. On a fresh checkout,
+`npm run quint:prepare-history` fetches only the immutable revisions registered in
+the Core and SMS/MMS source inventories. Refinement helpers verify their recorded
+file hashes and materialize the bytes under ignored `.eliza/quint-historical/`.
+The current pinned checkout stays unchanged. Imported refinement helpers never
+fetch source. Run the same preparation command before a targeted historical test;
+cached revisions need no network access. Historical design translations and
+current implementation checks retain separate source bindings.
+
 Build and stage the libelizainference voice host as described in [fused speech](fused-speech.md),
 then run `npm run agent:prepare`, `npm run agent:build-workflow-worker`,
 `npm run agent:stage-android` and `npm run android:build` with JDK 21 and the configured Android SDK. Plain
