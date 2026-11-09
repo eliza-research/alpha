@@ -19,7 +19,7 @@ function sourceInputs(extraSources) {
   const {patches} = JSON.parse(readFileSync(join(root, manifest), 'utf8'));
   return [
     'scripts/launcher-child.mjs', 'scripts/start-reviewed-workflow-agent.mjs', 'scripts/agent-embeddings.mjs', 'scripts/agent-identity.mjs',
-    'scripts/agent-model.mjs', 'config/alpha-product.json', 'scripts/local-agent-source.mjs',
+    'scripts/agent-model.mjs', 'apps/app/src/product/alpha-product-registration.ts', 'scripts/local-agent-source.mjs',
     'scripts/copy-file-clone.mjs', 'scripts/core-state-preload.mjs', 'scripts/core-state-patch.mjs',
     'scripts/combined-agent-source.mjs', manifest, 'upstream.lock.json',
     'vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs',

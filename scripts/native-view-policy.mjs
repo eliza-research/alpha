@@ -1,5 +1,19 @@
-import {readFileSync} from 'node:fs';
+/** Product-owned renderer routes. The resident validates this host-supplied policy. */
+const nativeViews = [
+  ['photos', 'Photos'],
+  ['maps', 'Maps'],
+  ['camera', 'Camera'],
+  ['notes', 'Notes'],
+  ['calendar', 'Calendar'],
+  ['inbox', 'Inbox'],
+].map(([id, label]) => ({
+  id,
+  label,
+  path: `/${id}`,
+  fallbackFor: `@elizaos/plugin-${id}`,
+}));
 
-/** Product-owned renderer routes, never caller-supplied view metadata. */
-export const nativeViewPolicyPath = new URL('../config/native-view-declarations.json', import.meta.url);
-export const nativeViewDeclarationsJson = readFileSync(nativeViewPolicyPath, 'utf8');
+// The resident environment and APK asset use the same byte-exact representation.
+export const nativeViewDeclarationsJson = JSON.stringify(nativeViews, null, 2) + '\n';
+
+if (import.meta.main) process.stdout.write(nativeViewDeclarationsJson);

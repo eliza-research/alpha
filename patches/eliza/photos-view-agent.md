@@ -16,7 +16,7 @@ and the pin in `upstream.lock.json` is bumped. Until then the phone code that us
 `prototype/agent-adapter.ts`) is inert: the shared coordinator rejects an operation type it does
 not know, and the pinned agent route rejects a capability header that names `photos.library.v1`
 or `photos.view.v1`, so `runtime/connection-ui.tsx` does not yet offer them. Add both to the
-negotiated list (and to `config/alpha-product.json` `features.capabilities`) in the pin bump that
+negotiated list (and to `apps/app/src/product/alpha-product-registration.ts` `features.capabilities`) in the pin bump that
 brings this patch.
 
 Base: elizaOS/eliza `475a8d59dc1811c2cde093613519906a5a3f6457` (the pin in

@@ -40,7 +40,7 @@ Other prepared checks:
   build"); H-09 `open` (12 of 12 release digests unset); H-10 `open` with
   "ELIZAOS_APP_LINK_HOST unset" for this environment.
 - `ELIZAOS_APP_LINK_HOST`: `MainActivity` declares the HTTPS autoVerify filters on
-  `config/cloud-deployment.json` `production.web` (`eliza.app`) in every build, and
+  `scripts/cloud-deployment-policy.mjs` `production.web` (`eliza.app`) in every build, and
   `android/app/product.gradle` refuses any other value. `scripts/verify-apks.mjs` records `appLinks`
   per APK but does not include it in `distributable`. Check the `appLinks` row (`present: true`,
   hosts `["eliza.app"]`) of every release in `artifacts/apk-manifest.json` before distribution.

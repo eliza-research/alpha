@@ -1,5 +1,5 @@
 <resources>
- <!-- Dark system: start on the renderer's dark background (config/alpha-product.json dark.bg)
+ <!-- Dark system: start on the renderer's dark background (apps/app/src/product/alpha-product-registration.ts dark.bg)
       so a cold start does not flash white before the web view paints. -->
  <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
   <item name="android:fontFamily">sans</item><item name="android:colorAccent">#0000FF</item>

@@ -34,6 +34,7 @@ import {renderSensePermissions} from "../vendor/eliza/packages/os/scripts/androi
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
+import { CLOUD_DEPLOYMENT } from "./cloud-deployment-policy.mjs";
 import {apkUpdateChannel,validateUpdateChannel} from './update-channel.mjs';
 import {releaseDistributable} from './release-distributable.mjs';
 import {
@@ -87,8 +88,7 @@ if(cloudEvidenceArgs.length){
 }
 
 const identity = JSON.parse(fs.readFileSync("app.config.json"));
-const cloudDeployment = JSON.parse(fs.readFileSync("config/cloud-deployment.json", "utf8"));
-const callbackHost = new URL(cloudDeployment.production.web).hostname;
+const callbackHost = new URL(CLOUD_DEPLOYMENT.production.web).hostname;
 // The only web VIEW filters any APK may carry: the main manifest's two returns on the production web
 // host (android/app/product.gradle supplies appLinkHost), plus the staging sign-in return in the
 // test-mocks overlay, which is attached to debug variants only.
@@ -97,7 +97,7 @@ const mainActivity = `${identity.appId}.MainActivity`;
 const webViewFiltersAllowed = mode => [
   `${mainActivity} https://${callbackHost}/alphaphone/auth/callback`,
   `${mainActivity} https://${callbackHost}/alphaphone/gmail/callback`,
-  ...(testMocks && mode === "debug" ? [`${mainActivity} https://${new URL(cloudDeployment.staging.web).hostname}/alphaphone/auth/callback`] : []),
+  ...(testMocks && mode === "debug" ? [`${mainActivity} https://${new URL(CLOUD_DEPLOYMENT.staging.web).hostname}/alphaphone/auth/callback`] : []),
 ];
 const buildRecordFile = path.join(directory, "build-config.json");
 const buildRecord = fs.existsSync(buildRecordFile) ? JSON.parse(fs.readFileSync(buildRecordFile, "utf8")) : null;

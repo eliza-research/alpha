@@ -1,50 +1,53 @@
-{
-  "schema": "elizaos.mobile-product",
-  "schemaVersion": 1,
-  "revision": 2,
-  "identity": {
-    "appName": "Alpha Phone",
-    "appId": "ai.elizaresearch.alphaphone",
-    "characterName": "Alpha"
+import type {MobileProductRegistration} from '@elizaos/ui/mobile-shell/core';
+
+// Alpha's registration for the shared mobile shell. The agent and build tools also read it.
+export const ALPHA_PRODUCT_REGISTRATION = {
+  schema: "elizaos.mobile-product",
+  schemaVersion: 1,
+  revision: 2,
+  identity: {
+    appName: "Alpha Phone",
+    appId: "ai.elizaresearch.alphaphone",
+    characterName: "Alpha"
   },
-  "theme": {
-    "id": "alpha-phone",
-    "name": "Alpha Phone",
-    "description": "Alpha Phone reference design: black and white with a blue accent",
-    "defaultAppearance": "light",
-    "fonts": {
-      "body": "'Public Sans', system-ui, sans-serif",
-      "display": "'Denton', 'Fraunces', Georgia, serif"
+  theme: {
+    id: "alpha-phone",
+    name: "Alpha Phone",
+    description: "Alpha Phone reference design: black and white with a blue accent",
+    defaultAppearance: "light",
+    fonts: {
+      body: "'Public Sans', system-ui, sans-serif",
+      display: "'Denton', 'Fraunces', Georgia, serif"
     },
-    "light": {
-      "bg": "#FFFFFF",
-      "bgAccent": "#FAFAFA",
-      "surface": "#F3F3F3",
-      "bgHover": "#E6E6E6",
-      "border": "#E3E3E3",
-      "text": "#000000",
-      "muted": "#6B6B6B",
-      "accent": "#0000FF",
-      "accentForeground": "#FFFFFF",
-      "linkColor": "#0000FF"
+    light: {
+      bg: "#FFFFFF",
+      bgAccent: "#FAFAFA",
+      surface: "#F3F3F3",
+      bgHover: "#E6E6E6",
+      border: "#E3E3E3",
+      text: "#000000",
+      muted: "#6B6B6B",
+      accent: "#0000FF",
+      accentForeground: "#FFFFFF",
+      linkColor: "#0000FF"
     },
-    "dark": {
-      "bg": "#000000",
-      "bgAccent": "#0B0B0B",
-      "surface": "#151515",
-      "bgHover": "#262626",
-      "border": "#262626",
-      "text": "#FFFFFF",
-      "muted": "#8F8F8F",
-      "accent": "#0000FF",
-      "accentForeground": "#FFFFFF",
-      "linkColor": "#8A93FF"
+    dark: {
+      bg: "#000000",
+      bgAccent: "#0B0B0B",
+      surface: "#151515",
+      bgHover: "#262626",
+      border: "#262626",
+      text: "#FFFFFF",
+      muted: "#8F8F8F",
+      accent: "#0000FF",
+      accentForeground: "#FFFFFF",
+      linkColor: "#8A93FF"
     },
-    "chrome": {
-      "light": { "scrim": "rgba(0,0,0,.18)", "shadow": "rgba(0,0,0,.12)", "frame": "#DCDCDC" },
-      "dark": { "scrim": "rgba(0,0,0,.55)", "shadow": "rgba(0,0,0,.45)", "frame": "#161616" }
+    chrome: {
+      light: { scrim: "rgba(0,0,0,.18)", shadow: "rgba(0,0,0,.12)", frame: "#DCDCDC" },
+      dark: { scrim: "rgba(0,0,0,.55)", shadow: "rgba(0,0,0,.45)", frame: "#161616" }
     },
-    "aliases": {
+    aliases: {
       "--s1": "bgAccent",
       "--s2": "surface",
       "--s3": "bgHover",
@@ -56,7 +59,7 @@
       "--scrim": "scrim",
       "--shc": "shadow"
     },
-    "palette": {
+    palette: {
       "--alpha-black": "#000000",
       "--alpha-blue": "#0000FF",
       "--alpha-blue-deep": "#0000B8",
@@ -276,67 +279,67 @@
       "--alpha-white": "#FFFFFF"
     }
   },
-  "icons": {
-    "baseUrl": "/icons/lucide/",
-    "allApps": "layout-grid",
-    "views": {
-      "phone": "phone",
-      "messages": "message-square",
-      "inbox": "mail",
-      "calendar": "calendar",
-      "browser": "globe",
-      "camera": "camera",
-      "photos": "image",
-      "maps": "map-pin",
-      "notes": "sticky-note",
-      "contacts": "user-round",
-      "files": "folder",
-      "inventory": "wallet",
-      "automations": "workflow",
-      "settings": "settings"
+  icons: {
+    baseUrl: "/icons/lucide/",
+    allApps: "layout-grid",
+    views: {
+      phone: "phone",
+      messages: "message-square",
+      inbox: "mail",
+      calendar: "calendar",
+      browser: "globe",
+      camera: "camera",
+      photos: "image",
+      maps: "map-pin",
+      notes: "sticky-note",
+      contacts: "user-round",
+      files: "folder",
+      inventory: "wallet",
+      automations: "workflow",
+      settings: "settings"
     }
   },
-  "views": {
-    "order": ["phone", "messages", "inbox", "calendar", "browser", "camera", "photos", "maps", "notes", "contacts", "files", "inventory", "automations", "settings"],
-    "labels": {
-      "phone": "Phone",
-      "messages": "Messages",
-      "inbox": "Inbox",
-      "calendar": "Calendar",
-      "browser": "Browser",
-      "camera": "Camera",
-      "photos": "Photos",
-      "maps": "Maps",
-      "notes": "Notes",
-      "contacts": "Contacts",
-      "files": "Files",
-      "inventory": "Wallet",
-      "automations": "Workflows",
-      "settings": "Settings"
+  views: {
+    order: ["phone", "messages", "inbox", "calendar", "browser", "camera", "photos", "maps", "notes", "contacts", "files", "inventory", "automations", "settings"],
+    labels: {
+      phone: "Phone",
+      messages: "Messages",
+      inbox: "Inbox",
+      calendar: "Calendar",
+      browser: "Browser",
+      camera: "Camera",
+      photos: "Photos",
+      maps: "Maps",
+      notes: "Notes",
+      contacts: "Contacts",
+      files: "Files",
+      inventory: "Wallet",
+      automations: "Workflows",
+      settings: "Settings"
     },
-    "rendererKeys": { "automations": "workflows", "inventory": "wallet" },
-    "legacyIds": { "home": "chat", "workflows": "automations", "wallet": "inventory" },
-    "serves": { "calendar": ["reminders"] }
+    rendererKeys: { automations: "workflows", inventory: "wallet" },
+    legacyIds: { home: "chat", workflows: "automations", wallet: "inventory" },
+    serves: { calendar: ["reminders"] }
   },
-  "storage": {
-    "launcherFavorites": "alpha.launcher.favorites.v1",
-    "launcherBuiltinPrefix": "alpha:",
-    "launcherDefaultPolicy": "alpha-apps",
-    "retained": {
-      "appearance": "alpha.appearance.v1",
-      "connectionSelection": "alpha.connection.selection.v1",
-      "startupPermissions": "alpha.startup-permissions.v1",
-      "startupWalkthrough": "alpha:startup-permission-walkthrough:v1",
-      "dailyApps": "alphaphone:daily:v1"
+  storage: {
+    launcherFavorites: "alpha.launcher.favorites.v1",
+    launcherBuiltinPrefix: "alpha:",
+    launcherDefaultPolicy: "alpha-apps",
+    retained: {
+      appearance: "alpha.appearance.v1",
+      connectionSelection: "alpha.connection.selection.v1",
+      startupPermissions: "alpha.startup-permissions.v1",
+      startupWalkthrough: "alpha:startup-permission-walkthrough:v1",
+      dailyApps: "alphaphone:daily:v1"
     }
   },
-  "features": {
-    "capabilities": [
+  features: {
+    capabilities: [
       "launcher.installed-apps", "launcher.default-dial", "launcher.favorites",
       "calendar.local-event.v1", "calendar.agenda-read.v1", "calendar.availability-read.v1", "calendar.create.v1", "calendar.named-read.v1", "calendar.next-read.v1",
       "camera.capture-photo.v1", "clock.handoff.v1", "clock.handoff.v2", "maps.selected-read.v1",
       "notes.local-record.v1", "notes.query.v1", "photos.library.v1", "reminders.create.v1", "reminders.local-record.v1", "reminders.local-record.v2", "sms.send.v1"
     ],
-    "actions": []
+    actions: []
   }
-}
+} satisfies MobileProductRegistration;

@@ -20,7 +20,7 @@ function sourceInputs(extraSources) {
   return [
     'scripts/launcher-child.mjs', 'scripts/start-combined-agent.mjs', 'scripts/combined-agent-source.mjs',
     'scripts/host-speech-admission.mjs', 'scripts/host-speech-assets.json', 'scripts/agent-model.mjs',
-    'scripts/agent-identity.mjs', 'config/alpha-product.json',
+    'scripts/agent-identity.mjs', 'apps/app/src/product/alpha-product-registration.ts',
     'scripts/core-state-patch.mjs', 'scripts/core-state-preload.mjs',
     'scripts/local-agent-source.mjs', 'scripts/copy-file-clone.mjs', manifest, 'upstream.lock.json',
     'vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs',

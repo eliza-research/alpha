@@ -8,6 +8,7 @@ const roots=['apps/app/src','apps/app/public','android/app/src/main/java','andro
 roots.push('android/app/src/launcher','android/app/src/standalone','android/app/src/release',
  // The Gradle host the pinned upstream generator writes from android/consumer-host.json.
  'android/consumer-host.json','android/app/product.gradle','scripts/android-host.mjs',
+ 'android/app/cloud-deployment.generated.gradle','scripts/cloud-deployment.mjs','scripts/cloud-deployment-policy.mjs',
  'android/.eliza-consumer-profile.json','android/eliza-consumer-host',
  'vendor/eliza/packages/app/scripts/mobile/android/consumer-host.mjs',
  'vendor/eliza/packages/app/scripts/mobile/android/consumer-host',
@@ -35,7 +36,7 @@ roots.push('android/app/src/main/assets/agent','android/app/src/main/jniLibs',
  // Authored patch manifests and patch bytes change the native source compiled into an APK.
  'patches/eliza',
  'scripts/prepare-local-agent.mjs','scripts/local-agent-source.mjs','scripts/copy-file-clone.mjs',
- 'scripts/stage-local-agent-runtime.mjs','scripts/stage-local-agent-sources.mjs',
+ 'scripts/stage-local-agent-runtime.mjs','scripts/stage-local-agent-sources.mjs','scripts/native-view-policy.mjs',
  'scripts/build-mobile-agent.mjs','scripts/mobile-uuid-adapter.mjs','scripts/mobile-bundle-smoke.mjs',
  'scripts/core-state-patch.mjs','scripts/core-state-preload.mjs','scripts/combined-agent-source.mjs',
  'patches/eliza/core-state-manifest.json','patches/eliza/task-service-stop.patch','patches/eliza/notes-state-runtime.patch','patches/eliza/turn-controller-isolation.patch','patches/eliza/room-queue-admission.patch','patches/eliza/embedding-store-identity.patch','patches/eliza/named-embedding-provenance.patch','patches/eliza/plugin-connector-custody.patch',

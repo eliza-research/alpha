@@ -1,15 +1,18 @@
 import {productionCloud,stagingCloud} from '../apps/app/src/runtime/cloud-deployment.generated.ts';
 import {createHash} from 'node:crypto';
-import {readFileSync} from 'node:fs';
+import identity from '../app.config.json' with {type:'json'};
 
 /**
- * The development browser bridge's adapter for Eliza Cloud's in-app email sign-in code. Routes and
- * body shapes come only from config/cloud-email-code.json, which the shared native client's
- * CloudEmailCode.java (vendor/eliza packages/auth/android) mirrors (test/cloud-sign-in-flow.test.mjs
- * pins both). Tenant identity comes from the deployment.
+ * The development browser bridge's adapter for Eliza Cloud's in-app email sign-in code.
+ * Its wire contract matches the shared native client's CloudEmailCode.java.
+ * Tenant identity comes from the deployment and the client ID is the product package.
  * No magic link, no hosted page.
  */
-export const CLOUD_EMAIL_CODE=JSON.parse(readFileSync(new URL('../config/cloud-email-code.json',import.meta.url),'utf8')) as {sendPath:string;verifyPath:string;client:string};
+export const CLOUD_EMAIL_CODE=Object.freeze({
+ sendPath:'/steward/auth/email/code/send',
+ verifyPath:'/steward/auth/email/code/verify',
+ client:identity.appId,
+});
 export function emailCodeSendBody(environment:'production'|'staging',email:string,verifier:string){
  return {email,tenantId:(environment==='production'?productionCloud:stagingCloud).tenant,client:CLOUD_EMAIL_CODE.client,pkce:{codeChallenge:createHash('sha256').update(verifier).digest('base64url'),codeChallengeMethod:'S256'}};
 }

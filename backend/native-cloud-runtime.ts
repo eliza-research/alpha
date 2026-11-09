@@ -1,4 +1,4 @@
-import product from '../config/alpha-product.json' with { type: 'json' };
+import {ALPHA_PRODUCT_REGISTRATION as product} from '../apps/app/src/product/alpha-product-registration.ts';
 import {productionCloud} from '../apps/app/src/runtime/cloud-deployment.generated.ts';
 
 /** Alpha's admitted Cloud deployment for the resident's text inference. The shared

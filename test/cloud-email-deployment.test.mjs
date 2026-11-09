@@ -5,14 +5,15 @@ import os from 'node:os';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {deploymentOutputs} from '../scripts/cloud-deployment.mjs';
+import {CLOUD_DEPLOYMENT} from '../scripts/cloud-deployment-policy.mjs';
 
 test('email send and verification use each configured tenant and preserve PKCE',async()=>{
  const root=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-email-deployment-'));
  try {
-  for(const dir of ['scripts','config','apps/app/src/runtime'])fs.mkdirSync(path.join(root,dir),{recursive:true});
-  for(const file of ['scripts/cloud-email-code.ts','config/cloud-email-code.json'])fs.copyFileSync(file,path.join(root,file));
+  for(const dir of ['scripts','apps/app/src/runtime'])fs.mkdirSync(path.join(root,dir),{recursive:true});
+  for(const file of ['scripts/cloud-email-code.ts','app.config.json'])fs.copyFileSync(file,path.join(root,file));
   fs.writeFileSync(path.join(root,'package.json'),'{"type":"module"}');
-  const config=JSON.parse(fs.readFileSync('config/cloud-deployment.json','utf8'));
+  const config=structuredClone(CLOUD_DEPLOYMENT);
   config.production.tenant='another-app-production';config.staging.tenant='another-app-staging';
   const generated='apps/app/src/runtime/cloud-deployment.generated.ts';
   fs.writeFileSync(path.join(root,generated),deploymentOutputs(config)[generated]);

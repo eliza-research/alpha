@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "b1817660a0347ae19551b9ee296410fe55f02d59",
-  "ledgerSha256": "5840f096bbd36b3ecea78bc15c1a5c1913a338aaaff08b7720e7c8db23845d6b",
+  "ledgerSha256": "a8593f69b41a67b23c6b5c7c9bb34cd060408bd5e33f9257dc18b31eaef0e049",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -22,15 +22,15 @@
     "The ledger supplies pinned source bytes. Effective client/native/runtime patch outputs require their separately authenticated source mappings."
   ],
   "counts": {
-    "files": 5767,
+    "files": 5771,
     "testSupportFiles": 297,
     "testSupportCandidates": 11402,
-    "parsedFiles": 5677,
+    "parsedFiles": 5681,
     "languageReview": 90,
     "parseErrors": 0,
-    "candidates": 67717,
-    "writeSites": 67278,
-    "writeAssociations": 60333,
+    "candidates": 67719,
+    "writeSites": 67280,
+    "writeAssociations": 60335,
     "asynchronous": 8387,
     "unassignedWrites": 10366
   },
@@ -23809,7 +23809,7 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/CloudDeployment.java",
-      "sha256": "c42767d8d5c6226f8398e5d22fa3aa007b0c26811d8ad44fabc4bf164cb561dc",
+      "sha256": "5127a68e20cd53b3ddfcce2cf907767be4535fdec2a3b32dc4deef2d2a4048f3",
       "allocatedModels": [
         "ServiceAuthorization",
         "NativeGmailBackground"
@@ -23919,7 +23919,7 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/ConnectionRoutes.java",
-      "sha256": "12cf0481c5a2ea85c5c0fd0581b444cf25d0a7a1f94a693ee83d28848ac4805a",
+      "sha256": "6ea01a27d1204ae8008d81fe851ce041d819d4e399b6b8e1c17812de5324b6ca",
       "allocatedModels": [
         "ServiceAuthorization"
       ],
@@ -26396,7 +26396,7 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/OwnerRoutes.java",
-      "sha256": "d52356a21a8d9d21c9cf05ebbdfd17de065add96cda691a72881843dde28a845",
+      "sha256": "f8266638fa048f83c49347daa84a5f1ef5539e0bd11a0a801e7b8e84756f0478",
       "allocatedModels": [
         "Application",
         "CalendarPresentation",
@@ -26407,31 +26407,31 @@
       "owners": [
         {
           "owner": "OwnerRoutes",
-          "line": 10,
+          "line": 9,
           "bindings": 2,
           "writes": 1
         },
         {
-          "owner": "OwnerRoutes.<init>@12",
-          "line": 12,
+          "owner": "OwnerRoutes.<init>@11",
+          "line": 11,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "OwnerRoutes.shipped@14",
+          "owner": "OwnerRoutes.shipped@13",
+          "line": 13,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "OwnerRoutes.group@14",
           "line": 14,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "OwnerRoutes.group@15",
-          "line": 15,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "OwnerRoutes.allowed@16",
-          "line": 16,
+          "owner": "OwnerRoutes.allowed@15",
+          "line": 15,
           "bindings": 3,
           "writes": 0
         }
@@ -26524,7 +26524,7 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/PasswordProviderSupport.java",
-      "sha256": "04a6649d2a722d734bcfa2179907114d42f09dc86e1140cc30b090b2cb312cd8",
+      "sha256": "8d7c6f32527999bd06e94509741971d6d5cfafb9c36d1364086849d12d8fb313",
       "allocatedModels": [
         "CredentialVault",
         "NativeSettingsHandoff"
@@ -33339,8 +33339,23 @@
       "unassignedWrites": 0
     },
     {
+      "path": "apps/app/src/product/alpha-product-registration.ts",
+      "sha256": "d8f601f74392ea87cdfa15ff3dee9dae0c31956d8bb71d5ef27215ee0aa7b512",
+      "allocatedModels": [
+        "ShellNavigation",
+        "LauncherFavorites",
+        "NativeGoogleHostArtifact"
+      ],
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
       "path": "apps/app/src/product/alpha-product.ts",
-      "sha256": "48c4a1801d7ff5f0d223d9eae3f6ad5719168c08f67ce6f623f782fcc193b1d0",
+      "sha256": "af292ba9b8c02912afd98c089cc78a95243b1775ac19c7408f36e66bf0449aaf",
       "allocatedModels": [
         "ShellNavigation",
         "LauncherFavorites"
@@ -33348,6 +33363,30 @@
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "apps/app/src/product/owner-route-table.ts",
+      "sha256": "0b4e1edd289b2fc124baa59be09ec815fa577aa4b8448794ac7ea4063c603e35",
+      "allocatedModels": [
+        "Application",
+        "CalendarPresentation",
+        "NotesLifecycle",
+        "ServiceAuthorization",
+        "MobileBundleAdmission"
+      ],
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "<module>",
+          "line": 7,
+          "bindings": 1,
+          "writes": 0
+        }
+      ],
       "parseErrors": [],
       "asynchronous": 0,
       "unassignedWrites": 0
@@ -35796,7 +35835,7 @@
     },
     {
       "path": "apps/app/src/prototype/model.js",
-      "sha256": "eadab21fe6bfe9fbbed044bcb6f4ff8c0d3a03f508184c8efe2d637ef9f4f254",
+      "sha256": "f0732b60104f594a47ab2811f6c7bc3149481c65236225bf1cf62460726e5ba1",
       "allocatedModels": [
         "Application",
         "CalendarPresentation",
@@ -41668,7 +41707,7 @@
     },
     {
       "path": "apps/app/src/runtime/cloud-deployment.generated.ts",
-      "sha256": "0c9ba401ee40ab7c25aea7de846375b9d805fd33b0932f0ebb965c126972f8da",
+      "sha256": "645f8482e15794835b74236ac1c034c40b88419043f915fd2729df7e46d9e6e9",
       "allocatedModels": [
         "ServiceAuthorization",
         "NativeGoogleHostArtifact"
@@ -44705,7 +44744,7 @@
     },
     {
       "path": "apps/app/src/runtime/owner-route-policy.ts",
-      "sha256": "0fec5bba181ab63f3b7f9d1aaee2213f246ce1deb755d614bb5d81ff4dc764a2",
+      "sha256": "448e557733c85eeedf137bdaa914cc5d59bb397c2fb42ad8aba67d0708eb12f1",
       "allocatedModels": [
         "Application",
         "CalendarPresentation",
@@ -44716,19 +44755,19 @@
       "owners": [
         {
           "owner": "<module>",
-          "line": 7,
+          "line": 6,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "ownerRouteGroup",
-          "line": 14,
+          "line": 13,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "ownerRouteAllowed",
-          "line": 24,
+          "line": 23,
           "bindings": 1,
           "writes": 1
         }
@@ -45893,7 +45932,7 @@
     },
     {
       "path": "backend/native-cloud-runtime.ts",
-      "sha256": "95cf46c7db11a7ebb7b0cb4efa5a8a210951f52184a14831be7f6aba88f01347",
+      "sha256": "3780e1c7b1cc549ac36d8f8b83114d7dfd70e928532ca3288cbac5580904e265",
       "allocatedModels": [
         "ResidentRuntime",
         "NativeGoogleHostArtifact"
@@ -46203,7 +46242,7 @@
     },
     {
       "path": "scripts/android-host.mjs",
-      "sha256": "519f5023bff0d6655d57e558945ce0165ca520e17e9c30f23c16e9749128ef94",
+      "sha256": "47de0acd27320f927a0aca4ef6c017431a0aa342d5448531bfec177878477eb3",
       "allocatedModels": [
         "MobileBundleAdmission",
         "NativeViewSubscription",
@@ -46215,7 +46254,7 @@
       "owners": [
         {
           "owner": "hostProfile",
-          "line": 57,
+          "line": 59,
           "bindings": 1,
           "writes": 2
         }
@@ -46226,7 +46265,7 @@
     },
     {
       "path": "scripts/apk.mjs",
-      "sha256": "1536f16768a33c741f00301517a35625e223b92f61332cd84e9a8f493cdef380",
+      "sha256": "79fcd4729105025cc3afcba7453c8afa57920b83e91b7470b4e167474e51e59a",
       "allocatedModels": [
         "Application"
       ],
@@ -46236,19 +46275,19 @@
       "owners": [
         {
           "owner": "distributionProblems",
-          "line": 76,
+          "line": 77,
           "bindings": 1,
           "writes": 4
         },
         {
           "owner": "legacyStorageProblems",
-          "line": 118,
+          "line": 119,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "verifyOwnerRouteTable",
-          "line": 151,
+          "line": 152,
           "bindings": 1,
           "writes": 1
         }
@@ -46528,8 +46567,24 @@
       "unassignedWrites": 0
     },
     {
+      "path": "scripts/cloud-deployment-policy.mjs",
+      "sha256": "cd5b66f87defd234e447f8ad6e02e6de9ec901ae7b3b4dd18af552192d7db771",
+      "allocatedModels": [
+        "IdentitySession",
+        "ServiceAuthorization",
+        "DevelopmentHost",
+        "CloudQaLauncher"
+      ],
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
       "path": "scripts/cloud-deployment.mjs",
-      "sha256": "c3a9ddc001aad5affcdd084bf3b84dc91b63017b934f65b5459088dbfb8684f6",
+      "sha256": "3750c819311e0fa705fabd8478b57b0b2aee00ff6fbe72f02a10571080dae041",
       "allocatedModels": [
         "ServiceAuthorization",
         "BrowserCloudRequestCustody"
@@ -46540,21 +46595,21 @@
       "owners": [
         {
           "owner": "<module>",
-          "line": 9,
+          "line": 10,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "validateCloudDeployment",
-          "line": 21,
+          "line": 22,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "deploymentOutputs",
-          "line": 38,
-          "bindings": 2,
-          "writes": 4
+          "line": 40,
+          "bindings": 3,
+          "writes": 6
         }
       ],
       "parseErrors": [],
@@ -46563,7 +46618,7 @@
     },
     {
       "path": "scripts/cloud-email-code.ts",
-      "sha256": "1a2a7b898eb1eb216cc532f72d3d66c66ff9f2d7c45c1c5b0319770c3637f146",
+      "sha256": "6e2223bfcd4c774bbdade2835d93baa4cbbec58b83ce7c1b0628afecde19d099",
       "allocatedModels": [
         "Application",
         "DevelopmentHost"
@@ -47224,6 +47279,23 @@
       "unassignedWrites": 8
     },
     {
+      "path": "scripts/native-view-policy.mjs",
+      "sha256": "f8766f91d465b939c6eaad65e7f066a79d0ec1140c54948ecb24930aa758195d",
+      "allocatedModels": [
+        "DevelopmentHost",
+        "CloudQaLauncher",
+        "MobileBundleAdmission",
+        "NativeViewSubscription",
+        "ResidentRuntime"
+      ],
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
       "path": "scripts/prepare-client-features.mjs",
       "sha256": "95929125edde207ea6948e5da90bf47ec8c1652c2f634781265493d98f2fc19f",
       "allocatedModels": [
@@ -47417,7 +47489,7 @@
     },
     {
       "path": "scripts/source-snapshot.mjs",
-      "sha256": "477ba7a2848b76c4f2b74743f5970858c4f87a279507ac2fa00b5220d76f951e",
+      "sha256": "83a37c7f0ada9f0dcbbaf701f7b99562ca1fd2ecb11268cb4c568441bdfea51d",
       "allocatedModels": [
         "Application",
         "MobileBundleAdmission",
@@ -47498,7 +47570,7 @@
     },
     {
       "path": "scripts/stage-local-agent-runtime.mjs",
-      "sha256": "617ce74dc8a97be1221c16956a86133871217975eb11f98b6268f98fab7e788a",
+      "sha256": "88d8764420c5f1f0e08e71f6c797fa33cad0533507e0de8ffadbe26eaa13db2d",
       "allocatedModels": [
         "MobileBundleAdmission",
         "ResidentRuntime"
@@ -47689,7 +47761,7 @@
     },
     {
       "path": "scripts/verify-apks.mjs",
-      "sha256": "57d3f5124fc3ed64e7e2e5b626aec6dfb77f2830c121cc5e6314c4f6bfccafd9",
+      "sha256": "bdccc1d009d27ff8ba67f1ee2e9c8e0198bda49f1b83c57b9bfef53a62abe876",
       "allocatedModels": [
         "Application",
         "AndroidGzipAssetStage"
@@ -47700,7 +47772,7 @@
       "owners": [
         {
           "owner": "<module>",
-          "line": 80,
+          "line": 81,
           "bindings": 23,
           "writes": 56
         },
@@ -47717,7 +47789,7 @@
     },
     {
       "path": "scripts/verify-packaged-runtime.py",
-      "sha256": "a812a2508ff230207f3663f44994bbc1fcffea4f5fcc232e07171ca94b6df41b",
+      "sha256": "c40c57454965f945c835bbe4e3ddacfc471732e79eabe17d89cca3802eb0ccba",
       "allocatedModels": [
         "Application",
         "MobileBundleAdmission",
@@ -221370,7 +221442,7 @@
     },
     {
       "path": "vite.config.ts",
-      "sha256": "3df051169be3a388ed557ea45afd0cde28dc8072741ff62fca34e33f9946779d",
+      "sha256": "f646ded3903339759197c4d36bfacd7ed7d5017b5d50e8e70a4cf4a999798735",
       "allocatedModels": [
         "DevelopmentSurfaces",
         "DevelopmentHost",
@@ -221394,6 +221466,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "c557f13d5b9ae28513b41bcb0140c7ad8fd9e6d93187252cc7a4932d1552a61d"
+    "sha256": "7ec400ab7f3f1262c2b6a196df0dcdf66dc0c5b90e10aff26f90679afb2cdad3"
   }
 }

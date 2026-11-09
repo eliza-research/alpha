@@ -1,6 +1,6 @@
 package ai.elizaresearch.alphaphone;
 
-/** Generated from config/cloud-deployment.json. Run node scripts/cloud-deployment.mjs. */
+/** Generated from scripts/cloud-deployment-policy.mjs. Run node scripts/cloud-deployment.mjs. */
 final class CloudDeployment {
  private CloudDeployment() {}
  static final String PRODUCTION_API = "https://api.eliza.app";
