@@ -34,7 +34,9 @@ module NativeCalendarScopedReview {
   }
   action finishInspect = all {
     s.inspectHeld,
-    s'=ready({...s,inspectHeld:false,inspectEpoch:-1},s.inspectEpoch)
+    val completed={...s,inspectHeld:false,inspectEpoch:-1}
+    s'=if (s.retired or s.inspectEpoch!=s.epoch) {...completed,inspectResult:"unavailable"}
+       else ready(completed,s.inspectEpoch)
   }
   action request(key: str): bool = all {
     key.in(ticketKeys),not(s.inspectHeld),s.reviewPhase=="idle",
@@ -80,7 +82,7 @@ module NativeCalendarScopedReview {
   val CanonicalStageOnly = if (s.stageCount==0) s.staged=="none" else s.staged=="canonical"
   val EnqueueResultAfterAttempt = not(s.reviewResult.in(Set("queued","unknown"))) or s.stageCount>0
   val TicketHasCurrentEpoch = not(s.ticket) or s.ticketEpoch==s.epoch
-  val safety = all {BoundedTicket,PendingReviewOwnsReply,VisibleReviewCurrent,CanonicalStageOnly,EnqueueResultAfterAttempt}
+  val safety = all {BoundedTicket,PendingReviewOwnsReply,VisibleReviewCurrent,CanonicalStageOnly,EnqueueResultAfterAttempt,TicketHasCurrentEpoch}
 
   action step = any {
     {nondet v=Bool.oneOf();inspect(v)},holdInspect,finishInspect,
@@ -105,7 +107,12 @@ module NativeCalendarScopedReview {
     .then(answer(true)).expect(s.reviewResult=="cancelled" and s.stageCount==0)
   run uncertainEnqueueRetainedTest = init.then(inspect(true)).then(request("exact")).then(show).then(refuseStage)
     .then(answer(true)).expect(s.reviewResult=="unknown" and s.stageCount==1)
-  run asBuiltPauseAllowsRetiredTicketTest = init.then(holdInspect).then(pause).then(finishInspect)
-    .expect(not(TicketHasCurrentEpoch) and s.inspectResult=="ready")
-    .then(request("exact")).then(show).expect(s.reviewPhase=="dialog" and s.stageCount==0)
+  run heldCurrentInspectionPublishesTest = init.then(holdInspect).then(finishInspect)
+    .expect(TicketHasCurrentEpoch and s.ticket and s.inspectResult=="ready")
+  run pauseRetiresHeldInspectionTest = init.then(holdInspect).then(pause).then(finishInspect)
+    .expect(TicketHasCurrentEpoch and not(s.ticket) and s.inspectResult=="unavailable")
+    .then(request("exact")).expect(s.reviewResult=="conflict" and s.stageCount==0)
+    .then(inspect(true)).then(request("exact")).then(show).expect(s.reviewPhase=="dialog" and s.ticketEpoch==1)
+  run destroyRetiresHeldInspectionTest = init.then(holdInspect).then(destroy).then(finishInspect)
+    .expect(TicketHasCurrentEpoch and not(s.ticket) and s.inspectResult=="unavailable")
 }

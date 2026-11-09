@@ -173,8 +173,10 @@ public final class ScopedCalendarReviewTraces {
    case "locked-at-answer" -> {inspect(true);request("exact");show();lock();answer(true);}
    case "stopped-at-answer" -> {inspect(true);request("exact");show();stop();answer(true);}
    case "uncertain-enqueue" -> {inspect(true);request("exact");show();refuseStage();answer(true);}
+   case "inspect-held-current" -> {holdInspect();finishInspect();request("exact");show();answer(false);}
    case "inspect-pause-commit" -> {holdInspect();pause();finishInspect();request("exact");
-    if(queuedUi!=null){show();answer(false);}}
+    inspect(true);request("exact");show();answer(false);}
+   case "inspect-destroy-commit" -> {holdInspect();destroy();finishInspect();request("exact");}
    default -> throw new IllegalArgumentException(name);
   }
  }

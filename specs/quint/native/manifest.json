@@ -2650,14 +2650,17 @@
         "pauseRetiresQueuedReviewTest",
         "revocationRefusesPositiveTest",
         "uncertainEnqueueRetainedTest",
-        "asBuiltPauseAllowsRetiredTicketTest"
+        "heldCurrentInspectionPublishesTest",
+        "pauseRetiresHeldInspectionTest",
+        "destroyRetiresHeldInspectionTest"
       ],
       "invariants": [
         "BoundedTicket",
         "PendingReviewOwnsReply",
         "VisibleReviewCurrent",
         "CanonicalStageOnly",
-        "EnqueueResultAfterAttempt"
+        "EnqueueResultAfterAttempt",
+        "TicketHasCurrentEpoch"
       ],
       "sources": [
         "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarScopedDeletionReview.java",
@@ -2677,7 +2680,7 @@
       "abstractions": [
         "One selected scoped occurrence, four exact tuple coordinates with opaque hash equality, two provider drift classes, one held final permission result and one review dialog.",
         "The initial inspection and worker provider reread are macrosteps except the explicitly held permission result. Multi-ticket capacity, real CalendarProvider mutation and downstream journal settlement are outside this component.",
-        "Baseline deliberately permits the retired inspection ticket shown by the observed pause race. The independent TicketHasCurrentEpoch predicate records the divergence."
+        "The ticket insertion and pause clear share a generation monitor. This models ticket authority at insertion, not delivery of an already-committed reply after a later pause."
       ],
       "bounds": {
         "maxSamples": 1000,

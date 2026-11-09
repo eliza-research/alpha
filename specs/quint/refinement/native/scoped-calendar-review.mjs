@@ -10,7 +10,7 @@ const model='NativeCalendarScopedReview';
 const harness='ScopedCalendarReviewTraces.java';
 const scenarios=['exact-target','wrong-keys','visible-mismatch','at-expiry','after-expiry','provider-event','provider-source',
   'competing','pause-queued','pause-open','retired-queued','revoked-before-open','revoked-at-answer',
-  'locked-at-answer','stopped-at-answer','uncertain-enqueue','inspect-pause-commit'];
+  'locked-at-answer','stopped-at-answer','uncertain-enqueue','inspect-held-current','inspect-pause-commit','inspect-destroy-commit'];
 
 export function generateScopedCalendarReviewTraces(extraSources=[], selected=scenarios) {
   const fixture=scopedCalendarReviewPlatform();
@@ -35,10 +35,10 @@ export async function checkNativeCalendarScopedReview(extraSources=[]) {
       assumptions:[
         'Actual product CalendarScopedDeletionReview and CalendarDeletionIdentity run with the authenticated staged shared CalendarEventGuard and CalendarSourceIdentity. Synthetic provider rows come from the existing closed scoped Calendar fixture. Any attempted provider write fails the test.',
         'One selected occurrence is inspected and reviewed. Exact provider and source revisions, four ticket coordinates, canonical stored target, inclusive deadline, captured UI runnable, native dialog dismissal and enqueue result are observed.',
-        'The permission port can hold the final worker read while the test delivers pause. The foreground, lock, elapsed clock, UI delivery and enqueue result are controlled. The fixture delivers dismissal immediately after the user response.',
+        'The final worker permission read can be held across pause or destroy before ticket insertion. The foreground, lock, elapsed clock, UI delivery and enqueue result are controlled. The fixture delivers dismissal immediately after the user response.',
       ]});
     return {receipt,obligations:[
-      {model,obligation:'Installed calendar review and downstream deletion settlement',reason:'Closed JVM drives the actual app review delegate and synthetic dialog. Capacitor admission, platform lifecycle delivery, multi-ticket eviction, reviewed agent journal claim, actual deletion/Undo and provider dispatch remain separate.'},
+      {model,obligation:'Installed calendar review and downstream deletion settlement',reason:'Closed JVM drives the actual app review delegate and synthetic dialog. Capacitor admission, platform lifecycle and late bridge reply delivery, multi-ticket eviction, reviewed agent journal claim, actual deletion/Undo and provider dispatch remain separate.'},
     ]};
   } finally {close();}
 }

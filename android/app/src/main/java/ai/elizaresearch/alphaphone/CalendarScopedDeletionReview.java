@@ -24,7 +24,13 @@ final class CalendarScopedDeletionReview {
  private static boolean granted(Context context){return ContextCompat.checkSelfPermission(context,Manifest.permission.READ_CALENDAR)==PackageManager.PERMISSION_GRANTED&&ContextCompat.checkSelfPermission(context,Manifest.permission.WRITE_CALENDAR)==PackageManager.PERMISSION_GRANTED;}
  private boolean foreground(){android.app.Activity activity=plugin.getActivity();android.app.KeyguardManager lock=plugin.getContext().getSystemService(android.app.KeyguardManager.class);return !retired&&activity!=null&&!activity.isFinishing()&&!activity.isDestroyed()&&activity.hasWindowFocus()&&lock!=null&&!lock.isDeviceLocked();}
  private boolean reviewForeground(){return !retired&&dialog!=null&&dialog.isShowing()&&plugin.getActivity()!=null&&!plugin.getActivity().isFinishing()&&!plugin.getActivity().isDestroyed()&&plugin.getActivity().getLifecycle().getCurrentState().isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)&&(plugin.getActivity().hasWindowFocus()||dialog.getWindow()!=null&&dialog.getWindow().getDecorView().hasWindowFocus())&&plugin.getContext().getSystemService(android.app.KeyguardManager.class)!=null&&!plugin.getContext().getSystemService(android.app.KeyguardManager.class).isDeviceLocked();}
- private synchronized void remember(JSONObject target)throws Exception{while(tickets.size()>=32)tickets.remove(tickets.keySet().iterator().next());tickets.put(key(target),new Ticket(new JSONObject(target.toString())));}
+ private synchronized boolean remember(JSONObject target,long generation)throws Exception{
+  // Pause retires the generation under this same monitor.
+  if(retired||generation!=epoch)return false;
+  while(tickets.size()>=32)tickets.remove(tickets.keySet().iterator().next());
+  tickets.put(key(target),new Ticket(new JSONObject(target.toString())));
+  return true;
+ }
  private static String key(JSONObject value){return value.optString("eventId")+"|"+value.optString("revision")+"|"+value.optString("sourceId")+"|"+value.optString("sourceRevision");}
  private synchronized JSONObject ticket(JSONObject requested)throws Exception{Ticket ticket=tickets.get(key(requested));if(ticket==null||SystemClock.elapsedRealtime()>ticket.expires)throw new IllegalStateException("Reopen the exact Calendar event before review");return new JSONObject(ticket.target.toString());}
  static JSONObject target(CalendarEventGuard.ScopedDeletion snapshot)throws Exception{
@@ -41,7 +47,8 @@ final class CalendarScopedDeletionReview {
    JSONObject expected=call.getObject("expected");if(expected==null)throw new IllegalArgumentException();
    CalendarEventGuard.ScopedDeletion snapshot=CalendarEventGuard.selectScopedDeletion(plugin.getContext().getContentResolver(),Long.parseLong(call.getString("id","")),Long.parseLong(call.getString("calendarId","")),call.getString("scope"),expected.getLong("begin"),expected.getLong("end"));
    if(!snapshot.matchesVisible(expected)){call.resolve(status("conflict"));return;}if(generation!=epoch||!foreground()||!granted(plugin.getContext())){call.resolve(status("unavailable"));return;}
-   JSONObject target=target(snapshot);remember(target);JSObject result=status("ready");result.put("eventId",target.getString("eventId"));result.put("revision",snapshot.revision);result.put("sourceRevision",snapshot.sourceRevision);result.put("sourceId",Long.toString(snapshot.calendarId));result.put("scope",snapshot.scope);call.resolve(result);
+   JSONObject target=target(snapshot);if(!remember(target,generation)){call.resolve(status("unavailable"));return;}
+   JSObject result=status("ready");result.put("eventId",target.getString("eventId"));result.put("revision",snapshot.revision);result.put("sourceRevision",snapshot.sourceRevision);result.put("sourceId",Long.toString(snapshot.calendarId));result.put("scope",snapshot.scope);call.resolve(result);
   }catch(UnsupportedOperationException external){call.resolve(status("external"));}catch(Exception changed){call.resolve(status("conflict"));}});}catch(java.util.concurrent.RejectedExecutionException closed){call.resolve(status("unavailable"));}
  }
  void review(PluginCall call,JSONObject operation){
@@ -68,7 +75,7 @@ final class CalendarScopedDeletionReview {
    owned.setOnDismissListener(d->{if(dialog==owned)dialog=null;reviewing.set(false);if(settled.compareAndSet(false,true))call.resolve(outcome[0]==null?status("cancelled"):outcome[0]);});owned.show();
   }catch(Exception unavailable){reviewing.set(false);if(settled.compareAndSet(false,true))call.resolve(status("unavailable"));}
  }
- void pause(){epoch++;synchronized(this){tickets.clear();}if(dialog!=null)dialog.dismiss();}
+ void pause(){synchronized(this){epoch++;tickets.clear();}if(dialog!=null)dialog.dismiss();}
  void destroy(){retired=true;pause();worker.shutdown();}
  static JSONObject dispatch(Context context,JSONObject target){
   boolean dispatched=false;try{
