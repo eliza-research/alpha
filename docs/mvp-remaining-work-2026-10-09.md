@@ -1,4 +1,4 @@
-Current source composition pin: `ac18377c5a9e4eb7afeac1c62a026ad3be95733e`. This identifies the reviewed integrated sources, not renewed qualification of the historical evidence below. Distribution, device and owner acceptance remain separate.
+Current source composition pin: `489efc0b0e53ccbf9554f6017ac0d7b94f7056e8`. This identifies the reviewed integrated sources, not renewed qualification of the historical evidence below. Distribution, device and owner acceptance remain separate.
 
 Historical source pin: `99b49439ce9d0cb5607e9831b9f7f58d89525029`. Previous prepared source: `db96bb0a0371dca92707867245bf0bb119b5b4f5`. The previous inventory binding was `b23a23c2ef4f83d15591c6368c00f1e9547f7743`. The original 53-item inventory below is preserved; source composition does not establish build, device or human acceptance.
 

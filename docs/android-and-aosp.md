@@ -745,7 +745,7 @@ staging never emits this capability overlay. The overlay generator and the
 default-resource check are the shared `image-capability.mjs` in
 `packages/os/scripts/android`; Alpha supplies only its installed identifiers
 (`scripts/aosp-capability-overlay.mjs`). For Pixel 10a the shared composition
-writes it from `launcher.imageProvisioning` in `products/pixel10a-alpha.json`.
+writes it from `launcher.imageProvisioning` in `android/aosp/pixel10a-composition.json`.
 
 The capability is an OS-provisioning boundary, not remote image attestation or
 proof that an image was built and booted. A privileged image builder can control

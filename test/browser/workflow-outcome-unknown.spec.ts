@@ -51,8 +51,8 @@ test('side-effecting workflow: interrupted run is shown as outcome unknown, neve
  await expect(status(page)).toHaveText('An earlier run was interrupted — outcome unknown. New runs stay blocked until you cancel it');
  const history=page.getByRole('button',{name:'Interrupted — outcome unknown execution',exact:true});await expect(history).toBeVisible();
  await page.getByRole('button',{name:'Run now',exact:true}).click();await page.getByRole('button',{name:'Run now',exact:true}).click();
- await expect(page.getByText(/An earlier run may not have finished\. Open it below and cancel it first\./).first()).toBeVisible();expect(await posts(page,'/run')).toBe(0);
- await history.click();await page.getByText('Execution details',{exact:true}).click();await expect(page.getByText('Interrupted — outcome unknown',{exact:true}).first()).toBeVisible();await expect(page.getByText(/Interrupted\. Outcome unknown\. Check for changes before running it again\./)).toBeVisible();
+ await expect(page.getByText(/An interrupted run of this workflow has an unknown outcome or is still being reconciled\. Open it below and cancel it explicitly before starting another run\. Nothing is replayed automatically\./).first()).toBeVisible();expect(await posts(page,'/run')).toBe(0);
+ await history.click();await page.getByText('Execution details',{exact:true}).click();await expect(page.getByText('Interrupted — outcome unknown',{exact:true}).first()).toBeVisible();await expect(page.getByText(/Outcome unknown\. Check any changes before starting another run\. Nothing was retried\./)).toBeVisible();
  await expect(page.getByRole('button',{name:'Run this read-only workflow again as a new run'})).toHaveCount(0);await expect(page.getByRole('button',{name:'Cancel execution',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Refresh',exact:true}).click();await page.waitForTimeout(1000);await expect(page.getByText('Interrupted — outcome unknown',{exact:true}).first()).toBeVisible();
  expect(await posts(page,'/run')).toBe(0);expect(await posts(page,'/cancel')).toBe(0);
@@ -68,9 +68,9 @@ test('side-effecting workflow: interrupted run is shown as outcome unknown, neve
 test('read-only digest: Run again is explicit, confirmed and creates a new run ID without replaying the interrupted one',async({page})=>{
  await setup(page);await page.getByRole('region',{name:'Workflows',exact:true}).getByText('Morning notes digest',{exact:true}).first().click();
  await expect(status(page)).toHaveText('An earlier run was interrupted — outcome unknown. Open it to run these read-only steps again');
- await page.getByRole('button',{name:'Interrupted — outcome unknown execution',exact:true}).click();await page.getByText('Execution details',{exact:true}).click();await expect(page.getByText(/Interrupted\. Outcome unknown\. Check for changes before running it again\./)).toBeVisible();
+ await page.getByRole('button',{name:'Interrupted — outcome unknown execution',exact:true}).click();await page.getByText('Execution details',{exact:true}).click();await expect(page.getByText(/Outcome unknown\. Check any changes before starting another run\. Nothing was retried\./)).toBeVisible();
  await page.waitForTimeout(1000);expect(await posts(page,'/run')).toBe(0);
- await page.getByRole('button',{name:'Run this read-only workflow again as a new run',exact:true}).click();await expect(page.getByText(/This starts a new, separate run\. Tap Confirm new run\./).first()).toBeVisible();expect(await posts(page,'/run')).toBe(0);
+ await page.getByRole('button',{name:'Run this read-only workflow again as a new run',exact:true}).click();await expect(page.getByText(/Run again starts a new, separate run of these read-only steps\. The interrupted run is not replayed or changed\. Tap Confirm new run to start it\./).first()).toBeVisible();expect(await posts(page,'/run')).toBe(0);
  await page.getByRole('button',{name:'Confirm new run of this read-only workflow',exact:true}).click();await expect.poll(()=>posts(page,'/run')).toBe(1);
  await expect(page.getByText('Synthetic digest text',{exact:true})).toBeVisible();
  const sent=await page.evaluate(()=>(window as any).agentRequests.find((r:any)=>r.path.endsWith('/run')).body);expect(sent.expectedVersionId).toBe('digest-v1');expect(sent.submissionId).toMatch(/^[0-9a-f-]{36}$/);

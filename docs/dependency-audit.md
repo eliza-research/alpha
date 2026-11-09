@@ -2,7 +2,9 @@
 
 ## Current source-lock review — November 9
 
-SDK `ac18377c5a9e4eb7afeac1c62a026ad3be95733e` has a fresh npm bulk query reproducing the same 3,694 registry versions and all 103 findings as SDK `86ab55fd81`. The dependency lock is byte-identical; all exception objects, review deadlines and pending fixes remain unchanged. This four-file identity follow-up grants no new artifact, security or release qualification. See the [source-lock review](security/resident-source-review-ac18377c-2026-11-09.json).
+Current SDK `489efc0b0e53ccbf9554f6017ac0d7b94f7056e8` has a fresh npm bulk query with the same 3,694 registry versions and all 103 findings. The dependency lock, exception objects, deadlines and pending fixes are unchanged. Fresh built-artifact inspection covers 457 registry versions and retains the known UUID moderate finding; it does not establish packaged APK reachability or grant native, device, security or release qualification. See the [current source and artifact review](security/resident-source-review-489efc0b-2026-11-09.json).
+
+The prior identity-only source review below remains historical. SDK `ac18377c5a9e4eb7afeac1c62a026ad3be95733e` has a fresh npm bulk query reproducing the same 3,694 registry versions and all 103 findings as SDK `86ab55fd81`. The dependency lock is byte-identical; all exception objects, review deadlines and pending fixes remain unchanged. This four-file identity follow-up grants no new artifact, security or release qualification. See the [source-lock review](security/resident-source-review-ac18377c-2026-11-09.json).
 
 ## Built static review at SDK 86ab55fd81 — November 9
 

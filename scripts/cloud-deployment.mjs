@@ -2,10 +2,12 @@ import fs from 'node:fs';
 import {createHash} from 'node:crypto';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {CLOUD_DEPLOYMENT} from './cloud-deployment-policy.mjs';
+import {CLOUD_DEPLOYMENT,CLOUD_SIGN_IN_REGISTRATION} from './cloud-deployment-policy.mjs';
 import {CLOUD_SDK_BASES,cloudSdkBases} from './cloud-sdk-authority.mjs';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+const productIdentity=JSON.parse(fs.readFileSync(path.join(root,'app.config.json'),'utf8'));
+export const PAGES_NATIVE_AUTH_CALLBACKS='config/pages-native-auth-callbacks.generated.json';
 /** Reviewed credential namespaces, oldest first. The last is the one installed phones hold now. */
 export const STORAGE_NAMESPACES=['897efc6f09b9d4db345c61226d8301a9f1257ad98f0491e8591f63d4f4515874'];
 /** Deployment-owned public authorities, never credentials or values supplied by a login response. */
@@ -33,6 +35,17 @@ export function validateCloudDeployment(input){
 export function storageFingerprint(config){
  return createHash('sha256').update(JSON.stringify(['production','staging'].map(env=>[...['api','web','services','tenant'].map(key=>config[env][key]),config[env].entitlementAudience??'cloud-subscription']))).digest('hex');
 }
+/** Public operator data for the protected Pages callback registry; no deployment mutation. */
+export function nativeAuthCallbackRegistration(config,identity,environment){
+ const row=validateCloudDeployment(config)[environment];
+ if(!row)throw Error('Unknown Cloud environment '+environment);
+ return {
+  redirectUri:row.web+CLOUD_SIGN_IN_REGISTRATION.callbackPath,
+  androidPackage:identity.appId,
+  appName:identity.appName,
+  browserSignIn:{...CLOUD_SIGN_IN_REGISTRATION.browserSignIn,apiOrigin:row.api,tenant:row.tenant},
+ };
+}
 export function deploymentOutputs(config){
  validateCloudDeployment(config);
  const fingerprint=storageFingerprint(config);
@@ -58,6 +71,7 @@ export function deploymentOutputs(config){
   'apps/app/src/runtime/cloud-deployment.generated.ts':ts.join('\n')+'\n',
   'android/app/src/main/java/ai/alphacompute/alphaphone/CloudDeployment.java':java.join('\n')+'\n',
   'android/app/cloud-deployment.generated.gradle':gradle.join('\n')+'\n',
+  [PAGES_NATIVE_AUTH_CALLBACKS]:JSON.stringify(Object.fromEntries(['production','staging'].map(environment=>[environment,[nativeAuthCallbackRegistration(config,productIdentity,environment)]])),null,2)+'\n',
  };
 }
 export function checkCloudDeployment(directory=root,{config=CLOUD_DEPLOYMENT,sdkBases=CLOUD_SDK_BASES,namespaces=STORAGE_NAMESPACES}={}){
@@ -72,5 +86,5 @@ export function checkCloudDeployment(directory=root,{config=CLOUD_DEPLOYMENT,sdk
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  if(process.argv.includes('--check'))checkCloudDeployment();
- else for(const [name,contents] of Object.entries(deploymentOutputs(CLOUD_DEPLOYMENT)))fs.writeFileSync(path.join(root,name),contents);
+ else for(const [name,contents] of Object.entries(deploymentOutputs(CLOUD_DEPLOYMENT))){fs.mkdirSync(path.dirname(path.join(root,name)),{recursive:true});fs.writeFileSync(path.join(root,name),contents);}
 }

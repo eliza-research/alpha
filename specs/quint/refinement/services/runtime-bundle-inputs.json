@@ -1,15 +1,15 @@
 {
   "schema": 1,
   "classification": "observed-product-android-bundle-inputs",
-  "sourcePin": "ac18377c5a9e4eb7afeac1c62a026ad3be95733e",
+  "sourcePin": "489efc0b0e53ccbf9554f6017ac0d7b94f7056e8",
   "producer": {
     "script": "scripts/build-mobile-agent.mjs",
     "observer": "specs/quint/refinement/services/runtime-bundle-audit.mjs",
     "inputHashes": {
       "specs/quint/refinement/services/runtime-bundle-audit.mjs": "0527954e0c6a927698e6351b0150eb3bb660e573a7570330d38d80e6f8bd9f67",
       "specs/quint/refinement/services/runtime-bundle-graph.mjs": "0bd78236abb72ae29b2716ead130dcbb2a00455a326ecc2280fc6bf5988eadf5",
-      "upstream.lock.json": "8c7e801dfd6b2e32b364f614587e881c5e03190e89e528b5942dc350529009cf",
-      "scripts/upstream-mobile-build.mjs": "02dab9ebf26965e7d95e38cae7548c68c8c4f0fe20bd35f434c00559b30c50b9",
+      "upstream.lock.json": "aaabf67d511132391d8218c105fae3f6e6216ae28de4153e877ae8bb98eeb57f",
+      "scripts/upstream-mobile-build.mjs": "eda4c4d175eaf9065651879724008181106c15f96aa558e56d6c8df4c980b8a6",
       "scripts/local-agent-source.mjs": "bd5c0ae286c2802fed48f8e51150d4f2de75fb4c8563cfdcdd4d1347fb888c5f",
       "scripts/build-mobile-agent.mjs": "d0201c2bc3cb74d9ad0ba725deac43d08d3be4f2ba45ce50ffd2d1732fd6c0ae",
       "scripts/mobile-uuid-adapter.mjs": "821d33c77787d3069b3e18c1eeac05ab2b2d00f2691824663577acee0366884d",
@@ -18,18 +18,18 @@
       "scripts/core-state-patch.mjs": "9ff01918776f2f60336fb1e119092863095b9459e1df6ee23c1a708124626550",
       "scripts/core-state-preload.mjs": "c5368c9075aa8c7660bee01338185fbe673c9b8dd6889dd1ab01d195efa17c10",
       "scripts/combined-agent-source.mjs": "a2f4d279f3f98ff078f3aedd6b9dc2dc5c3396ecdc7fb7f09b0da7e0c085062e",
-      "scripts/upstream-core-sources.mjs": "b7893e78704b29df3abc9eb4e0da2dd632dcbbda7073c52e73df068cff0fd324"
+      "scripts/upstream-core-sources.mjs": "dcc5515db9d86e08a6cc3b4eda11b3426a887dcab326cdcebe16dbb565797ef1"
     },
     "coreState": {
       "version": 2,
-      "baseCommit": "ac18377c5a9e4eb7afeac1c62a026ad3be95733e",
-      "manifestSha256": "b7893e78704b29df3abc9eb4e0da2dd632dcbbda7073c52e73df068cff0fd324",
+      "baseCommit": "489efc0b0e53ccbf9554f6017ac0d7b94f7056e8",
+      "manifestSha256": "dcc5515db9d86e08a6cc3b4eda11b3426a887dcab326cdcebe16dbb565797ef1",
       "inputHashes": {
         "scripts/core-state-patch.mjs": "9ff01918776f2f60336fb1e119092863095b9459e1df6ee23c1a708124626550",
         "scripts/core-state-preload.mjs": "c5368c9075aa8c7660bee01338185fbe673c9b8dd6889dd1ab01d195efa17c10",
         "scripts/combined-agent-source.mjs": "a2f4d279f3f98ff078f3aedd6b9dc2dc5c3396ecdc7fb7f09b0da7e0c085062e",
         "scripts/build-policy-source.mjs": "3512c1e3a1c4d0c2c1dec2d3b99d12752edf2f90af9b35aba10ffb1cdffb09bb",
-        "scripts/upstream-core-sources.mjs": "b7893e78704b29df3abc9eb4e0da2dd632dcbbda7073c52e73df068cff0fd324"
+        "scripts/upstream-core-sources.mjs": "dcc5515db9d86e08a6cc3b4eda11b3426a887dcab326cdcebe16dbb565797ef1"
       },
       "patches": [],
       "files": {
@@ -149,21 +149,21 @@
       "version": "1.4.2",
       "revision": "744846f844374847c902b5e7fd59b4342a51ef99"
     },
-    "bundleSha256": "843f9245f866123942735c8274486053dc9090c8e12ff483f33fb8e03c6a7330",
+    "bundleSha256": "04f6437da27bd392d4045deb286ffd265df7c44fc470c082fb61bb0a60fa44ca",
     "sourceTreeVerifiedBeforeAndAfter": true,
     "inputHashesUnchanged": true,
-    "rawMetafileSha256": "2aa07134a4603b923a0c45369c3279e3aafe0d9750bada546a0a1404e362ca64",
-    "producerObservationSha256": "7a3e9ab2859c9906ac1b4e24599f3ac84c58f575ff787829d72ba0a0f82be768"
+    "rawMetafileSha256": "61a30e8f11b835ee86182ae14d1db41cf0f180b71e20c1e5fbda101cf5c8b15d",
+    "producerObservationSha256": "af0060654f21beebbe7d37e626d03251d37d70fbc90f3dd00067ed44e9922168"
   },
   "counts": {
-    "parsed": 9997,
-    "firstParty": 4347,
-    "emitted": 4238,
-    "tracked": 4098,
+    "parsed": 9999,
+    "firstParty": 4349,
+    "emitted": 4240,
+    "tracked": 4100,
     "generated": 249,
-    "trackedEmitted": 3990,
+    "trackedEmitted": 3992,
     "generatedEmitted": 248,
-    "firstPartyEdges": 14406,
+    "firstPartyEdges": 14413,
     "boundaryEdges": 2800
   },
   "generatedMappingCounts": {
@@ -1362,10 +1362,10 @@
       ]
     },
     "packages/agent/src/api/chat-routes.ts": {
-      "sha256": "2c2b071e7b5d0cb3be368b32ffbf4ad0de16b908b79e6035b5178ab0d52b1025",
-      "bytesInOutput": 79739,
+      "sha256": "12b0fbd9942a8cd3a0fa6a2757277caa6a471d21de05b1fd519463b5c3fe3a7e",
+      "bytesInOutput": 79492,
       "tracked": true,
-      "gitObject": "25333a2ab95564f69a714e40b05836ba96dd0a25",
+      "gitObject": "f426b3376090f8cdb69c7284a775e5b150a47937",
       "imports": [
         {
           "target": "crypto",
@@ -1494,6 +1494,11 @@
         },
         {
           "target": "packages/agent/src/api/server-helpers-config.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/agent/src/api/server-state.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -4878,17 +4883,23 @@
       ]
     },
     "packages/agent/src/api/server-state.ts": {
-      "sha256": "26285fb7e2bf2bf244292b573f06a08a0ee921eef8ad4de5dc7efdff4d028be5",
-      "bytesInOutput": 1501,
+      "sha256": "adf730b396a887af45b32994c0cd24c5749e34b8942b5778968be6b070cbad18",
+      "bytesInOutput": 2557,
       "tracked": true,
-      "gitObject": "98c86d89017a22cb0ba015b56f78614ee8386b64",
-      "imports": []
+      "gitObject": "9f3d96153ab7a8aa24691c73f2f93e11274484bb",
+      "imports": [
+        {
+          "target": "packages/core/src/index.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        }
+      ]
     },
     "packages/agent/src/api/server.ts": {
-      "sha256": "1c4f7228ba74ba9e0fb5c56883f0d0c3aeaab4bc65b96fb9e91bf3d468e2cef3",
-      "bytesInOutput": 93267,
+      "sha256": "b6b742645932e8a07033e1d588303ad26bd9e7362e4997e218bff79a910c7e7a",
+      "bytesInOutput": 93368,
       "tracked": true,
-      "gitObject": "41137454f2ef694c83008ed9aca0a53ab30c8ec8",
+      "gitObject": "8251bcb72b3835a397d88348aacbaa4f9e53bfc4",
       "imports": [
         {
           "target": "packages/agent/src/api/native-view-renderer.ts",
@@ -5608,10 +5619,10 @@
       ]
     },
     "packages/agent/src/api/tee-attestation-routes.ts": {
-      "sha256": "bd0e8850e3f95dd38fa127cc9aeb902a4473bcb7d1000e510d425e46ebf790f5",
+      "sha256": "21732c51e32caea3e75595e4eff4604062d35a60c3493822f64436229464269d",
       "bytesInOutput": 1689,
       "tracked": true,
-      "gitObject": "2fbb857cb8ee8704ce3da6790a7c7db018c11841",
+      "gitObject": "54d333e5254013e8ea4d80d0bdb1d1cc6074d5bb",
       "imports": [
         {
           "target": "crypto",
@@ -9191,11 +9202,29 @@
         }
       ]
     },
-    "packages/agent/src/runtime/eliza-plugin.ts": {
-      "sha256": "2d3621bc426894bbbf923a45b5f342faaa53d8de4cf3f6ccb61e17e5a2d76c8c",
-      "bytesInOutput": 6894,
+    "packages/agent/src/runtime/eliza-plugin-schema.ts": {
+      "sha256": "8e0f6ea1dc12a46b5cbb8ae2b1a89e19b2c0a8479e4765eb0a61e186fcfc7302",
+      "bytesInOutput": 210,
       "tracked": true,
-      "gitObject": "59ca4662265dec8ec402f119e9281b2c3f63dfe6",
+      "gitObject": "71fdf5ab0bb737b5cea1953bfab13b4702f0c4a3",
+      "imports": [
+        {
+          "target": "plugins/plugin-relationships/src/index.node.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/agent/src/runtime/retained-pendant-schema.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        }
+      ]
+    },
+    "packages/agent/src/runtime/eliza-plugin.ts": {
+      "sha256": "41283ce04cfd753adcd6de49107bfe9fe2fe46108380cb05cd717ce509ff4a16",
+      "bytesInOutput": 6867,
+      "tracked": true,
+      "gitObject": "a195f458023bacd9f5efea57ff963e81b993b3b1",
       "imports": [
         {
           "target": "packages/core/src/index.ts",
@@ -9448,6 +9477,11 @@
           "scope": "first-party"
         },
         {
+          "target": "packages/agent/src/runtime/eliza-plugin-schema.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
           "target": "packages/agent/src/runtime/error-escalation.ts",
           "kind": "import-statement",
           "scope": "first-party"
@@ -9459,11 +9493,6 @@
         },
         {
           "target": "packages/agent/src/runtime/memory-retention-service.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/agent/src/runtime/retained-pendant-schema.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -29986,10 +30015,10 @@
       ]
     },
     "packages/core/src/services/pii-scrub.ts": {
-      "sha256": "5ab7b1dbb8e60f3f6ad9619eabca8e875e06fcb030979b2d4f5541e42c9daa3f",
-      "bytesInOutput": 6232,
+      "sha256": "5668bc70c25e982bc48a4ee312a5b8fd4dceff72f4319290afb0b466259405ae",
+      "bytesInOutput": 6827,
       "tracked": true,
-      "gitObject": "f9893b3aec794b1171ec415d8f090b5d54d32aca",
+      "gitObject": "169d1243be4badcd0a0ca57087440577f7579019",
       "imports": [
         {
           "target": "packages/core/src/security/pii-context-pack.ts",
@@ -31099,10 +31128,10 @@
       ]
     },
     "packages/core/src/utils/batch-queue.ts": {
-      "sha256": "f4750ce683722ad45b5cb2a92061177b1050987c2efcb38874d9bf5266ce0685",
-      "bytesInOutput": 8633,
+      "sha256": "d383a03c6c082097fb425662ae8eec831784b630f93c1306610d7baf4c82ceb7",
+      "bytesInOutput": 8741,
       "tracked": true,
-      "gitObject": "904bd275b3341931b1aab983ebb717debb1b6d23",
+      "gitObject": "1de391804c6373b8989fb92d590175d44d8a617a",
       "imports": [
         {
           "target": "packages/core/src/logger.ts",
@@ -72716,10 +72745,10 @@
       ]
     },
     "plugins/plugin-assistant/src/features/secrets/services/plugin-activator.ts": {
-      "sha256": "aa2c26bb5cf66475061956868a755432d552986eaad59d02ec63bbc289049b9f",
-      "bytesInOutput": 13448,
+      "sha256": "a0b4f70051f8d43804492ea8098049a0e26c48fc9034e36b832a423cc1ebc12b",
+      "bytesInOutput": 13810,
       "tracked": true,
-      "gitObject": "796ce8d03b98b750b8be1ef33d3c7c6f79c113e7",
+      "gitObject": "7adf20cc8a42abcb66fe27cdf57718e97cdb3116",
       "imports": [
         {
           "target": "packages/core/src/index.ts",
@@ -73413,10 +73442,10 @@
       "imports": []
     },
     "plugins/plugin-assistant/src/features/trajectories/TrajectoriesService.ts": {
-      "sha256": "514c90b17acd28c451e0362b5c491aae1a159bbe761e15699a2456ba8eb4d7bc",
-      "bytesInOutput": 78439,
+      "sha256": "f9b629069e89d673b44f72d53ec34b2128fa0ae79785a5a117badab78f3f4fbc",
+      "bytesInOutput": 79080,
       "tracked": true,
-      "gitObject": "5cf0b0bf231aba5f1f792f368b87663800c79f60",
+      "gitObject": "4afb9fa88ff132e78f02c7926b05e8f21dcba96d",
       "imports": [
         {
           "target": "packages/core/src/index.ts",
@@ -115752,10 +115781,10 @@
       "imports": []
     },
     "plugins/plugin-scheduling/src/index.ts": {
-      "sha256": "d4dbbffb57c0bd3672a3b203b05d8ee97620f6dd28b7ab4b3118fbaedaba92ea",
-      "bytesInOutput": 8716,
+      "sha256": "036ba6f78a1844d7d8cadcaf66ca3823b9e42183725fd7c6c4558f23962330d8",
+      "bytesInOutput": 8472,
       "tracked": true,
-      "gitObject": "14e94358c61ffeba601e5e904b713b0cf70e52cd",
+      "gitObject": "ad0fa3a120207247549590b09576c005164a5807",
       "imports": [
         {
           "target": "plugins/plugin-scheduling/src/anchors/anchor-registry.ts",
@@ -115788,11 +115817,6 @@
           "scope": "first-party"
         },
         {
-          "target": "plugins/plugin-scheduling/src/scheduled-task/alpha-routines-pack.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
           "target": "plugins/plugin-scheduling/src/scheduled-task/channel-dispatcher-registry.ts",
           "kind": "import-statement",
           "scope": "first-party"
@@ -115809,6 +115833,11 @@
         },
         {
           "target": "plugins/plugin-scheduling/src/scheduled-task/consolidation-policy.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "plugins/plugin-scheduling/src/scheduled-task/daily-routines-pack.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -115930,10 +115959,10 @@
       ]
     },
     "plugins/plugin-scheduling/src/plugin.ts": {
-      "sha256": "f2b1475107c3b37fd612c9152d606a033f69a44c46d27837b048f4f25506b17d",
-      "bytesInOutput": 6979,
+      "sha256": "0c9e1ed1d5f4a84d9b1438e598491db71a74ddb48a2d8ae130c08e61a820d45f",
+      "bytesInOutput": 6111,
       "tracked": true,
-      "gitObject": "68e9a6898577fb1dc03411c08dcf41b705be4ae6",
+      "gitObject": "6cddaa990778f0e9d9da5e4eb9937c8630255b8a",
       "imports": [
         {
           "target": "packages/core/src/index.ts",
@@ -115942,11 +115971,6 @@
         },
         {
           "target": "plugins/plugin-scheduling/src/routes/plugin-routes.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "plugins/plugin-scheduling/src/scheduled-task/alpha-routines-pack.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -116033,19 +116057,6 @@
         }
       ]
     },
-    "plugins/plugin-scheduling/src/scheduled-task/alpha-routines-pack.ts": {
-      "sha256": "a1cc683dfe6f08af0df97d48e679bb9c0604f37b8eb9b58cd5b856fb20a969be",
-      "bytesInOutput": 2530,
-      "tracked": true,
-      "gitObject": "6703e1cd24914c023715e824c7c86249af46d1f0",
-      "imports": [
-        {
-          "target": "plugins/plugin-scheduling/src/scheduled-task/trigger-tz.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
     "plugins/plugin-scheduling/src/scheduled-task/anchor-occurrences.ts": {
       "sha256": "ac96bfaa1407d7e72abdb81b517faf984e1773857fa2041fdc737dac9cd9d0e1",
       "bytesInOutput": 3681,
@@ -116110,6 +116121,19 @@
       "imports": [
         {
           "target": "plugins/plugin-scheduling/src/scheduled-task/local-time.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        }
+      ]
+    },
+    "plugins/plugin-scheduling/src/scheduled-task/daily-routines-pack.ts": {
+      "sha256": "6b1a55360f7c0da5e57b8d88dc3f7a3e3bb70e3d1804a834725a97eb2d2896cb",
+      "bytesInOutput": 1977,
+      "tracked": true,
+      "gitObject": "0f67039593126f339f2f729e6d644d2001b2c4b7",
+      "imports": [
+        {
+          "target": "plugins/plugin-scheduling/src/scheduled-task/trigger-tz.ts",
           "kind": "import-statement",
           "scope": "first-party"
         }
@@ -116504,10 +116528,10 @@
       ]
     },
     "plugins/plugin-scheduling/src/scheduled-task/seed-registry.ts": {
-      "sha256": "0dea7e2f1d8596f8d613e87a386709656e5cca24ec4f5d295ea07ebf0267e026",
+      "sha256": "1bf1da19b55cc5366ea58816d1cf5bb457734c34b1c2a3794e83dccac7a7aa52",
       "bytesInOutput": 1681,
       "tracked": true,
-      "gitObject": "0d67d2dbc910982f0099384b265eccdbbd09ac27",
+      "gitObject": "063ff614fabb490dd91505b3576c9318bbf7308d",
       "imports": [
         {
           "target": "packages/core/src/index.ts",
@@ -116981,10 +117005,10 @@
       ]
     },
     "plugins/plugin-sql/src/index.ts": {
-      "sha256": "4ac7f8ebdd0a2b0888716a31ca936da8b1948f18fda25b909a272d1586f440f3",
-      "bytesInOutput": 10780,
+      "sha256": "34f4fb395f008d753642bad77215265e730c0320e1ae016f85c699d3917d090e",
+      "bytesInOutput": 10905,
       "tracked": true,
-      "gitObject": "bdf6dbff0cea7cc83d359eda077bd709e7501667",
+      "gitObject": "7dfe0b116855e592e0680eb2aa87f11b1b38271a",
       "imports": [
         {
           "target": "packages/core/src/index.ts",
@@ -117063,6 +117087,11 @@
         },
         {
           "target": "plugins/plugin-sql/src/pglite/errors.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "plugins/plugin-sql/src/pglite/migrated-snapshot.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -117438,10 +117467,10 @@
       ]
     },
     "plugins/plugin-sql/src/migrations.ts": {
-      "sha256": "0f66b1c976aec11cf5e93fda612a64341de8127dcc6173194a6ac3310e3afb97",
-      "bytesInOutput": 21649,
+      "sha256": "9a7c9c08066b3dd0844464d7dab915fb43222c7e5f0678bb1af17dcb13872ecc",
+      "bytesInOutput": 22018,
       "tracked": true,
-      "gitObject": "9b312f7ddec2d43edd71d15491e012ad07ca7fdc",
+      "gitObject": "7567f37b37a8cc0f73afab00aa71b68e615fdc2d",
       "imports": [
         {
           "target": "packages/core/src/index.ts",
@@ -117574,10 +117603,10 @@
       "imports": []
     },
     "plugins/plugin-sql/src/pglite/initdb-snapshot.ts": {
-      "sha256": "d439cfac8feb463c74b9cbffce697ad6e02db17dea2bac87cbb698cb88dad54a",
-      "bytesInOutput": 1199,
+      "sha256": "cfaf1aa89b097967f329d0e2ecce8583e4819a6d5fcee88e79b84b98db95cbbf",
+      "bytesInOutput": 1474,
       "tracked": true,
-      "gitObject": "05a734ea023554cb0468895f8e4661aee8a3a2e0",
+      "gitObject": "5bdb9124d3b24fed5b4ce440d06a3bf8ee7a5a9f",
       "imports": [
         {
           "target": "fs",
@@ -117671,6 +117700,29 @@
           "target": "node_modules/.bun/@electric-sql+pglite@0.4.6/node_modules/@electric-sql/pglite/dist/index.js",
           "kind": "import-statement",
           "scope": "bundled-dependency"
+        }
+      ]
+    },
+    "plugins/plugin-sql/src/pglite/migrated-snapshot.ts": {
+      "sha256": "a589acbef2a4ae595672ef1baa15135c3d5904533a729831cab7f946df34eab6",
+      "bytesInOutput": 855,
+      "tracked": true,
+      "gitObject": "7d8593b41eccb7f796aeadc61ac18431aecb0376",
+      "imports": [
+        {
+          "target": "plugins/plugin-sql/src/pglite/adapter.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "plugins/plugin-sql/src/pglite/manager.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "plugins/plugin-sql/src/pglite/initdb-snapshot.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
         }
       ]
     },

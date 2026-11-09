@@ -11,12 +11,23 @@ the earlier merged cleanup sources and the historical persona signatures needed
 to recognize existing default profiles; the original rename-only branch pin is
 not the final admitted source.
 
-The follow-up pin `ac18377c5a9e4eb7afeac1c62a026ad3be95733e`
-([elizaOS/eliza#39173](https://github.com/elizaOS/eliza/pull/39173)) completes
-the remaining callback and default-persona references. A SHA-256 fingerprint
-retains exact recognition of historical default biographies without retaining
-the former company text in source. This four-file update changes no native,
-model or dependency input and transfers no earlier qualification.
+The callback and persona follow-up
+([elizaOS/eliza#39173](https://github.com/elizaOS/eliza/pull/39173)) merged as
+`1f02663576bab24e7cace610247270aab927b7a0` from reviewed head
+`2b1fec8d91661d4380ddce02b5ec0c8073e9f101`. Review removed the overly broad
+default-biography matcher in the earlier `ac18377c` candidate. A SHA-256
+fingerprint recognizes the exact retired stock biography; caller-edited profiles
+remain caller-owned.
+
+The current pin `489efc0b0e53ccbf9554f6017ac0d7b94f7056e8`
+([elizaOS/eliza#39181](https://github.com/elizaOS/eliza/pull/39181)) includes
+that reviewed repair and the consumer configuration refactor. Alpha owns its OS
+descriptor and browser sign-in registration. Shared code selects explicit
+consumer configuration without an Alpha package or route switch. The merged
+develop source also changes live-capture admission and cancellation and adds the
+resident producer's migrated PGlite snapshot. The dependency lock and recorded
+engine/model bytes are unchanged; native, device and user qualification do not
+transfer to this application.
 
 Android treats the renamed package as a separate installation. It cannot replace
 an APK from the earlier namespace or inherit that package's private data, Android

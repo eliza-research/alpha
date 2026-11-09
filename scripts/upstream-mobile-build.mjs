@@ -1,13 +1,13 @@
 export default {
   "schema": 1,
-  "baseCommit": "ac18377c5a9e4eb7afeac1c62a026ad3be95733e",
+  "baseCommit": "489efc0b0e53ccbf9554f6017ac0d7b94f7056e8",
   "bun": {
     "version": "1.4.2",
     "revision": "744846f844374847c902b5e7fd59b4342a51ef99"
   },
   "builder": {
     "path": "packages/agent/scripts/build-mobile-bundle.ts",
-    "sha256": "f8ae2ca56eef598c8f2acffca82a6e4c8609d9d9c48b4ca8459884ff2cc4bbef"
+    "sha256": "e69f129507bdbff5a3536994473da06b19018bc0193f18cfca2d23fe022c38e8"
   },
   "package": {
     "name": "uuid",

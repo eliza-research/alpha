@@ -48,7 +48,7 @@ async function fixture(name, code) {
     };
   }
   const context = vm.createContext({
-    window, document, fixtureShell: owner,
+    window, document, HTMLElement: window.HTMLElement, fixtureShell: owner,
     connectionController: {
       getSnapshot: () => ({busy: false}),
       captureAppUpdateReconnect() {
@@ -199,18 +199,16 @@ async function fixture(name, code) {
 export async function checkMountedUpdateAdmission() {
   const sources = [fileURLToPath(import.meta.url), main, 'apps/app/src/prototype/settings-adapter.ts', 'vendor/eliza/' + shared, effective, projection,
     'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java',
-    'upstream.lock.json', 'scripts/prepare-client-features.mjs', 'scripts/pinned-upstream-source.mjs',
-    'patches/eliza/app-update-resume-client.patch', 'patches/eliza/app-update-resume-client-manifest.json'];
+    'upstream.lock.json', 'scripts/prepare-client-features.mjs', 'scripts/pinned-upstream-source.mjs'];
   captureSources([...sources, modelPath]);
   checkClientFeatures();
   const gate = read(effective);
   const stamp = JSON.parse(read(projection));
   const digest = createHash('sha256').update(gate).digest('hex');
   assert.equal(stamp.files[shared], digest);
-  assert.equal(stamp.appUpdateResumePatch.afterSha256, digest);
   const pinned = createHash('sha256').update(read('vendor/eliza/' + shared)).digest('hex');
   assert.equal(stamp.sourceFiles[shared], pinned);
-  assert.equal(stamp.appUpdateResumePatch.beforeSha256, pinned);
+  assert.equal(digest, pinned, 'the consumed update gate is the exact reviewed upstream source');
   const text = read(main);
   const settings = read('apps/app/src/prototype/settings-adapter.ts');
   const idleStart=settings.indexOf('export function automaticUpdateIdle(');

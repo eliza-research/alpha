@@ -310,11 +310,10 @@ export const CLIENT_FEATURE_PATHS = [
   // Framework-free resident Cloud binding controller (AP-04/P-22).
   'packages/auth/src/auth/cloud-resident-binding.ts',
 ];
-// The newer automatic-update behavior is not in the pin yet. Authenticate only
-// this reviewed delta; superseded client patches stay retired.
+// Product body-size policy stays downstream. Automatic update behavior is now
+// consumed directly from the reviewed upstream pin.
 export const CLIENT_FEATURE_PATCHES = [
   ['managedGoogleBodyLimitPatch', 'managed-google-body-limit-client', 'packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts'],
-  ['appUpdateResumePatch', 'app-update-resume-client', 'packages/ui/src/state/app-update-gate.ts'],
 ];
 // Copied client source imports Alpha's installed runtime dependencies, so each copied package's
 // declared ranges must hold for them. Gaps are allowed only with a reviewed reason; an exception
