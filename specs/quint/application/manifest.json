@@ -2923,6 +2923,35 @@
     ]
   },
   {
+    "path": "specs/quint/application/PreviousNotesSourceOpening.qnt",
+    "module": "PreviousNotesSourceOpening",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "retiredOpenCannotReportLaterSuccessTest",
+      "heldRetentionKeepsCurrentSourceTest",
+      "supersededRetentionRefusesOldSelectionTest",
+      "nativeDraftReadBeforeEditableTest",
+      "unreadableDraftKeepsSavedRowsReadOnlyTest",
+      "draftOnlyStorageRequiresReviewTest",
+      "ownerChangeDropsHeldFingerprintTest",
+      "unretainedEditRefusesCanonicalReturnTest"
+    ],
+    "invariants": ["NoRetiredSuccess", "LegacySelectionHasExactOwner", "EditableRowsHaveCurrentStore", "CanonicalReturnClearsLegacyView"],
+    "sources": ["apps/app/src/prototype/agent-adapter.ts", "apps/app/src/prototype/legacy-notes-access.ts"],
+    "stateMapping": {
+      "device/owner/mode/epoch/legacyOwner/canonical/refreshes": "Actual renderer source ownership and refresh call to the controlled canonical coordinator",
+      "last/task/retention/pending/finished/retired": "Selection calls and results, held retention/read ports, and observed aborts",
+      "status/failed/editedSaved/document/storeEpoch/rows/source/kept": "Actual visible saved rows and read admission, source identity and preserved draft projection"
+    },
+    "abstractions": [
+      "Actual renderer selection and read-only admission against closed store projections. Two owners, three selections and two retained-draft task identities.",
+      "The source binding, closed collection and draft results and source-scoped boolean are observed. Device storage, queued React commits, recording, presence probing, Trash, retention writes and canonical store behavior remain separate."
+    ],
+    "bounds": {"maxSamples": 1000, "maxSteps": 80, "maxVerifyDepth": 8}
+  },
+  {
     "path": "specs/quint/application/NotesTrashReadPublication.qnt",
     "module": "NotesTrashReadPublication",
     "init": "init",

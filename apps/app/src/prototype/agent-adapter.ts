@@ -614,7 +614,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       else {shell.notesOpenFailed=true;originalSet.call(shell,'notes',{list:[],storageStatus:'Previous notes need a recovery review. Nothing was moved or changed.'});}
       context(shell);
     }});
-    await shell.notesReady;return !shell.notesStorageFailed;
+    await shell.notesReady;return current()&&!shell.notesStorageFailed;
   }
   function context(shell: Shell) {
     syncPreviousNotesAvailability(shell);
