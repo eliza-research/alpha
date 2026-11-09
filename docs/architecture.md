@@ -146,7 +146,6 @@ Gmail attachments and PDF file creation remain available.
 | `android/sense` | Product identity wrappers for the upstream Sense listener; shared implementation and SystemUI policy live in `vendor/eliza/packages/app/platforms/android/sense` and `vendor/eliza/packages/os/android/sense` ([ADR 0001](adr/0001-privileged-listener.md)); never in the standalone or launcher APK |
 | `app.config.json` | Package ID, display name, version and orientation |
 | `apps/app/src/product/alpha-product-registration.ts` | Versioned product record of the shared mobile shell (`@elizaos/ui/mobile-shell`, schema `elizaos.mobile-product` v1): identity, theme and stylesheet aliases, icons, view order and labels, older view ids migrated once, and installed storage names (the launcher favorites record with its `alpha:` prefix and `alpha-apps` default policy, and the other names the app keeps reading). Home, the app grid, the view registry and navigation state (open view, Back stack, drawer and the assistant's pill, composer, sheet or full detent) render from the upstream shell with this record; runtime code such as agent navigation reads the React-free `@elizaos/ui/mobile-shell/core` entry |
-| `backend` | Development runtime composition, character and permitted model/actions; `native-google-agent-host.ts` and its imports (`managed-google-*`, `native-cloud-runtime`, `native-google-cloud-port`) are the production native Google host, bundled as `google-host.mjs` |
 | `vendor/eliza` | Pinned shared platform source; never modified by consumer builds (temporary exception: the pinned voice builder's untracked `.cache/elizavoice-android`, see [fused speech](fused-speech.md)) |
 | `scripts` | Consumer build orchestration and product acceptance scenarios |
 | `design` | Requirements and visual references, not executable instructions |
@@ -211,11 +210,10 @@ providers and stores rather than introducing competing implementations.
 
 `base/` is retired; the original app baseline remains recorded in
 [its provenance file](eliza-app-baseline-provenance.json). There is one product renderer
-in `apps/app`. The remaining `backend` files compose a development host from shared
-runtime packages; the product character, allowed views and proposal-only behavior
-stay here. `backend/native-google-agent-host.ts` is not development code: it is the
-production native Google host (see Build surfaces). Product build admission and acceptance campaigns also stay in `scripts`.
-Moving those directories intact would move product policy into the shared platform.
+in `apps/app`. Browser and Android launches use the same upstream Eliza resident runtime. The
+retired emulator development agent and its separate action composition have been
+removed. Alpha keeps its own character, Cloud deployment, settings slot and
+product acceptance campaigns.
 
 ## October 18 explicit Cloud QA profile
 
@@ -241,7 +239,7 @@ prompt stays listed, disabled, for an explicit Run now. A delay while the reside
 (Doze, a busy scheduler) still runs the occurrence late, since Doze is a separate constraint.
 Phone typed schedules and resident digests admit with the same 30-minute window, measured from
 the scheduled time alone. Alpha's admitted host module declares
-only its Cloud API base (`backend/native-cloud-runtime.ts`). Current-turn screen and
+only its Cloud API base (`apps/app/src/product/native-cloud-runtime.ts`). Current-turn screen and
 selection identifiers travel only in `metadata.clientDevice.context` under the shared
 `client-turn-observation` contract; the older instruction envelope remains for unnegotiated
 development peers and for reading history stored by older builds.
@@ -279,10 +277,15 @@ Playwright and explicit test-mocks builds, and off for `npm run build`,
 `npm run android:sync` and `npm run android:build`. No `ALPHA_*` switch or widened
 `ELIZA_` env prefix is used.
 
-The resident runtime carries the native Google host. `scripts/build-native-google-host.ts` bundles
-`backend/native-google-agent-host.ts` and its imports into `google-host.mjs`;
-`scripts/stage-local-agent-runtime.mjs` verifies and stages it with the resident runtime, and
-`AlphaLocalAgentPlugin` loads it through `ELIZA_NATIVE_GOOGLE_HOST_MODULE`.
+The resident Google host is shared Eliza source. The product entry
+`scripts/native-google-product-host.ts` binds its configured Cloud origin,
+character and installed Google consent settings. The host uses Eliza Cloud's
+owner-scoped Gmail and Calendar services, and browser development uses the same
+host with its own credential and consent ports. The pinned Alpha SDK consumes
+the shared source through the hash-bound `patches/eliza/managed-google-agent.patch`
+backport. `scripts/build-native-google-host.ts` bundles the product entry into
+`google-host.mjs`; Android stages and verifies the artifact before loading it
+through `ELIZA_NATIVE_GOOGLE_HOST_MODULE`.
 
 ## Runtime and permissions
 

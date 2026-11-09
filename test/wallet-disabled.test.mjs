@@ -69,11 +69,10 @@ test('neither APK distribution declares a native Wallet, payment or NFC adapter'
 });
 
 test('the resident agent profile used by Alpha loads no Wallet actions in either distribution',async()=>{
- // Product view launch policy and development proposals name no Wallet view.
+ // Product view launch policy names no Wallet view.
  const views=JSON.parse(nativeViewDeclarationsJson);
  assert.ok(Array.isArray(views)&&views.length>0);
  for(const view of views)assert.doesNotMatch(`${view.id} ${view.path} ${view.fallbackFor}`,/wallet|payment/i);
- assert.doesNotMatch(read('apps/app/src/runtime/development-view-contract.ts').split('export const DEVELOPMENT_PROPOSAL_VIEWS')[1],/'wallet'/);
  // The pinned upstream resident restricts every Android runtime (stock APK and the AOSP image
  // variant) to these lists, so @elizaos/plugin-wallet and its transfer/swap actions never load.
  const file=join(root,'vendor/eliza/packages/agent/src/runtime/core-plugins.ts');

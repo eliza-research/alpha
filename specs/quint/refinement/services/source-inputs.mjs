@@ -23,5 +23,23 @@ export function serviceInputs(entries) {
     }
   }
   for (const entry of ['specs/quint/refinement/services/source-inputs.mjs', 'package-lock.json', 'upstream.lock.json', staged + '.source.json', 'scripts/prepare-client-features.mjs', 'scripts/upstream-native-source.mjs']) found.add(entry);
+  const preparer = 'scripts/managed-google-client-backport.mjs';
+  found.add(preparer);
+  const receipt = provenance.managedGooglePatch;
+  if (receipt) {
+    const manifest = 'patches/eliza/managed-google-agent-manifest.json';
+    if (digest(manifest) !== receipt.manifestSha256 || digest(preparer) !== receipt.preparerSha256) {
+      throw Error('Stale managed Google client backport provenance');
+    }
+    found.add(manifest);
+    for (const patch of receipt.patches) {
+      const file = 'patches/eliza/' + patch.file;
+      if (digest(file) !== patch.sha256) throw Error(`Changed client patch ${file}`);
+      found.add(file);
+    }
+  }
+  for (const [key, value] of Object.entries(provenance)) {
+    if (value?.manifestSha256 && key !== 'managedGooglePatch') throw Error(`Unbound client patch provenance ${key}`);
+  }
   return [...found].sort();
 }

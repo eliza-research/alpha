@@ -51,8 +51,8 @@ test("the audit catches a log call that names the key variable, but not literal 
   fs.mkdirSync(path.join(dir, "scripts"));
   for (const reader of KEY_READERS) fs.writeFileSync(path.join(dir, reader.file), "// cerebras-key\nif (stat.mode & 0o077) throw 1; if(st.mode&0o077)x; st_mode & 0o077\nconsole.log('the key is never printed')\n");
   assert.deepEqual(auditSources(dir).findings, []);
-  fs.writeFileSync(path.join(dir, "scripts/start-local-agent.mjs"), "// cerebras-key\nif (stat.mode & 0o077) throw 1;\nconst key = 1; console.log(`using ${key}`)\n");
-  assert.deepEqual(auditSources(dir).findings, ["scripts/start-local-agent.mjs:3 logs key, which holds the key"]);
+  fs.writeFileSync(path.join(dir, "scripts/start-combined-agent.mjs"), "// cerebras-key\nif (stat.mode&0o077) throw 1;\nconst key = 1; console.log(`using ${key}`)\n");
+  assert.deepEqual(auditSources(dir).findings, ["scripts/start-combined-agent.mjs:3 logs key, which holds the key"]);
   fs.writeFileSync(path.join(dir, "scripts/new-launcher.mjs"), "read('.config/alphaphone/cerebras-key')");
   assert.ok(auditSources(dir).findings.some(line => /new-launcher\.mjs reads the key file but is not audited/.test(line)));
 });

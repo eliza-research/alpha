@@ -4,8 +4,9 @@ import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {registerHooks} from 'node:module';
 import {pathToFileURL} from 'node:url';
-import {writeCoreStateFixture} from '../../../../test/fixtures/core-state-root.mjs';
+import {policySource, writeCoreStateFixture} from '../../../../test/fixtures/core-state-root.mjs';
 import {workerHash, verifyWorkerArtifact} from '../../../../scripts/workflow-worker-artifact.mjs';
+import {parseBuildPolicy} from '../../../../scripts/build-policy-source.mjs';
 import {CORE_STATE_MANIFEST, PLUGIN_CONNECTOR_TARGET} from '../../../../scripts/core-state-patch.mjs';
 import {controlName, digest, eventsName, fixtureModule, fixtureSource, productInput}
   from '../../../../test/fixtures/native-google-host-builder-port.mjs';
@@ -35,7 +36,8 @@ const noAttempt = {projection: false, version: false, compile: false, moduleWrit
 const productFiles = [
   'scripts/build-native-google-host.ts', 'scripts/local-agent-source.mjs', 'scripts/native-google-host-artifact.mjs',
   'scripts/prepare-client-features.mjs', 'package.json', 'tsconfig.json',
-  'vendor/eliza/tsconfig.json',
+  'vendor/eliza/tsconfig.json', 'scripts/managed-google-client-backport.mjs',
+  'patches/eliza/managed-google-agent-manifest.json', 'patches/eliza/managed-google-agent.patch',
 ];
 const workerFiles = ['node_modules/smthrs/package.json', 'node_modules/zod/package.json',
   'node_modules/effect/package.json', 'node_modules/@smthrs/engine/package.json', 'dependencies.json', 'lib/worker.js'];
@@ -65,7 +67,8 @@ function setup(number, simpleCore = false) {
   git('commit', '-q', '-m', 'synthetic SDK');
   const pin = git('rev-parse', 'HEAD');
   const coreManifest = path.join(root, CORE_STATE_MANIFEST);
-  json(coreManifest, {...JSON.parse(fs.readFileSync(coreManifest)), baseCommit: pin});
+  const policy = parseBuildPolicy(fs.readFileSync(coreManifest));
+  write(coreManifest, policySource({...policy, baseCommit: pin}));
   json(path.join(root, 'upstream.lock.json'), {commit: pin});
   json(path.join(sdk, '.alpha-runtime-source.json'), {base: pin, patches: []});
   write(source, fixtureSource(1));
@@ -109,7 +112,7 @@ function setup(number, simpleCore = false) {
     for (const row of host?.coreState.transforms ?? []) {
       const name = path.relative(root, path.join(sdk, row.path));
       assert.equal(host.inputs[name], row.sourceSha256, 'Public receipt binds the pinned source consumed by the compiler');
-      assert.notEqual(row.sourceSha256, row.outputSha256);
+      assert.equal(row.sourceSha256, row.outputSha256, 'Compiler consumes exact reviewed core bytes');
     }
     const module = fs.existsSync(modulePath) ? classify(moduleHashes, digest(fs.readFileSync(modulePath))) : 0;
     for (const [name, hash] of Object.entries(generic.files)) {
@@ -218,25 +221,27 @@ function setup(number, simpleCore = false) {
 
 function bunCompatibility(bun) {
   const {root, sdk, write} = setup('bun', true);
-  const inputFiles = {
-    'backend/typed.ts': 'export const value: number = 1;',
-    'backend/module.mts': 'export const value: number = 2;',
-    'backend/common.cts': 'export const value: number = 3;',
-    'backend/ordinary.js': 'export const value = 4;',
-    'backend/module.mjs': 'export const value = 5;',
-    'backend/common.cjs': 'module.exports = {value: 6};',
-    'backend/data.json': '{"value":7}',
-    'backend/component.tsx': 'export const value = <span />.value;',
-    'backend/component.jsx': 'export const value = <span />.value;',
-    'backend/text.txt': 'synthetic fixture text',
+  const fixtureModules = {
+    'typed.ts': 'export const value: number = 1;',
+    'module.mts': 'export const value: number = 2;',
+    'common.cts': 'export const value: number = 3;',
+    'ordinary.js': 'export const value = 4;',
+    'module.mjs': 'export const value = 5;',
+    'common.cjs': 'module.exports = {value: 6};',
+    'data.json': '{"value":7}',
+    'component.tsx': 'export const value = <span />.value;',
+    'component.jsx': 'export const value = <span />.value;',
+    'text.txt': 'synthetic fixture text',
   };
   // Use inert automatic-JSX substitutes from a closed package in this scratch tree.
   const jsxRoot = path.join(root, 'node_modules', 'fixture-jsx');
   const jsxPackage = path.join(jsxRoot, 'package.json'), jsxRuntime = path.join(jsxRoot, 'runtime.js');
   write(jsxPackage, '{"name":"fixture-jsx","exports":{"./jsx-runtime":"./runtime.js","./jsx-dev-runtime":"./runtime.js"}}');
   write(jsxRuntime, 'export const jsx = () => ({value: 8}); export const jsxDEV = jsx;');
-  for (const name of ['backend/component.tsx', 'backend/component.jsx'])
-    inputFiles[name] = '/** @jsxImportSource fixture-jsx */\n' + inputFiles[name];
+  for (const name of ['component.tsx', 'component.jsx'])
+    fixtureModules[name] = '/** @jsxImportSource fixture-jsx */\n' + fixtureModules[name];
+  const inputFiles = Object.fromEntries(Object.entries(fixtureModules)
+    .map(([name, bytes]) => [path.join(path.dirname(productInput), name), bytes]));
   for (const [name, bytes] of Object.entries(inputFiles)) write(path.join(root, name), bytes);
   const coreName = path.relative(root, path.join(sdk, PLUGIN_CONNECTOR_TARGET));
   const entry = [

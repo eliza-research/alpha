@@ -8,7 +8,7 @@
  *
  * `status` reports whether the key file exists and is a private regular file, using lstat only: no
  * open, no read, so the value is never in this process. Default path ~/.config/alphaphone/cerebras-key
- * (or ALPHA_CEREBRAS_KEY_FILE, the override scripts/start-local-agent.mjs honours). Ready means: a
+ * (or ALPHA_CEREBRAS_KEY_FILE, the override scripts/start-local-remote.mjs honours). Ready means: a
  * regular file (not a symbolic link), owned by this user, mode exactly 0600, not empty, in a
  * directory that is not group- or world-writable. Exit 0 when ready, 1 otherwise.
  *
@@ -53,7 +53,6 @@ export function keyFileStatus(file) {
 
 /** Each script that reads the key, the variable that holds it, and how it refuses a shared file. */
 export const KEY_READERS = Object.freeze([
-  { file: "scripts/start-local-agent.mjs", holds: ["key"], refuses: /mode & 0o077/ },
   { file: "scripts/android-resident-instrumentation.mjs", holds: ["fixture", "apiKey"], refuses: /mode & 0o077/ },
   { file: "scripts/start-combined-agent.mjs", holds: ["key"], refuses: /mode&0o077/ },
   { file: "scripts/start-local-remote.mjs", holds: ["providerKey", "settings"], refuses: /mode & 0o077/ },

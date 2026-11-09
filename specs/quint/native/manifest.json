@@ -12,7 +12,7 @@
         "apps/app/src/runtime/local-agent-native-stream.ts",
         "apps/app/src/runtime/local-agent-storage.ts",
         "apps/app/src/runtime/resident-recovery.ts",
-        "backend/native-cloud-runtime.ts",
+        "apps/app/src/product/native-cloud-runtime.ts",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/LocalAgentProviderAdmission.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentCredentialShutdownRetry.java",

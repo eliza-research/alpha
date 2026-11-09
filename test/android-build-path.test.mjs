@@ -114,9 +114,9 @@ test('preflight refuses a staged native Google host older than its product sourc
       if (value === undefined) delete process.env[name]; else process.env[name] = value;
     }
   });
-  f.write('backend/managed-google-route-policy.ts', 'export const policy = 1;\n');
+  f.write('.eliza/client-features/packages/app/src/runtime/managed-google-agent/managed-google-route-policy.ts', 'export const policy = 1;\n');
   writeCoreStateFixture(f.root, f.source, f.commit);
-  const manifest = JSON.stringify({version: 1, files: {'google-host.mjs': hash('host-1')}, nativeGoogleHost: {version: 1, module: 'google-host.mjs', bunVersion: '1.4.2', inputs: {'backend/managed-google-route-policy.ts': hash('export const policy = 1;\n')}, coreState: coreStateBuildRecord(f.root, [], [])}});
+  const manifest = JSON.stringify({version: 1, files: {'google-host.mjs': hash('host-1')}, nativeGoogleHost: {version: 1, module: 'google-host.mjs', bunVersion: '1.4.2', inputs: {'.eliza/client-features/packages/app/src/runtime/managed-google-agent/managed-google-route-policy.ts': hash('export const policy = 1;\n')}, coreState: coreStateBuildRecord(f.root, [], [])}});
   for (const directory of [artifact, staged]) {
     f.write(`${directory}/manifest.json`, manifest);
     f.write(`${directory}/google-host.mjs`, 'host-1');
@@ -124,7 +124,7 @@ test('preflight refuses a staged native Google host older than its product sourc
   const options = {embeddingHost: () => ({}), googleHost: root => verifyNativeGoogleHost(root)};
   assert.deepEqual(preparedRuntimeProblems(f.root, f.source, options), []);
   // An edited input without restaging: this used to pass every gate and ship the old host.
-  f.write('backend/managed-google-route-policy.ts', 'export const policy = 2;\n');
+  f.write('.eliza/client-features/packages/app/src/runtime/managed-google-agent/managed-google-route-policy.ts', 'export const policy = 2;\n');
   let problems = preparedRuntimeProblems(f.root, f.source, options);
   assert.equal(problems.length, 1);
   assert.match(problems[0], /staged native Google host is not current \(Native Google host source changed; build a fresh host artifact; Gradle :app:verifyNativeGoogleHost/);
@@ -133,7 +133,7 @@ test('preflight refuses a staged native Google host older than its product sourc
   assert.deepEqual(preparedRuntimeProblems(f.root, f.source, {...options, allowUnpackagedRuntime: true}), []);
   assert.deepEqual(preparedRuntimeProblems(f.root, f.source, {...options, testMocks: true}), []);
   // A rebuilt artifact that was never staged.
-  f.write('backend/managed-google-route-policy.ts', 'export const policy = 1;\n');
+  f.write('.eliza/client-features/packages/app/src/runtime/managed-google-agent/managed-google-route-policy.ts', 'export const policy = 1;\n');
   f.write(`${staged}/google-host.mjs`, 'host-0');
   assert.match(preparedRuntimeProblems(f.root, f.source, options)[0], /Staged native Google host differs from the built host artifact/);
 });

@@ -10,7 +10,7 @@ async function direct({failure,hold=false}={}) {
   f.box.React={createElement:()=>null};f.box.VoiceActivity=()=>null;
   const snapshot=f.box.connectionController.getSnapshot;
   f.box.connectionController.getSnapshot=()=>({...snapshot(),residentInference:'direct',providerStatus:{voiceConfigured:true}});
-  // The generic DevelopmentAgent is absent in a flag-off dev:cloud preview.
+  // Capture remains available through AlphaVoiceCloud in a flag-off dev:cloud preview.
   // The real adapter runs; only its realtime client boundary is substituted.
   let stopCalls=0,release;
   const waiting=hold?new Promise(resolve=>{release=resolve;}):Promise.resolve();
@@ -20,7 +20,7 @@ async function direct({failure,hold=false}={}) {
     recheck(){},resume(){return false;},microphoneMuted:false,
     setMicrophoneMuted(){},needsPlaybackUnlock:false,
   });
-  f.driver.cancelRecording=async()=>{f.recordingCancels.push(null);throw Error('DevelopmentAgent is not implemented on web');};
+  f.driver.cancelRecording=async()=>{f.recordingCancels.push(null);throw Error('Recording cancellation failed');};
   await f.shell.startVoice();
   assert.equal(f.renderChat()?.state,'listening');
   f.recordingCancels.length=0;

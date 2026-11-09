@@ -1,8 +1,7 @@
 import {mapsTilePath} from '../apps/app/src/runtime/managed-service-routes.ts';
 import {productionCloud, stagingCloud, cloudStorageNamespace} from '../apps/app/src/runtime/cloud-deployment.generated.ts';
 import {createCloudResidentHost,type ProviderSelection,type ProviderKeyEdit,type ProviderKeyRequest} from './cloud-resident-host.mjs';
-import {startManagedGoogleAgentHost} from '../backend/native-google-agent-host.ts';
-import {managedGoogleRequest,boundedServiceJson,object} from '../backend/managed-google-route-policy.ts';
+import {startManagedGoogleAgentHost,managedGoogleRequest,boundedServiceJson as readServiceJson,object as requireObject} from '../.eliza/client-features/packages/app/src/runtime/managed-google-agent/index.ts';
 import {CLOUD_EMAIL_CODE,emailCodeExpiresAt,emailCodeResendAt,emailCodeSendBody,emailCodeVerifyBody} from './cloud-email-code.ts';
 import {parseCloudServiceInfo} from '../apps/app/src/runtime/cloud-service-info.ts';
 import {readCloudVoiceLimit,type CloudVoiceLimitFacts} from '../apps/app/src/runtime/cloud-voice-limit.ts';
@@ -12,6 +11,10 @@ import path from 'node:path';
 import {homedir} from 'node:os';
 import type {IncomingMessage,ServerResponse} from 'node:http';
 import type {Plugin} from 'vite';
+
+// This development transport narrows JSON separately for each operation.
+const object = (value: unknown) => requireObject(value) as Record<string, any>;
+const boundedServiceJson = (response: Response): Promise<any> => readServiceJson(response);
 
 export const BROWSER_CLOUD_BRIDGE_PATH='/__alpha-browser-cloud';
 const GOOGLE_BROWSER_START='/alphaphone/auth/browser-start';
@@ -469,7 +472,7 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
   const read=async(input:Parameters<typeof agentRead>[0])=>{await current();const result=await agentRead(input);await current();return result;};
   const calendar=async(input:Parameters<typeof agentCalendarOperation>[0])=>{if(!new URL(input.url).pathname.startsWith('/api/v1/eliza/google/calendar/sync-v1/'))return read(input);await current();if(!calendarAllowed(binding,generation))throw refusal(403,'calendar-owner-access-disabled');const result=await agentCalendarOperation(input);await current();if(!calendarAllowed(binding,generation))throw refusal(409,'calendar-owner-access-changed');return result;};
   const port={agentCredential:current,agentRead:read,agentGmailOperation:read,agentCalendarOperation:calendar};
-  await current();const host=await startManagedGoogleAgentHost({port,apiToken,environment:agentEnvironment,access:()=>({gmailChanges:false,calendarEdits:calendarAllowed(binding,generation)})});
+  await current();const host=await startManagedGoogleAgentHost({port,apiToken,apiOrigin:authorities[agentEnvironment],calendarReadTiming:process.env.ALPHA_CALENDAR_READ_TIMING==='1',access:()=>({gmailChanges:false,calendarEdits:calendarAllowed(binding,generation)})});
   return {port:host.port,close:()=>{retired=true;if(generation===calendarGeneration)resetCalendarAccess();return host.close();}};
  }
  return Object.assign(handler,{

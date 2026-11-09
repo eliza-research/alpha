@@ -145,7 +145,7 @@ Use the normal resident build pipeline when native or runtime changes need devic
 npm run android:build:local
 ```
 
-Iterate on UI at `http://127.0.0.1:5199/` with `bun run dev --port 5199`. This does not need a connected phone. Use an owned emulator for repeatable Android scenarios and Seeker for native providers, service lifecycle and actual screen-off delivery. Browser evidence does not establish these device behaviors.
+Iterate on UI at `http://127.0.0.1:5199/` with `bun run dev --port 5199`. This does not need a connected phone. Use the packaged resident on an owned emulator for repeatable Android scenarios and Seeker for native providers, service lifecycle and actual screen-off delivery. Browser evidence does not establish these device behaviors.
 
 The staging command builds the Android mobile agent bundle, runs upstream's host-Bun module initialization check, and stages pinned ARM64 and x86_64 Bun/musl/runtime artifacts. Executables are packaged as extracted JNI libraries for an ordinary APK; it does not require root, writable-directory execution or disabling SELinux. The upstream staging step includes its small embedding artifact, not an offline text-generation model. Generated assets and binaries are ignored by Git and reproducible from the checked-in scripts and manifests.
 

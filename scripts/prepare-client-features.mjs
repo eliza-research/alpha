@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { upstreamNativeSource } from './upstream-native-source.mjs';
+import { clientManagedGooglePatch } from './managed-google-client-backport.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -170,6 +171,7 @@ export const CLIENT_FEATURE_PATHS = [
   'plugins/plugin-calendar/src/index.ts',
   'plugins/plugin-calendar/src/internal/time.ts',
   'plugins/plugin-calendar/src/service/managed-calendar-host.ts',
+  'plugins/plugin-assistant/src/utils/html-entities.ts',
   'plugins/plugin-notes/src/capabilities.ts',
   'plugins/plugin-notes/src/client/notes-api.ts',
   'plugins/plugin-notes/src/note-authored.ts',
@@ -381,6 +383,8 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
     log?.(`Client feature dependency exception: ${exception.package} ${exception.dependency} ${exception.range}, installed ${exception.installed}: ${exception.reason}`);
   const source = new Map(CLIENT_FEATURE_PATHS.flatMap(prefix => [...upstream.read(prefix)]));
   const sourceFiles = Object.fromEntries([...source].map(([name, file]) => [name, file.sha256]));
+  const {files: managedGoogleFiles, receipt: managedGooglePatch} = clientManagedGooglePatch(root, upstream);
+  for (const [name, file] of managedGoogleFiles) source.set(name, file);
   if(projectVoice){
   // Upstream publishes every renderer type as a leaf entry (@elizaos/core/schema-types,
   // @elizaos/ui/api/transport, plugin-calendar auto-join-types); copied files stay byte-exact.
@@ -442,7 +446,10 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
   project('alpha-voice-core-protocol.ts','export {ElizaError} from "./packages/core/src/errors";\nexport {redactTrailingArgs} from "./packages/core/src/security/log-redaction";\nexport {parseViewInteractionClientId, AGENT_SURFACE_CAPABILITY_IDS} from "./packages/core/src/views/view-interact-protocol";\nexport {findViewActionHandoff, type ViewActionHandoff} from "./packages/core/src/views/view-action-handoff";\nexport type {PermissionState} from "./packages/core/src/types/permissions";\n');
   }
   const files = Object.fromEntries([...source].map(([name, file]) => [name, file.sha256]));
-  const provenance = { baseCommit: upstream.pin, sourceFiles, projectionVersion:projectVoice?13:0, files };
+  const provenance = {
+    baseCommit: upstream.pin, sourceFiles, projectionVersion:projectVoice?13:0, files,
+    ...(managedGooglePatch ? {managedGooglePatch} : {}),
+  };
   const parent = path.join(root, '.eliza'), destination = path.join(parent, 'client-features');
   regularPath(parent, true);
   const stamp = path.join(destination, '.source.json');
@@ -460,6 +467,7 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
         const actual = inventory(destination); delete actual['.source.json'];
         return previous.baseCommit === upstream.pin && previous.projectionVersion === provenance.projectionVersion &&
           Object.keys(previous).length === Object.keys(provenance).length &&
+          JSON.stringify(previous.managedGooglePatch ?? null) === JSON.stringify(managedGooglePatch) &&
           matches(previous.sourceFiles || {}, sourceFiles) && matches(previous.files || {}, files) && matches(actual, files);
       } catch (error) { if (error.code !== 'ENOENT' || attempt >= 4) throw error; }
     }

@@ -93,26 +93,10 @@ role assignment or OTA was observed.
 
 ### 3. Emulator development host
 
-- **Default:** kept as a developer surface. It runs only with `ELIZA_DEV_ALLOW_TEST_MOCKS=1`, uses
-  canonical action names and backs `agent:dev` and `agent:diagnostic`.
-- **Footprint:** `scripts/dev-agent.mjs` ("Loopback-only emulator development chat"),
-  `scripts/start-local-agent.mjs`, `scripts/configure-dev-agent.mjs` (`agent:configure-emulator`),
-  `scripts/test-dev-agent.mjs`, `backend/runtime.ts`, `backend/proposal-action.ts`,
-  `backend/loader.ts`, `backend/test-runtime.ts`, `backend/test-actions.mjs`,
-  `apps/app/src/runtime/development-transport.ts`, `development-view-contract.ts`,
-  `android/app/src/testMocks/java/ai/elizaresearch/alphaphone/DevelopmentAgentPlugin.java` (loaded
-  by reflection from `MainActivity.java` line 285), `test/development-scope-flow.test.mjs`,
-  `test/pinned-runtime-admission.test.mjs`, and the package.json scripts `agent:dev`,
-  `agent:diagnostic` and `agent:configure-emulator`.
-- **Options:**
-  - A. Keep it as a developer surface. The audit's
-    (`docs/unification-audit-2026-10-27.md` section 2) "exercise the same resident/device action
-    service with a non-effecting executor" stays a follow-up.
-  - B. Delete it. Remove the files above and the three scripts, then update `docs/agent-integration.md`,
-    `docs/local-agent-development.md`, `docs/research-report.md` and
-    `docs/remote-device-actions-plan.md`. Emulator chat then uses only the resident agent.
-- **Check before B:** `npm run audit:bundle` must still pass. The production bundle excludes these
-  files today. Live-provider development evidence must not be replaced by mocks (audit section 2).
+The owner retired the separate emulator host, its diagnostic commands and its
+development-only action transport. Emulator development now uses the upstream
+resident agent. Flag-gated fixtures remain available for synthetic checks, and live
+provider checks still require separate evidence.
 
 ### 4. Default role holders on the AOSP image (dialer, SMS)
 
@@ -161,9 +145,6 @@ role assignment or OTA was observed.
   for [typed scheduled workflows and morning digests | also generic scheduled workflows], as one
   new reviewed run behind the two-step confirmation. It is never offered for an occurrence skipped
   because an earlier run was still active.
-- **P-__ (dev host)** — #680 item 3 (owner, 2026-__-__): the emulator development host
-  (`scripts/dev-agent.mjs`, `agent:dev`, `agent:diagnostic`) [stays a test-mocks-only developer
-  surface | is deleted].
 - **P-__ (default roles)** — #680 item 4 (owner, 2026-__-__): production Alpha images [do not
   preassign | preassign Alpha as] the default dialer and SMS app. HOME, assistant and Autofill
   stay preassigned as today.
@@ -184,8 +165,6 @@ role assignment or OTA was observed.
   `workflow-missed-run-now.spec.ts` flips its `generic missed` case to expect the action.
 - **2C (Alpha):** "Offer Run now only for missed digests". Remove the typed receipt action and its
   spec cases.
-- **3B (Alpha):** "Retire the emulator development host". Delete the files listed in item 3 and the
-  three package scripts, then update the docs. Run `npm run verify` and `audit:bundle`.
 - **4B (upstream, then Alpha):** "Opt-in dialer and SMS defaults in launcher provisioning".
   Upstream adds `roles: {dialer, sms}` options to `launcher-provisioning.mjs` and validate checks.
   Alpha passes them from `stage-aosp.mjs --production`, and either enables the role components on

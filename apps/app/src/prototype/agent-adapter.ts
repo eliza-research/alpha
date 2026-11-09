@@ -61,13 +61,12 @@ import { secureConnectionStore } from '../runtime/native-connection';
 import {NotesCommitUncertain,isStorageFull} from '../runtime/notes-store';
 import {isNotesOperation,validateNotesOperation,notesTarget} from '../runtime/notes-contract';
 import {isCalendarOperation,validateCalendarResult} from '../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/calendar-contract.ts';
-import { isMvpView } from "./mvp-features";
 import { alphaViewKey, alphaViewPaths } from "../product/alpha-product";
 import { workflowSha, validateWorkflowResult } from '../runtime/workflow-device-contract';
 import { WorkflowReminderOverflow, workflowReminderRows } from '../runtime/workflow-reminder-read';
 import { getMapsSelectedObject, clearMapsSelection } from '../maps/agent-context';
 import { alphaClient, AlphaClientError, type AlphaView } from '../runtime/alpha-client';
-import { testMocksEnabled, devSurfacesEnabled, privateLocalPreviewEnabled } from '../build-flags';
+import { privateLocalPreviewEnabled } from '../build-flags';
 import { DailyApps } from '../daily';
 import { isAndroid } from '../native';
 import { registerPlugin } from '../platform-plugins';
@@ -823,37 +822,8 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         if (after.session) return this.connectAgent();
         throw Object.assign(new Error(after.kind === 'recovering' ? RESIDENT_RECOVERING_NOTICE : RESIDENT_STARTING_NOTICE), { notDispatched: true });
       }
-      // An explicit offline choice never falls through to an old development
-      // credential that may still be installed on a test device. Without a
-      // saved selection, product builds open the chooser; only test-mocks builds
-      // (web development server, or a native development build) may try the
-      // emulator development transport.
-      const preference = localStorage.getItem('alpha.connection.selection.v1');
-      if (!testMocksEnabled || preference || !(Capacitor.isNativePlatform()
-        ? await DailyApps.surfaceInfo().then(info => info.developmentBuild === true, () => false)
-        : devSurfacesEnabled)) {
-        connectionController.open();
-        throw new Error('Choose an agent connection to send a message.');
-      }
-      if (testMocksEnabled) await this.connectDevelopmentTransport();
-    };
-    // Test-mocks builds only; flag-off bundles drop this and its lazy chunk.
-    if (testMocksEnabled) this.connectDevelopmentTransport = async () => {
-      const { createDevelopmentTransport } = await import('../runtime/development-transport');
-      const transport = await createDevelopmentTransport(async operation => {
-        if (operation.type === 'open_view') {
-        if (!['home','reminders','notifications'].includes(operation.view) && !isMvpView(operation.view)) return {status:'failed',summary:'This app is not available on this phone yet.'};
-          const target = operation.view;
-          if (target === 'home') this.goHome();
-          else if (target === 'notifications') this.setState({ shade: true });
-          else if (views[target]) this.openView(target);
-          else return { status: 'failed', summary: 'That screen is not available.' };
-          return { status: 'succeeded', summary: `Opened ${target}.` };
-        }
-        return { status:'failed', summary:'Development previews cannot write records.' };
-      });
-      if (this.live) { const send=transport.send.bind(transport);transport.send=input=>trackDispatch(this,()=>send(input));alphaClient.attachVerifiedTransport(transport); }
-      else transport.close?.();
+      connectionController.open();
+      throw new Error('Choose an agent connection to send a message.');
     };
     connectionController.setDeviceRecovery(async(operation,operationId,bindingHash,signal)=>{
       signal.throwIfAborted();

@@ -95,8 +95,7 @@
         "apps/app/src/runtime/subscription-entitlement.ts",
         "apps/app/src/runtime/managed-service-routes.ts",
         "apps/app/src/runtime/cloud-environment-selection.ts",
-        "backend/managed-google-route-policy.ts",
-        "backend/managed-google-agent-broker.ts"
+        "patches/eliza/managed-google-agent.patch"
       ],
       "stateMapping": {
         "plan/validFor/refresh/failures": "EntitlementRefresher cached signed entitlement, expiry and background retry",
@@ -385,8 +384,7 @@
         "apps/app/src/browser/workflow-trigger-runtime.ts",
         "apps/app/src/browser/workflow-triggers.ts",
         "apps/app/src/prototype/workflow-authoring.ts",
-        "apps/app/src/prototype/workflow-adapter.ts",
-        "backend/proposal-action.ts"
+        "apps/app/src/prototype/workflow-adapter.ts"
       ],
       "stateMapping": {
         "version/reviewedVersion/phase": "normalized authoring, validation and exact-version save/run",
@@ -1660,9 +1658,8 @@
       "sources": [
         "android/app/src/main/java/ai/elizaresearch/alphaphone/GoogleAgentAccessFile.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java",
-        "backend/native-google-agent-host.ts",
-        "backend/managed-google-agent-host.ts",
-        "backend/managed-google-agent-broker.ts"
+        "scripts/native-google-product-host.ts",
+        "patches/eliza/managed-google-agent.patch"
       ],
       "stateMapping": {
         "file/access/sidecars": "Canonical file type and bits, with observed sibling artifacts",
@@ -1726,51 +1723,6 @@
         "maxSamples": 1000,
         "maxSteps": 80,
         "maxVerifyDepth": 4
-      }
-    },
-    {
-      "path": "specs/quint/services/DevelopmentRuntimeLoader.qnt",
-      "module": "DevelopmentRuntimeLoader",
-      "init": "init",
-      "step": "step",
-      "invariant": "safety",
-      "tests": [
-        "flagAndPinRefusalsTest",
-        "transformFailureLeavesOnlyArtifactTest",
-        "receiptWriteFailureSkipsStateTest",
-        "stateFailureSkipsImportTest",
-        "loadedArtifactUsesBoundSaltTest",
-        "rebuildReusesLoadedModuleTest",
-        "rejectedEvaluationSurvivesValidRebuildTest"
-      ],
-      "invariants": [
-        "BuildRequiresAdmission",
-        "ReceiptFollowsTransform",
-        "SaltBelongsToPrivateState",
-        "ImportRequiresReceiptAndSalt",
-        "StableModuleCache"
-      ],
-      "sources": [
-        "backend/loader.ts",
-        "scripts/pinned-upstream-source.mjs",
-        "scripts/core-state-patch.mjs",
-        "vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs",
-        "vendor/eliza/packages/app/scripts/lib/consumer-source-resolver.mjs"
-      ],
-      "stateMapping": {
-        "phase/attempts/enabled/builds": "Serial invocation, opt-in and real build entry after the pin and registry checks",
-        "resolved/transformed/artifact/receipt": "Actual resolver and patch hook outcomes, generated module bytes and persisted source-map membership",
-        "stateDir/salt/saltBound/saltVersions": "Private scratch directory, durable file presence, exact environment readback and observed salt equality classes",
-        "cache/evaluations/returned/outcome": "Actual synthetic module evaluations, ESM return identity and typed invocation refusal"
-      },
-      "abstractions": [
-        "Two serial attempts in one process, two synthetic export versions, one private data directory, and one fixed generated artifact URL. Host fixture errors are finite classes. Real compiler dependency closure and process startup after the returned module are separate.",
-        "Output bytes can persist after a receipt refusal. Rebuilding the fixed URL can retain an earlier evaluated module or rejection in-process. The current-artifact equality expectation is separately observed, outside baseline safety."
-      ],
-      "bounds": {
-        "maxSamples": 1000,
-        "maxSteps": 80,
-        "maxVerifyDepth": 8
       }
     },
     {
@@ -2067,14 +2019,9 @@
         "apps/app/src/runtime/google-workspace-return.ts",
         "apps/app/src/runtime/inbox-attachment.ts",
         "apps/app/src/runtime/managed-service-routes.ts",
-        "backend/calendar-read-timing.ts",
-        "backend/managed-google-agent-broker.ts",
-        "backend/managed-google-agent-host.ts",
-        "backend/managed-google-failure-stage.ts",
-        "backend/managed-google-route-policy.ts",
-        "backend/native-cloud-runtime.ts",
-        "backend/native-google-agent-host.ts",
-        "backend/native-google-cloud-port.ts",
+        "patches/eliza/managed-google-agent.patch",
+        "apps/app/src/product/native-cloud-runtime.ts",
+        "scripts/native-google-product-host.ts",
         "apps/app/src/product/alpha-product-registration.ts",
         "package.json",
         "upstream.lock.json",
@@ -2094,7 +2041,6 @@
         "vendor/eliza/packages/core/src/runtime/turn-controller.ts",
         "scripts/combined-agent-source.mjs",
         "scripts/core-state-preload.mjs",
-        "scripts/gmail-agent-mailbox-host.ts",
         "scripts/prepare-client-features.mjs",
         "tsconfig.json",
         "vendor/eliza/packages/auth/src/auth/native-cloud-sign-in.ts",
@@ -2248,7 +2194,7 @@
       ],
       "sources": [
         "scripts/browser-cloud-dev-bridge.ts",
-        "backend/managed-google-route-policy.ts"
+        "patches/eliza/managed-google-agent.patch"
       ],
       "stateMapping": {
         "owners/slots": "Private active map ownership, with source admission and cancellation observed indirectly",
@@ -2286,7 +2232,7 @@
         "AbortedInvocationNeverReportsSuccess"
       ],
       "sources": [
-        "scripts/gmail-agent-mailbox-host.ts",
+        "patches/eliza/managed-google-agent.patch",
         "apps/app/src/runtime/cloud-protocol.ts",
         "vendor/eliza/plugins/plugin-inbox/src/mailbox/managed-gmail-client.ts"
       ],

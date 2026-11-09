@@ -2039,9 +2039,9 @@
       "seeker": "Native host wiring implemented and source-tested; installed provider proof pending",
       "userApproval": "Pending",
       "evidence": [
-        "scripts/gmail-agent-mailbox-host.ts",
+        "patches/eliza/managed-google-agent.patch",
         "test/gmail-agent-read-host.test.mjs",
-        "backend/native-google-agent-host.ts",
+        "scripts/native-google-product-host.ts",
         "test/native-google-agent-host.test.mjs"
       ],
       "notes": "Trusted caller; stable turn operation ID; exact revision/review/receipt/labels; no uncertain dispatch replay."
@@ -2068,8 +2068,8 @@
       "seeker": "Full resident/Google/voice payload packaged and resident connected; actual native Google-agent prompts pending active plan.",
       "userApproval": "Pending",
       "evidence": [
-        "backend/native-google-agent-host.ts",
-        "backend/native-google-cloud-port.ts",
+        "scripts/native-google-product-host.ts",
+        "patches/eliza/managed-google-agent.patch",
         "scripts/native-google-host-artifact.mjs",
         "test/native-google-agent-host.test.mjs"
       ],

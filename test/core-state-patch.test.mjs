@@ -129,13 +129,6 @@ test('independently frozen revisions retain their explicit version contract', t 
   }
 });
 
-test('development backend requires its selected TaskService observation', t => {
-  const source = fs.readFileSync(new URL('../backend/loader.ts', import.meta.url), 'utf8');
-  assert.ok(source.includes("coreStateRequiredTargets(Object.keys(built.metafile!.inputs))"));
-  const f = fixture(t), skipped = coreStateBuildPlugin(f.root, f.source);
-  assert.throws(() => coreStateBuildRecord(f.root, skipped.transforms, true), /observation/);
-});
-
 test('each producer must observe exactly its selected reviewed targets', t => {
   const f = fixture(t), prepared = coreStateBuildPlugin(f.root, f.source); let load;
   prepared.plugin.setup({onLoad(_options, callback) { load = callback; }});

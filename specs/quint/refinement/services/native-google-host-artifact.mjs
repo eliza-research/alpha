@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-import {mkdirSync, mkdtempSync, rmSync} from 'node:fs';
+import {mkdirSync, mkdtempSync, realpathSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -11,7 +11,8 @@ const repository = resolve(import.meta.dirname, '../../../..');
 const probe = join(import.meta.dirname, 'native-google-host-artifact-probe.mjs');
 
 function runProbe(args = []) {
-  const scratch = mkdtempSync(join(tmpdir(), 'quint-native-google-host-'));
+  // Node reports the physical cwd on macOS; pass the same owned directory to the probe.
+  const scratch = realpathSync(mkdtempSync(join(tmpdir(), 'quint-native-google-host-')));
   try {
     const home = join(scratch, 'home');
     mkdirSync(home, {mode: 0o700});
@@ -39,6 +40,8 @@ export async function checkNativeGoogleHostArtifact(extraSources = []) {
     fileURLToPath(import.meta.url), probe, 'test/fixtures/native-google-host-builder-port.mjs', 'test/fixtures/core-state-root.mjs',
     'scripts/native-google-host-artifact.mjs', 'scripts/build-native-google-host.ts', 'scripts/workflow-worker-artifact.mjs',
     'scripts/local-agent-source.mjs', 'scripts/copy-file-clone.mjs', 'scripts/prepare-client-features.mjs',
+    'scripts/managed-google-client-backport.mjs',
+    'patches/eliza/managed-google-agent-manifest.json', 'patches/eliza/managed-google-agent.patch',
     'package.json', 'tsconfig.json', 'upstream.lock.json', 'vendor/eliza/tsconfig.json',
     'vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs',
     'vendor/eliza/packages/app/scripts/lib/committed-source.mjs',
@@ -52,7 +55,7 @@ export async function checkNativeGoogleHostArtifact(extraSources = []) {
     assumptions: [
       'The actual native Google host artifact producer wrapper, TypeScript builder, immutable SDK verification and worker/host readback execute with a synthetic Git SDK and private worker output. Client projection, compiler output and version are controlled ports.',
       'The compiler port invokes actual resolver, source capture and selected core interception callbacks. Output embeds the digest of the bytes those callbacks returned, while the actual wrapper validates the exact source binding and candidate.',
-      'One product input, two file identities, one selected worker output and one representative optional core transform. The other generic worker inputs remain fixed.',
+      'One product input, two file identities, one selected worker output and one representative optional core source observation. The other generic worker inputs remain fixed.',
       'Build outcomes group actual port events and definite serial publication refusals. The old pair is checked by exact bytes and mode. Concurrent writers, crash recovery, full product compiler graph, Android staging and installed host execution remain separate.',
     ]});
 }

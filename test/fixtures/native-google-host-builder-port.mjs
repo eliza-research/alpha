@@ -5,7 +5,7 @@ import {createHash} from 'node:crypto';
 import {pathToFileURL} from 'node:url';
 import {PLUGIN_CONNECTOR_TARGET} from '../../scripts/core-state-patch.mjs';
 
-export const productInput = 'backend/native-google-agent-host.ts';
+export const productInput = 'scripts/native-google-product-host.ts';
 export const fixtureSource = version => `export const fixtureSource = ${version};\n`;
 export const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 export const fixtureModule = bytes => `export const fixtureInputSha256 = "${digest(bytes)}";\n`;

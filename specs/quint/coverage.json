@@ -5,17 +5,14 @@
   "sourceRoots": [
     "apps/app/src",
     "apps/app/public",
-    "backend",
     "android"
   ],
   "runtimeScripts": [
     "scripts/browser-cloud-dev-bridge.ts",
     "scripts/cloud-resident-host.mjs",
     "scripts/cloud-email-code.ts",
-    "scripts/dev-agent.mjs",
     "scripts/dev-cloud.mjs",
     "scripts/dev-local.mjs",
-    "scripts/start-local-agent.mjs",
     "scripts/start-local-voice-agent.mjs",
     "scripts/start-local-remote.mjs",
     "scripts/core-state-patch.mjs",
@@ -31,6 +28,7 @@
     "scripts/local-agent-source.mjs",
     "scripts/copy-file-clone.mjs",
     "scripts/prepare-client-features.mjs",
+    "scripts/managed-google-client-backport.mjs",
     "scripts/prepare-patched-native.mjs",
     "scripts/build-workflow-worker.ts",
     "scripts/prepared-workflow-worker.mjs",
@@ -39,7 +37,6 @@
     "scripts/native-google-host-artifact.mjs",
     "scripts/build-native-google-host.ts",
     "scripts/combined-agent-source.mjs",
-    "scripts/gmail-agent-mailbox-host.ts",
     "scripts/build-mobile-agent.mjs",
     "scripts/mobile-uuid-adapter.mjs",
     "scripts/mobile-bundle-smoke.mjs",
@@ -67,7 +64,8 @@
     "scripts/apk.mjs",
     "scripts/source-snapshot.mjs",
     "scripts/verify-apks.mjs",
-    "scripts/verify-packaged-runtime.py"
+    "scripts/verify-packaged-runtime.py",
+    "scripts/native-google-product-host.ts"
   ],
   "excludedDirectories": [
     ".cxx",
@@ -2082,25 +2080,6 @@
         {
           "line": 257,
           "text": "begin(scenario, \"(async()=>{const target=await Capacitor.Plugins.DailyApps.selectedReminder({id:\"+JSONObject.quote(id)+\"});return Capacitor.Plugins.AlphaDeletions.reviewReminder({target});})()\");"
-        }
-      ]
-    },
-    {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/DevelopmentAgentInstrumentedTest.java",
-      "sha256": "705611ddf338c675a67c2d29444482592837bc5f0028f0232219245be3e9f341",
-      "models": [
-        "Application"
-      ],
-      "scope": "test-support",
-      "treatment": "test-harness",
-      "stateAnchors": [
-        {
-          "line": 20,
-          "text": "private String evaluate(BoundedActivityScenario<MainActivity> scenario, String js) throws Exception {"
-        },
-        {
-          "line": 23,
-          "text": "private JSONObject call(BoundedActivityScenario<MainActivity> scenario, String expression) throws Exception {"
         }
       ]
     },
@@ -7591,7 +7570,7 @@
       "scope": "application",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "0ee5f2fbdc940209f508482d8c85bb4c582d209b7ad9dd4448b8cc89acce7208",
+      "sha256": "8fe78af57be52d482a480a27df92070497014869dd0000db5d3ae8e26203c69b",
       "stateAnchors": []
     },
     {
@@ -7924,7 +7903,7 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/MainActivity.java",
-      "sha256": "f35ee61299955a4f3a6d12fc160c4376176229fbb87c6dc9c727b3e33407ec67",
+      "sha256": "0bb102b12c71d50e362cb3a9acb0b2af6d356d59c4c6503be9dd585e4c72ce37",
       "models": [
         "Application",
         "RendererRecovery",
@@ -8753,112 +8732,6 @@
           "text": "JSONArray rect=new JSONArray(browser.child(\"(()=>{const r=document.querySelector('#alpha-user').getBoundingClientRect();return [r.x+r.width/2,r.y+r.height/2,innerWidth]})()\"));"
         }
       ]
-    },
-    {
-      "path": "android/app/src/testMocks/java/ai/elizaresearch/alphaphone/DevelopmentAgentPlugin.java",
-      "sha256": "1a3388850a6291b7f4e9625552f31d30a6289ccbbdb52478de6e29e2ea431334",
-      "models": [
-        "DevelopmentSurfaces"
-      ],
-      "scope": "development-only",
-      "treatment": "state-and-transition-projection",
-      "stateAnchors": [
-        {
-          "line": 32,
-          "text": "private DevelopmentVoiceCapture voice;"
-        },
-        {
-          "line": 33,
-          "text": "private final java.util.concurrent.atomic.AtomicLong voiceEpoch = new java.util.concurrent.atomic.AtomicLong();"
-        },
-        {
-          "line": 34,
-          "text": "private final ConcurrentHashMap<String,Long> pendingMicrophone = new ConcurrentHashMap<>();"
-        },
-        {
-          "line": 35,
-          "text": "private final java.util.concurrent.atomic.AtomicReference<String> voiceRequestId = new java.util.concurrent.atomic.AtomicReference<>();"
-        },
-        {
-          "line": 106,
-          "text": "private static final String ORIGIN = \"http://127.0.0.1:47831\";"
-        },
-        {
-          "line": 107,
-          "text": "private static final int MAX_RESPONSE = 256 * 1024;"
-        },
-        {
-          "line": 108,
-          "text": "private final ThreadPoolExecutor workers = new ThreadPoolExecutor(2, 2, 0, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(4));"
-        },
-        {
-          "line": 109,
-          "text": "private final ConcurrentHashMap<String, Request> requests = new ConcurrentHashMap<>();"
-        }
-      ],
-      "reviewStatus": "state-audit-required",
-      "integrationReview": "Domain allocation retained after merging the audit fixes. The refreshed source hash and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations."
-    },
-    {
-      "path": "android/app/src/testMocks/java/ai/elizaresearch/alphaphone/DevelopmentChatContract.java",
-      "sha256": "c1357eede3476e2b7b4bf6f04d9c21ef14e106bd0ea75e3927fbc79a1e875fff",
-      "models": [
-        "DevelopmentSurfaces"
-      ],
-      "scope": "development-only",
-      "treatment": "domain-contract-or-support",
-      "stateAnchors": [],
-      "reviewStatus": "state-audit-required",
-      "integrationReview": "Allocated to its existing domain after extraction from the previously listed adapter. Allocation is not a source-model proof; new boundaries and transitions require source-bound refinement."
-    },
-    {
-      "path": "android/app/src/testMocks/java/ai/elizaresearch/alphaphone/DevelopmentVoiceCapture.java",
-      "sha256": "3ac28cebeb08f216a7a3f779c72dda82cfea9683a9105f6d4c908438b07f967a",
-      "models": [
-        "DevelopmentSurfaces"
-      ],
-      "scope": "development-only",
-      "treatment": "state-and-transition-projection",
-      "stateAnchors": [
-        {
-          "line": 16,
-          "text": "private final Context context;"
-        },
-        {
-          "line": 17,
-          "text": "private final Consumer<JSObject> events;"
-        },
-        {
-          "line": 18,
-          "text": "private final Handler handler = new Handler(Looper.getMainLooper());"
-        },
-        {
-          "line": 19,
-          "text": "private MediaRecorder recorder;"
-        },
-        {
-          "line": 20,
-          "text": "private File file;"
-        },
-        {
-          "line": 21,
-          "text": "private String id;"
-        },
-        {
-          "line": 22,
-          "text": "private long startedAt;"
-        },
-        {
-          "line": 23,
-          "text": "private long durationMs;"
-        },
-        {
-          "line": 24,
-          "text": "private Runnable deadline;"
-        }
-      ],
-      "reviewStatus": "state-audit-required",
-      "integrationReview": "Domain allocation retained after merging the audit fixes. The refreshed source hash and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations."
     },
     {
       "path": "android/app/src/testMocks/java/ai/elizaresearch/alphaphone/SyntheticAutofillService.java",
@@ -13069,7 +12942,7 @@
     },
     {
       "path": "apps/app/src/browser/register.ts",
-      "sha256": "f49028e0f9415bcf20edda89a3fe6639ab36563ce38437a2d4aaff491b753696",
+      "sha256": "a1e0e68dee61ca24dc008eac41c40a0b8002c5552ca9ff0b8a1ba9214d18d674",
       "models": [
         "BrowserSession"
       ],
@@ -13077,31 +12950,31 @@
       "treatment": "domain-contract-or-support",
       "stateAnchors": [
         {
-          "line": 21,
+          "line": 20,
           "text": "const voice = new BrowserVoice();"
         },
         {
-          "line": 26,
+          "line": 23,
           "text": "const device = new BrowserDevice();"
         },
         {
-          "line": 29,
+          "line": 26,
           "text": "const files = new BrowserFiles();"
         },
         {
-          "line": 32,
+          "line": 29,
           "text": "const daily = new BrowserDaily(files);"
         },
         {
-          "line": 34,
+          "line": 31,
           "text": "const calendar=new BrowserCalendar();"
         },
         {
-          "line": 36,
+          "line": 33,
           "text": "const notifications=new BrowserNotifications(daily,calendar);"
         },
         {
-          "line": 42,
+          "line": 39,
           "text": "const browserSurface = new BrowserSurface();"
         }
       ]
@@ -15780,6 +15653,7 @@
     },
     {
       "path": "apps/app/src/prototype/agent-adapter.ts",
+      "sha256": "ba69bd17a0571aea778e4b5bbbb417b049d28d1697a5a1ec63cbfff79287a786",
       "models": [
         "Application",
         "AssistantConversation",
@@ -15793,1386 +15667,1245 @@
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
-      "reviewStatus": "state-audit-required",
-      "sha256": "f47ad7835f5f0b9650051dc1ece6fcd382e3c307172d7cb5a8d3f5917e10d507",
       "stateAnchors": [
         {
-          "line": 77,
+          "line": 76,
           "text": "const alphaDevice = registerPlugin<{ snapshot(): Promise<Record<string, unknown>>; openSettings(input: { page: string }): Promise<{ status: string; specific?: boolean }> }>('AlphaDevice');"
         },
         {
-          "line": 78,
+          "line": 77,
           "text": "const elizaSystem = registerPlugin<{ setFlashlight(input: { enabled: boolean }): Promise<{ available: boolean; enabled: boolean }> }>('ElizaSystem');"
         },
         {
-          "line": 91,
+          "line": 90,
           "text": "let pageLeaving=false;"
         },
         {
-          "line": 105,
+          "line": 104,
           "text": "let identity:unknown;try{identity=JSON.parse(key);}catch{return {};}"
         },
         {
-          "line": 107,
+          "line": 106,
           "text": "const slot=JSON.stringify([...identity.slice(0,3),null]),draft=shell.composerDraft;"
         },
         {
-          "line": 116,
+          "line": 115,
           "text": "let saved;try{saved=await(await assistantDraftStore(slot)).read(signal);}catch{return {};}"
         },
         {
-          "line": 129,
+          "line": 128,
           "text": "const writes:Set<Promise<void>>=shell.firstSendSlotWrites??=new Set();"
         },
         {
-          "line": 130,
+          "line": 129,
           "text": "const task=(async()=>{"
         },
         {
-          "line": 132,
+          "line": 131,
           "text": "const from=await assistantDraftStore(slot),to=await assistantDraftStore(conversation);"
         },
         {
-          "line": 133,
+          "line": 132,
           "text": "for(const delay of [0,150,600,1500]){"
         },
         {
-          "line": 139,
+          "line": 138,
           "text": "const saved=await from.read();"
         },
         {
-          "line": 165,
+          "line": 164,
           "text": "const from=JSON.parse(slot),to=JSON.parse(key);"
         },
         {
-          "line": 170,
+          "line": 169,
           "text": "const draft=shell.composerDraft;draft.release();"
         },
         {
-          "line": 171,
+          "line": 170,
           "text": "const key=draft.binding;"
         },
         {
-          "line": 206,
+          "line": 205,
           "text": "const attempt:SendAttempt|null=shell.sendAttempt??null;if(attempt)attempt.transportCalled=true;"
         },
         {
-          "line": 207,
+          "line": 206,
           "text": "const task=run().catch(error=>{if(attempt&&isPreDispatchError(error))attempt.preDispatch=true;throw error;});"
         },
         {
-          "line": 239,
+          "line": 238,
           "text": "const REFUSED_BEFORE_OUTPUT=new Set(['insufficient_credits','missing_capability','no_provider','provider_issue','rate_limited']);"
         },
         {
-          "line": 242,
+          "line": 241,
           "text": "const notices=reply&&typeof reply==='object'?(reply as {notices?:unknown}).notices:undefined;"
         },
         {
-          "line": 250,
+          "line": 249,
           "text": "const after=connectionController.getSnapshot();"
         },
         {
-          "line": 255,
+          "line": 254,
           "text": "const p = Component.prototype;"
         },
         {
-          "line": 256,
+          "line": 255,
           "text": "let activeShell:Shell|null=null,notesRecovery:AbortController|null=null;"
         },
         {
-          "line": 263,
+          "line": 262,
           "text": "const s=shell.S();"
         },
         {
-          "line": 266,
+          "line": 265,
           "text": "const notesLeave=views.notes.onLeave;"
         },
         {
-          "line": 268,
+          "line": 267,
           "text": "const originalMount = p.componentDidMount;"
         },
         {
-          "line": 269,
+          "line": 268,
           "text": "const originalUpdate = p.componentDidUpdate;"
         },
         {
-          "line": 270,
+          "line": 269,
           "text": "const originalUnmount = p.componentWillUnmount;"
         },
         {
-          "line": 271,
+          "line": 270,
           "text": "const originalSet = p.vset;"
         },
         {
-          "line": 272,
+          "line": 271,
           "text": "const originalApi = p.api;"
         },
         {
-          "line": 273,
+          "line": 272,
           "text": "const originalVals = p.renderVals;"
         },
         {
-          "line": 274,
+          "line": 273,
           "text": "const messageReviews=new BrowserReviews();"
         },
         {
-          "line": 275,
+          "line": 274,
           "text": "const notesRender = views.notes.render;"
         },
         {
-          "line": 280,
+          "line": 279,
           "text": "for(const input of document.querySelectorAll<HTMLTextAreaElement>('textarea[data-alpha-composer]')){"
         },
         {
-          "line": 284,
+          "line": 283,
           "text": "const notesDataset=(name:'notesStorageState'|'notesDraftState',value:string)=>{document.documentElement.dataset[name]=value;};"
         },
         {
-          "line": 293,
+          "line": 292,
           "text": "let records:Shell[];try{records=JSON.parse(JSON.stringify(list));}catch{return;}"
         },
         {
-          "line": 294,
+          "line": 293,
           "text": "const savedRaw=typeof shell.notesRaw==='string'?shell.notesRaw:'';"
         },
         {
-          "line": 296,
+          "line": 295,
           "text": "let saved:Shell[]=[];try{const parsed=JSON.parse(savedRaw).records;if(Array.isArray(parsed))saved=parsed;}catch{/* no saved collection */}"
         },
         {
-          "line": 307,
+          "line": 306,
           "text": "let draft:NotesDraft|null;"
         },
         {
-          "line": 314,
+          "line": 313,
           "text": "const current=shell.notesStore.list,next=applyNotesDraft(current,draft),conflicts=notesDraftConflicts(current,draft);"
         },
         {
-          "line": 317,
+          "line": 316,
           "text": "const conflicted=()=>{"
         },
         {
-          "line": 342,
+          "line": 341,
           "text": "const raw=shell.notesAgentRaw,store=shell.notesStore,epoch=shell.notesSourceEpoch;"
         },
         {
-          "line": 350,
+          "line": 349,
           "text": "const collection=!!shell.notesOpenFailed,captures=new WeakMap<object,{saved:string|null;draft:string|null}>();"
         },
         {
-          "line": 355,
+          "line": 354,
           "text": "const saved=await secureConnectionStore.readRaw(SECURE_NOTES_SLOT),draft=await secureConnectionStore.readRaw(SECURE_NOTES_DRAFT_SLOT);abort?.throwIfAborted();"
         },
         {
-          "line": 356,
+          "line": 355,
           "text": "const legacy=Object.fromEntries(LEGACY_NOTES_SOURCE_KEYS.map(key=>[key,localStorage.getItem(key)]));"
         },
         {
-          "line": 357,
+          "line": 356,
           "text": "const raw=JSON.stringify({saved,draft,legacy,editor:shell.vget('notes').list}),snapshot={revision:crypto.randomUUID(),raw};captures.set(snapshot,{saved,draft});"
         },
         {
-          "line": 361,
+          "line": 360,
           "text": "abort?.throwIfAborted();const snapshot=expected.snapshot,captured=snapshot&&captures.get(snapshot);"
         },
         {
-          "line": 363,
+          "line": 362,
           "text": "const [slot,value]=collection?[SECURE_NOTES_SLOT,captured.saved]:[SECURE_NOTES_DRAFT_SLOT,captured.draft];"
         },
         {
-          "line": 375,
+          "line": 374,
           "text": "const read=proposal.readReply;if(!read||shell.readReplyLeases?.has(proposal.id))return;"
         },
         {
-          "line": 376,
+          "line": 375,
           "text": "const origin=read.origin;"
         },
         {
-          "line": 382,
+          "line": 381,
           "text": "const home=proposal.reviewDestination==='home',notes=proposal.reviewDestination==='notes',calendar=proposal.reviewDestination==='calendar';"
         },
         {
-          "line": 386,
+          "line": 385,
           "text": "for(const [proposalId,lease] of this.readReplyLeases||[]){"
         },
         {
-          "line": 395,
+          "line": 394,
           "text": "const hint=receipt.readReply,lease=hint&&shell.readReplyLeases?.get(hint.proposalId);"
         },
         {
-          "line": 400,
+          "line": 399,
           "text": "const reply=await connectionController.completeReadReply(hint,lease.binding,lease.controller.signal);current();"
         },
         {
-          "line": 414,
+          "line": 413,
           "text": "const connection=connectionController.getSnapshot(),currentContext=alphaClient.getState().context;"
         },
         {
-          "line": 417,
+          "line": 416,
           "text": "const key=blocked?null:JSON.stringify([connection.session,connection.history?.revision,currentContext]);"
         },
         {
-          "line": 423,
+          "line": 422,
           "text": "const controller=shell.pendingActionRecoveryAbort=new AbortController();"
         },
         {
-          "line": 425,
+          "line": 424,
           "text": "const current=()=>bound()&&shell.pendingActionRecoveryKey===key;"
         },
         {
-          "line": 426,
+          "line": 425,
           "text": "const scheduleExpiry=()=>{"
         },
         {
-          "line": 447,
+          "line": 446,
           "text": "for(const proposal of proposals)if(proposal.readReply)retainReadReply(shell,proposal);"
         },
         {
-          "line": 450,
+          "line": 449,
           "text": "const pending=new Map(proposals.map(proposal=>[proposal.id,proposal]));"
         },
         {
-          "line": 451,
+          "line": 450,
           "text": "const msgs=previous.msgs.map((message:Shell)=>{"
         },
         {
-          "line": 452,
+          "line": 451,
           "text": "const card=message.card;"
         },
         {
-          "line": 454,
+          "line": 453,
           "text": "const proposal=pending.get(card.proposalId);"
         },
         {
-          "line": 464,
+          "line": 463,
           "text": "const existing=new Set(msgs.map((message:Shell)=>message.card?.proposalId));"
         },
         {
-          "line": 479,
+          "line": 478,
           "text": "const snapshot=connectionController.getSnapshot(),notice=snapshot.replyNotice||'',before=shell.stoppedReplyNotice||'';"
         },
         {
-          "line": 480,
+          "line": 479,
           "text": "const replaced=shell.stoppedReplyHistory!==history||shell.stoppedReplySession!==snapshot.session?.sessionId;"
         },
         {
-          "line": 485,
+          "line": 484,
           "text": "const pending=notice===STOPPED_REPLY_NOTICE||notice===STOPPED_CANCELLED_NOTICE,sessionId=snapshot.session?.sessionId;"
         },
         {
-          "line": 490,
+          "line": 489,
           "text": "const reported=!notice&&!replaced&&!!before&&before!==STOPPED_REPLY_NOTICE&&before!==STOPPED_CANCELLED_NOTICE;"
         },
         {
-          "line": 492,
+          "line": 491,
           "text": "const msgs=previous.msgs||[],at=msgs.findIndex((message:Shell)=>message.stoppedReplyNotice);"
         },
         {
-          "line": 495,
+          "line": 494,
           "text": "const bubble={id:notice?'stopped-reply-notice':crypto.randomUUID(),from:'agent',text,interrupted:true,...(notice?{stoppedReplyNotice:true}:{}),"
         },
         {
-          "line": 502,
+          "line": 501,
           "text": "const view=alphaViewKey(target);"
         },
         {
-          "line": 509,
+          "line": 508,
           "text": "const attempt={...navigation.attempt,current:()=>{navigation.attempt.current();current?.();}};"
         },
         {
-          "line": 510,
+          "line": 509,
           "text": "const delivered=await navigation.client.deliver(results,attempt,(view,check)=>{"
         },
         {
-          "line": 511,
+          "line": 510,
           "text": "const commit=(chat?:string,onCommitted?:(value:import('../runtime/alpha-client').ContextEnvelope)=>void)=>new Promise<boolean>((resolve,reject)=>{"
         },
         {
-          "line": 516,
+          "line": 515,
           "text": "const chat=shell.S().chat;"
         },
         {
-          "line": 528,
+          "line": 527,
           "text": "const port=connectionController.getAppRecordClient(),key=canonicalNotesKey(port);"
         },
         {
-          "line": 530,
+          "line": 529,
           "text": "const previous=shell.canonicalNotesUi;shell.canonicalNotesUi=null;shell.canonicalNotesKey=key;previous?.retire();"
         },
         {
-          "line": 533,
+          "line": 532,
           "text": "let binding:CanonicalNotesUi;"
         },
         {
-          "line": 534,
+          "line": 533,
           "text": "const paint=()=>{if(shell.live&&shell.canonicalNotesUi===binding)shell.setState({},()=>context(shell));};"
         },
         {
-          "line": 539,
-          "text": "function previousNotesOwnerKey():string {"
-        },
-        {
-          "line": 541,
-          "text": "return JSON.stringify([snapshot.session??null,snapshot.cloudAccount?.userId??null,snapshot.cloudAccount?.organizationId??null,canonicalNotesKey(connectionController.getAppRecordClient()"
-        },
-        {
-          "line": 543,
-          "text": "function syncPreviousNotesAvailability(shell:Shell):void {"
-        },
-        {
-          "line": 546,
-          "text": "shell.previousNotesProbe?.abort();"
-        },
-        {
-          "line": 549,
-          "text": "shell.notesOpenAbort?.abort();notesRecovery?.abort();shell.notesSourceEpoch=(shell.notesSourceEpoch??0)+1;"
-        },
-        {
-          "line": 550,
-          "text": "shell.notesSourceMode='canonical';shell.notesLegacySource=null;shell.notesSelection=null;shell.notesSelectionKey=null;"
-        },
-        {
-          "line": 551,
-          "text": "shell.notesStore=null;shell.notesRaw=null;shell.notesStorageFailed=true;"
-        },
-        {
-          "line": 552,
-          "text": "originalSet.call(shell,'notes',{list:[],open:null,trash:[],trashOpen:false});"
-        },
-        {
-          "line": 553,
-          "text": "syncCanonicalNotes(shell);"
-        },
-        {
-          "line": 555,
+          "line": 554,
           "text": "const active=shell.live&&!document.hidden&&!shell.pageSuspended&&shell.S().view==='notes';"
         },
         {
-          "line": 556,
+          "line": 555,
           "text": "const key=active?JSON.stringify([owner,shell.notesSourceEpoch]):null;"
         },
         {
-          "line": 558,
-          "text": "shell.previousNotesProbe?.abort();shell.previousNotesProbeKey=key;shell.previousNotesAvailability=null;"
-        },
-        {
-          "line": 560,
+          "line": 559,
           "text": "const controller=new AbortController();shell.previousNotesProbe=controller;"
         },
         {
           "line": 561,
-          "text": "const current=()=>shell.live&&!document.hidden&&!shell.pageSuspended&&shell.S().view==='notes'&&shell.notesSourceMode==='canonical'&&shell.previousNotesProbe===controller&&previousNotes"
-        },
-        {
-          "line": 562,
           "text": "const probe=isAndroid?devicePreviousNotesAvailability(secureConnectionStore,controller.signal,current):browserPreviousNotesAvailability(browserNotesPort,controller.signal,current);"
         },
         {
-          "line": 563,
-          "text": "void probe.then(availability=>{if(current()){shell.previousNotesAvailability=availability;shell.setState({});}}).catch(()=>{});"
-        },
-        {
-          "line": 566,
+          "line": 565,
           "text": "const first=store.list[0],target=first?await store.target(first.id):null;"
         },
         {
-          "line": 570,
+          "line": 569,
           "text": "const revision=await notesDraftBase(store.raw);if(!current())throw new DOMException('Notes source changed.','AbortError');"
         },
         {
-          "line": 573,
-          "text": "async function selectNotesSource(shell:Shell,source:'canonical'|'legacy'):Promise<boolean>{"
-        },
-        {
-          "line": 576,
+          "line": 575,
           "text": "const draftTask=shell.notesDraftTask,openingEpoch=shell.notesSourceEpoch;"
         },
         {
-          "line": 577,
-          "text": "if(draftTask){await draftTask;if(!shell.live||shell.notesSourceEpoch!==openingEpoch||shell.notesDraftTask!==draftTask)return false;}"
-        },
-        {
-          "line": 578,
-          "text": "if(owner!==previousNotesOwnerKey())return false;"
-        },
-        {
           "line": 582,
-          "text": "if(shell.notesSourceMode==='legacy'&&shell.notesStorageFailed&&!shell.notesDraftSaved&&shell.notesStoreEpoch===shell.notesSourceEpoch){"
-        },
-        {
-          "line": 583,
           "text": "let saved:unknown=null;try{saved=JSON.parse(shell.notesRaw).records;}catch{/* no saved collection */}"
         },
         {
-          "line": 587,
+          "line": 586,
           "text": "const previous=shell.canonicalNotesUi;shell.canonicalNotesUi=null;shell.canonicalNotesKey=null;previous?.retire();"
         },
         {
-          "line": 588,
-          "text": "shell.notesLegacySource=null;shell.notesSourceMode=source;shell.notesSourceEpoch=(shell.notesSourceEpoch??0)+1;shell.notesSelectionKey=null;shell.notesSelection=null;"
-        },
-        {
           "line": 593,
-          "text": "if(source==='canonical'){syncCanonicalNotes(shell);context(shell);return true;}"
-        },
-        {
-          "line": 594,
           "text": "const epoch=shell.notesSourceEpoch,signal=shell.notesOpenAbort.signal,current=()=>shell.live&&shell.notesSourceMode==='legacy'&&shell.notesSourceEpoch===epoch&&previousNotesOwnerKey()===owner;"
         },
         {
-          "line": 597,
+          "line": 596,
           "text": "const store=isAndroid?await openExistingDeviceNotes(secureConnectionStore,localStorage,signal,current):await openExistingBrowserNotes(browserNotesPort,signal,current);"
         },
         {
-          "line": 598,
+          "line": 597,
           "text": "if(!current())return;const observation=await previousNotesObservation(store,current);if(!current())return;shell.notesStore=store;shell.notesRaw=store.raw;shell.notesLegacySource=observation;"
         },
         {
           "line": 601,
-          "text": "if(isAndroid){"
-        },
-        {
-          "line": 602,
           "text": "let draft:NotesDraft|null=null;"
         },
         {
-          "line": 605,
-          "text": "if(!current())return;"
-        },
-        {
-          "line": 607,
-          "text": "}"
-        },
-        {
-          "line": 609,
-          "text": "originalSet.call(shell,'notes',{list:store.list,storageStatus:shell.notesDraftKept?'Unsaved changes from an earlier session are kept on this phone.':isAndroid?'Note text encrypted on th"
-        },
-        {
-          "line": 611,
-          "text": "shell.notesStorageFailed=true;"
-        },
-        {
-          "line": 617,
-          "text": "await shell.notesReady;return current()&&!shell.notesStorageFailed;"
-        },
-        {
-          "line": 621,
+          "line": 620,
           "text": "const s = shell.S();"
         },
         {
-          "line": 622,
+          "line": 621,
           "text": "const view = s.view || 'home';"
         },
         {
-          "line": 624,
+          "line": 623,
           "text": "const notes = view === 'notes' ? shell.vget('notes') : null;"
         },
         {
-          "line": 625,
+          "line": 624,
           "text": "const selected = notes?.list?.find((note: Shell) => note.id === notes.open)?.id;"
         },
         {
-          "line": 626,
+          "line": 625,
           "text": "const selectedRecord=notes?.list?.find((note:Shell)=>note.id===selected);"
         },
         {
-          "line": 627,
+          "line": 626,
           "text": "const selectedKey=shell.notesSourceMode==='canonical'?null:selectedRecord?JSON.stringify(selectedRecord):null;"
         },
         {
-          "line": 636,
+          "line": 635,
           "text": "const previousNotesScope=view==='notes'&&shell.notesSourceMode==='legacy'?(shell.notesLegacySource??{kind:'legacy-app-notes-source',id:'previous-notes',accountId:'device-local-legacy'}):undefined;"
         },
         {
-          "line": 637,
+          "line": 636,
           "text": "let providerSelection = view === 'browser' ? shell.browserSelection?.() : undefined;"
         },
         {
-          "line": 641,
+          "line": 640,
           "text": "const state = shell.vget('photos');"
         },
         {
-          "line": 645,
+          "line": 644,
           "text": "const state = shell.vget('inbox');"
         },
         {
-          "line": 652,
+          "line": 651,
           "text": "const state = shell.vget(view);"
         },
         {
-          "line": 667,
+          "line": 666,
           "text": "const calendarDay=view==='calendar'?shell.calendarDayObservation?.():undefined;"
         },
         {
-          "line": 698,
+          "line": 697,
           "text": "const connection=connectionController.getSnapshot(),session=connection.session?.sessionId;"
         },
         {
-          "line": 699,
+          "line": 698,
           "text": "let draftBindingAfterPaint=false;"
         },
         {
-          "line": 701,
+          "line": 700,
           "text": "const preserveStartupDraft=!this.connectionSession&&!!session&&!connection.startupResolved&&typeof this.startupDraft==='string'&&this.startupDraft===String(this.S().draft||'');"
         },
         {
-          "line": 716,
+          "line": 715,
           "text": "const history = connectionController.getSnapshot().history;"
         },
         {
-          "line": 737,
+          "line": 736,
           "text": "const delivery=connectionController.getSnapshot().conversationDelivery;"
         },
         {
-          "line": 740,
+          "line": 739,
           "text": "const currentSession=connectionController.getSnapshot().session;"
         },
         {
-          "line": 754,
+          "line": 753,
           "text": "const store=this.notesStore,epoch=this.notesSourceEpoch,current=()=>this.live&&this.notesSourceMode==='legacy'&&this.notesSourceEpoch===epoch&&this.notesStore===store;"
         },
         {
-          "line": 757,
+          "line": 756,
           "text": "const update=reconcileNotesEditor(this.notesRaw,this.vget('notes').list,this.notesStore.raw,this.notesStore.list);"
         },
         {
-          "line": 763,
+          "line": 762,
           "text": "const open=this.vget('notes').open,gone=update.list&&open!=null&&!update.list.some((note:Shell)=>note.id===open);"
         },
         {
-          "line": 779,
+          "line": 778,
           "text": "const dialog = Array.from(document.querySelectorAll<HTMLDialogElement>('dialog[open]')).at(-1);"
         },
         {
-          "line": 782,
+          "line": 781,
           "text": "const panel=modalPanels().at(-1);"
         },
         {
-          "line": 806,
+          "line": 805,
           "text": "const connection = connectionController.getSnapshot();"
         },
         {
-          "line": 822,
+          "line": 821,
           "text": "const after = connectionController.getSnapshot();"
         },
         {
-          "line": 831,
-          "text": "const preference = localStorage.getItem('alpha.connection.selection.v1');"
-        },
-        {
-          "line": 842,
-          "text": "const { createDevelopmentTransport } = await import('../runtime/development-transport');"
-        },
-        {
-          "line": 843,
-          "text": "const transport = await createDevelopmentTransport(async operation => {"
-        },
-        {
-          "line": 846,
-          "text": "const target = operation.view;"
-        },
-        {
-          "line": 855,
-          "text": "if (this.live) { const send=transport.send.bind(transport);transport.send=input=>trackDispatch(this,()=>send(input));alphaClient.attachVerifiedTransport(transport); }"
-        },
-        {
-          "line": 862,
+          "line": 832,
           "text": "const result=await DailyApps.reminderOperationReceipt({operation,operationId,bindingHash});signal.throwIfAborted();"
         },
         {
-          "line": 893,
+          "line": 863,
           "text": "const identities=await files.reviewedIdentities(paths,signal);"
         },
         {
-          "line": 902,
+          "line": 872,
           "text": "const ownerSession=connectionController.getSnapshot().session;"
         },
         {
-          "line": 910,
+          "line": 880,
           "text": "const client=createAospTelephony(registerPlugin<AlphaTelephonyPlugin>('AlphaTelephony'),true);"
         },
         {
-          "line": 913,
+          "line": 883,
           "text": "const handoff=await client.dial(operation.target.number);"
         },
         {
-          "line": 914,
+          "line": 884,
           "text": "const dialResult:PhoneDialResult={kind:'phone-dial',status:handoff.status,handler:handoff.status==='handed-off'?handoff.handler:null,contact:false};"
         },
         {
-          "line": 919,
+          "line": 889,
           "text": "const plugin=registerPlugin<AlphaTelephonyPlugin>('AlphaTelephony'),client=createAospTelephony(plugin,true);"
         },
         {
-          "line": 922,
+          "line": 892,
           "text": "const status=await client.status();current();"
         },
         {
-          "line": 923,
+          "line": 893,
           "text": "const selectedSim=status.subscriptions?.find(sim=>sim.id===operation.subscriptionId);"
         },
         {
-          "line": 925,
+          "line": 895,
           "text": "const cancel=()=>{void plugin.cancelSmsReview({operationId}).catch(()=>{});};"
         },
         {
-          "line": 934,
+          "line": 904,
           "text": "const clockSession=connectionController.getSnapshot().session;const clockEnrollment=JSON.stringify(connectionController.getWorkflowDeviceTarget());"
         },
         {
-          "line": 935,
+          "line": 905,
           "text": "const {type,...request}=operation;"
         },
         {
-          "line": 936,
+          "line": 906,
           "text": "const result=browserDevProfile?await DailyApps.clockHandoff({...request,reviewed:true}):null;"
         },
         {
-          "line": 939,
+          "line": 909,
           "text": "const status=clockResult.status==='opened'?'succeeded':clockResult.status==='unknown'?'unknown':'failed';"
         },
         {
-          "line": 943,
+          "line": 913,
           "text": "const mapsResult=readMapsSelection(operation);signal.throwIfAborted();context(this);"
         },
         {
-          "line": 956,
+          "line": 926,
           "text": "const photosView:unknown=operation;"
         },
         {
-          "line": 961,
+          "line": 931,
           "text": "let photosViewResult;"
         },
         {
-          "line": 976,
+          "line": 946,
           "text": "let photoLibraryResult;"
         },
         {
-          "line": 988,
+          "line": 958,
           "text": "const cancel=()=>{void calendar.cancelAgent({operationId}).catch(()=>{});};signal.addEventListener('abort',cancel,{once:true});"
         },
         {
-          "line": 989,
+          "line": 959,
           "text": "let result:{status:string;result?:unknown};try{signal.throwIfAborted();result=await calendar.executeAgent({operation,operationId,journalIdentity});}finally{signal.removeEventListener('abort',cancel);}"
         },
         {
-          "line": 992,
+          "line": 962,
           "text": "const calendarResult=validateCalendarResult(operation,result.result);"
         },
         {
-          "line": 1007,
+          "line": 977,
           "text": "const organize:unknown=operation;"
         },
         {
-          "line": 1019,
+          "line": 989,
           "text": "const execute=()=>this.notesStore.execute(operation,operationId,signal,current);"
         },
         {
-          "line": 1022,
+          "line": 992,
           "text": "const notesResult=operation.type!=='notes_delete'?await execute():await withNotesDeletionLock(async()=>{"
         },
         {
-          "line": 1023,
+          "line": 993,
           "text": "current();const list=this.notesStore.list,index=list.findIndex((n:Shell)=>n.id===operation.target.noteId);"
         },
         {
-          "line": 1025,
+          "line": 995,
           "text": "const target=await this.notesStore.target(operation.target.noteId);"
         },
         {
-          "line": 1027,
+          "line": 997,
           "text": "const note=list[index],voice=this.api('notes')?.trashVoiceNoteWithRecording;"
         },
         {
-          "line": 1030,
+          "line": 1000,
           "text": "const result=note.kind==='voice'&&note.audio&&typeof voice==='function'?await voice(note,target,operationId,index,execute):"
         },
         {
-          "line": 1037,
+          "line": 1007,
           "text": "const uncertain=error instanceof NotesCommitUncertain;"
         },
         {
-          "line": 1052,
+          "line": 1022,
           "text": "const calendar=registerPlugin<{readAgenda(input:unknown):Promise<{status:string;events:unknown[]}>}>('AlphaCalendar');"
         },
         {
-          "line": 1053,
+          "line": 1023,
           "text": "const result=await calendar.readAgenda({operationId,source:agendaSource,operation});current();"
         },
         {
-          "line": 1055,
+          "line": 1025,
           "text": "const events=await Promise.all(result.events.map(async(event:any)=>({...event,revision:await workflowSha([event.id,event.calendarId,event.title,event.start,event.end,event.allDay])})));"
         },
         {
-          "line": 1060,
+          "line": 1030,
           "text": "const {reminders}=await DailyApps.listReminders();current();"
         },
         {
-          "line": 1068,
+          "line": 1038,
           "text": "const notes=this.canonicalNotesUi;if(!notes?.current)return {status:'failed',summary:'Notes is unavailable. Review the selected notes again.'};"
         },
         {
-          "line": 1069,
+          "line": 1039,
           "text": "const rows=(notes.notes() as StickyNote[]).slice(),snapshot=[];"
         },
         {
-          "line": 1071,
+          "line": 1041,
           "text": "const before=selectedText();"
         },
         {
-          "line": 1083,
+          "line": 1053,
           "text": "const result=await calendar.readWorkflowRange({calendarIds:operation.calendarIds,start:operation.start,end:operation.end,timeZone:operation.timeZone,maximumEvents:operation.maximumEvents});current();"
         },
         {
-          "line": 1085,
+          "line": 1055,
           "text": "const events=await Promise.all(result.events.map(async event=>({...event,revision:await workflowSha([event.id,event.calendarId,event.title,event.start,event.end,event.allDay])})));"
         },
         {
-          "line": 1094,
+          "line": 1064,
           "text": "const result=await notices.postWorkflow({operationId,bindingHash,title:operation.title,body:operation.body,route:workflowRoute});"
         },
         {
-          "line": 1096,
+          "line": 1066,
           "text": "const status=result.status==='succeeded'?'succeeded':result.status==='failed'?'failed':'unknown';"
         },
         {
-          "line": 1100,
+          "line": 1070,
           "text": "const speechAbort=new AbortController(),stop=()=>speechAbort.abort();signal.addEventListener('abort',stop,{once:true});window.addEventListener('alpha:stop-workflow-speech',stop);"
         },
         {
-          "line": 1102,
+          "line": 1072,
           "text": "const unsubscribe=alphaClient.subscribe(()=>{try{currentSpeech();}catch(error){speechAbort.abort(error);}});"
         },
         {
-          "line": 1108,
+          "line": 1078,
           "text": "const existing = this.vget('notes').list.find((note: Shell) => note.id === operationId);"
         },
         {
-          "line": 1110,
+          "line": 1080,
           "text": "const note = { id: operationId, kind: 'text', title: operation.title, body: operation.body, pinned: false, when: 'Now', createdAt:Date.now(), modifiedAt:Date.now() };"
         },
         {
-          "line": 1111,
+          "line": 1081,
           "text": "const saved = await this.vset('notes', { list: [note, ...this.vget('notes').list] }, {keepSelection:true});"
         },
         {
-          "line": 1115,
+          "line": 1085,
           "text": "const support=await DailyApps.surfaceInfo();signal.throwIfAborted();"
         },
         {
-          "line": 1120,
+          "line": 1090,
           "text": "const reminderResult=validateReminderCreateResult(operation,result.result,operationId);"
         },
         {
-          "line": 1125,
+          "line": 1095,
           "text": "const target=await DailyApps.selectedReminder({id:operation.target.reminderId});signal.throwIfAborted();"
         },
         {
-          "line": 1132,
+          "line": 1102,
           "text": "const queued=await deletions.reviewAgentReminder({operationId,bindingHash,operation,journalIdentity});"
         },
         {
-          "line": 1141,
+          "line": 1111,
           "text": "const reminderResult=validateReminderResult(operation,result.result);"
         },
         {
-          "line": 1145,
+          "line": 1115,
           "text": "const at = Date.parse(operation.dueAt);"
         },
         {
-          "line": 1147,
+          "line": 1117,
           "text": "const result = await DailyApps.scheduleReminder({ id: operationId, title: operation.title, body: '', at });"
         },
         {
-          "line": 1160,
+          "line": 1130,
           "text": "const browserSession=connectionController.getSnapshot().session;"
         },
         {
-          "line": 1161,
+          "line": 1131,
           "text": "const present=await this.browserNavigateApproved(operation.url, signal, true);"
         },
         {
-          "line": 1163,
+          "line": 1133,
           "text": "const show=()=>{"
         },
         {
-          "line": 1171,
+          "line": 1141,
           "text": "const stop=alphaClient.subscribe(()=>{if(alphaClient.getState().pending)return;stop();setTimeout(()=>{try{show();}catch{/* A retired tab keeps its journaled receipt. */}},0);});"
         },
         {
-          "line": 1177,
+          "line": 1147,
           "text": "const opening = this.draftBindingTask;"
         },
         {
-          "line": 1179,
+          "line": 1149,
           "text": "const writes: Set<Promise<void>> = new Set(this.firstSendSlotWrites);"
         },
         {
-          "line": 1181,
+          "line": 1151,
           "text": "const exact = () => current() && this.draftBindingTask === opening &&"
         },
         {
-          "line": 1187,
+          "line": 1157,
           "text": "const ready = this.notesReady;"
         },
         {
-          "line": 1188,
+          "line": 1158,
           "text": "const draft = this.notesDraftTask;"
         },
         {
-          "line": 1189,
+          "line": 1159,
           "text": "const canonical = this.canonicalNotesUi;"
         },
         {
-          "line": 1190,
+          "line": 1160,
           "text": "const store = this.notesStore;"
         },
         {
-          "line": 1191,
+          "line": 1161,
           "text": "const exact = () => current() && this.notesReady === ready && this.notesDraftTask === draft &&"
         },
         {
-          "line": 1204,
+          "line": 1174,
           "text": "const notes=this.canonicalNotesUi;this.canonicalNotesUi=null;notes?.retire();this.notesSourceEpoch=(this.notesSourceEpoch??0)+1;"
         },
         {
-          "line": 1239,
+          "line": 1209,
           "text": "const pending=this.notesStore.replace(patch.list);"
         },
         {
-          "line": 1240,
+          "line": 1210,
           "text": "const committedRaw=this.notesLocalRaw=this.notesStore.raw;"
         },
         {
-          "line": 1250,
+          "line": 1220,
           "text": "const deferred=this.notesDraftDeferred;if(deferred&&!this.notesPending){this.notesDraftDeferred=null;setTimeout(()=>{if(this.live)void resumeNotesDraft(this,deferred);},0);}"
         },
         {
-          "line": 1254,
+          "line": 1224,
           "text": "const full=error instanceof NotesStorageFull||isStorageFull(error);if(full)this.notesStorageFull=true;"
         },
         {
-          "line": 1277,
+          "line": 1247,
           "text": "const api = originalApi.call(this, key);"
         },
         {
-          "line": 1289,
+          "line": 1259,
           "text": "signal.throwIfAborted();let unsubscribe=()=>{};"
         },
         {
-          "line": 1290,
+          "line": 1260,
           "text": "const finish=(error?:Error)=>{unsubscribe();signal.removeEventListener('abort',cancel);error?reject(error):resolve();};"
         },
         {
-          "line": 1291,
+          "line": 1261,
           "text": "const cancel=()=>finish(new DOMException('Workflow cancelled','AbortError'));"
         },
         {
-          "line": 1292,
+          "line": 1262,
           "text": "const check=()=>{const state=alphaClient.getState();if(state.context.sensitive)finish(Error('Return to the device before generating a workflow result.'));else if(!state.pending)finish();};"
         },
         {
-          "line": 1300,
+          "line": 1270,
           "text": "const expectedSession=alphaClient.getState().session||connectionController.getSnapshot().session,expectedRevision=alphaClient.getState().context.revision;"
         },
         {
-          "line": 1311,
+          "line": 1281,
           "text": "const list=this.notesStore.list;"
         },
         {
-          "line": 1313,
+          "line": 1283,
           "text": "const text=input.text||'';"
         },
         {
-          "line": 1315,
+          "line": 1285,
           "text": "const existing=list.find((note:Shell)=>note.id===input.operationId);"
         },
         {
-          "line": 1317,
+          "line": 1287,
           "text": "const note={id:input.operationId,kind:'text',title:'Workflow note',body:text,pinned:false,when:'Today',createdAt:Date.now(),workflowStep:input.operationId};"
         },
         {
-          "line": 1328,
+          "line": 1298,
           "text": "const current=connectionController.getSnapshot().session;"
         },
         {
-          "line": 1363,
+          "line": 1333,
           "text": "const mark=(card:Shell)=>shell.live&&shell.setState((previous:Shell)=>({msgs:previous.msgs.map((m:Shell)=>m.id===message.id&&m.card?{...m,card:{...m.card,...card}}:m)}));"
         },
         {
-          "line": 1365,
+          "line": 1335,
           "text": "const ready=()=>['cloud','direct'].includes(String(connectionController.getSnapshot().residentInference));"
         },
         {
-          "line": 1366,
+          "line": 1336,
           "text": "const available=await new Promise<boolean>(resolve=>{"
         },
         {
-          "line": 1367,
+          "line": 1337,
           "text": "let stop=()=>{};const timer=setTimeout(()=>{stop();resolve(ready());},10_000);"
         },
         {
-          "line": 1371,
+          "line": 1341,
           "text": "const cloud=selectedCloudName();"
         },
         {
-          "line": 1379,
+          "line": 1349,
           "text": "p.canReplyMessage=function(message:Shell){const target=messageTarget(message);return !!target&&!this.S().typing&&!this.draftSendPending&&connectionController.messageTargetCurrent(target);};"
         },
         {
-          "line": 1385,
+          "line": 1355,
           "text": "const origin=document.querySelector<HTMLTextAreaElement>('textarea[data-alpha-composer]:not([disabled])');"
         },
         {
-          "line": 1387,
+          "line": 1357,
           "text": "const before=shell.S(),binding=typedSendBinding(),previousFocus=document.activeElement,events=new AbortController();"
         },
         {
-          "line": 1388,
+          "line": 1358,
           "text": "let eligible=true,unsubscribe=()=>{};"
         },
         {
-          "line": 1389,
+          "line": 1359,
           "text": "const retire=()=>{eligible=false;events.abort();unsubscribe();};"
         },
         {
-          "line": 1395,
+          "line": 1365,
           "text": "const restore=()=>{"
         },
         {
-          "line": 1396,
+          "line": 1366,
           "text": "const now=shell.S(),active=document.activeElement,selected=connectionController.getSnapshot();"
         },
         {
-          "line": 1397,
+          "line": 1367,
           "text": "const current=eligible&&shell.live&&!document.hidden&&!selected.open&&(!selected.busy||selected.backgroundWork===true)&&typedSendBinding()===binding&&now.view===before.view&&now.screen===before.screen"
         },
         {
-          "line": 1401,
+          "line": 1371,
           "text": "const input=document.querySelector<HTMLTextAreaElement>('textarea[data-alpha-composer]:not([disabled])');"
         },
         {
-          "line": 1408,
+          "line": 1378,
           "text": "const out = originalVals.call(this);"
         },
         {
-          "line": 1409,
+          "line": 1379,
           "text": "const composeTarget=this.messageEditTarget||this.messageReplyTarget;"
         },
         {
-          "line": 1429,
+          "line": 1399,
           "text": "const draft=this.composerDraft?.state;"
         },
         {
-          "line": 1432,
+          "line": 1402,
           "text": "const connection=connectionController.getSnapshot();"
         },
         {
-          "line": 1435,
+          "line": 1405,
           "text": "const residentPending=residentAlwaysPresent&&!connection.session&&connection.kind==='recovering'?agentPendingText(connection):'';"
         },
         {
-          "line": 1438,
+          "line": 1408,
           "text": "const onDraft=out.onDraft;"
         },
         {
-          "line": 1440,
+          "line": 1410,
           "text": "const connection=connectionController.getSnapshot(),current=String(this.S().draft||'');"
         },
         {
-          "line": 1453,
+          "line": 1423,
           "text": "const live:Shell[]=this.S().msgs||[];"
         },
         {
-          "line": 1455,
+          "line": 1425,
           "text": "const shownNotices=collapseSystemNotices(live);"
         },
         {
-          "line": 1460,
+          "line": 1430,
           "text": "const c=m.c||{};"
         },
         {
-          "line": 1464,
+          "line": 1434,
           "text": "const message=live.find(item=>item.card===c);if(!message)return m;"
         },
         {
-          "line": 1465,
+          "line": 1435,
           "text": "const ic=out.ic||{},busy=!!this.decliningProposal||!!this.pendingActionApproval;"
         },
         {
-          "line": 1475,
+          "line": 1445,
           "text": "const parsed=workflowReplyText(m.text);if(parsed.text===m.text)return m;"
         },
         {
-          "line": 1481,
+          "line": 1451,
           "text": "const turn=!!this.S().typing;"
         },
         {
-          "line": 1486,
+          "line": 1456,
           "text": "const style = out.sbColor === 'var(--alpha-white)' ? SystemBarsStyle.Dark : SystemBarsStyle.Light;"
         },
         {
-          "line": 1493,
+          "line": 1463,
           "text": "const facts:TileFacts=this.S().q?.tileFacts||{};"
         },
         {
-          "line": 1516,
+          "line": 1486,
           "text": "const result = await elizaSystem.setFlashlight({ enabled: this.flashlightOn !== true });"
         },
         {
-          "line": 1529,
+          "line": 1499,
           "text": "const page = key ? tileSettingsPages[key] : undefined;"
         },
         {
-          "line": 1531,
+          "line": 1501,
           "text": "try { if (!page) throw Error('No settings page'); const notice = broaderPageNotice(page, await alphaDevice.openSettings({ page })); if (notice) this.toast(notice); }"
         },
         {
-          "line": 1547,
+          "line": 1517,
           "text": "mark?.('conversation-selection');const binding=await connectionController.prepareVoiceConversation(signal);signal.throwIfAborted();"
         },
         {
-          "line": 1557,
+          "line": 1527,
           "text": "input.assertCurrent();const target=alphaViewKey(input.viewId);"
         },
         {
-          "line": 1559,
+          "line": 1529,
           "text": "const current=()=>{input.assertCurrent();if(!this.live||document.hidden||!connectionController.voiceConversationCurrent(input.binding))throw Error('The voice conversation changed.');};"
         },
         {
-          "line": 1560,
+          "line": 1530,
           "text": "let delivered=false;try{"
         },
         {
-          "line": 1561,
+          "line": 1531,
           "text": "const prepared=Object.hasOwn(input,'navigationPrepared')||Object.hasOwn(input,'navigationBinding')||Object.hasOwn(input,'completedActionHandoffId');"
         },
         {
-          "line": 1563,
+          "line": 1533,
           "text": "const capture=connectionController.captureViewNavigation(this.voiceConversationContext(input.binding));"
         },
         {
-          "line": 1572,
+          "line": 1542,
           "text": "const {text,turnId,signal,binding}=input;let acceptedContext=input.context;"
         },
         {
-          "line": 1574,
+          "line": 1544,
           "text": "const current=()=>{signal.throwIfAborted();input.assertCurrent();context(this);if(!belongs())throw Error('The voice conversation changed.');};"
         },
         {
-          "line": 1577,
+          "line": 1547,
           "text": "const navigation=connectionController.captureViewNavigation(input.context),userId=crypto.randomUUID(),streamId=crypto.randomUUID();let streamed=false;"
         },
         {
-          "line": 1589,
+          "line": 1559,
           "text": "let provisionalSeen=false;"
         },
         {
-          "line": 1596,
+          "line": 1566,
           "text": "current();const identity=reply.messageBinding;"
         },
         {
-          "line": 1602,
+          "line": 1572,
           "text": "const userMessageId=reply.userMessageId;"
         },
         {
-          "line": 1609,
+          "line": 1579,
           "text": "const delivered=await deliverChatNavigation(this,navigation,reply.actionResults,current,input.navigation);"
         },
         {
-          "line": 1610,
+          "line": 1580,
           "text": "const nextContext=input.navigation?.finish(delivered);if(nextContext)acceptedContext=nextContext;"
         },
         {
-          "line": 1613,
+          "line": 1583,
           "text": "const results=await connectionController.continueRequestedCamera(reply.userMessageId,signal);"
         },
         {
-          "line": 1614,
+          "line": 1584,
           "text": "for(const result of results)this.agentSay(result.summary,undefined,{id:`device-receipt:${result.proposalId}`,deviceReceipt:true});"
         },
         {
-          "line": 1618,
+          "line": 1588,
           "text": "for(const proposal of reply.proposals||[]){retainReadReply(this,proposal,identity,reply.userMessageId);this.agentSay(proposal.description,proposalCard(proposal),undefined,belongs);}"
         },
         {
-          "line": 1624,
+          "line": 1594,
           "text": "let pendingNotice=false;"
         },
         {
-          "line": 1632,
+          "line": 1602,
           "text": "const review=!!reply.proposals?.length||pendingNotice;"
         },
         {
-          "line": 1641,
+          "line": 1611,
           "text": "const before=this.S(),reply=this.messageReplyTarget,edit=this.messageEditTarget;"
         },
         {
-          "line": 1643,
+          "line": 1613,
           "text": "if(this.stopVoiceConversation)context(this);const expectedContext=JSON.stringify(alphaClient.getState().context);"
         },
         {
-          "line": 1644,
+          "line": 1614,
           "text": "const binding=this.stopVoiceConversation?sendBinding():undefined,draft=String(before.draft||''),view=before.view;"
         },
         {
-          "line": 1646,
+          "line": 1616,
           "text": "let s = this.S(); const text = String(argument ?? s.draft);"
         },
         {
-          "line": 1650,
+          "line": 1620,
           "text": "const fromComposer=argument===undefined;"
         },
         {
-          "line": 1654,
+          "line": 1624,
           "text": "const editTarget:ConversationMessageTarget|undefined=this.messageEditTarget,replyTarget:ConversationMessageTarget|undefined=fromComposer?this.messageReplyTarget:undefined,editView=s.view;"
         },
         {
-          "line": 1668,
+          "line": 1638,
           "text": "const sourceDraft=fromComposer&&this.reviewedSourceDraft?.draft===text?sourceOf(this.reviewedSourceDraft.source):undefined;"
         },
         {
-          "line": 1674,
+          "line": 1644,
           "text": "const revision=alphaClient.getState().context.revision,connection=connectionController.getSnapshot(),sessionId=connection.session?.sessionId,conversationId=connection.history?.conversationId;"
         },
         {
-          "line": 1676,
+          "line": 1646,
           "text": "const heldText=String(s.draft||'');let heldKey:string|undefined;"
         },
         {
-          "line": 1682,
+          "line": 1652,
           "text": "const reviewedSource=fromComposer?this.reviewedSourceDraft:null;if(fromComposer)this.reviewedSourceDraft=null;"
         },
         {
-          "line": 1684,
+          "line": 1654,
           "text": "const sameChat=()=>connectionController.getSnapshot().session?.sessionId===sessionId;"
         },
         {
-          "line": 1685,
-          "text": "const userId=crypto.randomUUID(),streamedId=crypto.randomUUID();let streamed=false;"
-        },
-        {
-          "line": 1686,
-          "text": "const sentAttachment=fromComposer?{transcriptAttachment:transcript,cameraAttachment:this.cameraAttachment,displayText:text,requestText}:null;"
-        },
-        {
-          "line": 1687,
-          "text": "if(sentAttachment&&(transcript||this.cameraAttachment)&&connection.session&&conversationId){"
-        },
-        {
-          "line": 1688,
-          "text": "try{await saveAttachment(connection.session,conversationId,userId,sentAttachment);}"
-        },
-        {
-          "line": 1691,
-          "text": "if(!current()||this.composerDraft.binding!==heldKey||!transcriptCurrent()||this.cameraAttachment!==sentAttachment.cameraAttachment){"
-        },
-        {
-          "line": 1692,
-          "text": "if(this.live)releaseComposerSend(this,heldKey,heldText);else this.composerDraft?.release();"
-        },
-        {
-          "line": 1693,
-          "text": "return;"
-        },
-        {
-          "line": 1697,
+          "line": 1667,
           "text": "const attempt:SendAttempt=this.sendAttempt={transportCalled:false,preDispatch:false,streamed:false};"
         },
         {
-          "line": 1698,
+          "line": 1655,
+          "text": "const userId=crypto.randomUUID(),streamedId=crypto.randomUUID();let streamed=false;"
+        },
+        {
+          "line": 1668,
           "text": "const replaceStream=(value:string,streaming=true)=>this.setState((previous:Shell)=>({msgs:previous.msgs.map((message:Shell)=>message.id===streamedId?{...message,text:value,streaming}:message)}));"
         },
         {
-          "line": 1699,
+          "line": 1669,
           "text": "let streamFrame=0,latestStream:string|undefined;"
         },
         {
-          "line": 1703,
+          "line": 1673,
           "text": "let navigation:ReturnType<typeof connectionController.captureViewNavigation>|undefined,readyNavigation:readonly unknown[]|undefined;"
         },
         {
-          "line": 1704,
+          "line": 1674,
           "text": "const deliverNavigation=(results:readonly unknown[]|undefined)=>deliverChatNavigation(this,navigation,results);"
         },
         {
-          "line": 1711,
+          "line": 1681,
           "text": "const sourceSession=connectionController.getSnapshot().session;"
         },
         {
-          "line": 1717,
+          "line": 1687,
           "text": "const showStatus=(event:Event)=>{if(this.live&&!streamed&&this.sendAttempt===attempt)this.setState({turnStatus:(event as CustomEvent<string>).detail});};"
         },
         {
-          "line": 1736,
+          "line": 1706,
           "text": "const identity=reply.messageBinding;"
         },
         {
-          "line": 1741,
+          "line": 1711,
           "text": "const planCard=planActionCard(reply.planAction);"
         },
         {
-          "line": 1757,
+          "line": 1727,
           "text": "let cameraOpened=false,cameraReceipts=0;"
         },
         {
-          "line": 1759,
+          "line": 1729,
           "text": "for (const proposal of reply.proposals || []) {retainReadReply(this,proposal,identity,reply.userMessageId);this.agentSay(proposal.description,proposalCard(proposal));}"
         },
         {
-          "line": 1765,
+          "line": 1735,
           "text": "const delivered=await deliverNavigation(reply.actionResults);"
         },
         {
-          "line": 1768,
+          "line": 1738,
           "text": "const results=await connectionController.continueRequestedCamera(reply.userMessageId,new AbortController().signal);"
         },
         {
-          "line": 1770,
+          "line": 1740,
           "text": "for(const result of results)if(this.live)this.agentSay(result.summary,undefined,{id:`device-receipt:${result.proposalId}`,deviceReceipt:true});"
         },
         {
-          "line": 1774,
+          "line": 1744,
           "text": "const cameraReview=cameraOpened&&alphaClient.getState().context.view==='camera'&&this.S().msgs.some((m:Shell)=>m.card?.proposalId&&!m.card.done);"
         },
         {
-          "line": 1781,
+          "line": 1751,
           "text": "if(identity&&completedActions?.length)this.setState({},()=>{if(this.live&&sameChat())for(const receipt of completedActions)publishCommittedDeviceChanges(receipt,alphaClient,identity.session);});"
         },
         {
-          "line": 1783,
+          "line": 1753,
           "text": "let opened=false;"
         },
         {
-          "line": 1785,
+          "line": 1755,
           "text": "const message=opened?'The screen opened, but the conversation response was interrupted. Check history before sending again.':e instanceof Error?e.message:'The agent could not complete this request.';"
         },
         {
-          "line": 1798,
+          "line": 1768,
           "text": "const recorded=e&&typeof e==='object'?e as {userMessageId?:unknown;messageBinding?:unknown}:{};"
         },
         {
-          "line": 1801,
+          "line": 1771,
           "text": "const reconciling=!!connectionController.getSnapshot().replyNotice&&e instanceof AlphaClientError&&e.code==='cancelled';"
         },
         {
-          "line": 1810,
+          "line": 1780,
           "text": "const failureKind=(e as {failureKind?:unknown}).failureKind as string,limit=(e as {serviceLimit?:unknown}).serviceLimit;"
         },
         {
-          "line": 1813,
+          "line": 1783,
           "text": "const planCard=planActionCard((e as {planAction?:unknown}).planAction)??managePlan;"
         },
         {
-          "line": 1815,
+          "line": 1785,
           "text": "const beforeOutput=limit!==undefined||REFUSED_BEFORE_OUTPUT.has(failureKind);"
         },
         {
-          "line": 1822,
+          "line": 1792,
           "text": "const recoveryText=message==='The agent request failed. Check connection and action history before sending another request.'?'Sorry, I couldn’t finish that reply.':message;"
         },
         {
-          "line": 1828,
+          "line": 1798,
           "text": "const noticeBinding=recorded.messageBinding&&typeof recorded.messageBinding==='object'?recorded.messageBinding as {conversationId?:unknown;session?:unknown}:null;"
         },
         {
-          "line": 1830,
+          "line": 1800,
           "text": "if(noticeCurrent())for(const [index,notice] of replyNotices(e).entries()){"
         },
         {
-          "line": 1841,
+          "line": 1811,
           "text": "const delivered=(previous.msgs||[]).find((message:Shell)=>message.id===identity.id);"
         },
         {
-          "line": 1844,
+          "line": 1814,
           "text": "const chat = previous.chat === 'full' ? 'full' : 'sheet';"
         },
         {
-          "line": 1856,
+          "line": 1826,
           "text": "const sessionId=connectionController.getSnapshot().session?.sessionId;"
         },
         {
-          "line": 1858,
+          "line": 1828,
           "text": "let result:{ok:boolean;message:string};"
         },
         {
-          "line": 1882,
+          "line": 1852,
           "text": "let id:unknown;"
         },
         {
-          "line": 1890,
+          "line": 1860,
           "text": "const review=card.sourceSummary,recording=recordingSourceOf(review.source);"
         },
         {
-          "line": 1891,
+          "line": 1861,
           "text": "const recordingNote=recording&&this.vget('notes').list.find((n:Shell)=>n.id===recording.noteId);"
         },
         {
-          "line": 1892,
+          "line": 1862,
           "text": "const expectedRecording=recordingNote&&JSON.stringify(recordingNote);"
         },
         {
-          "line": 1898,
+          "line": 1868,
           "text": "const update=(title:string,sub:string)=>{if(this.live)this.setState({msgs:this.S().msgs.map((m:Shell)=>m.id===message.id?{...m,card:{...m.card,done:true,title,sub}}:m)});};"
         },
         {
-          "line": 1900,
+          "line": 1870,
           "text": "const canonical=this.notesSourceMode!=='legacy'&&!recording?this.canonicalNotesUi:null;"
         },
         {
-          "line": 1904,
+          "line": 1874,
           "text": "const saved=await canonical.saveCard(fields.title?fields.title+(fields.body?'\\n'+fields.body:''):fields.body,this.api('notes'));"
         },
         {
-          "line": 1910,
+          "line": 1880,
           "text": "const existing=this.vget('notes').list;"
         },
         {
-          "line": 1936,
+          "line": 1906,
           "text": "const expectedTarget=notesTarget(card.reviewNoteTarget);"
         },
         {
-          "line": 1937,
+          "line": 1907,
           "text": "const store=this.notesStore,expectedContext=JSON.stringify(alphaClient.getState().context),expectedSession=JSON.stringify(session);"
         },
         {
-          "line": 1942,
+          "line": 1912,
           "text": "current();const target=await store.target(expectedTarget.noteId);current();"
         },
         {
-          "line": 1949,
+          "line": 1919,
           "text": "const approval=this.pendingActionApproval=new AbortController();"
         },
         {
-          "line": 1952,
+          "line": 1922,
           "text": "const sessionId = session?.sessionId;"
         },
         {
-          "line": 1953,
+          "line": 1923,
           "text": "const beforeView = this.S().view;"
         },
         {
-          "line": 1954,
+          "line": 1924,
           "text": "let receipt;"
         },
         {
-          "line": 1955,
+          "line": 1925,
           "text": "const readLease=this.readReplyLeases?.get(card.proposalId);"
         },
         {
-          "line": 1985,
+          "line": 1955,
           "text": "const result = await DailyApps.perform({ action: 'voice' });"
         },
         {
-          "line": 1992,
+          "line": 1962,
           "text": "const out = notesRender({ ...state, record: false }, api);"
         },
         {
-          "line": 1997,
+          "line": 1967,
           "text": "const failed=Boolean((activeShell?.notesStorageFailed&&document.documentElement.dataset.notesStorageState!=='opening')||activeShell?.notesStore?.needsRecovery);"
         }
-      ]
+      ],
+      "reviewStatus": "state-audit-required"
     },
     {
       "path": "apps/app/src/prototype/agent-calendar-adapter.ts",
@@ -24618,7 +24351,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "f952be1d936ccb677e4d98f9c9da22ad6734ca66d33c100c529b81548ab7ede1",
+      "sha256": "5008c5a98147e06dae2c70ad076cffa179a693171e2c629d6fc89639d46ea543",
       "stateAnchors": [
         {
           "line": 27,
@@ -24865,7 +24598,7 @@
           "text": "const open=!!choice&&index===msgs.length-1&&!done.has(id)&&current();"
         }
       ],
-      "integrationReview": "Domain allocation retained after merging the audit fixes. The refreshed source hash and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations."
+      "integrationReview": "Domain allocation retained after merging the audit fixes. The refreshed source hash and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations. 2026-11-09: suppress only duplicate navigation metadata when it equals remaining-distance status. Distinct arrival/background notices remain. Four-trace mounted Maps comparison and five existing accessibility scenarios passed on the parent composition; current-main replay follows. No action or permission transition changed."
     },
     {
       "path": "apps/app/src/prototype/maps-chat-adapter.ts",
@@ -32466,9 +32199,9 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "f718ef2e3a262826e177090ad31b319d472cd10a42ee0da4ca661355268493ea",
+      "sha256": "e9e52df7bc41f3d176f7c784db75727bec8de5a0bce41efd793cc9f1e28a1e5f",
       "stateAnchors": [],
-      "integrationReview": "2026-11-09: tested native below-host presentation keeps page size and identity through chat, blocks page input beneath host controls, and fences stale backdrop cleanup. TypeScript and isolated renderer pass; exact Android/Pixel acceptance remains open. 2026-11-09: shared overlay bounds, retained dismiss controls and alarm reading order validated in browser layout and interaction checks; storage and handoff transitions are unchanged. Reviewed integration source. Domain allocation is retained; source-hash refresh does not establish semantic refinement. See targeted validation and remaining obligations."
+      "integrationReview": "2026-11-09: landscape Maps guidance uses the same left-to-right flex order as portrait. The change removes grid placement only; no interaction, storage, request, focus, or lifecycle transition changes. Five existing accessibility checks cover portrait, landscape and 200 percent text; the landscape search/start/mute/enable flow also passes. Existing model allocations and unresolved refinement limits are unchanged. 2026-11-09: tested native below-host presentation keeps page size and identity through chat, blocks page input beneath host controls, and fences stale backdrop cleanup. TypeScript and isolated renderer pass; exact Android/Pixel acceptance remains open. 2026-11-09: shared overlay bounds, retained dismiss controls and alarm reading order validated in browser layout and interaction checks; storage and handoff transitions are unchanged. Reviewed integration source. Domain allocation is retained; source-hash refresh does not establish semantic refinement. See targeted validation and remaining obligations."
     },
     {
       "path": "apps/app/src/prototype/photo-library-adapter.ts",
@@ -34777,13 +34510,14 @@
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "1c94732bcaf76e4a09ba7a4945dcc81332b59a282f0c27c121f7fa478029a309",
+      "sha256": "8aabc9bdc9bfc07acb68ab3e3d0e948ee096cd2d216cb4fd244d62298f75f482",
       "stateAnchors": [
         {
           "line": 3359,
           "text": "<sc-if value=\"{{workflows.automation.editingSchedule}}\"><sc-if value=\"{{workflows.automation.scheduleClockEditable}}\"><label class=\"schedule-instructions\">Time ({{workflows.automation.e"
         }
-      ]
+      ],
+      "integrationReview": " 2026-11-09: suppress only duplicate navigation metadata when it equals remaining-distance status. Distinct arrival/background notices remain. Four-trace mounted Maps comparison and five existing accessibility scenarios passed on the parent composition; current-main replay follows. No action or permission transition changed."
     },
     {
       "path": "apps/app/src/prototype/use-in-email-review.ts",
@@ -34959,10 +34693,10 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "e948a4fe801399c43cb12fac24a94e6d5bc30fcb1a49f04adf954e845d2bed80",
+      "sha256": "c3b4c1dbf292304f05ec6024866fe71e16070a3b63339c378eb01eacf30f695d",
       "stateAnchors": [
         {
-          "line": 1104,
+          "line": 1105,
           "text": "window.dispatchEvent(new CustomEvent(STARTUP_PERMISSIONS_REOPEN, {detail:{permission:'microphone'}}));"
         }
       ],
@@ -38425,7 +38159,7 @@
     },
     {
       "path": "apps/app/src/runtime/cloud-protocol.ts",
-      "sha256": "18524f7ee144b3754e1d390b3ea50f70ff92bc7f190e28a8db00a42a1c65b1e6",
+      "sha256": "c2931211060ffaa80ee9d16758f87ed4b2bc672ff6c2eb4c3f22550e5039cbf6",
       "models": [
         "Application",
         "ApplicationComposition",
@@ -39047,7 +38781,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "a66bbbcffd88bc5138fd37f3475d2753aa9b45d95e8c37d2cef37d8b3aa122e4",
+      "sha256": "c49f5cf1e8986a52842d8a272617c16e1e788017483eaebf7076b68db85cb41c",
       "stateAnchors": [],
       "integrationReview": "2026-11-09 UI and browser-return delta reviewed against existing domain models and new ChatAttachments/BrowserGoogleReturn contracts; see ui-return-review-20261109.md. Source-model refinement and device acceptance remain separate. Domain allocation retained after merged fixes. Source identity and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations."
     },
@@ -39612,103 +39346,6 @@
           "text": "export const developmentCloudRealtimeVoiceEnabled=import.meta.env!==undefined&&import.meta.env.DEV===true&&(browserCloudResidentEnabled||import.meta.env.VITE_ELIZA_DEV_ALLOW_TEST_MOCKS==='1')&&!Capaci"
         }
       ]
-    },
-    {
-      "path": "apps/app/src/runtime/development-transport.ts",
-      "sha256": "b3c9b901ca1b3ca9444d2749b0b1d328ae4e934a0b9674491b11bccf5dadd1e6",
-      "models": [
-        "DevelopmentSurfaces"
-      ],
-      "scope": "development-only",
-      "treatment": "domain-contract-or-support",
-      "stateAnchors": [
-        {
-          "line": 39,
-          "text": "const DevelopmentAgent = registerPlugin<{"
-        },
-        {
-          "line": 48,
-          "text": "const allowedViews = new Set<AlphaView>(DEVELOPMENT_PROPOSAL_VIEWS);"
-        },
-        {
-          "line": 81,
-          "text": "const status = await developmentAgentStatus();"
-        },
-        {
-          "line": 94,
-          "text": "const origin = new URL(status.providerOrigin);"
-        },
-        {
-          "line": 97,
-          "text": "const active = new Set<string>();"
-        },
-        {
-          "line": 98,
-          "text": "const pending = new Map<"
-        },
-        {
-          "line": 113,
-          "text": "const cancel = () => {"
-        },
-        {
-          "line": 118,
-          "text": "const result = await DevelopmentAgent.chat({"
-        },
-        {
-          "line": 131,
-          "text": "const proposals: ActionProposal[] = [];"
-        },
-        {
-          "line": 132,
-          "text": "for (const wire of result.proposals) {"
-        },
-        {
-          "line": 133,
-          "text": "const operation = validateOperation(wire.operation);"
-        },
-        {
-          "line": 146,
-          "text": "const handoff=findViewActionHandoff([wire.navigation]);"
-        },
-        {
-          "line": 147,
-          "text": "const view=handoff?.viewId==='chat'?'home':handoff?.viewId==='automations'?'workflows':handoff?.viewId;"
-        },
-        {
-          "line": 150,
-          "text": "const record:{title:string;body:string;at?:number}=operation.type==='reminder_create'?{title:operation.fields.title,body:operation.fields.body,at:operation.fields.schedule.at}:operation.type==='open_v"
-        },
-        {
-          "line": 152,
-          "text": "const proposal: ActionProposal = {"
-        },
-        {
-          "line": 170,
-          "text": "const stored = pending.get(proposal.id);"
-        },
-        {
-          "line": 180,
-          "text": "const operation=validateOperation({ ...stored.operation });"
-        },
-        {
-          "line": 183,
-          "text": "const result = await dispatch(operation);"
-        },
-        {
-          "line": 197,
-          "text": "for (const requestId of active)"
-        }
-      ]
-    },
-    {
-      "path": "apps/app/src/runtime/development-view-contract.ts",
-      "sha256": "492d7e0c82389216c4801018a3c226eea851fd10808e9eb60e05019587758f93",
-      "models": [
-        "DevelopmentSurfaces"
-      ],
-      "scope": "development-only",
-      "treatment": "domain-contract-or-support",
-      "stateAnchors": []
     },
     {
       "path": "apps/app/src/runtime/device-actions.ts",
@@ -46742,1032 +46379,6 @@
       ]
     },
     {
-      "path": "backend/calendar-read-timing.ts",
-      "models": [
-        "CalendarPresentation",
-        "NativeGoogleHostArtifact"
-      ],
-      "scope": "application",
-      "treatment": "domain-contract-or-support",
-      "sha256": "6c182fd47e3711d5a37a475691cfd168c34f9be21f83c5ab72605262618c65f5",
-      "stateAnchors": [
-        {
-          "line": 7,
-          "text": "const routes:Record<string,RouteBucket>={"
-        },
-        {
-          "line": 13,
-          "text": "const rounded=(n:number)=>Number.isFinite(n)?Math.min(Number.MAX_SAFE_INTEGER,Math.max(0,Math.round(n))):0;"
-        },
-        {
-          "line": 18,
-          "text": "const record=(value:CalendarReadTiming)=>{try{emit(value);}catch{/* Diagnostics cannot change reads or errors. */}};"
-        },
-        {
-          "line": 23,
-          "text": "let bucket:RouteBucket|undefined;"
-        },
-        {
-          "line": 26,
-          "text": "const start=performance.now();let status:number|null=null;"
-        },
-        {
-          "line": 27,
-          "text": "try{const result=await read(input);status=Number.isInteger(result.status)&&result.status>=100&&result.status<=599?result.status:null;return result;}"
-        }
-      ]
-    },
-    {
-      "path": "backend/loader.ts",
-      "models": [
-        "ResidentRuntime",
-        "DevelopmentRuntimeLoader"
-      ],
-      "scope": "application",
-      "treatment": "domain-contract-or-support",
-      "reviewStatus": "state-audit-required",
-      "sha256": "183bf250d4f6b6db5a4e672bb60993ebaebef62dfa0eee21bc0d5e1dc76f2150",
-      "stateAnchors": []
-    },
-    {
-      "path": "backend/managed-google-agent-broker.ts",
-      "sha256": "7063562ae9f4305828afb1252ce3d9d9868b6a28ae7ff4d308adcc1741409965",
-      "models": [
-        "ServiceAuthorization",
-        "NativeGoogleAccessFile",
-        "NativeGoogleHostArtifact"
-      ],
-      "scope": "application",
-      "treatment": "state-and-transition-projection",
-      "stateAnchors": [
-        {
-          "line": 13,
-          "text": "const cloud=error instanceof CloudProtocolError;"
-        },
-        {
-          "line": 14,
-          "text": "const allowed=['invalid-response','http','expired','credentials-missing','credential-consumed','login-active','account-changed'];"
-        },
-        {
-          "line": 15,
-          "text": "const code=cloud&&allowed.includes(error.code)?error.code:'unclassified';"
-        },
-        {
-          "line": 16,
-          "text": "const status=cloud&&Number.isInteger(error.status)&&error.status!>=100&&error.status!<=599?error.status:undefined;"
-        },
-        {
-          "line": 17,
-          "text": "const errorClass=cloud?'CloudProtocolError':error instanceof CalendarAgentWriteRefused?'CalendarAgentWriteRefused':typeof DOMException!=='undefined'&&error instanceof DOMException&&error.name==='Abort"
-        },
-        {
-          "line": 18,
-          "text": "const stage=managedGoogleFailureStage(error);"
-        },
-        {
-          "line": 19,
-          "text": "const capabilities={abortAny:typeof AbortSignal!=='undefined'&&typeof AbortSignal.any==='function',abortTimeout:typeof AbortSignal!=='undefined'&&typeof AbortSignal.timeout==='function',fetch:typeof f"
-        },
-        {
-          "line": 24,
-          "text": "const reader=options.host;"
-        },
-        {
-          "line": 26,
-          "text": "const send=(status:number,data:unknown,readDiagnostic?:string)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store',...(status===409&&readDiagnostic?{[calendarReadBroke"
-        },
-        {
-          "line": 27,
-          "text": "const controller=new AbortController();const closed=()=>{if(!res.writableEnded)controller.abort();};res.once('close',closed);"
-        },
-        {
-          "line": 28,
-          "text": "let operation:BrokerOperation='request';"
-        },
-        {
-          "line": 32,
-          "text": "const chunks:Buffer[]=[];let bytes=0;for await(const chunk of req){const part=Buffer.from(chunk);bytes+=part.length;if(bytes>256*1024)throw new GoogleAgentRefusal('request-too-large','Agent request to"
-        },
-        {
-          "line": 33,
-          "text": "let input:any;try{input=JSON.parse(Buffer.concat(chunks).toString('utf8'));}catch{throw new GoogleAgentRefusal('invalid-request','Invalid Google tool request');}"
-        },
-        {
-          "line": 36,
-          "text": "const writesContent=input.send!==undefined||!!input.calendar&&typeof input.calendar==='object'&&['write-execute','linked-sync'].includes(input.calendar.operation);"
-        },
-        {
-          "line": 39,
-          "text": "let result:unknown;"
-        },
-        {
-          "line": 45,
-          "text": "const s=input.send,keys=Object.keys(s).sort().join();"
-        },
-        {
-          "line": 52,
-          "text": "const c=input.calendar;"
-        },
-        {
-          "line": 58,
-          "text": "controller.signal.throwIfAborted();const body=JSON.stringify(result);if(Buffer.byteLength(body)>GOOGLE_AGENT_RESULT_MAX)throw new GoogleAgentRefusal('result-too-large','Google result too large');"
-        },
-        {
-          "line": 61,
-          "text": "let readDiagnostic:string|undefined;"
-        },
-        {
-          "line": 73,
-          "text": "const failure=error as {code?:unknown;status?:unknown;data?:{error?:unknown}}|null;"
-        },
-        {
-          "line": 74,
-          "text": "const unavailable=failure?.code==='http'&&failure.status===404&&failure.data?.error==='Not found';"
-        }
-      ]
-    },
-    {
-      "path": "backend/managed-google-agent-host.ts",
-      "sha256": "6b4629eb2c8adeb4ffefaf4fcf14b6367483dbb917e5ecceeb59e5890e76f115",
-      "models": [
-        "ServiceAuthorization",
-        "NativeGoogleAccessFile",
-        "NativeGoogleHostArtifact"
-      ],
-      "scope": "application",
-      "treatment": "domain-contract-or-support",
-      "stateAnchors": [
-        {
-          "line": 16,
-          "text": "export const GOOGLE_AGENT_RESULT_MAX=256*1024;"
-        },
-        {
-          "line": 18,
-          "text": "const GMAIL_BODY_MAX=32_000;"
-        },
-        {
-          "line": 19,
-          "text": "const permissionText:Record<string,string>={'google.gmail.mailbox':'Gmail mailbox changes need permission. Enable Gmail changes in Settings → Connections.','google.gmail.send':'Sending Gmail needs per"
-        },
-        {
-          "line": 28,
-          "text": "const CALENDAR_READ_STEP_MS=5_000;"
-        },
-        {
-          "line": 30,
-          "text": "const timing=createCalendarReadTiming(process.env.ALPHA_CALENDAR_READ_TIMING==='1');"
-        },
-        {
-          "line": 31,
-          "text": "const allowed=(kind:keyof GoogleAgentAccess)=>{if(access()[kind]!==true)throw new GoogleAgentRefusal('changes-off',kind==='gmailChanges'?'Gmail changes are turned off in Settings › Google accounts. Go"
-        },
-        {
-          "line": 32,
-          "text": "const refuseWrite=()=>{throw Error('Gmail agent reads cannot change credentials or mail.');};"
-        },
-        {
-          "line": 36,
-          "text": "const shared=new Map<string,{monotonic:number;wall:number;pending:boolean;value:Promise<unknown>}>();"
-        },
-        {
-          "line": 37,
-          "text": "let sharedOwner:string|undefined;"
-        },
-        {
-          "line": 39,
-          "text": "const entry=shared.get(key);"
-        },
-        {
-          "line": 41,
-          "text": "const age=entry?Math.max(performance.now()-entry.monotonic,Date.now()-entry.wall):null;"
-        },
-        {
-          "line": 42,
-          "text": "const young=entry&&age!==null&&age<CALENDAR_READ_STEP_MS;"
-        },
-        {
-          "line": 46,
-          "text": "const value=read(),next={monotonic:performance.now(),wall:Date.now(),pending:true,value};shared.set(key,next);"
-        },
-        {
-          "line": 47,
-          "text": "const drop=()=>{if(shared.get(key)===next)shared.delete(key);};"
-        },
-        {
-          "line": 51,
-          "text": "const googleCalendars=(client:CloudProtocol,grantId:string,scope:string,signal:AbortSignal,reuseFinished:boolean)=>sharedLookup(`${scope}:calendars`,()=>client.googleCalendars(grantId,signal),reuseFin"
-        },
-        {
-          "line": 54,
-          "text": "let stage:ManagedGoogleFailureStage='credential';"
-        },
-        {
-          "line": 56,
-          "text": "const credential=await host.agentCredential();if(!credential)throw new GoogleAgentRefusal('signed-out','Sign in to Eliza Cloud before reading Gmail.');"
-        },
-        {
-          "line": 58,
-          "text": "const identity=JSON.stringify(credential),signal=parent?AbortSignal.any([parent,AbortSignal.timeout(30000)]):AbortSignal.timeout(30000);"
-        },
-        {
-          "line": 59,
-          "text": "const current=async()=>{signal.throwIfAborted();if(JSON.stringify(await host.agentCredential())!==identity)throw Error('Cloud account changed while reading Gmail.');};"
-        },
-        {
-          "line": 61,
-          "text": "const calendarRead=capability==='google.calendar.read';"
-        },
-        {
-          "line": 62,
-          "text": "const transport=operation==='calendar'?host.agentCalendarOperation:operation?host.agentGmailOperation:host.agentRead;"
-        },
-        {
-          "line": 63,
-          "text": "const client=new CloudProtocol(environment,calendarRead?timing.request(transport):transport,{acceptsReferences:true,read:async()=>{await current();return credential;},write:async()=>refuseWrite(),clea"
-        },
-        {
-          "line": 64,
-          "text": "const ownerKey=createHash('sha256').update(identity).digest('hex');"
-        },
-        {
-          "line": 65,
-          "text": "const listOwned=async()=>{"
-        },
-        {
-          "line": 67,
-          "text": "const owner=await client.identity(signal);await current();"
-        },
-        {
-          "line": 73,
-          "text": "const listed=calendarRead?await sharedLookup(ownerKey,listOwned,reuseFinished,'owner-cache'):await listOwned();"
-        },
-        {
-          "line": 75,
-          "text": "const connected=listed.filter(a=>a.connected&&a.connectionId).map(account=>({account,grantId:account.connectionId!,scope:createHash('sha256').update(identity+':'+account.connectionId).digest('hex')}))"
-        },
-        {
-          "line": 76,
-          "text": "const accounts=connected.filter(a=>a.account.grantedCapabilities.includes(capability));"
-        },
-        {
-          "line": 80,
-          "text": "const confirm=async(grantIds:string[])=>{try{const latest=await client.gmailAccounts(signal);if(grantIds.some(id=>!latest.some(a=>a.connectionId===id&&a.connected&&a.grantedCapabilities.includes(capab"
-        },
-        {
-          "line": 85,
-          "text": "const idScope=(id:unknown,kind:'alpha-gmail'|'alpha-gmail-send')=>{const match=typeof id==='string'?new RegExp(`^${kind}:([a-f0-9]{64}):`).exec(id):null;if(!match)throw new GoogleAgentRefusal('invalid"
-        },
-        {
-          "line": 89,
-          "text": "const {client,signal,accounts,connected,confirm}=await ownerAccounts(parent,capability,operation);"
-        },
-        {
-          "line": 90,
-          "text": "const needed=()=>new GoogleAgentRefusal('permission-needed',permissionText[capability]??'Gmail reads need permission. Reconnect Gmail in Settings → Connections.');"
-        },
-        {
-          "line": 91,
-          "text": "let selected=accounts;"
-        },
-        {
-          "line": 97,
-          "text": "const value=await run(client,selected[0].grantId,selected[0].scope,signal);"
-        },
-        {
-          "line": 105,
-          "text": "const {client,signal,accounts,confirm}=await ownerAccounts(parent,'google.calendar.write','calendar');"
-        },
-        {
-          "line": 106,
-          "text": "const selected=accounts.filter(account=>input.grantId===`alpha-google:${account.scope}`);"
-        },
-        {
-          "line": 108,
-          "text": "const account=selected[0],result=await calendarAgentWrite(client,account.grantId,account.scope,input,signal,'alpha-google');"
-        },
-        {
-          "line": 114,
-          "text": "allowed('gmailChanges');const proposal=sendProposal(input);if(!/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(input.requestId))throw new GoogleAgentRefusal('invalid-requ"
-        },
-        {
-          "line": 116,
-          "text": "const prepared=await client.gmailPrepareOperation(grantId,input.requestId,proposal,signal);"
-        },
-        {
-          "line": 117,
-          "text": "const digest=createHash('sha256').update(JSON.stringify(prepared.review)).digest('hex');"
-        },
-        {
-          "line": 125,
-          "text": "const prefix=`alpha-gmail-send:${scope}:`,requestId=id.slice(prefix.length);"
-        },
-        {
-          "line": 127,
-          "text": "const receipt=await client.gmailOperation(grantId,requestId,signal);if(receipt.kind!=='send')throw Error('This is not an email send receipt.');return receipt;"
-        },
-        {
-          "line": 131,
-          "text": "allowed('gmailChanges');const proposal=sendProposal(input);if(!/^[a-f0-9]{64}$/.test(input.reviewDigest))throw new GoogleAgentRefusal('invalid-request','An exact prepared review is required.');"
-        },
-        {
-          "line": 133,
-          "text": "const prefix=`alpha-gmail-send:${scope}:`,requestId=input.id.slice(prefix.length);"
-        },
-        {
-          "line": 135,
-          "text": "const prior=await client.gmailOperation(grantId,requestId,signal);"
-        },
-        {
-          "line": 150,
-          "text": "const {client,signal,accounts,confirm}=await ownerAccounts(parent,'google.calendar.read','calendar');"
-        },
-        {
-          "line": 151,
-          "text": "const sources=(await Promise.all(accounts.map(async({account,grantId,scope})=>(await googleCalendars(client,grantId,scope,signal,false)).filter(row=>['reader','writer','owner'].includes(row.accessRole"
-        },
-        {
-          "line": 156,
-          "text": "const {client,signal,accounts,confirm}=await ownerAccounts(parent,'google.calendar.read','calendar',true);"
-        },
-        {
-          "line": 158,
-          "text": "const owned=accounts.find(a=>input.grantId===`alpha-google:${a.scope}`);if(!owned)throw Error('Select a calendar from the current owner connection.');"
-        },
-        {
-          "line": 159,
-          "text": "const {grantId,scope}=owned,readable=(rows:Awaited<ReturnType<typeof googleCalendars>>)=>rows.find(row=>row.calendarId===input.calendarId&&['reader','writer','owner'].includes(row.accessRole));"
-        },
-        {
-          "line": 161,
-          "text": "let calendar=readable(await googleCalendars(client,grantId,scope,signal,true));"
-        },
-        {
-          "line": 164,
-          "text": "const result=await client.googleCalendarFeed(grantId,input.calendarId,{timeMin:input.timeMin,timeMax:input.timeMax,timeZone:input.timeZone},signal);"
-        },
-        {
-          "line": 165,
-          "text": "const key={provider:'google',side:'owner',grantId:input.grantId,connectorAccountId:input.grantId,calendarId:input.calendarId};"
-        },
-        {
-          "line": 169,
-          "text": "const feed={...result,source:'synced',state:'complete',timeMin:input.timeMin,timeMax:input.timeMax,"
-        },
-        {
-          "line": 178,
-          "text": "const parts=[query||'in:inbox'];if(since!==undefined){const date=Date.parse(since);if(!Number.isFinite(date))throw new GoogleAgentRefusal('invalid-request','Invalid Gmail read date.');parts.push(`afte"
-        },
-        {
-          "line": 181,
-          "text": "const result=await client.gmailSearch(grantId,parts.join(' '),signal,limit<=10?10:limit<=25?25:50);"
-        },
-        {
-          "line": 182,
-          "text": "const rows=[...result.messages];"
-        },
-        {
-          "line": 185,
-          "text": "const next=await client.gmailSearch(grantId,parts.join(' '),signal,10,result.nextPageToken);"
-        },
-        {
-          "line": 187,
-          "text": "const ids=new Set(rows.map(row=>row.id));for(const row of next.messages)if(!ids.has(row.id)){ids.add(row.id);rows.push(row);}"
-        },
-        {
-          "line": 194,
-          "text": "const prefix=`alpha-gmail:${scope}:`;if(!messageId.startsWith(prefix))throw Error('Select an email from the current owner and Gmail account.');"
-        },
-        {
-          "line": 195,
-          "text": "const providerId=messageId.slice(prefix.length);if(!/^[A-Za-z0-9_-]{1,160}$/.test(providerId))throw new GoogleAgentRefusal('invalid-request','Invalid Gmail message identity.');"
-        },
-        {
-          "line": 196,
-          "text": "const result=await client.gmailRead(grantId,providerId,signal),truncated=result.bodyText.length>GMAIL_BODY_MAX;"
-        }
-      ]
-    },
-    {
-      "path": "backend/managed-google-failure-stage.ts",
-      "models": [
-        "ServiceAuthorization",
-        "NativeGoogleHostArtifact"
-      ],
-      "scope": "application",
-      "treatment": "domain-contract-or-support",
-      "sha256": "209d8a2d4c3a8c95a1545c5a018b8107ff352099694b92defc1c0e177cffa604",
-      "stateAnchors": [
-        {
-          "line": 3,
-          "text": "const stages=new WeakMap<object,ManagedGoogleFailureStage>();"
-        },
-        {
-          "line": 11,
-          "text": "const transportCodes=["
-        },
-        {
-          "line": 20,
-          "text": "const allowedTransportCodes=new Set<string>(transportCodes);"
-        },
-        {
-          "line": 22,
-          "text": "try{if(value===null||(typeof value!=='object'&&typeof value!=='function'))return;const property=Object.getOwnPropertyDescriptor(value,key);return property&&'value'in property?property.value:undefined;"
-        },
-        {
-          "line": 27,
-          "text": "const message=ownData(error,'message');"
-        },
-        {
-          "line": 38,
-          "text": "const cause=ownData(error,'cause'),code=ownData(error,'code'),causeCode=ownData(cause,'code');"
-        },
-        {
-          "line": 39,
-          "text": "const family=transportMessageFamily(error),causeFamily=transportMessageFamily(cause);"
-        }
-      ]
-    },
-    {
-      "path": "backend/managed-google-route-policy.ts",
-      "sha256": "96a07cf0d4adbf372be56f93419a9bb662477cbe1221fb828e77fa0685be4ac3",
-      "models": [
-        "ServiceAuthorization",
-        "NativeGoogleHostArtifact",
-        "BrowserCloudRequestCustody"
-      ],
-      "scope": "application",
-      "treatment": "state-and-transition-projection",
-      "stateAnchors": [
-        {
-          "line": 5,
-          "text": "export const GMAIL_QUERY_MAX=2048;"
-        },
-        {
-          "line": 6,
-          "text": "const GOOGLE_UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;"
-        },
-        {
-          "line": 10,
-          "text": "const prefix='/api/v1/eliza/google/',route=url.pathname.slice(prefix.length);"
-        },
-        {
-          "line": 13,
-          "text": "const clean=(value:unknown,max=2048)=>typeof value==='string'&&value.length>0&&value.length<=max&&!/[\\u0000-\\u001f\\u007f]/.test(value);"
-        },
-        {
-          "line": 14,
-          "text": "let value:Record<string,any>;"
-        },
-        {
-          "line": 18,
-          "text": "const keys=Object.keys(value).sort().join();"
-        },
-        {
-          "line": 28,
-          "text": "let value:Record<string,any>;try{value=object(JSON.parse(body));}catch{return false;}"
-        },
-        {
-          "line": 31,
-          "text": "const prepare=route==='gmail/inbox-v1/operations',dispatch=/^gmail\\/inbox-v1\\/operations\\/[A-Za-z0-9_-]{1,160}\\/dispatch$/.test(route);"
-        },
-        {
-          "line": 42,
-          "text": "const allowed=new Set(['google.basic_identity','google.gmail.triage','google.gmail.send','google.gmail.drafts','google.gmail.mailbox','google.calendar.read','google.calendar.write']);"
-        },
-        {
-          "line": 46,
-          "text": "const params=url.searchParams,keys=[...params.keys()];"
-        },
-        {
-          "line": 48,
-          "text": "const clean=(key:string,max=1024)=>{const value=params.get(key);return value!==null&&value.length>0&&value.length<=max&&!/[\\u0000-\\u001f\\u007f]/.test(value);};"
-        },
-        {
-          "line": 49,
-          "text": "const exact=(allowed:string[])=>keys.every(key=>allowed.includes(key));"
-        },
-        {
-          "line": 51,
-          "text": "const grant=params.get('grantId');if(!grant||!GOOGLE_UUID.test(grant))return false;"
-        },
-        {
-          "line": 56,
-          "text": "const start=Date.parse(params.get('timeMin')!),end=Date.parse(params.get('timeMax')!);if(!Number.isFinite(start)||!Number.isFinite(end)||end<=start)return false;"
-        },
-        {
-          "line": 69,
-          "text": "const reader=response.body?.getReader();if(!reader)throw Error('Empty Cloud response');"
-        },
-        {
-          "line": 70,
-          "text": "const chunks:Uint8Array[]=[];let size=0;"
-        },
-        {
-          "line": 71,
-          "text": "try{for(;;){const part=await reader.read();if(part.done)break;size+=part.value.byteLength;if(size>16*1024*1024)throw Error('Cloud response too large');chunks.push(part.value);}}finally{await reader.ca"
-        },
-        {
-          "line": 72,
-          "text": "const value=JSON.parse(Buffer.concat(chunks).toString('utf8'));"
-        },
-        {
-          "line": 74,
-          "text": "const inspect=(item:unknown):void=>{if(item&&typeof item==='object')for(const [key,nested]of Object.entries(item)){if(/^(?:access_?token|refresh_?token|api_?key|authorization|credentialReference|crede"
-        }
-      ]
-    },
-    {
-      "path": "backend/native-cloud-runtime.ts",
-      "models": [
-        "ResidentRuntime",
-        "NativeGoogleHostArtifact"
-      ],
-      "scope": "application",
-      "treatment": "domain-contract-or-support",
-      "sha256": "3780e1c7b1cc549ac36d8f8b83114d7dfd70e928532ca3288cbac5580904e265",
-      "stateAnchors": [
-        {
-          "line": 7,
-          "text": "const {characterName,appName}=product.identity;"
-        },
-        {
-          "line": 10,
-          "text": "export const nativeCloudRuntime=Object.freeze({apiBaseUrl:productionCloud.api+'/api/v1',productCharacter:Object.freeze({name:characterName,bio:Object.freeze([`The assistant built into ${appName} for w"
-        }
-      ]
-    },
-    {
-      "path": "backend/native-google-agent-host.ts",
-      "models": [
-        "ResidentRuntime",
-        "NativeGoogleAccessFile",
-        "NativeGoogleHostArtifact"
-      ],
-      "scope": "application",
-      "treatment": "state-and-transition-projection",
-      "reviewStatus": "state-audit-required",
-      "sha256": "f58b8a2be174148b5f7fe9c5f147a6615697a226c654e27fb57efa8139464d9e",
-      "stateAnchors": [
-        {
-          "line": 15,
-          "text": "const off={gmailChanges:false,calendarEdits:false};"
-        },
-        {
-          "line": 34,
-          "text": "const retired=new AbortController();"
-        },
-        {
-          "line": 35,
-          "text": "const port=createNativeGoogleCloudPort(options.binding,()=>{retired.signal.throwIfAborted();options.assertCurrent?.();},options.request);"
-        },
-        {
-          "line": 36,
-          "text": "const host=await startManagedGoogleAgentHost({port,apiToken:options.apiToken,access:()=>savedGoogleAgentAccess()});"
-        },
-        {
-          "line": 43,
-          "text": "const broker=createManagedGoogleAgentBroker({host:createManagedGoogleAgentHost(options.port,options.access,options.environment),async authorized(value){"
-        },
-        {
-          "line": 44,
-          "text": "const actual=Buffer.from(value??''),expected=Buffer.from('Bearer '+options.apiToken);"
-        },
-        {
-          "line": 47,
-          "text": "const server=createServer({maxHeaderSize:8192},(req,res)=>void broker(req,res));"
-        },
-        {
-          "line": 49,
-          "text": "let closing:Promise<void>|undefined;"
-        },
-        {
-          "line": 50,
-          "text": "const close=()=>closing??=(new Promise<void>((resolve,reject)=>{"
-        },
-        {
-          "line": 56,
-          "text": "const address=server.address();if(!address||typeof address==='string')throw Error('Private Google host did not bind');"
-        }
-      ]
-    },
-    {
-      "path": "backend/native-google-cloud-port.ts",
-      "sha256": "8f008c1d720e0609c12443b99d9a2493ac74e55e11d311b06b06b80cc45dda2a",
-      "models": [
-        "ResidentRuntime",
-        "NativeGoogleHostArtifact"
-      ],
-      "scope": "application",
-      "treatment": "state-and-transition-projection",
-      "stateAnchors": [
-        {
-          "line": 12,
-          "text": "const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;"
-        },
-        {
-          "line": 13,
-          "text": "const readPaths=new Set(['/api/v1/eliza/google/accounts','/api/v1/eliza/google/gmail/search','/api/v1/eliza/google/gmail/read','/api/v1/eliza/google/calendar/calendars','/api/v1/eliza/google/calendar/"
-        },
-        {
-          "line": 21,
-          "text": "const reference='native-google-reference:'+binding.credentialId;"
-        },
-        {
-          "line": 22,
-          "text": "const credential={credentialReference:reference,credentialId:binding.credentialId,userId:binding.userId,organizationId:binding.organizationId,"
-        },
-        {
-          "line": 24,
-          "text": "const current=()=>{assertCurrent();if(binding.expiresAt!==undefined&&binding.expiresAt<=Date.now())throw Error('Native Google provider binding expired');};"
-        },
-        {
-          "line": 26,
-          "text": "let stage:ManagedGoogleFailureStage='request-validation';"
-        },
-        {
-          "line": 29,
-          "text": "const url=new URL(input.url),body=input.body===undefined?undefined:JSON.stringify(input.body);"
-        },
-        {
-          "line": 31,
-          "text": "const read=input.method==='GET'&&body===undefined&&(url.pathname==='/api/v1/user'&&!url.search||readPaths.has(url.pathname)&&managedGoogleRequest(url,'GET',undefined));"
-        },
-        {
-          "line": 32,
-          "text": "let permitted=read;"
-        },
-        {
-          "line": 40,
-          "text": "const response=await request(url.toString(),{method:input.method,redirect:'error',signal:input.signal,"
-        },
-        {
-          "line": 44,
-          "text": "const data=await boundedServiceJson(response);current();input.signal.throwIfAborted();"
-        }
-      ]
-    },
-    {
-      "path": "backend/proposal-action.ts",
-      "sha256": "53d294ae0792e4683f7ae30b03aae3f70bda872251939154fe12febb84787c89",
-      "models": [
-        "WorkflowExecution"
-      ],
-      "scope": "application",
-      "treatment": "state-and-transition-projection",
-      "stateAnchors": [
-        {
-          "line": 12,
-          "text": "export const turns=new AsyncLocalStorage<{revision:number;proposals:any[];signal:AbortSignal}>();"
-        },
-        {
-          "line": 15,
-          "text": "const turn=turns.getStore();"
-        },
-        {
-          "line": 19,
-          "text": "const types=new Map([['DEVICE_NOTE_CREATE','create_note'],['DEVICE_REMINDER_CREATE','reminder_create']]);"
-        },
-        {
-          "line": 20,
-          "text": "export const proposalActions:Action[]=deviceActionTools.filter(action=>types.has(action.name)).map(action=>({"
-        },
-        {
-          "line": 26,
-          "text": "const turn=current(),checked=validateActionParams(action,options?.parameters);"
-        },
-        {
-          "line": 28,
-          "text": "const parameters=checked.params;"
-        },
-        {
-          "line": 29,
-          "text": "const operation=validateDeviceOperation(resolveReadableReminderOperation(parameters.operation));"
-        },
-        {
-          "line": 32,
-          "text": "const title=operation.type==='create_note'?operation.title:operation.type==='reminder_create'?operation.fields.title:'';"
-        },
-        {
-          "line": 33,
-          "text": "const body=operation.type==='create_note'?operation.body:operation.type==='reminder_create'?operation.fields.body:'';"
-        },
-        {
-          "line": 34,
-          "text": "const proposal={id:randomUUID(),title:'Preview '+(operation.type==='create_note'?'note: ':'reminder: ')+title,description:'Development simulation. Review the exact operation; no note will be saved and"
-        },
-        {
-          "line": 41,
-          "text": "const views=createViewsAction(async({view,clientId,handoffId,completedAction,signal,isAuthorized})=>{"
-        },
-        {
-          "line": 46,
-          "text": "export const navigationAction:Action={...views,handler:async(...args)=>{"
-        },
-        {
-          "line": 47,
-          "text": "const turn=current(),result=await views.handler!(...args);"
-        },
-        {
-          "line": 48,
-          "text": "const navigation={...result,actionName:'VIEWS'},handoff=findViewActionHandoff([navigation]);"
-        },
-        {
-          "line": 50,
-          "text": "const view=handoff.viewId==='chat'?'home':handoff.viewId==='automations'?'workflows':handoff.viewId;"
-        },
-        {
-          "line": 58,
-          "text": "const installation=beginViewInstallation(runtime,'development-navigation');"
-        },
-        {
-          "line": 60,
-          "text": "const id=local==='home'?'chat':local==='workflows'?'automations':local;"
-        },
-        {
-          "line": 68,
-          "text": "const diagnosticActions=[...proposalActions,navigationAction];"
-        },
-        {
-          "line": 73,
-          "text": "const scope={revision:context?.revision??0,proposals:[] as any[],signal},message=messageFor(text,context),results=[];"
-        },
-        {
-          "line": 75,
-          "text": "for(const call of calls.slice(0,4)){"
-        },
-        {
-          "line": 76,
-          "text": "const action=diagnosticActions.find(action=>action.name===call.function?.name);if(!action)continue;"
-        },
-        {
-          "line": 77,
-          "text": "let parameters;try{parameters=JSON.parse(call.function?.arguments??'');}catch{continue;}"
-        },
-        {
-          "line": 78,
-          "text": "try{const result=await action.handler!(runtime,message,undefined,{parameters});if(result?.success&&result.text)results.push(result.text);}catch{signal.throwIfAborted();}"
-        },
-        {
-          "line": 90,
-          "text": "const agentId=randomUUID(),ownerId=randomUUID(),roomId=randomUUID(),worldId=randomUUID();"
-        },
-        {
-          "line": 91,
-          "text": "const runtime={agentId,getRoom:async()=>({worldId}),getWorld:async()=>({id:worldId,metadata:{roles:{[ownerId]:'OWNER'},ownership:{ownerId}}}),getSetting:()=>undefined,getEntityById:async()=>null,repor"
-        },
-        {
-          "line": 92,
-          "text": "let closed=false;const dispose=installDevelopmentViews(runtime);"
-        },
-        {
-          "line": 93,
-          "text": "const session=createDevelopmentPreparationSession(runtime,(text,context)=>({id:randomUUID(),agentId,entityId:ownerId,roomId,content:{text,metadata:{viewClientId:roomId,viewDelivery:'completed-action',"
-        }
-      ]
-    },
-    {
-      "path": "backend/runtime.ts",
-      "sha256": "473697be9f99a5e6e6c89746504fe572426eaedebb52312514cbea62970263b5",
-      "models": [
-        "Application",
-        "ResidentRuntime"
-      ],
-      "scope": "application",
-      "treatment": "state-and-transition-projection",
-      "stateAnchors": [
-        {
-          "line": 19,
-          "text": "const identityFile=resolve(dataDir,'identity.json');let ids:any;"
-        },
-        {
-          "line": 26,
-          "text": "const unsupportedEmbeddingTypes=new Set<string>([ModelType.TEXT_EMBEDDING,ModelType.TEXT_EMBEDDING_BATCH]);"
-        },
-        {
-          "line": 27,
-          "text": "const textProvider={...openai,"
-        },
-        {
-          "line": 31,
-          "text": "const assistant=createAssistantPlugin();"
-        },
-        {
-          "line": 34,
-          "text": "const runtime=new AgentRuntime({character:createCharacter({id:ids.agent,name:'Alpha Development',bio:['You are a local-development Alpha assistant. Remember the current conversation. When asked to cre"
-        },
-        {
-          "line": 35,
-          "text": "let closed=false,busy=false;let uninstallViews:(()=>void)|undefined;"
-        },
-        {
-          "line": 36,
-          "text": "const close=async()=>{if(closed)return;closed=true;try{uninstallViews?.();await runtime.stop();}finally{await runtime.close();}};"
-        },
-        {
-          "line": 38,
-          "text": "const assertNoEmbeddingProvider=()=>{"
-        },
-        {
-          "line": 50,
-          "text": "const world=await runtime.getWorld(ids.world);if(!world)throw new Error('Missing development world');"
-        },
-        {
-          "line": 58,
-          "text": "const messageFor=(text:string,context?:{view:string;revision:number;selectedObject?:{kind:string;id:string;revision?:string}})=>{"
-        },
-        {
-          "line": 59,
-          "text": "const observation=context?parseClientTurnObservation({view:context.view,revision:context.revision,sensitive:false,...(context.selectedObject?{selectedObject:{...context.selectedObject}}:{})}):undefine"
-        },
-        {
-          "line": 71,
-          "text": "const message=messageFor(text,context);"
-        },
-        {
-          "line": 72,
-          "text": "const scope={revision:context?.revision||0,proposals:[] as any[],signal};"
-        },
-        {
-          "line": 73,
-          "text": "const result=await turns.run(scope,()=>runtime.messageService!.handleMessage(runtime,message,undefined,{abortSignal:signal}));"
-        }
-      ]
-    },
-    {
-      "path": "backend/test-actions.mjs",
-      "models": [
-        "DevelopmentHost"
-      ],
-      "scope": "product-state-and-contract",
-      "treatment": "domain-contract-or-support",
-      "sha256": "4c5380d28c311aef8a8c2ca53f829f879fdf882aa10c9c9eebfd6b40c59c1467",
-      "stateAnchors": [
-        {
-          "line": 11,
-          "text": "const root=fileURLToPath(new URL('../',import.meta.url)),dir=await mkdtemp(path.join(tmpdir(),'canonical-development-actions-'));"
-        },
-        {
-          "line": 14,
-          "text": "const fixture=path.join(dir,'fixture.ts'),runner=path.join(dir,'build.ts');"
-        },
-        {
-          "line": 20,
-          "text": "const runtime={agentId:'44444444-4444-4444-8444-444444444444',getRoom:async()=>({worldId:'world'}),getWorld:async()=>({id:'world',metadata:{roles:{'11111111-1111-4111-8111-111111111111':'OWNER'},owner"
-        },
-        {
-          "line": 21,
-          "text": "const message={id:'33333333-3333-4333-8333-333333333333',entityId:'11111111-1111-4111-8111-111111111111',roomId:'22222222-2222-4222-8222-222222222222',content:{text:'Create a preview',metadata:{viewCl"
-        },
-        {
-          "line": 22,
-          "text": "const scope=()=>({revision:4,proposals:[],signal:new AbortController().signal});"
-        },
-        {
-          "line": 23,
-          "text": "const invoke=(action,turn,parameters)=>turns.run(turn,()=>action.handler(runtime,message,undefined,{parameters}));"
-        },
-        {
-          "line": 25,
-          "text": "for(const action of proposalActions)assert.deepEqual(action.parameters,deviceActionTools.find(a=>a.name===action.name).parameters);"
-        },
-        {
-          "line": 26,
-          "text": "const [note,reminder]=proposalActions;"
-        },
-        {
-          "line": 28,
-          "text": "let turn=scope();assert.equal((await invoke(note,turn,{operation:{type:'create_note',title:'Preview',body:'Exact body'},operationKey:'note-1',reason:'Requested preview'})).success,false);assert.equal("
-        },
-        {
-          "line": 31,
-          "text": "const reminderParams=(localDate,localTime,timeZone)=>({operation:{type:'reminder_create',fields:{title:'Preview reminder',body:'Exact reminder',schedule:{localDate,localTime,timeZone,alertMinutes:0,re"
-        },
-        {
-          "line": 32,
-          "text": "for(const params of [reminderParams('2030-11-03','01:30','America/Los_Angeles'),reminderParams('2030-03-10','02:30','America/Los_Angeles'),reminderParams('2030-05-01','14:00','Unknown/Zone')]){turn=sc"
-        },
-        {
-          "line": 35,
-          "text": "const dispose=installDevelopmentViews(runtime);"
-        },
-        {
-          "line": 36,
-          "text": "try{turn=scope();const result=await invoke(navigationAction,turn,{action:'show',view:'Calendar'});assert.equal(result.success,true);assert.equal(turn.proposals.length,1);const handoff=findViewActionHa"
-        },
-        {
-          "line": 39,
-          "text": "await writeFile(runner,`import {createConsumerSourceResolver} from ${JSON.stringify(path.join(root,'vendor/eliza/packages/app/scripts/lib/consumer-source-resolver.mjs'))};const {plugin}=createConsumer"
-        },
-        {
-          "line": 40,
-          "text": "const build=spawnSync(process.env.ALPHA_BUN||'bun',[runner],{cwd:root,encoding:'utf8',timeout:90000,maxBuffer:8*1024*1024});assert.equal(build.status,0,build.stdout+build.stderr);"
-        },
-        {
-          "line": 41,
-          "text": "const run=spawnSync(process.env.ALPHA_BUN||'bun',[path.join(dir,'fixture.js')],{cwd:root,encoding:'utf8',timeout:30000,maxBuffer:8*1024*1024});assert.equal(run.status,0,run.stdout+run.stderr);console."
-        }
-      ]
-    },
-    {
-      "path": "backend/test-runtime.ts",
-      "sha256": "f925d691495f82421948d485d947d7edfeb9883d23d812d996db34a3975d1aee",
-      "models": [
-        "Application"
-      ],
-      "scope": "application",
-      "treatment": "state-and-transition-projection",
-      "stateAnchors": [
-        {
-          "line": 7,
-          "text": "const phase=process.argv.find(arg=>arg.startsWith('--phase='))?.slice(8);"
-        },
-        {
-          "line": 10,
-          "text": "const {loadPinnedRuntime}=await import('./loader');"
-        },
-        {
-          "line": 11,
-          "text": "const {module,head,dataDir}=await loadPinnedRuntime();"
-        },
-        {
-          "line": 14,
-          "text": "const dataDir=await mkdtemp(join(tmpdir(),'alpha-eliza-live-'));"
-        },
-        {
-          "line": 15,
-          "text": "const reports=[];"
-        },
-        {
-          "line": 16,
-          "text": "for(const mode of ['seed','recover','proposal']){"
-        },
-        {
-          "line": 17,
-          "text": "const proc=Bun.spawn([process.execPath,import.meta.filename,'--phase='+mode],{env:{...process.env,ALPHA_ELIZA_DATA_DIR:dataDir},stdout:'ignore',stderr:'ignore'});"
-        },
-        {
-          "line": 18,
-          "text": "const exit=await proc.exited;"
-        },
-        {
-          "line": 22,
-          "text": "const out=resolve(import.meta.dir,'../test-results');await mkdir(out,{recursive:true});"
-        },
-        {
-          "line": 27,
-          "text": "const backend=await module.createRuntimeBackend({head,dataDir});"
-        },
-        {
-          "line": 30,
-          "text": "const proofPath=resolve(dataDir,'test-proof.json');"
-        },
-        {
-          "line": 31,
-          "text": "const reports:any[]=[];"
-        },
-        {
-          "line": 33,
-          "text": "const proof='ALPHA-'+randomUUID();await writeFile(proofPath,JSON.stringify({proof}),{mode:0o600});"
-        },
-        {
-          "line": 34,
-          "text": "const first=await backend.chat('Remember this parcel reference for our conversation: '+proof+'. Reply with only the reference.',AbortSignal.timeout(90000));"
-        },
-        {
-          "line": 36,
-          "text": "const second=await backend.chat('What parcel reference did I just ask you to remember? Reply with only the reference.',AbortSignal.timeout(90000));"
-        },
-        {
-          "line": 40,
-          "text": "const {proof}=JSON.parse(await readFile(proofPath,'utf8'));"
-        },
-        {
-          "line": 41,
-          "text": "const restored=await backend.chat('What is the parcel reference I asked you to remember earlier in this conversation? Reply with only the reference.',AbortSignal.timeout(90000));"
-        },
-        {
-          "line": 44,
-          "text": "const controller=new AbortController(),start=Date.now();const timer=setTimeout(()=>controller.abort(),150);"
-        },
-        {
-          "line": 45,
-          "text": "let cancelled:any, cancellationError:unknown;"
-        },
-        {
-          "line": 53,
-          "text": "const navigation=await backend.chat('Open the calendar view in Alpha Phone.',AbortSignal.timeout(90000),{view:'notes',revision:8});"
-        },
-        {
-          "line": 56,
-          "text": "const at=Math.ceil((Date.now()+3600000)/60000)*60000,local=new Date(at).toISOString().slice(0,16);"
-        },
-        {
-          "line": 57,
-          "text": "const reminder=await backend.chat('Prepare a one-time reminder with exact title Runtime reminder acceptance, exact body Check the native receipt, at local time '+local+' in time zone UTC. Use DEVICE_R"
-        }
-      ]
-    },
-    {
       "path": "capacitor.config.ts",
       "models": [
         "MobileBundleAdmission",
@@ -47898,7 +46509,7 @@
     },
     {
       "path": "scripts/browser-cloud-dev-bridge.ts",
-      "sha256": "cc954b5564cfad600a0ee77cf666879070c633bc1964f39e033513068008adc7",
+      "sha256": "92c930e1546b80298c772ae9fa2f1fb0b0fd280a97b15b1e34825b9ff95d9718",
       "models": [
         "DevelopmentHost",
         "DevelopmentSurfaces",
@@ -48496,7 +47107,7 @@
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
-      "sha256": "dd01dc3c393dc4b31a4dcaa94adba262126d6da055de505eaed0299405a42702",
+      "sha256": "9c1ae21c56dff8a08d2756997cd8accd18ecf89a271d7c7816ee15fc7cc119f6",
       "stateAnchors": []
     },
     {
@@ -48617,7 +47228,6 @@
       "models": [
         "TaskServiceLifecycle",
         "TaskSchedulerRuntime",
-        "DevelopmentRuntimeLoader",
         "CombinedAgentLauncher",
         "ReviewedWorkflowLauncher",
         "CoreConnectorCustody",
@@ -48643,226 +47253,6 @@
       "reviewStatus": "state-audit-required",
       "sha256": "c5368c9075aa8c7660bee01338185fbe673c9b8dd6889dd1ab01d195efa17c10",
       "stateAnchors": []
-    },
-    {
-      "path": "scripts/dev-agent.mjs",
-      "sha256": "57a417641be376ae7eab9fe72bad2434d9eedd1dac0ab86b63664c39f92925b5",
-      "models": [
-        "DevelopmentHost",
-        "DevelopmentSurfaces"
-      ],
-      "scope": "development-runtime",
-      "treatment": "state-and-transition-projection",
-      "stateAnchors": [
-        {
-          "line": 13,
-          "text": "const key = process.env.CEREBRAS_API_KEY;"
-        },
-        {
-          "line": 14,
-          "text": "const base = process.env.CEREBRAS_BASE_URL?.replace(/\\/$/, \"\");"
-        },
-        {
-          "line": 17,
-          "text": "const provider = new URL(base);"
-        },
-        {
-          "line": 26,
-          "text": "const requestHeaders = {"
-        },
-        {
-          "line": 30,
-          "text": "let models;"
-        },
-        {
-          "line": 32,
-          "text": "const response = await fetch(`${base}/models`, {"
-        },
-        {
-          "line": 46,
-          "text": "const preferred = process.env.ALPHA_DEV_MODEL || AGENT_MODEL;"
-        },
-        {
-          "line": 47,
-          "text": "const model = models?.includes(preferred) ? preferred : null;"
-        },
-        {
-          "line": 50,
-          "text": "const backendMode=process.env.ALPHA_AGENT_BACKEND || \"direct-diagnostic\";"
-        },
-        {
-          "line": 53,
-          "text": "const {loadPinnedRuntime}=await import(\"../backend/loader.ts\");"
-        },
-        {
-          "line": 54,
-          "text": "const {module,head,dataDir}=await loadPinnedRuntime();"
-        },
-        {
-          "line": 55,
-          "text": "const runtimeBackend=backendMode===\"eliza\"?await module.createRuntimeBackend({head,dataDir,model}):module.createDirectDevelopmentBackend();"
-        },
-        {
-          "line": 56,
-          "text": "const token = randomBytes(32).toString(\"hex\");"
-        },
-        {
-          "line": 57,
-          "text": "const sessionId = randomUUID();"
-        },
-        {
-          "line": 58,
-          "text": "const directory = join(tmpdir(), `alphaphone-dev-agent-${sessionId}`);"
-        },
-        {
-          "line": 60,
-          "text": "const tokenPath = join(directory, \"development-agent-token\");"
-        },
-        {
-          "line": 64,
-          "text": "const views = new Set([...DEVELOPMENT_PROPOSAL_VIEWS, \"assistant\", \"apps\", \"passwords\"]);"
-        },
-        {
-          "line": 65,
-          "text": "const tools = runtimeBackend.tools;"
-        },
-        {
-          "line": 66,
-          "text": "const active = new Map();"
-        },
-        {
-          "line": 67,
-          "text": "const used = new Set();"
-        },
-        {
-          "line": 68,
-          "text": "const identifier = (value) =>"
-        },
-        {
-          "line": 73,
-          "text": "const json = (response, status, value) => {"
-        },
-        {
-          "line": 83,
-          "text": "const supplied = request.headers.authorization;"
-        },
-        {
-          "line": 85,
-          "text": "const bytes = Buffer.from(supplied),"
-        },
-        {
-          "line": 89,
-          "text": "const server = http.createServer(async (request, response) => {"
-        },
-        {
-          "line": 107,
-          "text": "const requestId = request.headers[\"x-request-id\"];"
-        },
-        {
-          "line": 108,
-          "text": "const mime = request.headers[\"content-type\"]?.split(\";\")[0];"
-        },
-        {
-          "line": 113,
-          "text": "const controller = new AbortController(); active.set(requestId,controller);"
-        },
-        {
-          "line": 114,
-          "text": "const timer = setTimeout(()=>controller.abort(),120000);"
-        },
-        {
-          "line": 115,
-          "text": "const disconnected = ()=>{if(!response.writableEnded)controller.abort();}; response.on(\"close\",disconnected);"
-        },
-        {
-          "line": 117,
-          "text": "let total=0;const chunks=[];"
-        },
-        {
-          "line": 118,
-          "text": "for await (const chunk of request) { total+=chunk.length; if(total>MAX_AUDIO_BYTES){json(response,413,{error:\"audio-too-large\"});return;}chunks.push(chunk); }"
-        },
-        {
-          "line": 119,
-          "text": "const result=await transcribeLocal(Buffer.concat(chunks),mime,controller.signal);"
-        },
-        {
-          "line": 133,
-          "text": "let body;"
-        },
-        {
-          "line": 135,
-          "text": "let total = 0;"
-        },
-        {
-          "line": 136,
-          "text": "const chunks = [];"
-        },
-        {
-          "line": 137,
-          "text": "for await (const chunk of request) {"
-        },
-        {
-          "line": 150,
-          "text": "const { requestId, text, context } = body || {};"
-        },
-        {
-          "line": 174,
-          "text": "const safeContext = { view: context.view, revision: context.revision };"
-        },
-        {
-          "line": 176,
-          "text": "const item = context.selectedObject;"
-        },
-        {
-          "line": 192,
-          "text": "const controller = new AbortController();"
-        },
-        {
-          "line": 194,
-          "text": "const timer = setTimeout(() => controller.abort(), 45000);"
-        },
-        {
-          "line": 195,
-          "text": "const disconnected = () => {"
-        },
-        {
-          "line": 201,
-          "text": "const result=await runtimeBackend.chat(text,controller.signal,safeContext);"
-        },
-        {
-          "line": 206,
-          "text": "const upstream = await fetch(`${base}/chat/completions`, {"
-        },
-        {
-          "line": 232,
-          "text": "const payload = await upstream.json();"
-        },
-        {
-          "line": 233,
-          "text": "const message = payload.choices?.[0]?.message;"
-        },
-        {
-          "line": 234,
-          "text": "const prepared = await runtimeBackend.prepareActions(Array.isArray(message?.tool_calls)?message.tool_calls:[],text,controller.signal,safeContext);"
-        },
-        {
-          "line": 235,
-          "text": "const proposals=prepared.proposals;"
-        },
-        {
-          "line": 236,
-          "text": "const reply ="
-        },
-        {
-          "line": 278,
-          "text": "const stop = () => {"
-        },
-        {
-          "line": 280,
-          "text": "for (const controller of active.values()) controller.abort();"
-        }
-      ]
     },
     {
       "path": "scripts/dev-cloud.mjs",
@@ -49012,18 +47402,6 @@
       "stateAnchors": []
     },
     {
-      "path": "scripts/gmail-agent-mailbox-host.ts",
-      "models": [
-        "NativeGoogleHostArtifact",
-        "GmailAgentMailboxRecovery"
-      ],
-      "scope": "development-runtime",
-      "treatment": "domain-contract-or-support",
-      "reviewStatus": "state-audit-required",
-      "sha256": "a976b952421e93fa83bd06cb6e6115702618caf910c018472adad626c74e40ce",
-      "stateAnchors": []
-    },
-    {
       "path": "scripts/launcher-child.mjs",
       "models": [
         "CombinedAgentLauncher",
@@ -49127,6 +47505,18 @@
       "integrationReview": "Reviewed integration source. Domain allocation is retained; source-hash refresh does not establish semantic refinement. See targeted validation and remaining obligations."
     },
     {
+      "path": "scripts/managed-google-client-backport.mjs",
+      "sha256": "8efab1d0d5b9a5810c7e994823ce4f805e869227655cb1dacb5b04c344ac0d72",
+      "models": [
+        "NativeGoogleHostArtifact",
+        "ServiceAuthorization",
+        "BrowserCloudRequestCustody"
+      ],
+      "scope": "development-runtime",
+      "treatment": "runtime-preparation-and-admission",
+      "stateAnchors": []
+    },
+    {
       "path": "scripts/mobile-bundle-smoke.mjs",
       "models": [
         "MobileBundleAdmission",
@@ -49161,7 +47551,7 @@
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
-      "sha256": "52639b9df1ba9d3767d14fe6428d247f10534812e861b9b93d8fb931cf90e2a6",
+      "sha256": "f3b89a767192fb8b1699a7eddf14e889a8026b62602e666bbfd20e5db274da4a",
       "stateAnchors": []
     },
     {
@@ -49192,7 +47582,7 @@
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
-      "sha256": "c4c49108c2421f5c196761593f03de23f62e83d7262ecf20d553f99227a1b097",
+      "sha256": "583b6a69de32960351d791a4895e8ff2f486689f5af15bb4fa10f12fb83658f2",
       "stateAnchors": [],
       "integrationReview": "Reviewed integration source. Domain allocation is retained; source-hash refresh does not establish semantic refinement. See targeted validation and remaining obligations."
     },
@@ -49324,7 +47714,7 @@
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
-      "sha256": "0af215e7c2de0c0014676b9a51de3c1740bdc87beab1b2b55e6db03e38815938",
+      "sha256": "e784e960fb57211f3a7454cb68fc1c93d0c58d3cecf969ad7aca0c1cd170e4f9",
       "stateAnchors": []
     },
     {
@@ -49550,17 +47940,6 @@
         }
       ],
       "integrationReview": "Domain allocation retained after merged fixes. Source identity and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations."
-    },
-    {
-      "path": "scripts/start-local-agent.mjs",
-      "sha256": "5d2648ea8dc55c128a150903845f5996334d4daf29b7c57afb38f1f50f40ab90",
-      "models": [
-        "DevelopmentHost",
-        "ResidentRuntime"
-      ],
-      "scope": "development-runtime",
-      "treatment": "domain-contract-or-support",
-      "stateAnchors": []
     },
     {
       "path": "scripts/start-local-remote.mjs",
@@ -132210,20 +130589,8 @@
       "stateAnchors": []
     },
     {
-      "path": "vendor/eliza/packages/app/scripts/lib/consumer-source-resolver.mjs",
-      "models": [
-        "DevelopmentRuntimeLoader"
-      ],
-      "scope": "shared-upstream",
-      "treatment": "domain-contract-or-support",
-      "reviewStatus": "state-audit-required",
-      "sha256": "79743fd6f2ed6a8b20e50d4bc2dfcc9d9d0975be512863bebc7622ca1ebb92fd",
-      "stateAnchors": []
-    },
-    {
       "path": "vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs",
       "models": [
-        "DevelopmentRuntimeLoader",
         "NativeGoogleHostArtifact",
         "PreparedSourceStamp",
         "ResidentJavaSourceStage"
@@ -615183,6 +613550,80 @@
       "reviewStatus": "state-audit-required",
       "sha256": "f646ded3903339759197c4d36bfacd7ed7d5017b5d50e8e70a4cf4a999798735",
       "stateAnchors": []
+    },
+    {
+      "path": "apps/app/src/product/native-cloud-runtime.ts",
+      "models": [
+        "ResidentRuntime",
+        "NativeGoogleHostArtifact"
+      ],
+      "scope": "application",
+      "treatment": "domain-contract-or-support",
+      "sha256": "365980c009f5048ef4d641076b68edb6229c2ae324e1d76ff39fba29c129d81f",
+      "stateAnchors": [
+        {
+          "line": 7,
+          "text": "const {characterName,appName}=product.identity;"
+        },
+        {
+          "line": 10,
+          "text": "export const nativeCloudRuntime=Object.freeze({apiBaseUrl:productionCloud.api+'/api/v1',productCharacter:Object.freeze({name:characterName,bio:Object.freeze([`The assistant built into ${appName} for w"
+        }
+      ]
+    },
+    {
+      "path": "scripts/native-google-product-host.ts",
+      "models": [
+        "ResidentRuntime",
+        "NativeGoogleAccessFile",
+        "NativeGoogleHostArtifact"
+      ],
+      "scope": "application",
+      "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "sha256": "bfbe4eb1c5c3569fa0b42a7e0bbb2e66ed3245d9874ca47cff6d58ad6b6a9904",
+      "stateAnchors": [
+        {
+          "line": 15,
+          "text": "const off={gmailChanges:false,calendarEdits:false};"
+        },
+        {
+          "line": 34,
+          "text": "const retired=new AbortController();"
+        },
+        {
+          "line": 35,
+          "text": "const port=createNativeGoogleCloudPort(options.binding,()=>{retired.signal.throwIfAborted();options.assertCurrent?.();},options.request);"
+        },
+        {
+          "line": 36,
+          "text": "const host=await startManagedGoogleAgentHost({port,apiToken:options.apiToken,access:()=>savedGoogleAgentAccess()});"
+        },
+        {
+          "line": 43,
+          "text": "const broker=createManagedGoogleAgentBroker({host:createManagedGoogleAgentHost(options.port,options.access,options.environment),async authorized(value){"
+        },
+        {
+          "line": 44,
+          "text": "const actual=Buffer.from(value??''),expected=Buffer.from('Bearer '+options.apiToken);"
+        },
+        {
+          "line": 47,
+          "text": "const server=createServer({maxHeaderSize:8192},(req,res)=>void broker(req,res));"
+        },
+        {
+          "line": 49,
+          "text": "let closing:Promise<void>|undefined;"
+        },
+        {
+          "line": 50,
+          "text": "const close=()=>closing??=(new Promise<void>((resolve,reject)=>{"
+        },
+        {
+          "line": 56,
+          "text": "const address=server.address();if(!address||typeof address==='string')throw Error('Private Google host did not bind');"
+        }
+      ]
     }
   ],
   "configurationInputs": [
@@ -615371,7 +613812,7 @@
         "CalendarLinkedSync",
         "InboxProviderDrafts"
       ],
-      "sha256": "c4c49108c2421f5c196761593f03de23f62e83d7262ecf20d553f99227a1b097"
+      "sha256": "583b6a69de32960351d791a4895e8ff2f486689f5af15bb4fa10f12fb83658f2"
     },
     {
       "path": "scripts/combined-agent-source.mjs",
@@ -615401,7 +613842,6 @@
         "CanonicalNotesStore",
         "CoreTurnControllers",
         "TaskSchedulerRuntime",
-        "DevelopmentRuntimeLoader",
         "CombinedAgentLauncher",
         "ReviewedWorkflowLauncher",
         "CoreConnectorCustody",
@@ -615501,7 +613941,7 @@
       "models": [
         "Application"
       ],
-      "sha256": "0f224df0b807c886b6f5fc317958d0e95b093a9e9e2a6b8569ea94fcf4ee4b1c",
+      "sha256": "7c37e1041b616a8005f498e470d1e0f830503bccb9589b631a8d2a681ab85c61",
       "integrationReview": "Reviewed integration input; current source identity does not establish runtime behavior or source-model refinement."
     },
     {
@@ -615520,7 +613960,7 @@
         "IdentitySession",
         "AndroidBrowserModuleStage"
       ],
-      "sha256": "2b8c03c5747cd2dbdd5d66ceb222b51294d2584c58c16f02b3df63a8c4afe31c",
+      "sha256": "7f4a16a1a2d91c224483ae76d513d56ad0fb45d3e7dfc9ff9c04d18c339a501e",
       "integrationReview": "Retains the reviewed source boundary and authenticated patch catalog; integration also admits installed dependency ranges and bounded source-copy helpers. Configuration identity alone is not runtime/refinement evidence."
     },
     {
@@ -615589,7 +614029,7 @@
       "models": [
         "NativeGoogleHostArtifact"
       ],
-      "sha256": "85b9bf41beca44d16e8c394042689b2909abf2bf366bf4434ad8b033190ea859"
+      "sha256": "ae9b4e87fd0f7396787985b4a2a3d269a2fb609c1281261ad8f6b3a7807f3856"
     },
     {
       "path": "package-lock.json",
@@ -615619,13 +614059,35 @@
         "ServiceAuthorization"
       ],
       "sha256": "aca18a41c51f4eacc0525407a64e3abb470a9068eab01a6fad6d768dc90e7961"
+    },
+    {
+      "path": "patches/eliza/managed-google-agent.patch",
+      "sha256": "13594c6d62f442957be5b465cbe2c46fb34a35dc12e484ccb066ca1645cb4e58",
+      "models": [
+        "BrowserCloudRequestCustody",
+        "GmailAgentMailboxRecovery",
+        "NativeGoogleAccessFile",
+        "NativeGoogleHostArtifact",
+        "ServiceAuthorization"
+      ]
+    },
+    {
+      "path": "patches/eliza/managed-google-agent-manifest.json",
+      "sha256": "45441ac42a7bff765c7892326bb5bcf89b0794c198a0206337eb61b0d1c217fb",
+      "models": [
+        "BrowserCloudRequestCustody",
+        "GmailAgentMailboxRecovery",
+        "NativeGoogleAccessFile",
+        "NativeGoogleHostArtifact",
+        "ServiceAuthorization"
+      ]
     }
   ],
   "runtimeAssets": [
     "apps/app/index.html"
   ],
   "sharedSourceDiscovery": {
-    "sharedSourceCount": 4886,
+    "sharedSourceCount": 4885,
     "producer": "specs/quint/refinement/services/runtime-bundle-inputs.json",
     "sourcePin": "dec170f861bdb756c2edb8a92f71f15f0d86288c",
     "meaning": "Authenticated source identities and domain allocations. Runtime activation and implementation refinement require separate evidence."
