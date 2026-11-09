@@ -78,7 +78,7 @@ export async function generateResetOrchestrationTraces(extraSources = []) {
   const temporary = mkdtempSync(join(tmpdir(), 'alpha-reset-refinement-'));
   const prepared = preparePatchedNative({root});
   const shared = ['DataReset.java','DataResetCopy.java','ResetAuthorization.java'].map(name => join(prepared.root,'plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset',name));
-  const inputs = [...productSources, ...shared, 'patches/eliza/reset-admission.patch', 'patches/eliza/native-manifest.json', fixturePath, fileURLToPath(import.meta.url),
+  const inputs = [...productSources, ...shared, 'android/upstream-native-sources.json', fixturePath, fileURLToPath(import.meta.url),
     join(directory, 'ResetOrchestrationTraces.java'), join(directory, 'ResetTraceHooks.java'),
     join(directory, 'ResetAdmissionRegression.java'),
     join(directory, 'Trace.java'), join(directory, 'java.mjs'), ...extraSources];

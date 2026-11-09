@@ -2,23 +2,15 @@
 
 ## November 1 Cloud streaming source ownership
 
-The explicit Cloud profile now has a native streaming relay behind the existing
-Alpha speech adapter. Its reusable Java implementation, PCM framing and numeric
-timing collector live in the reviewed additions in
-`patches/eliza/cloud-speech-native.patch`, under the shared
-`plugins/plugin-local-inference/native/android/speech-bridge` package. The
-framework-independent client session and text chunking live in
-`patches/eliza/cloud-speech-client.patch`, under `packages/voice/src`.
-Alpha supplies only its plugin name, Cloud origin, credential-authority ports and
-connection lifecycle. The pinned `vendor/eliza` checkout is never edited.
+The explicit Cloud profile uses a native streaming relay behind the Alpha speech
+adapter. The reusable Java relay, PCM framing and timing collector live in the
+pinned Eliza module at `plugins/plugin-local-inference/native/android/speech-bridge`.
+The client session and text chunking live in `packages/voice/src`. Alpha supplies
+the plugin name, Cloud origin, credential-authority ports and connection lifecycle.
 
-`prepare-patched-native.mjs` binds the exact base revision, patch digest, absent
-preimage, output digest and complete native module inventory before Gradle uses
-the staged source. Additions are admitted only in the shared speech Java package;
-existing native patch rules remain in force. `prepare-client-features.mjs` likewise
-authenticates the base voice tree and the client patch's exact additions before
-copying them into its managed cache. Its receipt includes the patch and preparer
-hashes. Neither preparation overlays the immutable resident runtime.
+The native staging and client preparation scripts authenticate these source
+files from the exact `vendor/eliza` revision before copying them. The native
+staging receipt binds the full module inventory and executable modes.
 
 The native relay requires an explicitly started, credential-bound Cloud session.
 It sends microphone PCM as captured and plays returned PCM incrementally; pause,
@@ -113,12 +105,10 @@ not defined` at `agent-bundle.js:39523:19870`. The evidence is in
 [`v15-resident-failure.json`](evidence/cloud-streaming-2026-11-01/v15-resident-failure.json).
 This separate bundle defect must be fixed before an end-to-end comparison.
 
-Generic client transport, phrase planning, native socket/media ownership and
-wire/timing parsing are explicit, byte-verified shared-source patches under
-`patches/eliza`. Product wrappers supply only bridge registration, current owner,
-credential slots, deployment origins and diagnostic format names. The immutable
-vendor checkout and resident source are not patched. The feature-parity allowlist
-must not grow for this work.
+The pinned Eliza source owns client transport, phrase planning, native socket
+and media handling, and wire and timing parsing. Product wrappers supply bridge
+registration, current owner, credential slots, deployment origins and diagnostic
+format names.
 
 Cloud implementation and rollout are tracked in
 [elizaOS/eliza#38469](https://github.com/elizaOS/eliza/pull/38469). Production at
@@ -502,6 +492,17 @@ The attached rebuild workspace retains receipts, conversion scripts, logs and
 model hashes under `test-results/rebuild-oct14` and `.eliza/native-oct14`.
 These are development build inputs, not a production qualification declaration.
 
+### Embedding host source admission at the merged SDK pin
+
+The existing ARM64 embedding qualification stays bound to SDK `99b49439ce`.
+For SDK `dec170f861`, the root and agent package manifests differ from the
+qualified producer inputs only in formal verification scripts and the root
+Quint development dependency. The staging verifier admits the two exact
+before and after digest pairs for this source transition. It still checks
+every other producer and JNI input, the native engine gitlink, the model and
+the recorded libraries. This source admission leaves the historical receipt
+and device evidence at their original revisions.
+
 ### Owner-bound wake invocation
 
 The shared ElizaSense bridge binds wake invocations to the active authenticated
@@ -516,12 +517,12 @@ never start capture.
 The Cloud speech investigation found a separate first-turn agent failure in the
 Android mobile bundle: Bun 1.4.2 lowered UUID's named re-export barrel into an
 undeclared `default10` binding. The bundle loaded, but creating a message response
-ID failed before any model request. `patches/eliza/mobile-uuid-build.json` admits
-the exact upstream producer, Bun revision, dependency lock, and UUID 14.0.2 module
-hashes. `scripts/build-mobile-agent.mjs` runs that unchanged producer with a
-bounded build adapter for the one admitted UUID barrel. The adapter imports the
-real UUID algorithms through CommonJS namespace properties; it does not supply a
-replacement UUID implementation or rewrite emitted bundle text.
+ID failed before any model request. `scripts/upstream-mobile-build.mjs` admits
+the exact upstream producer, Bun revision, dependency lock, and UUID 14.0.2
+module hashes. The upstream Android producer imports the real UUID algorithms
+through a CommonJS namespace and records the source and bridge hashes.
+`scripts/build-mobile-agent.mjs` verifies that observation against the reviewed
+barrel and runs the first-turn smoke before admitting the bundle.
 
 Every build exercises UUID options, buffers, versions and known name vectors in
 the actual emitted bundle, then reaches the real message-turn response-ID path

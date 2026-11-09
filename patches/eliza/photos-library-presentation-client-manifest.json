@@ -1,8 +1,0 @@
-{
-  "schema": 1,
-  "baseCommit": "b1817660a0347ae19551b9ee296410fe55f02d59",
-  "path": "plugins/plugin-assistant/src/services/device-actions/photo-library-contract.ts",
-  "beforeSha256": "819343f1187a30ba45ed36b338b572b2259749dadb1f7d8cbaceb78fb954ccb9",
-  "afterSha256": "45bca066755d833b7874fdb132d6ca78b3debedfdcae1fbb6f605d8255e7387b",
-  "patchSha256": "7f78e4c6c08d0023cd964a1f847055a7a8d92365ef0ea024ecf31da99b7fa2df"
-}

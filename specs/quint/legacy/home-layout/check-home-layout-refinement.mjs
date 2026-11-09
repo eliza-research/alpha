@@ -337,7 +337,6 @@ async function mounted(extraSources) {
     'prototype/inbox-cloud-adapter.ts', 'prototype/chat-overlay-motion-adapter.ts'].map(path => resolve(root, 'apps/app/src/'+path)));
   const sources = [...new Set([
     ...filesWithin(resolve(root, 'apps/app/src')), ...filesWithin(resolve(root, '.eliza/client-features')),
-    ...filesWithin(resolve(root, 'patches/eliza')),
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-passwords/src')),
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-system/src')),
     'vendor/eliza/packages/core/src/utils/uuid.ts',

@@ -37,10 +37,9 @@ export function verifyNativeGoogleHostArtifact(root,directory){
 function fixedInputHashes(root,sdk){
  const names=new Set([...CORE_STATE_INPUTS,'package.json','tsconfig.json','vendor/eliza/tsconfig.json',
   path.relative(root,path.join(sdk,'tsconfig.json')),'scripts/build-native-google-host.ts','scripts/local-agent-source.mjs',
-  'upstream.lock.json','scripts/native-google-host-artifact.mjs','scripts/prepare-client-features.mjs','scripts/client-speech-patch.mjs']);
- for(const name of ['patches/eliza/cloud-speech-client-manifest.json','patches/eliza/cloud-speech-client.patch',
-  'patches/eliza/managed-google-agent-manifest.json','patches/eliza/managed-google-agent.patch'])
-  if(fs.existsSync(path.join(root,name)))names.add(name);
+  'upstream.lock.json','scripts/native-google-host-artifact.mjs','scripts/prepare-client-features.mjs',
+  'scripts/managed-google-client-backport.mjs','patches/eliza/managed-google-agent-manifest.json',
+  'patches/eliza/managed-google-agent.patch']);
  return Object.fromEntries([...names].sort().map(name=>{
   if(!safe(name))throw Error('Native Google build input escaped product source');
   return [name,hash(regularFile(path.join(root,name)).bytes)];

@@ -1009,8 +1009,7 @@
       "vendor/eliza/plugins/plugin-files/src/browser/files-browser-adapter.ts",
       "vendor/eliza/plugins/plugin-files/src/browser/storage-model.ts",
       "vendor/eliza/plugins/plugin-files/src/browser/files-agent-contract.ts",
-      "patches/eliza/files-list-identity-client-manifest.json",
-      "patches/eliza/files-list-identity-client.patch",
+      "upstream.lock.json",
       "scripts/prepare-client-features.mjs"
     ],
     "abstractions": [
@@ -1212,8 +1211,8 @@
       ".eliza/client-features/plugins/plugin-files/src/browser/files-browser-adapter.ts",
       ".eliza/client-features/plugins/plugin-files/src/browser/storage-model.ts",
       ".eliza/client-features/plugins/plugin-files/src/browser/files-agent-contract.ts",
-      "patches/eliza/files-list-identity-client.patch",
-      "patches/eliza/files-list-identity-client-manifest.json"
+      "vendor/eliza/plugins/plugin-files/src/browser/files-browser-adapter.ts",
+      "upstream.lock.json"
     ],
     "abstractions": [
       "Installed folder reader, current access/volume readback and registered agent share admission over deferred storage ports. Two folders, three entries, two volumes and six state-read identities.",
@@ -1281,12 +1280,12 @@
       ".eliza/client-features/plugins/plugin-files/src/browser/files-browser-adapter.ts",
       ".eliza/client-features/plugins/plugin-files/src/browser/storage-model.ts",
       ".eliza/client-features/plugins/plugin-files/src/browser/files-agent-contract.ts",
-      "patches/eliza/files-list-identity-client.patch",
-      "patches/eliza/files-list-identity-client-manifest.json"
+      "vendor/eliza/plugins/plugin-files/src/browser/files-browser-adapter.ts",
+      "upstream.lock.json"
     ],
     "abstractions": [
-      "Installed agent filter operations from a mounted Browse view, with separate access and query generations, current filter ownership, cancellation and filtered result ordering.",
-      "Three operation identities, two text classes and four unique row identities. Reload after mount, category/Trash list transactions, file mutations and provider query implementation remain separate obligations."
+      "Installed agent filters from a mounted Browse view, with separate reload and query generations, pending and displayed filter ownership, cancellation, filtered result ordering and no storage writes.",
+      "Three operation identities, two text classes and four unique row identities. The model covers reloads during an explicit filter. Other reload sequences, category and Trash transactions, and provider queries remain separate obligations."
     ]
   },
   {
@@ -1453,8 +1452,8 @@
       ".eliza/client-features/plugins/plugin-native-system/src/client/launcher.ts",
       ".eliza/client-features/packages/ui/src/mobile-shell/mobile-launcher.ts",
       "apps/app/src/prototype/home-shell.ts",
-      "patches/eliza/launcher-observer-client.patch",
-      "patches/eliza/launcher-observer-client-manifest.json"
+      "vendor/eliza/plugins/plugin-native-system/src/client/launcher.ts",
+      "upstream.lock.json"
     ],
     "abstractions": [
       "Actual launcher package listener registration, document notifications, 120ms debounce and idempotent retirement with late or failed native removal.",
@@ -1562,8 +1561,8 @@
       ".eliza/client-features/packages/ui/src/mobile-shell/view-registry.ts",
       "apps/app/src/product/alpha-product.ts",
       "apps/app/src/product/alpha-product-registration.ts",
-      "patches/eliza/launcher-legacy-view-key-client.patch",
-      "patches/eliza/launcher-legacy-view-key-client-manifest.json"
+      "vendor/eliza/packages/ui/src/mobile-shell/view-registry.ts",
+      "upstream.lock.json"
     ],
     "abstractions": [
       "Actual ordered favorites storage, legacy view-ID and default-policy migration, unavailable storage, held-load external writes, profile identity and visible-only reorder.",
@@ -1697,8 +1696,7 @@
       "apps/app/src/runtime/view-focus.ts",
       "apps/app/src/main.tsx",
       "vendor/eliza/packages/ui/src/accessibility/screen-focus.ts",
-      "patches/eliza/screen-focus-priority-client.patch",
-      "patches/eliza/screen-focus-priority-client-manifest.json"
+      "upstream.lock.json"
     ],
     "stateMapping": {
       "installed/generation": "Exact Alpha installer handle and replacement count",
@@ -1784,8 +1782,8 @@
       ".eliza/client-features/packages/ui/src/mobile-shell/InstalledAppsGridDrawer.tsx",
       ".eliza/client-features/packages/ui/src/mobile-shell/navigation.ts",
       ".eliza/client-features/plugins/plugin-native-system/src/client/launcher.ts",
-      "patches/eliza/launcher-drawer-ownership-client.patch",
-      "patches/eliza/launcher-drawer-ownership-client-manifest.json"
+      "vendor/eliza/packages/ui/src/mobile-shell/InstalledAppsGridDrawer.tsx",
+      "upstream.lock.json"
     ],
     "abstractions": [
       "Mounted installed drawer long press, search, current menu, keyboard focus, home pin, and exact synthetic App Info handoff with late replies.",
@@ -2265,12 +2263,7 @@
       "vendor/eliza/plugins/plugin-maps/src/client/maps-screen.ts",
       "vendor/eliza/plugins/plugin-maps/src/client/device-navigation.ts",
       "vendor/eliza/plugins/plugin-maps/src/client/agent-navigation.ts",
-      "patches/eliza/maps-reroute-state-client.patch",
-      "patches/eliza/maps-reroute-state-client-manifest.json",
-      "patches/eliza/maps-reroute-maps-screen-client.patch",
-      "patches/eliza/maps-reroute-maps-screen-client-manifest.json",
-      "patches/eliza/maps-reroute-device-navigation-client.patch",
-      "patches/eliza/maps-reroute-device-navigation-client-manifest.json"
+      "upstream.lock.json"
     ],
     "stateMapping": {
       "session/guidanceSession/guidanceRoute/rerouting/fixReady": "Mounted MapsScreenController navigation lifecycle and active guidance",
@@ -2900,9 +2893,7 @@
       "apps/app/src/browser/files.ts",
       "vendor/eliza/plugins/plugin-files/src/browser/storage-volume.ts",
       "vendor/eliza/plugins/plugin-files/src/browser/storage-model.ts",
-      "vendor/eliza/plugins/plugin-files/src/browser/files.ts",
-      "patches/eliza/files-storage-query-client.patch",
-      "patches/eliza/files-storage-placement-client.patch"
+      "vendor/eliza/plugins/plugin-files/src/browser/files.ts"
     ],
     "stateMapping": {
       "mode/active/queued/prepared": "Actual Node exclusive lock and same-realm fallback with source requests held at library ports",

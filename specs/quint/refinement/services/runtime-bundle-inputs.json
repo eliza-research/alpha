@@ -1,188 +1,147 @@
 {
   "schema": 1,
   "classification": "observed-product-android-bundle-inputs",
-  "sourcePin": "b1817660a0347ae19551b9ee296410fe55f02d59",
+  "sourcePin": "5500c73b3d8ff8395999bbb620e7e3fc0ebb1df4",
   "producer": {
     "script": "scripts/build-mobile-agent.mjs",
     "observer": "specs/quint/refinement/services/runtime-bundle-audit.mjs",
     "inputHashes": {
-      "specs/quint/refinement/services/runtime-bundle-audit.mjs": "ec158ce9212e0e32f304ef8b4adcf894870215c7e47983430d062b73fbec3d62",
-      "specs/quint/refinement/services/runtime-bundle-graph.mjs": "1434a50f98b533fb6abd1178a1de0995214435b5dbf466ed118190deeebeaa77",
-      "upstream.lock.json": "a5e200ab85930ea76d129ef7f15ba9c500a44c2b301bf1a4b8965aea298672c6",
-      "patches/eliza/mobile-uuid-build.json": "63dfaff4278f4f11069728ff0b1578ff48491a91856c511733b373c13b33aabd",
-      "scripts/build-mobile-agent.mjs": "a806e8eada974f400afe18e00e5cf275d3519ab00462615076e3d4124639a288",
-      "scripts/mobile-uuid-adapter.mjs": "5b2f99180a222f743367959b7ba0360d9d30597ba80d91ea126830074d190258",
-      "scripts/mobile-bundle-smoke.mjs": "2e4f7ef05ae6f09285c2a6141876c14b5f30539c926a46864bf8862ae8d3b7bd",
+      "specs/quint/refinement/services/runtime-bundle-audit.mjs": "0527954e0c6a927698e6351b0150eb3bb660e573a7570330d38d80e6f8bd9f67",
+      "specs/quint/refinement/services/runtime-bundle-graph.mjs": "0bd78236abb72ae29b2716ead130dcbb2a00455a326ecc2280fc6bf5988eadf5",
+      "upstream.lock.json": "899628daa589da867f199c2aa3e1af99e220613d8f47b97f453a49894690c905",
+      "scripts/upstream-mobile-build.mjs": "a0eee8fac502e1deaa7ed4eac96dd27156930232fee076ca560599d75a8dbecd",
       "scripts/local-agent-source.mjs": "bd5c0ae286c2802fed48f8e51150d4f2de75fb4c8563cfdcdd4d1347fb888c5f",
-      "scripts/core-state-patch.mjs": "331e2ce0df2c43a1f34969bc12b54d51292134320599e4a765e77b5129853171",
+      "scripts/build-mobile-agent.mjs": "d0201c2bc3cb74d9ad0ba725deac43d08d3be4f2ba45ce50ffd2d1732fd6c0ae",
+      "scripts/mobile-uuid-adapter.mjs": "821d33c77787d3069b3e18c1eeac05ab2b2d00f2691824663577acee0366884d",
+      "scripts/mobile-bundle-smoke.mjs": "2e4f7ef05ae6f09285c2a6141876c14b5f30539c926a46864bf8862ae8d3b7bd",
+      "scripts/build-policy-source.mjs": "3512c1e3a1c4d0c2c1dec2d3b99d12752edf2f90af9b35aba10ffb1cdffb09bb",
+      "scripts/core-state-patch.mjs": "9ff01918776f2f60336fb1e119092863095b9459e1df6ee23c1a708124626550",
       "scripts/core-state-preload.mjs": "c5368c9075aa8c7660bee01338185fbe673c9b8dd6889dd1ab01d195efa17c10",
       "scripts/combined-agent-source.mjs": "a2f4d279f3f98ff078f3aedd6b9dc2dc5c3396ecdc7fb7f09b0da7e0c085062e",
-      "patches/eliza/core-state-manifest.json": "05810aff930cb207ead617b5667950dc04df8c1f94203f4090baf3e41e6e75b4",
-      "patches/eliza/task-service-stop.patch": "d3b80ffb0dad32e3a17b50dbbb0d4c0dfb3f60b0f2a35f577be4612aa2f9db1e",
-      "patches/eliza/notes-state-runtime.patch": "5f62c6742a0c8f85f47aec6a629a1454d7cc74c5060d75a72b5c3d77a43dda18",
-      "patches/eliza/turn-controller-isolation.patch": "d587459e0123599d17f886fcc855eb90ce7ec20b286a42ce47a02a1ab1bd110b",
-      "patches/eliza/room-queue-admission.patch": "343e39a3c756e3679b8a1e577352638119e0f17b1d0535023cbd1720fdddedde",
-      "patches/eliza/embedding-store-identity.patch": "358327f35c37bd5862ec6dcaa7657c4db545a548e4d5de63cf8efd8120f01d1e",
-      "patches/eliza/named-embedding-provenance.patch": "8e874337cbcebe3e3fb69112db3b36c881ca0bc9737399818a06bb9fabf67f70",
-      "patches/eliza/plugin-connector-custody.patch": "a0f840fa8572fae33dc3958769c4bd9a951e6f18d04c2345979147134a1473b2"
+      "scripts/upstream-core-sources.mjs": "1d40e1167757e7907d49179b1fc42aad7694c1d0865d0d5a017a1b526704d9df"
     },
     "coreState": {
-      "version": 1,
-      "baseCommit": "b1817660a0347ae19551b9ee296410fe55f02d59",
-      "manifestSha256": "05810aff930cb207ead617b5667950dc04df8c1f94203f4090baf3e41e6e75b4",
+      "version": 2,
+      "baseCommit": "5500c73b3d8ff8395999bbb620e7e3fc0ebb1df4",
+      "manifestSha256": "1d40e1167757e7907d49179b1fc42aad7694c1d0865d0d5a017a1b526704d9df",
       "inputHashes": {
-        "scripts/core-state-patch.mjs": "331e2ce0df2c43a1f34969bc12b54d51292134320599e4a765e77b5129853171",
+        "scripts/core-state-patch.mjs": "9ff01918776f2f60336fb1e119092863095b9459e1df6ee23c1a708124626550",
         "scripts/core-state-preload.mjs": "c5368c9075aa8c7660bee01338185fbe673c9b8dd6889dd1ab01d195efa17c10",
         "scripts/combined-agent-source.mjs": "a2f4d279f3f98ff078f3aedd6b9dc2dc5c3396ecdc7fb7f09b0da7e0c085062e",
-        "patches/eliza/core-state-manifest.json": "05810aff930cb207ead617b5667950dc04df8c1f94203f4090baf3e41e6e75b4",
-        "patches/eliza/task-service-stop.patch": "d3b80ffb0dad32e3a17b50dbbb0d4c0dfb3f60b0f2a35f577be4612aa2f9db1e",
-        "patches/eliza/notes-state-runtime.patch": "5f62c6742a0c8f85f47aec6a629a1454d7cc74c5060d75a72b5c3d77a43dda18",
-        "patches/eliza/turn-controller-isolation.patch": "d587459e0123599d17f886fcc855eb90ce7ec20b286a42ce47a02a1ab1bd110b",
-        "patches/eliza/room-queue-admission.patch": "343e39a3c756e3679b8a1e577352638119e0f17b1d0535023cbd1720fdddedde",
-        "patches/eliza/embedding-store-identity.patch": "358327f35c37bd5862ec6dcaa7657c4db545a548e4d5de63cf8efd8120f01d1e",
-        "patches/eliza/named-embedding-provenance.patch": "8e874337cbcebe3e3fb69112db3b36c881ca0bc9737399818a06bb9fabf67f70",
-        "patches/eliza/plugin-connector-custody.patch": "a0f840fa8572fae33dc3958769c4bd9a951e6f18d04c2345979147134a1473b2"
+        "scripts/build-policy-source.mjs": "3512c1e3a1c4d0c2c1dec2d3b99d12752edf2f90af9b35aba10ffb1cdffb09bb",
+        "scripts/upstream-core-sources.mjs": "1d40e1167757e7907d49179b1fc42aad7694c1d0865d0d5a017a1b526704d9df"
       },
-      "patches": [
-        {
-          "file": "task-service-stop.patch",
-          "sha256": "d3b80ffb0dad32e3a17b50dbbb0d4c0dfb3f60b0f2a35f577be4612aa2f9db1e"
-        },
-        {
-          "file": "notes-state-runtime.patch",
-          "sha256": "5f62c6742a0c8f85f47aec6a629a1454d7cc74c5060d75a72b5c3d77a43dda18"
-        },
-        {
-          "file": "turn-controller-isolation.patch",
-          "sha256": "d587459e0123599d17f886fcc855eb90ce7ec20b286a42ce47a02a1ab1bd110b"
-        },
-        {
-          "file": "room-queue-admission.patch",
-          "sha256": "343e39a3c756e3679b8a1e577352638119e0f17b1d0535023cbd1720fdddedde"
-        },
-        {
-          "file": "embedding-store-identity.patch",
-          "sha256": "358327f35c37bd5862ec6dcaa7657c4db545a548e4d5de63cf8efd8120f01d1e"
-        },
-        {
-          "file": "named-embedding-provenance.patch",
-          "sha256": "8e874337cbcebe3e3fb69112db3b36c881ca0bc9737399818a06bb9fabf67f70"
-        },
-        {
-          "file": "plugin-connector-custody.patch",
-          "sha256": "a0f840fa8572fae33dc3958769c4bd9a951e6f18d04c2345979147134a1473b2"
-        }
-      ],
+      "patches": [],
       "files": {
         "packages/core/src/services/task.ts": {
-          "beforeSha256": "c72514809e0f6a3a5c592ed3d0d0015319ca4dbfb8fd9e949fa06c1982c35fc3",
-          "afterSha256": "24b1b783a903cb4c8d284dd3f375f18a3fe720c65f0430bada7cebb236cf1f3f"
+          "beforeSha256": "e6739af7aff06a35d432febb7b0a1744f365212076fb14a8c28c58e59843a85c",
+          "afterSha256": "e6739af7aff06a35d432febb7b0a1744f365212076fb14a8c28c58e59843a85c"
         },
         "plugins/plugin-notes/src/service.ts": {
-          "beforeSha256": "2f41aa310c64b2747017ebd4b69386ee087337ed752a1b722f86d93fc4bc8e8b",
-          "afterSha256": "e2bd7c43e7d0841788d9efd7056a2b6e01d431687004f18f7f523c4f7cb76346"
+          "beforeSha256": "b25222d39bf98551b26795bc369e614bf8332e263848c7f6dab0beb460ece97a",
+          "afterSha256": "b25222d39bf98551b26795bc369e614bf8332e263848c7f6dab0beb460ece97a"
         },
         "plugins/plugin-notes/src/store.ts": {
-          "beforeSha256": "e0078a48cdd9f91a850121972cec6bb27deaaadd856bb05e047368cb58aa709e",
-          "afterSha256": "e9e33bf24ba4622d7bbdb2964b8e55920f0dbf6c906900e61ccfffc42b84ec5c"
+          "beforeSha256": "7cf45a1d43d900c18d930296bdb85d12ff6833ec3c52db7f061b39083a6520bf",
+          "afterSha256": "7cf45a1d43d900c18d930296bdb85d12ff6833ec3c52db7f061b39083a6520bf"
         },
         "plugins/plugin-notes/src/types.ts": {
-          "beforeSha256": "366a583d1b4fe3a49161df9654671e60ec79701b3e17730464465e978f703a45",
+          "beforeSha256": "2acf6a0332c0880844bdb948a87c49eb6b8a29ce5566ea695dbc5a411daae23c",
           "afterSha256": "2acf6a0332c0880844bdb948a87c49eb6b8a29ce5566ea695dbc5a411daae23c"
         },
         "plugins/plugin-notes/src/validation.ts": {
-          "beforeSha256": "3b2d9d3c8e61390f3b283270a55f9e09ca527d6d4767e0b9ff778a6f3cbdc384",
-          "afterSha256": "af7030186a7e4483c2674af9c30514e8a5c5587303c7a734b4943db44375f85a"
+          "beforeSha256": "6bb3d21aa78263462a234c6b04580ef2bceddeab227db8deba9c7568362f37a4",
+          "afterSha256": "6bb3d21aa78263462a234c6b04580ef2bceddeab227db8deba9c7568362f37a4"
         },
         "packages/core/src/runtime/turn-controller.ts": {
-          "beforeSha256": "c04907565ac8c7f483b2e4c6db29d6bf007f85f7a15fdae447bd2c1f82fed46b",
+          "beforeSha256": "a69049036ad8848609ac9113090dd16dd45517a5ab03d62d506e1c17156f8111",
           "afterSha256": "a69049036ad8848609ac9113090dd16dd45517a5ab03d62d506e1c17156f8111"
         },
         "packages/core/src/runtime/room-handler-queue.ts": {
-          "beforeSha256": "f5a31f3276827e90448df4198ae559135d32604132d2775948df9d5b2e496fac",
-          "afterSha256": "cd8f23f09c191aa9ebe3048e688a46a4a81b730405351a1cf809f4c8e214fce1"
+          "beforeSha256": "4733782d1486a9f3caf2314e4e18ad35dfa8770fc3235e60f944b57a8840e68e",
+          "afterSha256": "4733782d1486a9f3caf2314e4e18ad35dfa8770fc3235e60f944b57a8840e68e"
         },
         "packages/core/src/runtime/embeddings.ts": {
-          "beforeSha256": "36605cc23b7e423f5dd0edd8cef4e7a7f91cb85860c864af9781b5fbd0f71176",
-          "afterSha256": "e3acd82d9bc623f12253356fd63172d29c895a714c4345a809d5e9b8f807e7a9"
+          "beforeSha256": "eb6bd91bad9e60ee137e088562e59de7e9babac5673e26a4061845c4b02d6188",
+          "afterSha256": "eb6bd91bad9e60ee137e088562e59de7e9babac5673e26a4061845c4b02d6188"
         },
         "plugins/plugin-sql/src/base.ts": {
-          "beforeSha256": "7330514fd585fcb0389fbae0e3eaf802d4f2620dc74829ca522945ea836297ac",
-          "afterSha256": "ea949cb8deb34d8548e46e96a2c038a9e97a88c6bb0ff84eead4ddf9a6ba6a4c"
+          "beforeSha256": "b6f51bbe29e67028e3695e8ee1173e8dcf510305dda7e94093d05a97663f68dc",
+          "afterSha256": "b6f51bbe29e67028e3695e8ee1173e8dcf510305dda7e94093d05a97663f68dc"
         },
         "packages/agent/src/api/conversation-routes.ts": {
-          "beforeSha256": "80dfd6c361678650f5ed94542d0e8db66a0418c0b630e3f4775b684ba06c2cf6",
+          "beforeSha256": "d0b6102bde8d6c0ab0fa559cf8667f50b3ab5b75b0833554376b30142a1451ac",
           "afterSha256": "d0b6102bde8d6c0ab0fa559cf8667f50b3ab5b75b0833554376b30142a1451ac"
         },
         "plugins/plugin-assistant/src/features/advanced-capabilities/experience/service.ts": {
-          "beforeSha256": "92e23a48cdb670b2aa02f4c441bedd0abf26122268ee23cdd01f28d974ec2c17",
+          "beforeSha256": "183053f31c514ab444823e2d3966619f920af3fed212e884d0f23802585e9f47",
           "afterSha256": "183053f31c514ab444823e2d3966619f920af3fed212e884d0f23802585e9f47"
         },
         "packages/core/src/plugin-lifecycle.ts": {
-          "beforeSha256": "954a7a185c6bb467831a221abd60fb2bec7683e3f5e615408c9ccbece1ccd8be",
-          "afterSha256": "208a5acb62404a722969aa3e11f76edbe6dffd44e66f6f62914148e2a8ed3435"
+          "beforeSha256": "80c0394b7f625052e1d55112cee6d295ec76c0f7465dd81dbe38843fa946f9a8",
+          "afterSha256": "80c0394b7f625052e1d55112cee6d295ec76c0f7465dd81dbe38843fa946f9a8"
         }
       },
       "transforms": [
         {
           "path": "packages/agent/src/api/conversation-routes.ts",
-          "sourceSha256": "80dfd6c361678650f5ed94542d0e8db66a0418c0b630e3f4775b684ba06c2cf6",
+          "sourceSha256": "d0b6102bde8d6c0ab0fa559cf8667f50b3ab5b75b0833554376b30142a1451ac",
           "outputSha256": "d0b6102bde8d6c0ab0fa559cf8667f50b3ab5b75b0833554376b30142a1451ac"
         },
         {
           "path": "packages/core/src/plugin-lifecycle.ts",
-          "sourceSha256": "954a7a185c6bb467831a221abd60fb2bec7683e3f5e615408c9ccbece1ccd8be",
-          "outputSha256": "208a5acb62404a722969aa3e11f76edbe6dffd44e66f6f62914148e2a8ed3435"
+          "sourceSha256": "80c0394b7f625052e1d55112cee6d295ec76c0f7465dd81dbe38843fa946f9a8",
+          "outputSha256": "80c0394b7f625052e1d55112cee6d295ec76c0f7465dd81dbe38843fa946f9a8"
         },
         {
           "path": "packages/core/src/runtime/embeddings.ts",
-          "sourceSha256": "36605cc23b7e423f5dd0edd8cef4e7a7f91cb85860c864af9781b5fbd0f71176",
-          "outputSha256": "e3acd82d9bc623f12253356fd63172d29c895a714c4345a809d5e9b8f807e7a9"
+          "sourceSha256": "eb6bd91bad9e60ee137e088562e59de7e9babac5673e26a4061845c4b02d6188",
+          "outputSha256": "eb6bd91bad9e60ee137e088562e59de7e9babac5673e26a4061845c4b02d6188"
         },
         {
           "path": "packages/core/src/runtime/room-handler-queue.ts",
-          "sourceSha256": "f5a31f3276827e90448df4198ae559135d32604132d2775948df9d5b2e496fac",
-          "outputSha256": "cd8f23f09c191aa9ebe3048e688a46a4a81b730405351a1cf809f4c8e214fce1"
+          "sourceSha256": "4733782d1486a9f3caf2314e4e18ad35dfa8770fc3235e60f944b57a8840e68e",
+          "outputSha256": "4733782d1486a9f3caf2314e4e18ad35dfa8770fc3235e60f944b57a8840e68e"
         },
         {
           "path": "packages/core/src/runtime/turn-controller.ts",
-          "sourceSha256": "c04907565ac8c7f483b2e4c6db29d6bf007f85f7a15fdae447bd2c1f82fed46b",
+          "sourceSha256": "a69049036ad8848609ac9113090dd16dd45517a5ab03d62d506e1c17156f8111",
           "outputSha256": "a69049036ad8848609ac9113090dd16dd45517a5ab03d62d506e1c17156f8111"
         },
         {
           "path": "packages/core/src/services/task.ts",
-          "sourceSha256": "c72514809e0f6a3a5c592ed3d0d0015319ca4dbfb8fd9e949fa06c1982c35fc3",
-          "outputSha256": "24b1b783a903cb4c8d284dd3f375f18a3fe720c65f0430bada7cebb236cf1f3f"
+          "sourceSha256": "e6739af7aff06a35d432febb7b0a1744f365212076fb14a8c28c58e59843a85c",
+          "outputSha256": "e6739af7aff06a35d432febb7b0a1744f365212076fb14a8c28c58e59843a85c"
         },
         {
           "path": "plugins/plugin-assistant/src/features/advanced-capabilities/experience/service.ts",
-          "sourceSha256": "92e23a48cdb670b2aa02f4c441bedd0abf26122268ee23cdd01f28d974ec2c17",
+          "sourceSha256": "183053f31c514ab444823e2d3966619f920af3fed212e884d0f23802585e9f47",
           "outputSha256": "183053f31c514ab444823e2d3966619f920af3fed212e884d0f23802585e9f47"
         },
         {
           "path": "plugins/plugin-notes/src/service.ts",
-          "sourceSha256": "2f41aa310c64b2747017ebd4b69386ee087337ed752a1b722f86d93fc4bc8e8b",
-          "outputSha256": "e2bd7c43e7d0841788d9efd7056a2b6e01d431687004f18f7f523c4f7cb76346"
+          "sourceSha256": "b25222d39bf98551b26795bc369e614bf8332e263848c7f6dab0beb460ece97a",
+          "outputSha256": "b25222d39bf98551b26795bc369e614bf8332e263848c7f6dab0beb460ece97a"
         },
         {
           "path": "plugins/plugin-notes/src/store.ts",
-          "sourceSha256": "e0078a48cdd9f91a850121972cec6bb27deaaadd856bb05e047368cb58aa709e",
-          "outputSha256": "e9e33bf24ba4622d7bbdb2964b8e55920f0dbf6c906900e61ccfffc42b84ec5c"
+          "sourceSha256": "7cf45a1d43d900c18d930296bdb85d12ff6833ec3c52db7f061b39083a6520bf",
+          "outputSha256": "7cf45a1d43d900c18d930296bdb85d12ff6833ec3c52db7f061b39083a6520bf"
         },
         {
           "path": "plugins/plugin-notes/src/types.ts",
-          "sourceSha256": "366a583d1b4fe3a49161df9654671e60ec79701b3e17730464465e978f703a45",
+          "sourceSha256": "2acf6a0332c0880844bdb948a87c49eb6b8a29ce5566ea695dbc5a411daae23c",
           "outputSha256": "2acf6a0332c0880844bdb948a87c49eb6b8a29ce5566ea695dbc5a411daae23c"
         },
         {
           "path": "plugins/plugin-notes/src/validation.ts",
-          "sourceSha256": "3b2d9d3c8e61390f3b283270a55f9e09ca527d6d4767e0b9ff778a6f3cbdc384",
-          "outputSha256": "af7030186a7e4483c2674af9c30514e8a5c5587303c7a734b4943db44375f85a"
+          "sourceSha256": "6bb3d21aa78263462a234c6b04580ef2bceddeab227db8deba9c7568362f37a4",
+          "outputSha256": "6bb3d21aa78263462a234c6b04580ef2bceddeab227db8deba9c7568362f37a4"
         },
         {
           "path": "plugins/plugin-sql/src/base.ts",
-          "sourceSha256": "7330514fd585fcb0389fbae0e3eaf802d4f2620dc74829ca522945ea836297ac",
-          "outputSha256": "ea949cb8deb34d8548e46e96a2c038a9e97a88c6bb0ff84eead4ddf9a6ba6a4c"
+          "sourceSha256": "b6f51bbe29e67028e3695e8ee1173e8dcf510305dda7e94093d05a97663f68dc",
+          "outputSha256": "b6f51bbe29e67028e3695e8ee1173e8dcf510305dda7e94093d05a97663f68dc"
         }
       ]
     },
@@ -190,31 +149,31 @@
       "version": "1.4.2",
       "revision": "744846f844374847c902b5e7fd59b4342a51ef99"
     },
-    "bundleSha256": "f7279e9bb631e083a4de4c3f19805ff92f25f08ac913c829fe3b5d8ab8d2a5de",
+    "bundleSha256": "e9fcdf49cfdddcb5c59e79bfccb93740e57287595576f9b1023a9101a582937b",
     "sourceTreeVerifiedBeforeAndAfter": true,
     "inputHashesUnchanged": true,
-    "rawMetafileSha256": "3bfc7ad13d195449ab80c06cc9394ab86e438f6e7e62512d1180adf9600244da",
-    "producerObservationSha256": "e6307facbab2befe0c7e250cb74cb0e63dacb741131ddd9b6f7724b65fcc3c26"
+    "rawMetafileSha256": "0d01705542a735fdca7421357e1c41201799dcdfd6f0419051835e2f96bc16eb",
+    "producerObservationSha256": "f76a97278a751ac5650d10d8a6f83b62fd283cf7a88ec74612f23dc6398dd7d4"
   },
   "counts": {
-    "parsed": 9988,
-    "firstParty": 4338,
-    "emitted": 4228,
-    "tracked": 4090,
-    "generated": 248,
-    "trackedEmitted": 3981,
-    "generatedEmitted": 247,
-    "firstPartyEdges": 14321,
-    "boundaryEdges": 2788
+    "parsed": 9990,
+    "firstParty": 4340,
+    "emitted": 4231,
+    "tracked": 4091,
+    "generated": 249,
+    "trackedEmitted": 3983,
+    "generatedEmitted": 248,
+    "firstPartyEdges": 14345,
+    "boundaryEdges": 2795
   },
   "generatedMappingCounts": {
-    "generated": 248,
-    "declaredOutput": 244,
-    "sourceMapped": 74,
+    "generated": 249,
+    "declaredOutput": 245,
+    "sourceMapped": 75,
     "unmapped": 0
   },
   "limitations": [
-    "sha256 binds raw pinned source. effectiveSourceSha256, when present, binds authenticated post-patch source before compiler transformation, not emitted JavaScript.",
+    "sha256 binds pinned source. effectiveSourceSha256 records the same authenticated input consumed by the compiler. Emitted JavaScript has its own bundle hash.",
     "Parsed inputs with zero emitted contribution are marked separately.",
     "Generated-source maps and declared compiler output paths identify producer inputs and do not establish semantic equivalence or refinement.",
     "Compiled module inclusion does not establish runtime activation, model coverage or implementation refinement.",
@@ -714,10 +673,10 @@
       ]
     },
     "packages/agent/src/api/agent-admin-routes.ts": {
-      "sha256": "683a375993c6d12813077ac5168e1c10ba29d4be2fd06081590b43810b2d6d14",
-      "bytesInOutput": 4494,
+      "sha256": "391d5f61248388a4bb8d17f26841da6ba338f209722b595d43f58373291f8761",
+      "bytesInOutput": 4541,
       "tracked": true,
-      "gitObject": "5642b8257ff56e0f7b3d614870edd34d3dc9027d",
+      "gitObject": "2a343a06e9cc25a61d6da2fe16469cc5164efada",
       "imports": [
         {
           "target": "path",
@@ -777,10 +736,10 @@
       ]
     },
     "packages/agent/src/api/agent-lifecycle-routes.ts": {
-      "sha256": "6d7a9fa84f1c65f370163c7bc52660be44ccd049f4b853bad785b83a327deb38",
-      "bytesInOutput": 4687,
+      "sha256": "2a8dd3aa8899ed79c4b1f0a360da646305418878224b20b13006eb680def3989",
+      "bytesInOutput": 5177,
       "tracked": true,
-      "gitObject": "5b59d1273c59011d937452db451f57ec6d015476",
+      "gitObject": "4595ab5a1e477c21dc8fda8739fab8c3d3720931",
       "imports": [
         {
           "target": "packages/contracts/dist/index.js",
@@ -818,10 +777,10 @@
       ]
     },
     "packages/agent/src/api/agent-status-routes.ts": {
-      "sha256": "0ff1b5503c10efe6f5f22fd233984e7a2938dca46ba8c4b5599f9238728da354",
+      "sha256": "16cb7ec89e4c59e187f357e1ef808b327ca6a6ba39d3efcc6ddbaaffe328e079",
       "bytesInOutput": 3697,
       "tracked": true,
-      "gitObject": "3585323bfc54d61805bd44a96a21ac6730d39c5f",
+      "gitObject": "04d5c238f36853754fd140ac2feb96a042a5a30d",
       "imports": []
     },
     "packages/agent/src/api/agent-transfer-routes.ts": {
@@ -1727,10 +1686,10 @@
       ]
     },
     "packages/agent/src/api/connector-health.ts": {
-      "sha256": "f2b4add8bc0e8c5cfe28a25f0e776f4dacff3bfb8d0b2a70ff0996bb96c5de87",
-      "bytesInOutput": 4059,
+      "sha256": "9c9fd7b611ad151ae628ae83eb87a56b8027c13e45b9bc3c94ad6d1ea37a840c",
+      "bytesInOutput": 4633,
       "tracked": true,
-      "gitObject": "d2e10116e299308a6a1275d434d54085fc21dc07",
+      "gitObject": "5a94c606ff8edfb1636df831447ce5f5718f4303",
       "imports": [
         {
           "target": "packages/core/src/index.ts",
@@ -1851,12 +1810,12 @@
       ]
     },
     "packages/agent/src/api/conversation-routes.ts": {
-      "sha256": "80dfd6c361678650f5ed94542d0e8db66a0418c0b630e3f4775b684ba06c2cf6",
+      "sha256": "d0b6102bde8d6c0ab0fa559cf8667f50b3ab5b75b0833554376b30142a1451ac",
       "effectiveSourceSha256": "d0b6102bde8d6c0ab0fa559cf8667f50b3ab5b75b0833554376b30142a1451ac",
       "transformation": "authenticated-core-state",
       "bytesInOutput": 139443,
       "tracked": true,
-      "gitObject": "e64b5e125d4e8b89f648aa238486461e5cfec077",
+      "gitObject": "875b1319f3c1c35583af41d60d4ba15804a41d3e",
       "imports": [
         {
           "target": "crypto",
@@ -2138,10 +2097,10 @@
       ]
     },
     "packages/agent/src/api/device-action-routes.ts": {
-      "sha256": "302a0902a4b9152ea9cd4ed682dd6efad70a654cf9b8d2487075fe0c8365563d",
-      "bytesInOutput": 11366,
+      "sha256": "c95c8800b4667e2ca6e239aaa751345b1ee5e106175cc745d847670e1c51bed3",
+      "bytesInOutput": 11480,
       "tracked": true,
-      "gitObject": "d3689f3b346532c933456fcf63e8574540ac1dfe",
+      "gitObject": "571c6f7ea042d1424add89884693ea2ecdce5598",
       "imports": [
         {
           "target": "packages/contracts/dist/index.js",
@@ -2526,10 +2485,10 @@
       ]
     },
     "packages/agent/src/api/hono-mount.ts": {
-      "sha256": "56ceda3469a8706a5b3945bb6633bbf854ef60b650bbc83fc93aac07cdc9714d",
-      "bytesInOutput": 5595,
+      "sha256": "eb4c1a510200bf84eadb6f044eea4071be34218755d8439a9c3eb1493cd2f0df",
+      "bytesInOutput": 5559,
       "tracked": true,
-      "gitObject": "5fff063f90243323c92b8f29570ad0fb16e3c38c",
+      "gitObject": "602697ba9e0d45820a82c63a4f14c80e4b1bb76c",
       "imports": [
         {
           "target": "buffer",
@@ -3100,10 +3059,10 @@
       ]
     },
     "packages/agent/src/api/model-config-routes.ts": {
-      "sha256": "09cfdba8fb8d48790811dca81ca21eb578a66bda5bfcf91aabc30388c8915dca",
-      "bytesInOutput": 16848,
+      "sha256": "7734403bd8dcf467aca754a21807a99403a3f0816f1118cc7111de7e77a559f7",
+      "bytesInOutput": 16842,
       "tracked": true,
-      "gitObject": "cc247d7d8991bfeba2867d156087a30be32f627c",
+      "gitObject": "7ed3b8571072846f3b1be4970499a4f4a5a73e3d",
       "imports": [
         {
           "target": "packages/core/src/index.ts",
@@ -3121,7 +3080,7 @@
           "scope": "first-party"
         },
         {
-          "target": "plugins/plugin-openai/index.ts",
+          "target": "plugins/plugin-openai/utils/config.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -3321,10 +3280,10 @@
       ]
     },
     "packages/agent/src/api/permissions-routes-extra.ts": {
-      "sha256": "ba4a4a07913365345616a7721e0be881b55e781bb484177e53077cb118a506f7",
+      "sha256": "d44ffdff8017678d06b2602e021ade0f17267a75edb466f1eda7b9b4cfcf22a7",
       "bytesInOutput": 2171,
       "tracked": true,
-      "gitObject": "20785f3f9a9d4edf6fcde45e9d27b6df992466b8",
+      "gitObject": "2b60511d250c4afab88324dd270dc889b13a1e38",
       "imports": [
         {
           "target": "packages/core/src/index.ts",
@@ -4711,10 +4670,10 @@
       ]
     },
     "packages/agent/src/api/server-resources.ts": {
-      "sha256": "fa77a49c6e500f661bfd2c10b0bc78880eae53163e72ab59a46c34f3d47bf82a",
-      "bytesInOutput": 486,
+      "sha256": "d8ff26a9ebc23f3c51e158192433b77523fbb684443a40dc5122f9f86118f98c",
+      "bytesInOutput": 514,
       "tracked": true,
-      "gitObject": "8a10cfe7900c9de09eb4230b28ae73eb7424a144",
+      "gitObject": "596b9d93b88f7400066e9013da575a99cf053a34",
       "imports": []
     },
     "packages/agent/src/api/server-route-dispatch.ts": {
@@ -4793,10 +4752,10 @@
       "imports": []
     },
     "packages/agent/src/api/server.ts": {
-      "sha256": "434efd531c9cfe458fd1f15e122e8e5f2716ee61f3b4dd07d36bb6e14004e225",
+      "sha256": "24c24cd19b6afd331643e9a99832aedb52a85b7ece53512d41dc944fb5578a4f",
       "bytesInOutput": 93061,
       "tracked": true,
-      "gitObject": "c299f72e136e126615be4b9f976e91429d13d434",
+      "gitObject": "9c035461261bd72986aa14d0a4296e4607182852",
       "imports": [
         {
           "target": "packages/agent/src/api/native-view-renderer.ts",
@@ -4849,7 +4808,7 @@
           "scope": "first-party"
         },
         {
-          "target": "plugins/plugin-wallet/src/transactions.ts",
+          "target": "plugins/plugin-wallet/src/lib/trade-safety.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -5564,18 +5523,13 @@
       ]
     },
     "packages/agent/src/api/todo-cutover-import.ts": {
-      "sha256": "421e574113544d4579405d4d23d4ee79bda40be676accf8447172801d1d5ca06",
-      "bytesInOutput": 10148,
+      "sha256": "96249bb597866ea91e5ed0b4a4bb105b98d523846b67f7059f4d5dbe9f1fc6ae",
+      "bytesInOutput": 10136,
       "tracked": true,
-      "gitObject": "ff79ee64d68b0a392efa33173c5b13dc63d6706e",
+      "gitObject": "e9ea585eb387083e477809efcd2b25cf22b288f2",
       "imports": [
         {
           "target": "packages/core/src/index.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "plugins/plugin-todos/src/index.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -7013,10 +6967,10 @@
       ]
     },
     "packages/agent/src/hooks/loader.ts": {
-      "sha256": "63234293b5113b7f5e7cc300fca94cb84075f9a5ed10f239d608cb2d05d4fdf3",
+      "sha256": "51afc568023a99df49d262030d75ed794f15b3f037a68f5de67b621d4a99e804",
       "bytesInOutput": 2655,
       "tracked": true,
-      "gitObject": "fd071feaef95e0886b64400fad096abdee792fe0",
+      "gitObject": "b2760a322535daa9e7f55a1e437bcff433b1a89a",
       "imports": [
         {
           "target": "os",
@@ -10997,10 +10951,10 @@
       ]
     },
     "packages/agent/src/runtime/process-lifecycle.ts": {
-      "sha256": "37b7e5cdc7b304d3df3549b810377094e0ddaa6e5e23a081a159d5881a753558",
-      "bytesInOutput": 1149,
+      "sha256": "863ceecbcf293362cb06e9e41ba02f5e3093d6287b7a9fe327700af3e49eef44",
+      "bytesInOutput": 1226,
       "tracked": true,
-      "gitObject": "2e74dd674b0c7e1f676a972dd12ac311eb48fac9",
+      "gitObject": "e2ae66d6afa289e6442685385a76500dc99bd7c1",
       "imports": []
     },
     "packages/agent/src/runtime/project-connector-settings.ts": {
@@ -11144,10 +11098,10 @@
       ]
     },
     "packages/agent/src/runtime/retention-task.ts": {
-      "sha256": "761418831432f2ec9d1038daec9798aa50c659de4ee970cf8945ce039545f432",
-      "bytesInOutput": 3884,
+      "sha256": "28bb980f6d7ec180957caadf4545d8b8b1da915c2c3df5e01d70532c187570ca",
+      "bytesInOutput": 4493,
       "tracked": true,
-      "gitObject": "b4e3d91cf0a54057d296b6cc4be1852b20f85319",
+      "gitObject": "5642834e929f35370256b063817d43c88e6004aa",
       "imports": [
         {
           "target": "packages/core/src/index.ts",
@@ -11995,10 +11949,10 @@
       ]
     },
     "packages/agent/src/security/audit-log.ts": {
-      "sha256": "2960c43da2caf27d54079a826649b7a7657a4fc140c2fd02c0f441810bab70dc",
-      "bytesInOutput": 6733,
+      "sha256": "db18bf3381d1b0c6004d1a79c45d92f8f7b9606467ac5f2c2a8c1405eb97f579",
+      "bytesInOutput": 6865,
       "tracked": true,
-      "gitObject": "21264334efc4638f62d17d96bcc329932fab88af",
+      "gitObject": "df8dc7f6972e650690414dd1866421193118150c",
       "imports": [
         {
           "target": "packages/core/src/index.ts",
@@ -13281,10 +13235,10 @@
       ]
     },
     "packages/agent/src/services/permissions-registry.ts": {
-      "sha256": "01409423c61af91eb199f2123431e6bcae3c96d8310bb0f599cd9d697257f0f4",
-      "bytesInOutput": 4256,
+      "sha256": "b6eb316ea41a43917a4900ea6a5dbbeca4e81870e6c8777f2e6c047ae6fd8951",
+      "bytesInOutput": 5296,
       "tracked": true,
-      "gitObject": "c7180da1a942b54faa843dd0bb3e5a7db6767b00",
+      "gitObject": "1dae88e32d8e2fb1e9ec756bbee4876be685e2bc",
       "imports": [
         {
           "target": "fs",
@@ -13862,10 +13816,10 @@
       ]
     },
     "packages/agent/src/services/push/notification-push-service.ts": {
-      "sha256": "53a3ee75fff2ff57a704caefafdc73cc05e4c6efe517c79bb9f978963a8b72d2",
-      "bytesInOutput": 3898,
+      "sha256": "eae1b9bc8e7319eb9a8fa4187c445ccf4640229468dad3e4fffb892f5d99c1b4",
+      "bytesInOutput": 4028,
       "tracked": true,
-      "gitObject": "8070ed56db314d2cab61d2431c957c5e1be27b0f",
+      "gitObject": "77c686f95b2dd0e76859e7803bb9729f60f3c2ae",
       "imports": [
         {
           "target": "packages/core/src/index.ts",
@@ -14233,10 +14187,10 @@
       ]
     },
     "packages/agent/src/services/remote-signing-service.ts": {
-      "sha256": "5c7c9fbb46318d3b2f7d37b646d606e052f736ab6e2f5f0054b553892608eda1",
-      "bytesInOutput": 5640,
+      "sha256": "3e6807c01db4faeaef8020fa765a994b203732b87a0b368c17c7a745ff386925",
+      "bytesInOutput": 6218,
       "tracked": true,
-      "gitObject": "444332f5506998ebcd7be49c509aeb209db37a12",
+      "gitObject": "10a85a9ae332c1809d0f514a55ba60790b65ff5e",
       "imports": [
         {
           "target": "packages/core/src/index.ts",
@@ -14266,10 +14220,10 @@
       ]
     },
     "packages/agent/src/services/sandbox-engine.ts": {
-      "sha256": "2630db4f2c30d967871a617215e6d0670be133073e8c69727ce5a9effef8eca5",
-      "bytesInOutput": 10238,
+      "sha256": "4cff9012ce845ed5db9c04d4ea553fba886b5e93ceae8972b71fce09e19d7b3b",
+      "bytesInOutput": 11226,
       "tracked": true,
-      "gitObject": "2747422ca3678df428a39e5983805e7fd861e744",
+      "gitObject": "cdc4aa6e1e7e3ad26c5d55e3b3892ab1507d83cd",
       "imports": [
         {
           "target": "child_process",
@@ -14294,10 +14248,10 @@
       ]
     },
     "packages/agent/src/services/sandbox-manager.ts": {
-      "sha256": "7655b3e83f7f2816ac49a5705e1b4a6b34268954d6824c45ce7a1e46ee01f74d",
-      "bytesInOutput": 8952,
+      "sha256": "e15c01d9be7c4db401f9b648ada1ce49c3d176c7e46aa277e4ed998622bde3ba",
+      "bytesInOutput": 9111,
       "tracked": true,
-      "gitObject": "c4018b7a6339ecb410ace728d6264ec940118e84",
+      "gitObject": "47f994488201f7fed214c9a58cc56476a98a57f6",
       "imports": [
         {
           "target": "fs",
@@ -14752,7 +14706,7 @@
     },
     "packages/agent/src/services/tee-gpu-nvidia.ts": {
       "sha256": "b4abd8ee54e1fca5055d366a7002aa27b774eb0befc9ea4202134b64607e3d2f",
-      "bytesInOutput": 21658,
+      "bytesInOutput": 21651,
       "tracked": true,
       "gitObject": "9753dafb427c0cffa4f9b417ac94068d64c57b33",
       "imports": [
@@ -14986,7 +14940,7 @@
     },
     "packages/agent/src/services/vault-signer-backend.ts": {
       "sha256": "fbcc07d992e1c68f7d8a9335c258c59e0bdc2e3a5143d9ee28848453b68d9090",
-      "bytesInOutput": 1101,
+      "bytesInOutput": 1102,
       "tracked": true,
       "gitObject": "54f577af559a54f0e6a4e5347e2593e901f96b1e",
       "imports": [
@@ -16697,21 +16651,21 @@
       ]
     },
     "packages/auth/dist/accounts/account-pool-broker.js": {
-      "sha256": "3f0bb3bac795f2a752e10bfb151e6804fb09ed6daaa5969c9571e402f9be0fe3",
-      "bytesInOutput": 219,
+      "sha256": "1e1d68d8fe18554cdae7284d07c59201e44af9d948ab71182cca19f93a24b3da",
+      "bytesInOutput": 240,
       "tracked": false,
       "generatedSource": {
         "method": "declared-typescript-output-path",
         "source": "packages/auth/src/accounts/account-pool-broker.ts",
-        "sourceSha256": "2895b083890075be213263775d68ea7d234631439634cd2616a5d42c3ec2cf52",
+        "sourceSha256": "896b808e8417c5f4095bee0827bc82c1c5bacc2139437fecede4122bdf231816",
         "config": "packages/auth/tsconfig.build.json",
         "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
         "sourceMap": "packages/auth/dist/accounts/account-pool-broker.js.map",
-        "sourceMapSha256": "eaa2d250bce829a864c6f5e647f18d6e4c614e0ad56e1deac76bdddbb83ddcab",
+        "sourceMapSha256": "a8fa3368427d54a747df2a6bff170e02d70819bd8b3ec634d5685fad1aa617eb",
         "sourceMaps": [
           {
             "path": "packages/auth/src/accounts/account-pool-broker.ts",
-            "sha256": "2895b083890075be213263775d68ea7d234631439634cd2616a5d42c3ec2cf52"
+            "sha256": "896b808e8417c5f4095bee0827bc82c1c5bacc2139437fecede4122bdf231816"
           }
         ]
       },
@@ -16743,6 +16697,11 @@
         },
         {
           "target": "packages/auth/dist/auth/credentials.js",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/dist/auth/refresh-mutex.js",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -16863,21 +16822,21 @@
       ]
     },
     "packages/auth/dist/accounts/account-pool.js": {
-      "sha256": "5abbbbf76daeae6193619f6c8f7dd08171ed0322e82d9b415903fa44bbc256bd",
-      "bytesInOutput": 233,
+      "sha256": "011789aa4c6f1c22446cadb975bc01ce2a1a2c77c93cfda91e804c1031cac71a",
+      "bytesInOutput": 330,
       "tracked": false,
       "generatedSource": {
         "method": "declared-typescript-output-path",
         "source": "packages/auth/src/accounts/account-pool.ts",
-        "sourceSha256": "0d4ba8e9e0485ed0613bd17a3f05c745ec7b748f96c25a648f58407a0fab56fb",
+        "sourceSha256": "5dab9a794a1f7708fa94479eaae2a99b3037ab9560e53389c963471e85f76942",
         "config": "packages/auth/tsconfig.build.json",
         "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
         "sourceMap": "packages/auth/dist/accounts/account-pool.js.map",
-        "sourceMapSha256": "699b6bbe34574d094db14cde8e013ad8901b93d111ad26d0074832a73f750c5a",
+        "sourceMapSha256": "81311f12b0baea6c53bf3d53fac41233a8d3eeafa6cefb9dceab353d4f4acfef",
         "sourceMaps": [
           {
             "path": "packages/auth/src/accounts/account-pool.ts",
-            "sha256": "0d4ba8e9e0485ed0613bd17a3f05c745ec7b748f96c25a648f58407a0fab56fb"
+            "sha256": "5dab9a794a1f7708fa94479eaae2a99b3037ab9560e53389c963471e85f76942"
           }
         ]
       },
@@ -17045,21 +17004,21 @@
       ]
     },
     "packages/auth/dist/accounts/coding-account-bridge.js": {
-      "sha256": "cb5611b9cc02c5800828b617f4b2712218b6eaad4e8b737471dec85c979c5ca6",
+      "sha256": "a872993edc25e07972b72cf4f30695cd82a4479be3ab417a8a4fb22718de629a",
       "bytesInOutput": 444,
       "tracked": false,
       "generatedSource": {
         "method": "declared-typescript-output-path",
         "source": "packages/auth/src/accounts/coding-account-bridge.ts",
-        "sourceSha256": "991dfccf6ad0f2c1f10f241eedbf0633409710133366d1027c6de0a709d9586b",
+        "sourceSha256": "dc286dcfc43641e91d38b5af82fbb0e2ddcc6a9663d8df45779f1d4644cb40cd",
         "config": "packages/auth/tsconfig.build.json",
         "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
         "sourceMap": "packages/auth/dist/accounts/coding-account-bridge.js.map",
-        "sourceMapSha256": "c684228fa9363414624cbf1ae6af9474967dd8c1e6f4272d4e9380edbc3d6a80",
+        "sourceMapSha256": "e070411b6c4939b79fdfb60dc6f08faeb72e258292fe801a1946ffc19b5f7708",
         "sourceMaps": [
           {
             "path": "packages/auth/src/accounts/coding-account-bridge.ts",
-            "sha256": "991dfccf6ad0f2c1f10f241eedbf0633409710133366d1027c6de0a709d9586b"
+            "sha256": "dc286dcfc43641e91d38b5af82fbb0e2ddcc6a9663d8df45779f1d4644cb40cd"
           }
         ]
       },
@@ -17199,21 +17158,21 @@
       ]
     },
     "packages/auth/dist/auth/account-storage.js": {
-      "sha256": "dc731c79848172582ac78e561ca9bdbd327a573ecfbed002b0a3814fcf2e4884",
-      "bytesInOutput": 36744,
+      "sha256": "1b3a65688d8c4c307bbb514b7bb4d27b5927b1fd8baa540712a4eb4a935049ad",
+      "bytesInOutput": 42074,
       "tracked": false,
       "generatedSource": {
         "method": "declared-typescript-output-path",
         "source": "packages/auth/src/auth/account-storage.ts",
-        "sourceSha256": "5c78257d8aafcfdfa31d5b68d6308f90c2c7f6b14943d5d73a1652ef4576eb77",
+        "sourceSha256": "a2ce69228c88d441c0351b1a84876e9b554c738778c819f7dddcd9e8617ec7c7",
         "config": "packages/auth/tsconfig.build.json",
         "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
         "sourceMap": "packages/auth/dist/auth/account-storage.js.map",
-        "sourceMapSha256": "303a62aa6c744d4146443cfe2931d0ebb54098788c93db637133e1db21c72dde",
+        "sourceMapSha256": "254bc7055055820471835f18bce92c928105284294acc39f73556a0b9eb637e5",
         "sourceMaps": [
           {
             "path": "packages/auth/src/auth/account-storage.ts",
-            "sha256": "5c78257d8aafcfdfa31d5b68d6308f90c2c7f6b14943d5d73a1652ef4576eb77"
+            "sha256": "a2ce69228c88d441c0351b1a84876e9b554c738778c819f7dddcd9e8617ec7c7"
           }
         ]
       },
@@ -17345,21 +17304,21 @@
       ]
     },
     "packages/auth/dist/auth/credentials.js": {
-      "sha256": "2bfa6431c235a725443731a3416b5190d806fca0dda8ce831b336e7618af6452",
-      "bytesInOutput": 14876,
+      "sha256": "b039ebaea9dbe059c6b02ab76de58ac23d36145b76b61762db77448f8700d3b4",
+      "bytesInOutput": 15723,
       "tracked": false,
       "generatedSource": {
         "method": "declared-typescript-output-path",
         "source": "packages/auth/src/auth/credentials.ts",
-        "sourceSha256": "a19ade432925b6393725e122ff024a1190a42ea19e8cc4f2239c712360be1875",
+        "sourceSha256": "27f217bb1a58be33e5190859a2b597a6f222e10796859c0a937d78f55ea8e1db",
         "config": "packages/auth/tsconfig.build.json",
         "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
         "sourceMap": "packages/auth/dist/auth/credentials.js.map",
-        "sourceMapSha256": "584f46ab6cef9e956b3441af68e8b4d1cdf80dea51eace32ef299d5a87de72c4",
+        "sourceMapSha256": "4acb935f8b28e1609c7ea0140603d1a2b3f489c09ef44931a9be14b8fbaa8d5b",
         "sourceMaps": [
           {
             "path": "packages/auth/src/auth/credentials.ts",
-            "sha256": "a19ade432925b6393725e122ff024a1190a42ea19e8cc4f2239c712360be1875"
+            "sha256": "27f217bb1a58be33e5190859a2b597a6f222e10796859c0a937d78f55ea8e1db"
           }
         ]
       },
@@ -17410,6 +17369,11 @@
           "scope": "first-party"
         },
         {
+          "target": "packages/auth/dist/auth/refresh-http-error.js",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
           "target": "packages/auth/dist/auth/refresh-mutex.js",
           "kind": "import-statement",
           "scope": "first-party"
@@ -17433,7 +17397,7 @@
     },
     "packages/auth/dist/auth/index.js": {
       "sha256": "53e59ea1d517dc14ad1419ff550cd482917670b3c0ab5e47326fa23ed68066a0",
-      "bytesInOutput": 4632,
+      "bytesInOutput": 4700,
       "tracked": false,
       "generatedSource": {
         "method": "declared-typescript-output-path",
@@ -17602,6 +17566,38 @@
         },
         {
           "target": "packages/auth/dist/auth/vendor/pi-oauth/openai-codex-login.js",
+          "kind": "import-statement",
+          "scope": "first-party"
+        }
+      ]
+    },
+    "packages/auth/dist/auth/refresh-http-error.js": {
+      "sha256": "9866177232435d063f3f5f4e753cb8bf7467351508753054a58a7a35c12a2028",
+      "bytesInOutput": 866,
+      "tracked": false,
+      "generatedSource": {
+        "method": "declared-typescript-output-path",
+        "source": "packages/auth/src/auth/refresh-http-error.ts",
+        "sourceSha256": "85ec5393a623c2cdffb166294fd41b7c8c1b2fa0e6d1bead4d59260f9ef87fb2",
+        "config": "packages/auth/tsconfig.build.json",
+        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
+        "sourceMap": "packages/auth/dist/auth/refresh-http-error.js.map",
+        "sourceMapSha256": "3e191c477223b8ea457d8666d2f2b28f3657e48fcb605ebec874fee87ce4d4de",
+        "sourceMaps": [
+          {
+            "path": "packages/auth/src/auth/refresh-http-error.ts",
+            "sha256": "85ec5393a623c2cdffb166294fd41b7c8c1b2fa0e6d1bead4d59260f9ef87fb2"
+          }
+        ]
+      },
+      "imports": [
+        {
+          "target": "packages/core/src/index.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/core/src/protocol.ts",
           "kind": "import-statement",
           "scope": "first-party"
         }
@@ -17824,21 +17820,21 @@
       ]
     },
     "packages/auth/dist/auth/vendor/pi-oauth/anthropic-login.js": {
-      "sha256": "7194cdc86685cd2d544ff11e0cd091e78e9e4659082f4c38e9106fafc38c8336",
-      "bytesInOutput": 4975,
+      "sha256": "e3a626a6f1bda38b4397b6be9acff9e8b4466453dec2f876ab6b8f8bf8696045",
+      "bytesInOutput": 4978,
       "tracked": false,
       "generatedSource": {
         "method": "declared-typescript-output-path",
         "source": "packages/auth/src/auth/vendor/pi-oauth/anthropic-login.ts",
-        "sourceSha256": "1a90613855a647c08d28f139684374a4568051bafcaab7c3a0080e8a2e7e999d",
+        "sourceSha256": "5e25e7554fd377929938c8fe3aa6dee6a353b476aa5324e07b91587a10fada8d",
         "config": "packages/auth/tsconfig.build.json",
         "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
         "sourceMap": "packages/auth/dist/auth/vendor/pi-oauth/anthropic-login.js.map",
-        "sourceMapSha256": "b629bedc17bff72d7d2b9553d6286d20c4a9d00da9f3abf7909f40e734ae3ce5",
+        "sourceMapSha256": "16a8541cd873d11ad8a5baf0858d28eecd85d6ab645e8816cf482916947dc75e",
         "sourceMaps": [
           {
             "path": "packages/auth/src/auth/vendor/pi-oauth/anthropic-login.ts",
-            "sha256": "1a90613855a647c08d28f139684374a4568051bafcaab7c3a0080e8a2e7e999d"
+            "sha256": "5e25e7554fd377929938c8fe3aa6dee6a353b476aa5324e07b91587a10fada8d"
           }
         ]
       },
@@ -17852,31 +17848,46 @@
           "target": "packages/auth/dist/contracts/index.js",
           "kind": "import-statement",
           "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/dist/auth/refresh-http-error.js",
+          "kind": "import-statement",
+          "scope": "first-party"
         }
       ]
     },
     "packages/auth/dist/auth/vendor/pi-oauth/openai-codex-login.js": {
-      "sha256": "43b75730fe489bf6b5630c419ca2f1ffcdeafd725e2cb2c1b0cc9f4522b2e192",
-      "bytesInOutput": 9857,
+      "sha256": "56052840385d2ef6c69941001c09147c84a978f5f729374fb341707cea983b6e",
+      "bytesInOutput": 9983,
       "tracked": false,
       "generatedSource": {
         "method": "declared-typescript-output-path",
         "source": "packages/auth/src/auth/vendor/pi-oauth/openai-codex-login.ts",
-        "sourceSha256": "8a00fe267a20cf6aeb24730d386301fc50f4791a371f91a5aff26062c73f0c88",
+        "sourceSha256": "23898d2bb1d1f5d1ad8bc72435eae326bbfe74264044110b83dd2f9a237ac631",
         "config": "packages/auth/tsconfig.build.json",
         "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
         "sourceMap": "packages/auth/dist/auth/vendor/pi-oauth/openai-codex-login.js.map",
-        "sourceMapSha256": "919b77a7a40c68015e888c172cc87f344b42f01e06b4e576d6101b77c67dad5d",
+        "sourceMapSha256": "52bfa5546272c402ea1d75771052f974e1616b2d4d03e829ceb1ad9a0fc432ac",
         "sourceMaps": [
           {
             "path": "packages/auth/src/auth/vendor/pi-oauth/openai-codex-login.ts",
-            "sha256": "8a00fe267a20cf6aeb24730d386301fc50f4791a371f91a5aff26062c73f0c88"
+            "sha256": "23898d2bb1d1f5d1ad8bc72435eae326bbfe74264044110b83dd2f9a237ac631"
           }
         ]
       },
       "imports": [
         {
           "target": "packages/core/src/index.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/core/src/protocol.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/dist/auth/refresh-http-error.js",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -19398,10 +19409,10 @@
       "imports": []
     },
     "packages/auth/src/accounts/account-pool-broker.ts": {
-      "sha256": "2895b083890075be213263775d68ea7d234631439634cd2616a5d42c3ec2cf52",
-      "bytesInOutput": 217,
+      "sha256": "896b808e8417c5f4095bee0827bc82c1c5bacc2139437fecede4122bdf231816",
+      "bytesInOutput": 239,
       "tracked": true,
-      "gitObject": "a6059e91f892bc5907ed0dec0681c41467be41b3",
+      "gitObject": "47e3d1b4aa5a1b4f5f53bec7ed7bed716592c1b2",
       "imports": [
         {
           "target": "packages/auth/src/accounts/account-selection.ts",
@@ -19430,6 +19441,11 @@
         },
         {
           "target": "packages/auth/src/auth/credentials.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/auth/refresh-mutex.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -19522,10 +19538,10 @@
       ]
     },
     "packages/auth/src/accounts/account-pool.ts": {
-      "sha256": "0d4ba8e9e0485ed0613bd17a3f05c745ec7b748f96c25a648f58407a0fab56fb",
-      "bytesInOutput": 20958,
+      "sha256": "5dab9a794a1f7708fa94479eaae2a99b3037ab9560e53389c963471e85f76942",
+      "bytesInOutput": 24382,
       "tracked": true,
-      "gitObject": "23e8e960b0a3d54bdacf239de2bfb1c735acda81",
+      "gitObject": "358237045e5e2b0f80daf02c281fc59c268b8245",
       "imports": [
         {
           "target": "packages/auth/src/accounts/account-selection.ts",
@@ -19648,10 +19664,10 @@
       ]
     },
     "packages/auth/src/accounts/coding-account-bridge.ts": {
-      "sha256": "991dfccf6ad0f2c1f10f241eedbf0633409710133366d1027c6de0a709d9586b",
-      "bytesInOutput": 19420,
+      "sha256": "dc286dcfc43641e91d38b5af82fbb0e2ddcc6a9663d8df45779f1d4644cb40cd",
+      "bytesInOutput": 19836,
       "tracked": true,
-      "gitObject": "1756c1ef8b06ddf67ec17dfb9d3bf476f7a098b7",
+      "gitObject": "ac37f7dfac96376272f8808cf419912e5543fffe",
       "imports": [
         {
           "target": "crypto",
@@ -19774,10 +19790,10 @@
       ]
     },
     "packages/auth/src/auth/account-storage.ts": {
-      "sha256": "5c78257d8aafcfdfa31d5b68d6308f90c2c7f6b14943d5d73a1652ef4576eb77",
-      "bytesInOutput": 23818,
+      "sha256": "a2ce69228c88d441c0351b1a84876e9b554c738778c819f7dddcd9e8617ec7c7",
+      "bytesInOutput": 33721,
       "tracked": true,
-      "gitObject": "0fa76463ef937cf8f3cdc3260266dbf5d3551ec5",
+      "gitObject": "9482a7292e403e61bcf6f704f4b20c7ca2068ab0",
       "imports": [
         {
           "target": "crypto",
@@ -19878,10 +19894,10 @@
       ]
     },
     "packages/auth/src/auth/credentials.ts": {
-      "sha256": "a19ade432925b6393725e122ff024a1190a42ea19e8cc4f2239c712360be1875",
-      "bytesInOutput": 7097,
+      "sha256": "27f217bb1a58be33e5190859a2b597a6f222e10796859c0a937d78f55ea8e1db",
+      "bytesInOutput": 7606,
       "tracked": true,
-      "gitObject": "36dcaad2acce995f4221ddb34988d91f6e196b13",
+      "gitObject": "b75c09b5bf11cba8df3eafd4601fe62920c70e71",
       "imports": [
         {
           "target": "fs",
@@ -19925,6 +19941,11 @@
         },
         {
           "target": "packages/auth/src/auth/openai-codex.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/auth/refresh-http-error.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -20018,6 +20039,24 @@
         }
       ]
     },
+    "packages/auth/src/auth/refresh-http-error.ts": {
+      "sha256": "85ec5393a623c2cdffb166294fd41b7c8c1b2fa0e6d1bead4d59260f9ef87fb2",
+      "bytesInOutput": 870,
+      "tracked": true,
+      "gitObject": "61e4d9502fbda992e6da648141cc7844bc02ca62",
+      "imports": [
+        {
+          "target": "packages/core/src/index.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/core/src/protocol.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        }
+      ]
+    },
     "packages/auth/src/auth/refresh-mutex.ts": {
       "sha256": "c141ce39081a7dc1e7bb8c3a3b88aa5acc395b7aa3081e31203608dd9a61d362",
       "bytesInOutput": 367,
@@ -20086,10 +20125,10 @@
       ]
     },
     "packages/auth/src/auth/vendor/pi-oauth/anthropic-login.ts": {
-      "sha256": "1a90613855a647c08d28f139684374a4568051bafcaab7c3a0080e8a2e7e999d",
-      "bytesInOutput": 2598,
+      "sha256": "5e25e7554fd377929938c8fe3aa6dee6a353b476aa5324e07b91587a10fada8d",
+      "bytesInOutput": 2601,
       "tracked": true,
-      "gitObject": "84c367197dd2731d3369fb0e9904a72e1c5da325",
+      "gitObject": "cb43314b4f694c8cd75d9441cf4e53796aa100fc",
       "imports": [
         {
           "target": "packages/core/src/protocol.ts",
@@ -20100,17 +20139,32 @@
           "target": "packages/auth/src/contracts/index.ts",
           "kind": "import-statement",
           "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/auth/refresh-http-error.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
         }
       ]
     },
     "packages/auth/src/auth/vendor/pi-oauth/openai-codex-login.ts": {
-      "sha256": "8a00fe267a20cf6aeb24730d386301fc50f4791a371f91a5aff26062c73f0c88",
-      "bytesInOutput": 4309,
+      "sha256": "23898d2bb1d1f5d1ad8bc72435eae326bbfe74264044110b83dd2f9a237ac631",
+      "bytesInOutput": 4248,
       "tracked": true,
-      "gitObject": "d717a76f177d3de1dd77eea9cc00347581e00747",
+      "gitObject": "384255620fa7dbd00141648d9033107970aa9ba9",
       "imports": [
         {
           "target": "packages/core/src/index.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/core/src/protocol.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/auth/refresh-http-error.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -20222,7 +20276,7 @@
     },
     "packages/auth/src/vault/keychain-process.ts": {
       "sha256": "fae7856ef0b1554b4135aaa132f3a7a3aa536dd52d989f5a0226f09f8fd915a8",
-      "bytesInOutput": 3188,
+      "bytesInOutput": 3186,
       "tracked": true,
       "gitObject": "76f552aa0b86fec287c1405322e5ecef4688d5a7",
       "imports": [
@@ -20703,10 +20757,10 @@
       "imports": []
     },
     "packages/cloud/sdk/src/types.ts": {
-      "sha256": "f50ad7212932f766f1985fce21501b93351535c72477d64cb30921e2830fdbba",
+      "sha256": "a36d6c4a7aa3c1011917248099f095cec1a2dc0668de612ba6bea6726e645385",
       "bytesInOutput": 270,
       "tracked": true,
-      "gitObject": "740f3c424c10e2608eccf6c9578d562cf9cf9d95",
+      "gitObject": "c1b5e4bfdffc38819df5e91e55d92acd54f4a19c",
       "imports": [
         {
           "target": "packages/cloud/sdk/src/types.cloud-api.ts",
@@ -20760,13 +20814,13 @@
       ]
     },
     "packages/contracts/dist/calendar-linked-sync.js": {
-      "sha256": "440c440329efde9483f9c49536a93dd62f070bd330aaf076ed069685057e9b83",
-      "bytesInOutput": 10032,
+      "sha256": "4dbc2a1618a309716796a382552ade0e170e5cd019d639f0ee6a89d7092e81a5",
+      "bytesInOutput": 10555,
       "tracked": false,
       "generatedSource": {
         "method": "declared-typescript-output-path",
         "source": "packages/contracts/src/calendar-linked-sync.ts",
-        "sourceSha256": "686e9e3c0db7651a3612b1940c95bcb9fac89155a4faafcfb6ab67bd0fbe41bb",
+        "sourceSha256": "f93be5c0414bf96166f60393a1337510331c67c32eae7d0fc5243d6ff4faec66",
         "config": "packages/contracts/tsconfig.emit.json",
         "configSha256": "fef001615409af135b78bd1c6991a78914e2ac9ba23480996cf2590924f734d1"
       },
@@ -24215,10 +24269,10 @@
       "imports": []
     },
     "packages/core/src/embedding-vector-space.ts": {
-      "sha256": "111259f0bfde1673931851e45f4ef5330674a1f98a73b5490258c888461e1224",
-      "bytesInOutput": 1405,
+      "sha256": "e1829febccb54c3cfb7784b5cb6aae2f5117c78697b6442aae37a46294c181e7",
+      "bytesInOutput": 1643,
       "tracked": true,
-      "gitObject": "060c7f8a3abaf009d202d91e77d9ea20e7f0e3fe",
+      "gitObject": "f959966fb516255c3bbc5ffa77cefbb5bd4ef6f5",
       "imports": [
         {
           "target": "packages/core/src/errors.ts",
@@ -24342,7 +24396,7 @@
     },
     "packages/core/src/index.ts": {
       "sha256": "a68f18c27d53e97a52a67f492a393313454191a88d2df55ffbc001cfbb80ecd0",
-      "bytesInOutput": 92982,
+      "bytesInOutput": 93050,
       "tracked": true,
       "gitObject": "f0e4b06dd798e77da6648df808500bd58e4ef98d",
       "imports": [
@@ -25631,12 +25685,12 @@
       ]
     },
     "packages/core/src/plugin-lifecycle.ts": {
-      "sha256": "954a7a185c6bb467831a221abd60fb2bec7683e3f5e615408c9ccbece1ccd8be",
-      "effectiveSourceSha256": "208a5acb62404a722969aa3e11f76edbe6dffd44e66f6f62914148e2a8ed3435",
+      "sha256": "80c0394b7f625052e1d55112cee6d295ec76c0f7465dd81dbe38843fa946f9a8",
+      "effectiveSourceSha256": "80c0394b7f625052e1d55112cee6d295ec76c0f7465dd81dbe38843fa946f9a8",
       "transformation": "authenticated-core-state",
-      "bytesInOutput": 27002,
+      "bytesInOutput": 27074,
       "tracked": true,
-      "gitObject": "2ff35bcdda84504de2560860e23c5bec8771460b",
+      "gitObject": "c50086fcc20414799105b10481ddaed745f1926c",
       "imports": [
         {
           "target": "async_hooks",
@@ -25687,7 +25741,7 @@
     },
     "packages/core/src/protocol.ts": {
       "sha256": "7fea54e5baa4ecb599bd24a54306ba5675ab3e855139dfdc74d21bbc1c5000d8",
-      "bytesInOutput": 55499,
+      "bytesInOutput": 55567,
       "tracked": true,
       "gitObject": "4f5e5416a1b0ff5203822e86ff46f6688eed9f5f",
       "imports": [
@@ -27333,10 +27387,10 @@
       ]
     },
     "packages/core/src/runtime/action-handler-settlement.ts": {
-      "sha256": "5664d556cbf6a19bd6ecda04a0ea3e8bda9f1d17932dabe722a671e23948dad9",
+      "sha256": "c7411532c4a2d5c9586b1626523711fb1bd3d39fd4c1129830f24478dff300cc",
       "bytesInOutput": 9331,
       "tracked": true,
-      "gitObject": "a8c283466405d49437b20efcd0c5e2b4dc682789",
+      "gitObject": "3c06196ef4c40a25c7e4ba7aeea11c8d768493cd",
       "imports": [
         {
           "target": "packages/core/src/actions/task-extraction-context.ts",
@@ -27681,10 +27735,10 @@
       ]
     },
     "packages/core/src/runtime/data-mutations.ts": {
-      "sha256": "1ea746824c5f3e422f49d497d6392e09cb551d4039011d8f4f4cc33ce7d3d614",
+      "sha256": "61fad562ff680795df79acff57adb314f73963047cacc0e1c6eed4ba797abb08",
       "bytesInOutput": 12074,
       "tracked": true,
-      "gitObject": "bed13dba5a9923a3bcfeade95f4c5dda61df7e31",
+      "gitObject": "520fbb9510037a877329918a65da8076f7cb5218",
       "imports": [
         {
           "target": "crypto",
@@ -27738,12 +27792,12 @@
       "imports": []
     },
     "packages/core/src/runtime/embeddings.ts": {
-      "sha256": "36605cc23b7e423f5dd0edd8cef4e7a7f91cb85860c864af9781b5fbd0f71176",
-      "effectiveSourceSha256": "e3acd82d9bc623f12253356fd63172d29c895a714c4345a809d5e9b8f807e7a9",
+      "sha256": "eb6bd91bad9e60ee137e088562e59de7e9babac5673e26a4061845c4b02d6188",
+      "effectiveSourceSha256": "eb6bd91bad9e60ee137e088562e59de7e9babac5673e26a4061845c4b02d6188",
       "transformation": "authenticated-core-state",
-      "bytesInOutput": 14782,
+      "bytesInOutput": 14924,
       "tracked": true,
-      "gitObject": "7fdd55f704a01300d7af441470a98a1efddbce90",
+      "gitObject": "d2555e2c2d821ecc8bb5a9a5f2758325b0238efa",
       "imports": [
         {
           "target": "packages/core/src/embedding-vector-space.ts",
@@ -28013,10 +28067,10 @@
       ]
     },
     "packages/core/src/runtime/model-dispatch.ts": {
-      "sha256": "95ce1cb047a1cc2ed2eb2c84e9bc1758d0ae8b3a68c040c2b0bd4e4d8a25daee",
-      "bytesInOutput": 47277,
+      "sha256": "4458a67c2eea65b006014a1dd38040347b47cd5afb760ff0844e36995499540f",
+      "bytesInOutput": 47592,
       "tracked": true,
-      "gitObject": "57935030f25238ce69ca0cd38574541088441095",
+      "gitObject": "094aa9fc79357d129cac476bba78dfb8f511c3b2",
       "imports": [
         {
           "target": "perf_hooks",
@@ -28435,12 +28489,12 @@
       ]
     },
     "packages/core/src/runtime/room-handler-queue.ts": {
-      "sha256": "f5a31f3276827e90448df4198ae559135d32604132d2775948df9d5b2e496fac",
-      "effectiveSourceSha256": "cd8f23f09c191aa9ebe3048e688a46a4a81b730405351a1cf809f4c8e214fce1",
+      "sha256": "4733782d1486a9f3caf2314e4e18ad35dfa8770fc3235e60f944b57a8840e68e",
+      "effectiveSourceSha256": "4733782d1486a9f3caf2314e4e18ad35dfa8770fc3235e60f944b57a8840e68e",
       "transformation": "authenticated-core-state",
       "bytesInOutput": 10733,
       "tracked": true,
-      "gitObject": "ae31cebc5e01ace928b394e32b9775b3e34fa8bf",
+      "gitObject": "5888fc14323edfad4fd9f821a0cb40573aa69a3d",
       "imports": [
         {
           "target": "async_hooks",
@@ -28483,10 +28537,10 @@
       ]
     },
     "packages/core/src/runtime/service-lifecycle.ts": {
-      "sha256": "83d7cc28ee72b8c9001e2a63e46c538f1ed87de9f873fd13b2ab35f5bbfbc99b",
+      "sha256": "b5474e62ed59552b9e19fdf2710ff0cb2e4ff6fbedbe55c242bf161802a3020c",
       "bytesInOutput": 7002,
       "tracked": true,
-      "gitObject": "d28571b57063d60e416547d98cec6514fae00ce2",
+      "gitObject": "44a719f45f7991696fd4879464f2e87099259a24",
       "imports": [
         {
           "target": "packages/core/src/errors.ts",
@@ -28711,12 +28765,12 @@
       "imports": []
     },
     "packages/core/src/runtime/turn-controller.ts": {
-      "sha256": "c04907565ac8c7f483b2e4c6db29d6bf007f85f7a15fdae447bd2c1f82fed46b",
+      "sha256": "a69049036ad8848609ac9113090dd16dd45517a5ab03d62d506e1c17156f8111",
       "effectiveSourceSha256": "a69049036ad8848609ac9113090dd16dd45517a5ab03d62d506e1c17156f8111",
       "transformation": "authenticated-core-state",
       "bytesInOutput": 2632,
       "tracked": true,
-      "gitObject": "bdab54949a48d4a8c41d4aa80d137a333ec1ff1d",
+      "gitObject": "0b6125bfe0922a11150d9bb5246e3924ce99c3fe",
       "imports": [
         {
           "target": "async_hooks",
@@ -29482,10 +29536,10 @@
       ]
     },
     "packages/core/src/services/approval.ts": {
-      "sha256": "62299e0c50c0835441d1737839f9a1b12a9fbc600617bf052e5e10688cfb7fad",
+      "sha256": "3a6ed49b194e7bc45fbe080bcc9adf11296ec4ef20f66d041250e425d573ae24",
       "bytesInOutput": 7947,
       "tracked": true,
-      "gitObject": "13681b960f8a032d6fb629097180ebc25451e228",
+      "gitObject": "e8ea295e80e1c92726ee30e604892b995ea96c21",
       "imports": [
         {
           "target": "packages/core/src/logger.ts",
@@ -29693,11 +29747,16 @@
       ]
     },
     "packages/core/src/services/pairing.ts": {
-      "sha256": "bdf5c0863f530f22ff304850d60178ae430b540e91f7a2f5634b9bd0e04817c4",
-      "bytesInOutput": 8115,
+      "sha256": "8771b824286473bc5afd0193aed7db60bd69730f4adf53052fc5668ff42741a8",
+      "bytesInOutput": 8193,
       "tracked": true,
-      "gitObject": "60c62b86a7f25ec93ea39f7990681feb1673ca17",
+      "gitObject": "bfacdbacab50ba6aa7ae655aaa4d0eefdbff2b91",
       "imports": [
+        {
+          "target": "crypto",
+          "kind": "import-statement",
+          "scope": "external"
+        },
         {
           "target": "packages/core/src/database.ts",
           "kind": "import-statement",
@@ -29710,6 +29769,11 @@
         },
         {
           "target": "packages/core/src/types/pairing.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/core/src/types/primitives.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -29828,12 +29892,12 @@
       ]
     },
     "packages/core/src/services/task.ts": {
-      "sha256": "c72514809e0f6a3a5c592ed3d0d0015319ca4dbfb8fd9e949fa06c1982c35fc3",
-      "effectiveSourceSha256": "24b1b783a903cb4c8d284dd3f375f18a3fe720c65f0430bada7cebb236cf1f3f",
+      "sha256": "e6739af7aff06a35d432febb7b0a1744f365212076fb14a8c28c58e59843a85c",
+      "effectiveSourceSha256": "e6739af7aff06a35d432febb7b0a1744f365212076fb14a8c28c58e59843a85c",
       "transformation": "authenticated-core-state",
-      "bytesInOutput": 20067,
+      "bytesInOutput": 20072,
       "tracked": true,
-      "gitObject": "42de38cefd54bb91c8e2a52ee84d9014889f0324",
+      "gitObject": "82d39e14fb5f4f5082bee3facac948068604803d",
       "imports": [
         {
           "target": "packages/core/src/errors.ts",
@@ -32989,10 +33053,10 @@
       "imports": []
     },
     "packages/ui/src/accessibility/screen-focus.ts": {
-      "sha256": "b4b9c173244d0e07f1002000a9f3b740974b6c47af92d4242c9c312f3d522705",
+      "sha256": "f6bcb641b88a10d7a6b26f775ef827cdf4b757e60a6621767b294776bc109dfa",
       "bytesInOutput": 0,
       "tracked": true,
-      "gitObject": "6348bf14782b057a925e3aa6bf728c2ade0f0312",
+      "gitObject": "8a25fd89831506e9be80d44df706bf4a09bb729f",
       "imports": []
     },
     "packages/ui/src/agent-surface/AgentElementOverlay.tsx": {
@@ -33324,10 +33388,10 @@
       "imports": []
     },
     "packages/ui/src/android-cloud/native-cloud-sign-in-controller.ts": {
-      "sha256": "305253edbe300e40c2d77f3cad06251a68227d02e42ebef4c9c92dabe678f6f7",
+      "sha256": "78ff8a9699c2eec8fac6065316649ffbdbd2c2ce12434f82faa92dc2f890f2fd",
       "bytesInOutput": 82,
       "tracked": true,
-      "gitObject": "4a6f89d98882e795195d51bb73eee3ac867a3a38",
+      "gitObject": "d68497ef8d0aad02b329350c81cf74bf3962073d",
       "imports": [
         {
           "target": "packages/auth/src/auth/native-cloud-sign-in.ts",
@@ -33568,7 +33632,7 @@
     },
     "packages/ui/src/api/client-agent-accounts-validator.ts": {
       "sha256": "9f6b49a715039c8ecbe1f13ae2a7e4438ef53447921d7cc0b72b8fe882951e95",
-      "bytesInOutput": 7430,
+      "bytesInOutput": 7392,
       "tracked": true,
       "gitObject": "4698010f284db7f59ec74f783fe2d11756288605",
       "imports": [
@@ -34726,10 +34790,10 @@
       "imports": []
     },
     "packages/ui/src/api/runtime-json-client.ts": {
-      "sha256": "fbd5f8095a13ffe9bd9e968e0cc15fafdbcef8d365f5104217fc129494a66521",
+      "sha256": "73e339c396c522d2f067aee393440e83c784c1dc565aa3928551416f8ec6f933",
       "bytesInOutput": 60,
       "tracked": true,
-      "gitObject": "f23b87e5cbc203bae77df0b5b444d501513a836b",
+      "gitObject": "1c5748fea47ab2d76052e8bb640c5f50ff374069",
       "imports": [
         {
           "target": "packages/ui/src/api/transport.ts",
@@ -35871,7 +35935,7 @@
     },
     "packages/ui/src/cloud/account-security/data/account-deletion-client.ts": {
       "sha256": "6927e3ab601d4fc01beccc6c9b41a35b038febb2d4296a4d62ef33eff7b04a63",
-      "bytesInOutput": 11422,
+      "bytesInOutput": 11417,
       "tracked": true,
       "gitObject": "b8f4acdf8a428ce3cafd6decce1cede147cb15ab",
       "imports": [
@@ -35899,7 +35963,7 @@
     },
     "packages/ui/src/cloud/account-security/data/user.ts": {
       "sha256": "0725cc2d11be85ed76d38ef973735eb0bec9c74fc90fbdcd9ba63b515fd63a79",
-      "bytesInOutput": 1999,
+      "bytesInOutput": 1998,
       "tracked": true,
       "gitObject": "f6b119250e43423c82f16cd502d3684a25b519db",
       "imports": [
@@ -36385,7 +36449,7 @@
     },
     "packages/ui/src/cloud/instances/lib/eliza-agents.ts": {
       "sha256": "0c1ec080484a319129605b3c9677232f5f74a259b3c2db59f4aca99f15de87b0",
-      "bytesInOutput": 3230,
+      "bytesInOutput": 3229,
       "tracked": true,
       "gitObject": "0e869050d55bce0021e0121f28ebc0ad85846526",
       "imports": [
@@ -36587,7 +36651,7 @@
     },
     "packages/ui/src/cloud/join/lib/onboarding-continuation.ts": {
       "sha256": "faecb0b0f821a511e6fa1c1b015dcc6ade1d2502d974f76ef579814a9533cd77",
-      "bytesInOutput": 3336,
+      "bytesInOutput": 3334,
       "tracked": true,
       "gitObject": "778281692c3d77082be37674d80ae1ce93603dbe",
       "imports": [
@@ -36681,7 +36745,7 @@
     },
     "packages/ui/src/cloud/lib/api-client.ts": {
       "sha256": "f38c4c294e1a8ce4260d3718a7bf182d2db647da1b7498a8e16c67c8e17ffced",
-      "bytesInOutput": 8452,
+      "bytesInOutput": 8451,
       "tracked": true,
       "gitObject": "a611bc302f037911e5a50688e75c6ed2a7ea1b9a",
       "imports": [
@@ -37170,7 +37234,7 @@
     },
     "packages/ui/src/cloud/public-pages/pages/approval-page.tsx": {
       "sha256": "bf0ffe9a25cf5f4d5367e75c9b85eff0277b61698f10e70cb94e64d625c5769b",
-      "bytesInOutput": 10350,
+      "bytesInOutput": 10347,
       "tracked": true,
       "gitObject": "dafce8e3a9573fc453ad979cf89533881ecac397",
       "imports": [
@@ -37304,7 +37368,7 @@
     },
     "packages/ui/src/cloud/public-pages/pages/auth/auth-success-page.tsx": {
       "sha256": "9eb33a9451d9ece09ecd78e683f7662c0b031455d7bbbdcd4b1306caf42ebdf0",
-      "bytesInOutput": 16261,
+      "bytesInOutput": 16260,
       "tracked": true,
       "gitObject": "43c94bd20fc3464eb34f6aa8f850559323f9bead",
       "imports": [
@@ -37543,7 +37607,7 @@
     },
     "packages/ui/src/cloud/public-pages/pages/ballot-page.tsx": {
       "sha256": "fddf0185a86178202d4a305edb5421c682d29a60d05e916e6a0871a41aefee46",
-      "bytesInOutput": 7996,
+      "bytesInOutput": 7994,
       "tracked": true,
       "gitObject": "58f7ffa60d2f0cd523069571677a3bf37ca569f5",
       "imports": [
@@ -37664,7 +37728,7 @@
     },
     "packages/ui/src/cloud/public-pages/pages/invite-accept-page.tsx": {
       "sha256": "e1abdcbdd7fc7d36f95ba8f42f50d21970b98c3cb16ece45ff9e498a2ca6dcf4",
-      "bytesInOutput": 10695,
+      "bytesInOutput": 10693,
       "tracked": true,
       "gitObject": "5d188826b3bb896251e801953de9383e22ea02f1",
       "imports": [
@@ -37823,7 +37887,7 @@
     },
     "packages/ui/src/cloud/public-pages/pages/legal/service-document-page.tsx": {
       "sha256": "00d27b6d075e714eeb9dd2a0012eab938b17e7b48aae3c61227d399c950c684d",
-      "bytesInOutput": 5162,
+      "bytesInOutput": 5161,
       "tracked": true,
       "gitObject": "cd14e0c897e2714a70b2ce0e4f22d1e6eb91180f",
       "imports": [
@@ -38430,7 +38494,7 @@
     },
     "packages/ui/src/cloud/public-pages/pages/payment/payment-request-page.tsx": {
       "sha256": "e1072bf4658349b43570098c4a0d7eab807eafaf20313fec40dc65cdfd58649a",
-      "bytesInOutput": 11104,
+      "bytesInOutput": 11103,
       "tracked": true,
       "gitObject": "6b5953ff3a798de0ef1520f11112d086b49acfb3",
       "imports": [
@@ -38521,7 +38585,7 @@
     },
     "packages/ui/src/cloud/public-pages/pages/public-chat-page.tsx": {
       "sha256": "a048ae7c4878070c124b5e5a1fd8f5518482ffff5ee7256c3ac3a742400bea7e",
-      "bytesInOutput": 5034,
+      "bytesInOutput": 5033,
       "tracked": true,
       "gitObject": "e0c58da59c583ef4e0f793ddbb70f2b690163db4",
       "imports": [
@@ -38564,7 +38628,7 @@
     },
     "packages/ui/src/cloud/public-pages/pages/sensitive-request-page.tsx": {
       "sha256": "de928ce627800dce770c1d6fa8b9eaeec71dd7dac953e2c51f66b9fda19023d1",
-      "bytesInOutput": 10761,
+      "bytesInOutput": 10759,
       "tracked": true,
       "gitObject": "44aecbef39a7e8d620f0fc2d4f7bd97f5b4db079",
       "imports": [
@@ -46700,7 +46764,7 @@
     },
     "packages/ui/src/components/pages/plugin-list-utils.ts": {
       "sha256": "e6e3f30cf13e14698c72f22fa0ec9bd162cd9e98c4410d7347d0b5f51cff4255",
-      "bytesInOutput": 14759,
+      "bytesInOutput": 14750,
       "tracked": true,
       "gitObject": "382106c6cdbb04d43e371358695037775c66f99b",
       "imports": [
@@ -55642,7 +55706,7 @@
     },
     "packages/ui/src/components/views/ViewIcon.tsx": {
       "sha256": "50b9efe9f071b0e3f7ee76bb1a727e65c3177fd9181f1927abfa2aa4fb20da7b",
-      "bytesInOutput": 3617,
+      "bytesInOutput": 3608,
       "tracked": true,
       "gitObject": "21c2f6f0cef4de1a93dbf7bdd45801c9e1a06bfd",
       "imports": [
@@ -58245,10 +58309,10 @@
       ]
     },
     "packages/ui/src/i18n/locales/en.json": {
-      "sha256": "f077adf72eb7cfafc03bf45841511cc5093ea9e9864f75c60300eed8b4ae4309",
-      "bytesInOutput": 553681,
+      "sha256": "7dad612f9fcddb75fab057677bdd9b63e2b3caf8045d5680ccb34401f2bc54df",
+      "bytesInOutput": 554347,
       "tracked": true,
-      "gitObject": "0b5cb4753a07642f5faf0f94ea4402572b9f95aa",
+      "gitObject": "fae587c7e489fc38ed8e2fec39bf614a0cc06cdd",
       "imports": []
     },
     "packages/ui/src/i18n/messages.ts": {
@@ -58318,10 +58382,10 @@
       ]
     },
     "packages/ui/src/index.ts": {
-      "sha256": "64cae4484ed0690f166ddf06861750c296ba72c99e28eb2becfc0a0a48693f75",
+      "sha256": "b9a2b5763204c374ab9588be0a7f5e68ab2838f5dcc78bfcf6cc17a5a371fab6",
       "bytesInOutput": 8544,
       "tracked": true,
-      "gitObject": "303ac9db410a76ed20265841bcaa895965baf225",
+      "gitObject": "d2bc5e2523943e34cb72486b418b3400f9d5c44c",
       "imports": [
         {
           "target": "packages/host/dist/protocol.js",
@@ -61470,7 +61534,7 @@
     },
     "packages/ui/src/navigation/index.ts": {
       "sha256": "ec21974792fcfeb6fb3e29a03997c4e1bf7245005ce3cdb928206e85e5f6a18c",
-      "bytesInOutput": 8319,
+      "bytesInOutput": 8318,
       "tracked": true,
       "gitObject": "9aef6e5f1d876df08d4d57dc91d95d401c60fe0b",
       "imports": [
@@ -62704,7 +62768,7 @@
           "scope": "first-party"
         },
         {
-          "target": "node_modules/.bun/viem@2.56.9+c486653617c72b4e/node_modules/viem/_cjs/index.js",
+          "target": "node_modules/.bun/viem@2.56.9+2b78734613504846/node_modules/viem/_cjs/index.js",
           "kind": "dynamic-import",
           "scope": "virtual-or-unresolved"
         }
@@ -62822,10 +62886,10 @@
       ]
     },
     "packages/ui/src/state/durable-draft-controller.ts": {
-      "sha256": "3befd0954aeb313ee612bf0c440a26065032397073acb3878ac190b45bac707c",
+      "sha256": "7537cf4163f2e9431e6cfc3734aaa519599027faa419a1d5b0eb6aadb95717bf",
       "bytesInOutput": 1344,
       "tracked": true,
-      "gitObject": "58760afc816e88433f2960c175c1b9f2ecd98805",
+      "gitObject": "df75631ec3f0d0a98cf95c8fae04c8323c663bb4",
       "imports": []
     },
     "packages/ui/src/state/durable-draft.ts": {
@@ -64657,10 +64721,10 @@
       ]
     },
     "packages/ui/src/state/useDataLoaders.ts": {
-      "sha256": "a730989db09f678d7c05bebe3a3a0c7632de44504a3fb9f09a92528f0c2f06e4",
+      "sha256": "91878e99511f982aedf60f8dbfd9b06ad872431ef54bfc59e117db5a7d1a6e32",
       "bytesInOutput": 357,
       "tracked": true,
-      "gitObject": "837343a74bebed1eaaea603cf1d43859f0364102",
+      "gitObject": "4f53d39eb2b5c84ed7260d84b18efbb5e74d77b4",
       "imports": [
         {
           "target": "packages/host/dist/protocol.js",
@@ -67495,10 +67559,10 @@
       "imports": []
     },
     "packages/voice/src/index.ts": {
-      "sha256": "ee3e3471a952455d647af47612647a1340532fd0fce2d3277c804b51f07c07d4",
+      "sha256": "1f13674cee2dc2b8a15b9e64aa58f7a947423f83ca9689acfa72bc63c13e7196",
       "bytesInOutput": 375,
       "tracked": true,
-      "gitObject": "c14e74bf3311346d00836b3f8f05156fb5ba7521",
+      "gitObject": "eb8ff8c2afbf433acb55ace4b647cce6a3120cc1",
       "imports": [
         {
           "target": "packages/voice/src/delay-calibrator.ts",
@@ -67688,10 +67752,10 @@
       ]
     },
     "packages/voice/src/voice-assistant-session.ts": {
-      "sha256": "7f7d0f37f7ce7b64a2020dc0c9940b76507ff14fb4a0b6fda17557c8d56fa618",
+      "sha256": "9d384d731cac628151121e7597008e1487ea4494d3e29e145ab6fbd0683a60a6",
       "bytesInOutput": 193,
       "tracked": true,
-      "gitObject": "2d4038afabfc22742618dca9774282c8f8aa0b02",
+      "gitObject": "eddca96ce2ae9bbfc27f3a19e0b0e5b8ad8d97d1",
       "imports": [
         {
           "target": "packages/voice/src/random-id.ts",
@@ -67789,7 +67853,7 @@
     },
     "plugins/plugin-anthropic/direct-media.ts": {
       "sha256": "6a2783cd6f9dc0d17b7583f354c0c4a1aa86a31aca92d5c6893d53e2967e2b12",
-      "bytesInOutput": 3019,
+      "bytesInOutput": 3018,
       "tracked": true,
       "gitObject": "6dcb8a2808283d696da48258ed82a9d2017482d4",
       "imports": [
@@ -67807,7 +67871,7 @@
     },
     "plugins/plugin-anthropic/index.ts": {
       "sha256": "181c9d5a384488ad5c8f4863b1c05c0664390cfdc6add6bebee4ef199aa76f85",
-      "bytesInOutput": 6909,
+      "bytesInOutput": 6908,
       "tracked": true,
       "gitObject": "2fe345cd15f4d95eb18d6f60dc34b07f14c9cf08",
       "imports": [
@@ -67886,7 +67950,7 @@
     },
     "plugins/plugin-anthropic/models/image.ts": {
       "sha256": "17e8d4054bfd250042de0458aaff8b8f8f1b570125cbfcfae2ef3787ea003890",
-      "bytesInOutput": 2315,
+      "bytesInOutput": 2312,
       "tracked": true,
       "gitObject": "dd4216d9d6e44d4c7e3e8496b7d98b2bdd23865c",
       "imports": [
@@ -67929,7 +67993,7 @@
     },
     "plugins/plugin-anthropic/models/text.ts": {
       "sha256": "f7b61805d0c6101ef1c0bf414d29656fc02c4ede4abf4ec9b59508bcc801f1fd",
-      "bytesInOutput": 33682,
+      "bytesInOutput": 33664,
       "tracked": true,
       "gitObject": "98ed9d5e2eb42764754d23564f38f41830d5ef75",
       "imports": [
@@ -68127,7 +68191,7 @@
     },
     "plugins/plugin-anthropic/utils/retry.ts": {
       "sha256": "22f24dd8cf60fedbfd7698918c2242c64f5bfbed46bd00b67c898657d40cf4c8",
-      "bytesInOutput": 4266,
+      "bytesInOutput": 4263,
       "tracked": true,
       "gitObject": "fe700fcf5461e1ff4e7d7f0b94ee78f5c8f0f3a2",
       "imports": [
@@ -68890,12 +68954,12 @@
       ]
     },
     "plugins/plugin-assistant/src/features/advanced-capabilities/experience/service.ts": {
-      "sha256": "92e23a48cdb670b2aa02f4c441bedd0abf26122268ee23cdd01f28d974ec2c17",
+      "sha256": "183053f31c514ab444823e2d3966619f920af3fed212e884d0f23802585e9f47",
       "effectiveSourceSha256": "183053f31c514ab444823e2d3966619f920af3fed212e884d0f23802585e9f47",
       "transformation": "authenticated-core-state",
       "bytesInOutput": 33653,
       "tracked": true,
-      "gitObject": "26439c469e2074738c7ec96171ba8b9baaa9b936",
+      "gitObject": "c3c311b625b15c7baae92a37d20ba63b4e19bbf5",
       "imports": [
         {
           "target": "packages/core/src/index.ts",
@@ -71689,7 +71753,7 @@
     },
     "plugins/plugin-assistant/src/features/messaging/triage/send-consent.ts": {
       "sha256": "68a5cad9c89126af4626c6777caeaf2a270d9df9ba13e566bd2522f3590750c1",
-      "bytesInOutput": 4113,
+      "bytesInOutput": 4116,
       "tracked": true,
       "gitObject": "4a531746f033e1f2b455ade6e9af9d84a9c87b7c",
       "imports": [
@@ -73683,10 +73747,10 @@
       ]
     },
     "plugins/plugin-assistant/src/index.ts": {
-      "sha256": "24068deb5edc669dd887582ba656f8f831423e7bf3658928258f992df9d7c04f",
+      "sha256": "e2bcfb74fca32c81828d04f540371d61a89ea744ee4afea251f04669ff67884c",
       "bytesInOutput": 3370,
       "tracked": true,
-      "gitObject": "f16c4cefbcfd444c734c887b45e47d0dcc808e43",
+      "gitObject": "aabb0fde6225c9fa8bcb75220b4af9aad40414b1",
       "imports": [
         {
           "target": "plugins/plugin-assistant/src/features/basic-capabilities/index.ts",
@@ -74129,17 +74193,17 @@
           "scope": "first-party"
         },
         {
+          "target": "plugins/plugin-assistant/src/services/device-actions/files-browser-contract.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
           "target": "plugins/plugin-assistant/src/services/device-actions/reminder-local-time.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
         {
           "target": "plugins/plugin-assistant/src/services/device-actions/service.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "plugins/plugin-assistant/src/services/device-actions/files-browser-contract.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -75135,10 +75199,10 @@
       "imports": []
     },
     "plugins/plugin-assistant/src/services/device-actions/action.ts": {
-      "sha256": "ae15113fdd143979eefee68490a6d0e5602070269f7fa7208eaefc235c8b9569",
-      "bytesInOutput": 37906,
+      "sha256": "a4f6c872e794f3f25345dba932d3f7912ded7a4adbd93d25330619f25d97e5f9",
+      "bytesInOutput": 41791,
       "tracked": true,
-      "gitObject": "f2470cd5973a3ef385e130e621161e1490f0c473",
+      "gitObject": "bf44638f438a58cb7ed82f685f4f1252293b3ae4",
       "imports": [
         {
           "target": "crypto",
@@ -75186,12 +75250,12 @@
           "scope": "first-party"
         },
         {
-          "target": "plugins/plugin-assistant/src/services/device-actions/files-browser-contract.ts",
+          "target": "plugins/plugin-assistant/src/services/device-actions/effect-receipts.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
         {
-          "target": "plugins/plugin-assistant/src/services/device-actions/effect-receipts.ts",
+          "target": "plugins/plugin-assistant/src/services/device-actions/files-browser-contract.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -75211,12 +75275,27 @@
           "scope": "first-party"
         },
         {
+          "target": "plugins/plugin-assistant/src/services/device-actions/notes-organize-contract.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
           "target": "plugins/plugin-assistant/src/services/device-actions/notes-query-result.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
         {
           "target": "plugins/plugin-assistant/src/services/device-actions/phone-dial-contract.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "plugins/plugin-assistant/src/services/device-actions/photo-library-contract.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "plugins/plugin-assistant/src/services/device-actions/photos-view-contract.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -75330,10 +75409,10 @@
       "imports": []
     },
     "plugins/plugin-assistant/src/services/device-actions/contract.ts": {
-      "sha256": "d6d5c80b3ab2ea4bc75cc8f78fef355b77e414578c89e4db416a8d706428ae1e",
-      "bytesInOutput": 8782,
+      "sha256": "ffc4fcf47a4efb3a3cc82cc31b5760d1687d9ccc717b80b7ed10aca76c4c71d4",
+      "bytesInOutput": 9501,
       "tracked": true,
-      "gitObject": "64d4ce6adc1ce8621bcddce4af49bc16f10802ac",
+      "gitObject": "8e0f59acdf4c797a9f44ddeeab8d2fbc01514049",
       "imports": [
         {
           "target": "packages/contracts/dist/native-notes-query.js",
@@ -75356,6 +75435,11 @@
           "scope": "first-party"
         },
         {
+          "target": "plugins/plugin-assistant/src/services/device-actions/files-browser-contract.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
           "target": "plugins/plugin-assistant/src/services/device-actions/foreground-review-contract.ts",
           "kind": "import-statement",
           "scope": "first-party"
@@ -75371,7 +75455,17 @@
           "scope": "first-party"
         },
         {
+          "target": "plugins/plugin-assistant/src/services/device-actions/notes-organize-contract.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
           "target": "plugins/plugin-assistant/src/services/device-actions/phone-dial-contract.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "plugins/plugin-assistant/src/services/device-actions/photos-view-contract.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -75387,11 +75481,6 @@
         },
         {
           "target": "plugins/plugin-assistant/src/services/device-actions/sms-contract.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "plugins/plugin-assistant/src/services/device-actions/files-browser-contract.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -75443,10 +75532,10 @@
       "imports": []
     },
     "plugins/plugin-assistant/src/services/device-actions/effect-receipts.ts": {
-      "sha256": "a380ed36d32669a0fb24f6b63219d53c2497a637df240f946994247dd162beef",
-      "bytesInOutput": 5984,
+      "sha256": "c7024750c35d6522e3d77462d3bc12f1f44692b92cf53024cf459d81848e239a",
+      "bytesInOutput": 7165,
       "tracked": true,
-      "gitObject": "c8a2870be961901b81deaa65b29b08b1b4c2a47c",
+      "gitObject": "933b8942fa17d8e0240bdd260ac1658d9fbb0fe4",
       "imports": [
         {
           "target": "crypto",
@@ -75479,6 +75568,11 @@
           "scope": "first-party"
         },
         {
+          "target": "plugins/plugin-assistant/src/services/device-actions/photos-view-contract.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
           "target": "plugins/plugin-assistant/src/services/device-actions/sms-contract.ts",
           "kind": "import-statement",
           "scope": "first-party"
@@ -75486,10 +75580,10 @@
       ]
     },
     "plugins/plugin-assistant/src/services/device-actions/files-browser-contract.ts": {
-      "sha256": "6d049c680a74e2a3144ff9421dcf872a00de1bfcc0f63ae94081d5b1c797162d",
-      "bytesInOutput": 5638,
+      "sha256": "9d3b720d3d8188c611c80ca81d247600025bf34db4c6fe16a9de39ddef35c00a",
+      "bytesInOutput": 5680,
       "tracked": true,
-      "gitObject": "f66489665a187f1e346044e6a4cfebb431bfff30",
+      "gitObject": "57af923553f2c0f39dd5a4e9668e68e782c2594a",
       "imports": []
     },
     "plugins/plugin-assistant/src/services/device-actions/foreground-review-contract.ts": {
@@ -75585,6 +75679,19 @@
         }
       ]
     },
+    "plugins/plugin-assistant/src/services/device-actions/notes-organize-contract.ts": {
+      "sha256": "6ebb247e3e65166e5fbe04b6cef711a07d66aeb2542b28101274492e5533eeee",
+      "bytesInOutput": 2465,
+      "tracked": true,
+      "gitObject": "d9c5159e84046adb76b9c38fcccab073c63b8cda",
+      "imports": [
+        {
+          "target": "plugins/plugin-assistant/src/services/device-actions/notes-contract.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        }
+      ]
+    },
     "plugins/plugin-assistant/src/services/device-actions/notes-query-result.ts": {
       "sha256": "5541b322f92a000285bbee361db66ab8a26872c3d6e35b7fade6b579d7fb4909",
       "bytesInOutput": 1353,
@@ -75644,6 +75751,26 @@
       "imports": [
         {
           "target": "packages/contracts/dist/phone-dial.js",
+          "kind": "import-statement",
+          "scope": "first-party"
+        }
+      ]
+    },
+    "plugins/plugin-assistant/src/services/device-actions/photo-library-contract.ts": {
+      "sha256": "45bca066755d833b7874fdb132d6ca78b3debedfdcae1fbb6f605d8255e7387b",
+      "bytesInOutput": 541,
+      "tracked": true,
+      "gitObject": "fbb6596302e12d329254a700387dac6c8e641b35",
+      "imports": []
+    },
+    "plugins/plugin-assistant/src/services/device-actions/photos-view-contract.ts": {
+      "sha256": "77ac5a677579bd9a6ff2a79aebeb455d509da361260157ed6aa360585ebe9336",
+      "bytesInOutput": 4128,
+      "tracked": true,
+      "gitObject": "13ac89931a77a0abc18865c90d96eb92e7b7e538",
+      "imports": [
+        {
+          "target": "plugins/plugin-assistant/src/services/device-actions/photo-library-contract.ts",
           "kind": "import-statement",
           "scope": "first-party"
         }
@@ -75814,10 +75941,10 @@
       ]
     },
     "plugins/plugin-assistant/src/services/device-actions/service.ts": {
-      "sha256": "69d3f89e688343e9cdc0b737f371530c7ff8bc9e7d78006353f2ba14a251557b",
-      "bytesInOutput": 94317,
+      "sha256": "d0d9b09fcaeb620e208918371ac6a8fd930305c1ab4e37251b24a328c969a021",
+      "bytesInOutput": 95546,
       "tracked": true,
-      "gitObject": "7f3a8df8f7aa1e90379c3558822898b6a6322c83",
+      "gitObject": "6055bdf8e06d9e327c22bc0701881c088eb86726",
       "imports": [
         {
           "target": "async_hooks",
@@ -75890,17 +76017,17 @@
           "scope": "first-party"
         },
         {
-          "target": "plugins/plugin-assistant/src/services/device-actions/files-browser-contract.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
           "target": "plugins/plugin-assistant/src/services/device-actions/contract.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
         {
           "target": "plugins/plugin-assistant/src/services/device-actions/effect-receipts.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "plugins/plugin-assistant/src/services/device-actions/files-browser-contract.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -75930,6 +76057,11 @@
           "scope": "first-party"
         },
         {
+          "target": "plugins/plugin-assistant/src/services/device-actions/notes-organize-contract.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
           "target": "plugins/plugin-assistant/src/services/device-actions/notes-query-result.ts",
           "kind": "import-statement",
           "scope": "first-party"
@@ -75941,6 +76073,16 @@
         },
         {
           "target": "plugins/plugin-assistant/src/services/device-actions/phone-dial-contract.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "plugins/plugin-assistant/src/services/device-actions/photo-library-contract.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "plugins/plugin-assistant/src/services/device-actions/photos-view-contract.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -75995,10 +76137,10 @@
       ]
     },
     "plugins/plugin-assistant/src/services/device-actions/tools.ts": {
-      "sha256": "99d0bf78194498b1aa42f0f8e656d9fa43606fd45279cb3e0ccfa2b802800510",
-      "bytesInOutput": 16487,
+      "sha256": "b15f7351a7b11774d99780d47dc8d329872768c7f5b19c741f7a1cd29f22bd20",
+      "bytesInOutput": 19183,
       "tracked": true,
-      "gitObject": "cdc80b4663c9cf7754a0457c2a385e5621d8694b",
+      "gitObject": "3469b16e99a58a4e35ba8c5d7d7b93958c498653",
       "imports": [
         {
           "target": "packages/core/src/index.ts",
@@ -76032,6 +76174,16 @@
         },
         {
           "target": "plugins/plugin-assistant/src/services/device-actions/notes-contract.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "plugins/plugin-assistant/src/services/device-actions/notes-organize-contract.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "plugins/plugin-assistant/src/services/device-actions/photos-view-contract.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -83127,7 +83279,7 @@
     },
     "plugins/plugin-discord/discord-history.ts": {
       "sha256": "3c1498357261d4423852adf49776be4a8417abf6c295d23ebf8de01247225858",
-      "bytesInOutput": 23873,
+      "bytesInOutput": 23870,
       "tracked": true,
       "gitObject": "3dbfc86dd27ef3f16a27baa2d3f155599719c313",
       "imports": [
@@ -84472,7 +84624,7 @@
     },
     "plugins/plugin-discord/voice.ts": {
       "sha256": "06dde088a19b401869d48d1d011e661cad4da6844ac5b910e944f167fd497361",
-      "bytesInOutput": 35919,
+      "bytesInOutput": 35918,
       "tracked": true,
       "gitObject": "dd62d97b61826a904fe07de265587a9f1454a778",
       "imports": [
@@ -84899,7 +85051,7 @@
     },
     "plugins/plugin-elizacloud/src/cloud-voice-catalog.ts": {
       "sha256": "3a8a92a949744ebe440ff97d4e45424a5ac9d0d28ea78777218c6dc77883812a",
-      "bytesInOutput": 4287,
+      "bytesInOutput": 4283,
       "tracked": true,
       "gitObject": "6a915142143ae1c0abc56a4698cbad4407c45585",
       "imports": [
@@ -85108,7 +85260,7 @@
           "scope": "first-party"
         },
         {
-          "target": "node_modules/.bun/viem@2.56.9+c486653617c72b4e/node_modules/viem/_cjs/accounts/index.js",
+          "target": "node_modules/.bun/viem@2.56.9+2b78734613504846/node_modules/viem/_cjs/accounts/index.js",
           "kind": "import-statement",
           "scope": "bundled-dependency"
         },
@@ -85500,7 +85652,7 @@
     },
     "plugins/plugin-elizacloud/src/index.ts": {
       "sha256": "08f3c55efe80cbfebef954debc38417db4b88805993dfff46e844160d2479a7e",
-      "bytesInOutput": 12210,
+      "bytesInOutput": 12198,
       "tracked": true,
       "gitObject": "a3b9139b8d1dfc9224b22f5910f5d7d12f00ada8",
       "imports": [
@@ -86010,7 +86162,7 @@
     },
     "plugins/plugin-elizacloud/src/models/embeddings.ts": {
       "sha256": "4c628f226b78a4f507ffaf2f1b608092c6008c16760a9b72d6a7b7a220d04f7d",
-      "bytesInOutput": 10928,
+      "bytesInOutput": 10926,
       "tracked": true,
       "gitObject": "fc70509f98c46c69ff927c079f55e6b403997bc3",
       "imports": [
@@ -86053,7 +86205,7 @@
     },
     "plugins/plugin-elizacloud/src/models/image.ts": {
       "sha256": "53be3e4c9f0f76ea3336f7e5759fed37a27162576556e4657eabcec2e1e50c47",
-      "bytesInOutput": 6187,
+      "bytesInOutput": 6183,
       "tracked": true,
       "gitObject": "5ac27458c7de41d7dfbc8fcf5b3080ee6299283a",
       "imports": [
@@ -86091,7 +86243,7 @@
     },
     "plugins/plugin-elizacloud/src/models/index.ts": {
       "sha256": "0b483cdeb0dbaa5e037b8d27477ce78304287e9d82408177728fdd9ea8705515",
-      "bytesInOutput": 162,
+      "bytesInOutput": 160,
       "tracked": true,
       "gitObject": "cd91e7cb48bc96a914632f26ed7f8dcd46f2e40b",
       "imports": [
@@ -86162,7 +86314,7 @@
     },
     "plugins/plugin-elizacloud/src/models/research.ts": {
       "sha256": "1ecdf6abab4620b9e9c486134fc503a8b0bdf607aee3a9556a46204cd015f8d4",
-      "bytesInOutput": 43,
+      "bytesInOutput": 42,
       "tracked": true,
       "gitObject": "53f99bc2eeeb2e6c53c610de7863204a82ee96c3",
       "imports": [
@@ -86175,7 +86327,7 @@
     },
     "plugins/plugin-elizacloud/src/models/speech.ts": {
       "sha256": "a8e19937ad21987f60bfb15cfd11f3e40d26b10c09901178e88a8e519d00423b",
-      "bytesInOutput": 4797,
+      "bytesInOutput": 4796,
       "tracked": true,
       "gitObject": "6f19e5299f559fd395a099cf044a959f9d39cdba",
       "imports": [
@@ -86213,7 +86365,7 @@
     },
     "plugins/plugin-elizacloud/src/models/text.ts": {
       "sha256": "5391590000dbec69c9c43a6d96c450316a0610ae44d6f9a945cfa9d1dc176874",
-      "bytesInOutput": 56458,
+      "bytesInOutput": 56360,
       "tracked": true,
       "gitObject": "f4715b11b31a3731b8caf330e6cd84292cc4fd29",
       "imports": [
@@ -86280,10 +86432,10 @@
       ]
     },
     "plugins/plugin-elizacloud/src/models/tokenization.ts": {
-      "sha256": "593a44a4fd890cd7d2fc1a6cfc876055037daa1ce298b66b76d4a56636273139",
-      "bytesInOutput": 183,
+      "sha256": "ddebcbaa12d9a743620aeeb529e33e34b9ae5fed6ca48ffbcb06d12ba6522da0",
+      "bytesInOutput": 180,
       "tracked": true,
-      "gitObject": "fb13e2ba6d38667dd0835a459a4a0ab0cbfa6ffd",
+      "gitObject": "fb43644caabb4e034bc25c0eda0b288557f1aea6",
       "imports": [
         {
           "target": "packages/host/dist/protocol.js",
@@ -86296,15 +86448,45 @@
           "scope": "first-party"
         },
         {
-          "target": "node_modules/.bun/js-tiktoken@1.0.21/node_modules/js-tiktoken/dist/index.js",
+          "target": "node_modules/.bun/js-tiktoken@1.0.21/node_modules/js-tiktoken/dist/lite.js",
           "kind": "import-statement",
           "scope": "bundled-dependency"
+        },
+        {
+          "target": "node_modules/.bun/js-tiktoken@1.0.21/node_modules/js-tiktoken/dist/ranks/cl100k_base.js",
+          "kind": "dynamic-import",
+          "scope": "virtual-or-unresolved"
+        },
+        {
+          "target": "node_modules/.bun/js-tiktoken@1.0.21/node_modules/js-tiktoken/dist/ranks/o200k_base.js",
+          "kind": "dynamic-import",
+          "scope": "virtual-or-unresolved"
+        },
+        {
+          "target": "node_modules/.bun/js-tiktoken@1.0.21/node_modules/js-tiktoken/dist/ranks/gpt2.js",
+          "kind": "dynamic-import",
+          "scope": "virtual-or-unresolved"
+        },
+        {
+          "target": "node_modules/.bun/js-tiktoken@1.0.21/node_modules/js-tiktoken/dist/ranks/r50k_base.js",
+          "kind": "dynamic-import",
+          "scope": "virtual-or-unresolved"
+        },
+        {
+          "target": "node_modules/.bun/js-tiktoken@1.0.21/node_modules/js-tiktoken/dist/ranks/p50k_base.js",
+          "kind": "dynamic-import",
+          "scope": "virtual-or-unresolved"
+        },
+        {
+          "target": "node_modules/.bun/js-tiktoken@1.0.21/node_modules/js-tiktoken/dist/ranks/p50k_edit.js",
+          "kind": "dynamic-import",
+          "scope": "virtual-or-unresolved"
         }
       ]
     },
     "plugins/plugin-elizacloud/src/models/transcription.ts": {
       "sha256": "06496896dbdf7acd54de8d16a5e649002f677485e0d40acd543c0f1d822cbfd8",
-      "bytesInOutput": 4012,
+      "bytesInOutput": 4001,
       "tracked": true,
       "gitObject": "17b674beb7a8bece20ed2560b7b79337448e7e34",
       "imports": [
@@ -86786,11 +86968,16 @@
       ]
     },
     "plugins/plugin-elizacloud/src/routes/cloud-warm-route.ts": {
-      "sha256": "830501ac75bdf328c48e6ca848dad2610a3a5ef54326f824c996306c5f57b299",
-      "bytesInOutput": 1533,
+      "sha256": "7a93af26c2f82ce1b6241a84b7c428b9059ffc437f44ac5e199a9fe89f788d8d",
+      "bytesInOutput": 2008,
       "tracked": true,
-      "gitObject": "f41a085526d1f2de1ffb5a729a79926d451fb224",
+      "gitObject": "34fd7b07467c983443dfc59cb3a284d6684d88c3",
       "imports": [
+        {
+          "target": "crypto",
+          "kind": "import-statement",
+          "scope": "external"
+        },
         {
           "target": "packages/core/src/index.ts",
           "kind": "import-statement",
@@ -87255,7 +87442,7 @@
     },
     "plugins/plugin-elizacloud/src/utils/events.ts": {
       "sha256": "fad0033e7d36ead7617ff8632df1cd79b9a5373c42a65fc089c6cb43f86105f4",
-      "bytesInOutput": 715,
+      "bytesInOutput": 714,
       "tracked": true,
       "gitObject": "a1780b8a4671a367b8cc63dd93b9fa394bed5693",
       "imports": [
@@ -87268,7 +87455,7 @@
     },
     "plugins/plugin-elizacloud/src/utils/helpers.ts": {
       "sha256": "0b71ab5799832d82ebbb444f90bbba9a4e2f939ba2e565b29b61b3019b23f630",
-      "bytesInOutput": 1682,
+      "bytesInOutput": 1680,
       "tracked": true,
       "gitObject": "ac7e831adb7c6f76ab9ed9c3f3fb245e8c350509",
       "imports": [
@@ -91702,7 +91889,7 @@
     },
     "plugins/plugin-local-inference/src/runtime/embedding-manager-support.ts": {
       "sha256": "46f7ae0d00bcb1c283a994c1fd3a00abce81121b32deded1c3fb1f622164f66f",
-      "bytesInOutput": 6955,
+      "bytesInOutput": 6953,
       "tracked": true,
       "gitObject": "e6be271a3fc7b236199d14072882d58f093396d5",
       "imports": [
@@ -95757,7 +95944,7 @@
     },
     "plugins/plugin-local-inference/src/services/voice/mic-source.ts": {
       "sha256": "edd0327a5ca137a91dae14c8b145d24563c2eab19d0b16f57aa54910ba0ddf93",
-      "bytesInOutput": 7075,
+      "bytesInOutput": 7071,
       "tracked": true,
       "gitObject": "378cfb204bb5aac3bbc1b43acc00a6b46dca627c",
       "imports": [
@@ -96600,7 +96787,7 @@
     },
     "plugins/plugin-local-inference/src/services/voice/wake-word.ts": {
       "sha256": "d29607d0602c1712a59e3060da29d39554987e8c35a30003c5ddd035c2a36a24",
-      "bytesInOutput": 6715,
+      "bytesInOutput": 6652,
       "tracked": true,
       "gitObject": "1a0c32165c499612ac599f2b1778b52bcff83ab8",
       "imports": [
@@ -98216,7 +98403,7 @@
     },
     "plugins/plugin-native-inference/src/model-catalog/bge-input.ts": {
       "sha256": "18c4dad74109d8dadb22f8a140c4965ca92687f049d1ed755c5bb9ccd2b25fa0",
-      "bytesInOutput": 3133,
+      "bytesInOutput": 3132,
       "tracked": true,
       "gitObject": "98819670b64dfb7e968909091157aeaca35955e4",
       "imports": [
@@ -98251,7 +98438,7 @@
     },
     "plugins/plugin-native-inference/src/model-catalog/bge/tokenizer.json": {
       "sha256": "3886d55b48d8509b51b30379a20e3080acaa58ad64d194608368b4f6173c161a",
-      "bytesInOutput": 428186,
+      "bytesInOutput": 428185,
       "tracked": true,
       "gitObject": "aaad066391f89330161b85773af8aea98641948c",
       "imports": []
@@ -98887,16 +99074,16 @@
       ]
     },
     "plugins/plugin-native-system/dist/esm/client/launcher.js": {
-      "sha256": "91334d247fae0a7e08f63ab6f590ae55c67aac603969084845bd1b8d130beb7d",
-      "bytesInOutput": 11655,
+      "sha256": "098173eca3a70ae78eb0848c39081b8a21832844b020a7628ffa345d66b12466",
+      "bytesInOutput": 11693,
       "tracked": false,
       "generatedSource": {
         "sourceMap": "plugins/plugin-native-system/dist/esm/client/launcher.js.map",
-        "sourceMapSha256": "d9870ac6255f366c43f15ad959f708a9543dcd74e3d8966441e9219fa4e18d4c",
+        "sourceMapSha256": "89c232a89544ed4c6e86cbd12528bb4444095e5e17dacc292fdae130de568382",
         "sourceMaps": [
           {
             "path": "plugins/plugin-native-system/src/client/launcher.ts",
-            "sha256": "89625214c861f533e5c8526fd4f3b398e984e76e6136adae85d324877c82ab51"
+            "sha256": "b2f7cfde13e7c090921f66c648e314e5b463728c33d8c4df0a882f8fd2811c0c"
           }
         ]
       },
@@ -99673,12 +99860,12 @@
       ]
     },
     "plugins/plugin-notes/src/service.ts": {
-      "sha256": "2f41aa310c64b2747017ebd4b69386ee087337ed752a1b722f86d93fc4bc8e8b",
-      "effectiveSourceSha256": "e2bd7c43e7d0841788d9efd7056a2b6e01d431687004f18f7f523c4f7cb76346",
+      "sha256": "b25222d39bf98551b26795bc369e614bf8332e263848c7f6dab0beb460ece97a",
+      "effectiveSourceSha256": "b25222d39bf98551b26795bc369e614bf8332e263848c7f6dab0beb460ece97a",
       "transformation": "authenticated-core-state",
-      "bytesInOutput": 15449,
+      "bytesInOutput": 15085,
       "tracked": true,
-      "gitObject": "4c99826f4422a8f8ea5380f266bc30419a751281",
+      "gitObject": "5129caf7011351f2b3d534a8017006b75e188916",
       "imports": [
         {
           "target": "plugins/plugin-notes/src/note-authored.ts",
@@ -99723,12 +99910,12 @@
       ]
     },
     "plugins/plugin-notes/src/store.ts": {
-      "sha256": "e0078a48cdd9f91a850121972cec6bb27deaaadd856bb05e047368cb58aa709e",
-      "effectiveSourceSha256": "e9e33bf24ba4622d7bbdb2964b8e55920f0dbf6c906900e61ccfffc42b84ec5c",
+      "sha256": "7cf45a1d43d900c18d930296bdb85d12ff6833ec3c52db7f061b39083a6520bf",
+      "effectiveSourceSha256": "7cf45a1d43d900c18d930296bdb85d12ff6833ec3c52db7f061b39083a6520bf",
       "transformation": "authenticated-core-state",
-      "bytesInOutput": 10868,
+      "bytesInOutput": 10850,
       "tracked": true,
-      "gitObject": "d3f3431932122f3c58be9a4e9b1aa04711136e3e",
+      "gitObject": "d0cd7008d2b4432f957fdc869e4797d5043e3730",
       "imports": [
         {
           "target": "crypto",
@@ -99775,12 +99962,12 @@
       "imports": []
     },
     "plugins/plugin-notes/src/types.ts": {
-      "sha256": "366a583d1b4fe3a49161df9654671e60ec79701b3e17730464465e978f703a45",
+      "sha256": "2acf6a0332c0880844bdb948a87c49eb6b8a29ce5566ea695dbc5a411daae23c",
       "effectiveSourceSha256": "2acf6a0332c0880844bdb948a87c49eb6b8a29ce5566ea695dbc5a411daae23c",
       "transformation": "authenticated-core-state",
       "bytesInOutput": 1220,
       "tracked": true,
-      "gitObject": "b18af5e28d4bd03e084df339dfb9afb2dcbf211e",
+      "gitObject": "825e042b4f5f995b283be113c52b8df4dc0ee405",
       "imports": [
         {
           "target": "plugins/plugin-notes/src/note-authored.ts",
@@ -99790,12 +99977,12 @@
       ]
     },
     "plugins/plugin-notes/src/validation.ts": {
-      "sha256": "3b2d9d3c8e61390f3b283270a55f9e09ca527d6d4767e0b9ff778a6f3cbdc384",
-      "effectiveSourceSha256": "af7030186a7e4483c2674af9c30514e8a5c5587303c7a734b4943db44375f85a",
+      "sha256": "6bb3d21aa78263462a234c6b04580ef2bceddeab227db8deba9c7568362f37a4",
+      "effectiveSourceSha256": "6bb3d21aa78263462a234c6b04580ef2bceddeab227db8deba9c7568362f37a4",
       "transformation": "authenticated-core-state",
       "bytesInOutput": 14045,
       "tracked": true,
-      "gitObject": "b428a314c934e8f8d5e399db2dfd1da7aa390801",
+      "gitObject": "9151b1a0c107bb1250eed9a031366c6e943a1876",
       "imports": [
         {
           "target": "plugins/plugin-notes/src/note-authored.ts",
@@ -99826,7 +100013,7 @@
     },
     "plugins/plugin-openai/direct-media.ts": {
       "sha256": "149b4851a718c0b6ab6d7397dcb42274a3274315e44f25c530725d3331061b97",
-      "bytesInOutput": 3576,
+      "bytesInOutput": 3577,
       "tracked": true,
       "gitObject": "c256183b74ce2652f219b80c11c6cea858035f64",
       "imports": [
@@ -99839,7 +100026,7 @@
     },
     "plugins/plugin-openai/index.ts": {
       "sha256": "45d09b96fa67f9a46e654fd855f4ab4cdf8ab4fbbb87c4266baeb9efe424d3ce",
-      "bytesInOutput": 14327,
+      "bytesInOutput": 14345,
       "tracked": true,
       "gitObject": "7fe398528d1f08b5f86b9f51fe6934ce14031d79",
       "imports": [
@@ -99897,7 +100084,7 @@
     },
     "plugins/plugin-openai/models/audio.ts": {
       "sha256": "004f61b56bdf7aed6b4b46cfa79d2727211252e3058cf39104ab3f1adc5a1365",
-      "bytesInOutput": 6723,
+      "bytesInOutput": 6733,
       "tracked": true,
       "gitObject": "e32dda0cc07c783cc0eaf7e46ee9276c4f6b1653",
       "imports": [
@@ -99925,7 +100112,7 @@
     },
     "plugins/plugin-openai/models/embedding.ts": {
       "sha256": "8fe253f1c6c0c4023f684939ac7ba1fc4338ad80e95013843221cc845da776b9",
-      "bytesInOutput": 3258,
+      "bytesInOutput": 3260,
       "tracked": true,
       "gitObject": "6d361b4379b6cbb85674ebfd928c3ec76abab007",
       "imports": [
@@ -99948,7 +100135,7 @@
     },
     "plugins/plugin-openai/models/image.ts": {
       "sha256": "9dc8b08cbe0541da517d25d33fe36f63d5e92be6851917342430fb3572d475b1",
-      "bytesInOutput": 5478,
+      "bytesInOutput": 5486,
       "tracked": true,
       "gitObject": "c8bda8cbf5d92e3aa7ae5cc36ef0d2768557b30b",
       "imports": [
@@ -99971,7 +100158,7 @@
     },
     "plugins/plugin-openai/models/research.ts": {
       "sha256": "14b6ffb88eea378cbc20efa8c107632cd5e389f09c87993290edf57079e0c358",
-      "bytesInOutput": 5199,
+      "bytesInOutput": 5201,
       "tracked": true,
       "gitObject": "096e50da02edcda1879b761b32ee2f6bc56a7857",
       "imports": [
@@ -100002,7 +100189,7 @@
     },
     "plugins/plugin-openai/models/text.ts": {
       "sha256": "27356c237430bfa8f16257577e9e8b231ff67ebb25508cef6c270190a41aa814",
-      "bytesInOutput": 81546,
+      "bytesInOutput": 81626,
       "tracked": true,
       "gitObject": "faada974983675a8e9b47883e218fe7f8e85ef36",
       "imports": [
@@ -100065,7 +100252,7 @@
     },
     "plugins/plugin-openai/models/tokenizer.ts": {
       "sha256": "dd0290df612871d1c724ae103a17477288f970f1a64a88f3f6d7e1dbea91dd47",
-      "bytesInOutput": 732,
+      "bytesInOutput": 736,
       "tracked": true,
       "gitObject": "b23826f9acee60737824918291fa76dadb024431",
       "imports": [
@@ -100078,7 +100265,7 @@
     },
     "plugins/plugin-openai/models/transcription-url.ts": {
       "sha256": "13af6864d74fc25564518e75a975f37296f866defa26ae4f3a1f70e327e87911",
-      "bytesInOutput": 732,
+      "bytesInOutput": 736,
       "tracked": true,
       "gitObject": "2f5d01b640f3a79a4f2abad97180d956ec383721",
       "imports": [
@@ -100137,7 +100324,7 @@
     },
     "plugins/plugin-openai/utils/audio.ts": {
       "sha256": "45d05a86134591a0858c622096a861ef19baf95a435c800118e462b65a5b0cdc",
-      "bytesInOutput": 2459,
+      "bytesInOutput": 2460,
       "tracked": true,
       "gitObject": "f4581402e4dc6cc645af387265529ece39d89539",
       "imports": [
@@ -100157,7 +100344,7 @@
     },
     "plugins/plugin-openai/utils/cerebras-tool-argument-envelope.ts": {
       "sha256": "57a8278022b741d095ca2b4edc555745ba13068cf2c2fdb307556d32b1e2f879",
-      "bytesInOutput": 8986,
+      "bytesInOutput": 9012,
       "tracked": true,
       "gitObject": "c50be150e81c787aa90a386f6202929be5f38869",
       "imports": [
@@ -100198,7 +100385,7 @@
     },
     "plugins/plugin-openai/utils/events.ts": {
       "sha256": "1b81a1f41a554e8852ec117b96674644790733fe563c73c44834aa35ef9fab04",
-      "bytesInOutput": 1443,
+      "bytesInOutput": 1444,
       "tracked": true,
       "gitObject": "c7617b0f20ffdbc546489666a8cd016338332e78",
       "imports": [
@@ -100235,10 +100422,10 @@
       ]
     },
     "plugins/plugin-openai/utils/tokenization.ts": {
-      "sha256": "3074a4d8c3c34dbf7689b2e538d4f3555e968d2e1d2076a2d7f751c1821f853c",
-      "bytesInOutput": 961,
+      "sha256": "0e7d6241d5806c99225fcd264d76864048ed70316385dc043955a77aa488eb1e",
+      "bytesInOutput": 1585,
       "tracked": true,
-      "gitObject": "5e32f99c2fd6905dbb3874eca1245fab3ad279ec",
+      "gitObject": "4f9c3678d862479ac74264dfe2281d6cc0a2dc1d",
       "imports": [
         {
           "target": "packages/core/src/index.ts",
@@ -100246,37 +100433,7 @@
           "scope": "first-party"
         },
         {
-          "target": "node_modules/.bun/gpt-tokenizer@4.0.0/node_modules/gpt-tokenizer/esm/encoding/cl100k_base.js",
-          "kind": "import-statement",
-          "scope": "bundled-dependency"
-        },
-        {
-          "target": "node_modules/.bun/gpt-tokenizer@4.0.0/node_modules/gpt-tokenizer/esm/encoding/gpt2.js",
-          "kind": "import-statement",
-          "scope": "bundled-dependency"
-        },
-        {
-          "target": "node_modules/.bun/gpt-tokenizer@4.0.0/node_modules/gpt-tokenizer/esm/encoding/o200k_base.js",
-          "kind": "import-statement",
-          "scope": "bundled-dependency"
-        },
-        {
-          "target": "node_modules/.bun/gpt-tokenizer@4.0.0/node_modules/gpt-tokenizer/esm/encoding/p50k_base.js",
-          "kind": "import-statement",
-          "scope": "bundled-dependency"
-        },
-        {
-          "target": "node_modules/.bun/gpt-tokenizer@4.0.0/node_modules/gpt-tokenizer/esm/encoding/p50k_edit.js",
-          "kind": "import-statement",
-          "scope": "bundled-dependency"
-        },
-        {
-          "target": "node_modules/.bun/gpt-tokenizer@4.0.0/node_modules/gpt-tokenizer/esm/encoding/r50k_base.js",
-          "kind": "import-statement",
-          "scope": "bundled-dependency"
-        },
-        {
-          "target": "node_modules/.bun/js-tiktoken@1.0.21/node_modules/js-tiktoken/dist/index.js",
+          "target": "node_modules/.bun/js-tiktoken@1.0.21/node_modules/js-tiktoken/dist/lite.js",
           "kind": "import-statement",
           "scope": "bundled-dependency"
         },
@@ -100284,6 +100441,36 @@
           "target": "plugins/plugin-openai/utils/config.ts",
           "kind": "import-statement",
           "scope": "first-party"
+        },
+        {
+          "target": "node_modules/.bun/gpt-tokenizer@4.0.0/node_modules/gpt-tokenizer/esm/encoding/cl100k_base.js",
+          "kind": "dynamic-import",
+          "scope": "bundled-dependency"
+        },
+        {
+          "target": "node_modules/.bun/gpt-tokenizer@4.0.0/node_modules/gpt-tokenizer/esm/encoding/o200k_base.js",
+          "kind": "dynamic-import",
+          "scope": "bundled-dependency"
+        },
+        {
+          "target": "node_modules/.bun/gpt-tokenizer@4.0.0/node_modules/gpt-tokenizer/esm/encoding/gpt2.js",
+          "kind": "dynamic-import",
+          "scope": "bundled-dependency"
+        },
+        {
+          "target": "node_modules/.bun/gpt-tokenizer@4.0.0/node_modules/gpt-tokenizer/esm/encoding/r50k_base.js",
+          "kind": "dynamic-import",
+          "scope": "bundled-dependency"
+        },
+        {
+          "target": "node_modules/.bun/gpt-tokenizer@4.0.0/node_modules/gpt-tokenizer/esm/encoding/p50k_base.js",
+          "kind": "dynamic-import",
+          "scope": "bundled-dependency"
+        },
+        {
+          "target": "node_modules/.bun/gpt-tokenizer@4.0.0/node_modules/gpt-tokenizer/esm/encoding/p50k_edit.js",
+          "kind": "dynamic-import",
+          "scope": "bundled-dependency"
         }
       ]
     },
@@ -102841,7 +103028,7 @@
     },
     "plugins/plugin-personal-assistant/src/lifeops/account-handoff-data-disposition.ts": {
       "sha256": "a4d0fa3be7e94a360f1a7dc0e0572a595b29d50057e3edc13bb092a2ebc6e007",
-      "bytesInOutput": 3838,
+      "bytesInOutput": 3828,
       "tracked": true,
       "gitObject": "58b07d21fc990cab57754838763ca9d132113622",
       "imports": [
@@ -106769,7 +106956,7 @@
     },
     "plugins/plugin-personal-assistant/src/lifeops/family-workflows/workspace-export.ts": {
       "sha256": "1334bea216a34c04e3f777b74a9038fa6cbfe61620f715458fb3eb6650ac25e9",
-      "bytesInOutput": 10324,
+      "bytesInOutput": 10326,
       "tracked": true,
       "gitObject": "5bd187eb235fdd61a9f95eae65efa99ee08bdbcb",
       "imports": [
@@ -113280,7 +113467,7 @@
     },
     "plugins/plugin-personal-assistant/src/providers/activity-profile.ts": {
       "sha256": "63311a3b237628fd0a2e985defb0e01387a3a63eeea343c8907d18920084aab0",
-      "bytesInOutput": 9376,
+      "bytesInOutput": 9372,
       "tracked": true,
       "gitObject": "1667b567f7fd042b00f4cbdf5f80834c41b65864",
       "imports": [
@@ -115679,7 +115866,7 @@
     },
     "plugins/plugin-scheduling/src/scheduled-task/event-payload.ts": {
       "sha256": "90d0228fe325cbaf252d1c6c892c9b64d1ab2a320da602129dc92826df090c57",
-      "bytesInOutput": 1768,
+      "bytesInOutput": 1765,
       "tracked": true,
       "gitObject": "cb2512e2595994bcc6d58cc210a2f7e0107032f0",
       "imports": [
@@ -116189,12 +116376,12 @@
       "imports": []
     },
     "plugins/plugin-sql/src/base.ts": {
-      "sha256": "7330514fd585fcb0389fbae0e3eaf802d4f2620dc74829ca522945ea836297ac",
-      "effectiveSourceSha256": "ea949cb8deb34d8548e46e96a2c038a9e97a88c6bb0ff84eead4ddf9a6ba6a4c",
+      "sha256": "b6f51bbe29e67028e3695e8ee1173e8dcf510305dda7e94093d05a97663f68dc",
+      "effectiveSourceSha256": "b6f51bbe29e67028e3695e8ee1173e8dcf510305dda7e94093d05a97663f68dc",
       "transformation": "authenticated-core-state",
-      "bytesInOutput": 163109,
+      "bytesInOutput": 165102,
       "tracked": true,
-      "gitObject": "d156c108eae91aa55fac02b03a541fbf3d08000f",
+      "gitObject": "58d2ee8b899a6394ae9c9ff5c9c6b5bdb364b9c6",
       "imports": [
         {
           "target": "packages/core/src/index.ts",
@@ -116410,11 +116597,16 @@
       ]
     },
     "plugins/plugin-sql/src/embedding-space.ts": {
-      "sha256": "6732221e4bfb103841cd1c7932baaef5f2c3c7e9c85384e3593a5ecd142fea9b",
-      "bytesInOutput": 1063,
+      "sha256": "ffd05797eda43ceeff83b559a6f09e943870f30f19fb4c3668c88dce18a9a601",
+      "bytesInOutput": 2107,
       "tracked": true,
-      "gitObject": "cb1b7e63866f02d73b7fd329d411310ec33569be",
+      "gitObject": "bbdf0326e4e99385ef3623d0e90c5f7df88c8997",
       "imports": [
+        {
+          "target": "packages/core/src/index.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
         {
           "target": "node_modules/.bun/drizzle-orm@0.45.4+48eeed0d4a4859a1/node_modules/drizzle-orm/index.js",
           "kind": "import-statement",
@@ -120139,7 +120331,7 @@
     },
     "plugins/plugin-vision/src/vision-worker-manager.ts": {
       "sha256": "227585cb5446d878cc936fb22ccae10c222f76637e389a30b57c5a2d1863b971",
-      "bytesInOutput": 8843,
+      "bytesInOutput": 8780,
       "tracked": true,
       "gitObject": "963484a67214e88aff052f9cd81f4d0d6fa806d1",
       "imports": [
@@ -120247,13 +120439,6 @@
         }
       ]
     },
-    "plugins/plugin-wallet/src/chains/evm/routes/evm-hex.ts": {
-      "sha256": "f9cf6f9c89c4bed7b33975e385d070e1a8bf901a460292250cd805405b8b728c",
-      "bytesInOutput": 0,
-      "tracked": true,
-      "gitObject": "7d59e61309a29a8faa5357a03cf5383e5d461a50",
-      "imports": []
-    },
     "plugins/plugin-wallet/src/lib/rpc-request.ts": {
       "sha256": "99724719f14356fd8d96db715a3b789bde1146c64da30ae20c9a5f5562d4105a",
       "bytesInOutput": 156,
@@ -120291,47 +120476,6 @@
         },
         {
           "target": "plugins/plugin-wallet/src/lib/rpc-request.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "plugins/plugin-wallet/src/services/tx-service.ts": {
-      "sha256": "75060544675d0130e1de3f6ac68895d829363df9cb5b38a940850664f327a052",
-      "bytesInOutput": 88,
-      "tracked": true,
-      "gitObject": "0432ca646a7466aec421df8174b2d824711b4525",
-      "imports": [
-        {
-          "target": "packages/core/src/index.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "node_modules/.bun/ethers@6.17.0+4789783d1fa00420/node_modules/ethers/lib.commonjs/index.js",
-          "kind": "import-statement",
-          "scope": "bundled-dependency"
-        },
-        {
-          "target": "plugins/plugin-wallet/src/chains/evm/routes/evm-hex.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "plugins/plugin-wallet/src/transactions.ts": {
-      "sha256": "404e575827b13b85ade8f4763e778e7f461d40e19aaf46489241de3a9b306e7c",
-      "bytesInOutput": 73,
-      "tracked": true,
-      "gitObject": "32615a4558754e31a6ee56466f8a8f2ccdc511b0",
-      "imports": [
-        {
-          "target": "plugins/plugin-wallet/src/lib/trade-safety.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "plugins/plugin-wallet/src/services/tx-service.ts",
           "kind": "import-statement",
           "scope": "first-party"
         }
@@ -120787,7 +120931,7 @@
     },
     "plugins/plugin-workflow/src/routes/workflow-routes.ts": {
       "sha256": "336d788c2466c799d2e4af41a67650913733ae385f0c8ec5576ea8eb3ccbe95e",
-      "bytesInOutput": 17798,
+      "bytesInOutput": 17799,
       "tracked": true,
       "gitObject": "0d908c5b9a3dc2161f78d059af190c92d51c4fb8",
       "imports": [
@@ -120835,7 +120979,7 @@
     },
     "plugins/plugin-workflow/src/services/embedded-workflow-service.ts": {
       "sha256": "c7620d26adef60dd357b5b1f6f9f0b29b3ae4ea355cd5de4ce2dfb32c64f868c",
-      "bytesInOutput": 69080,
+      "bytesInOutput": 69084,
       "tracked": true,
       "gitObject": "cdc1586b636c0942c3e076696e3687e5acae7e11",
       "imports": [
@@ -120930,7 +121074,7 @@
     },
     "plugins/plugin-workflow/src/services/hosted-digest.ts": {
       "sha256": "b454c53ce3f54c12b76b1d09bf1d1e9ddead57123c5ae6ca21f6dc8505ee94fc",
-      "bytesInOutput": 8818,
+      "bytesInOutput": 8823,
       "tracked": true,
       "gitObject": "5f3421561ffe2ff726ced9159d04b8e1b88148be",
       "imports": [
@@ -120996,7 +121140,7 @@
     },
     "plugins/plugin-workflow/src/services/hosted-native-source.ts": {
       "sha256": "c5eb2cb3e49369b2993718999237e8d98e19d60b33e6cf0497365c758f9068d8",
-      "bytesInOutput": 4943,
+      "bytesInOutput": 4956,
       "tracked": true,
       "gitObject": "1b8de3edfc38ec27df8d1b2329531cdca5e90600",
       "imports": [

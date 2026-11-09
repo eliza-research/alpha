@@ -51,7 +51,7 @@ const nativeCamera = registerPlugin<{
   stopRecording(): Promise<VideoReceipt>;
   getRecordingState(): Promise<{ isRecording: boolean; duration: number; fileSize: number }>;
   switchCamera(options: { direction: 'front' | 'back' }): Promise<PreviewReceipt>;
-  /** Binds VideoCapture only for Video mode (patches/eliza/camera-capture-latency.patch). */
+  /** Binds VideoCapture only for Video mode. */
   setCaptureMode?(options: { mode: 'photo' | 'video'; quality?: string; bitrate?: number; frameRate?: number }): Promise<unknown>;
   setZoom(options: { zoom: number }): Promise<void>;
   setSettings(options: { settings: { flash: 'off' | 'on' } }): Promise<void>;

@@ -8,8 +8,8 @@ import {noteRecordingPlatform} from './note-recording-platform.mjs';
 import {readFileSync} from 'node:fs';
 import {preparePatchedNative} from '../../../../scripts/prepare-patched-native.mjs';
 const native = preparePatchedNative();
-const nativePatchInputs = ['patches/eliza/native-manifest.json', 'scripts/prepare-patched-native.mjs',
- join(native.root, '.source.json'), ...JSON.parse(readFileSync('patches/eliza/native-manifest.json', 'utf8')).patches.map(row => 'patches/eliza/' + row.file)];
+const nativePatchInputs = ['android/upstream-native-sources.json', 'scripts/prepare-patched-native.mjs',
+ join(native.root, '.source.json'), ...JSON.parse(readFileSync('android/upstream-native-sources.json', 'utf8')).patches.map(row => 'patches/eliza/' + row.file)];
 
 export const voiceDraftScenarios=['manual','long','cancel','discard-wrong','mic-error','deadline','limit-info','consumer-failure',
  'stale-callback','metrics','external','recreate','empty','oversized','max-bytes','stop-failure','auto-stop-failure','open-failure','invalid-limit','constructor-failure','interrupt-release','interrupt-release-failure'];

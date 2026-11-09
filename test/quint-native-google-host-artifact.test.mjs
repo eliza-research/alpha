@@ -20,12 +20,12 @@ test('native Google host candidate binds emitted and compiled source bytes and p
     && step.expect['s.attempt'].metadata));
 });
 
-test('pinned Bun preserves real loader semantics and raw core preimages in the host graph', {
+test('pinned Bun preserves real loader semantics and the exact reviewed core bytes in the host graph', {
   skip: !process.env.ALPHA_QUINT_BUN && 'set ALPHA_QUINT_BUN to the pinned Bun 1.4.2 binary',
   timeout: 30000,
 }, () => {
   const result = checkNativeGoogleHostLoaderCompatibility(process.env.ALPHA_QUINT_BUN);
   assert.equal(result.bun, '1.4.2');
   assert.equal(result.graphInputsChecked, 13);
-  assert.notEqual(result.rawCoreInput, result.effectiveCoreInput);
+  assert.equal(result.rawCoreInput, result.effectiveCoreInput);
 });

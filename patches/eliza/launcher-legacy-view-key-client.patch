@@ -1,7 +1,0 @@
---- a/packages/ui/src/mobile-shell/view-registry.ts
-+++ b/packages/ui/src/mobile-shell/view-registry.ts
-@@ -163,3 +163 @@
--      key.startsWith(prefix) && isMobileShellViewId(key.slice(prefix.length))
--        ? byId.get(key.slice(prefix.length) as MobileShellViewId)
--        : undefined,
-+      key.startsWith(prefix) ? find(key.slice(prefix.length)) : undefined,

@@ -40,7 +40,7 @@ async function campaign(scenarios, extraSources, check, {pinnedProbe=false} = {}
     const receiptPath=join(staged.root,'.source.json');
     const generatedSources=[...paths.map(path=>join(staged.root,path)),receiptPath,...files];
     const sources=[...product,...paths.map(path=>'vendor/eliza/'+path),launcherManifest,'android/consumer-host.json',
-      'patches/eliza/native-manifest.json','patches/eliza/sms-reviewed-binding.patch','upstream.lock.json',
+      'android/upstream-native-sources.json','upstream.lock.json',
       'scripts/prepare-patched-native.mjs','scripts/upstream-native-source.mjs','test/fixtures/native-source.mjs','test/fixtures/jvm-tools.mjs',
       app+'AlphaImageCapability.java',join(directory,harness),join(directory,'Trace.java'),join(directory,'java.mjs'),
       join(directory,'sms-dispatch-platform.mjs'),join(directory,'mms-dispatch-platform.mjs'),fileURLToPath(import.meta.url),

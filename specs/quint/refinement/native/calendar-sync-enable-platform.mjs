@@ -10,7 +10,7 @@ import {calendarReviewPorts} from './scoped-calendar-review-platform.mjs';
 const calendar='plugins/plugin-native-calendar/android';
 const deletion='plugins/plugin-native-action-journal/android';
 const shared='vendor/eliza/plugins/plugin-native-calendar/test/jvm/android/';
-const manifest='patches/eliza/native-manifest.json';
+const manifest='android/upstream-native-sources.json';
 const testFixture='test/fixtures/scoped-calendar-jvm/android/content/';
 const stagedPaths=[
   calendar+'/src/main/java/ai/eliza/plugins/calendar/write/CalendarEventOptions.java',
@@ -188,7 +188,7 @@ export function calendarSyncEnablePlatform(){
     const catalog=JSON.parse(readFileSync(join(root,manifest),'utf8'));
     const modules=[calendar,deletion],patches=catalog.patches.filter(row=>modules.includes(row.module));
     const source=upstreamNativeSource(root);
-    const verified=materializeNativePatches({source,manifest:{...catalog,modules,patches},
+    const verified=materializeNativePatches({source,manifest:{...catalog,baseCommit:source.pin,modules,patches},
       patchRoot:join(root,'patches/eliza'),temporary:staged});
     const expected=Object.fromEntries(stagedPaths.map(name=>[join(staged,name),verified.files[name]]));
     for(const name of pinnedPaths){
