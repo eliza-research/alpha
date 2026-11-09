@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "9add52f6b83efa77241fb72ae769729121944cac",
-  "ledgerSha256": "015083b676aa5034a9e515c96315e8ea3f4aa7d9bbff95a4ea9840229e7a1504",
+  "ledgerSha256": "a08115a79a85fbc50b18b2e11158dbfed59a51e56a678873a90ef9417a85d966",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -33093,7 +33093,7 @@
     },
     {
       "path": "apps/app/src/prototype/agent-adapter.ts",
-      "sha256": "ba69bd17a0571aea778e4b5bbbb417b049d28d1697a5a1ec63cbfff79287a786",
+      "sha256": "abd9ec348137cd2fcb6c5f470fa6dc5a1f3fcce1083187df0414acefd7ce2308",
       "allocatedModels": [
         "Application",
         "AssistantConversation",
@@ -33479,7 +33479,7 @@
     },
     {
       "path": "apps/app/src/prototype/browser-adapter.ts",
-      "sha256": "e0f14dbf070ec814130e49729ddd82cb3a41b8454608a06128799dc479a40e04",
+      "sha256": "d8eddb116d668166ccadb1ce7aad8f1c1d2ff484368a2e9bc7b458699797c26e",
       "allocatedModels": [
         "BrowserSession",
         "BrowserUnderlay",
@@ -34080,7 +34080,7 @@
     },
     {
       "path": "apps/app/src/prototype/camera-adapter.ts",
-      "sha256": "ff7aa68cca00e79ea01307bbe1b7a6516774be6dcf75c1ed8b284fe2fd920c69",
+      "sha256": "4930d99c2bc8c0f38c9a5a39166069f9d9af083401751f8d8f8070fff9ce9f30",
       "allocatedModels": [
         "MediaLifecycle",
         "PhotosWindow",
@@ -34216,44 +34216,44 @@
           "writes": 4
         },
         {
-          "owner": "installPrototypeCameraAdapter.ArrowFunction@1159",
-          "line": 1161,
+          "owner": "installPrototypeCameraAdapter.ArrowFunction@1161",
+          "line": 1163,
           "bindings": 1,
           "writes": 33
         },
         {
           "owner": "installPrototypeCameraAdapter.attachGrid",
-          "line": 1244,
+          "line": 1246,
           "bindings": 2,
           "writes": 3
         },
         {
           "owner": "installPrototypeCameraAdapter.settleThumbnails",
-          "line": 1263,
+          "line": 1265,
           "bindings": 6,
           "writes": 1
         },
         {
           "owner": "installPrototypeCameraAdapter.loadCoverThumbnails",
-          "line": 1290,
+          "line": 1292,
           "bindings": 3,
           "writes": 1
         },
         {
           "owner": "installPrototypeCameraAdapter.run",
-          "line": 1319,
+          "line": 1321,
           "bindings": 2,
           "writes": 5
         },
         {
-          "owner": "installPrototypeCameraAdapter.ArrowFunction@1382",
-          "line": 1390,
+          "owner": "installPrototypeCameraAdapter.ArrowFunction@1384",
+          "line": 1392,
           "bindings": 7,
           "writes": 117
         },
         {
-          "owner": "installPrototypeCameraAdapter.ArrowFunction@1630",
-          "line": 1632,
+          "owner": "installPrototypeCameraAdapter.ArrowFunction@1632",
+          "line": 1634,
           "bindings": 1,
           "writes": 1
         }
@@ -34518,7 +34518,7 @@
     },
     {
       "path": "apps/app/src/prototype/clock-adapter.ts",
-      "sha256": "3c8ed25e07cd7cab53f235875b974f21caf2c55e37bc7da431f788be0b08b424",
+      "sha256": "b37f2b0fb32da9973ae4c96050c2d11f3c59af0caeb3e95d3415be90d599e5a8",
       "allocatedModels": [
         "DeviceActions",
         "WorkflowClockAdmission"
@@ -35395,7 +35395,7 @@
     },
     {
       "path": "apps/app/src/prototype/maps-adapter.ts",
-      "sha256": "5008c5a98147e06dae2c70ad076cffa179a693171e2c629d6fc89639d46ea543",
+      "sha256": "8fa1d2468330bcbf37f74df094df62ecb443bc53f4919457234e63a95b04e4c0",
       "allocatedModels": [
         "Maps",
         "MapsNavigation",
@@ -35409,43 +35409,43 @@
       "owners": [
         {
           "owner": "installPrototypeMapsAdapter",
-          "line": 40,
+          "line": 42,
           "bindings": 16,
           "writes": 37
         },
         {
           "owner": "installPrototypeMapsAdapter.retireEventReturn",
-          "line": 101,
+          "line": 103,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installPrototypeMapsAdapter.returnToEvent",
-          "line": 112,
+          "line": 114,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "installMapsChatAdapter",
-          "line": 328,
+          "line": 330,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "installMapsChatAdapter.answers",
-          "line": 330,
+          "line": 332,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installMapsChatAdapter.answer",
-          "line": 332,
+          "line": 334,
           "bindings": 1,
           "writes": 3
         },
         {
-          "owner": "installMapsChatAdapter.FunctionExpression@340",
-          "line": 341,
+          "owner": "installMapsChatAdapter.FunctionExpression@342",
+          "line": 343,
           "bindings": 1,
           "writes": 1
         }
@@ -39133,7 +39133,7 @@
     },
     {
       "path": "apps/app/src/prototype/phone.css",
-      "sha256": "e9e52df7bc41f3d176f7c784db75727bec8de5a0bce41efd793cc9f1e28a1e5f",
+      "sha256": "3c5b9b882805c34374051fffd7eeaf6b7ed00cb99aede7d1b74b3d4838f31019",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -39646,7 +39646,7 @@
     },
     {
       "path": "apps/app/src/prototype/settings-adapter.ts",
-      "sha256": "1b5b7eb1cb6b1c858cc668a575d163976dd347539358efa7e6b53d8acf59f6dc",
+      "sha256": "216134e64f859fdf6dc4fca712779be37d1588c43bc0bd7f930676b1c1f59bf3",
       "allocatedModels": [
         "PreferencesAndPresentation",
         "SettingsNav",
@@ -39962,7 +39962,7 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "8aabc9bdc9bfc07acb68ab3e3d0e948ee096cd2d216cb4fd244d62298f75f482",
+      "sha256": "546ae37828d255e20cfbccf874f8890a971d2d440bca664f9360c967f1cbcc98",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -41806,7 +41806,7 @@
     },
     {
       "path": "apps/app/src/runtime/connection-ui.tsx",
-      "sha256": "c49f5cf1e8986a52842d8a272617c16e1e788017483eaebf7076b68db85cb41c",
+      "sha256": "1b0c263b43f27edb41ef812b58cf307cbf155cc4053b6da40e9c38dfbe785b21",
       "allocatedModels": [
         "Application",
         "ApplicationComposition",
@@ -42878,7 +42878,7 @@
     },
     {
       "path": "apps/app/src/runtime/google-connection-ui.tsx",
-      "sha256": "9e9bf2d5586a8f06145680033648db4279eb2fcd6f821a23ecfe17d9ee96f361",
+      "sha256": "998b86964facaa14168055ad21bb05431ef29e29c59f8e4ebe047601bb8ca0a5",
       "allocatedModels": [
         "GoogleAccounts",
         "GoogleConnect",
@@ -223134,6 +223134,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "b0e71ea7ca64caf4c52c50a2ed5f6953385e036b741427691eb3f6579c87d541"
+    "sha256": "54e9be8d8135b43b673a6cc48582278a4caf013c8c39d31a22a3ab75907ca9ed"
   }
 }
