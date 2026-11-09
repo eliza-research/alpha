@@ -34804,9 +34804,9 @@
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "a73d4f5559c93436651a3c301622309f5ad3f65c265218029c5ae5af12e4862a",
+      "sha256": "131f8e1b5864838d672bfe8e783a1f50307adc5844bf42f0e17944759b6fc7b6",
       "stateAnchors": [],
-      "integrationReview": "2026-11-09: Photos tools menu remains mounted independently of image import support; Select and New album retain existing handlers, and only Choose image requires importAvailable. Other template state mappings unchanged; existing state-audit obligations remain."
+      "integrationReview": "2026-11-09: Owner-requested removal of Prep me affordance, generated preparation panel and redundant read-only/provider paragraphs. Event identity, time, calendar, notes and all mutation/uncertainty guards remain unchanged."
     },
     {
       "path": "apps/app/src/prototype/use-in-email-review.ts",
