@@ -1,12 +1,13 @@
 import React, {act, Component, type ReactNode} from 'react';
 import {createRoot} from 'react-dom/client';
+import {openAppInfo} from '../../../../apps/app/src/native';
 import {installHomeShell} from '../../../../apps/app/src/prototype/home-shell';
 import {appKey, type InstalledApp, type LaunchTarget} from '../../../../.eliza/client-features/plugins/plugin-native-system/src/client/launcher';
 import {navigateMobileShell, type MobileShellNavigationAction} from '../../../../.eliza/client-features/packages/ui/src/mobile-shell/navigation';
 
 const catalog: Record<number, InstalledApp> = {
   1: {packageName:'org.fixture.clock',activityName:'org.fixture.clock.Main',label:'Clock'},
-  2: {packageName:'org.fixture.mail',activityName:'org.fixture.mail.Main',user:'10',profile:'work',label:'Mail'},
+  2: {packageName:'org.fixture.mail',activityName:'org.fixture.mail.Main',user:'270',profile:'work',label:'Mail'},
 };
 const keys = new Map(Object.entries(catalog).map(([id, app]) => [appKey(app), Number(id)]));
 const selected = (key: string | null | undefined) => key ? keys.get(key) ?? 0 : 0;
@@ -40,11 +41,12 @@ class HostBase extends Component<Record<string, never>, HostState> {
 }
 type Host = HostBase & {openAllApps(): void};
 
-function mount(selectedFavorites: number[]) {
+function mount(selectedFavorites: number[], useNative: boolean) {
   const timers = new Map<number, () => void>(), retired: (() => void)[] = [];
   let timerId = 0, inventory = [1, 2], favorites = selectedFavorites.map(id => appKey(catalog[id]));
   let owner: Host | null = null, lastLaunch = 0, infoTarget = 0, infoNotice = false;
   let information: {resolve:()=>void;reject:(error:Error)=>void} | null = null;
+  let nativeTarget: LaunchTarget | null = null, notice = '', listReads = 0, startupReads = 0;
   const port = {
     inspect: undefined as (() => DrawerRef) | undefined,
     setTimeout(run: () => void, duration: number) {
@@ -66,23 +68,29 @@ function mount(selectedFavorites: number[]) {
     same(target.user,catalog[id].user,'Profile');
     return id;
   }
+  function captureAppInfo(target: LaunchTarget) {
+    same(information,null,'One outstanding App Info call');
+    infoTarget=exact(target);
+    nativeTarget=target;
+    return new Promise<void>((resolve,reject)=>{information={resolve,reject};});
+  }
   class DrawerHost extends HostBase {
     toast(message: string) {
-      same(message,`${catalog[infoTarget].label} info could not be opened. Fixture refusal`,'Actual App Info failure notice');
+      if (!useNative) same(message,`${catalog[infoTarget].label} info could not be opened. Fixture refusal`,'Actual App Info failure notice');
       infoNotice = true;
+      notice = message;
     }
   }
   const shell = installHomeShell(DrawerHost,{},{
-    list:async()=>({apps:inventory.map(id=>catalog[id])}),
+    async list() {
+      listReads++;
+      return {apps:inventory.map(id=>catalog[id])};
+    },
     launch:async target=>{lastLaunch=exact(target);},
   },{
     appInventory:'simulated',follow:false,
     favorites:{read:()=>favorites,write(value){favorites=[...value];}},
-    appInfo(target) {
-      same(information,null,'One outstanding App Info call');
-      infoTarget=exact(target);
-      return new Promise<void>((resolve,reject)=>{information={resolve,reject};});
-    },
+    appInfo: useNative ? openAppInfo : captureAppInfo,
   });
   const root = createRoot(required(document.getElementById('mount'),'Fixture root'));
   const drawer = () => document.querySelector<HTMLDivElement>('[data-alpha-apps-drawer]');
@@ -115,6 +123,7 @@ function mount(selectedFavorites: number[]) {
     openDrawer() {host().openAllApps();},
     closeDrawer() {button(rootDrawer(),'Close apps').click();},
     async replaceInventory(ids:number[]) {inventory=ids;await shell.launcher.load();},
+    stageInventory(ids:number[]) {inventory=ids;},
     search(value:string) {
       const search = input();
       search.focus();
@@ -143,10 +152,10 @@ function mount(selectedFavorites: number[]) {
     closeMenu() {button(rootDrawer(),'Close menu').click();},
     addHome() {menuItem('Add to Home').click();},
     appInfo() {const info=menuItem('App info');info.focus();info.click();},
-    async infoReply(ok:boolean) {
+    async infoReply(ok:boolean, message = "Fixture refusal", code?: string) {
       const waiting=required(information,'Current App Info call');
       information=null;
-      if(ok)waiting.resolve();else waiting.reject(Error('Fixture refusal'));
+      if(ok)waiting.resolve();else waiting.reject(Object.assign(Error(message), {code}));
       await Promise.resolve();
     },
   };
@@ -168,23 +177,34 @@ function mount(selectedFavorites: number[]) {
     async start() {
       await act(async()=>{root.render(<DrawerHost ref={node=>{owner=node as Host|null;}}/>);});
       await act(async()=>{await shell.launcher.load();});
+      startupReads = listReads;
       return observe();
     },
     async step(operation:keyof typeof operations,args:unknown[]) {
       await act(async()=>{await Reflect.apply(operations[operation],operations,args);});
       return observe();
     },
+    handoff() {
+      const state = observe();
+      return {
+        open:state['s.open'], menu:state['s.menu'], inventory:state['s.inventory'], pending:state['s.infoPending'],
+        infoTarget, nativeTarget, notice, refreshes:listReads-startupReads,
+      };
+    },
+    captureAppInfo,
     async close() {await act(async()=>{root.unmount();});},
   };
 }
 let campaign: ReturnType<typeof mount> | undefined;
 browser.quintDrawerFixture = {
-  async reset(favorites:number[]) {
+  async reset(favorites:number[], useNative = false) {
     await campaign?.close();
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-    campaign=mount(favorites);
+    campaign=mount(favorites,useNative);
     return campaign.start();
   },
+  handoff() {return required(campaign,'Fixture campaign').handoff();},
+  captureAppInfo(target: LaunchTarget) {return required(campaign,'Fixture campaign').captureAppInfo(target);},
   step(operation:Parameters<ReturnType<typeof mount>['step']>[0],args:unknown[]) {return required(campaign,'Fixture campaign').step(operation,args);},
   async close() {await campaign?.close();campaign=undefined;},
 };

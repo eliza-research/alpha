@@ -77,7 +77,7 @@ async function runIdentityCompositionRefinement(extraSources = []) {
       })();`);
       const errors = [];
       page.on('pageerror', error => errors.push(error.message));
-      await page.goto(origin + '/quint-composition');
+      await page.goto(origin + '/quint-composition', {waitUntil: 'domcontentloaded', timeout: 90000});
       try {
         await page.waitForFunction(() => window.refinement?.controller.getSnapshot().cloudAccount &&
           window.refinement.controller.getSnapshot().kind === 'resident' && !window.refinement.controller.getSnapshot().busy);

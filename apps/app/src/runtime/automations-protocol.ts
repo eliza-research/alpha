@@ -17,6 +17,7 @@ export interface AutomationSnapshot {rows:AutomationRow[];issues:AutomationIssue
 export interface PromptDraft {title:string;instructions:string;triggerType:'once'|'cron'|'event';scheduledAt:string;cron:string;eventKind:string;timezone:string;originalScheduledAt?:string;originalEnabled?:boolean}
 export interface ReminderDraft {message:string;due:string;timezone:string;idempotencyKey:string}
 export type ScheduledVerb = 'snooze'|'skip'|'complete'|'dismiss'|'escalate'|'acknowledge'|'edit'|'reopen'|'fire';
+export const scheduledTaskEnded = (status:string) => ['completed','dismissed','skipped','expired','failed'].includes(status);
 const object=(value:unknown):ObjectValue=>{if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Invalid automation response.');return value as ObjectValue;};
 const text=(value:unknown):string=>typeof value==='string'?value:'';
 export function automationId(value:unknown):string {const id=text(value);if(!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$/.test(id)||id.includes('..'))throw Error('Automation identity is unavailable.');return id;}
@@ -66,7 +67,8 @@ function scheduled(value:unknown):AutomationRow {
  if(row.ownerVisible!==true)throw Error('An unlisted scheduled item was returned.');
  const labels:Record<string,string>={gm:'Good morning',gn:'Good night',checkin:'Daily check-in','weekly-review':'Weekly review'};
  const title=labels[text(row.metadata?.recordKey)]||text(row.metadata?.slot)||text(row.kind)||'Scheduled task';
- return {key:'scheduled:'+id,id,kind:'schedule',title,description:text(row.promptInstructions),status:trigger.kind==='manual'?'paused':text(state.status),enabled:trigger.kind!=='manual'&&!['completed','skipped','expired','failed','dismissed'].includes(state.status),source:'Agent schedule',schedule:schedule(trigger),record:row};
+ const status=text(state.status),ended=scheduledTaskEnded(status);
+ return {key:'scheduled:'+id,id,kind:'schedule',title,description:text(row.promptInstructions),status:trigger.kind==='manual'&&!ended?'paused':status,enabled:trigger.kind!=='manual'&&!ended,source:'Agent schedule',schedule:schedule(trigger),record:row};
 }
 function reminder(value:unknown):AutomationRow {
  const row=object(value),definition=object(row.definition),id=automationId(definition.id),occurrence=row.occurrence?object(row.occurrence):null;
@@ -137,7 +139,13 @@ export class AutomationsProtocol {
  }
  async scheduledVerb(id:string,verb:ScheduledVerb,signal:AbortSignal):Promise<unknown>{
   const result=object(await this.request('/api/lifeops/scheduled-tasks/'+automationId(id)+'/'+verb,'POST',verb==='snooze'?{minutes:60}:{},signal));
-  if(verb==='fire'){const fire=object(result.fire);if(!['fired','raced','skipped','dispatch_deferred','dispatch_failed'].includes(fire.kind))throw Error('Scheduled execution was not confirmed.');if(fire.kind==='raced')throw new AutomationOutcomeError('Another run was already in progress.');if(fire.kind!=='fired')throw new AutomationOutcomeError(text(fire.reason)||text(fire.error)||'This item did not run. Read its current status before trying again.');}
+  if(verb==='fire'){
+   const fire=object(result.fire);
+   if(fire.kind==='raced')throw new AutomationOutcomeError('Another run was already in progress.');
+   if(!['fired','skipped','dispatch_deferred','dispatch_failed'].includes(fire.kind)||fire.task?.taskId!==id)
+    throw Error('Scheduled execution was not confirmed.');
+   if(fire.kind!=='fired')throw new AutomationOutcomeError(text(fire.reason)||text(fire.error)||'This item did not run. Read its current status before trying again.');
+  }
   else if(object(result.task).taskId!==id)throw Error('Scheduled change was not confirmed.');
   return result;
  }
