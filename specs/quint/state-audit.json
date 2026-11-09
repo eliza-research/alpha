@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "b1817660a0347ae19551b9ee296410fe55f02d59",
-  "ledgerSha256": "eb124c577c1b4dfc7c0fdfd528dc0ba716354992e408aaf34ee8571156149dbc",
+  "ledgerSha256": "59e70d17c66e87bacb98b80fc847621ed4c512cf7424803151362bb6bead2add",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -35705,7 +35705,7 @@
     },
     {
       "path": "apps/app/src/prototype/maps-adapter.ts",
-      "sha256": "f952be1d936ccb677e4d98f9c9da22ad6734ca66d33c100c529b81548ab7ede1",
+      "sha256": "5008c5a98147e06dae2c70ad076cffa179a693171e2c629d6fc89639d46ea543",
       "allocatedModels": [
         "Maps",
         "MapsNavigation",
@@ -40270,7 +40270,7 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "1c94732bcaf76e4a09ba7a4945dcc81332b59a282f0c27c121f7fa478029a309",
+      "sha256": "8aabc9bdc9bfc07acb68ab3e3d0e948ee096cd2d216cb4fd244d62298f75f482",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -221622,6 +221622,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "be14a8c5bf9a720a6a6977921ab9512d441825540c6c2ccf987abd43c770a02e"
+    "sha256": "5d8a2ce127e0d8036dd787ab82a9bd01b6bd193bd2d4cae4c18fe8261ace1b5e"
   }
 }
