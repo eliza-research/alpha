@@ -149,11 +149,11 @@
       "version": "1.4.2",
       "revision": "744846f844374847c902b5e7fd59b4342a51ef99"
     },
-    "bundleSha256": "c51f90d9a46a174091da1dd8b5f854bc0faeb958d71f6390d10adb0ca9ca4157",
+    "bundleSha256": "b345e6f06b11bcb03862b39284f126e1022c75cfbebddb7e25ac57694adda077",
     "sourceTreeVerifiedBeforeAndAfter": true,
     "inputHashesUnchanged": true,
-    "rawMetafileSha256": "9451844635060461ddc5af0059ca7694963c06615ace2a01a2e3d39f1595ee63",
-    "producerObservationSha256": "551c533bf3ab7997af483faae9ae3a0e4c66d7cc60a869cc91a0f649dfe3798b"
+    "rawMetafileSha256": "6dfe4c18ae7aed4970eb7973183f97586bd719e3b6a7db817effc5d2c800a383",
+    "producerObservationSha256": "76b9d562aa42df64f94b73742aa59254a949fe52fe661a2ae086119531ae4790"
   },
   "counts": {
     "parsed": 9999,
@@ -69028,7 +69028,7 @@
     },
     "plugins/plugin-assistant/src/features/advanced-capabilities/evaluators/preference-items.ts": {
       "sha256": "95be14edcca6f75dc36537503f22b4ac00280154fa747692fb78fc05bb24c601",
-      "bytesInOutput": 15846,
+      "bytesInOutput": 15848,
       "tracked": true,
       "gitObject": "07bd6f95cb668e60cc0d2228deac6214204c485e",
       "imports": [
@@ -97203,7 +97203,7 @@
     },
     "plugins/plugin-local-inference/src/services/voice/wake-word.ts": {
       "sha256": "d29607d0602c1712a59e3060da29d39554987e8c35a30003c5ddd035c2a36a24",
-      "bytesInOutput": 6744,
+      "bytesInOutput": 6740,
       "tracked": true,
       "gitObject": "1a0c32165c499612ac599f2b1778b52bcff83ab8",
       "imports": [
@@ -120731,7 +120731,7 @@
     },
     "plugins/plugin-vision/src/vision-worker-manager.ts": {
       "sha256": "227585cb5446d878cc936fb22ccae10c222f76637e389a30b57c5a2d1863b971",
-      "bytesInOutput": 8872,
+      "bytesInOutput": 8868,
       "tracked": true,
       "gitObject": "963484a67214e88aff052f9cd81f4d0d6fa806d1",
       "imports": [

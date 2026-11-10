@@ -12,7 +12,7 @@ const deletionSharedSources=['DeferredDeletionCoordinator.java','DeferredDeletio
   .map(name=>'plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/'+name)
   .concat('plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NoticeOwner.java');
 export const deletionScenarios=['deleted','conflict','permission','unknown','undo','reboot','open','claim-refused',
-  'claim-committed-error','outcome-refused','outcome-committed-error','restart','stale-owner','stale-stage','multiple-rows','reminder-open','reminder-undo','reminder-retired','reminder-effects','stage-refused','stage-committed-error','stage-schedule-error'];
+  'claim-committed-error','outcome-refused','outcome-committed-error','restart','stale-owner','stale-stage','multiple-rows','reminder-open','reminder-undo','reminder-retired','reminder-session-retired','reminder-effects','stage-refused','stage-committed-error','stage-schedule-error'];
 export function generateDeletionCoordinatorTraces(scenario,extraSources=[]){
  const platform=deletionPlatform();
  const prepared=preparePatchedNative({root});
@@ -31,7 +31,7 @@ export async function checkDeletionCoordinator(extraSources=[]){
  const data=generateDeletionCoordinatorTraces(undefined,extraSources);
  return checkTraces({model:'DeletionJournal',id:'DeletionJournal-coordinator',scope:'bounded-orchestration',
   traces:data.traces,sources:data.sources,driverHashes:data.driverHashes,assumptions:[
-   `Actual patched shared DeferredDeletionCoordinator, Alpha host binding, journal and NativeOwnerReminderHost execute with external ports ${data.fixtureSha256}.`,
+   `Actual pinned shared DeferredDeletionCoordinator, Alpha host binding, journal and NativeOwnerReminderHost execute with external ports ${data.fixtureSha256}.`,
    'One selected calendar row projects phase and durable dispatch admissions. Actual provider call counts are retained separately and asserted not to replay.',
    'Durable-write observations include failures before replacement and after replacement. Raw stored dispatching state and public unknown receipts are separate checkpoints.',
    'WorkManager, encrypted storage and calendar/reminder providers are controlled boundaries. Android integration and arbitrary multi-row retention remain separate obligations.',
