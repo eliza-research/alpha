@@ -34,7 +34,7 @@ for(const coverage of ['unavailable','non-google'] as const)test(`legacy Maps co
  },{coverage});
  await residentHome(page);await button(page,'Maps').click();
  if(coverage==='non-google'){
-  const search=page.getByRole('textbox',{name:'Search places',exact:true});
+  const search=page.getByRole('searchbox',{name:'Search places',exact:true});
   await search.fill('Regional search result');await search.press('Enter');
   await expect(page.getByRole('button',{name:/^Regional search result/})).toBeVisible();
   await page.getByRole('button',{name:'Clear search',exact:true}).click();
