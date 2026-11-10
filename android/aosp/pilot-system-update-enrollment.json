@@ -4,7 +4,12 @@
   "product": "alpha_stallion_phone",
   "device": "stallion",
   "manifestUrl": "https://github.com/eliza-research/alphaphone/releases/download/os-pilot/alpha-os-update.json",
-  "hosts": ["github.com", "release-assets.githubusercontent.com", "objects.githubusercontent.com"],
+  "hosts": [
+    "github.com",
+    "release-assets.githubusercontent.com",
+    "objects.githubusercontent.com",
+    "storage.googleapis.com"
+  ],
   "legacyBuildFingerprint": "Alpha/alpha_stallion_phone/stallion:17/CP2A.260605.016/alpha_os_lab_20261106:userdebug/test-keys",
   "legacyPlatformCertificateSha256": "c8a2e9bccf597c2fb6dc66bee293fc13f2fc47ec77bc6b2b0d52c11f51192ab8",
   "legacyOTACertificateSha256": "a40da80a59d170caa950cf15c18c454d47a39b26989d8b640ecd745ba71bf5dc",

@@ -20,7 +20,7 @@ require(profile.schema===1&&profile.purpose==='preserving-pilot-qualification'&&
 require(profile.rotatePlatformOrAVBKeys===false&&profile.wipeData===false,'This enrollment cannot authorize a key rotation or wipe');
 const url=new URL(profile.manifestUrl);
 require(url.protocol==='https:'&&!url.username&&!url.password&&!url.search&&!url.hash&&url.hostname==='github.com'&&url.pathname==='/eliza-research/alphaphone/releases/download/os-pilot/alpha-os-update.json','Unexpected OS discovery channel');
-require(JSON.stringify(profile.hosts)===JSON.stringify(['github.com','release-assets.githubusercontent.com','objects.githubusercontent.com']),'Unexpected OS download hosts');
+require(JSON.stringify(profile.hosts)===JSON.stringify(['github.com','release-assets.githubusercontent.com','objects.githubusercontent.com','storage.googleapis.com']),'Unexpected OS download hosts');
 const custody=JSON.parse(fs.readFileSync(file('android/signing/os-custody-expected.json')));
 require(profile.otaCertificateSha256===custody.osCertificateSha256.releasekey,'OTA enrollment must use the verified release identity');
 require(options['--source-root']&&options['--public-identities']&&options['--receipt']&&/^[a-f0-9]{64}$/.test(options['--expected-product-mk-sha256']||''),'Source, public identities, exact product preimage and new receipt are required');
