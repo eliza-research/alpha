@@ -76,7 +76,7 @@ test('listener APK rows are APK-build evidence only and never distributable whil
  assert.equal(listenerApkRow(earned,{...facts,mode:'debug'}).distributable,false);
  assert.equal(listenerApkRow(earned,{...facts,signed:false,signerSha256:null}).distributable,false);
  assert.match(listenerApkRow(record,{...facts,requested:[...facts.requested,'android.permission.INTERNET']}).problems.join(),/network permission/);
- assert.match(listenerApkRow(record,{...facts,packageName:'ai.elizaresearch.alphaphone'}).problems.join(),/expected ai\.alphacompute\.alphaphone\.sense/);
+ assert.match(listenerApkRow(record,{...facts,packageName:'ai.elizaresearch.alphaphone'}).problems.join(),/expected ai\.elizaresearch\.alphaphone\.sense/);
  assert.match(listenerApkRow(record,{...facts,permissionProblem:'outside the reviewed set'}).problems.join(),/reviewed set/);
  const section=listenerManifestSection(record,[]);
  assert.equal(section.qualified,false);

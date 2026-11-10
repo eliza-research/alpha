@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "75b44015561368fc8ca982b70b8bafbdf1672a7b",
-  "ledgerSha256": "6edeb533438091d4707edfbd2bff5c5b96f441a406e2a3f982e82e6e3b62dcc2",
+  "ledgerSha256": "f79a99bf6669b5ab9b84e2e17269c8c4cfcfb60c70e0d1709755fc4bcd3b1ba1",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -22,19 +22,735 @@
     "The ledger supplies pinned source bytes. Effective client/native/runtime patch outputs require their separately authenticated source mappings."
   ],
   "counts": {
-    "files": 5807,
+    "files": 5817,
     "testSupportFiles": 305,
     "testSupportCandidates": 11609,
-    "parsedFiles": 5713,
-    "languageReview": 94,
+    "parsedFiles": 5721,
+    "languageReview": 96,
     "parseErrors": 0,
-    "candidates": 69844,
-    "writeSites": 68707,
-    "writeAssociations": 61622,
-    "asynchronous": 8605,
-    "unassignedWrites": 10525
+    "candidates": 69960,
+    "writeSites": 68731,
+    "writeAssociations": 61641,
+    "asynchronous": 8606,
+    "unassignedWrites": 10530
   },
   "files": [
+    {
+      "path": "android/aosp/branding/core-launcher/AlphaCoreLauncherPolicy.java",
+      "sha256": "c2076451cfdfaf8e71dcf5f7367ec0b6f2065d8b9592043ad6cbeb6162f98fa7",
+      "allocatedModels": [
+        "OSDefaults"
+      ],
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "AlphaCoreLauncherPolicy.protects@8",
+          "line": 8,
+          "bindings": 4,
+          "writes": 0
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "android/aosp/branding/core-launcher/AlphaQsDefaultsPolicy.java",
+      "sha256": "81bc50974831d9437413f4c94a94b3e224ec11d5171d55633ac765e7409ec311",
+      "allocatedModels": [
+        "OSDefaults"
+      ],
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "AlphaQsDefaultsPolicy.shouldMigrate@15",
+          "line": 15,
+          "bindings": 6,
+          "writes": 3
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "android/aosp/branding/core-launcher/AlphaSharedStoragePolicy.java",
+      "sha256": "71fcbf26572a4383d02e8af2ca110467a7915c1bdfaa36e7df711e2234d4a1d1",
+      "allocatedModels": [
+        "OSDefaults"
+      ],
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "AlphaSharedStoragePolicy.shouldGrant@8",
+          "line": 8,
+          "bindings": 6,
+          "writes": 0
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "android/aosp/branding/provision/AlphaAppearance.java",
+      "sha256": "fcfa2a9794a7dbd925bc48f7899b70497072733e76ac42740bbbb77d46099e7f",
+      "allocatedModels": [
+        "OSProvisioning"
+      ],
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "AlphaAppearance.applyPalette@17",
+          "line": 17,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaAppearance.onCreate@27",
+          "line": 27,
+          "bindings": 5,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaAppearance.onCreate@27.lambda@47",
+          "line": 47,
+          "bindings": 2,
+          "writes": 0
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 1
+    },
+    {
+      "path": "android/aosp/branding/provision/AlphaFreshPresets.java",
+      "sha256": "f93d3e81357896473f05696c9f0c80aa2c0e3e7185caca75a6a596d45ea6a97b",
+      "allocatedModels": [
+        "OSProvisioning"
+      ],
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "AlphaFreshPresets.shouldRunWelcome@17",
+          "line": 17,
+          "bindings": 4,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaFreshPresets.eligible@30",
+          "line": 30,
+          "bindings": 4,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaFreshPresets.ensureKeyboard@43",
+          "line": 43,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaFreshPresets.ensureKeyboard@43.Anonymous@45.target@49",
+          "line": 50,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaFreshPresets.ensureKeyboard@43.Anonymous@45.enableIfUnchanged@62",
+          "line": 62,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaFreshPresets.ensureKeyboard@43.Anonymous@45.selectIfEmpty@66",
+          "line": 66,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaFreshPresets.nonempty@77",
+          "line": 77,
+          "bindings": 1,
+          "writes": 0
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 2
+    },
+    {
+      "path": "android/aosp/branding/provision/AlphaFreshSetupPolicy.java",
+      "sha256": "16373b453d3ef4c5aa79c6925b0b4ac190080c0218ea1a6870853da2be027168",
+      "allocatedModels": [
+        "OSProvisioning"
+      ],
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "AlphaFreshSetupPolicy.eligible@6",
+          "line": 6,
+          "bindings": 3,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaFreshSetupPolicy.homeVerified@9",
+          "line": 9,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaFreshSetupPolicy.ImeResult",
+          "line": 12,
+          "bindings": 4,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaFreshSetupPolicy.ImePort.enableIfUnchanged@18",
+          "line": 18,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaFreshSetupPolicy.ImePort.selectIfEmpty@19",
+          "line": 19,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaFreshSetupPolicy.ensureKeyboard@21",
+          "line": 21,
+          "bindings": 7,
+          "writes": 3
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "android/aosp/branding/provision/AlphaWelcome.java",
+      "sha256": "610657ccc31370730fe533109b473aff0ec2ec1a16e16af1429043d8d4c48793",
+      "allocatedModels": [
+        "OSProvisioning"
+      ],
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "AlphaWelcome.dp@21",
+          "line": 21,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaWelcome.show@25",
+          "line": 25,
+          "bindings": 13,
+          "writes": 1
+        },
+        {
+          "owner": "AlphaWelcome.show@25.lambda@59",
+          "line": 59,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaWelcome.Completion",
+          "line": 69,
+          "bindings": 7,
+          "writes": 10
+        },
+        {
+          "owner": "AlphaWelcome.Completion.<init>@75",
+          "line": 75,
+          "bindings": 5,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaWelcome.Completion.begin@79",
+          "line": 83,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaWelcome.Completion.begin@79.lambda@92",
+          "line": 92,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaWelcome.Completion.held@102",
+          "line": 102,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaWelcome.Completion.finishPresets@105",
+          "line": 107,
+          "bindings": 3,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaWelcome.Completion.fail@119",
+          "line": 119,
+          "bindings": 3,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaWelcome.Completion.fail@119.lambda@126",
+          "line": 126,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaWelcome.text@131",
+          "line": 131,
+          "bindings": 5,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaWelcome.button@138",
+          "line": 138,
+          "bindings": 6,
+          "writes": 1
+        },
+        {
+          "owner": "AlphaWelcome.button@138.lambda@146",
+          "line": 146,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "AlphaWelcome.open@150",
+          "line": 150,
+          "bindings": 3,
+          "writes": 0
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 1,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "android/app/src/androidTest/java/ai/eliza/plugins/reminders/ReminderDeletionJournalFixture.java",
+      "sha256": "46a4c966a5236a3381d5b1024c9b3c06adb1f43025f23a2bf95e43328f63ade0",
+      "allocatedModels": [
+        "DeletionJournal"
+      ],
+      "sourcePathClass": "test-support-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "ReminderDeletionJournalFixture.Receiver.onReceive@14",
+          "line": 14,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderDeletionJournalFixture.config@15",
+          "line": 15,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderDeletionJournalFixture.clock@16",
+          "line": 16,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderDeletionJournalFixture",
+          "line": 17,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderDeletionJournalFixture.notifying@19",
+          "line": 20,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderDeletionJournalFixture.posted@24",
+          "line": 24,
+          "bindings": 3,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderDeletionJournalFixture.dropAlarms@26",
+          "line": 26,
+          "bindings": 4,
+          "writes": 1
+        },
+        {
+          "owner": "ReminderDeletionJournalFixture.assertAlertReturns@28",
+          "line": 28,
+          "bindings": 3,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderDeletionJournalFixture.cleanup@34",
+          "line": 34,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderDeletionJournalFixture.seed@39",
+          "line": 39,
+          "bindings": 3,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderDeletionJournalFixture.persistedSuspensionBlocksDueDeliveryAndUndoKeepsOriginalOccurrence@40",
+          "line": 41,
+          "bindings": 8,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderDeletionJournalFixture.undoOfPostedReminderPostsItAgain@56",
+          "line": 57,
+          "bindings": 5,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderDeletionJournalFixture.undoFromPausedDeletionReArmsTheAlert@66",
+          "line": 67,
+          "bindings": 5,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderDeletionJournalFixture.expiryIsSingleWinnerAndChangedBootRequiresReview@79",
+          "line": 80,
+          "bindings": 7,
+          "writes": 0
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 24
+    },
+    {
+      "path": "android/app/src/androidTest/java/ai/eliza/plugins/reminders/ReminderLifecycleTestAccess.java",
+      "sha256": "e233b7bef448b87f9bc7c6c522ebdbdcdfd2dbafea656ad4c63cfb0c947d2e96",
+      "allocatedModels": [
+        "DeviceActions"
+      ],
+      "sourcePathClass": "test-support-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "ReminderLifecycleTestAccess.store@11",
+          "line": 11,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderLifecycleTestAccess.Isolated",
+          "line": 14,
+          "bindings": 1,
+          "writes": 2
+        },
+        {
+          "owner": "ReminderLifecycleTestAccess.Isolated.<init>@15",
+          "line": 15,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderLifecycleTestAccess.Isolated.schedule@16",
+          "line": 16,
+          "bindings": 4,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderLifecycleTestAccess.Isolated.saveTodo@17",
+          "line": 17,
+          "bindings": 3,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderLifecycleTestAccess.Isolated.read@18",
+          "line": 18,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderLifecycleTestAccess.Isolated.cancel@19",
+          "line": 19,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderLifecycleTestAccess.storageFull@21",
+          "line": 21,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderLifecycleTestAccess.bootId@23",
+          "line": 23,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderLifecycleTestAccess.restore@24",
+          "line": 24,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderLifecycleTestAccess.markBoot@26",
+          "line": 26,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderLifecycleTestAccess.saveTodo@27",
+          "line": 27,
+          "bindings": 4,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderLifecycleTestAccess.todoDecision@28",
+          "line": 28,
+          "bindings": 3,
+          "writes": 0
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 1,
+      "unassignedWrites": 1
+    },
+    {
+      "path": "android/app/src/androidTest/java/ai/eliza/plugins/reminders/ReminderTestAccess.java",
+      "sha256": "6dfa84a7bfa691f9f43a4a1518b2b7a8b19779c2a6827ca239a1b31a078732e0",
+      "allocatedModels": [
+        "DeviceActions"
+      ],
+      "sourcePathClass": "test-support-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "ReminderTestAccess",
+          "line": 22,
+          "bindings": 1,
+          "writes": 2
+        },
+        {
+          "owner": "ReminderTestAccess.isolate@23",
+          "line": 23,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderTestAccess.release@27",
+          "line": 27,
+          "bindings": 3,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderTestAccess.fixtureConfiguration@34",
+          "line": 35,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderTestAccess.Recording",
+          "line": 40,
+          "bindings": 2,
+          "writes": 2
+        },
+        {
+          "owner": "ReminderTestAccess.Recording.read@42",
+          "line": 42,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderTestAccess.Recording.write@43",
+          "line": 43,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderTestAccess.alarm@47",
+          "line": 47,
+          "bindings": 5,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderTestAccess.store@51",
+          "line": 51,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderTestAccess.digest@58",
+          "line": 58,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderTestAccess.channel@59",
+          "line": 59,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderTestAccess.allowed@60",
+          "line": 60,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderTestAccess.schedule@61",
+          "line": 61,
+          "bindings": 5,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderTestAccess.schedule@62",
+          "line": 62,
+          "bindings": 6,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderTestAccess.schedule@63",
+          "line": 63,
+          "bindings": 7,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderTestAccess.read@64",
+          "line": 64,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderTestAccess.list@65",
+          "line": 65,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderTestAccess.selected@66",
+          "line": 66,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderTestAccess.operate@67",
+          "line": 67,
+          "bindings": 4,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderTestAccess.operationReceipt@68",
+          "line": 68,
+          "bindings": 4,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderTestAccess.decide@69",
+          "line": 69,
+          "bindings": 4,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderTestAccess.cancel@70",
+          "line": 70,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderTestAccess.restore@71",
+          "line": 71,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderTestAccess.deliver@72",
+          "line": 72,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderTestAccess.deliver@73",
+          "line": 73,
+          "bindings": 3,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderTestAccess.Envelope",
+          "line": 75,
+          "bindings": 2,
+          "writes": 2
+        },
+        {
+          "owner": "ReminderTestAccess.Envelope.<init>@77",
+          "line": 77,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderTestAccess.removeFixture@83",
+          "line": 83,
+          "bindings": 9,
+          "writes": 1
+        },
+        {
+          "owner": "ReminderTestAccess.Taps",
+          "line": 96,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "ReminderTestAccess.Taps.<init>@97",
+          "line": 97,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderTestAccess.Taps.same@98",
+          "line": 98,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderTestAccess.Taps.prepare@99",
+          "line": 99,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderTestAccess.Taps.capture@100",
+          "line": 100,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderTestAccess.Taps.consume@102",
+          "line": 102,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "ReminderTestAccess.Taps.dismiss@103",
+          "line": 103,
+          "bindings": 1,
+          "writes": 0
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 3,
+      "unassignedWrites": 4
+    },
     {
       "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/AccessibilityBounds.java",
       "sha256": "2e49be96212465e011423aaf408fe54b5293f1ea0824683632364227d96b862f",
@@ -15999,420 +16715,6 @@
       "parseErrors": [],
       "asynchronous": 0,
       "unassignedWrites": 62
-    },
-    {
-      "path": "android/app/src/androidTest/java/ai/eliza/plugins/reminders/ReminderDeletionJournalFixture.java",
-      "sha256": "46a4c966a5236a3381d5b1024c9b3c06adb1f43025f23a2bf95e43328f63ade0",
-      "allocatedModels": [
-        "DeletionJournal"
-      ],
-      "sourcePathClass": "test-support-path",
-      "classification": "syntactic-candidates",
-      "owners": [
-        {
-          "owner": "ReminderDeletionJournalFixture.Receiver.onReceive@14",
-          "line": 14,
-          "bindings": 2,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderDeletionJournalFixture.config@15",
-          "line": 15,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderDeletionJournalFixture.clock@16",
-          "line": 16,
-          "bindings": 2,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderDeletionJournalFixture",
-          "line": 17,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderDeletionJournalFixture.notifying@19",
-          "line": 20,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderDeletionJournalFixture.posted@24",
-          "line": 24,
-          "bindings": 3,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderDeletionJournalFixture.dropAlarms@26",
-          "line": 26,
-          "bindings": 4,
-          "writes": 1
-        },
-        {
-          "owner": "ReminderDeletionJournalFixture.assertAlertReturns@28",
-          "line": 28,
-          "bindings": 3,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderDeletionJournalFixture.cleanup@34",
-          "line": 34,
-          "bindings": 2,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderDeletionJournalFixture.seed@39",
-          "line": 39,
-          "bindings": 3,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderDeletionJournalFixture.persistedSuspensionBlocksDueDeliveryAndUndoKeepsOriginalOccurrence@40",
-          "line": 41,
-          "bindings": 8,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderDeletionJournalFixture.undoOfPostedReminderPostsItAgain@56",
-          "line": 57,
-          "bindings": 5,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderDeletionJournalFixture.undoFromPausedDeletionReArmsTheAlert@66",
-          "line": 67,
-          "bindings": 5,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderDeletionJournalFixture.expiryIsSingleWinnerAndChangedBootRequiresReview@79",
-          "line": 80,
-          "bindings": 7,
-          "writes": 0
-        }
-      ],
-      "parseErrors": [],
-      "asynchronous": 0,
-      "unassignedWrites": 24
-    },
-    {
-      "path": "android/app/src/androidTest/java/ai/eliza/plugins/reminders/ReminderLifecycleTestAccess.java",
-      "sha256": "e233b7bef448b87f9bc7c6c522ebdbdcdfd2dbafea656ad4c63cfb0c947d2e96",
-      "allocatedModels": [
-        "DeviceActions"
-      ],
-      "sourcePathClass": "test-support-path",
-      "classification": "syntactic-candidates",
-      "owners": [
-        {
-          "owner": "ReminderLifecycleTestAccess.store@11",
-          "line": 11,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderLifecycleTestAccess.Isolated",
-          "line": 14,
-          "bindings": 1,
-          "writes": 2
-        },
-        {
-          "owner": "ReminderLifecycleTestAccess.Isolated.<init>@15",
-          "line": 15,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderLifecycleTestAccess.Isolated.schedule@16",
-          "line": 16,
-          "bindings": 4,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderLifecycleTestAccess.Isolated.saveTodo@17",
-          "line": 17,
-          "bindings": 3,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderLifecycleTestAccess.Isolated.read@18",
-          "line": 18,
-          "bindings": 2,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderLifecycleTestAccess.Isolated.cancel@19",
-          "line": 19,
-          "bindings": 2,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderLifecycleTestAccess.storageFull@21",
-          "line": 21,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderLifecycleTestAccess.bootId@23",
-          "line": 23,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderLifecycleTestAccess.restore@24",
-          "line": 24,
-          "bindings": 2,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderLifecycleTestAccess.markBoot@26",
-          "line": 26,
-          "bindings": 2,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderLifecycleTestAccess.saveTodo@27",
-          "line": 27,
-          "bindings": 4,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderLifecycleTestAccess.todoDecision@28",
-          "line": 28,
-          "bindings": 3,
-          "writes": 0
-        }
-      ],
-      "parseErrors": [],
-      "asynchronous": 1,
-      "unassignedWrites": 1
-    },
-    {
-      "path": "android/app/src/androidTest/java/ai/eliza/plugins/reminders/ReminderTestAccess.java",
-      "sha256": "6dfa84a7bfa691f9f43a4a1518b2b7a8b19779c2a6827ca239a1b31a078732e0",
-      "allocatedModels": [
-        "DeviceActions"
-      ],
-      "sourcePathClass": "test-support-path",
-      "classification": "syntactic-candidates",
-      "owners": [
-        {
-          "owner": "ReminderTestAccess",
-          "line": 22,
-          "bindings": 1,
-          "writes": 2
-        },
-        {
-          "owner": "ReminderTestAccess.isolate@23",
-          "line": 23,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderTestAccess.release@27",
-          "line": 27,
-          "bindings": 3,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderTestAccess.fixtureConfiguration@34",
-          "line": 35,
-          "bindings": 2,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderTestAccess.Recording",
-          "line": 40,
-          "bindings": 2,
-          "writes": 2
-        },
-        {
-          "owner": "ReminderTestAccess.Recording.read@42",
-          "line": 42,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderTestAccess.Recording.write@43",
-          "line": 43,
-          "bindings": 2,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderTestAccess.alarm@47",
-          "line": 47,
-          "bindings": 5,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderTestAccess.store@51",
-          "line": 51,
-          "bindings": 2,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderTestAccess.digest@58",
-          "line": 58,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderTestAccess.channel@59",
-          "line": 59,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderTestAccess.allowed@60",
-          "line": 60,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderTestAccess.schedule@61",
-          "line": 61,
-          "bindings": 5,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderTestAccess.schedule@62",
-          "line": 62,
-          "bindings": 6,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderTestAccess.schedule@63",
-          "line": 63,
-          "bindings": 7,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderTestAccess.read@64",
-          "line": 64,
-          "bindings": 2,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderTestAccess.list@65",
-          "line": 65,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderTestAccess.selected@66",
-          "line": 66,
-          "bindings": 2,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderTestAccess.operate@67",
-          "line": 67,
-          "bindings": 4,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderTestAccess.operationReceipt@68",
-          "line": 68,
-          "bindings": 4,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderTestAccess.decide@69",
-          "line": 69,
-          "bindings": 4,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderTestAccess.cancel@70",
-          "line": 70,
-          "bindings": 2,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderTestAccess.restore@71",
-          "line": 71,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderTestAccess.deliver@72",
-          "line": 72,
-          "bindings": 2,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderTestAccess.deliver@73",
-          "line": 73,
-          "bindings": 3,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderTestAccess.Envelope",
-          "line": 75,
-          "bindings": 2,
-          "writes": 2
-        },
-        {
-          "owner": "ReminderTestAccess.Envelope.<init>@77",
-          "line": 77,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderTestAccess.removeFixture@83",
-          "line": 83,
-          "bindings": 9,
-          "writes": 1
-        },
-        {
-          "owner": "ReminderTestAccess.Taps",
-          "line": 96,
-          "bindings": 1,
-          "writes": 1
-        },
-        {
-          "owner": "ReminderTestAccess.Taps.<init>@97",
-          "line": 97,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderTestAccess.Taps.same@98",
-          "line": 98,
-          "bindings": 2,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderTestAccess.Taps.prepare@99",
-          "line": 99,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderTestAccess.Taps.capture@100",
-          "line": 100,
-          "bindings": 2,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderTestAccess.Taps.consume@102",
-          "line": 102,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "ReminderTestAccess.Taps.dismiss@103",
-          "line": 103,
-          "bindings": 1,
-          "writes": 0
-        }
-      ],
-      "parseErrors": [],
-      "asynchronous": 3,
-      "unassignedWrites": 4
     },
     {
       "path": "android/app/src/launcher/java/ai/elizaresearch/alphaphone/AlphaCallActivity.java",
@@ -46641,6 +46943,39 @@
       "unassignedWrites": 2
     },
     {
+      "path": "scripts/fetch-alpha-os-preset-inputs.py",
+      "sha256": "f717d616c685f4b3e59140689a8f7c5120d1d69f1ec5d7dbaba21bf5e0266905",
+      "allocatedModels": [
+        "OSSourceStaging"
+      ],
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
+      "path": "scripts/generate-alpha-os-branding.mjs",
+      "sha256": "7b68ac1d7af0e141b0431b4d8ff78c714e7f0a9b0531fc8ddf1920100bd8e337",
+      "allocatedModels": [
+        "OSSourceStaging"
+      ],
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "<module>",
+          "line": 24,
+          "bindings": 2,
+          "writes": 1
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 2
+    },
+    {
       "path": "scripts/generate-licenses.mjs",
       "sha256": "974c2dedaeb0cac6ed5835827b89fb733d107d8ca9dd910a6cb0234c66ce8df6",
       "allocatedModels": [
@@ -47392,6 +47727,19 @@
       "parseErrors": [],
       "asynchronous": 0,
       "unassignedWrites": 1
+    },
+    {
+      "path": "scripts/stage-alpha-os-branding.py",
+      "sha256": "b21c1dda203a3e2ac4833fad083eb9655f8ef7a35d88258a0f18d47037089049",
+      "allocatedModels": [
+        "OSSourceStaging"
+      ],
+      "sourcePathClass": "other-source-path",
+      "classification": "language-review-required",
+      "owners": [],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
     },
     {
       "path": "scripts/stage-aosp.mjs",
@@ -225650,6 +225998,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "8542a1e88b480873bcfea7aaf76e25752da5440657896ae3786e95dbfcc62250"
+    "sha256": "b69963a939de8064ce28bd00b77ef816c804a855840909cbef72088347cf7901"
   }
 }

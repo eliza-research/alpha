@@ -65,7 +65,7 @@ test("the provider is a registered, read-only, DUMP-protected release component,
   for (const write of ["insert", "delete", "update"]) assert.match(source, new RegExp(`public (?:Uri|int) ${write}\\([^)]*\\)\\{throw new UnsupportedOperationException`));
   assert.match(source, /List\.of\("cache", "code_cache"\)/);
   const apk = fs.readFileSync("scripts/apk.mjs", "utf8");
-  assert.match(apk, /"ai\.alphacompute\.alphaphone\.release\.DataIntegrityProvider": "android\.permission\.DUMP"/);
+  assert.match(apk, /"ai\.elizaresearch\.alphaphone\.release\.DataIntegrityProvider": "android\.permission\.DUMP"/);
   assert.ok(!fs.existsSync("android/app/src/testMocks/java/ai/elizaresearch/alphaphone/release"), "no test-mocks variant of the export");
 });
 
@@ -162,7 +162,7 @@ test("HOME that cannot be put back fails the update and records the recovery com
   const update = updateUnit({ adb: stuck, apk: APK, before: BEFORE, home, timing });
   assert.equal(update.passed, false);
   assert.equal(update.agentRestart, null, "Alpha is not started while HOME is unproven");
-  assert.match(update.home.recovery, /cmd role add-role-holder --user 0 android\.app\.role\.HOME ai\.alphacompute\.alphaphone/);
+  assert.match(update.home.recovery, /cmd role add-role-holder --user 0 android\.app\.role\.HOME ai\.elizaresearch\.alphaphone/);
   assert.notEqual(state.holder, ALPHA);
 });
 

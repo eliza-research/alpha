@@ -59,8 +59,6 @@
     "scripts/cloud-deployment-policy.mjs",
     "scripts/native-view-policy.mjs",
     "scripts/with-test-mocks.mjs",
-    "capacitor.config.ts",
-    "vite.config.ts",
     "scripts/apk.mjs",
     "scripts/source-snapshot.mjs",
     "scripts/verify-apks.mjs",
@@ -73,7 +71,12 @@
     "scripts/owner/InspectUpdateApk.java",
     "scripts/ci/qualified-app-update.py",
     "scripts/ci/admit-cloud-signing-input.py",
-    "scripts/ci/private-apk-storage.py"
+    "scripts/ci/private-apk-storage.py",
+    "scripts/stage-alpha-os-branding.py",
+    "scripts/generate-alpha-os-branding.mjs",
+    "scripts/fetch-alpha-os-preset-inputs.py",
+    "capacitor.config.ts",
+    "vite.config.ts"
   ],
   "excludedDirectories": [
     ".cxx",
@@ -84,7 +87,8 @@
     "build",
     "capacitor-cordova-android-plugins",
     "jniLibs",
-    "node_modules"
+    "node_modules",
+    ".cache"
   ],
   "upstream": {
     "url": "https://github.com/elizaOS/eliza.git",
@@ -94,6 +98,192 @@
     "osSource": "packages/os"
   },
   "files": [
+    {
+      "path": "android/aosp/branding/core-launcher/AlphaCoreLauncherPolicy.java",
+      "models": [
+        "OSDefaults"
+      ],
+      "scope": "application",
+      "treatment": "state-and-transition-projection",
+      "stateAnchors": [
+        {
+          "line": 1,
+          "text": "Source-owned OS policy and guarded staging; see model abstraction and existing Java/Python qualification."
+        }
+      ],
+      "sha256": "c2076451cfdfaf8e71dcf5f7367ec0b6f2065d8b9592043ad6cbeb6162f98fa7"
+    },
+    {
+      "path": "android/aosp/branding/core-launcher/AlphaQsDefaultsPolicy.java",
+      "models": [
+        "OSDefaults"
+      ],
+      "scope": "application",
+      "treatment": "state-and-transition-projection",
+      "stateAnchors": [
+        {
+          "line": 1,
+          "text": "Source-owned OS policy and guarded staging; see model abstraction and existing Java/Python qualification."
+        }
+      ],
+      "sha256": "81bc50974831d9437413f4c94a94b3e224ec11d5171d55633ac765e7409ec311"
+    },
+    {
+      "path": "android/aosp/branding/core-launcher/AlphaSharedStoragePolicy.java",
+      "models": [
+        "OSDefaults"
+      ],
+      "scope": "application",
+      "treatment": "state-and-transition-projection",
+      "stateAnchors": [
+        {
+          "line": 1,
+          "text": "Source-owned OS policy and guarded staging; see model abstraction and existing Java/Python qualification."
+        }
+      ],
+      "sha256": "71fcbf26572a4383d02e8af2ca110467a7915c1bdfaa36e7df711e2234d4a1d1"
+    },
+    {
+      "path": "android/aosp/branding/provision/AlphaAppearance.java",
+      "models": [
+        "OSProvisioning"
+      ],
+      "scope": "application",
+      "treatment": "state-and-transition-projection",
+      "stateAnchors": [
+        {
+          "line": 1,
+          "text": "Source-owned OS policy and guarded staging; see model abstraction and existing Java/Python qualification."
+        }
+      ],
+      "sha256": "fcfa2a9794a7dbd925bc48f7899b70497072733e76ac42740bbbb77d46099e7f"
+    },
+    {
+      "path": "android/aosp/branding/provision/AlphaFreshPresets.java",
+      "models": [
+        "OSProvisioning"
+      ],
+      "scope": "application",
+      "treatment": "state-and-transition-projection",
+      "stateAnchors": [
+        {
+          "line": 1,
+          "text": "Source-owned OS policy and guarded staging; see model abstraction and existing Java/Python qualification."
+        }
+      ],
+      "sha256": "f93d3e81357896473f05696c9f0c80aa2c0e3e7185caca75a6a596d45ea6a97b"
+    },
+    {
+      "path": "android/aosp/branding/provision/AlphaFreshSetupPolicy.java",
+      "models": [
+        "OSProvisioning"
+      ],
+      "scope": "application",
+      "treatment": "state-and-transition-projection",
+      "stateAnchors": [
+        {
+          "line": 1,
+          "text": "Source-owned OS policy and guarded staging; see model abstraction and existing Java/Python qualification."
+        }
+      ],
+      "sha256": "16373b453d3ef4c5aa79c6925b0b4ac190080c0218ea1a6870853da2be027168"
+    },
+    {
+      "path": "android/aosp/branding/provision/AlphaWelcome.java",
+      "models": [
+        "OSProvisioning"
+      ],
+      "scope": "application",
+      "treatment": "state-and-transition-projection",
+      "stateAnchors": [
+        {
+          "line": 1,
+          "text": "Source-owned OS policy and guarded staging; see model abstraction and existing Java/Python qualification."
+        }
+      ],
+      "sha256": "610657ccc31370730fe533109b473aff0ec2ec1a16e16af1429043d8d4c48793"
+    },
+    {
+      "path": "android/app/src/androidTest/java/ai/eliza/plugins/reminders/ReminderDeletionJournalFixture.java",
+      "sha256": "46a4c966a5236a3381d5b1024c9b3c06adb1f43025f23a2bf95e43328f63ade0",
+      "models": [
+        "DeletionJournal"
+      ],
+      "scope": "test-support",
+      "treatment": "test-harness",
+      "stateAnchors": [
+        {
+          "line": 17,
+          "text": "private final ReminderTestAccess.Recording secure=new ReminderTestAccess.Recording();"
+        }
+      ]
+    },
+    {
+      "path": "android/app/src/androidTest/java/ai/eliza/plugins/reminders/ReminderLifecycleTestAccess.java",
+      "sha256": "e233b7bef448b87f9bc7c6c522ebdbdcdfd2dbafea656ad4c63cfb0c947d2e96",
+      "models": [
+        "DeviceActions"
+      ],
+      "scope": "test-support",
+      "treatment": "test-harness",
+      "stateAnchors": [
+        {
+          "line": 14,
+          "text": "private final ReminderStore store;"
+        }
+      ]
+    },
+    {
+      "path": "android/app/src/androidTest/java/ai/eliza/plugins/reminders/ReminderTestAccess.java",
+      "sha256": "6dfa84a7bfa691f9f43a4a1518b2b7a8b19779c2a6827ca239a1b31a078732e0",
+      "models": [
+        "DeviceActions"
+      ],
+      "scope": "test-support",
+      "treatment": "test-harness",
+      "stateAnchors": [
+        {
+          "line": 22,
+          "text": "private static final IdentityHashMap<Context,ReminderStore> isolated = new IdentityHashMap<>();"
+        },
+        {
+          "line": 55,
+          "text": "public static final String CHANNEL=AlphaReminders.CONFIGURATION.channelId;"
+        },
+        {
+          "line": 56,
+          "text": "public static final String OPEN_ID=AlphaReminders.CONFIGURATION.idExtra;"
+        },
+        {
+          "line": 57,
+          "text": "public static final String OCCURRENCE=AlphaReminders.CONFIGURATION.occurrenceExtra;"
+        },
+        {
+          "line": 75,
+          "text": "private final ReminderEnvelope delegate;"
+        },
+        {
+          "line": 76,
+          "text": "private final ReminderStore store;"
+        },
+        {
+          "line": 92,
+          "text": "public static final String SLOT=AlphaReminders.CONFIGURATION.tapSlot;"
+        },
+        {
+          "line": 93,
+          "text": "public static final String ACTION=AlphaReminders.CONFIGURATION.openAction;"
+        },
+        {
+          "line": 94,
+          "text": "public static final String PREFIX=AlphaReminders.CONFIGURATION.tapUriPrefix;"
+        },
+        {
+          "line": 96,
+          "text": "private final ReminderTaps delegate;"
+        }
+      ]
+    },
     {
       "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/AccessibilityBounds.java",
       "sha256": "2e49be96212465e011423aaf408fe54b5293f1ea0824683632364227d96b862f",
@@ -5661,87 +5851,6 @@
         {
           "line": 58,
           "text": "private static Uri event(ContentResolver resolver,Uri calendar,String title,long start,long end){ContentValues value=new ContentValues();value.put(CalendarContr"
-        }
-      ]
-    },
-    {
-      "path": "android/app/src/androidTest/java/ai/eliza/plugins/reminders/ReminderDeletionJournalFixture.java",
-      "sha256": "46a4c966a5236a3381d5b1024c9b3c06adb1f43025f23a2bf95e43328f63ade0",
-      "models": [
-        "DeletionJournal"
-      ],
-      "scope": "test-support",
-      "treatment": "test-harness",
-      "stateAnchors": [
-        {
-          "line": 17,
-          "text": "private final ReminderTestAccess.Recording secure=new ReminderTestAccess.Recording();"
-        }
-      ]
-    },
-    {
-      "path": "android/app/src/androidTest/java/ai/eliza/plugins/reminders/ReminderLifecycleTestAccess.java",
-      "sha256": "e233b7bef448b87f9bc7c6c522ebdbdcdfd2dbafea656ad4c63cfb0c947d2e96",
-      "models": [
-        "DeviceActions"
-      ],
-      "scope": "test-support",
-      "treatment": "test-harness",
-      "stateAnchors": [
-        {
-          "line": 14,
-          "text": "private final ReminderStore store;"
-        }
-      ]
-    },
-    {
-      "path": "android/app/src/androidTest/java/ai/eliza/plugins/reminders/ReminderTestAccess.java",
-      "sha256": "6dfa84a7bfa691f9f43a4a1518b2b7a8b19779c2a6827ca239a1b31a078732e0",
-      "models": [
-        "DeviceActions"
-      ],
-      "scope": "test-support",
-      "treatment": "test-harness",
-      "stateAnchors": [
-        {
-          "line": 22,
-          "text": "private static final IdentityHashMap<Context,ReminderStore> isolated = new IdentityHashMap<>();"
-        },
-        {
-          "line": 55,
-          "text": "public static final String CHANNEL=AlphaReminders.CONFIGURATION.channelId;"
-        },
-        {
-          "line": 56,
-          "text": "public static final String OPEN_ID=AlphaReminders.CONFIGURATION.idExtra;"
-        },
-        {
-          "line": 57,
-          "text": "public static final String OCCURRENCE=AlphaReminders.CONFIGURATION.occurrenceExtra;"
-        },
-        {
-          "line": 75,
-          "text": "private final ReminderEnvelope delegate;"
-        },
-        {
-          "line": 76,
-          "text": "private final ReminderStore store;"
-        },
-        {
-          "line": 92,
-          "text": "public static final String SLOT=AlphaReminders.CONFIGURATION.tapSlot;"
-        },
-        {
-          "line": 93,
-          "text": "public static final String ACTION=AlphaReminders.CONFIGURATION.openAction;"
-        },
-        {
-          "line": 94,
-          "text": "public static final String PREFIX=AlphaReminders.CONFIGURATION.tapUriPrefix;"
-        },
-        {
-          "line": 96,
-          "text": "private final ReminderTaps delegate;"
         }
       ]
     },
@@ -47687,6 +47796,36 @@
       ]
     },
     {
+      "path": "scripts/fetch-alpha-os-preset-inputs.py",
+      "models": [
+        "OSSourceStaging"
+      ],
+      "scope": "application",
+      "treatment": "state-and-transition-projection",
+      "stateAnchors": [
+        {
+          "line": 1,
+          "text": "Source-owned OS policy and guarded staging; see model abstraction and existing Java/Python qualification."
+        }
+      ],
+      "sha256": "f717d616c685f4b3e59140689a8f7c5120d1d69f1ec5d7dbaba21bf5e0266905"
+    },
+    {
+      "path": "scripts/generate-alpha-os-branding.mjs",
+      "models": [
+        "OSSourceStaging"
+      ],
+      "scope": "application",
+      "treatment": "state-and-transition-projection",
+      "stateAnchors": [
+        {
+          "line": 1,
+          "text": "Source-owned OS policy and guarded staging; see model abstraction and existing Java/Python qualification."
+        }
+      ],
+      "sha256": "7b68ac1d7af0e141b0431b4d8ff78c714e7f0a9b0531fc8ddf1920100bd8e337"
+    },
+    {
       "path": "scripts/generate-licenses.mjs",
       "models": [
         "MobileBundleAdmission"
@@ -48394,6 +48533,21 @@
       "sha256": "bc8fa9de8dabeb6ec59be9ead8d35f3faa7d713c1974ae43c5d6a6281b6feee7",
       "stateAnchors": [],
       "integrationReview": "Reviewed APK source identity replaces retired Gmail patch inputs with the raw pinned Google host. The staged worker manifest independently binds its exact compiler inputs and consumer policy; snapshot hashing is not release qualification."
+    },
+    {
+      "path": "scripts/stage-alpha-os-branding.py",
+      "models": [
+        "OSSourceStaging"
+      ],
+      "scope": "application",
+      "treatment": "state-and-transition-projection",
+      "stateAnchors": [
+        {
+          "line": 1,
+          "text": "Source-owned OS policy and guarded staging; see model abstraction and existing Java/Python qualification."
+        }
+      ],
+      "sha256": "b21c1dda203a3e2ac4833fad083eb9655f8ef7a35d88258a0f18d47037089049"
     },
     {
       "path": "scripts/stage-aosp.mjs",
@@ -618654,7 +618808,7 @@
       "models": [
         "Application"
       ],
-      "sha256": "3f34b76a3103b99ea33be43028e13924a4ec39854a04b27fd02552ff32a2a3be",
+      "sha256": "83f0ad6bb3c8d615439fcbe2b1227499af07b536fb31e360f095c42229b3a69d",
       "integrationReview": "Reviewed integration input; current source identity does not establish runtime behavior or source-model refinement."
     },
     {

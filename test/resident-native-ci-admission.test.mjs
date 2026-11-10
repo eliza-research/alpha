@@ -80,3 +80,18 @@ test('Calendar bridge hash budget includes the pinned Node 26 input and final dr
  assert.match(source,/if \(current != before\[task\.path\]\)/);
  assert.match(source,/walk\(task\.destinationDirectory\.get\(\)\.asFile\) != row\.classes/);
 });
+
+test('disposable admission refuses either installed Alpha identity before fixture effects', async () => {
+ const {admitResidentEmulator}=await import('../scripts/resident-emulator-admission.mjs');
+ const environment={ALPHA_RESIDENT_DISPOSABLE_EMULATOR:'1',ANDROID_SERIAL:'emulator-5594'};
+ const inventory=packages=>args=>{
+  if(args.join(' ')==='shell getprop ro.kernel.qemu')return '1';
+  if(args.join(' ')==='shell getprop ro.product.cpu.abi')return 'arm64-v8a';
+  if(args.join(' ')==='shell pm list packages -u')return packages;
+  throw Error('Unexpected device effect before admission');
+ };
+ for(const identity of ['ai.elizaresearch.alphaphone','ai.elizaresearch.alphaphone.test','ai.alphacompute.alphaphone','ai.alphacompute.alphaphone.test'])
+  assert.throws(()=>admitResidentEmulator(environment,inventory('package:com.android.settings\npackage:'+identity)),/fresh emulator/);
+ assert.doesNotThrow(()=>admitResidentEmulator(environment,inventory('package:com.android.settings')));
+ assert.throws(()=>admitResidentEmulator({...environment,ANDROID_SERIAL:'physical-device'},inventory('package:com.android.settings')),/Explicit disposable/);
+});

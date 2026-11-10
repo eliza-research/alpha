@@ -159,7 +159,7 @@ test("AOSP staging refuses --production without a descriptor, with --development
       fs.writeFileSync(path.join(dir, "foreign.json"), JSON.stringify({ schemaVersion: 1, apkSha256: sha256, certificateSha256: "d".repeat(64), ...foreign }));
       out = stage(["--apk", release, "--descriptor", "foreign.json", "--production"]);
       assert.notEqual(out.status, 0, name);
-      assert.match(out.stderr, /Descriptor does not belong to this product: packageName .* must be ai\.alphacompute\.alphaphone and AlphaPhone \(app\.config\.json\)/, name);
+      assert.match(out.stderr, /Descriptor does not belong to this product: packageName .* must be ai\.elizaresearch\.alphaphone and AlphaPhone \(app\.config\.json\)/, name);
     }
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });

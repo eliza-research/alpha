@@ -18,7 +18,7 @@ test('the Alpha binding keeps the installed slot, notice identifiers and bridge 
  const binding=java('GmailBackground.java'),plugin=java('AlphaGmailPlugin.java');
  assert.match(binding,/SLOT="gmail-background:v1"/);
  assert.match(binding,/new MailNoticePoster\.Config\("alpha-gmail","New Gmail messages",/);
- assert.match(binding,/"ai\.alphacompute\.alphaphone\.OPEN_GMAIL_NOTICE","alpha-gmail:","alpha-gmail-ask:","alpha-gmail-"/);
+ assert.match(binding,/"ai\.elizaresearch\.alphaphone\.OPEN_GMAIL_NOTICE","alpha-gmail:","alpha-gmail-ask:","alpha-gmail-"/);
  assert.match(binding,/MainActivity\.class\)/);
  assert.match(binding,/readCredentialSlot\("cloud:production"\)/);
  assert.match(binding,/new MailBackgroundDelivery\.Config\(CloudDeployment\.PRODUCTION_API,"production","google\.gmail\.triage",4\)/);

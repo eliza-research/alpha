@@ -66,7 +66,7 @@ test('no enabled component opens the dormant assistant entries',()=>{
  for(const flavor of ['launcher','standalone']){
   const merged={};
   for(const manifest of ['main',flavor])for(const [,attrs] of read(`android/app/src/${manifest}/AndroidManifest.xml`).matchAll(/<(?:activity|activity-alias|service|receiver|provider)\s([^>]*)>/g)){
-   const name=attrs.match(/android:name="\.?([^"]+)"/)[1].replace(/^ai\.alphacompute\.alphaphone\./,'');
+   const name=attrs.match(/android:name="\.?([^"]+)"/)[1].replace(/^ai\.elizaresearch\.alphaphone\./,'');
    merged[name]={...merged[name],...Object.fromEntries([...attrs.matchAll(/([\w:]+)="([^"]*)"/g)].map(([,key,value])=>[key,value]))};
   }
   const openers=Object.keys(merged).filter(name=>!dormant.includes(name)&&dormant.some(target=>sources[name]?.includes(target)));

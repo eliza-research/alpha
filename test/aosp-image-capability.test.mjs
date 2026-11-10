@@ -243,7 +243,7 @@ test("dialer- and SMS-role components exist only in the launcher, disabled until
   assert.match(pad, /call\.setOnClickListener\(view -> place\(\)\);/); assert.match(pad, /call\.setFilterTouchesWhenObscured\(true\)/);
   assert.match(dial, /telecom\.placeCall\(telUri, extras\)/);
   const apk = read("scripts/apk.mjs");
-  assert.match(apk, /"ai\.alphacompute\.alphaphone\.AlphaInCallService": "android\.permission\.BIND_INCALL_SERVICE"/);
+  assert.match(apk, /"ai\.elizaresearch\.alphaphone\.AlphaInCallService": "android\.permission\.BIND_INCALL_SERVICE"/);
   assert.match(apk, /if \(data\.xml\.includes\('android\.permission\.CALL_PHONE'\) !== wantsHome\)/);
   // Per-flavor recent-calls packaging: launcher only, and call-log writes never.
   assert.match(apk, /if \(data\.xml\.includes\('android\.permission\.READ_CALL_LOG'\) !== wantsHome\)/);

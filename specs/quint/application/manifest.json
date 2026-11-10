@@ -3399,5 +3399,75 @@
       "Quarter-hour draft times and real month facts; no provider mutation or canonical Calendar authority.",
       "Concrete day/time/month source blocks are checked in calendar-form-controls.mjs; installed behavior remains separate."
     ]
+  },
+  {
+    "path": "specs/quint/application/OSDefaults.qnt",
+    "module": "OSDefaults",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "layoutFailureCannotCommitVersionTest",
+      "versionFailureRetriesStoredLayoutTest",
+      "completedMigrationPreservesLaterStockChoiceTest",
+      "customLayoutRemainsCustomTest",
+      "existingPermissionDenialRemainsTest",
+      "ineligiblePermissionDoesNotGrantTest",
+      "coreLauncherScopeTest"
+    ],
+    "sources": [
+      "android/aosp/branding/core-launcher/AlphaCoreLauncherPolicy.java",
+      "android/aosp/branding/core-launcher/AlphaQsDefaultsPolicy.java",
+      "android/aosp/branding/core-launcher/AlphaSharedStoragePolicy.java"
+    ],
+    "abstractions": [
+      "Two layout classes plus Alpha defaults; settings collector writes are serialized. Real multi-user services, arbitrary tile arrays and process-death injection require Android qualification. Pure Java policy matrices separately cover package/Home/system and permission predicates."
+    ]
+  },
+  {
+    "path": "specs/quint/application/OSProvisioning.qnt",
+    "module": "OSProvisioning",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "expiredCallbackCannotCompleteTest",
+      "previousAttemptCannotCompleteTest",
+      "existingKeyboardPreservedTest",
+      "missingKeyboardCannotCompleteTest",
+      "authorityLossCannotCompleteTest",
+      "appearanceNeedsUserActionTest"
+    ],
+    "sources": [
+      "android/aosp/branding/provision/AlphaFreshSetupPolicy.java",
+      "android/aosp/branding/provision/AlphaFreshPresets.java",
+      "android/aosp/branding/provision/AlphaWelcome.java",
+      "android/aosp/branding/provision/AlphaAppearance.java"
+    ],
+    "abstractions": [
+      "Three attempt generations, one activity and binary authority/success facts. Android role callbacks, secure-settings compare/write and actual wallpaper partial failures remain platform qualification; the model does not establish hardware or provider acceptance."
+    ]
+  },
+  {
+    "path": "specs/quint/application/OSSourceStaging.qnt",
+    "module": "OSSourceStaging",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "driftCannotWriteTest",
+      "mismatchedAssetsCannotWriteTest",
+      "partialFailureRetainsBackupTest",
+      "completeNeedsReadbackTest"
+    ],
+    "sources": [
+      "scripts/stage-alpha-os-branding.py",
+      "scripts/generate-alpha-os-branding.mjs",
+      "scripts/fetch-alpha-os-preset-inputs.py"
+    ],
+    "abstractions": [
+      "Two representative staged files; exact paths, hashes, asset generation, all-file admission and per-file backup/write are exercised by the existing Python staging cases. Partial I/O failure leaves preserved inputs and must not claim a completed image.",
+      "Progress requires a stable admitted source and fair successful backup/write/readback operations. Permanent I/O failure does not promise completion. No image, signing, device operation or automatic rollback is proved."
+    ]
   }
 ]

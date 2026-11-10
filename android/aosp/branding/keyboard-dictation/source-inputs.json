@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "purpose": "Read-only verification of existing stock shortcut and default voice IME enablement; no framework Java patch",
+  "files": [
+    {
+      "project": "packages/inputmethods/LatinIME",
+      "revision": "afe0d5c261c3a0c88b38894981a7b332da93e7dd",
+      "path": "java/src/com/android/inputmethod/latin/LatinIME.java",
+      "sha256": "f96661c795c9334f226071336e7e664fc8c0c90bcf871588857bdce56fd54b0e",
+      "url": "https://android.googlesource.com/platform/packages/inputmethods/LatinIME/+/afe0d5c261c3a0c88b38894981a7b332da93e7dd/java/src/com/android/inputmethod/latin/LatinIME.java"
+    },
+    {
+      "project": "packages/inputmethods/LatinIME",
+      "revision": "afe0d5c261c3a0c88b38894981a7b332da93e7dd",
+      "path": "java/src/com/android/inputmethod/latin/RichInputMethodManager.java",
+      "sha256": "bed092064e2916657c36ff9d306efc77c1c1f30ec5b33051c5ca11c5b9ddc507",
+      "url": "https://android.googlesource.com/platform/packages/inputmethods/LatinIME/+/afe0d5c261c3a0c88b38894981a7b332da93e7dd/java/src/com/android/inputmethod/latin/RichInputMethodManager.java"
+    },
+    {
+      "project": "frameworks/base",
+      "revision": "94b4c163b7dfe5ce3607f7bb8456f9573f7de57d",
+      "path": "services/core/java/com/android/server/inputmethod/InputMethodManagerService.java",
+      "sha256": "84333a7af594118a473b697a84c70cce29173adea904b69b5dd8b36a3b9191f4",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/services/core/java/com/android/server/inputmethod/InputMethodManagerService.java"
+    },
+    {
+      "project": "frameworks/base",
+      "revision": "94b4c163b7dfe5ce3607f7bb8456f9573f7de57d",
+      "path": "services/core/java/com/android/server/inputmethod/InputMethodInfoUtils.java",
+      "sha256": "6d15e63c8d48307089c7c5438330b76389eb94c1e620c2388bed5be792fc5b50",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/services/core/java/com/android/server/inputmethod/InputMethodInfoUtils.java"
+    }
+  ]
+}
