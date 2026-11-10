@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "75b44015561368fc8ca982b70b8bafbdf1672a7b",
-  "ledgerSha256": "fe45145bef3294ce2304ea4edebc06ab8b5d2f928f2cec17ba5b2968a9fda2a6",
+  "ledgerSha256": "94bdf67b56f85c1029113a95910303a051cd1c357653290742f75275a7aed89d",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -45640,7 +45640,7 @@
     },
     {
       "path": "apps/app/src/runtime/toast-layer.ts",
-      "sha256": "7632482ef5751afb8bd9b7e45aa7771472f7c1b31912334b273828ad8875591c",
+      "sha256": "81366a1265de5c161b784f893dbada627c90a5652085a435c4eed59206d9b80e",
       "allocatedModels": [
         "ModalToastForwarding",
         "ShellNavigation"
@@ -45651,25 +45651,25 @@
       "owners": [
         {
           "owner": "<module>",
-          "line": 29,
+          "line": 30,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "installToastLayer",
-          "line": 33,
+          "line": 34,
           "bindings": 3,
           "writes": 14
         },
         {
           "owner": "installToastLayer.host",
-          "line": 47,
+          "line": 48,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "installToastLayer.sync",
-          "line": 68,
+          "line": 74,
           "bindings": 4,
           "writes": 10
         }
@@ -226031,6 +226031,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "9ddf07e23f1b79ffa30432ea4f139f304a6d0656e88991ea430c97be98d74798"
+    "sha256": "18af85e80ab7439aeb08c7e17d1c31db8286253836803844fa956b002109c736"
   }
 }

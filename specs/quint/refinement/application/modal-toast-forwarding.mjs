@@ -11,9 +11,9 @@ const modelPath = 'specs/quint/application/ModalToastForwarding.qnt';
 const layer = 'apps/app/src/runtime/toast-layer.ts';
 const hostSelector = '[data-alpha-dialog-toast]';
 
-function fixture(name, code, customIds = []) {
+function fixture(name, code, customIds = [], wrapped = false) {
   const dom = new JSDOM([1, 2].map(id => customIds.includes(id)
-    ? `<section id="${id}" role="dialog" aria-modal="false" hidden><button>Control</button></section>`
+    ? `<section id="${id}" role="dialog" aria-modal="false" hidden>${wrapped ? '<div>' : ''}<button>Control</button>${wrapped ? '</div>' : ''}</section>`
     : `<dialog id="${id}"><button>Control</button></dialog>`).join('') + '<div data-alpha-toast></div>');
   const {window} = dom, {document} = window;
   // JSDOM supplies real observer records and DOM ownership. The fixture supplies native modal membership.
@@ -46,8 +46,8 @@ function fixture(name, code, customIds = []) {
       'state.dialogs': [...dialogs],
       'state.sourceMessage': Number(source.querySelector('span')?.textContent ?? ''),
       'state.sourceUndo': Boolean(source.querySelector('button')),
-      'state.regions': qset(regions.map(region => Number(region.parentElement.id))),
-      'state.target': Number(forwarded[0]?.parentElement.id ?? 0),
+      'state.regions': qset(regions.map(region => Number(region.closest('dialog,[role="dialog"]').id))),
+      'state.target': Number(forwarded[0]?.closest('dialog,[role="dialog"]').id ?? 0),
       'state.visible': Number(forwarded[0]?.querySelector('span').textContent ?? ''),
       'state.undo': Boolean(forwarded[0]?.querySelector('button')),
       'state.clicks': clicks,
@@ -155,13 +155,17 @@ export async function checkModalToastForwarding() {
   const text = stripTypeScriptTypes(read(layer), {mode: 'strip'}).replace(/^export /gm, '');
   const code = new vm.Script(`${text}\nglobalThis.install = installToastLayer; globalThis.current = () => installed;`);
   const traces = [];
-  async function run(name, sequence, customIds) {
-    const owner = fixture(name, code, customIds);
+  async function run(name, sequence, customIds, wrapped) {
+    const owner = fixture(name, code, customIds, wrapped);
     try {
       await sequence(owner);
       traces.push(owner.result);
     } finally { owner.end(); }
   }
+  await run('aria_backdrop_panel_owns_feedback', async f => {
+    await f.install(); await f.open(1); await f.show(1, true);
+    await f.undo(); await f.close(1);
+  }, [1, 2], true);
   await run('reverse_document_order', async f => {
     await f.install(); await f.show(1, true); await f.batch([['open', 2], ['open', 1]]);
     await f.undo(); await f.close(1); await f.clear(); await f.close(2);

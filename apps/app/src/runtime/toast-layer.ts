@@ -19,6 +19,7 @@
 const SOURCE = '[data-alpha-toast]';
 const HOST = 'data-alpha-dialog-toast';
 const MODALS = 'dialog[open]:modal,[role="dialog"][aria-modal="true"]';
+const DIALOG_OWNER = 'dialog,[role="dialog"]';
 
 function isOpenModal(element: HTMLElement): boolean {
   if (element instanceof HTMLDialogElement) return element.matches('dialog[open]:modal');
@@ -44,7 +45,7 @@ export function installToastLayer(): () => void {
     modalOrder.add(focused);
   }
   const host = (dialog: HTMLElement) => {
-    let region = Array.from(dialog.children).find((child): child is HTMLElement => child instanceof HTMLElement && child.hasAttribute(HOST));
+    let region = Array.from(dialog.querySelectorAll<HTMLElement>(`[${HOST}]`)).find(child => child.closest(DIALOG_OWNER) === dialog);
     if (region) return region;
     region = document.createElement('div');
     region.setAttribute(HOST, '');
@@ -52,13 +53,18 @@ export function installToastLayer(): () => void {
     region.setAttribute('aria-atomic', 'true');
     // Sticky: a dialog that scrolls its own content keeps the feedback in view at its top edge.
     region.style.cssText = 'position:sticky;top:0;z-index:1;order:-1;flex-shrink:0;margin:0;padding:0;border:0;background:transparent;color:inherit;display:flex;align-items:flex-start;justify-content:center;box-sizing:border-box;width:100%;max-height:calc(var(--alpha-visible-height,100dvh) * .3);overflow:auto';
-    dialog.prepend(region);
+    // An ARIA backdrop can contain one panel. A sibling would join the backdrop's flex row
+    // and push the panel off screen, even when the live region is empty.
+    const panel = dialog.firstElementChild;
+    const container = !(dialog instanceof HTMLDialogElement) && dialog.children.length === 1 &&
+      panel instanceof HTMLElement && panel.tagName === 'DIV' ? panel : dialog;
+    container.prepend(region);
     return region;
   };
   const sync = () => {
     frame = 0;
     const open = modals(), topmost = open.at(-1);
-    for (const stale of document.querySelectorAll<HTMLElement>(`[${HOST}]`)) if (!open.includes(stale.parentElement as HTMLElement)) stale.remove();
+    for (const stale of document.querySelectorAll<HTMLElement>(`[${HOST}]`)) if (!open.includes(stale.closest<HTMLElement>(DIALOG_OWNER)!)) stale.remove();
     if (!topmost) { undo = null; return; }
     const regions = open.map(host);
     const source = document.querySelector<HTMLElement>(SOURCE), shown = source?.firstElementChild as HTMLElement | null;

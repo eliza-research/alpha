@@ -44967,7 +44967,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "7632482ef5751afb8bd9b7e45aa7771472f7c1b31912334b273828ad8875591c",
+      "sha256": "81366a1265de5c161b784f893dbada627c90a5652085a435c4eed59206d9b80e",
       "stateAnchors": [
         {
           "line": 19,
@@ -44978,83 +44978,83 @@
           "text": "const HOST = 'data-alpha-dialog-toast';"
         },
         {
-          "line": 29,
+          "line": 30,
           "text": "let installed: (() => void) | null = null;"
         },
         {
-          "line": 33,
+          "line": 34,
           "text": "let frame = 0, undo: HTMLButtonElement | null = null;"
         },
         {
-          "line": 46,
+          "line": 47,
           "text": "const host = (dialog: HTMLElement) => {"
         },
         {
-          "line": 47,
-          "text": "let region = Array.from(dialog.children).find((child): child is HTMLElement => child instanceof HTMLElement && child.hasAttribute(HOST));"
-        },
-        {
-          "line": 58,
-          "text": "const sync = () => {"
-        },
-        {
-          "line": 60,
-          "text": "const open = modals(), topmost = open.at(-1);"
-        },
-        {
-          "line": 61,
-          "text": "for (const stale of document.querySelectorAll<HTMLElement>(`[${HOST}]`)) if (!open.includes(stale.parentElement as HTMLElement)) stale.remove();"
-        },
-        {
-          "line": 63,
-          "text": "const regions = open.map(host);"
+          "line": 48,
+          "text": "let region = Array.from(dialog.querySelectorAll<HTMLElement>(`[${HOST}]`)).find(child => child.closest(DIALOG_OWNER) === dialog);"
         },
         {
           "line": 64,
-          "text": "const source = document.querySelector<HTMLElement>(SOURCE), shown = source?.firstElementChild as HTMLElement | null;"
+          "text": "const sync = () => {"
         },
         {
-          "line": 65,
-          "text": "const text = (shown?.querySelector('span')?.textContent ?? '').trim();"
+          "line": 66,
+          "text": "const open = modals(), topmost = open.at(-1);"
         },
         {
           "line": 67,
-          "text": "const signature = text ? `${text}\\n${undo ? 'undo' : ''}` : '';"
-        },
-        {
-          "line": 68,
-          "text": "for (const region of regions) {"
+          "text": "for (const stale of document.querySelectorAll<HTMLElement>(`[${HOST}]`)) if (!open.includes(stale.closest<HTMLElement>(DIALOG_OWNER)!)) stale.remove();"
         },
         {
           "line": 69,
-          "text": "const wanted = region === regions.at(-1) ? signature : '';"
+          "text": "const regions = open.map(host);"
+        },
+        {
+          "line": 70,
+          "text": "const source = document.querySelector<HTMLElement>(SOURCE), shown = source?.firstElementChild as HTMLElement | null;"
+        },
+        {
+          "line": 71,
+          "text": "const text = (shown?.querySelector('span')?.textContent ?? '').trim();"
+        },
+        {
+          "line": 73,
+          "text": "const signature = text ? `${text}\\n${undo ? 'undo' : ''}` : '';"
         },
         {
           "line": 74,
-          "text": "const paint = getComputedStyle(shown);"
+          "text": "for (const region of regions) {"
         },
         {
           "line": 75,
+          "text": "const wanted = region === regions.at(-1) ? signature : '';"
+        },
+        {
+          "line": 80,
+          "text": "const paint = getComputedStyle(shown);"
+        },
+        {
+          "line": 81,
           "text": "const body = document.createElement('div');"
         },
         {
-          "line": 79,
+          "line": 85,
           "text": "const message = document.createElement('span');"
         },
         {
-          "line": 84,
+          "line": 90,
           "text": "const button = document.createElement('button');"
         },
         {
-          "line": 94,
+          "line": 100,
           "text": "const schedule = () => { if (!frame) frame = requestAnimationFrame(sync); };"
         },
         {
-          "line": 128,
+          "line": 134,
           "text": "for (const region of document.querySelectorAll(`[${HOST}]`)) region.remove();"
         }
       ],
-      "integrationReview": "Native top-layer dialogs and active ARIA dialogs share ordered toast ownership. Seven source-bound traces cover native, ARIA and mixed modal order, Undo, close/reopen and cleanup. Six production browser cases passed including Google accounts in portrait and landscape; assistive-technology announcement timing and exhaustive browser modal behavior remain separate qualification."
+      "integrationReview": "Native and active ARIA modal ownership, including a single content panel within an ARIA backdrop, is exercised by eight source-bound traces. Browser checks separately cover Google account dialogs, Files and retained composer behavior; assistive technology announcement timing and exhaustive browser behavior are not proved by the model."
     },
     {
       "path": "apps/app/src/runtime/view-focus.ts",
