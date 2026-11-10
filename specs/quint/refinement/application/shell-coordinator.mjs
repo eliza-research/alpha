@@ -163,7 +163,10 @@ export async function generateShellCoordinatorTraces(extraSources = []) {
         }
       } else {
         await setStub(page, {stream:'hold'});
-        await page.evaluate(() => new Promise(resolve => window.quintShell.setState({draft:'Bounded shell trace'}, resolve)));
+        // Poll for the committed draft: a page promise held only by a setState callback can be
+        // collected under load and fail as 'Resulting promise was garbage collected'.
+        await page.evaluate(() => { window.quintShell.setState({draft:'Bounded shell trace'}); });
+        await page.waitForFunction(() => window.quintShell.S().draft === 'Bounded shell trace');
         await page.evaluate(() => { window.quintSend = window.quintShell.send().then(() => {
           window.quintSendResult = 'resolved';
         }, error => { window.quintSendResult = String(error); }); });
