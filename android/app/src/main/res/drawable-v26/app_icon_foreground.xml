@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The existing Alpha Compute silhouette spans about 49 dp of the 108 dp adaptive layer. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+  android:drawable="@drawable/notification_icon"
+  android:inset="27.5%" />
