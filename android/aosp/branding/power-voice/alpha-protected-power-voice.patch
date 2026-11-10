@@ -90,7 +90,7 @@
          startAssistInternal(context, args, assistComponent, isService);
 +    }
 +
-+    private static final String ALPHA_PACKAGE = "ai.elizaresearch.alphaphone";
++    private static final String ALPHA_PACKAGE = "ai.alphacompute.alphaphone";
 +    private static final ComponentName ALPHA_ASSIST =
 +            new ComponentName(ALPHA_PACKAGE, ALPHA_PACKAGE + ".AlphaAssistActivity");
 +    private static final ComponentName ALPHA_POWER_VOICE =

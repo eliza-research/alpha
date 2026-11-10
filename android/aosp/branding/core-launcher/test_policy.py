@@ -53,7 +53,7 @@ class CorePolicyTest(unittest.TestCase):
                 probe.write_text('''
 import java.util.concurrent.Executor
 enum class UIControl { NORMAL, HIDE_BUTTON, HIDE_ENTRY }
-object AlphaCoreLauncherPolicy { const val PACKAGE = "ai.elizaresearch.alphaphone" }
+object AlphaCoreLauncherPolicy { const val PACKAGE = "ai.alphacompute.alphaphone" }
 data class UserPackage(val userId: Int, val packageName: String) {
     var uiControl = UIControl.NORMAL
     fun updateUiControl() {}
@@ -142,19 +142,20 @@ public class CoreProbe {
   String legacy="wifi,bt,cell,cast,dnd,wallet,airplane,rotation,flashlight,battery,alarm,controls,screenrecord";
   check(AlphaQsDefaultsPolicy.shouldMigrate(list(legacy),defaults,0));
   check(AlphaQsDefaultsPolicy.shouldMigrate(list(a+","+legacy),defaults,0));
+  check(AlphaQsDefaultsPolicy.shouldMigrate(list("custom(ai.elizaresearch.alphaphone/.AlphaQuickSettingsTile),"+legacy),defaults,1));
   check(!AlphaQsDefaultsPolicy.shouldMigrate(list("bt,wifi,flashlight"),defaults,0));
   check(!AlphaQsDefaultsPolicy.shouldMigrate(list(a+","+legacy+",inversion"),defaults,0));
   check(!AlphaQsDefaultsPolicy.shouldMigrate(defaults,defaults,0));
   check(!AlphaQsDefaultsPolicy.shouldMigrate(list(legacy),list("wifi,bt"),0));
   check(!AlphaQsDefaultsPolicy.shouldMigrate(Collections.emptyList(),defaults,0));
-  check(!AlphaQsDefaultsPolicy.shouldMigrate(list(legacy),defaults,1));
-  check(!AlphaQsDefaultsPolicy.shouldMigrate(list(a+","+legacy),defaults,1));
+  check(!AlphaQsDefaultsPolicy.shouldMigrate(list(legacy),defaults,2));
+  check(!AlphaQsDefaultsPolicy.shouldMigrate(list(a+","+legacy),defaults,2));
   System.out.println("PASS core and QS policy "+checks);
  }
 }''')
             subprocess.run([str(JDK/'bin/javac'), '-d', str(d), str(ROOT/'AlphaCoreLauncherPolicy.java'),
                 str(ROOT/'AlphaQsDefaultsPolicy.java'), str(probe)], check=True, capture_output=True)
-            self.assertIn('PASS core and QS policy 25', subprocess.check_output(
+            self.assertIn('PASS core and QS policy 26', subprocess.check_output(
                 [str(JDK/'bin/java'), '-cp', str(d), 'CoreProbe'], text=True))
 
     def test_storage_default_refuses_non_owner_sideloaded_and_existing_modes(self):

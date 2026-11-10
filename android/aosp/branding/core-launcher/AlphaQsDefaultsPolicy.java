@@ -7,9 +7,10 @@ import java.util.List;
 
 /** Update only known old stock layouts. Every other saved layout remains the owner's. */
 public final class AlphaQsDefaultsPolicy {
-    public static final String ALPHA = "custom(ai.elizaresearch.alphaphone/.AlphaQuickSettingsTile)";
-    public static final int VERSION = 1;
+    public static final String ALPHA = "custom(ai.alphacompute.alphaphone/.AlphaQuickSettingsTile)";
+    public static final int VERSION = 2;
     public static final String VERSION_SETTING = "alpha_qs_layout_migration_version";
+    private static final String LEGACY_ALPHA = "custom(ai.elizaresearch.alphaphone/.AlphaQuickSettingsTile)";
     private AlphaQsDefaultsPolicy() {}
     public static boolean shouldMigrate(List<String> saved, List<String> defaults, int reviewedVersion) {
         if (reviewedVersion >= VERSION || !defaults.contains(ALPHA)) return false;
@@ -22,6 +23,8 @@ public final class AlphaQsDefaultsPolicy {
             List<String> branded = new ArrayList<>();
             branded.add(ALPHA);
             branded.addAll(old);
+            if (saved.equals(branded)) return true;
+            branded.set(0, LEGACY_ALPHA);
             if (saved.equals(branded)) return true;
         }
         return false;

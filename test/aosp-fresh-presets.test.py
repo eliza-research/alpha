@@ -86,8 +86,8 @@ public class FreshTest {
    source=BRAND/'overlay/frameworks/base/core/res/res/values/alpha-keyboard-dictation.xml'
    self.assertEqual(plan[key],source.read_bytes(),'normal image staging must carry the dictation binding')
    target=ET.fromstring(plan[key]).find("string[@name='config_systemSpeechRecognizer']").text
-   self.assertEqual(target,json.loads((REPO/'app.config.json').read_text())['appId'])
    app=Path(os.environ.get('ALPHA_DICTATION_APP_ROOT',REPO))
+   self.assertEqual(target,json.loads((app/'app.config.json').read_text())['appId'])
    manifest=ET.parse(app/'android/app/src/launcher/AndroidManifest.xml').getroot()
    a='{http://schemas.android.com/apk/res/android}'
    service=manifest.find("application/service[@"+a+"name='.AlphaKeyboardDictationService']")
