@@ -17239,7 +17239,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "98d570148204cb1df372c37d9e7c73be0ed98c7d2df2993893c29a3b9abc8509",
+      "sha256": "156f9bb03ed905f2239d5e00f6a6c317132199a7e02e0a4c427ffc883cb50f43",
       "stateAnchors": [
         {
           "line": 6,
@@ -17537,7 +17537,8 @@
           "line": 219,
           "text": "const mount=p.componentDidMount,unmount=p.componentWillUnmount;"
         }
-      ]
+      ],
+      "integrationReview": "2026-11-09 inline schedule editor: daily/weekly day selection, no-write draft cancellation, exact reviewed cron payload. ScheduledTaskControls covers bounded day sets and retained owner intent. Month/interval cron remains unmodified. CSS has no scheduling authority."
     },
     {
       "path": "apps/app/src/prototype/automations.css",
@@ -17547,9 +17548,9 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "e5bca44b581ae379a680d9417480ddd26e391273b102e690969801b481267517",
+      "sha256": "ebf3e2b227c7fa550d10f8eecde05bffca2b6ce7edaeeee4eefb455dcbea74a2",
       "stateAnchors": [],
-      "integrationReview": "2026-11-09 UI and browser-return delta reviewed against existing domain models and new ChatAttachments/BrowserGoogleReturn contracts; see ui-return-review-20261109.md. Source-model refinement and device acceptance remain separate."
+      "integrationReview": "2026-11-09 inline schedule editor: daily/weekly day selection, no-write draft cancellation, exact reviewed cron payload. ScheduledTaskControls covers bounded day sets and retained owner intent. Month/interval cron remains unmodified. CSS has no scheduling authority."
     },
     {
       "path": "apps/app/src/prototype/browser-adapter.ts",
@@ -34788,14 +34789,14 @@
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "b16497078616d2a557406cb5e6838e89d91cf62f4b27c83d719fa4514637c02d",
+      "sha256": "4b6d07435d7708382f11b1b8cbcffdf84bbe4506bb4cd7b3132219c996df4bcd",
       "stateAnchors": [
         {
           "line": 3358,
           "text": "<sc-if value=\"{{workflows.automation.editingSchedule}}\"><sc-if value=\"{{workflows.automation.scheduleClockEditable}}\"><label class=\"schedule-instructions\">Time ({{workflows.automation.e"
         }
       ],
-      "integrationReview": "Retained Calendar form window, monotonic Start later and month-row construction reviewed and source-refined under CalendarFormControls; all existing domain allocations and open platform obligations remain."
+      "integrationReview": "2026-11-09 inline schedule editor: daily/weekly day selection, no-write draft cancellation, exact reviewed cron payload. ScheduledTaskControls covers bounded day sets and retained owner intent. Month/interval cron remains unmodified. CSS has no scheduling authority."
     },
     {
       "path": "apps/app/src/prototype/use-in-email-review.ts",
@@ -618422,13 +618423,14 @@
     },
     {
       "path": "apps/app/src/runtime/workflow-local-time.ts",
-      "sha256": "68b85ea867b216b0df6b6b72bd1657a8c975c96883c1f3c38cf7d2cad6107526",
+      "sha256": "ab81f26c2fc0f1628f5d846cd3cb8f8b4285a22077f7ef78148dc5a37ed9585b",
       "models": [
         "WorkflowExecution",
         "ScheduledTaskControls"
       ],
       "treatment": "domain-contract-or-support",
-      "scope": "Pure device-local formatting and datetime validation; source instants and existing foreign-clock recurrences are preserved."
+      "scope": "Pure device-local formatting and datetime validation; source instants and existing foreign-clock recurrences are preserved.",
+      "integrationReview": "2026-11-09 inline schedule editor: daily/weekly day selection, no-write draft cancellation, exact reviewed cron payload. ScheduledTaskControls covers bounded day sets and retained owner intent. Month/interval cron remains unmodified. CSS has no scheduling authority."
     }
   ],
   "configurationInputs": [

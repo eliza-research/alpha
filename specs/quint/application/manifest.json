@@ -392,7 +392,7 @@
       "apps/app/src/runtime/workflow-local-time.ts"
     ],
     "stateMapping": {
-      "owner/visible/source/detail/shownStatus/editing/draft/time": "Controlled shell and connection inputs, actual schedule-list issue and renderer projection",
+      "owner/visible/source/detail/shownStatus/editing/draft/time/days": "Controlled shell and connection inputs, actual schedule-list issue and renderer projection",
       "kind/storedStatus/storedText/storedCron/catalog": "One synthetic LifeOps task record and independent list failure inputs",
       "review/pending/message/sends/intents": "Actual review label, held transport receipt, presentation, dispatched request and exact owner-keyed intent"
     },

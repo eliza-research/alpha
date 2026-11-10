@@ -1,3 +1,4 @@
+import {workflowClockSchedule,workflowClockExpression} from '../runtime/workflow-local-time';
 import {CRON_PRESETS,formatSchedule} from '../../../../.eliza/client-features/packages/ui/src/utils/cron-format.ts';
 import {canSnoozeReminder,reminderDue} from '../../../../.eliza/client-features/packages/ui/src/utils/reminder-presentation';
 import {AUTOMATIONS_COMMITTED_EVENT} from '../runtime/automation-completion';
@@ -16,12 +17,10 @@ type Editor={kind:'prompt';draft:PromptDraft;row?:AutomationRow}|{kind:'reminder
 const dateInput=automationLocalDateInput;
 const future=()=>dateInput(Date.now()+3600000);
 const timeZone=workflowDeviceTimeZone;
-/** Clock editing is limited to the canonical daily/weekday/Monday preset shapes. */
+/** Prompt presets share the daily/weekly parser with the inline schedule editor. */
 function recurringClock(expression:string){
- const parts=expression.trim().split(/\s+/),minute=Number(parts[0]),hour=Number(parts[1]);
- if(parts.length!==5||!/^\d{1,2}$/.test(parts[0])||!/^\d{1,2}$/.test(parts[1])||minute>59||hour>23)return null;
- const preset=CRON_PRESETS.slice(1,4).find(p=>p.expression.split(/\s+/).slice(2).join(' ')===parts.slice(2).join(' '));
- return preset?{preset,time:String(hour).padStart(2,'0')+':'+String(minute).padStart(2,'0')}:null;
+ const clock=workflowClockSchedule(expression);if(!clock)return null;
+ return {...clock,preset:{expression:workflowClockExpression('09:00',clock.days),label:''}};
 }
 function presetAt(preset:typeof CRON_PRESETS[number],time:string){
  const match=/^([01]\d|2[0-3]):([0-5]\d)$/.exec(time);
@@ -48,6 +47,10 @@ export function installAutomationsAdapter(Component:any,views:Bag){
  let state:'idle'|'loading'|'ready'|'failed'='idle',message='',controller:AbortController|null=null,epoch=0,session:string|null=null,loadedSession:string|null=null,history:string[]=[];
  let scheduleDraft:string|null=null;
  let scheduleTime='';
+ let scheduleHour='8',scheduleMinute='00',schedulePeriod='AM',scheduleDays=[0,1,2,3,4,5,6],scheduleRepeat='daily';
+ const setClock=(time:string)=>{scheduleTime=time;const [hour,minute]=time.split(':');scheduleHour=/^([01]\d|2[0-3]):[0-5]\d$/.test(time)?String(Number(hour)%12||12):hour;scheduleMinute=minute||'00';schedulePeriod=Number(hour)>=12?'PM':'AM';};
+ const readClock=()=>{const hour=Number(scheduleHour),minute=Number(scheduleMinute);return /^\d{1,2}$/.test(scheduleHour)&&/^\d{1,2}$/.test(scheduleMinute)&&hour>=1&&hour<=12&&minute<=59?String(hour%12+(schedulePeriod==='PM'?12:0)).padStart(2,'0')+':'+String(minute).padStart(2,'0'):'';};
+ const repeatFor=(days:number[])=>days.length===7?'daily':days.join(',')==='1,2,3,4,5'?'weekdays':days.join(',')==='0,6'?'weekends':'custom';
  let completionDirty=false;
  const uncertain=new Set<string>();
  let intentStore:WorkflowIntentStore|null=null,suspended=document.hidden;
@@ -174,7 +177,7 @@ export function installAutomationsAdapter(Component:any,views:Bag){
    if(ended)action('Reopen',(client,signal)=>client.scheduledVerb(scheduled.id,'reopen',signal));
    else {
     action('Run now',(client,signal)=>client.scheduledVerb(scheduled.id,'fire',signal));
-    actions.push({label:'Edit schedule',disabled:!!controller||selectedLocked||scheduleBlocked,run:()=>{if(controller||locked(scheduled)||scheduleBlock())return;scheduleDraft=scheduled.description;scheduleTime=scheduleClock?.time??'';publish();}});
+    actions.push({label:'Edit schedule',disabled:!!controller||selectedLocked||scheduleBlocked,run:()=>{if(controller||locked(scheduled)||scheduleBlock())return;scheduleDraft=scheduled.description;setClock(scheduleClock?.time??'');scheduleDays=scheduleClock?[...scheduleClock.days]:[0,1,2,3,4,5,6];scheduleRepeat=repeatFor(scheduleDays);publish();}});
     for(const [label,verb] of [['Snooze 1 hour','snooze'],['Acknowledge','acknowledge'],['Complete','complete'],['Dismiss','dismiss']] as const)
      action(label,(client,signal)=>client.scheduledVerb(scheduled.id,verb,signal));
    }
@@ -187,15 +190,23 @@ export function installAutomationsAdapter(Component:any,views:Bag){
    filters:filters.map(name=>({name:filterNames[name],selected:name===typeFilter||name===statusFilter&&name!=='all',pick:()=>{if(name==='active'||name==='inactive')statusFilter=name;else typeFilter=name;publish();}})),filterLabel:workflowFilterLabel(typeFilter,statusFilter),itemCount:state==='ready'?`${cards.length} ${cards.length===1?'item':'items'}`:'',openFilters:()=>{dismissFilters();const selectedSession=binding()?.sessionId||'offline';closeFilters=openWorkflowFilters({type:typeFilter,status:statusFilter,current:()=>visible()&&(binding()?.sessionId||'offline')===selectedSession,apply:(type,status)=>{typeFilter=type;statusFilter=status;publish();},refresh:()=>void refresh(),busy:!!controller,closed:()=>{closeFilters=undefined;}});},loading:state==='loading',stale:loadedSession!==null&&loadedSession!==currentSession,empty,emptyLabel:typeFilter==='all'&&statusFilter==='all'?'No workflows yet':'No workflows match these filters',message,issues,refresh:()=>void refresh(),busy:!!controller,managementCards,history,
    detail:!!(detail||editor||creating),title:creating?'Add to Workflows':editor?editor.kind==='prompt'?(editor.row?'Edit automation':'New automation'):(editor.row?'Edit reminder':'New reminder'):detail?.title||'',close,creating,agentUnavailable:!!controller||!!automationBlock(),newMore,newMoreLabel:newMore?'Fewer options':'More options',toggleNewMore:()=>{newMore=!newMore;publish();},workflowDescription:automationBlock()||'Build individual steps. Runs only when you start it.',promptDescription:automationBlock()||'Tell Alpha what to do and when.',agentReminderUnavailable:!!controller||!!reminderBlock(),agentReminderDescription:reminderBlock()||'A reminder at the time you choose.',saveDisabled:!!controller||!!editor&&!!(editor.kind==='reminder'?reminderBlock():automationBlock()),createWorkflow:()=>{if(controller)return;const blocked=automationBlock();if(blocked){message=blocked;publish();return;}creating=false;render(value,current).newFlow();publish();},createPrompt:()=>create('prompt'),createReminder:()=>create('reminder'),createDeviceReminder:newDeviceReminder,
    editing:!!editor,fields,moreFields,whenFields,promptSaveNote:!editor?.row?'Saves paused. Enable it when you’re ready. Phone access needs a separate review.':editor.row.enabled?'Changes keep its existing schedule enabled.':'This automation stays paused.',promptMore,promptMoreLabel:promptMore?'Fewer options':'More options',togglePromptMore:()=>{promptMore=!promptMore;publish();},whenLabel:editor?.kind==='prompt'?(editor.draft.triggerType==='once'?'Once':editor.draft.triggerType==='cron'?formatSchedule(editor.draft.cron)===editor.draft.cron?'Custom schedule':formatSchedule(editor.draft.cron)||'Choose a schedule':'On an event'):'',scheduleOptions:editor?.kind==='prompt'?[{label:'Once',selected:editor.draft.triggerType==='once',pick:()=>{if(editor?.kind==='prompt'&&!controller){editor.draft.triggerType='once';publish();}}},...CRON_PRESETS.slice(1,4).map(preset=>({label:formatSchedule(editor?.kind==='prompt'&&recurringClock(editor.draft.cron)?presetAt(preset,recurringClock(editor.draft.cron)!.time):preset.expression),selected:editor?.kind==='prompt'&&editor.draft.triggerType==='cron'&&recurringClock(editor.draft.cron)?.preset.expression===preset.expression,pick:()=>{if(editor?.kind==='prompt'&&!controller){const clock=recurringClock(editor.draft.cron);editor.draft.triggerType='cron';editor.draft.cron=clock?presetAt(preset,clock.time):preset.expression;publish();}}}))]:[],save,saveLabel:editor?.kind==='prompt'&&!editor.row?'Save automation':'Save',prompt:editor?.kind==='prompt',scheduleKinds:['once','cron','event'].map(kind=>({label:kind==='once'?'Once':kind==='cron'?'Recurring':'On event',selected:editor?.kind==='prompt'&&editor.draft.triggerType===kind,pick:()=>{if(editor?.kind==='prompt'&&!controller){editor.draft.triggerType=kind as PromptDraft['triggerType'];if(kind==='cron'&&!editor.draft.cron)editor.draft.cron=CRON_PRESETS[1].expression;publish();}}})),
-   description:detail?.description||'',source:scheduled?'':detail?.source||'',schedule:detail?.kind==='reminder'?(()=>{const due=reminderDue(detail.record as Parameters<typeof reminderDue>[0]);return due?new Date(due).toLocaleString(undefined,{dateStyle:'full',timeStyle:'short'}):'No upcoming occurrence';})():detail?.schedule||'',status:detail?rowStatus(detail):'',actions:scheduled?[]:actions,
+   description:scheduleDraft!==null?'':detail?.description||'',source:scheduled?'':detail?.source||'',schedule:scheduleDraft!==null?'':detail?.kind==='reminder'?(()=>{const due=reminderDue(detail.record as Parameters<typeof reminderDue>[0]);return due?new Date(due).toLocaleString(undefined,{dateStyle:'full',timeStyle:'short'}):'No upcoming occurrence';})():detail?.schedule||'',status:detail?rowStatus(detail):'',actions:scheduled?[]:actions,
    schedulePrimary:scheduled?actions.slice(0,1):[],scheduleMore:scheduled&&actions.length>1?actions.slice(1):null,
    scheduleClockEditable:!!scheduleClock,editedScheduleTime:scheduleTime,
-   changeScheduleTime:(event:Event)=>{scheduleTime=(event.target as HTMLInputElement).value;publish();},
-   editingSchedule:!!scheduled&&scheduleDraft!==null,scheduleInstructions:scheduleDraft??'',scheduleSaveDisabled:!!controller||selectedLocked||scheduleBlocked,
+   changeScheduleTime:(event:Event)=>{setClock((event.target as HTMLInputElement).value);publish();},
+   scheduleHour,scheduleMinute,schedulePeriod,
+   changeScheduleHour:(event:Event)=>{scheduleHour=(event.target as HTMLInputElement).value;scheduleTime=readClock();publish();},
+   changeScheduleMinute:(event:Event)=>{scheduleMinute=(event.target as HTMLInputElement).value;scheduleTime=readClock();publish();},
+   schedulePeriods:['AM','PM'].map(period=>({label:period,selected:period===schedulePeriod,pick:()=>{schedulePeriod=period;scheduleTime=readClock();publish();}})),
+   scheduleRepeat,scheduleCustomDays:scheduleRepeat==='custom',
+   changeScheduleRepeat:(event:Event)=>{scheduleRepeat=(event.target as HTMLSelectElement).value;if(scheduleRepeat!=='custom')scheduleDays=scheduleRepeat==='weekdays'?[1,2,3,4,5]:scheduleRepeat==='weekends'?[0,6]:[0,1,2,3,4,5,6];publish();},
+   scheduleDays:[1,2,3,4,5,6,0].map(day=>({name:['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][day],label:['S','M','T','W','T','F','S'][day],selected:scheduleDays.includes(day),pick:()=>{scheduleDays=scheduleDays.includes(day)?scheduleDays.filter(value=>value!==day):[...scheduleDays,day].sort((a,b)=>a-b);publish();}})),
+   editingSchedule:!!scheduled&&scheduleDraft!==null,scheduleInstructions:scheduleDraft??'',scheduleSaveDisabled:!!controller||selectedLocked||scheduleBlocked||!scheduleDraft?.trim()||!!scheduleClock&&(!readClock()||!scheduleDays.length),
    changeScheduleInstructions:(event:Event)=>{scheduleDraft=(event.target as HTMLTextAreaElement).value;publish();},
    cancelScheduleEdit:()=>{scheduleDraft=null;publish();},
-   saveScheduleEdit:()=>{if(!scheduled||!scheduleDraft?.trim()||locked(scheduled)||controller||scheduleBlock())return;const instructions=scheduleDraft.trim();if(scheduleClock&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(scheduleTime)){message='Choose a valid time.';publish();return;}
-    const trigger=scheduleClock&&(scheduleTime!==scheduleClock.time||scheduled.record.trigger.tz!==timeZone())?{kind:'cron' as const,expression:presetAt(scheduleClock.preset,scheduleTime),tz:timeZone()}:undefined;
+   saveScheduleEdit:()=>{if(!scheduled||!scheduleDraft?.trim()||locked(scheduled)||controller||scheduleBlock())return;const instructions=scheduleDraft.trim(),time=readClock();if(scheduleClock&&(!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)||!scheduleDays.length)){message='Choose a time and at least one day.';publish();return;}
+    const expression=scheduleClock?workflowClockExpression(time,scheduleDays):'';
+    const trigger=scheduleClock&&(expression!==workflowClockExpression(scheduleClock.time,scheduleClock.days)||scheduled.record.trigger.tz!==timeZone())?{kind:'cron' as const,expression,tz:timeZone()}:undefined;
     ask('Save schedule',scheduled,(client,signal)=>client.editSchedule(scheduled.id,instructions,trigger,signal));scheduleDraft=null;publish();},
    locked:selectedLocked||formLocked,allowAnother:()=>void allowAnother(lockId),
    review:!!review,reviewLabel:review?.label||'',reviewPrompt:`${review?.label||''} on the currently connected agent? The agent’s existing permissions and scheduling rules still apply.`,reviewDetails:detail?.kind==='reminder'?[detail.title,detail.description,detail.schedule].filter(Boolean).join('\n'):'',reviewConfirmLabel:`Confirm ${review?.label||''}`,confirm:()=>{const selected=review;if(selected){review=null;void work(selected.run,selected.key);}},cancelReview:()=>{review=null;publish();},

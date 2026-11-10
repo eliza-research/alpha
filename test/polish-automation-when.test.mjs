@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {build} from 'esbuild';
-import {workflowCronLabel} from '../apps/app/src/runtime/workflow-local-time.ts';
+import {workflowCronLabel,workflowClockSchedule,workflowClockExpression} from '../apps/app/src/runtime/workflow-local-time.ts';
 
 const bundle=await build({entryPoints:['apps/app/src/runtime/automations-protocol.ts'],bundle:true,write:false,format:'esm',platform:'neutral',logLevel:'silent'});
 const {automationWhen,AutomationsProtocol}=await import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].text).toString('base64'));
@@ -32,4 +32,17 @@ test('foreign recurring clocks show their actual next local instant across dayli
   for(const [now,expected] of [['2026-01-15T07:00:00Z','Jan 15, 2026, 12:00 AM'],['2026-07-15T07:00:00Z','Jul 15, 2026, 1:00 AM']])assert.equal(workflowCronLabel('0 8 * * *','UTC',Date.parse(now)),'Next '+expected);
   assert.equal(workflowCronLabel('0 8 * * *','Invalid/Zone'),'Scheduled time unavailable');
  }finally{if(before===undefined)delete process.env.TZ;else process.env.TZ=before;}
+});
+
+// These values cross the existing scheduler boundary. Unsupported schedules must stay intact.
+test('weekly clock editing preserves chosen days and rejects non-weekly schedules',()=>{
+ for(const [cron,time,days] of [['0 0 * * *','00:00',[0,1,2,3,4,5,6]],['45 12 * * 1,3,5','12:45',[1,3,5]],['5 23 * * 0,6','23:05',[0,6]],['0 8 * * 1-5','08:00',[1,2,3,4,5]]]){
+  assert.deepEqual(workflowClockSchedule(cron),{time,days});
+  assert.deepEqual(workflowClockSchedule(workflowClockExpression(time,days)),{time,days});
+ }
+ for(const cron of ['0 8 1 * *','*/5 8 * * *','0 8 * 12 *','0 25 * * *','0 8 * * 7'])assert.equal(workflowClockSchedule(cron),null);
+ assert.throws(()=>workflowClockExpression('08:00',[]));
+ assert.throws(()=>workflowClockExpression('24:00',[1]));
+ const before=process.env.TZ;process.env.TZ='America/Los_Angeles';
+ try{assert.equal(workflowCronLabel('45 12 * * 1,3,5','America/Los_Angeles'),'Mon, Wed, Fri at 12:45pm');}finally{if(before===undefined)delete process.env.TZ;else process.env.TZ=before;}
 });

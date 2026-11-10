@@ -12,7 +12,7 @@ const buttons = Object.fromEntries(Object.entries(controls).filter(([label]) => 
   .map(([label, verb]) => [verb, label]));
 const messages = {
   '': '', 'Run started.': 'started', 'Saved on this agent.': 'saved',
-  'Another run was already in progress.': 'raced', 'Choose a valid time.': 'invalid-time',
+  'Another run was already in progress.': 'raced', 'Choose a valid time.': 'invalid-time', 'Choose a time and at least one day.': 'invalid-time',
   'This item did not run. Read its current status before trying again.': 'not-run',
   'Outcome unknown. Check the current record and history before repeating this action.': 'unknown',
   'Scheduled items could not refresh. Retry to check the current records.': 'source-unavailable',
@@ -37,7 +37,7 @@ function fields(state) {
     owner: state.owner, visible: state.visible, kind: state.kind, storedStatus: state.storedStatus,
     storedText: state.storedText, storedCron: state.storedTime, catalog: state.catalog,
     source: state.source, detail: state.detail, shownStatus: state.status.toLowerCase(),
-    editing: state.editing, draft: state.draft, time: state.time, message: messages[state.message],
+    days: state.days, editing: state.editing, draft: state.draft, time: state.time, message: messages[state.message],
     pending: state.pending ? {owner: state.pending.owner, request: payload(state.pending.path, state.pending.body)}
       : {owner: '', request: {verb: '', text: '', cron: '', zone: '', minutes: 0}},
     sends: state.sends.map(send => ({owner: send.owner, request: payload(send.path, send.body), retained: send.retained})),
@@ -71,6 +71,12 @@ export async function checkScheduledTaskControls() {
   }
   await scenario('preset edit reviews trimmed instructions and the original weekday and zone', [
     ['open'], ['pick', 'edit'], ['enter', '  New instructions.  ', '09:30'], ['save'], confirm, ['answer', 'exact'],
+  ]);
+  await scenario('chosen weekends are bound to the confirmed edit', [
+    ['open'], ['pick', 'edit'], ['chooseDays', '0,6'], ['enter', 'New instructions.', '09:30'], ['save'], confirm, ['answer','exact'], ['pick','edit'], ['cancelEdit'],
+  ]);
+  await scenario('discarding a day selection sends no edit', [
+    ['open'], ['pick','edit'], ['chooseDays','1,3,5'], ['cancelEdit'],
   ]);
   await scenario('custom cron edits instructions without replacing the stored trigger', [
     ['open'], ['pick', 'edit'], ['enter', 'New instructions.', ''], ['save'], ['cancelReview'],

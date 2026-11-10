@@ -86,13 +86,19 @@ test('schedule time and instructions change only after confirmation',async({page
  await page.getByLabel('More schedule actions').click();
  await page.getByRole('button',{name:'Edit schedule',exact:true}).click();
  await page.getByLabel('Instructions',{exact:true}).fill('Review my week.');
- await page.getByLabel('Schedule time',{exact:true}).fill('09:30');
+ await expect(page.getByText('Run only when requested.',{exact:true})).toHaveCount(0);
+ await page.getByRole('spinbutton',{name:'Hour',exact:true}).fill('9');
+ await page.getByRole('spinbutton',{name:'Minute',exact:true}).fill('30');
+ await page.getByRole('combobox',{name:'Repeat',exact:true}).selectOption('custom');
+ for(const day of ['Sunday','Tuesday','Thursday','Saturday'])await page.getByRole('button',{name:day,exact:true}).click();
+ await expect(page.getByRole('button',{name:'Monday',exact:true})).toHaveAttribute('aria-pressed','true');
+ await expect(page.getByRole('button',{name:'Tuesday',exact:true})).toHaveAttribute('aria-pressed','false');
  await page.getByRole('button',{name:'Save',exact:true}).click();
  const writes=()=>calls.filter(c=>c.method==='POST'&&c.path.endsWith('/weekly/edit'));
  expect(writes()).toHaveLength(0);
  await page.getByRole('button',{name:'Confirm Save schedule',exact:true}).click();
  await expect.poll(()=>writes().length).toBe(1);
- expect(writes()[0].body).toEqual({promptInstructions:'Review my week.',trigger:{kind:'cron',expression:'30 9 * * *',tz:'UTC'}});
+ expect(writes()[0].body).toEqual({promptInstructions:'Review my week.',trigger:{kind:'cron',expression:'30 9 * * 1,3,5',tz:await page.evaluate(()=>Intl.DateTimeFormat().resolvedOptions().timeZone)}});
 });
 
 test('workflow choices collapse and a confirmed schedule run fires once',async({page})=>{

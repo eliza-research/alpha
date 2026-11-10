@@ -4,6 +4,24 @@ import {formatSchedule} from '../../../../.eliza/client-features/packages/ui/src
 // browser SDK does not export this scheduling sentinel.
 const OWNER_LOCAL_TZ='owner_local';
 
+/** Daily/weekly clock schedules only; never reinterpret monthly or interval cron. */
+export function workflowClockSchedule(expression:string):{time:string;days:number[]}|null{
+ const parts=expression.trim().split(/\s+/);if(parts.length!==5||parts[2]!=='*'||parts[3]!=='*'||!/^\d{1,2}$/.test(parts[0])||!/^\d{1,2}$/.test(parts[1])||Number(parts[0])>59||Number(parts[1])>23)return null;
+ const days:number[]=[];
+ for(const part of (parts[4]==='*'?'0-6':parts[4]).split(',')){
+  const match=/^([0-6])(?:-([0-6]))?$/.exec(part);if(!match)return null;
+  const first=Number(match[1]),last=Number(match[2]??match[1]);if(last<first)return null;
+  for(let day=first;day<=last;day++)if(!days.includes(day))days.push(day);
+ }
+ return days.length?{time:parts[1].padStart(2,'0')+':'+parts[0].padStart(2,'0'),days:days.sort((a,b)=>a-b)}:null;
+}
+export function workflowClockExpression(time:string,days:number[]):string{
+ const match=/^([01]\d|2[0-3]):([0-5]\d)$/.exec(time);
+ if(!match||!days.length||days.some(day=>!Number.isInteger(day)||day<0||day>6))throw Error('Choose a time and at least one day.');
+ const ordered=[...new Set(days)].sort((a,b)=>a-b);
+ return `${Number(match[2])} ${Number(match[1])} * * ${ordered.length===7?'*':ordered.join(',')==='1,2,3,4,5'?'1-5':ordered.join(',')}`;
+}
+
 export const workflowDeviceTimeZone=()=>Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';
 export function workflowLocalInstant(stamp:string|number,locale?:string):string{
  const date=new Date(stamp);return Number.isFinite(date.getTime())?date.toLocaleString(locale,{year:'numeric',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'';
@@ -13,7 +31,7 @@ export function workflowLocalInstant(stamp:string|number,locale?:string):string{
 export function workflowCronLabel(expression:string,zone:string,now=Date.now()):string{
  const canonical=expression.replace(/1,2,3,4,5$/, '1-5'),cadence=formatSchedule(canonical);
  if(/^Every (minute|hour|\d+ minutes|\d+ hours)$/.test(cadence))return cadence;
- if(zone===OWNER_LOCAL_TZ||zone===workflowDeviceTimeZone()){const label=formatSchedule(canonical);return label===canonical?'Repeating schedule':label;}
+ if(zone===OWNER_LOCAL_TZ||zone===workflowDeviceTimeZone()){const label=formatSchedule(canonical);if(label!==canonical)return label;const clock=workflowClockSchedule(canonical);if(!clock)return 'Repeating schedule';const names=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];const at=formatSchedule(workflowClockExpression(clock.time,[0,1,2,3,4,5,6])).replace('Every day at ','');return clock.days.map(day=>names[day]).join(', ')+' at '+at;}
  const parts=expression.trim().split(/\s+/),[minute,hour,day,month,week]=parts;
  if(parts.length!==5||!/^\d+$/.test(minute)||!/^\d+$/.test(hour)||Number(minute)>59||Number(hour)>23||day!=='*'||month!=='*')return 'Repeating schedule';
  const days=week==='*'?[0,1,2,3,4,5,6]:week==='1-5'?[1,2,3,4,5]:week==='0,6'?[0,6]:/^[0-6](,[0-6])*$/.test(week)?week.split(',').map(Number):[];

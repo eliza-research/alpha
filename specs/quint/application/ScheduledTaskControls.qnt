@@ -5,7 +5,7 @@ module ScheduledTaskControls {
   type Send = {owner: str, request: Request, retained: bool}
   type State = {
     owner: str, visible: bool, kind: str, storedStatus: str, storedText: str, storedCron: str,
-    catalog: str, source: str, detail: bool, shownStatus: str, editing: bool, draft: str, time: str,
+    catalog: str, source: str, detail: bool, shownStatus: str, editing: bool, draft: str, time: str, days: str,
     review: Request, pending: Intent, message: str, sends: List[Send], intents: Set[Intent]
   }
   var s: State
@@ -39,7 +39,7 @@ module ScheduledTaskControls {
     Kinds.contains(kind), current == "scheduled" or Terminal.contains(current),
     s' = {owner: "a", visible: true, kind: kind, storedStatus: current, storedText: InitialText,
       storedCron: if (kind == "preset") "0 8 * * 1" else if (kind == "custom") "0 8 1 * *" else "",
-      catalog: "available", source: "available", detail: false, shownStatus: "", editing: false, draft: "", time: "",
+      catalog: "available", source: "available", detail: false, shownStatus: "", editing: false, draft: "", time: "", days: "*",
       review: Empty, pending: Idle, message: "", sends: List(), intents: Set()},
   }
   action init = {
@@ -61,7 +61,7 @@ module ScheduledTaskControls {
   action pick(verb: str): bool = all {
     menu.indices().exists(i => menu.nth(i) == verb), not(menuDisabled),
     s' = if (verb == "edit")
-      {...s, editing: true, draft: s.storedText, time: if (s.storedCron == "0 8 * * 1") "08:00" else if (clockEditable) "09:30" else ""}
+      {...s, editing: true, draft: s.storedText, days: if (Set("0 8 * * 0,6", "30 9 * * 0,6").contains(s.storedCron)) "0,6" else if (Set("0 8 * * 1,3,5", "30 9 * * 1,3,5").contains(s.storedCron)) "1,3,5" else if (clockEditable) "1" else "*", time: if (Set("0 8 * * 1", "0 8 * * 0,6", "0 8 * * 1,3,5").contains(s.storedCron)) "08:00" else if (clockEditable) "09:30" else ""}
       else {...s, review: {...Empty, verb: verb, minutes: if (verb == "snooze") 60 else 0}, message: ""},
   }
   action enter(text: str, time: str): bool = all {
@@ -70,15 +70,16 @@ module ScheduledTaskControls {
   }
   action save = all {
     s.editing, s.draft != "", not(busy), not(locked), s.source == "available",
-    val changed = clockEditable and ((s.time == "09:30" and s.storedCron == "0 8 * * 1")
-      or (s.time == "08:00" and s.storedCron == "30 9 * * 1"))
+    val cron = if (s.time == "09:30") (if (s.days == "0,6") "30 9 * * 0,6" else if (s.days == "1,3,5") "30 9 * * 1,3,5" else "30 9 * * 1") else (if (s.days == "0,6") "0 8 * * 0,6" else if (s.days == "1,3,5") "0 8 * * 1,3,5" else "0 8 * * 1")
+    val changed = clockEditable and cron != s.storedCron
     val text = if (s.draft == "  New instructions.  ") EditedText else s.draft
-    s' = if (clockEditable and not(Set("08:00", "09:30").contains(s.time)))
+    s' = if (clockEditable and (not(Set("08:00", "09:30").contains(s.time)) or s.days == ""))
       {...s, message: "invalid-time"}
       else {...s, editing: false, draft: "", review: {...Empty, verb: "edit", text: text,
-        cron: if (not(changed)) "" else if (s.time == "09:30") "30 9 * * 1" else "0 8 * * 1",
+        cron: if (changed) cron else "",
         zone: if (changed) "UTC" else ""}, message: ""},
   }
+  action chooseDays(days: str): bool = all {s.editing, clockEditable, Set("", "1", "0,6", "1,3,5").contains(days), s' = {...s, days: days}}
   action cancelEdit = all {s.editing, s' = {...s, editing: false, draft: ""}}
   action cancelReview = all {reviewVerb != "", s' = {...s, review: Empty}}
   action chooseCatalog(catalog: str): bool = all {Catalogs.contains(catalog), s' = {...s, catalog: catalog}}
@@ -120,6 +121,7 @@ module ScheduledTaskControls {
   action step = any {
     open, save, cancelEdit, cancelReview, confirm, refresh, switchOwner, leave,
     {nondet verb = Set("fire", "edit", "snooze", "acknowledge", "complete", "dismiss", "reopen").oneOf(); pick(verb)},
+    {nondet days = Set("", "1", "0,6", "1,3,5").oneOf(); chooseDays(days)},
     {nondet text = Drafts.oneOf(); nondet time = Times.oneOf(); enter(text, time)},
     {nondet catalog = Catalogs.oneOf(); chooseCatalog(catalog)},
     {nondet result = KnownFire.union(Unconfirmed).union(Set("exact")).oneOf(); answer(result)},
