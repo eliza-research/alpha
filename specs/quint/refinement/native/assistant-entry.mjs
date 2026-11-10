@@ -4,7 +4,7 @@ import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {captureInputs,checkTraces,qmap} from '../check-traces.mjs';
 import {app,directory,javaTraceCampaign,root} from './java.mjs';
-import {assistantAgent,assistantEntryPlatform,assistantShared,senseFixtures,systemModule} from './assistant-entry-platform.mjs';
+import {assistantAgent,assistantNavigation,assistantEntryPlatform,assistantShared,senseFixtures,systemModule} from './assistant-entry-platform.mjs';
 import {jsonJar} from '../../../../test/fixtures/jvm-tools.mjs';
 import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.ts';
 
@@ -13,7 +13,7 @@ const harness='AssistantEntryTraces.java';
 const capacitor='node_modules/@capacitor/android/capacitor/src/main/java/com/getcapacitor/';
 const hostPath='android/consumer-host.json';
 const patchManifest='android/upstream-native-sources.json';
-const appSources=['AlphaAssistActivity','AlphaPowerVoiceActivity','AlphaQuickSettingsTile','MainActivity','RendererRecoveryBudget']
+const appSources=['AlphaAssistActivity','AlphaPowerVoiceActivity','AlphaQuickSettingsTile','MainActivity','RendererRecoveryBudget','NavigationOpenRequest']
   .map(name=>app+name+'.java');
 const sharedSources=assistantShared.map(path=>'vendor/eliza/'+path);
 const ports=[join(directory,'MainActivityPorts.java')];
@@ -35,7 +35,7 @@ function mapSurfaces(observation) {
 export async function checkNativeAssistantEntry(extraSources=[]) {
   const fixture=assistantEntryPlatform();
   try {
-    const sources=[...appSources,assistantAgent,...sharedSources,senseFixtures,
+    const sources=[...appSources,assistantAgent,assistantNavigation,...sharedSources,senseFixtures,
       'android/app/src/main/AndroidManifest.xml',hostPath,patchManifest,'upstream.lock.json',
       capacitor+'BridgeActivity.java',capacitor+'Bridge.java','scripts/upstream-native-source.ts',
       'test/fixtures/jvm-tools.mjs',...(jsonJar?[jsonJar]:[]),...ports,

@@ -5,6 +5,7 @@ import {app,root} from './java.mjs';
 import {mainActivityPlatform} from './main-activity-platform.mjs';
 
 export const assistantAgent=app+'AlphaLocalAgentPlugin.java';
+export const assistantNavigation=app+'AlphaNavigationService.java';
 export const senseFixtures='vendor/eliza/plugins/plugin-native-system/test/sense-client-stubs.json';
 export const systemModule='plugins/plugin-native-system/android';
 export const assistantShared=['SenseInvocation','SenseListenerClient','AssistantEntryTile'].map(name=>
@@ -30,6 +31,13 @@ export function assistantEntryPlatform() {
       assert.equal(files[path].split(from).length,2,`fixture anchor ${from}`);
       put(path,files[path].replace(from,()=>to));
     }
+    // Assistant entry references the navigation action without executing the Maps service.
+    // Bind that constant to its real owner; the actual one-use request class compiles separately.
+    const navigation = readFileSync(join(root,assistantNavigation),'utf8');
+    const action = [...navigation.matchAll(/\bstatic final String ACTION_SHOW_MAPS="([^"]+)";/g)];
+    assert.equal(action.length,1,'One source-owned Maps notification action');
+    put('ai/elizaresearch/alphaphone/AlphaNavigationService.java',`package ai.elizaresearch.alphaphone;
+final class AlphaNavigationService {static final String ACTION_SHOW_MAPS=${JSON.stringify(action[0][1])};}`);
     const sense=JSON.parse(readFileSync(join(root,senseFixtures),'utf8'));
     for(const name of ['android/app/KeyguardManager.java','android/os/SystemClock.java','android/os/Bundle.java',
       'android/net/Uri.java','android/content/pm/ApplicationInfo.java','android/content/pm/ActivityInfo.java'])
