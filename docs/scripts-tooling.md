@@ -2,9 +2,9 @@
 
 JavaScript host tooling under `scripts/` is TypeScript, executed directly by the
 repository's Node 26 runtime. Use the commands in `package.json` or the relevant
-runbook. `npm run typecheck:scripts` checks the retained host modules and their
-fixture ports with strict TypeScript settings. The product typecheck remains
-separate; `npm run typecheck` runs both.
+runbook. `npm run typecheck:scripts` (or `node scripts/typecheck-scripts.ts`) checks the retained host modules and their
+fixture ports with strict TypeScript settings. `npm run typecheck` runs the
+product and script checks together.
 
 Pinned upstream tooling is loaded from its original reviewed path at runtime.
 Its implementation and native dependencies remain upstream-owned; this product
@@ -19,21 +19,22 @@ live beside their implementations in the same TypeScript files.
 
 ## Python and shell consolidation review
 
-The 43 Python files and two shell entrypoints were reviewed for callers, shared
+The 42 Python files and two shell entrypoints were reviewed for callers, shared
 helpers and runtime requirements. They remain in their existing languages.
 The unused `verify-aosp-listener-apk.py` alias was removed; the canonical verifier
-is `vendor/eliza/packages/os/scripts/android/verify-sense-apk.py`. The remaining
-42 Python files and both shell entrypoints retain their native dependencies and
+is `vendor/eliza/packages/os/scripts/android/verify-sense-apk.py`. Shared resident
+fixture admission now lives in `scripts/ci/resident_fixture.py`; the 42 retained
+Python files and both shell entrypoints keep their native dependencies and
 separate qualification gates.
 
 | Group | Consolidation assessment |
 | --- | --- |
-| Resident CI and recovery | `resident_fixture.py`, `resident_native_source.py`, `resident_absence.py` and `recovery_ui_guard.py` share frozen APK/source admission, absence and UI admission logic. Keep the campaign entrypoints separate: they supervise different process, permission, ownership and recovery phases. |
+| Resident CI and recovery | `resident_fixture.py`, `resident_native_source.py`, `resident_absence.py` and `recovery_ui_guard.py` share fixture, source, absence and UI admission logic. Keep the campaign entrypoints separate: they supervise different process, permission, ownership and recovery phases. |
 | Signing and artifact admission | Acquisition, private storage, signing-input admission, sealing, custody proof and qualified publication enforce different trust boundaries. Keep their independently pinned workflow entrypoints and inert refusal tests; combining them would broaden authority rather than remove an unused caller. |
 | Regional Maps | `dataset_manifest.py` is already the common inventory/sealing guard. Preparation, PyOsmium indexing and the SQLite/HTTP gateway have different dependencies and lifetimes. Their scripts and tests remain used by `dev:maps` and regional dataset diagnostics. |
 | Native/AOSP adapters | Thin adapters delegate generic verification/staging to the pinned upstream Python tools while retaining Alpha policy and stable documented commands. Keep that boundary instead of duplicating the upstream implementation. |
 | Audio, image and reproduction tools | Emulator gRPC, image comparison, model conversion and Linux seccomp reproduction have explicit native/runtime dependencies and documented or campaign callers. They are manual diagnostics, not production startup code. |
-| Shell bootstrap | Host JSON preparation runs before the repository dependencies are installed; Cloud signing-input admission preserves a separate protected workflow entrypoint. These are not interchangeable bootstrap commands. |
+| Shell bootstrap | Host JSON preparation downloads and verifies the pinned JVM fixture dependency. Cloud signing-input admission preserves a separate protected workflow entrypoint with its own authority. |
 
 The Java and Gradle files below are native parser/compiler inputs:
 
@@ -44,8 +45,9 @@ The Java and Gradle files below are native parser/compiler inputs:
 | `scripts/aosp-unsigned-debug.init.gradle` | The documented AOSP developer build passes it to Gradle. |
 | `scripts/ci/calendar-bridge.init.gradle` | The Calendar bridge build passes it to Gradle. |
 
-Fixtures in `scripts/fixtures/`, JSON configuration, HTML entrypoints and the
-GraphHopper YAML configuration are data or application fixture assets.
+TypeScript harnesses in `scripts/fixtures/` participate in the script typecheck.
+Their JSON configuration, HTML entrypoints and GraphHopper YAML configuration
+remain fixture data and application assets.
 
 ## Android JSON serializer diagnostic
 

@@ -45,7 +45,6 @@ test('the committed metadata verifies every artifact by SHA-256 and trusts nothi
     assert.doesNotMatch(read(file), /org\.gradle\.dependency\.verification|--dependency-verification/, `${file} must not relax verification`);
 });
 
-
 test('AAPT2 provenance retains the historical producer and accepts the migrated producer', t => {
   const previous = 'Fetched from dl.google.com/dl/android/maven2 by scripts/gradle-verification.mjs';
   const current = 'Fetched from dl.google.com/dl/android/maven2 by scripts/gradle-verification.ts';
