@@ -133,14 +133,19 @@ async function savedFixture(){
  f.api.getLifeOpsCalendarFeed=async()=>feed;
  const preservation={capture:async()=>({fingerprint:'same',present:false,readable:true,pending:false,records:[]}),retainedReadOnly:async()=>true};
  const make=(api=f.api,store=cache,port=f.port,hold=preservation)=>new AgentCalendar(()=>port,hold,()=>api,async()=>store);
- const writer=make();await writer.refresh(window);await new Promise(resolve=>setImmediate(resolve));
+ const writer=make();await writer.refresh(window);await settleLocal(()=>raw?.entries.some(entry=>entry.value?.feed?.events.length===1));
  assert.ok(raw?.entries.some(entry=>entry.value?.feed?.events.length===1),'completed live reads are persisted');writer.retire();
  return {...f,cache,window,feed,make,raw:()=>raw,replace:value=>{raw=value;}};
 }
-async function settleLocal(){for(let i=0;i<4;i++)await new Promise(resolve=>setImmediate(resolve));}
+async function settleLocal(ready){
+ if(!ready){for(let i=0;i<4;i++)await new Promise(resolve=>setImmediate(resolve));return;}
+ const deadline=Date.now()+5000;
+ while(!ready()&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,1));
+ assert.ok(ready(),'Saved Calendar read did not settle');
+}
 test('reload shows saved rows while provider reads are pending, never authorizing edits, then replaces them',async()=>{
  const f=await savedFixture(),held=defer(),calendar=f.make({...f.api,getLifeOpsCalendarFeed:()=>held.promise});
- const pending=calendar.refresh(f.window);await settleLocal();
+ const pending=calendar.refresh(f.window);await settleLocal(()=>calendar.state.savedAt!==null);
  assert.equal(calendar.state.status,'loading');assert.equal(calendar.state.feed.events[0].title,f.event.title);assert.equal(calendar.state.nextFresh,false);assert.ok(calendar.state.savedAt);
  assert.equal(calendar.selection(JSON.stringify([f.event.provider,f.event.side,f.event.grantId,f.event.connectorAccountId,f.event.calendarId,f.event.externalId,f.event.id])),undefined);
  assert.equal(calendar.sourceSelection(JSON.stringify([f.source.provider,f.source.side,f.source.grantId,f.source.connectorAccountId,f.source.calendarId])),undefined);
@@ -150,7 +155,7 @@ test('reload shows saved rows while provider reads are pending, never authorizin
 });
 test('failed refresh retains validated saved rows but does not mark them fresh',async()=>{
  const f=await savedFixture(),held=defer(),calendar=f.make({...f.api,getLifeOpsCalendarFeed:()=>held.promise});
- const pending=calendar.refresh(f.window);await settleLocal();held.resolve(Promise.reject(Error('offline')));await pending;
+ const pending=calendar.refresh(f.window);await settleLocal(()=>calendar.state.savedAt!==null);held.resolve(Promise.reject(Error('offline')));await pending;
  assert.ok(calendar.state.savedAt);assert.equal(calendar.state.feed.events.length,1);assert.equal(calendar.state.nextFresh,false);assert.match(calendar.state.error,/could not load/);calendar.retire();f.retire();
 });
 test('a late local read cannot replace a fresh provider result',async()=>{
@@ -169,7 +174,7 @@ test('saved feed refuses foreign owners, windows, malformed rows and source ambi
 test('owner retirement, legacy review and provider revocation hide saved rows',async()=>{
  const f=await savedFixture(),held=defer(),calendar=f.make({...f.api,getLifeOpsCalendarFeed:()=>held.promise});const pending=calendar.refresh(f.window);await settleLocal();calendar.retire();held.resolve(f.feed);await pending;assert.equal(calendar.state.feed,null);
  const gate=f.make(f.api,f.cache,f.port,{capture:async()=>({fingerprint:'legacy',present:true,readable:true,pending:false,records:[]}),retainedReadOnly:async()=>false});await gate.refresh(f.window);assert.equal(gate.state.status,'transition-required');assert.equal(gate.state.feed,null);gate.retire();
- const revoked=defer(),read=f.make({...f.api,getLifeOpsCalendarFeed:()=>revoked.promise,getLifeOpsCalendars:async()=>({calendars:[]})});const refresh=read.refresh(f.window);await settleLocal();assert.ok(read.state.savedAt);revoked.resolve(Promise.reject(Error('revoked')));await refresh;await settleLocal();assert.equal(read.state.feed,null);assert.equal(read.state.savedAt,null);assert.equal(f.raw().entries[0].value,null);read.retire();f.retire();
+ const revoked=defer(),read=f.make({...f.api,getLifeOpsCalendarFeed:()=>revoked.promise,getLifeOpsCalendars:async()=>({calendars:[]})});const refresh=read.refresh(f.window);await settleLocal(()=>read.state.savedAt!==null);assert.ok(read.state.savedAt);revoked.resolve(Promise.reject(Error('revoked')));await refresh;await settleLocal();assert.equal(read.state.feed,null);assert.equal(read.state.savedAt,null);assert.equal(f.raw().entries[0].value,null);read.retire();f.retire();
 });
 test('an immediate transport failure still waits for the saved local read',async()=>{
  const f=await savedFixture(),held=defer(),calendar=f.make({...f.api,getLifeOpsCalendarFeed:async()=>{throw Error('offline');}},{get:()=>held.promise,put:async()=>{}});
@@ -179,7 +184,7 @@ test('an immediate transport failure still waits for the saved local read',async
 
 for(const method of ['getLifeOpsCalendarFeed','getLifeOpsCalendars'])for(const status of [401,403])test(`${method} HTTP ${status} immediately hides and invalidates saved rows`,async()=>{
  const f=await savedFixture(),denied=defer(),next=defer(),calendar=f.make({...f.api,[method]:()=>denied.promise,getLifeOpsNextCalendarEventContext:()=>next.promise});
- const pending=calendar.refresh(f.window);await settleLocal();assert.ok(calendar.state.savedAt);
+ const pending=calendar.refresh(f.window);await settleLocal(()=>calendar.state.savedAt!==null);assert.ok(calendar.state.savedAt);
  denied.resolve(Promise.reject(Object.assign(Error('Access refused'),{status})));await settleLocal();
  assert.equal(calendar.state.feed,null,'refusal hides rows without waiting for other provider reads');assert.deepEqual(calendar.state.calendars,[]);assert.equal(calendar.state.savedAt,null);assert.equal(calendar.state.next,null);
  assert.equal(f.raw().entries[0].value,null,'refusal invalidates the persisted snapshot');

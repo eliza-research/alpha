@@ -38813,9 +38813,9 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "0b4e4422e90808339d07ed9e48255d9678ce4dfa92b250ff09ffd1514127f0d3",
+      "sha256": "72c9304acded1ab2cf4865c39c0a1b18ce3321d5862a4ef72e9134d2f0df7753",
       "stateAnchors": [],
-      "integrationReview": "Reviewed integration source. Domain allocation is retained; source-hash refresh does not establish semantic refinement. See targeted validation and remaining obligations."
+      "integrationReview": "Reviewed integration source. Domain allocation is retained; source-hash refresh does not establish semantic refinement. See targeted validation and remaining obligations. 2026-11-10: Own-selected signed-out Account keeps provider navigation available; active explicit sign-in remains independently visible. AccountSheet includes direct-provider reachability. Informational notice hit-testing yields to underlying controls while notice buttons remain interactive; actual Inbox reconnect browser proof covers geometry outside the abstract notice model. No account, key, financial or device-acceptance authority change."
     },
     {
       "path": "apps/app/src/runtime/connection-ui.tsx",
@@ -38838,9 +38838,9 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "38970b2e7491b3498a90d658d223f56c24a81aa00ee159c630dd3a46e5d5a55c",
+      "sha256": "1d4e1075275421b71e5e121c3345801a4cdcfc0a4dd790cb8a17a686f2bd0bfa",
       "stateAnchors": [],
-      "integrationReview": "Reviewed browser connection close icon preserves the existing accessible name and controller close action. Connection identity, owner binding and stored history authority remain unchanged. Retained Pixel lane review: 2026-11-09 preview review: saved Inbox before background refresh with owner/epoch invalidation; optional Cloud restore pending presentation; provider pending-vs-failed presentation; existing Cloud-preview storage eligibility; About removal; dedicated embedding authority separated from own text/voice. Existing domain allocations retained; actual browser and owning tests recorded separately. Semantic refinement and device acceptance remain open. 2026-11-10: Current-main composition retains the reviewed Pixel lane UI/IME/Calendar changes and canonical Alpha Compute namespace. Full merged-source qualification remains required; no historical APK/device acceptance transfer. 2026-11-10: Retained reviewed186a account/sign-out/image dismissal changes in current main composition; keep automatic update disposal and complete keyboard APK admission."
+      "integrationReview": "Reviewed browser connection close icon preserves the existing accessible name and controller close action. Connection identity, owner binding and stored history authority remain unchanged. Retained Pixel lane review: 2026-11-09 preview review: saved Inbox before background refresh with owner/epoch invalidation; optional Cloud restore pending presentation; provider pending-vs-failed presentation; existing Cloud-preview storage eligibility; About removal; dedicated embedding authority separated from own text/voice. Existing domain allocations retained; actual browser and owning tests recorded separately. Semantic refinement and device acceptance remain open. 2026-11-10: Current-main composition retains the reviewed Pixel lane UI/IME/Calendar changes and canonical Alpha Compute namespace. Full merged-source qualification remains required; no historical APK/device acceptance transfer. 2026-11-10: Retained reviewed186a account/sign-out/image dismissal changes in current main composition; keep automatic update disposal and complete keyboard APK admission. 2026-11-10: Own-selected signed-out Account keeps provider navigation available; active explicit sign-in remains independently visible. AccountSheet includes direct-provider reachability. Informational notice hit-testing yields to underlying controls while notice buttons remain interactive; actual Inbox reconnect browser proof covers geometry outside the abstract notice model. No account, key, financial or device-acceptance authority change."
     },
     {
       "path": "apps/app/src/runtime/conversation-selection.ts",

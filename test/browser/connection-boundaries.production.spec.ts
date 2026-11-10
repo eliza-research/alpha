@@ -1,4 +1,4 @@
-import {openCloudPlanFromSettings} from './helpers/cloud-plan-settings';
+import {openCloudPlanFromSettings,confirmCloudSignOut} from './helpers/cloud-plan-settings';
 import { cloudStorageSlot } from '../../apps/app/src/runtime/cloud-deployment.generated';
 import {seedCompletedAccessSetup} from './flag-off-android';
 import { test, expect, type Page } from '@playwright/test';
@@ -234,11 +234,10 @@ for (const mode of ['revoked', 'unsupported', 'failed', 'refused-in-body', 'not-
     await expect.poll(async () => (await nativeCalls(page)).filter(call => call.plugin === 'Agent').map(call => call.method), {timeout:30_000}).toContain('start');
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await openCloudPlanFromSettings(page);
-    await expect(page.getByRole('button', { name: 'Sign out of Eliza Cloud', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Sign out', exact: true })).toBeVisible();
     const before = (await nativeCalls(page)).length;
     if (mode === 'cancelled') await page.evaluate(() => { (window as any).holdStop = true; });
-    page.once('dialog', dialog => void dialog.accept());
-    await page.getByRole('button', { name: 'Sign out of Eliza Cloud', exact: true }).click();
+    await page.getByRole('button', { name: 'Sign out', exact: true }).click();await confirmCloudSignOut(page);
     if (mode === 'cancelled') {
       // Cancel while Cloud AI is still being unbound: sign-out still removes the local key.
       await page.waitForFunction(() => typeof (window as any).releaseStop === 'function');
@@ -481,14 +480,13 @@ test('passive deletion failures stay quiet; known pending failures preserve sett
   await expect(notice).toContainText('Pending deletion status is unavailable');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await openCloudPlanFromSettings(page);
-  const signout = page.getByRole('button', { name: 'Sign out of Eliza Cloud', exact: true });
+  const signout = page.getByRole('button', { name: 'Sign out', exact: true });
   // Force geometric overlap without forcing the click: informational text must not consume it.
   await signout.evaluate(button => {
     const banner = document.querySelector<HTMLElement>('.alpha-deletion-undo')!, rect = button.getBoundingClientRect();
     Object.assign(banner.style, { top: `${rect.top}px`, left: `${rect.left}px`, right: 'auto', bottom: 'auto', width: `${rect.width}px` });
   });
-  page.once('dialog', dialog => void dialog.accept());
-  await signout.click();
+  await signout.click();await confirmCloudSignOut(page);
   await expect(page.locator('.alpha-connection').getByRole('status')).toContainText('Signed out.');
   await expect(notice).toHaveCount(0);
 });

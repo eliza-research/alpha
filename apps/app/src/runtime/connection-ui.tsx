@@ -3564,7 +3564,9 @@ export function explicitSignedOutCloudEntry(
     snapshot.startupResolved===true && snapshot.residentSavedCredential===false &&
     !snapshot.residentStarting && !snapshot.residentRecoveryReason &&
     snapshot.residentPlanNotice!=='offline' && !snapshot.error;
-  if(ownProviderSelected(snapshot)&&snapshot.purpose==='agent')return false;
+  // Saved own keys keep account/provider settings usable without requiring Cloud sign-in.
+  // An explicit sign-in attempt still renders through snapshot.signIn.
+  if(ownProviderSelected(snapshot))return false;
   return snapshot.open&&!snapshot.cloudAccount&&(
     snapshot.purpose==='cloud-account'||snapshot.purpose==='plan'||firstBrowserResidentSignIn
   );

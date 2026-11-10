@@ -22,11 +22,12 @@ test('power menu remains reachable and camera/emergency/short-press policies rem
   }
 });
 
-test('default resolves to the declared ordinary assist activity without a new privileged service', () => {
+test('held external assist entry stays disabled without a new privileged service', () => {
   const manifest = fs.readFileSync('android/app/src/main/AndroidManifest.xml', 'utf8');
   const activity = /<activity\s+android:name="\.AlphaAssistActivity"[\s\S]*?<\/activity>/.exec(manifest)?.[0];
   assert.ok(activity);
-  assert.match(activity, /android:exported="true"/);
+  assert.match(activity, /android:exported="false"/);
+  assert.match(activity, /android:enabled="false"/);
   assert.match(activity, /android.intent.action.ASSIST/);
   assert.match(activity, /android.intent.category.DEFAULT/);
   // Image resources are defaults, not a migration that rewrites a returning user's settings.

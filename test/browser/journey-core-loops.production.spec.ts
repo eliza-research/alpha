@@ -1,3 +1,4 @@
+import {openRetainedDigests} from './helpers/retained-digests';
 import {installNoteScheduleContract,reviewNoteScheduleContract} from './helpers/note-schedule-contract';
 import {openCloudPlanFromSettings} from './helpers/cloud-plan-settings';
 import {installNativeNavigationFixture} from './helpers/native-navigation-protocol';
@@ -470,10 +471,7 @@ test('loops D and F in the web build: digests and mail name the missing account 
   const foreign = await fenceNetwork(page);
   await page.addInitScript(offline);
   await page.goto('/');
-  await button(page, 'Settings').click();
-  await button(page, 'Apps').click();
-  await button(page, 'Workflows').click();
-  await button(page, 'Scheduled summaries').click();
+  await openRetainedDigests(page);
   const digests = page.getByRole('dialog', { name: 'Scheduled digests', exact: true });
   await expect(digests).not.toContainText('Choose where your agent runs');
   await expect(digests).toContainText('Your agent runs on your phone, not here. Open Alpha on your Android phone to use it.');
@@ -934,14 +932,11 @@ test('loops D and F on Android: schedules are stated as phone-bound, and mail wi
   const foreign = await fenceNetwork(page);
   await android(page);
   await residentHome(page);
-  await button(page, 'Settings').click();
-  await button(page, 'Apps').click();
-  await button(page, 'Workflows').click();
-  await button(page, 'Scheduled summaries').click();
+  await openRetainedDigests(page);
   const digests = page.getByRole('dialog', { name: 'Scheduled digests', exact: true });
   // The resident agent schedules on the phone and the panel says what that cannot do (decision A-09 is open).
   await expect(digests).toContainText('Your agent runs schedules on this phone. It cannot run while the phone is off.');
-  await expect(digests).toContainText('one is recorded below as missed and none is run later');
+  await expect(digests).toContainText('Missed times don’t run later.');
   await expect(digests.getByText(/Schedules run while this app is open/)).toHaveCount(0);
   // This stub has no result store: the panel reports that instead of showing results.
   await expect(digests).toContainText('Result storage could not be connected. Reconnect the agent to try again.');

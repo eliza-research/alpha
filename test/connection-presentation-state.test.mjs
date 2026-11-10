@@ -866,7 +866,7 @@ test('the automatic entry is one full page with no Back on every platform; opene
  for(const purpose of ['cloud-account','plan'])for(const android of [false,true]){
   const opened=fixture({android,browserResident:!android,account:null,purpose,open:true});
   opened.update({startupResolved:true,residentSavedCredential:false,providerStatus:{provider:'cerebras',selected:true,configured:true}});
-  assert.equal(opened.context.explicitSignedOutCloudEntry(opened.snapshot()),true);
+  assert.equal(opened.context.explicitSignedOutCloudEntry(opened.snapshot()),false,'Own keeps Account and provider settings available without a Cloud sign-in gate');
   assert.equal(opened.context.signInEntryPage(opened.snapshot()),false,`${purpose} opened on ${android?'Android':'browser'} keeps its Back`);
  }
 });

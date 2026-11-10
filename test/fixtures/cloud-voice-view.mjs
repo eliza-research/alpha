@@ -61,6 +61,7 @@ export function cloudVoiceViewFixture(options={}){
   load('runtime/note-recorder-driver.ts',box,['createNoteRecorderDriver','noteSegmentTranscriber']);
   box.setNotesRecorderControl=control=>{f.notesRecorderControl=control;};
  }
+ load('runtime/note-default-title.ts',box,['nextDefaultNoteTitle']);
  load('prototype/voice-adapter.ts',box,['installPrototypeVoiceAdapter'],options.adapterSourceTransform);
  const icons={check:'check',mic:'official-mic-path',stop:'stop',play:'play',x:'close',cloud:'cloud',user:'account'};
  class Shell{

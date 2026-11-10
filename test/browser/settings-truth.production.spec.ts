@@ -272,19 +272,18 @@ test('the browser build of Settings shows no fixture value and no radio or senso
 test('Settings › Eliza Cloud reports the verified plan without automatically opening code entry',async({page})=>{
  await nativeStub(page);
  await openSettings(page);
- await openCloudPlanFromSettings(page);
- const plan=current(page);
+ const plan=await openCloudPlanFromSettings(page);
  await expect(plan.getByText('synthetic-settings@example.invalid',{exact:true})).toBeVisible();
  await expect(plan).toContainText('Plus');
- await expect(plan.getByRole('button',{name:'Sign out of Eliza Cloud',exact:true})).toBeVisible();
- await expect(plan.getByRole('button',{name:'Redeem code',exact:true})).toBeVisible();
+ await expect(plan.getByRole('button',{name:'Sign out',exact:true})).toBeVisible();
+ await expect(plan.getByRole('button',{name:'Use code',exact:true})).toBeVisible();
  await expect(page.getByLabel('Membership code',{exact:true})).toHaveCount(0);
- await expect(plan.getByRole('button',{name:'Manage plan',exact:true})).toBeVisible();
- const iconPaths=await Promise.all(['Redeem code','Manage plan','Sign out of Eliza Cloud'].map(name=>plan.getByRole('button',{name,exact:true}).locator('span[aria-hidden="true"]').first().getAttribute('style')));
+ await expect(plan.getByRole('button',{name:/^(Manage plan|Choose a plan)$/,exact:true})).toBeVisible();
+ const iconPaths=await Promise.all(['Use code','Manage plan','Add balance'].map(name=>plan.getByRole('button',{name,exact:true}).locator('span[aria-hidden="true"]').first().evaluate(icon=>getComputedStyle(icon).getPropertyValue('--account-icon'))));
  expect(new Set(iconPaths).size).toBe(3);
- await plan.getByRole('button',{name:'Sign out of Eliza Cloud',exact:true}).click();
+ await plan.getByRole('button',{name:'Sign out',exact:true}).click();
  const signOut=page.getByRole('dialog',{name:'Sign out?',exact:true});await expect(signOut).toBeVisible();
- await signOut.getByRole('button',{name:'Cancel',exact:true}).click();await expect(signOut).toHaveCount(0);
+ await signOut.getByRole('button',{name:'Close Account',exact:true}).click();await expect(signOut).toHaveCount(0);await expect(plan).toBeVisible();
  await expect(plan.getByText('synthetic-settings@example.invalid',{exact:true})).toBeVisible();
 
  expect(await page.evaluate(()=>(window as any).truth.calls.filter((c:any)=>c.plugin==='AlphaConnection'&&c.method==='request'&&new URL(c.input.url).pathname==='/api/v1/subscription/redeem').length)).toBe(0);
@@ -299,16 +298,15 @@ for(const subscription of ['credits','active','canceled'] as const)test(`Setting
  const notice=page.getByRole('region',{name:'Eliza Cloud plan notice',exact:true});
  if(subscription==='canceled')await expect(notice).toBeVisible();
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await openCloudPlanFromSettings(page);
- const plan=current(page),redeem=plan.getByRole('button',{name:'Redeem code',exact:true});
+ const plan=await openCloudPlanFromSettings(page),redeem=plan.getByRole('button',{name:'Use code',exact:true});
  if(subscription==='credits')await expect(plan).toContainText('No active subscription');
- await expect(plan.getByRole('button',{name:'Manage plan',exact:true})).toBeVisible();
+ await expect(plan.getByRole('button',{name:/^(Manage plan|Choose a plan)$/,exact:true})).toBeVisible();
  await expect(page.getByLabel('Membership code',{exact:true})).toHaveCount(0);
  // A signed-in owner may open code entry without changing current plan admission.
  // Focus activation also works when the cancellation notice occupies the top edge.
  await expect(redeem).toBeVisible();await redeem.focus();await redeem.press('Enter');
  await expect(page.getByLabel('Membership code',{exact:true})).toBeVisible();
- await expect(page.getByRole('dialog',{name:'Eliza Cloud account & plan',exact:true}).getByRole('region',{name:'Subscription',exact:true}).getByRole('button',{name:'Redeem',exact:true})).toBeVisible();
+ await expect(page.getByRole('dialog',{name:'Account',exact:true}).getByRole('region',{name:'Balance and membership',exact:true}).getByRole('button',{name:'Redeem',exact:true})).toBeVisible();
  expect(await page.evaluate(()=>(window as any).truth.calls.filter((c:any)=>c.plugin==='AlphaConnection'&&c.method==='request'&&new URL(c.input.url).pathname==='/api/v1/subscription/redeem').length)).toBe(0);
 });
 

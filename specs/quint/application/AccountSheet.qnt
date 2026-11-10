@@ -20,6 +20,8 @@ module AccountSheet {
     confirm, switchMode, s' = s }
   val safety = s.removed == s.authorized and s.keys == Set(0, 1) and s.dataRevision == 1
     and (s.review == -1 or (s.open and s.review == s.owner))
+  run directSettingsRemainReachable = init.then(switchMode).then(show).then(provider)
+    .expect(s.mode == "direct" and s.section == "provider" and safety)
   run settingsAndStartupShareAccount = init.then(show).expect(s.section == "account")
     .then(provider).then(back).expect(s.section == "account" and safety)
   run switchedOwnerCannotConfirm = init.then(show).then(askSignOut).then(switchOwner)
