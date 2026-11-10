@@ -6,9 +6,9 @@ import {captureInputs,checkTraces} from '../check-traces.mjs';
 import {app,directory,javaTraces} from './java.mjs';
 import {noteBridgePlatform} from './note-bridge-platform.mjs';
 import {readFileSync} from 'node:fs';
-import {preparePatchedNative} from '../../../../scripts/prepare-patched-native.mjs';
+import {preparePatchedNative} from '../../../../scripts/prepare-patched-native.ts';
 const native = preparePatchedNative();
-const nativePatchInputs = ['android/upstream-native-sources.json', 'scripts/prepare-patched-native.mjs',
+const nativePatchInputs = ['android/upstream-native-sources.json', 'scripts/prepare-patched-native.ts',
  join(native.root, '.source.json'), ...JSON.parse(readFileSync('android/upstream-native-sources.json', 'utf8')).patches.map(row => 'patches/eliza/' + row.file)];
 
 export const notePermissionScenarios=['direct','direct-call','permission-denied','permission-granted','permission-call',

@@ -1362,6 +1362,7 @@
         <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; {{browser.hostCss}}">{{browser.host}}</span><span style="color: var(--mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{browser.path}}</span>
       </button>
       <div class="browser-page-controls" role="group" aria-label="Page navigation">
+      <sc-if value="{{browser.loading}}"><button class="ib" aria-label="Stop loading" onClick="{{browser.stopLoading}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.x}}"></path></svg></button></sc-if>
       <button class="ib" aria-label="Previous page" onClick="{{browser.goBack}}" style="width: 40px; opacity: {{browser.backOp}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.back}}"></path></svg></button>
       <button class="ib" aria-label="Next page" onClick="{{browser.goFwd}}" style="width: 40px; opacity: {{browser.fwdOp}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.right}}"></path></svg></button>
       </div>
@@ -1371,11 +1372,14 @@
     <sc-if value="{{browser.editing}}">
       <div style="flex-grow: 1; min-width: 0; margin-left: 6px; height: 44px; border-radius: 22px; background: var(--s2); display: flex; align-items: center; gap: 8px; padding: 0 6px 0 14px; box-shadow: inset 0 0 0 1.5px var(--acct)">
         <svg class="i" viewBox="0 0 24 24" style="width: 16px; height: 16px; color: var(--mut)"><path d="{{ic.search}}"></path></svg>
-        <input ref="{{browser.focusRef}}" aria-label="Address" placeholder="Search or type address" value="{{browser.addr}}" onChange="{{browser.onAddr}}" onKeyDown="{{browser.onAddrKey}}" style="flex-grow: 1; min-width: 0; height: 40px; background: transparent; border: 0; outline: none; color: var(--fg); font-size: 15px">
+        <input ref="{{browser.focusRef}}" aria-label="Address" placeholder="Search or type address" enterKeyHint="go" autoCapitalize="none" autoCorrect="off" spellCheck="false" autoComplete="off" value="{{browser.addr}}" onChange="{{browser.onAddr}}" onKeyDown="{{browser.onAddrKey}}" style="flex-grow: 1; min-width: 0; height: 40px; background: transparent; border: 0; outline: none; color: var(--fg); font-size: 15px">
+        <button class="ib" aria-label="Clear address" onClick="{{browser.clearAddress}}"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="{{ic.x}}"></path></svg></button>
       </div>
       <button class="ib" aria-label="Cancel editing" onClick="{{browser.cancelEdit}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.x}}"></path></svg></button>
     </sc-if>
   </div>
+
+  <sc-if value="{{browser.loading}}"><div role="progressbar" aria-label="Loading website" style="height:3px;flex-shrink:0;background:var(--s2);overflow:hidden"><div class="alpha-browser-loading" style="height:100%;width:35%;background:var(--acc)"></div></div></sc-if>
 
   <!-- While the address is edited its suggestions cover the page: the page leaves TalkBack and Tab order (AP-15). -->
   <div inert="{{browser.pageCovered}}" aria-hidden="{{browser.pageCovered}}" style="flex-grow: 1; min-height: 0; position: relative; display: flex; flex-direction: column">
@@ -1608,6 +1612,7 @@
       <button class="tap" aria-label="{{browser.markLabel}}" onClick="{{browser.toggleMark}}" style="min-height:50px; border-radius: 18px; display: flex; align-items: center; gap: 14px; padding: 0 14px; font-size: 15px; text-align: left; line-height: 1.25"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px; flex-shrink: 0; fill: {{browser.markFill}}"><path d="{{ic.star}}"></path></svg>{{browser.markLabel}}</button>
       <button class="tap" aria-label="Bookmarks and history" onClick="{{browser.openLib}}" style="min-height:50px; border-radius: 18px; display: flex; align-items: center; gap: 14px; padding: 0 14px; font-size: 15px; text-align: left; line-height: 1.25"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px; flex-shrink: 0"><path d="{{ic.clock}}"></path></svg>Bookmarks &amp; history</button>
       <sc-if value="{{browser.pageShareAvailable}}"><button class="tap" aria-label="Share" onClick="{{browser.openShare}}" style="min-height:50px; border-radius: 18px; display: flex; align-items: center; gap: 14px; padding: 0 14px; font-size: 15px; text-align: left; line-height: 1.25"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px; flex-shrink: 0"><path d="{{ic.share}}"></path></svg>Share</button></sc-if>
+      <sc-if value="{{browser.canCopyLink}}"><button class="tap" aria-label="Copy link" onClick="{{browser.copyLink}}" style="min-height:50px;border-radius:18px;display:flex;align-items:center;gap:14px;padding:0 14px;text-align:left;font-size:15px"><svg class="i" viewBox="0 0 24 24" style="width:20px;height:20px;flex-shrink:0"><path d="{{ic.link}}"></path></svg>Copy link</button></sc-if>
       <sc-if value="{{browser.openFind}}"><button class="tap" aria-label="Find in page" onClick="{{browser.openFind}}" style="min-height:50px;border-radius:18px;display:flex;align-items:center;gap:14px;padding:0 14px;text-align:left;font-size:15px"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px; flex-shrink: 0"><path d="{{ic.search}}"></path></svg>Find in page</button></sc-if>
       <sc-if value="{{browser.pageContentAvailable}}"><button class="tap" aria-label="Ask about page" onClick="{{browser.askPage}}" style="min-height:50px;border-radius:18px;padding:0 14px;text-align:left;font-size:15px">Ask about page</button></sc-if>
       <sc-if value="{{browser.readAloudAvailable}}"><sc-if value="{{browser.pageContentAvailable}}"><button class="tap" aria-label="Read aloud" onClick="{{browser.readAloud}}" style="min-height:50px; border-radius: 18px; display: flex; align-items: center; gap: 14px; padding: 0 14px; font-size: 15px; text-align: left; line-height: 1.25"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px; flex-shrink: 0"><path d="{{ic.wave}}"></path></svg>Read aloud</button></sc-if></sc-if>
@@ -2161,7 +2166,7 @@
     <div data-alpha-app-header="main" data-alpha-app-header-overlay style="position: absolute; left: 12px; right: 12px; top: 52px; height: 54px; border-radius: 27px; background: var(--bg); box-shadow: 0 6px 22px var(--shc), 0 0 0 1px var(--line); display: flex; align-items: center; padding: 0 5px; z-index: 3">
     <sc-if value="{{showAppBack}}"><button class="app-header-back" aria-label="Back to apps" onClick="{{backToApps}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if>
       <button class="ib" aria-label="{{maps.searchLabel}}" onClick="{{maps.searchLead}}"><svg class="i" viewBox="0 0 24 24"><path d="{{maps.searchIcon}}"></path></svg></button>
-      <input aria-label="Search places" placeholder="Search" value="{{maps.q}}" onChange="{{maps.onQ}}" onClick="{{maps.focusQ}}" onKeyDown="{{maps.qKey}}" style="flex-grow: 1; min-width: 0; height: 44px; border: 0; outline: 0; background: transparent; color: var(--fg); font-size: 16px; padding: 0 4px">
+      <input type="search" enterkeyhint="search" aria-label="Search places" placeholder="Search" value="{{maps.q}}" onChange="{{maps.onQ}}" onClick="{{maps.focusQ}}" onKeyDown="{{maps.qKey}}" style="flex-grow: 1; min-width: 0; height: 44px; border: 0; outline: 0; background: transparent; color: var(--fg); font-size: 16px; padding: 0 4px">
       <sc-if value="{{maps.hasQ}}">
         <button class="ib" aria-label="Clear search" onClick="{{maps.clearQ}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.x}}"></path></svg></button>
       </sc-if>
@@ -2192,7 +2197,7 @@
       <div style="display: flex; align-items: center; gap: 4px">
         <button class="ib" aria-label="Back to place" onClick="{{maps.dr.close}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button>
         <div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
-          <sc-if value="{{maps.native}}"><input aria-label="Route origin coordinates" placeholder="Origin latitude, longitude" value="{{maps.originText}}" onChange="{{maps.onOrigin}}" onKeyDown="{{maps.originKey}}" style="height:32px;border:0;background:transparent;color:var(--fg);font-size:15px;width:100%"><button aria-label="Use current location for route" onClick="{{maps.originLocation}}" style="font-size:12px;text-align:left;color:var(--acct)">Use current location for route</button></sc-if>
+          <sc-if value="{{maps.native}}"><input aria-label="Starting point" placeholder="Search or enter coordinates" value="{{maps.originText}}" onChange="{{maps.onOrigin}}" onKeyDown="{{maps.originKey}}" style="height:32px;border:0;background:transparent;color:var(--fg);font-size:15px;width:100%"><button aria-label="Use current location for route" onClick="{{maps.originLocation}}" style="min-height:48px;font-size:15px;text-align:left;color:var(--acct)">Use current location</button></sc-if>
           <sc-if value="{{maps.notNative}}"><div style="display: flex; align-items: center; gap: 12px; height: 32px; font-size: 15px; color: var(--mut)"><span style="width: 10px; height: 10px; border-radius: 5px; background: var(--acc); box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--acc); margin: 0 4px; flex-shrink: 0"></span>Your location</div></sc-if>
           <div style="display: flex; align-items: center; gap: 12px; height: 32px; font-size: 15px; font-weight: 600"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px; color: var(--acct)"><path d="{{ic.pin}}"></path></svg>{{maps.dr.name}}</div>
         </div>
@@ -2223,17 +2228,30 @@
     </sc-if>
   </sc-if>
   </div>
-  <sc-if value="{{maps.hasNativeMap}}"><div ref="{{maps.mapRef}}" data-alpha-map-plane aria-label="{{maps.mapLabel}}" style="position:absolute;inset:0;z-index:1"></div>
-    <div class="alpha-map-credits" style="bottom:{{maps.attributionBottom}}px">
+  <sc-if value="{{maps.hasNativeMap}}"><div ref="{{maps.mapRef}}" data-alpha-map-plane data-imagery-unavailable="{{maps.googleMapMissing}}" aria-label="{{maps.mapLabel}}" style="position:absolute;inset:0;z-index:1"></div>
+    <div class="alpha-map-credits" data-google-maps="{{maps.googleMaps}}" style="bottom:{{maps.attributionBottom}}px">
       <sc-if value="{{maps.globalBasemap}}">
         <span class="alpha-map-credit-links"><a href="https://openfreemap.org/" target="_blank" rel="noopener noreferrer">OpenFreeMap</a> · <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener noreferrer">© OpenMapTiles</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">Data from OpenStreetMap</a><sc-if value="{{maps.cloudCredit}}"><span data-maps-cloud-credit> · {{maps.cloudCredit}}</span></sc-if></span>
 
       </sc-if>
       <sc-if value="{{maps.regionalBasemap}}"><span class="alpha-map-credit-links"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">{{maps.mapAttribution}}</a></span></sc-if>
-      <sc-if value="{{maps.cloudBasemap}}"><span class="alpha-map-credit-links"><strong>Google Maps</strong> · {{maps.mapAttribution}}</span></sc-if>
-      <details class="alpha-map-privacy"><summary aria-label="Map information" title="Map information"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ic.info}}"></path></svg></summary>
+      <sc-if value="{{maps.cloudBasemap}}"><span class="alpha-map-credit-links">{{maps.mapAttribution}}</span></sc-if>
+      <sc-if value="{{maps.googleMaps}}">
+        <div class="alpha-google-credit">
+          <span class="alpha-google-mark"><img src="{{maps.googleMapsLogo}}" alt="Google Maps"></span>
+          <sc-if value="{{maps.mapAttribution}}">
+            <span class="alpha-google-copyright">{{maps.mapAttribution}}</span>
+            <details class="alpha-google-sources" name="alpha-map-info">
+              <summary>Data sources</summary>
+              <div class="alpha-map-info">{{maps.mapAttribution}}</div>
+            </details>
+          </sc-if>
+          <sc-if value="{{maps.googleMapMissing}}"><span class="alpha-google-map-missing">Map imagery unavailable</span></sc-if>
+        </div>
+      </sc-if>
+      <details class="alpha-map-privacy" name="alpha-map-info"><summary aria-label="Map information" title="Map information"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ic.info}}"></path></svg></summary>
         <div class="alpha-map-info">
-          <sc-if value="{{maps.nativePositionDetails}}"><p>{{maps.nativePositionDetails}}</p></sc-if>
+          <p>Your location stays on this phone unless you approve sharing a place or route with your agent. Maps services receive the search area and route points you request.</p>
           <button class="tap" onClick="{{maps.nativeManualLocation}}">Enter coordinates</button>
           <sc-if value="{{maps.globalBasemap}}"><p>OpenFreeMap receives your IP address and viewed map area. Location is used only when you request it.</p></sc-if>
           <sc-if value="{{maps.searchDisclosure}}"><p data-maps-disclosure>{{maps.searchDisclosure}}</p></sc-if>
@@ -2241,33 +2259,6 @@
       </details>
     </div>
   </sc-if>
-  <div data-alpha-map-canvas onPointerDown="{{maps.mapDown}}" onPointerUp="{{maps.mapUp}}" style="position: absolute; inset: 0; overflow: hidden; background: {{maps.C.land}}; touch-action: none">
-    <div style="position: absolute; left: 0; top: 0; width: {{maps.W}}px; height: {{maps.H}}px; transform-origin: 0 0; transform: {{maps.tr}}; transition: transform .6s cubic-bezier(.19,1,.22,1)">
-      <svg width="1200" height="3200" viewBox="0 0 1200 3200" style="display: block">
-        <rect x="0" y="0" width="1200" height="3200" style="fill: {{maps.C.land}}"></rect>
-        <path d="{{maps.grid}}" style="fill: none; stroke: {{maps.C.minor}}; stroke-width: 7"></path>
-        <path d="{{maps.parks}}" style="fill: {{maps.C.park}}"></path>
-        <path d="{{maps.major}}" style="fill: none; stroke: {{maps.C.major}}; stroke-width: 13; stroke-linecap: round"></path>
-        <path d="{{maps.water}}" style="fill: {{maps.C.water}}"></path>
-        <path d="{{maps.fwy}}" style="fill: none; stroke: {{maps.C.fwyE}}; stroke-width: 22; stroke-linejoin: round; stroke-linecap: round"></path>
-        <path d="{{maps.fwy}}" style="fill: none; stroke: {{maps.C.fwy}}; stroke-width: 16; stroke-linejoin: round; stroke-linecap: round"></path>
-        <path d="{{maps.rwy}}" style="fill: none; stroke: {{maps.C.rwy}}; stroke-width: 20"></path>
-        <path d="{{maps.doneD}}" style="fill: none; stroke: {{maps.C.done}}; stroke-width: 7; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke"></path>
-        <path d="{{maps.routeD}}" style="fill: none; stroke: {{maps.C.halo}}; stroke-width: 11; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; opacity: .8"></path>
-        <path d="{{maps.routeD}}" style="fill: none; stroke: {{maps.C.route}}; stroke-width: 7; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; {{maps.routeDash}}"></path>
-      </svg>
-    </div>
-    <sc-for list="{{maps.labels}}" as="lb">
-      <span data-alpha-map-label style="position: absolute; left: {{lb.l}}px; top: {{lb.top}}px; white-space: nowrap; pointer-events: none; transition: left .6s cubic-bezier(.19,1,.22,1), top .6s cubic-bezier(.19,1,.22,1); {{lb.css}}">{{lb.t}}</span>
-    </sc-for>
-    <sc-for list="{{maps.pins}}" key="{{pn.id}}" as="pn">
-      <button aria-label="{{pn.name}}" onClick="{{pn.tap}}" style="position: absolute; left: {{pn.l}}px; top: {{pn.t}}px; width: {{pn.sz}}px; height: {{pn.sz}}px; margin: {{pn.off}}px 0 0 {{pn.off}}px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: left .6s cubic-bezier(.19,1,.22,1), top .6s cubic-bezier(.19,1,.22,1); {{pn.css}}"><svg class="i" viewBox="0 0 24 24" style="width: {{pn.isz}}px; height: {{pn.isz}}px"><path d="{{pn.d}}"></path></svg></button>
-    </sc-for>
-    <div style="position: absolute; left: {{maps.meL}}px; top: {{maps.meT}}px; width: 0; height: 0; pointer-events: none; transition: left {{maps.meTr}}, top {{maps.meTr}}; {{maps.meCss}}">
-      <span class="ring" style="position: absolute; left: -12px; top: -12px; width: 24px; height: 24px; border-radius: 12px; background: var(--acc)"></span>
-      <span style="position: absolute; left: -11px; top: -11px; width: 16px; height: 16px; border-radius: 11px; background: var(--acc); border: 3px solid var(--alpha-white); box-shadow: 0 2px 8px rgba(0,0,0,.3)"></span>
-    </div>
-  </div>
   <div style="position: absolute; left: 0; right: 0; top: 0; height: 58px; background: linear-gradient({{maps.C.land}}, rgba(0,0,0,0)); pointer-events: none"></div>
 
   
@@ -2285,7 +2276,7 @@
   
   <sc-if value="{{maps.isResults}}">
     <div class="enter" data-alpha-maps-sheet="results" style="position: absolute; left: 0; right: 0; bottom: 0; height: {{maps.sheetH}}px; border-radius: 28px 28px 0 0; background: var(--bg); box-shadow: 0 -10px 40px var(--shc), 0 -1px 0 var(--line); display: flex; flex-direction: column; z-index: 4; transition: height .45s cubic-bezier(.19,1,.22,1)">
-      <button aria-label="Resize results" onPointerDown="{{maps.sheetSw.down}}" onPointerUp="{{maps.sheetSw.up}}" onClick="{{maps.sheetTap}}" style="height: 28px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; touch-action: none; cursor: grab"><span style="width: 40px; height: 4px; border-radius: 2px; background: var(--mut); opacity: .45"></span></button>
+      <div aria-hidden="true" style="height:28px;flex-shrink:0"></div>
       <div class="scr" style="flex-grow: 1; overflow-y: auto; padding: 0 0 120px; touch-action: pan-y">
         <sc-if value="{{maps.emptyQ}}">
           <div class="scr" style="display: flex; gap: 8px; overflow-x: auto; padding: 4px 20px 14px; touch-action: pan-x">
@@ -2325,7 +2316,7 @@
     <div class="enter" data-alpha-maps-sheet="place" style="position: absolute; left: 0; right: 0; bottom: 0; --alpha-sheet-height: {{maps.sheetH}}px; border-radius: 28px 28px 0 0; background: var(--bg); box-shadow: 0 -10px 40px var(--shc), 0 -1px 0 var(--line); z-index: 4; padding: 18px 20px 0; box-sizing: border-box">
       <div style="display: flex; align-items: flex-start; gap: 8px">
         <div style="flex-grow: 1; min-width: 0">
-          <h1 class="serif" role="{{maps.pc.nativeTitleRole}}" tabIndex="{{maps.pc.nativeTitleTabIndex}}" aria-label="{{maps.pc.nativeTitleLabel}}" onClick="{{maps.pc.nativeEdit}}" onKeyDown="{{maps.pc.nativeEditKey}}" style="margin: 0; font-size: 32px; line-height: 1.1; letter-spacing: -.01em">{{maps.pc.name}}</h1>
+          <h1 class="serif" style="margin: 0; font-size: 32px; line-height: 1.1; letter-spacing: -.01em">{{maps.pc.name}}</h1><sc-if value="{{maps.pc.canRename}}"><button class="tap" aria-label="Rename place" onClick="{{maps.pc.nativeEdit}}" style="min-height:48px;padding:0 12px;color:var(--acct)">Rename</button></sc-if>
           <div style="font-size: 14px; color: var(--mut); margin-top: 6px">{{maps.pc.meta}}</div>
           <sc-if value="{{maps.pc.hasHours}}">
             <div style="font-size: 14px; margin-top: 4px"><span style="font-weight: 600; {{maps.pc.openCss}}">{{maps.pc.openTxt}}</span><span style="color: var(--mut)"> · {{maps.pc.hoursTxt}}</span></div>
@@ -2340,8 +2331,8 @@
         <sc-if value="{{maps.pc.hasPhone}}">
           <button class="ib" aria-label="Call" onClick="{{maps.pc.call}}" style="width: 52px; height: 52px; border-radius: 26px; background: var(--s2)"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.phone}}"></path></svg></button>
         </sc-if>
-        <button class="ib" aria-label="{{maps.pc.saveLabel}}" aria-pressed="{{maps.pc.saved}}" onClick="{{maps.pc.save}}" style="width: 52px; height: 52px; border-radius: 26px; background: var(--s2); {{maps.pc.starCss}}"><svg class="i" viewBox="0 0 24 24" style="{{maps.pc.starFill}}"><path d="{{ic.star}}"></path></svg></button>
-        <button class="ib" aria-label="Share" onClick="{{maps.pc.share}}" style="width: 52px; height: 52px; border-radius: 26px; background: var(--s2)"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.share}}"></path></svg></button>
+        <sc-if value="{{maps.pc.save}}"><button class="ib" aria-label="{{maps.pc.saveLabel}}" aria-pressed="{{maps.pc.saved}}" onClick="{{maps.pc.save}}" style="width: 52px; height: 52px; border-radius: 26px; background: var(--s2); {{maps.pc.starCss}}"><svg class="i" viewBox="0 0 24 24" style="{{maps.pc.starFill}}"><path d="{{ic.star}}"></path></svg></button></sc-if>
+        <sc-if value="{{maps.pc.share}}"><button class="ib" aria-label="Share" onClick="{{maps.pc.share}}" style="width: 52px; height: 52px; border-radius: 26px; background: var(--s2)"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.share}}"></path></svg></button></sc-if>
         <sc-if value="{{maps.pc.hasWeb}}">
           <button class="ib" aria-label="Website" onClick="{{maps.pc.web}}" style="width: 52px; height: 52px; border-radius: 26px; background: var(--s2)"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.globe}}"></path></svg></button>
         </sc-if>
@@ -2364,7 +2355,7 @@
       <sc-if value="{{maps.dr.hasRoutes}}"><fieldset aria-label="Routes" data-alpha-maps-routes style="border: 0; padding: 0; margin: 14px 0 0; min-width: 0; display: flex; flex-direction: column; gap: 6px"><sc-for list="{{maps.dr.routes}}" as="rt"><button aria-label="{{rt.label}}" aria-pressed="{{rt.on}}" onClick="{{rt.go}}" style="min-height: 44px; border-radius: 22px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; font-weight: 600; {{rt.css}}"><span>{{rt.t}}</span><span>{{rt.sub}}</span></button></sc-for></fieldset></sc-if>
       <div style="display: flex; gap: 8px; margin-top: 20px">
         <button onClick="{{maps.dr.start}}" style="flex-grow: 1; height: 56px; border-radius: 28px; background: var(--acc); color: var(--alpha-white); display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 17px; font-weight: 600"><svg class="i" viewBox="0 0 24 24" style="fill: currentColor"><path d="{{ic.mapsNav}}"></path></svg>Start</button>
-        <button class="ib" aria-label="{{maps.dr.shareLabel}}" onClick="{{maps.dr.shareEta}}" style="width: 56px; height: 56px; border-radius: 28px; background: var(--s2)"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.share}}"></path></svg></button>
+        <sc-if value="{{maps.dr.shareEta}}"><button class="ib" aria-label="{{maps.dr.shareLabel}}" onClick="{{maps.dr.shareEta}}" style="width: 56px; height: 56px; border-radius: 28px; background: var(--s2)"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.share}}"></path></svg></button></sc-if>
       </div>
     </div>
   </sc-if>
@@ -2377,10 +2368,10 @@
         <div class="serif" style="font-size: 30px; line-height: 1.05">{{maps.dr.nav.left}}</div>
         <sc-if value="{{maps.dr.nav.meta}}"><div style="font-size: 13px; color: var(--alpha-gray-8f); margin-top: 3px">{{maps.dr.nav.meta}}</div></sc-if>
         <sc-if value="{{maps.dr.nav.remaining}}"><div role="status" aria-label="Remaining distance and time" style="font-size: 13px; color: var(--alpha-gray-bd); margin-top: 2px">{{maps.dr.nav.remaining}}</div></sc-if>
-        <sc-if value="{{maps.dr.nav.reroute}}"><button onClick="{{maps.dr.nav.reroute}}" style="min-height: 36px; margin-top: 4px; padding: 0 12px; border-radius: 18px; background: var(--alpha-gray-26); color: var(--alpha-white); font-size: 13px; font-weight: 600">Reroute from here</button></sc-if>
+        <sc-if value="{{maps.dr.nav.canReroute}}"><button onClick="{{maps.dr.nav.reroute}}" style="min-height: 48px; margin-top: 4px; padding: 0 12px; border-radius: 18px; background: var(--alpha-gray-26); color: var(--alpha-white); font-size: 13px; font-weight: 600">Reroute from here</button></sc-if>
       </div>
       <button aria-label="Ask {{name}}" onClick="{{maps.dr.nav.ask}}" style="width: 56px; height: 56px; border-radius: 28px; background: var(--alpha-gray-26); color: var(--alpha-white); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: Denton, Fraunces, Georgia, serif; font-style: italic; font-size: 24px"><span class="alpha-compute-mark" aria-hidden="true"></span></button>
-      <button aria-label="{{maps.dr.nav.voiceLabel}}" onClick="{{maps.dr.nav.voice}}" style="width: 56px; height: 56px; border-radius: 28px; background: var(--alpha-gray-26); color: var(--alpha-white); display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg class="i" viewBox="0 0 24 24"><path d="{{maps.dr.nav.voiceD}}"></path></svg></button>
+      <sc-if value="{{maps.dr.nav.voice}}"><button aria-label="{{maps.dr.nav.voiceLabel}}" onClick="{{maps.dr.nav.voice}}" style="width: 56px; height: 56px; border-radius: 28px; background: var(--alpha-gray-26); color: var(--alpha-white); display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg class="i" viewBox="0 0 24 24"><path d="{{maps.dr.nav.voiceD}}"></path></svg></button></sc-if>
     </div>
   </sc-if>
 </div>
@@ -2410,6 +2401,8 @@
   </sc-if>
 
   <div class="scr" ref="{{notes.listFocus}}" data-alpha-app-scroll="notes" style="flex-grow: 1; overflow-y: auto; touch-action: pan-y; padding: 0 16px 190px; box-sizing: border-box">
+    <sc-if value="{{notes.unavailable}}"><div style="padding:24px 8px;line-height:1.5"><h2 style="margin:0;font-size:20px">Notes unavailable</h2><p role="status" style="color:var(--mut);margin:8px 0 16px">{{notes.unavailableMessage}}</p><button class="tap" onClick="{{notes.connectNotes}}" style="min-height:48px;padding:0 20px;border-radius:24px;background:var(--s2);font-weight:600">Check connection</button></div></sc-if>
+    <sc-if value="{{notes.none}}"><div role="status" style="padding:24px 8px;line-height:1.5"><h2 style="margin:0;font-size:20px">{{notes.emptyTitle}}</h2><p style="color:var(--mut);margin:8px 0">{{notes.emptyMessage}}</p></div></sc-if>
     <sc-if value="{{notes.hasPinned}}"><div class="notes-section" style="padding: 8px 8px 2px; font-size: 13px; font-weight: 600; color: var(--mut)">Pinned</div></sc-if>
     <sc-for list="{{notes.pinnedRows}}" as="n" key="{{n.id}}">
           <button data-alpha-note-id="{{n.id}}" onClick="{{n.open}}" class="tap notes-row" data-agent-id="{{n.id}}" aria-label="Open {{n.title}}" aria-current="{{n.current}}" style="display: flex; align-items: flex-start; gap: 12px; width: 100%; padding: 12px 8px; border-bottom: 1px solid var(--line); box-sizing: border-box; text-align: left">
@@ -3646,12 +3639,12 @@
 
         <div style="display: flex; align-items: center; gap: 8px; margin-top: 14px">
           <span role="status" aria-label="Workflow run status" style="flex-grow: 1; font-size: 13px; color: var(--mut)">{{workflows.fd.last}}</span>
-          <button onClick="{{workflows.fd.edit}}" style="height: 44px; padding: 0 18px; border-radius: 22px; background: var(--s2); font-weight: 600; font-size: 14px">Change</button>
+          <button disabled="{{workflows.fd.busy}}" onClick="{{workflows.fd.edit}}" style="height: 44px; padding: 0 18px; border-radius: 22px; background: var(--s2); font-weight: 600; font-size: 14px">Change</button>
           <sc-if value="{{workflows.fd.notRunning}}">
-            <button aria-label="Run now" onClick="{{workflows.fd.run}}" style="height: 44px; padding: 0 18px; border-radius: 22px; background: var(--acc); color: var(--alpha-white); font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px"><svg class="i" viewBox="0 0 24 24" style="width: 14px; height: 14px; fill: currentColor"><path d="{{ic.play}}"></path></svg>Run</button>
+            <button aria-label="Run now" disabled="{{workflows.fd.busy}}" onClick="{{workflows.fd.run}}" style="height: 44px; padding: 0 18px; border-radius: 22px; background: var(--acc); color: var(--alpha-white); font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px"><svg class="i" viewBox="0 0 24 24" style="width: 14px; height: 14px; fill: currentColor"><path d="{{ic.play}}"></path></svg>Run</button>
           </sc-if>
           <sc-if value="{{workflows.fd.isRunning}}">
-            <span style="height: 44px; width: 44px; border-radius: 22px; background: var(--acc); display: flex; align-items: center; justify-content: center"><span class="dot" style="width: 8px; height: 8px; border-radius: 4px; background: var(--alpha-white)"></span></span>
+            <span role="status" aria-label="Workflow running" style="height: 44px; width: 44px; border-radius: 22px; background: var(--acc); display: flex; align-items: center; justify-content: center"><span class="dot" style="width: 8px; height: 8px; border-radius: 4px; background: var(--alpha-white)"></span></span>
           </sc-if>
         </div>
 
@@ -4263,7 +4256,7 @@
             <sc-if value="{{m.hasCalendarText}}"><div data-alpha-message-text role="{{m.messageActionsRole}}" tabIndex="{{m.messageActionsTabIndex}}" aria-label="{{m.messageActionsLabel}}" aria-haspopup="{{m.messageActionsPopup}}" aria-expanded="{{m.messageActionsOpen}}" onClick="{{m.openMessageActions}}" onKeyDown="{{m.messageActionsKey}}" onContextMenu="{{m.messageActionsContext}}" onPointerDown="{{m.messageActionsDown}}" onPointerMove="{{m.messageActionsMove}}" onPointerUp="{{m.messageActionsCancel}}" onPointerCancel="{{m.messageActionsCancel}}" style="font-size: 16px; line-height: 1.5">{{m.displayText}}</div></sc-if>
             <sc-for list="{{m.calendarReviews}}" as="review"><section class="calendar-request-review" data-calendar-request-id="{{review.id}}"><strong>Calendar request</strong><p role="status">{{review.status}}</p><button class="tap" aria-label="Review Calendar request {{review.id}}" onClick="{{review.open}}">Review request</button></section></sc-for>
             <sc-for list="{{m.workflowRuns}}" as="run"><section class="workflow-run-card" data-workflow-run-id="{{run.runId}}"><strong>{{run.title}}</strong><p>Run submitted</p><button class="tap" aria-label="Open workflow run {{run.title}}" onClick="{{run.open}}">Open run</button></section></sc-for>
-            <sc-for list="{{m.mapsCards}}" as="card"><section class="maps-chat-card" data-maps-card-kind="{{card.kind}}"><strong>{{card.title}}</strong><sc-for list="{{card.lines}}" as="line"><p>{{line.text}}</p></sc-for><sc-if value="{{card.hasAttribution}}"><small>{{card.attribution}}</small></sc-if></section></sc-for>
+            <sc-for list="{{m.mapsCards}}" as="card"><section class="maps-chat-card" data-maps-card-kind="{{card.kind}}"><strong>{{card.title}}</strong><sc-for list="{{card.lines}}" as="line"><p>{{line.text}}</p></sc-for><sc-if value="{{card.hasAttribution}}"><small>{{card.attribution}}</small></sc-if><sc-if value="{{card.canOpenMap}}"><button class="tap" onClick="{{card.openMap}}" style="min-height:48px;padding:0 12px;color:var(--acct)">Show on map</button></sc-if></section></sc-for>
             <sc-if value="{{m.hasMapsChoice}}"><div class="maps-chat-choice" role="group" aria-label="Share location"><sc-for list="{{m.mapsChoices}}" as="option"><button class="tap" onClick="{{option.choose}}">{{option.label}}</button></sc-for></div></sc-if>
 
 
@@ -4582,64 +4575,6 @@
 </div>
 
 
-<sc-if value="{{fs}}">
-<button class="rail" aria-label="Show controls" title="Show controls" onClick="{{toggleFs}}" style="position: absolute; top: 40px; left: 722px; width: 44px; height: 44px; border-radius: 22px; border: 1px solid var(--alpha-gray-26); color: var(--alpha-gray-bd); display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.shrink}}"></path></svg></button>
-</sc-if>
+<!-- alpha-development-rail -->
 
-
-<sc-if value="{{notFs}}">
-<div class="rail" style="width: 364px; display: flex; flex-direction: column; gap: 26px; padding-top: 6px; color: var(--alpha-white)">
-  <div>
-    <img src="./logo.svg" alt="Alpha Compute" style="width: 180px; height: auto; display: block">
-    <div style="color: var(--alpha-gray-8c); margin-top: 12px; font-size: 13px">Powered by elizaOS · Pixel 11 Pro · 412 × 915 dp</div>
-    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 14px">
-      <button onClick="{{toggleFs}}" aria-label="Phone only" style="height: 36px; border-radius: 18px; border: 1px solid var(--alpha-gray-26); display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px"><svg class="i" viewBox="0 0 24 24" style="width: 14px; height: 14px"><path d="{{ic.expand}}"></path></svg>Phone only</button>
-      <sc-for list="{{themes}}" as="tm">
-        <button onClick="{{tm.go}}" aria-pressed="{{tm.on}}" style="height: 36px; border-radius: 18px; border: 1px solid var(--alpha-gray-26); display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; {{tm.css}}"><span style="width: 12px; height: 12px; border-radius: 6px; box-shadow: inset 0 0 0 1px var(--alpha-gray-77); background: {{tm.sw}}"></span>{{tm.label}}</button>
-      </sc-for>
-    </div>
-  </div>
-
-  <div>
-    <div class="mono" style="color: var(--alpha-gray-8c); margin-bottom: 10px">Jump to</div>
-    <div style="display: flex; flex-wrap: wrap; gap: 6px">
-      <sc-for list="{{jumps}}" as="j">
-        <button onClick="{{j.go}}" style="height: 30px; padding: 0 11px; border-radius: 15px; border: 1px solid var(--alpha-gray-26); font-size: 12px">{{j.label}}</button>
-      </sc-for>
-    </div>
-    <sc-if value="{{hasSubJumps}}">
-      <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--alpha-gray-1c)">
-        <sc-for list="{{subJumps}}" as="j">
-          <button onClick="{{j.go}}" style="height: 30px; padding: 0 11px; border-radius: 15px; background: var(--alpha-gray-14); font-size: 12px; color: var(--alpha-gray-bd); {{j.css}}">{{j.label}}</button>
-        </sc-for>
-      </div>
-    </sc-if>
-  </div>
-
-  <div>
-    <div class="mono" style="color: var(--alpha-gray-8c); margin-bottom: 10px">Chat</div>
-    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px">
-      <sc-for list="{{modes}}" as="md">
-        <button onClick="{{md.go}}" aria-pressed="{{md.on}}" style="height: 64px; border-radius: 16px; border: 1px solid var(--alpha-gray-26); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-size: 12px; {{md.css}}">
-          <svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{md.d}}"></path></svg>{{md.label}}
-        </button>
-      </sc-for>
-    </div>
-    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 6px">
-    <sc-if value="{{externalVoiceInvocation}}"><button onPointerDown="{{chatControlPointer}}" onClick="{{startVoice}}" style="height: 40px; border-radius: 20px; background: var(--alpha-blue); display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; font-weight: 600"><svg class="i" viewBox="0 0 24 24" style="width: 16px; height: 16px"><path d="{{ic.mic}}"></path></svg>Talk</button></sc-if>
-      <button onClick="{{fireHeads}}" style="height: 40px; border-radius: 20px; border: 1px solid var(--alpha-gray-26); display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px"><svg class="i" viewBox="0 0 24 24" style="width: 16px; height: 16px"><path d="{{ic.bell}}"></path></svg>Incoming text</button>
-    </div>
-  </div>
-
-  <div>
-    <div class="mono" style="color: var(--alpha-gray-8c); margin-bottom: 8px">Gestures</div>
-    <sc-for list="{{legend}}" as="lg">
-      <div style="display: flex; align-items: center; gap: 12px; padding: 5px 0">
-        <span style="width: 30px; height: 30px; border-radius: 10px; border: 1px solid var(--alpha-gray-26); display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg class="i" viewBox="0 0 24 24" style="width: 15px; height: 15px"><path d="{{lg.d}}"></path></svg></span>
-        <span style="font-size: 13px; color: var(--alpha-gray-bd); line-height: 1.35">{{lg.t}}</span>
-      </div>
-    </sc-for>
-  </div>
-</div>
-</sc-if>
 </div>

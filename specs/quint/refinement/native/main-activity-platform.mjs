@@ -1,7 +1,11 @@
+import assert from 'node:assert/strict';
 import {mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {dirname, join} from 'node:path';
 import {app, root} from './java.mjs';
+
+export const navigationRequestSource=app+'NavigationOpenRequest.java';
+export const navigationActionSource=app+'AlphaNavigationService.java';
 
 /** Android/Capacitor primitives. MainActivity owns all product recovery and hand-off decisions. */
 export function mainActivityPlatform() {
@@ -83,6 +87,7 @@ public class Intent {
     extras.putAll(other.extras);
     brokenExtras = other.brokenExtras;
   }
+  public Intent setAction(String value) { action=value; return this; }
   public String getAction() {
     return action;
   }
@@ -552,6 +557,13 @@ public class AlphaDevicePlugin extends com.getcapacitor.Plugin {
   }
 }`,
   };
+  // MainActivity consumes the source-owned notification action. Maps service execution
+  // remains outside these Activity/appearance ports; the actual request latch is compiled.
+  const navigation=readFileSync(join(root,navigationActionSource),'utf8');
+  const action=[...navigation.matchAll(/\bstatic final String ACTION_SHOW_MAPS="([^"]+)";/g)];
+  assert.equal(action.length,1,'One source-owned Maps notification action');
+  sources['ai/alphacompute/alphaphone/AlphaNavigationService.java']=`package ai.alphacompute.alphaphone;
+final class AlphaNavigationService {static final String ACTION_SHOW_MAPS=${JSON.stringify(action[0][1])};}`;
   sources['ai/alphacompute/alphaphone/AlphaKeyboardDictationService.java'] = 'package ai.alphacompute.alphaphone; public final class AlphaKeyboardDictationService {}';
   const activity = readFileSync(join(root, app, 'MainActivity.java'), 'utf8');
   sources['ai/alphacompute/alphaphone/AlphaVoiceCloudPlugin.java'] = 'package ai.alphacompute.alphaphone; public class AlphaVoiceCloudPlugin extends com.getcapacitor.Plugin {public static class Streaming extends com.getcapacitor.Plugin {}}';

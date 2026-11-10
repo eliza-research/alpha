@@ -1,0 +1,12 @@
+import {execFileSync} from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {sourceDirectory,workerArtifactDirectory,verifySource} from './local-agent-source.ts';
+import {verifyNativeGoogleHostArtifact} from './native-google-host-artifact.ts';
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..'),sdk=sourceDirectory(root),output=workerArtifactDirectory(root);
+verifySource(sdk,JSON.parse(fs.readFileSync(path.join(root,'upstream.lock.json'),'utf8')).commit);
+verifyNativeGoogleHostArtifact(root,output);
+const bun=process.env.ALPHA_BUN||'bun';
+if(execFileSync(bun,['--version'],{encoding:'utf8'}).trim()!=='1.4.2')throw Error('Native Cloud routing check requires Bun1.4.2');
+execFileSync(bun,['--conditions=eliza-source',path.join(root,'scripts/native-cloud-runtime-config-check.ts'),sdk,path.join(output,'google-host.mjs')],{stdio:'inherit',cwd:root});

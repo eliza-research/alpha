@@ -19,8 +19,8 @@ test('SMS review completion cannot mutate a later visit and transport errors kee
   class Component{view='messages';S(){return {view:this.view}}setState(){}}
   const views={messages:{}};installSmsAdapter(Component,views);const owner=new Component();owner.componentDidMount();await tick();
   const compose=()=>{let model=views.messages.render();model.nativeOnRecipients({target:{value:'+15555550100'}});model.nativeOnBody({target:{value:'hello'}});model=views.messages.render();model.nativeSims[0].pick();views.messages.render().nativeSend();};
-  compose();await tick();owner.view='home';owner.componentDidUpdate();owner.view='messages';owner.componentDidUpdate();await tick();pending[0].resolve({status:'sent'});await tick();assert.equal(views.messages.render().nativeNotice,'');assert.equal(views.messages.render().nativeBody,'');
-  compose();await tick();pending[1].reject(Error('transport lost'));await tick();assert.match(views.messages.render().nativeNotice,/This text may have sent/);views.messages.render().nativeSend();await tick();assert.equal(calls[1].operationId,calls[2].operationId,'same uncertain operation is queried, never assigned a fresh replay ID');pending[2].resolve({status:'unknown'});await tick();owner.componentWillUnmount();
+  compose();await tick();owner.view='home';owner.componentDidUpdate();owner.view='messages';owner.componentDidUpdate();await tick();pending[0].resolve({status:'sent'});await tick();assert.equal(views.messages.render().nativeNotice,'');assert.equal(views.messages.render().nativeBody,'hello','navigating within Alpha retains the draft');assert.equal(views.messages.render().nativeRecipients,'+15555550100');assert.equal(calls.length,1,'returning never dispatches a send');views.messages.render().nativeSend();await tick();assert.equal(calls[1].operationId,calls[0].operationId,'returning preserves the uncertain operation identity');pending[1].resolve({status:'unknown'});await tick();
+  compose();await tick();pending[2].reject(Error('transport lost'));await tick();assert.match(views.messages.render().nativeNotice,/This text may have sent/);views.messages.render().nativeSend();await tick();assert.equal(calls[2].operationId,calls[3].operationId,'same uncertain operation is queried, never assigned a fresh replay ID');pending[3].resolve({status:'unknown'});await tick();owner.componentWillUnmount();
  }finally{globalThis.document=priorDocument;delete globalThis.__smsFixturePort;rmSync(dir,{recursive:true,force:true});}
 });
 
@@ -76,8 +76,8 @@ test('Cancel, denial and native refusals let Send review again; Back and the pic
   inputs[0].files=[{type:'image/jpeg',size:3,arrayBuffer:async()=>new Uint8Array([1,2,3]).buffer}];await inputs[0].onchange();
   globalThis.document.hidden=false;visibility();
   assert.deepEqual(model().nativeAttachments.map(row=>row.label),['picture-1.jpg · 1 KB']);assert.equal(model().nativeBody,'hello');assert.equal(model().nativeRecipients,'+15555550100');
-  globalThis.document.hidden=true;visibility();assert.equal(model().nativeBody,'','without a picker, leaving still clears the draft');assert.equal(model().nativeAttachments.length,0);
-  globalThis.document.hidden=false;visibility();owner.view='home';owner.componentDidUpdate();owner.componentWillUnmount();
+  globalThis.document.hidden=true;visibility();assert.equal(model().nativeBody,'hello','backgrounding retains the owner draft');assert.equal(model().nativeAttachments.length,1);assert.deepEqual(model().nativeThreads,[],'backgrounding still retires provider content');
+  globalThis.document.hidden=false;visibility();owner.view='home';owner.componentDidUpdate();assert.equal(model().nativeBody,'hello');owner.view='messages';owner.componentDidUpdate();await tick();assert.equal(model().nativeRecipients,'+15555550100');assert.equal(model().nativeAttachments.length,1);model().nativeClear();assert.equal(model().nativeBody,'');assert.equal(model().nativeAttachments.length,0);owner.componentWillUnmount();
  }finally{globalThis.document=priorDocument;globalThis.window=priorWindow;delete globalThis.__smsRetryPort;rmSync(dir,{recursive:true,force:true});}
 });
 

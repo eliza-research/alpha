@@ -2,10 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import {embeddingProducerInputPaths} from '../scripts/embedding-native-contract.mjs';
+import {embeddingProducerInputPaths} from '../scripts/embedding-native-contract.ts';
 
 const root = path.resolve(import.meta.dirname, '..');
-const source = fs.readFileSync(path.join(root, 'scripts/prepare-embedding-host.mjs'), 'utf8');
+const source = fs.readFileSync(path.join(root, 'scripts/prepare-embedding-host.ts'), 'utf8');
 assert.match(source, /embeddingProducerInputPaths as producerInputPaths/, 'producer uses the shared admitted closure');
 const copied = new Set(embeddingProducerInputPaths);
 

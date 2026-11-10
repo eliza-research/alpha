@@ -139,7 +139,7 @@ public class AlphaNoteAudioPlugin {
  public void saveNoteRecording(com.getcapacitor.PluginCall call,AlphaNoteRecorder recorder,String id){throw new AssertionError("Unexercised retention");}
 }`,
   'ai/alphacompute/alphaphone/AlphaBrowserPlugin.java':'package ai.alphacompute.alphaphone;public class AlphaBrowserPlugin {public String consumeReading(com.getcapacitor.PluginCall call){throw new AssertionError("Unexercised browser");}}',
-  'ai/alphacompute/alphaphone/CloudSpeechPolicy.java':'package ai.alphacompute.alphaphone;public class CloudSpeechPolicy {public static String host(String profile,boolean mocks,String environment){throw new AssertionError("Unexercised cloud");}public static void requireProvider(String profile,String provider){throw new AssertionError("Unexercised cloud");}}',
+  'ai/alphacompute/alphaphone/CloudSpeechPolicy.java':'package ai.alphacompute.alphaphone;public class CloudSpeechPolicy {public static String host(boolean mocks,String environment){throw new AssertionError("Unexercised cloud");}public static void requireProvider(String provider){throw new AssertionError("Unexercised cloud");}}',
   'ai/alphacompute/alphaphone/LocalAgentProviderAdmission.java':'package ai.alphacompute.alphaphone;public class LocalAgentProviderAdmission {public static void requireCloudVoiceSelection(String provider,String id){throw new AssertionError("Unexercised provider");}public static boolean validProviderToken(String token,int max){throw new AssertionError("Unexercised provider");}}',
   'ai/alphacompute/alphaphone/PairedAgentCredential.java':'package ai.alphacompute.alphaphone;public class PairedAgentCredential {public boolean cloud;public String token;public static PairedAgentCredential resolve(com.getcapacitor.PluginCall call,AlphaConnectionPlugin store){throw new AssertionError("Unexercised pairing");}}',
   'ai/alphacompute/alphaphone/PairedSpeechContract.java':`package ai.alphacompute.alphaphone;
@@ -152,7 +152,7 @@ public class PairedSpeechContract {
  public static org.json.JSONObject ttsBody(String value){throw new AssertionError("Unexercised speech");}
  public static void ttsHeaders(String a,String b,String c,String d){throw new AssertionError("Unexercised speech");}
 }`,
-  'ai/alphacompute/alphaphone/BuildConfig.java':'package ai.alphacompute.alphaphone;public class BuildConfig {public static final boolean ELIZA_DEV_ALLOW_TEST_MOCKS=false;public static final String ELIZA_RUNTIME_PROFILE="production";}',
+  'ai/alphacompute/alphaphone/BuildConfig.java':'package ai.alphacompute.alphaphone;public class BuildConfig {public static final boolean ELIZA_DEV_ALLOW_TEST_MOCKS=false;public static final String ELIZA_RUNTIME_PROFILE="native";}',
   'ai/alphacompute/alphaphone/LateLaunch.java':'package ai.alphacompute.alphaphone;public class LateLaunch {public static boolean ask(com.getcapacitor.PluginCall call,Runnable action){action.run();return true;}}',
  });
  for(const [name,body] of Object.entries(files)){const file=join(base.directory,name);mkdirSync(dirname(file),{recursive:true});writeFileSync(file,body);}

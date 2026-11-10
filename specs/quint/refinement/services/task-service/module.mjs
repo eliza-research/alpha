@@ -6,7 +6,7 @@ import {createRequire} from 'node:module';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import {build} from 'esbuild';
 import {captureInputs} from '../../check-traces.mjs';
-import {CORE_STATE_INPUTS, coreStatePatch, coreStateBuildRecord, coreStateRequiredTargets} from '../../../../../scripts/core-state-patch.mjs';
+import {CORE_STATE_INPUTS, coreStatePatch, coreStateBuildRecord, coreStateRequiredTargets} from '../../../../../scripts/core-state-patch.ts';
 import {materializeHistoricalFormalSources} from '../../../legacy/core/formal-source-inventory.mjs';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 

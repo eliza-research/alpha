@@ -4,10 +4,10 @@ import {mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:
 import {resolve, join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {pathToFileURL} from 'node:url';
-import {loadModels, readJson, repositoryRoot, sha256} from '../scripts/quint-lib.mjs';
+import {loadModels, readJson, repositoryRoot, sha256} from '../scripts/quint-lib.ts';
 import {authenticateFormalSources, materializeHistoricalFormalSources, materializeHistoricalSources} from '../specs/quint/legacy/core/formal-source-inventory.mjs';
 import {git as fixtureGit} from './fixtures/git-fixture.mjs';
-import {prepareQuintHistory, quintHistoryInventories} from '../scripts/prepare-quint-history.mjs';
+import {prepareQuintHistory, quintHistoryInventories} from '../scripts/prepare-quint-history.ts';
 
 const sourcePath = 'specs/quint/legacy/core/source-inventory.json';
 const viewRefreshPath = 'specs/quint/legacy/view-refresh-configurations.json';

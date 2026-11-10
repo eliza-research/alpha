@@ -27,10 +27,10 @@ module MapsRerouteOwnership {
   }
   action agentReroute = all {
     s.guidanceSession != 0, s.fixReady, s.requestOrigins == [1], s.agent == "none",
-    s' = {...s, rerouting: true, phase: "loading", route: 0, origin: 0,
+    s' = {...s, rerouting: true, phase: "loading", route: 1, origin: 1,
       requestOrigins: [1, 2], pending: Set(2), agent: "pending", agentSession: s.guidanceSession},
   }
-  action duplicateTap = all { s.rerouting, s' = s }
+  action pendingControlUnavailable = all { s.rerouting, s' = s }
   action end = all { s.guidanceSession != 0, s' = stop(s) }
 
   action replan = all {
@@ -45,10 +45,10 @@ module MapsRerouteOwnership {
     val current = not(id.in(s.aborted))
     val exactGuidance = id == 2 and current and s.rerouting and s.agentSession == s.guidanceSession
     val planned = if (not(current)) answered
-      else if (publicId == 0) {...answered, phase: "error", route: 0, origin: 0}
+      else if (publicId == 0) {...answered, phase: "ready", route: 1, origin: 1}
       else {...answered, phase: "ready", route: publicId, origin: id}
     val guided = if (not(exactGuidance)) planned
-      else if (publicId == 0) stop(planned)
+      else if (publicId == 0) {...planned, rerouting: false}
       else {...planned, rerouting: false, guidanceRoute: publicId}
     s' = if (id != 2) guided
       else if (not(exactGuidance)) {...guided, agent: "retired"}
@@ -56,7 +56,7 @@ module MapsRerouteOwnership {
   }
 
   action step = any {
-    start, fix, agentReroute, duplicateTap, end, replan,
+    start, fix, agentReroute, pendingControlUnavailable, end, replan,
     { nondet publicId = Set(0, 1, 2).oneOf(); routeReply(2, publicId) },
     routeReply(3, 3), s' = s
   }
@@ -65,7 +65,8 @@ module MapsRerouteOwnership {
     s.watches == 0 and s.guidanceRoute == 0 and not(s.fixReady or s.rerouting)
     else s.watches == 1 and s.guidanceSession == s.session and s.guidanceRoute != 0
   val ExactPublication =
-    (s.phase == "ready") == (s.route != 0 and s.origin != 0)
+    (s.phase == "ready" implies s.route != 0 and s.origin != 0)
+    and (s.route != 0 implies s.phase.in(Set("ready", "loading")))
     and (s.rerouting implies (2.in(s.pending) and not(2.in(s.aborted)) and s.agentSession == s.guidanceSession))
     and (s.origin == 3 implies s.route == 3 and s.requestOrigins == [1, 2, 3])
   val ExactAgentSettlement =
@@ -76,10 +77,11 @@ module MapsRerouteOwnership {
 
   run readyToReroute = init.then(start).then(fix).then(agentReroute)
   run replacement = readyToReroute.then(end).then(replan).then(routeReply(3, 3)).then(start)
-  run samePublicIdCanBeNewRouteTest = readyToReroute.then(duplicateTap).then(routeReply(2, 1))
+  run samePublicIdCanBeNewRouteTest = readyToReroute.then(pendingControlUnavailable).then(routeReply(2, 1))
     .expect(safety and s.agent == "accepted" and s.guidanceRoute == 1 and s.origin == 2)
   run exactLiveRefusalTest = readyToReroute.then(routeReply(2, 0))
-    .expect(safety and s.agent == "refused" and s.phase == "error" and s.watches == 0)
+    .expect(safety and s.agent == "refused" and s.phase == "ready" and s.route == 1 and s.origin == 1
+      and s.watches == 1 and s.guidanceRoute == 1 and not(s.rerouting))
   run lateSuccessCannotReturnReplacementTest = replacement.then(routeReply(2, 2))
     .expect(safety and s.agent == "retired" and s.guidanceSession == 3 and s.guidanceRoute == 3 and s.origin == 3)
   run lateRefusalCannotReturnReplacementTest = replacement.then(routeReply(2, 0))

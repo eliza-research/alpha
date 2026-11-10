@@ -1,3 +1,4 @@
+import { testMocksEnabled } from '../build-flags';
 import { externalVoiceInvocationEnabled } from '../runtime/voice-entry-policy';
 import { nextDefaultNoteTitle } from '../runtime/note-default-title';
 import { accessibilityTimeoutScale } from '../runtime/accessibility-timeout';
@@ -3244,6 +3245,7 @@ registerView("notes", {
       // The Notes recorder (voice-adapter, note-recorder.ts) handles Record; `record` is its deep-link flag.
       record: function () { api.set({ record: true }); },
       pinnedRows: pinnedRows, otherRows: otherRows, hasPinned: pinnedRows.length > 0, notesHead: pinnedRows.length > 0 && otherRows.length > 0,
+      none: rows.length === 0, emptyTitle: filter ? "No matching notes" : "No notes yet", emptyMessage: filter ? "Clear the filter to see all your notes." : "Create a note or record a voice note to get started.",
       allPressed: folder ? "false" : "true", selectAll: function () { api.set({ folder: null, filter: null, folderSheet: null }); },
       folderChips: folderChips,
       newFolder: function () { api.set({ folderSheet: { kind: "new", name: "" } }); },
@@ -3813,7 +3815,7 @@ function walFmtNum(v) { var d = v.replace(/\D/g, "").slice(0, 19); return d.repl
 function walLuhn(d) { var sum = 0; for (var i = 0; i < d.length; i++) { var x = +d.charAt(d.length - 1 - i); if (i % 2) { x *= 2; if (x > 9) x -= 9; } sum += x; } return d.length > 0 && sum % 10 === 0; }
 function walFmtExp(v) { var d = v.replace(/\D/g, "").slice(0, 4); return d.length > 2 ? d.slice(0, 2) + "/" + d.slice(2) : d; }
 
-registerView("wallet", {
+if (testMocksEnabled) registerView("wallet", {
   title: "Wallet", icon: "wallet", aliases: ["pay", "cards", "passes"],
   chat: "hidden",
   state: { cards: WAL_CARDS, open: null, pay: false, card: null, stage: "auth", paid: null, add: null, form: { num: "", exp: "", name: "", cvv: "" }, code: "", transit: WAL_TRANSIT || 0, trips: WAL_TRIPS, calAdded: {}, pays: 0 },
@@ -4778,17 +4780,21 @@ registerView("settings", {
         }) }
       ] });
     } else if (P === "accounts") {
+      if (testMocksEnabled) {
       p1 = page("Accounts", { groups: [
         { rows: accts.map(function (a) {
           var pv = provOf(a.provider);
           return stNav({ tile: pv.name.charAt(0), tileCss: a.label === "Personal" ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--s3)", label: a.address, sub: (a.label ? a.label + " · " : "") + pv.name + " · " + lvlText(a), bold: true, go: function () { set({ acct: a.id }); } });
         }).concat([stNav({ d: IC.plus, label: "Add account", accent: true, noChev: true, go: function () { set({ adding: true, addStep: null, addProv: null, addEmail: "", addPw: "", addServer: "", addLvl: null, busy: null }); } })]) }
       ] });
+      } else p1 = page("Accounts", { groups: [] });
     } else if (P === "connections") {
+      if (testMocksEnabled) {
       p1 = page("Connections", { groups: [{ rows: ST_CONNS.map(function (c) {
         var on = !!st.conns[c.id];
         return stNav({ tile: c.name.charAt(0), tileCss: on ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--s3)", label: c.name, sub: on ? c.scopes[0] : "", val: on ? "" : "Connect", valCss: "color:var(--acct);font-weight:600", trail: on ? IC.check : "", trailCss: "color:var(--acct)", go: function () { set({ sheet: { kind: "conn", id: c.id } }); } });
       }) }] });
+      } else p1 = page("Connections", { groups: [] });
     } else if (P === "privacy") {
       var logN = ST_LOG.length + (api.get("browser").booked && BR_LINKS.venue ? 1 : 0);
       p1 = page("Privacy & data", {
@@ -4808,6 +4814,7 @@ registerView("settings", {
           ] }
         ] });
     } else if (P === "wifi") {
+      if (testMocksEnabled) {
       var wOn = !!S.q.wifi; var cur = ST_NETS.filter(function (n) { return n.id === st.wifiCur; })[0];
       p1 = page("Wi-Fi", { hdrTog: stTog({ label: "Wi-Fi", aria: "Use Wi-Fi" }, wOn, function () { q({ wifi: !api.S.q.wifi }); }),
         hero: wOn && cur ? { kBig: true, hasIcon: true, d: IC.wifi, iconCss: "background:var(--acc);color:var(--alpha-white)", big: cur.name, sub: "Connected · " + (cur.lock ? "Secure" : "Open") } : { kBig: true, hasIcon: true, d: IC.wifi, iconCss: "background:var(--s2);color:var(--mut)", big: wOn ? "Not connected" : "Off", sub: "" },
@@ -4821,7 +4828,9 @@ registerView("settings", {
             } });
         }).concat(cur ? [stNav({ d: IC.trash, label: "Forget " + cur.name, danger: true, noChev: true, go: function () { set({ sheet: { kind: "forget", id: cur.id } }); } })] : []) }] : []
       });
+      } else p1 = page("Wi-Fi", { groups: [] });
     } else if (P === "bluetooth") {
+      if (testMocksEnabled) {
       var bOn = !!S.q.bt;
       var found = st.btScan === "done" ? [stNav({ d: IC.stSpeaker, label: "Kitchen Speaker", sub: "Tap to pair", noChev: true, go: function () {
         set({ btScan: false, btDev: api.get("settings").btDev.concat([{ id: "spk", name: "Kitchen Speaker", d: "stSpeaker", on: true }]) }); api.toast("Paired Kitchen Speaker"); } })] : [];
@@ -4838,6 +4847,7 @@ registerView("settings", {
           }) },
           { rows: [stNav({ d: IC.plus, label: st.btScan === true ? "Searching…" : "Pair new device", accent: true, noChev: true, go: function () { set({ btScan: true }); api.later(function () { if (api.get("settings").btScan) set({ btScan: "done" }); }, 1300); } })].concat(found) }
         ] : [] });
+      } else p1 = page("Bluetooth", { groups: [] });
     } else if (P === "mobile") {
       p1 = page("Mobile data", { groups: [
         { rows: [
@@ -4883,6 +4893,7 @@ registerView("settings", {
         { rows: (ST_DEVICE ? ST_DEVICE.battery.usage : []).map(function (u) { return stRow("kInfo", { d: IC[u[0]], label: u[1], val: u[2] }); }) }
       ].filter(function (g) { return g.rows.length; }) });
     } else if (P === "models") {
+      if (testMocksEnabled) {
       p1 = page("Models", { hero: { kBig: true, hasIcon: true, d: IC.chip, iconCss: "background:var(--acc);color:var(--alpha-white)", big: ST_DEVICE ? ST_DEVICE.model.name : "No model loaded", sub: ST_DEVICE ? ST_DEVICE.model.sub : "Model details are not reported" }, groups: [
         { rows: [stTog({ label: "Cloud fallback", sub: st.cloud ? "Asks each time, sends only the question" : "Off · nothing leaves this phone" }, st.cloud, function () { set({ cloud: !api.get("settings").cloud }); })] },
         { rows: (st.models || []).map(function (md) {
@@ -4896,24 +4907,29 @@ registerView("settings", {
             } });
         }) }
       ] });
+      } else p1 = page("Models", { groups: [] });
     } else if (P === "developer") {
+      if (testMocksEnabled) {
       p1 = page("Developer", { groups: [
         { rows: ST_DEVICE ? [stRow("kInfo", { label: "Runtime", val: ST_DEVICE.runtime.running }), stRow("kInfo", { label: "Uptime", val: ST_DEVICE.runtime.uptime }), stRow("kInfo", { label: "NPU", val: ST_DEVICE.runtime.npu }), stRow("kInfo", { label: "Memory", val: st.memWiped ? "0 items" : ST_DEVICE.runtime.memoryItems })] : [stRow("kInfo", { label: "Runtime", val: "Not reported" })] },
         { rows: [stTog({ label: "Verbose logs" }, st.verbose, function () { set({ verbose: !api.get("settings").verbose }); })] },
         { rows: ST_DEVLOG.map(function (l) { return stRow("kLog", { time: l[0], text: l[1] }); }).concat([stNav({ d: IC.share, label: "Export logs", accent: true, noChev: true, go: function () { api.open("files", { folder: "Downloads" }); api.toast("Logs saved to Downloads"); } })]) }
       ] });
+      } else p1 = page("Developer", { groups: [] });
     } else if (P === "about") {
+      if (testMocksEnabled) {
       p1 = page("About", { hero: { kBig: true, big: ST_ABOUT ? ST_ABOUT.hero : "Alpha Phone", sub: ST_ABOUT ? ST_ABOUT.sub : "Device details are not reported" }, groups: [
         { rows: (ST_ABOUT ? ST_ABOUT.rows : [["Device details", "Unavailable"]]).map(function (r) { return stRow("kInfo", { label: r[0], val: r[1] }); }) },
         { rows: [stNav({ label: st.busy === "upd" ? "Checking…" : "Check for updates", accent: true, noChev: true, go: function () { set({ busy: "upd" }); api.later(function () { set({ busy: null }); api.toast("Up to date"); }, 1000); } })] }
       ] });
+      } else p1 = page("About", { groups: [] });
     }
     if (p1) { p1.z = 4; stack.push(p1); }
 
     /* ---------- level 2 ---------- */
     var p2 = null;
     var a = st.acct ? accts.filter(function (x) { return x.id === st.acct; })[0] : null;
-    if (P === "accounts" && st.adding) {
+    if (testMocksEnabled && P === "accounts" && st.adding) {
       var step = st.addStep || "provider"; var pv = st.addProv ? provOf(st.addProv) : null;
       var back2 = function () { module_back(); };
       var closeAdd = function () { set({ adding: false, addStep: null, addProv: null, busy: null }); };
@@ -4954,7 +4970,7 @@ registerView("settings", {
       } else {
         p2 = page("", { back: closeAdd, hero: { kBig: true, hasIcon: true, d: IC.check, iconCss: "background:var(--acc);color:var(--alpha-white)", big: "Added", sub: st.addEmail }, groups: [{ plain: true, rows: [stRow("kBtn", { label: "Done", primary: true, dis: false, css: "background:var(--acc);color:var(--alpha-white)", go: closeAdd })] }] });
       }
-    } else if (P === "accounts" && a) {
+    } else if (testMocksEnabled && P === "accounts" && a) {
       var pva = provOf(a.provider);
       p2 = page("", { back: function () { set({ acct: null }); }, hero: { kBig: true, bigCss: "font-family:'Public Sans',system-ui,sans-serif;font-size:24px;font-weight:600;letter-spacing:0", ini: pva.name.charAt(0), hasIni: true, iconCss: a.label === "Personal" ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--s3)", big: a.address, sub: (a.label ? a.label + " · " : "") + pva.name },
         groups: [
@@ -4983,10 +4999,10 @@ registerView("settings", {
     /* ---------- sheet ---------- */
     var sh = null; var s = st.sheet;
     var closeSheet = function () { set({ sheet: null, pw: "" }); };
-    if (s && s.kind === "wipe") {
+    if (testMocksEnabled && s && s.kind === "wipe") {
       sh = { title: "Wipe " + name + "'s memory?", sub: "Everything " + name + " has learned about you is erased. This can't be undone.", primary: "Wipe", secondary: "Cancel",
         ok: function () { set({ sheet: null, memWiped: true }); api.toast("Memory wiped"); } };
-    } else if (s && s.kind === "wifiPw") {
+    } else if (testMocksEnabled && s && s.kind === "wifiPw") {
       var net = ST_NETS.filter(function (n) { return n.id === s.id; })[0]; var pwOk = (st.pw || "").length >= 8;
       sh = { title: net.name, sub: "", hasInput: true, pw: st.pw, onPw: function (e) { set({ pw: e.target.value }); }, onKey: function (e) { if (e.key === "Enter" && pwOk) sh.ok(); },
         primary: "Connect", dis: !pwOk, secondary: "Cancel",
@@ -4995,11 +5011,11 @@ registerView("settings", {
           set({ sheet: null, pw: "", busy: "w_" + net.id });
           api.later(function () { var s2 = api.get("settings"); set({ busy: null, wifiCur: net.id, wifiKnown: s2.wifiKnown.indexOf(net.id) >= 0 ? s2.wifiKnown : s2.wifiKnown.concat([net.id]) }); api.toast("Connected to " + net.name); }, 1100);
         } };
-    } else if (s && s.kind === "forget") {
+    } else if (testMocksEnabled && s && s.kind === "forget") {
       var fn = ST_NETS.filter(function (n) { return n.id === s.id; })[0];
       sh = { title: "Forget " + fn.name + "?", sub: "You'll need the password to rejoin.", primary: "Forget", secondary: "Cancel",
         ok: function () { var s2 = api.get("settings"); set({ sheet: null, wifiCur: null, wifiKnown: s2.wifiKnown.filter(function (k) { return k !== fn.id; }) }); } };
-    } else if (s && s.kind === "conn") {
+    } else if (testMocksEnabled && s && s.kind === "conn") {
       var c = ST_CONNS.filter(function (x) { return x.id === s.id; })[0]; var con = !!st.conns[c.id];
       sh = { title: c.name, sub: con ? "Connected" : name + " will be able to", scopes: c.scopes.map(function (t) { return { t: t, d: IC.check }; }), hasScopes: true,
         primary: con ? "Disconnect" : (st.busy === "conn" ? "Connecting…" : "Connect"), secondary: "Close",
@@ -5184,6 +5200,20 @@ class Component extends DCLogic {
   stopEvery(grp) { this.I = this.I || {}; (this.I[grp] || []).forEach(clearInterval); this.I[grp] = []; }
   toast(msg, opts) {
     opts = opts || {};
+    // An incoming notice must not replace a restore action the owner can still choose.
+    // Restore callbacks retain their own source/revision checks; queueing never extends
+    // a provider or deletion deadline. Consecutive passive notices share the next slot.
+    if (this.toastActive && this.undoFn) {
+      var queue = this.toastQueue || (this.toastQueue = []), last = queue[queue.length - 1];
+      var next = { msg: msg, undo: opts.undo || null };
+      if (last && !last.undo && !next.undo) queue[queue.length - 1] = next;
+      else queue.push(next);
+      return;
+    }
+    this.showToast(msg, opts);
+  }
+  showToast(msg, opts) {
+    opts = opts || {};
     var active = typeof document !== "undefined" ? document.activeElement : null;
     var inside = !!active?.closest?.("[data-alpha-toast]");
     if (!inside) this.toastOrigin = active;
@@ -5201,12 +5231,14 @@ class Component extends DCLogic {
   holdToast() { if (this.toastActive) { this.toastHeld = true; this.clear("t"); } }
   resumeToast() { this.toastHeld = false; if (this.toastActive) this.scheduleToast(); }
   closeToast() {
-    var doc = typeof document !== "undefined" ? document : null, origin = this.toastOrigin;
+    var self = this, doc = typeof document !== "undefined" ? document : null, origin = this.toastOrigin;
     var heldFocus = !!doc?.activeElement?.closest?.("[data-alpha-toast]");
     this.toastActive = false; this.toastHeld = false; this.toastSequence = (this.toastSequence || 0) + 1;
     this.undoFn = null; this.clear("t");
     this.setState({ toast: "", toastUndo: false }, function () {
       if (heldFocus && doc?.activeElement === doc.body && origin?.isConnected && !origin.closest("[inert],[hidden]")) origin.focus({ preventScroll: true });
+      var next = self.toastQueue?.shift();
+      if (next) self.showToast(next.msg, { undo: next.undo });
     });
   }
 

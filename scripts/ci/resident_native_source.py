@@ -8,7 +8,7 @@ from pathlib import Path
 def verify_generated_native(generated, frozen, root=Path('.')):
     root = Path(root).resolve()
     digest = lambda value: hashlib.sha256(value).hexdigest()
-    for relative in ('scripts/local-agent-source.mjs', 'scripts/stage-local-agent-sources.mjs'):
+    for relative in ('scripts/local-agent-source.ts', 'scripts/stage-local-agent-sources.ts'):
         assert frozen[relative] == digest((root / relative).read_bytes()), 'Native source build input drift'
     lock = json.loads((root / 'upstream.lock.json').read_text())
     assert generated['runtimeSource'] == {'commit': lock['commit']}

@@ -4,7 +4,7 @@ import {mkdirSync, mkdtempSync, realpathSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {coreStateReceipt} from '../../../../scripts/core-state-patch.mjs';
+import {coreStateReceipt} from '../../../../scripts/core-state-patch.ts';
 import {captureInputs, checkTraces} from '../check-traces.mjs';
 
 const repository = resolve(import.meta.dirname, '../../../..');
@@ -38,9 +38,9 @@ export async function checkNativeGoogleHostArtifact(extraSources = []) {
   const core = coreStateReceipt(repository);
   const sources = [
     fileURLToPath(import.meta.url), probe, 'test/fixtures/native-google-host-builder-port.mjs', 'test/fixtures/core-state-root.mjs',
-    'scripts/native-google-host-artifact.mjs', 'scripts/build-native-google-host.ts', 'scripts/workflow-worker-artifact.mjs',
-    'scripts/local-agent-source.mjs', 'scripts/copy-file-clone.mjs', 'scripts/prepare-client-features.mjs',
-    'scripts/upstream-native-source.mjs', 'vendor/eliza/packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts',
+    'scripts/native-google-host-artifact.ts', 'scripts/build-native-google-host.ts', 'scripts/workflow-worker-artifact.ts',
+    'scripts/local-agent-source.ts', 'scripts/copy-file-clone.ts', 'scripts/prepare-client-features.ts',
+    'scripts/upstream-native-source.ts', 'vendor/eliza/packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts',
     'package.json', 'tsconfig.json', 'upstream.lock.json', 'vendor/eliza/tsconfig.json',
     'vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs',
     'vendor/eliza/packages/app/scripts/lib/committed-source.mjs',

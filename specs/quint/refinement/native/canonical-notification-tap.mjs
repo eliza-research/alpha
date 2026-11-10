@@ -7,7 +7,7 @@ import {captureInputs, checkTraces, qset} from '../check-traces.mjs';
 import {app, javaTraces, root} from './java.mjs';
 import {canonicalTapPlatform} from './canonical-tap-platform.mjs';
 import {jsonJar} from '../../../../test/fixtures/jvm-tools.mjs';
-import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.mjs';
+import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.ts';
 
 const model = 'CanonicalNotificationTap';
 const driver = fileURLToPath(import.meta.url);
@@ -21,7 +21,7 @@ const route = 'packages/app/platforms/android/app/src/main/java/ai/elizaos/app/N
 
 export async function checkCanonicalNotificationTap(extraSources = []) {
   const paths = [driver, join(here, 'CanonicalTapTraces.java'), join(here, 'Trace.java'), join(here, 'java.mjs'),
-    join(here, 'canonical-tap-platform.mjs'), 'test/fixtures/jvm-tools.mjs', 'scripts/upstream-native-source.mjs',
+    join(here, 'canonical-tap-platform.mjs'), 'test/fixtures/jvm-tools.mjs', 'scripts/upstream-native-source.ts',
     'upstream.lock.json', actor, bridge, app+'AlphaLocalAgentPlugin.java', app+'MainActivity.java',
     ...[host, gate, route].map(path => 'vendor/eliza/'+path), ...(jsonJar ? [jsonJar] : []), ...extraSources];
   const driverHashes = captureInputs(paths);

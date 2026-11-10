@@ -2,6 +2,22 @@ import {test,expect} from '@playwright/test';
 import {canonicalNotesFixture,openCanonicalNotes} from './helpers/canonical-notes';
 const snapshot=(page:import('@playwright/test').Page)=>page.evaluate(()=>(window as any).canonicalNotesFixture.state);
 
+test('canonical Notes use last-edit order and local date labels without writing view timestamps into content',async({page})=>{
+ await page.clock.setFixedTime(new Date('2026-11-10T17:00:00Z'));
+ await canonicalNotesFixture(page,{notes:[
+  {id:'newer-created',title:'Created more recently',body:'\nNewer creation',color:'yellow',createdAt:'2026-11-10T12:00:00Z',updatedAt:'2026-11-10T12:00:00Z'},
+  {id:'recent-edit',title:'Edited most recently',body:'\nOlder creation',color:'yellow',createdAt:'2026-11-01T12:00:00Z',updatedAt:'2026-11-10T16:00:00Z'},
+ ]});await openCanonicalNotes(page);
+ const rows=page.locator('[data-alpha-subview="notes-list"] button.notes-row');await expect(rows.first()).toHaveAttribute('data-alpha-note-id','recent-edit');
+ const time=await page.evaluate(()=>new Intl.DateTimeFormat(undefined,{hour:'numeric',minute:'2-digit'}).format(new Date('2026-11-10T16:00:00Z')));await expect(rows.first()).toContainText(time);
+ await page.getByRole('button',{name:'Open Created more recently',exact:true}).click();await page.getByRole('textbox',{name:'Note',exact:true}).fill('Newly edited body');await page.getByRole('button',{name:'Back to notes',exact:true}).click();await expect(rows.first()).toHaveAttribute('data-alpha-note-id','newer-created');
+ const updated=(await snapshot(page)).notes.find((note:any)=>note.id==='newer-created');for(const key of ['createdAt','updatedAt','modifiedAt'])expect(updated.format?.data?.[key]).toBeUndefined();
+});
+
+test('empty canonical Notes explains the first action',async({page})=>{
+ await canonicalNotesFixture(page);await openCanonicalNotes(page);await expect(page.getByRole('heading',{name:'No notes yet',exact:true})).toBeVisible();await expect(page.getByText('Create a note or record a voice note to get started.',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'New note',exact:true})).toBeEnabled();
+});
+
 test('a lost canonical recording save reply is reconciled without another create',async({page})=>{
  await canonicalNotesFixture(page);
  const result=await page.evaluate(async()=>{

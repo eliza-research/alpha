@@ -1,4 +1,4 @@
-// Generated from scripts/cloud-deployment-policy.mjs. Run node scripts/cloud-deployment.mjs.
+// Generated from scripts/cloud-deployment-policy.ts. Run node scripts/cloud-deployment.ts.
 ext.alphaCloudWebHosts = [
  production: "eliza.app",
  staging: "staging.eliza.app",

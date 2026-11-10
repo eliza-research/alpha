@@ -18,7 +18,7 @@ async function setup(page:Page,options:FixtureOptions={}){
   const scheduledAt='2026-10-28T07:30:00.000Z';
   const missed={id:'run-missed',workflowId:'morning',workflowVersionId:'morning-v1',status:'finished',startedAt:'2026-10-28T09:00:00Z',finished:true,stoppedAt:'2026-10-28T09:00:00Z',mode:'trigger',...((options.occurrence??'missed')==='missed'?{missedOccurrenceAt:scheduledAt}:{}),input:options.kind==='generic'||options.kind==='hosted'?{}:{typedSchedule:{scheduledAt,trigger,status:'ready',text:''}},output:{status:options.occurrence??'missed',scheduledAt,text:'Not run: synthetic scheduled occurrence'},events:[]};
   // The agent's workflow service writes missedOccurrenceAt when it records a missed occurrence; a generic
-  // schedule's output alone never makes a run missed (see scripts/test-workflow-protocol.mjs, forged case).
+  // schedule's output alone never makes a run missed (see scripts/test-workflow-protocol.ts, forged case).
   const runs:any={morning:[missed]};
   const w=window as any;w.agentRequests=[];
   const request=async(path:string,body:any)=>{

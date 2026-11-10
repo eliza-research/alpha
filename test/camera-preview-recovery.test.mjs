@@ -138,7 +138,7 @@ function fixture({permission=false,failing=true,navigateAfterPhoto=false,receipt
 // Preview failure, permission denial and recovery.
 {
  const f=fixture();await f.api.start();assert.equal(f.api.state().phase,'error');assert.equal(f.api.state().denied,undefined,'A hardware/start failure is not a permission denial');assert.equal(f.timers.size,0,'Unavailable panel cannot disappear with transient toast timer');
- const alert=f.env.window.document.querySelector('[role="alert"]');assert.equal(alert.getAttribute('aria-label'),'Camera unavailable');assert.equal(alert.textContent,'Camera unavailableTry again','No explanatory copy in the panel');
+ const alert=f.env.window.document.querySelector('[role="alert"]');assert.equal(alert.getAttribute('aria-label'),'Camera unavailable');assert.match(alert.textContent,/Camera unavailable.*The camera could not start.*Try again/,'Explain the failure and recovery without implying a permission denial');
  await f.api.start();assert.equal(f.calls.starts,1,'No automatic retry loop');
  f.recover();f.env.window.document.querySelector('[role="alert"] button').click();await settle();assert.equal(f.calls.starts,2);assert.equal(f.api.state().phase,'ready');assert.equal(f.env.window.document.querySelector('[role="alert"]'),null);assert.equal(f.calls.masked,true);f.env.window.close();
 }
@@ -305,8 +305,8 @@ function fixture({permission=false,failing=true,navigateAfterPhoto=false,receipt
 }
 // Asking to scan is recognised in chat text; ordinary questions are not. A scan request captures one in-memory frame into review.
 {
- const f=fixture({failing:false});for(const text of['Scan this','scan the receipt','Can you scan this document?','scan that page'])assert.equal(f.api.cameraScanRequested(text),true,text);
- for(const text of['What am I looking at?','take a photo','scanner settings'])assert.equal(f.api.cameraScanRequested(text),false,text);
+ const f=fixture({failing:false});for(const text of['Scan this','scan the receipt','Can you scan this document?','scan that page','scan','scan my passport','digitize this whiteboard'])assert.equal(f.api.cameraScanRequested(text),true,text);
+ for(const text of['What am I looking at?','take a photo','scanner settings',"don't scan this yet",'can you scan a document later?','scan this after I leave','tell me how to scan a document','scan this, but not now','scan this '+ ' '.repeat(200)+'later'])assert.equal(f.api.cameraScanRequested(text),false,text);
  f.setView({chat:'sheet'});assert.equal(f.api.scanRequest(),true);await settle();await settle();
  assert.equal(f.calls.scans,1);assert.deepEqual(JSON.parse(JSON.stringify(f.calls.captures)),[{format:'jpeg',quality:85,saveToGallery:false}],'Scanning never writes to the gallery');f.env.window.close();
 }

@@ -15,11 +15,11 @@ const attribution='© OpenStreetMap contributors';
 
 test('place, search and route cards become readable cards with their attribution',()=>{
  const placeText=appendMapsCard('Found it.',{kind:'place',place,attribution});
- assert.deepEqual(mapsChatText(placeText),{displayText:'Found it.',cards:[{kind:'place',title:'Ferry Building',lines:['1 Ferry Building, San Francisco'],attribution}],choice:null});
+ assert.deepEqual(mapsChatText(placeText),{displayText:'Found it.',cards:[{kind:'place',title:'Ferry Building',lines:['1 Ferry Building, San Francisco'],attribution,mapQuery:'37.7955, -122.3937'}],choice:null});
  const search=mapsChatText(appendMapsCard('Two matches.',{kind:'places',query:'ferry',places:[place,{...place,name:'Pier 1',formattedAddress:undefined,providerPlaceId:'osm:n2'}],nextCursor:null,attribution}));
  assert.deepEqual(search.cards[0].lines,['Ferry Building, 1 Ferry Building, San Francisco','Pier 1']);assert.equal(search.cards[0].attribution,attribution);
  const route=mapsChatText(appendMapsCard('Here is the route.',routeCard({origin:{...ref,name:'Home'},destination:ref,travelMode:'walk',distanceMeters:1530,durationSeconds:1260,warnings:['Steep section']},attribution)));
- assert.deepEqual(route.cards[0],{kind:'route',title:'Route to Ferry Building',lines:['From Home','Walking · 1.5 km · 21 min','Steep section'],attribution});
+ assert.deepEqual(route.cards[0],{kind:'route',title:'Route to Ferry Building',lines:['From Home',`Walking · ${Intl.DateTimeFormat().resolvedOptions().locale==='en-US'?'1.0 mi':'1.5 km'} · 21 min`,'Steep section'],attribution,mapQuery:'37.7955, -122.3937'});
  assert.equal(route.displayText,'Here is the route.');
 });
 

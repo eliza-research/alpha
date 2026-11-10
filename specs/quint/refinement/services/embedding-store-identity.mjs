@@ -4,7 +4,7 @@ import {deferred} from './support.mjs';
 import {loadRuntimeEmbeddings} from './core-runtime/module.mjs';
 import {embeddingStoreDatabaseTraces, loadEmbeddingStoreDatabase} from './embedding-store-pglite.mjs';
 import {checkTraces} from '../check-traces.mjs';
-import {EMBEDDING_STATE_TARGET} from '../../../../scripts/core-state-patch.mjs';
+import {EMBEDDING_STATE_TARGET} from '../../../../scripts/core-state-patch.ts';
 
 const model = 'EmbeddingStoreIdentity';
 const driver = fileURLToPath(import.meta.url);

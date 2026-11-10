@@ -28,7 +28,7 @@ for(const [orientation,viewport] of [['portrait',{width:412,height:915}],['lands
     };
    },refusal);
    await residentHome(page);await button(page,'Maps').click();
-   const search=page.getByRole('textbox',{name:'Search places',exact:true});await search.fill('Synthetic place');await search.press('Enter');
+   const search=page.getByRole('searchbox',{name:'Search places',exact:true});await search.fill('Synthetic place');await search.press('Enter');
    const status=page.locator('[data-alpha-maps-status] [role="status"]');
    await expect(status).toHaveText(refusal.message);
    await expect(page.getByText(/Connect a Maps provider/)).toHaveCount(0);

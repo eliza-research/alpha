@@ -1,1 +1,1 @@
-import '../scripts/test-batch-voice-progress-ack.mjs';
+import '../scripts/test-batch-voice-progress-ack.ts';

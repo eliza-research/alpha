@@ -17,11 +17,11 @@ test('Maps local speech adapter cancels owned guidance and refuses local-unready
   playbackReady:async()=>ready,
   speak:(text,signal)=>{f.spoken.push(text);return new Promise((resolve,reject)=>signal.addEventListener('abort',()=>{f.aborted++;reject(signal.reason);},{once:true}));},
  });
- // The screen stays on and this is the on-device profile, so the adapter's screen-off and Cloud paths stay idle.
+ // The screen stays on and the run-time speech route is this phone, so the adapter's screen-off and Cloud paths stay idle.
  const document={hidden:false,documentElement:{dataset:{connectionMode:'resident'}},addEventListener(){},removeEventListener(){}};
  const selected={session:{},residentInference:'direct',open:false};
  const connectionController={getSnapshot:()=>selected,getCloudClient:()=>null,getCloudEnvironment:()=>null};
- const NavigationVoice=new Function('createOnDeviceVoice','document','cloudRuntimeEnabled','speakAppText','connectionController',`${shared}\n${adapter}\nreturn NavigationVoice;`)(createOnDeviceVoice,document,false,async()=>{throw Error('navigation speech must not use the Cloud route here');},connectionController);
+ const NavigationVoice=new Function('createOnDeviceVoice','document','speechRoute','speakAppText','connectionController',`${shared}\n${adapter}\nreturn NavigationVoice;`)(createOnDeviceVoice,document,()=>'device',async()=>{throw Error('navigation speech must not use the Cloud route here');},connectionController);
  const settle=()=>new Promise(resolve=>setTimeout(resolve,0));
  const voice=new NavigationVoice(error=>f.failures.push(error));
  voice.update('step-1','Turn right');await settle();

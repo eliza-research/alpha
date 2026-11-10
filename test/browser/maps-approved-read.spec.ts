@@ -86,12 +86,12 @@ for (const mode of ['place', 'route', 'stale-before-approval', 'stale-after-read
     });
     await returnToApps(page);
     await page.getByRole('button',{name:'Maps',exact:true}).click();
-    const query=page.getByRole('textbox',{name:'Search places',exact:true});
+    const query=page.getByRole('searchbox',{name:'Search places',exact:true});
     await query.fill('Private fixture destination');await query.press('Enter');
     await page.getByRole('button',{name:/^Private fixture destination/}).first().click();
     if(mode==='route'){
       await page.getByRole('button',{name:'Directions',exact:true}).click();
-      const origin=page.getByRole('textbox',{name:'Route origin coordinates'});await origin.fill('43.738,7.424');await origin.press('Enter');
+      const origin=page.getByRole('textbox',{name:'Starting point'});await origin.fill('43.738,7.424');await origin.press('Enter');
       await expect(page.getByText(/no live traffic/).first()).toBeVisible();
     }
     if(mode==='basemap-ready'){
@@ -120,8 +120,9 @@ for (const mode of ['place', 'route', 'stale-before-approval', 'stale-after-read
     expect(await page.evaluate(()=>(window as any).recoveryFixture.claims)).toBe(0);
     if(mode==='stale-before-approval') {
       await page.evaluate(async()=>{const {clearMapsSelection}=await import('/src/maps/agent-context.ts');clearMapsSelection();});
+    } else {
+      await page.getByText('maps read selected',{exact:true}).click();
     }
-    await page.getByText('maps read selected',{exact:true}).click();
     if(mode==='stale-after-read'){
       await expect.poll(()=>page.evaluate(()=>typeof (window as any).releaseMapsFinish)).toBe('function');
       await page.evaluate(async()=>{const {clearMapsSelection}=await import('/src/maps/agent-context.ts');clearMapsSelection();(window as any).releaseMapsFinish();});
@@ -139,7 +140,8 @@ for (const mode of ['place', 'route', 'stale-before-approval', 'stale-after-read
       expect(await page.evaluate(()=>(window as any).recoveryFixture.journal.filter((x:string)=>x==='reserve').length)).toBe(1);
       expect(await page.evaluate(()=>(window as any).recoveryFixture.journal.filter((x:string)=>x==='finish').length)).toBe(1);
     } else if(mode==='stale-before-approval') {
-      await expect(page.getByText(/Review|context|confirmed result/i).last()).toBeVisible();
+      await expect(page.getByRole('button',{name:/^Review unavailable/})).toBeDisabled();
+      expect(await page.evaluate(()=>(window as any).recoveryFixture.claims)).toBe(0);
     } else {
       await expect(page.getByText('Shared the exact selected Maps snapshot with approval. Navigation was not started.',{exact:true}).last()).toBeVisible();
       const result=await page.evaluate(()=>(window as any).mapsUploaded);

@@ -61,7 +61,13 @@ export function installSmsAdapter(Component:any,views:Bag){
  registerTelephonyProfile(client);
  const session=createSmsSession(client,true,changed,id=>{if(id===operationId||id===sent?.id)void reconcile();},id=>{if(id===mmsOperationId||id===mmsSent?.id)void reconcileMms();});
  /* Android's picture chooser covers the WebView and reports it hidden; the draft stays while it is open. */
- const sync=()=>{const next=!!owner&&owner.S().view==='messages'&&(!document.hidden||picking);if(next===active)return;active=next;lifecycle++;session.setActive(next);if(!next){busy=false;draftRevision++;recipients='';body='';sim='';operationId='';notice='';receipt=null;resetMms(true);sent=null;mmsSent=null;suggesting?.abort();suggesting=null;draft=emptyDraft();composing=false;names.clear();people.length=0;seen.clear();namesLoaded=false;}};
+ const sync=()=>{const next=!!owner&&owner.S().view==='messages'&&(!document.hidden||picking);if(next===active)return;active=next;lifecycle++;session.setActive(next);if(!next){busy=false;draftRevision++;
+  // Provider rows and observation are cleared by the inactive session. Keep the
+  // owner's unfinished draft in memory across navigation/backgrounding. Preserve
+  // its operation identity so returning cannot replay an uncertain send.
+  // Contact names, a suggestion in flight and an untouched automatic suggestion are for the visit only.
+  suggesting?.abort();suggesting=null;if(draft.draft==='agent'){body='';operationId='';draft=emptyDraft();}else draft=readinessLost(draft);names.clear();people.length=0;seen.clear();namesLoaded=false;
+ }else{void reconcile();void reconcileMms();}};
  const resetMms=(pictures:boolean)=>{mmsOperationId='';mmsReview=null;if(pictures){attachments=[];pictureSeq=0;}};
  const draftRecipients=()=>recipients.split(',').map(v=>v.trim()).filter(Boolean);
  const ready=()=>active&&!busy&&session.state.status?.permissions.sms==='granted';

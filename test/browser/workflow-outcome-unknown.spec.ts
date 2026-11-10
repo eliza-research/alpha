@@ -16,7 +16,7 @@ async function setup(page:Page){
   };
   const interrupted=(id:string,workflowId:string,versionId:string)=>({id,workflowId,workflowVersionId:versionId,status:'running',startedAt:'2026-10-04T07:00:00Z',finished:false,stoppedAt:null,error:{message:'Workflow worker exited before reporting a result; outcome unknown'},reconciliation:{state:'outcome-unknown',message:'Workflow worker exited before reporting a result; outcome unknown'},events:[]});
   const runs:any={digest:[interrupted('run-digest','digest','digest-v1')],effect:[interrupted('run-effect','effect','effect-v1')],hosted:[interrupted('run-hosted','hosted','hosted-v1')]};
-  const w=window as any;w.agentRequests=[];
+  const w=window as any;w.agentRequests=[];w.workflowReviewFlows=flows;
   const request=async(path:string,body:any)=>{
    w.agentRequests.push({path,method:body===undefined?'GET':'POST',body});
    if(path==='/api/automations')return {automations:Object.values(flows).filter((flow:any)=>!flow.removed).map((flow:any)=>({id:'workflow:'+flow.id,type:'workflow',workflowId:flow.id,title:flow.name,description:flow.description,enabled:flow.active,status:flow.active?'active':'paused',schedules:[]}))};
@@ -45,6 +45,15 @@ async function setup(page:Page){
 }
 const posts=(page:Page,suffix:string)=>page.evaluate(suffix=>(window as any).agentRequests.filter((r:any)=>r.method==='POST'&&r.path.endsWith(suffix)).length,suffix);
 const status=(page:Page)=>page.getByRole('status',{name:'Workflow run status',exact:true});
+
+test('checking workflow editing support keeps Run visible and disabled without claiming a run started',async({page})=>{
+ await setup(page);await page.evaluate(()=>{(window as any).workflowReviewFlows.effect.metadata={};});await page.getByRole('region',{name:'Workflows',exact:true}).getByText('Save agenda note',{exact:true}).first().click();
+ await expect(page.getByRole('button',{name:'Run now',exact:true})).toBeEnabled();
+ await page.evaluate(async()=>{const {WorkflowProtocol}=await import('/src/runtime/workflow-protocol.ts');WorkflowProtocol.prototype.metadataSupported=()=>new Promise<boolean>(resolve=>(window as any).releaseWorkflowEditing=resolve);});
+ await page.getByRole('button',{name:'Change',exact:true}).click();await expect.poll(()=>page.evaluate(()=>typeof(window as any).releaseWorkflowEditing)).toBe('function');
+ await expect(page.getByRole('button',{name:'Run now',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Run now',exact:true})).toBeDisabled();await expect(page.getByRole('status',{name:'Workflow running',exact:true})).toHaveCount(0);
+ await page.evaluate(()=>(window as any).releaseWorkflowEditing(false));await expect(page.getByRole('button',{name:'Run now',exact:true})).toBeEnabled();expect(await posts(page,'/run')).toBe(0);
+});
 
 test('side-effecting workflow: interrupted run is shown as outcome unknown, never replayed, and blocks new runs until cancelled',async({page})=>{
  await setup(page);await page.getByRole('region',{name:'Workflows',exact:true}).getByText('Save agenda note',{exact:true}).first().click();

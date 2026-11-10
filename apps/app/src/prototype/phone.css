@@ -631,6 +631,32 @@ button[aria-label$=" on or off"][aria-pressed]::before { content:""; position:ab
 .alpha-map-credits { position:absolute; left:12px; right:76px; z-index:3; display:flex; align-items:center; gap:8px; padding-left:10px; border-radius:16px; background:var(--bg); color:var(--fg); box-shadow:0 2px 12px var(--shc); font-size:12px; line-height:1.4; }
 .alpha-map-credit-links { flex:1; min-width:0; }
 .alpha-map-credit-links a { color:inherit; text-decoration:underline; }
+[data-alpha-map-plane][data-imagery-unavailable="true"] { background:var(--s2); }
+.alpha-map-credits[data-google-maps="true"] {
+  container:alpha-map-credit / inline-size; gap:4px; padding:0; background:transparent; box-shadow:none;
+}
+.alpha-google-credit { flex:1; min-width:0; display:flex; align-items:center; gap:4px; }
+.alpha-google-mark,.alpha-google-copyright,.alpha-google-map-missing,.alpha-google-sources > summary,
+.alpha-map-credits[data-google-maps="true"] > .alpha-map-privacy > summary {
+  border-radius:14px; background:var(--bg); color:var(--fg); box-shadow:0 2px 12px var(--shc);
+}
+.alpha-google-mark { flex:none; display:inline-flex; align-items:center; padding:10px 10px 5px; background:var(--alpha-white); }
+.alpha-google-mark img { display:block; width:auto; height:16px; }
+.alpha-google-copyright,.alpha-google-map-missing { min-width:0; padding:6px 8px; overflow-wrap:anywhere; }
+.alpha-google-sources { display:none; min-width:0; }
+.alpha-google-sources > summary {
+  display:flex; align-items:center; min-height:44px; padding:4px 8px; cursor:pointer; list-style:none;
+}
+.alpha-google-sources > summary::-webkit-details-marker { display:none; }
+.alpha-map-credits .alpha-google-sources > .alpha-map-info {
+  top:auto; right:0; bottom:calc(100% + 8px); box-sizing:border-box; max-height:160px; overflow:auto; overflow-wrap:anywhere;
+}
+@container alpha-map-credit (max-width: 375px) {
+  .alpha-google-copyright { display:none; }
+  .alpha-google-sources { display:block; }
+}
+html.alpha-large-text .alpha-google-copyright { display:none; }
+html.alpha-large-text .alpha-google-sources { display:block; }
 .alpha-map-privacy { flex-shrink:0; }
 .alpha-map-privacy > summary { display:flex; align-items:center; justify-content:center; min-width:44px; min-height:44px; cursor:pointer; list-style:none; }
 .alpha-map-privacy > summary::-webkit-details-marker { display:none; }

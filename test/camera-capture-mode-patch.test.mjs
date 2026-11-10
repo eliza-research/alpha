@@ -8,7 +8,7 @@ import path from 'node:path';
 const root=path.resolve(import.meta.dirname,'..');
 const ready=fs.existsSync(path.join(root,'vendor/eliza/plugins/plugin-native-camera'));
 test('Video mode binds the recording options; a released preview is reported',{skip:!ready&&'vendor/eliza not checked out'},async()=>{
- const {preparePatchedNative}=await import('../scripts/prepare-patched-native.mjs');
+ const {preparePatchedNative}=await import('../scripts/prepare-patched-native.ts');
  const prepared=preparePatchedNative({root});
  const kt=fs.readFileSync(path.join(prepared.root,'plugins/plugin-native-camera/android/src/main/java/ai/eliza/plugins/camera/CameraPlugin.kt'),'utf8');
  const fn=name=>{const a=kt.indexOf(name);assert.ok(a>=0,name);return kt.slice(a,kt.indexOf('\n    }\n',a));};

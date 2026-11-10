@@ -22,13 +22,28 @@ test('a 12000-character note is read with Cloud in provider-sized pieces, one re
   } finally { f.close(); await f.tick(); }
 });
 
-test('a Cloud failure before audio names its cause; one after audio says reading stopped', async () => {
+test('a Cloud failure before audio is read on this phone; without on-device speech it names its cause; one after audio says reading stopped', async () => {
   const f = cloudVoiceViewFixture({cloudProfile: true});
   try {
     f.error = Object.assign(Error('PRIVATE_HTTP_SENTINEL'), {code: 'voice-http-401'});
+    // Local models always ship: the refused Cloud request is not the end of the reading.
+    const local = [];
+    f.box.speakLocalText = async (text, _signal, started) => { local.push(text); started?.(); };
+    const fallback = await f.box.readNoteAloud('Groceries. Milk and eggs.', {noteId: 'a'});
+    assert.deepEqual({...fallback}, {outcome: 'finished', message: ''});
+    assert.deepEqual(local, ['Groceries. Milk and eggs.'], 'the note is read by the on-device engine');
+    assert.equal(f.box.speechRoute(), 'device', 'the next reading skips the refused account');
+    // The same account is held for a while; a later reading goes straight to this phone.
+    const uploads = f.cloudSpeech;
+    assert.equal((await f.box.readNoteAloud('Second note.', {noteId: 'a2'})).outcome, 'finished');
+    assert.equal(f.cloudSpeech, uploads, 'no Cloud request while the account is held');
+    // Only when on-device speech is unavailable too does the Cloud cause reach the user.
+    f.credential = 'second-credential';
+    assert.equal(f.box.speechRoute(), 'cloud', 'a different account is not held');
+    f.box.createOnDeviceVoice = () => null;
     const refused = await f.box.readNoteAloud('Groceries. Milk and eggs.', {noteId: 'a'});
     assert.deepEqual({...refused}, {outcome: 'failed', message: 'Couldn’t start reading. Eliza Cloud sign-in expired. Sign in again in Settings, then retry voice.'});
-    f.error = null;
+    f.error = null; f.credential = 'third-credential';
     const synthesize = f.driver.synthesize;
     let calls = 0;
     f.driver.synthesize = async input => { if (++calls > 1) f.error = Object.assign(Error('PRIVATE_HTTP_SENTINEL'), {code: 'voice-http-402'}); return synthesize(input); };
@@ -43,10 +58,11 @@ test('a Cloud failure before audio names its cause; one after audio says reading
 function listenFixture({cloud}) {
   const f = {spoken: [], prepared: 0};
   const box = {
-    cloudRuntimeEnabled: cloud, developmentCartesiaVoiceEnabled: false, developmentCloudVoiceEnabled: false, testMocksEnabled: false, browserDevProfile: false,
+    developmentCartesiaVoiceEnabled: false, developmentCloudVoiceEnabled: false, testMocksEnabled: false, browserDevProfile: false,
     JSON, AbortController, DOMException, setTimeout, clearTimeout, Event: class { constructor(type) { this.type = type; } },
     Capacitor: {isNativePlatform: () => true},
-    connectionController: {getCloudEnvironment: () => 'production', getCloudClient: () => ({sessionId: 'cloud-session', credentialId: 'cloud-credential'}), getSnapshot: () => ({open: false, session: {sessionId: 'agent'}, history: {conversationId: 'c'}}), subscribe: () => () => {}, openCloudAccount() { throw Error('No sign-in expected'); }},
+    // The run-time speech route: Cloud for a signed-in account, this phone when signed out.
+    connectionController: {getCloudEnvironment: () => cloud ? 'production' : null, getCloudClient: () => cloud ? {sessionId: 'cloud-session', credentialId: 'cloud-credential'} : null, getSnapshot: () => ({open: false, session: {sessionId: 'agent'}, history: {conversationId: 'c'}}), subscribe: () => () => {}, openCloudAccount() { throw Error('No sign-in expected'); }},
     window: {dispatchEvent: () => true, getSelection: () => ({isCollapsed: true})},
     document: {hidden: false, documentElement: {dataset: {}}, querySelector: () => null, addEventListener() {}, removeEventListener() {}},
     createCloudVoice: () => ({speak: async text => { f.spoken.push(text); }}),
@@ -60,7 +76,7 @@ function listenFixture({cloud}) {
     const source = fs.readFileSync(file, 'utf8').replace(/^import .*;\n/gm, '').replace(/^export /gm, '');
     vm.runInNewContext('{' + stripTypeScriptTypes(source, {mode:'strip'}) + '\n' + names.map(name => `globalThis.${name}=${name};`).join('') + '}', box);
   };
-  load('apps/app/src/runtime/voice-selection.ts', ['selectVoiceRoute']);
+  load('apps/app/src/runtime/voice-selection.ts', ['selectVoiceRoute', 'speechRoute', 'noteNetworkSpeechFailure']);
   load('apps/app/src/runtime/local-speech-text.ts', ['screenSpeechText']);
   load('.eliza/client-features/packages/voice/src/cloud-speech-chunks.ts', ['speakCloudSpeechChunks']);
   load('apps/app/src/prototype/local-speech-playback.ts', ['installLocalSpeechPlayback']);

@@ -245,7 +245,7 @@ test("manifests: the SMS result receiver exists only in the launcher flavor, and
   assert.match(launcher, /<receiver android:name="\.AlphaSmsSendReceiver" android:exported="false" \/>/, "the receiver takes explicit intents only: no filter, not exported");
   assert.doesNotMatch(main + standalone, /AlphaSmsSendReceiver/);
   assert.match(launcher, /<uses-feature android:name="android\.hardware\.telephony" android:required="false" \/>/, "telephony hardware stays optional");
-  assert.match(read("scripts/apk.mjs"), /for \(const permission of \['READ_SMS', 'SEND_SMS'\]\)/, "APK verification checks the packaged SMS permissions per flavor");
+  assert.match(read("scripts/apk.ts"), /for \(const permission of \['READ_SMS', 'SEND_SMS'\]\)/, "APK verification checks the packaged SMS permissions per flavor");
 });
 
 test("standalone SMS stays unavailable at the UI and agent boundaries", async () => {

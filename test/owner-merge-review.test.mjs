@@ -2,13 +2,13 @@
 // read no git history and are source checks only (no APK, emulator, image or device evidence).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {addedLinesFromDiff, binaryChanges, descriptorCoverage, diffScripts, forgedMarkers, FORGED_COMMITS, markerPatterns} from '../scripts/owner/merge-review.mjs';
+import {addedLinesFromDiff, binaryChanges, descriptorCoverage, diffScripts, forgedMarkers, FORGED_COMMITS, markerPatterns} from '../scripts/owner/merge-review.ts';
 
 test('package scripts are reported as added, removed and changed', () => {
  const before = JSON.stringify({scripts: {build: 'vite build', old: 'node old.mjs', test: 'node --test'}});
- const after = JSON.stringify({scripts: {build: 'vite build', test: 'node --test test/*.mjs', 'android:host': 'node scripts/android-host.mjs'}});
+ const after = JSON.stringify({scripts: {build: 'vite build', test: 'node --test test/*.mjs', 'android:host': 'node scripts/android-host.ts'}});
  assert.deepEqual(diffScripts(before, after), {
-  added: [{name: 'android:host', command: 'node scripts/android-host.mjs'}],
+  added: [{name: 'android:host', command: 'node scripts/android-host.ts'}],
   removed: [{name: 'old', command: 'node old.mjs'}],
   changed: [{name: 'test', before: 'node --test', after: 'node --test test/*.mjs'}],
  });

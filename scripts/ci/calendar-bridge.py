@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Proposed owning CI check. Source-only draft; not executed or installed."""
+"""Verify the pinned Calendar bridge in the owning Android CI build job."""
 import time
 SCRIPT_ENTRY = time.monotonic()
 CURRENT_DEADLINE = SCRIPT_ENTRY + 20
@@ -265,7 +265,7 @@ def main():
         '--no-build-cache', '--no-configuration-cache',
         '--init-script', str(root / 'scripts/ci/calendar-bridge.init.gradle'),
         '-PcalendarBridgeInputs=' + str(config),
-        '-PELIZA_RUNTIME_PROFILE=native', '-PELIZA_ALLOW_UNPACKAGED_RUNTIME=1',
+        '-PELIZA_ALLOW_UNPACKAGED_RUNTIME=1',
         '-PELIZA_DEV_ALLOW_TEST_MOCKS=0', ':app:qualifyCalendarPairedJournalBridge']
     require(time.monotonic() - entry <= PREFLIGHT_SECONDS, 'Preflight budget exhausted')
     CURRENT_DEADLINE = entry + WORK_END_SECONDS

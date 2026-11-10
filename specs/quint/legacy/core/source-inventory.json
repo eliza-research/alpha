@@ -2143,10 +2143,10 @@
     }
   ],
   "currentUpstream": {
-    "revision": "9ced49aa631591a4decb6ccb4c8e87c86a2044bf",
+    "revision": "988e67d2992142af6495b30ac4a8e70f31347d1a",
     "classification": "current-upstream-formal-specifications",
     "models": [],
-    "note": "The current upstream tree has no tracked TLA modules or TLC configurations. Historical translations and source hashes above remain bound to revision 4787d51a142c63c98371c832997184c53f7218d3. The four DeletionOwnerAdmission Quint sidecars below catalogue the upstream partial owner-admission model and checker at this current revision; downstream model allocations, generated-trace equivalence, full coordinator refinement and Android/device qualification remain separate. Any future TLA/TLC source requires separate allocation. CloudSpeechSuccessor is retained as an upstream source-owned model; its separate semantic, scenario and transport tests do not constitute device or live-provider proof.",
+    "note": "The current upstream tree has no tracked TLA modules or TLC configurations. Historical translations and source hashes above remain bound to revision 4787d51a142c63c98371c832997184c53f7218d3. The selected source-owned Quint sidecars below retain DeletionOwnerAdmission, CloudSpeechSuccessor, MapsTileCache and ViewportCopyright at the current pin. Their independent model and transport checks do not establish complete downstream refinement, native release, provider, image or device qualification. Any future TLA/TLC source requires separate allocation. The retained Maps sidecars include their implementation checkers; live provider and device acceptance remain separate.",
     "quintSidecars": [
       {
         "path": "plugins/plugin-native-action-journal/quint/DeletionOwnerAdmission.cases.json",
@@ -2177,6 +2177,36 @@
         "path": "packages/host/quint/CloudSpeechSuccessor.cases.json",
         "gitObject": "b8e2b6cfc0550105b6e61c1a89143b95901b6ed7",
         "sha256": "83d6dc7f9b3f0c9353e16f02d145a46dee4db2256ae2e4bd848e6b184f0d0a9e"
+      },
+      {
+        "path": "packages/cloud/quint/MapsTileCache.qnt",
+        "gitObject": "ca7e1129ea7b8ed736dcd09e2329a114beba9185",
+        "sha256": "446f0398a4196f038280b110040a50b67b278ec9deca07d9e52411b5aa3c039c"
+      },
+      {
+        "path": "packages/cloud/quint/MapsTileCache.cases.json",
+        "gitObject": "a0ff5580d149e53808850387a66a8159dabbb42d",
+        "sha256": "46ab9397a8891cf7f09aff55b466d72303afdf9222ce3f82365cfb0aa20a4e88"
+      },
+      {
+        "path": "plugins/plugin-maps/quint/ViewportCopyright.qnt",
+        "gitObject": "8dc427ed5a9e93f09dbcbd0f753adae3329dd8b0",
+        "sha256": "d03df65fa79c9acbdf2b1de1493eeca6c7c94eb8db12fcc0addbfbefc0f01d17"
+      },
+      {
+        "path": "plugins/plugin-maps/quint/ViewportCopyright.cases.json",
+        "gitObject": "21612aba27eb594c1b80e4ac641f928d82b01922",
+        "sha256": "37877a76e2c51210976cdd97ab4fba91d4677ff5105db8e8118ebc0a7378c2c3"
+      },
+      {
+        "path": "packages/cloud/quint/check-maps-tile-cache.mjs",
+        "gitObject": "8b544b382acdbd675501d8f525b74c0ed3669418",
+        "sha256": "23c7e7d35b4eed2d866e933acce759e78c4f483414da046681455de95b6f3142"
+      },
+      {
+        "path": "plugins/plugin-maps/quint/check-viewport-copyright.mjs",
+        "gitObject": "5efb89bb176c70053d5aad9a43d5b7cdc5344053",
+        "sha256": "4a00f9d9f520084021748948acdff82a975e66893bb7f56d1f55c58768fb3549"
       }
     ]
   }

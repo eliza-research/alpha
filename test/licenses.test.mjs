@@ -5,9 +5,9 @@ import os from 'node:os';
 import path from 'node:path';
 import {
   ROOT, ALLOWLIST, NO_FONT_LICENCE, UNKNOWN, UNVERIFIED, generate, collectNotices, detectLicenceFromText, loadTemplates, packageNotice,
-} from '../scripts/generate-licenses.mjs';
-import {FLAGS, classifyLicence, licenceFlagLines, licenceFlagRecords, obligationNote} from '../scripts/licence-policy.mjs';
-import {releaseBlockers} from '../scripts/release-blockers.mjs';
+} from '../scripts/generate-licenses.ts';
+import {FLAGS, classifyLicence, licenceFlagLines, licenceFlagRecords, obligationNote} from '../scripts/licence-policy.ts';
+import {releaseBlockers} from '../scripts/release-blockers.ts';
 
 const fresh = generate(ROOT, {packagedRuntime: false});
 const lock = JSON.parse(fs.readFileSync(path.join(ROOT, 'package-lock.json'), 'utf8'));

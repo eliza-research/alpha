@@ -15,7 +15,7 @@ export function captureSources(paths) {
 }
 captureSources(['specs/quint/refinement/application/support.mjs', 'specs/quint/refinement/check-traces.mjs',
   'specs/quint/refinement/application/index.mjs', 'test/quint-application-refinement.test.mjs',
-  'test/support/strip-types.mjs', 'upstream.lock.json', 'scripts/prepare-client-features.mjs',
+  'test/support/strip-types.mjs', 'upstream.lock.json', 'scripts/prepare-client-features.ts',
   '.eliza/client-features/.source.json']);
 export function boundInputs(options) {
   const sources = [...new Set([...options.sources, ...captured.keys(), 'specs/quint/refinement/application/index.mjs',

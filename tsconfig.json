@@ -14,12 +14,14 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "allowImportingTsExtensions": true,
+    "allowJs": true,
     "types": [
       "vite/client",
       "node"
     ],
     "ignoreDeprecations": "6.0",
     "paths": {
+      "/src/*": ["./apps/app/src/*"],
       "@elizaos/capacitor-system/sense": ["./.eliza/client-features/plugins/plugin-native-system/src/sense-bridge.ts"],
       "@elizaos/capacitor-system/reset": ["./.eliza/client-features/plugins/plugin-native-system/src/reset.ts"],
       "@elizaos/capacitor-system/settings": ["./.eliza/client-features/plugins/plugin-native-system/src/settings.ts"],

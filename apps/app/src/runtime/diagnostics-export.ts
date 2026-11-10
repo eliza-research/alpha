@@ -117,10 +117,10 @@ export type DiagnosticsReport={
  connection:{kind:string;connected:boolean};
  cloudPlan?:{view:SubscriptionView['kind'];source?:'entitlement'|'billing-limits';status?:PlanStatus;admission:PlanAdmission;reason?:'outage'|'not-published'|'invalid'};
  crashes:{count:number;recent:CrashEntry[]};
- /** A complete alpha-voice-timing-v1 document, readable by scripts/aggregate-voice-latency.mjs. */
+ /** A complete alpha-voice-timing-v1 document, readable by scripts/aggregate-voice-latency.ts. */
  voiceTiming:{format:typeof VOICE_TIMING_FORMAT;marks:string[];records:VoiceTimingRow[]};
  voiceStartup?:VoiceStartupTiming;
- /** A complete alpha-native-voice-timing-v3 document, readable by scripts/aggregate-voice-latency.mjs. */
+ /** A complete alpha-native-voice-timing-v3 document, readable by scripts/aggregate-voice-latency.ts. */
  nativeVoiceTiming:{format:typeof NATIVE_VOICE_TIMING_FORMAT;clock:'CLOCK_MONOTONIC';units:'ms';marks:string[];dropped:number;records:NativeVoiceTimingRow[]};
  nativeCloudStreamTiming?:{format:typeof NATIVE_CLOUD_STREAM_TIMING_FORMAT;records:NativeCloudStreamTimingRow[]};
 };

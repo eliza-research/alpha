@@ -100,7 +100,7 @@ class ReleaseCustodyProof(unittest.TestCase):
         file.parent.mkdir(parents=True, exist_ok=True)
         file.write_text(json.dumps(value))
 
-    def verify(self, files, app_password=None):
+    def verify(self, files, app_password=None, public_directory=None):
         compressed = tar_gz(files)
         split = len(compressed) // 2
         values = (
@@ -111,23 +111,38 @@ class ReleaseCustodyProof(unittest.TestCase):
             app_password or self.app_password,
         )
         try:
-            return proof.verify(self.root, self.tmpfs, dict(zip(proof.SECRET_NAMES, values)))
+            return proof.verify(self.root, self.tmpfs, dict(zip(proof.SECRET_NAMES, values)), public_directory)
         finally:
             self.assertEqual(list(self.tmpfs.iterdir()), [])
 
     def test_all_disposable_key_pairs(self):
-        result = self.verify(self.files)
+        public_directory = self.root / "public-identities"
+        result = self.verify(self.files, public_directory=public_directory)
         self.assertEqual(result["keyPairsVerified"], 12)
         self.assertFalse(result["signedImageProduced"])
         self.assertFalse(result["deviceQualified"])
         expected = {entry["name"]: entry for entry in json.loads(self.files["fingerprints.json"])["keys"]}
         self.assertEqual(result["apexPayloadAvbPublicKeySha256"], expected["apex_payload"]["avbPublicKeySha256"])
         self.assertEqual(set(result), {"schemaVersion", "sourceCommit", "osCertificateSha256", "avbPublicKeySha256", "apexPayloadAvbPublicKeySha256", "appSignerSha256", "keyPairsVerified", "signedImageProduced", "deviceQualified"})
+        expected_files = {f"{name}.x509.pem" for name in (*proof.OS_CERTS, "alphaphone_app")} | {"avb_pkmd.bin", "apex_payload.avbpubkey", "fingerprints.json"}
+        self.assertEqual({file.name for file in public_directory.iterdir()}, expected_files)
+        exported = json.loads((public_directory / "fingerprints.json").read_text())
+        self.assertEqual(len(exported["keys"]), 12)
+        for file in public_directory.iterdir():
+            self.assertNotIn(b"PRIVATE KEY", file.read_bytes())
+            self.assertNotIn(self.os_password.encode(), file.read_bytes())
+            self.assertNotIn(self.app_password.encode(), file.read_bytes())
+        for entry in exported["keys"]:
+            if entry["kind"] == "x509-pk8":
+                _, digest = proof.certificate_identity((public_directory / (entry["name"] + ".x509.pem")).read_bytes())
+                self.assertEqual(digest, entry["certificateSha256"])
 
     def test_wrong_os_pair_fails(self):
         swapped = {**self.files, "releasekey.pk8.enc": self.files["platform.pk8.enc"]}
+        public_directory = self.root / "refused-public-identities"
         with self.assertRaises(ValueError):
-            self.verify(swapped)
+            self.verify(swapped, public_directory=public_directory)
+        self.assertFalse(public_directory.exists())
 
     def test_wrong_app_password_fails(self):
         with self.assertRaises(proof.subprocess.CalledProcessError):

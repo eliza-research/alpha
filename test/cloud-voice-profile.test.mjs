@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {resolveCloudSignatureClassifier,verifyCloudRecordingSignatures} from '../scripts/check-cloud-recording-signature.mjs';
+import {resolveCloudSignatureClassifier,verifyCloudRecordingSignatures} from '../scripts/check-cloud-recording-signature.ts';
 import {voiceFakeClock} from './fixtures/shared-batch-voice.mjs';
 import {cloudVoiceViewFixture} from './fixtures/cloud-voice-view.mjs';
 
@@ -22,18 +22,42 @@ test('one explicit Talk action starts Cloud voice and stops on account change',a
   assert.equal(f.uploads,0);assert.equal(f.cloudSpeech,0);assert.equal(f.sends,0);
  } finally {f.close();await f.tick();}
 });
-test('signed-out production Cloud speech offers sign-in without microphone or local fallback',async()=>{
+test('signed-out production voice runs on this phone: no sign-in prompt and no Cloud request',async()=>{
  const f=cloudVoiceViewFixture({cloudProfile:true,account:null});
- try {f.box.React={createElement:()=>null};f.box.VoiceActivity=()=>null;await f.shell.startVoice();const view=f.renderChat();assert.equal(view.state,'error');assert.equal(view.recoveryLabel,'Try again');assert.deepEqual(Array.from(view.statusLines,line=>line.t),['Voice stopped']);assert.ok(!view.voiceDetails);assert.equal(f.accountOpens,0,'failed Talk never opens sign-in automatically');assert.equal(typeof view.recover,'function','internal recovery classification remains available to Settings');assert.equal(f.starts,0);assert.equal(f.localFactories,0);}finally{f.close();await f.tick();}
+ try {
+  f.box.React={createElement:()=>null};f.box.VoiceActivity=()=>null;f.box.nativeLiveVoiceReady=async()=>false;
+  assert.equal(f.box.speechRoute(),'device');
+  await f.shell.startVoice();for(let i=0;i<20;i++)await f.tick();
+  const view=f.renderChat();
+  assert.equal(view.state,'listening','signed out is the on-device route, not an error');
+  assert.doesNotMatch(JSON.stringify(view),/Sign in to/);
+  assert.equal(f.accountOpens,0,'Talk never opens sign-in');
+  assert.ok(f.localFactories>0,'the on-device engine is asked');
+  assert.equal(f.uploads,0);assert.equal(f.cloudSpeech,0);
+ }finally{f.close();await f.tick();}
 });
-test('native production Cloud voice pins host and Cartesia; staging and other output providers fail closed',()=>{
+test('without on-device speech, signed-out production voice says so and never asks for sign-in',async()=>{
+ const f=cloudVoiceViewFixture({cloudProfile:true,account:null});
+ try {
+  f.box.React={createElement:()=>null};f.box.VoiceActivity=()=>null;f.box.createOnDeviceVoice=()=>null;
+  await f.shell.startVoice();for(let i=0;i<20;i++)await f.tick();
+  const view=f.renderChat();
+  assert.equal(view.state,'error');assert.doesNotMatch(JSON.stringify(view),/Sign in to/);
+  assert.equal(f.accountOpens,0);assert.equal(f.starts,0);assert.equal(f.uploads,0);
+ }finally{f.close();await f.tick();}
+});
+test('every production build may reach Cloud voice: native code pins the production host and Cartesia; staging and other output providers fail closed',()=>{
  const out=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-cloud-speech-'));
  try {const binary=name=>process.env.JAVA_HOME?path.join(process.env.JAVA_HOME,'bin',name):name;
  execFileSync(binary('javac'),['--release','11','-d',out,'android/app/src/main/java/ai/alphacompute/alphaphone/CloudDeployment.java','android/app/src/main/java/ai/alphacompute/alphaphone/CloudSpeechPolicy.java','test/fixtures/CloudSpeechPolicyTest.java']);
  assert.match(execFileSync(binary('java'),['-cp',out,'ai.alphacompute.alphaphone.CloudSpeechPolicyTest'],{encoding:'utf8'}),/PASS Cloud speech production host and Cartesia admission/);
  const native=fs.readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaVoiceCloudPlugin.java','utf8');
- assert.match(native,/CloudSpeechPolicy\.host\(BuildConfig\.ELIZA_RUNTIME_PROFILE,BuildConfig\.ELIZA_DEV_ALLOW_TEST_MOCKS,environment\)/);
- assert.match(native,/if\(!paired\)CloudSpeechPolicy\.requireProvider\(BuildConfig\.ELIZA_RUNTIME_PROFILE,c\.getHeaderField\("X-Eliza-TTS-Provider"\)\)/);
+ assert.match(native,/CloudSpeechPolicy\.host\(BuildConfig\.ELIZA_DEV_ALLOW_TEST_MOCKS,environment\)/);
+ assert.match(native,/if\(!paired\)CloudSpeechPolicy\.requireProvider\(c\.getHeaderField\("X-Eliza-TTS-Provider"\)\)/);
+ // No build-time profile decides network speech any more: the renderer routes at run time.
+ const policy=fs.readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/CloudSpeechPolicy.java','utf8');
+ assert.doesNotMatch(policy+native,/CloudSpeechPolicy\.\w+\([^)]*ELIZA_RUNTIME_PROFILE/);assert.doesNotMatch(policy,/Network speech is not enabled|String profile/);
+ assert.doesNotMatch(fs.readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaKeyboardDictationService.java','utf8'),/ELIZA_RUNTIME_PROFILE/,'keyboard dictation is not tied to a build profile');
  const paired=native.slice(native.indexOf('private HttpURLConnection connectPaired(PluginCall call,boolean status,SpeechRequestGate.Request request,boolean asr)'));
  assert.match(paired,/if\(!BuildConfig\.ELIZA_DEV_ALLOW_TEST_MOCKS\)throw new IOException\("Network speech is not enabled"\)/);
  }finally{fs.rmSync(out,{recursive:true,force:true});}
@@ -169,8 +193,12 @@ test('Cloud Notes exposes only read while idle, only Stop while live, and cancel
   f.shell.notes={open:'qa-note',list:[{id:'qa-note',title:'QA note',body:'Reviewed text.',updatedAt:1}]};
   let view=f.render().ed;assert.equal(view.stopReading,undefined);assert.equal(typeof view.readAloud,'function');assert.equal(view.cloudSpeechDisclosure,'Read with Eliza Cloud uploads this note’s text to your selected Cloud account for Cartesia speech and uses your plan allowance.');
   // Read-aloud sends only the note's text, on either route; own keys bill the owner's Cartesia account.
-  const snapshot=f.box.connectionController.getSnapshot;f.box.connectionController.getSnapshot=()=>({...snapshot(),residentInference:'direct'});
-  assert.equal(f.render().ed.cloudSpeechDisclosure,'Cartesia speech sends this note’s text using your own API key and provider allowance.');f.box.connectionController.getSnapshot=snapshot;
+  const snapshot=f.box.connectionController.getSnapshot;f.box.connectionController.getSnapshot=()=>({...snapshot(),residentInference:'direct',providerStatus:{voiceConfigured:true,revision:'r1'}});
+  assert.equal(f.render().ed.cloudSpeechDisclosure,'Cartesia speech sends this note’s text using your own API key and provider allowance.');assert.equal(f.render().ed.readLabel,'Read aloud');
+  // Own keys without a Cartesia key read on this phone: nothing is sent, so nothing is disclosed.
+  f.box.connectionController.getSnapshot=()=>({...snapshot(),residentInference:'direct',providerStatus:{voiceConfigured:false}});
+  assert.equal(f.render().ed.cloudSpeechDisclosure,'');assert.equal(f.render().ed.readLabel,'Read aloud');
+  f.box.connectionController.getSnapshot=snapshot;assert.equal(f.render().ed.readLabel,'Read with Eliza Cloud');
   view.readAloud();for(let i=0;i<20&&!f.cloudSpeech;i++)await f.tick();
   assert.equal(f.cloudSpeech,1);assert.equal(f.localFactories,0);assert.equal(f.speechInputs[0].credentialId,'cloud-credential');
   view=f.render().ed;assert.equal(typeof view.stopReading,'function');assert.equal(view.readAloud,undefined);
@@ -198,12 +226,12 @@ test('configured service name follows explicit Talk and signed-out recovery',asy
   const f=cloudVoiceViewFixture({cloudProfile:true,account});
   try {
    f.box.cloudServiceName=()=> 'Nebula';
-   f.box.React={createElement:()=>null};f.box.VoiceActivity=()=>null;
-   await f.shell.startVoice();const view=f.renderChat();
+   f.box.React={createElement:()=>null};f.box.VoiceActivity=()=>null;f.box.nativeLiveVoiceReady=async()=>false;
+   await f.shell.startVoice();for(let i=0;i<20;i++)await f.tick();const view=f.renderChat();
    assert.doesNotMatch(JSON.stringify(view),/Eliza Cloud/);
-   if(account){assert.equal(view.state,'listening');}
-   else {assert.equal(view.state,'error');assert.equal(view.recoveryLabel,'Try again');assert.deepEqual(Array.from(view.statusLines,line=>line.t),['Voice stopped']);assert.ok(!view.voiceDetails);assert.equal(f.accountOpens,0,'no automatic sign-in from a failed Talk');assert.equal(typeof view.recover,'function');}
-   assert.equal(f.starts,account?1:0);assert.equal(f.uploads,0);assert.equal(f.localFactories,0);
+   // Signed in: Cloud voice. Signed out: the same Talk listens on this phone, with no sign-in prompt.
+   assert.equal(view.state,'listening');assert.equal(f.accountOpens,0);assert.doesNotMatch(JSON.stringify(view),/Sign in to/);
+   assert.equal(f.starts,1);assert.equal(f.uploads,0);if(account)assert.equal(f.localFactories,0);else assert.ok(f.localFactories>0);
   }finally{f.close();await f.tick();}
  }
 });

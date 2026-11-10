@@ -3,7 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { assertNoAlphaLockScreenSurface, secureCameraActions as names } from "../scripts/aosp-secure-camera-contract.mjs";
+import { assertNoAlphaLockScreenSurface, secureCameraActions as names } from "../scripts/aosp-secure-camera-contract.ts";
 const secureCameraActions = names.map(name => `android.media.action.${name}`);
 const PKG = "ai.alphacompute.alphaphone";
 const TRUE = "(type 0x12)0xffffffff";

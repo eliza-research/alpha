@@ -15,7 +15,7 @@ export async function checkGmailAgentMailboxRecovery(extraSources = []) {
     platform: 'node', format: 'esm', write: false, metafile: true}).metafile.inputs;
   const sources = serviceInputs([...Object.keys(graph), fileURLToPath(import.meta.url), probe,
     'vendor/eliza/plugins/plugin-inbox/src/mailbox/managed-gmail-client.ts',
-    'scripts/prepare-client-features.mjs', 'upstream.lock.json', 'package.json', 'package-lock.json', 'tsconfig.json',
+    'scripts/prepare-client-features.ts', 'upstream.lock.json', 'package.json', 'package-lock.json', 'tsconfig.json',
     ...extraSources]);
   const driverHashes = captureInputs(sources);
   const run = spawnSync(process.execPath, ['--import=tsx', probe], {

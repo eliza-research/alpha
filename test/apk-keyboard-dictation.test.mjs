@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {distributionProblems} from '../scripts/apk.mjs';
+import {distributionProblems} from '../scripts/apk.ts';
 
 function assess({home=true,tag='service',permission='android.permission.BIND_INPUT_METHOD',action='android.view.InputMethod',metadata=true}={}) {
  return distributionProblems({home,xml:`E: manifest

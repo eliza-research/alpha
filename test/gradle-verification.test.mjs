@@ -5,8 +5,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {ALLOWED_REPOSITORIES, ALLOWED_REPOSITORY_URLS, CLASSPATH, HOST_TEMPLATES, METADATA, MIRROR_PROPERTY, REVIEWED_GROUPS, VERIFIED_TASKS, addArtifact, buildScripts, checkVerification, coordinateChecksum, declaredRepositories, parseVerificationArgs, parseVerificationMetadata, referencePath, repositoryProblem} from '../scripts/gradle-verification.mjs';
-import {HOST_DESCRIPTOR} from '../scripts/android-host.mjs';
+import {ALLOWED_REPOSITORIES, ALLOWED_REPOSITORY_URLS, CLASSPATH, HOST_TEMPLATES, METADATA, MIRROR_PROPERTY, REVIEWED_GROUPS, VERIFIED_TASKS, addArtifact, buildScripts, checkVerification, coordinateChecksum, declaredRepositories, parseVerificationArgs, parseVerificationMetadata, referencePath, repositoryProblem} from '../scripts/gradle-verification.ts';
+import {HOST_DESCRIPTOR} from '../scripts/android-host.ts';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const read = rel => fs.readFileSync(path.join(ROOT, rel), 'utf8');
@@ -38,11 +38,19 @@ test('the committed metadata verifies every artifact by SHA-256 and trusts nothi
   // Gradle reads this file from the root project's gradle/ directory; no property can leave it lenient or off.
   // The generated host's gradle.properties is written by the pinned upstream generator.
   assert.doesNotMatch(read('vendor/eliza/packages/app/scripts/mobile/android/consumer-host.mjs'), /dependency\.verification/);
-  for (const script of ['scripts/build-android.mjs', 'scripts/build-notification-fixture.mjs', 'scripts/generate-licenses.mjs'])
+  for (const script of ['scripts/build-android.ts', 'scripts/build-notification-fixture.ts', 'scripts/generate-licenses.ts'])
     assert.doesNotMatch(read(script), /dependency-verification|-F\b/, `${script} must not relax verification`);
   // Nor may the environment the scripts and workflows hand to Gradle (a system property turns it lenient or off).
-  for (const file of ['scripts/toolchain.mjs', 'scripts/build-archive.mjs', ...fs.readdirSync(path.join(ROOT, '.github/workflows')).map(name => `.github/workflows/${name}`)])
+  for (const file of ['scripts/toolchain.ts', 'scripts/build-archive.ts', ...fs.readdirSync(path.join(ROOT, '.github/workflows')).map(name => `.github/workflows/${name}`)])
     assert.doesNotMatch(read(file), /org\.gradle\.dependency\.verification|--dependency-verification/, `${file} must not relax verification`);
+});
+
+test('AAPT2 provenance retains the historical producer and accepts the migrated producer', t => {
+  const previous = 'Fetched from dl.google.com/dl/android/maven2 by scripts/gradle-verification.mjs';
+  const current = 'Fetched from dl.google.com/dl/android/maven2 by scripts/gradle-verification.ts';
+  assert.ok(text.includes(previous), 'existing checksum provenance is preserved');
+  assert.deepEqual(mutated(t, {[METADATA]: text.replaceAll(previous, current)}), []);
+  assert.match(mutated(t, {[METADATA]: text.replaceAll(previous, 'unreviewed producer')}).join('\n'), /unexpected checksum origin unreviewed producer/);
 });
 
 test('every coordinate that ships in the APKs is pinned, and the build tools are pinned for each CI host', () => {
@@ -149,16 +157,16 @@ test('every Gradle script of the build declares only reviewed repositories and e
 
 test('the write command covers every Gradle task the scripts run and is the only step that reaches the network', () => {
   const tasks = source => [...read(source).matchAll(/["'`](:[a-z-]+:[A-Za-z]+)["'`]/g)].map(match => match[1]);
-  for (const task of [...tasks('scripts/build-android.mjs'), ...tasks('scripts/build-notification-fixture.mjs')]) assert.ok(VERIFIED_TASKS.includes(task), task);
-  // build-android.mjs also composes per-variant task names in its low-disk path.
+  for (const task of [...tasks('scripts/build-android.ts'), ...tasks('scripts/build-notification-fixture.ts')]) assert.ok(VERIFIED_TASKS.includes(task), task);
+  // build-android.ts also composes per-variant task names in its low-disk path.
   for (const variant of ['Standalone', 'Launcher'])
     for (const suffix of ['Debug', 'Release', 'DebugAndroidTest']) assert.ok(VERIFIED_TASKS.includes(`:app:assemble${variant}${suffix}`));
   const scripts = JSON.parse(read('package.json')).scripts;
-  assert.equal(scripts['android:deps:check'], 'node scripts/gradle-verification.mjs --check');
-  assert.equal(scripts['android:deps:write-verification'], 'node scripts/gradle-verification.mjs --write');
+  assert.equal(scripts['android:deps:check'], 'node scripts/gradle-verification.ts --check');
+  assert.equal(scripts['android:deps:write-verification'], 'node scripts/gradle-verification.ts --write');
   // verify and the push workflows never write metadata; they only read it (npm test) or let Gradle enforce it.
   assert.doesNotMatch(scripts.verify + scripts.test, /write-verification|--write/);
-  for (const workflow of fs.readdirSync(path.join(ROOT, '.github/workflows'))) assert.doesNotMatch(read(`.github/workflows/${workflow}`), /write-verification|gradle-verification\.mjs --write/, workflow);
+  for (const workflow of fs.readdirSync(path.join(ROOT, '.github/workflows'))) assert.doesNotMatch(read(`.github/workflows/${workflow}`), /write-verification|gradle-verification\.ts --write/, workflow);
 });
 
 test('a host-specific archive is inserted in order and only once', () => {
@@ -177,11 +185,13 @@ test('staged Java-only native patches retain their authenticated dependency desc
 });
 
 
-test('dependency verification selects Cloud explicitly and refuses unpackaged Cloud', () => {
-  assert.deepEqual(parseVerificationArgs(['--write', '--runtime-profile=cloud']), {mode:'--write',runtimeProfile:'cloud',allowUnpackagedRuntime:false});
-  assert.deepEqual(parseVerificationArgs(['--check']), {mode:'--check',runtimeProfile:'native',allowUnpackagedRuntime:false});
-  assert.throws(() => parseVerificationArgs(['--write','--runtime-profile=cloud','--allow-unpackaged-runtime']), /genuine packaged resident/);
-  assert.throws(() => parseVerificationArgs(['--write','--runtime-profile=other']), /Usage/);
+test('dependency verification has one runtime profile and refuses the removed options', () => {
+  assert.deepEqual(parseVerificationArgs(['--write']), {mode:'--write',allowUnpackagedRuntime:false});
+  assert.deepEqual(parseVerificationArgs(['--write','--allow-unpackaged-runtime']), {mode:'--write',allowUnpackagedRuntime:true});
+  assert.deepEqual(parseVerificationArgs(['--check']), {mode:'--check',allowUnpackagedRuntime:false});
+  for (const removed of [['--write','--runtime-profile=cloud'], ['--write','--runtime-profile=other'], ['--write','--local-embeddings'], ['--check','--runtime-profile=native']])
+    assert.throws(() => parseVerificationArgs(removed), /There is one runtime profile now: remove --runtime-profile and --local-embeddings/);
+  assert.throws(() => parseVerificationArgs(['--write','--other']), /Usage/);
 });
 
 test('pinned auth descriptor is scanned for unreviewed repositories', t => {

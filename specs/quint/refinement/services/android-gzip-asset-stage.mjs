@@ -4,7 +4,7 @@ import {tmpdir} from 'node:os';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import zlib from 'node:zlib';
-import {packagedGzipProblems, protectGzipAssets} from '../../../../scripts/android-gzip-assets.mjs';
+import {packagedGzipProblems, protectGzipAssets} from '../../../../scripts/android-gzip-assets.ts';
 import {mergeGzipAssets} from '../../../../test/fixtures/android-gzip-assets.mjs';
 import {captureInputs, checkTraces} from '../check-traces.mjs';
 
@@ -103,7 +103,7 @@ function fixture(directory, initial) {
 }
 
 export async function checkAndroidGzipAssetStage(extraSources = []) {
-  const sources = ['scripts/android-gzip-assets.mjs', 'scripts/build-android.mjs', 'scripts/verify-apks.mjs',
+  const sources = ['scripts/android-gzip-assets.ts', 'scripts/build-android.ts', 'scripts/verify-apks.ts',
     'test/fixtures/android-gzip-assets.mjs', fileURLToPath(import.meta.url), ...extraSources];
   const driverHashes = captureInputs(sources);
   const wrap = ['protect', false];

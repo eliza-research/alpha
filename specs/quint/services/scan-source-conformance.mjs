@@ -12,6 +12,7 @@ const stubs = new Map([
   ['./scan-dialog.css', ''],
   ['./scan-searchable-review', 'export const reviewSearchableScan = async () => undefined;'],
   ['./scan-correction-review', 'export const reviewScanCorrection = async () => undefined;'],
+  ['../browser/review', 'export class BrowserReviews { async confirm() { throw Error("Draft replacement is outside this export-preservation trace"); } }'],
   ['../browser/scan-draft', `
     export const readScanDraft = () => globalThis.scanPorts.read();
     export const saveScanDraft = (...args) => globalThis.scanPorts.save(...args);
@@ -21,6 +22,7 @@ const stubs = new Map([
   ['../browser/file-picker', 'export const inputFiles = async () => []; export const runFilePicker = async () => [];'],
   ['./scan-pdf', `
     export class ScanPdfExportError extends Error {}
+    export const scanExportTitle = kind => kind + "-conformance";
     export const exportScanPdf = () => globalThis.scanPorts.export();
     export const duringSystemPicker = task => task();
     export const systemPickerActive = () => false;

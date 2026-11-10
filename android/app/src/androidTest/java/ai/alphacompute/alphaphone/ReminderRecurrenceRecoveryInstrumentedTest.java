@@ -32,7 +32,7 @@ public class ReminderRecurrenceRecoveryInstrumentedTest {
  }
  @Test public void permissionAndActualRebootPhase()throws Exception{
   String phase=InstrumentationRegistry.getArguments().getString("recurrencePhase","");
-  org.junit.Assume.assumeTrue("Use test-reminder-recurrence-recovery.mjs",!phase.isEmpty());
+  org.junit.Assume.assumeTrue("Use test-reminder-recurrence-recovery.ts",!phase.isEmpty());
   Context c=InstrumentationRegistry.getInstrumentation().getTargetContext();SharedPreferences fixture=c.getSharedPreferences(FIXTURE,0);String id=fixture.getString("id",null);
   if(phase.equals("cleanup")){
    if(id!=null){ReminderTestAccess.cancel(c,id);assertTrue(new ReminderTestAccess.Envelope(c).records().edit().remove(id).commit());}assertTrue(fixture.edit().clear().commit());return;

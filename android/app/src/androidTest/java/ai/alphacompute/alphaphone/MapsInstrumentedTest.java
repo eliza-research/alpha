@@ -64,10 +64,10 @@ public class MapsInstrumentedTest {
   String app=InstrumentationRegistry.getInstrumentation().getTargetContext().getPackageName();
   for(String permission:new String[]{Manifest.permission.ACCESS_COARSE_LOCATION,Manifest.permission.ACCESS_FINE_LOCATION})InstrumentationRegistry.getInstrumentation().getUiAutomation().grantRuntimePermission(app,permission);
   try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
-   maps();click("Recenter");until("document.querySelector('[aria-label=\"Rename place\"]')?.textContent==='Current location'");
+   maps();click("Recenter");until("JSON.parse(document.querySelector('[data-alpha-maps-root]').dataset.mapDiagnostics).lifecycle.position==='ready'");
    String coordinates=String.format(java.util.Locale.ROOT,"%.5f, %.5f",Double.parseDouble(expectedLat),Double.parseDouble(expectedLon));
-   until("document.querySelector('[data-alpha-maps-root]').textContent.includes("+JSONObject.quote(coordinates)+")");
-   until("document.querySelector('[data-alpha-maps-status]')?.textContent.includes('accuracy')");
+   assertEquals("Recenter keeps the existing map selection", "false",eval("!!document.querySelector('[data-alpha-maps-sheet=\"place\"]')"));
+   until("JSON.parse(document.querySelector('[data-alpha-maps-root]').dataset.mapDiagnostics).lifecycle.position==='ready'");
    java.util.concurrent.atomic.AtomicInteger watches=new java.util.concurrent.atomic.AtomicInteger(-1);
    for(int i=0;i<50;i++){
     WebViewTestDriver.withActivity(MainActivity.class,activity->{try{Object plugin=activity.getBridge().getPlugin("ElizaLocation").getInstance();java.lang.reflect.Field field=plugin.getClass().getDeclaredField("watches");field.setAccessible(true);watches.set(((java.util.Map<?,?>)field.get(plugin)).size());}catch(Exception error){throw new AssertionError(error);}});

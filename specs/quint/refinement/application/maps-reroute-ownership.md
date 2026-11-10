@@ -22,6 +22,11 @@ matched receipt. An accepted route can keep its original public ID. End
 still allows the route request to finish for review when it has no
 replacement, while the ended guidance stays retired.
 
+A refused live reroute retains the exact previous route and origin, clears only
+the rerouting flag, and keeps its guidance session and location watch. The agent
+still reports the provider failure. The replay observes those retained values;
+it does not treat the prior route as a successful replacement.
+
 The source replay checks one mounted component, one agent reroute, two
 guidance starts, three route requests and selected settlement orders.
 Each settlement checkpoint includes completion of the agent reply.

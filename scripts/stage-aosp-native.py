@@ -50,9 +50,9 @@ def admission(root, apk):
     lock_bytes = (root / 'upstream.lock.json').read_bytes()
     stamp = {
         'lockSha256': digest(lock_bytes),
-        'preparerSha256': digest((root / 'scripts/prepare-local-agent.mjs').read_bytes()),
-        'guardSha256': digest((root / 'scripts/local-agent-source.mjs').read_bytes()),
-        'copySha256': digest((root / 'scripts/copy-file-clone.mjs').read_bytes()),
+        'preparerSha256': digest((root / 'scripts/prepare-local-agent.ts').read_bytes()),
+        'guardSha256': digest((root / 'scripts/local-agent-source.ts').read_bytes()),
+        'copySha256': digest((root / 'scripts/copy-file-clone.ts').read_bytes()),
         'base': json.loads(lock_bytes)['commit'], 'patches': [],
     }
     bun_target, channel = bun_identity(apk)
@@ -61,7 +61,7 @@ def admission(root, apk):
     if not isinstance(pins.get(channel), dict):
         raise ValueError('No pinned ' + bun_target + ' Bun for channel: ' + str(channel))
     declarations = subprocess.check_output(
-        [os.environ.get('ALPHA_NODE', 'node'), root / 'scripts/native-view-policy.mjs'], timeout=30)
+        [os.environ.get('ALPHA_NODE', 'node'), root / 'scripts/native-view-policy.ts'], timeout=30)
     return {
         'schemaVersion': 1,
         'bunTarget': bun_target,
