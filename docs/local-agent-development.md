@@ -355,3 +355,15 @@ not delete the Google account, mail or events. An uncertain disconnect remains
 unconfirmed; the user can check again. Reconnect uses the normal Google consent flow.
 Calendar selection contains only nonsecret source identifiers scoped to the Cloud
 user and organization. No provider tokens or calendar event content are stored in it.
+
+### Local renderer with an existing remote development host
+
+For a browser preview over an existing loopback tunnel, run
+`node scripts/dev-ui-remote-host.mjs --port=5494 --remote=http://127.0.0.1:5518 --environment=production`.
+The remote loopback port must already forward to the existing development server.
+This serves the reviewed local renderer through Vite and forwards only the existing
+Alpha host routes, including voice and renderer WebSockets. It preserves the Host
+and Origin headers for the host's same-origin checks. It does not start an agent,
+copy credentials, change the provider, or relax production build flags. Keep the
+same browser origin when replacing a slow tunneled renderer so local data remains
+in the same origin. Preserve the old tunnel command for rollback.
