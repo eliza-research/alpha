@@ -1,8 +1,8 @@
 # Alpha Phone — working PRD
 
-Version: 0.5, 2026-10-29. Product scope incorporates the owner's 32 answers and
-October 29 amendments (P-57 to P-76). This is a requirements document, not
-acceptance evidence.
+Version: 0.6, 2026-11-10. Product scope incorporates the owner's 32 answers,
+October 29 amendments (P-57 to P-76), and November 10 P-60 routing amendment.
+This is a requirements document, not acceptance evidence.
 
 ## Outcome
 
@@ -35,7 +35,7 @@ Keep prototype styling and identity separate from real data/capability claims.
 | AP-09 | Gmail, Calendar and reviewed cross-app mail attachments | P1; incremental Gmail scopes, real delivery, optional Google Calendar connection and explicit local-first sync, availability semantics, durable deletion Undo and source/account isolation; Cloud Calendar remains separate from native Calendar access |
 | AP-10 | Browser, camera, full permitted Photos, Cloud Maps on Google Maps Platform (P-64), Notes and Files | P1; normal third-party cookies allowed, ephemeral private tabs, eligible autofill, native secure camera, agent Maps controls with Google attribution and caching terms (P-64), local speech always available (P-60), canonical Notes records (P-59) with three-day Trash; no app-data import/export |
 | AP-11 | Resident workflows, approvals and run history | P1; bounded permissions, durable receipts, missed recovery, owner-return notices and no powered-off execution |
-| AP-12 | Settings, subscriptions, permissions, local or cloud STT and TTS switches (P-60), system shade and reset | P0; truthful state, responsive controls, no backup/import/export, confirmed private-data reset |
+| AP-12 | Settings, subscriptions, permissions, runtime speech route and availability (P-60), system shade and reset | P0; truthful state, responsive controls, no backup/import/export, confirmed private-data reset |
 | AP-13 | Wallet | Deferred: removed from MVP; views, native adapters and agent actions remain disabled in both distributions |
 | AP-14 | Pixel 10a Android 17 image, signing, listening and unattended update/recovery (P-75) | Release gate; exact input/signer lock; release keys as GitHub Actions secrets for a CI signing job, certificates for Alpha Compute, first versionName 0.1.0 (P-58); Cuttlefish boot and physical hardware/OTA/user qualification separate; unlocked pilot units are not production-representative (P-70); Shaw release owner |
 | AP-15 | Accessibility and resilience across intentional responsive layouts | P0; large text, TalkBack, keyboard, rotation, process death, permission loss, offline and repeated HOME |
@@ -59,9 +59,12 @@ surfaces. Always-on listening is an AOSP MVP gate and never implicitly enabled.
 
 ## Current implemented versus accepted
 
-The source still contains behavior that differs from this policy, including Cloud
-speech selection that predates P-60's Settings switches, credit-oriented onboarding
-and deferred Phone/SMS/Contacts. The approval itself changes no runtime or qualification record. Track implementation gaps and execution results against the current source.
+The source still contains behavior that differs from remaining policy, including
+credit-oriented onboarding and deferred Phone/SMS/Contacts. P-60's November 10
+routing amendment supersedes its earlier Settings switches; qualification of the
+packaged models and device audio remains separate. The approval itself changes no
+runtime or qualification record. Track implementation gaps and execution results
+against the current source.
 APK builds, native emulator/HOME checks, full AOSP boot, real services, physical
 hardware and user acceptance remain distinct. No existing failure is retired by
 changing the prose.
