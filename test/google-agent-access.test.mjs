@@ -28,12 +28,12 @@ test('switches are independent',async()=>{
  await assert.rejects(gmailOnly.host.calendarWrite({operation:'write-capabilities'}),/Calendar edits are turned off/);
  assert.deepEqual(gmailOnly.calls,['/api/v1/user'],'Only the allowed Gmail change reached Cloud');
 });
-async function renderer({native=false,browserLocalAgentEnabled=!native}={}){
+async function renderer({native=false,browserLocalAgentEnabled=!native,cloud=false}={}){
  const {transformSync}=await import('esbuild');const {readFileSync}=await import('node:fs');const vm=await import('node:vm');
- const state={cached:undefined,initialized:0,posts:[],saves:[],saveFails:false,saveHook:undefined};
+ const state={cached:undefined,initialized:0,posts:[],saves:[],hostCalls:[],hostFails:false,hostHook:undefined,saveFails:false,saveHook:undefined};
  let queue=Promise.resolve();
  const navigator={locks:{request:(_name,_options,operation)=>{const result=queue.then(operation);queue=result.catch(()=>{});return result;}}};
- const modules={'../browser/device-preferences':{cachedDevicePreferences:()=>state.cached,initializeDevicePreferences:()=>{state.initialized++;},readDevicePreferences:async()=>({...state.cached}),editDevicePreferences:async edit=>{edit(state.cached);}},'@capacitor/core':{Capacitor:{isNativePlatform:()=>native}},'./local-agent':{browserLocalAgentEnabled,saveNativeGoogleAgentAccess:async access=>{await state.saveHook?.(access);if(state.saveFails)throw Error('Google access could not be saved.');state.saves.push(JSON.parse(JSON.stringify(access)));}}};
+ const modules={'./browser-cloud-resident':{browserCloudResidentEnabled:cloud,browserResidentCall:async(operation,id,calendarEdits)=>{state.hostCalls.push({operation,id,calendarEdits});await state.hostHook?.();if(state.hostFails)throw Error('Host unavailable');return {calendarEdits};}},'../browser/device-preferences':{cachedDevicePreferences:()=>state.cached,initializeDevicePreferences:()=>{state.initialized++;},readDevicePreferences:async()=>({...state.cached}),editDevicePreferences:async edit=>{edit(state.cached);}},'@capacitor/core':{Capacitor:{isNativePlatform:()=>native}},'./local-agent':{browserLocalAgentEnabled,saveNativeGoogleAgentAccess:async access=>{await state.saveHook?.(access);if(state.saveFails)throw Error('Google access could not be saved.');state.saves.push(JSON.parse(JSON.stringify(access)));}}};
  const module={exports:{}};
  vm.runInContext(transformSync(readFileSync('apps/app/src/runtime/google-agent-access.ts','utf8'),{loader:'ts',format:'cjs',target:'es2022'}).code,vm.createContext({module,exports:module.exports,navigator,require:name=>modules[name]??(()=>{throw Error('Unexpected import '+name);})(),fetch:async(path,init)=>{state.posts.push([path,JSON.parse(init.body)]);return {};}}));
  return {access:module.exports,state};
@@ -89,4 +89,21 @@ test('a failed native publication finishes rollback before a later independent c
   {gmailChanges:true,calendarEdits:true},
   {gmailChanges:true,calendarEdits:false},
  ],'Rollback republishes the restored policy before the later denial');
+});
+
+test('browser reconnect republishes only the loaded owner choice to the exact credential',async()=>{
+ const {access,state}=await renderer({cloud:true});let current=true;const target={credentialId:'credential-A',current:()=>current};
+ await access.publishGoogleAgentAccess(target);assert.deepEqual(state.hostCalls,[]);
+ state.cached={agentGmailChanges:false,agentCalendarEdits:true};await access.publishGoogleAgentAccess(target);
+ assert.deepEqual(state.hostCalls,[{operation:'residentGoogleCalendarAccess',id:'credential-A',calendarEdits:true}]);
+ assert.deepEqual(state.posts,[]);assert.equal(state.cached.agentGmailChanges,false);
+ current=false;await assert.rejects(access.publishGoogleAgentAccess(target),/account changed/);assert.equal(state.hostCalls.length,1);
+});
+test('browser off is serialized after an in-flight restore and failed changes retain the saved choice',async()=>{
+ const {access,state}=await renderer({cloud:true});state.cached={agentGmailChanges:false,agentCalendarEdits:true};const target={credentialId:'credential-A',current:()=>true};
+ let release;state.hostHook=()=>new Promise(resolve=>{release=resolve;});const restored=access.publishGoogleAgentAccess(target);
+ while(!release)await new Promise(resolve=>setTimeout(resolve,0));const off=access.setGoogleAgentAccess({calendarEdits:false},undefined,target);
+ assert.equal(state.cached.agentCalendarEdits,true);state.hostHook=undefined;release();await restored;await off;
+ assert.deepEqual(state.hostCalls.map(c=>c.calendarEdits),[true,false]);assert.equal(state.cached.agentCalendarEdits,false);
+ state.hostFails=true;await assert.rejects(access.setGoogleAgentAccess({calendarEdits:true},undefined,target),/Host unavailable/);assert.equal(state.cached.agentCalendarEdits,false);assert.deepEqual(state.hostCalls.slice(-2).map(c=>c.calendarEdits),[true,false]);assert.deepEqual(state.posts,[]);
 });

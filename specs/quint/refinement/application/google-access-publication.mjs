@@ -17,12 +17,13 @@ const initial = {gmail: false, calendar: true};
 async function compile() {
   const replacements = {
     './documents': 'export const browserDocuments = ports.documents;',
+    './browser-cloud-resident': 'export const browserCloudResidentEnabled = false; export function browserResidentCall(){throw Error("No browser transport in native fixture");}',
     './local-agent': 'export const browserLocalAgentEnabled = false; export const saveNativeGoogleAgentAccess = ports.save;',
     '@capacitor/core': 'export const Capacitor = {isNativePlatform: () => true};',
   };
   const compiled = await build({entryPoints: [source], bundle: true, platform: 'node', format: 'cjs', write: false,
     metafile: true, plugins: [{name: 'controlled-google-access-ports', setup(builder) {
-      builder.onResolve({filter: /^(\.\/documents|\.\/local-agent|@capacitor\/core)$/},
+      builder.onResolve({filter: /^(\.\/documents|\.\/local-agent|\.\/browser-cloud-resident|@capacitor\/core)$/},
         args => ({path: args.path, namespace: 'port'}));
       builder.onLoad({filter: /.*/, namespace: 'port'}, args => ({contents: replacements[args.path], loader: 'js'}));
     }}]});

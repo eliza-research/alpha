@@ -77,11 +77,11 @@ test('managed read broker is bound before launch and revoked even when resident 
  try{
   await host.bind({token:'synthetic-cloud-key',credentialId:'read-owner',reference:'read-ref'});
   assert.deepEqual(events,['broker-start','launch']);assert.equal(launches[0].env.ELIZA_MANAGED_CALENDAR_READ_BROKER,'http://127.0.0.1:47871/__alpha-owner-gmail');
-  assert.equal(launches[0].env.ELIZA_MANAGED_GMAIL_READ_BROKER,launches[0].env.ELIZA_MANAGED_CALENDAR_READ_BROKER);
+  assert.equal(launches[0].env.ELIZA_MANAGED_GMAIL_READ_BROKER,launches[0].env.ELIZA_MANAGED_CALENDAR_READ_BROKER);assert.equal(launches[0].env.ELIZA_MANAGED_CALENDAR_DELETE_ENABLED,'1');
   for(const key of ['ELIZA_MANAGED_GMAIL_SEND_BROKER','ELIZA_MANAGED_GMAIL_OPERATION_BROKER'])assert.equal(launches[0].env[key],undefined,key);
   rejectStop=true;await assert.rejects(host.clear(),error=>error.name==='AggregateError');
   assert.deepEqual(events,['broker-start','launch','broker-close','stop']);assert.equal(host.status('read-owner').attachable,false);assert.equal(launches.length,1);
-  rejectStop=false;await host.clear();assert.equal(launches.length,2);assert.equal(launches[1].env.ELIZA_MANAGED_CALENDAR_READ_BROKER,'');assert.equal(launches[1].env.ELIZA_MANAGED_GMAIL_READ_BROKER,'');
+  rejectStop=false;await host.clear();assert.equal(launches.length,2);assert.equal(launches[1].env.ELIZA_MANAGED_CALENDAR_READ_BROKER,'');assert.equal(launches[1].env.ELIZA_MANAGED_GMAIL_READ_BROKER,'');assert.equal(launches[1].env.ELIZA_MANAGED_CALENDAR_DELETE_ENABLED,'0');
  }finally{rejectStop=false;await host.close();await fs.rm(profile,{recursive:true,force:true});}
 });
 

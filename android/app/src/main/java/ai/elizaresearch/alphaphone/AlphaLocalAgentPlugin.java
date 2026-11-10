@@ -627,7 +627,7 @@ private static final class ResidentAttachDiagnostic {
   // The packaged product declaration is credential-independent. Its parent was
   // authenticated by WorkflowWorkerAssets.install, including every indexed hash.
   java.io.File google=nativeHostResources==null?null:new java.io.File(nativeHostResources,"google-host.mjs");
-  if(google!=null&&google.isFile())env.put("ELIZA_NATIVE_GOOGLE_HOST_MODULE",google.getCanonicalPath());
+  if(google!=null&&google.isFile()){env.put("ELIZA_NATIVE_GOOGLE_HOST_MODULE",google.getCanonicalPath());env.put("ELIZA_MANAGED_CALENDAR_DELETE_ENABLED","1");}
   else if("cloud".equals(BuildConfig.ELIZA_RUNTIME_PROFILE))throw new java.io.IOException("Native Cloud routing module unavailable");
   // The owner's Gmail changes / Calendar edits switches (setGoogleAgentAccess), read before every agent write.
   env.put("ALPHA_GOOGLE_AGENT_ACCESS_FILE",GoogleAgentAccessFile.in(context.getFilesDir()).getAbsolutePath());
@@ -663,7 +663,7 @@ private static final class ResidentAttachDiagnostic {
   // Shared provider admission and native embedding order. Keep the verified
   // product module independently of credential availability for Alpha identity.
   if(!NativeProviderSlot.applyLaunchEnvironment(BuildConfig.ELIZA_RUNTIME_PROFILE,provider,cloudSaved,new File(context.getApplicationInfo().nativeLibraryDir),context.getFilesDir(),env,System.currentTimeMillis())){provider=null;saved=null;cloudSaved=null;googleBinding=null;}
-  if(google!=null&&google.isFile())env.put("ELIZA_NATIVE_GOOGLE_HOST_MODULE",google.getCanonicalPath());
+  if(google!=null&&google.isFile()){env.put("ELIZA_NATIVE_GOOGLE_HOST_MODULE",google.getCanonicalPath());env.put("ELIZA_MANAGED_CALENDAR_DELETE_ENABLED","1");}
   if(googleBinding!=null)env.putAll(googleBinding);
   // The agent process has no /etc/localtime on Android and would run in UTC; calendar dates and
   // "tomorrow at 3pm" resolve in the process zone when no owner resolver is registered.

@@ -2,9 +2,11 @@ import type {DomainRecovery} from '../browser/domain-document';
 import {captureDevicePreferences,cachedDevicePreferences,editDevicePreferences,initializeDevicePreferences,readDevicePreferences} from '../browser/device-preferences';
 import {Capacitor} from '@capacitor/core';
 import {browserLocalAgentEnabled,saveNativeGoogleAgentAccess} from './local-agent';
+import {browserCloudResidentEnabled,browserResidentCall} from './browser-cloud-resident';
 
 /** Owner switches for agent writes through Google. Off never disconnects or revokes Google; reads keep working. */
 export type GoogleAgentAccess={gmailChanges:boolean;calendarEdits:boolean};
+export type GoogleAccessTarget={credentialId:string;current():boolean};
 /** Development host route that hands the switches to the private Google tool host (scripts/local-agent-dev-bridge.ts). */
 export const GOOGLE_AGENT_ACCESS_PATH='/__alpha-agent-google-access';
 export function googleAgentAccess():GoogleAgentAccess{
@@ -21,7 +23,8 @@ function withGoogleAccessLock<T>(operation:()=>Promise<T>):Promise<T>{
  return navigator.locks.request('alpha.google-agent-access.v1',{mode:'exclusive'},operation);
 }
 /** Hands the saved switches to the agent's Google host. On the phone a failed save throws, so Settings never shows a state the host does not enforce. */
-async function publishSavedGoogleAgentAccess(){
+async function publishSavedGoogleAgentAccess(target?:GoogleAccessTarget){
+ if(target&&!target.current())throw Error('Google account changed.');
  const native=Capacitor.isNativePlatform();
  if(!native&&!browserLocalAgentEnabled)return;
  // Before the saved settings load, the default (on) must not overwrite a saved off on the host.
@@ -30,13 +33,20 @@ async function publishSavedGoogleAgentAccess(){
  const saved=await readDevicePreferences();
  const access={gmailChanges:saved.agentGmailChanges,calendarEdits:saved.agentCalendarEdits};
  if(native){await saveNativeGoogleAgentAccess(access);return;}
+ if(browserCloudResidentEnabled&&target){
+  if(!target.current())throw Error('Google account changed.');
+  const result=await browserResidentCall('residentGoogleCalendarAccess',target.credentialId,access.calendarEdits);
+  if(!target.current()||result?.calendarEdits!==access.calendarEdits)throw Error('Calendar access could not be confirmed.');
+  return;
+ }
  await fetch(GOOGLE_AGENT_ACCESS_PATH,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(access)}).catch(()=>{});
 }
-export function publishGoogleAgentAccess(){
- return withGoogleAccessLock(publishSavedGoogleAgentAccess);
+export function publishGoogleAgentAccess(target?:GoogleAccessTarget){
+ return withGoogleAccessLock(()=>publishSavedGoogleAgentAccess(target));
 }
-export async function setGoogleAgentAccess(change:Partial<GoogleAgentAccess>,guard?:{current():boolean;expectedCalendarEdits:boolean;receipt:DomainRecovery}){
+export async function setGoogleAgentAccess(change:Partial<GoogleAgentAccess>,guard?:{current():boolean;expectedCalendarEdits:boolean;receipt:DomainRecovery},target?:GoogleAccessTarget){
  return withGoogleAccessLock(async()=>{
+  if(target&&!target.current())throw Error('Google account changed.');
   let before:GoogleAgentAccess|undefined;
   await editDevicePreferences(state=>{
    // Rechecked inside the canonical edit, including every document conflict retry.
@@ -45,14 +55,14 @@ export async function setGoogleAgentAccess(change:Partial<GoogleAgentAccess>,gua
    if(change.gmailChanges!==undefined)state.agentGmailChanges=change.gmailChanges;
    if(change.calendarEdits!==undefined)state.agentCalendarEdits=change.calendarEdits;
   },undefined,guard?.receipt);
-  try{await publishSavedGoogleAgentAccess();}
+  try{await publishSavedGoogleAgentAccess(target);}
   catch(error){
    // No later Google choice can interleave before the failed publication is rolled back.
    const previous=before;
    if(previous){
     await editDevicePreferences(state=>{state.agentGmailChanges=previous.gmailChanges;state.agentCalendarEdits=previous.calendarEdits;}).catch(()=>{});
     // A lost reply can follow a committed host write. Reconcile from the current canonical document under the same lock.
-    await publishSavedGoogleAgentAccess().catch(()=>{});
+    await publishSavedGoogleAgentAccess(target).catch(()=>{});
    }
    throw error;
   }
