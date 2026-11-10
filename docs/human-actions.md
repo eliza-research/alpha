@@ -94,9 +94,12 @@ These are the values approved policy deliberately leaves open. None reopens a de
   GitHub Actions secrets used by a CI signing job for the release APKs and the Pixel 10a image and
   OTA, amending P-16's managed or hardware-backed requirement; they stay distinct from developer
   keys. The owner is the ceremony custodian and witness (a distinct witness is still recommended),
-  and the certificates name the organization Alpha Compute. The CI signing job does not exist yet:
-  no workflow under `.github/workflows` runs either signing tool. Adding it, limited to a reviewed
-  trigger and environment, is an owner and security action tracked as open under AP-14.
+  and the certificates name the organization Alpha Compute. Protected app-signing workflows now
+  exist. `release-custody-proof.yml` checks the existing protected app and OS key pairs against
+  candidate public identities in `android/signing/os-custody-expected.json`, on an exact
+  reviewed main commit with release-environment approval. That comparison file is not production
+  enrollment; H-09 still requires verified public evidence.
+  The full image-signing job and installed update/recovery proof remain open under AP-14.
 - Seam: both signing tools accept key files or a token. APKs: `scripts/sign-release-apks.mjs` (`--keys-dir`
   or `--pkcs11-config` with `--key-label`) or Gradle's `ELIZAOS_KEYSTORE_*`. Image and OTA:
   `scripts/sign-aosp-release.mjs` (key files, or the four managed options `--pkcs11-config`,
@@ -196,7 +199,11 @@ These are the values approved policy deliberately leaves open. None reopens a de
   no key material, passphrase or PIN goes into this repository.
 - Seam: `android/signing/alpha-key-manifest.json`; upstream refuses an output inside any Git
   working tree.
-- Verify: every private file ends in `.enc`, and both people sign the printed `fingerprints.json`.
+- Existing protected secrets must be checked before considering replacement keys. The custody
+  proof exports only public certificate/key digests, including the APEX payload digest; it does
+  not produce a signed image or establish device acceptance.
+- Verify: every private file ends in `.enc`. The owner records the reviewed public fingerprints;
+  a separate witness remains recommended.
 - Unblocks: H-09.
 
 ### H-09 Enroll the public release identities
