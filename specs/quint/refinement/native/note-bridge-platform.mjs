@@ -150,7 +150,7 @@ public class PairedSpeechContract {
  public static org.json.JSONObject ttsBody(String value){throw new AssertionError("Unexercised speech");}
  public static void ttsHeaders(String a,String b,String c,String d){throw new AssertionError("Unexercised speech");}
 }`,
-  'ai/alphacompute/alphaphone/BuildConfig.java':'package ai.alphacompute.alphaphone;public class BuildConfig {public static final boolean ELIZA_DEV_ALLOW_TEST_MOCKS=false;public static final String ELIZA_RUNTIME_PROFILE="production";}',
+  'ai/alphacompute/alphaphone/BuildConfig.java':'package ai.alphacompute.alphaphone;public class BuildConfig {public static final boolean ELIZA_DEV_ALLOW_TEST_MOCKS=false;public static final String ELIZA_RUNTIME_PROFILE="native";}',
   'ai/alphacompute/alphaphone/LateLaunch.java':'package ai.alphacompute.alphaphone;public class LateLaunch {public static boolean ask(com.getcapacitor.PluginCall call,Runnable action){action.run();return true;}}',
  });
  for(const [name,body] of Object.entries(files)){const file=join(base.directory,name);mkdirSync(dirname(file),{recursive:true});writeFileSync(file,body);}

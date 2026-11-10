@@ -32,7 +32,7 @@ async function compilePhotosWindow(extraSources = []) {
     write: false,
     metafile: true,
     loader: { ".css": "empty" },
-    define: { "import.meta.env": JSON.stringify({ DEV: false, VITE_ELIZA_DEV_ALLOW_TEST_MOCKS: "", VITE_ELIZA_RUNTIME_PROFILE: "cloud" }) },
+    define: { "import.meta.env": JSON.stringify({ DEV: false, VITE_ELIZA_DEV_ALLOW_TEST_MOCKS: "" }) },
     plugins: [{ name: "photos-window-ports", setup(builder) {
       builder.onResolve({ filter: /.*/ }, (args) => ports.has(args.path) ? { path: args.path, namespace: "ports" } : void 0);
       builder.onLoad({ filter: /.*/, namespace: "ports" }, (args) => ({ loader: "js", contents: ports.get(args.path) }));

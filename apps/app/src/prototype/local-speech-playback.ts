@@ -1,5 +1,4 @@
 import {developmentCartesiaVoiceEnabled} from '../runtime/development-cartesia-flag';
-import {cloudRuntimeEnabled} from '../build-flags';
 import {developmentCloudVoiceEnabled} from '../runtime/development-cloud-voice';
 import { Capacitor } from '@capacitor/core';
 import { speakLocalText } from '../local-speech-playback';
@@ -8,7 +7,7 @@ import { connectionController } from '../runtime/connection-ui';
 import { planLocalSpeech, screenSpeechText } from '../runtime/local-speech-text';
 import { createOnDeviceVoice } from '../runtime/local-voice';
 import { createCloudVoice, cloudVoiceFailure } from '../runtime/cloud-voice';
-import { selectVoiceRoute } from '../runtime/voice-selection';
+import { selectVoiceRoute, speechRoute, noteNetworkSpeechFailure } from '../runtime/voice-selection';
 import { speakCloudSpeechChunks } from '../../../../.eliza/client-features/packages/voice/src/cloud-speech-chunks.ts';
 
 let cancelCurrent: (() => Promise<void>|void) | undefined;
@@ -51,8 +50,9 @@ export function stopSpeaking() {
   noteReading = undefined;if(active.pending)retainSpeechRetirement(active.pending); active.controller.abort(new DOMException('Speech cancelled', 'AbortError')); noteReadingChanged();
 }
 /**
- * Read note text aloud on the explicit runtime profile. The Cloud profile uploads text
- * to the selected account; its Notes control discloses that before a user starts it. Leaving the note or editing it cancels the reading
+ * Read note text aloud on the run-time speech route (voice-selection.ts). Cloud speech uploads text
+ * to the selected account; the Notes control discloses that before a user starts it. A Cloud or
+ * provider request that fails before any audio plays is read on this phone instead. Leaving the note or editing it cancels the reading
  * (the Notes adapter calls stopSpeaking). Resolves with the outcome; never throws.
  */
 export function speakNote(text: string, owner: { noteId?: string } = {}) { return readNoteAloud(text, owner).then(result => result.outcome); }
@@ -66,23 +66,39 @@ export async function readNoteAloud(text: string, owner: { noteId?: string } = {
   // credentials, card numbers or links never reaches audio, Cloud or a local agent. The
   // character check applies only to the on-device engine. The browser still speaks the
   // original passage; the native engine speaks its plan.
-  try { screenSpeechText(passage); if (!cloudRuntimeEnabled) planLocalSpeech(passage); } catch { return done('unsupported'); }
-  const voice = (() => { try { return cloudRuntimeEnabled ? createCloudVoice() : createOnDeviceVoice(); } catch { return null; } })(); if (!voice) return done('unavailable');
+  // A network route that cannot be opened (signed out meanwhile, no key) is simply this phone.
+  const cloud = speechRoute() === 'device' ? null : (() => { try { return createCloudVoice(); } catch { return null; } })();
+  const engine = () => { try { return createOnDeviceVoice(); } catch { return null; } };
+  let local: ReturnType<typeof createOnDeviceVoice> = null;
+  try { screenSpeechText(passage); if (!cloud) planLocalSpeech(passage); } catch { return done('unsupported'); }
+  if (!cloud && !(local = engine())) return done('unavailable');
+  // The fallback plans for the on-device engine only when it is needed.
+  const onDevice = () => { try { planLocalSpeech(passage); } catch { return null; } return engine(); };
   const reading: NoteReading = { noteId: owner.noteId, text: passage, controller: new AbortController(), state: 'preparing' };
   noteReading = reading; noteReadingChanged();
   const signal = reading.controller.signal;
+  let networkFailure: unknown;
   try {
     await retirement;
-    if ('playbackReady' in voice && !await voice.playbackReady(signal)) { if (noteReading === reading) { noteReading = undefined; noteReadingChanged(); } return done('unavailable'); }
     if (noteReading !== reading || signal.aborted) return done('stopped');
     const started=() => { if (noteReading === reading) { reading.state = 'reading'; noteReadingChanged(); } };
     const assertCurrent=() => { if (noteReading !== reading) throw new DOMException('Speech cancelled', 'AbortError'); };
-    // Cloud reads in provider-sized pieces, one owned request at a time.
-    const pending=reading.pending=cloudRuntimeEnabled ? speakCloudSpeechChunks({ text: passage, signal, assertCurrent, onStarted: started, speak: (piece, pieceSignal, onStarted) => voice.speak(piece, pieceSignal, onStarted) }) : speakOnDevice(passage, signal, started);await pending;
+    if (cloud) {
+      // Cloud reads in provider-sized pieces, one owned request at a time.
+      try { const pending=reading.pending=speakCloudSpeechChunks({ text: passage, signal, assertCurrent, onStarted: started, speak: (piece, pieceSignal, onStarted) => cloud.speak(piece, pieceSignal, onStarted) });await pending; return done(noteReading === reading && !signal.aborted ? 'finished' : 'stopped'); }
+      catch (error) {
+        // Nothing was heard and the network route failed: read on this phone instead.
+        if (noteReading !== reading || signal.aborted || reading.state === 'reading' || !noteNetworkSpeechFailure(error)) throw error;
+        networkFailure = error; local = onDevice(); if (!local) throw error;
+      }
+    }
+    if (!await local!.playbackReady(signal)) { if (networkFailure) throw networkFailure; if (noteReading === reading) { noteReading = undefined; noteReadingChanged(); } return done('unavailable'); }
+    if (noteReading !== reading || signal.aborted) return done('stopped');
+    const pending=reading.pending=speakOnDevice(passage, signal, started);await pending;
     return done(noteReading === reading && !signal.aborted ? 'finished' : 'stopped');
   } catch (error) {
     if (noteReading !== reading || signal.aborted) return done('stopped');
-    const cause = (cloudRuntimeEnabled ? cloudVoiceFailure(error) : null) || (error instanceof Error && !(error instanceof DOMException) && error.message ? error.message : '');
+    const cause = (cloud ? cloudVoiceFailure(error) : null) || (error instanceof Error && !(error instanceof DOMException) && error.message ? error.message : '');
     return done('failed', reading.state === 'reading' ? ['Reading stopped before the end.', cause || 'The note is unchanged.'].join(' ') : ['Couldn’t start reading.', cause || 'The note is unchanged.'].join(' '));
   }
   finally { if (noteReading === reading) { noteReading = undefined; noteReadingChanged(); } }
@@ -168,18 +184,32 @@ export function installLocalSpeechPlayback(Component: Shell) {
       // Links, email addresses, credentials and card numbers are refused on every route.
       screenSpeechText(text);
       if (cloud && !developmentCloudVoiceEnabled && !directReadAloud && (!connectionController.getCloudEnvironment() || !connectionController.getCloudClient()?.credentialId)) { stop(shell);connectionController.openCloudAccount();return; }
-      const voice = cloud ? createCloudVoice(directReadAloud?'direct':'cloud') : createOnDeviceVoice(); if (!voice) {stop(shell);return;}
-      state.message=cloud?'Preparing audio…':'Preparing audio on this phone…';refresh(shell);
-      if ('playbackReady' in voice) {
-        planLocalSpeech(text);
-        if (!await voice.playbackReady(controller.signal)) throw new Error('On-device speech isn’t ready.');
+      // A Cloud or provider request that fails before any audio plays is read on this phone instead.
+      let network = cloud, networkFailure: unknown;
+      for (;;) {
+        let audible = false;
+        try {
+          const voice = network ? createCloudVoice(directReadAloud?'direct':'cloud') : createOnDeviceVoice(); if (!voice) {if(networkFailure)throw networkFailure;stop(shell);return;}
+          state.message=network?'Preparing audio…':'Preparing audio on this phone…';refresh(shell);
+          if ('playbackReady' in voice) {
+            planLocalSpeech(text);
+            if (!await voice.playbackReady(controller.signal)) throw new Error('On-device speech isn’t ready.');
+          }
+          if (!current()) return;
+          state.message = 'Reading aloud…'; reached = true; refresh(shell);
+          if(!current())return;
+          // Cloud reads in provider-sized pieces, one owned request at a time.
+          const assertCurrent=()=>{if(!current())throw new DOMException('Speech cancelled','AbortError');};
+          const pending=state.pending=(network ? speakCloudSpeechChunks({ text: spokenText, signal: controller.signal, assertCurrent, onStarted: () => { audible = true; }, speak: (piece, signal, onStarted) => voice.speak(piece, signal, onStarted) }) : speakOnDevice(spokenText, controller.signal, () => { audible = true; }));await pending;
+          break;
+        } catch (error) {
+          if ((error as {code?:string})?.code==='speech-cleanup-unconfirmed' || !current()) throw error;
+          // The phone could not read it either: the network route's failure is the one to show.
+          if (!network) throw (!audible && networkFailure) || error;
+          if (directReadAloud || developmentCloudVoiceEnabled || audible || !noteNetworkSpeechFailure(error)) throw error;
+          networkFailure = error; network = false; reached = false;
+        }
       }
-      if (!current()) return;
-      state.message = 'Reading aloud…'; reached = true; refresh(shell);
-      if(!current())return;
-      // Cloud reads in provider-sized pieces, one owned request at a time.
-      const assertCurrent=()=>{if(!current())throw new DOMException('Speech cancelled','AbortError');};
-      const pending=state.pending=(cloud ? speakCloudSpeechChunks({ text: spokenText, signal: controller.signal, assertCurrent, speak: (piece, signal, onStarted) => voice.speak(piece, signal, onStarted) }) : speakOnDevice(spokenText, controller.signal));await pending;
       if (current()) { state.controller = undefined; state.message = 'Finished reading.'; refresh(shell); }
     } catch (error) {
       if((error as {code?:string})?.code==='speech-cleanup-unconfirmed'&&state.pending)retainSpeechRetirement(state.pending);

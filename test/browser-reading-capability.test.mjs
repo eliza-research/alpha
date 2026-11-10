@@ -121,12 +121,10 @@ test("each refusal carries its own reject code, so the renderer never parses mes
 });
 
 
-test('Cloud native Browser hides local-only reading without disabling page questions',()=>{
+test('every build offers on-device page reading; the menu guards still follow page availability',()=>{
+ // Local speech always ships, so no build profile hides Read aloud: the adapter always offers it.
  const match=/readAloudAvailable:([^,]+),/.exec(adapter);assert.ok(match);
- for(const native of [true,false])for(const cloud of [true,false]){
-  const available=new Function('Capacitor','cloudRuntimeEnabled','return '+match[1])({isNativePlatform:()=>native},cloud);
-  assert.equal(available,!(native&&cloud));
- }
+ assert.equal(match[1],'true');
  // Render the real menu guards through dc-lite: a source-shape assertion alone
  // previously accepted an unsupported compound expression that hid the control.
  const menuRows=template.split('\n').filter(row=>row.includes('aria-label="Read aloud"')||row.includes('aria-label="Ask about page"'));
@@ -154,7 +152,11 @@ test('Cloud native Browser hides local-only reading without disabling page quest
   }
  }finally{dom.window.close();}
  const read=adapter.slice(adapter.indexOf('async function readPage()'),adapter.indexOf('async function askPage()'));
- assert.ok(read.indexOf('if(Capacitor.isNativePlatform()&&cloudRuntimeEnabled)return;')<read.indexOf('createNativeReadingVoice()'));
+ assert.ok(read.includes('createNativeReadingVoice()'));
+ assert.doesNotMatch(adapter,/cloudRuntimeEnabled/,'no build profile disables page reading');
  const runtime=fs.readFileSync('apps/app/src/runtime/native-reading-voice.ts','utf8');
- assert.match(runtime,/createNativeReadingVoice\(\)\{\s*if\(cloudRuntimeEnabled\)return null;/);
+ assert.doesNotMatch(runtime,/cloudRuntimeEnabled|CLOUD_PROFILE_READING_NOTE/);
+ // Page text stays on the phone whatever the speech route: the reading voice is the on-device one.
+ assert.match(runtime,/createNativeReadingVoice\(\)\{\s*const resident=connectionController\.getResidentReadingBinding\(\);/);
+ assert.doesNotMatch(runtime,/speechRoute|createCloudVoice|speakCloudText/);
 });

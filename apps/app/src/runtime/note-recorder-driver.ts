@@ -3,7 +3,7 @@ import { registerPlugin } from '../platform-plugins';
 import { createOnDeviceVoice } from './local-voice';
 import { createPairedVoice } from './paired-voice';
 import { createCloudVoice } from './cloud-voice';
-import { selectVoiceRoute } from './voice-selection';
+import { selectVoiceRoute, speechRoute, noteNetworkSpeechFailure } from './voice-selection';
 import { browserDevProfile } from '../browser/dev-profile';
 import { developmentCloudVoiceEnabled } from './development-cloud-voice';
 import type { NoteRecorderDriver, NoteRecordingBinding, NoteRecordingStatus, SavedNoteAudio, SegmentTranscriber } from '../prototype/note-recorder';
@@ -51,7 +51,8 @@ const silence = (error: unknown) => (error as { code?: string })?.code === 'no-s
  * The transcription route for Notes segments, chosen as the recorder's voice route is: on-device,
  * the paired agent or Cloud. Every segment is under 30 s, inside each route's request bound.
  * Null when no route is ready: the recording is then saved with its audio only. Throws
- * `sign-in` when the Cloud route has no signed-in account.
+ * `sign-in` when a test-mocks Cloud route has no signed-in account; production chooses Cloud only
+ * for a signed-in account (speechRoute) and transcribes on this phone when a Cloud request fails.
  */
 export async function noteSegmentTranscriber(signal: AbortSignal, selected = selectVoiceRoute('default')): Promise<{ transcribe: SegmentTranscriber; provenance: TranscriptProvenance } | null> {
   const wrap = (run: (segmentId: string, signal: AbortSignal) => Promise<{ text: string }>): SegmentTranscriber => async (segmentId, owned) => {
@@ -60,13 +61,23 @@ export async function noteSegmentTranscriber(signal: AbortSignal, selected = sel
   if (selected === 'cloud') {
     let cloud: ReturnType<typeof createCloudVoice>;
     try { cloud = createCloudVoice(); } catch (error) { throw Object.assign(new Error('Cloud transcription needs sign-in'), { code: 'sign-in', cause: error }); }
+    const network = speechRoute() !== 'device';
     return {
       provenance: { route: developmentCloudVoiceEnabled ? 'development-agent' : 'eliza-cloud' },
       transcribe: wrap(async (recordingId, owned) => {
         const requestId = crypto.randomUUID(), cancel = () => { void cloud.cancel({ requestId }).catch(() => {}); };
         owned.throwIfAborted();
         owned.addEventListener('abort', cancel, { once: true });
-        try { return await cloud.transcribeRecording({ recordingId, requestId }); } finally { owned.removeEventListener('abort', cancel); }
+        try { return await cloud.transcribeRecording({ recordingId, requestId }); }
+        catch (failure) {
+          // The phone still holds the segment: a network failure (offline, sign-in, plan, 5xx) is
+          // transcribed on this phone instead. When that is unavailable too, the failure stands.
+          if (!network || owned.aborted || !noteNetworkSpeechFailure(failure)) throw failure;
+          const local = createOnDeviceVoice();
+          if (!local || !await local.ready(owned).catch(() => false)) throw failure;
+          return await local.transcribe(recordingId, owned).catch(() => { throw failure; });
+        }
+        finally { owned.removeEventListener('abort', cancel); }
       }),
     };
   }

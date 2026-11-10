@@ -2,7 +2,7 @@ import { NavigationVoice as SharedNavigationVoice } from '../../../../.eliza/cli
 import { createOnDeviceVoice } from '../runtime/local-voice';
 import { speakAppText } from '../runtime/app-speech';
 import { connectionController } from '../runtime/connection-ui';
-import { cloudRuntimeEnabled } from '../build-flags';
+import { speechRoute } from '../runtime/voice-selection';
 
 type Instruction = {key:string;text:string;current:()=>boolean};
 /** Screen-off guidance waits for foreground playback; only the current instruction may resume. */
@@ -25,7 +25,8 @@ export class NavigationVoice extends SharedNavigationVoice {
    const hidden=()=>{if(document.hidden)hiddenDuringSpeech=true;};
    document.addEventListener('visibilitychange',hidden);
    try{
-    if(cloudRuntimeEnabled){await speakAppText(text,signal);return;}
+    // Network speech goes through the app speaker, which falls back to this phone.
+    if(speechRoute()!=='device'){await speakAppText(text,signal);return;}
     const voice=createOnDeviceVoice();
     if(!voice||!await voice.playbackReady(signal))throw Error('On-device navigation speech is unavailable.');
     await voice.speak(text,signal);

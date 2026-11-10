@@ -274,10 +274,14 @@ test('native batch: an ack whose Cloud speech request fails is silence; the repl
 });
 
 // The browser's clip loop speaks the ack through the same wrapper, so a failed ack is silence there
-// too (at 445e5744 it ended the web conversation). A failed reply still ends it, as before.
-for(const failing of [ACK,REPLY])
-test(`browser batch: ${failing===ACK?'an ack whose Cloud speech request fails is silence; the reply is spoken and the conversation goes on':'a reply whose Cloud speech request fails still ends the conversation with its notice'}`,async()=>{
+// too (at 445e5744 it ended the web conversation). A failed reply used to end it with a notice; now
+// the conversation moves to on-device speech (the reply stays in the chat, and is not resent), and
+// only without on-device speech does it end with the Cloud notice.
+for(let failing of [ACK,REPLY,'reply-without-local'])
+test(`browser batch: ${failing===ACK?'an ack whose Cloud speech request fails is silence; the reply is spoken and the conversation goes on':failing===REPLY?'a reply whose Cloud speech request fails moves the conversation to on-device speech':'without on-device speech, a reply whose Cloud speech request fails still ends the conversation with its notice'}`,async()=>{
+ const withoutLocal=failing==='reply-without-local';if(withoutLocal)failing=REPLY;
  const t=await batchTurn({native:false,platform:'web'});const synthesize=t.f.driver.synthesize;
+ if(withoutLocal)t.f.box.createOnDeviceVoice=()=>null;else t.f.box.nativeLiveVoiceReady=async()=>false;
  t.f.driver.synthesize=async input=>{if(input.text!==failing)return synthesize(input);(t.f.speechInputs??=[]).push(input);throw Object.assign(Error('Cloud speech failed'),{code:'voice-http-502'});};
  try{
   progress(t.input);await t.clock.flush();assert.deepEqual(t.texts(),[ACK]);
@@ -285,7 +289,8 @@ test(`browser batch: ${failing===ACK?'an ack whose Cloud speech request fails is
   t.f.releaseReply();for(let i=0;i<10;i++)await t.clock.flush();
   assert.deepEqual(t.texts(),[ACK,REPLY]);
   if(failing===ACK)assert.notEqual(t.f.renderChat()?.state,'error');
-  else{assert.equal(t.f.renderChat()?.state,'error');assert.match(t.f.renderChat()?.lines?.[0]?.t,/voice couldn’t complete this request\. Try again later\.$/);}
+  else if(withoutLocal){assert.equal(t.f.renderChat()?.state,'error');assert.match(t.f.renderChat()?.lines?.[0]?.t,/voice couldn’t complete this request\. Try again later\.$/);}
+  else{assert.notEqual(t.f.renderChat()?.state,'error');assert.ok(t.f.localFactories>0,'on-device speech took over');assert.equal(t.f.box.speechRoute(),'device');assert.equal(t.f.sends,1,'the answered turn is not sent again');}
  }finally{await closeBatch(t);}
 });
 

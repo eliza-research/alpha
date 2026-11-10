@@ -3,7 +3,7 @@ import {button} from './flag-off-android';
 import {setupLiveAssistant} from './voice-assistant-fixture';
 // Source-served synthetic native ports: the Stop speaking control of the voice assistant, NOT
 // production-bundle UI or phone acceptance (audio focus and echo need a device).
-test.beforeEach(async({page})=>{await page.route('**/src/build-flags.ts*',route=>route.fulfill({contentType:'application/javascript',body:'export const testMocksEnabled=false;export const devSurfacesEnabled=false;export const cloudRuntimeEnabled=false;export const privateLocalPreviewEnabled=false;export const updateChannelCheckEnabled=false;'}));});
+test.beforeEach(async({page})=>{await page.route('**/src/build-flags.ts*',route=>route.fulfill({contentType:'application/javascript',body:'export const testMocksEnabled=false;export const devSurfacesEnabled=false;export const privateLocalPreviewEnabled=false;export const updateChannelCheckEnabled=false;'}));});
 async function setupLive(page:Page){
  const foreign=await setupLiveAssistant(page);
  // Count calls on the actual shared controller.
