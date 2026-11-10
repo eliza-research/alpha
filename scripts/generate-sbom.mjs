@@ -165,7 +165,8 @@ function residentRuntimeComponents(root) {
   if (!packagedRuntimePresent(root)) throw new Error('--packaged-runtime: no resident runtime is staged. Run: npm run agent:build-workflow-worker && npm run agent:stage-android');
   const out = [];
   const record = exists(root, EMBEDDING_HOST) ? readJson(root, EMBEDDING_HOST) : null;
-  const embedding = record;
+  // Pending requalification names superseded bytes; enumerate the staged candidate independently.
+  const embedding = record?.requalification?.required === true ? null : record;
   for (const [base, kind] of [[AGENT_ASSETS, 'asset'], [JNI_LIBS, 'native library']])
     for (const rel of exists(root, base) ? walkFiles(path.join(root, base)) : []) {
       const file = `${base}/${rel}`;
