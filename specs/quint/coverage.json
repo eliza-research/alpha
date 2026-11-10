@@ -19299,7 +19299,7 @@
     },
     {
       "path": "apps/app/src/prototype/calendar-form-draft-adapter.ts",
-      "sha256": "45956455f90b0f3a4d54d1468f95955b709ce481065225216d72f7b36197dd92",
+      "sha256": "46a1f13ae9657de532aed1966ba36b284450f05801245fb3be8475f877b7a931",
       "models": [
         "CalendarSync"
       ],
@@ -19382,7 +19382,8 @@
           "line": 60,
           "text": "const newEvent=out.newEvent;out.newEvent=()=>{if(shell.calendarDraftText&&!state.form){restore();return;}newEvent();};"
         }
-      ]
+      ],
+      "integrationReview": "Legacy browser Calendar keeps its creation draft behind New event and retains discard inside the editor; canonical Calendar resume/discard UI is unchanged. Fourteen rendered legacy form cases cover reload, conflicts, unknown-effect recovery and discard without changing saved events. CalendarSync allocation retained; no synchronization transition changed."
     },
     {
       "path": "apps/app/src/prototype/calendar-interval-presentation.ts",
@@ -32470,9 +32471,9 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "0c5aee1d4f858d869ef0cf8980763f1bb4a5a3fad517872a1208d0831600bdc4",
+      "sha256": "ab9528ea6af4bc90f7c455d511372a968cabd41e5c3239c609ba1a91b3b3161c",
       "stateAnchors": [],
-      "integrationReview": "2026-11-09 mail reader: automatic same-account thread read preserves the fresher selected body and all operation receipts. Compact menu changes presentation only. Email chat attachment reuses message persistence, validates the exact selected source and destination before sending, and leaves provider text untrusted. Existing models remain projections; complete mail rendering and revision/expiry checks are tested separately."
+      "integrationReview": "Compact voice status is an accessible live announcement outside layout flow; spinner and activity graphics preserve visible state and all44px controls. Captured rendered startup/listening retain the exact146x54 pill footprint. Existing state allocations retained; no model transition changed."
     },
     {
       "path": "apps/app/src/prototype/photo-library-adapter.ts",
@@ -34785,14 +34786,14 @@
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "8be1a7fb323a3e80faa372287af05aef8a5426726f38147481a058626a314750",
+      "sha256": "eef7edc9144ca3b9c30e659375115e730b95a58d86249d7634baa40a0508ca37",
       "stateAnchors": [
         {
           "line": 3358,
           "text": "<sc-if value=\"{{workflows.automation.editingSchedule}}\"><sc-if value=\"{{workflows.automation.scheduleClockEditable}}\"><label class=\"schedule-instructions\">Time ({{workflows.automation.e"
         }
       ],
-      "integrationReview": "Retained Calendar form window, monotonic Start later and month-row construction reviewed and source-refined under CalendarFormControls; all existing domain allocations and open platform obligations remain."
+      "integrationReview": "Calendar event details render the existing readOnlyLabel when the existing event policy marks the source read-only. The source name and restriction are visible while Edit/Delete remain absent. No policy, mutation, account or synchronization state changed; one-calendar rendered read-only/source assertions cover this projection."
     },
     {
       "path": "apps/app/src/prototype/use-in-email-review.ts",

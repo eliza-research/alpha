@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "80fbb1d25937585b24fd85132d623d5391c8ca07",
-  "ledgerSha256": "cd9e1c703838cd9e0dac0d9a44c78345f42fb6f93d1ec745eaeed0a7ec1fcfc1",
+  "ledgerSha256": "2d7bede91a0955734bb23acdb2e31c1a35a50b77b8cf29d9a521dfaac43a91e8",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -34026,7 +34026,7 @@
     },
     {
       "path": "apps/app/src/prototype/calendar-form-draft-adapter.ts",
-      "sha256": "45956455f90b0f3a4d54d1468f95955b709ce481065225216d72f7b36197dd92",
+      "sha256": "46a1f13ae9657de532aed1966ba36b284450f05801245fb3be8475f877b7a931",
       "allocatedModels": [
         "CalendarSync"
       ],
@@ -39181,7 +39181,7 @@
     },
     {
       "path": "apps/app/src/prototype/phone.css",
-      "sha256": "0c5aee1d4f858d869ef0cf8980763f1bb4a5a3fad517872a1208d0831600bdc4",
+      "sha256": "ab9528ea6af4bc90f7c455d511372a968cabd41e5c3239c609ba1a91b3b3161c",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -40009,7 +40009,7 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "8be1a7fb323a3e80faa372287af05aef8a5426726f38147481a058626a314750",
+      "sha256": "eef7edc9144ca3b9c30e659375115e730b95a58d86249d7634baa40a0508ca37",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -221160,6 +221160,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "80f48a5dbdc562f5ee57dbeebafeb4f30c7946104aa53b44f236460366170aec"
+    "sha256": "257b74b5545f3ec8659c5269f81f71e0c5dec16e52520b942e1865ffc921dc02"
   }
 }

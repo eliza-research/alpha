@@ -14,10 +14,11 @@ for(const entry of ['cold','chooser'] as const)for(const failure of ['none','hos
     {name:'AlphaVoiceCloud',methods:methods(['checkPermissions'])},
     {name:'AlphaConnection',methods:methods(['pauseNotificationCollection','secureRead','secureWrite','secureRemove','addListener','removeListener'])},
     {name:'AlphaHostedResults',methods:methods(['disableBackground','status','pendingResult','addListener','removeListener'])},
-    {name:'Agent',methods:methods(['getStatus'])}, {name:'ElizaSystem',methods:methods(['getBuildInfo'])},
+    {name:'Agent',methods:methods(['getStatus','setGoogleAgentAccess'])}, {name:'ElizaSystem',methods:methods(['getBuildInfo'])},
    ],nativePromise:async(plugin:string,method:string,input:any)=>{
     if(plugin==='AlphaNotifications')return {permissionGranted:true,appEnabled:true};
     if(plugin==='AlphaVoiceCloud')return {microphone:'granted'};
+    if(plugin==='Agent'&&method==='setGoogleAgentAccess')return {};
     if(plugin==='Agent')return {packaged:false,state:'unavailable'};
     if(method==='secureRead')return {value:null};
     if(plugin==='ElizaSystem'&&method==='getBuildInfo')return {launcher:false,version:'fixture'};

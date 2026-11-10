@@ -345,7 +345,7 @@ test('sign-in screens keep one button hierarchy and even spacing at each step',a
  await expect(dialog.getByLabel('Phone number',{exact:true})).toBeFocused();await expectButtonSystem(page);await shot('02-choose-phone');
  await dialog.getByRole('button',{name:'Use email instead',exact:true}).click();
  await dialog.getByRole('button',{name:'Use my own API keys',exact:true}).click();
- await expect(dialog.getByLabel('Cerebras API key',{exact:true})).toBeFocused();await expectButtonSystem(page);await shot('03-own-keys');
+ await expect(dialog.getByLabel('Text API key',{exact:true})).toBeFocused();await expectButtonSystem(page);await shot('03-own-keys');
  await dialog.getByRole('button',{name:'Back',exact:true}).click();
  await dialog.getByRole('textbox',{name:'Email',exact:true}).fill('synthetic-signin@example.invalid');
  await dialog.getByRole('button',{name:'Email me a code',exact:true}).click();

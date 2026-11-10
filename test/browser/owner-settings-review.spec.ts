@@ -35,7 +35,7 @@ for(const size of [{width:390,height:844},{width:1280,height:900}]){
   await page.getByRole('button',{name:'Close Google accounts',exact:true}).click();
   await page.getByRole('button',{name:'Back to Settings',exact:true}).click();
   await settings.getByRole('button',{name:'About',exact:true}).click();
-  await expect(current().getByRole('button',{name:'Connection help',exact:true})).toBeVisible();
+  await expect(current().getByRole('button',{name:'Open source licenses',exact:true})).toBeVisible();
   await expect(page.getByText('Agent execution',{exact:true})).toHaveCount(0);
   await page.getByRole('button',{name:'Back to Settings',exact:true}).click();
   await expect(settings).toBeVisible();
