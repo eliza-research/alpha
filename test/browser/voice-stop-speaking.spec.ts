@@ -5,7 +5,7 @@ import {setupLiveAssistant} from './voice-assistant-fixture';
 // production-bundle UI or phone acceptance (audio focus and echo need a device).
 test.beforeEach(async({page})=>{await page.route('**/src/build-flags.ts*',route=>route.fulfill({contentType:'application/javascript',body:'export const testMocksEnabled=false;export const devSurfacesEnabled=false;export const privateLocalPreviewEnabled=false;export const updateChannelCheckEnabled=false;'}));});
 async function setupLive(page:Page){
- const foreign=await setupLiveAssistant(page);
+ const foreign=await setupLiveAssistant(page,{echoCancelled:false});
  // Count calls on the actual shared controller.
  await page.evaluate(async()=>{const {VoiceAssistantSession}=await import('/src/runtime/voice-assistant.ts');const start=VoiceAssistantSession.prototype.start;VoiceAssistantSession.prototype.start=function(){const w=window as any;w.live.interrupts=0;const interrupt=this.interruptSpeech.bind(this);this.interruptSpeech=()=>{w.live.interrupts++;return interrupt();};return start.call(this);};});
  return foreign;

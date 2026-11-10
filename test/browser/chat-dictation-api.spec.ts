@@ -20,7 +20,7 @@ async function captureApi(page:Page){
 }
 async function setupNative(page:Page){const foreign=await setupNativeSpeech(page);await captureApi(page);return foreign;}
 async function setupLive(page:Page){
- const foreign=await setupLiveAssistant(page);await captureApi(page);
+ const foreign=await setupLiveAssistant(page,{echoCancelled:false});await captureApi(page);
  // Observe the actual shared controller, not an obsolete renderer callback.
  await page.evaluate(async()=>{const {VoiceAssistantSession}=await import('/src/runtime/voice-assistant.ts');const start=VoiceAssistantSession.prototype.start;VoiceAssistantSession.prototype.start=function(){(window as any).live.sharedVoiceSession=this;return start.call(this);};});
  return foreign;
