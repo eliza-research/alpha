@@ -1,5 +1,6 @@
 import {type Page} from '@playwright/test';
 import {flagOffAndroid,residentHome,fenceNetwork} from './flag-off-android';
+import {observeVoiceFixture} from './voice-fixture-failure-metadata';
 // Synthetic native ports: routing and lifecycle evidence only.
 export async function setupLiveAssistant(page:Page){
  const foreign=await fenceNetwork(page);await flagOffAndroid(page);
@@ -53,5 +54,5 @@ export async function setupLiveAssistant(page:Page){
    if(['cancel','releaseLocalSpeech','removeListener','cancelRecording'].includes(method))return {};
    f.forbidden.push(method);throw Error('Not part of the live voice path: '+method);
   };
- });await residentHome(page);return foreign;
+ });await residentHome(page);await page.evaluate(observeVoiceFixture);return foreign;
 }
