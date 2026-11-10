@@ -8,7 +8,7 @@ put('build.gradle',"buildscript { repositories { google(); mavenCentral() }; dep
 put('gradle.properties','android.useAndroidX=true\norg.gradle.jvmargs=-Xmx2g\n')
 put('app/build.gradle',"""apply plugin: 'com.android.application'
 android {
- namespace 'ai.elizaresearch.alphaphone'
+ namespace 'ai.alphacompute.alphaphone'
  compileSdk 36
  defaultConfig { applicationId 'ai.eliza.embeddingqualify'; minSdk 26; targetSdk 36; testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'; buildConfigField 'String', 'ELIZA_ASR_THREADS', '\"\"' }
  buildFeatures { buildConfig true }
@@ -18,10 +18,10 @@ android {
 dependencies { androidTestImplementation 'androidx.test:runner:1.6.2'; androidTestImplementation 'androidx.test.ext:junit:1.2.1' }
 """)
 put('app/src/main/AndroidManifest.xml','<manifest xmlns:android="http://schemas.android.com/apk/res/android"><application android:label="Alpha embedding qualification" /></manifest>')
-java='app/src/main/java/ai/elizaresearch/alphaphone/'
+java='app/src/main/java/ai/alphacompute/alphaphone/'
 candidate=root/'.eliza/native-candidate-6003-standalone-arm64'
 put(java+'ElizaVoiceNative.java',(candidate/'source/packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java').read_text())
-put(java+'ElizaAsrNativeEnv.java',(root/'vendor/eliza/packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaAsrNativeEnv.java').read_text().replace('package ai.elizaos.app;','package ai.elizaresearch.alphaphone;'))
+put(java+'ElizaAsrNativeEnv.java',(root/'vendor/eliza/packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaAsrNativeEnv.java').read_text().replace('package ai.elizaos.app;','package ai.alphacompute.alphaphone;'))
 rows=[]
 for abi,suffix in [('arm64-v8a','arm64'),('x86_64','x86_64')]:
  receipt=json.loads((root/f'.eliza/native-candidate-6003-standalone-{suffix}/PREPARATION.json').read_text())

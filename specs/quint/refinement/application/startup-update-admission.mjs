@@ -130,7 +130,7 @@ function fixture(name, code) {
 
 export async function checkStartupUpdateAdmission() {
   const sources = [fileURLToPath(import.meta.url), 'apps/app/src/main.tsx', 'vendor/eliza/' + shared, effective, projection,
-    'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java',
+    'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java',
     'upstream.lock.json', 'scripts/prepare-client-features.mjs', 'scripts/pinned-upstream-source.mjs'];
   captureSources([...sources, modelPath]);
   checkClientFeatures();
@@ -140,7 +140,8 @@ export async function checkStartupUpdateAdmission() {
   assert.equal(stamp.files[shared], digest);
   const pinned = createHash('sha256').update(read('vendor/eliza/' + shared)).digest('hex');
   assert.equal(stamp.sourceFiles[shared], pinned);
-  assert.equal(pinned, digest);
+  assert.equal(digest, pinned, 'the prepared updater is the exact reviewed upstream source');
+  assert.equal(Object.hasOwn(stamp, 'appUpdateResumePatch'), false, 'the retired updater patch has no receipt');
   const marker = '  let pending: Activation | undefined;\n  let acknowledged: string | undefined;';
   assert.equal(gate.split(marker).length, 2);
   const inspect = '  globalThis.inspect = () => ({pending, acknowledged});';

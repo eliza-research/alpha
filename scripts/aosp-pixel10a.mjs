@@ -2,14 +2,21 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
-import {composePixel10aProduct} from '../vendor/eliza/packages/os/scripts/android/pixel10a-product.ts';
+import {assertPixel10aSourceLayout, composePixel10aProduct} from '../vendor/eliza/packages/os/scripts/android/pixel10a-product.ts';
 import {placeholderFields, releaseDescriptorProblems} from '../vendor/eliza/packages/os/scripts/android/pixel10a-release.mjs';
 import {assertStockVendorApi} from '../vendor/eliza/packages/os/scripts/android/vendor-api.mjs';
 
 export {placeholderFields};
 /** The production descriptor for Pixel 10a (stallion) on Android 17. */
 export const PIXEL10A_PRODUCT = 'android/aosp/pixel10a-product.json';
-export const PIXEL10A_COMPOSITION = 'vendor/eliza/packages/os/android/products/pixel10a-alpha.json';
+export const PIXEL10A_COMPOSITION = 'android/aosp/pixel10a-composition.json';
+export function readPixel10aComposition(root = process.cwd()) {
+  return JSON.parse(fs.readFileSync(path.join(root, PIXEL10A_COMPOSITION), 'utf8'));
+}
+/** Call only after the complete source inventory has passed admission. */
+export function pixel10aSourceLayout({root = process.cwd(), source}) {
+  return assertPixel10aSourceLayout(source, readPixel10aComposition(root));
+}
 /**
  * Alpha's binding of the shared Pixel 10a release inputs: its product (the
  * alpha_stallion_phone composition), its descriptor, the vendored path of the shared
@@ -51,7 +58,9 @@ export function pixel10aProductProblems(root = process.cwd()) {
   if (!fs.existsSync(at(PIXEL10A_PRODUCT))) return [`${PIXEL10A_PRODUCT} is missing`];
   let product;
   try { product = JSON.parse(fs.readFileSync(at(PIXEL10A_PRODUCT), 'utf8')); } catch (error) { return [`${PIXEL10A_PRODUCT} is unreadable: ${error.message}`]; }
-  return releaseDescriptorProblems(product, {root, file: PIXEL10A_PRODUCT, productName: PIXEL10A_RELEASE.productName, sourceLockPath: PIXEL10A_RELEASE.sourceLockPath, applicationSignerFile: PIXEL10A_RELEASE.applicationSignerFile});
+  let composition;
+  try { composition = readPixel10aComposition(root); } catch (error) { return [`${PIXEL10A_COMPOSITION} is unreadable: ${error.message}`]; }
+  return releaseDescriptorProblems(product, {root, file: PIXEL10A_PRODUCT, productName: PIXEL10A_RELEASE.productName, sourceLockPath: PIXEL10A_RELEASE.sourceLockPath, applicationSignerFile: PIXEL10A_RELEASE.applicationSignerFile, composition});
 }
 
 /**
@@ -61,13 +70,13 @@ export function pixel10aProductProblems(root = process.cwd()) {
  */
 export function pixel10aVendorApi({root = process.cwd(), source}) {
   const profile = JSON.parse(fs.readFileSync(path.join(root, 'vendor/eliza/packages/os/android/aosp.lock.json'), 'utf8')).profiles.pixel10a;
-  const product = JSON.parse(fs.readFileSync(path.join(root, PIXEL10A_COMPOSITION), 'utf8'));
+  const product = readPixel10aComposition(root);
   return assertStockVendorApi(source, {codename: profile.device.codename, releaseConfig: product.releaseConfig, vendorApiLevel: profile.device.vendorApiLevel});
 }
 
 export function writePixel10aProduct({root, output, apk, identity, launcher, sourceEvidence, production = false, bootAnimation = null, vendorApi = null}) {
   const nativeStagingEvidence = JSON.parse(execFileSync('python3', [path.join(root, 'scripts/stage-aosp-native.py'), '--apk', path.resolve(apk), '--output', output, '--module', identity.moduleName, '--target', 'stallion', '--defer-soong'], {encoding:'utf8'}));
-  const product = JSON.parse(fs.readFileSync(path.join(root, PIXEL10A_COMPOSITION), 'utf8'));
+  const product = readPixel10aComposition(root);
   // A brand boot animation is staged only when the shared composition pins its bytes.
   const report = composePixel10aProduct({output, product, launcher, sourceEvidence, nativeStagingEvidence, production, bootAnimation, vendorApi});
   execFileSync('python3', [path.join(root, 'scripts/stage-aosp-native.py'), '--apk', path.resolve(apk), '--output', output, '--module', identity.moduleName, '--finalize-soong'], {stdio:'pipe'});

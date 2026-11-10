@@ -11,7 +11,7 @@ import os from "node:os";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { execFileSync, spawnSync } from "node:child_process";
-import { PIXEL10A_PRODUCT, PIXEL10A_RELEASE, pixel10aOptions, pixel10aProductProblems } from "../scripts/aosp-pixel10a.mjs";
+import { PIXEL10A_COMPOSITION, PIXEL10A_PRODUCT, PIXEL10A_RELEASE, pixel10aOptions, pixel10aProductProblems } from "../scripts/aosp-pixel10a.mjs";
 import { channelDistributionProblems, channelSigningProblems, signRelease, X509_KEYS } from "../scripts/sign-aosp-release.mjs";
 import { RECORD_KIND } from "../scripts/aosp-release-record.mjs";
 import { releaseBlockers } from "../scripts/release-blockers.mjs";
@@ -65,6 +65,7 @@ function completeRoot(t, { platform, releasekey, avb }) {
   const write = (rel, value) => { fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true }); fs.writeFileSync(path.join(dir, rel), typeof value === "string" ? value : JSON.stringify(value, null, 2)); };
   const lock = JSON.stringify({ schema: 1, target: "pixel10a", device: { codename: "stallion", androidRelease: "17" }, developmentOnly: false, releaseQualified: false, factory: read(LOCK).factory });
   write(LOCK, lock);
+  write(PIXEL10A_COMPOSITION, read(PIXEL10A_COMPOSITION));
   const product = read(PIXEL10A_PRODUCT);
   const others = Object.fromEntries(Object.keys(product.signer.releaseCertificates).map(name => [name, releasekey]));
   write(PIXEL10A_PRODUCT, { ...product, sourceLock: { ...product.sourceLock, sha256: sha256(lock) }, signer: { ...product.signer, platformCertificateSha256: platform, releaseCertificates: others }, avb: { ...product.avb, publicKeySha256: avb } });
@@ -97,7 +98,7 @@ function targetFiles(t) {
 test("the committed Pixel 10a descriptor admits the app signer but still refuses unset OS inputs and qualification", () => {
   const product = read(PIXEL10A_PRODUCT), channel = read(CHANNEL);
   assert.equal(product.product, "alpha_stallion_phone");
-  assert.equal(product.product, read("vendor/eliza/packages/os/android/products/pixel10a-alpha.json").productName);
+  assert.equal(product.product, read("android/aosp/pixel10a-composition.json").productName);
   assert.deepEqual(product.device, { codename: "stallion", androidRelease: "17" });
   assert.equal(product.releaseQualified, false);
   assert.equal(product.deviceAcceptanceVerified, false);

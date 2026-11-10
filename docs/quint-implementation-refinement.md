@@ -232,10 +232,14 @@ durable identity after a lost acknowledgement. The campaign also checks
 same-width model refusal and operator acknowledgement. Independent runtime
 owners, process restarts and named vector spaces have separate evidence
 requirements.
-The PGlite source campaign also confirms the translated dimension model's
-provenance counterexample. A delayed unmarked vector is admitted under the
-adapter's new space before the runtime publishes its pin. A stale direct SQL
-update against the same row is blocked by the nonce trigger.
+The historical PGlite fragment campaign confirms the translated dimension
+model's provenance counterexample at SDK `4787d51a142`. Its five runtime and
+SQL source fragments are authenticated from Git blobs and materialized outside
+the vendor checkout; imported support modules and dependencies are separately
+byte-bound to the current source and root lock. A delayed unmarked vector is
+admitted under the historical adapter's new space before its runtime publishes
+the pin. A stale direct SQL update is blocked by the nonce trigger. This is an
+original design witness, not a current-source failure or runtime qualification.
 
 The resident liveness campaign checks seven schedules and 38 checkpoints on
 the connection owner and actual rate limiter. It covers duplicate failures,
@@ -346,14 +350,17 @@ observed policy. Clock rechecks for a pending deletion while it holds the
 ringing lock. Undo of a valid paired deletion can restore ordinary ringing.
 Recovery of older markers without a receipt remains an open policy.
 
-The named embedding provenance campaign checks eight real PGlite schedules
-and 67 checkpoints. The authenticated patch validates a named vector at the
-actual write or search boundary and rejects a delayed resize after named
-activation. A rejected text-and-vector edit rolls back together. The
-translated counterexample remains available against the pinned unpatched
-source, and existing named rows require separate evidence. The current
-Android mobile producer applies 11 reviewed transforms and passed its load
-and pre-provider checks across 4,338 first-party inputs.
+The historical named embedding provenance campaign at SDK `86ab55fd81` checked
+eight real PGlite schedules. That authenticated upstream source validates
+a named vector at the actual write or search boundary and rejects a delayed
+resize after named activation. A rejected text-and-vector edit rolls back
+together. SQL readback retains the exact stored vector's representation;
+serializing its numbers loses that proof, and the reconstructed vector is
+refused. The translated counterexample retains its original historical source
+fragments, and existing named rows require separate provenance evidence. This
+campaign record does not transfer to a later SDK pin. The current Android mobile
+producer authenticates committed upstream source; its
+source input audit is separate from installed runtime qualification.
 
 The Agent Calendar refresh campaign checks 25 schedules and 237 checkpoints
 against the actual read controller. It covers trailing same-query refresh,

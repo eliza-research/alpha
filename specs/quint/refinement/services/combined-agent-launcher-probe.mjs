@@ -6,6 +6,7 @@ import {pathToFileURL} from 'node:url';
 import {execFileSync, spawn} from 'node:child_process';
 import {EventEmitter} from 'node:events';
 import {CORE_STATE_MANIFEST} from '../../../../scripts/core-state-patch.mjs';
+import {parseBuildPolicy} from '../../../../scripts/build-policy-source.mjs';
 import {sourceManifest, sha} from '../../../../scripts/combined-agent-source.mjs';
 import {writeCoreStateFixture} from '../../../../test/fixtures/core-state-root.mjs';
 
@@ -51,9 +52,10 @@ function createFixture(scratch, scenario) {
   const selectedPin = scenario === 'pinned' ? snapshot.revision : '1'.repeat(40);
   json(join(repo, 'upstream.lock.json'), {commit: selectedPin});
   const manifestFile = join(repo, CORE_STATE_MANIFEST);
-  const manifestValue = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
-  json(manifestFile, {...manifestValue, baseCommit: selectedPin});
-  if (scenario === 'core-refused') json(manifestFile, {...manifestValue, baseCommit: '0'.repeat(40)});
+  const manifestValue = parseBuildPolicy(fs.readFileSync(manifestFile));
+  const writeCatalog = value => write(manifestFile, 'export default '+JSON.stringify(value)+';\n');
+  writeCatalog({...manifestValue, baseCommit: selectedPin});
+  if (scenario === 'core-refused') writeCatalog({...manifestValue, baseCommit: '0'.repeat(40)});
   write(node, 'Private fixture version port only\n', 0o700);
   write(bun, 'Private fixture version and launch port only\n', 0o700);
   write(key, scenario === 'empty-input' ? '' : 'synthetic-model-port-input', scenario === 'key-mode' ? 0o644 : 0o600);

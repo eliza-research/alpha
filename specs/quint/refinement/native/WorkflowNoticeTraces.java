@@ -1,4 +1,4 @@
-package ai.elizaresearch.alphaphone;
+package ai.alphacompute.alphaphone;
 
 import android.app.Notification;
 import android.app.NotificationManager;
@@ -12,6 +12,7 @@ import java.security.MessageDigest;
 import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.Locale;
+import java.util.Set;
 
 /** Controlled platform ports. Actual shared notification classes own all admission and ledger rules. */
 final class WorkflowPorts {
@@ -63,7 +64,7 @@ public final class WorkflowNoticeTraces {
   AlphaNotificationsPlugin bridge;
   final NotificationManager manager;
   final Trace trace;
-  String token,kind="none",phase="idle",terminal="none";
+  String token,retiredToken,kind="none",phase="idle",terminal="none";
   int callOwner,callBinding,callRun,content,generation=1;
   PluginCall request;
   boolean hadReceipt;
@@ -81,9 +82,9 @@ public final class WorkflowNoticeTraces {
   }
   private JSONObject routeState(){
    JSONObject row=row(WorkflowNoticeTaps.SLOT);
-   if(row==null)return new JSONObject().put("owner",0).put("binding",0).put("runId",0).put("token",0);
+   if(row==null){if(token!=null)retiredToken=token;token=null;return new JSONObject().put("owner",0).put("binding",0).put("runId",0).put("token",0);}
    String stored=row.getString("token");
-   if(token==null)token=stored;
+   if(token==null){check(!stored.equals(retiredToken),"released routes never reuse a stale tap token");token=stored;}
    check(stored.equals(token)&&stored.matches("[a-f0-9-]{36}"),"exact retained route token");
    JSONObject route=row.getJSONObject("route");
    check(owner(suffix(route.getString("ownerId"))).getString("agentId").equals(route.getString("agentId")),"route owner tuple");
@@ -93,8 +94,13 @@ public final class WorkflowNoticeTraces {
   private JSONObject receiptState(){
    JSONObject row=row(WorkflowNoticeDelivery.SLOT);
    if(row==null)return new JSONObject().put("binding",0).put("content",0).put("status","absent");
+   if(row.keySet().equals(Set.of("status","at"))){
+    check("withdrawn".equals(row.getString("status"))&&row.getLong("at")>=0,"unpublished withdrawal is only a timestamped tombstone");
+    return new JSONObject().put("binding",0).put("content",0).put("status","withdrawn");
+   }
    Integer contentClass=hashes.get(row.getString("digest"));
-   check(contentClass!=null&&row.length()==3,"durable receipt has exact digest without content");
+   check(contentClass!=null&&row.keySet().equals(Set.of("binding","digest","status","at"))
+    &&row.getLong("at")>=0,"durable receipt has exact digest and timestamp without content");
    return new JSONObject().put("binding",bindingClass(row.getString("binding"))).put("content",contentClass).put("status",row.getString("status"));
   }
   private int currentOwner(){

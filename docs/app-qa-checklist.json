@@ -2039,7 +2039,7 @@
       "seeker": "Native host wiring implemented and source-tested; installed provider proof pending",
       "userApproval": "Pending",
       "evidence": [
-        "patches/eliza/managed-google-agent.patch",
+        "vendor/eliza/packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts",
         "test/gmail-agent-read-host.test.mjs",
         "scripts/native-google-product-host.ts",
         "test/native-google-agent-host.test.mjs"
@@ -2069,7 +2069,7 @@
       "userApproval": "Pending",
       "evidence": [
         "scripts/native-google-product-host.ts",
-        "patches/eliza/managed-google-agent.patch",
+        "vendor/eliza/packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts",
         "scripts/native-google-host-artifact.mjs",
         "test/native-google-agent-host.test.mjs"
       ],

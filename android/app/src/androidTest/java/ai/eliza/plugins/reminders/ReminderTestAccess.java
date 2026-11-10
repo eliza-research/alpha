@@ -6,7 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
-import ai.elizaresearch.alphaphone.AlphaReminders;
+import ai.alphacompute.alphaphone.AlphaReminders;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;

@@ -1,4 +1,4 @@
-// Source-shape guard (class S). It shows nothing about Android's behaviour.
+// Source and host-renderer guards. They show nothing about Android's behaviour.
 //
 // Page reading (Read aloud, Ask about page) runs its extraction script in a world the page's own
 // script cannot reach. A WebView provider without that capability (the SDK emulator's WebView 133
@@ -8,8 +8,13 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
+import {createRequire} from 'node:module';
+import {buildSync} from 'esbuild';
+import {JSDOM} from 'jsdom';
+import React from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
 
-const java = name => fs.readFileSync(`android/app/src/main/java/ai/elizaresearch/alphaphone/${name}.java`, "utf8");
+const java = name => fs.readFileSync(`android/app/src/main/java/ai/alphacompute/alphaphone/${name}.java`, "utf8");
 // The isolated reading world, blob capture and downloads are staged into the app from the reviewed
 // pin (plugin-native-browser-surface).
 const shared = name => fs.readFileSync(`vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/${name}.java`, "utf8");
@@ -50,7 +55,7 @@ test("the isolated-reading probe looks for the shared world's channel in the pag
   // the reading channel. A renamed channel would let that check pass without testing anything.
   const channel = /CHANNEL = "(__\w+)"/.exec(world)?.[1];
   assert.equal(channel, "__elizaBrowserReadWorld");
-  const probe = fs.readFileSync("android/app/src/androidTest/java/ai/elizaresearch/alphaphone/BrowserIsolatedReadingInstrumentedTest.java", "utf8");
+  const probe = fs.readFileSync("android/app/src/androidTest/java/ai/alphacompute/alphaphone/BrowserIsolatedReadingInstrumentedTest.java", "utf8");
   assert.ok(probe.includes(`typeof ${channel}==='undefined'`), "the page world is probed");
   assert.ok(probe.includes(`typeof frame.contentWindow.${channel}==='undefined'`), "a frame the page creates is probed");
   assert.doesNotMatch(probe, /__alphaBrowserReadWorld/, "no retired channel name");
@@ -61,21 +66,23 @@ test("the native side reports the capability and refuses a review with the unava
   assert.match(world, /this\.web = web;\s*if \(!supported\(\)\)\s*return;/, "no world, listener or script is created without the capability");
   assert.match(world, /public boolean available\(\) \{\s*return !closed && world != null;\s*\}/);
   // Alpha uses the shared world; it keeps no copy of its own.
-  assert.ok(!fs.existsSync("android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserReadingWorld.java"));
+  assert.ok(!fs.existsSync("android/app/src/main/java/ai/alphacompute/alphaphone/BrowserReadingWorld.java"));
   // The tab host and its reading are in the world's own package; Alpha's plugin extends that host.
   for (const source of [plugin, reading]) assert.match(source, /^package ai\.eliza\.plugins\.browsersurface;$/m);
   assert.match(alphaPlugin, /public class AlphaBrowserPlugin extends BrowserTabHostPlugin \{/);
   assert.match(plugin, /@PluginMethod public void readingSupport\(PluginCall call\) \{ JSObject out=new JSObject\(\);out\.put\("available",BrowserReadingWorld\.supported\(\)\);call\.resolve\(out\); \}/);
   // Unavailable is the first answer of a review: before a speech route is asked for, before the
   // page is judged, before extraction, and it is not the "reload this page" answer.
-  const review = reading.slice(reading.indexOf("private void review(PluginCall call,WebView web,BrowserReadingWorld world,BooleanSupplier stillCurrent,boolean question){"));
+  const reviewStart=reading.indexOf("private void review(PluginCall call,String tab,WebView web,BrowserReadingWorld world,BooleanSupplier stillCurrent,boolean question){");
+  assert.ok(reviewStart>0,'the tab-bound shared review entry exists');
+  const review = reading.slice(reviewStart);
   const unsupported = review.indexOf("if(world==null||!world.available()){call.reject(BrowserPageReading.UNSUPPORTED_MESSAGE,BrowserPageReading.READING_UNSUPPORTED);return;}");
   const route = review.indexOf('call.reject("Select an available speech route before reading")');
   const sensitive = review.indexOf('call.reject("Reading unavailable on a sensitive or unverified page",BrowserPageReading.SENSITIVE_PAGE)');
   const notReady = review.indexOf('if(!world.ready()){call.reject("This page is not ready for private reading. Reload this page, then try again.",BrowserPageReading.READING_NOT_READY);return;}');
   const extract = review.indexOf("world.evaluate(BrowserPageReading.EXTRACT,");
   assert.ok(unsupported > 0 && route > unsupported && sensitive > route && notReady > sensitive && extract > notReady, "unsupported, then speech route, sensitive page, not ready, then extraction");
-  assert.match(review, /^[^\n]*\n\s*cancel\(\);final long expected=generation;\n\s*\/\/[^\n]*\n\s*if\(world==null\|\|!world\.available\(\)\)/, "nothing but the cancellation of an earlier review precedes it");
+  assert.match(review, /^[^\n]*\n\s*cancel\(\);final long expected=generation;tabId=tab;\n\s*\/\/[^\n]*\n\s*if\(world==null\|\|!world\.available\(\)\)/, "only earlier-review cancellation and tab binding precede the capability refusal");
   assert.match(policy, /public static final String READING_UNSUPPORTED = "reading-unsupported";/);
 });
 
@@ -120,7 +127,32 @@ test('Cloud native Browser hides local-only reading without disabling page quest
   const available=new Function('Capacitor','cloudRuntimeEnabled','return '+match[1])({isNativePlatform:()=>native},cloud);
   assert.equal(available,!(native&&cloud));
  }
- assert.match(template,/browser\.readAloudAvailable && browser\.pageContentAvailable/);
+ // Render the real menu guards through dc-lite: a source-shape assertion alone
+ // previously accepted an unsupported compound expression that hid the control.
+ const menuRows=template.split('\n').filter(row=>row.includes('aria-label="Read aloud"')||row.includes('aria-label="Ask about page"'));
+ assert.equal(menuRows.length,2,'both actual Browser menu controls are captured');
+ const dom=new JSDOM(menuRows.join('\n'));
+ try{
+  const guarded=label=>{
+   const button=dom.window.document.querySelector(`button[aria-label="${label}"]`);assert.ok(button,label);
+   let node=button;while(node.parentElement?.localName==='sc-if')node=node.parentElement;
+   return node.outerHTML;
+  };
+  const menu='<main class="os"><section data-screen>'+guarded('Read aloud')+guarded('Ask about page')+'</section></main>';
+  const renderer=fs.readFileSync('apps/app/src/prototype/dc-lite.js','utf8')
+   .replace("import {iconStyle} from '../icon-style';",'const iconStyle=()=>({});')
+   .replace('import templateHtml from "./template.html?raw";',`const templateHtml=${JSON.stringify(menu)};`);
+  const code=buildSync({stdin:{contents:renderer,resolveDir:process.cwd(),loader:'js'},bundle:true,write:false,platform:'node',format:'cjs',external:['react']}).outputFiles[0].text;
+  const module={exports:{}};new Function('require','module','exports','document',code)(createRequire(import.meta.url),module,module.exports,dom.window.document);
+  class Menu extends module.exports.DCLogic{renderVals(){return {browser:this.props.browser};}}
+  for(const readAloudAvailable of [false,true])for(const pageContentAvailable of [false,true]){
+   const rendered=new JSDOM(renderToStaticMarkup(React.createElement(Menu,{browser:{readAloudAvailable,pageContentAvailable}})));
+   try{
+    assert.equal(!!rendered.window.document.querySelector('button[aria-label="Read aloud"]'),readAloudAvailable&&pageContentAvailable);
+    assert.equal(!!rendered.window.document.querySelector('button[aria-label="Ask about page"]'),pageContentAvailable);
+   }finally{rendered.window.close();}
+  }
+ }finally{dom.window.close();}
  const read=adapter.slice(adapter.indexOf('async function readPage()'),adapter.indexOf('async function askPage()'));
  assert.ok(read.indexOf('if(Capacitor.isNativePlatform()&&cloudRuntimeEnabled)return;')<read.indexOf('createNativeReadingVoice()'));
  const runtime=fs.readFileSync('apps/app/src/runtime/native-reading-voice.ts','utf8');

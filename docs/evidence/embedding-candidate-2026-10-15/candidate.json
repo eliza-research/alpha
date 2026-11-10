@@ -3,15 +3,15 @@
   "recordedAt": "2026-10-15T03:09:24.430588+00:00",
   "sourceCommit": "968348d792d3d36df129bc53bd85cebed47d0830",
   "nativeCommit": "3e5f73922ee804806a2e955b50843a5042e6e401",
-  "identity": "ai.elizaresearch.alphaphone",
-  "testApplication": "ai.elizaresearch.embeddingqualifier",
+  "identity": "ai.alphacompute.alphaphone",
+  "testApplication": "ai.alphacompute.embeddingqualifier",
   "qualified": false,
   "packagedProduct": false,
   "permissions": [],
   "ndk": "28.2.13676358",
   "androidApi": 23,
   "buildType": "Release",
-  "jniClass": "ai/elizaresearch/alphaphone/ElizaVoiceNative",
+  "jniClass": "ai/alphacompute/alphaphone/ElizaVoiceNative",
   "jniSubset": "full",
   "buildPathRemapped": false,
   "engineRebuilt": false,
@@ -215,22 +215,22 @@
         "sha256": "c9ec3731dd1a3dabccf3ed642cfba2ffd4c49bbacfab1811b97f7b10855593b0"
       },
       {
-        "path": "java/ai/elizaresearch/alphaphone/BuildConfig.java",
+        "path": "java/ai/alphacompute/alphaphone/BuildConfig.java",
         "bytes": 154,
         "sha256": "5f4487bfdede9467c48a724b992e4b14c6a85d1391f9a437a4dca83550ccb16a"
       },
       {
-        "path": "java/ai/elizaresearch/alphaphone/ElizaAsrNativeEnv.java",
+        "path": "java/ai/alphacompute/alphaphone/ElizaAsrNativeEnv.java",
         "bytes": 4937,
         "sha256": "998fa0a7efdef4f806671e48c3b3cf0886884a6d995cd15ed1f9ce78d4a4b8af"
       },
       {
-        "path": "java/ai/elizaresearch/alphaphone/ElizaVoiceNative.java",
+        "path": "java/ai/alphacompute/alphaphone/ElizaVoiceNative.java",
         "bytes": 17035,
         "sha256": "9c8c67f2c6a54596c18dabee896f0879243991a57a7dff8df69ab82230f116f5"
       },
       {
-        "path": "java/ai/elizaresearch/alphaphone/EmbeddingQualification.java",
+        "path": "java/ai/alphacompute/alphaphone/EmbeddingQualification.java",
         "bytes": 3247,
         "sha256": "2083405a2e9fbf6e469044826a91d7694e995e1dd6ceb9bacc28dd7fcc8cc99a"
       },
@@ -319,7 +319,7 @@
       "-DANDROID_ABI=x86_64",
       "-DANDROID_PLATFORM=android-23",
       "-DCMAKE_BUILD_TYPE=Release",
-      "-DELIZA_VOICE_JNI_CLASS=ai/elizaresearch/alphaphone/ElizaVoiceNative",
+      "-DELIZA_VOICE_JNI_CLASS=ai/alphacompute/alphaphone/ElizaVoiceNative",
       "-DELIZAVOICE_FFI_INCLUDE_DIR=/tmp/alpha-voice-source-968348/plugins/plugin-local-inference/native/llama.cpp/tools/omnivoice/include",
       "-DELIZAVOICE_INFERENCE_LIB_DIR=/home/shaw/Android/alpha-qualification/2026-10-15-native-968348/native-x86_64/jniLibs"
     ],
@@ -335,7 +335,7 @@
       "-DANDROID_ABI=arm64-v8a",
       "-DANDROID_PLATFORM=android-23",
       "-DCMAKE_BUILD_TYPE=Release",
-      "-DELIZA_VOICE_JNI_CLASS=ai/elizaresearch/alphaphone/ElizaVoiceNative",
+      "-DELIZA_VOICE_JNI_CLASS=ai/alphacompute/alphaphone/ElizaVoiceNative",
       "-DELIZAVOICE_FFI_INCLUDE_DIR=/tmp/alpha-voice-source-968348/plugins/plugin-local-inference/native/llama.cpp/tools/omnivoice/include",
       "-DELIZAVOICE_INFERENCE_LIB_DIR=/home/shaw/Android/alpha-qualification/2026-10-15-native-968348/native-arm64-v8a/jniLibs"
     ]

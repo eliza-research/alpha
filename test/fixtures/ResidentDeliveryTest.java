@@ -1,4 +1,4 @@
-package ai.elizaresearch.alphaphone;
+package ai.alphacompute.alphaphone;
 import org.json.*;
 public final class ResidentDeliveryTest {
  static void require(boolean value){if(!value)throw new AssertionError();}

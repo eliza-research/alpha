@@ -24,6 +24,7 @@
       "@elizaos/capacitor-system/reset": ["./.eliza/client-features/plugins/plugin-native-system/src/reset.ts"],
       "@elizaos/capacitor-system/settings": ["./.eliza/client-features/plugins/plugin-native-system/src/settings.ts"],
       "@elizaos/contracts/device-action-execution": ["./.eliza/client-features/packages/contracts/src/device-action-execution.ts"],
+      "@elizaos/contracts/client-turn-observation": ["./.eliza/client-features/packages/contracts/src/client-turn-observation.ts"],
       "@elizaos/capacitor-system/shade": [
         "./.eliza/client-features/plugins/plugin-native-system/src/client/shade.ts"
       ],
@@ -89,6 +90,9 @@
       ],
       "@elizaos/plugin-assistant/device-calendar-contract": [
         "./.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/calendar-contract.ts"
+      ],
+      "@elizaos/plugin-assistant/device-clock-review": [
+        "./.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/clock-handoff.ts"
       ],
       "@elizaos/plugin-assistant/device-foreground-review": [
         "./.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/foreground-review-contract.ts"

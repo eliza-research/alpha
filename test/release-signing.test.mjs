@@ -124,7 +124,7 @@ test("assetlinks.json is rendered only from the recorded release signer, never u
   const text = renderAssetLinks({ template, signerSha256: SIGNER, packageName });
   const [statement] = JSON.parse(text);
   assert.deepEqual(statement.relation, ["delegate_permission/common.handle_all_urls"]);
-  assert.equal(statement.target.package_name, "ai.elizaresearch.alphaphone");
+  assert.equal(statement.target.package_name, "ai.alphacompute.alphaphone");
   assert.deepEqual(statement.target.sha256_cert_fingerprints, [fingerprint(SIGNER)]);
   assert.match(statement.target.sha256_cert_fingerprints[0], /^(AA:){31}AA$/);
   assert.doesNotMatch(text, new RegExp(PLACEHOLDER));

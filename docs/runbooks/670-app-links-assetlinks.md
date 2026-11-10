@@ -7,7 +7,7 @@ Only the Cloud operator can change `ELIZA_ANDROID_ASSET_LINKS_JSON`. Nothing was
 
 | File | Purpose |
 | --- | --- |
-| [`scripts/owner/app-links-evidence.mjs`](../../scripts/owner/app-links-evidence.mjs) | Reads a saved `adb shell pm get-app-links ai.elizaresearch.alphaphone` output; passes only for `eliza.app: verified` and an installed signature equal to the enrolled release certificate (`approved` is an override, not server verification) |
+| [`scripts/owner/app-links-evidence.mjs`](../../scripts/owner/app-links-evidence.mjs) | Reads a saved `adb shell pm get-app-links ai.alphacompute.alphaphone` output; passes only for `eliza.app: verified` and an installed signature equal to the enrolled release certificate (`approved` is an override, not server verification) |
 | [`test/owner-app-links-evidence.test.mjs`](../../test/owner-app-links-evidence.test.mjs) | Synthetic `pm get-app-links` samples |
 | Evidence template | Below |
 
@@ -15,7 +15,7 @@ Only the Cloud operator can change `ELIZA_ANDROID_ASSET_LINKS_JSON`. Nothing was
 
 `node scripts/render-assetlinks.mjs --check https://eliza.app/.well-known/assetlinks.json` **exits 1**:
 `android/release-signer.json signerSha256 is "unset"`. The published document (HTTP 200,
-`application/json`, no redirect) holds exactly one statement, for `ai.elizaresearch.alphaphone`,
+`application/json`, no redirect) holds exactly one statement, for `ai.alphacompute.alphaphone`,
 `delegate_permission/common.handle_all_urls`, with two fingerprints:
 
 | Fingerprint (SHA-256) | What this repository knows about it |
@@ -28,7 +28,7 @@ Staging (`https://staging.eliza.app/.well-known/assetlinks.json`) lists one cert
 which appears in no other record in this repository (presumably the operator's test-mocks debug signer).
 
 Implication: production `eliza.app` today verifies Alpha's package for a **debug** certificate. Any
-APK with package `ai.elizaresearch.alphaphone` signed by that debug key gets verified handling of
+APK with package `ai.alphacompute.alphaphone` signed by that debug key gets verified handling of
 `https://eliza.app/alphaphone/auth/callback` (and the Workspace return) on a phone where the real
 app is not installed. PKCE limits what an intercepted authorization code is worth, but production
 should list only the release certificate (decision 1).
@@ -59,11 +59,11 @@ Other prepared checks:
    exit 0; `node scripts/cloud-readiness.mjs probe` App Links gate must pass.
 4. Staging keeps the debug signer of test-mocks builds (`node scripts/cloud-readiness.mjs probe --environment staging --signer <SHA-256>`
    names a specific build's certificate).
-5. Keep Alpha's `ELIZA_NATIVE_AUTH_CALLBACKS_JSON` entry (printed by `cloud-readiness.mjs registration`).
+5. Keep Alpha's `ELIZA_NATIVE_AUTH_CALLBACKS_JSON` entry (printed by `cloud-readiness.mjs registration`), including its optional browser sign-in registration from the [consumer Pages runbook](pages-browser-sign-in.md).
 6. On an installed release build:
-   `adb shell pm get-app-links ai.elizaresearch.alphaphone > pm-get-app-links.txt`, then
+   `adb shell pm get-app-links ai.alphacompute.alphaphone > pm-get-app-links.txt`, then
    `node scripts/owner/app-links-evidence.mjs pm-get-app-links.txt` must exit 0. If the state is not
-   `verified`, re-trigger with `adb shell pm verify-app-links --re-verify ai.elizaresearch.alphaphone`
+   `verified`, re-trigger with `adb shell pm verify-app-links --re-verify ai.alphacompute.alphaphone`
    and wait; never force it with `pm set-app-links`.
 
 ## Decisions for the owner
@@ -92,7 +92,7 @@ Other prepared checks:
     "evidenceClass": "device (installed release build)",
     "build": { "versionCode": 0, "versionName": "<name>", "appLinkHost": "eliza.app", "apkSha256": "<sha256 of the installed APK>" },
     "deviceModel": "<model>", "androidVersion": "<version>",
-    "command": "adb shell pm get-app-links ai.elizaresearch.alphaphone",
+    "command": "adb shell pm get-app-links ai.alphacompute.alphaphone",
     "checker": "node scripts/owner/app-links-evidence.mjs pm-get-app-links.txt",
     "elizaAppState": "verified",
     "signatureMatchesRelease": true
@@ -110,6 +110,6 @@ Other prepared checks:
 ## Draft decision entries
 
 - **P-NN — H-13 (#670):** Production `https://eliza.app/.well-known/assetlinks.json` grants
-  `ai.elizaresearch.alphaphone` to the enrolled release certificate only (`<SHA-256>`); the debug
+  `ai.alphacompute.alphaphone` to the enrolled release certificate only (`<SHA-256>`); the debug
   signer `22:42:99:4D:...` and `ED:BF:CA:CB:...` are removed; staging lists the test-mocks debug
   signer. Policy, not evidence.

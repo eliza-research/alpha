@@ -117,7 +117,7 @@ key and the descriptor's algorithm.
 `physical-product.json` records the descriptor hash with `imageBuilt`, `imageSigned`,
 `releaseQualified` and `deviceAcceptanceVerified` all `false`.
 The shared composition keeps the system Clock (`DeskClock`) in the product. A brand boot
-animation is staged only when `vendor/eliza/packages/os/android/products/pixel10a-alpha.json`
+animation is staged only when the consumer's `android/aosp/pixel10a-composition.json`
 pins its SHA-256 (`brandAssets.bootAnimation`); then pass the reviewed stored
 `bootanimation.zip` with `--boot-animation`. Alpha's composition pins none, so the stock
 animation remains.

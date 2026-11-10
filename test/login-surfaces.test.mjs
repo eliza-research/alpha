@@ -151,14 +151,14 @@ test('the HTTP authentication prompt fills only for an engine-authenticated orig
   like(auth, /public AutofillValue getAutofillValue\(\) \{\s*return admitted\(\) \? super\.getAutofillValue\(\) : null;\s*\}/);
   like(auth, /public void autofill\(AutofillValue value\) \{\s*if \(admitted\(\)\)\s*super\.autofill\(value\);\s*\}/);
   // Alpha passes the integrated vault's extras keys; a field without them is never bound.
-  const alphaStores = read('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaBrowserStores.java');
+  const alphaStores = read('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaBrowserStores.java');
   like(alphaStores, /\.autofillExtras\(new BrowserAutofillExtras\(PasswordAutofillPolicy\.FIELD_ORIGIN,PasswordFormPolicy\.TOP_ORIGIN_EXTRA\)\)/);
   like(plugin, /BrowserHttpAuthAutofill\.field\(getActivity\(\),authOrigin,bound,false,config\(\)\.autofillExtras\);[\s\S]{0,140}BrowserHttpAuthAutofill\.field\(getActivity\(\),authOrigin,bound,true,config\(\)\.autofillExtras\);/);
   like(plugin, /java\.util\.function\.BooleanSupplier bound=\(\)->authBinding!=null&&authBinding\.admits\(authSnapshot\(t,host,realm\)\)&&siteDialogTab==t;/);
   like(plugin, /siteDialogRevoke=\(\)->\{if\(authBinding!=null\)authBinding\.revoke\(\);BrowserHttpAuthAutofill\.exclude\(user,pass\);\};/);
   // Cancel, Back, tab change, navigation and process loss all dismiss through these two paths, which revoke first.
   like(plugin, /AlertDialog dialog=siteDialog;if\(dialog==null\)return;\n\s*revokeSiteDialogAutofill\(\);/);
-  like(plugin, /dialog\.setOnDismissListener\(d->\{if\(siteDialog!=dialog\)return;revokeSiteDialogAutofill\(\);/);
+  like(plugin, /dialog\.setOnDismissListener\(d->\{if\(siteDialog==dialog\)\{revokeSiteDialogAutofill\(\);Runnable pending=siteDialogCancel;siteDialog=null;siteDialogTab=null;siteDialogCancel=null;siteDialogAutofill=false;if\(pending!=null\)pending\.run\(\);\}/);
   like(auth, /InputType\.TYPE_CLASS_TEXT\s*\|\s*\(password \? InputType\.TYPE_TEXT_VARIATION_PASSWORD : InputType\.TYPE_TEXT_FLAG_NO_SUGGESTIONS\)/, 'exactly one password-typed field');
   // The only getAutofillValue is the framework-facing gate above; Alpha never reads values itself.
   assert.equal((auth.match(/getAutofillValue/g) || []).length, 2, 'getAutofillValue appears only in the bound/unbound gate');
@@ -181,7 +181,7 @@ test('the HTTP authentication prompt fills only for an engine-authenticated orig
   like(plugin, /\/\/ A repeated challenge means the previous answer was not accepted: never offer to save it\.\n\s*finishAuthSave\(t,null\);/);
   like(plugin, /private void fail\(Tab t, String message\) \{ finishAuthSave\(t,null\);/);
   // Dismissal cancels first: a provider may save when every field becomes invisible.
-  like(plugin, /if\(siteDialogAutofill\)\{siteDialogAutofill=false;AutofillManager manager=getActivity\(\)\.getSystemService\(AutofillManager\.class\);if\(manager!=null\)manager\.cancel\(\);\}\n\s*dialog\.dismiss\(\);/);
+  like(plugin, /if\(siteDialogAutofill\)\{siteDialogAutofill=false;AutofillManager manager=getActivity\(\)\.getSystemService\(AutofillManager\.class\);if\(manager!=null\)manager\.cancel\(\);\}\n\s*Runnable pending=siteDialogCancel;siteDialog=null;siteDialogTab=null;siteDialogCancel=null;\n\s*dialog\.dismiss\(\);\n\s*if\(pending!=null\)pending\.run\(\);/);
   like(plugin, /dialog\.setCancelable\(authOrigin==null\);dialog\.setCanceledOnTouchOutside\(false\);/);
   // The password manager is named only when Android has an Autofill service enabled.
   like(plugin, /boolean autofillOn=authOrigin!=null&&autofillState!=null&&autofillState\.isEnabled\(\);/);
@@ -214,12 +214,12 @@ test('External authorization uses the browser and Google sign-in uses the native
     assert.equal(surface?.kind, 'external-browser', id);
     assert.equal(surface.eligible, false, id);
   }
-  const connection = read('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaConnectionPlugin.java');
+  const connection = read('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaConnectionPlugin.java');
   const open = connection.slice(connection.indexOf('public void openExternal('), connection.indexOf('public void openExternal(') + 900);
   like(open, /Intent intent = new Intent\(Intent\.ACTION_VIEW, Uri\.parse\(url\.toASCIIString\(\)\)\); intent\.addCategory\(Intent\.CATEGORY_BROWSABLE\);/);
   // Exact production hosts (eliza.app, cloud.eliza.app, accounts.google.com); staging only with test mocks.
   like(open, /if \(!ConnectionRoutes\.externalHost\(url\.getScheme\(\), url\.getHost\(\), url\.getPort\(\), BuildConfig\.ELIZA_DEV_ALLOW_TEST_MOCKS\)\) throw new IllegalArgumentException\(\);/);
-  const routes = read('android/app/src/main/java/ai/elizaresearch/alphaphone/ConnectionRoutes.java');
+  const routes = read('android/app/src/main/java/ai/alphacompute/alphaphone/ConnectionRoutes.java');
   // Alpha supplies its hosts and Google consent to the shared policy, which opens exactly those (plugin-native-agent).
   like(routes, /CloudDeployment\.PRODUCTION_WEB_HOST,CloudDeployment\.STAGING_WEB_HOST,\s*CloudDeployment\.PRODUCTION_SERVICES_HOST,CloudDeployment\.STAGING_SERVICES_HOST,java\.util\.Collections\.singleton\("accounts\.google\.com"\)\)\)/);
   const policy = read('vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/connection/CloudConnectionPolicy.java');
@@ -243,10 +243,10 @@ test('External authorization uses the browser and Google sign-in uses the native
   // Inspect the exact shared source that the Android build packages.
   const staged=preparePatchedNative({root:process.cwd()});
   const signIn = read(path.join(staged.root,'packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java'));
-  assert.match(read('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCloudSignInPlugin.java'), /extends CloudSignInPlugin/);
+  assert.match(read('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCloudSignInPlugin.java'), /extends CloudSignInPlugin/);
   assert.equal(inventory.surfaces.find(s=>s.id==='eliza-cloud-sign-in-google').kind,'external-browser');
   like(signIn,/CustomTabsIntent/, 'Google sign-in uses the external browser');
-  assert.match(read('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCloudSignInPlugin.java'),/googleSignInMode\("browser"\)/);
+  assert.match(read('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCloudSignInPlugin.java'),/googleSignInMode\("browser"\)/);
   like(signIn,/tab\.intent\.setPackage\(browser\)/, 'launch targets the selected Custom Tabs browser');
   assert.doesNotMatch(signIn, /new WebView|WebView\.loadUrl|AlphaBrowserPlugin/, 'never an embedded user agent');
   const ui = read('apps/app/src/runtime/google-connection-ui.tsx');
@@ -337,7 +337,7 @@ test('secrets stay out of observations, transcripts and logs', () => {
     assert.doesNotMatch(read(file), /console\.(log|info|warn|error|debug)\(/, `${file} does not log`);
   }
   for (const file of ['AlphaBrowserPlugin.java', 'PasswordProviderSupport.java', sharedBrowser + 'BrowserTabHostPlugin.java', sharedBrowser + 'BrowserReviewedReading.java', sharedBrowser + 'BrowserLoginFields.java', sharedBrowser + 'BrowserFieldOrigin.java', sharedBrowser + 'BrowserHttpAuthAutofill.java']) {
-    const text = read(file.startsWith(sharedBrowser) ? file : 'android/app/src/main/java/ai/elizaresearch/alphaphone/' + file);
+    const text = read(file.startsWith(sharedBrowser) ? file : 'android/app/src/main/java/ai/alphacompute/alphaphone/' + file);
     const logs = [...text.matchAll(/(?:android\.util\.)?Log\.[vdiwe]\([^;]*;/g)].map(match => match[0]);
     for (const line of logs) assert.doesNotMatch(line, /url|value|password|username|structure|getText|origin/i, `${file}: ${line}`);
     assert.doesNotMatch(text, /printStackTrace\(/, file);

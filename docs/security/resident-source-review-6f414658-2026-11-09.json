@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "recordedAtUTC": "2026-11-09T22:10:56.009957+00:00",
+  "scope": "FRESH_FULL_LOCK_AND_REVIEWED_UPSTREAM_FIXES_ONLY",
+  "previousUpstreamCommit": "450087e00e6dc1c289aab0c3e424560b7040d163",
+  "upstreamCommit": "6f414658b08cf8075d8fb12ece2ec968a221af7e",
+  "upstreamTree": "e0867bb13116eebc871287da1ed8202f632feb57",
+  "publishedBranch": "codex/alphaphone-identity-ota-reviewed-20261109",
+  "command": "node scripts/dependency-audit.mjs --resident --write",
+  "commandExitCode": 1,
+  "registryEndpoint": "https://registry.npmjs.org/-/npm/v1/security/advisories/bulk",
+  "input": "vendor/eliza/bun.lock",
+  "unchangedBunLockGitBlob": "af0e104940fca537baffc5dd7c5b97795c3b1d16",
+  "inputSha256": "05c0f82c62f6e3e7eeda16e0f24d1d36da84a995dcaac0aa7a60d863dd63b5d7",
+  "registryPackageVersions": 3694,
+  "findingRows": 103,
+  "counts": {
+    "info": 0,
+    "low": 12,
+    "moderate": 44,
+    "high": 46,
+    "critical": 1
+  },
+  "findingsUnchanged": true,
+  "exceptionObjectsUnchanged": true,
+  "exceptionCount": 84,
+  "exceptionDatesChanged": false,
+  "pendingUpstreamFixesUnchanged": true,
+  "pendingUpstreamFixCount": 12,
+  "rootAudit": {
+    "command": "node scripts/dependency-audit.mjs --write",
+    "commandExitCode": 0,
+    "lockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
+    "findingsUnchanged": true,
+    "findingRows": 3,
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 3,
+      "high": 0,
+      "critical": 0
+    }
+  },
+  "sourceDelta": [
+    {
+      "path": "packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts",
+      "gitBlob": "7156be75fb1142bcd3a5cb4ec25767b4cb77f934",
+      "sha256": "4002afcaefdc347b2de013cb49523dc77545dd1cb896183d8d704678336ddc01"
+    },
+    {
+      "path": "packages/app/test/native-host/managed-google-agent.test.mjs",
+      "gitBlob": "9318041ca43708ee44781982eea37f06ad8c166d",
+      "sha256": "60db3d49713ac0ef4831f97c6534f4d620e5194a2d7f38ab06b08f8b2b0e06e8"
+    },
+    {
+      "path": "plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NoticeCoordinator.java",
+      "gitBlob": "9cc8f3fc166d1e87b0a1ed68547bd50480ef190b",
+      "sha256": "7808f64944fa3f9f9868dc4aaa6462d7ab8462fd86e08e46192d933fddec0419"
+    },
+    {
+      "path": "plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NoticeDelivery.java",
+      "gitBlob": "6294ce2a3afe98c38e9ae5e39091a86b860768bd",
+      "sha256": "cdb296ddcba2ce3005d6070925d8c727a3be4f213c9a3b579e3bc05b496794d9"
+    },
+    {
+      "path": "plugins/plugin-native-notifications/test/native-host/NoticeHostTest.java",
+      "gitBlob": "06e2dd6074b5bf9ec637c9c2875e9152ab15c81e",
+      "sha256": "47fdc195aa48394925c5fc2aa4a70c91e721c39628737bdb651fdd8e44bfbccb"
+    }
+  ],
+  "independentReview": {
+    "reviewedCommit": "6f414658b08cf8075d8fb12ece2ec968a221af7e",
+    "soleParent": "450087e00e6dc1c289aab0c3e424560b7040d163",
+    "productionPostimagesByteIdenticalToReviewedFixes": true,
+    "productionFiles": 3,
+    "owningModuleRegressionFiles": 2,
+    "nativeSourceFilesChanged": 2,
+    "dependencyInputsChanged": false,
+    "upstreamNodeNoticeTests": {
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "command": "node --test test/native-host/notices.node.mjs",
+      "cwd": "plugins/plugin-native-notifications"
+    },
+    "upstreamBunGoogleHostTests": {
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "command": "bun --conditions=eliza-source test packages/app/test/native-host/managed-google-agent.test.mjs"
+    },
+    "reviewScope": "Definite absent/non-live approval cleanup, malformed or uncertain receipt route retention, original error preservation, exact Unicode-safe Gmail body cap, whole-response refusal and no dispatch side effects. Shared source fixes and focused regressions are upstream; no product behavior patch remains."
+  },
+  "approvalGranted": false,
+  "note": "Fresh registry queries reproduce existing findings. The resident command remains nonzero for existing unexcepted pending findings; none is waived. All exception objects, deadlines, pending fixes and historical build/static/native/packaged records retain their prior meaning and identities. Three upstream production postimages exactly match the reviewed former product deltas; source equality does not qualify a new artifact. This review grants no device, security, signing, user or release acceptance.",
+  "publishedPullRequest": "https://github.com/elizaOS/eliza/pull/39180"
+}

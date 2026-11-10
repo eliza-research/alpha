@@ -51,7 +51,7 @@
       "ro.boot.slot_suffix": "_a",
       "ro.boot.flash.locked": "0"
     },
-    "homeRoleHolder": "ai.elizaresearch.alphaphone",
+    "homeRoleHolder": "ai.alphacompute.alphaphone",
     "selinux": "Enforcing",
     "systemArtifacts": {
       "launcher": {
@@ -72,7 +72,7 @@
     },
     "listener": {
       "user": "0",
-      "packageName": "ai.elizaresearch.alphaphone.sense",
+      "packageName": "ai.alphacompute.alphaphone.sense",
       "privileged": true,
       "persistent": true,
       "captureHotwordGranted": true,

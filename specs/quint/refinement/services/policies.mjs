@@ -1,7 +1,7 @@
 import {fileURLToPath} from 'node:url';
 import {checkTraces, captureInputs} from '../check-traces.mjs';
 import {javaTraces} from '../native/java.mjs';
-const app = 'android/app/src/main/java/ai/elizaresearch/alphaphone/';
+const app = 'android/app/src/main/java/ai/alphacompute/alphaphone/';
 const upstream = 'vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/';
 export async function policyRefinement() {
   const auth = 'vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/';
@@ -10,7 +10,7 @@ export async function policyRefinement() {
     ...['BrowserSitePermissionRecord.java', 'BrowserSitePermissions.java', 'BrowserWebOrigin.java', 'BrowserDownloadPolicy.java'].map(name => upstream + name)];
   const sources = [...product, fileURLToPath(import.meta.url), 'specs/quint/refinement/services/ServicePolicies.java', 'specs/quint/refinement/native/java.mjs', 'specs/quint/refinement/native/Trace.java'];
   const driverHashes = captureInputs(sources);
-  const byModel = javaTraces('../services/ServicePolicies.java', product, [], 'ai.elizaresearch.alphaphone.ServicePolicies');
+  const byModel = javaTraces('../services/ServicePolicies.java', product, [], 'ai.alphacompute.alphaphone.ServicePolicies');
   const receipts = [];
   for (const [model, traces] of Object.entries(byModel)) receipts.push(await checkTraces({model, sources, driverHashes, traces, scope: 'bounded-component', assumptions: [
     model === 'IdentitySession' ? 'Real Pending serialization, callback parsing and expiry/state match execute. Native plugin consumption, key/receipt persistence and acknowledgement still need orchestration instrumentation.'

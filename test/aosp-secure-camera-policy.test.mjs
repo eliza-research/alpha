@@ -5,7 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { assertNoAlphaLockScreenSurface, secureCameraActions as names } from "../scripts/aosp-secure-camera-contract.mjs";
 const secureCameraActions = names.map(name => `android.media.action.${name}`);
-const PKG = "ai.elizaresearch.alphaphone";
+const PKG = "ai.alphacompute.alphaphone";
 const TRUE = "(type 0x12)0xffffffff";
 const str = value => `"${value}" (Raw: "${value}")`;
 const element = (indent, tag, attrs = {}) => [`${" ".repeat(indent)}E: ${tag} (line=1)`,
@@ -37,7 +37,7 @@ test("an Alpha APK with a lock-screen surface or secure-camera handler is refuse
 
 test("the shared Pixel 10a stager applies the same refusal to Alpha's composition", async () => {
   const { enforceLauncherLockScreenPolicy } = await import("../vendor/eliza/packages/os/scripts/android/pixel10a-product.ts");
-  const product = JSON.parse(fs.readFileSync("vendor/eliza/packages/os/android/products/pixel10a-alpha.json", "utf8"));
+  const product = JSON.parse(fs.readFileSync("android/aosp/pixel10a-composition.json", "utf8"));
   assert.equal(product.launcher.refuseLockScreenSurfaces, true);
   assert.equal(enforceLauncherLockScreenPolicy(product, tree()), true);
   assert.throws(() => enforceLauncherLockScreenPolicy(product, tree({ mainAttrs: { showWhenLocked: TRUE } })), /Alpha does not implement/);
@@ -47,7 +47,7 @@ test("the shipped Alpha manifest and native code never put Alpha over Keyguard",
   const manifest = fs.readFileSync("android/app/src/main/AndroidManifest.xml", "utf8");
   assert.doesNotMatch(manifest, /android:(showWhenLocked|showOnLockScreen|turnScreenOn)="true"/);
   for (const action of secureCameraActions) assert.ok(!manifest.includes(action), `no ${action} filter or query`);
-  const dir = "android/app/src/main/java/ai/elizaresearch/alphaphone";
+  const dir = "android/app/src/main/java/ai/alphacompute/alphaphone";
   for (const name of fs.readdirSync(dir).filter(file => file.endsWith(".java"))) {
     const java = fs.readFileSync(path.join(dir, name), "utf8");
     assert.doesNotMatch(java, /setShowWhenLocked\(\s*true|setTurnScreenOn\(\s*true|FLAG_SHOW_WHEN_LOCKED|FLAG_DISMISS_KEYGUARD|requestDismissKeyguard|STILL_IMAGE_CAMERA_SECURE|IMAGE_CAPTURE_SECURE/, name);

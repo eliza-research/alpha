@@ -5,6 +5,7 @@ import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { checkCoverage, detectedCounterexample, loadModels, readJson, repositoryRoot, runQuintChecker, runtimeScriptPaths, runtimeAssetPaths, sha256, sourceRoots } from '../scripts/quint-lib.mjs';
+import {authenticateFormalSources} from '../specs/quint/legacy/core/formal-source-inventory.mjs';
 
 test('counterexample admission requires the pinned CLI violation markers and rejects tool errors', () => {
   assert.equal(detectedCounterexample('[violation] Found an issue (42ms).\nerror: found a counterexample\n'), true);
@@ -46,9 +47,10 @@ test('runner records unexpected exceptions as failures and labels coverage evide
   };
   try {
     for (const path of [...sourceRoots, 'scripts']) mkdirSync(join(root, path), { recursive: true });
-    for (const name of ['check-quint.mjs', 'quint-lib.mjs', 'core-state-patch.mjs']) copyFileSync(join(repositoryRoot, 'scripts', name), join(root, 'scripts', name));
+    const runnerModules = ['check-quint.mjs', 'quint-lib.mjs', 'core-state-patch.mjs', 'build-policy-source.mjs'];
+    for (const name of runnerModules) copyFileSync(join(repositoryRoot, 'scripts', name), join(root, 'scripts', name));
     const fixtureSources = [...runtimeScriptPaths, ...runtimeAssetPaths];
-    for (const path of fixtureSources) if (path !== 'scripts/core-state-patch.mjs') write(path, '');
+    for (const path of fixtureSources) if (!runnerModules.some(name => path === `scripts/${name}`)) write(path, '');
     const model = { module: 'Fixture', path: 'specs/quint/application/Fixture.qnt', init: 'init', step: 'step', invariant: 'safety', tests: ['exampleTest'], currentChecks: [null] };
     write(model.path, 'module Fixture { run exampleTest = true }');
     for (const family of ['application', 'services', 'native', 'legacy']) {
@@ -116,12 +118,9 @@ test('every tracked TLA module and TLC configuration has an authenticated Quint 
   const upstream = readJson(join(repositoryRoot, 'specs/quint/legacy/core/source-inventory.json'));
   const sourcePin = readJson(join(repositoryRoot, 'upstream.lock.json')).commit;
   const vendor = join(repositoryRoot, 'vendor/eliza');
-  const shared = upstream.models.flatMap(model => {
-    assert.ok(registered.has(model.quintModule), model.quintModule);
-    return [{path: model.source, sha256: model.sha256}, ...model.configs];
-  });
-  assert.deepEqual(formalPaths(git(vendor, ['ls-tree', '-r', '--name-only', '-z', sourcePin])), shared.map(row => row.path).sort());
-  for (const row of shared) assert.equal(sha256(git(vendor, ['cat-file', 'blob', `${sourcePin}:${row.path}`])), row.sha256, row.path);
+  authenticateFormalSources(vendor, upstream.revision, upstream.models, registered);
+  assert.equal(upstream.currentUpstream.revision, sourcePin, 'Review the live formal-source inventory after an upstream pin change');
+  authenticateFormalSources(vendor, sourcePin, upstream.currentUpstream.models, registered);
 });
 
 test('coverage admission detects changed, removed and unassigned source records', () => {
@@ -145,7 +144,7 @@ test('source discovery follows consumed shared modules and rejects a stale clien
   try {
     for (const path of sourceRoots) mkdirSync(join(root, path), {recursive: true});
     mkdirSync(join(root, 'scripts'), {recursive: true});
-    for (const name of ['quint-lib.mjs', 'core-state-patch.mjs']) copyFileSync(join(repositoryRoot, 'scripts', name), join(root, 'scripts', name));
+    for (const name of ['quint-lib.mjs', 'core-state-patch.mjs', 'build-policy-source.mjs']) copyFileSync(join(repositoryRoot, 'scripts', name), join(root, 'scripts', name));
     write('upstream.lock.json', {commit: 'fixture', appSource: 'packages/app'});
     write('.eliza/client-features/.source.json', {baseCommit: 'fixture', sourceFiles: {'packages/ui/src/state.ts': 'fixture'}});
     write('android/consumer-host.json', {profile: {modules: [{source: {root: 'upstream', path: 'plugins/fixture/android'}}]}, residentHost: {helpers: ['packages/runtime/Owner.java']}});

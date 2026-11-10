@@ -12,13 +12,13 @@
     "oom": false,
     "signedAPKs": [
       {
-        "package": "package: name='ai.elizaresearch.alpha.videoqa' versionCode='1' versionName='video-qa-1' platformBuildVersionName='16' platformBuildVersionCode='36' compileSdkVersion='36' compileSdkVersionCodename='16'",
+        "package": "package: name='ai.alphacompute.alpha.videoqa' versionCode='1' versionName='video-qa-1' platformBuildVersionName='16' platformBuildVersionCode='36' compileSdkVersion='36' compileSdkVersionCodename='16'",
         "bytes": 17170589,
         "sha256": "b62be8274e777403b3ef1fa465df050721b2a164b7cd5cba3ee3f7c5a8596eb0",
         "signerSHA256": "9c4a754363a89851057006db30777d58bfe7c28f2ea2fc3ac80ba0882efe4764"
       },
       {
-        "package": "package: name='ai.elizaresearch.alpha.videoqa.test' versionCode='' versionName='' platformBuildVersionName='16' platformBuildVersionCode='36' compileSdkVersion='36' compileSdkVersionCodename='16'",
+        "package": "package: name='ai.alphacompute.alpha.videoqa.test' versionCode='' versionName='' platformBuildVersionName='16' platformBuildVersionCode='36' compileSdkVersion='36' compileSdkVersionCodename='16'",
         "bytes": 869073,
         "sha256": "34ffdc897cdee1c7d4e4772ae9323b4e19ca59f3e8b53467a9fd04b4dbd8134a",
         "signerSHA256": "9c4a754363a89851057006db30777d58bfe7c28f2ea2fc3ac80ba0882efe4764"
@@ -44,7 +44,7 @@
     "threePriorSkipsRemainOpen": true
   },
   "physicalResult": {
-    "method": "ai.elizaresearch.alphaphone.VideoCopyPreservationInstrumentedTest#ownerPendingBytesAreEscrowedWithoutChangingProviderOrJournal",
+    "method": "ai.alphacompute.alphaphone.VideoCopyPreservationInstrumentedTest#ownerPendingBytesAreEscrowedWithoutChangingProviderOrJournal",
     "passed": false,
     "canonicalStatusCodes": [
       1,

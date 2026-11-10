@@ -22,7 +22,7 @@ async function nativeStub(page:Page,options:Options={}){
    PluginHeaders:[
     {name:'AlphaNotifications',methods:methods(['status','crossAppStatus','addListener','removeListener'])},
     {name:'AlphaVoiceCloud',methods:methods(['checkPermissions'])},
-    {name:'Agent',methods:methods(['getStatus'])},
+    {name:'Agent',methods:methods(['getStatus','setGoogleAgentAccess'])},
     {name:'AlphaConnection',methods:methods(['secureRead','secureWrite','secureCompareExchange','secureRemove','addListener','removeListener'])},
     {name:'ElizaSystem',methods:methods(['getStatus','requestRole','getDeviceSettings','getBuildInfo'])},
     {name:'AlphaDevice',methods:methods(['snapshot','crashLog','clearCrashLog','recordRendererFailure','diagnosticsFacts','shareDiagnostics','openSettings','checkForUpdate','installUpdate'])},
@@ -33,7 +33,7 @@ async function nativeStub(page:Page,options:Options={}){
     const f=w.settingsFixture;f.calls.push({plugin,method,input});
     if(plugin==='AlphaNotifications')return {permissionGranted:true,appEnabled:true};
     if(plugin==='AlphaVoiceCloud')return {microphone:'granted'};
-    if(plugin==='Agent')return {packaged:true,state:'stopped'};
+    if(plugin==='Agent')return method==='setGoogleAgentAccess'?{}:{packaged:true,state:'stopped'};
     if(plugin==='AlphaConnection'){
      if(method==='secureRead')return {value:store.get(input.slot)??null};
      if(method==='secureCompareExchange'){if((store.get(input.slot)??null)!==input.expectedValue)return {status:'conflict'};if(input.value===null)store.delete(input.slot);else store.set(input.slot,input.value);return {status:'saved'};}
@@ -42,7 +42,7 @@ async function nativeStub(page:Page,options:Options={}){
     }
     if(plugin==='ElizaSystem'&&method==='getBuildInfo')return {launcher,version:'0.1.0'};
     if(plugin==='ElizaSystem'){
-     if(method==='getStatus')return {packageName:'ai.elizaresearch.alphaphone',roles:Object.entries(roles).map(([role,r])=>({role,androidRole:'android.app.role.'+role.toUpperCase(),available:true,held:r.held,holders:r.held?['ai.elizaresearch.alphaphone']:r.holders}))};
+     if(method==='getStatus')return {packageName:'ai.alphacompute.alphaphone',roles:Object.entries(roles).map(([role,r])=>({role,androidRole:'android.app.role.'+role.toUpperCase(),available:true,held:r.held,holders:r.held?['ai.alphacompute.alphaphone']:r.holders}))};
      // Android's own dialog decides; the fixture declines first when asked to.
      if(method==='requestRole'){if(declines>0){declines--;return {role:input.role,held:false,resultCode:0};}roles[input.role]={held:true,holders:[]};return {role:input.role,held:true,resultCode:-1};}
      if(method==='getDeviceSettings')return {volumes:[]};
@@ -64,7 +64,7 @@ async function nativeStub(page:Page,options:Options={}){
  },{launcher:options.launcher??true,decline:options.decline??0,updates:options.updates??[],upstreamPin});
 }
 const settings=async(page:Page,query='')=>{await page.goto(`/${query}`);await page.getByRole('button',{name:'Settings',exact:true}).click();await expect(page.locator('html')).toHaveAttribute('data-active-view','settings');};
-const about=async(page:Page)=>{await app(page).getByRole('button',{name:'About',exact:true}).click();};
+const general=async(page:Page)=>{await app(page).getByRole('button',{name:'General',exact:true}).click();};
 const app=(page:Page)=>page.locator('[data-alpha-layer="app"]');
 const calls=(page:Page,plugin:string,method:string)=>page.evaluate(([plugin,method])=>(window as any).settingsFixture.calls.filter((c:any)=>c.plugin===plugin&&c.method===method).length,[plugin,method]);
 
@@ -135,7 +135,7 @@ const saved=(page:Page)=>page.evaluate(()=>localStorage.getItem('alpha.app-updat
 
 test('a failed update check stays due, one check runs at a time, and Install update sends the offered APK',async({page})=>{
  await nativeStub(page,{updates:['fail',update]});
- await settings(page);await about(page);
+ await settings(page);await general(page);
  const install=app(page).getByRole('button',{name:'Install update',exact:true});
  // The check at app start fails quietly: nothing is offered or recorded, so the next resume checks again.
  await expect.poll(()=>calls(page,'AlphaDevice','checkForUpdate')).toBe(1);
@@ -149,7 +149,7 @@ test('a failed update check stays due, one check runs at a time, and Install upd
  await expect(app(page).getByText('0.1.1 (8)',{exact:true})).toBeVisible();
  await expect(app(page).getByText('Faster Home',{exact:true})).toBeVisible();
  expect(await calls(page,'AlphaDevice','checkForUpdate')).toBe(2);
- // Answered: later resumes that day do not check again.
+ // Answered: resumes within the fifteen-minute interval do not check again.
  await page.evaluate(()=>(window as any).settingsFixture.resume());
  await page.waitForTimeout(500);
  expect(await calls(page,'AlphaDevice','checkForUpdate')).toBe(2);
@@ -159,7 +159,7 @@ test('a failed update check stays due, one check runs at a time, and Install upd
  const {apkUrl,sha256,sizeBytes,versionCode}=update;
  expect(await page.evaluate(()=>(window as any).settingsFixture.calls.find((c:any)=>c.method==='installUpdate').input)).toEqual({apkUrl,sha256,sizeBytes,versionCode});
  // A restart offers the kept answer without checking again.
- await settings(page);await about(page);
+ await settings(page);await general(page);
  await expect(install).toBeVisible();
  await page.waitForTimeout(500);
  expect(await calls(page,'AlphaDevice','checkForUpdate')).toBe(0);
@@ -168,7 +168,7 @@ test('a failed update check stays due, one check runs at a time, and Install upd
 
 test('an update whose versionName cannot be shown is still offered, under its versionCode',async({page})=>{
  await nativeStub(page,{updates:[{...update,versionName:'x'.repeat(65)}]});
- await settings(page);await about(page);
+ await settings(page);await general(page);
  const row=app(page).getByRole('button',{name:'Install update',exact:true});
  await expect(row).toBeVisible();
  await expect(app(page).getByText('8',{exact:true})).toBeVisible();
@@ -179,7 +179,7 @@ test('an update whose versionName cannot be shown is still offered, under its ve
 
 test('Install update appears only for a newer build of this flavor and signer, and a withdrawn release removes it',async({page})=>{
  await nativeStub(page,{updates:[{...update,versionCode:7},{...update,variant:'standalone'},{...update,signerSha256:'6d'.repeat(32)},update,null]});
- await settings(page);await about(page);
+ await settings(page);await general(page);
  const install=app(page).getByRole('button',{name:'Install update',exact:true}),check=app(page).getByRole('button',{name:'Check for updates',exact:true});
  await expect.poll(()=>calls(page,'AlphaDevice','checkForUpdate')).toBe(1);
  for(const [count,offered] of [[2,false],[3,false],[4,true],[5,false]] as const){
@@ -194,8 +194,10 @@ test('Install update appears only for a newer build of this flavor and signer, a
 });
 
 test('a browser build never checks for updates',async({page})=>{
+ await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
  await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();
  await expect(page.locator('html')).toHaveAttribute('data-active-view','settings');
+ await general(page);
  await page.waitForTimeout(500);
  expect(await saved(page)).toBeNull();
  await expect(app(page).getByRole('button',{name:'Check for updates',exact:true})).toHaveCount(0);

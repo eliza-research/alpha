@@ -1,4 +1,4 @@
-package ai.elizaresearch.alphaphone;
+package ai.alphacompute.alphaphone;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.PluginCall;

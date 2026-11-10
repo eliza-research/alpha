@@ -1,4 +1,4 @@
-package ai.elizaresearch.alphaphone;
+package ai.alphacompute.alphaphone;
 import ai.eliza.plugins.notifications.NoticeOwner;
 import org.json.*;
 import java.util.*;
@@ -6,7 +6,8 @@ public final class WorkflowApprovalNoticeTest {
  static void require(boolean value,String message){if(!value)throw new AssertionError(message);}
  interface Work {void run()throws Exception;}
  static void rejects(Class<? extends Exception> type,String pattern,Work work,String message)throws Exception{try{work.run();}catch(Exception thrown){if(type.isInstance(thrown)&&(pattern==null||thrown.getMessage()!=null&&java.util.regex.Pattern.compile(pattern).matcher(thrown.getMessage()).find()))return;throw new AssertionError(message+": "+"Expected "+type.getSimpleName()+" /"+pattern+"/ but got "+thrown,thrown);}throw new AssertionError(message);}
- static class Store implements WorkflowNoticeDelivery.Storage {Map<String,String> values=new HashMap<>();public String read(String slot){return values.get(slot);}public void write(String slot,String value){values.put(slot,value);}}
+ static void sameFailure(Exception expected,Work work,String message)throws Exception{try{work.run();}catch(Exception thrown){require(thrown==expected,message);return;}throw new AssertionError(message);}
+ static class Store implements WorkflowNoticeDelivery.Storage {Map<String,String> values=new HashMap<>();int approvalWrites;public String read(String slot){return values.get(slot);}public void write(String slot,String value){if(WorkflowNoticeDelivery.APPROVAL_SLOT.equals(slot))approvalWrites++;values.put(slot,value);}}
  static class Poster implements WorkflowNoticeDelivery.Poster {
   int quiet=0;boolean steps=true,approvals=true;List<String> posted=new ArrayList<>(),cancelled=new ArrayList<>();Map<String,String> active=new HashMap<>();Map<String,Long> timeouts=new HashMap<>();
   public boolean allowed(){return steps;}public boolean approvalsAllowed(){return approvals;}
@@ -53,7 +54,12 @@ public final class WorkflowApprovalNoticeTest {
    p2.approvals=false;require("failed".equals(d2.postApproval(t2,seventh,binding,route("run7"),now+minute,now))&&t2.token(seventh)==null&&p2.posted.size()==1,"a muted channel keeps no route");}
   // A captured tap whose approval was decided elsewhere is released instead of blocking later taps.
   String secondToken=taps.prepare(second,binding,route("run2"));require("succeeded".equals(delivery.publishApproval(second,binding,now+5*minute,now)),"second approval posts");
-  taps.capture(secondToken);delivery.withdrawApproval(second,now+minute);require(!new WorkflowNoticeTaps(store).pending().getBoolean("retained"),"withdrawn tap is not retained");taps.forget(second);require(taps.pending().length()==0,"stale captured tap released");
+  taps.capture(secondToken);delivery.withdrawApproval(second,now+minute);
+  require(new WorkflowNoticeTaps(store).pending().length()==0,"withdrawn tap returns exactly an empty pending object, without route or retained receipt");
+  require("consumed".equals(new JSONObject(store.values.get(WorkflowNoticeTaps.SLOT)).getJSONObject(second).getString("state")),"withdrawn pending tap is durably consumed");
+  require(new WorkflowNoticeTaps(store).pending().length()==0,"withdrawn tap stays absent after restart and repeated reads");
+  rejects(ai.eliza.plugins.notifications.NoticeRoutes.Refused.class,"receipt unconfirmed",()->taps.capture(secondToken),"withdrawn tap cannot be captured again");
+  taps.forget(second);require(taps.pending().length()==0,"stale captured tap released");
   // Expiry: nothing posts for an expired approval and expired receipts are pruned.
   String third="approval-"+"3".repeat(64);require("expired".equals(delivery.publishApproval(third,binding,now,now))&&!poster.posted.contains(third),"expired approval posts nothing");
   taps.prepare(third,binding,route("run3"));require("succeeded".equals(delivery.publishApproval(third,binding,now+minute,now)),"third posts");
@@ -105,14 +111,24 @@ public final class WorkflowApprovalNoticeTest {
    require("withdrawn".equals(d3.postApproval(t3,early,binding,route("run9"),now+10*minute,now+minute))&&p3.posted.isEmpty()&&t3.token(early)==null,"late publish after an early decision posts nothing and keeps no route");
    d3.withdrawApproval(early,now+2*minute);require(new JSONObject(s3.values.get(WorkflowNoticeDelivery.APPROVAL_SLOT)).getJSONObject(early).getLong("expiresAt")==now+WorkflowNoticeDelivery.MAXIMUM_APPROVAL_MS,"repeated withdrawal keeps the first expiry");
    require(d3.expireApprovals(now+WorkflowNoticeDelivery.MAXIMUM_APPROVAL_MS).equals(List.of(early))&&"expired".equals(d3.postApproval(t3,early,binding,route("run9"),now+10*minute,now+WorkflowNoticeDelivery.MAXIMUM_APPROVAL_MS)),"early withdrawal is pruned at its bound");}
-  // The plugin's whole withdrawal. A full ledger refuses to record a withdrawal for an approval it has no
-  // receipt for; the route a refused post left behind is released all the same, and a posted one is kept.
+  // A full approval ledger refuses before any post or receipt write. Its prepared
+  // route is released, while the exact original failure survives cleanup.
   {Store s4=new Store();Poster p4=new Poster();WorkflowNoticeDelivery d4=new WorkflowNoticeDelivery(s4,p4);WorkflowNoticeTaps t4=new WorkflowNoticeTaps(s4);String live="approval-"+"c".repeat(64),refused="approval-"+"d".repeat(64);
    require("succeeded".equals(d4.postApproval(t4,live,binding,route("run4"),now+10*minute,now)),"live approval posts");
    for(int i=0;i<255;i++)d4.withdrawApproval("approval-"+String.format("%064x",i),now);
    require(new JSONObject(s4.values.get(WorkflowNoticeDelivery.APPROVAL_SLOT)).length()==256,"approval ledger at capacity");
-   rejects(IllegalStateException.class,"history is full",()->d4.postApproval(t4,refused,binding,route("run5"),now+10*minute,now),"a full ledger refuses a new approval");require(t4.token(refused)!=null&&p4.posted.size()==1,"the refused post leaves its prepared route and posts nothing");
    String before=s4.values.get(WorkflowNoticeDelivery.APPROVAL_SLOT);
+   int writes=s4.approvalWrites,cancels=p4.cancelled.size();
+   for(int attempt=0;attempt<3;attempt++){
+    WorkflowNoticeDelivery bounded=new WorkflowNoticeDelivery(s4,p4);WorkflowNoticeTaps routes=new WorkflowNoticeTaps(s4);
+    rejects(IllegalStateException.class,"history is full",()->bounded.postApproval(routes,refused,binding,route("run5"),now+10*minute,now),"a full ledger preserves the original approval refusal");
+    require(routes.token(refused)==null&&routes.pending().length()==0,"a definite full-history refusal leaves no route or pending receipt");
+    require(before.equals(s4.values.get(WorkflowNoticeDelivery.APPROVAL_SLOT))&&s4.approvalWrites==writes&&!new JSONObject(before).has(refused),"full-history retries create no approval receipt or approval write");
+    require(p4.posted.size()==1&&p4.active.containsKey(live)&&p4.cancelled.size()==cancels,"full-history retries perform no OS post or cancellation");
+   }
+   // A prior process can leave an unrecorded route. Even a refused withdrawal
+   // releases that route, while a genuinely posted approval remains openable.
+   t4.prepare(refused,binding,route("run5"));require(t4.token(refused)!=null,"prior prepared route exists without a receipt");
    rejects(IllegalStateException.class,"history is full",()->d4.withdrawApproval(t4,refused,now),"a full ledger cannot record the withdrawal");require(t4.token(refused)==null&&before.equals(s4.values.get(WorkflowNoticeDelivery.APPROVAL_SLOT)),"the refused withdrawal still releases the route and changes no receipt");
    d4.withdrawApproval(t4,live,now+minute);require(t4.token(live)==null&&p4.cancelled.contains(live)&&"withdrawn".equals(d4.publishApproval(live,binding,now+10*minute,now+minute)),"a recorded withdrawal cancels, releases and never reposts");
    // A receipt that could not be marked withdrawn is still posted, so its route stays openable.
@@ -122,6 +138,45 @@ public final class WorkflowApprovalNoticeTest {
    deny[0]=true;rejects(IllegalStateException.class,"^Disk$",()->d5.withdrawApproval(t5,live,now+minute),"a storage fault refuses the withdrawal");
    require(t5.token(live)!=null&&p5.active.containsKey(live)&&!p5.cancelled.contains(live),"an unrecorded withdrawal keeps the posted notice and its route");
    deny[0]=false;d5.withdrawApproval(t5,live,now+minute);require(t5.token(live)==null&&p5.cancelled.contains(live)&&"withdrawn".equals(d5.publishApproval(live,binding,now+10*minute,now+minute))&&p5.posted.size()==1,"the repeated withdrawal is recorded, cancels and releases");}
+  // Cleanup may not replace the original publish failure or guess away a route
+  // when its approval receipt cannot be read. The exact same reservation retries.
+  {IllegalStateException original=new IllegalStateException("Claim write refused"),cleanup=new IllegalStateException("Receipt read unavailable");boolean[] fail={true},unreadable={false};
+   Store fault=new Store(){public String read(String slot){if(unreadable[0]&&WorkflowNoticeDelivery.APPROVAL_SLOT.equals(slot))throw cleanup;return super.read(slot);}public void write(String slot,String value){if(fail[0]&&WorkflowNoticeDelivery.APPROVAL_SLOT.equals(slot)){unreadable[0]=true;throw original;}super.write(slot,value);}};
+   Poster p=new Poster();WorkflowNoticeDelivery d=new WorkflowNoticeDelivery(fault,p);WorkflowNoticeTaps t=new WorkflowNoticeTaps(fault);String id="approval-"+"b".repeat(64);
+   sameFailure(original,()->d.postApproval(t,id,binding,route("uncertain-cleanup"),now+minute,now),"cleanup read failure preserves the exact publish exception");
+   require(original.getSuppressed().length==1&&original.getSuppressed()[0]==cleanup,"cleanup failure stays diagnostic, never replaces the original");
+   String kept=t.token(id);require(kept!=null&&p.posted.isEmpty()&&!fault.values.containsKey(WorkflowNoticeDelivery.APPROVAL_SLOT),"uncertain read keeps the route and performs no post");
+   fail[0]=false;unreadable[0]=false;require("succeeded".equals(d.postApproval(t,id,binding,route("uncertain-cleanup"),now+minute,now))&&kept.equals(t.token(id))&&p.posted.size()==1,"exact retry retains its token and posts once");}
+  for(boolean committed:new boolean[]{false,true}){IllegalStateException original=new IllegalStateException("Approval claim refused"),cleanup=new IllegalStateException("Route cleanup write unavailable");boolean[] refused={false};
+   Store fault=new Store(){public void write(String slot,String value){if(WorkflowNoticeDelivery.APPROVAL_SLOT.equals(slot)){refused[0]=true;throw original;}if(refused[0]&&WorkflowNoticeTaps.SLOT.equals(slot)){if(committed)super.write(slot,value);throw cleanup;}super.write(slot,value);}};
+   Poster p=new Poster();WorkflowNoticeDelivery d=new WorkflowNoticeDelivery(fault,p);WorkflowNoticeTaps t=new WorkflowNoticeTaps(fault);String id="approval-"+"b".repeat(64);
+   sameFailure(original,()->d.postApproval(t,id,binding,route("cleanup-write"),now+minute,now),"cleanup write failure preserves the exact approval failure");
+   require(original.getSuppressed().length==1&&original.getSuppressed()[0]==cleanup&&(t.token(id)==null)==committed&&p.posted.isEmpty(),"cleanup write replies never claim a post or erase the original error");}
+  // Result-notice cleanup already follows the same original-error rule. A failed
+  // cleanup cannot convert a refused claim into a successful post or receipt.
+  {IllegalStateException original=new IllegalStateException("Step claim refused"),cleanup=new IllegalStateException("Step cleanup unavailable");boolean[] refused={false};
+   Store fault=new Store(){public void write(String slot,String value){if(WorkflowNoticeDelivery.SLOT.equals(slot)){refused[0]=true;throw original;}if(refused[0]&&WorkflowNoticeTaps.SLOT.equals(slot))throw cleanup;super.write(slot,value);}};
+   Poster p=new Poster();WorkflowNoticeTaps t=new WorkflowNoticeTaps(fault);ai.eliza.plugins.notifications.NoticeCoordinator coordinator=new ai.eliza.plugins.notifications.NoticeCoordinator(new ai.eliza.plugins.notifications.NoticeDelivery(WorkflowNoticeDelivery.CONFIG,fault,p),t);
+   sameFailure(original,()->coordinator.postStep("step-cleanup",binding,route("step-cleanup"),"Title","Body",()->{}),"step cleanup preserves the exact original claim failure");
+   require(!fault.values.containsKey(WorkflowNoticeDelivery.SLOT)&&t.token("step-cleanup")!=null&&p.posted.isEmpty(),"refused step retains only the unconfirmed route after cleanup fault");}
+  // A present malformed row is not absence, and an unvalidated terminal status
+  // does not establish that this exact approval is safe to release.
+  for(Object damagedReceipt:new Object[]{"not-an-object",new JSONObject().put("status","failed").put("expiresAt",now+minute),new JSONObject().put("status","failed").put("binding",binding).put("digest","0".repeat(64)).put("expiresAt",now+minute),new JSONObject().put("status","withdrawn").put("expiresAt","not-a-time")}){
+   String id="approval-"+"b".repeat(64);IllegalStateException original=new IllegalStateException("Claim outcome unreadable");
+   Store fault=new Store(){public void write(String slot,String value){if(WorkflowNoticeDelivery.APPROVAL_SLOT.equals(slot)){values.put(slot,new JSONObject().put(id,damagedReceipt).toString());throw original;}super.write(slot,value);}};
+   Poster p=new Poster();WorkflowNoticeDelivery d=new WorkflowNoticeDelivery(fault,p);WorkflowNoticeTaps t=new WorkflowNoticeTaps(fault);
+   sameFailure(original,()->d.postApproval(t,id,binding,route("malformed-cleanup"),now+minute,now),"malformed cleanup preserves the exact original publish failure");
+   require(original.getSuppressed().length==1&&t.token(id)!=null&&p.posted.isEmpty(),"malformed or mismatched receipt keeps its route and never posts");
+   require(new JSONObject(fault.values.get(WorkflowNoticeDelivery.APPROVAL_SLOT)).get(id).toString().equals(damagedReceipt.toString()),"cleanup never rewrites malformed receipt bytes");
+  }
+  // An applying receipt committed before a lost write reply stays uncertain.
+  // Retrying it may reconcile the receipt but cannot dispatch another OS notice.
+  for(boolean permitted:new boolean[]{true,false}){IllegalStateException original=new IllegalStateException("Claim committed before lost reply");boolean[] cut={true};
+   Store fault=new Store(){public void write(String slot,String value){super.write(slot,value);if(cut[0]&&WorkflowNoticeDelivery.APPROVAL_SLOT.equals(slot)){cut[0]=false;throw original;}}};
+   Poster p=new Poster();p.approvals=permitted;WorkflowNoticeDelivery d=new WorkflowNoticeDelivery(fault,p);WorkflowNoticeTaps t=new WorkflowNoticeTaps(fault);String id="approval-"+"b".repeat(64);
+   sameFailure(original,()->d.postApproval(t,id,binding,route("committed-cleanup"),now+minute,now),"committed claim keeps the exact lost-reply error");
+   String kept=t.token(id);require((kept!=null)==permitted&&p.posted.isEmpty()&&(permitted?"applying":"failed").equals(new JSONObject(fault.values.get(WorkflowNoticeDelivery.APPROVAL_SLOT)).getJSONObject(id).getString("status")),"only a live committed claim keeps its route, with no OS post");
+   require((permitted?"unknown":"failed").equals(d.postApproval(t,id,binding,route("committed-cleanup"),now+minute,now))&&Objects.equals(kept,t.token(id))&&p.posted.isEmpty(),"committed claims never repost on retry");}
   // A -> B -> A keeps encrypted metadata, fences old taps, and only an explicit revalidation can resume quietly.
   {Store s6=new Store();Poster p6=new Poster(){public void post(String id,String title,String body){posted.add(id);active.put(id,title+"\n"+body);}};
    WorkflowNoticeDelivery d6=new WorkflowNoticeDelivery(s6,p6);WorkflowNoticeTaps t6=new WorkflowNoticeTaps(s6);String id="approval-"+"1".repeat(64);JSONObject own=route("run1");

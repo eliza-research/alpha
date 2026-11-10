@@ -23,10 +23,13 @@ self-review and disabled administrator bypass. No secrets are needed for the
 source checks or ordinary pull-request CI.
 
 Before preparing a product APK, run `npm run android:build:inputs` against the
-selected source. The native voice record and staged bytes must match that SDK pin,
-with the required qualification recorded; the Cloud lab profile does not satisfy
-the production verifier's packaged, qualified native-voice requirement. A successful
-closed-fixture proof cannot change that result.
+selected source. Native releases need source-matched staged voice bytes and their
+recorded qualification. The November 6 explicit Cloud release profile instead
+requires genuine Cartesia qualification for each exact signed APK; see the
+[launcher update procedure](../launcher-ota.md#publishing) and
+[qualified publication workflow](publish-qualified-app-update.md). A closed-fixture
+signing proof does not satisfy either voice qualification. The October 28 snapshot
+below is historical, not the input status for a later SDK pin.
 
 ## Read-only state on 2026-10-28 (main 94676c82, Eliza pin 1f2a922f)
 

@@ -1,5 +1,8 @@
 # Alpha Phone (alphaphone)
 
+The [Alpha Compute identity change](docs/alpha-compute-identity.md) describes the
+Android namespace, installation and external registration requirements.
+
 ## Shared application direction — October 27
 
 The owner has requested one upstream Eliza mobile application and AOSP target,
@@ -59,6 +62,7 @@ the required evidence rather than treating a successful APK build as acceptance.
 - [current product status](docs/mvp-current-status.md)
 - [Production readiness record, 2026-10-04](https://github.com/eliza-research/alphaphone/blob/51c8157533353a805afd2811f4e3f41b66b7b9fa/docs/production-readiness-2026-10-04.md)
 - [Cloud deployment and authentication findings](docs/cloud-production-validation.md)
+- [Consumer Pages browser sign-in registration](docs/runbooks/pages-browser-sign-in.md)
 - [Browser autofill and Proton integration](docs/browser-autofill-integration.md)
 - [Calendar and reminder contracts](docs/calendar-reminder-contract.md)
 - [Gesture zones, the chat dock and the notifications panel](docs/gesture-zones.md)
@@ -88,6 +92,18 @@ reset-only data management are planned. These are requirements, not claims that 
 current source already implements them. Speech is on-device by default; Cloud speech is
 used only in the `cloud` runtime profile or with an owner Cartesia key.
 See [speech research](docs/local-speech-research-2026-10-12.md) for native candidates.
+
+## Launcher application updates
+
+The [launcher update runbook](docs/launcher-ota.md) covers both the AOSP launcher
+and the launcher APK on stock Android. Production Android checks while active,
+every 15 minutes, and requests unattended self-install on supported Android with
+existing install permission, only from idle Home and after draft/runtime barriers.
+Android can still require confirmation. A qualified signed APK must be delivered
+to the public channel; a merged source change alone is not a published release.
+Use `scripts/deliver-app-update.mjs` for APK-first publication and anonymous
+readback. APK updates, independent crash recovery and AOSP OS OTA acceptance are
+separate gates. No phones had shipped when this path was reviewed on November 9.
 
 ## Cloud release qualification — November 6
 
@@ -525,7 +541,7 @@ is not a dependency list. A stale stamp requires fresh preparation and staging.
 A developer APK without runtime payload is reported as `NOT_PACKAGED`; this is
 not proof of resident runtime execution or device acceptance.
 
-The variants intentionally share `ai.elizaresearch.alphaphone` and replace one another.
+The variants intentionally share `ai.alphacompute.alphaphone` and replace one another.
 The other product uses a different package and can be installed alongside this one.
 Release APKs are unsigned unless the `ELIZAOS_*` signing variables are supplied; do not distribute
 debug-signed or test-mocks builds as production.

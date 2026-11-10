@@ -60,7 +60,7 @@
       "failed": [],
       "ignored": [],
       "status": "passed",
-      "class": "ai.elizaresearch.alphaphone.LocalSpeechInstrumentedTest",
+      "class": "ai.alphacompute.alphaphone.LocalSpeechInstrumentedTest",
       "listed": 2,
       "note": "needs the staged on-device voice outputs (assets/paradee-voice/v1: Paradee, misaki, the Phonon-2 ASR slot) and the recorded libelizainference engine; no device qualification is recorded yet"
     },
@@ -71,7 +71,7 @@
       "failed": [],
       "ignored": [],
       "status": "passed",
-      "class": "ai.elizaresearch.alphaphone.LocalSpeechBridgeInstrumentedTest",
+      "class": "ai.alphacompute.alphaphone.LocalSpeechBridgeInstrumentedTest",
       "listed": 1,
       "note": "needs the staged on-device voice outputs including the ASR slot pair"
     },
@@ -82,7 +82,7 @@
       "failed": [],
       "ignored": [],
       "status": "passed",
-      "class": "ai.elizaresearch.alphaphone.VoiceNoteReadAloudInstrumentedTest",
+      "class": "ai.alphacompute.alphaphone.VoiceNoteReadAloudInstrumentedTest",
       "listed": 1,
       "note": "needs the packaged voice bundle; not audible-speaker evidence"
     },
@@ -93,7 +93,7 @@
       "failed": [],
       "ignored": [],
       "status": "passed",
-      "class": "ai.elizaresearch.alphaphone.LiveVoiceVadInstrumentedTest",
+      "class": "ai.alphacompute.alphaphone.LiveVoiceVadInstrumentedTest",
       "listed": 1,
       "note": "Silero VAD in the app process on the packaged bundle with the app JNI bridge; no microphone, no agent call"
     },
@@ -104,7 +104,7 @@
       "failed": [],
       "ignored": [],
       "status": "passed",
-      "class": "ai.elizaresearch.alphaphone.SpeechSentenceCancellationInstrumentedTest",
+      "class": "ai.alphacompute.alphaphone.SpeechSentenceCancellationInstrumentedTest",
       "listed": 1,
       "note": "needs the staged on-device voice outputs (Paradee)"
     },
@@ -115,7 +115,7 @@
       "failed": [],
       "ignored": [],
       "status": "passed",
-      "class": "ai.elizaresearch.alphaphone.LocalSpeechInstrumentedTest",
+      "class": "ai.alphacompute.alphaphone.LocalSpeechInstrumentedTest",
       "listed": 2,
       "note": "needs the staged on-device voice outputs (assets/paradee-voice/v1: Paradee, misaki, the Phonon-2 ASR slot) and the recorded libelizainference engine; no device qualification is recorded yet"
     },
@@ -126,7 +126,7 @@
       "failed": [],
       "ignored": [],
       "status": "passed",
-      "class": "ai.elizaresearch.alphaphone.LocalSpeechBridgeInstrumentedTest",
+      "class": "ai.alphacompute.alphaphone.LocalSpeechBridgeInstrumentedTest",
       "listed": 1,
       "note": "needs the staged on-device voice outputs including the ASR slot pair"
     },
@@ -137,7 +137,7 @@
       "failed": [],
       "ignored": [],
       "status": "passed",
-      "class": "ai.elizaresearch.alphaphone.VoiceNoteReadAloudInstrumentedTest",
+      "class": "ai.alphacompute.alphaphone.VoiceNoteReadAloudInstrumentedTest",
       "listed": 1,
       "note": "needs the packaged voice bundle; not audible-speaker evidence"
     },
@@ -148,7 +148,7 @@
       "failed": [],
       "ignored": [],
       "status": "passed",
-      "class": "ai.elizaresearch.alphaphone.LiveVoiceVadInstrumentedTest",
+      "class": "ai.alphacompute.alphaphone.LiveVoiceVadInstrumentedTest",
       "listed": 1,
       "note": "Silero VAD in the app process on the packaged bundle with the app JNI bridge; no microphone, no agent call"
     },
@@ -159,7 +159,7 @@
       "failed": [],
       "ignored": [],
       "status": "passed",
-      "class": "ai.elizaresearch.alphaphone.SpeechSentenceCancellationInstrumentedTest",
+      "class": "ai.alphacompute.alphaphone.SpeechSentenceCancellationInstrumentedTest",
       "listed": 1,
       "note": "needs the staged on-device voice outputs (Paradee)"
     }

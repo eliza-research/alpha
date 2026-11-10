@@ -1,4 +1,4 @@
-package ai.elizaresearch.alphaphone;
+package ai.alphacompute.alphaphone;
 
 import ai.eliza.voice.LocalSpeechBridgePlugin;
 import ai.eliza.voice.SpeechAudioFocus;

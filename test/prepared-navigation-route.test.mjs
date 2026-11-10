@@ -41,7 +41,7 @@ test('actual native request gate agrees on preparation shape, method, owner and 
  const temp=mkdtempSync(join(tmpdir(),'alpha-navigation-gate-'));
  try{
   const file=join(temp,'NavigationGateTest.java');
-  writeFileSync(file,`package ai.elizaresearch.alphaphone;
+  writeFileSync(file,`package ai.alphacompute.alphaphone;
 import org.json.*;
 class OwnerRoutes { boolean allowed(String g,String p,String m){return true;} }
 public class NavigationGateTest {
@@ -56,6 +56,6 @@ public class NavigationGateTest {
   System.out.println("PASS native actual request gate");
  }
 }`);
-  assert.match(runJvm([nativeSource('PreparedViewNavigation.java'),file],'ai.elizaresearch.alphaphone.NavigationGateTest',{json:true,input:JSON.stringify(cases)}),/PASS native actual request gate/);
+  assert.match(runJvm([nativeSource('PreparedViewNavigation.java'),file],'ai.alphacompute.alphaphone.NavigationGateTest',{json:true,input:JSON.stringify(cases)}),/PASS native actual request gate/);
  }finally{rmSync(temp,{recursive:true,force:true});}
 });

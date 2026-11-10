@@ -16,7 +16,7 @@ export const runtimeScriptPaths = ['scripts/browser-cloud-dev-bridge.ts', 'scrip
   'scripts/start-cloud-qa.mjs', 'scripts/start-combined-agent.mjs', 'scripts/launcher-child.mjs',
   'scripts/local-agent-dev-bridge.ts', 'scripts/local-agent-dev-storage.ts',
   'scripts/prepare-local-agent.mjs', 'scripts/local-agent-source.mjs', 'scripts/copy-file-clone.mjs',
-  'scripts/prepare-client-features.mjs', 'scripts/managed-google-client-backport.mjs', 'scripts/prepare-patched-native.mjs',
+  'scripts/prepare-client-features.mjs', 'scripts/prepare-patched-native.mjs',
   'scripts/build-workflow-worker.ts', 'scripts/prepared-workflow-worker.mjs',
   'scripts/workflow-worker-artifact.mjs', 'scripts/stage-workflow-worker.mjs',
   'scripts/native-google-host-artifact.mjs', 'scripts/build-native-google-host.ts',
@@ -31,7 +31,10 @@ export const runtimeScriptPaths = ['scripts/browser-cloud-dev-bridge.ts', 'scrip
   'scripts/audit-production-bundle.mjs', 'scripts/generate-licenses.mjs',
   'scripts/cloud-deployment.mjs', 'scripts/cloud-deployment-policy.mjs', 'scripts/native-view-policy.mjs',
   'scripts/with-test-mocks.mjs', 'capacitor.config.ts', 'vite.config.ts',
-  'scripts/apk.mjs', 'scripts/source-snapshot.mjs', 'scripts/verify-apks.mjs', 'scripts/verify-packaged-runtime.py'];
+  'scripts/apk.mjs', 'scripts/source-snapshot.mjs', 'scripts/verify-apks.mjs', 'scripts/verify-packaged-runtime.py',
+  'scripts/provision-unit.mjs', 'scripts/publish-update-manifest.mjs', 'scripts/deliver-app-update.mjs',
+  'scripts/update-apk-admission.mjs', 'scripts/update-artifact.mjs', 'scripts/owner/InspectUpdateApk.java',
+  'scripts/ci/qualified-app-update.py', 'scripts/ci/admit-cloud-signing-input.py', 'scripts/ci/private-apk-storage.py'];
 export const runtimeAssetPaths = ['apps/app/index.html'];
 const omittedDirectories = new Set(['node_modules', 'build', '.generated', '.gradle', '.cxx', '.kotlin', 'assets', 'jniLibs', 'capacitor-cordova-android-plugins']);
 const sourceExtensions = new Set(['.ts', '.tsx', '.js', '.java', '.kt', '.cpp', '.h', '.c', '.html', '.mjs', '.jsx', '.cc', '.hpp', '.rs', '.swift']);

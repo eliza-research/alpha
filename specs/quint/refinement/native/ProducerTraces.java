@@ -1,6 +1,6 @@
 package com.android.systemui.privacy;
 
-import ai.elizaresearch.alphaphone.Trace;
+import ai.alphacompute.alphaphone.Trace;
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.ProviderInfo;
@@ -16,7 +16,7 @@ public final class ProducerTraces {
   JSONArray traces = new JSONArray();
   for (String mode : new String[]{"accepted", "refused", "no-provider", "delayed", "acquire-failed"}) {
    Context context = new Context(); Handler main = new Handler(); ArrayList<Runnable> background = new ArrayList<>();
-   ProviderInfo info = new ProviderInfo(); info.packageName = "ai.elizaresearch.alphaphone";
+   ProviderInfo info = new ProviderInfo(); info.packageName = "ai.alphacompute.alphaphone";
    info.applicationInfo = new ApplicationInfo(); info.applicationInfo.uid = 10042; context.packages.provider = info;
    boolean[] recording = {false}; Bundle[] sent = {null};
    context.resolver.handler = (uri, method, arg, extras) -> {
@@ -28,7 +28,7 @@ public final class ProducerTraces {
     return new Bundle();
    };
    SenseListeningLease client = new SenseListeningLease(context, main, background::add,
-     () -> new SenseListeningLease.Acknowledgement(10042, true, true, recording[0], "on", "none"), "ai.elizaresearch.alphaphone");
+     () -> new SenseListeningLease.Acknowledgement(10042, true, true, recording[0], "on", "none"), "ai.alphacompute.alphaphone");
    Trace trace = new Trace("producer-" + mode, Trace.fields("generation", Trace.read(client, "generation"), "sent", false));
    client.start(); trace.step("start", Trace.fields("running", Trace.read(client, "running")));
    main.advanceTo(0); trace.step("tick", Trace.fields("generation", Trace.read(client, "generation")));

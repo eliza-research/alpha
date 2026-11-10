@@ -13,11 +13,11 @@
         "apps/app/src/runtime/local-agent-storage.ts",
         "apps/app/src/runtime/resident-recovery.ts",
         "apps/app/src/product/native-cloud-runtime.ts",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/LocalAgentProviderAdmission.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentCredentialShutdownRetry.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentRecoveryReview.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentScheduleRearm.java"
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/LocalAgentProviderAdmission.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/ResidentCredentialShutdownRetry.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/ResidentRecoveryReview.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/ResidentScheduleRearm.java"
       ],
       "tests": [
         "startAndBindTest",
@@ -73,8 +73,8 @@
         "apps/app/src/runtime/live-segment-stream.ts",
         "apps/app/src/runtime/voice-turn-routes.ts",
         "apps/app/src/runtime/app-speech.ts",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeVoiceBinding.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/VoiceEventAdmission.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/NativeVoiceBinding.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/VoiceEventAdmission.java",
         "vendor/eliza/packages/voice/src/voice-assistant-session.ts",
         "upstream.lock.json",
         "scripts/prepare-client-features.mjs"
@@ -177,10 +177,10 @@
       "invariant": "safety",
       "sources": [
         "apps/app/src/runtime/always-on-listener.ts",
-        "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListeningService.java",
-        "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ConsentActivity.java",
-        "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListenerControlProvider.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaListenerPlugin.java"
+        "android/sense/src/main/java/ai/alphacompute/alphaphone/sense/ListeningService.java",
+        "android/sense/src/main/java/ai/alphacompute/alphaphone/sense/ConsentActivity.java",
+        "android/sense/src/main/java/ai/alphacompute/alphaphone/sense/ListenerControlProvider.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaListenerPlugin.java"
       ],
       "tests": [
         "consentAndLeaseTest",
@@ -216,11 +216,11 @@
       "step": "step",
       "invariant": "safety",
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDataReset.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/ResetRecoveryActivity.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaApplication.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaResetPlugin.java",
-        "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListenerControlProvider.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDataReset.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/ResetRecoveryActivity.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaApplication.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaResetPlugin.java",
+        "android/sense/src/main/java/ai/alphacompute/alphaphone/sense/ListenerControlProvider.java",
         "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset/DataReset.java",
         "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset/DataResetRecoveryActivity.java",
         "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset/DataResetCopy.java",
@@ -283,13 +283,13 @@
       "step": "step",
       "invariant": "safety",
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeDeletionCoordinator.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/DeletionWorker.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/NotesDeletionLease.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/NativeDeletionCoordinator.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/DeletionWorker.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/NotesDeletionLease.java",
         "apps/app/src/runtime/deletion-owner.ts",
         "apps/app/src/runtime/deletions.ts",
         "apps/app/src/runtime/note-audio-deletions.ts",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeOwnerReminderHost.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/NativeOwnerReminderHost.java",
         "android/upstream-native-sources.json",
         "vendor/eliza/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeferredDeletionCoordinator.java"
       ],
@@ -332,9 +332,9 @@
         "apps/app/src/prototype/browser-camera.ts",
         "apps/app/src/prototype/photo-library-adapter.ts",
         "apps/app/src/prototype/video-edit-review.ts",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeReadEpoch.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/SelectedDocumentAccess.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPhotoLibraryPlugin.java"
+        "android/app/src/main/java/ai/alphacompute/alphaphone/NativeReadEpoch.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/SelectedDocumentAccess.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaPhotoLibraryPlugin.java"
       ],
       "tests": [
         "reviewedPublicationTest",
@@ -380,10 +380,10 @@
         "apps/app/src/runtime/reminder-creations.ts",
         "apps/app/src/runtime/reminder-deletions.ts",
         "apps/app/src/runtime/clock-contract.ts",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaImageCapabilities.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaTelephonyPlugin.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaReminders.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentScheduleRearm.java"
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaImageCapabilities.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaTelephonyPlugin.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaReminders.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/ResidentScheduleRearm.java"
       ],
       "tests": [
         "smsDeliveryEvidenceTest",
@@ -435,8 +435,8 @@
         "apps/app/src/runtime/local-agent.ts",
         "apps/app/src/runtime/calendar-sync-host.ts",
         "apps/app/src/runtime/inbox-operation.ts",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDataReset.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/LocalAgentProviderAdmission.java"
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDataReset.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/LocalAgentProviderAdmission.java"
       ],
       "components": [
         "specs/quint/services/IdentitySession.qnt",
@@ -518,8 +518,8 @@
         "apps/app/src/maps/native-location.ts",
         "apps/app/src/maps/background-navigation.ts",
         "apps/app/src/maps/route-distance.ts",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNavigationService.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaMapsTransportPlugin.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNavigationService.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaMapsTransportPlugin.java",
         "apps/app/src/maps/device-navigation.ts",
         "apps/app/src/maps/agent-navigation.ts",
         "apps/app/src/maps/screen.ts",
@@ -585,8 +585,8 @@
       "step": "step",
       "invariant": "safety",
       "sources": [
-        "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/SenseApplication.java",
-        "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListeningService.java"
+        "android/sense/src/main/java/ai/alphacompute/alphaphone/sense/SenseApplication.java",
+        "android/sense/src/main/java/ai/alphacompute/alphaphone/sense/ListeningService.java"
       ],
       "stateMapping": {
         "generation/live/acknowledged/expiresAt/boot/leaseBoot": "IndicatorLease.acquire, renew, verdict, revoke, binderDied",
@@ -692,9 +692,9 @@
       "step": "step",
       "invariant": "safety",
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentScheduleRearm.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentScheduleReceiver.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java"
+        "android/app/src/main/java/ai/alphacompute/alphaphone/ResidentScheduleRearm.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/ResidentScheduleReceiver.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java"
       ],
       "stateMapping": {
         "unlocked/packaged/enabled/lifecycle/lastDecision": "ResidentScheduleRearm.decide full ordered decision table",
@@ -730,8 +730,8 @@
       "step": "step",
       "invariant": "safety",
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/RendererRecoveryBudget.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/MainActivity.java"
+        "android/app/src/main/java/ai/alphacompute/alphaphone/RendererRecoveryBudget.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java"
       ],
       "stateMapping": {
         "started/windowStart/losses": "RendererRecoveryBudget private started,windowStart,lossesInWindow; count4 denotes4or more",
@@ -822,8 +822,8 @@
       "step": "step",
       "invariant": "safety",
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeVoiceBinding.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/VoiceEventAdmission.java"
+        "android/app/src/main/java/ai/alphacompute/alphaphone/NativeVoiceBinding.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/VoiceEventAdmission.java"
       ],
       "stateMapping": {
         "phase/active/opened/claimed/cancelled": "BufferedStreamExchange.exchange Port.open, active compareAndSet and finally cancellation",
@@ -925,8 +925,8 @@
       "step": "step",
       "invariant": "safety",
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNoteRecordingService.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNoteRecorder.java"
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNoteRecordingService.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNoteRecorder.java"
       ],
       "tests": [
         "replacedRecordingRejectsOldStopTest",
@@ -955,7 +955,7 @@
       "step": "step",
       "invariant": "safety",
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNoteRecorder.java"
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNoteRecorder.java"
       ],
       "tests": [
         "pauseAccountingTest",
@@ -1021,9 +1021,9 @@
       "step": "step",
       "invariant": "safety",
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaVoiceCloudPlugin.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNoteRecorder.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNoteRecordingService.java"
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaVoiceCloudPlugin.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNoteRecorder.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNoteRecordingService.java"
       ],
       "tests": [
         "permissionReturningDuringCallTest",
@@ -1157,13 +1157,21 @@
         "cancelledOpenReleasedTest",
         "replacementRejectsOldPermissionTest",
         "explicitStopKeepsTailTest",
-        "lifecycleDiscardsTailTest"
+        "lifecycleDiscardsTailTest",
+        "permissionPromptPauseRetainsOnlyReservationTest",
+        "backgroundPermissionCannotOpenBeforeResumeTest",
+        "activePauseReportsEndBeforeRetirementTest",
+        "callInterruptRetiresOpeningWithBoundCauseTest",
+        "replacementDoesNotInheritCallCauseTest",
+        "deniedPermissionWhilePausedCannotResumeTest"
       ],
       "invariants": [
         "CurrentStartupGate",
         "ReleasedIsStopped",
         "PointerOwnership",
         "DiscardIsCancelled",
+        "PausedMicrophoneStopped",
+        "ResumeIsOnlyPermissionReservation",
         "Bounded"
       ],
       "abstractions": [
@@ -1218,12 +1226,19 @@
         "callDuringOpenRefusesPublicationTest",
         "retiredWarmCannotOpenTest",
         "discardClosesWithoutRendererAudioTest",
-        "failedPipeRetainsControllerUntilStopTest"
+        "failedPipeRetainsControllerUntilStopTest",
+        "failedWarmHeldUntilOwnedCloseTest",
+        "retiredWarmFailsWithoutForeignErrorTest",
+        "failedWarmCannotStartNativeCaptureTest",
+        "unconfirmedFailedWarmStillDiscardsTest"
       ],
       "invariants": [
         "WarmBeforeCapture",
         "NoPcmToRenderer",
         "CompletedStartHasNoPendingOpen",
+        "FailedWarmNeverOpens",
+        "UnstartedFailureEventsPrivate",
+        "SettledFailedWarmDiscards",
         "Bounded"
       ],
       "abstractions": [
@@ -1572,9 +1587,9 @@
       "step": "step",
       "invariant": "safety",
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/ReviewedCopies.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaMailAttachmentsPlugin.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaMailFileProvider.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/ReviewedCopies.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaMailAttachmentsPlugin.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaMailFileProvider.java",
         "android/app/src/main/res/xml/mail_attachment_paths.xml",
         "vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/ReviewedFileHandoff.java"
       ],
@@ -1648,8 +1663,8 @@
       "step": "step",
       "invariant": "safety",
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaMapsTransportPlugin.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNavigationService.java"
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaMapsTransportPlugin.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNavigationService.java"
       ],
       "tests": [
         "lateRendererDestroyPreservesSuccessorTest",
@@ -1697,9 +1712,9 @@
       ],
       "sources": [
         "vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/updater/RuntimeUpdatePause.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaApplication.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java"
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaApplication.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java"
       ],
       "stateMapping": {
         "file/record/staged": "Actual binary journal read, tombstone, corruption and leftover legacy staging",
@@ -1747,8 +1762,8 @@
         "ExactPreparedReceipt"
       ],
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/PluginWorkers.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/PluginWorkers.java",
         "vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/updater/RuntimeUpdatePause.java"
       ],
       "stateMapping": {
@@ -1790,9 +1805,9 @@
         "RejectedReadHasNoData"
       ],
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCanonicalNotifications.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNotificationsPlugin.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/MainActivity.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCanonicalNotifications.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNotificationsPlugin.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java",
         "vendor/eliza/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/ForegroundNoticeGate.java",
         "vendor/eliza/packages/app/platforms/android/app/src/main/java/ai/elizaos/app/NativeNotificationRoute.java"
       ],
@@ -1830,8 +1845,8 @@
         "ResumeRequiresReleasedLease"
       ],
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
         "vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/updater/RuntimeUpdatePause.java",
         "vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/CredentialShutdownLease.java"
       ],
@@ -1858,25 +1873,30 @@
       "step": "step",
       "invariant": "safety",
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNotificationsPlugin.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/WorkflowNoticeDelivery.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/WorkflowNoticeTaps.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/WorkflowNoticeTapsFactory.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/WorkflowNoticePoster.java"
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNotificationsPlugin.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/WorkflowNoticeDelivery.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/WorkflowNoticeTaps.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/WorkflowNoticeTapsFactory.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/WorkflowNoticePoster.java"
       ],
       "tests": [
         "durableClaimPrecedesAcknowledgedPostTest",
-        "foregroundLossPreservesOnlyPreparedRouteTest",
+        "foregroundLossReleasesUnrecordedRouteTest",
         "uncertainClaimNeverRepostsTest",
         "lateExactActiveReadReconcilesWithoutRepostTest",
         "lostTerminalWriteCanBeRecoveredByExactReadTest",
         "explicitOwnerRejectsStaleQueuedRouteTest",
-        "withdrawalWriteFaultKeepsOwnerFenceTest"
+        "withdrawalWriteFaultKeepsOwnerFenceTest",
+        "beforeCommitRefusalReleasesRouteWithoutReceiptTest",
+        "unpublishedWithdrawalNeverAcknowledgesOrPostsTest",
+        "withdrawalTombstoneSurvivesOwnerReturnTest"
       ],
       "invariants": [
         "AtMostOneManagerPost",
         "PostedNoticeHasExactDurableClaim",
-        "ConfirmedReplyHasSucceededReceipt"
+        "ConfirmedReplyHasSucceededReceipt",
+        "NoRetainedFakeReceipt",
+        "UnpublishedWithdrawalNeverPosts"
       ],
       "abstractions": [
         "One ordinary workflow notice operation ID and route token, two owner and binding classes, three content classes, and a separate legacy ownerless mode.",
@@ -1922,8 +1942,8 @@
       ],
       "sources": [
         "apps/app/src/prototype/settings-adapter.ts",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/PluginWorkers.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/PluginWorkers.java",
         "vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/connection/ConnectionTransport.java"
       ],
       "stateMapping": {
@@ -1966,10 +1986,10 @@
         "ReadRetentionIsExact"
       ],
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/HostedResultNotices.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaHostedResultsPlugin.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/HostedNoticePoster.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/HostedInbox.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/HostedResultNotices.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaHostedResultsPlugin.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/HostedNoticePoster.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/HostedInbox.java",
         "vendor/eliza/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NoticeOwner.java"
       ],
       "stateMapping": {
@@ -2012,11 +2032,11 @@
         "OneRunOwner"
       ],
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/HostedInbox.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/HostedDelivery.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentResultSession.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentResultTransport.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/HostedResultNotices.java"
+        "android/app/src/main/java/ai/alphacompute/alphaphone/HostedInbox.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/HostedDelivery.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/ResidentResultSession.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/ResidentResultTransport.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/HostedResultNotices.java"
       ],
       "stateMapping": {
         "owner/generation/enabled/polling/preference/status": "Current durable HostedDelivery binding, generation and separate polling preference",
@@ -2059,8 +2079,8 @@
         "BootMarkerIsObservedBoot"
       ],
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaReminders.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/ReminderReceiver.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaReminders.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/ReminderReceiver.java",
         "android/app/src/main/AndroidManifest.xml",
         "vendor/eliza/plugins/plugin-native-reminders/android/src/main/java/ai/eliza/plugins/reminders/ReminderEngine.java",
         "vendor/eliza/plugins/plugin-native-reminders/android/src/main/java/ai/eliza/plugins/reminders/ReminderConfiguration.java",
@@ -2114,10 +2134,10 @@
         "TypedReceiptHasProducer"
       ],
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/ClockAgentReview.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaActionJournalPlugin.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaActionJournal.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/PluginWorkers.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/ClockAgentReview.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaActionJournalPlugin.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaActionJournal.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/PluginWorkers.java",
         "vendor/eliza/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/ActionJournal.java",
         "vendor/eliza/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/ActionJournalConfiguration.java",
         "vendor/eliza/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/ActionJournalPlugin.java",
@@ -2155,7 +2175,8 @@
         "callbackMemoryDoesNotImplyDurableEvidenceTest",
         "dispatchMarkerRefusalRecoversUnknownTest",
         "providerReadbackRequiresReportAndUniqueRowTest",
-        "multipartReportDoesNotProveDeliveryTest"
+        "multipartReportDoesNotProveDeliveryTest",
+        "emptyDivisionCannotReviveReviewedIdTest"
       ],
       "invariants": [
         "OneRadioCallPerRecipient",
@@ -2165,10 +2186,10 @@
         "ProviderRowsHaveOnePhase"
       ],
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaTelephony.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaTelephonyPlugin.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaSmsSendReceiver.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaImageCapability.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaTelephony.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaTelephonyPlugin.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaSmsSendReceiver.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaImageCapability.java",
         "android/app/src/launcher/AndroidManifest.xml",
         "android/consumer-host.json",
         "android/upstream-native-sources.json",
@@ -2227,10 +2248,10 @@
         "ApprovedReceiptMatchesReview"
       ],
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaTelephony.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaTelephonyPlugin.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaSmsSendReceiver.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaImageCapability.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaTelephony.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaTelephonyPlugin.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaSmsSendReceiver.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaImageCapability.java",
         "android/app/src/launcher/AndroidManifest.xml",
         "android/consumer-host.json",
         "android/upstream-native-sources.json",
@@ -2280,8 +2301,8 @@
         "savedReplyMatchesDurable"
       ],
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/MainActivity.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java",
         "android/app/src/main/AndroidManifest.xml"
       ],
       "stateMapping": {
@@ -2323,8 +2344,8 @@
         "BridgeRowsAllowlisted"
       ],
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/PluginWorkers.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/PluginWorkers.java",
         "android/consumer-host.json",
         "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/crash/CrashLog.java"
       ],
@@ -2366,8 +2387,8 @@
         "CorrectTaskAndScope"
       ],
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/PasswordProviderSupport.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/PasswordProviderSupport.java",
         "android/consumer-host.json",
         "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SystemSettingsPages.java"
       ],
@@ -2414,7 +2435,7 @@
         "ReplyMatchesDispatch"
       ],
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaSystemPlugin.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaSystemPlugin.java",
         "android/consumer-host.json",
         "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SystemLauncherApps.java"
       ],
@@ -2454,10 +2475,10 @@
         "SingleExactPending"
       ],
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/SourceRenewalNotices.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/SourceRenewalHost.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/HostedNoticePoster.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaHostedResultsPlugin.java"
+        "android/app/src/main/java/ai/alphacompute/alphaphone/SourceRenewalNotices.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/SourceRenewalHost.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/HostedNoticePoster.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaHostedResultsPlugin.java"
       ],
       "stateMapping": {
         "rows/serial/now/process": "Exact durable identity, dispatch phase, pending token and synthetic clock/process reconstruction",
@@ -2500,11 +2521,11 @@
         "tileHasNoAuthority"
       ],
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaAssistActivity.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPowerVoiceActivity.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaQuickSettingsTile.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/MainActivity.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaAssistActivity.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaPowerVoiceActivity.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaQuickSettingsTile.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
         "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SenseListenerClient.java",
         "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SenseInvocation.java",
         "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/AssistantEntryTile.java",
@@ -2557,9 +2578,9 @@
         "ReminderLookupUsesSelectedBinding"
       ],
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaActionJournal.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaActionJournalPlugin.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/WorkflowNoticeDelivery.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaActionJournal.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaActionJournalPlugin.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/WorkflowNoticeDelivery.java",
         "vendor/eliza/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/ActionJournal.java",
         "vendor/eliza/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/ActionJournalPlugin.java",
         "vendor/eliza/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeletionReceiptRecovery.java",
@@ -2636,7 +2657,9 @@
         "refusedEnqueueKeepsOldWorkerRetiredTest",
         "refusedEnqueueCannotRetireLaterSameGrantTest",
         "refusedEnqueueCannotRetireSettledSuccessorTest",
-        "uncertainNoticeNeverRepostsTest"
+        "uncertainNoticeNeverRepostsTest",
+        "historyRefusalBudgetResetsOnlyAfterAcceptedPageTest",
+        "unauthorizedHistoryStopsImmediatelyTest"
       ],
       "invariants": [
         "RetiredSelectionIsEmpty",
@@ -2647,22 +2670,23 @@
         "AdmissionEpoch",
         "PendingGrantOwnsAttempt",
         "HeldConsumeHasExactTap",
-        "HeldRefusalOwnsClosedBridge"
+        "HeldRefusalOwnsClosedBridge",
+        "HistoryAuthBudget"
       ],
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/GmailBackground.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/GmailDeliveryWorker.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaGmailPlugin.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/CloudDeployment.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/PluginWorkers.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCredentialStore.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/LocalAgentProviderAdmission.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/GmailBackground.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/GmailDeliveryWorker.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaGmailPlugin.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/CloudDeployment.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/PluginWorkers.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCredentialStore.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/LocalAgentProviderAdmission.java",
         "vendor/eliza/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/MailBackgroundDelivery.java",
         "vendor/eliza/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/MailHistoryReconciliation.java"
       ],
       "stateMapping": {
         "credential/remoteOwner/grants/reset": "Synthetic raw credential classes, remotely reported owner/grants and pending reset",
-        "generation/grant/owner/boundCredential/cursor/continuation/phase/incomplete/checked": "Selected encrypted row, exact owner and decimal history progress",
+        "generation/grant/owner/boundCredential/cursor/continuation/phase/incomplete/checked/authFailures": "Selected encrypted row, exact owner, decimal history progress and durable history-route refusal count",
         "latestGeneration/attempt/admitted/configuring/configOwner/configCredential/configAttempt/configGrantVerified/configQueued/pendingGrant": "Actual generation assignment and admitted epoch with one held account response",
         "periodic/catchup/schedules/cancels": "Closed WorkManager command names, generations and request counts",
         "workGeneration/workEpoch/workReply/historyReads/process/retiredBridge/refusalAttempt": "Exact worker snapshot and result, page reads and reconstruction",
@@ -2670,7 +2694,7 @@
       },
       "abstractions": [
         "Three grants, two remote owners, three credential equality classes, one retained notice and one held transport callback across two bridge instances.",
-        "Four-page Worker checkpoint, 20-digit decimal cursor examples, synthetic work commands, selected HTTP outcomes and pre/postcommit storage failures.",
+        "Four-page Worker checkpoint, 20-digit decimal cursor examples, synthetic work commands, selected HTTP outcomes and pre/postcommit storage failures. History-only403/409 completes after three durable refusals; an accepted page resets the counter.401 and verified account/grant revocation remain immediate. Further deliveries of an already completed failing job are outside this bounded schedule.",
         "Targeted retirement fences only matching saved or pending grants. Consume checks the exact still-current tap after remote admission. Releasing a question remains local cancellation. Executor refusal releases only its own unadmitted attempt, advances the settled epoch and preserves the durable selection.",
         "Android and provider effects are closed. WorkManager delivery, real durable storage and installed notification/Activity enforcement remain outside the campaign."
       ],
@@ -2704,10 +2728,10 @@
         "DescribedBeforeExpiry"
       ],
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeDigestSources.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeDigestHost.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/HostedDelivery.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/HostedResultNotices.java"
+        "android/app/src/main/java/ai/alphacompute/alphaphone/NativeDigestSources.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/NativeDigestHost.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/HostedDelivery.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/HostedResultNotices.java"
       ],
       "stateMapping": {
         "rows/now/writes/restarts": "Selected durable consent, exact scope/revision, revocation and expiry across host reconstruction",
@@ -2754,9 +2778,9 @@
         "TicketHasCurrentEpoch"
       ],
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarScopedDeletionReview.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarDeletionIdentity.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCalendarPlugin.java"
+        "android/app/src/main/java/ai/alphacompute/alphaphone/CalendarScopedDeletionReview.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/CalendarDeletionIdentity.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCalendarPlugin.java"
       ],
       "sharedSources": [
         "plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/CalendarEventGuard.java",
@@ -2804,16 +2828,16 @@
         "PausedConsentNotResurrected"
       ],
       "sources": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncBridge.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncConsent.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncSnapshot.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncMutation.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncReceiptRecovery.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeDeletionCoordinator.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCredentialStore.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCalendarPlugin.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaConnectionPlugin.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/LocalAgentProviderAdmission.java"
+        "android/app/src/main/java/ai/alphacompute/alphaphone/CalendarSyncBridge.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/CalendarSyncConsent.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/CalendarSyncSnapshot.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/CalendarSyncMutation.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/CalendarSyncReceiptRecovery.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/NativeDeletionCoordinator.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCredentialStore.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCalendarPlugin.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaConnectionPlugin.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/LocalAgentProviderAdmission.java"
       ],
       "sharedSources": [
         "plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/write/CalendarEventOptions.java",

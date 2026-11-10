@@ -8,9 +8,9 @@ import {residentPlatform} from './resident-platform.mjs';
 export function credentialCoordinatorPlatform() {
   const base=residentPlatform();
   const files={...base.sources};
-  delete files['ai/elizaresearch/alphaphone/AlphaCredentialStore.java'];
-  delete files['ai/elizaresearch/alphaphone/AlphaConnectionPlugin.java'];
-  delete files['ai/elizaresearch/alphaphone/OwnerRoutes.java'];
+  delete files['ai/alphacompute/alphaphone/AlphaCredentialStore.java'];
+  delete files['ai/alphacompute/alphaphone/AlphaConnectionPlugin.java'];
+  delete files['ai/alphacompute/alphaphone/OwnerRoutes.java'];
   const routes=JSON.stringify(serializeOwnerRouteTable());
   files['android/content/res/AssetManager.java']=files['android/content/res/AssetManager.java'].replace(
     'if (name.equals("agent/agent-bundle.js")',
@@ -113,7 +113,7 @@ public class Uri {
   }
 }`;
   files['android/os/Build.java']='package android.os;public class Build {public static class VERSION {public static final int SDK_INT=30;}public static class VERSION_CODES {public static final int S=31;}}';
-  files['android/os/SystemClock.java']='package android.os;public class SystemClock {public static long elapsedRealtime(){return ai.elizaresearch.alphaphone.CredentialCoordinatorPorts.elapsed();}}';
+  files['android/os/SystemClock.java']='package android.os;public class SystemClock {public static long elapsedRealtime(){return ai.alphacompute.alphaphone.CredentialCoordinatorPorts.elapsed();}}';
   files['android/util/AtomicFile.java']='package android.util;public class AtomicFile {}';
   files['android/util/Log.java']=files['android/util/Log.java'].replace('public class Log {','public class Log { public static int d(String tag,String value){return 0;}');
   files['androidx/browser/customtabs/CustomTabsClient.java']='package androidx.browser.customtabs;public class CustomTabsClient {public static String getPackageName(android.content.Context context,Object packages){return null;}}';
@@ -138,16 +138,16 @@ public class CustomTabsIntent {
 }`;
   files['com/getcapacitor/Plugin.java']=files['com/getcapacitor/Plugin.java'].replace('public void load()', 'protected void handleOnNewIntent(android.content.Intent intent){}protected void handleOnResume(){}public void load()');
   files['com/getcapacitor/Plugin.java']=files['com/getcapacitor/Plugin.java']
-   .replace('public void notifyListeners(String name, JSObject value) {}','public void notifyListeners(String name, JSObject value) {ai.elizaresearch.alphaphone.CredentialCoordinatorPorts.notification(name,value);}')
-   .replace('public void notifyListeners(String name, JSObject value, boolean retained) {}','public void notifyListeners(String name, JSObject value, boolean retained) {ai.elizaresearch.alphaphone.CredentialCoordinatorPorts.notification(name,value);}');
+   .replace('public void notifyListeners(String name, JSObject value) {}','public void notifyListeners(String name, JSObject value) {ai.alphacompute.alphaphone.CredentialCoordinatorPorts.notification(name,value);}')
+   .replace('public void notifyListeners(String name, JSObject value, boolean retained) {}','public void notifyListeners(String name, JSObject value, boolean retained) {ai.alphacompute.alphaphone.CredentialCoordinatorPorts.notification(name,value);}');
   files['com/getcapacitor/PluginCall.java']=files['com/getcapacitor/PluginCall.java'].replace('public synchronized void resolve()', 'public long getLong(String key,long fallback){return input.optLong(key,fallback);}public JSObject getObject(String key,JSObject fallback){JSObject value=getObject(key);return value==null?fallback:value;}public synchronized void resolve()');
-  files['ai/elizaresearch/alphaphone/BuildConfig.java']=files['ai/elizaresearch/alphaphone/BuildConfig.java'].replace('public class BuildConfig {','public class BuildConfig {public static final String ELIZAOS_APP_LINK_HOST="";');
-  files['ai/elizaresearch/alphaphone/NotificationAccess.java']='package ai.elizaresearch.alphaphone;public class NotificationAccess {public static void pause(android.content.Context context,boolean value){throw new AssertionError("Unused notifications");}}';
-  files['ai/elizaresearch/alphaphone/CalendarSyncBridge.java']='package ai.elizaresearch.alphaphone;public class CalendarSyncBridge {public static final String SLOT="native-calendar-sync:v1";}';
+  files['ai/alphacompute/alphaphone/BuildConfig.java']=files['ai/alphacompute/alphaphone/BuildConfig.java'].replace('public class BuildConfig {','public class BuildConfig {public static final String ELIZAOS_APP_LINK_HOST="";');
+  files['ai/alphacompute/alphaphone/NotificationAccess.java']='package ai.alphacompute.alphaphone;public class NotificationAccess {public static void pause(android.content.Context context,boolean value){throw new AssertionError("Unused notifications");}}';
+  files['ai/alphacompute/alphaphone/CalendarSyncBridge.java']='package ai.alphacompute.alphaphone;public class CalendarSyncBridge {public static final String SLOT="native-calendar-sync:v1";}';
   files['ai/eliza/plugins/securestore/nativeonly/JsonCredentialSlots.java']=`package ai.eliza.plugins.securestore.nativeonly;
 import java.util.*;
 import java.util.function.ToIntFunction;
-import ai.elizaresearch.alphaphone.CredentialCoordinatorPorts;
+import ai.alphacompute.alphaphone.CredentialCoordinatorPorts;
 public class JsonCredentialSlots {
   public static final Object LOCK = new Object();
   public static final Map<String, String> VALUES = new java.util.concurrent.ConcurrentHashMap<>();
@@ -171,7 +171,7 @@ public class JsonCredentialSlots {
     return new android.util.AtomicFile();
   }
 }`;
-  files['ai/elizaresearch/alphaphone/ElizaAgentService.java']=files['ai/elizaresearch/alphaphone/ElizaAgentService.java']
+  files['ai/alphacompute/alphaphone/ElizaAgentService.java']=files['ai/alphacompute/alphaphone/ElizaAgentService.java']
    .replace('throw new AssertionError("Unused credential shutdown");','return CredentialCoordinatorPorts.strictStop();')
    .replace('throw new AssertionError("Unused credential reservation");','return ++CredentialCoordinatorPorts.strictEpoch;')
    .replace('throw new AssertionError("Unused credential retry");','CredentialCoordinatorPorts.dispatchStrictStop(request);')

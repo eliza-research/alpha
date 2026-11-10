@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {collectApplicationCampaigns, runApplicationRefinement} from '../specs/quint/refinement/application/index.mjs';
 
-test('application source observations match bounded Quint component traces', {timeout: 1200000}, async () => {
+// The aggregate runs 110 source-observation campaigns, each with its own bounded
+// driver checks. A progressing prepared-SDK run exceeded 20 minutes before the
+// final campaigns; allow collection to finish without relaxing any trace checks.
+test('application source observations match bounded Quint component traces', {timeout: 1800000}, async () => {
   const result = await runApplicationRefinement();
   assert.deepEqual(result.failures, [], result.failures.map(({campaign, error}) => `${campaign}: ${error}`).join('\n'));
   const manifest = JSON.parse(readFileSync(new URL('../specs/quint/application/manifest.json', import.meta.url)));

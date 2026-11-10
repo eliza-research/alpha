@@ -79,7 +79,7 @@
     },
     "imageArchiveSha256": "053dcde1cfdea6c8a305fd0c0eec1f6ef02276a27d607c9275e9973fb79d401e",
     "vbmetaDigestMatchesBuiltImage": true,
-    "homeRoleHolder": "ai.elizaresearch.alphaphone",
+    "homeRoleHolder": "ai.alphacompute.alphaphone",
     "selinux": "Enforcing",
     "productLauncherSha256": "9a3d59a597b82ac2ce2ee6e743e716aa8ea704302c85655703126fb8cd66e373",
     "runningCodePath": "/data update (UPDATED_SYSTEM_APP), byte-identical to /product launcher 9a3d59a5",

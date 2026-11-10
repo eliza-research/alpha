@@ -226,12 +226,13 @@ test('browser navigation, tabs, private tab, reviewed reading and password manag
   await test.step('password manager from the Browser menu: honest autofill state and development vault', async () => {
     await menu(page, 'Password manager');
     const settings = page.getByRole('region', {name: 'Settings'});
-    await expect(settings.getByRole('heading', {name: 'Passwords', exact: true})).toBeVisible();
+    await expect(settings.getByRole('heading', {name: 'Password manager', exact: true})).toBeVisible();
     await expect(settings).toContainText(/Vault\s*Locked/);
     await expect(settings).toContainText(/Browser autofill\s*Use Show or Copy for website passwords\.\s*Unavailable/);
     await expect(settings).toContainText(/Autofill service\s*None selected/);
     await expect(settings.getByRole('button', {name: 'Add development provider', exact: true})).toBeVisible();
-    await expect(settings.getByRole('button', {name: 'Password provider', exact: true})).toContainText('No provider selected');
+    await expect(settings).toContainText(/Selection\s*No provider selected/);
+    await expect(settings.getByRole('button', {name: 'Choose password provider', exact: true})).toBeVisible();
     expect(await providerDocument(page)).toBeNull();
     await settings.getByRole('button', {name: /^Unlock passwords/}).click();
     await expect(settings).toContainText(/Vault\s*Unlocked · locks after 60 s or when you leave/);
@@ -245,7 +246,7 @@ test('browser navigation, tabs, private tab, reviewed reading and password manag
     await button(page, 'Add development provider').click();
     await button(page, 'Add provider').click();
     await expect(button(page, 'Open development vault')).toBeVisible();
-    await button(page, 'Password provider').click();
+    await button(page, 'Choose password provider').click();
     await button(page, 'Proton Pass · development').click();
     await expect(page.getByText('Development provider selected', {exact: true})).toBeVisible();
     await button(page, 'Open development vault').click();

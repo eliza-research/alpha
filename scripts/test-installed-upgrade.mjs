@@ -33,7 +33,7 @@ export async function testInstalledUpgrade(kind,options=process.argv.slice(3)){
  assert.ok(sdk&&path.isAbsolute(sdk),'Provide absolute ANDROID_HOME or ANDROID_SDK_ROOT');
  const adb=path.join(sdk,'platform-tools/adb'),aapt=path.join(sdk,'build-tools/36.0.0/aapt');
  const pkg=JSON.parse(fs.readFileSync(path.join(root,'app.config.json'),'utf8')).appId,testPkg=`${pkg}.test`;
- assert.equal(pkg,'ai.elizaresearch.alphaphone');
+ assert.equal(pkg,'ai.alphacompute.alphaphone');
  const bridge=options.includes('--bridge'),baselineProcessRunner=options.includes('--baseline-process-runner');
  assert.ok(options.every(arg=>(kind==='calendar'&&arg==='--bridge')||(kind==='reminder'&&arg==='--baseline-process-runner')),'Unknown upgrade option');
  const currentRunners=[pkg+'.WorkflowNoticeProcessRunner'];

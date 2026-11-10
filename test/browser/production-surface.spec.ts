@@ -419,9 +419,8 @@ for (const mode of ['signed-out','empty','credits','unavailable','funded','repla
    // and the required sign-in page never covers the running resident's Home.
    if(mode==='replaced')await expect(page.locator('[role="main"].alpha-cloud-sign-in')).toHaveCount(0);
    await expect(page.getByRole('dialog')).toHaveCount(0);
-   await page.getByRole('button',{name:'Settings',exact:true}).click();
-   if(mode==='replaced')await page.getByRole('button',{name:'Agent',exact:true}).click();
-   else await openCloudPlanFromSettings(page);
+   if(mode==='replaced')await openYourAgent(page);
+   else{await page.getByRole('button',{name:'Settings',exact:true}).click();await openCloudPlanFromSettings(page);}
   }
   await expect(dialog).toBeVisible();
   if(mode==='unpackaged'){
@@ -429,7 +428,7 @@ for (const mode of ['signed-out','empty','credits','unavailable','funded','repla
    await expect(dialog.getByRole('button',{name:'Email me a code',exact:true})).toBeVisible();
    await expect(dialog.getByRole('status').filter({hasText:'This developer build does not include the on-device agent.'})).toHaveText('This developer build does not include the on-device agent.');
   }else if(needsPlan)await expect(dialog.getByRole('region',{name:'Subscription',exact:true})).toBeVisible();
-  else if(!signedOut&&mode!=='replaced'){await expect(dialog.getByRole('button',{name:'Sign out',exact:true})).toBeVisible();await expect(dialog.getByRole('button',{name:'Manage plan',exact:true})).toBeVisible();}
+  else if(!signedOut&&mode!=='replaced'){await expect(dialog.getByRole('button',{name:'Sign out of Eliza Cloud',exact:true})).toBeVisible();await expect(dialog.getByRole('button',{name:'Manage plan',exact:true})).toBeVisible();}
   if(signedOut){
    await expect(dialog.getByText(/Sign in to verify your account|review access/)).toHaveCount(0);
    await expect(dialog.getByRole('button',{name:'Email me a code',exact:true})).toBeVisible();
@@ -449,12 +448,12 @@ for (const mode of ['signed-out','empty','credits','unavailable','funded','repla
    await expect(dialog).not.toContainText(/Available credits|Add credits|\$\d/);
   }
   if(mode==='replaced')await expect(dialog.getByText(/account changed/i)).toBeVisible();
-  if(admitted)await expect(dialog.getByRole('button',{name:'Sign out',exact:true})).toBeVisible();
+  if(admitted)await expect(dialog.getByRole('button',{name:'Sign out of Eliza Cloud',exact:true})).toBeVisible();
   // Legacy credit admission keeps the subscription and membership-code options visible.
-  if(mode==='credits'){await expect(dialog).toContainText('Sign-in expiring');await expect(dialog.getByRole('button',{name:'Redeem code',exact:true})).toBeVisible();await expect(dialog.getByRole('textbox',{name:'Membership code',exact:true})).toHaveCount(0);}
+  if(mode==='credits'){await expect(dialog).toContainText('Sign-in expires soon');await expect(dialog.getByRole('button',{name:'Redeem code',exact:true})).toBeVisible();await expect(dialog.getByRole('textbox',{name:'Membership code',exact:true})).toHaveCount(0);}
   for(const retired of ['Use local apps without AI','Continue offline'])await expect(dialog.getByRole('button',{name:retired,exact:true})).toHaveCount(0);
   // Every dialog but the required sign-in closes; the agent keeps running.
-  if(needsPlan){await page.keyboard.press('Escape');await expect(dialog).toHaveCount(0);}else if(!signedOut){await dialog.getByRole('button',{name:'Back to Settings',exact:true}).click();}
+  if(needsPlan){await page.keyboard.press('Escape');await expect(dialog).toHaveCount(0);}else if(!signedOut){const parent=mode==='replaced'?'About':'Account';await dialog.getByRole('button',{name:`Back to ${parent}`,exact:true}).click();await expect(dialog.getByRole('heading',{name:parent,exact:true})).toBeVisible();}
   if(mode==='legacy-offline'||mode==='signed-out')expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('alpha.connection.selection.v1')!))).toEqual({kind:'resident'});
   const calls=await page.evaluate(()=>(window as any).residentCalls);
   expect(calls.some((c:any)=>c.url?.includes('/personal/')||c.url?.includes('/upgrade-tier')||c.url?.includes('/credits/'))).toBe(false);

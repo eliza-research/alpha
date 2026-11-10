@@ -7,7 +7,7 @@ import {nativeSource,fixture,runJvm,jsonJarSkip} from './fixtures/jvm-tools.mjs'
 
 const {NoteRecorderSession, formatRecordingClock, noteRecorderError} = await import('../apps/app/src/prototype/note-recorder.ts');
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
-const native = path => read(`android/app/src/main/java/ai/elizaresearch/alphaphone/${path}`);
+const native = path => read(`android/app/src/main/java/ai/alphacompute/alphaphone/${path}`);
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 const settle = async () => { for (let i = 0; i < 20; i++) await tick(); };
 
@@ -528,7 +528,7 @@ test('a long recording\'s transcript never stops its audio from being saved: the
 });
 
 test('the native recorder has a device test for segments, pause accounting, crash recovery and the joined file', () => {
-  const device = read('android/app/src/androidTest/java/ai/elizaresearch/alphaphone/NoteRecorderInstrumentedTest.java');
+  const device = read('android/app/src/androidTest/java/ai/alphacompute/alphaphone/NoteRecorderInstrumentedTest.java');
   assert.match(device, /segments\(status\)<3/, 'records past two segment rollovers');
   assert.match(device, /paused time does not count/);
   assert.match(device, /AlphaNoteRecorder next=fresh\(\)/, 'a new recorder recovers the crashed recording');
@@ -547,7 +547,7 @@ test('the recording notification follows pause: "Paused" with Resume, and its ch
   assert.match(service, /setWhen\(System\.currentTimeMillis\(\)-Math\.max\(0,status\.optLong\("durationMs",0\)\)\)/);
   assert.match(service, /ACTION_PAUSE\.equals\(action\)\|\|ACTION_RESUME\.equals\(action\)[\s\S]*?refresh\(this\);/, 'a notification action shows the new state');
   assert.match(native('AlphaVoiceCloudPlugin.java'), /AlphaNoteRecordingService\.refresh\(getContext\(\)\)/, 'a pause in Alpha updates the notification');
-  assert.match(read('android/app/src/androidTest/java/ai/elizaresearch/alphaphone/NoteRecorderInstrumentedTest.java'), /theNotificationShowsPausedWithResumeAndTheRecordingLength/);
+  assert.match(read('android/app/src/androidTest/java/ai/alphacompute/alphaphone/NoteRecorderInstrumentedTest.java'), /theNotificationShowsPausedWithResumeAndTheRecordingLength/);
 });
 
 test('the browser recorder finishes bounded segments as it records, as the native one does', () => {
@@ -605,5 +605,5 @@ test('audio-first recording never starts automatic transcription even with a loc
 
 test('the native recorder retains finished audio and uncertain recovery records across restart', {skip:jsonJarSkip}, () => {
  const stubs=['android/content/Context','android/os/Build','android/os/Handler','android/os/Looper','android/os/SystemClock','android/util/AtomicFile','android/media/MediaRecorder','android/media/MediaFormat','android/media/MediaCodec','android/media/MediaExtractor','android/media/MediaMuxer','com/getcapacitor/JSObject','com/getcapacitor/JSArray'].map(name=>fixture('note-recorder-jvm/'+name+'.java'));
- assert.match(runJvm([...stubs,nativeSource('AlphaNoteRecorder.java'),fixture('NoteRecorderJournalTest.java')],'ai.elizaresearch.alphaphone.NoteRecorderJournalTest',{json:true}),/^PASS note recorder journal/);
+ assert.match(runJvm([...stubs,nativeSource('AlphaNoteRecorder.java'),fixture('NoteRecorderJournalTest.java')],'ai.alphacompute.alphaphone.NoteRecorderJournalTest',{json:true}),/^PASS note recorder journal/);
 });

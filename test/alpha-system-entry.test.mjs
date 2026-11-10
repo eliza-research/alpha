@@ -9,12 +9,12 @@ import {rewriteResidentClass} from '../vendor/eliza/packages/app/scripts/mobile/
 
 const root=resolve(import.meta.dirname,'..');
 const read=path=>readFileSync(join(root,path),'utf8');
-const tilePath='android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaQuickSettingsTile.java';
+const tilePath='android/app/src/main/java/ai/alphacompute/alphaphone/AlphaQuickSettingsTile.java';
 // Alpha's tile is a registration of the shared AssistantEntryTile in the pinned plugin-native-system.
 const sharedTilePath='vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/AssistantEntryTile.java';
 const strings=read('android/app/src/main/res/values/alpha-system-entry.xml');
 const names=[...strings.matchAll(/<string name="([^"]+)"/g)].map(m=>m[1]);
-const rClass='package ai.elizaresearch.alphaphone; public class R { public static class drawable { public static final int notification_icon=1; } public static class string {'+names.map((n,i)=>`public static final int ${n}=${i+10};`).join('')+'}}';
+const rClass='package ai.alphacompute.alphaphone; public class R { public static class drawable { public static final int notification_icon=1; } public static class string {'+names.map((n,i)=>`public static final int ${n}=${i+10};`).join('')+'}}';
 const stubs={
  'android/annotation/SuppressLint.java':'package android.annotation; public @interface SuppressLint { String[] value(); }',
  'android/annotation/TargetApi.java':'package android.annotation; public @interface TargetApi { int value(); }',
@@ -25,8 +25,8 @@ const stubs={
  'android/os/Build.java':'package android.os; public class Build { public static class VERSION { public static int SDK_INT=36; } public static class VERSION_CODES { public static final int N=24, Q=29, UPSIDE_DOWN_CAKE=34; } }',
  'android/service/quicksettings/Tile.java':'package android.service.quicksettings; public class Tile { public static final int STATE_INACTIVE=1; public int state,updates; public String subtitle,label,description; public void setIcon(android.graphics.drawable.Icon i){} public void setLabel(CharSequence s){label=s.toString();} public void setSubtitle(CharSequence s){subtitle=s.toString();} public void setContentDescription(CharSequence s){description=s.toString();} public void setState(int s){state=s;} public void updateTile(){updates++;} }',
  'android/service/quicksettings/TileService.java':'package android.service.quicksettings; public class TileService extends android.content.Context { public boolean locked; public Runnable unlock; public Tile tile=new Tile(); public int launched; public android.content.Intent lastIntent; public android.app.PendingIntent lastPending; public void onStartListening(){} public void onClick(){} public Tile getQsTile(){return tile;} public boolean isLocked(){return locked;} public void unlockAndRun(Runnable r){unlock=r;} public void startActivityAndCollapse(android.content.Intent i){lastIntent=i;launched++;} public void startActivityAndCollapse(android.app.PendingIntent p){lastPending=p;lastIntent=p.intent;launched++;} }',
- 'ai/elizaresearch/alphaphone/AlphaAssistActivity.java':'package ai.elizaresearch.alphaphone; public class AlphaAssistActivity {}',
- 'ai/elizaresearch/alphaphone/R.java':rClass,
+ 'ai/alphacompute/alphaphone/AlphaAssistActivity.java':'package ai.alphacompute.alphaphone; public class AlphaAssistActivity {}',
+ 'ai/alphacompute/alphaphone/R.java':rClass,
 };
 
 test('actual tile defers to unlock, uses immutable explicit assist intent, and never exposes toggle state',()=>{
@@ -34,8 +34,8 @@ test('actual tile defers to unlock, uses immutable explicit assist intent, and n
  try{
   const files=[];
   for(const [path,text]of Object.entries(stubs)){const file=join(dir,path);mkdirSync(join(file,'..'),{recursive:true});writeFileSync(file,text);files.push(file);}
-  const harness=join(dir,'ai/elizaresearch/alphaphone/TileTest.java');
-  writeFileSync(harness,`package ai.elizaresearch.alphaphone;
+  const harness=join(dir,'ai/alphacompute/alphaphone/TileTest.java');
+  writeFileSync(harness,`package ai.alphacompute.alphaphone;
 public class TileTest {
  static void check(boolean ok,String message){if(!ok)throw new AssertionError(message);}
  public static void main(String[] args){
@@ -64,7 +64,7 @@ public class TileTest {
 }`);
   files.push(harness,join(root,sharedTilePath),join(root,tilePath));
   execFileSync(javaBinary('javac'),['--release','11','-d',dir,...files],{timeout:60000});
-  assert.match(execFileSync(javaBinary('java'),['-cp',dir,'ai.elizaresearch.alphaphone.TileTest'],{encoding:'utf8',timeout:60000}),/^PASS actual Alpha tile/);
+  assert.match(execFileSync(javaBinary('java'),['-cp',dir,'ai.alphacompute.alphaphone.TileTest'],{encoding:'utf8',timeout:60000}),/^PASS actual Alpha tile/);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });
 
@@ -75,7 +75,7 @@ test('production tile compiles against the real Android API and existing identit
  const dir=mkdtempSync(join(tmpdir(),'alpha-qs-api-'));
  try{
   const stub=join(dir,'AlphaAssistActivity.java'),r=join(dir,'R.java');
-  writeFileSync(stub,'package ai.elizaresearch.alphaphone; public class AlphaAssistActivity extends android.app.Activity {}');writeFileSync(r,rClass);
+  writeFileSync(stub,'package ai.alphacompute.alphaphone; public class AlphaAssistActivity extends android.app.Activity {}');writeFileSync(r,rClass);
   execFileSync(javaBinary('javac'),['--release','17','-classpath',api,'-d',dir,stub,r,join(root,sharedTilePath),join(root,tilePath)],{timeout:60000,stdio:'pipe'});
  }finally{rmSync(dir,{recursive:true,force:true});}
 });
@@ -109,11 +109,15 @@ test('notification projection changes fixed product presentation while preservin
  assert.ok(generated.includes('case "running":')&&generated.includes('case "stop-failed":'));
  assert.ok(generated.includes('.addAction(0, "Stop", stopPending)'));
  assert.equal((generated.match(/\.setColor\(0xff0000ff\)/g)||[]).length,2);
- // Suspend the previous transport atomically before exposing a rotated root, and resume
- // canonical notification recovery on all four running paths, after readiness only.
+ // Suspend the previous transport atomically before exposing a rotated root. Upstream now
+ // shares markRunning between its startup and watchdog probes; detached adoption has its own
+ // health-confirmed transition. Every assignment must resume canonical notification recovery.
  assert.equal(generated.split('            AlphaLocalAgentPlugin.publishNotificationRoot(() -> { currentLocalAgentToken = token; });').length,2);
- assert.equal(generated.split('currentStatus = "running"; AlphaCanonicalNotifications.resumeExisting(getApplicationContext());').length,5);
- assert.equal(generated.split('currentStatus = "running";').length,5);
+ const runningAssignments=[...original.matchAll(/currentStatus = "running";/g)];
+ assert.equal(runningAssignments.length,2,'review changed upstream readiness transitions');
+ const resumed='currentStatus = "running"; AlphaCanonicalNotifications.resumeExisting(getApplicationContext());';
+ assert.equal(generated.split(resumed).length-1,runningAssignments.length);
+ assert.doesNotMatch(generated.replaceAll(resumed,''),/currentStatus = "running";/,'no running transition escapes the recovery hook');
  const bootstrap=generated.slice(generated.indexOf('private Notification buildBootstrapNotification('),generated.indexOf('    private void pushNotification()'));
  assert.ok(!bootstrap.includes('PendingIntent'),'preserve startup binder-free notification path');
  const nativeTitles=['alpha_runtime_title','alpha_runtime_running','alpha_runtime_starting','alpha_runtime_stopped','alpha_runtime_asset_error','alpha_runtime_missing_files','alpha_runtime_spawn_failed','alpha_runtime_restart_blocked'];

@@ -43,7 +43,7 @@ const nativeInputs = {
   exactLimit: [200, offerJson.padEnd(65536)],
   oversized: [200, offerJson.padEnd(65537)],
 };
-const hourMs = 60 * 60 * 1000;
+const minuteMs = 60 * 1000;
 const initialNative = {'s.owner':0, 's.target':0, 's.phase':'idle', 's.file':'absent', 's.bytes':0, 's.session':'none',
   's.stagedBytes':0, 's.connected':false, 's.fetches':0, 's.created':0, 's.abandoned':0, 's.outcome':'none'};
 
@@ -63,7 +63,7 @@ function renderer(program, name, responses) {
   let now = 0, stored = null, writable = true, count = 0, settle, pending, context;
   const setUp = () => {
     context = vm.createContext({
-      Date: {now: () => now * hourMs}, URL,
+      Date: {now: () => now * minuteMs}, URL,
       Capacitor: {isNativePlatform: () => true},
       localStorage: {
         getItem(key) {assert.equal(key, 'alpha.app-update.v1'); return stored;},
@@ -88,14 +88,14 @@ function renderer(program, name, responses) {
     assert.ok([8, 9].includes(receipt.versionCode));
     return receipt.versionCode - 7;
   };
-  const hour = checkedAt => Number.isFinite(checkedAt) ? checkedAt / hourMs : -1;
+  const minute = checkedAt => Number.isFinite(checkedAt) ? checkedAt / minuteMs : -1;
   function observe() {
     const {cache, checking} = context.inspect();
     const durable = JSON.parse(stored ?? 'null');
     const cached = manifestClass(cache.manifest);
-    return {'s.clock':now, 's.checkedAt':hour(cache.checkedAt), 's.cached':cached,
-      's.storedAt':hour(durable?.checkedAt), 's.stored':manifestClass(durable?.manifest),
-      's.checking':checking, validOffer:Math.max(0,cached), checkDue:context.due(cache.checkedAt,now * hourMs)};
+    return {'s.clock':now, 's.checkedAt':minute(cache.checkedAt), 's.cached':cached,
+      's.storedAt':minute(durable?.checkedAt), 's.stored':manifestClass(durable?.manifest),
+      's.checking':checking, validOffer:Math.max(0,cached), checkDue:context.due(cache.checkedAt,now * minuteMs)};
   }
   const trace = {name, init:{name:'init'}, expect:{...initialNative,...observe()}, steps:[]};
   function point(label, action, ...args) {
@@ -180,8 +180,8 @@ export async function checkNativeUpdateStaging(extraSources = []) {
 
     const cache = renderer(program,'cached-offer-cadence-withdrawal-and-replacement',responses);
     cache.request();cache.duplicate();await cache.answer('offer1');
-    cache.clockAt(23);cache.fresh();
-    cache.clockAt(24);cache.request();await cache.answer('transport',false);
+    cache.clockAt(14);cache.fresh();
+    cache.clockAt(15);cache.request();await cache.answer('transport',false);
     cache.request();await cache.answer('malformed',false);
     cache.request();await cache.answer('transport',false,'oversized');
     cache.request();await cache.answer('offer1',true,'exactLimit');

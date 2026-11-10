@@ -10,14 +10,14 @@ Eliza `968348d792d3d36df129bc53bd85cebed47d0830` and native fork
 `3e5f73922ee804806a2e955b50843a5042e6e401`. They were not rebuilt for this test.
 The pinned full JNI bridge was built separately with NDK 28.2, Release, Android
 API 23, for ARM64 and x86_64. Its supported class parameter binds it to
-`ai/elizaresearch/alphaphone/ElizaVoiceNative`. The pinned Java loader and environment
+`ai/alphacompute/alphaphone/ElizaVoiceNative`. The pinned Java loader and environment
 helper only have the product package substitution. The synthetic harness supplies
 BuildConfig (`auto`, one ASR thread), uses the full native method table, and does
 not call ASR. Source/generated hashes, exact CMake commands, header authentication,
 ELF inspection, engine/JNI/model/APK hashes and results are in `candidate.json`.
 Build paths were not remapped; these JNI bytes are not claimed path-independent.
 
-The separate `ai.elizaresearch.embeddingqualifier` APK requests no permissions,
+The separate `ai.alphacompute.embeddingqualifier` APK requests no permissions,
 contains the existing hash-verified BGE-small-en-v1.5 F16 model, and runs an
 Instrumentation class against itself. It executes five embedding calls in each of
 two fresh contexts: repeated identical sentences, related/unrelated sentences,

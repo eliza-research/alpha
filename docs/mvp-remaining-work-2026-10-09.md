@@ -1,11 +1,13 @@
-Current source pin: `99b49439ce9d0cb5607e9831b9f7f58d89525029`. Previous prepared source: `db96bb0a0371dca92707867245bf0bb119b5b4f5`. The previous inventory binding was `b23a23c2ef4f83d15591c6368c00f1e9547f7743`. The original 53-item inventory below is preserved; source composition does not establish build, device or human acceptance.
+Current source composition pin: `dae11e0b7e3f40e5434fea21fd7c127e416f7016`. This identifies the reviewed integrated sources, not renewed qualification of the historical evidence below. Distribution, device and owner acceptance remain separate.
 
-Current integration candidate: SDK `3d76ff5acacb369e2c58fc8512e69e59f53ce69b` is the eliza `develop` tip (2026-10-18), which contains elizaOS/eliza#36598 (native Google host, Calendar approvals and Gmail host operations) and replaced `985322b5df96`. Upstream's Calendar delete, native Gmail send and Gmail mailbox-change paths are default-off flags that Alpha removes from the agent environment. Existing JNI/build inputs are unchanged from `9365c9bb0d`; recorded qualified native bytes are retained. New end-of-turn, heard-content, allowance and Maps behavior still needs current-source qualification. Historical source-bound evidence follows.
+Historical source pin: `99b49439ce9d0cb5607e9831b9f7f58d89525029`. Previous prepared source: `db96bb0a0371dca92707867245bf0bb119b5b4f5`. The previous inventory binding was `b23a23c2ef4f83d15591c6368c00f1e9547f7743`. The original 53-item inventory below is preserved; source composition does not establish build, device or human acceptance.
+
+Historical integration candidate: SDK `3d76ff5acacb369e2c58fc8512e69e59f53ce69b` is the eliza `develop` tip (2026-10-18), which contains elizaOS/eliza#36598 (native Google host, Calendar approvals and Gmail host operations) and replaced `985322b5df96`. Upstream's Calendar delete, native Gmail send and Gmail mailbox-change paths are default-off flags that Alpha removes from the agent environment. Existing JNI/build inputs are unchanged from `9365c9bb0d`; recorded qualified native bytes are retained. New end-of-turn, heard-content, allowance and Maps behavior still needs current-source qualification. Historical source-bound evidence follows.
 
 <!-- Integration 9e7a1553f378a570be3fe74c021e71710a1c96eb combines main Maps and Calendar; native qualification remains pending. -->
 # MVP remaining-work inventory — policy reconciled October 12, 2026
 
-Current consumer runtime source pin: `9365c9bb0d177` (2026-10-16 Android Google host entry-point wiring). Native build and device acceptance remain pending. The earlier PR #531 pin was `968348d792d3`, llama.cpp `3e5f73922ee8`.
+Historical consumer runtime source pin: `9365c9bb0d177` (2026-10-16 Android Google host entry-point wiring). Native build and device acceptance remain pending. The earlier PR #531 pin was `968348d792d3`, llama.cpp `3e5f73922ee8`.
 Native source/provenance changed; voice remains unqualified and the prior embedding-host
 receipt remains refused pending requalification. Historical evidence below is not promoted.
 
@@ -191,7 +193,7 @@ Remaining: Run the permission prompt (including WebView visibility while it show
 
 Done when: Complete the unchecked implementation and evidence criteria in docs/owner-approved-mvp-plan-2026-10-12.md for #418. No policy approval or historical fixture result establishes current-build acceptance.
 
-Evidence/source: [apps/app/src/runtime/device-actions.ts](../apps/app/src/runtime/device-actions.ts), [vendor/eliza/packages/contracts/src/device-reviews.ts](../vendor/eliza/packages/contracts/src/device-reviews.ts), [docs/calendar-availability.md](../docs/calendar-availability.md), [apps/app/src/runtime/calendar-availability.ts](../apps/app/src/runtime/calendar-availability.ts), [docs/owner-approved-mvp-plan-2026-10-12.md](../docs/owner-approved-mvp-plan-2026-10-12.md), [android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarZones.java](../android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarZones.java).
+Evidence/source: [apps/app/src/runtime/device-actions.ts](../apps/app/src/runtime/device-actions.ts), [vendor/eliza/packages/contracts/src/device-reviews.ts](../vendor/eliza/packages/contracts/src/device-reviews.ts), [docs/calendar-availability.md](../docs/calendar-availability.md), [apps/app/src/runtime/calendar-availability.ts](../apps/app/src/runtime/calendar-availability.ts), [docs/owner-approved-mvp-plan-2026-10-12.md](../docs/owner-approved-mvp-plan-2026-10-12.md), [android/app/src/main/java/ai/alphacompute/alphaphone/CalendarZones.java](../android/app/src/main/java/ai/alphacompute/alphaphone/CalendarZones.java).
 
 ### MVP-13 Finish folder notification and capture context selection
 
@@ -245,7 +247,7 @@ Remaining: Run AssistantResidentReuseInstrumentedTest on both variants, then a p
 
 Done when: Native dual-Activity test records unchanged runtime identity, correct owned-work cancellation and preserved conversation across repeated assistant invocations.
 
-Evidence/source: [apps/app/src/runtime/connection-ui.tsx](../apps/app/src/runtime/connection-ui.tsx), [apps/app/src/runtime/local-agent.ts](../apps/app/src/runtime/local-agent.ts), [android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java](../android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java), [android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentAttachment.java](../android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentAttachment.java), [test/resident-attachment.test.mjs](../test/resident-attachment.test.mjs).
+Evidence/source: [apps/app/src/runtime/connection-ui.tsx](../apps/app/src/runtime/connection-ui.tsx), [apps/app/src/runtime/local-agent.ts](../apps/app/src/runtime/local-agent.ts), [android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java](../android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java), [android/app/src/main/java/ai/alphacompute/alphaphone/ResidentAttachment.java](../android/app/src/main/java/ai/alphacompute/alphaphone/ResidentAttachment.java), [test/resident-attachment.test.mjs](../test/resident-attachment.test.mjs).
 
 ### MVP-17 Qualify retained browser development transports
 
@@ -273,7 +275,7 @@ Remaining: Run scripts/test-installed-upgrade.mjs (WorkflowLegacyReminderUpgrade
 
 Done when: Complete the unchecked implementation and evidence criteria in docs/owner-approved-mvp-plan-2026-10-12.md for #425. No policy approval or historical fixture result establishes current-build acceptance.
 
-Evidence/source: [scripts/test-installed-upgrade.mjs](../scripts/test-installed-upgrade.mjs), [android/app/src/androidTest/java/ai/elizaresearch/alphaphone](../android/app/src/androidTest/java/ai/elizaresearch/alphaphone), [scripts/android-workflow-native.mjs](../scripts/android-workflow-native.mjs), [docs/verification.md](../docs/verification.md), [docs/owner-approved-mvp-plan-2026-10-12.md](../docs/owner-approved-mvp-plan-2026-10-12.md).
+Evidence/source: [scripts/test-installed-upgrade.mjs](../scripts/test-installed-upgrade.mjs), [android/app/src/androidTest/java/ai/alphacompute/alphaphone](../android/app/src/androidTest/java/ai/alphacompute/alphaphone), [scripts/android-workflow-native.mjs](../scripts/android-workflow-native.mjs), [docs/verification.md](../docs/verification.md), [docs/owner-approved-mvp-plan-2026-10-12.md](../docs/owner-approved-mvp-plan-2026-10-12.md).
 
 ### MVP-19 Complete the daily overview contract
 
@@ -344,7 +346,7 @@ Remaining: Approved October 12 TODOs #413, #397: On-device STT and TTS are manda
 
 Done when: Complete the unchecked implementation and evidence criteria in docs/owner-approved-mvp-plan-2026-10-12.md for #413, #397. No policy approval or historical fixture result establishes current-build acceptance.
 
-Evidence/source: [android/voice-host/qualified-voice-host.json](../android/voice-host/qualified-voice-host.json), [docs/fused-speech.md](../docs/fused-speech.md), [android/app/src/androidTest/java/ai/elizaresearch/alphaphone/FusedSpeechInstrumentedTest.java](../android/app/src/androidTest/java/ai/elizaresearch/alphaphone/FusedSpeechInstrumentedTest.java), [docs/owner-approved-mvp-plan-2026-10-12.md](../docs/owner-approved-mvp-plan-2026-10-12.md).
+Evidence/source: [android/voice-host/qualified-voice-host.json](../android/voice-host/qualified-voice-host.json), [docs/fused-speech.md](../docs/fused-speech.md), [android/app/src/androidTest/java/ai/alphacompute/alphaphone/FusedSpeechInstrumentedTest.java](../android/app/src/androidTest/java/ai/alphacompute/alphaphone/FusedSpeechInstrumentedTest.java), [docs/owner-approved-mvp-plan-2026-10-12.md](../docs/owner-approved-mvp-plan-2026-10-12.md).
 
 ### MVP-24 Run physical speech and interruption acceptance
 
@@ -419,7 +421,7 @@ Done when: Current installed WebView evidence; no credential forwarding to redir
 
 Dependencies: MVP-20.
 
-Evidence/source: [android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserDownloads.java](../android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserDownloads.java), [docs/browser-download-integration.md](../docs/browser-download-integration.md).
+Evidence/source: [android/app/src/main/java/ai/alphacompute/alphaphone/BrowserDownloads.java](../android/app/src/main/java/ai/alphacompute/alphaphone/BrowserDownloads.java), [docs/browser-download-integration.md](../docs/browser-download-integration.md).
 
 ### MVP-29 Qualify integrated password manager and optional provider
 
@@ -796,4 +798,4 @@ Done when: Source-matched installed app tests and physical role acceptance; exac
 
 Dependencies: MVP-06, MVP-20.
 
-Evidence/source: [docs/implementation-plan.md](../docs/implementation-plan.md), [docs/flow-audit-and-prd.md](../docs/flow-audit-and-prd.md), [apps/app/src/prototype/home-launcher.ts](../apps/app/src/prototype/home-launcher.ts), [android/app/src/main/java/ai/elizaresearch/alphaphone/DeviceAppsPlugin.java](../android/app/src/main/java/ai/elizaresearch/alphaphone/DeviceAppsPlugin.java).
+Evidence/source: [docs/implementation-plan.md](../docs/implementation-plan.md), [docs/flow-audit-and-prd.md](../docs/flow-audit-and-prd.md), [apps/app/src/prototype/home-launcher.ts](../apps/app/src/prototype/home-launcher.ts), [android/app/src/main/java/ai/alphacompute/alphaphone/DeviceAppsPlugin.java](../android/app/src/main/java/ai/alphacompute/alphaphone/DeviceAppsPlugin.java).

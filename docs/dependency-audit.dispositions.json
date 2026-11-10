@@ -62,7 +62,7 @@
     }
   ],
   "resident": {
-    "upstreamCommit": "b1817660a0347ae19551b9ee296410fe55f02d59",
+    "upstreamCommit": "dae11e0b7e3f40e5434fea21fd7c127e416f7016",
     "description": "Fresh October 24 registry audit at c95a37be: the upstream lock SHA-256 is unchanged from 58df, but the registry now reports 124 finding rows. Existing still-reported exceptions retain their review dates and scope. Newly reported advisories are conservatively pending upstream fixes and packaged reachability review; they are not waived or declared safe. This does not establish production acceptance. Re-audited at develop 00ee639798a02f3d7f2fae61ea8b902160e85d72: all 124 findings and normalized lock input are identical; pending fixes remain pending with no new exceptions. Re-audited on 2026-10-26 at develop 04658de1b: all 124 advisory rows remain; the affected Zod version set no longer includes 4.6.5. Existing exception deadlines and unresolved findings are unchanged. Rebound to integration pin 6293e29bf398 after comparing the fresh October 27 snapshot: normalized package input, all 124 finding rows and severity counts are identical to the reviewed 04658de1b snapshot. Existing exception scope and deadlines remain unchanged, and pending upstream fixes remain pending; this is not packaged-runtime acceptance. Re-audited at 4e617a0c1508 on 2026-10-27: normalized package input and all 124 finding rows/severity counts are identical to the reviewed 2d1d8797 snapshot. Existing exceptions and deadlines are unchanged; unexcepted full-lock findings remain pending upstream fixes. Final packaged payload audit is separate. Re-audited at develop 3d05abd on October 27: normalized dependency input and all advisory findings are unchanged; existing deadlines and pending fixes remain unchanged. Reviewed native/context integration de1ebdb521 on October 27: normalized package input and all 124 advisory rows are identical to 3d05abdcdc. Pending fixes, exception scope and deadlines are unchanged; a fresh packaged inventory audit remains required. The subsequent f3852e8ee3 merge adds only the native Activity compile dependency; the Bun lock and normalized audit input remain identical. Re-audited at merged develop c307290782dd on October 27: all 124 advisory rows and severity counts remain identical to f3852e8ee3. Pending findings and exception deadlines remain unchanged. Final build snapshot 6497825b38cb on October 27 changes only Cloud release scripts relative to c307290782dd; a fresh registry query returns identical 124 findings. Pending fixes and exception deadlines are unchanged. Fresh normal resident audit at SDK35e0a605 on 2026-11-02 UTC: all 153 finding rows, severity counts and 3677-version normalized input are byte-equivalent to the prior995 snapshot. Existing exception scope, review dates, expiry and shipped flags remain unchanged; unexcepted findings stay unresolved. This review rebinds only the identical source-lock findings, not packaged reachability or release acceptance.",
     "shippedSetEvidence": "docs/security/resident-staged-review-158227d484aa-2026-11-08.json",
     "pendingUpstreamFixes": [
@@ -1697,11 +1697,11 @@
     ],
     "note": "The complete lock inventory and advisory findings were re-audited unchanged at 9eef5dbd7b381576aad0801b1fee424d1483c63c. Existing pending upstream fixes remain open; no new exception or security acceptance is granted. October 26 build campaign: re-bound to 6293e29bf398603d0ea233871edbdeb57e5c2405 after fresh full-lock and 603-package agent/worker inventory audits. Existing exceptions and expiry dates are unchanged. All unexcepted full-lock findings remain pending; none of their exact vulnerable versions is in this staged inventory. The packaged audit reports only the existing uuid moderate advisory. No release or device qualification is inferred. Rebound to fd5511ca1d after verifying its only delta from 9eef5dbd is the Notes/Calendar end-to-end test fixture; the dependency lock is byte-identical. No new advisory exception or device acceptance. Fresh npm bulk advisory audit on 2026-10-27 at SDK 41d99bb4c86cb61bfa07d5e49b07603dbbe1080b covers the same 3,694 exact package versions and input hash 63509920ce413bb6fcb44fc7e5b1047cc22517eab2ea51a445203e29bd7c6201. All 124 finding rows and severity counts are byte-identical to the prior admitted snapshot. This updates the full-lock evidence binding only: existing exceptions, review dates, expiry dates, shipped-set evidence and pending upstream fixes are unchanged. Historical packaged inventories are not new payload or release acceptance; exact current packaged audit remains required before release. A further normal npm bulk audit at reviewed recovery SDK 18cc0cf2ee9f332afe8b6dffecc8f9b2fbcf8d47 returned the identical package/input/finding set; the current full-lock binding is advanced without changing any exception, expiry, pending-fix or historical packaged-evidence classification. Fresh full-lock registry query at the type-only recovery successor f983d68173f12b89af22f93502d81234c7112b7d returns identical normalized package input and all 124 advisory rows. Existing exceptions, deadlines, pending fixes and historical packaged evidence remain unchanged; this is source binding only. Fresh registry full-lock audit at Calendar schema successor 8cc623855ce49cab68f9ed321b206abcad4d5c0b on 2026-10-27 returns the same 3,694 exact package versions/input hash but 140 advisory rows: all prior 124 are preserved, with 16 new rows across eight advisory IDs. The eight new findings remain pending upstream fixes with current packaged reachability explicitly unknown. Existing exceptions, deadlines, old pending entries and historical shipped-set evidence are unchanged. No security, current payload or release acceptance is granted.",
     "sourceBinding": {
-      "priorUpstreamCommit": "b23a23c2ef4f83d15591c6368c00f1e9547f7743",
-      "upstreamCommit": "db96bb0a0371dca92707867245bf0bb119b5b4f5",
-      "inputSha256": "df24d894bd6f044c2678168b14e6fcfcbaeb2101586d510e3a724746d1f19226",
-      "evidence": "docs/security/resident-full-lock-db96-2026-11-08.json",
-      "scope": "Fresh identical full-lock findings, existing unresolved fixes and all original exceptions retained. Not packaged acceptance."
+      "priorUpstreamCommit": "489efc0b0e53ccbf9554f6017ac0d7b94f7056e8",
+      "upstreamCommit": "dae11e0b7e3f40e5434fea21fd7c127e416f7016",
+      "inputSha256": "05c0f82c62f6e3e7eeda16e0f24d1d36da84a995dcaac0aa7a60d863dd63b5d7",
+      "evidence": "docs/security/resident-source-review-dae11e0b-2026-11-09.json",
+      "scope": "Fresh full-lock findings and final observer-stable built agent/worker/Google-host static review. All original exceptions, deadlines and pending findings remain unchanged. No staged-runtime, APK, native, device, security or user qualification transfers."
     },
     "sourceBindingHistory": [
       {
@@ -1819,6 +1819,48 @@
         "to": "b23a23c2ef4f83d15591c6368c00f1e9547f7743",
         "evidence": "docs/evidence/sdk-b23a23c-build-input-admission-20261108.json",
         "basis": "Fresh full-lock npm audit reproduced identical103 findings over3675 package versions and identical input digest. Native-host-only source delta introduces no dependency changes. Existing84 exceptions, dates, pending fixes and historical4dae shipped-set receipt unchanged. New packaged-byte audit remains required."
+      },
+      {
+        "priorUpstreamCommit": "b23a23c2ef4f83d15591c6368c00f1e9547f7743",
+        "upstreamCommit": "db96bb0a0371dca92707867245bf0bb119b5b4f5",
+        "inputSha256": "df24d894bd6f044c2678168b14e6fcfcbaeb2101586d510e3a724746d1f19226",
+        "evidence": "docs/security/resident-full-lock-db96-2026-11-08.json",
+        "scope": "Fresh identical full-lock findings, existing unresolved fixes and all original exceptions retained. Not packaged acceptance."
+      },
+      {
+        "priorUpstreamCommit": "dddd9a6c6f75c32146d512d92d86add9a8ccf9ea",
+        "upstreamCommit": "86ab55fd81f68a2c5dd4fd32e1c1431723648c58",
+        "inputSha256": "05c0f82c62f6e3e7eeda16e0f24d1d36da84a995dcaac0aa7a60d863dd63b5d7",
+        "evidence": "docs/security/resident-source-review-86ab55fd-2026-11-09.json",
+        "scope": "Fresh full-lock findings and current built agent/worker/host static reachability reviewed. Original exceptions and pending fixes unchanged. No packaged/device/security acceptance."
+      },
+      {
+        "priorUpstreamCommit": "86ab55fd81f68a2c5dd4fd32e1c1431723648c58",
+        "upstreamCommit": "ac18377c5a9e4eb7afeac1c62a026ad3be95733e",
+        "inputSha256": "05c0f82c62f6e3e7eeda16e0f24d1d36da84a995dcaac0aa7a60d863dd63b5d7",
+        "evidence": "docs/security/resident-source-review-ac18377c-2026-11-09.json",
+        "scope": "Fresh full-lock findings and four-file identity delta only. Original exception objects, deadlines and pending fixes unchanged. Existing built/static, native and packaged evidence stays source-bound; no security/device/release acceptance."
+      },
+      {
+        "priorUpstreamCommit": "ac18377c5a9e4eb7afeac1c62a026ad3be95733e",
+        "upstreamCommit": "450087e00e6dc1c289aab0c3e424560b7040d163",
+        "inputSha256": "05c0f82c62f6e3e7eeda16e0f24d1d36da84a995dcaac0aa7a60d863dd63b5d7",
+        "evidence": "docs/security/resident-source-review-450087e0-2026-11-09.json",
+        "scope": "Fresh unchanged full-lock findings and reviewed persona/foreground-update source delta only. All 84 exception objects, dates and 12 pending fixes remain unchanged. Prior built/static, packaged, native and device evidence keeps its original source and artifact identity; no acceptance transfers."
+      },
+      {
+        "priorUpstreamCommit": "450087e00e6dc1c289aab0c3e424560b7040d163",
+        "upstreamCommit": "6f414658b08cf8075d8fb12ece2ec968a221af7e",
+        "inputSha256": "05c0f82c62f6e3e7eeda16e0f24d1d36da84a995dcaac0aa7a60d863dd63b5d7",
+        "evidence": "docs/security/resident-source-review-6f414658-2026-11-09.json",
+        "scope": "Fresh unchanged full-lock findings and reviewed upstream notice-cleanup/Gmail Unicode-cap delta only. All 84 exception objects, dates and 12 pending fixes remain unchanged. Prior build/static, packaged, native and device evidence retains its source and artifact identity; no acceptance transfers."
+      },
+      {
+        "priorUpstreamCommit": "ac18377c5a9e4eb7afeac1c62a026ad3be95733e",
+        "upstreamCommit": "489efc0b0e53ccbf9554f6017ac0d7b94f7056e8",
+        "inputSha256": "05c0f82c62f6e3e7eeda16e0f24d1d36da84a995dcaac0aa7a60d863dd63b5d7",
+        "evidence": "docs/security/resident-source-review-489efc0b-2026-11-09.json",
+        "scope": "Fresh full-lock findings and final observer-stable built agent/worker/Google-host static review. All original exceptions, deadlines and pending findings remain unchanged. No staged-runtime, APK, native, device, security or user qualification transfers."
       }
     ],
     "pinReview": {
@@ -1830,20 +1872,21 @@
       "note": "Fresh packaged audit and current emitted UUID analysis. All84 exception objects and dates unchanged; no final APK or live voice claim."
     },
     "pinRebind": {
-      "from": "b23a23c2ef4f83d15591c6368c00f1e9547f7743",
-      "to": "db96bb0a0371dca92707867245bf0bb119b5b4f5",
-      "date": "2026-11-08",
-      "inputSha256": "df24d894bd6f044c2678168b14e6fcfcbaeb2101586d510e3a724746d1f19226",
-      "basis": "Fresh npm bulk query reproduces exact normalized input,103 finding rows/severity counts; Bun lock is byte-identical. All84 exception objects/dates and existing unexcepted pending fixes preserved.",
-      "evidence": "docs/security/resident-full-lock-db96-2026-11-08.json"
+      "from": "489efc0b0e53ccbf9554f6017ac0d7b94f7056e8",
+      "to": "dae11e0b7e3f40e5434fea21fd7c127e416f7016",
+      "date": "2026-11-09",
+      "inputSha256": "05c0f82c62f6e3e7eeda16e0f24d1d36da84a995dcaac0aa7a60d863dd63b5d7",
+      "basis": "Fresh full-lock query reproduces all 3694 package versions and 103 findings with byte-identical Bun lock. Fresh 457-version built-static query reports only the retained UUID moderate finding; exact current UUID AST/token references and emitted artifact/source receipts were reviewed. All 84 exception objects/deadlines and 12 pending-fix records remain unchanged. No new approval or qualification is granted.",
+      "evidence": "docs/security/resident-source-review-dae11e0b-2026-11-09.json"
     },
     "sourcePinReview": {
-      "atUTC": "2026-11-08T09:00:15.505693+00:00",
-      "sdk": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
-      "scope": "FRESH_FULL_LOCK_AND_SOURCE_DELTA_REVIEW_ONLY",
-      "evidence": "docs/security/resident-full-lock-99b-2026-11-08.json",
-      "packagedReview": "Existing db96/61e103 evidence remains historical; SDK99 packaged bytes still require separate review.",
-      "exceptionDatesChanged": false
+      "atUTC": "2026-11-09T22:51:04.266Z",
+      "sdk": "dae11e0b7e3f40e5434fea21fd7c127e416f7016",
+      "scope": "FRESH_FULL_LOCK_AND_CURRENT_BUILD_STATIC_REVIEW_ONLY",
+      "evidence": "docs/security/resident-source-review-dae11e0b-2026-11-09.json",
+      "packagedReview": "Final observer-stable agent and fresh worker/Google-host bytes were verified and reviewed statically. No Android runtime was staged; historical packaged/native reviews retain exact original identities. Current APK, device, security, signing, user and release acceptance remain separate.",
+      "exceptionDatesChanged": false,
+      "approvalGranted": false
     },
     "packagedPinReviewHistory": [
       {
@@ -1854,6 +1897,128 @@
         "scope": "EXACT_STAGED_RUNTIME_STATIC_ADVISORY_REVIEW",
         "note": "Fresh current-byte parser and packaged advisory evidence. All original exception objects, review dates and expiry are preserved. Final APK identity/runtime/device acceptance are separate."
       }
-    ]
+    ],
+    "pinRebindHistory": [
+      {
+        "from": "b23a23c2ef4f83d15591c6368c00f1e9547f7743",
+        "to": "db96bb0a0371dca92707867245bf0bb119b5b4f5",
+        "date": "2026-11-08",
+        "inputSha256": "df24d894bd6f044c2678168b14e6fcfcbaeb2101586d510e3a724746d1f19226",
+        "basis": "Fresh npm bulk query reproduces exact normalized input,103 finding rows/severity counts; Bun lock is byte-identical. All84 exception objects/dates and existing unexcepted pending fixes preserved.",
+        "evidence": "docs/security/resident-full-lock-db96-2026-11-08.json"
+      },
+      {
+        "from": "b1817660a0347ae19551b9ee296410fe55f02d59",
+        "to": "dddd9a6c6f75c32146d512d92d86add9a8ccf9ea",
+        "date": "2026-11-09",
+        "inputSha256": "df24d894bd6f044c2678168b14e6fcfcbaeb2101586d510e3a724746d1f19226",
+        "basis": "Fresh npm bulk advisory query reproduces the identical 3675 package versions, 103 finding rows and severity counts. The reviewed company/Android namespace delta leaves the Bun lock byte-identical. Existing exception scope, dates, pending upstream fixes and historical packaged evidence are unchanged; no security or release acceptance is granted.",
+        "evidence": "docs/security/resident-full-lock-dddd9a6c-2026-11-09.json"
+      },
+      {
+        "from": "dddd9a6c6f75c32146d512d92d86add9a8ccf9ea",
+        "to": "86ab55fd81f68a2c5dd4fd32e1c1431723648c58",
+        "date": "2026-11-09",
+        "inputSha256": "05c0f82c62f6e3e7eeda16e0f24d1d36da84a995dcaac0aa7a60d863dd63b5d7",
+        "basis": "Fresh registry audit preserves all 103 finding rows; affected registry package tuples/integrities are identical. Nineteen added registry versions introduce no reported finding. Fresh current agent/worker/host artifact validation and emitted UUID static analysis support original reachability dispositions without extending dates. All unresolved fixes remain pending.",
+        "evidence": "docs/security/resident-source-review-86ab55fd-2026-11-09.json"
+      },
+      {
+        "from": "86ab55fd81f68a2c5dd4fd32e1c1431723648c58",
+        "to": "ac18377c5a9e4eb7afeac1c62a026ad3be95733e",
+        "date": "2026-11-09",
+        "inputSha256": "05c0f82c62f6e3e7eeda16e0f24d1d36da84a995dcaac0aa7a60d863dd63b5d7",
+        "basis": "Fresh npm bulk query reproduces identical 3694 versions, all 103 finding rows and severity counts. The four identity/callback/default-persona files do not change the byte-identical dependency lock. All 84 exception objects/dates and existing pending findings remain unchanged; historical built/static evidence retains its exact prior SDK and artifact identities.",
+        "evidence": "docs/security/resident-source-review-ac18377c-2026-11-09.json"
+      },
+      {
+        "from": "ac18377c5a9e4eb7afeac1c62a026ad3be95733e",
+        "to": "450087e00e6dc1c289aab0c3e424560b7040d163",
+        "date": "2026-11-09",
+        "inputSha256": "05c0f82c62f6e3e7eeda16e0f24d1d36da84a995dcaac0aa7a60d863dd63b5d7",
+        "basis": "Fresh npm bulk query reproduces identical 3694 versions, all 103 finding rows and severity counts against a byte-identical Bun lock. The curated six-file delta adds exact historical persona recognition and the shared foreground updater gate/scheduler with tests/model. Existing 84 exceptions, dates and 12 pending fixes are unchanged. Historical build/static evidence remains exact to its recorded SDK and artifacts.",
+        "evidence": "docs/security/resident-source-review-450087e0-2026-11-09.json"
+      },
+      {
+        "from": "450087e00e6dc1c289aab0c3e424560b7040d163",
+        "to": "6f414658b08cf8075d8fb12ece2ec968a221af7e",
+        "date": "2026-11-09",
+        "inputSha256": "05c0f82c62f6e3e7eeda16e0f24d1d36da84a995dcaac0aa7a60d863dd63b5d7",
+        "basis": "Fresh npm bulk query reproduces identical 3694 versions, all 103 finding rows and severity counts against a byte-identical Bun lock. Three shared production files exactly match their previously reviewed postimages and two owning-module regression files are added upstream. Product behavior patches are retired. Existing 84 exceptions, dates and 12 pending fixes are unchanged. Historical qualification remains source/artifact bound.",
+        "evidence": "docs/security/resident-source-review-6f414658-2026-11-09.json"
+      },
+      {
+        "from": "ac18377c5a9e4eb7afeac1c62a026ad3be95733e",
+        "to": "489efc0b0e53ccbf9554f6017ac0d7b94f7056e8",
+        "date": "2026-11-09",
+        "inputSha256": "05c0f82c62f6e3e7eeda16e0f24d1d36da84a995dcaac0aa7a60d863dd63b5d7",
+        "basis": "Fresh full-lock query reproduces all 3694 package versions and 103 findings with byte-identical Bun lock. Fresh 457-version built-static query reports only the retained UUID moderate finding; exact current UUID AST/token references and emitted artifact/source receipts were reviewed. All 84 exception objects/deadlines and 12 pending-fix records remain unchanged. No new approval or qualification is granted.",
+        "evidence": "docs/security/resident-source-review-489efc0b-2026-11-09.json"
+      }
+    ],
+    "sourcePinReviewHistory": [
+      {
+        "atUTC": "2026-11-08T09:00:15.505693+00:00",
+        "sdk": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
+        "scope": "FRESH_FULL_LOCK_AND_SOURCE_DELTA_REVIEW_ONLY",
+        "evidence": "docs/security/resident-full-lock-99b-2026-11-08.json",
+        "packagedReview": "Existing db96/61e103 evidence remains historical; SDK99 packaged bytes still require separate review.",
+        "exceptionDatesChanged": false
+      },
+      {
+        "atUTC": "2026-11-09T19:34:42.140919+00:00",
+        "sdk": "dddd9a6c6f75c32146d512d92d86add9a8ccf9ea",
+        "scope": "FRESH_FULL_LOCK_AND_IDENTITY_DELTA_REVIEW_ONLY",
+        "evidence": "docs/security/resident-full-lock-dddd9a6c-2026-11-09.json",
+        "packagedReview": "Historical staged-runtime reviews retain their original bundle identities. The new package/JNI identity requires fresh native qualification; no current APK, device or release acceptance is transferred.",
+        "exceptionDatesChanged": false
+      },
+      {
+        "atUTC": "2026-11-09T20:30:48.002Z",
+        "sdk": "86ab55fd81f68a2c5dd4fd32e1c1431723648c58",
+        "scope": "FRESH_FULL_LOCK_AND_CURRENT_BUILD_STATIC_REVIEW_ONLY",
+        "evidence": "docs/security/resident-source-review-86ab55fd-2026-11-09.json",
+        "packagedReview": "Current worker/host were built and exact emitted agent bytes were statically reviewed. No runtime was staged; historical packaged reviews retain original identities. Current APK, device, security, signing, user and release acceptance remain separate.",
+        "exceptionDatesChanged": false,
+        "approvalGranted": false
+      },
+      {
+        "atUTC": "2026-11-09T20:49:37.427507+00:00",
+        "sdk": "ac18377c5a9e4eb7afeac1c62a026ad3be95733e",
+        "scope": "FRESH_FULL_LOCK_AND_IDENTITY_DELTA_REVIEW_ONLY",
+        "evidence": "docs/security/resident-source-review-ac18377c-2026-11-09.json",
+        "packagedReview": "Prior SDK86 agent/worker/host static review and historical staged-runtime receipts retain their original source and artifact identities. This source-lock review does not qualify new artifacts, native libraries, current APKs, devices or releases.",
+        "exceptionDatesChanged": false,
+        "approvalGranted": false
+      },
+      {
+        "atUTC": "2026-11-09T21:19:31.679296+00:00",
+        "sdk": "450087e00e6dc1c289aab0c3e424560b7040d163",
+        "scope": "FRESH_FULL_LOCK_AND_CURATED_SOURCE_DELTA_REVIEW_ONLY",
+        "evidence": "docs/security/resident-source-review-450087e0-2026-11-09.json",
+        "packagedReview": "Current source-lock review only. SDK86 agent/worker/host static review and historical staged-runtime receipts remain tied to their original source and artifact identities. This review grants no new bundle, native, APK, device, security, signing or release qualification.",
+        "exceptionDatesChanged": false,
+        "approvalGranted": false
+      },
+      {
+        "atUTC": "2026-11-09T22:10:56.009957+00:00",
+        "sdk": "6f414658b08cf8075d8fb12ece2ec968a221af7e",
+        "scope": "FRESH_FULL_LOCK_AND_REVIEWED_UPSTREAM_FIXES_ONLY",
+        "evidence": "docs/security/resident-source-review-6f414658-2026-11-09.json",
+        "packagedReview": "Current source-lock and exact three-file upstream postimage review only. Historical agent/worker/host static review and staged-runtime receipts retain their original source/artifact identities. No bundle, native, APK, device, security, signing or release qualification transfers.",
+        "exceptionDatesChanged": false,
+        "approvalGranted": false
+      },
+      {
+        "atUTC": "2026-11-09T22:22:32.835Z",
+        "sdk": "489efc0b0e53ccbf9554f6017ac0d7b94f7056e8",
+        "scope": "FRESH_FULL_LOCK_AND_CURRENT_BUILD_STATIC_REVIEW_ONLY",
+        "evidence": "docs/security/resident-source-review-489efc0b-2026-11-09.json",
+        "packagedReview": "Final observer-stable agent and fresh worker/Google-host bytes were verified and reviewed statically. No Android runtime was staged; historical packaged/native reviews retain exact original identities. Current APK, device, security, signing, user and release acceptance remain separate.",
+        "exceptionDatesChanged": false,
+        "approvalGranted": false
+      }
+    ],
+    "currentBuildStaticEvidence": "docs/security/resident-source-review-dae11e0b-2026-11-09.json"
   }
 }

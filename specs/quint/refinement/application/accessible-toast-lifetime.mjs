@@ -111,7 +111,7 @@ function fixture(name, code) {
 
 export async function checkAccessibleToastLifetime() {
   const sources = [fileURLToPath(import.meta.url), timeoutPath, shellPath, 'apps/app/src/main.tsx',
-    'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java'];
+    'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java'];
   captureSources(sources);
   const code = new vm.Script(`${timeoutCode()}
 class ShellTimers {${shellCode()}}

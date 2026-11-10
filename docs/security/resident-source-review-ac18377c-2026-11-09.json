@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-11-09",
+  "scope": "FRESH_FULL_LOCK_AND_IDENTITY_DELTA_REVIEW_ONLY",
+  "previousUpstreamCommit": "86ab55fd81f68a2c5dd4fd32e1c1431723648c58",
+  "upstreamCommit": "ac18377c5a9e4eb7afeac1c62a026ad3be95733e",
+  "command": "node scripts/dependency-audit.mjs --resident --write",
+  "input": "vendor/eliza/bun.lock",
+  "unchangedBunLockGitBlob": "af0e104940fca537baffc5dd7c5b97795c3b1d16",
+  "inputSha256": "05c0f82c62f6e3e7eeda16e0f24d1d36da84a995dcaac0aa7a60d863dd63b5d7",
+  "registryPackageVersions": 3694,
+  "findingRows": 103,
+  "counts": {
+    "info": 0,
+    "low": 12,
+    "moderate": 44,
+    "high": 46,
+    "critical": 1
+  },
+  "findingsUnchanged": true,
+  "exceptionObjectsUnchanged": true,
+  "exceptionDatesChanged": false,
+  "pendingUpstreamFixesUnchanged": true,
+  "approvalGranted": false,
+  "note": "Fresh npm bulk advisory query reproduces the prior findings; existing unexcepted pending findings still make the audit command exit nonzero. The four-file identity delta changes no dependency input. Prior SDK86 built/static and historical packaged/native evidence retain original source and artifact identities. No current artifact, native, device, security, user or release qualification is granted."
+}

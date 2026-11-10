@@ -37,7 +37,7 @@ test('the pinned upstream applies the override in memory and renders the name in
  assert.match(build,/const configuredName = configuredUiName \|\| configuredAgentName;/);
  assert.match(build,/\(agentEntry\?\.system \? undefined : getDefaultStylePreset\(language\)\)/);
  const presets=fs.readFileSync('vendor/eliza/packages/host/src/character-presets.characters.ts','utf8');
- assert.match(presets,/id: "eliza",[\s\S]*?system:\s*"You are \{\{name\}\}, made by Eliza Research/);
+ assert.match(presets,/id: "eliza",[\s\S]*?system:\s*"You are \{\{name\}\}, made by Alpha Compute/);
  assert.match(fs.readFileSync('vendor/eliza/packages/core/src/runtime/system-prompt.ts','utf8'),/replaceNameTokens\(\s*typeof character\?\.system === "string"/);
 });
 

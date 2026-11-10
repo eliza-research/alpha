@@ -1,6 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { upstreamNativeSource } from './upstream-native-source.mjs';
-import { clientManagedGooglePatch } from './managed-google-client-backport.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -33,6 +32,7 @@ function matches(actual, expected) {
     Object.entries(expected).every(([file, digest]) => actual[file] === digest);
 }
 export const CLIENT_FEATURE_PATHS = [
+  'packages/app/src/runtime/managed-google-agent',
   'packages/core/src/utils/type-guards.ts',
   'packages/cloud/sdk/native-host/subscription-grant.mjs',
   'packages/cloud/sdk/native-host/subscription-grant.d.mts',
@@ -308,6 +308,8 @@ export const CLIENT_FEATURE_PATHS = [
   // Framework-free resident Cloud binding controller (AP-04/P-22).
   'packages/auth/src/auth/cloud-resident-binding.ts',
 ];
+// Shared behavior is consumed from the reviewed upstream pin; there are no product patches.
+export const CLIENT_FEATURE_PATCHES = [];
 // Copied client source imports Alpha's installed runtime dependencies, so each copied package's
 // declared ranges must hold for them. Gaps are allowed only with a reviewed reason; an exception
 // that no longer matches the installed version or range fails so it is removed or reviewed again.
@@ -378,13 +380,17 @@ export function checkClientFeatureDependencies(root, upstream, paths = CLIENT_FE
 /** Copy authenticated upstream source outside the immutable vendor checkout. With check, only
  * confirm the prepared copy is current and throw instead of rebuilding it. */
 export function prepareClientFeatures({ root = projectRoot, projectVoice = true, check = false, log } = {}) {
+  for (const prefix of ['app-update-resume-client', 'managed-google-body-limit-client']) {
+    for (const suffix of ['.patch', '-manifest.json']) {
+      const retired = path.join(root, 'patches/eliza', prefix + suffix);
+      if (regularPath(retired)) throw Error('Retired client patch slot: ' + prefix);
+    }
+  }
   const upstream = upstreamNativeSource(root);
   for (const exception of checkClientFeatureDependencies(root, upstream))
     log?.(`Client feature dependency exception: ${exception.package} ${exception.dependency} ${exception.range}, installed ${exception.installed}: ${exception.reason}`);
   const source = new Map(CLIENT_FEATURE_PATHS.flatMap(prefix => [...upstream.read(prefix)]));
   const sourceFiles = Object.fromEntries([...source].map(([name, file]) => [name, file.sha256]));
-  const {files: managedGoogleFiles, receipt: managedGooglePatch} = clientManagedGooglePatch(root, upstream);
-  for (const [name, file] of managedGoogleFiles) source.set(name, file);
   if(projectVoice){
   // Upstream publishes every renderer type as a leaf entry (@elizaos/core/schema-types,
   // @elizaos/ui/api/transport, plugin-calendar auto-join-types); copied files stay byte-exact.
@@ -401,6 +407,16 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
     const content = text(name);
     if (content.split(before).length !== 2) throw Error('Review changed browser address re-export: ' + name);
     project(name, content.replace(before, 'from "../../../packages/contracts/src/browser-address-input.ts";'));
+  }
+  // The browser command parser reads the turn observation through the contracts
+  // package. Plain Node has no package alias, so bind that one reviewed value
+  // import to the exact authenticated leaf in this prepared tree.
+  {
+    const name = 'plugins/plugin-browser/src/native-client-command.ts';
+    const before = 'import { readClientTurnObservation } from "@elizaos/contracts/client-turn-observation";';
+    const content = text(name);
+    if (content.split(before).length !== 2) throw Error('Review changed browser observation import: ' + name);
+    project(name, content.replace(before, 'import { readClientTurnObservation } from "../../../packages/contracts/src/client-turn-observation.ts";'));
   }
   // Upstream voice sessions import the shared random-id helper by its emitted .js name. Plain
   // Node (tests and scripts that strip types) cannot map that to the copied .ts source, so the
@@ -447,8 +463,7 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
   }
   const files = Object.fromEntries([...source].map(([name, file]) => [name, file.sha256]));
   const provenance = {
-    baseCommit: upstream.pin, sourceFiles, projectionVersion:projectVoice?13:0, files,
-    ...(managedGooglePatch ? {managedGooglePatch} : {}),
+    baseCommit: upstream.pin, sourceFiles, projectionVersion:projectVoice?14:0, files,
   };
   const parent = path.join(root, '.eliza'), destination = path.join(parent, 'client-features');
   regularPath(parent, true);
@@ -466,8 +481,7 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
         const previous = JSON.parse(fs.readFileSync(stamp));
         const actual = inventory(destination); delete actual['.source.json'];
         return previous.baseCommit === upstream.pin && previous.projectionVersion === provenance.projectionVersion &&
-          Object.keys(previous).length === Object.keys(provenance).length &&
-          JSON.stringify(previous.managedGooglePatch ?? null) === JSON.stringify(managedGooglePatch) &&
+          JSON.stringify(Object.keys(previous).sort()) === JSON.stringify(Object.keys(provenance).sort()) &&
           matches(previous.sourceFiles || {}, sourceFiles) && matches(previous.files || {}, files) && matches(actual, files);
       } catch (error) { if (error.code !== 'ENOENT' || attempt >= 4) throw error; }
     }

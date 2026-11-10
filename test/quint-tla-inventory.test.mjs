@@ -1,9 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
-import {readFileSync} from 'node:fs';
-import {resolve} from 'node:path';
+import {mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
+import {resolve, join} from 'node:path';
+import {tmpdir} from 'node:os';
+import {pathToFileURL} from 'node:url';
 import {loadModels, readJson, repositoryRoot, sha256} from '../scripts/quint-lib.mjs';
+import {authenticateFormalSources, materializeHistoricalFormalSources, materializeHistoricalSources} from '../specs/quint/legacy/core/formal-source-inventory.mjs';
+import {git as fixtureGit} from './fixtures/git-fixture.mjs';
+import {prepareQuintHistory, quintHistoryInventories} from '../scripts/prepare-quint-history.mjs';
 
 const sourcePath = 'specs/quint/legacy/core/source-inventory.json';
 const viewRefreshPath = 'specs/quint/legacy/view-refresh-configurations.json';
@@ -21,12 +26,13 @@ test('all tracked TLA+ specifications and configurations have Quint translations
     assert.ok(model, `Register the Quint translation of ${source.source}`);
     assert.equal(model.classification, 'upstream-design-conversion');
     assert.deepEqual(model.configurations.map(config => config.name).sort(), source.configs.map(config => config.name).sort());
-    for (const {path, sha256: expected} of [{path: source.source, sha256: source.sha256}, ...source.configs]) {
+    for (const {path} of [{path: source.source, sha256: source.sha256}, ...source.configs]) {
       coreFiles.push(path);
-      assert.equal(sha256(execFileSync('git', ['-C', upstream, 'cat-file', 'blob', `${pin}:${path}`])), expected, path);
     }
   }
-  assert.deepEqual(gitPaths(upstream, ['ls-tree', '-r', '--name-only', '-z', pin]), coreFiles.sort());
+  authenticateFormalSources(upstream, core.revision, core.models, models);
+  assert.equal(core.currentUpstream.revision, pin, 'Review the live formal-source inventory after an upstream pin change');
+  authenticateFormalSources(upstream, pin, core.currentUpstream.models, models);
   assert.equal(core.models.length, core.modelCount);
   assert.equal(coreFiles.length - core.models.length, core.configurationCount);
 
@@ -40,4 +46,72 @@ test('all tracked TLA+ specifications and configurations have Quint translations
     }
   }
   assert.deepEqual(gitPaths(repositoryRoot, ['ls-files', '-z', '--', '*.tla', '*.cfg']), productFiles.sort());
+});
+
+test('history preparation fetches each missing inventoried revision in a shallow clone and preserves HEAD', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'alpha-formal-history-'));
+  try {
+    const origin = join(directory, 'origin'), root = join(directory, 'product'), vendor = join(root, 'vendor/eliza');
+    mkdirSync(origin);mkdirSync(join(root, 'vendor'), {recursive:true});
+    const git = (...args) => fixtureGit(origin, ...args);
+    const original = '---- MODULE Fixture ----\n====\n';
+    git('init', '-q');writeFileSync(join(origin, 'Fixture.tla'), original);
+    git('add', '.');git('commit', '-qm', 'Original specification');
+    const revision = git('rev-parse', 'HEAD');
+    writeFileSync(join(origin, 'Mms.java'), 'class HistoricalMms {}\n');git('add', '.');git('commit', '-qm', 'Historical MMS source');
+    const mmsRevision = git('rev-parse', 'HEAD');
+    git('rm', 'Fixture.tla');writeFileSync(join(origin, 'current.txt'), 'Current application');
+    git('add', '.');git('commit', '-qm', 'Current source retires specification');
+    const head = git('rev-parse', 'HEAD');
+    fixtureGit(directory, 'clone', '--no-local', '--depth=1', pathToFileURL(origin).href, vendor);
+    const metadata = join(root, 'specs/quint/legacy/core');mkdirSync(metadata, {recursive:true});
+    const inventory = {revision,models:[{source:'Fixture.tla',sha256:sha256(original),configs:[]}]};
+    writeFileSync(join(metadata, 'source-inventory.json'), JSON.stringify(inventory));
+    const mmsInventory=join(root,quintHistoryInventories[1]);mkdirSync(resolve(mmsInventory,'..'),{recursive:true});
+    writeFileSync(mmsInventory,JSON.stringify({revision:mmsRevision,historicalArtifacts:[{path:'Mms.java',sha256:sha256('class HistoricalMms {}\n')}]}));
+    assert.throws(()=>fixtureGit(vendor, 'cat-file', '-e', revision+'^{commit}'));
+    assert.deepEqual(prepareQuintHistory(root), {revisions:[{revision,fetched:true},{revision:mmsRevision,fetched:true}]});
+    assert.equal(fixtureGit(vendor, 'rev-parse', 'HEAD'), head);
+    assert.equal(fixtureGit(vendor, 'rev-parse', '--is-shallow-repository'), 'true');
+    assert.deepEqual(prepareQuintHistory(root), {revisions:[{revision,fetched:false},{revision:mmsRevision,fetched:false}]});
+    assert.equal(fixtureGit(vendor, 'rev-parse', 'HEAD'), head);
+    const input = 'vendor/eliza/Fixture.tla';
+    const history = materializeHistoricalFormalSources(root,[input]);
+    assert.equal(readFileSync(history.resolveSource(input),'utf8'), original);
+    assert.ok(history.resolveSource(input).startsWith(join(root,'.eliza/quint-historical',revision)));
+    assert.equal(fixtureGit(vendor,'status','--short'), '', 'Historical materialization never writes to vendor');
+    assert.equal(readJson(history.manifest).revision,revision);
+    const mmsHistory=materializeHistoricalSources(root,['vendor/eliza/Mms.java'],quintHistoryInventories[1]);
+    assert.equal(readFileSync(mmsHistory.resolveSource('vendor/eliza/Mms.java'),'utf8'),'class HistoricalMms {}\n');
+    assert.equal(readJson(mmsHistory.manifest).revision,mmsRevision);
+    assert.notEqual(mmsHistory.manifest,history.manifest);
+    writeFileSync(mmsInventory,JSON.stringify({revision:mmsRevision,historicalArtifacts:[{path:'Mms.java',sha256:'0'.repeat(64)}]}));
+    assert.throws(()=>materializeHistoricalSources(root,['vendor/eliza/Mms.java'],quintHistoryInventories[1]), /Historical specification differs/);
+    writeFileSync(join(metadata, 'source-inventory.json'), JSON.stringify({...inventory,models:[{...inventory.models[0],sha256:'0'.repeat(64)}]}));
+    assert.throws(()=>materializeHistoricalFormalSources(root,[input]), /Historical specification differs/);
+  } finally {rmSync(directory, {recursive:true,force:true});}
+});
+
+test('historical formal-source authentication cannot hide a new live specification or changed historical bytes', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'alpha-formal-source-'));
+  const git = (...args) => fixtureGit(directory, ...args);
+  try {
+    git('init', '-q');
+    const source = '---- MODULE Fixture ----\n====\n', config = 'CONSTANT N = 1\n';
+    writeFileSync(join(directory, 'Fixture.tla'), source);writeFileSync(join(directory, 'Fixture.cfg'), config);
+    git('add', '.');git('commit', '-qm', 'Historical formal sources');
+    const historical = git('rev-parse', 'HEAD');
+    const model = {quintModule:'Fixture',source:'Fixture.tla',sha256:sha256(source),configs:[{path:'Fixture.cfg',sha256:sha256(config)}]};
+    const registered = new Set(['Fixture']);
+    authenticateFormalSources(directory, historical, [model], registered);
+    git('rm', 'Fixture.tla', 'Fixture.cfg');git('commit', '-qm', 'Upstream retires TLA sources');
+    const retired = git('rev-parse', 'HEAD');
+    authenticateFormalSources(directory, retired, [], registered);
+    authenticateFormalSources(directory, historical, [model], registered);
+    writeFileSync(join(directory, 'New.tla'), '---- MODULE New ----\n====\n');
+    git('add', '.');git('commit', '-qm', 'New formal source requires allocation');
+    assert.throws(()=>authenticateFormalSources(directory, git('rev-parse', 'HEAD'), [], registered), /Unallocated or removed formal sources/);
+    assert.throws(()=>authenticateFormalSources(directory, historical, [{...model,sha256:'0'.repeat(64)}], registered));
+    assert.throws(()=>authenticateFormalSources(directory, historical, [model], new Set()), /Register the Quint translation/);
+  } finally {rmSync(directory, {recursive:true,force:true});}
 });

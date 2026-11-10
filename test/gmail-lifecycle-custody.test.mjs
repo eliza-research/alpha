@@ -2,7 +2,7 @@ import test from 'node:test';import assert from 'node:assert/strict';import {rea
 function method(source,signature){const at=source.indexOf(signature);assert.ok(at>=0,signature);let depth=0;for(let i=source.indexOf('{',at);i<source.length;i++){if(source[i]==='{')depth++;if(source[i]==='}'&&--depth===0)return source.slice(at,i+1);}throw Error(signature);}
 test('actual Gmail capture retries only the newest intent and foreground checks never post while holding lifecycle',()=>{
  const source=readFileSync(nativeSource('AlphaGmailPlugin.java'),'utf8'),dir=mkdtempSync(join(tmpdir(),'gmail-custody-'));const file=(name,s)=>{const p=join(dir,name);writeFileSync(p,s);return p;};
- try{const paths=[file('Activity.java','package android.app;public class Activity{public static int posts;public void runOnUiThread(Runnable action){posts++;action.run();}public boolean isFinishing(){return false;}public boolean isDestroyed(){return false;}public boolean hasWindowFocus(){return true;}}'),file('GmailCustody.java',`package ai.elizaresearch.alphaphone;
+ try{const paths=[file('Activity.java','package android.app;public class Activity{public static int posts;public void runOnUiThread(Runnable action){posts++;action.run();}public boolean isFinishing(){return false;}public boolean isDestroyed(){return false;}public boolean hasWindowFocus(){return true;}}'),file('GmailCustody.java',`package ai.alphacompute.alphaphone;
 import java.util.*;import java.util.concurrent.*;
 public class GmailCustody {
  static class Intent {String key;boolean fail;Intent(String key){this.key=key;}void setData(Object value){key=null;}}
@@ -28,5 +28,5 @@ public class GmailCustody {
   h=new GmailCustody();final GmailCustody race=h;h.failed.add("old");h.capture(new Intent("old"));h.onCapture=()->race.capture(new Intent("new"));h.io.run();check(h.retained==null,"old failure cannot overwrite newer custody");h.io.run();check(h.captured.equals(List.of("new"))&&h.notifications==1,"newest event wins");
   System.out.println("PASS Gmail current intent custody and foreground lifecycle");
  }
-}`)];assert.match(runJvm(paths,'ai.elizaresearch.alphaphone.GmailCustody'),/^PASS Gmail/);}finally{rmSync(dir,{recursive:true,force:true});}
+}`)];assert.match(runJvm(paths,'ai.alphacompute.alphaphone.GmailCustody'),/^PASS Gmail/);}finally{rmSync(dir,{recursive:true,force:true});}
 });

@@ -219,6 +219,21 @@ operation types, so the phone code is inert and `photos.view.v1` is not offered.
 Eliza still must emit the library operations and negotiate the capabilities, so source
 registration does not establish live agent acceptance.
 
+## Chromium filter reference
+
+For the independent Chromium CSS-filter PNG reference, run from the repository
+root with the installed `playwright` and `pngjs` modules:
+
+```sh
+ALPHA_BROWSER_MODULES="$PWD/node_modules" \
+  ALPHA_FILTER_RESULTS=test-results/photo-filter-png-reference \
+  node scripts/test-photo-filter-png-reference.mjs
+```
+
+This writes the synthetic source/chart PNGs, expected pixels and summary. It
+compares actual Chromium CSS filtering with candidate pixel math; it does not
+change app media or establish Android filter equivalence or device acceptance.
+
 ## Native Photos patch
 
 `patches/eliza/photos-library.patch` (listed in `patches/eliza/native-manifest.json`,
@@ -240,3 +255,5 @@ for canonical volume-qualified identities and bounded refresh. Earlier foreign-m
 campaign evidence belongs to #437's catalog; it does not qualify the newly reconciled
 agent album. Exact-source APK, installed bridge, permission downgrade, reboot,
 large personal libraries, battery and physical-device acceptance remain separate.
+
+For the manual CSS filter pixel reference, run `ALPHA_BROWSER_MODULES=/absolute/path/to/node_modules node scripts/test-photo-filter-png-reference.mjs` with existing `playwright`, `pngjs` and Chromium installations. It compares seven filter presets against independent sRGB calculations over a synthetic PNG chart and writes source/rendered PNGs, expected pixels and a summary to `test-results/photo-filter-png-reference` (or `ALPHA_FILTER_RESULTS`). This is browser reference evidence; it does not run the app or establish Android filter equivalence.
