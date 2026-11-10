@@ -4528,9 +4528,20 @@ function stPageAccess(root) {
   var depth = pages.length - 1, key = depth + ":" + current.getAttribute("data-settings-page");
   var previous = stPageFocus.get(root);
   var saved = previous ? previous.saved : new Map();
+  if (!previous) root.addEventListener("focusin", function (event) {
+    var page = event.target.closest("[data-settings-page]");
+    var visible = Array.from(root.children).filter(function (el) { return el.hasAttribute("data-settings-page"); });
+    var owner = stPageFocus.get(root);
+    if (!owner || page !== visible[visible.length - 1]) return;
+    // Categories replace a page at the same DOM depth. Capture its focused row
+    // before React removes it, and key it by page identity rather than depth alone.
+    owner.saved.set((visible.length - 1) + ":" + page.getAttribute("data-settings-page"), {
+      element: event.target, id: event.target.id, tag: event.target.tagName, label: event.target.getAttribute("aria-label")
+    });
+  });
   var active = document.activeElement;
   if (previous && previous.key !== key && previous.page.contains(active)) {
-    saved.set(previous.depth, { element: active, id: active.id, tag: active.tagName, label: active.getAttribute("aria-label") });
+    saved.set(previous.key, { element: active, id: active.id, tag: active.tagName, label: active.getAttribute("aria-label") });
   }
   // Release the destination before restoring focus. Hide the former page only
   // after focus moves so browsers do not reject aria-hidden on its active child.
@@ -4539,8 +4550,8 @@ function stPageAccess(root) {
     current.inert = false;
     current.removeAttribute("aria-hidden");
   }
-  if (previous && previous.key !== key) {
-    var record = depth < previous.depth ? saved.get(depth) : null;
+  if (previous && previous.key !== key && !root.querySelector("[data-alpha-popup]")) {
+    var record = saved.get(key);
     var target = record ? record.element : null;
     // Settings can refresh the covered page while a child is open. Restore its
     // uniquely named control even when that refresh replaced the original node.
@@ -4552,7 +4563,7 @@ function stPageAccess(root) {
     }
     if (!target || !target.isConnected || !current.contains(target)) target = current.querySelector("button, input, select, textarea, [tabindex='0']");
     if (target) target.focus({ preventScroll: true });
-    Array.from(saved.keys()).forEach(function (i) { if (i > depth) saved.delete(i); });
+    Array.from(saved.keys()).forEach(function (pageKey) { if (Number(pageKey.split(":")[0]) > depth) saved.delete(pageKey); });
   }
   pages.forEach(function (page) {
     if (page !== current) { page.inert = true; page.setAttribute("aria-hidden", "true"); }

@@ -3,7 +3,9 @@ import test from 'node:test';
 import {readFileSync} from 'node:fs';
 import {runNativeRefinement} from '../specs/quint/refinement/native/index.mjs';
 
-test('native source transitions refine their finite Quint projections', {timeout: 1200000}, async () => {
+// The complete aggregate exceeded 20 minutes on the measured two-worker run.
+// Keep all component checks and their own bounds; allow the aggregate to finish.
+test('native source transitions refine their finite Quint projections', {timeout: 2400000}, async () => {
   const results = await runNativeRefinement();
   if (results.failures.length) {
     throw new AggregateError(results.failures.map(({campaign, error}) => Error(campaign, {cause: error})),

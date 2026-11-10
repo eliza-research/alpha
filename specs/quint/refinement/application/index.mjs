@@ -1,3 +1,4 @@
+import {checkSettingsPageFocus} from './settings-page-focus.mjs';
 import {checkKeyboardFocus} from './keyboard-focus.mjs';
 import {checkChatAttachments} from './chat-attachments.mjs';
 import {readFileSync} from 'node:fs';
@@ -99,7 +100,7 @@ import {checkStartupUpdateAdmission} from './startup-update-admission.mjs';
 import {checkCanonicalNotificationTapAdmission} from './canonical-notification-tap-admission.mjs';
 import {checkResidentLiveness} from './resident-liveness.mjs';
 
-const adapters = [checkKeyboardFocus, checkChatAttachments, application, shellNavigation, startupPermissions, assistantConversation, notesLifecycle,
+const adapters = [checkSettingsPageFocus, checkKeyboardFocus, checkChatAttachments, application, shellNavigation, startupPermissions, assistantConversation, notesLifecycle,
   browserSession, credentialVault, developmentSurfaces, filesAndSharing, preferences, durableStore,
   permissionWalkthrough, developmentDevice, permanentVoiceDeletion, developmentHost, filesTree,
   calendarPresentation, draftDispatch, notificationCollection, callbackLanding,

@@ -3331,5 +3331,24 @@
       "OS scheduling and text rendering require installed-device evidence. This model covers focus transitions, not dictation or navigation.",
       "Production renderer transitions execute in test/final-ui-lifecycle.test.mjs, including Home and full conversation with constant viewport."
     ]
+  },
+  {
+    "path": "specs/quint/application/SettingsPageFocus.qnt",
+    "module": "SettingsPageFocus",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "sameDepthBackTest",
+      "licensesBackTest",
+      "replacedControlTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/model.js"
+    ],
+    "abstractions": [
+      "Finite page/control identities. Concrete DOM replacement and focus records are checked by settings-page-focus.mjs.",
+      "No-popup source component; React layout, platform delivery and liveness remain separate obligations."
+    ]
   }
 ]

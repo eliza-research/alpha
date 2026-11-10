@@ -25020,12 +25020,13 @@
         "RetainedReminderTapAdmission",
         "ReminderOpenIntent",
         "AppearancePreferenceAdmission",
-        "WorkflowClockAdmission"
+        "WorkflowClockAdmission",
+        "SettingsPageFocus"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "f0732b60104f594a47ab2811f6c7bc3149481c65236225bf1cf62460726e5ba1",
+      "sha256": "498e88f4d4cd5e4e9497b48608608bbb05a2c35bd0bd9768cbfa64b00d8689e0",
       "stateAnchors": [
         {
           "line": 26,
@@ -30572,7 +30573,7 @@
           "text": "var ICON_ASSETS = Object.fromEntries(Object.entries(iconCatalog.ic).map(function (entry) { return [IC[entry[0]], '/icons/lucide/' + entry[1] + '.svg']; }));"
         }
       ],
-      "integrationReview": "2026-11-09 UI and browser-return delta reviewed against existing domain models and new ChatAttachments/BrowserGoogleReturn contracts; see ui-return-review-20261109.md. Source-model refinement and device acceptance remain separate. Domain allocation retained after merging the audit fixes. The refreshed source hash and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations."
+      "integrationReview": "Settings same-depth replacement and Back focus are projected by SettingsPageFocus and concrete DOM source traces; existing domain allocations and unresolved state-audit obligations remain."
     },
     {
       "path": "apps/app/src/prototype/mvp-features.ts",
