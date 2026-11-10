@@ -25,7 +25,7 @@ export function openSharePanel(options:SharePanelOptions):Promise<void>{
   const retirementEvents=['launcher-home','alpha:device-state','alpha:dev-incoming-call'];
   let selectionWatch:ReturnType<typeof setInterval>;
   let closed=false;
-  const finish=()=>{if(closed)return;closed=true;document.removeEventListener('visibilitychange',hidden);window.removeEventListener('alpha-back',back,true);window.removeEventListener('pagehide',finish);for(const event of retirementEvents)window.removeEventListener(event,finish);clearInterval(selectionWatch);window.removeEventListener('resize',place);if(openPanel===finish)openPanel=undefined;dialog.close();dialog.remove();if(prior?.isConnected&&!document.hidden)prior.focus();resolve();};
+  const finish=()=>{if(closed)return;closed=true;document.removeEventListener('visibilitychange',hidden);window.removeEventListener('alpha-back',back,true);window.removeEventListener('pagehide',finish);for(const event of retirementEvents)window.removeEventListener(event,finish);clearInterval(selectionWatch);window.removeEventListener('resize',place);if(openPanel===finish)openPanel=undefined;dialog.close();dialog.remove();if(prior?.isConnected&&!document.hidden){const menu=prior.closest('details');(menu&&!menu.open?menu.querySelector<HTMLElement>('summary'):prior)?.focus();}resolve();};
   const hidden=()=>{if(document.hidden)finish();};
   const back=(event:Event)=>{event.preventDefault();event.stopImmediatePropagation();finish();};
   const action=(label:string,run?:()=>unknown|Promise<unknown>,reason?:string)=>{
