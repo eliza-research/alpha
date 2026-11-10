@@ -16984,7 +16984,7 @@
       "scope": "application",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "a9984753f616a04faf41f3dbd788e82e187d03ba07a8ec966ff1989c27001e0a",
+      "sha256": "9ec85c7e8a90523c9f21907d9d8c6b0e50d23db5646959a3f85928fce9e202b3",
       "stateAnchors": [
         {
           "line": 24,
@@ -17269,12 +17269,13 @@
         "WorkflowExecution",
         "ReminderOpenIntent",
         "WorkflowRequestRecoveryAdmission",
-        "ScheduledTaskControls"
+        "ScheduledTaskControls",
+        "HomeAutomationsRead"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "73dab5f7ae768fb4ae62a539661354cdaf32ca908f84e45e683fdc70d9dc6ad0",
+      "sha256": "496c349f0f24fc600d952fb03f4d3af552d046156f3911bb7636b168b00af3c0",
       "stateAnchors": [
         {
           "line": 6,
@@ -19972,7 +19973,7 @@
       "scope": "application",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "4dce9c067b3f18c1e6dd9a6a09837416526ff3016c06226d7fc6d935378af3a3",
+      "sha256": "482a91be2013f3007bcc51ddb0e014d1c5cee094713208e4b59cca4cd6ea5092",
       "stateAnchors": [
         {
           "line": 8,
@@ -32510,7 +32511,7 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "5d0b164eb5fa5bd2c064070514e3d20469912eb54a1b66176177d8f2012942e4",
+      "sha256": "f0e89c821448558095613325a3102caa53a329c0b9b77efa1b5df5fa338fb52a",
       "stateAnchors": [],
       "integrationReview": "2026-11-09 mail reader: automatic same-account thread read preserves the fresher selected body and all operation receipts. Compact menu changes presentation only. Email chat attachment reuses message persistence, validates the exact selected source and destination before sending, and leaves provider text untrusted. Existing models remain projections; complete mail rendering and revision/expiry checks are tested separately."
     },
@@ -33813,7 +33814,7 @@
     },
     {
       "path": "apps/app/src/prototype/selection-adapter.ts",
-      "sha256": "7561e51f3094cc126a499cb0709eeb9e2a35c397de6ad972b5a9c36fd9d8b08d",
+      "sha256": "7e8ab17d735afa4300cbb6275101154373e6af5c830184a53f324be1e9d7349a",
       "models": [
         "ShellNavigation",
         "FilesTree",
@@ -34827,7 +34828,7 @@
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "ef46f71db642e77e78bde0435dceae826afdf3a181cb874f2455b26a6a614884",
+      "sha256": "ad27b11fe9a30db8f7aca40b7a1cd5109326729795c320d704df2cca59e99f34",
       "stateAnchors": [
         {
           "line": 3358,
@@ -36380,7 +36381,7 @@
       "scope": "application",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "620974243e1ee1e8114432e5756c52b9d8621c6e4440f72acbdece240006f7ec",
+      "sha256": "5d93db85fed0617832d46e1a0074cc071c21fee470a1f42c4423f0082e7f7366",
       "stateAnchors": [
         {
           "line": 13,
@@ -618470,6 +618471,19 @@
           "text": "let dismiss:(()=>void)|undefined;"
         }
       ]
+    },
+    {
+      "path": "apps/app/src/prototype/calendar-form-presentation.ts",
+      "models": [
+        "CalendarFormControls",
+        "CalendarPresentation",
+        "CanonicalCalendarDraft"
+      ],
+      "scope": "application",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "sha256": "9d7b7810141a2d515d490dd6eef0ea60e26ea18e7c7adedbbfede19d431d6641",
+      "stateAnchors": []
     }
   ],
   "configurationInputs": [
