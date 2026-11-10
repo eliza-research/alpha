@@ -24,7 +24,7 @@ Shared code changes require an upstream commit and reviewed source pin.
 
 
 The four additions bring the registry to 263 models. Integrated source replays
-cover 82 traces and 391 checkpoints. All fields in their selected projections
+cover 88 traces and 421 checkpoints. All fields in their selected projections
 are observed. The worker and snooze models passed depth-eight symbolic checks.
 Notes and keyboard attempts could not start Apalache within the startup deadline.
 Their scenario and simulation checks passed.
@@ -32,3 +32,13 @@ Their scenario and simulation checks passed.
 Android local build preparation refuses the current pin because its checked-in
 voice qualification record names SDK `75b44015561368fc8ca982b70b8bafbdf1672a7b`.
 It does not admit the current SDK pin. No APK or device result is established.
+
+
+Review added complete worker-artifact verification and independent tree digests.
+The replay rechecks preserved incomplete output after switching to a fresh
+build directory. It covers required-file corruption, extra files and malformed
+manifests. Snooze coverage includes repeated deferrals in the device-local zone.
+The autumn repeated-hour trace records the current recurrence clamp. A saved
+first-hour deferral may move to the second occurrence of the scheduled local
+time. The replay establishes this behavior, while its intended policy remains
+an explicit review question.
