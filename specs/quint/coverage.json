@@ -12247,7 +12247,7 @@
     },
     {
       "path": "apps/app/src/browser/files.ts",
-      "sha256": "7193095e8ca5ec9fbb400797fe0be6ea2973c9e05f348c47a3b1024f503579d1",
+      "sha256": "28e770a3b346e3b0642d1c5f15497f386f7c3927725350f2030bb02bde81a608",
       "models": [
         "BrowserFilesTrash",
         "BrowserSession",
@@ -12290,7 +12290,8 @@
           "text": "async saveWorkflowAttachment(...args:Parameters<InstanceType<typeof SharedFiles>['saveWorkflowAttachment']>){const value=await super.saveWorkflowAttachment(...args);this.storageCha"
         }
       ],
-      "reviewStatus": "state-audit-required"
+      "reviewStatus": "state-audit-required",
+      "integrationReview": " 2026-11-10: Owner d3d01a6 Files sort/folder and scheduled ten-minute snooze source intake. Preserve retained-request recovery and saved recurrence timezone; exact-time protocol and source-model comparisons required."
     },
     {
       "path": "apps/app/src/browser/focus-state.ts",
@@ -16202,7 +16203,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "adc39fafa5e87778e2679629c1625a2be7c134935914bfa0734ebfed7c664b1a",
+      "sha256": "3dce6dc59241a4b933dd252370db0d02e58865070e5196a7c7fbf3f2e4cc9999",
       "stateAnchors": [
         {
           "line": 32,
@@ -16301,7 +16302,7 @@
           "text": "const fields:Bag[]=[],moreFields:Bag[]=[],whenFields:Bag[]=[];if(editor?.kind==='prompt'){fields.push(field('instructions','What should Alpha do?',editor.draft.instructions));moreF"
         }
       ],
-      "integrationReview": "2026-11-10: Current boundary and presentation correction. Account revalidation hides old headers before awaiting the response; notice clearance changes the Home scrollport, and foreign schedule editing explicitly identifies its preserved clock. Relevant browser/source tests and finite models remain separate from final runtime/device qualification."
+      "integrationReview": "2026-11-10: Current boundary and presentation correction. Account revalidation hides old headers before awaiting the response; notice clearance changes the Home scrollport, and foreign schedule editing explicitly identifies its preserved clock. Relevant browser/source tests and finite models remain separate from final runtime/device qualification. 2026-11-10: Owner d3d01a6 Files sort/folder and scheduled ten-minute snooze source intake. Preserve retained-request recovery and saved recurrence timezone; exact-time protocol and source-model comparisons required."
     },
     {
       "path": "apps/app/src/prototype/automations.css",
@@ -16311,9 +16312,9 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "18988b3a43eafb90459ad236cc25abbe49399c2d3a9a5b9867764173342f8d36",
+      "sha256": "2d5f5cf5b67bf9612acecc993b54bd258a77440e1038cea2eabebebc5d612646",
       "stateAnchors": [],
-      "integrationReview": "2026-11-10: Reviewed owner UI intake plus current retention correction; bound source hashes and candidate anchors. Existing timezone metadata is preserved on edits, while new workflows use the device zone. Source/browser checks are bounded; full semantic refinement and new SDK bundle qualification remain separate gates."
+      "integrationReview": "2026-11-10: Reviewed owner UI intake plus current retention correction; bound source hashes and candidate anchors. Existing timezone metadata is preserved on edits, while new workflows use the device zone. Source/browser checks are bounded; full semantic refinement and new SDK bundle qualification remain separate gates. 2026-11-10: Owner d3d01a6 Files sort/folder and scheduled ten-minute snooze source intake. Preserve retained-request recovery and saved recurrence timezone; exact-time protocol and source-model comparisons required."
     },
     {
       "path": "apps/app/src/prototype/browser-adapter.ts",
@@ -16744,7 +16745,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "e7e929d3a85713035c8af5e38a8df8fa8c270774e7a220c521444c6bd3e2105d",
+      "sha256": "4f641ac24f7731acf3da6c235d3d976cbe198d3addeb2ab85d10ca2efef1d21e",
       "stateAnchors": [
         {
           "line": 14,
@@ -17234,7 +17235,8 @@
           "line": 394,
           "text": "const content=document.createElement('div');content.className='scan-dialog-content';content.tabIndex=0;content.setAttribute('role','region');content.setAttribute('aria-label','Revi"
         }
-      ]
+      ],
+      "integrationReview": " 2026-11-10: Owner d3d01a6 Files sort/folder and scheduled ten-minute snooze source intake. Preserve retained-request recovery and saved recurrence timezone; exact-time protocol and source-model comparisons required."
     },
     {
       "path": "apps/app/src/prototype/browser-external-handoff.ts",
@@ -31790,9 +31792,9 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "492874dbcb17395982e48b886999d6b697acde16adb93e95e55fa6979e9ef7db",
+      "sha256": "000b1b42ec39b1f0d4236e5ffca738117b4b2b19161dfff80dd2550408b535f1",
       "stateAnchors": [],
-      "integrationReview": "2026-11-10: Current boundary and presentation correction. Account revalidation hides old headers before awaiting the response; notice clearance changes the Home scrollport, and foreign schedule editing explicitly identifies its preserved clock. Relevant browser/source tests and finite models remain separate from final runtime/device qualification. 2026-11-10: Apps notice height is bounded and remains scrollable so 300% text does not remove the app list; four browser cases pass."
+      "integrationReview": "2026-11-10: Current boundary and presentation correction. Account revalidation hides old headers before awaiting the response; notice clearance changes the Home scrollport, and foreign schedule editing explicitly identifies its preserved clock. Relevant browser/source tests and finite models remain separate from final runtime/device qualification. 2026-11-10: Apps notice height is bounded and remains scrollable so 300% text does not remove the app list; four browser cases pass. 2026-11-10: Owner d3d01a6 Files sort/folder and scheduled ten-minute snooze source intake. Preserve retained-request recovery and saved recurrence timezone; exact-time protocol and source-model comparisons required."
     },
     {
       "path": "apps/app/src/prototype/photo-library-adapter.ts",
@@ -33093,7 +33095,7 @@
     },
     {
       "path": "apps/app/src/prototype/selection-adapter.ts",
-      "sha256": "ee8b3d15fa400cd3043a2db85aeb7f83de9d0a2e79cd6199ec1d4d43066a4356",
+      "sha256": "cd7551e2e28fb585c22dba98e7b7f6c97119e618a05eb08a8cf9319f7ca77728",
       "models": [
         "FilesBrowserController",
         "FilesFilter",
@@ -33336,7 +33338,8 @@
           "text": "const out=renderFiles(state,api),items=out.fd?.items;out.filePlacement=true;out.shareAvailable=Capacitor.isNativePlatform()||(typeof navigator.share==='function'&&typeof navigator."
         }
       ],
-      "reviewStatus": "state-audit-required"
+      "reviewStatus": "state-audit-required",
+      "integrationReview": " 2026-11-10: Owner d3d01a6 Files sort/folder and scheduled ten-minute snooze source intake. Preserve retained-request recovery and saved recurrence timezone; exact-time protocol and source-model comparisons required."
     },
     {
       "path": "apps/app/src/prototype/settings-adapter.ts",
@@ -34100,9 +34103,9 @@
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "ec98e1f044873d87741ccad4610726d1b732075d87093561e7a6f48a0b127de0",
+      "sha256": "97ae8628a3dbfafabd4c5a7b2323f83d9b2c93d4cec1f5d052ba4948039e26cf",
       "stateAnchors": [],
-      "integrationReview": "2026-11-10: Current boundary and presentation correction. Account revalidation hides old headers before awaiting the response; notice clearance changes the Home scrollport, and foreign schedule editing explicitly identifies its preserved clock. Relevant browser/source tests and finite models remain separate from final runtime/device qualification."
+      "integrationReview": "2026-11-10: Current boundary and presentation correction. Account revalidation hides old headers before awaiting the response; notice clearance changes the Home scrollport, and foreign schedule editing explicitly identifies its preserved clock. Relevant browser/source tests and finite models remain separate from final runtime/device qualification. 2026-11-10: Owner d3d01a6 Files sort/folder and scheduled ten-minute snooze source intake. Preserve retained-request recovery and saved recurrence timezone; exact-time protocol and source-model comparisons required."
     },
     {
       "path": "apps/app/src/prototype/use-in-email-review.ts",
@@ -34682,7 +34685,7 @@
     },
     {
       "path": "apps/app/src/prototype/workflow-adapter.ts",
-      "sha256": "fb8f813e9a271464d25d02ba27a88b06943c75d9df6a10dfae4444529b2dfe37",
+      "sha256": "df9902d4d1ae744f38753dfab53eed9da60c43cc1f7176c07a93b430cf88e024",
       "models": [
         "NoticesAndCaches",
         "WorkflowExecution"
@@ -35115,7 +35118,7 @@
           "text": "const update=p.componentDidUpdate;p.componentDidUpdate=function(...args:unknown[]){update?.apply(this,args);syncHome();};"
         }
       ],
-      "integrationReview": "Reviewed merged source and upstream contract integration. Existing domain allocation is retained; refreshed hashes do not establish implementation refinement or device acceptance. Retained Pixel lane review: 2026-11-09 UI and browser-return delta reviewed against existing domain models and new ChatAttachments/BrowserGoogleReturn contracts; see ui-return-review-20261109.md. Source-model refinement and device acceptance remain separate.",
+      "integrationReview": "Reviewed merged source and upstream contract integration. Existing domain allocation is retained; refreshed hashes do not establish implementation refinement or device acceptance. Retained Pixel lane review: 2026-11-09 UI and browser-return delta reviewed against existing domain models and new ChatAttachments/BrowserGoogleReturn contracts; see ui-return-review-20261109.md. Source-model refinement and device acceptance remain separate. 2026-11-10: Owner d3d01a6 Files sort/folder and scheduled ten-minute snooze source intake. Preserve retained-request recovery and saved recurrence timezone; exact-time protocol and source-model comparisons required.",
       "reviewStatus": "state-audit-required"
     },
     {
@@ -36522,7 +36525,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "f91451b0e8c040e8a393f5dfe0ecd5d3d46e2c00af41a49d1dfecb3e9af92091",
+      "sha256": "50566cd059cf466f4a64201cd29cdf016d3dbcc47a066f61f8f4aa6dface1e39",
       "stateAnchors": [
         {
           "line": 10,
@@ -36557,7 +36560,7 @@
           "text": "if(row.kind!=='reminder'||!message.trim())throw Error('Add a reminder message.');const definition=object(row.record.definition),payload:ObjectValue=definition.cadence?.kind==='once"
         }
       ],
-      "integrationReview": "2026-11-10: Reviewed owner UI intake plus current retention correction; bound source hashes and candidate anchors. Existing timezone metadata is preserved on edits, while new workflows use the device zone. Source/browser checks are bounded; full semantic refinement and new SDK bundle qualification remain separate gates."
+      "integrationReview": "2026-11-10: Reviewed owner UI intake plus current retention correction; bound source hashes and candidate anchors. Existing timezone metadata is preserved on edits, while new workflows use the device zone. Source/browser checks are bounded; full semantic refinement and new SDK bundle qualification remain separate gates. 2026-11-10: Owner d3d01a6 Files sort/folder and scheduled ten-minute snooze source intake. Preserve retained-request recovery and saved recurrence timezone; exact-time protocol and source-model comparisons required."
     },
     {
       "path": "apps/app/src/runtime/automations-route-policy.ts",
@@ -46209,7 +46212,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "41fa7647c9049625e4ac872d2b8d54e4882acc6fa6e488badf12078b1bd4d5a7",
+      "sha256": "e72d30afa3fe671d1ea3e82de5637d9fa4283a1f30a2e756e67b6e1f03d08a25",
       "stateAnchors": [
         {
           "line": 10,
@@ -46224,7 +46227,7 @@
           "text": "for(let offset=0;offset<8;offset++){"
         }
       ],
-      "integrationReview": "2026-11-10: Current boundary and presentation correction. Account revalidation hides old headers before awaiting the response; notice clearance changes the Home scrollport, and foreign schedule editing explicitly identifies its preserved clock. Relevant browser/source tests and finite models remain separate from final runtime/device qualification."
+      "integrationReview": "2026-11-10: Current boundary and presentation correction. Account revalidation hides old headers before awaiting the response; notice clearance changes the Home scrollport, and foreign schedule editing explicitly identifies its preserved clock. Relevant browser/source tests and finite models remain separate from final runtime/device qualification. 2026-11-10: Owner d3d01a6 Files sort/folder and scheduled ten-minute snooze source intake. Preserve retained-request recovery and saved recurrence timezone; exact-time protocol and source-model comparisons required."
     },
     {
       "path": "apps/app/src/runtime/workflow-presentation.ts",

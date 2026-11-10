@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "3504bfbe6d264d1bf05bbc2224708131d41f3a6b",
-  "ledgerSha256": "88b823cdea40067fa3ed485bbddce9be32aef4a74708b295c320e8f810742162",
+  "ledgerSha256": "cb8ee8190068c231e6d55d10284b35c9721e7cbd6318e27ffc12a649a957079c",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -28,11 +28,11 @@
     "parsedFiles": 5723,
     "languageReview": 95,
     "parseErrors": 0,
-    "candidates": 70012,
-    "writeSites": 68844,
+    "candidates": 70014,
+    "writeSites": 68846,
     "writeAssociations": 61714,
     "asynchronous": 8632,
-    "unassignedWrites": 10543
+    "unassignedWrites": 10545
   },
   "files": [
     {
@@ -31137,7 +31137,7 @@
     },
     {
       "path": "apps/app/src/browser/files.ts",
-      "sha256": "7193095e8ca5ec9fbb400797fe0be6ea2973c9e05f348c47a3b1024f503579d1",
+      "sha256": "28e770a3b346e3b0642d1c5f15497f386f7c3927725350f2030bb02bde81a608",
       "allocatedModels": [
         "BrowserFilesTrash",
         "BrowserSession",
@@ -31153,6 +31153,12 @@
           "line": 18,
           "bindings": 2,
           "writes": 4
+        },
+        {
+          "owner": "BrowserFiles.storageTransfer",
+          "line": 57,
+          "bindings": 2,
+          "writes": 5
         }
       ],
       "parseErrors": [],
@@ -34013,7 +34019,7 @@
     },
     {
       "path": "apps/app/src/prototype/automations-adapter.ts",
-      "sha256": "adc39fafa5e87778e2679629c1625a2be7c134935914bfa0734ebfed7c664b1a",
+      "sha256": "3dce6dc59241a4b933dd252370db0d02e58865070e5196a7c7fbf3f2e4cc9999",
       "allocatedModels": [
         "ReminderOpenIntent",
         "ScheduledTaskControls",
@@ -34033,42 +34039,42 @@
         {
           "owner": "installAutomationsAdapter",
           "line": 42,
-          "bindings": 34,
-          "writes": 157
+          "bindings": 33,
+          "writes": 152
         },
         {
-          "owner": "installAutomationsAdapter.settled.ArrowFunction@84",
-          "line": 85,
+          "owner": "installAutomationsAdapter.settled.ArrowFunction@83",
+          "line": 84,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installAutomationsAdapter.refresh",
-          "line": 101,
+          "line": 100,
           "bindings": 2,
           "writes": 6
         },
         {
           "owner": "installAutomationsAdapter.work",
-          "line": 128,
+          "line": 127,
           "bindings": 4,
           "writes": 3
         },
         {
           "owner": "installAutomationsAdapter.allowAnother",
-          "line": 140,
+          "line": 139,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "installAutomationsAdapter.save",
-          "line": 159,
+          "line": 158,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAutomationsAdapter.ArrowFunction@173",
-          "line": 179,
+          "owner": "installAutomationsAdapter.ArrowFunction@172",
+          "line": 178,
           "bindings": 5,
           "writes": 16
         }
@@ -34079,7 +34085,7 @@
     },
     {
       "path": "apps/app/src/prototype/automations.css",
-      "sha256": "18988b3a43eafb90459ad236cc25abbe49399c2d3a9a5b9867764173342f8d36",
+      "sha256": "2d5f5cf5b67bf9612acecc993b54bd258a77440e1038cea2eabebebc5d612646",
       "allocatedModels": [
         "WorkflowExecution"
       ],
@@ -34152,7 +34158,7 @@
     },
     {
       "path": "apps/app/src/prototype/browser-camera.ts",
-      "sha256": "e7e929d3a85713035c8af5e38a8df8fa8c270774e7a220c521444c6bd3e2105d",
+      "sha256": "4f641ac24f7731acf3da6c235d3d976cbe198d3addeb2ab85d10ca2efef1d21e",
       "allocatedModels": [
         "BrowserAlbumStorage",
         "CameraPreviewRetirement",
@@ -39815,7 +39821,7 @@
     },
     {
       "path": "apps/app/src/prototype/phone.css",
-      "sha256": "492874dbcb17395982e48b886999d6b697acde16adb93e95e55fa6979e9ef7db",
+      "sha256": "000b1b42ec39b1f0d4236e5ffca738117b4b2b19161dfff80dd2550408b535f1",
       "allocatedModels": [
         "ChatInput",
         "DockClearanceOwnership",
@@ -40299,7 +40305,7 @@
     },
     {
       "path": "apps/app/src/prototype/selection-adapter.ts",
-      "sha256": "ee8b3d15fa400cd3043a2db85aeb7f83de9d0a2e79cd6199ec1d4d43066a4356",
+      "sha256": "cd7551e2e28fb585c22dba98e7b7f6c97119e618a05eb08a8cf9319f7ca77728",
       "allocatedModels": [
         "FilesBrowserController",
         "FilesFilter",
@@ -40326,12 +40332,12 @@
           "owner": "installSelectedDocumentAdapter.ArrowFunction@201",
           "line": 202,
           "bindings": 1,
-          "writes": 7
+          "writes": 9
         }
       ],
       "parseErrors": [],
       "asynchronous": 4,
-      "unassignedWrites": 10
+      "unassignedWrites": 11
     },
     {
       "path": "apps/app/src/prototype/settings-adapter.ts",
@@ -40652,7 +40658,7 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "ec98e1f044873d87741ccad4610726d1b732075d87093561e7a6f48a0b127de0",
+      "sha256": "97ae8628a3dbfafabd4c5a7b2323f83d9b2c93d4cec1f5d052ba4948039e26cf",
       "allocatedModels": [
         "CalendarPreservationConfirmation",
         "CameraPreviewRetirement",
@@ -40950,7 +40956,7 @@
     },
     {
       "path": "apps/app/src/prototype/workflow-adapter.ts",
-      "sha256": "fb8f813e9a271464d25d02ba27a88b06943c75d9df6a10dfae4444529b2dfe37",
+      "sha256": "df9902d4d1ae744f38753dfab53eed9da60c43cc1f7176c07a93b430cf88e024",
       "allocatedModels": [
         "NoticesAndCaches",
         "WorkflowExecution"
@@ -40969,7 +40975,7 @@
           "owner": "installWorkflowAdapter",
           "line": 66,
           "bindings": 43,
-          "writes": 230
+          "writes": 228
         },
         {
           "owner": "installWorkflowAdapter.work",
@@ -41035,11 +41041,11 @@
           "owner": "installWorkflowAdapter.ArrowFunction@389",
           "line": 392,
           "bindings": 1,
-          "writes": 5
+          "writes": 4
         },
         {
-          "owner": "installWorkflowAdapter.FunctionExpression@409",
-          "line": 411,
+          "owner": "installWorkflowAdapter.FunctionExpression@408",
+          "line": 410,
           "bindings": 1,
           "writes": 1
         }
@@ -41627,7 +41633,7 @@
     },
     {
       "path": "apps/app/src/runtime/automations-protocol.ts",
-      "sha256": "f91451b0e8c040e8a393f5dfe0ecd5d3d46e2c00af41a49d1dfecb3e9af92091",
+      "sha256": "50566cd059cf466f4a64201cd29cdf016d3dbcc47a066f61f8f4aa6dface1e39",
       "allocatedModels": [
         "ScheduledTaskControls",
         "WorkflowExecution"
@@ -41643,38 +41649,44 @@
           "writes": 0
         },
         {
+          "owner": "scheduledSnoozeAt",
+          "line": 69,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
           "owner": "mergeAutomationRows",
-          "line": 88,
+          "line": 97,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "AutomationsProtocol",
-          "line": 92,
+          "line": 101,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "AutomationsProtocol.list",
-          "line": 96,
+          "line": 105,
           "bindings": 2,
           "writes": 3
         },
         {
           "owner": "AutomationsProtocol.savePrompt",
-          "line": 104,
+          "line": 113,
           "bindings": 1,
           "writes": 3
         },
         {
           "owner": "AutomationsProtocol.setPromptEnabled",
-          "line": 113,
+          "line": 122,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "AutomationsProtocol.editReminder",
-          "line": 156,
+          "line": 165,
           "bindings": 1,
           "writes": 1
         }
@@ -45984,7 +45996,7 @@
     },
     {
       "path": "apps/app/src/runtime/workflow-local-time.ts",
-      "sha256": "41fa7647c9049625e4ac872d2b8d54e4882acc6fa6e488badf12078b1bd4d5a7",
+      "sha256": "e72d30afa3fe671d1ea3e82de5637d9fa4283a1f30a2e756e67b6e1f03d08a25",
       "allocatedModels": [
         "ScheduledTaskControls",
         "WorkflowExecution"
@@ -46000,15 +46012,15 @@
           "writes": 3
         },
         {
-          "owner": "workflowCronLabel",
-          "line": 51,
+          "owner": "workflowNextClockOccurrence",
+          "line": 53,
           "bindings": 1,
           "writes": 1
         }
       ],
       "parseErrors": [],
       "asynchronous": 0,
-      "unassignedWrites": 1
+      "unassignedWrites": 2
     },
     {
       "path": "apps/app/src/runtime/workflow-presentation.ts",
@@ -226114,6 +226126,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "3f5094ddf869c0517a64c73ca1ff01cbc715d57c193dcf9d69644c7f56858723"
+    "sha256": "b698596580aed030964d277495398231ec48aa72245e2f0e916b2e8244687077"
   }
 }
