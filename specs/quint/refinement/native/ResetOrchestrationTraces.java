@@ -80,8 +80,16 @@ public final class ResetOrchestrationTraces {
     trace.step("persistMarker", observation, true); preparing = false;
    } else if (attemptActive && !reservationSeen && kind.equals("durable-write") && detail.equals("reset-alpha.failures")) {
     long[] current = AlphaDataReset.RESET.failureState(application);
-    boolean fresh = priorBudget[0] == 0 || priorBudget[1] < 0 || priorBudget[1] != current[1];
-    trace.step("reserveAttempt", observation, true, fresh); reservationSeen = true;
+    try {
+     String record = java.nio.file.Files.readString(new File(android.content.Context.data,"reset-alpha.failures").toPath());
+     if (record.split(":",-1).length == 2) {
+      if (current[0] != priorBudget[0] || current[1] != priorBudget[1]) throw new AssertionError("OPEN cleanup cannot consume or restore a reservation");
+      trace.stutter("incomplete OPEN annotation cleared without admission", observation);
+     } else {
+      boolean fresh = priorBudget[0] == 0 || priorBudget[1] < 0 || priorBudget[1] != current[1];
+      trace.step("reserveAttempt", observation, true, fresh); reservationSeen = true;
+     }
+    } catch (java.io.IOException failed) { throw new IllegalStateException(failed); }
    } else if (attemptActive && kind.equals("listener-result")) {
     trace.step("listenerResult", observation, Boolean.parseBoolean(detail)); listenerSeen = true;
    } else if (attemptActive && kind.equals("android-result")) {
@@ -219,6 +227,7 @@ public final class ResetOrchestrationTraces {
   Scenario partialReservation = new Scenario("reservation-sync-failed", root);
   partialReservation.authorize(true, false, false);
   ResetTraceHooks.failDirectoryAfter = "reset-alpha.failures";
+  partialReservation.directAttempt(System.currentTimeMillis(), false, 1, false);
   partialReservation.directAttempt(System.currentTimeMillis(), false, 1, false);
   partialReservation.directAttempt(System.currentTimeMillis(), false, 1, false);
   traces.put(partialReservation.trace.value);

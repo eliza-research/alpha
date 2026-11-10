@@ -64,7 +64,9 @@ public final class ResetAdmissionRegression {
   setup(root,"reservation-sync");AlphaDataReset.RESET.record(app);ResetTraceHooks.failDirectoryAfter="reset-alpha.failures";
   check(AlphaDataReset.RESET.automaticAttempt(app,1000)==DataReset.Outcome.DEFERRED&&count()==1&&SenseListenerClient.calls==0,
     "failed directory sync keeps consumed reservation without dispatch");
-  AlphaDataReset.RESET.automaticAttempt(app,1001);check(count()==2&&SenseListenerClient.calls==1,"next admission uses next slot");
+  check(AlphaDataReset.RESET.automaticAttempt(app,1001)==DataReset.Outcome.DEFERRED&&count()==1&&SenseListenerClient.calls==0,
+    "automatic recovery clears the incomplete OPEN annotation without effects or another reservation");
+  AlphaDataReset.RESET.automaticAttempt(app,1002);check(count()==2&&SenseListenerClient.calls==1,"next admitted attempt uses next slot");
   setup(root,"silent-noncommit");AlphaDataReset.RESET.record(app);ResetTraceHooks.skipCommitFor="reset-alpha.failures";
   check(AlphaDataReset.RESET.automaticAttempt(app,1000)==DataReset.Outcome.DEFERRED&&count()==0&&SenseListenerClient.calls==0,
     "readback detects silent AtomicFile noncommit before effects");
@@ -72,7 +74,10 @@ public final class ResetAdmissionRegression {
   setup(root, "crash-reservation"); AlphaDataReset.RESET.record(app); ResetTraceHooks.crashAfterCommit = "reset-alpha.failures";
   try { AlphaDataReset.RESET.automaticAttempt(app, 1000); throw new AssertionError("missing crash"); } catch (ResetTraceHooks.Interruption expected) { }
   check(count() == 1 && SenseListenerClient.calls == 0, "crash consumes reservation before effect");
-  ResetTraceHooks.crashAfterCommit = null; AlphaDataReset.RESET.automaticAttempt(app, 1001);
+  ResetTraceHooks.crashAfterCommit = null;
+  check(AlphaDataReset.RESET.automaticAttempt(app,1001)==DataReset.Outcome.DEFERRED&&count()==1&&SenseListenerClient.calls==0,
+    "restart clears the incomplete OPEN annotation without replaying the crashed reservation");
+  AlphaDataReset.RESET.automaticAttempt(app, 1002);
   check(count() == 2 && SenseListenerClient.calls == 1, "restart cannot reuse reservation");
 
   setup(root, "exhausted"); AlphaDataReset.RESET.record(app);

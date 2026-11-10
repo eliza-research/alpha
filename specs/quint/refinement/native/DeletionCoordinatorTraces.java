@@ -321,7 +321,9 @@ public final class DeletionCoordinatorTraces {
       DeletionTestPorts.reminderReply = new JSONObject(row.toString()).put("phase", "paused");
       coordinator.reconcile();
       check(DeletionTestPorts.reminderPauses == 1 && DeletionTestPorts.reminderSettles == 0,
-          "Retired reminder owner dispatched");
+          "Retired reminder owner was not paused: pauses=" + DeletionTestPorts.reminderPauses
+              + ", settles=" + DeletionTestPorts.reminderSettles + ", phase="
+              + DeletionTestPorts.reminders.getJSONObject(0).getString("phase"));
       trace.step("claim", observe());
       return;
     }

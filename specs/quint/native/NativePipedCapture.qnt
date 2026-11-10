@@ -44,6 +44,7 @@ module NativePipedCapture {
     s.opening,
     val accepted = s.current and s.foreground and not(s.destroyed or s.inCall)
     s' = {...s, opening: false, published: accepted, physical: accepted,
+      current: accepted, discard: s.discard or not(accepted),
       attempt: if (accepted) "recording" else if (s.closed != "pending") "cancelled" else "pending",
       pending: if (accepted or s.closed != "pending") "none" else "close",
       hasPipe: s.hasPipe and (accepted or s.closed == "pending"), closeReason: if (accepted) "none" else "start"}
@@ -100,7 +101,8 @@ module NativePipedCapture {
   run warmBeforeNativeOpenTest = init.then(start).then(warmReply(true)).expect(safety and s.opening and not(s.physical))
     .then(finishOpen).expect(safety and s.published)
   run callDuringOpenRefusesPublicationTest = init.then(start).then(warmReply(true)).then(call(true))
-    .then(finishOpen).then(closeReply(true)).expect(safety and s.attempt == "cancelled")
+    .then(finishOpen).expect(safety and not(s.current or s.published or s.physical) and s.discard and s.pending == "close")
+    .then(closeReply(true)).expect(safety and s.attempt == "cancelled" and not(s.current) and s.discard)
   run retiredWarmCannotOpenTest = init.then(start).then(retireOwner).then(warmReply(true))
     .expect(safety and s.attempt == "cancelled" and not(s.physical))
   run discardClosesWithoutRendererAudioTest = init.then(start).then(warmReply(true)).then(finishOpen)

@@ -84,6 +84,8 @@ export function listenerServicePlatform(){
   'ai/eliza/sense/BuildConfig.java':'package ai.eliza.sense;public class BuildConfig {public static final String SENSE_STORAGE_NAME="listener-settings",SENSE_COMPONENT_PACKAGE="ai.alphacompute.alphaphone.sense",SENSE_HOST_PACKAGE="ai.alphacompute.alphaphone",APPLICATION_ID="ai.alphacompute.alphaphone.sense",SENSE_WAKE_NAMES="alpha";}',
  };
  for(const [name,text]of Object.entries(files)){const path=join(platform.directory,name);mkdirSync(dirname(path),{recursive:true});writeFileSync(path,text);if(!platform.paths.includes(path))platform.paths.push(path);}
- platform.paths=platform.paths.filter(path=>!path.endsWith('/ai/eliza/sense/Listener.java')&&!path.endsWith('/ai/eliza/sense/ListeningService.java'));
+ // These owners, including the product-data component helper, are compiled
+ // from the authenticated shared source instead of the store-only stand-ins.
+ platform.paths=platform.paths.filter(path=>!path.endsWith('/ai/eliza/sense/Listener.java')&&!path.endsWith('/ai/eliza/sense/ListeningService.java')&&!path.endsWith('/ai/eliza/sense/SenseConfig.java'));
  return platform;
 }
