@@ -14,14 +14,32 @@ for(const tiles of ['valid','malformed','copyright-unavailable','unavailable'] a
   const w=window as any,base=w.Capacitor.nativePromise;
   w.Capacitor.PluginHeaders.push({name:'ElizaSense',methods:[{name:'turnOff',rtype:'promise'},{name:'status',rtype:'promise'}]});
   const f=w.googleRaster={tiles:0,viewport:0,queries:0,tileKeys:[] as string[]};
+  const listeners=[{name:'addListener',rtype:'callback'},{name:'removeListener',rtype:'callback'}];
+  w.Capacitor.PluginHeaders.push(
+   {name:'ElizaLocation',methods:[...['checkPermissions','requestPermissions','watchPosition','clearWatch'].map(name=>({name,rtype:'promise'})),...listeners]},
+   {name:'AlphaMapsTransport',methods:[{name:'navigationAvailability',rtype:'promise'},...listeners]},
+  );
   const providerId='custom-google-provider',attribution='Google Maps';
   w.Capacitor.nativePromise=async(plugin:string,method:string,input:any)=>{
+   if(plugin==='ElizaLocation'){
+    if(method==='checkPermissions'||method==='requestPermissions')return {location:'granted',accuracy:'precise'};
+    if(method==='watchPosition')return {watchId:'google-test-watch'};
+    return {};
+   }
+   if(plugin==='AlphaMapsTransport'&&method==='navigationAvailability')return {background:false,activeSessionId:null};
    if(plugin==='ElizaSense')return {available:true,state:'OFF',label:'Listening off',consented:false,listening:false,microphoneOpen:false};
    if(plugin==='AlphaConnection'&&method==='request'&&new URL(input.url).pathname.startsWith('/api/v1/maps/')){
     const path=new URL(input.url).pathname;
     if(path.endsWith('/capabilities'))return {status:200,data:{providerId,connectionId:'conn_google_fixture_0001',revision:'fixture-google',attribution,sources:{data:'Google Maps',search:'Google Places',routing:'Google Routes'},regions:[{id:'world',name:'World',bounds:[-180,-85,180,85]}],capabilities:{map:tiles!=='unavailable',search:true,placeDetails:true,modes:['drive','walk'],alternatives:false,traffic:'none',transit:'none',offline:{map:false,search:false,routing:false}},...(tiles==='unavailable'?{}:{tiles:{urlTemplate:'/api/v1/maps/tiles/{z}/{x}/{y}',tileSize:256,minZoom:0,maxZoom:18,attribution:'Map data © Google'}})}};
     if(/\/tiles\/\d+\//.test(path)){f.tiles++;f.tileKeys.push(input.headers['Idempotency-Key']);return {status:200,data:{encoding:'base64',contentType:'image/png',data:tiles==='malformed'?'invalid':png}};}
     if(path.endsWith('/tiles/viewport')){f.viewport++;if(tiles==='copyright-unavailable')return {status:503,data:{error:{code:'provider_unavailable',message:'Copyright metadata unavailable'}}};return {status:200,data:{providerId,copyright:'Map data © Google · synthetic viewport'}};}
+    if(path.endsWith('/routes')){
+     const {from,to,mode}=JSON.parse(input.body);
+     return {status:200,data:{providerId,attribution,routes:[{providerId,id:'google-test-route',from,to,mode,
+      geometry:[from,to],distanceMeters:500,durationSeconds:120,
+      steps:[{instruction:'Head toward the harbour',coordinate:from,distanceMeters:500,maneuver:'depart'},{instruction:'Arrive at the harbour',coordinate:to,distanceMeters:0,maneuver:'arrive'}],
+      attribution,fetchedAt:Date.now(),traffic:'none'}]}};
+    }
     if(path.endsWith('/places/details'))return {status:200,data:{providerId,attribution,place:{providerId,id:'fixture-place',name:'Synthetic harbour',coordinate:{latitude:43.735,longitude:7.42},attribution,fetchedAt:Date.now()}}};
     if(path.endsWith('/places/search')){f.queries++;return {status:200,data:{providerId,attribution,places:[{providerId,id:'fixture-place',name:'Synthetic harbour',coordinate:{latitude:43.735,longitude:7.42},attribution,fetchedAt:Date.now()}]}};}
     return {status:404,data:{}};
@@ -65,7 +83,7 @@ for(const tiles of ['valid','malformed','copyright-unavailable','unavailable'] a
  else{
   await expect(plane).toHaveAttribute('data-map-ready','true');
   const dataSources=attribution.getByText('Data sources',{exact:true});
-  for(const layout of [
+  const checkCreditLayouts=async(stage:string)=>{for(const layout of [
    {name:'portrait',width:412,height:915,scale:1},
    {name:'portrait-large',width:412,height:915,scale:2},
    {name:'small-landscape-large',width:640,height:360,scale:1.5},
@@ -87,12 +105,14 @@ for(const tiles of ['valid','malformed','copyright-unavailable','unavailable'] a
     expect(panel!.x).toBeGreaterThanOrEqual(0);expect(panel!.y).toBeGreaterThanOrEqual(0);
     expect(panel!.x+panel!.width).toBeLessThanOrEqual(layout.width);
     expect(panel!.y+panel!.height).toBeLessThanOrEqual(layout.height);
-    await page.screenshot({path:info.outputPath(`google-credit-${layout.name}.png`),animations:'disabled'});
+    await page.screenshot({path:info.outputPath(`google-credit-${stage}-${layout.name}.png`),animations:'disabled'});
     await dataSources.click();
    }else{
     await expect(attribution.locator('.alpha-google-copyright')).toBeVisible();
    }
   }
+  };
+  await checkCreditLayouts('results');
   await page.setViewportSize({width:412,height:915});
   await expect(page.getByRole('button',{name:'Synthetic harbour',exact:true})).toBeVisible();
   await expect(async()=>{
@@ -100,6 +120,19 @@ for(const tiles of ['valid','malformed','copyright-unavailable','unavailable'] a
    expect(credits).not.toBeNull();expect(sheet).not.toBeNull();
    expect(credits!.y+credits!.height).toBeLessThanOrEqual(sheet!.y);
   }).toPass();
+  await page.getByRole('button',{name:/^Synthetic harbour/}).last().click();
+  await page.getByRole('button',{name:'Directions',exact:true}).click();
+  const origin=page.getByRole('textbox',{name:'Route origin coordinates'});
+  await origin.fill('43.7384, 7.4246');await origin.press('Enter');
+  await expect(page.getByText(/no live traffic/).first()).toBeVisible();
+  await expect(page.getByRole('button',{name:'Share route',exact:true})).toHaveCount(0);
+  await page.getByRole('button',{name:'Start',exact:true}).click();
+  await expect(page.getByRole('button',{name:'End navigation',exact:true})).toBeVisible();
+  await page.evaluate(()=>(window as any).flagOff.emit('ElizaLocation','locationChange',{coords:{latitude:43.7384,longitude:7.4246,accuracy:5,timestamp:Date.now(),heading:null,speed:null},cached:false}));
+  await expect(page.getByRole('status',{name:'Remaining distance and time',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:/voice guidance/})).toHaveCount(0);
+  await checkCreditLayouts('navigation');
+  await page.getByRole('button',{name:'End navigation',exact:true}).click();
  }
  await page.screenshot({path:info.outputPath('google-raster.png'),animations:'disabled'});
 });

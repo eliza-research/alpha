@@ -218,7 +218,8 @@ above do not qualify that path.
 
 The production browser regression uses intercepted native HTTP responses, a synthetic
 place and a generated white PNG. It exercises the production renderer, Google branding,
-complete Data sources disclosure, portrait and landscape hit targets, 150% and 200%
+complete Data sources disclosure in results and active guidance, portrait and landscape
+hit targets, 150% and 200%
 attribution text, missing/invalid imagery, and failed copyright retrieval. The
 [recorded walkthrough](../evidence/google-maps-rollout.mp4) shows that controlled
 browser path at one-third speed for readability. It establishes no live Google service result or installed Pixel behavior.

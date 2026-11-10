@@ -648,7 +648,7 @@ button[aria-label$=" on or off"][aria-pressed]::before { content:""; position:ab
   display:flex; align-items:center; min-height:44px; padding:4px 8px; cursor:pointer; list-style:none;
 }
 .alpha-google-sources > summary::-webkit-details-marker { display:none; }
-.alpha-google-sources > .alpha-map-info {
+.alpha-map-credits .alpha-google-sources > .alpha-map-info {
   top:auto; right:0; bottom:calc(100% + 8px); box-sizing:border-box; max-height:160px; overflow:auto; overflow-wrap:anywhere;
 }
 @container alpha-map-credit (max-width: 375px) {
