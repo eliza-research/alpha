@@ -230,7 +230,7 @@ test('an unchanged active subscription does not clear a Cloud billing refusal', 
   expect(foreign).toEqual([]);
 });
 
-test('a refused turn refreshes the plan once after its answer, and a second refusal within a minute does not', async ({ page }) => {
+test('refused turns retain their answers and defer plan checks until the owner returns', async ({ page }) => {
   test.setTimeout(150_000);
   const foreign = await boot(page, { plan: undefined, balance: 0 });
   await residentHome(page);
@@ -242,15 +242,23 @@ test('a refused turn refreshes the plan once after its answer, and a second refu
   await send(page, 'What is on my calendar this week?');
   await expect.poll(() => harness(page, f => f.streams)).toBe(1);
   await button(page, 'Expand chat').click();
-  // The refusal itself is delivered (not replaced by an unknown-outcome notice), then the plan is read again.
+  // Both terminal refusals stay visible. No plan read may interrupt or replace either reply.
   await expect(conversation(page).getByText(/AI needs an active Eliza Cloud plan/)).toHaveCount(1, { timeout: 30_000 });
-  await expect.poll(reads).toBe(before + 1);
-  // A second refusal inside the once-a-minute limit does not read the plan again.
+  expect(await reads()).toBe(before);
+  // A second refusal is also held until the owner returns.
   await send(page, 'Try my calendar again');
   await expect(conversation(page).getByText(/AI needs an active Eliza Cloud plan/)).toHaveCount(2, { timeout: 30_000 });
   await page.waitForTimeout(1000);
-  expect(await reads()).toBe(before + 1);
-  // Neither refresh stopped or rebound the running agent; nothing was retried or opened.
+  expect(await reads()).toBe(before);
+  // On return, account display and provider admission each read their own authority.
+  await page.evaluate(() => window.dispatchEvent(new Event('pageshow')));
+  await expect.poll(reads).toBe(before + 2);
+  // A second foreground event refreshes the account display, but the plan check is throttled.
+  await page.evaluate(() => window.dispatchEvent(new Event('pageshow')));
+  await expect.poll(reads).toBe(before + 3);
+  await page.waitForTimeout(1000);
+  expect(await reads()).toBe(before + 3);
+  // The return checks did not stop or rebind the running agent; nothing was retried or opened.
   expect(await stops()).toBe(stopped);
   expect(await configured(page)).toBe(bound);
   expect(await harness(page, f => f.streams)).toBe(2);
