@@ -20,7 +20,7 @@ def verify_resident_fixture(archive, expected_manifest_sha256, android_home):
         assert digest((archive / name).read_bytes()) == recorded
 
     helper = json.loads((archive / 'private-peer-manifest.json').read_text())
-    assert helper['package'] == 'ai.elizaresearch.alphaphone.peerfixture' and helper['schemaVersion'] == 1
+    assert helper['package'] == 'ai.alphacompute.alphaphone.peerfixture' and helper['schemaVersion'] == 1
     assert helper['apkSha256'] == manifest['private-peer-debug.apk']
     expected_helper_sources = {str(path) for path in Path('android/private-peer-fixture/src').rglob('*') if path.is_file()}
     expected_helper_sources |= {'android/private-peer-fixture/build.gradle', 'scripts/ci/build-private-peer.py'}
@@ -30,7 +30,7 @@ def verify_resident_fixture(archive, expected_manifest_sha256, android_home):
         assert '..' not in Path(relative).parts and Path(relative).is_file() and digest(Path(relative).read_bytes()) == recorded
     signer = Path(android_home) / 'build-tools/36.0.0/apksigner'
     badging = subprocess.check_output([str(signer.parent / 'aapt'), 'dump', 'badging', str(archive / 'private-peer-debug.apk')], text=True)
-    assert re.search(r"^package: name='ai.elizaresearch.alphaphone.peerfixture' ", badging, re.M)
+    assert re.search(r"^package: name='ai.alphacompute.alphaphone.peerfixture' ", badging, re.M)
     assert 'application-debuggable' in badging and 'launchable-activity:' not in badging and 'android.permission.INTERNET' not in badging
     for name in ['private-peer-debug.apk'] + [variant + '-' + kind + '.apk' for variant in ['standalone', 'launcher'] for kind in ['debug', 'androidTest']]:
         certs = re.findall(r'^Signer #\d+ certificate SHA-256 digest: ([a-f0-9]{64})$', subprocess.check_output([str(signer), 'verify', '--print-certs', str(archive / name)], text=True), re.M)

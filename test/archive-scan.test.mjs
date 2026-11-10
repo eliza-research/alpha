@@ -13,12 +13,12 @@ for (const mode of ['signed', 'unsigned', 'signed-test-class']) test(`archive sc
   const fixtureHome = path.join(dir, 'fixture-home');
   fs.mkdirSync(path.join(fixtureHome, '.config/alphaphone'), {recursive:true});
   fs.writeFileSync(path.join(fixtureHome, '.config/alphaphone/cerebras-key'), 'synthetic-archive-scan-only', {mode:0o600});
-  const input = 'android/app/src/androidTest/java/ai/elizaresearch/alphaphone/FixtureTest.java';
+  const input = 'android/app/src/androidTest/java/ai/alphacompute/alphaphone/FixtureTest.java';
   fs.writeFileSync(path.join(dir, 'inputs-before.json'), JSON.stringify({files:{[input]:'fixture'}}));
   const manifest = {};
   for (const flavor of ['standalone', 'launcher']) for (const build of ['debug', mode === 'unsigned' ? 'release-unsigned' : 'release']) {
     const name = `${flavor}-${build}.apk`;
-    fs.writeFileSync(path.join(dir, 'classes.dex'), mode === 'signed-test-class' && build === 'release' ? 'Lai/elizaresearch/alphaphone/FixtureTest;' : 'fixture-dex');
+    fs.writeFileSync(path.join(dir, 'classes.dex'), mode === 'signed-test-class' && build === 'release' ? 'Lai/alphacompute/alphaphone/FixtureTest;' : 'fixture-dex');
     execFileSync('zip', ['-q', name, 'classes.dex'], {cwd:dir});
     manifest[name] = createHash('sha256').update(fs.readFileSync(path.join(dir,name))).digest('hex');
   }

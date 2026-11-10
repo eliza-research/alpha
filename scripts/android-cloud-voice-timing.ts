@@ -9,7 +9,7 @@ import { promisify } from 'node:util';
 import fs from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 const exec = promisify(execFile);
-const packageName = 'ai.elizaresearch.alphaphone';
+const packageName = 'ai.alphacompute.alphaphone';
 const marks = ['recording-end', 'transcript-ready', 'send', 'first-token', 'final-reply', 'first-audio'] as const;
 type Mark = typeof marks[number];
 const routes = ['on-device', 'browser', 'local-agent', 'eliza-cloud', 'paired-agent', 'development-agent', 'manual'] as const;

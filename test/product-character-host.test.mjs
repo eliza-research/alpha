@@ -30,7 +30,7 @@ for(const mode of ['module-missing','module-changed','input-changed','manifest-c
  const f=fixture(mode);try{await assert.rejects(f.make());assert.equal(f.launches.length,0);assert.equal(fs.existsSync(f.profile),false);}finally{f.close();}
 });
 test('native configuration keeps only the verified module path through unbound provider stripping',()=>{
- const java=fs.readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java','utf8');
+ const java=fs.readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java','utf8');
  // Shared cleanup strips the module with every provider credential; Alpha restores only the module it captured.
  const shared=fs.readFileSync('vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeProviderSlot.java','utf8');
  const stripped=shared.slice(shared.indexOf('PROVIDER_ENVIRONMENT = {'),shared.indexOf('};',shared.indexOf('PROVIDER_ENVIRONMENT = {')));

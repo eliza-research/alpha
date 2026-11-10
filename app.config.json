@@ -1,10 +1,10 @@
 {
   "slug": "alphaphone",
-  "appId": "ai.elizaresearch.alphaphone",
+  "appId": "ai.alphacompute.alphaphone",
   "appName": "Alpha Phone",
   "moduleName": "AlphaPhone",
   "version": "0.1.0",
   "versionCode": 1,
-  "updateManifestUrl": "https://github.com/eliza-research/alphaphone/releases/download/app-stable/alpha-update-stable.json",
+  "updateManifestUrl": "https://github.com/eliza-research/alphaphone/releases/download/app-stable-alphacompute/alpha-update-stable.json",
   "orientation": "unspecified"
 }

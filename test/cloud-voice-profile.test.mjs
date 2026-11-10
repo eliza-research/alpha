@@ -49,15 +49,15 @@ test('without on-device speech, signed-out production voice says so and never as
 test('every production build may reach Cloud voice: native code pins the production host and Cartesia; staging and other output providers fail closed',()=>{
  const out=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-cloud-speech-'));
  try {const binary=name=>process.env.JAVA_HOME?path.join(process.env.JAVA_HOME,'bin',name):name;
- execFileSync(binary('javac'),['--release','11','-d',out,'android/app/src/main/java/ai/elizaresearch/alphaphone/CloudDeployment.java','android/app/src/main/java/ai/elizaresearch/alphaphone/CloudSpeechPolicy.java','test/fixtures/CloudSpeechPolicyTest.java']);
- assert.match(execFileSync(binary('java'),['-cp',out,'ai.elizaresearch.alphaphone.CloudSpeechPolicyTest'],{encoding:'utf8'}),/PASS Cloud speech production host and Cartesia admission/);
- const native=fs.readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaVoiceCloudPlugin.java','utf8');
+ execFileSync(binary('javac'),['--release','11','-d',out,'android/app/src/main/java/ai/alphacompute/alphaphone/CloudDeployment.java','android/app/src/main/java/ai/alphacompute/alphaphone/CloudSpeechPolicy.java','test/fixtures/CloudSpeechPolicyTest.java']);
+ assert.match(execFileSync(binary('java'),['-cp',out,'ai.alphacompute.alphaphone.CloudSpeechPolicyTest'],{encoding:'utf8'}),/PASS Cloud speech production host and Cartesia admission/);
+ const native=fs.readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaVoiceCloudPlugin.java','utf8');
  assert.match(native,/CloudSpeechPolicy\.host\(BuildConfig\.ELIZA_DEV_ALLOW_TEST_MOCKS,environment\)/);
  assert.match(native,/if\(!paired\)CloudSpeechPolicy\.requireProvider\(c\.getHeaderField\("X-Eliza-TTS-Provider"\)\)/);
  // No build-time profile decides network speech any more: the renderer routes at run time.
- const policy=fs.readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/CloudSpeechPolicy.java','utf8');
+ const policy=fs.readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/CloudSpeechPolicy.java','utf8');
  assert.doesNotMatch(policy+native,/CloudSpeechPolicy\.\w+\([^)]*ELIZA_RUNTIME_PROFILE/);assert.doesNotMatch(policy,/Network speech is not enabled|String profile/);
- assert.doesNotMatch(fs.readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaKeyboardDictationService.java','utf8'),/ELIZA_RUNTIME_PROFILE/,'keyboard dictation is not tied to a build profile');
+ assert.doesNotMatch(fs.readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaKeyboardDictationService.java','utf8'),/ELIZA_RUNTIME_PROFILE/,'keyboard dictation is not tied to a build profile');
  const paired=native.slice(native.indexOf('private HttpURLConnection connectPaired(PluginCall call,boolean status,SpeechRequestGate.Request request,boolean asr)'));
  assert.match(paired,/if\(!BuildConfig\.ELIZA_DEV_ALLOW_TEST_MOCKS\)throw new IOException\("Network speech is not enabled"\)/);
  }finally{fs.rmSync(out,{recursive:true,force:true});}
@@ -71,7 +71,7 @@ test('Cloud signature classifier rejects actual Android mp42 header and accepts 
 });
 
 test('real native multipart method uploads decoded WAV and clears it on credential, setup, cancellation and write failures, replaying a cache-warming 503 once',()=>{
- const source=fs.readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaVoiceCloudPlugin.java','utf8');
+ const source=fs.readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaVoiceCloudPlugin.java','utf8');
  const method=source.slice(source.indexOf('@PluginMethod public void transcribeRecording('),source.indexOf('@PluginMethod public void synthesize(')).replace('@PluginMethod ','');
  const authorityStart=source.indexOf(' private void requireCloudSpeechAuthority('),authorityEnd=source.indexOf(' // Test APK',authorityStart);
  assert.ok(authorityStart>=0&&authorityEnd>authorityStart,'the actual native route/authority gate is included');
@@ -80,7 +80,7 @@ test('real native multipart method uploads decoded WAV and clears it on credenti
  const out=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-cloud-wav-upload-'));
  try{
  const file=path.join(out,'CloudWavUploadTest.java');
- fs.writeFileSync(file,`package ai.elizaresearch.alphaphone;import ai.eliza.voice.CloudSpeechTimings;import java.io.*;import java.net.*;import java.util.*;import java.nio.charset.StandardCharsets;import java.util.function.BooleanSupplier;
+ fs.writeFileSync(file,`package ai.alphacompute.alphaphone;import ai.eliza.voice.CloudSpeechTimings;import java.io.*;import java.net.*;import java.util.*;import java.nio.charset.StandardCharsets;import java.util.function.BooleanSupplier;
 public class CloudWavUploadTest {
  static class BuildConfig{static final String ELIZA_RUNTIME_PROFILE="cloud";}
  CloudSpeechTimings cloudTimings=new CloudSpeechTimings();boolean destroyed,protectedSurface;Object getContext(){return this;}boolean sensitiveSurfaceActive(){return protectedSurface;}String failure="";Exception error;Pending pending;Connection connection;Capture capture=new Capture();Capture recording(){return capture;}boolean destroyed(){return destroyed;}
@@ -154,8 +154,8 @@ public class CloudWavUploadTest {
  }
 }`);
  const binary=name=>process.env.JAVA_HOME?path.join(process.env.JAVA_HOME,'bin',name):name;
- execFileSync(binary('javac'),['--release','11','-cp',jsonJar,'-d',out,file,sharedSpeechSource('CloudSpeechTimings.java'),upstreamAgentRuntime('NativeProviderAdmission.java'),nativeSource('LocalAgentProviderAdmission.java'),'android/app/src/main/java/ai/elizaresearch/alphaphone/CloudDeployment.java','android/app/src/main/java/ai/elizaresearch/alphaphone/CloudSpeechPolicy.java']);
- assert.match(execFileSync(binary('java'),['-cp',out+path.delimiter+jsonJar,'ai.elizaresearch.alphaphone.CloudWavUploadTest'],{encoding:'utf8'}),/PASS real native multipart WAV upload and cleanup/);
+ execFileSync(binary('javac'),['--release','11','-cp',jsonJar,'-d',out,file,sharedSpeechSource('CloudSpeechTimings.java'),upstreamAgentRuntime('NativeProviderAdmission.java'),nativeSource('LocalAgentProviderAdmission.java'),'android/app/src/main/java/ai/alphacompute/alphaphone/CloudDeployment.java','android/app/src/main/java/ai/alphacompute/alphaphone/CloudSpeechPolicy.java']);
+ assert.match(execFileSync(binary('java'),['-cp',out+path.delimiter+jsonJar,'ai.alphacompute.alphaphone.CloudWavUploadTest'],{encoding:'utf8'}),/PASS real native multipart WAV upload and cleanup/);
  }finally{fs.rmSync(out,{recursive:true,force:true});}
 });
 

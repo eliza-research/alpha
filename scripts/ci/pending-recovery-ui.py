@@ -12,7 +12,7 @@ serial=os.environ['ANDROID_SERIAL'];assert serial=='emulator-5554'
 archive=Path('test-results/resident-ci-archive');out=Path('test-results/pending-recovery-ui-native');out.mkdir(exist_ok=False)
 def interrupted(*unused):raise KeyboardInterrupt('Owned CI interrupted')
 signal.signal(signal.SIGTERM,interrupted);signal.signal(signal.SIGINT,interrupted)
-APP='ai.elizaresearch.alphaphone';TEST=APP+'.test';HELPER=APP+'.peerfixture';h=lambda b:hashlib.sha256(b).hexdigest()
+APP='ai.alphacompute.alphaphone';TEST=APP+'.test';HELPER=APP+'.peerfixture';h=lambda b:hashlib.sha256(b).hexdigest()
 def run(*args,input=None,timeout=60):
  return subprocess.run(['adb','-s',serial,*args],input=input,text=True,capture_output=True,timeout=timeout,check=True).stdout
 assert run('shell','getprop','ro.kernel.qemu').strip()=='1';assert run('shell','getprop','ro.product.cpu.abi').strip()=='x86_64'
@@ -25,7 +25,7 @@ PHASES=[('reminder-no-alert','ReminderTimingInstrumentedTest','noAlertBridgeWith
 # These run under WorkflowNoticeOwnerFixture: a prepare run in the same user restores its owner first.
 OWNER_PREPARED=('workflow-notice-process-death','workflow-approval-process-death')
 for _,cls,_,_,_ in PHASES:
- relative='android/app/src/androidTest/java/ai/elizaresearch/alphaphone/'+cls+'.java'
+ relative='android/app/src/androidTest/java/ai/alphacompute/alphaphone/'+cls+'.java'
  assert relative in frozen and h(Path(relative).read_bytes())==frozen[relative]
 
 def approval_receipt(text):

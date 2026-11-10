@@ -82,7 +82,7 @@ export function registrationValues(registration: Registration) {
   return [
     { step: "H-11", where: `ELIZA_MOBILE_APP_AUTH_CLIENTS_JSON (GitHub Environment secret "${environment}" of the Cloud release workflow), Alpha's entry`,
       value: { clientId, appId: "<UUID of Alpha's active, approved Cloud apps row>", redirectUri: callback, enabled: true },
-      then: `Run the "Mobile App Auth Registration Admin" workflow on main with client ${clientId}: repair, then diagnose.` },
+      then: `For the package cutover, replace the former Alpha client ID on its existing app UUID and callback. The registry requires each UUID and callback to be unique. Preserve the other entries. Run the "Mobile App Auth Registration Admin" workflow on main with client ${clientId}: repair, then diagnose.` },
     { step: "H-12", where: `Steward tenant ${tenant} redirect allowlist (owner/admin session with recent MFA)`,
       value: { method: "POST", url: `${api}/steward/tenants/${tenant}/redirect-urls`, body: { url: callback } },
       then: "Read the list back; it appends and keeps other callbacks." },

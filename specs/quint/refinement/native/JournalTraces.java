@@ -1,5 +1,5 @@
 package ai.eliza.plugins.messages;
-import ai.elizaresearch.alphaphone.Trace;
+import ai.alphacompute.alphaphone.Trace;
 
 import ai.eliza.plugins.actionjournal.deletion.DeferredDeletionJournal;
 import ai.eliza.plugins.actionjournal.deletion.DeletionDeadline;

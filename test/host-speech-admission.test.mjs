@@ -29,24 +29,29 @@ test('host asset manifest matches the current shared worker pins: Paradee, optio
  // No package script names the retired Kokoro or Whisper speech paths.
  assert.doesNotMatch(readFileSync(new URL('../package.json',import.meta.url),'utf8'),/kokoro|whisper/i);
 });
-test('reviewed engine source keeps current embedding and voice qualification separate',()=>{
+test('the reviewed engine does not transfer native qualification to the renamed package',t=>{
  const source=readFileSync(new URL('../scripts/combined-agent-source.ts',import.meta.url),'utf8');
  const reviewed='6337fd4c4bd071c17235986344d552d4036e177b';
  assert.ok(source.includes("'plugins/plugin-local-inference/native/llama.cpp':'"+reviewed+"'"));
  const actual=execFileSync('git',['-C','vendor/eliza','ls-tree','HEAD','plugins/plugin-local-inference/native/llama.cpp'],{encoding:'utf8'}).match(/^160000 commit ([a-f0-9]{40})\t/)[1];
  assert.equal(actual,reviewed);
  const qualification=JSON.parse(readFileSync(new URL('../android/embedding-host/qualified-host.json',import.meta.url),'utf8'));
- // The installed identity is preserved; the exact reviewed engine remains separate from producer admission.
  assert.equal(qualification.forkPin,reviewed);
- // The current producer manifests changed. Full admission still rejects those even though
- // the generated JNI inputs for the preserved installed identity remain byte-identical.
- assert.throws(()=>verifyEmbeddingInputs(process.cwd(),qualification,{requireProducerInputs:true}),/Embedding producer input changed: package\.json/);
+ const legacyAppId='ai.elizaresearch.alphaphone';
+ assert.equal(qualification.identity,legacyAppId);
+ assert.throws(()=>verifyEmbeddingInputs(process.cwd(),qualification,{requireProducerInputs:true}),/Embedding host source or identity admission changed/);
+ assert.throws(()=>verifyEmbeddingHost(process.cwd()),/Embedding host source or identity admission changed/);
+
+ // Replay the old package identity against the current engine inputs without altering the receipt.
+ const legacyRoot=mkdtempSync(join(tmpdir(),'alpha-legacy-embedding-'));
+ t.after(()=>rmSync(legacyRoot,{recursive:true,force:true}));
+ for(const input of ['upstream.lock.json','vendor'])symlinkSync(join(process.cwd(),input),join(legacyRoot,input));
+ writeFileSync(join(legacyRoot,'app.config.json'),JSON.stringify({appId:legacyAppId}));
+ assert.throws(()=>verifyEmbeddingInputs(legacyRoot,qualification,{requireProducerInputs:true}),/Embedding producer input changed: package\.json/);
  const {producerInputs,...nativeOnly}=qualification;
  assert.ok(producerInputs.length>0,'the real qualification still binds its producer inputs');
- assert.doesNotThrow(()=>verifyEmbeddingInputs(process.cwd(),nativeOnly),'the preserved installed identity still matches every reviewed generated JNI input');
- assert.throws(()=>verifyEmbeddingInputs(process.cwd(),{...nativeOnly,identity:'ai.alphacompute.alphaphone'}),/Embedding host source or identity admission changed/,'a different installed identity cannot borrow that native qualification');
- assert.throws(()=>verifyEmbeddingInputs(process.cwd(),nativeOnly,{requireProducerInputs:true}),/Embedding producer input qualification missing or changed/,'native-only equality cannot replace full producer qualification');
- assert.throws(()=>verifyEmbeddingHost(process.cwd()),/Embedding host source admission changed/);
+ assert.doesNotThrow(()=>verifyEmbeddingInputs(legacyRoot,nativeOnly),'the recorded identity still matches every reviewed generated JNI input');
+ assert.throws(()=>verifyEmbeddingInputs(legacyRoot,nativeOnly,{requireProducerInputs:true}),/Embedding producer input qualification missing or changed/,'native-only equality cannot replace full producer qualification');
  const voice=JSON.parse(readFileSync(new URL('../android/voice-host/qualified-voice-host.json',import.meta.url),'utf8'));
  assert.equal(voice.qualified,false);
 });

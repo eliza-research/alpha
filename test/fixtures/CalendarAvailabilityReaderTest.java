@@ -1,8 +1,8 @@
-package ai.elizaresearch.alphaphone;
+package ai.alphacompute.alphaphone;
 
 import android.database.Cursor;
 import android.net.Uri;
-import ai.elizaresearch.alphaphone.SqliteCalendarProvider.Rows;
+import ai.alphacompute.alphaphone.SqliteCalendarProvider.Rows;
 import ai.eliza.plugins.calendar.read.CalendarSourceIdentity;
 import ai.eliza.plugins.calendar.read.SelectedCalendarReader;
 import java.nio.charset.StandardCharsets;

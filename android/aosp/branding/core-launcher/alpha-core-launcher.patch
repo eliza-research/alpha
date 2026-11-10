@@ -5,13 +5,13 @@
      <!-- The default tiles to display in QuickSettings-->
      <string name="quick_settings_tiles_default" translatable="false">
 -        internet,bt,dnd,cast,flashlight,airplane,rotation,wallet,alarm,controls,screenrecord,battery
-+        custom(ai.elizaresearch.alphaphone/.AlphaQuickSettingsTile),internet,bt,dnd,airplane,rotation,flashlight,battery,alarm,screenrecord
++        custom(ai.alphacompute.alphaphone/.AlphaQuickSettingsTile),internet,bt,dnd,airplane,rotation,flashlight,battery,alarm,screenrecord
      </string>
 
      <!-- The default tiles to display in QuickSettings after the internet tile split-->
      <string name="quick_settings_tiles_default_split" translatable="false">
 -        wifi,bt,cell,cast,dnd,wallet,airplane,rotation,flashlight,battery,alarm,controls,screenrecord
-+        custom(ai.elizaresearch.alphaphone/.AlphaQuickSettingsTile),wifi,bt,dnd,airplane,rotation,flashlight,battery,alarm,screenrecord
++        custom(ai.alphacompute.alphaphone/.AlphaQuickSettingsTile),wifi,bt,dnd,airplane,rotation,flashlight,battery,alarm,screenrecord
      </string>
 
      <!-- The default large tiles in Quick Settings after the internet tile split -->
@@ -23,7 +23,7 @@
 +
 +/** Only the enabled, preinstalled Alpha currently holding Home is a core launcher. */
 +public final class AlphaCoreLauncherPolicy {
-+    public static final String PACKAGE = "ai.elizaresearch.alphaphone";
++    public static final String PACKAGE = "ai.alphacompute.alphaphone";
 +    private AlphaCoreLauncherPolicy() {}
 +    public static boolean protects(String name, boolean enabled, boolean preinstalled,
 +            boolean currentHome) {
@@ -123,7 +123,7 @@
 
 --- /dev/null
 +++ b/packages/SystemUI/src/com/android/systemui/qs/pipeline/data/repository/AlphaQsDefaultsPolicy.java
-@@ -0,0 +1,32 @@
+@@ -0,0 +1,49 @@
 +// SPDX-License-Identifier: Apache-2.0
 +package com.android.systemui.qs.pipeline.data.repository;
 +
@@ -131,13 +131,30 @@
 +import java.util.Arrays;
 +import java.util.List;
 +
-+/** Update only known old stock layouts. Every other saved layout remains the owner's. */
++/** Update known stock layouts and carry the Alpha tile into the renamed package. */
 +public final class AlphaQsDefaultsPolicy {
-+    public static final String ALPHA = "custom(ai.elizaresearch.alphaphone/.AlphaQuickSettingsTile)";
-+    public static final int VERSION = 2;
++    public static final String ALPHA = "custom(ai.alphacompute.alphaphone/.AlphaQuickSettingsTile)";
++    public static final int VERSION = 3;
 +    public static final String VERSION_SETTING = "alpha_qs_layout_migration_version";
-+    private static final String LEGACY_ALPHA = "custom(ai.alphacompute.alphaphone/.AlphaQuickSettingsTile)";
++    private static final String LEGACY_ALPHA = "custom(ai.elizaresearch.alphaphone/.AlphaQuickSettingsTile)";
 +    private AlphaQsDefaultsPolicy() {}
++    public static List<String> migrate(List<String> saved, List<String> defaults, int reviewedVersion) {
++        if (shouldMigrate(saved, defaults, reviewedVersion)) return defaults;
++        if (reviewedVersion >= VERSION || !defaults.contains(ALPHA) || !saved.contains(LEGACY_ALPHA)) return saved;
++
++        List<String> migrated = new ArrayList<>();
++        boolean hasCurrentTile = saved.contains(ALPHA);
++        for (String tile : saved) {
++            if (!tile.equals(LEGACY_ALPHA)) {
++                migrated.add(tile);
++            } else if (!hasCurrentTile) {
++                migrated.add(ALPHA);
++                hasCurrentTile = true;
++            }
++        }
++        return migrated;
++    }
++
 +    public static boolean shouldMigrate(List<String> saved, List<String> defaults, int reviewedVersion) {
 +        if (reviewedVersion >= VERSION || !defaults.contains(ALPHA)) return false;
 +        for (String stock : Arrays.asList(
@@ -181,7 +198,7 @@
          }
      }
 
-@@ -182,12 +189,20 @@
+@@ -182,12 +189,21 @@
 
      private suspend fun loadTilesFromSettingsAndParse(userId: Int): List<TileSpec> {
          val loadedTiles = loadTilesFromSettings(userId)
@@ -190,8 +207,9 @@
 +        }
 +        alphaDefaultsMigrationPending = defaultTiles.any { it.spec == AlphaQsDefaultsPolicy.ALPHA } &&
 +            reviewedVersion < AlphaQsDefaultsPolicy.VERSION
-+        val selected = if (AlphaQsDefaultsPolicy.shouldMigrate(
-+                loadedTiles.map { it.spec }, defaultTiles.map { it.spec }, reviewedVersion)) defaultTiles else loadedTiles
++        val selected = AlphaQsDefaultsPolicy.migrate(
++            loadedTiles.map { it.spec }, defaultTiles.map { it.spec }, reviewedVersion,
++        ).map { TileSpec.create(it) }
 +        val parsedTiles = parseTileSpecs(selected, userId)
          if (loadedTiles.isNotEmpty()) {
 -            _tilesUpgradePath.send(TilesUpgradePath.ReadFromSettings(loadedTiles.toSet()))
@@ -212,7 +230,7 @@
 +
 +/** Factory default for Alpha's shared Files view; an owner's existing allow/deny is retained. */
 +final class AlphaSharedStoragePolicy {
-+    static final String PACKAGE = "ai.elizaresearch.alphaphone";
++    static final String PACKAGE = "ai.alphacompute.alphaphone";
 +    private AlphaSharedStoragePolicy() {}
 +    static boolean shouldGrant(int userId, String name, boolean enabledAndInstalled,
 +            boolean preinstalled, boolean requested, boolean unconfigured) {

@@ -64,7 +64,7 @@ export function deploymentOutputs(config: CloudDeploymentConfig){
  validateCloudDeployment(config);
  const fingerprint=storageFingerprint(config);
  const generated='Generated from scripts/cloud-deployment-policy.ts. Run node scripts/cloud-deployment.ts.';
- const java=['package ai.elizaresearch.alphaphone;','','/** '+generated+' */','final class CloudDeployment {',' private CloudDeployment() {}'];
+ const java=['package '+productIdentity.appId+';','','/** '+generated+' */','final class CloudDeployment {',' private CloudDeployment() {}'];
  const ts=['// '+generated];
  const gradle=['// '+generated,'ext.alphaCloudWebHosts = ['];
  for(const env of cloudEnvironments){
@@ -83,7 +83,7 @@ export function deploymentOutputs(config: CloudDeploymentConfig){
  gradle.push(']');
  return {
   'apps/app/src/runtime/cloud-deployment.generated.ts':ts.join('\n')+'\n',
-  'android/app/src/main/java/ai/elizaresearch/alphaphone/CloudDeployment.java':java.join('\n')+'\n',
+  ['android/app/src/main/java/'+productIdentity.appId.replaceAll('.','/')+'/CloudDeployment.java']:java.join('\n')+'\n',
   'android/app/cloud-deployment.generated.gradle':gradle.join('\n')+'\n',
  };
 }

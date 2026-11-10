@@ -18,7 +18,7 @@ test('Android free/busy reader: chosen calendars only, provider availability, ci
    shared('android/src/main/java/ai/eliza/plugins/calendar/read/CalendarSourceIdentity.java'),shared('android/src/main/java/ai/eliza/plugins/calendar/read/SelectedCalendarReader.java'),
    ...['content/ContentResolver.java','content/ContentUris.java','content/ContentValues.java','database/Cursor.java','net/Uri.java'].map(name=>shared('test/jvm/android/'+name)),
    fixture('calendar-provider-jvm/android/provider/CalendarContract.java'),fixture('SqliteCalendarProvider.java'),fixture('CalendarAvailabilityReaderTest.java')],{timeout:180000,stdio:'pipe'});
-  const output=execFileSync(javaBinary('java'),['-cp',temporary+':'+jsonJar,'ai.elizaresearch.alphaphone.CalendarAvailabilityReaderTest'],{encoding:'utf8',timeout:300000,stdio:'pipe',maxBuffer:16*1024*1024});
+  const output=execFileSync(javaBinary('java'),['-cp',temporary+':'+jsonJar,'ai.alphacompute.alphaphone.CalendarAvailabilityReaderTest'],{encoding:'utf8',timeout:300000,stdio:'pipe',maxBuffer:16*1024*1024});
   const [verdict,cases]=output.split('\n');
   assert.equal(verdict,'PASS calendar availability reader');
   const file=join(temporary,'cases.json');writeFileSync(file,cases);

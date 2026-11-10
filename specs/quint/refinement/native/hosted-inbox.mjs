@@ -17,7 +17,7 @@ const campaign = ['two-pages-and-exact-ack', 'ack-reply-loss-and-equivalent-repl
   'packed-cache-removal-journal',
   'packed-replay-acknowledges-journaled-last-row', 'resident-credential-expiry', 'invalid-unordered-and-unavailable-pages'];
 
-const support = `package ai.elizaresearch.alphaphone;
+const support = `package ai.alphacompute.alphaphone;
 import android.content.Context;
 import org.json.JSONObject;
 

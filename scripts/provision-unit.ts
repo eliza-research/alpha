@@ -35,7 +35,7 @@ import { releaseBlockers } from "./release-blockers.ts";
 import { androidEnv, tool } from "./toolchain.ts";
 import { updateArtifactDigest } from "./update-artifact.ts";
 
-export const PACKAGE = "ai.elizaresearch.alphaphone";
+export const PACKAGE = "ai.alphacompute.alphaphone";
 const sha256 = (bytes: string | NodeJS.ArrayBufferView) => createHash("sha256").update(bytes).digest("hex");
 
 export interface VerifiedApkRow extends Record<string, unknown> {

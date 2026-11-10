@@ -4,7 +4,7 @@ import {distributionProblems} from '../scripts/apk.ts';
 
 function assess({home=true,tag='service',permission='android.permission.BIND_INPUT_METHOD',action='android.view.InputMethod',metadata=true}={}) {
  return distributionProblems({home,xml:`E: manifest
-  A: package="ai.elizaresearch.alphaphone"
+  A: package="ai.alphacompute.alphaphone"
   E: application
     A: android:allowBackup=(type 0x12)0x0
     A: android:usesCleartextTraffic=(type 0x12)0x0
@@ -19,7 +19,7 @@ function assess({home=true,tag='service',permission='android.permission.BIND_INP
 ${metadata?`      E: meta-data
         A: android:name="android.view.im"
         A: android:resource=@0x7f010002
-`:''}`,badging:"package: name='ai.elizaresearch.alphaphone' versionCode='44' versionName='44'",names:['assets/public/licenses/third-party-notices.json']},{mode:'release'}).problems;
+`:''}`,badging:"package: name='ai.alphacompute.alphaphone' versionCode='44' versionName='44'",names:['assets/public/licenses/third-party-notices.json']},{mode:'release'}).problems;
 }
 test('voice keyboard admits the launcher service bound only by Android',()=>assert.deepEqual(assess(),[]));
 test('voice keyboard rejects standalone packaging, public binding and unrelated entry contracts',()=>{

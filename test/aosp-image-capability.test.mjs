@@ -8,9 +8,9 @@ import path from "node:path";
 import { detectAospImage, admittedAospViews, AOSP_IMAGE_VIEWS, ADMITTED_AOSP_VIEW_ADAPTERS } from "../apps/app/src/runtime/aosp-image.ts";
 import { IMAGE_FEATURE_VERSION, imageFeatureName, renderImageCapability, writeImageCapability } from "../scripts/aosp-image-capability.ts";
 
-const PKG = "ai.elizaresearch.alphaphone";
+const PKG = "ai.alphacompute.alphaphone";
 const read = file => fs.readFileSync(file, "utf8");
-const JAVA = "android/app/src/main/java/ai/elizaresearch/alphaphone";
+const JAVA = "android/app/src/main/java/ai/alphacompute/alphaphone";
 const header = (methods = ["imageCapability", "status"]) => ({ name: "AlphaTelephony", methods: methods.map(name => ({ name, rtype: "promise" })) });
 
 test("the renderer sees the image only through the native image-only plugin on Android", () => {
@@ -144,7 +144,7 @@ test("no Alpha Java lists or launches apps: installed apps and default hand-offs
   assert.match(info, /launcher\.getApplicationInfo\(name,PackageManager\.MATCH_DISABLED_COMPONENTS,handle\)/);
   assert.match(info, /startAppDetailsActivity\(new ComponentName\(name,activity==null\|\|activity\.isEmpty\(\)\?name:activity\),handle,null,null\)/);
   assert.match(info, /Settings\.ACTION_APPLICATION_DETAILS_SETTINGS/);
-  assert.match(read('android/app/src/androidTest/java/ai/elizaresearch/alphaphone/AppInfoInstrumentedTest.java'), /com\.android\.settings/, 'App info has a device test');
+  assert.match(read('android/app/src/androidTest/java/ai/alphacompute/alphaphone/AppInfoInstrumentedTest.java'), /com\.android\.settings/, 'App info has a device test');
   for (const name of fs.readdirSync(JAVA).filter(file => file.endsWith(".java") && !handoffs.has(file))) {
     const source = read(`${JAVA}/${name}`), checked = source;
     assert.doesNotMatch(checked, /SystemLauncherApps\.(list|launchIntent|resolve)\(|getLaunchIntentForPackage|startMainActivity|CATEGORY_LAUNCHER/, `${name} lists or launches no app`);
@@ -170,7 +170,7 @@ test("permissions: standalone has none, the launcher declares read access only, 
   assert.ok(declared(launcher).includes("android.permission.READ_CALL_LOG"), "launcher declares READ_CALL_LOG");
   assert.ok(!declared(main).includes("android.permission.READ_CALL_LOG"), "main does not declare READ_CALL_LOG");
   assert.ok(removed(standalone).includes("android.permission.READ_CALL_LOG"), "standalone removes READ_CALL_LOG");
-  const plugin = read("android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaTelephonyPlugin.java");
+  const plugin = read("android/app/src/main/java/ai/alphacompute/alphaphone/AlphaTelephonyPlugin.java");
   assert.match(plugin, /@Permission\(alias = "callLog", strings = \{ Manifest\.permission\.READ_CALL_LOG \}\)/, "the image plugin declares the optional call-log alias");
   // CALL_PHONE reaches only the dialer-role holder, and only the launcher can be offered that role.
   assert.ok(declared(launcher).includes("android.permission.CALL_PHONE") && !declared(main).includes("android.permission.CALL_PHONE"));
@@ -228,12 +228,12 @@ test("dialer- and SMS-role components exist only in the launcher, disabled until
   assert.match(component("AlphaRespondViaMessageService"), /android:permission="android\.permission\.SEND_RESPOND_VIA_MESSAGE"/);
   assert.match(component("AlphaMmsResultReceiver"), /android:exported="false"/);
   assert.match(launcher, /<provider android:name="ai\.eliza\.plugins\.messages\.MmsFileProvider" android:authorities="\$\{applicationId\}\.mms" android:enabled="false" android:exported="false" android:grantUriPermissions="true" \/>/);
-  assert.match(read("android/app/src/launcher/java/ai/elizaresearch/alphaphone/AlphaTelephonyRoles.java"), /AlphaSmsDeliverReceiver\.class, AlphaMmsWapPushReceiver\.class, AlphaMmsResultReceiver\.class, AlphaRespondViaMessageService\.class, AlphaSmsComposeActivity\.class, ai\.eliza\.plugins\.messages\.MmsFileProvider\.class/);
+  assert.match(read("android/app/src/launcher/java/ai/alphacompute/alphaphone/AlphaTelephonyRoles.java"), /AlphaSmsDeliverReceiver\.class, AlphaMmsWapPushReceiver\.class, AlphaMmsResultReceiver\.class, AlphaRespondViaMessageService\.class, AlphaSmsComposeActivity\.class, ai\.eliza\.plugins\.messages\.MmsFileProvider\.class/);
   assert.match(launcher, /android\.telecom\.IN_CALL_SERVICE_UI" android:value="true"/);
-  const roles = read("android/app/src/launcher/java/ai/elizaresearch/alphaphone/AlphaTelephonyRoles.java");
+  const roles = read("android/app/src/launcher/java/ai/alphacompute/alphaphone/AlphaTelephonyRoles.java");
   assert.match(roles, /boolean image = AlphaImageCapability\.verified\(context\);/);
   assert.match(roles, /int wanted = image \? PackageManager\.COMPONENT_ENABLED_STATE_ENABLED : PackageManager\.COMPONENT_ENABLED_STATE_DEFAULT;/, "anything but the verified image returns to the disabled manifest state");
-  assert.match(read("android/app/src/standalone/java/ai/elizaresearch/alphaphone/AlphaTelephonyRoles.java"), /static void sync\(Context context\) \{\}/);
+  assert.match(read("android/app/src/standalone/java/ai/alphacompute/alphaphone/AlphaTelephonyRoles.java"), /static void sync\(Context context\) \{\}/);
   const activity = read(`${JAVA}/MainActivity.java`);
   assert.ok(activity.indexOf("AlphaTelephonyRoles.sync(this);") > 0 && activity.indexOf("AlphaTelephonyRoles.sync(this);") < activity.indexOf("registerPlugin(AlphaTelephonyPlugin.class)"), "roles follow the image before the plugin is registered");
   // The shared surfaces place calls only from the owner's press and leave emergency routing to Telecom.
@@ -243,7 +243,7 @@ test("dialer- and SMS-role components exist only in the launcher, disabled until
   assert.match(pad, /call\.setOnClickListener\(view -> place\(\)\);/); assert.match(pad, /call\.setFilterTouchesWhenObscured\(true\)/);
   assert.match(dial, /telecom\.placeCall\(telUri, extras\)/);
   const apk = read("scripts/apk.ts");
-  assert.match(apk, /"ai\.elizaresearch\.alphaphone\.AlphaInCallService": "android\.permission\.BIND_INCALL_SERVICE"/);
+  assert.match(apk, /"ai\.alphacompute\.alphaphone\.AlphaInCallService": "android\.permission\.BIND_INCALL_SERVICE"/);
   assert.match(apk, /if \(data\.xml\.includes\('android\.permission\.CALL_PHONE'\) !== wantsHome\)/);
   // Per-flavor recent-calls packaging: launcher only, and call-log writes never.
   assert.match(apk, /if \(data\.xml\.includes\('android\.permission\.READ_CALL_LOG'\) !== wantsHome\)/);

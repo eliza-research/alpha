@@ -167,14 +167,15 @@ GraphHopper setup is superseded for production.
 
    Complete `npm run verify` and `npm run android:build:local` with admitted native
    inputs and inspect standalone and launcher outputs with
-   `npm run android:verify`. For the explicit Cloud speech QA profile, follow
-   the separate build chain in the repository README. Record the profile and
-   exact signed APK digest used on the Pixel. A developer APK built with
+   `npm run android:verify`. Record the variant and exact signed APK digest used
+   on the Pixel. A developer APK built with
    `--allow-unpackaged-runtime` is non-distributable.
 
-   Install the intended variant through the existing owner-controlled update
-   process. Both variants retain `ai.elizaresearch.alphaphone` and replace each other. Confirm
+   Install the intended variant through the owner-controlled installation
+   process. Both variants use `ai.alphacompute.alphaphone`. Start with a fresh
+   installation if the Pixel currently has the former package. Confirm
    the current package, signing and sign-in callback registration before testing.
+   [Cloud registration and release steps](../../README.md#device-and-image-tooling).
    Sign in through Alpha with the provisioned production plan account, open Maps,
    and verify actual Google imagery, search, place details and a route. Grant
    location only when requested. Start and stop navigation on a safe walking route.

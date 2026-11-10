@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {verifyCuttlefishLauncher, validateExpectation, parseArgs} from '../scripts/verify-cuttlefish-launcher.ts';
-const pkg='ai.elizaresearch.alphaphone';
+const pkg='ai.alphacompute.alphaphone';
 const expected={packageName:pkg,apkSha256:'a'.repeat(64),certificateSha256:'b'.repeat(64),fingerprint:'Alpha/alpha_cf/vsoc_x86_64_only:17/test:userdebug/test-keys',apkPath:'/product/app/AlphaPhone/AlphaPhone.apk'};
 function fixture(overrides={}) {
  const calls=[];let hashes=0;

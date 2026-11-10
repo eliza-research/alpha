@@ -74,7 +74,7 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
  let signIn:SignInAttempt|null=null;
  // One code send per 30 seconds minimum, across addresses; honor longer server deadlines.
  let lastEmailSendAt=0,emailSendAllowedAt=0;const MAX_VERIFY_ATTEMPTS=5;
- const SIGN_IN_CLIENT='ai.elizaresearch.alphaphone',SIGN_IN_CALLBACK={production:productionCloud.web+'/alphaphone/auth/callback',staging:stagingCloud.web+'/alphaphone/auth/callback'} as const;
+ const SIGN_IN_CLIENT='ai.alphacompute.alphaphone',SIGN_IN_CALLBACK={production:productionCloud.web+'/alphaphone/auth/callback',staging:stagingCloud.web+'/alphaphone/auth/callback'} as const;
  const signInFailure=(code:string)=>Object.assign(Error(code),{status:409,code});
  const signInStatus=(stage:string,status:number)=>status===429?'rate-limited':status===410?'expired':status===403?'account-check':(status===400||status===401)&&(stage==='verify'||stage==='mfa')?'invalid-code':status>=500?'unavailable':'rejected';
  async function signInCall(env:Environment,route:string,body:Record<string,unknown>,signal:AbortSignal,bearer?:string){

@@ -76,7 +76,7 @@ test('Gradle has one profile: local speech, the voice host and the embedding hos
 });
 
 test('every resident launch selects the native profile, so local embeddings and powered-on scheduling apply signed in or not',()=>{
- const plugin=read('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java');
+ const plugin=read('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java');
  assert.match(plugin,/static void configureEnvironment\(Context context,java\.util\.Map<String,String> env\) throws java\.io\.IOException \{\s*env\.put\("ELIZA_RUNTIME_PROFILE",BuildConfig\.ELIZA_RUNTIME_PROFILE\);/);
  assert.doesNotMatch(plugin,/"cloud"\.equals\(BuildConfig\.ELIZA_RUNTIME_PROFILE\)/);
  const profile=read('vendor/eliza/packages/app/src/runtime/native-runtime-profile.ts');

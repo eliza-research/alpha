@@ -160,7 +160,7 @@ test('TalkBack reading order is checked in every lane, as Android checks it, acr
   assert.equal([...production.matchAll(/auditReadingOrder\(page\)/g)].length, 2, 'both production lanes read the order');
   // The browser rule is the Android rule: the same geometry, the same assistant group, the same bars.
   const audit = read('test/browser/accessibility-audit.ts');
-  const order = read('android/app/src/androidTest/java/ai/elizaresearch/alphaphone/TalkBackOrder.java');
+  const order = read('android/app/src/androidTest/java/ai/alphacompute/alphaphone/TalkBackOrder.java');
   assert.match(audit, /r\.top < p\.top - tallest \/ 2 && r\.left < p\.right/);
   assert.match(order, /r\.top < p\.top - Math\.max\(p\.height\(\), r\.height\(\)\) \/ 2 && r\.left < p\.right/);
   assert.match(audit, /export const ASSISTANT_GROUP = 'Assistant controls';/);
@@ -170,12 +170,12 @@ test('TalkBack reading order is checked in every lane, as Android checks it, acr
   assert.ok(order.includes(groups.replaceAll('"', '\\"')), 'the Android rule reads the same bars');
   // Every retained view is visited on the emulator and in the lifecycle spec, by its Home tile name.
   const titles = enabledViews().map(view => view[0].toUpperCase() + view.slice(1)).sort();
-  const views = read('android/app/src/androidTest/java/ai/elizaresearch/alphaphone/AccessibilityViewsInstrumentedTest.java').match(/static final String\[\] VIEWS = \{([^}]*)\};/)?.[1];
+  const views = read('android/app/src/androidTest/java/ai/alphacompute/alphaphone/AccessibilityViewsInstrumentedTest.java').match(/static final String\[\] VIEWS = \{([^}]*)\};/)?.[1];
   assert.deepEqual([...views.matchAll(/"([A-Za-z]+)"/g)].map(match => match[1]).sort(), titles);
   const lifecycle = read('test/browser/accessibility-lifecycle.spec.ts').match(/const VIEWS = \[([^\]]*)\] as const;/)?.[1];
   assert.deepEqual([...lifecycle.matchAll(/'([A-Za-z]+)'/g)].map(match => match[1]).sort(), titles);
   for (const name of ['AccessibilityLifecycleInstrumentedTest', 'AccessibilityHomeRoleInstrumentedTest'])
-    assert.match(read(`android/app/src/androidTest/java/ai/elizaresearch/alphaphone/${name}.java`), /AccessibilityViewsInstrumentedTest\.VIEWS/, `${name} visits every view`);
+    assert.match(read(`android/app/src/androidTest/java/ai/alphacompute/alphaphone/${name}.java`), /AccessibilityViewsInstrumentedTest\.VIEWS/, `${name} visits every view`);
   // What the order check found stays fixed. Maps reads what is drawn over the top of the map
   // (search, Back to event, chips, status, the route card, the turn banner) before the map, its
   // credits and Recenter; the browser page leaves the order while address suggestions cover it.

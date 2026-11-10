@@ -70,15 +70,16 @@ npm run android:verify            # inspect APK contents and signatures
 ```
 
 The build produces standalone and launcher, debug and release APKs under
-`artifacts/`. The variants share `ai.elizaresearch.alphaphone` and replace one
-another; only the launcher declares HOME. Phone, Contacts and SMS/MMS require
+`artifacts/`. The variants share `ai.alphacompute.alphaphone` and can replace one
+another with an admitted version and signer. The launcher declares HOME.
+Phone, Contacts and SMS/MMS require
 an admitted AOSP image capability; a launcher APK alone does not supply it.
 
-The installed package and native namespace stay `ai.elizaresearch.alphaphone`,
-including fresh phones and Alpha Compute-branded releases. The retained Pixel v44
-uses this ID; changing it would create a separate app and leave its private data
-behind. Branding is independent of this installed identity. Signing, callback
-registrations, native-library qualification and in-place data-retention tests remain required.
+Alpha Compute builds use the same ID for the installed package and native
+namespace. The retained Pixel v44 uses `ai.elizaresearch.alphaphone`. Android
+installs the new package separately, with its own private data, Keystore,
+permissions and roles. Establish a fresh baseline on each distribution form,
+then verify updates and data retention between builds with the new package ID.
 
 There is one runtime profile. Every build packages libelizainference with the
 on-device speech models and local embeddings. Stage on-device voice inputs with
@@ -131,7 +132,9 @@ are independent results.
 
 `scripts/deliver-app-update.ts` publishes an admitted signed launcher APK and
 checks anonymous readback. Merging source does not publish an application update.
-Android may require confirmation for installation.
+New builds read the `app-stable-alphacompute` release. The previous package
+reads `app-stable`. Publication keeps each package on its own release and
+checks retained versions on both. Android may require installation confirmation.
 
 An automatic attempt that loses idle HOME after verifying its APK can retain
 that one file for a later attempt in the same process. Reuse checks the complete
@@ -147,7 +150,7 @@ reruns use their own run ID group and do not cancel running work. GitHub does no
 guarantee commit order. Completion needs a quiet main, build capacity and admitted
 native inputs.
 The existing workflow run number is the candidate versionCode, checked against
-all retained stable APKs, the public pointer and committed version floors.
+both releases' retained APKs and public pointers, and the committed version floors.
 Failed or canceled runs consume their number. A manual release or workflow
 migration that exceeds this number stops candidate creation and needs a reviewed
 version migration. Manual builds keep their explicit version input.
@@ -162,14 +165,55 @@ Complete it in this order:
 
 1. Admit native voice inputs for the exact SDK, then build and sign both
    distribution variants. Preserve advancing versions and the enrolled signer.
-2. Verify the Cloud client and App Links retain `ai.elizaresearch.alphaphone`
-   ([#666](https://github.com/eliza-research/alphaphone/issues/666),
-   [#670](https://github.com/eliza-research/alphaphone/issues/670)). Keep
-   `/alphaphone/auth/callback` in production and staging. Preserve the selected
-   app identity, existing grants and other products' registrations.
+2. Register `ai.alphacompute.alphaphone` in production and staging. Run
+   `node scripts/cloud-readiness.ts registration --environment <environment>`
+   to print each environment's operator inputs. Keep the existing
+   `/alphaphone/auth/callback` URLs and entitlement audience.
+
+   - In `ELIZA_MOBILE_APP_AUTH_CLIENTS_JSON`, replace the former Alpha row's
+     `clientId` with `ai.alphacompute.alphaphone`. Keep its active, approved
+     app UUID, exact callback, and other settings. Preserve all other rows.
+     Cloud requires unique app UUIDs and callback URLs, so this change switches
+     new sign-ins on that environment from the old app to the new one. Run the
+     Cloud **Mobile App Auth Registration Admin** workflow in diagnose
+     mode for the new client. Use repair mode if diagnosis finds a missing
+     approved app binding. Verify the callback remains on that environment's
+     Steward redirect allowlist.
+   - For native Google sign-in, create an Android OAuth client for the new
+     package and admitted release certificate SHA-1 in the Google Cloud
+     project for Steward's web client. Add it under `alpha-phone` in
+     `STEWARD_GOOGLE_NATIVE_CLIENT_IDS`. Keep any active Android client IDs.
+   - Add the new package and its release certificate SHA-256 to the production
+     `ELIZA_ANDROID_ASSET_LINKS_JSON`. Generate the merged value with
+     `node scripts/render-assetlinks.ts --cloud-config --published https://eliza.app/.well-known/assetlinks.json`.
+     Preserve existing grants and other products' entries. Deploy and verify
+     the published file with `node scripts/render-assetlinks.ts --check <web-origin>/.well-known/assetlinks.json`.
+   - Use `node scripts/cloud-deployment.ts --pages-registration` to update
+     Alpha's existing entry in `ELIZA_NATIVE_AUTH_CALLBACKS_JSON` for both
+     Pages environments. Keep one entry per callback URI and preserve the
+     other products' entries. Verify the new Android target in the deployed
+     callback page, run `node scripts/cloud-readiness.ts probe --environment <environment>`,
+     then complete sign-in on the intended APK. Test with the new package
+     selected to open its supported links if the old package is also installed.
+     [Cloud registration #666](https://github.com/eliza-research/alphaphone/issues/666),
+     [App Links #670](https://github.com/eliza-research/alphaphone/issues/670).
+
+   For a debug-signed Pixel, use an explicit `--test-mocks` APK on an owned
+   test device and select **Staging** in **Subscription gate QA**. The staging
+   App Links filter is part of that build. Use the staging URL
+   `https://staging.eliza.app/.well-known/assetlinks.json` and pass
+   `--keep-fingerprint <debug-SHA256>` to the asset-link config generator.
+   For native Google sign-in, add the package and that signer's SHA-1 in
+   the staging Steward project. After deploying, run
+   `node scripts/cloud-readiness.ts probe --environment staging --signer <debug-SHA256>`.
+   The staging phone flow ends at plan admission. For production Cloud acceptance
+   on the Pixel, use the admitted release APK. Android requires a separate device
+   or fresh installation when the installed copy uses an incompatible signer.
 3. Qualify the exact signed APK bytes, publish the admitted launcher and
    manifest, and verify anonymous full-byte readback. Then install the initial
-   baseline on each distribution form and run #889 on the machine with the phone.
+   baseline with the new package ID on each distribution form and run #889 on
+   the machine with the phone. Verify the manifest and APK on
+   `app-stable-alphacompute` before testing wireless delivery.
    The update itself must use the phone's channel; `scripts/pilot-update.ts` uses
    `adb install -r` and supplies separate in-place replacement evidence.
 4. Before distributing the batch, verify wireless replacement, retained data and

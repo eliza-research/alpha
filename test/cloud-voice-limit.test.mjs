@@ -100,10 +100,10 @@ test('native CloudVoiceLimit keeps the same facts, never the body text, and repl
  const out=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-cloud-voice-limit-'));
  try{
   const binary=name=>process.env.JAVA_HOME?path.join(process.env.JAVA_HOME,'bin',name):name;
-  execFileSync(binary('javac'),['--release','11','-d',out,'android/app/src/main/java/ai/elizaresearch/alphaphone/CloudVoiceLimit.java','test/fixtures/CloudVoiceLimitTest.java']);
-  assert.match(execFileSync(binary('java'),['-cp',out,'ai.elizaresearch.alphaphone.CloudVoiceLimitTest'],{encoding:'utf8'}),/PASS Cloud voice 429 retry facts/);
+  execFileSync(binary('javac'),['--release','11','-d',out,'android/app/src/main/java/ai/alphacompute/alphaphone/CloudVoiceLimit.java','test/fixtures/CloudVoiceLimitTest.java']);
+  assert.match(execFileSync(binary('java'),['-cp',out,'ai.alphacompute.alphaphone.CloudVoiceLimitTest'],{encoding:'utf8'}),/PASS Cloud voice 429 retry facts/);
  }finally{fs.rmSync(out,{recursive:true,force:true});}
- const plugin=fs.readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaVoiceCloudPlugin.java','utf8');
+ const plugin=fs.readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaVoiceCloudPlugin.java','utf8');
  assert.match(plugin,/if\(status==429\)throw new VoiceHttpException\(status,limitOf\(c\)\);successful\(c\);/);
  assert.match(plugin,/@Override protected void rejectFailure\(PluginCall call,String message,String code,Exception failure\)/);
  assert.match(plugin,/call\.reject\(message,"voice-http-"\+limited\.status,limitData\(limited\.limit\)\)/);

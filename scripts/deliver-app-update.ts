@@ -12,6 +12,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {main as prepare, MANIFEST_NAME} from './publish-update-manifest.ts';
 import {updateArtifactDigest} from './update-artifact.ts';
+import {APP_UPDATE_REPOSITORY, APP_UPDATE_TAG, LEGACY_APP_UPDATE_TAG, appUpdateManifestUrl} from './update-channel.ts';
 
 interface UpdateOffer {
   schema: 'alpha-update/v1';
@@ -95,15 +96,27 @@ function gh(args: string[], {allowMissing = false}: {allowMissing?: boolean} = {
   }
 }
 
+function stableRelease(run: NonNullable<DeliveryPorts['run']>, tag: typeof APP_UPDATE_TAG | typeof LEGACY_APP_UPDATE_TAG) {
+  const text = run(['release','view',tag,'--repo',APP_UPDATE_REPOSITORY,'--json','isDraft,assets'], {allowMissing: true});
+  const release: ReleaseRecord | null = text === null ? null : JSON.parse(text);
+  if (release !== null && release.isDraft !== false) throw Error('The stable update release must be public, not a draft');
+  return release;
+}
+
+function retainedCodes(release: ReleaseRecord | null) {
+  return (release?.assets || []).flatMap(asset => {
+    const match = /^alpha-phone-([1-9][0-9]*)\.apk$/.exec(asset.name);
+    return match ? [Number(match[1])] : [];
+  });
+}
+
 /** All inputs have already passed prepare's release and actual-APK admission.
  * Injected ports let failure tests exercise the real publication ordering.
  */
 export async function deliver({directory, manifestUrl, source}: DeliveryInput, {run = gh, read = publicObject, wait = sleep}: DeliveryPorts = {}) {
-  const parsed = new URL(manifestUrl);
-  const match = /^\/([\w.-]+\/[\w.-]+)\/releases\/download\/app-stable\/alpha-update-stable.json$/.exec(parsed.pathname);
-  if (parsed.origin !== 'https://github.com' || parsed.username || parsed.password || parsed.search || parsed.hash || !match) throw Error('Stable publication must match the configured GitHub app-stable channel');
+  if (manifestUrl !== appUpdateManifestUrl()) throw Error('Stable publication must match the configured GitHub Alpha Compute update channel');
   if (!/^[0-9a-f]{40}$/.test(source || '')) throw Error('Publication needs an exact source commit');
-  const repo = match[1];
+  const repo = APP_UPDATE_REPOSITORY;
   const manifestFile = path.join(directory, MANIFEST_NAME);
   const manifestBytes = fs.readFileSync(manifestFile), offer = parseOffer(manifestBytes);
   const apkName = `alpha-phone-${offer.versionCode}.apk`;
@@ -112,6 +125,21 @@ export async function deliver({directory, manifestUrl, source}: DeliveryInput, {
   if (artifact.size !== offer.sizeBytes || artifact.sha256 !== offer.sha256) throw Error('Staged APK differs from its admitted manifest');
   const repository: {isPrivate?: boolean} = JSON.parse(run(['repo','view',repo,'--json','isPrivate']) ?? 'null');
   if (repository.isPrivate !== false) throw Error('Phones require an anonymously readable public update repository');
+  const legacyRelease = stableRelease(run, LEGACY_APP_UPDATE_TAG);
+  const legacyUrl = appUpdateManifestUrl(LEGACY_APP_UPDATE_TAG);
+  const legacy = await read(legacyUrl, {maxBytes: 32768, missing: true});
+  const legacyVersions = retainedCodes(legacyRelease);
+  if (legacy) {
+    if (!legacyRelease || !legacy.bytes) throw Error('Legacy stable pointer lacks authoritative release bytes');
+    const legacyOffer = parseOffer(legacy.bytes);
+    if (legacyOffer.apkUrl !== new URL(`alpha-phone-${legacyOffer.versionCode}.apk`, legacyUrl).href)
+      throw Error('Legacy stable pointer names an APK outside its release');
+    legacyVersions.push(legacyOffer.versionCode);
+  } else if (legacyRelease?.assets?.some(asset => asset.name === MANIFEST_NAME)) {
+    throw Error('Legacy stable manifest exists but is not publicly readable');
+  }
+  if (legacyVersions.some(code => !Number.isSafeInteger(code) || code >= offer.versionCode))
+    throw Error('Candidate must exceed the retained legacy APK version floor');
   const readManifest = () => read(manifestUrl, {maxBytes: 32768, missing: true});
   const previous = await readManifest();
   if (previous) {
@@ -121,18 +149,14 @@ export async function deliver({directory, manifestUrl, source}: DeliveryInput, {
     if (current.versionCode > offer.versionCode) throw Error('Refusing to roll back the published versionCode');
     if (current.versionCode === offer.versionCode && sha(previous.bytes) !== sha(manifestBytes)) throw Error('A published versionCode is immutable; allocate a higher version');
   }
-  const releaseJson = run(['release','view','app-stable','--repo',repo,'--json','isDraft,assets'], {allowMissing: true});
-  const release: ReleaseRecord | null = releaseJson === null ? null : JSON.parse(releaseJson);
-  if (release?.isDraft !== false && release !== null) throw Error('The stable update release must be public, not a draft');
+  const release = stableRelease(run, APP_UPDATE_TAG);
   // A failed --clobber can leave no pointer. Retained immutable APKs still consume
   // their versions, so absence of a pointer must never reset the version floor.
-  const retainedCodes = (release?.assets || []).map(asset => /^alpha-phone-([1-9][0-9]*)\.apk$/.exec(asset.name)?.[1])
-    .filter(Boolean).map(Number);
-  if (retainedCodes.some(code => !Number.isSafeInteger(code) || code > offer.versionCode)) throw Error('Candidate is below the retained stable APK version floor');
+  if (retainedCodes(release).some(code => !Number.isSafeInteger(code) || code > offer.versionCode)) throw Error('Candidate is below the retained stable APK version floor');
   if (!previous && release?.assets?.some(asset => asset.name === MANIFEST_NAME)) throw Error('Stable manifest exists but is not publicly readable; resolve visibility before publishing');
-  if (release === null) run(['release','create','app-stable','--repo',repo,'--target',source,'--title','Alpha Phone app updates','--notes','Signed Alpha Phone application updates.','--latest=false']);
+  if (release === null) run(['release','create',APP_UPDATE_TAG,'--repo',repo,'--target',source,'--title','Alpha Phone app updates','--notes','Signed Alpha Compute application updates.','--latest=false']);
   // Never overwrite a versioned APK: even a failed delivery can be safely retried.
-  if (!release?.assets?.some(asset => asset.name === apkName)) run(['release','upload','app-stable',apk,'--repo',repo]);
+  if (!release?.assets?.some(asset => asset.name === apkName)) run(['release','upload',APP_UPDATE_TAG,apk,'--repo',repo]);
   const verifyApk = async () => {
     const remote = await read(offer.apkUrl, {maxBytes: offer.sizeBytes});
     if (!remote || remote.size !== offer.sizeBytes || remote.sha256 !== offer.sha256) throw Error('Anonymous APK readback differs from the admitted release');
@@ -146,7 +170,7 @@ export async function deliver({directory, manifestUrl, source}: DeliveryInput, {
   if (!verified) throw Error('APK readback was not verified');
   const current = await readManifest();
   if ((current ? current.sha256 : null) !== (previous ? previous.sha256 : null)) throw Error('Stable channel changed during publication; retry against its current state');
-  if (!previous || previous.sha256 !== sha(manifestBytes)) run(['release','upload','app-stable',manifestFile,'--repo',repo,'--clobber']);
+  if (!previous || previous.sha256 !== sha(manifestBytes)) run(['release','upload',APP_UPDATE_TAG,manifestFile,'--repo',repo,'--clobber']);
   let visible = false;
   for (let attempt = 0; attempt < 4; attempt++) {
     const published = await readManifest();

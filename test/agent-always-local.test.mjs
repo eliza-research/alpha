@@ -12,8 +12,8 @@ import {DENYLIST, RETIRED_NO_AGENT_TEXT, RETIRED_REMOTE_AGENT_TEXT} from '../scr
 
 const read = file => readFileSync(new URL('../' + file, import.meta.url), 'utf8');
 const ui = read('apps/app/src/runtime/connection-ui.tsx');
-const plugin = read('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java');
-const store = read('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCredentialStore.java');
+const plugin = read('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java');
+const store = read('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCredentialStore.java');
 const between = (text, start, end) => { const from = text.indexOf(start), to = text.indexOf(end, from + start.length); assert.ok(from >= 0 && to > from, `${start} … ${end} located`); return text.slice(from, to); };
 
 test('production bundles forbid the retired no-agent copy', () => {

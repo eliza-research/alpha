@@ -10,7 +10,7 @@ import {preparePatchedNative} from '../scripts/prepare-patched-native.ts';
 // authorization, disclosure, recording, dispatch and recovery behavior are tested upstream.
 const root=resolve(import.meta.dirname,'..');
 const upstream=resolve(preparePatchedNative({root}).root,'plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system');
-const alpha=name=>resolve(root,`android/app/src/main/java/ai/elizaresearch/alphaphone/${name}.java`);
+const alpha=name=>resolve(root,`android/app/src/main/java/ai/alphacompute/alphaphone/${name}.java`);
 test('Alpha reset is the shared native review, coordinator and recovery under Alpha names and copy',()=>{
  const dir=mkdtempSync(join(tmpdir(),'alpha-reset-wiring-')),files=[];
  const put=(name,text)=>{const file=join(dir,'src',name);mkdirSync(dirname(file),{recursive:true});writeFileSync(file,text);files.push(file);};
@@ -23,11 +23,11 @@ test('Alpha reset is the shared native review, coordinator and recovery under Al
   put('com/getcapacitor/annotation/CapacitorPlugin.java','package com.getcapacitor.annotation; @java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy.RUNTIME) public @interface CapacitorPlugin {String name();}');
   put('com/getcapacitor/annotation/ActivityCallback.java','package com.getcapacitor.annotation; @java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy.RUNTIME) public @interface ActivityCallback {}');
   put('androidx/activity/result/ActivityResult.java','package androidx.activity.result; public class ActivityResult { public int getResultCode(){return 0;} }');
-  put('ai/elizaresearch/alphaphone/AlphaCloudSignInPlugin.java','package ai.elizaresearch.alphaphone; final class AlphaCloudSignInPlugin {static ai.eliza.auth.cloud.CloudSignInConfig REGISTRATION;}');
-  put('ai/elizaresearch/alphaphone/LegacyCloudRecovery.java','package ai.elizaresearch.alphaphone; final class LegacyCloudRecovery {static final String LEGACY_NAMESPACE="";}');
-  put('ai/elizaresearch/alphaphone/AlphaCredentialStore.java','package ai.elizaresearch.alphaphone; final class AlphaCredentialStore {static String readSlotBeforeAttach(android.content.Context c,String n)throws Exception{return null;}static String readLegacySlotBeforeAttach(android.content.Context c,String n)throws Exception{return null;}}');
-  put('ai/elizaresearch/alphaphone/AlphaCalendarPlugin.java','package ai.elizaresearch.alphaphone; final class AlphaCalendarPlugin {static ai.eliza.plugins.calendar.CalendarConfiguration CONFIGURATION;}');
-  put('ai/elizaresearch/alphaphone/WiringCheck.java',`package ai.elizaresearch.alphaphone;
+  put('ai/alphacompute/alphaphone/AlphaCloudSignInPlugin.java','package ai.alphacompute.alphaphone; final class AlphaCloudSignInPlugin {static ai.eliza.auth.cloud.CloudSignInConfig REGISTRATION;}');
+  put('ai/alphacompute/alphaphone/LegacyCloudRecovery.java','package ai.alphacompute.alphaphone; final class LegacyCloudRecovery {static final String LEGACY_NAMESPACE="";}');
+  put('ai/alphacompute/alphaphone/AlphaCredentialStore.java','package ai.alphacompute.alphaphone; final class AlphaCredentialStore {static String readSlotBeforeAttach(android.content.Context c,String n)throws Exception{return null;}static String readLegacySlotBeforeAttach(android.content.Context c,String n)throws Exception{return null;}}');
+  put('ai/alphacompute/alphaphone/AlphaCalendarPlugin.java','package ai.alphacompute.alphaphone; final class AlphaCalendarPlugin {static ai.eliza.plugins.calendar.CalendarConfiguration CONFIGURATION;}');
+  put('ai/alphacompute/alphaphone/WiringCheck.java',`package ai.alphacompute.alphaphone;
 import ai.eliza.plugins.system.reset.*;
 public final class WiringCheck {
  static void check(boolean ok,String why){if(!ok)throw new AssertionError(why);}
@@ -58,7 +58,7 @@ public final class WiringCheck {
   const auth=readdirSync(authDir).filter(name=>name.endsWith('.java')&&!['CloudSignInPlugin.java','NativeGoogleCredential.java'].includes(name)).map(name=>join(authDir,name));
   const calendar=resolve(root,'vendor/eliza/plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/CalendarConfiguration.java');
   execFileSync(javaBinary('javac'),['--release','17','-proc:none','-cp',sdk,'-d',join(dir,'classes'),...files,...shared,...auth,calendar,...['AlphaDataReset','ResetBeforeDispatch','CloudDeployment','AlphaResetPlugin','ResetRecoveryActivity'].map(alpha)],{timeout:120000});
-  assert.match(execFileSync(javaBinary('java'),['-cp',`${join(dir,'classes')}:${sdk}`,'ai.elizaresearch.alphaphone.WiringCheck'],{encoding:'utf8',timeout:30000}),/PASS Alpha reset wiring/);
+  assert.match(execFileSync(javaBinary('java'),['-cp',`${join(dir,'classes')}:${sdk}`,'ai.alphacompute.alphaphone.WiringCheck'],{encoding:'utf8',timeout:30000}),/PASS Alpha reset wiring/);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });
 test('Settings opens only the native review; Application admission runs before providers',()=>{

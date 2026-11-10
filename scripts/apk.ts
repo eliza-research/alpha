@@ -83,13 +83,13 @@ export const DEVELOPMENT_CLASSES = Object.freeze([
 // Components a distribution APK may export. Each one must be guarded by the
 // listed permission (null: a deliberate public entry point).
 export const EXPORTED_COMPONENTS = Object.freeze({
-  "ai.elizaresearch.alphaphone.MainActivity": null,
-  "ai.elizaresearch.alphaphone.AlphaAssistActivity": null,
+  "ai.alphacompute.alphaphone.MainActivity": null,
+  "ai.alphacompute.alphaphone.AlphaAssistActivity": null,
   // Power entry is reserved for platform status-bar callers.
-  "ai.elizaresearch.alphaphone.AlphaPowerVoiceActivity": "android.permission.STATUS_BAR_SERVICE",
-  "ai.elizaresearch.alphaphone.AlphaNotificationListener": "android.permission.BIND_NOTIFICATION_LISTENER_SERVICE",
-  "ai.elizaresearch.alphaphone.AlphaQuickSettingsTile": "android.permission.BIND_QUICK_SETTINGS_TILE",
-  "ai.elizaresearch.alphaphone.AlphaKeyboardDictationService": "android.permission.BIND_INPUT_METHOD",
+  "ai.alphacompute.alphaphone.AlphaPowerVoiceActivity": "android.permission.STATUS_BAR_SERVICE",
+  "ai.alphacompute.alphaphone.AlphaNotificationListener": "android.permission.BIND_NOTIFICATION_LISTENER_SERVICE",
+  "ai.alphacompute.alphaphone.AlphaQuickSettingsTile": "android.permission.BIND_QUICK_SETTINGS_TILE",
+  "ai.alphacompute.alphaphone.AlphaKeyboardDictationService": "android.permission.BIND_INPUT_METHOD",
   // Alpha's password vault as an Android Autofill provider (shared plugin-native-passwords).
   "ai.eliza.plugins.passwords.ElizaPasswordAutofillService": "android.permission.BIND_AUTOFILL_SERVICE",
   // Google Play services alone may notify this native sign-in revocation service.
@@ -98,17 +98,17 @@ export const EXPORTED_COMPONENTS = Object.freeze({
   "androidx.work.impl.diagnostics.DiagnosticsReceiver": "android.permission.DUMP",
   "androidx.profileinstaller.ProfileInstallReceiver": "android.permission.DUMP",
   // Read-only release data integrity export for pilot updates (adb shell holds DUMP).
-  "ai.elizaresearch.alphaphone.release.DataIntegrityProvider": "android.permission.DUMP",
+  "ai.alphacompute.alphaphone.release.DataIntegrityProvider": "android.permission.DUMP",
   // Launcher-only dialer role (#420), declared disabled and enabled only on the verified Alpha image:
   // Telecom alone may bind the InCallService, and ACTION_DIAL is the role's public entry point.
-  "ai.elizaresearch.alphaphone.AlphaInCallService": "android.permission.BIND_INCALL_SERVICE",
-  "ai.elizaresearch.alphaphone.AlphaDialPadActivity": null,
+  "ai.alphacompute.alphaphone.AlphaInCallService": "android.permission.BIND_INCALL_SERVICE",
+  "ai.alphacompute.alphaphone.AlphaDialPadActivity": null,
   // Launcher-only SMS role (#421), enabled only on the verified image: only the telephony stack may
   // deliver texts, MMS notifications and quick replies; SENDTO is the role's public compose entry.
-  "ai.elizaresearch.alphaphone.AlphaSmsDeliverReceiver": "android.permission.BROADCAST_SMS",
-  "ai.elizaresearch.alphaphone.AlphaMmsWapPushReceiver": "android.permission.BROADCAST_WAP_PUSH",
-  "ai.elizaresearch.alphaphone.AlphaRespondViaMessageService": "android.permission.SEND_RESPOND_VIA_MESSAGE",
-  "ai.elizaresearch.alphaphone.AlphaSmsComposeActivity": null,
+  "ai.alphacompute.alphaphone.AlphaSmsDeliverReceiver": "android.permission.BROADCAST_SMS",
+  "ai.alphacompute.alphaphone.AlphaMmsWapPushReceiver": "android.permission.BROADCAST_WAP_PUSH",
+  "ai.alphacompute.alphaphone.AlphaRespondViaMessageService": "android.permission.SEND_RESPOND_VIA_MESSAGE",
+  "ai.alphacompute.alphaphone.AlphaSmsComposeActivity": null,
 });
 // On-device speech is the fused libelizainference engine only. Entries and classes of the removed
 // speech runtimes (Open Neural Network Exchange models and runtimes, sherpa, ORT-Web, the former
@@ -142,11 +142,11 @@ export function distributionProblems(apk: DistributionInput, { mode, testMocks =
     { mode, testMocks },
   );
   problems.push(...legacyStorageProblems(apk.xml));
-  const powerName = "ai.elizaresearch.alphaphone.AlphaPowerVoiceActivity";
+  const powerName = "ai.alphacompute.alphaphone.AlphaPowerVoiceActivity";
   if (facts.exported.some(component => component.name === powerName && component.tag !== "activity"))
     problems.push("AlphaPowerVoiceActivity must be an activity");
-  const tileName = "ai.elizaresearch.alphaphone.AlphaQuickSettingsTile";
-  const assistName = "ai.elizaresearch.alphaphone.AlphaAssistActivity";
+  const tileName = "ai.alphacompute.alphaphone.AlphaQuickSettingsTile";
+  const assistName = "ai.alphacompute.alphaphone.AlphaAssistActivity";
   // aapt prints android:enabled="false" as (type 0x12)0x0; a missing attribute means enabled.
   const enabled = (node: ManifestNode | undefined) => node && node.attrs.enabled !== "0x0" && node.attrs.enabled !== "false";
   const tile = facts.components.find(component => component.name === tileName);
@@ -168,7 +168,7 @@ export function distributionProblems(apk: DistributionInput, { mode, testMocks =
     if (enabled(nodes[0]) && !enabled(assist))
       problems.push("Alpha Quick Settings tile must be disabled while AlphaAssistActivity is disabled");
   }
-  const dictationName = "ai.elizaresearch.alphaphone.AlphaKeyboardDictationService";
+  const dictationName = "ai.alphacompute.alphaphone.AlphaKeyboardDictationService";
   const dictation = facts.components.find(component => component.name === dictationName);
   if (dictation) {
     const application = parseXmlTree(apk.xml).children.find(node => node.name === "manifest")
@@ -290,7 +290,7 @@ export function validateApk(file: string, identity: {appId: string}, wantsHome: 
     if (data.xml.includes(`android.permission.${permission}`) !== wantsHome)
       throw new Error(`Invalid ${permission} permission for distribution in ${file}`);
   for (const component of ['AlphaInCallService', 'AlphaCallActivity', 'AlphaDialPadActivity', 'AlphaSmsDeliverReceiver', 'AlphaSmsSendReceiver', 'AlphaMmsWapPushReceiver', 'AlphaMmsResultReceiver', 'AlphaRespondViaMessageService', 'AlphaSmsComposeActivity'])
-    if (data.xml.includes(`ai.elizaresearch.alphaphone.${component}`) !== wantsHome)
+    if (data.xml.includes(`ai.alphacompute.alphaphone.${component}`) !== wantsHome)
       throw new Error(`Invalid telephony-role component ${component} for distribution in ${file}`);
   // The SMS role grants these to its holder; only the launcher declares the role components.
   for (const permission of ['RECEIVE_SMS', 'RECEIVE_MMS', 'RECEIVE_WAP_PUSH'])

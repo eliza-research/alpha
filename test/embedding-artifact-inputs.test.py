@@ -107,7 +107,7 @@ class EmbeddingInputsTest(unittest.TestCase):
                   'nativeKernelCancellationClaimed':False,'rawNorms':[1.0]*10,'repeatCosine':1.0,'reopenCosine':1.0,
                   'relatedCosine':.8,'unrelatedCosine':.2,'elapsedMs':100}
         raw=json.dumps(semantic).encode()
-        component={'pin':'a'*40,'forkPin':'b'*40,'identity':'ai.elizaresearch.alphaphone','abi':'arm64-v8a','built':True,
+        component={'pin':'a'*40,'forkPin':'b'*40,'identity':'ai.alphacompute.alphaphone','abi':'arm64-v8a','built':True,
                    'inputs':[{'path':str(i),'sourceSha256':'a'*64,'generatedSha256':'b'*64} for i in range(6)],'producerInputs':[{'path':str(i),'sha256':'c'*64} for i in range(13)],
                    'jniBinding':{'mode':'registered'},'libraries':[]}
         for name in module.LIBRARIES:

@@ -1,4 +1,4 @@
-package ai.elizaresearch.alphaphone;
+package ai.alphacompute.alphaphone;
 public final class NavigationOpenRequestTest {
  private static void require(boolean value){if(!value)throw new AssertionError("Navigation intent delivery");}
  public static void main(String[] args){

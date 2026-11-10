@@ -43,7 +43,7 @@ import { instrumentationClassResults, listedInstrumentationTests, writeInstrumen
 import type {ClassOutcome} from "./instrumentation-result.ts";
 import type {acquireDeviceLease} from "../vendor/eliza/packages/app/scripts/lib/device-lease.ts";
 
-export const PACKAGE = "ai.elizaresearch.alphaphone";
+export const PACKAGE = "ai.alphacompute.alphaphone";
 const RUNNER = "androidx.test.runner.AndroidJUnitRunner";
 
 interface ClassSpec {

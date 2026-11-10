@@ -55,7 +55,7 @@ assert.ok(avd&&/^[A-Za-z0-9_.-]+$/.test(avd),'Explicit owned AVD name required')
 assert.ok(abi==='x86_64'||abi==='arm64-v8a','Explicit owned fixture ABI required');
 const sdk=process.env.ANDROID_HOME??process.env.ANDROID_SDK_ROOT;assert.ok(sdk&&path.isAbsolute(sdk),'Provide an absolute Android SDK path');
 const adb=path.join(sdk,'platform-tools/adb'),aapt=path.join(sdk,'build-tools/36.0.0/aapt');
-const pkg=JSON.parse(fs.readFileSync(path.join(root,'app.config.json'),'utf8')).appId;assert.equal(pkg,'ai.elizaresearch.alphaphone');
+const pkg=JSON.parse(fs.readFileSync(path.join(root,'app.config.json'),'utf8')).appId;assert.equal(pkg,'ai.alphacompute.alphaphone');
 const args=process.argv.slice(2),external=args.includes('--external');
 assert.ok(args.every(arg=>arg==='--external'||/^--(?:case|variant)=.+$/.test(arg)),'Unknown Calendar option');
 assert.equal(new Set(args.map(arg=>arg.split('=')[0])).size,args.length,'Duplicate Calendar option');

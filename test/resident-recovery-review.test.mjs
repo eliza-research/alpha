@@ -6,11 +6,11 @@ import {join,resolve} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {javaBinary} from './fixtures/jvm-tools.mjs';
 const root=resolve(import.meta.dirname,'..');
-const directory=join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone');
+const directory=join(root,'android/app/src/main/java/ai/alphacompute/alphaphone');
 test('native recovery confirmation is single-use and bound to the original owner scope',()=>{
  const temp=mkdtempSync(join(tmpdir(),'alpha-recovery-review-'));
  try{
-  writeFileSync(join(temp,'RecoveryReviewTest.java'),`package ai.elizaresearch.alphaphone;
+  writeFileSync(join(temp,'RecoveryReviewTest.java'),`package ai.alphacompute.alphaphone;
 public class RecoveryReviewTest {
  static void check(boolean value){if(!value)throw new AssertionError();}
  public static void main(String[] args){
@@ -28,7 +28,7 @@ public class RecoveryReviewTest {
 }`);
   // JAVA_HOME when set, otherwise the JDK on PATH (test/fixtures/jvm-tools.mjs).
   execFileSync(javaBinary('javac'),['-d',temp,join(directory,'ResidentRecoveryReview.java'),join(temp,'RecoveryReviewTest.java')],{timeout:120000});
-  assert.match(execFileSync(javaBinary('java'),['-cp',temp,'ai.elizaresearch.alphaphone.RecoveryReviewTest'],{encoding:'utf8',timeout:120000}),/PASS original scope/);
+  assert.match(execFileSync(javaBinary('java'),['-cp',temp,'ai.alphacompute.alphaphone.RecoveryReviewTest'],{encoding:'utf8',timeout:120000}),/PASS original scope/);
  }finally{rmSync(temp,{recursive:true,force:true});}
 });
 test('plugin binds actual native review within its authority and consumes scope before archive',()=>{

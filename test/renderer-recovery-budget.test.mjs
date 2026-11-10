@@ -6,5 +6,5 @@ import assert from 'node:assert/strict';
 import {nativeSource,fixture,runJvm} from './fixtures/jvm-tools.mjs';
 
 test('renderer losses: budget, backoff, escape while HOME, background reclaim deferred and uncounted',()=>{
- assert.match(runJvm([nativeSource('RendererRecoveryBudget.java'),fixture('RendererRecoveryBudgetTest.java')],'ai.elizaresearch.alphaphone.RendererRecoveryBudgetTest'),/^PASS renderer recovery budget/);
+ assert.match(runJvm([nativeSource('RendererRecoveryBudget.java'),fixture('RendererRecoveryBudgetTest.java')],'ai.alphacompute.alphaphone.RendererRecoveryBudgetTest'),/^PASS renderer recovery budget/);
 });

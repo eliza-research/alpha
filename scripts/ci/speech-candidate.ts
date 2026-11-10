@@ -29,7 +29,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { FUSED_SPEECH_CLASSES, readInstrumentationEvidence } from "./emulator-suite.ts";
 
-export const CANONICAL_TEST = "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/LocalSpeechInstrumentedTest.java";
+export const CANONICAL_TEST = "android/app/src/androidTest/java/ai/alphacompute/alphaphone/LocalSpeechInstrumentedTest.java";
 export const BUNDLE = "assets/paradee-voice/v1";
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 /** The reviewed ASR slot files (android/paradee-voice/asr-inputs.json): today the one Phonon-2 GGUF. */

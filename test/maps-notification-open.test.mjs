@@ -31,10 +31,10 @@ test('HOME or disposal during a bridge reply prevents a late screen change',asyn
 test('native capture expires, survives renderer startup and never replays after consume or HOME',()=>{
  const directory=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-maps-tap-'));
  try {const binary=name=>process.env.JAVA_HOME?path.join(process.env.JAVA_HOME,'bin',name):name;
-  execFileSync(binary('javac'),['--release','11','-d',directory,'android/app/src/main/java/ai/elizaresearch/alphaphone/NavigationOpenRequest.java','test/fixtures/NavigationOpenRequestTest.java']);
-  assert.match(execFileSync(binary('java'),['-cp',directory,'ai.elizaresearch.alphaphone.NavigationOpenRequestTest'],{encoding:'utf8'}),/PASS bounded one-use Maps notification requests/);
+  execFileSync(binary('javac'),['--release','11','-d',directory,'android/app/src/main/java/ai/alphacompute/alphaphone/NavigationOpenRequest.java','test/fixtures/NavigationOpenRequestTest.java']);
+  assert.match(execFileSync(binary('java'),['-cp',directory,'ai.alphacompute.alphaphone.NavigationOpenRequestTest'],{encoding:'utf8'}),/PASS bounded one-use Maps notification requests/);
  }finally{fs.rmSync(directory,{recursive:true,force:true});}
- const activity=fs.readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/MainActivity.java','utf8');
+ const activity=fs.readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java','utf8');
  assert.match(activity,/captureNavigationOpen\(getIntent\(\)\)/);
  assert.match(activity,/boolean showMaps = captureNavigationOpen\(intent\)/);
  assert.match(activity,/intent\.setAction\(Intent\.ACTION_MAIN\)/,'recreation does not recapture the launch action');

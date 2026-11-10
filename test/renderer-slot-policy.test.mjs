@@ -13,7 +13,7 @@ function run(files,main){assert.ok(jsonJar,'Pinned JSON dependency required; no 
 test('renderer slot methods refuse the native SMS send ledger and operation records',()=>{
  const source=readFileSync(nativeSource('AlphaConnectionPlugin.java'),'utf8');
  const methods=['secureRead','secureWrite','secureRemove','secureCompareExchange'].map(name=>method(source,name)).join('\n');
- const java=`package ai.elizaresearch.alphaphone;
+ const java=`package ai.alphacompute.alphaphone;
  import java.util.*;import org.json.*;
  class JSObject extends JSONObject {}
  class PluginCall {final JSONObject data=new JSONObject();boolean resolved,rejected;PluginCall(String slot)throws Exception{data.put("slot",slot).put("value","replacement").put("expectedValue",JSONObject.NULL);}String getString(String key){return data.isNull(key)?null:data.optString(key,null);}JSONObject getData(){return data;}void resolve(){resolved=true;}void resolve(JSObject x){resolved=true;}void reject(String... message){rejected=true;}}
@@ -31,5 +31,5 @@ test('renderer slot methods refuse the native SMS send ledger and operation reco
  for(String operation:new String[]{"write","read","remove"}){PluginCall c=new PluginCall("sms-send-ledger-fixture:v1");call(bridge,operation,c);if(!c.resolved||c.rejected)throw new AssertionError("Unrelated slot refused");checks++;}
  System.out.println("PASS renderer SMS ledger boundary "+checks);
  }} `;
- assert.match(run([['SecureSlotPolicy.java',readFileSync(upstreamConnection('SecureSlotPolicy.java'),'utf8')],['RendererCredentialSlots.java',readFileSync(nativeSource('RendererCredentialSlots.java'),'utf8')],['SmsSlotBoundaryTest.java',java]],'ai.elizaresearch.alphaphone.SmsSlotBoundaryTest'),/^PASS renderer SMS ledger boundary 19/);
+ assert.match(run([['SecureSlotPolicy.java',readFileSync(upstreamConnection('SecureSlotPolicy.java'),'utf8')],['RendererCredentialSlots.java',readFileSync(nativeSource('RendererCredentialSlots.java'),'utf8')],['SmsSlotBoundaryTest.java',java]],'ai.alphacompute.alphaphone.SmsSlotBoundaryTest'),/^PASS renderer SMS ledger boundary 19/);
 });

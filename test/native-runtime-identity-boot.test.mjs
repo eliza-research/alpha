@@ -21,7 +21,7 @@ const service = readFileSync(
 const plugin = readFileSync(
   join(
     root,
-    "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java",
+    "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
   ),
   "utf8",
 );
@@ -90,7 +90,7 @@ test("a rejected old-target listening peer stays unready and unattachable withou
     assert.ok(grace);
     writeFileSync(
       join(temporary, "NativeBootHarness.java"),
-      `package ai.elizaresearch.alphaphone;
+      `package ai.alphacompute.alphaphone;
 import org.json.JSONObject;import org.json.JSONException;import ai.eliza.plugins.agent.runtime.ResidentAttachment;
 public class NativeBootHarness {
  static final long AGENT_BOOT_GRACE_MS=${grace[1]};
@@ -140,7 +140,7 @@ public class NativeBootHarness {
       [
         "-cp",
         temporary + delimiter + jsonJar,
-        "ai.elizaresearch.alphaphone.NativeBootHarness",
+        "ai.alphacompute.alphaphone.NativeBootHarness",
       ],
       { encoding: "utf8", timeout: 60000 },
     );

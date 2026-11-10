@@ -10,7 +10,7 @@ serial=os.environ['ANDROID_SERIAL'];assert re.fullmatch(r'emulator-[0-9]+',seria
 archive=Path('test-results/resident-ci-archive');out=Path('test-results/resident-ci-native');out.mkdir(exist_ok=False)
 def interrupted(*unused):raise KeyboardInterrupt('Owned CI interrupted')
 signal.signal(signal.SIGTERM,interrupted);signal.signal(signal.SIGINT,interrupted)
-APP='ai.elizaresearch.alphaphone';TEST=APP+'.test';HELPER=APP+'.peerfixture';h=lambda b:hashlib.sha256(b).hexdigest()
+APP='ai.alphacompute.alphaphone';TEST=APP+'.test';HELPER=APP+'.peerfixture';h=lambda b:hashlib.sha256(b).hexdigest()
 def run(*args,input=None,timeout=60):
  return subprocess.run(['adb','-s',serial,*args],input=input,text=True,capture_output=True,timeout=timeout,check=True).stdout
 assert run('shell','getprop','ro.kernel.qemu').strip()=='1';assert run('shell','getprop','ro.product.cpu.abi').strip()=='x86_64'

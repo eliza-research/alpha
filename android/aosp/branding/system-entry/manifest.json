@@ -3,7 +3,7 @@
   "project": "frameworks/base",
   "revision": "94b4c163b7dfe5ce3607f7bb8456f9573f7de57d",
   "patch": "alpha-native-system-entry.patch",
-  "patchSha256": "dba353a6d69110dbe2d010d73c965fb391e2a2561fae7c52bc9bb2ec42912391",
+  "patchSha256": "58e75d2ad0e02198bc46e49d3100f8bb5a422c4e8e18781e3d2f9dd28b53d8a0",
   "files": [
     {
       "path": "packages/SystemUI/compose/features/src/com/android/systemui/shade/ui/composable/ShadeHeader.kt",
@@ -56,7 +56,7 @@
     {
       "path": "packages/SystemUI/src/com/android/systemui/keyguard/data/quickaffordance/AlphaSystemEntryPolicy.java",
       "beforeSha256": null,
-      "afterSha256": "e0fbd39cc500f426421ebca915c467557b90f0406ba5d1eefde6b5d006536be2",
+      "afterSha256": "95eff5f69afc33b47fc167b14f3afd43fe4884eaa3b980a971e4800946be6953",
       "new": true
     },
     {

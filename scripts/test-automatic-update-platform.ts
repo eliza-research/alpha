@@ -20,7 +20,7 @@ const java=process.env.JAVA_HOME??'/opt/homebrew/opt/openjdk@21/libexec/openjdk.
 const env={...process.env,JAVA_HOME:java,PATH:`${java}/bin:${process.env.PATH}`};
 const command=(file: string,args: readonly string[],options: Omit<ExecFileSyncOptionsWithStringEncoding, 'encoding'> = {})=>execFileSync(file,args,{encoding:'utf8',env,timeout:60000,stdio:['ignore','pipe','pipe'],...options});
 const adb=(...args: string[])=>command(path.join(sdk,'platform-tools/adb'),['-s',serial,...args]);
-const pkg='ai.elizaresearch.alphaphone.otafixture',activity=`${pkg}/${pkg}.OtaActivity`;
+const pkg='ai.alphacompute.alphaphone.otafixture',activity=`${pkg}/${pkg}.OtaActivity`;
 const packagePath=()=>{try{return adb('shell','pm','path',pkg).trim();}catch(error){const failure = error as Partial<SpawnSyncReturns<string>>; if(failure.status===1&&!String(failure.stdout??'').trim()&&!String(failure.stderr??'').trim())return '';throw error;}};
 const sha=(file: string)=>createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 const work=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-ota-platform-'));let installed=false;
@@ -74,7 +74,7 @@ interface PlatformRecord {
   cleanupFailure?: string;
 }
 const record: PlatformRecord={schema:'alpha-automatic-update-platform-v1',scope:'Android PackageInstaller self-update API only; not Alpha APK, renderer, HTTPS, AOSP image, physical-device or user acceptance',serial,expectedApi:Number(api),compileSdk:36,targetSdk:36,sourceCommit:command('git',['rev-parse','HEAD'],{cwd:root}).trim(),outcome:'failed'};
-record.sources=Object.fromEntries(['scripts/test-automatic-update-platform.ts','test/fixtures/automatic-update-android/OtaActivity.java','android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java'].map(file=>[file,sha(path.join(root,file))]));
+record.sources=Object.fromEntries(['scripts/test-automatic-update-platform.ts','test/fixtures/automatic-update-android/OtaActivity.java','android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java'].map(file=>[file,sha(path.join(root,file))]));
 const pause=(ms: number)=>new Promise(resolve=>setTimeout(resolve,ms));
 const read=(name: string): PlatformReadback=>JSON.parse(adb('exec-out','run-as',pkg,'cat',`files/${name}`));
 async function waitRead(name: string,predicate: (value: PlatformReadback)=>boolean=()=>true){for(let i=0;i<60;i++){try{const value=read(name);if(predicate(value))return value;}catch{}await pause(1000);}throw new Error(`Timed out waiting for ${name}`);}
@@ -85,7 +85,7 @@ try{
  assert.equal(adb('shell','getprop','sys.boot_completed').trim(),'1','The disposable emulator must finish booting.');
  record.fingerprint=adb('shell','getprop','ro.build.fingerprint').trim();
  assert.equal(packagePath(),'','Refuse an existing fixture package.');
- const source=fs.readFileSync(path.join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java'),'utf8');
+ const source=fs.readFileSync(path.join(root,'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java'),'utf8');
  const capability=source.match(/ static String automaticUpdateStatus\(Context context\)\{[\s\S]*?\n \}/)?.[0];
  const configuration=source.match(/      if\(automatic&&Build\.VERSION\.SDK_INT>=31\)params\.setRequireUserAction\(PackageInstaller\.SessionParams\.USER_ACTION_NOT_REQUIRED\);/)?.[0];
  assert(capability&&configuration,'Production automatic admission and session policy must exist.');

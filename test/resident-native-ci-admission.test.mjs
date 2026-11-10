@@ -49,14 +49,14 @@ for relative in ['android/private-peer-fixture/build.gradle','android/private-pe
 names=[variant+'-'+kind+'.apk' for variant in ['standalone','launcher'] for kind in ['debug','release-unsigned','androidTest']]+['private-peer-debug.apk']
 for name in names:(archive/name).write_text('synthetic archive '+name)
 sources={relative:h(Path(relative).read_bytes()) for relative in ['android/private-peer-fixture/build.gradle','android/private-peer-fixture/src/Peer.java','scripts/ci/build-private-peer.py']}
-helper={'schemaVersion':1,'package':'ai.elizaresearch.alphaphone.peerfixture','apkSha256':h((archive/'private-peer-debug.apk').read_bytes()),'signerSha256':'a'*64,'sources':sources}
+helper={'schemaVersion':1,'package':'ai.alphacompute.alphaphone.peerfixture','apkSha256':h((archive/'private-peer-debug.apk').read_bytes()),'signerSha256':'a'*64,'sources':sources}
 (archive/'private-peer-manifest.json').write_text(json.dumps(helper))
 manifest={name:h((archive/name).read_bytes()) for name in names+['private-peer-manifest.json']}
 (archive/'apk-manifest.json').write_text(json.dumps(manifest));manifest_hash=h((archive/'apk-manifest.json').read_bytes())
 (archive/'native-generated-source-manifest.json').write_text(json.dumps(generated))
 frozen.update({'upstream.lock.json':h(Path('upstream.lock.json').read_bytes()),'android/app/build/generated/local-agent/source-manifest.json':h((archive/'native-generated-source-manifest.json').read_bytes()),'android/app/src/main/java/Fixture.java':h(Path('android/app/src/main/java/Fixture.java').read_bytes())})
 for name in ['inputs-before.json','inputs-after.json']:(archive/name).write_text(json.dumps({'files':frozen}))
-sdk={'badging':"package: name='ai.elizaresearch.alphaphone.peerfixture' versionCode='1'\napplication-debuggable",'certificates':'Signer #1 certificate SHA-256 digest: '+'a'*64+'\n'}
+sdk={'badging':"package: name='ai.alphacompute.alphaphone.peerfixture' versionCode='1'\napplication-debuggable",'certificates':'Signer #1 certificate SHA-256 digest: '+'a'*64+'\n'}
 check_output=subprocess.check_output
 def inspected(args,**kwargs):
  if Path(args[0]).name=='aapt':return sdk['badging']
@@ -101,7 +101,7 @@ bridge=runpy.run_path(str(root/'scripts/ci/calendar-bridge.py'))
 assert bridge['SDK']==json.loads((root/'upstream.lock.json').read_text())['commit'], 'Calendar CI source pin is stale'
 assert bridge['NODE']==(root/'.nvmrc').read_text().strip(), 'Calendar CI Node declaration is stale'
 h=lambda path:hashlib.sha256(path.read_bytes()).hexdigest()
-assert h(root/'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCalendarPlugin.java')==bridge['HOST'], 'Calendar host source changed'
+assert h(root/'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCalendarPlugin.java')==bridge['HOST'], 'Calendar host source changed'
 for relative,expected in bridge['OWNING_SHA256'].items():
  assert h(root/'vendor/eliza'/relative)==expected, 'Calendar owning fixture changed: '+relative
 print('PASS: current Calendar CI pin and exact host/owning fixture bytes')

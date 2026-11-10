@@ -1,4 +1,4 @@
-package ai.elizaresearch.alphaphone;
+package ai.alphacompute.alphaphone;
 
 /** Plain-JVM checks of the renderer transport route policy. Not an Android or device test. */
 public final class ConnectionRoutesTest {

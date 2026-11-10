@@ -4,8 +4,17 @@ import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import type {ManifestNode} from './apk.ts';
 
-export const UPDATE_CHANNEL_META='ai.elizaresearch.alphaphone.UPDATE_CHANNEL';
-export const UPDATE_DIGEST_META='ai.elizaresearch.alphaphone.UPDATE_MANIFEST_SHA256';
+export const UPDATE_CHANNEL_META='ai.alphacompute.alphaphone.UPDATE_CHANNEL';
+export const UPDATE_DIGEST_META='ai.alphacompute.alphaphone.UPDATE_MANIFEST_SHA256';
+export const APP_UPDATE_REPOSITORY = 'eliza-research/alphaphone';
+export const APP_UPDATE_TAG = 'app-stable-alphacompute';
+export const LEGACY_APP_UPDATE_TAG = 'app-stable';
+export const APP_UPDATE_MANIFEST = 'alpha-update-stable.json';
+
+export function appUpdateManifestUrl(tag: typeof APP_UPDATE_TAG | typeof LEGACY_APP_UPDATE_TAG = APP_UPDATE_TAG) {
+ return `https://github.com/${APP_UPDATE_REPOSITORY}/releases/download/${tag}/${APP_UPDATE_MANIFEST}`;
+}
+
 const digest=(bytes: string | Buffer)=>createHash('sha256').update(bytes).digest('hex');
 const refused=()=>new Error('Update channel input refused');
 

@@ -1,7 +1,7 @@
 {
-  "pin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
+  "pin": "a68b3525970fe9a30efd76979eb6ed4d8327b277",
   "forkPin": "6337fd4c4bd071c17235986344d552d4036e177b",
-  "identity": "ai.elizaresearch.alphaphone",
+  "identity": "ai.alphacompute.alphaphone",
   "abi": "arm64-v8a",
   "model": {
     "path": "android/app/src/main/assets/agent/models/bge-small-en-v1.5-f16.gguf",
@@ -17,7 +17,7 @@
     },
     {
       "name": "libelizavoicejni.so",
-      "sha256": "4244312b8c63988b606f8d120c53335dce28b27b0d339128670afa684e9cc59e",
+      "sha256": "238bdf0738ef60c6705dc6c4c156baa516e27121347e1699ac6ae0fc0a40406f",
       "bytes": 1234768,
       "alignment16KiB": true
     },
@@ -58,21 +58,21 @@
     {
       "path": "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
       "sourceSha256": "328c96c067aabdae17adcc6534b41abfb6befd9d598a1d44b30ffc20a5157c87",
-      "generatedSha256": "b22b27587e71352266c7ba200f70d65f571c11a6015e4c43f979622ff0fccfea"
+      "generatedSha256": "f927fce9daee798f2409cd577dc0e30d37581adda7be2fef280b4ce3d7074525"
     }
   ],
   "producerInputs": [
     {
       "path": "package.json",
-      "sha256": "d0c735b8ea487c192a9f6839a64db6c6185ec753f177836d96f73b86abf35f6a"
+      "sha256": "ba23d40894046883e07f707aa00fb41c24a8ff30411d41a1a7e6512c7f89ae97"
     },
     {
       "path": "packages/agent/package.json",
-      "sha256": "1082dc34ec6894e19a43003528fd5701ebe53621f77c37d1bec37662bd822554"
+      "sha256": "6f52bc7e7b132b9ac72a6ed938e90acc7d7178a2a03969e3c0fee79565b5b228"
     },
     {
       "path": "packages/app/package.json",
-      "sha256": "c7529a8a353ca9c58e6f2165070b12805be01d613f5643202fd29287785c51f3"
+      "sha256": "9e6db34fb430a4369a14610dcd58d8c84507b86960d9b76dcdd82006939a1aaa"
     },
     {
       "path": "packages/app/scripts/aosp/compile-libllama-paths.ts",
@@ -121,7 +121,7 @@
   ],
   "jniBinding": {
     "mode": "registered",
-    "className": "ai/elizaresearch/alphaphone/ElizaVoiceNative",
+    "className": "ai/alphacompute/alphaphone/ElizaVoiceNative",
     "subset": "full"
   }
 }

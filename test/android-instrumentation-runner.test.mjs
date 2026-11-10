@@ -121,7 +121,7 @@ test("restart runner keeps the bookmark phase wired", () => {
   const source = fs.readFileSync("scripts/test-native-restart.ts", "utf8");
   // P-04 sign-in persistence: the phase the test class documents must have a runner case with its gate.
   assert.match(source, /signin: \{\n\t\ttestClass: "BrowserSigninsInstrumentedTest",\n\t\tmethod: "signinProcessRestartPhase",\n\t\tgate: "signinPhase"/);
-  const signins = fs.readFileSync("android/app/src/androidTest/java/ai/elizaresearch/alphaphone/BrowserSigninsInstrumentedTest.java", "utf8");
+  const signins = fs.readFileSync("android/app/src/androidTest/java/ai/alphacompute/alphaphone/BrowserSigninsInstrumentedTest.java", "utf8");
   assert.match(signins, /void signinProcessRestartPhase\(\)/);
   for (const phase of ["prepare", "verify", "cleanup"]) assert.ok(signins.includes(`"${phase}"`), `sign-in restart phase ${phase}`);
   assert.ok(signins.includes('getString("signinPhase")'));
@@ -141,7 +141,7 @@ const registryName = cls => cls.replace(/InstrumentedTest$/, "");
 const gateRead = (source, gate, value) => source.includes(`"${value}".equals(InstrumentationRegistry.getArguments().getString("${gate}")`);
 
 test("every registered class exists in the app's instrumentation sources and declares the gates the runner passes", () => {
-  const roots = ROOTS.map(root => path.join(root, "ai/elizaresearch/alphaphone"));
+  const roots = ROOTS.map(root => path.join(root, "ai/alphacompute/alphaphone"));
   for (const [name, spec] of Object.entries(CLASS_REGISTRY)) {
     const found = roots.map(root => path.join(root, `${name}InstrumentedTest.java`)).filter(file => fs.existsSync(file));
     assert.equal(found.length, 1, `${name} must be exactly one class in the app instrumentation sources`);
@@ -179,7 +179,7 @@ test("guarded app, recording and catalog cases require an owned secondary user",
     assert.throws(() => parseInstrumentationArgs(["--classes", name]), /requires --owned-emulator/);
   }
   assert.equal(CLASS_REGISTRY.NoteRecorder.grant, undefined, "preserve the effective guarded recorder policy");
-  const catalog = fs.readFileSync("android/app/src/androidTest/java/ai/elizaresearch/alphaphone/PhotosCatalogOrderInstrumentedTest.java", "utf8");
+  const catalog = fs.readFileSync("android/app/src/androidTest/java/ai/alphacompute/alphaphone/PhotosCatalogOrderInstrumentedTest.java", "utf8");
   assert.match(catalog, /assertTrue\("Disposable secondary user required",android\.os\.Process\.myUid\(\)\/100000>0\)/);
 });
 
@@ -436,7 +436,7 @@ test("classes that assert a secondary user run in a disposable user the runner c
     assert.throws(() => parseInstrumentationArgs(["--owned-emulator", "--classes", name]), /needs a test-mocks app build/);
     assert.throws(() => parseInstrumentationArgs(["--test-mocks", "--classes", name]), /requires --owned-emulator/);
     assert.ok(!DEFAULT_CLASSES.includes(name), `${name} needs a test-mocks build, so it cannot be a default class`);
-    const source = fs.readFileSync(`android/app/src/androidTest/java/ai/elizaresearch/alphaphone/${name}InstrumentedTest.java`, "utf8");
+    const source = fs.readFileSync(`android/app/src/androidTest/java/ai/alphacompute/alphaphone/${name}InstrumentedTest.java`, "utf8");
     assert.match(source, /isSystemUser\(\)/, `${name} still asserts a secondary user`);
   }
   assert.doesNotThrow(() => parseInstrumentationArgs([]));
@@ -515,7 +515,7 @@ test("a class whose every method is skipped by its gate is recorded as skipped, 
   assert.match(runner, /row\.status === "passed" \? "passed" : spec\.phases \? "failed" : row\.status/);
 });
 
-const sourceOf = name => fs.readFileSync(ROOTS.map(root => path.join(root, `ai/elizaresearch/alphaphone/${name}InstrumentedTest.java`)).find(file => fs.existsSync(file)), "utf8");
+const sourceOf = name => fs.readFileSync(ROOTS.map(root => path.join(root, `ai/alphacompute/alphaphone/${name}InstrumentedTest.java`)).find(file => fs.existsSync(file)), "utf8");
 
 test("BrowserFlow's live search page runs only with --live-network; the default run is offline", () => {
   // Rounds 7 and 8: the default campaign failed on www.google.com/search for environment reasons.
@@ -563,7 +563,7 @@ test("round-9 registrations: new classes, campaigns and removed reasons", () => 
   // The reviewed-workflow host classes were deleted, not left unreachable.
   for (const name of ["Workflow", "WorkflowApproval", "WorkflowCancellation", "WorkflowLifecycle", "WorkflowMetadata", "WorkflowSubmission"]) {
     assert.ok(!Object.hasOwn(NOT_RUN_BY_A_RUNNER, name), name);
-    assert.ok(!fs.existsSync(path.join(ROOTS[0], `ai/elizaresearch/alphaphone/${name}InstrumentedTest.java`)), `${name} is deleted`);
+    assert.ok(!fs.existsSync(path.join(ROOTS[0], `ai/alphacompute/alphaphone/${name}InstrumentedTest.java`)), `${name} is deleted`);
   }
   // The vault classes change device security state, so they are gated and never default.
   for (const name of ["PasswordVaultSettings", "PasswordVaultFill"]) assert.ok(CLASS_REGISTRY[name].args && !DEFAULT_CLASSES.includes(name), name);
@@ -571,7 +571,7 @@ test("round-9 registrations: new classes, campaigns and removed reasons", () => 
   assert.match(sourceOf("PasswordVaultSettings"), /type\("Add website", website\)/);
   assert.equal((sourceOf("PasswordVaultSettings").match(/\.example\.invalid", (typedSecret|null)\)/g) ?? []).length, 2);
   // A fixture PIN that was set is cleared even when its own verification fails (no close() follows a throwing constructor).
-  const fixture = fs.readFileSync(ROOTS.map(root => path.join(root, "ai/elizaresearch/alphaphone/PasswordVaultFixture.java")).find(file => fs.existsSync(file)), "utf8");
+  const fixture = fs.readFileSync(ROOTS.map(root => path.join(root, "ai/alphacompute/alphaphone/PasswordVaultFixture.java")).find(file => fs.existsSync(file)), "utf8");
   assert.match(fixture, /set = true;[\s\S]*catch \(Throwable failed\) \{ close\(\); throw failed; \}/);
   // The prompt is its credential field, not the SystemUI package (the status bar is SystemUI): a
   // PIN typed before that field holds focus was lost and failed verification on the emulator.

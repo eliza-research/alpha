@@ -5,7 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-const java=name=>readFileSync(`android/app/src/main/java/ai/elizaresearch/alphaphone/${name}.java`,'utf8');
+const java=name=>readFileSync(`android/app/src/main/java/ai/alphacompute/alphaphone/${name}.java`,'utf8');
 const shared=readFileSync('vendor/eliza/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeferredDeletionCoordinator.java','utf8');
 const body=(source,start,end)=>source.slice(source.indexOf(start),end?source.indexOf(end,source.indexOf(start)):undefined);
 

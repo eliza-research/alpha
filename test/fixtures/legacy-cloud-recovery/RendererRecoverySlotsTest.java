@@ -1,4 +1,4 @@
-package ai.elizaresearch.alphaphone;
+package ai.alphacompute.alphaphone;
 /** Actual renderer gate, not a simulated secure-store allow-list. */
 public final class RendererRecoverySlotsTest {
  public static void main(String[] args){

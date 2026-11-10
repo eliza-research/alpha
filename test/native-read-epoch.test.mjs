@@ -21,8 +21,8 @@ function declaration(source, signature) {
 test('delayed provider results cannot cross a lifecycle or permission boundary',()=>{
  const root=resolve(import.meta.dirname,'..'),dir=mkdtempSync(join(tmpdir(),'alpha-native-epoch-'));
  try{
-  execFileSync(java('javac'),['--release','11','-d',dir,join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/NativeReadEpoch.java'),join(root,'test/fixtures/NativeReadEpochTest.java')],{timeout:60000});
-  assert.match(execFileSync(java('java'),['-cp',dir,'ai.elizaresearch.alphaphone.NativeReadEpochTest'],{encoding:'utf8',timeout:15000}),/PASS native read publication fences/);
+  execFileSync(java('javac'),['--release','11','-d',dir,join(root,'android/app/src/main/java/ai/alphacompute/alphaphone/NativeReadEpoch.java'),join(root,'test/fixtures/NativeReadEpochTest.java')],{timeout:60000});
+  assert.match(execFileSync(java('java'),['-cp',dir,'ai.alphacompute.alphaphone.NativeReadEpochTest'],{encoding:'utf8',timeout:15000}),/PASS native read publication fences/);
   const media=join(preparePatchedNative({root}).root,'plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media');
   const photos=readFileSync(join(media,'PhotosPlugin.java'),'utf8');
   for(const name of ['list','read','summary','albums','beginEdit','previewEdit','thumbnails']){
@@ -32,8 +32,8 @@ test('delayed provider results cannot cross a lifecycle or permission boundary',
   }
   const facade=readFileSync(join(media,'DeviceLibraryPlugin.java'),'utf8');
   assert.equal((facade.match(/catalog\.publish\(call,/g)||[]).length,3);
-  assert.match(readFileSync(join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPhotosPlugin.java'),'utf8'),/extends PhotosPlugin \{/);
-  assert.match(readFileSync(join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPhotoLibraryPlugin.java'),'utf8'),/extends DeviceLibraryPlugin \{/);
+  assert.match(readFileSync(join(root,'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaPhotosPlugin.java'),'utf8'),/extends PhotosPlugin \{/);
+  assert.match(readFileSync(join(root,'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaPhotoLibraryPlugin.java'),'utf8'),/extends DeviceLibraryPlugin \{/);
 
   // Run the exact staging gate and catalog publication methods against controlled worker and
   // main-thread queues. Only MediaStore access and the Capacitor response sink are fixtures.

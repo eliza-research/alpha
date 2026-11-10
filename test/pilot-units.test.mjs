@@ -183,7 +183,7 @@ test("release blockers are named for staging and head qualification", () => {
 });
 
 test("package facts, update admission and data-domain readback", () => {
-  const facts = packageFacts("Packages:\n  Package [ai.elizaresearch.alphaphone] (1a2b):\n    userId=10123\n    versionCode=7 minSdk=26 targetSdk=36\n    versionName=0.7.0\n    firstInstallTime=2026-10-08 10:00:00\n    lastUpdateTime=2026-10-08 11:00:00\n");
+  const facts = packageFacts("Packages:\n  Package [ai.alphacompute.alphaphone] (1a2b):\n    userId=10123\n    versionCode=7 minSdk=26 targetSdk=36\n    versionName=0.7.0\n    firstInstallTime=2026-10-08 10:00:00\n    lastUpdateTime=2026-10-08 11:00:00\n");
   assert.deepEqual(facts, { versionCode: 7, versionName: "0.7.0", firstInstallTime: "2026-10-08 10:00:00", lastUpdateTime: "2026-10-08 11:00:00", userId: "10123" });
   assert.deepEqual(updateAdmission({ installedVersionCode: 7, installedSigner: SIGNER, newVersionCode: 8, newSigner: SIGNER }), []);
   assert.match(updateAdmission({ installedVersionCode: 7, installedSigner: SIGNER, newVersionCode: 7, newSigner: SIGNER }).join(), /greater/);
@@ -208,7 +208,7 @@ test("data readback never mistakes a failed or refused walk for an unchanged inv
   assert.deepEqual(Object.keys(ok), ["files"]);
   assert.throws(() => readbackInventory("find: ./cache/b: unknown primary or operator\nREADBACK_EXIT=1\n"), /exit 1/);
   assert.throws(() => readbackInventory(""), /exit missing/);
-  assert.equal(readbackInventory("\nrun-as: package not debuggable: ai.elizaresearch.alphaphone"), null);
+  assert.equal(readbackInventory("\nrun-as: package not debuggable: ai.alphacompute.alphaphone"), null);
 });
 
 test("an update keeps the unit's provisioned variant and build type", () => {

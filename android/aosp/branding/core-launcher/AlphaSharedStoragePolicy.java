@@ -3,7 +3,7 @@ package com.android.server.pm.permission;
 
 /** Factory default for Alpha's shared Files view; an owner's existing allow/deny is retained. */
 final class AlphaSharedStoragePolicy {
-    static final String PACKAGE = "ai.elizaresearch.alphaphone";
+    static final String PACKAGE = "ai.alphacompute.alphaphone";
     private AlphaSharedStoragePolicy() {}
     static boolean shouldGrant(int userId, String name, boolean enabledAndInstalled,
             boolean preinstalled, boolean requested, boolean unconfigured) {

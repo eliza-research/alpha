@@ -250,7 +250,7 @@ async function verifySignedRotation(file: string, lineage: string, rotation: Sig
   {jar, javaHome}: Awaited<ReturnType<typeof reviewedRotationTool>>, toolEnv: NodeJS.ProcessEnv) {
   const result = JSON.parse(execFileSync(path.join(javaHome, "bin", "java"), [
     "-cp", jar, verifier, "--signed-output", file, lineage, await fileDigest(file),
-    rotation.lineageSha256, rotation.previousSignerSha256, signer, "ai.elizaresearch.alphaphone", "29", "37",
+    rotation.lineageSha256, rotation.previousSignerSha256, signer, "ai.alphacompute.alphaphone", "29", "37",
   ], { env: { PATH: toolEnv.PATH, JAVA_HOME: toolEnv.JAVA_HOME }, encoding: "utf8", timeout: 120_000 }));
   if (result.verified !== true || result.minApi !== 29 || result.maxApi !== 37 || result.versionCode !== rotation.versionCode)
     throw new Error("Signed rotation output differs from the reviewed version or API scope");

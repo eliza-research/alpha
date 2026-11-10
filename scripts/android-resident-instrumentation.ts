@@ -13,7 +13,7 @@ const [apk, testApk] = process.argv.slice(2);
 const serial = process.env.ANDROID_SERIAL;
 if (!serial || !apk || !testApk) throw Error('ANDROID_SERIAL, app APK and test APK are required');
 const adb = (args: string[], opts: Omit<import('node:child_process').ExecFileSyncOptionsWithStringEncoding, 'encoding'> = {}) => execFileSync('adb', ['-s', serial, ...args], {encoding: 'utf8', maxBuffer: 64 << 20, ...opts}).trim();
-const pkg = 'ai.elizaresearch.alphaphone';
+const pkg = 'ai.alphacompute.alphaphone';
 // Installation replaces package code across users. A secondary user alone does
 // not protect an existing installation, and must not admit a physical phone.
 admitResidentEmulator(process.env, adb);

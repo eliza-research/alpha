@@ -16,7 +16,7 @@ const defaultScenarios = [
 ];
 
 export async function runSignInCoordinatorRefinement(scenarios = defaultScenarios, extraSources = []) {
-  const base = 'android/app/src/main/java/ai/elizaresearch/alphaphone/';
+  const base = 'android/app/src/main/java/ai/alphacompute/alphaphone/';
   const prepared = preparePatchedNative({root});
   const product = ['AlphaCloudSignInPlugin.java','CloudDeployment.java','PluginWorkers.java'].map(name=>base+name)
     .concat(['CloudCredentialSlots.java','CloudSignInConfig.java','CloudSignInEnvironment.java',
@@ -41,7 +41,7 @@ export async function runSignInCoordinatorRefinement(scenarios = defaultScenario
       '../services/SignInCoordinatorTraces.java',
       [...product, fixture[0], ...platform.paths],
       scenarios.map(scenario => [scenario]),
-      'ai.elizaresearch.alphaphone.SignInCoordinatorTraces',
+      'ai.alphacompute.alphaphone.SignInCoordinatorTraces',
     );
     traces.push(...observations.flat());
     return await checkTraces({

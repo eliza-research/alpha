@@ -38,6 +38,7 @@ if not secret:
 raw_secret = secret.encode()
 patterns = [raw_secret, secret.encode("utf-16le"), base64.b64encode(raw_secret), raw_secret.hex().encode()]
 debug_classes = ["DevelopmentAgentPlugin", "DevelopmentVoiceCapture", "SyntheticAutofillService"]
+debug_class_packages = (b"Lai/alphacompute/alphaphone/", b"Lai/elizaresearch/alphaphone/")
 results = []
 for name in sorted(manifest):
     if not re.fullmatch(r"(?:standalone|launcher)-(?:debug|release|release-unsigned)\.apk", name):
@@ -53,7 +54,10 @@ for name in sorted(manifest):
     secret_absent = all(pattern not in data for data in [raw, *members] for pattern in patterns)
     release = name.endswith(("-release.apk", "-release-unsigned.apk"))
     test_absent = all(value not in dex for value in descriptors) if release else None
-    presence = {value: ("Lai/elizaresearch/alphaphone/" + value + ";").encode() in dex for value in debug_classes}
+    presence = {
+        value: any(prefix + value.encode() + b";" in dex for prefix in debug_class_packages)
+        for value in debug_classes
+    }
     # Release never carries developer hooks. Debug carries all of them only when built with
     # -PELIZA_DEV_ALLOW_TEST_MOCKS=1 (src/testMocks); a flag-off debug carries none.
     hooks_consistent = not any(presence.values()) if release else len(set(presence.values())) == 1
