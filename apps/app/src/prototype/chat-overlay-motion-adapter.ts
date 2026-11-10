@@ -548,6 +548,7 @@ export function installChatOverlayMotion(Component: Shell) {
 		retire(this, false);
 		this.swallow = Date.now();
 		this.chatSettledByDrag = true;
+		if (this.props.assistantSurface && !this.S().view && next.chat === "hidden") return this.closeAssistant();
 		// An open chat collapses to its resting form; only the bar itself dismisses to the pill.
 		this.setState({
 			chat: next.chat === "hidden" && !collapsed ? this.rest() : next.chat,
@@ -806,6 +807,7 @@ export function installChatOverlayMotion(Component: Shell) {
 		};
 		out.closeChat = () => {
 			retire(shell, false);
+			if (shell.props.assistantSurface && !shell.S().view) return shell.closeAssistant();
 			// A voice session in the chat keeps its controls on the pill.
 			shell.setState({
 				chat: document.querySelector("[data-alpha-chat-recorder]")

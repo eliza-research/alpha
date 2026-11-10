@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "80fbb1d25937585b24fd85132d623d5391c8ca07",
-  "ledgerSha256": "dc007b9d4f9576cce2f965e6143dc9b9d86a47ea134e2c97a02710a93ed6994e",
+  "ledgerSha256": "d34b31cad2dd316cc4160b0a80ef801786c9c0e67959de3d744ab3623bcbc67d",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -34443,7 +34443,7 @@
     },
     {
       "path": "apps/app/src/prototype/chat-overlay-motion-adapter.ts",
-      "sha256": "f226547da5d108ba9762ea1da6757ac2620344504512a9c1d90a84afc5877e79",
+      "sha256": "623197f58e6815ab4e7e6961faf3987570cea47ddc3adc118f2b3ba897f2857c",
       "allocatedModels": [
         "Application",
         "ChatInput",
@@ -34503,32 +34503,32 @@
           "writes": 6
         },
         {
-          "owner": "installChatOverlayMotion.FunctionExpression@556",
-          "line": 557,
+          "owner": "installChatOverlayMotion.FunctionExpression@557",
+          "line": 558,
           "bindings": 3,
           "writes": 44
         },
         {
-          "owner": "installChatOverlayMotion.FunctionExpression@556.ArrowFunction@575",
-          "line": 583,
+          "owner": "installChatOverlayMotion.FunctionExpression@557.ArrowFunction@576",
+          "line": 584,
           "bindings": 2,
           "writes": 2
         },
         {
-          "owner": "installChatOverlayMotion.FunctionExpression@556.move",
-          "line": 739,
+          "owner": "installChatOverlayMotion.FunctionExpression@557.move",
+          "line": 740,
           "bindings": 2,
           "writes": 3
         },
         {
-          "owner": "installChatOverlayMotion.FunctionExpression@556.up",
-          "line": 751,
+          "owner": "installChatOverlayMotion.FunctionExpression@557.up",
+          "line": 752,
           "bindings": 2,
           "writes": 4
         },
         {
-          "owner": "installChatOverlayMotion.FunctionExpression@556.down",
-          "line": 872,
+          "owner": "installChatOverlayMotion.FunctionExpression@557.down",
+          "line": 874,
           "bindings": 1,
           "writes": 1
         }
@@ -35594,7 +35594,7 @@
     },
     {
       "path": "apps/app/src/prototype/model.js",
-      "sha256": "3a130dbdf4397cb8d4276e3238d768407af32b048107c60b4ab4aaf5c00b44c7",
+      "sha256": "a87bedaff7f4e123436cad651e93e715f2cffc0a03c506ef3fc13bf4946ff216",
       "allocatedModels": [
         "Application",
         "CalendarPresentation",
@@ -38271,277 +38271,277 @@
         },
         {
           "owner": "Component.openView",
-          "line": 5282,
+          "line": 5283,
           "bindings": 6,
           "writes": 0
         },
         {
           "owner": "Component.shellNav",
-          "line": 5298,
+          "line": 5299,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.shellNavigate",
-          "line": 5302,
+          "line": 5303,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "Component.back",
-          "line": 5306,
+          "line": 5307,
           "bindings": 3,
           "writes": 0
         },
         {
           "owner": "Component.openShade",
-          "line": 5329,
+          "line": 5330,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.openSystemShade",
-          "line": 5341,
+          "line": 5342,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.syncShadeFocus",
-          "line": 5351,
+          "line": 5352,
           "bindings": 4,
           "writes": 0
         },
         {
           "owner": "Component.scale",
-          "line": 5363,
+          "line": 5364,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "Component.gDown",
-          "line": 5364,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "Component.gUp",
           "line": 5365,
           "bindings": 1,
           "writes": 0
         },
         {
+          "owner": "Component.gUp",
+          "line": 5366,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
           "owner": "Component.swipe",
-          "line": 5370,
+          "line": 5371,
           "bindings": 3,
           "writes": 0
         },
         {
           "owner": "Component.pullContext",
-          "line": 5382,
+          "line": 5383,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.sw",
-          "line": 5386,
+          "line": 5387,
           "bindings": 1,
           "writes": 6
         },
         {
           "owner": "Component.sw.down",
-          "line": 5389,
+          "line": 5390,
           "bindings": 3,
           "writes": 0
         },
         {
           "owner": "Component.sw.up",
-          "line": 5398,
+          "line": 5399,
           "bindings": 4,
           "writes": 0
         },
         {
           "owner": "Component.reply",
-          "line": 5414,
+          "line": 5415,
           "bindings": 9,
           "writes": 3
         },
         {
-          "owner": "Component.reply.FunctionExpression@5417",
-          "line": 5417,
+          "owner": "Component.reply.FunctionExpression@5418",
+          "line": 5418,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.send",
-          "line": 5434,
+          "line": 5435,
           "bindings": 6,
           "writes": 0
         },
         {
-          "owner": "Component.send.FunctionExpression@5446",
-          "line": 5447,
+          "owner": "Component.send.FunctionExpression@5447",
+          "line": 5448,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "Component.send.FunctionExpression@5446.FunctionExpression@5449",
-          "line": 5449,
+          "owner": "Component.send.FunctionExpression@5447.FunctionExpression@5450",
+          "line": 5450,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.agentSay",
-          "line": 5454,
+          "line": 5455,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.cardAct",
-          "line": 5458,
+          "line": 5459,
           "bindings": 4,
           "writes": 0
         },
         {
           "owner": "Component.startVoice",
-          "line": 5469,
+          "line": 5470,
           "bindings": 6,
           "writes": 1
         },
         {
-          "owner": "Component.startVoice.FunctionExpression@5481.FunctionExpression@5486",
-          "line": 5487,
+          "owner": "Component.startVoice.FunctionExpression@5482.FunctionExpression@5487",
+          "line": 5488,
           "bindings": 5,
           "writes": 1
         },
         {
-          "owner": "Component.startVoice.FunctionExpression@5481.FunctionExpression@5486.FunctionExpression@5493",
-          "line": 5493,
+          "owner": "Component.startVoice.FunctionExpression@5482.FunctionExpression@5487.FunctionExpression@5494",
+          "line": 5494,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "Component.startVoice.FunctionExpression@5481.FunctionExpression@5495",
-          "line": 5495,
+          "owner": "Component.startVoice.FunctionExpression@5482.FunctionExpression@5496",
+          "line": 5496,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.renderVals",
-          "line": 5506,
+          "line": 5507,
           "bindings": 45,
           "writes": 27
         },
         {
           "owner": "Component.renderVals.rootRef",
-          "line": 5517,
+          "line": 5518,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5548",
-          "line": 5549,
+          "owner": "Component.renderVals.FunctionExpression@5549",
+          "line": 5550,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5548.FunctionExpression@5549.FunctionExpression@5549",
-          "line": 5549,
+          "owner": "Component.renderVals.FunctionExpression@5549.FunctionExpression@5550.FunctionExpression@5550",
+          "line": 5550,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5556",
-          "line": 5559,
+          "owner": "Component.renderVals.FunctionExpression@5557",
+          "line": 5560,
           "bindings": 3,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5556.toggle",
-          "line": 5563,
+          "owner": "Component.renderVals.FunctionExpression@5557.toggle",
+          "line": 5564,
           "bindings": 1,
           "writes": 5
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5569",
-          "line": 5570,
+          "owner": "Component.renderVals.FunctionExpression@5570",
+          "line": 5571,
           "bindings": 4,
           "writes": 1
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5601",
-          "line": 5602,
+          "owner": "Component.renderVals.FunctionExpression@5602",
+          "line": 5603,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5605",
-          "line": 5606,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "Component.renderVals.FunctionExpression@5605.go",
+          "owner": "Component.renderVals.FunctionExpression@5606",
           "line": 5607,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5622",
-          "line": 5624,
+          "owner": "Component.renderVals.FunctionExpression@5606.go",
+          "line": 5608,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "Component.renderVals.FunctionExpression@5623",
+          "line": 5625,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.renderVals.backToApps",
-          "line": 5640,
+          "line": 5641,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.renderVals.doUndo",
-          "line": 5643,
+          "line": 5644,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5679",
-          "line": 5679,
+          "owner": "Component.renderVals.FunctionExpression@5680",
+          "line": 5680,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.renderVals.voiceToType",
-          "line": 5686,
+          "line": 5687,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.renderVals.fireHeads",
-          "line": 5692,
+          "line": 5693,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.renderVals.pUp",
-          "line": 5697,
+          "line": 5698,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "Component.renderVals.homeBar",
-          "line": 5707,
+          "line": 5708,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.renderVals.toggleFs",
-          "line": 5709,
+          "line": 5710,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5712",
-          "line": 5712,
+          "owner": "Component.renderVals.FunctionExpression@5713",
+          "line": 5713,
           "bindings": 1,
           "writes": 0
         },
@@ -221160,6 +221160,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "b1a5cec6b27a81e8d42e8bf0e2fea59b608b82bb4c5fcbe5a7e397cd3b759635"
+    "sha256": "a4bb6445047719562badea741365b38ce57a56c173a27aafed83dd35fe1d24e1"
   }
 }

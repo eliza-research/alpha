@@ -5266,6 +5266,7 @@ class Component extends DCLogic {
     this.hintDone = true;
   }
   goHome(chat) {
+    if (this.props && this.props.assistantSurface) return this.closeAssistant();
     this.clear("hint"); this.leave();
     if (this.S().secure) return this.setState(Object.assign(this.shellNavigate({ type: "home" }), { secure: false, screen: "lock", shade: false, hint: false, heads: false }));
     this.setState(Object.assign(this.shellNavigate({ type: "home", assistant: chat === "sheet" || chat === "full" ? chat : "input" }), { shade: false, hint: false, heads: false }));

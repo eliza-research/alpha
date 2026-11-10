@@ -20354,7 +20354,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "f226547da5d108ba9762ea1da6757ac2620344504512a9c1d90a84afc5877e79",
+      "sha256": "623197f58e6815ab4e7e6961faf3987570cea47ddc3adc118f2b3ba897f2857c",
       "stateAnchors": [
         {
           "line": 13,
@@ -21177,7 +21177,7 @@
           "text": "const press = shell.chatScrimPress;"
         }
       ],
-      "integrationReview": "specs/quint/pixel-native-review-20261109.md"
+      "integrationReview": "Assistant entry Home and collapsed gesture exits use the existing closeAssistant boundary; launcher detents and drafts are unchanged. Browser captured gestures and extracted source navigation tests cover these changed paths. Existing allocation is retained; the source inventory and generic ShellNavigation/ChatInput models do not establish native Activity finish or full implementation refinement."
     },
     {
       "path": "apps/app/src/prototype/clock-adapter.ts",
@@ -25027,7 +25027,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "3a130dbdf4397cb8d4276e3238d768407af32b048107c60b4ab4aaf5c00b44c7",
+      "sha256": "a87bedaff7f4e123436cad651e93e715f2cffc0a03c506ef3fc13bf4946ff216",
       "stateAnchors": [
         {
           "line": 26,
@@ -30574,7 +30574,7 @@
           "text": "var ICON_ASSETS = Object.fromEntries(Object.entries(iconCatalog.ic).map(function (entry) { return [IC[entry[0]], '/icons/lucide/' + entry[1] + '.svg']; }));"
         }
       ],
-      "integrationReview": "Retained Calendar form window, monotonic Start later and month-row construction reviewed and source-refined under CalendarFormControls; all existing domain allocations and open platform obligations remain."
+      "integrationReview": "Assistant entry Home and collapsed gesture exits use the existing closeAssistant boundary; launcher detents and drafts are unchanged. Browser captured gestures and extracted source navigation tests cover these changed paths. Existing allocation is retained; the source inventory and generic ShellNavigation/ChatInput models do not establish native Activity finish or full implementation refinement."
     },
     {
       "path": "apps/app/src/prototype/mvp-features.ts",

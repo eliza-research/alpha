@@ -8,7 +8,7 @@ import { installResidentAgentPlugin } from './helpers/resident-agent-plugin';
 const SYNTHETIC_KEY = 'synthetic-provider-key-7f3a9c0e5b';
 const REMOTE = 'https://agent.example.test';
 const REDACTION = {
-  resident: 'Secret and contact identifiers are swapped before hosted inference; names and free text are not covered',
+  resident: 'Messages and selected content go to Cerebras with your key. Keys and contact details are masked first. Names and message text are not.',
   agent: 'Depends on your agent',
   offline: 'No remote agent connected; no hosted inference requests',
 };
@@ -40,7 +40,7 @@ async function nativeStub(page: Page, scenario: Scenario, options: { strayKeyInS
       PluginHeaders: [
         { name: 'AlphaNotifications', methods: methods(['status','crossAppStatus','addListener','removeListener']) },
         { name: 'AlphaVoiceCloud', methods: methods(['checkPermissions']) },
-        { name: 'Agent', methods: agent.methods(['getStatus', 'start', 'stop', 'request', 'providerStatus']) },
+        { name: 'Agent', methods: agent.methods(['getStatus', 'start', 'stop', 'request', 'providerStatus', 'setGoogleAgentAccess']) },
         { name: 'AlphaConnection', methods: methods(['secureRead', 'secureWrite','secureCompareExchange', 'secureRemove', 'request', 'cancel', 'addListener', 'removeListener', 'pauseNotificationCollection']) },
         { name: 'AlphaActionJournal', methods: methods(['list']) },
         { name: 'ElizaSystem', methods: methods(['getBuildInfo']) },
@@ -53,6 +53,7 @@ async function nativeStub(page: Page, scenario: Scenario, options: { strayKeyInS
         const f = w.privacyFixture;
         const respond = (value: unknown) => { f.calls.push({ plugin, method, input, value }); return value; };
         if (plugin === 'Agent') {
+          if (method === 'setGoogleAgentAccess') return respond({enabled:false,accountKey:null});
           const owned = agent.answer(method, input); if (owned) return respond(owned);
           if (method === 'getStatus') return respond({ packaged: true, state: 'stopped', serviceActive: false, socketListening: false });
           if (method === 'start') return respond({ state: 'ready' });
@@ -108,6 +109,9 @@ async function openSettings(page: Page, tab: string) {
   if (await page.locator('html').getAttribute('data-active-view') !== 'settings')
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-active-view', 'settings');
+  const current=()=>page.locator('[data-settings-page]').last();
+  while(!await current().getByRole('button',{name:'About',exact:true}).isVisible())
+    await current().getByRole('button',{name:/^Back to /}).click();
   const path=tab==='AI provider'?['Account','AI connection']:tab==='App permissions'?['Privacy','App permissions']:[tab];
   for(const name of path)await page.getByRole('button', { name, exact: true }).filter({visible:true}).click();
 }
@@ -150,8 +154,8 @@ for (const scenario of ['resident', 'remote', 'offline'] as const) test(`current
   await provider.getByRole('button', {name: 'Close AI connection settings', exact: true}).click();
   // The slim Settings design delegates provider state to its dialog and exposes no old pages.
   for (const name of ['Privacy & data', 'Models', 'Activity']) await expect(page.getByRole('button', {name, exact: true})).toHaveCount(0);
-  await page.getByRole('button', {name: 'About', exact: true}).click();
-  await expect(page.getByRole('button', {name: 'Export diagnostics', exact: true})).toBeVisible();
+  await openSettings(page,'About');
+  await expect(page.getByRole('button', {name: 'Export diagnostics', exact: true})).toHaveCount(0);
   await assertNoInventedActivity(page);
   const fixture = await page.evaluate(() => (window as any).privacyFixture);
   expect(fixture.unexpected.filter((name: string) => name.startsWith('Agent.'))).toEqual([]);
@@ -174,7 +178,7 @@ test('provider key never reaches current Settings, bridge payloads or test outpu
   await openSettings(page, 'AI provider');
   await expect(page.getByText('Text connected · Voice off', {exact: true})).toBeVisible();
   await page.getByRole('button', {name: 'Close AI connection settings', exact: true}).click();
-  await page.getByRole('button', {name: 'About', exact: true}).click();
+  await openSettings(page,'About');
   expect(await privacyContract(page)).toBe(REDACTION.resident);
   const statusCalls = await page.evaluate(() => (window as any).privacyFixture.calls.filter((call: any) => call.plugin === 'Agent' && call.method === 'providerStatus').length);
   expect(statusCalls).toBeGreaterThan(0);
