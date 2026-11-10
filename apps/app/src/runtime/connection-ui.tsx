@@ -758,7 +758,7 @@ async function residentSignedIn(signal: AbortSignal, unconfirmed: boolean, expec
     await connectResident(signal, admission);
     await assertExpected();
     // A binding notice the start reported stays within setup (it shows connection errors), not over it.
-    if (setup && state.cloudAccount) update({ open: false, purpose: 'agent' });
+    if (setup && state.cloudAccount && state.purpose!=='plan' && state.purpose!=='cloud-account' && state.purpose!=='provider') update({ open: false, purpose: 'agent' });
   } catch (error) { if (residentAlwaysPresent && !active) update({ kind: 'recovering' }); update({ signIn: null, ...(state.providerSignInSelection===providerSelection?{providerSignInSelection:undefined}:{}) }); if (!setup) showPostSignInSetup(); throw error; }
   if (refused) {
     if(state.providerSignInSelection===providerSelection)update({providerSignInSelection:undefined});
@@ -1041,7 +1041,7 @@ function activate(next: Active, session: VerifiedSession, name: string) {
   cancelStoppedReply();
   for(const request of appRequests)request.abort(new DOMException('The connection changed','AbortError'));
   epoch++; sending?.abort(new DOMException('The connection changed.', 'AbortError')); sending = null; active = next;
-  update({ residentRecoveryReason:undefined,residentRecovery:undefined,phoneActionsAvailable:!!next.actions, conversations: [], history: null, conversationDelivery:undefined,conversationEvents:'unavailable', historyError: '', historyPartial:false, replyNotice:'', actionHistory: [], kind: next.kind, name, session, open: false, message: next.kind === 'resident' && state.inferenceOffline ? '' : 'Connected', error: '' });
+  update({ residentRecoveryReason:undefined,residentRecovery:undefined,phoneActionsAvailable:!!next.actions, conversations: [], history: null, conversationDelivery:undefined,conversationEvents:'unavailable', historyError: '', historyPartial:false, replyNotice:'', actionHistory: [], kind: next.kind, name, session, open: state.open && !state.signIn && (state.purpose==='plan'||state.purpose==='cloud-account'||state.purpose==='provider'), message: next.kind === 'resident' && state.inferenceOffline ? '' : 'Connected', error: '' });
   // Canonical app Calendar records currently belong to this resident transport only.
   // Read the existing allowed authenticated status route, never a native auth/status expansion.
   if(next.kind==='resident'){
@@ -3814,8 +3814,8 @@ export function ConnectionChooser() {
   const accountSheet=fundingRequired||snapshot.purpose==='plan'||snapshot.purpose==='cloud-account';
   if(accountSheet)return <div className="alpha-connection-scrim" data-alpha-billing-overlay="true" data-alpha-membership-sheet="true"><div className="alpha-connection alpha-account-sheet" role="dialog" aria-modal="true" aria-labelledby="alpha-membership-title" tabIndex={-1} ref={panel} data-alpha-membership-panel="true">
     <div className="alpha-membership-drag-handle" aria-hidden="true"/>
-    <header>{accountSection&&<button aria-label="Back to Account" onClick={()=>setAccountSection(null)}><span aria-hidden="true" data-alpha-icon="/icons/lucide/chevron-left.svg" style={iconStyle('chevron-left')}/></button>}<h1 id="alpha-membership-title">{signOutAccount?'Sign out?':accountSection?'AI connection':'Account'}</h1><button aria-label="Close Account" disabled={snapshot.busy} onClick={()=>connectionController.close()}><span aria-hidden="true" data-alpha-icon="/icons/lucide/x.svg" style={iconStyle('x')}/></button></header>
-    {signOutAccount?<><p>Your notes, chats, files and saved keys stay on this device.</p><div className="alpha-membership-secondary-actions"><button className="alpha-account-cancel" onClick={()=>setSignOutAccount(null)}>Cancel</button><button className="alpha-account-confirm" disabled={snapshot.busy} onClick={()=>{const expected=signOutAccount;setSignOutAccount(null);if(connectionController.getSnapshot().cloudAccount===expected)void connectionController.cloudSignOut();}}>Sign out</button></div></>:accountSection?providerChoiceFor(false,snapshot.error):<>
+    <header>{accountSection&&<button aria-label="Back to Account" onClick={()=>setAccountSection(null)}><span aria-hidden="true" data-alpha-icon="/icons/lucide/chevron-left.svg" style={iconStyle('chevron-left')}/></button>}<h1 id="alpha-membership-title">{signOutAccount?'Sign out?':accountSection?'AI connection':'Account'}</h1><button aria-label="Close Account" onClick={()=>{if(signOutAccount)setSignOutAccount(null);else dismiss();}}><span aria-hidden="true" data-alpha-icon="/icons/lucide/x.svg" style={iconStyle('x')}/></button></header>
+    {signOutAccount?<><p>Your notes, chats, files and saved keys stay on this device.</p><div className="alpha-membership-secondary-actions"><button className="alpha-account-confirm" disabled={snapshot.busy} onClick={()=>{const expected=signOutAccount;setSignOutAccount(null);if(connectionController.getSnapshot().cloudAccount===expected)void connectionController.cloudSignOut();}}>Sign out</button></div></>:accountSection?providerChoiceFor(false,snapshot.error):<>
       {accountCreatedNotice}{membershipControls}
       {snapshot.cloudAccount?.expiresAt!==undefined&&snapshot.cloudAccount.expiresAt-Date.now()<=CLOUD_KEY_EXPIRY_WARNING_MS&&<div className="alpha-account-expiry"><p>Sign-in expires soon.</p><button disabled={snapshot.busy} onClick={()=>void connectionController.residentCloudLogin()}>Approve this phone again</button></div>}
       {!snapshot.cloudAccount&&<><p className="alpha-membership-account">Not signed in</p><button className="alpha-account-confirm" disabled={snapshot.busy} onClick={()=>void connectionController.residentCloudLogin()}>Sign in</button></>}
@@ -3826,7 +3826,6 @@ export function ConnectionChooser() {
       {snapshot.cloudAccount&&<button className="alpha-account-signout" disabled={snapshot.busy} onClick={()=>setSignOutAccount(snapshot.cloudAccount)}>Sign out</button>}
       <button className="alpha-account-done" disabled={snapshot.busy} onClick={()=>connectionController.close()}>Done</button>
     </>}
-    {snapshot.busy&&<button className="alpha-account-cancel" onClick={()=>connectionController.cancel()}>Cancel</button>}
   </div></div>;
 
   // P-43 (owner, 2026-10-13): the agent always runs on this device. This dialog is its status

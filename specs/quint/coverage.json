@@ -22734,7 +22734,7 @@
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
-      "sha256": "f3cc88163789a0f1bb6eed3132075f480ba88ede8b541c18a9142cff100aff5d",
+      "sha256": "3ae5309e606bf863adc238be724cf1f5f577eedd2028bd983a84f0ce1b890dc5",
       "stateAnchors": [
         {
           "line": 5,
@@ -39059,7 +39059,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "96077effe5cafad35dab383937d2250597ad6c3958ab68d13e905f8a66478d1b",
+      "sha256": "ef0203ec11795a3abdf3131bea6ce3bf8b00c08c7b6126e30309a46c76ff89c4",
       "stateAnchors": [],
       "integrationReview": "2026-11-09 preview review: saved Inbox before background refresh with owner/epoch invalidation; optional Cloud restore pending presentation; provider pending-vs-failed presentation; existing Cloud-preview storage eligibility; About removal; dedicated embedding authority separated from own text/voice. Existing domain allocations retained; actual browser and owning tests recorded separately. Semantic refinement and device acceptance remain open."
     },

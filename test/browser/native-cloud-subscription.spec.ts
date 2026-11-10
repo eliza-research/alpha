@@ -581,6 +581,14 @@ test.describe('redeem a subscription code',()=>{
 });
 
 test.describe('account, plan and sign-in expiry',()=>{
+ test('background startup cannot close an explicitly opened Account',async({page})=>{
+  await boot(page,{...await entitlements(),holdProvider:true});
+  await admitted(page);const panel=await openAccountPlan(page);
+  await page.evaluate(()=>(window as any).planFixture.releaseProvider?.());
+  await idle(page);await expect(panel).toBeVisible();
+  await expect(panel.getByRole('button',{name:'Use code',exact:true})).toBeVisible();
+ });
+
  test('Settings data and the plan panel show account, plan, Redeem code, Manage plan and Sign out',async({page},info)=>{
   await boot(page,{...await entitlements(),holdProvider:false});
   await expect.poll(()=>configured(page)).toBe(1);await idle(page);

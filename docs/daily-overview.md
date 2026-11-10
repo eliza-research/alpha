@@ -134,3 +134,11 @@ arrival, text size, the dock and the keyboard independently.
 - A digest result travelling from a real agent (the resident scheduler, a real run and the native
   delivery path) to the brief card on an installed build. The browser tests cover that run only
   with a stubbed agent and bridge (see Tests).
+
+## November 9 content-only widgets
+
+The owner now wants only populated Home widgets. Calendar appears when an agenda
+item exists. Workflows appears when its current list has rows. Inbox appears when
+email is connected and it has message rows. Missing, empty and not-connected states
+remain in each app; Home does not show setup or empty cards. Existing app tiles stay
+available. This supersedes the earlier always-visible widget presentation.
