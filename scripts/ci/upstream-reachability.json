@@ -2,16 +2,35 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "00edc8ce2e8b9bd47ad5cce33e1dff66c2fe47c0",
-  "head": "00edc8ce2e8b9bd47ad5cce33e1dff66c2fe47c0",
+  "baseCommit": "6a30d1df11508f033b2522338e7d9477eb4be500",
+  "head": "268733c01f239b352396abefb1b9a112a3cb65a6",
   "recordedAt": "2026-11-10",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...00edc8ce2e8b9bd47ad5cce33e1dff66c2fe47c0",
-  "status": "identical",
-  "aheadBy": 0,
-  "behindBy": 0,
+  "command": "gh api repos/elizaOS/eliza/compare/develop...268733c01f239b352396abefb1b9a112a3cb65a6",
+  "status": "diverged",
+  "aheadBy": 4,
+  "behindBy": 34,
   "mergeBase": "00edc8ce2e8b9bd47ad5cce33e1dff66c2fe47c0",
-  "pinOnlyCommits": [],
+  "pinOnlyCommits": [
+    {
+      "sha": "fe3648acb3ee7acc9a722655f3d4316dc284f625",
+      "subject": "Keep Google map tiles within current admission and viewport attribution"
+    },
+    {
+      "sha": "953e6895be42760e79a4fdf7ab5b1db01e4c4fcc",
+      "subject": "Refuse incomplete Google viewport copyright metadata"
+    },
+    {
+      "sha": "841f8c0a19c06fa19dcc5197c31e54286c6051cc",
+      "subject": "Type the viewport model response action"
+    },
+    {
+      "sha": "268733c01f239b352396abefb1b9a112a3cb65a6",
+      "subject": "Keep map resource failures visible during copyright refresh"
+    }
+  ],
   "pullRequests": [
-    "https://github.com/elizaOS/eliza/pull/39196"
-  ]
+    "https://github.com/elizaOS/eliza/pull/39196",
+    "https://github.com/elizaOS/eliza/pull/39231"
+  ],
+  "pendingPullRequest": "https://github.com/elizaOS/eliza/pull/39231"
 }

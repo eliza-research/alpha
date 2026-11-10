@@ -7,9 +7,9 @@ const tick=()=>new Promise(resolve=>setTimeout(resolve,0));
 const until=async predicate=>{for(let i=0;i<100&&!predicate();i++)await tick();assert.ok(predicate(),'speech operation reached the native playback boundary');};
 const load=(box,file,names)=>{let src=readFileSync(file,'utf8').replace(/^import [\s\S]*?;\n/gm,'').replace(/^export /gm,'');src=stripTypeScriptTypes(src,{mode:'transform'});vm.runInNewContext('{'+src+';Object.assign(globalThis,{'+names+'});}',box);};
 // The real Alpha wrapper, shared NavigationVoice and createOnDeviceVoice over a stubbed native bridge.
-function fixture({ready=true,cloud=false,hold=false,cloudHold=false}={}){
- const f={spoken:[],cloud:[],failed:[],listeners:{},pending:[],account:'account-1'};
- const native={localSpeechStatus:async()=>({ready,execution:'device'}),addListener:async(event,listener)=>{(f.listeners[event]??=new Set()).add(listener);return {remove:async()=>{f.listeners[event].delete(listener);}};},
+function fixture({ready=true,cloud=false,hold=false,cloudHold=false,canSpeak=()=>true,readyGate}={}){
+ const f={spoken:[],cloud:[],failed:[],listeners:{},pending:[],account:'account-1',statusReads:0};
+ const native={localSpeechStatus:async()=>{f.statusReads++;await readyGate?.();return {ready,execution:'device'};},addListener:async(event,listener)=>{(f.listeners[event]??=new Set()).add(listener);return {remove:async()=>{f.listeners[event].delete(listener);}};},
   synthesizeLocal:async({text})=>{f.spoken.push(text);return {playbackId:'p'+f.spoken.length,execution:'device'};},
   play:async({playbackId})=>{const end=()=>{for(const l of f.listeners.playbackEnded??[])l({playbackId});};if(hold)f.end=end;else setTimeout(end,0);},cancel:async()=>{},stopPlayback:async()=>{}};
  const document=Object.assign(new EventTarget(),{hidden:false,documentElement:{dataset:{}}});
@@ -20,7 +20,7 @@ function fixture({ready=true,cloud=false,hold=false,cloudHold=false}={}){
  load(box,'apps/app/src/runtime/local-voice.ts','createOnDeviceVoice');
  load(box,'.eliza/client-features/plugins/plugin-maps/src/client/navigation-voice.ts','SharedNavigationVoice:NavigationVoice');
  load(box,'apps/app/src/maps/navigation-voice.ts','NavigationVoice');
- const voice=new box.NavigationVoice(error=>f.failed.push(error));
+ const voice=new box.NavigationVoice(error=>f.failed.push(error),canSpeak);
  const screen=hidden=>{document.hidden=hidden;document.dispatchEvent(new Event('visibilitychange'));};
  return {f,voice,screen};
 }
@@ -78,6 +78,36 @@ test('mute clears owed guidance; enabling explicitly resumes only the latest ins
 });
 test('a changed Cloud account cannot resume the old account instruction',async()=>{
  const {f,voice,screen}=fixture({cloud:true});screen(true);voice.update('step-1','Turn left');f.account='account-2';screen(false);await settle();assert.deepEqual(f.cloud,[]);voice.pause();
+});
+
+for(const cloud of [false,true])test(`provider-restricted guidance never reaches ${cloud?'Cloud':'local'} synthesis`,async()=>{
+ const {f,voice,screen}=fixture({cloud,canSpeak:()=>false});
+ voice.update('google-step','Turn left');voice.toggle();screen(true);screen(false);await settle();
+ assert.deepEqual(f.spoken,[]);assert.deepEqual(f.cloud,[]);assert.deepEqual(f.failed,[]);
+ assert.equal(f.statusReads,0);
+});
+
+test('a provider restriction introduced while the screen sleeps retires the owed instruction',async()=>{
+ let allowed=true;
+ const {f,voice,screen}=fixture({cloud:true,canSpeak:()=>allowed});
+ screen(true);voice.update('step-1','Turn left');await settle();
+ allowed=false;screen(false);await settle();
+ assert.deepEqual(f.cloud,[]);
+ allowed=true;voice.toggle();voice.toggle();await settle();
+ assert.deepEqual(f.cloud,[],'enabling guidance cannot replay the retired instruction');
+ voice.update('step-2','Keep right');await settle();
+ assert.deepEqual(f.cloud,['Keep right']);
+});
+
+test('a provider restriction introduced during local readiness prevents synthesis',async()=>{
+ let allowed=true,release;
+ const ready=new Promise(resolve=>release=resolve);
+ const {f,voice}=fixture({canSpeak:()=>allowed,readyGate:()=>ready});
+ voice.update('step-1','Turn left');await until(()=>f.statusReads===1);
+ allowed=false;release();await settle();
+ assert.deepEqual(f.spoken,[]);assert.deepEqual(f.failed,[]);
+ allowed=true;voice.toggle();voice.toggle();await settle();
+ assert.deepEqual(f.spoken,[],'enabling guidance cannot replay the refused instruction');voice.pause();
 });
 test('a fast screen-off/on transition resumes interrupted speech once after cleanup',async()=>{
  const {f,voice,screen}=fixture({cloud:true,cloudHold:true});voice.update('step-1','Turn left');await tick();screen(true);screen(false);f.pending[0].reject(new DOMException('Visibility changed','AbortError'));await settle();assert.deepEqual(f.cloud,['Turn left','Turn left']);f.pending[1].resolve();await settle();screen(true);screen(false);await settle();assert.equal(f.cloud.length,2);assert.equal(f.failed.length,0);
