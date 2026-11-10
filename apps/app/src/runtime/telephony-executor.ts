@@ -1,7 +1,7 @@
 /**
  * Runs one agent-proposed telephony action on the verified Alpha image after the owner approved it
  * (shared contract: `@elizaos/contracts/telephony-actions`; models: PhoneCalls.qnt and
- * ContactsBook.qnt). The agent names a contact by search text and never receives the address book:
+ * ContactsBook.qnt; MessageThreads.qnt for a draft placed in the open conversation). The agent names a contact by search text and never receives the address book:
  * the lookup happens here, the owner sees the exact name and number (or the before and after) on the
  * phone, and only then does anything call, send or write. Each path returns exactly what was
  * observed; nothing is retried, and a contact that changed since it was shown is `stale`.
@@ -37,6 +37,11 @@ export type TelephonyPorts = {
   removeContact(id: string, version: string): Promise<{status: 'deleted' | 'stale' | 'not-found' | 'failed'}>;
   /** The native reviewed send of one SMS under `operationId`; a repeated id never sends twice. */
   sendSms(number: string, body: string, operationId: string, signal: AbortSignal): Promise<SmsComposeResult['status']>;
+  /**
+   * Puts a draft in the text field of the conversation the owner has open (only the one with exactly
+   * `number`, when given). Nothing is sent: Send there stays the owner's tap.
+   */
+  draftInOpenThread(body: string, number?: string): 'drafted' | 'none-selected' | 'occupied' | 'unavailable';
   openThread(): {participant: string | null; messages: {direction: 'in' | 'out'; date: number; body: string}[]; truncated: boolean} | null;
   openVoicemail(): {caller: string | null; date: number; durationSeconds: number; transcriptState: 'ready' | 'pending' | 'unavailable' | 'failed'; engine: 'device' | 'cloud' | 'carrier' | null; transcript: string | null} | null;
   deleteOpenVoicemail(): Promise<'deleted' | 'none-selected' | 'cancelled' | 'failed'>;
@@ -83,6 +88,9 @@ async function compose(operation: SmsComposeOperation, operationId: string, port
   if (options.length > 1) choice = await ports.ask({kind: 'message', options, body: operation.body}, signal);
   if (choice === null || !options[choice]) return {kind: 'sms-compose', status: 'cancelled'};
   ports.current();
+  // When that person's conversation is already open, the draft goes into its text field, where the
+  // owner can edit it; the separate review is for a conversation that is not on screen.
+  if (ports.draftInOpenThread(operation.body, options[choice].number) === 'drafted') return {kind: 'sms-compose', status: 'drafted'};
   // After the native review opens, a lost answer is unknown: the radio may have taken the message.
   try { return {kind: 'sms-compose', status: await ports.sendSms(options[choice].number, operation.body, operationId, signal)}; }
   catch (error) { return {kind: 'sms-compose', status: (error as {code?: string})?.code === 'not-sent' ? 'failed' : 'unknown'}; }
@@ -138,6 +146,7 @@ export async function executeTelephonyAction(operation: TelephonyActionOperation
   switch (operation.type) {
     case 'phone_call': return finish(await call(operation, ports, signal));
     case 'sms_compose': return finish(await compose(operation, operationId, ports, signal));
+    case 'sms_reply_selected': return finish({kind: 'sms-reply', status: ports.draftInOpenThread(operation.body)});
     case 'contact_create': case 'contact_update': case 'contact_delete': return finish(await write(operation, ports, signal));
     case 'messages_read_selected': {
       const thread = ports.openThread();

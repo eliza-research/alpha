@@ -62,3 +62,26 @@ test('losing readiness stops a running suggestion and keeps the text', () => {
   assert.deepEqual(D.readinessLost(draft), draft);
   assert.equal(D.suggestionReplied(D.suggestionRequested(D.emptyDraft(), 'sms:1', true), 'sms:1', 'sms:1', false, 'Yes').draft, 'none');
 });
+
+test('a draft the owner asked Alpha for lands only where the owner has not typed, and is never retired by a newer message', async () => {
+  const D = await import('../apps/app/src/runtime/message-draft.ts');
+  const empty = D.emptyDraft();
+  const asked = D.askedDraftPlaced(empty, 'Ten minutes away', true);
+  assert.deepEqual(asked, {draft: 'asked', text: 'Ten minutes away', base: null, suggest: 'idle', ticket: null, declined: null});
+  assert.equal(D.askedDraftPlaced(empty, 'x', false), empty, 'nothing lands while the phone is not ready');
+  assert.equal(D.askedDraftPlaced(empty, '', true), empty, 'an empty draft is not a draft');
+  const owner = D.typed(empty, 'My own words');
+  assert.equal(D.askedDraftPlaced(owner, 'x', true), owner, 'the owner text is never replaced');
+  assert.equal(D.threadChanged(asked, 'm2'), asked, 'a newer message keeps what the owner asked for');
+  assert.equal(D.canSuggest(asked, 'm2', true), false, 'no suggestion is requested over it');
+  assert.deepEqual(D.suggestionDismissed(asked), empty);
+  assert.equal(D.typed(asked, 'Edited').draft, 'owner');
+  // Replacing an automatic suggestion remembers the message it answered, so it is not suggested again.
+  const suggested = D.suggestionReplied(D.suggestionRequested(empty, 'm1', true), 'm1', 'm1', true, 'Sure');
+  const replaced = D.askedDraftPlaced(suggested, 'Ten minutes away', true);
+  assert.equal(replaced.draft, 'asked');
+  assert.equal(replaced.declined, 'm1');
+  assert.equal(D.canSuggest(D.suggestionDismissed(replaced), 'm1', true), false);
+  assert.deepEqual(D.reviewFinished(asked, 'sent'), empty);
+  assert.equal(D.reviewFinished(asked, 'unknown'), asked);
+});

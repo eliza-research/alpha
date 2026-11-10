@@ -3438,7 +3438,7 @@ registerView("contacts", {
     var groups = []; var cur = null;
     hits.forEach(function (p) {
       var L = /[a-z]/i.test(p.name.charAt(0)) ? p.name.charAt(0).toUpperCase() : "#";
-      if (!cur || cur.letter !== L) { cur = { letter: L, rows: [] }; groups.push(cur); }
+      if (!cur || cur.letter !== L) { cur = { letter: L, head: true, rows: [] }; groups.push(cur); }
       cur.rows.push({ ini: p.ini, name: p.name, open: function () { api.set({ open: p.id }); } });
     });
     var favs = (q || st.searching) ? [] : list.filter(function (p) { return p.fav; }).map(function (p) { return { ini: p.ini, first: p.first || p.name, label: p.name, open: function () { api.set({ open: p.id }); } }; });

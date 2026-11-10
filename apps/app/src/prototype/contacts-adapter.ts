@@ -1,6 +1,7 @@
 import { registerPlugin } from '../platform-plugins';
 import { watchReturnToApp } from './native-adapter';
 import { isMvpView } from './mvp-features';
+import { displayNumber, initials } from './telephony-presenters';
 import {contactDraftProblem,parseContactDetail,parseContactRemove,parseContactSave,type ContactDetail,type ContactDraft} from '../../../../.eliza/client-features/packages/contracts/src/native-address-book.ts';
 type Bag=Record<string,any>;
 const contacts=registerPlugin<any>('AlphaContacts');
@@ -94,16 +95,18 @@ export function installContactsAdapter(Component:any,views:Bag){
   const api=viewApi;setApi(viewApi);
   if(st.open&&st.open!==detailFor&&readable)void loadDetail(String(st.open));
   if(!st.open&&detailFor){detailFor='';detail=null;detailEpoch++;confirming=false;}
-  const list=rows.map(row=>({id:row.id,name:row.name||'Unnamed contact',first:row.name||'Unnamed contact',ini:(row.name||'#').slice(0,1).toUpperCase(),phone:'',email:'',fav:false}));
+  const list=rows.map(row=>({id:row.id,name:row.name||'Unnamed contact',first:row.name||'Unnamed contact',ini:initials(row.name||''),phone:'',email:'',fav:false}));
   const model=render({...st,list,edit:null,add:null,form:null},api);
   model.nativeManaged=true;model.nativePrototype=false;model.nativeStatus=status;model.nativeBusy=loading;model.nativeAccess=!readable;model.nativeMore=more&&limit<200;
   model.nativeRefresh=()=>void refresh();model.nativeRequest=()=>void refresh(true);model.nativeLoadMore=()=>{limit=Math.min(200,limit+50);void refresh();};
-  model.hasQ=false;model.noHits=false;model.addNew=()=>void openEditor();
+  model.hasQ=false;model.noHits=false;model.addNew=()=>void openEditor();model.notSearching=false;model.searching=false;model.hasQuery=!!String(st.q||'');
+  /* A short list needs no letter headings; the search field is always there. */
+  for(const group of model.groups||[])group.head=rows.length>=20;
   model.onQ=(event:Event)=>{api.set({q:(event.target as HTMLInputElement).value,open:null});limit=50;void refresh(false,(event.target as HTMLInputElement).value);};
   model.closeSearch=()=>{api.set({q:'',searching:false,open:null});limit=50;void refresh(false,'');};
   if(model.d){const selected=rows.find(row=>row.id===st.open);model.d.nativeManaged=true;model.d.acts=selected?contactActs(selected.phones||[],api):[];model.d.hasActs=model.d.acts.length>0;model.d.hasCtx=false;
-   model.d.fields=selected?[...(selected.phones||[]).map((v:string)=>({d:PHONE,v})),...(selected.emails||[]).map((v:string)=>({d:'M3 5h18v14H3zM3 5l9 7 9-7',v}))]:[];
-   if(selected&&detail&&detail.id===selected.id)model.d.fields=[...detail.phoneNumbers.map(row=>({d:PHONE,v:row.number,sub:TYPE_LABEL(row.type)})),...detail.emailAddresses.map(row=>({d:'M3 5h18v14H3zM3 5l9 7 9-7',v:row.address,sub:TYPE_LABEL(row.type)}))];
+   model.d.fields=selected?[...(selected.phones||[]).map((v:string)=>({d:PHONE,v:displayNumber(v)})),...(selected.emails||[]).map((v:string)=>({d:'M3 5h18v14H3zM3 5l9 7 9-7',v}))]:[];
+   if(selected&&detail&&detail.id===selected.id)model.d.fields=[...detail.phoneNumbers.map(row=>({d:PHONE,v:displayNumber(row.number),sub:TYPE_LABEL(row.type)})),...detail.emailAddresses.map(row=>({d:'M3 5h18v14H3zM3 5l9 7 9-7',v:row.address,sub:TYPE_LABEL(row.type)}))];
    model.d.hasFields=model.d.fields.length>0;model.d.edit=()=>selected&&void openEditor(selected);model.d.toggleFav=()=>{};
    model.d.canDelete=!!selected&&!!detail&&detail.id===selected.id&&writable;model.d.del=()=>{if(model.d.canDelete&&!saving){confirming=true;changed();}};
    model.d.confirming=confirming;model.d.cancelDelete=()=>{confirming=false;changed();};model.d.confirmDelete=()=>void remove();model.d.busy=saving;

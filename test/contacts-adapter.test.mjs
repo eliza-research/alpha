@@ -46,7 +46,7 @@ const typeInto=(handler,value)=>handler({target:{value}});
 
 test('an owner edit saves with the version that was shown and closes the editor',async()=>{
  const book=mountBook({get:()=>detail('a1'.repeat(32)),save:{status:'saved',id:'1',version:'b2'.repeat(32)}});await settle();book.model();await settle();
- assert.deepEqual(book.model().d.fields.map(row=>[row.v,row.sub]),[['+15555550100','Mobile'],['ada@example.com','Home']],'typed fields come from the open contact');
+ assert.deepEqual(book.model().d.fields.map(row=>[row.v,row.sub]),[['(555) 555-0100','Mobile'],['ada@example.com','Home']],'typed fields come from the open contact');
  book.model().d.edit();await settle();let ed=book.model().ed;assert.equal(ed.open,true);assert.equal(ed.cannotSave,true,'nothing to save until something changes');
  typeInto(ed.phones[0].onChange,'+15555550148');ed=book.model().ed;assert.equal(ed.cannotSave,false);ed.save();await settle();
  assert.deepEqual(book.calls.find(([m])=>m==='save')[1],{id:'1',version:'a1'.repeat(32),displayName:'Ada',phoneNumbers:[{number:'+15555550148',type:'mobile'}],emailAddresses:[{address:'ada@example.com',type:'home'}]});

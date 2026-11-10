@@ -2,16 +2,31 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "00edc8ce2e8b9bd47ad5cce33e1dff66c2fe47c0",
-  "head": "00edc8ce2e8b9bd47ad5cce33e1dff66c2fe47c0",
+  "baseCommit": "4a51bce4b89c000f2a7627f6cc3329ae3429b5ff",
+  "head": "9ced49aa631591a4decb6ccb4c8e87c86a2044bf",
   "recordedAt": "2026-11-10",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...00edc8ce2e8b9bd47ad5cce33e1dff66c2fe47c0",
-  "status": "identical",
-  "aheadBy": 0,
-  "behindBy": 0,
+  "command": "gh api repos/elizaOS/eliza/compare/develop...9ced49aa631591a4decb6ccb4c8e87c86a2044bf",
+  "status": "diverged",
+  "aheadBy": 4,
+  "behindBy": 135,
   "mergeBase": "00edc8ce2e8b9bd47ad5cce33e1dff66c2fe47c0",
-  "pinOnlyCommits": [],
-  "pullRequests": [
-    "https://github.com/elizaOS/eliza/pull/39196"
-  ]
+  "pinOnlyCommits": [
+    {
+      "sha": "eb4ad1522ab3b98a17e598831fe1c7b85f477a6b",
+      "subject": "Add owner-approved telephony actions, voicemail store, contact writes and reply drafts"
+    },
+    {
+      "sha": "21b29d80b1d7493c2187aeb26c66a4cf41afcde4",
+      "subject": "Add carrier visual voicemail client and supplied-audio transcription hook"
+    },
+    {
+      "sha": "44b5ff2a3de2454ffa2e26bce80ba5b8951f40b8",
+      "subject": "Add sms_reply_selected: a draft into the open conversation, never a send"
+    },
+    {
+      "sha": "9ced49aa631591a4decb6ccb4c8e87c86a2044bf",
+      "subject": "Redesign the native call screen: caller block, round controls, keypad, timer"
+    }
+  ],
+  "pullRequests": []
 }

@@ -887,6 +887,9 @@ html[data-alpha-browser-underlay] [data-alpha-layer="app"]{background:linear-gra
 .alpha-phone::after { content:""; position:absolute; left:0; right:0; bottom:0; height:calc(var(--native-bottom-inset,0px) / var(--phone-scale,1)); background:var(--bg); z-index:39; pointer-events:none; }
 html[data-alpha-browser-underlay] .alpha-phone::after { display:none; }
 /* Loading placeholder for audio and transcripts in Phone: a shape, not a sentence. */
+:is([data-alpha-contact-editor],[data-alpha-phone],[data-alpha-messages],[data-alpha-contacts-bar]) :is(input,textarea) { border:0; outline:0; font-family:inherit; color:inherit; }
+.alpha-keypad { container-type:size; }
+.alpha-keypad > div { --k:clamp(48px,calc((100cqh - var(--alpha-dock-reserve,108px) - 96px) / 5.5),78px); }
 .alpha-pulse { animation: fade 1s ease-in-out infinite alternate; }
 @media (prefers-reduced-motion: reduce) { .alpha-pulse { animation: none; } }
 /* Read by assistive technology only. */

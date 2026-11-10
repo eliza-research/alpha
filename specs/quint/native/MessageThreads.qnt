@@ -1,4 +1,5 @@
-// One SMS thread: unread state, owner draft, agent-suggested reply and owner-tapped reviewed send.
+// One SMS thread: unread state, owner draft, agent-suggested reply, a draft the owner asked the
+// agent for, and the owner-tapped reviewed send.
 module MessageThreads {
   type State = {
     ready: bool, open: bool,
@@ -49,7 +50,15 @@ module MessageThreads {
     else if (s.suggest == "running" and ticket == s.suggestTicket) s' = {suggest: "idle", ...s}
     else s' = s
   action dismissSuggestion = all {
-    s.draft == "agent", s.review != "showing", s' = {draft: "none", draftBase: -1, declined: s.draftBase, uncertain: false, ...s}
+    s.draft.in(Set("agent", "asked")), s.review != "showing",
+    s' = {draft: "none", draftBase: -1, declined: if (s.draft == "agent") s.draftBase else s.declined, uncertain: false, ...s}
+  }
+  // The owner asked the agent to draft for the open thread. The draft lands in an empty composer or
+  // replaces an untouched suggestion, never the owner's own text, and a newer message does not retire it.
+  action placeAskedDraft = all {
+    s.ready, s.open, s.draft != "owner", s.review != "showing",
+    s' = {draft: "asked", draftText: 1 - s.draftText, draftBase: -1, suggest: "idle",
+      declined: if (s.draft == "agent") s.draftBase else s.declined, uncertain: false, ...s}
   }
   // Typing takes ownership; a running suggestion can no longer land.
   action typeText = all {
@@ -86,13 +95,13 @@ module MessageThreads {
     nondet ticket = Set(-1, 0, 1, 2, 3).oneOf()
     nondet result = Set("sent", "failed", "unknown").oneOf()
     any { becomeReady, loseReady, openThread, closeThread, receive, requestSuggestion,
-      suggestionReply(ticket, flag), dismissSuggestion, typeText, clearDraft, tapSend, cancelReview,
+      suggestionReply(ticket, flag), dismissSuggestion, placeAskedDraft, typeText, clearDraft, tapSend, cancelReview,
       confirmReview(result), s' = s }
   }
   val unread = s.inbound - s.readThrough
   val SendNeedsOwnerTap = s.sends <= s.taps
   val SuggestionCurrent = s.draft == "agent" implies s.draftBase == s.inbound and s.inbound > s.answered
-  val OwnerDraftKept = s.draft == "owner" implies s.draftBase == -1
+  val OwnerDraftKept = s.draft.in(Set("owner", "asked")) implies s.draftBase == -1
   val ReviewShowsDraft = s.review == "showing" implies s.draft != "none" and s.reviewText == s.draftText and s.ready
   val UnreadBounded = unread >= 0 and s.answered <= s.inbound
   val OpenIsRead = s.open implies s.ready and unread == 0
@@ -128,6 +137,16 @@ module MessageThreads {
   run inboundDuringAgentReviewClosesItTest = init.then(becomeReady).then(receive).then(requestSuggestion)
     .then(suggestionReply(1, true)).then(tapSend).then(receive)
     .then(check(safety and s.review == "none" and s.draft == "none" and s.sends == 0))
+  run askedDraftNeverReplacesOwnerTextTest = init.then(becomeReady).then(openThread).then(typeText)
+    .then(check(safety and s.draft == "owner")).then(placeAskedDraft.fail())
+  run askedDraftSentOnlyAfterTapTest = init.then(becomeReady).then(openThread).then(placeAskedDraft)
+    .then(check(safety and s.draft == "asked" and s.sends == 0 and s.taps == 0)).then(receive)
+    .then(check(safety and s.draft == "asked")).then(tapSend).then(confirmReview("sent"))
+    .then(check(safety and s.sends == 1 and s.taps == 1 and s.draft == "none"))
+  run askedDraftReplacesSuggestionTest = init.then(becomeReady).then(receive).then(requestSuggestion)
+    .then(suggestionReply(1, true)).then(openThread).then(placeAskedDraft)
+    .then(check(safety and s.draft == "asked" and s.declined == 1)).then(dismissSuggestion)
+    .then(check(safety and s.draft == "none" and s.declined == 1))
   run dismissedSuggestionIsNotOfferedAgainTest = init.then(becomeReady).then(receive).then(requestSuggestion)
     .then(suggestionReply(1, true)).then(dismissSuggestion)
     .then(check(safety and s.draft == "none" and s.declined == 1 and not(s.inbound != s.declined)))

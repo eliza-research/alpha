@@ -24,7 +24,7 @@ import {executeTelephonyAction,type TelephonyPorts} from '../runtime/telephony-e
 import {normalizePhoneNumber,reviewSms} from '../runtime/aosp-telephony';
 import {parseContactDetail,parseContactRemove,parseContactSave} from '../../../../.eliza/client-features/packages/contracts/src/native-address-book.ts';
 import {askTelephonyReview} from './telephony-review';
-import {openSmsThread} from './sms-adapter';
+import {openSmsThread,placeAskedSmsDraft} from './sms-adapter';
 import {deleteOpenVoicemail,openVoicemailRead} from './phone-adapter';
 import {receiptLabel} from '../runtime/image-sms';
 import {deletions,refreshDeletionViews,reminderDeletionRefusal} from '../runtime/deletions';
@@ -918,6 +918,8 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
             finally{sendSignal.removeEventListener('abort',cancel);}
           },
           openThread:openSmsThread,openVoicemail:openVoicemailRead,deleteOpenVoicemail,
+          // A placed draft is the answer: the conversation comes back in front so the owner sees it in the field.
+          draftInOpenThread:(body,number)=>{const placed=placeAskedSmsDraft(body,number);if(placed==='drafted'&&this.S().chat!=='hidden')this.setState({chat:'hidden'});return placed;},
         };
         return executeTelephonyAction(operation,operationId,ports,signal);
       }

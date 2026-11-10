@@ -33,7 +33,7 @@ export async function setupTelephony(page: Page, options: TelephonyFixture = {})
       {id: '18', name: 'Hana Sato', phones: ['+15550100108'], emails: []},
     ];
     w.people = people;
-    const version = (id: string) => id.padStart(64, 'a');
+    const version = (id: string) => id.padStart(64, 'a').replace(/[^0-9a-f]/g, 'a');
     const calls = options.empty ? [] : [
       {id: '1', number: '+15550100101', cachedName: 'Ada Okafor', date: now - 12 * minute, durationSeconds: 0, type: 'missed', isNew: true},
       {id: '2', number: '+15550100103', cachedName: 'Carmen Ruiz', date: now - 2 * hour, durationSeconds: 312, type: 'outgoing', isNew: false},
@@ -68,6 +68,7 @@ export async function setupTelephony(page: Page, options: TelephonyFixture = {})
       'thread:104': [message(8, 'thread:104', true, 3 * day, 'Can you send me the address for Saturday?', '+15550100103'), message(9, 'thread:104', false, 3 * day - hour, 'Twelve Example Lane. See you there.', '+15550100103')],
       'thread:105': [message(10, 'thread:105', true, 5 * day, 'Happy birthday!', '+15550100107')],
     };
+    if (!options.empty) Object.assign(w.messages['thread:101'][3], {read: false, status: 'received'});
     const threads = () => Object.entries(w.messages as Record<string, any[]>).map(([id, rows]) => {
       const last = rows[rows.length - 1];
       return {id, date: last.date, messageCount: rows.length, snippet: last.body, unread: id === 'thread:101' || id === 'thread:103' ? !w.readThreads?.includes(id) : false, addresses: last.addresses};
@@ -88,10 +89,10 @@ export async function setupTelephony(page: Page, options: TelephonyFixture = {})
       let binary = ''; for (let i = 0; i < bytes.length; i += 8192) binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
       return {mimeType: 'audio/wav', sampleRateHz: 16000, durationSeconds: seconds, data: btoa(binary)};
     };
-    const names = ['AlphaContacts', 'DailyApps', 'AlphaBrowser', 'AlphaConnection', 'AlphaDevice', 'AlphaLocalAgent', 'AlphaHostedResults', 'AlphaVoiceCloud', 'AlphaNotifications', 'ElizaSystem', 'AlphaCalendar', 'AlphaNoteDocuments', 'AlphaNoteAudio', 'AlphaFiles', 'AlphaPhotos', 'DeviceApps', 'ElizaLocation', 'AlphaActionJournal', 'AlphaTelephony'];
+    const names = ['AlphaContacts', 'DailyApps', 'AlphaBrowser', 'AlphaConnection', 'AlphaDevice', 'AlphaLocalAgent', 'AlphaHostedResults', 'AlphaVoiceCloud', 'AlphaNotifications', 'ElizaSystem', 'AlphaCalendar', 'AlphaNoteDocuments', 'AlphaNoteAudio', 'AlphaFiles', 'AlphaPhotos', 'DeviceApps', 'ElizaLocation', 'AlphaActionJournal', 'AlphaTelephony', 'Agent'];
     const methods = ['addListener', 'removeListener', 'surfaceInfo', 'readPending', 'readPendingResult', 'readDelegationCallback', 'readSecret', 'secureRead', 'secureWrite', 'secureRemove', 'get', 'save', 'remove', 'status', 'getStatus', 'getState', 'state', 'permissionState', 'permissions', 'list', 'listCalendars', 'listEvents', 'listReminders', 'listBookmarks', 'getBookmarks', 'bookmarks', 'settings', 'getSettings', 'buildInfo', 'platformCapabilities', 'capabilities', 'query', 'read', 'readJournal', 'getPending', 'readSelection', 'requestPermissions', 'create', 'edit',
       'imageCapability', 'requestAccess', 'requestRole', 'searchContacts', 'listRecentCalls', 'dial', 'placeCall', 'composeSms', 'listThreads', 'listMessages', 'observeMessages', 'markThreadRead', 'sendSms', 'cancelSmsReview', 'smsSendHistory', 'smsSendResult',
-      'voicemailStatus', 'listVoicemail', 'fetchVoicemailAudio', 'voicemailAudio', 'voicemailPcm', 'markVoicemailHeard', 'deleteVoicemail', 'observeVoicemail', 'callState', 'answerCall', 'endCall', 'setCallAudio', 'observeCalls', 'sendCallTone'];
+      'voicemailStatus', 'listVoicemail', 'fetchVoicemailAudio', 'voicemailAudio', 'voicemailPcm', 'markVoicemailHeard', 'deleteVoicemail', 'observeVoicemail', 'callState', 'answerCall', 'endCall', 'setCallAudio', 'observeCalls', 'sendCallTone', 'setGoogleAgentAccess'];
     w.Capacitor = {Plugins: {}, PluginHeaders: names.map(name => ({name, methods: methods.map(name => ({name, rtype: name === 'addListener' ? 'callback' : 'promise'}))})), nativeCallback: () => 'fixture-callback', nativePromise: async (plugin: string, method: string, input: any) => {
       if (plugin === 'AlphaTelephony') {
         w.telephonyCalls.push(method); w.telephonyInputs.push([method, input]);
@@ -112,7 +113,7 @@ export async function setupTelephony(page: Page, options: TelephonyFixture = {})
         if (method === 'listThreads') return {threads: w.access.sms ? threads() : [], next: null};
         if (method === 'listMessages') return {messages: [...(w.messages[input.threadId] || [])].reverse().slice(0, input.limit), next: null};
         if (method === 'markThreadRead') { w.readThreads = [...(w.readThreads || []), input.threadId]; return {status: 'marked'}; }
-        if (method === 'smsSendHistory') return {records: []};
+        if (method === 'smsSendHistory') return {receipts: []};
         if (method === 'callState') return w.callState || {calls: []};
         return {};
       }
@@ -121,9 +122,9 @@ export async function setupTelephony(page: Page, options: TelephonyFixture = {})
         if (method === 'requestPermissions') w.access.contacts = true;
         if (['status', 'requestPermissions'].includes(method)) return {available: true, readable: w.access.contacts, writable: w.access.contacts};
         if (method === 'list') { const query = String(input?.query || '').toLowerCase(); return {contacts: people.filter(p => !query || p.name.toLowerCase().includes(query)).map(p => ({id: p.id, lookup: `lookup-${p.id}`, revision: '1', name: p.name, phones: p.phones, emails: p.emails})), more: false}; }
-        if (method === 'get') { const p = people.find(row => row.id === input.id); if (!p) throw Error('missing'); return {id: p.id, lookup: `lookup-${p.id}`, displayName: p.name, starred: false, phoneNumbers: p.phones.map(number => ({value: number, type: 'mobile'})), emailAddresses: p.emails.map(address => ({value: address, type: 'home'})), version: version(p.id)}; }
-        if (method === 'save') { if (w.contactAnswers?.save) return w.contactAnswers.save(input); return {status: 'saved', id: input.id || '99', version: version('9')}; }
-        if (method === 'remove') return {status: 'removed'};
+        if (method === 'get') { const p = people.find(row => row.id === input.id); if (!p) throw Error('missing'); return {id: p.id, lookup: `lookup-${p.id}`, displayName: p.name, starred: false, phoneNumbers: p.phones.map(number => ({number, type: 'mobile'})), emailAddresses: p.emails.map(address => ({address, type: 'home'})), version: version(p.id)}; }
+        if (method === 'save') { if (w.contactAnswers?.save) return w.contactAnswers.save(input); return {status: 'saved', id: input.id || '99', version: 'b'.repeat(64)}; }
+        if (method === 'remove') return {status: 'deleted'};
       }
       if (method === 'surfaceInfo') return {topInset: 0, bottomInset: 0}; if (method === 'buildInfo') return {launcher: false};
       if (method === 'platformCapabilities') return {aospImage: true, contacts: true, phone: true, sms: true};

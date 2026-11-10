@@ -5,8 +5,8 @@
  * what the owner typed. Sending is the owner's tap and the native review, outside this file.
  */
 export type DraftState = {
-  /** Who wrote the composer text. */
-  draft: 'none' | 'owner' | 'agent';
+  /** Who wrote the composer text: the owner, an automatic suggestion, or a draft the owner asked Alpha for. */
+  draft: 'none' | 'owner' | 'agent' | 'asked';
   text: string;
   /** The inbound message an agent draft answers. */
   base: string | null;
@@ -42,7 +42,17 @@ export function typed(state: DraftState, text: string): DraftState {
   return text ? {draft: 'owner', text, base: null, suggest: 'idle', ticket: null, declined} : {...emptyDraft(), declined};
 }
 export function suggestionDismissed(state: DraftState): DraftState {
+  if (state.draft === 'asked') return {...emptyDraft(), declined: state.declined};
   return state.draft === 'agent' ? {...emptyDraft(), declined: state.base} : state;
+}
+/**
+ * A draft the owner asked Alpha to write for the open conversation. It lands in an empty composer or
+ * replaces an automatic suggestion, and never replaces what the owner typed. Unlike a suggestion it
+ * answers no particular message, so a newer message does not retire it; it is still only a draft.
+ */
+export function askedDraftPlaced(state: DraftState, text: string, ready: boolean): DraftState {
+  if (!ready || !text || state.draft === 'owner') return state;
+  return {draft: 'asked', text, base: null, suggest: 'idle', ticket: null, declined: state.draft === 'agent' ? state.base : state.declined};
 }
 /**
  * After a confirmed review. Accepted by the phone: the composer clears. `failed`: the draft stays for
