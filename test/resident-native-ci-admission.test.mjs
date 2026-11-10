@@ -57,7 +57,7 @@ bridge=runpy.run_path(str(root/'scripts/ci/calendar-bridge.py'))
 assert bridge['SDK']==json.loads((root/'upstream.lock.json').read_text())['commit'], 'Calendar CI source pin is stale'
 assert bridge['NODE']==(root/'.nvmrc').read_text().strip(), 'Calendar CI Node declaration is stale'
 h=lambda path:hashlib.sha256(path.read_bytes()).hexdigest()
-assert h(root/'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCalendarPlugin.java')==bridge['HOST'], 'Calendar host source changed'
+assert h(root/'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCalendarPlugin.java')==bridge['HOST'], 'Calendar host source changed'
 for relative,expected in bridge['OWNING_SHA256'].items():
  assert h(root/'vendor/eliza'/relative)==expected, 'Calendar owning fixture changed: '+relative
 print('PASS: current Calendar CI pin and exact host/owning fixture bytes')
@@ -90,7 +90,7 @@ test('disposable admission refuses either installed Alpha identity before fixtur
   if(args.join(' ')==='shell pm list packages -u')return packages;
   throw Error('Unexpected device effect before admission');
  };
- for(const identity of ['ai.alphacompute.alphaphone','ai.alphacompute.alphaphone.test','ai.alphacompute.alphaphone','ai.alphacompute.alphaphone.test'])
+ for(const identity of ['ai.elizaresearch.alphaphone','ai.elizaresearch.alphaphone.test','ai.elizaresearch.alphaphone','ai.elizaresearch.alphaphone.test'])
   assert.throws(()=>admitResidentEmulator(environment,inventory('package:com.android.settings\npackage:'+identity)),/fresh emulator/);
  assert.doesNotThrow(()=>admitResidentEmulator(environment,inventory('package:com.android.settings')));
  assert.throws(()=>admitResidentEmulator({...environment,ANDROID_SERIAL:'physical-device'},inventory('package:com.android.settings')),/Explicit disposable/);

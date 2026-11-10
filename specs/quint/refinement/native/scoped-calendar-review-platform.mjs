@@ -118,7 +118,7 @@ public final class PluginCall {
  public String status(){JSObject result=response.getNow(null);return result==null?"pending":result.getString("status");}
  public JSObject result()throws Exception{return response.get(5,java.util.concurrent.TimeUnit.SECONDS);}
 }`,
-  'ai/alphacompute/alphaphone/AlphaCalendarPlugin.java': `package ai.alphacompute.alphaphone;
+  'ai/elizaresearch/alphaphone/AlphaCalendarPlugin.java': `package ai.elizaresearch.alphaphone;
 public final class AlphaCalendarPlugin {
  public final android.app.Activity activity=new android.app.Activity();
  public final android.content.Context context;

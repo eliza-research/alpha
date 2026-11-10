@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {exercise} from './fixtures/isolated-native-campaign.mjs';
 const run=mode=>exercise(mode,'workflow');
-const approvalClass='ai.alphacompute.alphaphone.WorkflowApprovalNoticeInstrumentedTest';
+const approvalClass='ai.elizaresearch.alphaphone.WorkflowApprovalNoticeInstrumentedTest';
 test('workflow campaign runs every exact case of every phase in disposable users and scopes permissions',()=>{
  const r=run('pass');assert.equal(r.code,0,r.stderr);assert.equal(r.record.results.length,24);
  assert.ok(r.record.results.every(row=>row.passed&&row.userLifecycle.removed));
@@ -35,7 +35,7 @@ function approvalNoticePhase(r){
  for(const row of r.record.results.filter(row=>row.phase==='approval-notice')){assert.match(row.appSha256,/^[0-9a-f]{64}$/);assert.equal(row.appSha256,r.record.apks[row.variant].appSha256);assert.equal(row.testSha256,r.record.apks[row.variant].testSha256);}
 }
 // Same full campaign run: the recovery phase, its two runners, two archives, owner preparation, gates, grants and report.
-const pkg='ai.alphacompute.alphaphone',deathClass=pkg+'.WorkflowApprovalNoticeProcessDeathInstrumentedTest';
+const pkg='ai.elizaresearch.alphaphone',deathClass=pkg+'.WorkflowApprovalNoticeProcessDeathInstrumentedTest';
 const death=deathClass+'#pendingApprovalNoticeSurvivesProcessDeathAndOpensItsExactApprovalOnce',definitive=deathClass+'#definitiveSignedOutColdStartWithdrawsApprovalAndInvalidatesOriginalTap',production=deathClass+'#productionSignedOutColdStartWithdrawsPersistedSyntheticApproval',change=approvalClass+'#ownerChangeWithdrawsThePendingApprovalNoticeAndItsTapOpensNothing';
 const recoveryOrder=[death,definitive,production,change],mocksCases=[death,definitive];
 const selector=a=>a[a.indexOf('class')+1],short=name=>name.slice(pkg.length+1);
@@ -155,7 +155,7 @@ test('a selected variant and phase run only those cases and never read as the wh
  assert.equal(r.record.passed,false,'the whole campaign did not run');
  assert.equal(r.record.results.length,5);assert.ok(r.record.results.every(row=>row.variant==='launcher'&&row.phase==='workflow'&&row.passed&&row.userLifecycle.removed));
  const calls=r.commands.filter(a=>a.includes('instrument')).map(a=>a[a.indexOf('class')+1]);assert.equal(calls.length,5);
- assert.ok(calls.includes('ai.alphacompute.alphaphone.WorkflowPhoneNativeInstrumentedTest#deniedCalendarGrantReturnsNoEvents'));
+ assert.ok(calls.includes('ai.elizaresearch.alphaphone.WorkflowPhoneNativeInstrumentedTest#deniedCalendarGrantReturnsNoEvents'));
  // The denied case is the only one whose Calendar permissions are revoked, before it starts.
  const denied=r.commands.findIndex(a=>a.includes('instrument')&&a[a.indexOf('class')+1].endsWith('#deniedCalendarGrantReturnsNoEvents'));
  const before=r.commands.slice(0,denied).filter(a=>a.includes('revoke')||a.includes('grant')).slice(-2);

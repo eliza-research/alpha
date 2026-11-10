@@ -7,7 +7,7 @@ import fs from 'node:fs';
 // on Android by BrowserWebFeaturesInstrumentedTest; these keep the privacy
 // invariants from regressing between device runs.
 const read = file => fs.readFileSync(file, 'utf8');
-const dir = 'android/app/src/main/java/ai/alphacompute/alphaphone/';
+const dir = 'android/app/src/main/java/ai/elizaresearch/alphaphone/';
 // Downloads, blob capture and their list come from the reviewed pin (plugin-native-browser-surface),
 // staged into the app by scripts/stage-local-agent-sources.mjs.
 const shared = 'vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/';

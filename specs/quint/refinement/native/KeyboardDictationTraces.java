@@ -1,4 +1,4 @@
-package ai.alphacompute.alphaphone;
+package ai.elizaresearch.alphaphone;
 import org.json.JSONArray;
 import org.json.JSONObject;
 /** Calls the real policy. Inputs and acceptance counts represent controlled service ports. */

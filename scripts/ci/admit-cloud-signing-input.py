@@ -10,7 +10,7 @@ import stat
 import zipfile
 
 VARIANTS = ("standalone", "launcher")
-PACKAGE = "ai.alphacompute.alphaphone"
+PACKAGE = "ai.elizaresearch.alphaphone"
 SHA = re.compile("[0-9a-f]{64}")
 COMMIT = re.compile("[0-9a-f]{40}")
 

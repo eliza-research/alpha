@@ -13,7 +13,7 @@ test('renderer slots cannot address the Cloud deployment storage namespace',()=>
  const temporary=mkdtempSync(join(tmpdir(),'renderer-slot-namespace-'));
  try{
   const harness=join(temporary,'Harness.java');
-  writeFileSync(harness,`package ai.alphacompute.alphaphone;
+  writeFileSync(harness,`package ai.elizaresearch.alphaphone;
 public final class Harness {
  static boolean refused(String slot){try{RendererCredentialSlots.requireAllowed(slot);return false;}catch(SecurityException expected){return true;}}
  public static void main(String[] args){
@@ -27,6 +27,6 @@ public final class Harness {
   System.out.println("PASS deployment namespace");
  }
 }`);
-  assert.match(runJvm([upstreamConnection('SecureSlotPolicy.java'),nativeSource('RendererCredentialSlots.java'),nativeSource('CloudDeployment.java'),harness],'ai.alphacompute.alphaphone.Harness'),/PASS deployment namespace/);
+  assert.match(runJvm([upstreamConnection('SecureSlotPolicy.java'),nativeSource('RendererCredentialSlots.java'),nativeSource('CloudDeployment.java'),harness],'ai.elizaresearch.alphaphone.Harness'),/PASS deployment namespace/);
  }finally{rmSync(temporary,{recursive:true,force:true});}
 });

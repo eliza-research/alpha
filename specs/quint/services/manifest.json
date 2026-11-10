@@ -5,8 +5,8 @@
       "sources": [
         "apps/app/src/runtime/cloud-sign-in.ts",
         "apps/app/src/runtime/cloud-sign-in-ui.tsx",
-        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCloudSignInPlugin.java",
-        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCredentialStore.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCloudSignInPlugin.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCredentialStore.java",
         "apps/app/src/runtime/connection-ui.tsx"
       ],
       "stateMapping": {
@@ -209,10 +209,10 @@
         "apps/app/src/runtime/calendar-linked-store.ts",
         "apps/app/src/runtime/calendar-sync-host.ts",
         "apps/app/src/runtime/native-calendar-sync.ts",
-        "android/app/src/main/java/ai/alphacompute/alphaphone/CalendarSyncConsent.java",
-        "android/app/src/main/java/ai/alphacompute/alphaphone/CalendarSyncFreshness.java",
-        "android/app/src/main/java/ai/alphacompute/alphaphone/CalendarSyncMutation.java",
-        "android/app/src/main/java/ai/alphacompute/alphaphone/CalendarSyncReceiptRecovery.java"
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncConsent.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncFreshness.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncMutation.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncReceiptRecovery.java"
       ],
       "stateMapping": {
         "phase/kind/holder/instance": "Abstract approval queue/preflight and CalendarMutationLedger prepared/executing/succeeded/failed_retryable/ambiguous phases, with execution session and durable claim identity",
@@ -334,8 +334,8 @@
         "apps/app/src/maps/cloud-maps.ts",
         "apps/app/src/maps/guidance.ts",
         "apps/app/src/prototype/maps-adapter.ts",
-        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaMapsTransportPlugin.java",
-        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNavigationService.java"
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaMapsTransportPlugin.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNavigationService.java"
       ],
       "stateMapping": {
         "generation/requestGeneration/requestEpoch": "AlphaMapsDeviceNavigation.begin and route callback identity",
@@ -431,7 +431,7 @@
         "apps/app/src/runtime/gmail-background.ts",
         "apps/app/src/runtime/workflow-device-contract.ts",
         "apps/app/src/runtime/hosted-result-notices.ts",
-        "android/app/src/main/java/ai/alphacompute/alphaphone/WorkflowNoticeDelivery.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/WorkflowNoticeDelivery.java",
         "apps/app/src/prototype/workflow-adapter.ts"
       ],
       "stateMapping": {
@@ -481,7 +481,7 @@
     },
     {
       "sources": [
-        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaBrowserPlugin.java"
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaBrowserPlugin.java"
       ],
       "stateMapping": {
         "privateTab/thirdParty/passkeys/phase": "Isolated-profile admission and cookie policy readback; passkeys remain disabled in app state and rely on the fresh WebView default",
@@ -582,7 +582,7 @@
     },
     {
       "sources": [
-        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaBrowserPlugin.java"
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaBrowserPlugin.java"
       ],
       "stateMapping": {
         "phase/kind/reviewed/reviewedNavigation": "public, signed, blob and data download review under a live source navigation",
@@ -692,12 +692,12 @@
     },
     {
       "sources": [
-        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCredentialStore.java",
-        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
-        "android/app/src/main/java/ai/alphacompute/alphaphone/LocalAgentProviderAdmission.java",
-        "android/app/src/main/java/ai/alphacompute/alphaphone/ResidentCredentialShutdownRetry.java",
-        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaConnectionPlugin.java",
-        "android/app/src/main/java/ai/alphacompute/alphaphone/SerialStorageTasks.java"
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCredentialStore.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/LocalAgentProviderAdmission.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentCredentialShutdownRetry.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaConnectionPlugin.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/SerialStorageTasks.java"
       ],
       "stateMapping": {
         "operation/phase/before/capturedProvider": "mutateSlotOnce classification and slot/provider snapshot reread",
@@ -765,7 +765,7 @@
     },
     {
       "sources": [
-        "android/app/src/main/java/ai/alphacompute/alphaphone/IsolatedPdfService.java"
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/IsolatedPdfService.java"
       ],
       "stateMapping": {
         "isolated/busy/request": "permissionless service admission and single CAS-owned worker request",
@@ -1671,8 +1671,8 @@
         "LookupDoesNotRequireWriteAccess"
       ],
       "sources": [
-        "android/app/src/main/java/ai/alphacompute/alphaphone/GoogleAgentAccessFile.java",
-        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/GoogleAgentAccessFile.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java",
         "scripts/native-google-product-host.ts",
         "vendor/eliza/packages/app/src/runtime/managed-google-agent/native-google-agent-host.ts"
       ],

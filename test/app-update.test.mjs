@@ -21,8 +21,8 @@ test('the download is admitted only at its declared size and SHA-256',()=>{
  try{
   // Only the admission members, in a class of the plugin's name: no Capacitor or Android types.
   const members=join(dir,'AlphaDevicePlugin.java');
-  writeFileSync(members,`package ai.alphacompute.alphaphone;\nfinal class AlphaDevicePlugin {\n${plugin.slice(start,end)}}\n`);
-  assert.match(runJvm([members,fixture('UpdateDownloadTest.java')],'ai.alphacompute.alphaphone.UpdateDownloadTest'),/^PASS update download/);
+  writeFileSync(members,`package ai.elizaresearch.alphaphone;\nfinal class AlphaDevicePlugin {\n${plugin.slice(start,end)}}\n`);
+  assert.match(runJvm([members,fixture('UpdateDownloadTest.java')],'ai.elizaresearch.alphaphone.UpdateDownloadTest'),/^PASS update download/);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });
 
@@ -41,7 +41,7 @@ test('the update flow runs one attempt per process, fences a session Android sti
   // The update flow opens the unknown-sources page through the plugin's own hand-off helper.
   const handOff=/ private static Intent handOff\(Intent intent\)\{[^\n]*/.exec(plugin)?.[0];assert.ok(handOff,'AlphaDevicePlugin.handOff');
   const foreground=/ static boolean shareForeground\(android\.app\.Activity activity\)\{[\s\S]*?\n \}/.exec(plugin)?.[0];assert.ok(foreground,'AlphaDevicePlugin.shareForeground');
-  writeFileSync(members,`package ai.alphacompute.alphaphone;
+  writeFileSync(members,`package ai.elizaresearch.alphaphone;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageInstaller;
@@ -55,7 +55,7 @@ ${handOff}
 ${foreground}
 ${plugin.slice(start,end).replace(deadline,'static long UPDATE_DEADLINE_NANOS=java.util.concurrent.TimeUnit.SECONDS.toNanos(3)')}}
 `);
-  const result=runJvm([members,join(root,'vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/updater/RuntimeUpdatePause.java'),nativeSource('PluginWorkers.java'),...javaFiles(fixture('app-update-jvm')),fixture('UpdateFlowTest.java')],'ai.alphacompute.alphaphone.UpdateFlowTest',{timeout:240000,args:[keyStore]});
+  const result=runJvm([members,join(root,'vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/updater/RuntimeUpdatePause.java'),nativeSource('PluginWorkers.java'),...javaFiles(fixture('app-update-jvm')),fixture('UpdateFlowTest.java')],'ai.elizaresearch.alphaphone.UpdateFlowTest',{timeout:240000,args:[keyStore]});
   assert.match(result,/PASS verified cache retry over owned TLS: one request, exact retained bytes, one synthetic installer commit/);
   assert.match(result,/^PASS update flow/m);
  }finally{rmSync(dir,{recursive:true,force:true});}
@@ -105,5 +105,5 @@ test('Alpha stays nonprivileged and reads one configured HTTPS manifest from its
  // Reads enforce a soft download ceiling rather than interrupting a blocked read.
  assert.ok(plugin.includes('Soft ceiling on one update download'));
  assert.match(readFileSync(join(root,'android/app/product.gradle'),'utf8'),/buildConfigField 'String', 'ALPHA_UPDATE_MANIFEST_URL', "\\"\$\{updateManifestUrl\}\\""/);
- for(const file of ['apps/app/src/prototype/settings-adapter.ts','android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java'])assert.ok(!readFileSync(join(root,file),'utf8').includes(url),file);
+ for(const file of ['apps/app/src/prototype/settings-adapter.ts','android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java'])assert.ok(!readFileSync(join(root,file),'utf8').includes(url),file);
 });

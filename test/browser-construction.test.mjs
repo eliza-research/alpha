@@ -19,7 +19,7 @@ test('fresh browser tab settings avoid the WebAuthn compat converter and retain 
  const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'browser-construction-'));
  try {
   const file=path.join(temporary,'BrowserConstructionTest.java');
-  fs.writeFileSync(file,`package ai.alphacompute.alphaphone;
+  fs.writeFileSync(file,`package ai.elizaresearch.alphaphone;
 import ai.eliza.plugins.browsersurface.BrowserAutofillExtras;
 import ai.eliza.plugins.browsersurface.BrowserTabHostConfig;
 import java.util.*;
@@ -67,6 +67,6 @@ public class BrowserConstructionTest {
 }`);
   const rules=['BrowserTabHostConfig','BrowserSessionPolicy','BrowserWebOrigin','BrowserProfilePolicy','BrowserAutofillExtras'].map(name=>shared(name+'.java'));
   execFileSync(javaBinary('javac'),['--release','11','-d',temporary,file,...rules],{timeout:60000});
-  assert.match(execFileSync(javaBinary('java'),['-cp',temporary,'ai.alphacompute.alphaphone.BrowserConstructionTest'],{encoding:'utf8',timeout:10000}),/^PASS actual browser construction/);
+  assert.match(execFileSync(javaBinary('java'),['-cp',temporary,'ai.elizaresearch.alphaphone.BrowserConstructionTest'],{encoding:'utf8',timeout:10000}),/^PASS actual browser construction/);
  }finally{fs.rmSync(temporary,{recursive:true,force:true});}
 });

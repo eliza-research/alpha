@@ -3,8 +3,8 @@ import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 
-export const UPDATE_CHANNEL_META='ai.alphacompute.alphaphone.UPDATE_CHANNEL';
-export const UPDATE_DIGEST_META='ai.alphacompute.alphaphone.UPDATE_MANIFEST_SHA256';
+export const UPDATE_CHANNEL_META='ai.elizaresearch.alphaphone.UPDATE_CHANNEL';
+export const UPDATE_DIGEST_META='ai.elizaresearch.alphaphone.UPDATE_MANIFEST_SHA256';
 const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
 const refused=()=>new Error('Update channel input refused');
 

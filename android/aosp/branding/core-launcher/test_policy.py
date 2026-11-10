@@ -53,7 +53,7 @@ class CorePolicyTest(unittest.TestCase):
                 probe.write_text('''
 import java.util.concurrent.Executor
 enum class UIControl { NORMAL, HIDE_BUTTON, HIDE_ENTRY }
-object AlphaCoreLauncherPolicy { const val PACKAGE = "ai.alphacompute.alphaphone" }
+object AlphaCoreLauncherPolicy { const val PACKAGE = "ai.elizaresearch.alphaphone" }
 data class UserPackage(val userId: Int, val packageName: String) {
     var uiControl = UIControl.NORMAL
     fun updateUiControl() {}
@@ -142,7 +142,7 @@ public class CoreProbe {
   String legacy="wifi,bt,cell,cast,dnd,wallet,airplane,rotation,flashlight,battery,alarm,controls,screenrecord";
   check(AlphaQsDefaultsPolicy.shouldMigrate(list(legacy),defaults,0));
   check(AlphaQsDefaultsPolicy.shouldMigrate(list(a+","+legacy),defaults,0));
-  check(AlphaQsDefaultsPolicy.shouldMigrate(list("custom(ai.alphacompute.alphaphone/.AlphaQuickSettingsTile),"+legacy),defaults,1));
+  check(AlphaQsDefaultsPolicy.shouldMigrate(list("custom(ai.elizaresearch.alphaphone/.AlphaQuickSettingsTile),"+legacy),defaults,1));
   check(!AlphaQsDefaultsPolicy.shouldMigrate(list("bt,wifi,flashlight"),defaults,0));
   check(!AlphaQsDefaultsPolicy.shouldMigrate(list(a+","+legacy+",inversion"),defaults,0));
   check(!AlphaQsDefaultsPolicy.shouldMigrate(defaults,defaults,0));

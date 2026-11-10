@@ -1,4 +1,4 @@
-package ai.alphacompute.alphaphone;
+package ai.elizaresearch.alphaphone;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;

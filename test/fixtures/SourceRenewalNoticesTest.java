@@ -1,4 +1,4 @@
-package ai.alphacompute.alphaphone;
+package ai.elizaresearch.alphaphone;
 import org.json.*;
 final class SourceRenewalNoticesTest {
  static void check(boolean value,String message){if(!value)throw new AssertionError(message);}

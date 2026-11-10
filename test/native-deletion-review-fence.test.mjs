@@ -11,7 +11,7 @@ test('native staging fence binds full session/provider/enrollment versions witho
  try{
  source('android/content/Context.java','package android.content; public class Context { public Context getApplicationContext(){return this;} }');
  source('android/util/Log.java','package android.util;public class Log {public static int w(String tag,String value){return 0;}}');
- const pack='package ai.alphacompute.alphaphone; import org.json.*;';
+ const pack='package ai.elizaresearch.alphaphone; import org.json.*;';
  source('AlphaCredentialStore.java',pack+'class AlphaCredentialStore {AlphaCredentialStore(android.content.Context c){} JSONObject providerAdmissionSnapshot(){throw new AssertionError();}String readCredentialSlot(String key){throw new AssertionError();}}');
  source('AlphaLocalAgentPlugin.java',pack+'class AlphaLocalAgentPlugin {static JSONObject captureReminderOwnerSession(){throw new AssertionError();}static JSONObject readReminderOwnerRoute(JSONObject a,String b,JSONObject c){throw new AssertionError();}}');
  source('HostedInbox.java',pack+'class HostedInbox {static String id(String v){return v;}}');
@@ -32,7 +32,7 @@ test('native staging fence binds full session/provider/enrollment versions witho
  provider.put("sessionGeneration","g2");try{host.reviewFence(expected);throw new AssertionError("Wrong generation accepted");}catch(SecurityException good){}
  System.out.println("PASS full native review fence without network");
  }} `);
- execFileSync(javaBinary('javac'),['--release','17','-cp',jar,'-d',dir,...files,'android/app/src/main/java/ai/alphacompute/alphaphone/NativeOwnerReminderHost.java','android/app/src/main/java/ai/alphacompute/alphaphone/NativeDeviceEnrollmentKey.java','android/app/src/main/java/ai/alphacompute/alphaphone/NativeNotificationDiagnostics.java'],{timeout:jvmTimeout});
- assert.match(execFileSync(javaBinary('java'),['-cp',dir+':'+jar,'ai.alphacompute.alphaphone.FenceTest'],{encoding:'utf8',timeout:jvmTimeout}),/^PASS full native/);
+ execFileSync(javaBinary('javac'),['--release','17','-cp',jar,'-d',dir,...files,'android/app/src/main/java/ai/elizaresearch/alphaphone/NativeOwnerReminderHost.java','android/app/src/main/java/ai/elizaresearch/alphaphone/NativeDeviceEnrollmentKey.java','android/app/src/main/java/ai/elizaresearch/alphaphone/NativeNotificationDiagnostics.java'],{timeout:jvmTimeout});
+ assert.match(execFileSync(javaBinary('java'),['-cp',dir+':'+jar,'ai.elizaresearch.alphaphone.FenceTest'],{encoding:'utf8',timeout:jvmTimeout}),/^PASS full native/);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });

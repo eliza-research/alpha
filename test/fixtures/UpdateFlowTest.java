@@ -1,4 +1,4 @@
-package ai.alphacompute.alphaphone;
+package ai.elizaresearch.alphaphone;
 
 import android.app.Activity;
 import android.content.Context;
@@ -174,7 +174,7 @@ public final class UpdateFlowTest {
  /** Android's request for the owner's confirmation, heard by every bridge of the process. */
  static Intent confirmation(Context context,Integer session){
   Intent confirm=new Intent("android.content.pm.action.CONFIRM_INSTALL");
-  Intent status=new Intent("ai.alphacompute.alphaphone.UPDATE_STATUS").putExtra(PackageInstaller.EXTRA_STATUS,PackageInstaller.STATUS_PENDING_USER_ACTION).putExtra(Intent.EXTRA_INTENT,confirm);
+  Intent status=new Intent("ai.elizaresearch.alphaphone.UPDATE_STATUS").putExtra(PackageInstaller.EXTRA_STATUS,PackageInstaller.STATUS_PENDING_USER_ACTION).putExtra(Intent.EXTRA_INTENT,confirm);
   if(session!=null){status.putExtra(PackageInstaller.EXTRA_SESSION_ID,session);context.packages.installer.sendConfirmation(session);}
   context.broadcast(status);
   return confirm;
@@ -182,12 +182,12 @@ public final class UpdateFlowTest {
  /** Android's request to confirm a developer-verification result, sent with the accepted session still active (Android 17). */
  private static Intent verificationRequest(Context context,int session){
   Intent confirm=new Intent("android.content.pm.action.CONFIRM_DEVELOPER_VERIFICATION");
-  context.broadcast(new Intent("ai.alphacompute.alphaphone.UPDATE_STATUS").putExtra(PackageInstaller.EXTRA_STATUS,PackageInstaller.STATUS_PENDING_USER_ACTION).putExtra(PackageInstaller.EXTRA_SESSION_ID,session).putExtra(Intent.EXTRA_INTENT,confirm));
+  context.broadcast(new Intent("ai.elizaresearch.alphaphone.UPDATE_STATUS").putExtra(PackageInstaller.EXTRA_STATUS,PackageInstaller.STATUS_PENDING_USER_ACTION).putExtra(PackageInstaller.EXTRA_SESSION_ID,session).putExtra(Intent.EXTRA_INTENT,confirm));
   return confirm;
  }
  /** Android's last status for a session, which it then forgets, as every non-staged session. */
  private static void ended(Context context,int session,int status){
-  context.broadcast(new Intent("ai.alphacompute.alphaphone.UPDATE_STATUS").putExtra(PackageInstaller.EXTRA_STATUS,status).putExtra(PackageInstaller.EXTRA_SESSION_ID,session));
+  context.broadcast(new Intent("ai.elizaresearch.alphaphone.UPDATE_STATUS").putExtra(PackageInstaller.EXTRA_STATUS,status).putExtra(PackageInstaller.EXTRA_SESSION_ID,session));
   context.packages.installer.sessions.remove((Integer)session);
  }
  /** A killed process runs no destroy: its receivers and memory go, and Android's sessions stay. */
@@ -567,7 +567,7 @@ public final class UpdateFlowTest {
   confirmation(context,mine+1);confirmation(context,null);
   stop(owner);confirmation(context,mine+1);resume(owner);
   check(owner.activity.started.isEmpty(),"a foreign session's confirmation is neither opened nor kept");
-  context.broadcast(new Intent("ai.alphacompute.alphaphone.UPDATE_STATUS").putExtra(PackageInstaller.EXTRA_STATUS,PackageInstaller.STATUS_FAILURE).putExtra(PackageInstaller.EXTRA_SESSION_ID,mine).putExtra(Intent.EXTRA_INTENT,new Intent("ignored")));
+  context.broadcast(new Intent("ai.elizaresearch.alphaphone.UPDATE_STATUS").putExtra(PackageInstaller.EXTRA_STATUS,PackageInstaller.STATUS_FAILURE).putExtra(PackageInstaller.EXTRA_SESSION_ID,mine).putExtra(Intent.EXTRA_INTENT,new Intent("ignored")));
   check(owner.activity.started.isEmpty(),"only a request for confirmation is acted on");
  }
  /** A confirmation left with no answer ends with no status: only a status or Android's list frees the fence. */
@@ -1359,7 +1359,7 @@ public final class UpdateFlowTest {
   Intent confirm=confirmation(context,pending);
   dismissed(owner);
   // Android posts the session's removal after its status.
-  context.broadcast(new Intent("ai.alphacompute.alphaphone.UPDATE_STATUS").putExtra(PackageInstaller.EXTRA_STATUS,PackageInstaller.STATUS_FAILURE).putExtra(PackageInstaller.EXTRA_SESSION_ID,pending));
+  context.broadcast(new Intent("ai.elizaresearch.alphaphone.UPDATE_STATUS").putExtra(PackageInstaller.EXTRA_STATUS,PackageInstaller.STATUS_FAILURE).putExtra(PackageInstaller.EXTRA_SESSION_ID,pending));
   tap(owner);
   check(owner.activity.started.equals(List.of(confirm))&&context.packages.installer.committed.equals(List.of(pending)),"a tap in that moment opens and commits nothing on an ended session");
   AlphaDevicePlugin next=restarted(context);
@@ -1601,7 +1601,7 @@ public final class UpdateFlowTest {
   int pending=committed(context);
   stop(owner);
   confirmation(context,pending);
-  context.broadcast(new Intent("ai.alphacompute.alphaphone.UPDATE_STATUS").putExtra(PackageInstaller.EXTRA_STATUS,PackageInstaller.STATUS_FAILURE).putExtra(PackageInstaller.EXTRA_SESSION_ID,pending).putExtra(Intent.EXTRA_INTENT,new Intent("ignored")));
+  context.broadcast(new Intent("ai.elizaresearch.alphaphone.UPDATE_STATUS").putExtra(PackageInstaller.EXTRA_STATUS,PackageInstaller.STATUS_FAILURE).putExtra(PackageInstaller.EXTRA_SESSION_ID,pending).putExtra(Intent.EXTRA_INTENT,new Intent("ignored")));
   resume(owner);
   check(owner.activity.started.isEmpty(),"a terminal status ends what was kept, listed or not");
  }

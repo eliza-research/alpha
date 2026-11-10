@@ -63,14 +63,15 @@ npm run android:verify            # inspect APK contents and signatures
 ```
 
 The build produces standalone and launcher, debug and release APKs under
-`artifacts/`. The variants share `ai.alphacompute.alphaphone` and replace one
+`artifacts/`. The variants share `ai.elizaresearch.alphaphone` and replace one
 another; only the launcher declares HOME. Phone, Contacts and SMS/MMS require
 an admitted AOSP image capability; a launcher APK alone does not supply it.
 
-The package and native namespace are `ai.alphacompute.alphaphone`. This identity
-requires matching signing, callback registrations and native-library qualification.
-An installation using the previous package ID is a separate application; this
-rename does not migrate its private data. Native qualification remains pending.
+The installed package and native namespace stay `ai.elizaresearch.alphaphone`,
+including fresh phones and Alpha Compute-branded releases. The retained Pixel v44
+uses this ID; changing it would create a separate app and leave its private data
+behind. Branding is independent of this installed identity. Signing, callback
+registrations, native-library qualification and in-place data-retention tests remain required.
 
 The default native runtime uses libelizainference for local speech and embeddings.
 Stage on-device voice inputs with

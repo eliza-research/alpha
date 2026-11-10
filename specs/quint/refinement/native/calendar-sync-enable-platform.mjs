@@ -90,7 +90,7 @@ public final class JSObject extends org.json.JSONObject {
  private JSObject(String source){super(source);}
  public static JSObject fromJSONObject(org.json.JSONObject value){return new JSObject(value.toString());}
 }`,
-  'ai/alphacompute/alphaphone/AlphaCalendarPlugin.java':`package ai.alphacompute.alphaphone;
+  'ai/elizaresearch/alphaphone/AlphaCalendarPlugin.java':`package ai.elizaresearch.alphaphone;
 public final class AlphaCalendarPlugin {
  public static final class CalendarConfiguration {
   public final String accountName="Alpha Phone",localCalendarName="alpha-phone-local",displayName="Alpha Phone";
@@ -103,7 +103,7 @@ public final class AlphaCalendarPlugin {
  public android.app.Activity getActivity(){return activity;}
  void calendarSyncChanged(){}
 }`,
-  'ai/alphacompute/alphaphone/AlphaConnectionPlugin.java':`package ai.alphacompute.alphaphone;
+  'ai/elizaresearch/alphaphone/AlphaConnectionPlugin.java':`package ai.elizaresearch.alphaphone;
 import org.json.JSONObject;
 final class AlphaConnectionPlugin {
  static JSONObject readCloudIdentity(String token){
@@ -118,7 +118,7 @@ final class AlphaConnectionPlugin {
    .put("accountEmail","calendar@example.invalid").put("calendarLabel","Synthetic Calendar").put("accountId","fixture-destination");
  }
 }`,
-  'ai/alphacompute/alphaphone/NativeDeletionCoordinator.java':`package ai.alphacompute.alphaphone;
+  'ai/elizaresearch/alphaphone/NativeDeletionCoordinator.java':`package ai.elizaresearch.alphaphone;
 import org.json.JSONArray;
 import org.json.JSONObject;
 final class NativeDeletionCoordinator {
@@ -134,7 +134,7 @@ final class NativeDeletionCoordinator {
  JSONObject receipt(String type,String operation){throw new AssertionError("No deletion receipt requested");}
  JSONObject stageCalendar(JSONObject target,JSONObject owner,String operation){throw new AssertionError("No deletion stage allowed");}
 }`,
-  'ai/alphacompute/alphaphone/AlphaCredentialStore.java':`package ai.alphacompute.alphaphone;
+  'ai/elizaresearch/alphaphone/AlphaCredentialStore.java':`package ai.elizaresearch.alphaphone;
 import java.util.ArrayList;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;

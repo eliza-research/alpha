@@ -1,6 +1,6 @@
 package ai.eliza.voice;
 
-import ai.alphacompute.alphaphone.Trace;
+import ai.elizaresearch.alphaphone.Trace;
 import android.content.Context;
 import android.os.ParcelFileDescriptor;
 import android.os.Handler;

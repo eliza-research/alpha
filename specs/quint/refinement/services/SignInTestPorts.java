@@ -1,4 +1,4 @@
-package ai.alphacompute.alphaphone;
+package ai.elizaresearch.alphaphone;
 import ai.eliza.auth.cloud.CloudSignInFlow;
 import ai.eliza.auth.cloud.CloudSignInReadiness;
 
@@ -113,7 +113,7 @@ public final class SignInTestPorts {
       JSONObject result = new JSONObject();
       code = 200;
       if(path.equals("/.well-known/assetlinks.json")) {
-        JSONObject target=new JSONObject().put("namespace","android_app").put("package_name","ai.alphacompute.alphaphone")
+        JSONObject target=new JSONObject().put("namespace","android_app").put("package_name","ai.elizaresearch.alphaphone")
           .put("sha256_cert_fingerprints",new org.json.JSONArray().put(CloudSignInReadiness.certificateFingerprint(new byte[]{1,2,3})));
         response=new org.json.JSONArray().put(new JSONObject().put("relation",new org.json.JSONArray().put("delegate_permission/common.handle_all_urls")).put("target",target)).toString().getBytes(StandardCharsets.UTF_8);
         return;

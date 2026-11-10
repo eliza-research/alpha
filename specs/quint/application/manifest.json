@@ -235,7 +235,7 @@
     "sources": [
       "apps/app/src/browser/browser-surface.ts",
       "apps/app/src/prototype/browser-adapter.ts",
-      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaBrowserPlugin.java"
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaBrowserPlugin.java"
     ],
     "abstractions": [
       "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",
@@ -269,7 +269,7 @@
       "apps/app/src/passwords/password-manager.ts",
       "apps/app/src/passwords/dev-vault.ts",
       "apps/app/src/browser/password-provider.ts",
-      "android/app/src/main/java/ai/alphacompute/alphaphone/PasswordProviderSupport.java"
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/PasswordProviderSupport.java"
     ],
     "abstractions": [
       "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",
@@ -319,7 +319,7 @@
       "apps/app/src/runtime/media-copy-intent.ts",
       "apps/app/src/runtime/inbox-attachment.ts",
       "apps/app/src/prototype/share-panel-adapter.ts",
-      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaMailAttachmentsPlugin.java"
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaMailAttachmentsPlugin.java"
     ],
     "abstractions": [
       "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",
@@ -537,7 +537,7 @@
       "apps/app/src/runtime/permanent-voice-deletion.ts",
       "apps/app/src/runtime/note-audio-deletions.ts",
       "apps/app/src/runtime/note-audio-lock.ts",
-      "android/app/src/main/java/ai/alphacompute/alphaphone/NotesDeletionLease.java"
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/NotesDeletionLease.java"
     ],
     "abstractions": [
       "Finite representative operation and payload identities. See application README for source contract and evidence."
@@ -587,7 +587,7 @@
       "selectionRefreshTest"
     ],
     "sources": [
-      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaFilesPlugin.java",
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java",
       "apps/app/src/prototype/selection-adapter.ts"
     ],
     "stateMapping": {
@@ -904,9 +904,9 @@
       "apps/app/src/browser/notification-store.ts",
       "apps/app/src/browser/notifications.ts",
       "apps/app/src/prototype/notifications-adapter.ts",
-      "android/app/src/main/java/ai/alphacompute/alphaphone/NotificationAccess.java",
-      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNotificationListener.java",
-      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNotificationsPlugin.java",
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/NotificationAccess.java",
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNotificationListener.java",
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNotificationsPlugin.java",
       "vendor/eliza/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NotificationMirror.java",
       "vendor/eliza/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NotificationMirrorPolicy.java"
     ],
@@ -1659,7 +1659,7 @@
       "apps/app/src/runtime/accessibility-timeout.ts",
       "apps/app/src/prototype/model.js",
       "apps/app/src/main.tsx",
-      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java"
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java"
     ],
     "stateMapping": {
       "scale/latest": "Last known timeout percentage and exact current native read token",
@@ -1807,7 +1807,7 @@
       "apps/app/src/prototype/home-shell.ts",
       "apps/app/src/native.ts",
       "apps/app/src/platform-plugins.ts",
-      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaSystemPlugin.java",
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaSystemPlugin.java",
       "vendor/eliza/packages/ui/src/mobile-shell/InstalledAppsGridDrawer.tsx",
       "vendor/eliza/plugins/plugin-native-system/src/client/launcher.ts",
       "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SystemLauncherApps.java"
@@ -1920,7 +1920,7 @@
     "sources": [
       "apps/app/src/main.tsx",
       "vendor/eliza/packages/ui/src/state/app-update-gate.ts",
-      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java"
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java"
     ],
     "stateMapping": {
       "active/bridge/phase/acknowledged": "Actual private renderer activation and bridge ownership",
@@ -1958,7 +1958,7 @@
     "sources": [
       "apps/app/src/main.tsx",
       "vendor/eliza/packages/ui/src/state/app-update-gate.ts",
-      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java"
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java"
     ],
     "stateMapping": {
       "pending/bridge/acknowledged/ready": "Actual startup owner, retained readiness and native acknowledgements",
@@ -2178,8 +2178,8 @@
       "apps/app/src/prototype/notifications-adapter.ts",
       "apps/app/src/main.tsx",
       "apps/app/src/runtime/connection-ui.tsx",
-      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCanonicalNotifications.java",
-      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNotificationsPlugin.java"
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCanonicalNotifications.java",
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNotificationsPlugin.java"
     ],
     "stateMapping": {
       "generation/live/phase/drain": "Actual mount closure and renderer read, restore and commit activity",
@@ -3375,7 +3375,7 @@
     ],
     "sources": [
       "apps/app/src/prototype/chat-overlay-motion-adapter.ts",
-      "android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java"
+      "android/app/src/main/java/ai/elizaresearch/alphaphone/MainActivity.java"
     ],
     "stateMapping": {
       "native": "MainActivity IME visibility or explicit auxiliary-IME handoff; -1 is browser fallback",

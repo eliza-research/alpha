@@ -53,7 +53,7 @@ for name in sorted(manifest):
     secret_absent = all(pattern not in data for data in [raw, *members] for pattern in patterns)
     release = name.endswith(("-release.apk", "-release-unsigned.apk"))
     test_absent = all(value not in dex for value in descriptors) if release else None
-    presence = {value: ("Lai/alphacompute/alphaphone/" + value + ";").encode() in dex for value in debug_classes}
+    presence = {value: ("Lai/elizaresearch/alphaphone/" + value + ";").encode() in dex for value in debug_classes}
     # Release never carries developer hooks. Debug carries all of them only when built with
     # -PELIZA_DEV_ALLOW_TEST_MOCKS=1 (src/testMocks); a flag-off debug carries none.
     hooks_consistent = not any(presence.values()) if release else len(set(presence.values())) == 1

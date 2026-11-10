@@ -22,7 +22,7 @@ const compiled=[...['ClockAgentReview','AlphaActionJournal','PluginWorkers'].map
 export function clockReviewSourceTraces(scenarios) {
   const temporary=mkdtempSync(join(tmpdir(),'quint-clock-review-'));
   try{
-    const ports={...clockPlatform,'ai/alphacompute/alphaphone/AlphaActionJournalPlugin.java':clockJournalBridge(readFileSync(join(root,plugin),'utf8'))};
+    const ports={...clockPlatform,'ai/elizaresearch/alphaphone/AlphaActionJournalPlugin.java':clockJournalBridge(readFileSync(join(root,plugin),'utf8'))};
     const files=Object.entries(ports).map(([path,contents])=>{
       const file=join(temporary,path);
       mkdirSync(dirname(file),{recursive:true});

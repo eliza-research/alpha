@@ -26,7 +26,7 @@ test('the shared sign-in read hook runs under lifecycle then vault locks and nev
  try{
   const sources=[
    file('JsonCredentialSlots.java',`package ai.eliza.plugins.securestore.nativeonly;public final class JsonCredentialSlots{public static final Object LOCK=new Object();}`),
-   file('ReadHookHarness.java',`package ai.alphacompute.alphaphone;
+   file('ReadHookHarness.java',`package ai.elizaresearch.alphaphone;
 import java.util.concurrent.atomic.*;
 import ai.eliza.plugins.securestore.nativeonly.JsonCredentialSlots;
 abstract class SharedContract { ${signature} }
@@ -72,6 +72,6 @@ public final class ReadHookHarness {
  }
 }`),
   ];
-  assert.match(runJvm(sources,'ai.alphacompute.alphaphone.ReadHookHarness'),/^PASS actual credential read hook/);
+  assert.match(runJvm(sources,'ai.elizaresearch.alphaphone.ReadHookHarness'),/^PASS actual credential read hook/);
  }finally{rmSync(directory,{recursive:true,force:true});}
 });

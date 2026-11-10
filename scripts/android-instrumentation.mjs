@@ -41,7 +41,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { instrumentationClassResults, listedInstrumentationTests, writeInstrumentationRecord } from "./instrumentation-result.mjs";
 
-export const PACKAGE = "ai.alphacompute.alphaphone";
+export const PACKAGE = "ai.elizaresearch.alphaphone";
 const RUNNER = "androidx.test.runner.AndroidJUnitRunner";
 
 /**

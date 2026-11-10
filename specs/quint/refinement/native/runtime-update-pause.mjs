@@ -25,7 +25,7 @@ function extractWrapper(source) {
   const hex = source.match(/ static String hex\(byte\[\] digest\)\{[^\n]+/)?.[0];
   const signer = source.slice(source.indexOf(' static String appSigner('), source.indexOf(" /**\n  * A session's binding:"));
   assert.ok(start > 0 && end > start && hex && signer.includes('signingRoot'), 'actual native update wrapper anchors');
-  return `package ai.alphacompute.alphaphone;
+  return `package ai.elizaresearch.alphaphone;
 import android.content.Context;
 import android.content.pm.PackageInstaller;
 import android.content.pm.PackageManager;
