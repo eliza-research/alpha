@@ -201,7 +201,8 @@ This record never satisfies `physicalDevice`.
 
 ## Remaining human steps
 
-1. #661 and #662 finished; H-20 listener qualified.
+1. #661 and #662 finished. Production omits AlphaSense while P-78 defers wake
+   listening; do not pass a listener APK. See [Pixel staging](../pixel10a-staging.md).
 2. Image host operator: A-01 pins (D1), then H-21 staging and the `cp2a-user` build.
 3. Release owner: H-22 signing (dry run first), record `knownGoodRelease`.
 4. Image host operator: H-23 boot and the `cuttlefishBoot` gate.

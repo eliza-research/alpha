@@ -75,6 +75,13 @@ before distributing the batch. The automatic path never opens Android Settings o
 an install dialog by itself. The manual Settings update action remains available
 to enable permission and to support older versions of Android.
 
+With that permission granted, automatic installation reports `starting` through
+30 seconds of Android uptime. It returns before an APK download worker, installer
+session or resident pause. The foreground scheduler uses its existing quiet
+retry after `starting` from device facts or an install reply. This is the existing
+one-minute first retry, not a timer that wakes at exactly 30 seconds. Pending
+sessions retain precedence; the manual update path keeps its current behavior.
+
 The launcher waits for idle Home, without voice, a focused editor, a review,
 an open app, Home editing, drawer or shade. It checks again at native preparation after the
 download: beginning work during a download prevents automatic activation. Every
@@ -212,6 +219,18 @@ delivery path until a native producer bridge is separately qualified.
 
 ## Acceptance on the phone host
 
+The [SDK75 cold-boot record](evidence/launcher-ota-cold-boot-75-qualification-20261110.json)
+binds product source `9aad32d71f` and SDK `75b4401556`. Four fresh Cloud APK builds,
+packaging checks and bounded source/model checks passed. A tiny API36 installer
+fixture refused early automatic work, then installed its exact successor and
+retained its data and Keystore value. Its three probe inputs match this source;
+it does not qualify the Alpha APK, public feed or either phone deployment mode.
+Full repository verification remains open: the record preserves the failed Mac
+and hosted runs, plus the cancelled Linux-browser diagnostic. One diagnostic
+Calendar failure reached a mounted UI flow; its cause is unresolved. Release
+APKs remain unsigned. Complete verification, production signing, exact-APK voice,
+live feed delivery and both physical-phone drills before batch distribution.
+
 The [historical DAE software qualification](evidence/launcher-ota-dae-qualification-20261110.json)
 records four freshly packaged Cloud APKs for `ai.elizaresearch.alphaphone` at
 `f452aa42` and the passing full repository run at `019b289325`. The production
@@ -238,8 +257,9 @@ behavior or user acceptance.
 
 The historical [DAE source/build review](evidence/merged-upstream-source-dae11e0b-20261109.json)
 and [static review](security/resident-fresh-build-review-dae11e0b-2026-11-09.json)
-record a separate DAE bundle (`b345e6f0`). The current SDK `75b44015` and bundle
-`2deb6808` retain their separate records.
+record a separate DAE bundle (`b345e6f0`). The previously recorded SDK `75b44015`
+bundle `2deb6808` retains its separate records; the fresh Cloud build above records
+bundle `8fbe45c9` with its own producer receipt.
 Their original [graph](https://github.com/eliza-research/alphaphone/blob/a0c9cdecdd83e972c6b8031e9a2afa4d9f22fe41/specs/quint/refinement/services/runtime-bundle-inputs.json),
 [coverage](https://github.com/eliza-research/alphaphone/blob/a0c9cdecdd83e972c6b8031e9a2afa4d9f22fe41/specs/quint/coverage.json)
 and [state audit](https://github.com/eliza-research/alphaphone/blob/a0c9cdecdd83e972c6b8031e9a2afa4d9f22fe41/specs/quint/state-audit.json)
