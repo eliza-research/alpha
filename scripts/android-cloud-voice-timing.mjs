@@ -9,7 +9,7 @@ import { promisify } from 'node:util';
 import fs from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 const exec = promisify(execFile);
-const packageName = 'ai.elizaresearch.alphaphone';
+const packageName = 'ai.alphacompute.alphaphone';
 const marks = ['recording-end', 'transcript-ready', 'send', 'first-token', 'final-reply', 'first-audio'];
 const routes = ['on-device', 'browser', 'local-agent', 'eliza-cloud', 'paired-agent', 'development-agent', 'manual'];
 const finiteMs = value => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value < 3_600_000;

@@ -42,7 +42,7 @@
     "launchState": "COLD",
     "totalTimeMs": 226,
     "waitTimeMs": 233,
-    "activity": "ai.elizaresearch.alphaphone/.MainActivity"
+    "activity": "ai.alphacompute.alphaphone/.MainActivity"
   },
   "visibleScreen": "Eliza Cloud sign-in",
   "startupCrashObserved": false,

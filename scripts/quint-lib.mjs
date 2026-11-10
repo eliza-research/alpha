@@ -11,7 +11,8 @@ export const sourceRoots = ['apps/app/src', 'apps/app/public', 'android'];
 export const runtimeScriptPaths = ['scripts/browser-cloud-dev-bridge.ts', 'scripts/cloud-resident-host.mjs',
   'scripts/cloud-email-code.ts', 'scripts/dev-cloud.mjs', 'scripts/dev-local.mjs',
   'scripts/start-local-voice-agent.mjs', 'scripts/start-local-remote.mjs',
-  'scripts/core-state-patch.mjs', 'scripts/core-state-preload.mjs', 'scripts/start-reviewed-workflow-agent.mjs',
+  'scripts/core-state-patch.mjs', 'scripts/core-state-preload.mjs', 'scripts/build-policy-source.mjs',
+  'scripts/start-reviewed-workflow-agent.mjs',
   'scripts/start-cloud-qa.mjs', 'scripts/start-combined-agent.mjs', 'scripts/launcher-child.mjs',
   'scripts/local-agent-dev-bridge.ts', 'scripts/local-agent-dev-storage.ts',
   'scripts/prepare-local-agent.mjs', 'scripts/local-agent-source.mjs', 'scripts/copy-file-clone.mjs',
@@ -30,7 +31,10 @@ export const runtimeScriptPaths = ['scripts/browser-cloud-dev-bridge.ts', 'scrip
   'scripts/audit-production-bundle.mjs', 'scripts/generate-licenses.mjs',
   'scripts/cloud-deployment.mjs', 'scripts/cloud-deployment-policy.mjs', 'scripts/native-view-policy.mjs',
   'scripts/with-test-mocks.mjs', 'capacitor.config.ts', 'vite.config.ts',
-  'scripts/apk.mjs', 'scripts/source-snapshot.mjs', 'scripts/verify-apks.mjs', 'scripts/verify-packaged-runtime.py'];
+  'scripts/apk.mjs', 'scripts/source-snapshot.mjs', 'scripts/verify-apks.mjs', 'scripts/verify-packaged-runtime.py',
+  'scripts/provision-unit.mjs', 'scripts/publish-update-manifest.mjs', 'scripts/deliver-app-update.mjs',
+  'scripts/update-apk-admission.mjs', 'scripts/update-artifact.mjs', 'scripts/owner/InspectUpdateApk.java',
+  'scripts/ci/qualified-app-update.py', 'scripts/ci/admit-cloud-signing-input.py', 'scripts/ci/private-apk-storage.py'];
 export const runtimeAssetPaths = ['apps/app/index.html'];
 const omittedDirectories = new Set(['node_modules', 'build', '.generated', '.gradle', '.cxx', '.kotlin', 'assets', 'jniLibs', 'capacitor-cordova-android-plugins']);
 const sourceExtensions = new Set(['.ts', '.tsx', '.js', '.java', '.kt', '.cpp', '.h', '.c', '.html', '.mjs', '.jsx', '.cc', '.hpp', '.rs', '.swift']);
@@ -112,7 +116,7 @@ export function sharedSourcePaths() {
   const client = readJson(join(repositoryRoot, '.eliza/client-features/.source.json'));
   if (client.baseCommit !== pin.commit) throw Error('Prepare client sources for the current upstream pin before checking Quint coverage');
   const host = readJson(join(repositoryRoot, 'android/consumer-host.json'));
-  const patches = readJson(join(repositoryRoot, 'patches/eliza/native-manifest.json'));
+  const patches = readJson(join(repositoryRoot, 'android/upstream-native-sources.json'));
   const prefixes = new Set([
     ...Object.keys(client.sourceFiles),
     ...host.profile.modules.filter(module => ['upstream', 'patchedNative'].includes(module.source.root)).map(module => module.source.path),

@@ -13,7 +13,7 @@ const record=readListenerRecord(root);
 
 test('the committed listener record is well formed and honestly not device-qualified',()=>{
  assert.deepEqual(listenerRecordProblems(record),[]);
- assert.equal(record.packageName,'ai.elizaresearch.alphaphone.sense');
+ assert.equal(record.packageName,'ai.alphacompute.alphaphone.sense');
  assert.equal(record.qualified,false);assert.equal(record.distributable,false);
  for(const gate of ['G1','G2','G3','G4','G5','G6'])assert.equal(record.gates[gate],'open',gate);
  assert.equal(record.evidence.apkBuild.current,false,'the historical sense build predates the indicator lease');
@@ -35,7 +35,7 @@ test('the schema refuses unearned qualification and distribution',()=>{
  const allGates=Object.fromEntries(['G1','G2','G3','G4','G5','G6'].map(gate=>[gate,'passed']));
  assert.match(claim({qualified:true,gates:allGates}).join('\n'),/qualified needs/,'passed gates without image and device evidence');
  assert.match(claim({indicatorLease:{...record.indicatorLease,qualified:true}}).join('\n'),/before SystemUI compiles it/);
- assert.match(claim({packageName:'ai.elizaresearch.alphaphone'}).join('\n'),/packageName/);
+ assert.match(claim({packageName:'ai.alphacompute.alphaphone'}).join('\n'),/packageName/);
  assert.match(claim({gates:{...record.gates,G3:'skipped'}}).join('\n'),/gate G3/);
  assert.match(claim({evidence:{...record.evidence,apkBuild:{...record.evidence.apkBuild,record:'docs/evidence/missing.json'}}}).join('\n'),/committed evidence file/);
 });
@@ -76,7 +76,7 @@ test('listener APK rows are APK-build evidence only and never distributable whil
  assert.equal(listenerApkRow(earned,{...facts,mode:'debug'}).distributable,false);
  assert.equal(listenerApkRow(earned,{...facts,signed:false,signerSha256:null}).distributable,false);
  assert.match(listenerApkRow(record,{...facts,requested:[...facts.requested,'android.permission.INTERNET']}).problems.join(),/network permission/);
- assert.match(listenerApkRow(record,{...facts,packageName:'ai.elizaresearch.alphaphone'}).problems.join(),/expected ai\.elizaresearch\.alphaphone\.sense/);
+ assert.match(listenerApkRow(record,{...facts,packageName:'ai.alphacompute.alphaphone'}).problems.join(),/expected ai\.alphacompute\.alphaphone\.sense/);
  assert.match(listenerApkRow(record,{...facts,permissionProblem:'outside the reviewed set'}).problems.join(),/reviewed set/);
  const section=listenerManifestSection(record,[]);
  assert.equal(section.qualified,false);

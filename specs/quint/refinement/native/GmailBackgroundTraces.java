@@ -1,4 +1,4 @@
-package ai.elizaresearch.alphaphone;
+package ai.alphacompute.alphaphone;
 
 import ai.eliza.plugins.notifications.MailBackgroundDelivery;
 import ai.eliza.plugins.notifications.MailHistoryReconciliation;
@@ -82,7 +82,7 @@ public final class GmailBackgroundTraces {
  }
 
  public static void configurePoster(MailNoticePoster.Config config) {
-  if(!config.channel.equals("alpha-gmail")||!config.action.equals("ai.elizaresearch.alphaphone.OPEN_GMAIL_NOTICE")
+  if(!config.channel.equals("alpha-gmail")||!config.action.equals("ai.alphacompute.alphaphone.OPEN_GMAIL_NOTICE")
       ||!config.open.equals("alpha-gmail:")||!config.ask.equals("alpha-gmail-ask:")||!config.tag.equals("alpha-gmail-")
       ||!config.title.equals("New mail in Gmail")||!config.text.equals("Tap to open Inbox.")
       ||!config.publicTitle.equals("Alpha Phone")||!config.publicText.equals("Tap to open.")
@@ -212,7 +212,7 @@ public final class GmailBackgroundTraces {
    }
    if(!route.equals("history"))return 200;
    historyReads++;
-   return switch(script){case "retry" -> 503;case "unsupported" -> 404;case "forbidden" -> 403;default -> 200;};
+   return switch(script){case "retry" -> 503;case "unsupported" -> 404;case "forbidden" -> 403;case "conflict" -> 409;case "unauthorized" -> 401;default -> 200;};
   }
   @Override public InputStream getInputStream()throws IOException {
    Object body;
@@ -258,7 +258,7 @@ public final class GmailBackgroundTraces {
    "observable",observable,"locked",primary.activity.keyguard.locked,"phase",saved==null?"disabled":saved.getString("status"),
    "generation",binding==null?0:generations.get(binding.getString("generation")),"grant",binding==null?0:grantClass(binding.getString("grantId")),
    "owner",binding==null?0:ownerClass(binding.getString("userId")),"boundCredential",boundCredential,
-   "cursor",cursor(saved,"historyId"),"continuation",page==null?0:Integer.parseInt(page.substring("fixture-page-".length())),
+   "cursor",cursor(saved,"historyId"),"continuation",page==null?0:Integer.parseInt(page.substring("fixture-page-".length())),"authFailures",saved==null?0:saved.optInt("authFailures",0),
    "incomplete",saved!=null&&saved.getBoolean("incompleteCatchup"),"checked",saved!=null&&saved.getLong("lastSyncAt")>0,
    "notice",notice==null?"none":notice.getString("phase"),"tap",tap==null?"none":tap.optBoolean("question")?"question":"open",
    "visible",!shown.isEmpty(),"posts",posts,"periodic",periodic,"catchup",catchup,"schedules",schedules,"cancels",cancels,
@@ -562,7 +562,10 @@ public final class GmailBackgroundTraces {
      configure(1);work(1,"final");status();}
     case "retry" -> {configure(1);work(0,"none");work(4,"none");work(1,"none",true,"none");
      work(1,"retry");status();work(1,"unsupported");status();work(1,"forbidden");status();
-     work(1,"baseline");work(1,"malformed");status();}
+     work(1,"baseline");work(1,"malformed");status();work(1,"unauthorized");status();}
+    case "history-forbidden", "history-conflict" -> {configure(1);String response=args[0].endsWith("forbidden")?"forbidden":"conflict";
+     work(1,response);work(1,response);status();work(1,"baseline");status();
+     work(1,response);work(1,response);work(1,response);status();}
     case "storage" -> {configure(1);work(1,"baseline",false,"before");status();
      work(1,"baseline",false,"after");status();work(1,"final");status();}
     case "resume-stale" -> {configure(1);work(1,"baseline");replaceCredential(2,false);

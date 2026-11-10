@@ -14,4 +14,12 @@
     <string name="alpha_runtime_spawn_failed">Alpha · Could not start</string>
     <string name="alpha_runtime_restart_blocked">Alpha · Restart blocked</string>
     <string name="alpha_runtime_running_detail">Local agent is running.</string>
+    <string name="alpha_runtime_starting_detail">Preparing on-device runtime…</string>
+    <string name="alpha_runtime_bootstrap_detail">Starting…</string>
+    <string name="alpha_runtime_crashed_detail">Agent crashed repeatedly; tap to investigate</string>
+    <string name="alpha_runtime_extract_failed_detail">Could not unpack runtime</string>
+    <string name="alpha_runtime_spawn_failed_detail">Could not start runtime process</string>
+    <string name="alpha_runtime_stop_failed_detail">The running runtime could not be stopped safely</string>
+    <string name="alpha_runtime_missing_files_detail">Runtime files are missing; reinstall the app</string>
+    <string name="alpha_runtime_generic_detail">Open the app to check the agent</string>
 </resources>

@@ -234,7 +234,7 @@
     "sources": [
       "apps/app/src/browser/browser-surface.ts",
       "apps/app/src/prototype/browser-adapter.ts",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaBrowserPlugin.java"
+      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaBrowserPlugin.java"
     ],
     "abstractions": [
       "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",
@@ -268,7 +268,7 @@
       "apps/app/src/passwords/password-manager.ts",
       "apps/app/src/passwords/dev-vault.ts",
       "apps/app/src/browser/password-provider.ts",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/PasswordProviderSupport.java"
+      "android/app/src/main/java/ai/alphacompute/alphaphone/PasswordProviderSupport.java"
     ],
     "abstractions": [
       "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",
@@ -318,7 +318,7 @@
       "apps/app/src/runtime/media-copy-intent.ts",
       "apps/app/src/runtime/inbox-attachment.ts",
       "apps/app/src/prototype/share-panel-adapter.ts",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaMailAttachmentsPlugin.java"
+      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaMailAttachmentsPlugin.java"
     ],
     "abstractions": [
       "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",
@@ -535,7 +535,7 @@
       "apps/app/src/runtime/permanent-voice-deletion.ts",
       "apps/app/src/runtime/note-audio-deletions.ts",
       "apps/app/src/runtime/note-audio-lock.ts",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/NotesDeletionLease.java"
+      "android/app/src/main/java/ai/alphacompute/alphaphone/NotesDeletionLease.java"
     ],
     "abstractions": [
       "Finite representative operation and payload identities. See application README for source contract and evidence."
@@ -585,7 +585,7 @@
       "selectionRefreshTest"
     ],
     "sources": [
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java",
+      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaFilesPlugin.java",
       "apps/app/src/prototype/selection-adapter.ts"
     ],
     "stateMapping": {
@@ -901,9 +901,9 @@
       "apps/app/src/browser/notification-store.ts",
       "apps/app/src/browser/notifications.ts",
       "apps/app/src/prototype/notifications-adapter.ts",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/NotificationAccess.java",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNotificationListener.java",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNotificationsPlugin.java",
+      "android/app/src/main/java/ai/alphacompute/alphaphone/NotificationAccess.java",
+      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNotificationListener.java",
+      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNotificationsPlugin.java",
       "vendor/eliza/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NotificationMirror.java",
       "vendor/eliza/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NotificationMirrorPolicy.java"
     ],
@@ -1070,8 +1070,7 @@
       "vendor/eliza/plugins/plugin-files/src/browser/files-browser-adapter.ts",
       "vendor/eliza/plugins/plugin-files/src/browser/storage-model.ts",
       "vendor/eliza/plugins/plugin-files/src/browser/files-agent-contract.ts",
-      "patches/eliza/files-list-identity-client-manifest.json",
-      "patches/eliza/files-list-identity-client.patch",
+      "upstream.lock.json",
       "scripts/prepare-client-features.mjs"
     ],
     "abstractions": [
@@ -1273,8 +1272,8 @@
       ".eliza/client-features/plugins/plugin-files/src/browser/files-browser-adapter.ts",
       ".eliza/client-features/plugins/plugin-files/src/browser/storage-model.ts",
       ".eliza/client-features/plugins/plugin-files/src/browser/files-agent-contract.ts",
-      "patches/eliza/files-list-identity-client.patch",
-      "patches/eliza/files-list-identity-client-manifest.json"
+      "vendor/eliza/plugins/plugin-files/src/browser/files-browser-adapter.ts",
+      "upstream.lock.json"
     ],
     "abstractions": [
       "Installed folder reader, current access/volume readback and registered agent share admission over deferred storage ports. Two folders, three entries, two volumes and six state-read identities.",
@@ -1342,10 +1341,12 @@
       ".eliza/client-features/plugins/plugin-files/src/browser/files-browser-adapter.ts",
       ".eliza/client-features/plugins/plugin-files/src/browser/storage-model.ts",
       ".eliza/client-features/plugins/plugin-files/src/browser/files-agent-contract.ts",
-      "patches/eliza/files-list-identity-client.patch",
-      "patches/eliza/files-list-identity-client-manifest.json"
+      "vendor/eliza/plugins/plugin-files/src/browser/files-browser-adapter.ts",
+      "upstream.lock.json"
     ],
     "abstractions": [
+      "Installed agent filters from a mounted Browse view, with separate reload and query generations, pending and displayed filter ownership, cancellation, filtered result ordering and no storage writes.",
+      "Three operation identities, two text classes and four unique row identities. The model covers reloads during an explicit filter. Other reload sequences, category and Trash transactions, and provider queries remain separate obligations.",
       "Installed agent filter operations from a mounted Browse view, with separate access and query generations, current filter ownership, cancellation and filtered result ordering.",
       "Three operation identities, two text classes and four unique row identities. Reload after mount, category/Trash list transactions, file mutations and provider query implementation remain separate obligations."
     ]
@@ -1514,8 +1515,8 @@
       ".eliza/client-features/plugins/plugin-native-system/src/client/launcher.ts",
       ".eliza/client-features/packages/ui/src/mobile-shell/mobile-launcher.ts",
       "apps/app/src/prototype/home-shell.ts",
-      "patches/eliza/launcher-observer-client.patch",
-      "patches/eliza/launcher-observer-client-manifest.json"
+      "vendor/eliza/plugins/plugin-native-system/src/client/launcher.ts",
+      "upstream.lock.json"
     ],
     "abstractions": [
       "Actual launcher package listener registration, document notifications, 120ms debounce and idempotent retirement with late or failed native removal.",
@@ -1623,8 +1624,8 @@
       ".eliza/client-features/packages/ui/src/mobile-shell/view-registry.ts",
       "apps/app/src/product/alpha-product.ts",
       "apps/app/src/product/alpha-product-registration.ts",
-      "patches/eliza/launcher-legacy-view-key-client.patch",
-      "patches/eliza/launcher-legacy-view-key-client-manifest.json"
+      "vendor/eliza/packages/ui/src/mobile-shell/view-registry.ts",
+      "upstream.lock.json"
     ],
     "abstractions": [
       "Actual ordered favorites storage, legacy view-ID and default-policy migration, unavailable storage, held-load external writes, profile identity and visible-only reorder.",
@@ -1652,7 +1653,7 @@
       "apps/app/src/runtime/accessibility-timeout.ts",
       "apps/app/src/prototype/model.js",
       "apps/app/src/main.tsx",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java"
+      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java"
     ],
     "stateMapping": {
       "scale/latest": "Last known timeout percentage and exact current native read token",
@@ -1759,8 +1760,7 @@
       "apps/app/src/runtime/view-focus.ts",
       "apps/app/src/main.tsx",
       "vendor/eliza/packages/ui/src/accessibility/screen-focus.ts",
-      "patches/eliza/screen-focus-priority-client.patch",
-      "patches/eliza/screen-focus-priority-client-manifest.json"
+      "upstream.lock.json"
     ],
     "stateMapping": {
       "installed/generation": "Exact Alpha installer handle and replacement count",
@@ -1801,7 +1801,7 @@
       "apps/app/src/prototype/home-shell.ts",
       "apps/app/src/native.ts",
       "apps/app/src/platform-plugins.ts",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaSystemPlugin.java",
+      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaSystemPlugin.java",
       "vendor/eliza/packages/ui/src/mobile-shell/InstalledAppsGridDrawer.tsx",
       "vendor/eliza/plugins/plugin-native-system/src/client/launcher.ts",
       "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SystemLauncherApps.java"
@@ -1846,8 +1846,8 @@
       ".eliza/client-features/packages/ui/src/mobile-shell/InstalledAppsGridDrawer.tsx",
       ".eliza/client-features/packages/ui/src/mobile-shell/navigation.ts",
       ".eliza/client-features/plugins/plugin-native-system/src/client/launcher.ts",
-      "patches/eliza/launcher-drawer-ownership-client.patch",
-      "patches/eliza/launcher-drawer-ownership-client-manifest.json"
+      "vendor/eliza/packages/ui/src/mobile-shell/InstalledAppsGridDrawer.tsx",
+      "upstream.lock.json"
     ],
     "abstractions": [
       "Mounted installed drawer long press, search, current menu, keyboard focus, home pin, and exact synthetic App Info handoff with late replies.",
@@ -1903,7 +1903,8 @@
       "staleReadAndPreparationCannotRetireSuccessorTest",
       "onlyExactCancelCanReconnectTest",
       "pauseCoalescesContinueTest",
-      "refusalExplainedOnlyAtExactFailureTest"
+      "refusalExplainedOnlyAtExactFailureTest",
+      "automaticRefusalStaysQuietTest"
     ],
     "invariants": [
       "owner",
@@ -1913,7 +1914,7 @@
     "sources": [
       "apps/app/src/main.tsx",
       "vendor/eliza/packages/ui/src/state/app-update-gate.ts",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java"
+      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java"
     ],
     "stateMapping": {
       "active/bridge/phase/acknowledged": "Actual private renderer activation and bridge ownership",
@@ -1951,7 +1952,7 @@
     "sources": [
       "apps/app/src/main.tsx",
       "vendor/eliza/packages/ui/src/state/app-update-gate.ts",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java"
+      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java"
     ],
     "stateMapping": {
       "pending/bridge/acknowledged/ready": "Actual startup owner, retained readiness and native acknowledgements",
@@ -1979,6 +1980,7 @@
       "oldReadCannotFillNextAccountTest",
       "queuedEditStaysWithCapturedOwnerTest",
       "lateClearKeepsOriginalAccountDraftTest",
+      "retiredClearRequiresSameOwnerReviewTest",
       "foreignStoredFrameCannotBeOfferedTest",
       "earlierLifetimeCannotDiscardNewDraftTest"
     ],
@@ -1986,7 +1988,8 @@
       "OwnsEditor",
       "CurrentLease",
       "ForeignUnavailable",
-      "OwnsWrites"
+      "OwnsWrites",
+      "ReviewBlocksConsume"
     ],
     "sources": [
       "apps/app/src/prototype/canonical-calendar-drafts.ts",
@@ -2012,6 +2015,7 @@
       "orphanCannotBeRestagedTest",
       "orphanCannotBeUndoneTest",
       "ordinaryChangesKeepOrphanUntilExplicitReplacementTest",
+      "completedOneOffCannotSnoozeTest",
       "aGenuinePairBlocksReplacementTest",
       "explicitClockCancelLeavesOrphanWithoutReceiptTest",
       "aPendingAlarmCannotAcquireSoundOnLockGrantTest"
@@ -2168,8 +2172,8 @@
       "apps/app/src/prototype/notifications-adapter.ts",
       "apps/app/src/main.tsx",
       "apps/app/src/runtime/connection-ui.tsx",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCanonicalNotifications.java",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNotificationsPlugin.java"
+      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCanonicalNotifications.java",
+      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNotificationsPlugin.java"
     ],
     "stateMapping": {
       "generation/live/phase/drain": "Actual mount closure and renderer read, restore and commit activity",
@@ -2274,8 +2278,7 @@
       "apps/app/src/runtime/inline-modal.ts",
       "apps/app/src/runtime/modal-inert.ts",
       "apps/app/src/prototype/phone.css",
-      "apps/app/src/prototype/template.html",
-      "apps/app/src/runtime/image-preview.ts"
+      "apps/app/src/prototype/template.html"
     ],
     "abstractions": [
       "Raised input scrim with two press generations, bounded pointer identities, one inline or native modal and representative held, moved and released paths. A nonmodal dialog does not take modal ownership.",
@@ -2338,12 +2341,7 @@
       "vendor/eliza/plugins/plugin-maps/src/client/maps-screen.ts",
       "vendor/eliza/plugins/plugin-maps/src/client/device-navigation.ts",
       "vendor/eliza/plugins/plugin-maps/src/client/agent-navigation.ts",
-      "patches/eliza/maps-reroute-state-client.patch",
-      "patches/eliza/maps-reroute-state-client-manifest.json",
-      "patches/eliza/maps-reroute-maps-screen-client.patch",
-      "patches/eliza/maps-reroute-maps-screen-client-manifest.json",
-      "patches/eliza/maps-reroute-device-navigation-client.patch",
-      "patches/eliza/maps-reroute-device-navigation-client-manifest.json"
+      "upstream.lock.json"
     ],
     "stateMapping": {
       "session/guidanceSession/guidanceRoute/rerouting/fixReady": "Mounted MapsScreenController navigation lifecycle and active guidance",
@@ -2973,9 +2971,7 @@
       "apps/app/src/browser/files.ts",
       "vendor/eliza/plugins/plugin-files/src/browser/storage-volume.ts",
       "vendor/eliza/plugins/plugin-files/src/browser/storage-model.ts",
-      "vendor/eliza/plugins/plugin-files/src/browser/files.ts",
-      "patches/eliza/files-storage-query-client.patch",
-      "patches/eliza/files-storage-placement-client.patch"
+      "vendor/eliza/plugins/plugin-files/src/browser/files.ts"
     ],
     "stateMapping": {
       "mode/active/queued/prepared": "Actual Node exclusive lock and same-realm fallback with source requests held at library ports",
@@ -3307,6 +3303,37 @@
     ]
   },
   {
+    "path": "specs/quint/application/AutomaticAppUpdateSchedule.qnt",
+    "module": "AutomaticAppUpdateSchedule",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "staysForegroundAndFindsLaterReleaseTest",
+      "offlineRetriesAreBoundedAndRecoverTest",
+      "backgroundInvalidatesBeforeLaterEffectTest",
+      "disposedInFlightCannotAcquireAnotherAttemptTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/settings-adapter.ts",
+      "vendor/eliza/packages/ui/src/state/app-update-gate.ts"
+    ],
+    "stateMapping": {
+      "active/disposed/busy/failures/wakeAt": "Actual shared foreground scheduler snapshot",
+      "valid": "Authority of the actual in-flight scheduler callback",
+      "now": "Controlled clock supplied to the scheduler"
+    },
+    "abstractions": [
+      "One minute is one unit, normal interval four units. Native bridge completions and timer delivery are controlled.",
+      "Retries and periodic foreground progress are checked; eventual network service and Android background execution are separate obligations."
+    ],
+    "bounds": {
+      "maxSamples": 1000,
+      "maxSteps": 80,
+      "maxVerifyDepth": 6
+    }
+  },
+  {
     "path": "specs/quint/application/KeyboardFocus.qnt",
     "module": "KeyboardFocus",
     "init": "init",
@@ -3322,7 +3349,7 @@
     ],
     "sources": [
       "apps/app/src/prototype/chat-overlay-motion-adapter.ts",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/MainActivity.java"
+      "android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java"
     ],
     "stateMapping": {
       "native": "MainActivity IME visibility or explicit auxiliary-IME handoff; -1 is browser fallback",

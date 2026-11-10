@@ -66,18 +66,32 @@ test('only a voice record for the current SDK can admit the native profile', () 
   }
 });
 
-test('current voice source binding includes every reviewed shared speech patch', () => {
-  const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'patches/eliza/native-manifest.json'), 'utf8'));
-  const patches = manifest.patches.filter(row => row.module === 'plugins/plugin-local-inference/native/android');
-  const binding = committed.sourceAdmission.sourceIntegration;
-  assert.equal(binding.admittedAt, committed.pin);
-  assert.deepEqual(binding.speechPatches, patches);
+test('current upstream voice source admission keeps historical patch and qualification evidence', () => {
+  const {sourceIntegration: current, historicalPatchedSourceIntegration: historical} = committed.sourceAdmission;
+  let admittedAt = current.admittedAt;
+  const advances = [...(committed.sourceAdmission.launcherOtaSourceAdvanceHistory ?? []),
+    ...(committed.sourceAdmission.launcherOtaSourceAdvance ? [committed.sourceAdmission.launcherOtaSourceAdvance] : [])];
+  for (const advance of advances) {
+    assert.equal(advance.priorPin, admittedAt, 'source advances keep an exact historical chain');
+    assert.equal(advance.nativeBuildInputsUnchanged, true);
+    assert.equal(advance.nativeQualificationTransferred, false);
+    assert.ok(advance.changedPaths.length > 0 && advance.changedPaths.every(file => file.startsWith('packages/ui/')),
+      'the launcher gate advance changes only shared UI source and verification');
+    admittedAt = advance.admittedAt;
+  }
+  assert.equal(admittedAt, committed.pin);
+  assert.equal(current.priorPin, historical.admittedAt);
+  assert.equal(current.engineCommit, committed.forkPin);
+  assert.ok(historical.speechPatches.every(row => row.module === 'plugins/plugin-local-inference/native/android'));
   assert.deepEqual(committed.sourceAdmission.developComparison.explicitSpeechPatchFiles,
-    patches.map(row => `patches/eliza/${row.file}`));
-  assert.equal(binding.nativeInputsUnchanged, false);
-  assert.equal(binding.nativeQualificationTransferred, false);
+    historical.speechPatches.map(row => `patches/eliza/${row.file}`));
+  assert.equal(current.nativeInputsUnchanged, false);
+  assert.equal(current.nativeQualificationTransferred, false);
   assert.equal(committed.qualified, false);
   assert.equal(committed.evidence.userAccepted, false);
+  assert.equal(current.unchangedBuildInputObjects['plugins/plugin-local-inference/native/llama.cpp'], committed.forkPin);
+  assert.equal(current.nativeSourceCatalog.sha256, createHash('sha256')
+    .update(fs.readFileSync(path.join(ROOT, current.nativeSourceCatalog.path))).digest('hex'));
 });
 
 test('the schema rejects bad hashes, missing ABIs, non-GGUF models, an incomplete ASR slot and unearned qualification', () => {

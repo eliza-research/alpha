@@ -143,11 +143,12 @@ export async function checkInteractiveTaskTraces(extraSources = []) {
   assert.equal(bundle.revision, JSON.parse(read(pin)).commit);
   assert.ok(compiled.size > 0);
   for (const [path, digest] of compiled) assert.equal(bundle.driverHashes[path], digest, 'Compiled source must match its captured bytes');
-  const oldGraph = read(originalGraph);
+  const graphSource = bundle.resolveHistoricalSource(originalGraph);
+  const oldGraph = readFileSync(resolve(root,graphSource));
   const history = JSON.parse(read(inventory)).historicalArtifacts
     .find(entry => entry.path === 'packages/core/tla/InteractiveTask.reducer.graph.json');
   assert.equal(hash(oldGraph), history.sha256);
-  assert.equal(bundle.driverHashes[resolve(root, originalGraph)], history.sha256);
+  assert.equal(bundle.driverHashes[resolve(root, graphSource)], history.sha256);
   const module = bundle.instantiate({});
   const traces = [];
 

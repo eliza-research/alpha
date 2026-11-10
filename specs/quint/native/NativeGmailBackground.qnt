@@ -2,7 +2,7 @@
 module NativeGmailBackground {
   type State = {latestGeneration: int, credential: int, remoteOwner: int, grants: int, reset: bool,
     allowed: bool, observable: bool, locked: bool, phase: str, generation: int, grant: int,
-    owner: int, boundCredential: int, cursor: int, continuation: int, incomplete: bool,
+    owner: int, boundCredential: int, cursor: int, continuation: int, authFailures: int, incomplete: bool,
     checked: bool, notice: str, tap: str, visible: bool, posts: int, periodic: int,
     catchup: int, schedules: int, cancels: int, attempt: int, admitted: int, configuring: int,
     configOwner: int, configCredential: int, configAttempt: int, configGrantVerified: bool, configQueued: bool,
@@ -14,14 +14,14 @@ module NativeGmailBackground {
   val selections = Set(1,2,3)
   val credentialClasses = Set(0,1,2,3)
   val jobGenerations = Set(0,1,2,3,4)
-  val scripts = Set("none","baseline","continued","final","notify","reset","retry","unsupported","forbidden","malformed")
+  val scripts = Set("none","baseline","continued","final","notify","reset","retry","unsupported","forbidden","conflict","unauthorized","malformed")
   val faults = Set("none","before","after")
   val tapMethods = Set("pending","consume","release")
   val liveNotices = Set("posted","uncertain")
 
   action init: bool = s'={
     latestGeneration:0,credential:1,remoteOwner:1,grants:7,reset:false,allowed:true,observable:true,locked:false,
-    phase:"disabled",generation:0,grant:0,owner:0,boundCredential:0,cursor:0,continuation:0,incomplete:false,
+    phase:"disabled",generation:0,grant:0,owner:0,boundCredential:0,cursor:0,continuation:0,authFailures:0,incomplete:false,
     checked:false,notice:"none",tap:"none",visible:false,posts:0,periodic:0,catchup:0,schedules:0,cancels:0,
     attempt:0,admitted:0,configuring:0,configOwner:0,configCredential:0,configAttempt:0,configGrantVerified:false,configQueued:false,
     workGeneration:0,workEpoch:0,workReply:"none",bridgeReply:"none",historyReads:0,process:1,
@@ -39,7 +39,7 @@ module NativeGmailBackground {
     catchup:if (st.catchup==0) st.generation else st.catchup,schedules:st.schedules+1}
   pure def cancelScheduled(st: State): State = {...st,periodic:0,catchup:0,cancels:st.cancels+1,visible:false}
   pure def dropSelection(st: State): State = {...cancelScheduled(st),phase:"disabled",generation:0,grant:0,
-    owner:0,boundCredential:0,cursor:0,continuation:0,incomplete:false,checked:false,notice:"none",tap:"none",consumeCurrent:false}
+    owner:0,boundCredential:0,cursor:0,continuation:0,authFailures:0,incomplete:false,checked:false,notice:"none",tap:"none",consumeCurrent:false}
   pure def withdrawAll(st: State): State = {...dropSelection(st),attempt:st.attempt+1,admitted:st.attempt+1,pendingGrant:0}
   pure def freshSelection(st: State): State = scheduled({...dropSelection(st),phase:"waiting",
     latestGeneration:st.latestGeneration+1,generation:st.latestGeneration+1,grant:st.configuring,
@@ -124,10 +124,17 @@ module NativeGmailBackground {
   pure def retry(st: State): State = {...st,phase:"retrying",workReply:"retry"}
   pure def unavailable(st: State): State = {...st,phase:"grant-unavailable",workReply:"success",visible:false}
   pure def checkpoint(st: State, nextCursor: int): State =
-    {...st,phase:"watching-new-mail",cursor:nextCursor,continuation:0,checked:true,workReply:"success"}
+    {...st,phase:"watching-new-mail",cursor:nextCursor,continuation:0,authFailures:0,checked:true,workReply:"success"}
   pure def page(st: State, response: str, fault: str): State =
     if (response=="unsupported") {...st,phase:"unsupported",workReply:"success"}
-    else if (response=="forbidden") unavailable(st)
+    else if (response=="unauthorized") unavailable(st)
+    // The verified owner/grant remains current. History-only403/409 may be a
+    // transient Cloud token mapping; three durable refusals stop this job.
+    else if (response.in(Set("forbidden","conflict"))) {
+      val failures=st.authFailures+1
+      {...st,authFailures:failures,phase:if (failures>=3) "grant-unavailable" else "retrying",
+        workReply:if (failures>=3) "success" else "retry"}
+    }
     else if (response.in(Set("retry","malformed"))) retry(st)
     else if (response=="baseline") {
       val saved=checkpoint(st,1)
@@ -137,7 +144,7 @@ module NativeGmailBackground {
     else if (response=="continued") {
       val batch=if (st.continuation==0) publishNew(retireBehindCheckpoint(st)) else st
       if (st.cursor!=1) retry(st)
-      else {...batch,phase:"catching-up",checked:true,continuation:st.continuation+4,
+      else {...batch,phase:"catching-up",checked:true,authFailures:0,continuation:st.continuation+4,
         historyReads:4,workReply:"retry"}
     }
     else if (response=="notify") {
@@ -153,6 +160,7 @@ module NativeGmailBackground {
     generation.in(jobGenerations),response.in(scripts),fault.in(faults),
     s.workGeneration==0,s.consumeGeneration==0,s.continuation<=8,s.posts<8,
     fault=="none" or response=="baseline",
+    not(response.in(Set("forbidden","conflict"))) or s.authFailures<3,
     response!="none" or generation!=s.generation or stopped or not(local(s) and remote(s) and s.online),
     val cleared={...s,historyReads:0}
     s'=if (generation==0) {...cleared,workReply:"failure"}
@@ -236,8 +244,9 @@ module NativeGmailBackground {
   val HeldRefusalOwnsClosedBridge = s.refusalAttempt==0 or (s.retiredBridge and s.refusalAttempt<=s.attempt)
   val HeldConsumeHasExactTap = not(s.consumeCurrent) or
     (s.consumeGeneration!=0 and s.consumeGeneration==s.generation and s.tap!="none")
+  val HistoryAuthBudget = s.authFailures.in(0.to(3))
   val safety=all {RetiredSelectionIsEmpty,ExactSchedule,ContinuationKeepsBaseline,
-    VisibleNoticeIsPosted,TapNeedsRetainedNotice,AdmissionEpoch,PendingGrantOwnsAttempt,HeldConsumeHasExactTap,HeldRefusalOwnsClosedBridge}
+    VisibleNoticeIsPosted,TapNeedsRetainedNotice,AdmissionEpoch,PendingGrantOwnsAttempt,HeldConsumeHasExactTap,HeldRefusalOwnsClosedBridge,HistoryAuthBudget}
 
   action step = any {
     { nondet owner=owners.oneOf(); nondet grants=0.to(7).oneOf(); nondet reset=Bool.oneOf();
@@ -333,4 +342,14 @@ module NativeGmailBackground {
     .then(work(1,"baseline",false,"none")).then(environment(1,3,false,true,false,false))
     .then(work(1,"notify",false,"none")).then(recreate).then(work(1,"final",false,"none"))
     .expect(s.notice=="uncertain" and s.posts==1 and not(s.visible))
+  run historyRefusalBudgetResetsOnlyAfterAcceptedPageTest = init.then(beginConfigure(1,1)).then(finishConfigure)
+    .then(work(1,"forbidden",false,"none")).then(work(1,"forbidden",false,"none"))
+    .expect(s.authFailures==2 and s.phase=="retrying" and s.workReply=="retry" and s.cursor==0 and s.posts==0 and s.historyReads==1)
+    .then(work(1,"baseline",false,"none")).expect(s.authFailures==0 and s.cursor==1)
+    .then(work(1,"conflict",false,"none")).then(work(1,"conflict",false,"none"))
+    .then(work(1,"conflict",false,"none"))
+    .expect(s.authFailures==3 and s.phase=="grant-unavailable" and s.workReply=="success" and s.cursor==1 and s.continuation==0 and s.posts==0 and s.historyReads==1)
+  run unauthorizedHistoryStopsImmediatelyTest = init.then(beginConfigure(1,1)).then(finishConfigure)
+    .then(work(1,"unauthorized",false,"none"))
+    .expect(s.authFailures==0 and s.phase=="grant-unavailable" and s.workReply=="success" and s.posts==0)
 }

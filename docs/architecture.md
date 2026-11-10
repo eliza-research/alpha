@@ -72,6 +72,13 @@ Android builds declare the configured production web host by default.
 requires the exact sign-in return filter. The staging return uses the configured staging web host in test-mocks
 builds only. Changing the backend does not import another product's identity.
 
+The consumer also owns the protected Pages browser return registration. The
+public `config/pages-native-auth-callbacks.generated.json` is generated with the
+other deployment outputs and binds each environment's exact callback, API origin,
+tenant, browser-start/loopback-return paths and session storage key. An operator
+merges its entry into the corresponding protected Pages registry; generation
+does not deploy it. See the [browser sign-in runbook](runbooks/pages-browser-sign-in.md).
+
 Cloud credentials, pending sign-in state, acknowledgments and the local agent's
 provider binding are scoped to a fingerprint of both deployment records.
 Changing an authority, tenant or entitlement audience requires a fresh sign-in; credentials from the
@@ -144,23 +151,20 @@ Gmail attachments and PDF file creation remain available.
 | `apps/app/src` | Alpha UI, product policy and adapters to shared features |
 | `android` | Product identity, Activity, permissions, resources and standalone/HOME packaging. `android/consumer-host.json` is the descriptor the pinned upstream consumer-host generator turns into the git-ignored Gradle host; `android/app/product.gradle` holds Gradle-time product admission |
 | `android/sense` | Product identity wrappers for the upstream Sense listener; shared implementation and SystemUI policy live in `vendor/eliza/packages/app/platforms/android/sense` and `vendor/eliza/packages/os/android/sense` ([ADR 0001](adr/0001-privileged-listener.md)); never in the standalone or launcher APK |
+| `android/aosp/pixel10a-composition.json` | Alpha's Pixel product, launcher, listener and Pixel configuration identities, including the installed `alphaphone` vendor directory; composed by the pinned upstream OS tooling. `pixel10a-product.json` remains the separate release qualification descriptor |
 | `app.config.json` | Package ID, display name, version and orientation |
 | `apps/app/src/product/alpha-product-registration.ts` | Versioned product record of the shared mobile shell (`@elizaos/ui/mobile-shell`, schema `elizaos.mobile-product` v1): identity, theme and stylesheet aliases, icons, view order and labels, older view ids migrated once, and installed storage names (the launcher favorites record with its `alpha:` prefix and `alpha-apps` default policy, and the other names the app keeps reading). Home, the app grid, the view registry and navigation state (open view, Back stack, drawer and the assistant's pill, composer, sheet or full detent) render from the upstream shell with this record; runtime code such as agent navigation reads the React-free `@elizaos/ui/mobile-shell/core` entry |
 | `vendor/eliza` | Pinned shared platform source; never modified by consumer builds (temporary exception: the pinned voice builder's untracked `.cache/elizavoice-android`, see [fused speech](fused-speech.md)) |
 | `scripts` | Consumer build orchestration and product acceptance scenarios |
 | `design` | Requirements and visual references, not executable instructions |
 
-Maps, Files and Notes implementations are copied from authenticated upstream
-source into a generated cache outside the submodule. Gradle includes the shared
-password manager directly from the reviewed pin. `patches/eliza/native-manifest.json` lists the
-staged native modules and two reviewed patches: `google-browser-sign-in.patch` for
-`packages/auth/android` and `cloud-speech-native.patch` for
-`plugins/plugin-local-inference/native/android`. The other listed modules are copied unchanged.
-Admission authenticates the pin, patch digest, target before/after hashes and complete staged
-module inventory. Gradle compiles the generated copy under `.eliza/patched-native`, never a
-modified submodule. Client builds also add the files of `cloud-speech-client.patch`, listed in
-`patches/eliza/cloud-speech-client-manifest.json`, to the prepared copy of `packages/voice`.
-Worker and resident-runtime builds apply no source patch. Photo edits, capture publication, the opt-in notification mirror and the delivery-receipt
+Maps, Files, Notes and speech client features are copied from the authenticated
+Eliza pin into a generated cache outside the submodule. The
+`android/upstream-native-sources.json` catalog selects the pinned modules for
+Android staging. Admission verifies the exact Git revision, bytes, executable
+modes and staged inventory. Gradle compiles the generated copy under
+`.eliza/patched-native`. Client, worker and resident builds use the pinned source.
+Photo edits, capture publication, the opt-in notification mirror and the delivery-receipt
 ledger for Alpha's own workflow and approval notices (`NoticeDelivery`, configured by
 `WorkflowNoticeDelivery`) also use shared native modules. Alpha wrappers retain installed storage names, media paths and Android components.
 The workflow notice tap routes, tap capture, owner fence, approval coordination, journal recovery and poster are the
@@ -190,8 +194,8 @@ runtime preparation also uses the locked upstream source without patch replay.
 Resident Java staging reads the exact locked upstream source, which now contains
 the reviewed IPC startup recovery pair. Its generated-source receipt binds original
 and generated hashes across host identity/resource/environment configuration; CI
-requires both recovery files and refuses resident patches. The retired patch and
-source equivalence are recorded in `patches/eliza/resident-ipc-recovery.md`.
+requires both recovery files. The [IPC source equivalence record](https://github.com/eliza-research/alphaphone/blob/f3b1db5cf1/patches/eliza/resident-ipc-recovery.md)
+records the earlier transition to the upstream implementation.
 The vendor checkout and prepared resident runtime stay unchanged.
 
 The Android Gradle setup itself is generated: the upstream consumer-host generator
@@ -286,8 +290,12 @@ The resident Google host is shared Eliza source. The product entry
 character and installed Google consent settings. The host uses Eliza Cloud's
 owner-scoped Gmail and Calendar services, and browser development uses the same
 host with its own credential and consent ports. The pinned Alpha SDK consumes
-the shared source through the hash-bound `patches/eliza/managed-google-agent.patch`
-backport. `scripts/build-native-google-host.ts` bundles the product entry into
+the shared source directly from the reviewed pin. Its native and browser host entries
+supply `gmailReadBodyMaxCharacters: 32000` as Alpha's product policy; upstream leaves
+bodies complete by default and retains its explicit result-size refusal. A configured
+limit remains surrogate-safe and marks truncated results. The prepared host is
+byte-identical to upstream; product behavior patches are not admitted.
+`scripts/build-native-google-host.ts` bundles the product entry into
 `google-host.mjs`; Android stages and verifies the artifact before loading it
 through `ELIZA_NATIVE_GOOGLE_HOST_MODULE`.
 
@@ -328,7 +336,7 @@ There is no automatic Eliza Cloud website sign-in fallback.
 - **Readiness (`CloudSignInReadiness`, `CloudSignInPlugin.status`)**: readiness reports email, SMS and optional native Google separately, checked with a few short requests and cached (6 hours when a method is ready,
   10 minutes when none is; any error, timeout or unexpected answer is "not ready"):
   - `GET /api/v1/app-auth/mobile/config` confirms the registration for client
-    `ai.elizaresearch.alphaphone`, this environment and the return URL; without it no method is ready;
+    `ai.alphacompute.alphaphone`, this environment and the return URL; without it no method is ready;
   - `GET /steward/auth/providers` offers email (or SMS) without a captcha for `email_otp` (`sms_otp`),
     and the email code route exists (an empty-object POST is refused as invalid, not as unknown; no
     email is sent);
@@ -395,7 +403,7 @@ There is no automatic Eliza Cloud website sign-in fallback.
 - **Cloud (elizaOS/eliza `packages/cloud`, `packages/auth`, `packages/app`)** owns the accounts:
   - Steward links Google and email to the existing user by verified email.
   - Mobile App Auth mints the key, valid for 30 days.
-  - For in-app sign-in, Cloud must register `ai.elizaresearch.alphaphone` in
+  - For in-app sign-in, Cloud must register `ai.alphacompute.alphaphone` in
     `ELIZA_MOBILE_APP_AUTH_CLIENTS_JSON`, allowlist the return URL for tenant `elizacloud`, serve
     `/.well-known/assetlinks.json` on `eliza.app` with the release certificate
     (`scripts/render-assetlinks.mjs`), and deploy the email code routes. The APK automatically
@@ -431,7 +439,7 @@ the shared password plugin; see [password-provider-setup.md](password-provider-s
 unchanged; writers in separate Android processes are outside this contract. Renderer preferences
 hold nonsecret selections and identifiers. Backup remains disabled by the reset-only policy; no app-data transfer is planned.
 
-Standalone and launcher APKs share `ai.elizaresearch.alphaphone` and replace one
+Standalone and launcher APKs share `ai.alphacompute.alphaphone` and replace one
 another. Only the launcher variant declares HOME. Release outputs require
 controlled signing through the upstream `ELIZAOS_KEYSTORE_PATH`,
 `ELIZAOS_KEYSTORE_PASSWORD`, `ELIZAOS_KEY_ALIAS` and `ELIZAOS_KEY_PASSWORD` values;
@@ -439,6 +447,17 @@ without all four the build emits unsigned release APKs. System installation alon
 permissions. OS staging admits the product APK separately from Eliza's full app;
 release provisioning owns default roles, signing, update compatibility and
 recovery policy.
+
+The [application update path](launcher-ota.md) now checks periodically while the
+production Android renderer is active and requests Android's nonprivileged
+self-update API from idle Home. Its scheduler and automatic preparation flag are
+an authenticated patch to the shared `app-update-gate` client; Alpha binds its
+Home/voice/editor policy. The native plugin retains package/flavor/signing-family
+and exact-byte admission, all-renderer draft receipts, resident shutdown and the
+durable unknown-session fence. Android may still require confirmation. An APK
+release is published only after actual-archive inspection and anonymous readback;
+the separate P-75 privileged OS updater and independent launcher recovery remain
+unqualified work.
 
 Image staging, APK release records and update tooling are shared `packages/os` modules that
 Alpha binds with its policy only. `image-apk-admission.mjs` admits the launcher APK and the

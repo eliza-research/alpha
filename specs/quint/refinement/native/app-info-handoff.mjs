@@ -25,7 +25,7 @@ export async function withAppInfoSource(run, extraSources = []) {
     const generatedSources = [launcher, sourceReceipt, ...ports];
     const sources = [
       appInfoSource, pluginCallSource, 'vendor/eliza/' + launcherPath,
-      'android/consumer-host.json', 'upstream.lock.json', 'patches/eliza/native-manifest.json',
+      'android/consumer-host.json', 'upstream.lock.json', 'android/upstream-native-sources.json',
       'test/fixtures/native-source.mjs', 'test/fixtures/jvm-tools.mjs',
       'scripts/prepare-patched-native.mjs', 'scripts/upstream-native-source.mjs',
       ...['Trace.java', 'java.mjs', 'app-info-handoff-platform.mjs'].map(name => join(directory, name)),

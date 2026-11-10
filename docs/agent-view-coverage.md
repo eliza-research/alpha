@@ -33,6 +33,18 @@ Product builds send the user's own text and carry the observation in request met
 
 **Connections.** Resident, remote and local connections negotiate verified phone actions during enrollment. A Cloud agent connection enrolls the device and gets them when the Cloud runtime advertises the device-action protocol and the owner identity matches; otherwise it stays chat-only and says that phone actions, workflows and paired speech are not enabled. No free-text response is parsed as a command. UI buttons for native app operations are direct owner actions, not model capabilities.
 
+## November 9 corrections from the app review (#855)
+
+Checked against source at the pin; where this section differs from the tables below, this section is current. None of it is APK or device evidence.
+
+- **Unreviewed set is wider than the five types named above.** `performRequested` (`client-coordinator.ts`) also admits `NOTES_ORGANIZE_DIRECT_TYPES`, `FILES_DIRECT_TYPES` (`files_filter`, `files_open`) and `PHOTOS_VIEW_DIRECT_TYPES`. Only the Files pair is reachable today, because the phone does not negotiate `notes.organize.v1` or `photos.view.v1` (`runtime/phone-context.ts`).
+- **Files has model operations.** Under `files.browser.v1` (Android only) the agent has `files_filter`, `files_open`, `files_share`, `files_move`, `files_trash` and `files_folder_create` (`files-browser-contract.ts`). Share, move, trash and folder creation are reviewed. The filter returns a count, not names or paths.
+- **Maps publishes `map-route`** (`plugin-maps/src/client/maps-screen.ts`), and the agent has a navigation tier that shows a route for the owner to start.
+- **Workflows.** The resident agent loads the shared model-callable `WORKFLOW` action (`plugin-workflow/src/actions/workflow.ts`). The statement "no model workflow create/run" below describes the phone's device-action list only.
+- **Photos.** The reviewed upstream `device-actions/tools.ts` registers `DEVICE_PHOTOS_FILTER` separately from `DEVICE_NOTES_RECORD`. The phone still does not negotiate `photos.view.v1`, so registration alone does not enable a Photos operation on this product.
+- **Camera.** An agent-requested photo now closes the chat first, so the viewfinder is visible when the capture happens (`camera-adapter.ts` `takeRequestedPhoto`).
+- **Not modeled.** The shared coordinator's direct-request path has no Quint model or conformance adapter; `Application.qnt` `ReviewedDispatch` describes the review-first setting only.
+
 ## All fourteen app surfaces
 
 “Common actions” below means navigation, the Notes family (Previous notes only) and reminder creation from the table above, reviewed as described there; it does not imply app-specific operations.

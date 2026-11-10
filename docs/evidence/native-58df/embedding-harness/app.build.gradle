@@ -1,6 +1,6 @@
 apply plugin: 'com.android.application'
 android {
- namespace 'ai.elizaresearch.alphaphone'
+ namespace 'ai.alphacompute.alphaphone'
  compileSdk 36
  defaultConfig { applicationId 'ai.eliza.embeddingqualify'; minSdk 26; targetSdk 36; testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'; buildConfigField 'String', 'ELIZA_ASR_THREADS', '""' }
  buildFeatures { buildConfig true }

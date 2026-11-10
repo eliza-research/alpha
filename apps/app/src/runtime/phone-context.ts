@@ -143,7 +143,7 @@ export function selectDeviceCapabilities(offered: unknown, profile: DeviceCapabi
   if(agent.includes('reminders.local-record.v2'))capabilities.push('reminders.local-record.v2');else if(agent.includes('reminders.local-record.v1'))capabilities.push('reminders.local-record.v1');
   // Browser chat reminders use the runtime scheduler; do not offer a second device-creation lifecycle.
   // notes.organize.v1 (Notes folders, filter, restore, record) waits for the pin to carry
-  // patches/eliza/notes-organize-agent.patch: the shared coordinator cannot parse those operations yet.
+  // the shared coordinator requires an explicit operation and view binding.
   for(const capability of [...(!native?['calendar.agenda-read.v1']:[]),'notes.query.v1',...(native?['reminders.create.v1']:[]),'calendar.create.v1',...(android||!native?['calendar.next-read.v1']:[]),'maps.selected-read.v1'])if(agent.includes(capability))capabilities.push(capability);
   if(agent.includes(FILES_CAPABILITY)&&profile.files)capabilities.push(FILES_CAPABILITY);
   // Free/busy is negotiated only when the agent offers it.

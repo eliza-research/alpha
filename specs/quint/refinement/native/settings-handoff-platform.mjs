@@ -24,7 +24,7 @@ export function settingsHandoffPlatform(temporary) {
     'ACTION_ZEN_MODE_PRIORITY_SETTINGS','ACTION_REQUEST_SET_AUTOFILL_SERVICE','EXTRA_APP_PACKAGE',
   ];
   const files={
-    'ai/elizaresearch/alphaphone/AlphaDevicePlugin.java':`package ai.elizaresearch.alphaphone;
+    'ai/alphacompute/alphaphone/AlphaDevicePlugin.java':`package ai.alphacompute.alphaphone;
 import ai.eliza.plugins.system.SystemSettingsPages;
 import android.content.Intent;
 import android.provider.Settings;
@@ -33,7 +33,7 @@ public final class AlphaDevicePlugin extends Plugin {
 ${exact(device,' private static Intent handOff(', ' /**\n  * Asks Android')}
 ${exact(device,' @PluginMethod public void openSettings(', ' private final java.util.concurrent.ExecutorService diagnosticsWorker')}
 }`,
-    'ai/elizaresearch/alphaphone/BuildConfig.java':'package ai.elizaresearch.alphaphone;public final class BuildConfig {public static boolean IS_LAUNCHER;}',
+    'ai/alphacompute/alphaphone/BuildConfig.java':'package ai.alphacompute.alphaphone;public final class BuildConfig {public static boolean IS_LAUNCHER;}',
     'android/provider/Settings.java':`package android.provider;
 public final class Settings {
 ${constants.map(name=>` public static final String ${name}="${name}";`).join('\n')}

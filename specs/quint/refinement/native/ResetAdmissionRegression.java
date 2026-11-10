@@ -1,4 +1,4 @@
-package ai.elizaresearch.alphaphone;
+package ai.alphacompute.alphaphone;
 
 import ai.eliza.plugins.system.SenseListenerClient;
 import ai.eliza.plugins.system.reset.DataReset;
@@ -64,7 +64,13 @@ public final class ResetAdmissionRegression {
   setup(root,"reservation-sync");AlphaDataReset.RESET.record(app);ResetTraceHooks.failDirectoryAfter="reset-alpha.failures";
   check(AlphaDataReset.RESET.automaticAttempt(app,1000)==DataReset.Outcome.DEFERRED&&count()==1&&SenseListenerClient.calls==0,
     "failed directory sync keeps consumed reservation without dispatch");
-  AlphaDataReset.RESET.automaticAttempt(app,1001);check(count()==2&&SenseListenerClient.calls==1,"next admission uses next slot");
+  check(Files.readString(budget()).equals("1:1000:OPEN"),"uncertain reservation keeps exact open record");
+  check(AlphaDataReset.RESET.automaticAttempt(app,1001)==DataReset.Outcome.DEFERRED&&count()==1&&SenseListenerClient.calls==0&&android.app.ActivityManager.calls==0,
+    "automatic admission settles open reservation without repeating effects or consuming a slot");
+  check(Files.readString(budget()).equals("1:1000")&&AlphaDataReset.RESET.pending(app),"settlement preserves exact count, window and authorization marker");
+  check(AlphaDataReset.RESET.automaticAttempt(app,1002)==DataReset.Outcome.LISTENER_UNACKNOWLEDGED&&count()==2&&SenseListenerClient.calls==1&&android.app.ActivityManager.calls==0,
+    "next admission uses next slot after settlement");
+  check(Files.readString(budget()).equals("2:1000:LISTENER_UNACKNOWLEDGED"),"new reservation retains the original window");
   setup(root,"silent-noncommit");AlphaDataReset.RESET.record(app);ResetTraceHooks.skipCommitFor="reset-alpha.failures";
   check(AlphaDataReset.RESET.automaticAttempt(app,1000)==DataReset.Outcome.DEFERRED&&count()==0&&SenseListenerClient.calls==0,
     "readback detects silent AtomicFile noncommit before effects");
@@ -72,8 +78,35 @@ public final class ResetAdmissionRegression {
   setup(root, "crash-reservation"); AlphaDataReset.RESET.record(app); ResetTraceHooks.crashAfterCommit = "reset-alpha.failures";
   try { AlphaDataReset.RESET.automaticAttempt(app, 1000); throw new AssertionError("missing crash"); } catch (ResetTraceHooks.Interruption expected) { }
   check(count() == 1 && SenseListenerClient.calls == 0, "crash consumes reservation before effect");
-  ResetTraceHooks.crashAfterCommit = null; AlphaDataReset.RESET.automaticAttempt(app, 1001);
-  check(count() == 2 && SenseListenerClient.calls == 1, "restart cannot reuse reservation");
+  ResetTraceHooks.crashAfterCommit = null;
+  check(Files.readString(budget()).equals("1:1000:OPEN"),"crash retains open reservation");
+  check(AlphaDataReset.RESET.automaticAttempt(app,1001)==DataReset.Outcome.DEFERRED&&count()==1&&SenseListenerClient.calls==0&&android.app.ActivityManager.calls==0,
+    "restart settles crashed reservation without replay");
+  check(Files.readString(budget()).equals("1:1000"),"restart settlement retains spent count and window");
+  AlphaDataReset.RESET.automaticAttempt(app,1002);
+  check(count()==2&&SenseListenerClient.calls==1&&android.app.ActivityManager.calls==0,"later admission cannot reuse crashed reservation");
+
+  setup(root,"settlement-write-unavailable");AlphaDataReset.RESET.record(app);ResetTraceHooks.crashAfterCommit="reset-alpha.failures";
+  try{AlphaDataReset.RESET.automaticAttempt(app,1000);throw new AssertionError("missing crash");}catch(ResetTraceHooks.Interruption expected){}
+  ResetTraceHooks.crashAfterCommit=null;ResetTraceHooks.failWrite="reset-alpha.failures";
+  for(int i=0;i<3;i++){
+   check(AlphaDataReset.RESET.automaticAttempt(app,1001+i)==DataReset.Outcome.DEFERRED,"failed settlement always defers");
+   check(count()==1&&Files.readString(budget()).equals("1:1000:OPEN")&&SenseListenerClient.calls==0&&android.app.ActivityManager.calls==0,
+     "failed settlement preserves uncertainty, budget and no effects");
+  }
+  ResetTraceHooks.failWrite=null;
+  check(AlphaDataReset.RESET.automaticAttempt(app,1004)==DataReset.Outcome.DEFERRED&&Files.readString(budget()).equals("1:1000")&&SenseListenerClient.calls==0,
+    "recovered settlement still does not dispatch");
+  check(AlphaDataReset.RESET.retry(app,1005)==DataReset.Outcome.LISTENER_UNACKNOWLEDGED&&count()==2&&SenseListenerClient.calls==1&&android.app.ActivityManager.calls==0,
+    "fresh explicit retry uses a new counted reservation after settlement");
+
+  setup(root,"accepted-clear-interrupted");AlphaDataReset.RESET.record(app);SenseListenerClient.resetSaved=true;android.app.ActivityManager.mode=0;
+  check(AlphaDataReset.RESET.automaticAttempt(app,1000)==DataReset.Outcome.DISPATCHED&&count()==1&&SenseListenerClient.calls==1&&android.app.ActivityManager.calls==1,
+    "accepted clear has one counted dispatch");
+  check(Files.readString(budget()).equals("1:1000:OPEN")&&AlphaDataReset.RESET.pending(app),"accepted clear is not proof of completed erasure");
+  check(AlphaDataReset.RESET.automaticAttempt(app,1001)==DataReset.Outcome.DEFERRED&&count()==1&&SenseListenerClient.calls==1&&android.app.ActivityManager.calls==1,
+    "automatic restart cannot repeat accepted clear while settling its open record");
+  check(Files.readString(budget()).equals("1:1000")&&AlphaDataReset.RESET.pending(app),"accepted clear settlement never removes authorization or fabricates erasure");
 
   setup(root, "exhausted"); AlphaDataReset.RESET.record(app);
   for (int i = 0; i < 3; i++) AlphaDataReset.RESET.automaticAttempt(app, 1000 + i);

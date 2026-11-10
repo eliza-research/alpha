@@ -57,14 +57,15 @@ does not reach the bridge log, so an absent log line proves nothing.
 The boot hook runs and registers the loader in `local` mode (`runBootHooks`, `ensure mode=local`,
 `tryBionic`). The Cloud rule in `ensureLocalInferenceHandler` is not involved.
 
-[`patches/eliza/local-inference-live-asr.patch`](../patches/eliza/local-inference-live-asr.patch) fixes 2,
-3 and 4; it applies to the pin. With it, status returned `ready:true, streaming:true` and a
-real clip posted to the route returned "If you go into different cultures, they have different concepts
-of creation." in stream mode in 287 ms, including the final IPC round trip. That run was a one-off
-without defect 4. `docs/architecture.md` refuses resident patches, so this patch is not consumed by a
-build: it is proposed upstream in [elizaOS/eliza#38821](https://github.com/elizaOS/eliza/pull/38821) and
-needs that merge and a pin bump. The APK on the phone carries a locally built
-developer bundle with it.
+The prototype patch addressed items 2, 3 and 4. With it, status returned
+`ready:true, streaming:true` and a real clip posted to the route returned
+"If you go into different cultures, they have different concepts of creation."
+in stream mode in 287 ms, including the final IPC round trip. That was a
+one-off run without defect 4 on a locally built developer bundle.
+
+The fix landed in [elizaOS/eliza#38821](https://github.com/elizaOS/eliza/pull/38821)
+and is included in the pinned Eliza SDK. The downstream prototype patch has
+been retired.
 
 A temporary in-app decoder reached the `live-voice` pipeline with `VOICE_COMMUNICATION` capture and
 barge-in armed, and three real turns passed. It was removed in favour of the upstream fix. One of those

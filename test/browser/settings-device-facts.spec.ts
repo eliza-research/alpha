@@ -33,7 +33,7 @@ async function nativeStub(page:Page,options:Options={}){
     const f=w.settingsFixture;f.calls.push({plugin,method,input});
     if(plugin==='AlphaNotifications')return {permissionGranted:true,appEnabled:true};
     if(plugin==='AlphaVoiceCloud')return {microphone:'granted'};
-    if(plugin==='Agent')return {packaged:true,state:'stopped'};
+    if(plugin==='Agent')return method==='setGoogleAgentAccess'?{}:{packaged:true,state:'stopped'};
     if(plugin==='AlphaConnection'){
      if(method==='secureRead')return {value:store.get(input.slot)??null};
      if(method==='secureCompareExchange'){if((store.get(input.slot)??null)!==input.expectedValue)return {status:'conflict'};if(input.value===null)store.delete(input.slot);else store.set(input.slot,input.value);return {status:'saved'};}
@@ -42,7 +42,7 @@ async function nativeStub(page:Page,options:Options={}){
     }
     if(plugin==='ElizaSystem'&&method==='getBuildInfo')return {launcher,version:'0.1.0'};
     if(plugin==='ElizaSystem'){
-     if(method==='getStatus')return {packageName:'ai.elizaresearch.alphaphone',roles:Object.entries(roles).map(([role,r])=>({role,androidRole:'android.app.role.'+role.toUpperCase(),available:true,held:r.held,holders:r.held?['ai.elizaresearch.alphaphone']:r.holders}))};
+     if(method==='getStatus')return {packageName:'ai.alphacompute.alphaphone',roles:Object.entries(roles).map(([role,r])=>({role,androidRole:'android.app.role.'+role.toUpperCase(),available:true,held:r.held,holders:r.held?['ai.alphacompute.alphaphone']:r.holders}))};
      // Android's own dialog decides; the fixture declines first when asked to.
      if(method==='requestRole'){if(declines>0){declines--;return {role:input.role,held:false,resultCode:0};}roles[input.role]={held:true,holders:[]};return {role:input.role,held:true,resultCode:-1};}
      if(method==='getDeviceSettings')return {volumes:[]};
@@ -141,7 +141,7 @@ test('a failed update check stays due, one check runs at a time, and Install upd
  await expect(app(page).getByText('0.1.1 (8)',{exact:true})).toBeVisible();
  await expect(app(page).getByText('Faster Home',{exact:true})).toBeVisible();
  expect(await calls(page,'AlphaDevice','checkForUpdate')).toBe(2);
- // Answered: later resumes that day do not check again.
+ // Answered: resumes within the fifteen-minute interval do not check again.
  await page.evaluate(()=>(window as any).settingsFixture.resume());
  await page.waitForTimeout(500);
  expect(await calls(page,'AlphaDevice','checkForUpdate')).toBe(2);
@@ -186,8 +186,10 @@ test('Install update appears only for a newer build of this flavor and signer, a
 });
 
 test('a browser build never checks for updates',async({page})=>{
+ await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
  await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();
  await expect(page.locator('html')).toHaveAttribute('data-active-view','settings');
+ await general(page);
  await page.waitForTimeout(500);
  expect(await saved(page)).toBeNull();
  await expect(app(page).getByRole('button',{name:'Check for updates',exact:true})).toHaveCount(0);

@@ -68,7 +68,7 @@ test('side-effecting workflow: interrupted run is shown as outcome unknown, neve
 test('read-only digest: Run again is explicit, confirmed and creates a new run ID without replaying the interrupted one',async({page})=>{
  await setup(page);await page.getByRole('region',{name:'Workflows',exact:true}).getByText('Morning notes digest',{exact:true}).first().click();
  await expect(status(page)).toHaveText('An earlier run was interrupted — outcome unknown. Open it to run these read-only steps again');
- await page.getByRole('button',{name:'Interrupted — outcome unknown execution',exact:true}).click();await page.getByText('Execution details',{exact:true}).click();await expect(page.getByText(/Interrupted\. Outcome unknown\. Check for changes before running it again\./)).toBeVisible();
+ await page.getByRole('button',{name:'Interrupted — outcome unknown execution',exact:true}).click();await page.getByText('Execution details',{exact:true}).click();await expect(page.getByText(/Outcome unknown\. Check any changes before starting another run\. Nothing was retried\./)).toBeVisible();
  await page.waitForTimeout(1000);expect(await posts(page,'/run')).toBe(0);
  await page.getByRole('button',{name:'Run this read-only workflow again as a new run',exact:true}).click();await expect(page.getByText('Run again starts a new, separate run of these read-only steps. The interrupted run is not replayed or changed. Tap Confirm new run to start it.').first()).toBeVisible();expect(await posts(page,'/run')).toBe(0);
  await page.getByRole('button',{name:'Confirm new run of this read-only workflow',exact:true}).click();await expect.poll(()=>posts(page,'/run')).toBe(1);

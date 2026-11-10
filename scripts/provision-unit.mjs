@@ -30,8 +30,9 @@ import { signerDigest } from "./apk.mjs";
 import { readReleaseSigner, releaseAdmission } from "./build-android.mjs";
 import { releaseBlockers } from "./release-blockers.mjs";
 import { androidEnv, tool } from "./toolchain.mjs";
+import { updateArtifactDigest } from "./update-artifact.mjs";
 
-export const PACKAGE = "ai.elizaresearch.alphaphone";
+export const PACKAGE = "ai.alphacompute.alphaphone";
 const sha256 = bytes => createHash("sha256").update(bytes).digest("hex");
 
 export function parseUnitArgs(argv, { requireAlias = true } = {}) {
@@ -69,7 +70,7 @@ export function admitUnitApk(manifestFile, { variant, build }, { descriptor = re
   if (!row) throw new Error(`${manifestFile} has no ${variant} ${build} APK`);
   const file = path.resolve(path.dirname(manifestFile), path.basename(row.file));
   if (!fs.existsSync(file)) throw new Error(`Missing ${file}`);
-  const actual = sha256(fs.readFileSync(file));
+  const actual = updateArtifactDigest(file).sha256;
   if (actual !== row.sha256) throw new Error(`${file} does not match its verified manifest row`);
   // The manifest-level flag is checked above; a row that disagrees with it is refused for either build.
   if (row.testMocks !== false) throw new Error(`${file} is recorded as a test-mocks build; pilot units get distribution builds only`);

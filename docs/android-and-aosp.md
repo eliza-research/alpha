@@ -9,7 +9,7 @@
 
 ## Artifact identities
 
-Package: `ai.elizaresearch.alphaphone`. Version source: `app.config.json`, overridden by
+Package: `ai.alphacompute.alphaphone`. Version source: `app.config.json`, overridden by
 `ELIZAOS_VERSION_CODE` (positive integer) and `ELIZAOS_VERSION_NAME` when set. AOSP module: `AlphaPhone`.
 Standalone and launcher variants share data and signing identity within this product.
 Use `adb install -r` to replace them. Do not uninstall a real user's app to switch variants.
@@ -119,7 +119,7 @@ by setup. Pin app certificate and versionCode across APK and OS releases.
   "schemaVersion": 1,
   "brand": "alphaphone",
   "moduleName": "AlphaPhone",
-  "packageName": "ai.elizaresearch.alphaphone",
+  "packageName": "ai.alphacompute.alphaphone",
   "apkSha256": "64 lowercase hex characters from the signed APK",
   "certificateSha256": "64 lowercase hex characters from the approved signer"
 }
@@ -164,7 +164,7 @@ while readiness is unavailable; product builds have no browser sign-in hand-off 
 diagnostic only). If the link is not handed to Alpha, Cloud's fallback page brings Alpha
 forward without parameters and Alpha asks the owner to start again; no code is forwarded.
 
-Check verification with `adb shell pm get-app-links ai.elizaresearch.alphaphone` on an installed
+Check verification with `adb shell pm get-app-links ai.alphacompute.alphaphone` on an installed
 signed build ([runbook](pilot-acceptance-runbook.md#external-integration-runbooks)).
 
 An APK build, an emulator verification, the AOSP image and the owner's device acceptance are
@@ -206,7 +206,7 @@ update and recovery gates below.
    Eliza local-inference payload validator.
 5. The add-on keeps other launchers intact. Choose this app as default HOME through
    explicit device provisioning. In disposable userdebug validation,
-   `adb shell cmd package set-home-activity ai.elizaresearch.alphaphone/.MainActivity` demonstrates
+   `adb shell cmd package set-home-activity ai.alphacompute.alphaphone/.MainActivity` demonstrates
    selection; production must use the enrolled-device/default-role policy.
 6. Build the actual product with `source build/envsetup.sh`, its pinned `lunch` target
    and `m`. No generic lunch command can substitute for an approved hardware target.
@@ -282,19 +282,26 @@ kiosk is not enabled by default; preserve a recovery route and normal Android se
 On Android, Settings offers **Install update** with the newer version when the last manifest offers
 one for this install, and **Check for updates**; About keeps the installed version. It updates the
 Alpha APK only, beside the OS channel above: the unattended OS update through `update_engine`
-(P-75) stays a separate, privileged client, and whether field devices should also get this second,
-owner-confirmed APK channel is an owner decision (P-75 (5)). Alpha itself stays nonprivileged: it
-declares only `REQUEST_INSTALL_PACKAGES`, Android asks the owner to allow installs from Alpha
-(opened from the Install tap) and to confirm each update, and Android installs only an APK of
-`ai.elizaresearch.alphaphone` signed like the installed app. There is no silent install,
-background service or error text: a failed check or install leaves Settings as it was and a
-later start, resume or tap retries.
+(P-75) stays a separate, privileged client. The November 9 owner request also enables
+automatic APK self-updates from idle Home. Alpha stays nonprivileged and declares
+`REQUEST_INSTALL_PACKAGES` plus the normal `UPDATE_PACKAGES_WITHOUT_USER_ACTION`.
+On API 31+ with existing install consent it requests unattended self-install;
+Android may still require confirmation, which an explicit Continue update opens.
+Periodic active checks, activation readiness, release delivery and remaining
+physical/image gates are detailed in [the launcher OTA runbook](launcher-ota.md).
 
 That Android permission is **Install unknown apps** for Alpha Phone. It is per app (UID) and stays
 until the owner turns it off in Android Settings, Apps, Special app access, Install unknown apps,
 Alpha Phone. While it is on, any code in Alpha's process can ask Android to install any package,
-always behind Android's own confirmation. Turn it off after an update when that matters; the next
-Install tap opens the page again.
+subject to Android's installer policy. The automatic path admits only a newer APK
+of this package/flavor/signing family and never opens the permission page.
+Revoking this permission stops automatic installation; a later manual Install tap
+can reopen the permission page. Provision it before distributing the batch.
+
+The confirmation timing below describes manual installation. Automatic sessions
+add `/automatic` to their durable session binding and keep Android's optional
+confirmation quiet across a bridge restart. They use the same unknown-session
+fence; an explicit **Continue update** is required to open a kept confirmation.
 
 The one manifest URL is `updateManifestUrl` in `app.config.json`; `android/app/product.gradle`
 requires HTTPS and emits it as `BuildConfig.ALPHA_UPDATE_MANIFEST_URL`. The default,
@@ -314,10 +321,10 @@ the index format: keep a compatible v1 feed until the managed pilot transition i
 verified, and qualify production-root and retained lab-root update paths separately
 before publishing an index. This is delivery selection, not a signature override.
 
-The app checks on start and resume at most once a day after the
-last answered check, one check at a time, and on Check for updates
+The app checks on start/resume and periodically while active, at most once per
+15-minute answered-check interval, one check at a time, and on Check for updates
 (`apps/app/src/prototype/settings-adapter.ts`, `AlphaDevicePlugin.checkForUpdate`). A failed check
-records nothing, so the next start or resume checks again. A 404 is an answer: nothing
+records nothing; automatic upkeep retries with bounded backoff. A 404 is an answer: nothing
 is published or the release was withdrawn, and any earlier offer goes away.
 
 ```json
@@ -350,8 +357,8 @@ installs them through the lineage.
 `apkUrl` must be HTTPS (redirects stay on HTTPS). One attempt runs per process, whichever of Alpha's
 surfaces started it. A tap while one runs starts nothing beside it and never replaces what it staged;
 only a tap on the same surface, behind an attempt that failed before its commit, retries. The plugin downloads at most
-`sizeBytes` (1 GiB at most) to the app cache under a soft six-hour ceiling, checked as each read returns, so a read in flight can outlast it by up to the 60 s read timeout unless the surface closes first. It refuses any other length or SHA-256, and then reads the archive: it must be
-`ai.elizaresearch.alphaphone` at exactly the manifest's `versionCode`, above the installed one,
+`sizeBytes` (2 GiB at most) to the app cache under a soft six-hour ceiling, checked as each read returns, so a read in flight can outlast it by up to the 60 s read timeout unless the surface closes first. It refuses any other length or SHA-256, and then reads the archive: it must be
+`ai.alphacompute.alphaphone` at exactly the manifest's `versionCode`, above the installed one,
 because Android would otherwise accept a same-versionCode reinstall. Only then does it open a session for this
 package. A session a killed process left unsealed, short of its commit intent (below), holds nothing on release builds
 of Android 10, 11 and 13 to 17 and stays until Android expires it; on 12, 12L, a level not read here or a build that is
@@ -567,7 +574,10 @@ that verify-apks recorded as distributable and signed by `android/release-signer
 provisioning would still admit, so run it before `lastRelease` records that versionCode. It copies
 the APK to `artifacts/app-stable/alpha-phone-<versionCode>.apk` and writes
 `artifacts/app-stable/alpha-update-stable.json` beside it. It uploads nothing. Upload the APK before
-the manifest that names it:
+the manifest that names it. For production delivery, use the guarded
+[`deliver-app-update.mjs` procedure](launcher-ota.md#publishing), which also checks
+anonymous HTTPS readback and the retained version floor. The lower-level commands
+below describe release-asset operations; they do not provide that qualification:
 
 ```sh
 # Once: the rolling release, never marked Latest.
@@ -582,8 +592,9 @@ gh release delete-asset app-stable alpha-update-stable.json --repo eliza-researc
 ```
 
 A check during the seconds `--clobber` takes between its delete and upload answers 404 and drops
-the offer until the next check. A phone offers the manifest it last read until its next daily
-check, so keep the previous APK at least a day. Field builds use the release key, distinct from
+the offer until the next check. A phone can retain its last offer while offline;
+active answered checks are normally 15 minutes apart. Keep versioned APKs as
+immutable recovery inputs. Field builds use the release key, distinct from
 developer keys (P-16, P-58); publishing a lab-key APK to the public `app-stable` release needs the
 owner's approval. The system copy in `/product/app/AlphaPhone` and these updates share versionCode
 order: an APK update lives in `/data` and outranks an OS image whose Alpha has a lower
@@ -738,7 +749,7 @@ staging never emits this capability overlay. The overlay generator and the
 default-resource check are the shared `image-capability.mjs` in
 `packages/os/scripts/android`; Alpha supplies only its installed identifiers
 (`scripts/aosp-capability-overlay.mjs`). For Pixel 10a the shared composition
-writes it from `launcher.imageProvisioning` in `products/pixel10a-alpha.json`.
+writes it from `launcher.imageProvisioning` in `android/aosp/pixel10a-composition.json`.
 
 The capability is an OS-provisioning boundary, not remote image attestation or
 proof that an image was built and booted. A privileged image builder can control

@@ -103,7 +103,7 @@ export function installClockAdapter(Component:any,views:Bag,options:{simulated:b
    // Repeat-day chips (Sunday=1 … Saturday=7), Monday first; none selected is a one-time alarm.
    // null, not [], when repeats are unavailable: the template renders the Repeat group for any array.
    repeatAvailable:repeatAvailable(),
-   days:!repeatAvailable()&&!days.length?null:[2,3,4,5,6,7,1].map(day=>({label:dayNames[day-1],on:days.includes(day as ClockDay),aria:`Repeat on ${dayNames[day-1]}`,toggle:()=>change(()=>{days=days.includes(day as ClockDay)?days.filter(d=>d!==day):[...days,day as ClockDay].sort((a,b)=>a-b);})})),
+   days:!repeatAvailable()&&!days.length?null:[2,3,4,5,6,7,1].map(day=>({label:dayNames[day-1],short:dayNames[day-1],aria:`Repeat on ${dayNames[day-1]}`,on:days.includes(day as ClockDay),css:days.includes(day as ClockDay)?'background:var(--fg);color:var(--bg)':'background:var(--s2);color:var(--fg)',toggle:()=>change(()=>{days=days.includes(day as ClockDay)?days.filter(d=>d!==day):[...days,day as ClockDay].sort((a,b)=>a-b);})})),
    repeatText:days.length?`Repeats ${describeClockDays(days)}`:'One time',
    onTime:(e:Bag)=>change(()=>{time=e.target.value;}),onLabel:(e:Bag)=>change(()=>{label=e.target.value;}),onSnooze:(e:Bag)=>change(()=>{snooze=e.target.value;}),
    prepare:()=>{if(busy||loading)return;try{review=build();message='';}catch(error){message=(error as Error).message;}publish();},

@@ -7,7 +7,7 @@ import {execFileSync,spawnSync} from 'node:child_process';
 import {preparePatchedNative} from '../../scripts/prepare-patched-native.mjs';
 
 export const root=resolve(import.meta.dirname,'../..');
-export const nativeSource=name=>join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone',name);
+export const nativeSource=name=>join(root,'android/app/src/main/java/ai/alphacompute/alphaphone',name);
 export const fixture=name=>join(root,'test/fixtures',name);
 export const upstreamConnection=name=>join(root,'vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/connection',name);
 export const upstreamAgentRuntime=name=>join(root,'vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime',name);

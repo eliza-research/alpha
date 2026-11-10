@@ -10,7 +10,7 @@ import {calendarReviewPorts} from './scoped-calendar-review-platform.mjs';
 const calendar='plugins/plugin-native-calendar/android';
 const deletion='plugins/plugin-native-action-journal/android';
 const shared='vendor/eliza/plugins/plugin-native-calendar/test/jvm/android/';
-const manifest='patches/eliza/native-manifest.json';
+const manifest='android/upstream-native-sources.json';
 const testFixture='test/fixtures/scoped-calendar-jvm/android/content/';
 const stagedPaths=[
   calendar+'/src/main/java/ai/eliza/plugins/calendar/write/CalendarEventOptions.java',
@@ -90,7 +90,7 @@ public final class JSObject extends org.json.JSONObject {
  private JSObject(String source){super(source);}
  public static JSObject fromJSONObject(org.json.JSONObject value){return new JSObject(value.toString());}
 }`,
-  'ai/elizaresearch/alphaphone/AlphaCalendarPlugin.java':`package ai.elizaresearch.alphaphone;
+  'ai/alphacompute/alphaphone/AlphaCalendarPlugin.java':`package ai.alphacompute.alphaphone;
 public final class AlphaCalendarPlugin {
  public static final class CalendarConfiguration {
   public final String accountName="Alpha Phone",localCalendarName="alpha-phone-local",displayName="Alpha Phone";
@@ -103,7 +103,7 @@ public final class AlphaCalendarPlugin {
  public android.app.Activity getActivity(){return activity;}
  void calendarSyncChanged(){}
 }`,
-  'ai/elizaresearch/alphaphone/AlphaConnectionPlugin.java':`package ai.elizaresearch.alphaphone;
+  'ai/alphacompute/alphaphone/AlphaConnectionPlugin.java':`package ai.alphacompute.alphaphone;
 import org.json.JSONObject;
 final class AlphaConnectionPlugin {
  static JSONObject readCloudIdentity(String token){
@@ -118,7 +118,7 @@ final class AlphaConnectionPlugin {
    .put("accountEmail","calendar@example.invalid").put("calendarLabel","Synthetic Calendar").put("accountId","fixture-destination");
  }
 }`,
-  'ai/elizaresearch/alphaphone/NativeDeletionCoordinator.java':`package ai.elizaresearch.alphaphone;
+  'ai/alphacompute/alphaphone/NativeDeletionCoordinator.java':`package ai.alphacompute.alphaphone;
 import org.json.JSONArray;
 import org.json.JSONObject;
 final class NativeDeletionCoordinator {
@@ -134,7 +134,7 @@ final class NativeDeletionCoordinator {
  JSONObject receipt(String type,String operation){throw new AssertionError("No deletion receipt requested");}
  JSONObject stageCalendar(JSONObject target,JSONObject owner,String operation){throw new AssertionError("No deletion stage allowed");}
 }`,
-  'ai/elizaresearch/alphaphone/AlphaCredentialStore.java':`package ai.elizaresearch.alphaphone;
+  'ai/alphacompute/alphaphone/AlphaCredentialStore.java':`package ai.alphacompute.alphaphone;
 import java.util.ArrayList;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
@@ -188,7 +188,7 @@ export function calendarSyncEnablePlatform(){
     const catalog=JSON.parse(readFileSync(join(root,manifest),'utf8'));
     const modules=[calendar,deletion],patches=catalog.patches.filter(row=>modules.includes(row.module));
     const source=upstreamNativeSource(root);
-    const verified=materializeNativePatches({source,manifest:{...catalog,modules,patches},
+    const verified=materializeNativePatches({source,manifest:{...catalog,baseCommit:source.pin,modules,patches},
       patchRoot:join(root,'patches/eliza'),temporary:staged});
     const expected=Object.fromEntries(stagedPaths.map(name=>[join(staged,name),verified.files[name]]));
     for(const name of pinnedPaths){

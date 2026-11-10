@@ -32,11 +32,14 @@ async function remoteAgent(page: Page, mode: Mode) {
       PluginHeaders: [
         { name: 'AlphaConnection', methods: methods(['secureRead', 'secureWrite', 'secureCompareExchange', 'secureRemove', 'request', 'cancel', 'addListener', 'removeListener', 'pauseNotificationCollection']) },
         { name: 'AlphaActionJournal', methods: methods(['list', 'get']) },
+        { name: 'AlphaHostedResults', methods: methods(['disableBackground', 'addListener', 'removeListener']) },
+        { name: 'Agent', methods: methods(['setGoogleAgentAccess']) },
         { name: 'AlphaNotifications', methods: methods(['status', 'crossAppStatus', 'addListener', 'removeListener']) },
         { name: 'AlphaVoiceCloud', methods: methods(['checkPermissions']) },
         { name: 'ElizaSystem', methods: methods(['getBuildInfo']) },
       ],
       nativePromise: async (plugin: string, method: string, input: any) => {
+        if (plugin === 'AlphaHostedResults' || plugin === 'Agent') return {};
         if (plugin === 'AlphaNotifications') return { permissionGranted: true, appEnabled: true };
         if (plugin === 'AlphaVoiceCloud') return { microphone: 'granted' };
         if (plugin === 'ElizaSystem' && method === 'getBuildInfo') return { launcher: false, version: 'dispatch-fixture' };
@@ -126,7 +129,8 @@ test('a transport refusal before dispatch keeps the text in its own conversation
   await composer(page).press('Enter');
   // The expired session is retired and the chooser opens; the message never left the phone.
   await expect(page.locator('.alpha-connection')).toBeVisible();
-  await expect(page.getByText('Not sent. Your message was kept as a draft in its own conversation.', { exact: true })).toBeVisible();
+  // Generic composer toasts were removed; the chooser requires a fresh connection.
+  await expect(page.locator('.alpha-connection').getByRole('alert')).toHaveText('Sign in or pair again.');
   await page.getByRole('button', { name: 'Close connection settings', exact: true }).first().click();
   await expect(composer(page)).toHaveValue('');
   expect(await savedDraft(page, key)).toBe('Do not lose this');

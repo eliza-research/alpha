@@ -75,7 +75,7 @@ async function main() {
       if (control.mode === 'unbound-graph') selected[path.join(root, 'unavailable-input.ts')] = {};
       if (control.mode === 'incomplete-graph') delete selected[fixtureDependency];
       if (control.mode === 'input-drift') fs.writeFileSync(input, fixtureSource(2));
-      if (control.mode === 'fixed-drift') fs.appendFileSync(path.join(root, 'scripts/client-speech-patch.mjs'), '\n');
+      if (control.mode === 'fixed-drift') fs.appendFileSync(path.join(root, 'scripts/prepare-client-features.mjs'), '\n');
       if (control.mode === 'worker-drift') fs.writeFileSync(path.join(root, 'artifacts/worker/google-host.mjs'), fixtureModule(fixtureSource(2)));
       if (control.mode === 'sdk-drift') fs.appendFileSync(sdkInput, '\n');
       return {success: true, outputs: [output], metafile: {inputs: selected}};

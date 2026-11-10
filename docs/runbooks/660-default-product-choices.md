@@ -124,7 +124,7 @@ grep for device-local Notes markers (`Older notes`, `notes-trash:v1`, `AlphaNote
 - Android instrumentation (emulator evidence class):
   `NotesStorageDurabilityInstrumentedTest`, `NotesSecureStorageInstrumentedTest`,
   `NotesTrashBackstopInstrumentedTest`, `NotesDocumentInstrumentedTest`, `NotesCapacityFixture`,
-  `NotesSecureFixture`, `NoteOriginInstrumentedTest` (`android/app/src/androidTest/java/ai/elizaresearch/alphaphone/`).
+  `NotesSecureFixture`, `NoteOriginInstrumentedTest` (`android/app/src/androidTest/java/ai/alphacompute/alphaphone/`).
 - Docs: `docs/browser-storage.md` ("Notes and audio deletion", "Notes Trash"),
   `docs/notes-document-flows.md`, the Notes section of `docs/architecture.md`, the AP-10 "Notes,
   Calendar and Reminders" row in `docs/requirements.json`.

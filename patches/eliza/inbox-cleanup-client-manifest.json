@@ -1,8 +1,0 @@
-{
-  "schema": 1,
-  "baseCommit": "80fbb1d25937585b24fd85132d623d5391c8ca07",
-  "path": "plugins/plugin-inbox/src/mailbox/drafts-controller.ts",
-  "beforeSha256": "8567de114caba06627e2effe5e41b5bcdfd09a9912e7489aea7c2eea3e9d652a",
-  "afterSha256": "cb3764c2938d9fb0fef20f7df456748416d49bd3e7d29a17041de13bcfc70c2a",
-  "patchSha256": "70061f32079e4fd97e1ab5c17065e67ccb6cd8f281da9c16988786d89338b769"
-}

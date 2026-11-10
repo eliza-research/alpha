@@ -1,14 +1,15 @@
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-import {mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync} from 'node:fs';
+import {mkdirSync, mkdtempSync, readFileSync, existsSync, realpathSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {isAbsolute, join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {captureInputs, checkTraces} from '../check-traces.mjs';
+import {parseBuildPolicy} from '../../../../scripts/build-policy-source.mjs';
 
 const root = resolve(import.meta.dirname, '../../../..');
 const probe = join(import.meta.dirname, 'reviewed-workflow-launcher-probe.mjs');
-const manifest = 'patches/eliza/core-state-manifest.json';
+const manifest = 'scripts/upstream-core-sources.mjs';
 const cases = [
   'relative-default', 'missing-deps', 'invalid-port', 'input-mode', 'unreviewed-profile', 'missing-entry',
   'routing', 'embedding-path', 'default-source', 'existing-profile', 'spawn-error', 'signal-int', 'signal-term',
@@ -16,17 +17,17 @@ const cases = [
 ];
 
 function sourceInputs(extraSources) {
-  const {patches} = JSON.parse(readFileSync(join(root, manifest), 'utf8'));
+  const {files} = parseBuildPolicy(readFileSync(join(root, manifest)));
   return [
     'scripts/launcher-child.mjs', 'scripts/start-reviewed-workflow-agent.mjs', 'scripts/agent-embeddings.mjs', 'scripts/agent-identity.mjs',
     'scripts/agent-model.mjs', 'apps/app/src/product/alpha-product-registration.ts', 'scripts/local-agent-source.mjs',
-    'scripts/copy-file-clone.mjs', 'scripts/core-state-preload.mjs', 'scripts/core-state-patch.mjs',
+    'scripts/copy-file-clone.mjs', 'scripts/core-state-preload.mjs', 'scripts/core-state-patch.mjs', 'scripts/build-policy-source.mjs',
     'scripts/combined-agent-source.mjs', manifest, 'upstream.lock.json',
     'vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs',
     'vendor/eliza/packages/app/scripts/lib/committed-source.mjs',
     'vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs',
     'vendor/eliza/packages/agent/native-host/private-runtime-json.mjs',
-    ...patches.flatMap(patch => ['patches/eliza/'+patch.file, ...patch.targets.map(target => 'vendor/eliza/'+target.path)]),
+    ...Object.keys(files).map(name => 'vendor/eliza/'+name),
     'test/fixtures/core-state-root.mjs', probe, fileURLToPath(import.meta.url), ...extraSources,
   ];
 }
@@ -45,7 +46,9 @@ function runScenario(name, bun) {
     });
     if (result.error) throw result.error;
     assert.equal(result.signal, null, name+' failed: '+result.stderr);
-    const trace = JSON.parse(readFileSync(join(scratch, 'report.json'), 'utf8'));
+    const report = join(scratch, 'report.json');
+    assert.ok(existsSync(report), `${name}: launcher probe exited ${result.status} without a report\n${result.stdout}${result.stderr}`);
+    const trace = JSON.parse(readFileSync(report, 'utf8'));
     assert.equal(trace.name, name);
     assert.equal(result.status, trace.steps.at(-1).expect['s.exitCode']);
     return trace;
@@ -61,7 +64,7 @@ export async function checkReviewedWorkflowLauncher(extraSources = [], bun) {
   return checkTraces({model: 'ReviewedWorkflowLauncher', id: bun ? 'ReviewedWorkflowLauncherWithBun' : undefined,
     sources, driverHashes, traces, scope: 'bounded-orchestration', assumptions: [
       'The exact launcher, source and profile helpers run in a disposable synthetic Git workspace and private home. Module hooks observe real filesystem operations and substitute a closed spawn port. All state files and child inputs belong to the fixture.',
-      'The opt-in Bun traces execute the actual core preload and a synthetic entry that checks one reviewed transformation. Each checkout is stable from the start of the launcher through child admission. Real workflows and provider behavior are separate.',
+      'The opt-in Bun traces execute the actual core preload and a synthetic entry that checks the unchanged reviewed source bytes. Each checkout is stable from the start of the launcher through child admission. Real workflows and provider behavior are separate.',
       'Fresh and saved profile cases observe identity, text routing, embeddings and the two optional plugin settings. Endpoint readiness remains a separate acceptance check.',
       'Revision read refusal closes the log before spawn. Receipt write refusal retains the supervised child until it closes. The shared supervisor escalation is exercised by the CombinedAgentLauncher fixture.',
     ]});

@@ -104,7 +104,7 @@ for (const { target: version, mode } of cases) {
     if(mode==='older-peer'||mode.startsWith('create-')){
       // Browser reminders use the runtime scheduler, not a second phone-creation
       // lifecycle. The saved unsupported proposal is explained, never approved.
-      await expect(page.getByText(/An agent action could not be shown on this phone/).first()).toBeVisible();
+      await expect(page.getByText("This action isn't available on this phone.",{exact:true}).first()).toBeVisible();
       await expect(page.getByText(/Review the action below\./)).toHaveCount(0);
       const fixture=await page.evaluate(()=>(window as any).recoveryFixture);
       expect(fixture.lists).toBeGreaterThan(0);
@@ -113,6 +113,7 @@ for (const { target: version, mode } of cases) {
       expect(fixture.posts).toBe(1);
       expect(fixture.decisions).toBe(0);
       expect(fixture.claims).toBe(0);
+      expect(fixture.effects).toBe(0);
       expect(fixture.receipts).toBe(0);
       expect(fixture.journal).toEqual([]);
       const rows=await page.evaluate(async ()=>JSON.parse((await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())!).reminders);

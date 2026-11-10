@@ -211,10 +211,14 @@ test("the shared reconciler recovers an accepted create after reopening without 
 		engine = new LinkedCalendarReconciler(reopened, local, provider),
 		pending = (await reopened.list())[0];
 	assert.equal(pending.idempotencyKey, link.idempotencyKey);
-	assert.equal(await engine.recoverDispatch(pending), true);
+	assert.equal(await engine.recoverDispatch(pending), "landed");
 	const recovered = (await reopened.list())[0];
 	assert.equal(recovered.providerEventId, "accepted-event");
 	assert.equal(recovered.localRevision, "opaque-r1");
+	assert.equal(recovered.providerEtag, '"v1"');
+	assert.equal(recovered.state, "clean");
+	assert.equal(recovered.pendingOperation, null);
+	assert.equal(recovered.lastErrorCode, null);
 	assert.equal(await engine.reconcile(recovered), "clean");
 	assert.equal(writes, 1);
 });

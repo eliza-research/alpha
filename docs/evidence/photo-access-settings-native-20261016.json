@@ -23,7 +23,7 @@
     "photosGridAccessControlsAbsent": true,
     "settingsPageVisibleReadback": {
       "verified": true,
-      "foregroundPackage": "ai.elizaresearch.alphaphone",
+      "foregroundPackage": "ai.alphacompute.alphaphone",
       "screen": "Settings > Photos",
       "visible": [
         "Library access",

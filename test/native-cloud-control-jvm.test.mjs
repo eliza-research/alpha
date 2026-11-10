@@ -16,17 +16,18 @@ test('microphone permission result cannot start after Stop, replacement, backgro
   static final class PluginCall {final String id;int rejects,resolves;PluginCall(String id){this.id=id;}String getString(String key){return id;}void reject(String...s){rejects++;}void resolve(){resolves++;}}
   enum PermissionState{GRANTED,DENIED}
   static final class Handler{final ArrayDeque<Runnable> pending=new ArrayDeque<>();void post(Runnable r){pending.add(r);}void run(){while(!pending.isEmpty())pending.remove().run();}}
-  final Handler main=new Handler();boolean destroyed,foreground=true;PermissionState permission=PermissionState.GRANTED;PluginCall permissionCall;int starts;
-  PermissionState getPermissionState(String s){return permission;}void start(PluginCall call,boolean permissionStart){starts++;}static class Session{}Session owned(PluginCall c){return null;}void detach(Session s){}void queueCleanup(Session s,Runnable r){r.run();}
+  final Handler main=new Handler();boolean destroyed,foreground=true;PermissionState permission=PermissionState.GRANTED;PluginCall pendingStart;int starts;
+  PermissionState getPermissionState(String s){return permission;}void start(PluginCall call){check(pendingStart==call,"start lost pending owner");pendingStart=null;starts++;}static class Session{}Session owned(PluginCall c){return null;}void detach(Session s){}void queueCleanup(Session s,Runnable r){r.run();}
   ${callback} ${stop}
   static void check(boolean x,String m){if(!x)throw new AssertionError(m);}
   public static void main(String[]a){
-   PermissionControlTest f=new PermissionControlTest();PluginCall c=new PluginCall("one");f.permissionCall=c;f.foreground=false;f.microphoneReady(c);f.foreground=true;f.stopCloudSpeech(new PluginCall("one"));f.main.run();check(f.starts==0&&c.rejects==1,"Stop lost pending permission identity");
-   f=new PermissionControlTest();c=new PluginCall("one");f.permissionCall=c;f.foreground=false;f.microphoneReady(c);f.foreground=true;f.main.run();check(f.starts==1,"permission dialog resume failed");
-   f=new PermissionControlTest();c=new PluginCall("one");f.permissionCall=c;f.microphoneReady(c);f.permissionCall=new PluginCall("two");f.main.run();check(f.starts==0,"old callback replaced newer owner");
-   f=new PermissionControlTest();c=new PluginCall("one");f.permissionCall=c;f.microphoneReady(c);f.destroyed=true;f.main.run();check(f.starts==0&&c.rejects==1,"destroyed callback started");
-   f=new PermissionControlTest();c=new PluginCall("one");f.permissionCall=c;f.microphoneReady(c);f.foreground=false;f.main.run();check(f.starts==0&&c.rejects==1,"background callback started");
-   f=new PermissionControlTest();c=new PluginCall("one");f.permissionCall=c;f.microphoneReady(c);f.stopCloudSpeech(new PluginCall("other"));f.main.run();check(f.starts==1,"unrelated Stop cancelled owner");
+   PermissionControlTest f=new PermissionControlTest();PluginCall c=new PluginCall("one");f.pendingStart=c;f.foreground=false;f.microphoneReady(c);f.foreground=true;f.stopCloudSpeech(new PluginCall("one"));f.main.run();check(f.starts==0&&c.rejects==1,"Stop lost pending permission identity");
+   f=new PermissionControlTest();c=new PluginCall("one");f.pendingStart=c;f.foreground=false;f.microphoneReady(c);f.foreground=true;f.main.run();check(f.starts==1,"permission dialog resume failed");
+   f=new PermissionControlTest();c=new PluginCall("one");f.pendingStart=c;f.microphoneReady(c);f.pendingStart=new PluginCall("two");f.main.run();check(f.starts==0,"old callback replaced newer owner");
+   f=new PermissionControlTest();c=new PluginCall("one");f.pendingStart=c;f.microphoneReady(c);f.destroyed=true;f.main.run();check(f.starts==0&&c.rejects==1,"destroyed callback started");
+   f=new PermissionControlTest();c=new PluginCall("one");f.pendingStart=c;f.microphoneReady(c);f.foreground=false;f.main.run();check(f.starts==0&&c.rejects==1,"background callback started");
+   f=new PermissionControlTest();c=new PluginCall("one");f.pendingStart=c;f.microphoneReady(c);f.stopCloudSpeech(new PluginCall("other"));f.main.run();check(f.starts==1,"unrelated Stop cancelled owner");
+   f=new PermissionControlTest();c=new PluginCall("denied");f.pendingStart=c;f.permission=PermissionState.DENIED;f.microphoneReady(c);check(f.pendingStart==null&&c.rejects==1&&f.starts==0,"denial retained microphone ownership");f.permission=PermissionState.GRANTED;f.microphoneReady(c);f.main.run();check(f.starts==0&&c.rejects==1,"late callback revived denied permission");
    System.out.println("PASS permission owner cancellation and resume");
   }
  }`),/^PASS/);
@@ -94,12 +95,12 @@ test('relay renewal is offered-only and replaces one expiry; output bound belong
  }`),/^PASS/);
 });
 test('Alpha streaming and batch 429 parsing preserves sanitized retry facts and note recovery/save claims',{skip:jsonJarSkip},()=>{
- const host=fs.readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaVoiceCloudPlugin.java','utf8');
+ const host=fs.readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaVoiceCloudPlugin.java','utf8');
  assert.match(host,/claimCanonicalNoteSave/);assert.match(host,/"recovery"\.equals\(reason\)/);assert.match(host,/protected JSObject limitData\(int status,String retryAfter,String body\)/);
  const limits=method(host,'static CloudVoiceLimit limitOf(String'),jsonText=method(host,'private static String jsonText(');
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-limit-parity-'));try{
-  const f=path.join(dir,'LimitParityTest.java');fs.writeFileSync(f,`package ai.elizaresearch.alphaphone;import org.json.JSONObject;public class LimitParityTest{${limits}${jsonText}static void check(boolean b){if(!b)throw new AssertionError();}public static void main(String[]args){CloudVoiceLimit a=limitOf("42","{\\"error\\":{\\"code\\":\\"rate_limited\\",\\"retryAfterSeconds\\":3,\\"message\\":\\"PRIVATE\\"}}");check(a.retryAfterSeconds==3&&a.limitCode.equals("rate_limited"));a=limitOf("42","invalid");check(a.retryAfterSeconds==42&&a.limitCode==null);a=limitOf("42","{\\"error\\":{\\"code\\":123,\\"retryAfterSeconds\\":\\"3\\",\\"resetAt\\":null}}");check(a.retryAfterSeconds==42&&a.limitCode==null&&a.resetAt==null);System.out.println("PASS shared sanitized429parity");}}`);
-  assert.match(runJvm(['android/app/src/main/java/ai/elizaresearch/alphaphone/CloudVoiceLimit.java',f],'ai.elizaresearch.alphaphone.LimitParityTest',{json:true}),/^PASS/);
+  const f=path.join(dir,'LimitParityTest.java');fs.writeFileSync(f,`package ai.alphacompute.alphaphone;import org.json.JSONObject;public class LimitParityTest{${limits}${jsonText}static void check(boolean b){if(!b)throw new AssertionError();}public static void main(String[]args){CloudVoiceLimit a=limitOf("42","{\\"error\\":{\\"code\\":\\"rate_limited\\",\\"retryAfterSeconds\\":3,\\"message\\":\\"PRIVATE\\"}}");check(a.retryAfterSeconds==3&&a.limitCode.equals("rate_limited"));a=limitOf("42","invalid");check(a.retryAfterSeconds==42&&a.limitCode==null);a=limitOf("42","{\\"error\\":{\\"code\\":123,\\"retryAfterSeconds\\":\\"3\\",\\"resetAt\\":null}}");check(a.retryAfterSeconds==42&&a.limitCode==null&&a.resetAt==null);System.out.println("PASS shared sanitized429parity");}}`);
+  assert.match(runJvm(['android/app/src/main/java/ai/alphacompute/alphaphone/CloudVoiceLimit.java',f],'ai.alphacompute.alphaphone.LimitParityTest',{json:true}),/^PASS/);
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
 
@@ -108,14 +109,14 @@ test('provider switch cancels pending Cloud permission and retires old sessions 
  assert.match(jvm('ProviderRetirementTest',`public class ProviderRetirementTest {
   static class PluginCall {int rejects,resolves;String id;PluginCall(String id){this.id=id;}String getString(String key){return id;}void reject(String reason,String code){rejects++;}void resolve(){resolves++;}}
   static class Session {final String token="captured-old-fixture-token";boolean closed;}
-  PluginCall permissionCall;Session session;int revoked;String revokedToken;
+  PluginCall pendingStart;Session session;int revoked;String revokedToken;
   Session owned(PluginCall call){return session;}
   void detach(Session s){s.closed=true;if(session==s)session=null;}
   void queueCleanup(Session s,Runnable done){revoked++;revokedToken=s.token;done.run();}
   void retire(Session s,String reason){detach(s);queueCleanup(s,()->{});}
   ${retirement}${stop}
   static void check(boolean b,String why){if(!b)throw new AssertionError(why);}
-  public static void main(String[]args){ProviderRetirementTest f=new ProviderRetirementTest();PluginCall pending=new PluginCall("pending");f.permissionCall=pending;f.retireSpeechAuthority();check(f.permissionCall==null&&pending.rejects==1,"old microphone continuation survived mode switch");Session active=new Session();f.session=active;f.retireSpeechAuthority();check(active.closed&&f.revoked==1&&"captured-old-fixture-token".equals(f.revokedToken),"mode switch stranded old session cleanup");f.session=new Session();PluginCall stop=new PluginCall("active");f.stopCloudSpeech(stop);check(stop.resolves==1&&f.revoked==2,"Stop was blocked after mode switch");System.out.println("PASS pending permission, active retirement and captured-authority Stop");}
+  public static void main(String[]args){ProviderRetirementTest f=new ProviderRetirementTest();PluginCall pending=new PluginCall("pending");f.pendingStart=pending;f.retireSpeechAuthority();check(f.pendingStart==null&&pending.rejects==1,"old microphone continuation survived mode switch");Session active=new Session();f.session=active;f.retireSpeechAuthority();check(active.closed&&f.revoked==1&&"captured-old-fixture-token".equals(f.revokedToken),"mode switch stranded old session cleanup");f.session=new Session();PluginCall stop=new PluginCall("active");f.stopCloudSpeech(stop);check(stop.resolves==1&&f.revoked==2,"Stop was blocked after mode switch");System.out.println("PASS pending permission, active retirement and captured-authority Stop");}
  }`),/^PASS/);
  const cleanup=method(source,'private void cleanup(');
  assert.match(cleanup,/final String token=own\.token,origin=own\.origin,id=own\.serverId/);

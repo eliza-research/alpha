@@ -10,7 +10,7 @@ Observed on October 24, 2026 (approximately 11:20–11:25 UTC):
 
 | Request | Result | Meaning |
 | --- | --- | --- |
-| `GET https://api.eliza.app/api/v1/app-auth/mobile/config`, client `ai.elizaresearch.alphaphone`, environment `production`, redirect `https://eliza.app/alphaphone/auth/callback` | HTTP 503, `server_configuration_error`, “Configured mobile App Auth app is not active and approved” | The registered client cannot presently issue the required mobile credential. Reconfirmed after the failed repair. |
+| `GET https://api.eliza.app/api/v1/app-auth/mobile/config`, client `ai.alphacompute.alphaphone`, environment `production`, redirect `https://eliza.app/alphaphone/auth/callback` | HTTP 503, `server_configuration_error`, “Configured mobile App Auth app is not active and approved” | The registered client cannot presently issue the required mobile credential. Reconfirmed after the failed repair. |
 | `GET /steward/auth/providers?tenantId=elizacloud` | HTTP 200; email and Google enabled | Provider discovery works; no account was authenticated. |
 | `POST /steward/auth/email/code/send` with `{}` | HTTP 400, “email is required” | The email-code route exists. No address was supplied and no email was sent. |
 | `GET https://eliza.app/.well-known/assetlinks.json` | HTTP 200; Alpha package and the installed development signer's SHA-256 listed | The previously observed missing association file is now deployed. Device verification and production signing remain separate checks. |
@@ -30,7 +30,7 @@ shell command or chat.
    because production permits `main` only. No protection rule was changed.
 2. [Diagnostic run on permitted main](https://github.com/elizaOS/eliza/actions/runs/40089648101)
    selected `target_environment=production`, `operation=diagnose`,
-   `client=ai.elizaresearch.alphaphone`. Required schemas were present. It failed
+   `client=ai.alphacompute.alphaphone`. Required schemas were present. It failed
    with `ELIZA_MOBILE_APP_AUTH_APP_ID does not resolve to an apps registration`.
 3. [Scoped repair run on main](https://github.com/elizaOS/eliza/actions/runs/40089720955)
    selected the same client/environment and `operation=repair`. It failed at

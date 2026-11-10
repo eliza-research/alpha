@@ -14,11 +14,12 @@ import {createHash} from 'node:crypto';
 
 const SERVER = 'vendor/eliza/packages/agent/src/api/server.ts';
 const PAIRING = 'vendor/eliza/packages/app/src/api/auth-pairing-routes.ts';
-const LOCAL_AGENT = 'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java';
-// SHA-256 of isOwnerOnlyApiRequest as reviewed at elizaOS/eliza develop fbc2d23d4b (#37702, #37733, #37786, #37840,
+const LOCAL_AGENT = 'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java';
+// SHA-256 of isOwnerOnlyApiRequest as reviewed at elizaOS/eliza 86ab55fd81 (#37702, #37733, #37786, #37840,
 // #37861, #38121, #38126 /api/logs and /api/security/audit, and the other owner-only gates since 1f2a922f86). A pin that changes the gate fails here until its
 // new routes are checked against Alpha's route surface below and this hash is updated.
-const REVIEWED_GATE_SHA256 = 'f501638a182cf387e51057d23563fb45c1a2243980a6775de92fb90af4f468a0';
+// The delta from b1817660 is the write-only approval-resolution gate; Alpha reads this queue with GET.
+const REVIEWED_GATE_SHA256 = 'f0137b23e44c4efd4639679f8ed4f7816a1561e690303e935c13a6abe18b409d';
 
 function gateSource() {
   const text = fs.readFileSync(SERVER, 'utf8');
@@ -74,10 +75,46 @@ function alphaAgentPathLiterals() {
     for (const match of fs.readFileSync(file, 'utf8').matchAll(/["'`](\/api\/[A-Za-z0-9_./{}-]*)/g)) {
       const literal = match[1];
       if (literal.startsWith('/api/v1/')) continue;
-      if (!found.has(literal)) found.set(literal, file);
+      if (!found.has(literal)) found.set(literal, new Set());
+      found.get(literal).add(file);
     }
   }
   return found;
+}
+
+/** Review the sole read-only literal newly covered by an upstream write gate.
+ * Keep every declaration and use accounted for; a new caller is not exempted.
+ */
+function literalMethods(literal, files) {
+  if (literal !== '/api/approvals') return ['POST'];
+  assert.deepEqual([...files].sort(), [
+    'apps/app/src/product/owner-route-table.ts',
+    'apps/app/src/runtime/calendar-approval.ts',
+  ]);
+  for (const [file, expected] of [
+    ['apps/app/src/product/owner-route-table.ts', 2],
+    ['apps/app/src/runtime/calendar-approval.ts', 1],
+  ]) assert.equal([...fs.readFileSync(file, 'utf8').matchAll(/["'`](\/api\/approvals)(?=[?"'`])/g)].length,
+    expected, 'A new approval path occurrence needs its own method review: '+file);
+  assert.deepEqual(OWNER_ROUTE_TABLE.groups.approvals, {
+    prefixes: ['/api/approvals'],
+    routes: [{methods: ['GET'], paths: ['/api/approvals?state=all&limit=500']}],
+  }, 'The renderer/native admission table must permit only this exact GET');
+  const constant = 'CALENDAR_APPROVAL_READ_PATH';
+  const uses = walk('apps/app/src', /\.(?:ts|tsx|js|mjs)$/).flatMap(file =>
+    [...fs.readFileSync(file, 'utf8').matchAll(new RegExp('\\b'+constant+'\\b', 'g'))].map(() => file));
+  assert.deepEqual(uses.sort(), [
+    'apps/app/src/runtime/calendar-approval.ts',
+    'apps/app/src/runtime/connection-ui.tsx',
+    'apps/app/src/runtime/connection-ui.tsx',
+  ]);
+  assert.match(fs.readFileSync('apps/app/src/runtime/calendar-approval.ts', 'utf8'),
+    /export const CALENDAR_APPROVAL_READ_PATH='\/api\/approvals\?state=all&limit=500';/);
+  assert.match(fs.readFileSync('apps/app/src/runtime/connection-ui.tsx', 'utf8'),
+    /selected\.remote\.request\(CALENDAR_APPROVAL_READ_PATH,undefined,signal\)/);
+  assert.match(fs.readFileSync('apps/app/src/runtime/local-agent.ts', 'utf8'),
+    /method:LocalAgentMethod = body===undefined\?'GET':'POST'/);
+  return ['GET'];
 }
 
 function ownerRouteTable() {
@@ -106,12 +143,14 @@ test('the gate model reads the clauses Alpha was reviewed against', () => {
     ['GET', '/api/voice/profiles'], ['GET', '/v1/voice/speaker-profiles/x'], ['GET', '/api/character/experiences'],
     ['GET', '/api/database/tables'], ['GET', '/api/workbench/overview'], ['POST', '/api/views/events/broadcast'],
     ['GET', '/api/memories/browse'], ['POST', '/api/config'], ['POST', '/api/agent/restart'], ['POST', '/api/agent/reset'],
+    ['POST', '/api/approvals'], ['PATCH', '/api/approvals/id-1'], ['DELETE', '/api/approvals/id-1'],
   ]) assert.ok(ownerOnly(model, method, pathname), `${method} ${pathname} should be owner-only at the pin`);
   // Reads the gate leaves open, and routes Alpha depends on.
   for (const [method, pathname] of [
     ['GET', '/api/config'], ['GET', '/api/cloud/login/status'], ['GET', '/api/auth/me'], ['POST', '/api/conversations/x/messages'],
     ['POST', '/api/views/interact-claim'], ['POST', '/api/workflow/phone/validate'], ['GET', '/api/notes/state'],
     ['GET', '/api/agent/restart'],
+    ['GET', '/api/approvals'],
   ]) assert.ok(!ownerOnly(model, method, pathname), `${method} ${pathname} should stay open to the session gate`);
 });
 
@@ -122,9 +161,11 @@ test('no route Alpha issues to its agent is behind the owner-only gate', () => {
     if (ownerOnly(model, method, pathname)) refused.push(`${method} ${pathname} (apps/app/src/product/owner-route-table.ts)`);
   const literals = alphaAgentPathLiterals();
   assert.ok(literals.size > 20, 'Alpha agent path literals were not found');
-  // A literal carries no method: check it as a write, which the gate treats most strictly.
-  for (const [literal, file] of literals)
-    if (ownerOnly(model, 'POST', literal.replace(/[{}]/g, ''))) refused.push(`${literal} (${file})`);
+  // Unclassified literals are conservatively checked as writes. A reviewed read
+  // must prove all its declarations/callers and the exact request method above.
+  for (const [literal, files] of literals)
+    for (const method of literalMethods(literal, files))
+      if (ownerOnly(model, method, literal.replace(/[{}]/g, ''))) refused.push(`${method} ${literal} (${[...files].join(', ')})`);
   assert.deepEqual(refused, []);
 });
 

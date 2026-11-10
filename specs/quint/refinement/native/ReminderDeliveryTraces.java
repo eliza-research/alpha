@@ -1,7 +1,7 @@
 package ai.eliza.plugins.reminders;
 
-import ai.elizaresearch.alphaphone.AlphaReminders;
-import ai.elizaresearch.alphaphone.Trace;
+import ai.alphacompute.alphaphone.AlphaReminders;
+import ai.alphacompute.alphaphone.Trace;
 import android.app.Notification;
 import android.app.PendingIntent;
 import android.content.Context;
@@ -43,7 +43,7 @@ public final class ReminderDeliveryTraces {
 
  static final class Fixture {
   final Context context = new Context();
-  final ai.elizaresearch.alphaphone.ReminderReceiver receiver = new ai.elizaresearch.alphaphone.ReminderReceiver();
+  final ai.alphacompute.alphaphone.ReminderReceiver receiver = new ai.alphacompute.alphaphone.ReminderReceiver();
   final Map<String,Integer> identities = new LinkedHashMap<>();
   final Map<Integer,Intent> alarmIntents = new HashMap<>();
   final Map<Integer,Map<String,Intent>> decisions = new HashMap<>();

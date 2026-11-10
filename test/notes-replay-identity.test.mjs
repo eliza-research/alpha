@@ -22,29 +22,22 @@ async function fixture(loaded, callback) {
 }
 
 test('create replay returns the visible canonical identity without another write',async()=>{
-  for(const patched of [false,true]){
-    const loaded=await loadNotesSource([fileURLToPath(import.meta.url),support],{patched});
-    await fixture(loaded,async({service,store,send,decode})=>{
-      const a=await send('create-note',{content:'Alpha'});
-      const b=await send('create-note',{content:'Beta'});
-      await send('update-note',{id:a.data.note.id,content:'Beta',expectedRevision:b.state.revision});
-      const before=await store.persistedSnapshot();
-      const replay=await send('create-note',{content:'Beta'});
-      assert.equal(replay.data.replayed,true);
-      assert.equal(replay.effectReceipts[0].outcome,'noop');
-      assert.deepEqual(await store.persistedSnapshot(),before);
-      assert.equal(before.notes.length,2);
-      assert.equal(service.snapshot().notes.length,1);
-      if(patched){
-        const reply=await decode('create-note',{content:'Beta'},replay);
-        assert.equal(reply.note.id,a.data.note.id);
-        assert.equal(reply.target.revision,before.revision);
-      } else {
-        assert.equal(replay.data.note.id,b.data.note.id);
-        await assert.rejects(decode('create-note',{content:'Beta'},replay),/identity does not match/);
-      }
-    });
-  }
+  const loaded=await loadNotesSource([fileURLToPath(import.meta.url),support]);
+  await fixture(loaded,async({service,store,send,decode})=>{
+    const a=await send('create-note',{content:'Alpha'});
+    const b=await send('create-note',{content:'Beta'});
+    await send('update-note',{id:a.data.note.id,content:'Beta',expectedRevision:b.state.revision});
+    const before=await store.persistedSnapshot();
+    const replay=await send('create-note',{content:'Beta'});
+    assert.equal(replay.data.replayed,true);
+    assert.equal(replay.effectReceipts[0].outcome,'noop');
+    assert.deepEqual(await store.persistedSnapshot(),before);
+    assert.equal(before.notes.length,2);
+    assert.equal(service.snapshot().notes.length,1);
+    const reply=await decode('create-note',{content:'Beta'},replay);
+    assert.equal(reply.note.id,a.data.note.id);
+    assert.equal(reply.target.revision,before.revision);
+  });
 });
 
 test('both restore orders preserve raw duplicates, exact identities and client-decodable replies',async()=>{

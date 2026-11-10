@@ -262,7 +262,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
   // Native Back reaches the renderer only while this is true: it counts everything backHandler consumes.
   function updateBackAvailability(shell:Shell) {
     const s=shell.S();
-    document.documentElement.dataset.alphaCanGoBack = String(!!document.querySelector('dialog[open]') || connectionController.getSnapshot().open || !!s.view || !!s.drawer || s.shade || s.chat === 'sheet' || s.chat === 'full' || s.voice !== 'off' || !!document.querySelector<HTMLElement>('.os')?.inert || modalPanels().length>0);
+    document.documentElement.dataset.alphaCanGoBack = String(!!document.querySelector('dialog[open]') || connectionController.getSnapshot().open || !!s.view || !!s.drawer || !!s.homeEdit || !!s.homeAdd || s.shade || s.chat === 'sheet' || s.chat === 'full' || s.voice !== 'off' || !!document.querySelector<HTMLElement>('.os')?.inert || modalPanels().length>0);
   }
   const notesLeave=views.notes.onLeave;
   views.notes.onLeave=(...args:Shell[])=>{notesRecovery?.abort();return notesLeave?.(...args);};

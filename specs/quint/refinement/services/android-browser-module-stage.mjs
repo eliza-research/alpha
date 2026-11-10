@@ -7,9 +7,9 @@ import {androidBrowserModuleStageInputs, loadAndroidBrowserModuleFixture} from '
 import {captureInputs, checkTraces} from '../check-traces.mjs';
 
 const failures = [
-  ['patchRefused', /^Native patch digest mismatch$/],
+  ['sourceRefused', /^Upstream source checkout is dirty$/],
   ['cacheRefused', /^Staged patched native source drift$/],
-  ['publishRefused', /^fixture patch publication refused$/],
+  ['publishRefused', /^fixture source publication refused$/],
   ['routeRefused', /^Android host input is unavailable$/],
   ['collisionRefused', /^Refusing an unowned generated-file collision: settings\.gradle$/],
   ['hostWriteRefused', /^fixture generated settings write refused$/],
@@ -24,7 +24,7 @@ function trace(name, createFixture, operations) {
   try {
     const f = createFixture(directory);
     const expect = fields(f.observe());
-    const methods = {selectManifest: f.select, setRoute: f.route, setPatchValid: f.patchValid, driftCache: f.drift, occupy: f.occupy};
+    const methods = {selectManifest: f.select, setRoute: f.route, setSourceValid: f.sourceValid, driftCache: f.drift, occupy: f.occupy};
     const steps = operations.map(([name, ...args]) => {
       let result = 'none';
       if (name === 'generate') {
@@ -60,8 +60,8 @@ export async function checkAndroidBrowserModuleStage(extraSources = []) {
   const second = ['selectManifest', 2];
   const cases = [
     ['the actual generator publishes and reuses one exact browser module', [generate(), generate(), ['verifyReceipt', 1]]],
-    ['a refused patch preserves the previous host and stage until valid retry', [generate(), second,
-      ['setPatchValid', false], generate(), ['setPatchValid', true], generate()]],
+    ['a refused source change preserves the previous host and stage until valid retry', [generate(), second,
+      ['setSourceValid', false], generate(), ['setSourceValid', true], generate()]],
     ['candidate publication refusal preserves the prior generation byte for byte', [generate(), second,
       generate('publish'), generate()]],
     ['a drifted keyed cache is preserved and refused while a distinct key can stage', [generate(),
@@ -75,7 +75,7 @@ export async function checkAndroidBrowserModuleStage(extraSources = []) {
   ];
   const traces = cases.map(([name, steps]) => trace(name, createFixture, steps));
   return checkTraces({model: 'AndroidBrowserModuleStage', scope: 'bounded-orchestration', sources, driverHashes, traces,
-    assumptions: ['The real Alpha host wrapper, native patch preparer and pinned Gradle generator run on a private product projection containing only the independent eliza-browser module. The reviewed BrowserTabHostPlugin.java and build.gradle patch is applied to all 66 authenticated browser module inputs.',
-      'Two exact manifest byte identities select distinct cache keys with the same reviewed patch. The host profile, generated scripts, cached module and source receipt are checked independently. Failed admission preserves old bytes, while an incomplete owned host can retry.',
+    assumptions: ['The real Alpha host wrapper, native source stager and pinned Gradle generator run on a private product projection. The browser module and resource directory match the authenticated Git source.',
+      'Two exact source inventory byte identities select distinct cache keys for the same pinned source. The host profile, generated scripts, cached module and source receipt are checked independently. Failed admission preserves old bytes, while an incomplete owned host can retry.',
       'Publication and settings write refusals are confined to the scratch filesystem. Arbitrary process interruption, concurrent publishers, all-module Gradle configuration, APK packaging and installed browser behavior are separate.']});
 }

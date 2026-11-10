@@ -1,48 +1,21 @@
 {
   "schema": 1,
-  "aheadBy": 8,
-  "base": "develop",
-  "baseCommit": "dae11e0b7e3f40e5434fea21fd7c127e416f7016",
-  "behindBy": 865,
-  "head": "80fbb1d25937585b24fd85132d623d5391c8ca07",
-  "mergeBase": "b1817660a0347ae19551b9ee296410fe55f02d59",
-  "pinOnlyCommits": [
-    {
-      "sha": "a0d54add928e307e73dbfb7b38ca15d79464e801",
-      "subject": "Honor separate Cloud media and embedding routes"
-    },
-    {
-      "sha": "65447d50654b04a86b838aca41c39ef975d42168",
-      "subject": "Preserve disabled Cloud capabilities during normal boot"
-    },
-    {
-      "sha": "64df4e7e59f4be7d4dd2a561e01975baf1c6c2e9",
-      "subject": "Sort provider-routing regression imports"
-    },
-    {
-      "sha": "a442baba3482873a01697d9a5882761c8d130f91",
-      "subject": "Backport the source-linked test report checker for the preview pin"
-    },
-    {
-      "sha": "72019abd13a2488ad221351a730b53869d7ae943",
-      "subject": "Format retained Files and Maps checks for the preview pin"
-    },
-    {
-      "sha": "3a02da86dd71c4e0dfa877fb9a9319c2e7ac7f97",
-      "subject": "Normalize existing lint blockers in the preview SDK base"
-    },
-    {
-      "sha": "27766bf1488f18655b77cf78af2c52149cbd8529",
-      "subject": "Backport reviewed Files schema and receipt classifications"
-    },
-    {
-      "sha": "80fbb1d25937585b24fd85132d623d5391c8ca07",
-      "subject": "Align the retained Notes evaluator fixture with its typed contract"
-    }
-  ],
   "repository": "elizaOS/eliza",
-  "status": "diverged",
-  "recordedAt": "2026-11-09",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...80fbb1d25937585b24fd85132d623d5391c8ca07",
-  "pullRequests": []
+  "base": "develop",
+  "baseCommit": "e296502b571c6efc0237656d4f12c1122af0dea0",
+  "head": "75b44015561368fc8ca982b70b8bafbdf1672a7b",
+  "recordedAt": "2026-11-10",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...75b44015561368fc8ca982b70b8bafbdf1672a7b",
+  "status": "behind",
+  "aheadBy": 0,
+  "behindBy": 1,
+  "mergeBase": "75b44015561368fc8ca982b70b8bafbdf1672a7b",
+  "pinOnlyCommits": [],
+  "pullRequests": [
+    "https://github.com/elizaOS/eliza/pull/39153",
+    "https://github.com/elizaOS/eliza/pull/39173",
+    "https://github.com/elizaOS/eliza/pull/39181",
+    "https://github.com/elizaOS/eliza/pull/39180",
+    "https://github.com/elizaOS/eliza/pull/39189"
+  ]
 }

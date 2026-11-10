@@ -1,5 +1,54 @@
 # Dependency and artifact supply chain
 
+## Current source-lock review — November 10 UTC
+
+Current SDK `75b44015561368fc8ca982b70b8bafbdf1672a7b` has a fresh npm bulk query with the same 3,694 registry versions and all 103 findings. The dependency lock, all 84 exception objects, deadlines and 12 pending fixes are unchanged. Fresh built-artifact inspection covers 457 registry versions and retains the known UUID moderate finding; it does not establish packaged APK reachability or grant native, device, security or release qualification. See the [current source and artifact review](security/resident-source-review-75b44015-2026-11-10.json).
+
+## Prior built-static review at SDK dae11e0b — November 9
+
+The prior SDK `dae11e0b7e3f40e5434fea21fd7c127e416f7016` has a fresh npm bulk query with the same 3,694 registry versions and all 103 findings. The dependency lock, all 84 exception objects, deadlines and 12 pending fixes are unchanged. Fresh built-artifact inspection covers 457 registry versions and retains the known UUID moderate finding; it does not establish packaged APK reachability or grant native, device, security or release qualification. See the [current source and artifact review](security/resident-source-review-dae11e0b-2026-11-09.json).
+
+## Prior built-static review at SDK 489efc0b — November 9
+
+The prior SDK `489efc0b0e53ccbf9554f6017ac0d7b94f7056e8` has a fresh npm bulk query with the same 3,694 registry versions and all 103 findings. The dependency lock, exception objects, deadlines and pending fixes are unchanged. Fresh built-artifact inspection covers 457 registry versions and retains the known UUID moderate finding; it does not establish packaged APK reachability or grant native, device, security or release qualification. See the [current source and artifact review](security/resident-source-review-489efc0b-2026-11-09.json).
+
+The prior identity-only source review below remains historical. SDK `ac18377c5a9e4eb7afeac1c62a026ad3be95733e` has a fresh npm bulk query reproducing the same 3,694 registry versions and all 103 findings as SDK `86ab55fd81`. The dependency lock is byte-identical; all exception objects, review deadlines and pending fixes remain unchanged. This four-file identity follow-up grants no new artifact, security or release qualification. See the [source-lock review](security/resident-source-review-ac18377c-2026-11-09.json).
+
+## Parallel source-only reviews — November 9
+
+SDK `450087e00e6dc1c289aab0c3e424560b7040d163` and its reviewed child
+`6f414658b08cf8075d8fb12ece2ec968a221af7e` have fresh root and resident
+registry audits. Both reproduce the three moderate root findings and all 103
+resident findings across 3,694 versions. All 84 resident exceptions, original
+review deadlines and 12 pending fixes remain unchanged. The resident audit still
+exits nonzero for pending findings. The child adds the three reviewed shared
+notice/Gmail production postimages and their owning-module regressions.
+
+These source-only reviews are retained in the
+[450087e0 record](security/resident-source-review-450087e0-2026-11-09.json) and
+[6f414658 record](security/resident-source-review-6f414658-2026-11-09.json).
+They do not relabel the SDK 489 built-artifact review or historical packaged and
+native evidence, and grant no new artifact, security or release qualification.
+
+## Built static review at SDK 86ab55fd81 — November 9
+
+SDK `86ab55fd81f68a2c5dd4fd32e1c1431723648c58` has a fresh npm bulk audit of
+3,694 exact registry versions: 103 findings (12 low, 44 moderate, 46 high and one
+critical). The 19 added versions introduce no reported finding; all existing
+finding rows and affected package dependency/integrity records are unchanged.
+All 84 exception objects, their original review deadlines and all 12 pending
+upstream fixes remain unchanged. The full-lock audit still exits nonzero for
+the pending findings.
+
+The normal producer at SDK `86ab55fd81` built its workflow worker and native Google host.
+Authenticated agent/worker inventories contain 457 unique registry versions;
+only the existing moderate UUID advisory matches this built subset. Fresh token
+analysis of the exact emitted agent bytes found no live callers of the affected
+legacy v3/v5 APIs. See the [source and built static evidence](security/resident-source-review-86ab55fd-2026-11-09.json).
+These are build and static-analysis results. Historical staged-runtime reviews
+retain their original identities; current APK, device, security, signing, user
+and release acceptance remain separate.
+
 ## Staged Cloud runtime review — November 7
 
 The Android Cloud payload at Alpha `6f9e00c2` and SDK `9237023aee38`
@@ -731,3 +780,27 @@ findings are the three moderate `uuid`/`xcode`/`@capacitor/cli` paths already co
 existing exception. The registry now offers `@capacitor/cli` 8.6.0 as a fix for that advisory;
 taking it means moving `@capacitor/core` and `@capacitor/android` with it, which this change does
 not do.
+
+### Historical November 9 launcher SDK source refresh at 9add52f6
+
+The actual `node scripts/dependency-audit.mjs --resident --write` query at SDK
+`9add52f6b83efa77241fb72ae769729121944cac` audits 3,694 registry package versions.
+The upstream lock changed since the recorded `b1817660` audit: 19 versions were
+added alongside the upstream Quint development tooling, and none were removed.
+The normalized input SHA-256 at that source is
+`05c0f82c62f6e3e7eeda16e0f24d1d36da84a995dcaac0aa7a60d863dd63b5d7`.
+
+All 103 finding objects are unchanged: one critical, 46 high, 44 moderate and 12
+low. Exact lock entries for the affected packages and historical UUID consumers
+also match. All 84 exception objects, original review/expiry dates and 12 pending
+upstream-fix records were retained. Only that source's full-lock binding advanced;
+no exception is added or renewed. The dedicated audit remains red on the known
+pending findings. The offline test permits those explicitly recorded findings.
+
+[Source comparison evidence](security/resident-full-lock-9add52f6-2026-11-09.json)
+records the historical input and the five UI/model/test paths between the reviewed
+`5500` baseline and `9add`. Historical packaged inventories and static UUID review
+remain at their original sources. This refresh does not establish current
+packaged reachability, APK security, voice qualification or device acceptance.
+The current DAE source and artifact review at the top of this document remains
+the current binding.

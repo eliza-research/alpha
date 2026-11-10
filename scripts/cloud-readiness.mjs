@@ -38,12 +38,12 @@ import { createHash, randomBytes } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { validateCloudDeployment } from "./cloud-deployment.mjs";
-import { CLOUD_DEPLOYMENT } from "./cloud-deployment-policy.mjs";
+import { nativeAuthCallbackRegistration, validateCloudDeployment } from "./cloud-deployment.mjs";
+import { CLOUD_DEPLOYMENT, CLOUD_SIGN_IN_REGISTRATION } from "./cloud-deployment-policy.mjs";
 import { assetLinksGrants, publishedAssetLinksCheck, readAssetLinksSource } from "./render-assetlinks.mjs";
 
 /** The return path and Steward app client Alpha's native sign-in registers (AlphaCloudSignInPlugin). */
-export const CALLBACK_PATH = "/alphaphone/auth/callback";
+export const CALLBACK_PATH = CLOUD_SIGN_IN_REGISTRATION.callbackPath;
 export const STEWARD_APP_CLIENT = "alpha-phone";
 const TIMEOUT_MS = 15_000;
 const USAGE = "Usage: node scripts/cloud-readiness.mjs registration [--environment production|staging] [--json]\n       node scripts/cloud-readiness.mjs probe [--environment production|staging] [--signer SHA256] [--json]";
@@ -65,6 +65,7 @@ export function productRegistration(root = process.cwd(), environment = "product
     clientId: identity.appId,
     appName: identity.appName,
     callback: `${deployment.web}${CALLBACK_PATH}`,
+    browserSignIn: nativeAuthCallbackRegistration(CLOUD_DEPLOYMENT, identity, environment).browserSignIn,
     stewardAppClient: STEWARD_APP_CLIENT,
     signerSha256: readJson(root, "android/release-signer.json").signerSha256,
   };
@@ -72,7 +73,7 @@ export function productRegistration(root = process.cwd(), environment = "product
 
 /** The operator entries for one environment (docs/human-actions.md H-11 to H-15). */
 export function registrationValues(registration) {
-  const { environment, api, web, tenant, clientId, callback, packageName, appName, stewardAppClient, entitlementAudience } = registration;
+  const { environment, api, web, tenant, clientId, callback, packageName, appName, browserSignIn, stewardAppClient, entitlementAudience } = registration;
   return [
     { step: "H-11", where: `ELIZA_MOBILE_APP_AUTH_CLIENTS_JSON (GitHub Environment secret "${environment}" of the Cloud release workflow), Alpha's entry`,
       value: { clientId, appId: "<UUID of Alpha's active, approved Cloud apps row>", redirectUri: callback, enabled: true },
@@ -87,8 +88,8 @@ export function registrationValues(registration) {
       value: `node scripts/render-assetlinks.mjs --cloud-config --published ${web}/.well-known/assetlinks.json`,
       then: `Set the printed value, deploy, then node scripts/render-assetlinks.mjs --check ${web}/.well-known/assetlinks.json.` },
     { step: "H-13", where: `ELIZA_NATIVE_AUTH_CALLBACKS_JSON (Pages environment of ${new URL(web).host}), Alpha's entry`,
-      value: { redirectUri: callback, androidPackage: packageName, appName },
-      then: "Keep every other app's entry." },
+      value: { redirectUri: callback, androidPackage: packageName, appName, browserSignIn },
+      then: "Merge this entry into the protected Pages environment registration and keep every other app's entry. See docs/runbooks/pages-browser-sign-in.md; this command does not deploy configuration." },
     { step: "H-15", where: "Entitlement issuer audience", value: entitlementAudience,
       then: "Cloud's ELIZA_ENTITLEMENT_* signer must issue this audience (scripts/cloud-deployment-policy.mjs entitlementAudience)." },
   ];

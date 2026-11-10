@@ -165,13 +165,10 @@ test("native Google responses map to a fixed classification and a bounded diagno
 test("exact native verify/connect/token/ack chain keeps failures explicit and custody native (plain JVM)", () => {
   const { file, directory } = harness("CloudSignInChainTest.java.txt", chainMethods(plugin));
   try {
-    assert.match(
-      runJvm(
-        [...pure, ...support, file],
-        "ai.eliza.auth.cloud.CloudSignInChainTest",
-      ),
-      /^PASS native sign-in chain \(64 scenarios; no browser facilities\)/,
-    );
+    const output=runJvm([...pure, ...support, file],"ai.eliza.auth.cloud.CloudSignInChainTest");
+    assert.match(output,/^PASS native sign-in chain \(64 scenarios; no browser facilities\)/m);
+    assert.match(output,/^PASS native code verification ownership \(3 scenarios\)$/m);
+    assert.match(output,/^PASS native startup acknowledgement recovery \(17 scenarios\)$/m);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -254,7 +251,7 @@ test("the plugin owns every secret, compares state before burning and logs only 
     /@CapacitorPlugin/,
     "the host subclass declares its plugin name",
   );
-  for (const product of [/Alpha/, /elizaresearch/, /BuildConfig/])
+  for (const product of [/Alpha/, /alphacompute/, /BuildConfig/])
     assert.doesNotMatch(
       plugin,
       product,
@@ -614,6 +611,58 @@ public class ElizaHostContractTest {
         "ai.elizaos.app.ElizaHostContractTest",
       ),
       /^PASS Eliza host contract \(\d+ checks\)/,
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("actual Android resident credential mutation owns the exact stop and write (plain JVM)", () => {
+  const source = read(join(elizaJava, "ElizaResidentCredentials.java"));
+  const { file, directory } = harness(
+    "ResidentCredentialMutationTest.java.txt",
+    {
+      ACTUAL_LIFECYCLE: between(
+        source,
+        "    private static final Object LIFECYCLE",
+        "    private ElizaResidentCredentials()",
+      ),
+      ACTUAL_RESERVE: between(
+        source,
+        "    static Runnable reserve()",
+        "    /** Read-only request fence",
+      ),
+      ACTUAL_HOST: between(
+        source,
+        "        CredentialMutationConductor.Host host()",
+        "\n    }\n}",
+      ),
+    },
+  );
+  const workspace = resolve(root, "../../..");
+  const storage = join(
+    workspace,
+    "plugins/plugin-native-secure-store/android-nativeonly/src/main/java/ai/eliza/plugins/securestore/nativeonly",
+  );
+  const lease = join(
+    workspace,
+    "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/CredentialShutdownLease.java",
+  );
+  try {
+    assert.match(
+      runJvm(
+        [
+          ...[
+            "CredentialIntentFence",
+            "CredentialMutationConductor",
+            "CredentialSlotMutation",
+          ].map((name) => join(storage, `${name}.java`)),
+          lease,
+          file,
+        ],
+        "ai.elizaos.app.ResidentCredentialMutationTest",
+      ),
+      /^PASS Android resident credential mutation \(7 scenarios\)/,
     );
   } finally {
     rmSync(directory, { recursive: true, force: true });

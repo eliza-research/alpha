@@ -5,7 +5,7 @@ import {noteBridgePlatform} from './note-bridge-platform.mjs';
 /** Primitive ports for the full shared bridge's recording and cancellation paths. */
 export function sharedRecordingPlatform(){
  const base=noteBridgePlatform(),files={...base.sources};
- for(const name of ['ai/eliza/voice/LocalSpeechBridgePlugin.java','ai/eliza/voice/SpeechRequestGate.java','ai/elizaresearch/alphaphone/AlphaNoteAudioPlugin.java']){
+ for(const name of ['ai/eliza/voice/LocalSpeechBridgePlugin.java','ai/eliza/voice/SpeechRequestGate.java','ai/alphacompute/alphaphone/AlphaNoteAudioPlugin.java']){
   delete files[name];unlinkSync(join(base.directory,name));
  }
  files['android/content/Context.java']=files['android/content/Context.java'].replace('public class Context {','public class Context {\n public void registerComponentCallbacks(ComponentCallbacks2 callback){}\n public void unregisterComponentCallbacks(ComponentCallbacks2 callback){}');
@@ -36,7 +36,7 @@ public class SpeechAudioFocus {
  public static Runnable callCallback;
  public interface Listener {void changed(SpeechAudioFocusPolicy.Action action,boolean call);}
  public SpeechAudioFocus(android.content.Context context,android.os.Handler main,Listener listener){}
- public boolean callActive(){return ai.elizaresearch.alphaphone.NoteBridgePorts.audio.mode!=android.media.AudioManager.MODE_NORMAL;}
+ public boolean callActive(){return ai.alphacompute.alphaphone.NoteBridgePorts.audio.mode!=android.media.AudioManager.MODE_NORMAL;}
  public void watchCalls(java.util.concurrent.Executor executor,Runnable callback){callCallback=()->executor.execute(callback);}
  public String acquire(){throw new AssertionError("Unexercised audio focus acquisition");}
  public void release(){}
@@ -73,11 +73,13 @@ public class LiveCaptureController {
  public static final String CANCELLED="Recording cancelled";
  public LiveCaptureController(Host host){}
  public void cancelAll(){}
+ public void pause(java.util.Collection<LiveCaptureAdmission.Ticket> waiting){if(!waiting.isEmpty())throw new AssertionError("Unexercised live permission reservation");}
  public void shutdown(){}
  public void interrupt(String reason){}
  public void onWorker(Runnable work,Runnable refused){throw new AssertionError("Unexercised live capture");}
  public LiveCaptureAdmission.Ticket reserve(String id,long epoch){throw new AssertionError("Unexercised live admission");}
  public boolean current(LiveCaptureAdmission.Ticket ticket){throw new AssertionError("Unexercised live admission");}
+ public void refuse(LiveCaptureAdmission.Ticket ticket,Started callback){throw new AssertionError("Unexercised live admission refusal");}
  public void start(LiveCaptureAdmission.Ticket ticket,boolean echo,Route route,String room,boolean reopen,Started callback){throw new AssertionError("Unexercised live capture");}
  public void stop(String id,boolean discard,double cutoff,Stopped callback){throw new AssertionError("Unexercised live stop");}
 }`,

@@ -9,7 +9,7 @@ const module='plugins/plugin-native-calendar/android';
 const calendarSource=module+'/src/main/java/ai/eliza/plugins/calendar/';
 const shared='vendor/eliza/plugins/plugin-native-calendar/test/jvm/android/';
 const fixtures='test/fixtures/';
-const manifest='patches/eliza/native-manifest.json';
+const manifest='android/upstream-native-sources.json';
 export const calendarReviewPorts={
   'android/Manifest.java': `package android;
 public final class Manifest {public static final class permission {
@@ -118,7 +118,7 @@ public final class PluginCall {
  public String status(){JSObject result=response.getNow(null);return result==null?"pending":result.getString("status");}
  public JSObject result()throws Exception{return response.get(5,java.util.concurrent.TimeUnit.SECONDS);}
 }`,
-  'ai/elizaresearch/alphaphone/AlphaCalendarPlugin.java': `package ai.elizaresearch.alphaphone;
+  'ai/alphacompute/alphaphone/AlphaCalendarPlugin.java': `package ai.alphacompute.alphaphone;
 public final class AlphaCalendarPlugin {
  public final android.app.Activity activity=new android.app.Activity();
  public final android.content.Context context;
@@ -153,8 +153,9 @@ export function scopedCalendarReviewPlatform(){
     mkdirSync(staged);
     const catalog=JSON.parse(readFileSync(join(root,manifest),'utf8'));
     const patches=catalog.patches.filter(patch=>patch.module===module);
-    const verified=materializeNativePatches({source:upstreamNativeSource(root),
-      manifest:{...catalog,modules:[module],patches},patchRoot:join(root,'patches/eliza'),temporary:staged});
+    const source=upstreamNativeSource(root);
+    const verified=materializeNativePatches({source,
+      manifest:{...catalog,baseCommit:source.pin,modules:[module],patches},patchRoot:join(root,'patches/eliza'),temporary:staged});
     const guardFiles=['CalendarEventGuard.java','read/CalendarSourceIdentity.java'].map(name=>calendarSource+name);
     const put=(name,bytes)=>{
       const path=join(temporary,'ports',name);

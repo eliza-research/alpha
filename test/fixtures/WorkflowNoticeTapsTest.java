@@ -1,4 +1,4 @@
-package ai.elizaresearch.alphaphone;
+package ai.alphacompute.alphaphone;
 import org.json.*;
 import java.util.*;
 public final class WorkflowNoticeTapsTest {
@@ -46,17 +46,27 @@ public final class WorkflowNoticeTapsTest {
   approvedReceipt.put("expiresAt",System.currentTimeMillis()-1);approvals.values.put(WorkflowNoticeDelivery.APPROVAL_SLOT,new JSONObject().put(approvalId,approvedReceipt).toString());
   check(!approvalTaps.pending().getBoolean("retained"));rejects(()->approvalTaps.capture(approvalToken,true));rejects(()->approvalTaps.consume(approvalToken));
   approvedReceipt.put("expiresAt",System.currentTimeMillis()+600000).put("status","withdrawn");approvals.values.put(WorkflowNoticeDelivery.APPROVAL_SLOT,new JSONObject().put(approvalId,approvedReceipt).toString());
-  check(!approvalTaps.pending().getBoolean("retained"));rejects(()->approvalTaps.capture(approvalToken,true));
-  approvedReceipt.put("status","succeeded");approvals.values.put(WorkflowNoticeDelivery.APPROVAL_SLOT,new JSONObject().put(approvalId,approvedReceipt).toString());
-  approvedReceipt.put("expiresAt",System.currentTimeMillis()-1);approvals.values.put(WorkflowNoticeDelivery.APPROVAL_SLOT,new JSONObject().put(approvalId,approvedReceipt).toString());
+  check(approvalTaps.pending().length()==0);
+  JSONObject withdrawnRoute=new JSONObject(approvals.values.get(WorkflowNoticeTaps.SLOT)).getJSONObject(approvalId);
+  check("consumed".equals(withdrawnRoute.getString("state"))&&!withdrawnRoute.has("question"));
+  check(new WorkflowNoticeTaps(approvals).pending().length()==0);rejects(()->approvalTaps.capture(approvalToken,true));
   rejects(()->approvalTaps.releaseApprovalQuestion(approvalToken));
-  approvedReceipt.put("expiresAt",System.currentTimeMillis()+600000);approvals.values.put(WorkflowNoticeDelivery.APPROVAL_SLOT,new JSONObject().put(approvalId,approvedReceipt).toString());
-  // A completed Ask keeps the approval route untapped and reusable; the receipt is untouched.
-  approvalTaps.releaseApprovalQuestion(approvalToken);check(approvalTaps.pending().length()==0);rejects(()->approvalTaps.releaseApprovalQuestion(approvalToken));
-  approvalTaps.capture(approvalToken,false);check(approvalTaps.pending().getString("token").equals(approvalToken));check(!approvalTaps.pending().has("question"));rejects(()->approvalTaps.releaseApprovalQuestion(approvalToken));
-  approvalTaps.consume(approvalToken);approvalTaps.fresh(approvalId);String askToken=approvalTaps.token(approvalId);approvalTaps.capture(askToken,true);
-  approvalTaps.settleQuestion(askToken,true);check(approvalTaps.pending().length()==0);approvalTaps.capture(askToken,true);approvalTaps.consume(askToken);approvalTaps.capture(askToken,true);check(approvalTaps.pending().length()==0);
   check(new JSONObject().put(approvalId,approvedReceipt).toString().equals(approvals.values.get(WorkflowNoticeDelivery.APPROVAL_SLOT)));
+  // A separate, still-posted approval exercises Ask completion. The withdrawn
+  // approval above remains terminal; a changed fixture receipt cannot revive it.
+  Store asking=new Store();WorkflowNoticeTaps askTaps=new WorkflowNoticeTaps(asking);
+  String askingId="approval-"+"e".repeat(64),askingToken=askTaps.prepare(askingId,"b".repeat(64),route("asking-run"));
+  JSONObject askingReceipt=new JSONObject().put("binding","b".repeat(64)).put("digest","c".repeat(64)).put("status","succeeded").put("expiresAt",System.currentTimeMillis()+600000);
+  asking.values.put(WorkflowNoticeDelivery.APPROVAL_SLOT,new JSONObject().put(askingId,askingReceipt).toString());askTaps.capture(askingToken,true);
+  askingReceipt.put("expiresAt",System.currentTimeMillis()-1);asking.values.put(WorkflowNoticeDelivery.APPROVAL_SLOT,new JSONObject().put(askingId,askingReceipt).toString());
+  rejects(()->askTaps.releaseApprovalQuestion(askingToken));
+  askingReceipt.put("expiresAt",System.currentTimeMillis()+600000);asking.values.put(WorkflowNoticeDelivery.APPROVAL_SLOT,new JSONObject().put(askingId,askingReceipt).toString());
+  // A completed Ask keeps this live approval route untapped and reusable; its receipt is untouched.
+  askTaps.releaseApprovalQuestion(askingToken);check(askTaps.pending().length()==0);rejects(()->askTaps.releaseApprovalQuestion(askingToken));
+  askTaps.capture(askingToken,false);check(askTaps.pending().getString("token").equals(askingToken));check(!askTaps.pending().has("question"));rejects(()->askTaps.releaseApprovalQuestion(askingToken));
+  askTaps.consume(askingToken);askTaps.fresh(askingId);String askToken=askTaps.token(askingId);askTaps.capture(askToken,true);
+  askTaps.settleQuestion(askToken,true);check(askTaps.pending().length()==0);askTaps.capture(askToken,true);askTaps.consume(askToken);askTaps.capture(askToken,true);check(askTaps.pending().length()==0);
+  check(new JSONObject().put(askingId,askingReceipt).toString().equals(asking.values.get(WorkflowNoticeDelivery.APPROVAL_SLOT)));
   // Seed prior durable rows once; exercise both sides of the capacity boundary
   // through production prepare without quadratically revalidating setup rows.
   JSONObject full=new JSONObject(s.values.get(WorkflowNoticeTaps.SLOT));

@@ -1,4 +1,4 @@
-package ai.elizaresearch.alphaphone;
+package ai.alphacompute.alphaphone;
 import android.os.*;
 import android.graphics.Bitmap;
 import java.util.ArrayList;

@@ -13,7 +13,6 @@ const host = 'apps/app/src/runtime/view-focus.ts';
 const shared = 'packages/ui/src/accessibility/screen-focus.ts';
 const effective = '.eliza/client-features/' + shared;
 const projection = '.eliza/client-features/.source.json';
-const manifest = 'patches/eliza/screen-focus-priority-client-manifest.json';
 const strip = text => stripTypeScriptTypes(text, {mode: 'strip'})
   .replace(/^import .*;\r?\n/gm, '').replace(/^export /gm, '');
 
@@ -150,17 +149,17 @@ function fixture(name, code) {
 }
 
 export async function checkScreenFocusOwnership() {
-  const sources = [fileURLToPath(import.meta.url), host, 'vendor/eliza/' + shared, effective, projection, manifest,
-    'apps/app/src/main.tsx'];
+  const sources = [fileURLToPath(import.meta.url), host, 'vendor/eliza/' + shared, effective, projection,
+    'apps/app/src/main.tsx', 'upstream.lock.json', 'scripts/prepare-client-features.mjs'];
   captureSources([...sources, modelPath]);
   const stamp = JSON.parse(read(projection));
-  const reviewed = JSON.parse(read(manifest));
   const prepared = read(effective);
-  const sha = text => createHash('sha256').update(text).digest('hex');
-  assert.equal(sha(prepared), reviewed.afterSha256);
-  assert.equal(sha(read('vendor/eliza/' + shared)), reviewed.beforeSha256);
-  assert.equal(stamp.screenFocusPriorityPatch.manifestSha256, sha(read(manifest)));
-  assert.equal(stamp.files[shared], reviewed.afterSha256);
+  const pinned = read('vendor/eliza/' + shared);
+  const digest = createHash('sha256').update(pinned).digest('hex');
+  assert.equal(stamp.baseCommit, JSON.parse(read('upstream.lock.json')).commit);
+  assert.equal(stamp.sourceFiles[shared], digest);
+  assert.equal(stamp.files[shared], digest);
+  assert.equal(prepared, pinned);
   const marker = '  return {\n    screenChanged: () => schedule(),';
   assert.equal(prepared.split(marker).length, 2);
   const inspect = `  globalThis.inspectFocus = () => ({frame, remaining, held,

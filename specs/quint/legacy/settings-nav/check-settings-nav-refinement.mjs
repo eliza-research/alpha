@@ -218,7 +218,7 @@ async function mounted(extraSources) {
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-passwords/src')),
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-system/src')),
     'vendor/eliza/packages/core/src/utils/uuid.ts',
-    ...filesWithin(resolve(root, 'patches/eliza')),
+    'upstream.lock.json',
     'apps/app/index.html', 'vite.config.ts', 'package.json', 'package-lock.json', 'upstream.lock.json',
     'scripts/prepare-client-features.mjs', 'scripts/quint-lib.mjs', licenses, comparison,
     'test/browser/flag-off-android.ts', 'test/browser/resident-stub.ts',

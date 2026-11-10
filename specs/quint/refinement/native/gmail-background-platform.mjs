@@ -94,7 +94,7 @@ public record Constraints(NetworkType network) {
       'androidx/work/ExistingPeriodicWorkPolicy.java':'package androidx.work;public enum ExistingPeriodicWorkPolicy {UPDATE}',
       'androidx/work/WorkManager.java':`package androidx.work;
 import android.content.Context;
-import ai.elizaresearch.alphaphone.GmailBackgroundTraces;
+import ai.alphacompute.alphaphone.GmailBackgroundTraces;
 public final class WorkManager {
  private static final WorkManager INSTANCE=new WorkManager();
  public static WorkManager getInstance(Context context){return INSTANCE;}
@@ -176,7 +176,7 @@ ${provider.slice(start,end)}
       'ai/eliza/plugins/notifications/MailNoticePoster.java':`package ai.eliza.plugins.notifications;
 import android.content.Context;
 import android.content.Intent;
-import ai.elizaresearch.alphaphone.GmailBackgroundTraces;
+import ai.alphacompute.alphaphone.GmailBackgroundTraces;
 public final class MailNoticePoster implements MailBackgroundDelivery.Notices {
  public static final class Config {
   public final String channel,name,description,action,open,ask,tag,title,text,publicTitle,publicText,askLabel;
@@ -198,7 +198,7 @@ public final class MailNoticePoster implements MailBackgroundDelivery.Notices {
  public void cancelAll(){GmailBackgroundTraces.cancelAll();}
  public Tap tap(Intent intent){if(intent==null||intent.data==null)return null;throw new AssertionError("Intent delivery outside this replay");}
 }`,
-      'ai/elizaresearch/alphaphone/GmailPorts.java':`package ai.elizaresearch.alphaphone;
+      'ai/alphacompute/alphaphone/GmailPorts.java':`package ai.alphacompute.alphaphone;
 import android.content.Context;
 final class AlphaCredentialStore {
  interface CloudChangeObserver {void changed()throws Exception;}

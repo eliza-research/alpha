@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { instrumentationClassResults } from "../scripts/instrumentation-result.mjs";
 
-const C = name => `ai.elizaresearch.alphaphone.${name}InstrumentedTest`;
+const C = name => `ai.alphacompute.alphaphone.${name}InstrumentedTest`;
 const record = (cls, method, code, extra = []) => [`INSTRUMENTATION_STATUS: class=${cls}`, `INSTRUMENTATION_STATUS: test=${method}`, ...extra, `INSTRUMENTATION_STATUS_CODE: ${code}`];
 const outcome = (key, value) => [`INSTRUMENTATION_STATUS: ${key}=${value}`, "INSTRUMENTATION_STATUS_CODE: 0"];
 

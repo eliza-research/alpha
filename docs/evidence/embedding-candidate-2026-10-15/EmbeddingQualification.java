@@ -1,4 +1,4 @@
-package ai.elizaresearch.alphaphone;
+package ai.alphacompute.alphaphone;
 import android.app.Instrumentation;
 import android.os.Bundle;
 import java.io.*;
