@@ -18,7 +18,7 @@ const dependencyPaths = ['apps/app/src/runtime/clock-contract.ts', 'apps/app/src
   'apps/app/src/runtime/inline-modal.ts', 'apps/app/src/runtime/modal-inert.ts',
   ...['clock-contract.ts', 'clock-handoff.ts', 'clock-handoff-history.ts'].map(path => shared+path)];
 export const workflowClockSources = [clock, agent, shellSource, template, 'apps/app/src/main.tsx',
-  'scripts/test-clock-handoff-flow.mjs', 'test/support/strip-types.mjs', ...dependencyPaths];
+  'scripts/test-clock-handoff-flow.ts', 'test/support/strip-types.mjs', ...dependencyPaths];
 const read = path => readFileSync(resolve(root, path), 'utf8');
 const strip = text => stripTypeScriptTypes(text, {mode: 'strip'});
 const settle = () => new Promise(resolve => setImmediate(resolve));

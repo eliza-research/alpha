@@ -334,9 +334,12 @@
     "invariant": "safety",
     "tests": [
       "keyboardNotRotationTest",
-      "rotationPreservesDraftTest",
+      "rotationKeepsGeometryTest",
       "largeTextTest",
-      "preferenceReadbackTest"
+      "preferenceReadbackTest",
+      "invalidCalendarResultCanaryTest",
+      "invalidLargeTextSplitCanaryTest",
+      "invalidAgendaCanaryTest"
     ],
     "sources": [
       "apps/app/src/runtime/canvas-geometry.ts",
@@ -348,14 +351,23 @@
       "apps/app/src/prototype/system-shade.ts"
     ],
     "abstractions": [
-      "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",
-      "Model safety checks do not establish implementation refinement or device acceptance.",
-      "Keyboard-free layout uses the shared responsive-layout algorithm through canvas-geometry. Home shell and system-shade integration remain Alpha-owned; the model covers layout choices and state retention, not pixel geometry or all launcher editing behavior."
+      "Representative geometry and text-scale inputs. Broken-result canaries are deliberately excluded from step and must violate the result predicates.",
+      "No draft, selection or native-shade preservation claim is made by this layout model. Those effects require their own source-bound shell/native checks."
     ],
     "sharedSources": [
       "packages/ui/src/components/shell/responsive-layout.ts",
       "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SystemShade.java"
-    ]
+    ],
+    "invariants": [
+      "ReadableCalendar",
+      "LargeTextSinglePane",
+      "AgendaMatchesText"
+    ],
+    "stateMapping": {
+      "renderedDays/renderedSplit/renderedAgenda": "Actual surfaceLayout return values, projected by the geometry source adapter",
+      "width/freeHeight/visibleHeight/editing": "Controlled measured layout and keyboard inputs",
+      "theme/savedTheme": "Preference readback abstraction only"
+    }
   },
   {
     "path": "specs/quint/application/ScheduledTaskControls.qnt",
@@ -551,11 +563,11 @@
     "invariant": "safety",
     "sources": [
       "scripts/browser-cloud-dev-bridge.ts",
-      "scripts/cloud-resident-host.mjs",
-      "scripts/dev-cloud.mjs",
-      "scripts/dev-local.mjs",
-      "scripts/start-local-voice-agent.mjs",
-      "scripts/start-local-remote.mjs",
+      "scripts/cloud-resident-host.ts",
+      "scripts/dev-cloud.ts",
+      "scripts/dev-local.ts",
+      "scripts/start-local-voice-agent.ts",
+      "scripts/start-local-remote.ts",
       "scripts/cloud-email-code.ts"
     ],
     "tests": [
@@ -1074,7 +1086,7 @@
       "vendor/eliza/plugins/plugin-files/src/browser/storage-model.ts",
       "vendor/eliza/plugins/plugin-files/src/browser/files-agent-contract.ts",
       "upstream.lock.json",
-      "scripts/prepare-client-features.mjs"
+      "scripts/prepare-client-features.ts"
     ],
     "abstractions": [
       "One outstanding storageSelect capability, three owner epochs, one representative selected identity. The caller keeps the document visible while awaiting selection.",
@@ -1649,7 +1661,9 @@
       "resetInvalidatesPendingNativeReadTest",
       "failedReadKeepsLastGoodScaleTest",
       "refreshAffectsOnlyNewToastsTest",
-      "longMessageAndFocusHoldKeepCapturedDurationTest"
+      "longMessageAndFocusHoldKeepCapturedDurationTest",
+      "passiveNoticeKeepsCurrentUndoTest",
+      "pendingUndoKeepsItsExactActionTest"
     ],
     "invariants": [
       "requestOwnership",
@@ -1664,11 +1678,12 @@
     "stateMapping": {
       "scale/latest": "Last known timeout percentage and exact current native read token",
       "started/pending": "Observed native read calls and unresolved replies",
-      "message/undo/duration": "Shell message identity, retained Undo and its scheduled timeout"
+      "message/undo/duration": "Shell message identity, retained Undo and its scheduled timeout",
+      "queued": "FIFO pending Undo/action identities; consecutive passive notices coalesce, without replacing an active Undo"
     },
     "abstractions": [
       "Three native read identities with sampled timeout percentages and explicit rejection.",
-      "One active shell toast. Modal presentation, Undo action selection and real platform scheduling are separate."
+      "One active shell toast and up to three queued messages. Callback authority, domain expiry, modal presentation and physical scheduling remain separate."
     ],
     "bounds": {
       "maxSamples": 1000,
@@ -2305,7 +2320,6 @@
     ],
     "invariants": [
       "ExactDismissal",
-      "SettingsOwnership",
       "RenderOrder"
     ],
     "sources": [
@@ -3488,7 +3502,7 @@
     ],
     "sources": [
       "scripts/stage-alpha-os-branding.py",
-      "scripts/generate-alpha-os-branding.mjs",
+      "scripts/generate-alpha-os-branding.ts",
       "scripts/fetch-alpha-os-preset-inputs.py"
     ],
     "abstractions": [

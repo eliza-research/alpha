@@ -83,8 +83,8 @@ test.describe('maps sheets', () => {
     });
     test('search results keep the search field and the list on screen', async ({ page }) => {
       await page.goto('/?mode=mock&start=maps:search');
-      await reachable(page, page.getByRole('textbox', { name: 'Search places', exact: true }));
-      await reachable(page, page.getByRole('button', { name: 'Resize results', exact: true }));
+      await reachable(page, page.getByRole('searchbox', { name: 'Search places', exact: true }));
+      await expect(page.getByRole('button', { name: 'Resize results', exact: true })).toHaveCount(0);
       await reachable(page, page.getByRole('button', { name: /Philz Coffee/ }).last());
     });
   });

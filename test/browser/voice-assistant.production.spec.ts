@@ -1,6 +1,8 @@
 import {test,expect,type Page} from '@playwright/test';
 import {button} from './flag-off-android';
-import {setupLiveAssistant as setup} from './voice-assistant-fixture';
+import {setupLiveAssistant} from './voice-assistant-fixture';
+// Compatibility capture has no echo cancellation: replies retain the closed-input busy hold.
+const setup=(page:Page)=>setupLiveAssistant(page,{echoCancelled:false});
 import {attachVoiceFailureMetadata} from './voice-fixture-failure-metadata';
 test.afterEach(async({page},info)=>{await attachVoiceFailureMetadata(page,info);});
 const voice=(page:Page)=>page.getByRole('region',{name:'Voice conversation',exact:true});
@@ -25,7 +27,8 @@ test('explicit Stop drains playback, keeps only the played sentence and a restar
  await expect(voice(page)).toHaveAttribute('data-voice-state','listening');
  await say(page,'What is on my calendar today');
  await expect(voice(page)).toHaveAttribute('data-voice-state','speaking');
- expect(await live(page,f=>f.spoken)).toEqual(['You have two meetings today.']);
+ await expect.poll(()=>live(page,f=>f.spoken)).toEqual(['You have two meetings today.','The first one starts at nine with Priya.']);
+ expect(await live(page,f=>f.plays)).toHaveLength(1);
  await page.evaluate(()=>(window as any).live.finishPlayback());
  await expect.poll(()=>live(page,f=>f.spoken.length)).toBe(2);
  await expect(button(page,'Stop voice conversation')).toBeVisible();await expect(button(page,'Stop speaking')).toBeVisible();
@@ -69,10 +72,10 @@ test('explicit Stop drains playback, keeps only the played sentence and a restar
  const heard=await live(page,f=>f.heard);
  expect(heard.map((row:any)=>[row.path.split('/')[5],row.heardText])).toEqual([['11111111-1111-4111-8111-111111111111','You have two meetings today.']]);
  expect(heard[0].ownerId).toBeTruthy();
- // With the scorer unavailable both turns were submitted by the long gap.
- expect(await live(page,f=>f.eotCalls)).toEqual(['What is on my calendar today','and tomorrow']);
- const endpoints=await page.evaluate(()=>JSON.parse(localStorage.getItem('alphaphone:voice-timing:v1')||'[]').filter((row:any)=>row.endpoint).map((row:any)=>[row.endpoint.by,row.endpoint.semantic,row.endpoint.reason,row.heard??null]));
- expect(endpoints).toEqual([['gap','unavailable','voice-not-started','recorded'],['gap','unavailable','voice-not-started',null]]);
+ // Native first-pause submission does not ask the semantic scorer, on either echo-cancellation route.
+ expect(await live(page,f=>f.eotCalls)).toEqual([]);
+ const endpoints=await page.evaluate(()=>JSON.parse(localStorage.getItem('alphaphone:voice-timing:v1')||'[]').filter((row:any)=>row.endpoint).map((row:any)=>[row.endpoint.by,row.endpoint.semantic,row.endpoint.reason??null,row.heard??null]));
+ expect(endpoints).toEqual([['gap','not-asked',null,'recorded'],['gap','not-asked',null,null]]);
  await clean(page,foreign);
 });
 
@@ -146,30 +149,47 @@ test('stopping before the pause discards the unsent utterance and late transcrip
  await clean(page,foreign);
 });
 
-test('semantic endpointing: a complete score submits after the short gap; an incomplete one waits for the long gap',async({page})=>{
+test('native first-pause submission leaves the optional semantic scorer unasked',async({page})=>{
  const foreign=await setup(page);
- await page.evaluate(()=>{(window as any).live.eot={available:true,endOfTurnProbability:.93,complete:true,commitThreshold:.7,nextSpeaker:'agent',source:'eliza-1-drafter',model:'eliza-1',latencyMs:18};});
- await button(page,'Talk').click();
- await expect(voice(page)).toHaveAttribute('data-voice-state','listening');
+ await page.evaluate(()=>{(window as any).live.eot={available:true,endOfTurnProbability:.2,complete:false,commitThreshold:.7,nextSpeaker:'user',source:'synthetic-incomplete-score'};});
+ await button(page,'Talk').click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');
  await say(page,'What is on my calendar today');
  await expect.poll(()=>posts(page)).toEqual(['What is on my calendar today']);
  await expect(voice(page)).toHaveAttribute('data-voice-state','speaking');
- await page.evaluate(()=>(window as any).live.finishPlayback());
- await expect(voice(page)).toHaveAttribute('data-voice-state','listening');
- await page.evaluate(()=>{(window as any).live.eot={available:true,endOfTurnProbability:.2,complete:false,commitThreshold:.7,nextSpeaker:'user',source:'eliza-1-drafter',model:'eliza-1',latencyMs:15};});
- await say(page,'and remind me to');
- await expect.poll(()=>live(page,f=>f.eotCalls.length)).toBe(2);
- await page.waitForTimeout(500);
- expect(await posts(page)).toEqual(['What is on my calendar today'],'not complete: no early submit');
- await expect.poll(()=>posts(page)).toEqual(['What is on my calendar today','and remind me to']);
+ expect(await live(page,f=>f.eotCalls)).toEqual([]);
  const endpoints=await page.evaluate(()=>JSON.parse(localStorage.getItem('alphaphone:voice-timing:v1')||'[]').filter((row:any)=>row.endpoint).map((row:any)=>row.endpoint));
- // `path` names the chain stage that answered: the resident's fused scorer (Clef is off).
- expect(endpoints).toEqual([{by:'semantic',semantic:'complete',latencyMs:18,path:'local'},{by:'gap',semantic:'incomplete',latencyMs:15,path:'local'}]);
- expect(JSON.stringify(endpoints)).not.toContain('calendar');
- // The reply was fully heard: no heard request.
- expect(await live(page,f=>f.heard)).toEqual([]);
- await button(page,'Stop voice conversation').click();
- await clean(page,foreign);
+ expect(endpoints).toEqual([{by:'gap',semantic:'not-asked'}]);
+ await page.evaluate(()=>(window as any).live.finishPlayback());await expect(voice(page)).toHaveAttribute('data-voice-state','listening');
+ await button(page,'Stop voice conversation').click();await clean(page,foreign);
+});
+
+test('echo-cancelled speech replaces an unheard speculative turn, pipelines one output and interrupts through the open microphone',async({page})=>{
+ const foreign=await setupLiveAssistant(page,{echoCancelled:true});
+ await page.evaluate(()=>{const w=window as any;w.live.holdNextReply=true;w.flagOff.replies.push('An unheard old answer.','The weather tomorrow should stay clear. Take an umbrella just in case.','Tonight is calm.');});
+ await button(page,'Talk').click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');
+ expect(await live(page,f=>f.captures)).toHaveLength(1);
+ await say(page,'Tell me the weather');await expect.poll(()=>posts(page)).toEqual(['Tell me the weather']);
+ await expect.poll(()=>live(page,f=>f.heldFrames)).toBeGreaterThan(0);
+ expect(await live(page,f=>f.spoken)).toEqual([]);expect(await live(page,f=>f.stops)).toEqual([]);
+ await say(page,'What about tomorrow');
+ await expect.poll(()=>live(page,f=>f.heldStreamIds.length===1&&f.cancelledStreams.includes(f.heldStreamIds[0]))).toBe(true);
+ await expect.poll(()=>posts(page)).toEqual(['Tell me the weather','Tell me the weather What about tomorrow']);
+ await expect(voice(page)).toHaveAttribute('data-voice-state','speaking');
+ await expect.poll(()=>live(page,f=>f.spoken)).toEqual(['The weather tomorrow should stay clear.','Take an umbrella just in case.']);
+ expect(await live(page,f=>f.plays)).toHaveLength(1);expect(await live(page,f=>f.captures)).toHaveLength(1);expect(await live(page,f=>f.stops)).toEqual([]);
+ await page.evaluate(()=>(window as any).live.finishPlayback());
+ const stoppedBefore=await live(page,f=>f.stopped);
+ // Hold a speech start over the playing second sentence; the native capture stays open.
+ await page.evaluate(()=>{const f=(window as any).live,t=Date.now();f.finals.push('Check tonight too');f.frames([t-64,t-32,t],[{type:'speech-start',timestampMs:t-64}]);});
+ await expect.poll(()=>live(page,f=>f.stopped)).toBeGreaterThan(stoppedBefore);
+ expect(await live(page,f=>f.captures)).toHaveLength(1);expect(await live(page,f=>f.stops)).toEqual([]);
+ await page.evaluate(()=>{const f=(window as any).live,t=Date.now();f.frames([t],[{type:'speech-end',timestampMs:t}]);});
+ await expect.poll(()=>posts(page)).toEqual(['Tell me the weather','Tell me the weather What about tomorrow','Check tonight too']);
+ await expect.poll(()=>live(page,f=>f.spoken.at(-1))).toBe('Tonight is calm.');
+ await expect.poll(()=>live(page,f=>f.heard.map((row:any)=>row.heardText))).toEqual(['The weather tomorrow should stay clear.']);
+ await page.evaluate(()=>(window as any).live.finishPlayback());await expect(voice(page)).toHaveAttribute('data-voice-state','listening');
+ await button(page,'Stop voice conversation').click();await expect(voice(page)).toHaveCount(0);
+ expect(await live(page,f=>f.captures)).toHaveLength(1);await clean(page,foreign);
 });
 
 for(const viewport of [{width:390,height:740},{width:800,height:1200},{width:1280,height:900}])test(`production composer keeps text geometry through mute and speech: ${viewport.width}`,async({page},info)=>{

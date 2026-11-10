@@ -81,7 +81,7 @@ jobs:
             -storepass:env ALPHA_APP_RELEASE_KEYSTORE_PASSWORD | sha256sum | cut -d ' ' -f 1)
           test "$actual" = "$expected"
           for variant in standalone launcher; do
-            node scripts/sign-release-apks.mjs --keystore "$keystore" --key-label alpha-release \
+            node scripts/sign-release-apks.ts --keystore "$keystore" --key-label alpha-release \
               --apk "artifacts/$variant-release-unsigned.apk" --out "artifacts/$variant-release.apk"
           done
       - name: Record fixture signing proof without exporting APKs

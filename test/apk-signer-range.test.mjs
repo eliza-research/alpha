@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parseSignerDigest} from '../scripts/apk.mjs';
+import {parseSignerDigest} from '../scripts/apk.ts';
 const a='A'.repeat(64),b='b'.repeat(64);
 const legacy=`Signer #1 certificate SHA-256 digest: ${a}`;
 const rotated=`Signer (minSdkVersion=24, maxSdkVersion=32) certificate SHA-256 digest: ${a}\nSigner (minSdkVersion=33, maxSdkVersion=2147483647) certificate SHA-256 digest: ${b}`;

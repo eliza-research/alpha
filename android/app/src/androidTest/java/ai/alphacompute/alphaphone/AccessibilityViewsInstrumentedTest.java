@@ -18,7 +18,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 /**
- * Every retained MVP view and the Apps drawer at 200% system font scale (PRD AP-15): the
+ * Every retained MVP view and the Apps drawer at 200% system font scale, with normal and
+ * largest in-app text (200% and 300% effective text; PRD AP-15, #701): the
  * Accessibility Test Framework checks of the native hierarchy, the TalkBack linear order of the
  * WebView's nodes (TalkBackOrder: labels, reading order, at most one assistant group read last),
  * the screen's name as the focused element after opening it (runtime/view-focus.ts) and the page's
@@ -49,6 +50,18 @@ public final class AccessibilityViewsInstrumentedTest {
  }
  static void restoreFontScale(String previous) throws Exception { fontScale(previous == null || previous.isEmpty() || "null".equals(previous) ? "1.0" : previous); }
  private static String js(String code) throws Exception { return WebViewTestDriver.evaluate(code); }
+ private static void appTextScale(int percent) throws Exception {
+  js("window.Capacitor.Plugins.AlphaDevice.setTextScale({percent:" + percent + "})");
+  java.util.concurrent.atomic.AtomicBoolean restored = new java.util.concurrent.atomic.AtomicBoolean();
+  for (int i = 0; i < 100; i++) {
+   WebViewTestDriver.withActivity(MainActivity.class, activity -> restored.set(
+    AlphaDevicePlugin.textScalePercent(activity) == percent &&
+    activity.getBridge().getWebView().getSettings().getTextZoom() == AlphaDevicePlugin.effectiveTextZoom(activity, percent)));
+   if (restored.get()) return;
+   SystemClock.sleep(100);
+  }
+  fail("Native in-app text size was not applied: " + percent);
+ }
  private static boolean until(String code, int tenths) throws Exception {
   for (int i = 0; i < tenths; i++) { if ("true".equals(js("Boolean(" + code + ")"))) return true; SystemClock.sleep(100); }
   return false;
@@ -62,18 +75,29 @@ public final class AccessibilityViewsInstrumentedTest {
  private static void assumeViews(String journey) throws Exception { if (!BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS) AppNavigation.assumeNoRequiredSignIn(journey); }
 
  @Test public void everyViewReadsInOrderAtDoubleFontScale() throws Exception {
-  assumeViews("Every view at 200% font");
+  auditViews(100, 2);
+ }
+
+ @Test public void everyViewReadsInOrderAtTripleEffectiveTextScale() throws Exception {
+  auditViews(150, 3);
+ }
+
+ private void auditViews(int appPercent, int effectiveScale) throws Exception {
+  assumeViews("Every view at " + effectiveScale * 100 + "% font");
   String previous = fontScale(null);
+  int previousAppPercent = AlphaDevicePlugin.textScalePercent(InstrumentationRegistry.getInstrumentation().getTargetContext());
   UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
   List<String> problems = new ArrayList<>();
   try {
    fontScale("2.0");
    try (BoundedActivityScenario<MainActivity> scenario = BoundedActivityScenario.launch(MainActivity.class)) {
+    try {
     AppNavigation.liveMode();
+    appTextScale(appPercent);
     js(AppNavigation.request("Home")); assertTrue("Home ready", until(AppNavigation.selected("Home"), 200));
     AppNavigation.declineStartupAccess();
     AccessibilityChecks.enable().setRunChecksFromRootView(true);
-    assertTrue("The page measures the 200% text it is drawn at", until("Math.abs(Number(getComputedStyle(document.documentElement).getPropertyValue('--alpha-text-scale'))-2)<0.2", 100));
+    assertTrue("The page measures the " + effectiveScale * 100 + "% text it is drawn at", until("Math.abs(Number(getComputedStyle(document.documentElement).getPropertyValue('--alpha-text-scale'))-" + effectiveScale + ")<0.2", 100));
     // The Apps drawer is a dialog over Home: its own names and order, nothing of Home after it.
     js("document.querySelector('[data-alpha-layer=\"home\"] button[aria-label=\"Apps\"]')?.click()");
     if (until("document.querySelector('[data-alpha-layer=\"drawer\"]')", 100)) {
@@ -95,8 +119,11 @@ public final class AccessibilityViewsInstrumentedTest {
      js(AppNavigation.request("Home"));
      if (!until(AppNavigation.selected("Home"), 200)) problems.add(view + ": did not return Home");
     }
+    } finally {
+     appTextScale(previousAppPercent);
+    }
    }
   } finally { restoreFontScale(previous); }
-  assertTrue("Views at 200% font:\n" + String.join("\n", problems), problems.isEmpty());
+  assertTrue("Views at " + effectiveScale * 100 + "% font:\n" + String.join("\n", problems), problems.isEmpty());
  }
 }

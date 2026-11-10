@@ -14,19 +14,6 @@ on:
         description: Upload-only JSON with commit, qualification_sha256, semantic_sha256
         type: string
         required: false
-      runtime_profile:
-        description: Resident runtime profile (Cloud builds skip native qualification campaigns)
-        type: choice
-        required: true
-        default: native
-        options:
-          - native
-          - cloud
-      local_embeddings:
-        description: Package qualified local embeddings for Direct mode (Cloud profile only)
-        type: boolean
-        required: false
-        default: false
       embedding_component_artifact_id:
         description: Exact reviewed compiled component artifact ID
         type: string
@@ -44,7 +31,7 @@ on:
         type: string
         required: false
       build_version_code:
-        description: Cloud regression versionCode (25..2100000000; native ignores this input)
+        description: Dispatched build versionCode (25..2100000000), recorded in the producer evidence
         type: string
         required: true
         default: '26'
@@ -84,18 +71,16 @@ jobs:
       (github.event_name == 'schedule' && vars.ELIZA_RESIDENT_QUALIFICATION == 'nightly')
     # All consumers select the reviewed NDK before unused image SDKs are removed.
     env:
-      # Automatic qualification always retains the native profile.
+      # One runtime profile: every build packages local speech and embeddings; speech is routed at run time.
       ALPHA_APP_UPDATE_CANDIDATE: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && '1' || '0' }}
-      ALPHA_RUNTIME_PROFILE: ${{ github.event_name == 'workflow_dispatch' && inputs.runtime_profile || 'native' }}
-      ELIZA_ANDROID_BUN_TARGET: ${{ github.event_name == 'workflow_dispatch' && inputs.runtime_profile == 'cloud' && 'android' || 'linux-musl' }}
-      ELIZA_ANDROID_TARGET_ABIS: ${{ github.event_name == 'workflow_dispatch' && inputs.runtime_profile == 'cloud' && 'arm64-v8a' || 'arm64-v8a,x86_64' }}
-      ALPHA_LOCAL_EMBEDDINGS: ${{ github.event_name == 'workflow_dispatch' && inputs.local_embeddings && '1' || '0' }}
+      ELIZA_ANDROID_BUN_TARGET: linux-musl
+      ELIZA_ANDROID_TARGET_ABIS: arm64-v8a,x86_64
       ALPHA_EMBEDDING_COMPONENT_ARTIFACT_ID: ${{ inputs.embedding_component_artifact_id || '' }}
       ALPHA_EMBEDDING_COMPONENT_SHA256: ${{ inputs.embedding_component_sha256 || '' }}
       ALPHA_EMBEDDING_QUALIFICATION_ARTIFACT_ID: ${{ inputs.embedding_qualification_artifact_id || '' }}
       ALPHA_EMBEDDING_QUALIFICATION_SHA256: ${{ inputs.embedding_qualification_sha256 || '' }}
       ELIZA_BUN_CHANNEL: stable
-      ELIZAOS_VERSION_CODE: ${{ github.event_name == 'workflow_dispatch' && inputs.runtime_profile == 'cloud' && inputs.build_version_code || '' }}
+      ELIZAOS_VERSION_CODE: ${{ github.event_name == 'workflow_dispatch' && inputs.build_version_code || '' }}
       ANDROID_NDK: /usr/local/lib/android/sdk/ndk/28.2.13676358
       ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/28.2.13676358
       ANDROID_NDK_ROOT: /usr/local/lib/android/sdk/ndk/28.2.13676358
@@ -208,13 +193,13 @@ jobs:
         run: |
           python3 test/embedding-artifact-inputs.test.py
           python3 scripts/ci/embedding-artifacts.py --check-inputs
-      - name: Validate Cloud regression build version
-        if: env.ALPHA_RUNTIME_PROFILE == 'cloud'
+      - name: Validate dispatched build version
+        if: github.event_name == 'workflow_dispatch'
         run: |
           python3 - <<'PYCODE'
           import os, re
           value = os.environ['ELIZAOS_VERSION_CODE']
-          assert re.fullmatch(r'[1-9][0-9]{0,9}', value) and 25 <= int(value) <= 2100000000, 'Cloud candidate requires versionCode > retained V24'
+          assert re.fullmatch(r'[1-9][0-9]{0,9}', value) and 25 <= int(value) <= 2100000000, 'Dispatched candidate requires versionCode > retained V24'
           PYCODE
       - name: Verify acquisition target and transport contracts
         run: python3 -B scripts/ci/test-acquire-resident-bun.py
@@ -242,19 +227,13 @@ jobs:
         run: |
           python3 scripts/ci/test-resident-phase.py
           python3 test/resident-crash-diagnostic.test.py
-      - name: Acquire exact compiled component and semantic qualification
-        if: env.ALPHA_LOCAL_EMBEDDINGS == '1'
-        timeout-minutes: 6
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: python3 scripts/ci/resident-phase.py --name embedding-inputs --seconds 300 python3 scripts/ci/embedding-artifacts.py
       - run: python3 scripts/ci/resident-phase.py --name product-install --seconds 600 npm ci
       - name: Admit the automatic candidate version against the public inventory
         if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          node scripts/app-update-candidate.mjs version test-results/resident-ci-candidate/version.json
+          node scripts/app-update-candidate.ts version test-results/resident-ci-candidate/version.json
           echo "ELIZAOS_VERSION_CODE=$(node -p 'require("./test-results/resident-ci-candidate/version.json").versionCode')" >> "$GITHUB_ENV"
       - name: Verify source metadata and voice contracts before resident preparation
         timeout-minutes: 5
@@ -275,15 +254,15 @@ jobs:
       # On-device speech is libelizainference with the shared paradee-voice library only; this archive
       # stages no voice outputs (local speech reports unavailable). The record is still checked.
       - name: Verify the on-device voice host record
-        run: node scripts/voice-host.mjs --verify --allow-absent
+        run: node scripts/voice-host.ts --verify --allow-absent
       - name: Prepare and qualify fresh resident source with normal hooks
         env:
           NODE_OPTIONS: --max-old-space-size=4096
           RUN_TURBO_CONCURRENCY: "1"
         run: |
           python3 scripts/ci/resident-phase.py --name prepare --seconds 3600 npm run agent:prepare
-      - name: Verify the hydrated Cloud SDK graph with OS-network-denied frozen install
-        if: env.ALPHA_RUNTIME_PROFILE == 'cloud'
+      - name: Verify the hydrated SDK graph with OS-network-denied frozen install
+        if: github.event_name == 'workflow_dispatch'
         run: |
           source="$ALPHA_LOCAL_AGENT_SOURCE_DIR"
           bun_executable="$(command -v bun)"
@@ -303,7 +282,7 @@ jobs:
           sha256sum --check test-results/resident-ci/sdk-lock.sha256
           (cd "$source" && "$bun_executable" --no-env-file pm ls --all) > test-results/resident-ci/sdk-graph-after.txt
           cmp test-results/resident-ci/sdk-graph-before.txt test-results/resident-ci/sdk-graph-after.txt
-          node scripts/prepare-local-agent.mjs --source-only
+          node scripts/prepare-local-agent.ts --source-only
       - name: Qualify the prepared resident source
         env:
           NODE_OPTIONS: --max-old-space-size=4096
@@ -311,7 +290,7 @@ jobs:
         run: |
           python3 scripts/ci/resident-phase.py --name device-timing-flow --seconds 600 npm run agent:test-device-timing
           python3 scripts/ci/resident-phase.py --name worker-build --seconds 900 npm run agent:build-workflow-worker
-          python3 scripts/ci/resident-phase.py --name native-cloud-routing --seconds 300 node scripts/test-native-cloud-runtime-config.mjs
+          python3 scripts/ci/resident-phase.py --name native-cloud-routing --seconds 300 node scripts/test-native-cloud-runtime-config.ts
           python3 scripts/ci/resident-phase.py --name compiler-flow --seconds 600 npm run agent:test-workflow-compiler
           python3 scripts/ci/resident-phase.py --name worker-flow --seconds 600 npm run agent:test-workflow-worker
       - name: Acquire hash-pinned Android Bun with step-only authentication
@@ -327,46 +306,20 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=4096
           RUN_TURBO_CONCURRENCY: "1"
         run: |
-          case "$ALPHA_RUNTIME_PROFILE" in
-            native)
-              python3 scripts/ci/resident-phase.py --name runtime-stage --seconds 1800 npm run agent:stage-android
-              ;;
-            cloud)
-              embedding_args=()
-              if [ "$ALPHA_LOCAL_EMBEDDINGS" = 1 ]; then embedding_args+=(--local-embeddings); fi
-              python3 scripts/ci/resident-phase.py --name runtime-stage --seconds 1800 npm run agent:stage-android -- --runtime-profile=cloud "${embedding_args[@]}"
-              if [ "$ALPHA_LOCAL_EMBEDDINGS" = 1 ]; then
-                python3 scripts/ci/resident-phase.py --name embedding-stage --seconds 180 node scripts/stage-embedding-host.mjs --receipt test-results/resident-ci/embedding-inputs/qualification/QUALIFICATION.json --library-root "$GITHUB_WORKSPACE/test-results/resident-ci/embedding-inputs/component"
-              fi
-              ;;
-            *) echo "Unsupported runtime profile" >&2; exit 2 ;;
-          esac
+          python3 scripts/ci/resident-phase.py --name runtime-stage --seconds 1800 npm run agent:stage-android
           python3 scripts/ci/resident-phase.py --name mobile-bundle --seconds 300 npm run agent:test-mobile-workflow-bundle
           # Fresh native artifacts and the runtime pin are inputs to shipped notices.
-          python3 scripts/ci/resident-phase.py --name license-notices --seconds 120 node scripts/generate-licenses.mjs --packaged-runtime
-          if [ "$ALPHA_RUNTIME_PROFILE" = cloud ]; then
-            # Clean R8 release builds need the same reviewed heap as Android foundation.
-            export GRADLE_OPTS="-Dorg.gradle.jvmargs=-Xmx4096m"
-            node scripts/prepare-local-agent.mjs --source-only
-            export ALPHA_CLOUD_COLLECTOR_SOURCE="$ALPHA_LOCAL_AGENT_SOURCE_DIR"
-            export ALPHA_BUN="$(command -v bun)"
-            test "$("$ALPHA_BUN" --version)" = "1.4.2"
-            # Genuine Cloud resident, all four APKs, test mocks off. No provider calls.
-            python3 scripts/ci/resident-phase.py --name cloud-archive --seconds 3000 node scripts/build-archive.mjs --runtime-profile=cloud "${embedding_args[@]}" test-results/resident-ci-cloud
-          else
-            # Flag-off distribution: release verification requires the PACKAGED runtime.
-            python3 scripts/ci/resident-phase.py --name distribution-archive --seconds 3000 node scripts/build-archive.mjs test-results/resident-ci-distribution
-            # The native suites need the private peer fixture, a debug-only test hook
-            # that exists only in the separate, never-distributable test-mocks build.
-            python3 scripts/ci/resident-phase.py --name archive --seconds 3000 node scripts/build-archive.mjs --test-mocks test-results/resident-ci-archive
-          fi
-      - name: Retain bounded Cloud producer evidence for local QA signing
-        if: env.ALPHA_RUNTIME_PROFILE == 'cloud'
+          python3 scripts/ci/resident-phase.py --name license-notices --seconds 120 node scripts/generate-licenses.ts --packaged-runtime
+          # Flag-off distribution: release verification requires the PACKAGED runtime.
+          python3 scripts/ci/resident-phase.py --name distribution-archive --seconds 3000 node scripts/build-archive.ts test-results/resident-ci-distribution
+          # The native suites need the private peer fixture, a debug-only test hook
+          # that exists only in the separate, never-distributable test-mocks build.
+          python3 scripts/ci/resident-phase.py --name archive --seconds 3000 node scripts/build-archive.ts --test-mocks test-results/resident-ci-archive
+      - name: Retain bounded distribution producer evidence for local QA signing
+        if: github.event_name == 'workflow_dispatch'
         run: |
-          embedding_args=()
-          if [ "$ALPHA_LOCAL_EMBEDDINGS" = 1 ]; then embedding_args+=(--local-embeddings); fi
-          node scripts/runtime-profile.mjs --verify-cloud "${embedding_args[@]}"
-          node scripts/prepare-local-agent.mjs --source-only
+          node scripts/runtime-profile.ts --verify-native
+          node scripts/prepare-local-agent.ts --source-only
           sha256sum --check test-results/resident-ci/sdk-lock.sha256
           (cd "$ALPHA_LOCAL_AGENT_SOURCE_DIR" && bun --no-env-file pm ls --all) > test-results/resident-ci/sdk-graph-final.txt
           cmp test-results/resident-ci/sdk-graph-before.txt test-results/resident-ci/sdk-graph-final.txt
@@ -374,7 +327,7 @@ jobs:
           import hashlib, json, os, shutil, stat
           from pathlib import Path
           root = Path.cwd().resolve()
-          out = root / 'test-results/resident-ci-cloud/producer-evidence'
+          out = root / 'test-results/resident-ci-distribution/producer-evidence'
           out.mkdir(mode=0o700, exist_ok=False)
           inputs = [
               ('artifacts/build-config.json', 'artifacts/build-config.json'),
@@ -388,8 +341,6 @@ jobs:
               (str(Path(os.environ['ALPHA_LOCAL_AGENT_SOURCE_DIR']) / '.alpha-runtime-source.json'), 'prepared-source-stamp.json'),
               (str(Path(os.environ['ALPHA_WORKFLOW_WORKER_OUTPUT']) / 'manifest.json'), 'worker-manifest.json'),
           ]
-          if os.environ.get('ALPHA_LOCAL_EMBEDDINGS') == '1':
-              inputs.append(('test-results/resident-ci/embedding-inputs', 'embedding-inputs'))
           files, total = {}, 0
           for source, destination in inputs:
               source = root / source
@@ -414,13 +365,13 @@ jobs:
                   files[str(relative)] = {'bytes': info.st_size, 'sha256': digest}
           channel = json.loads((out / 'artifacts/build-config.json').read_text())['updateChannel']
           assert channel['kind'] == 'public', 'Private QA artifacts require private delivery, not this hosted archive'
-          (out / 'manifest.json').write_text(json.dumps({'source': os.environ['GITHUB_SHA'], 'runtimeProfile': 'cloud', 'updateChannel': channel, **({'localEmbeddings': True} if os.environ.get('ALPHA_LOCAL_EMBEDDINGS') == '1' else {}), 'versionCode': int(os.environ['ELIZAOS_VERSION_CODE']), 'bytes': total, 'files': files}, indent=2) + '\n')
+          (out / 'manifest.json').write_text(json.dumps({'source': os.environ['GITHUB_SHA'], 'runtimeProfile': 'native', 'updateChannel': channel, 'versionCode': int(os.environ['ELIZAOS_VERSION_CODE']), 'bytes': total, 'files': files}, indent=2) + '\n')
           PYCODE
       - name: Bind the unsigned native candidate to the genuine distribution archive
         if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: node scripts/app-update-candidate.mjs receipt test-results/resident-ci-candidate/version.json test-results/resident-ci-distribution
+        run: node scripts/app-update-candidate.ts receipt test-results/resident-ci-candidate/version.json test-results/resident-ci-distribution
       - name: Retain the unsigned native update candidate separately from test mocks
         if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -430,22 +381,28 @@ jobs:
           retention-days: 3
           if-no-files-found: error
       - name: Build and anchor private endpoint helper
-        if: env.ALPHA_RUNTIME_PROFILE == 'native'
         run: python3 scripts/ci/build-private-peer.py
       - name: Preserve native generated provenance
-        if: env.ALPHA_RUNTIME_PROFILE == 'native'
         run: cp android/app/build/generated/local-agent/source-manifest.json test-results/resident-ci-archive/native-generated-source-manifest.json
       - name: Anchor exact archive manifest
-        if: env.ALPHA_RUNTIME_PROFILE == 'native'
         id: freeze
         run: echo "sha256=$(sha256sum test-results/resident-ci-archive/apk-manifest.json | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
-      # build-archive.mjs retains each release R8 mapping (<variant>-release-mapping.txt,
+      # build-archive.ts retains each release R8 mapping (<variant>-release-mapping.txt,
       # hashed in release-mappings.json) beside the APKs, so both archives carry them.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         id: apks
         with:
-          name: ${{ env.ALPHA_RUNTIME_PROFILE == 'cloud' && 'resident-cloud-archive' || 'resident-archive' }}-${{ github.sha }}-${{ github.run_id }}
-          path: ${{ env.ALPHA_RUNTIME_PROFILE == 'cloud' && 'test-results/resident-ci-cloud/' || 'test-results/resident-ci-archive/' }}
+          name: resident-archive-${{ github.sha }}-${{ github.run_id }}
+          path: test-results/resident-ci-archive/
+          retention-days: 3
+          if-no-files-found: error
+      # The flag-off distribution archive with its producer evidence: the only input the protected
+      # signing workflow admits (scripts/ci/verify-cloud-signing-input.sh checks this name).
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          name: resident-distribution-archive-${{ github.sha }}-${{ github.run_id }}
+          path: test-results/resident-ci-distribution/
           retention-days: 3
           if-no-files-found: error
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -457,12 +414,10 @@ jobs:
             test-results/resident-ci-supervisor/
             test-results/resident-ci/
             test-results/resident-ci-distribution/
-            test-results/resident-ci-cloud/*.log
-            test-results/resident-ci-cloud/*.json
             android/app/build/reports/
   native:
     needs: build
-    if: (github.event_name != 'workflow_dispatch' || inputs.operation == 'build' || inputs.operation == '') && (github.event_name != 'workflow_dispatch' || inputs.runtime_profile != 'cloud')
+    if: (github.event_name != 'workflow_dispatch' || inputs.operation == 'build' || inputs.operation == '')
     runs-on: ubuntu-24.04
     timeout-minutes: 100
     env:
@@ -531,7 +486,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader -no-snapshot -noaudio -no-boot-anim
           disable-animations: true
           script: |
-            ANDROID_SERIAL=emulator-5554 python3 scripts/ci/resident-phase.py --name prepare-phone --seconds 300 node scripts/prepare-ci-emulator.mjs
+            ANDROID_SERIAL=emulator-5554 python3 scripts/ci/resident-phase.py --name prepare-phone --seconds 300 node scripts/prepare-ci-emulator.ts
             ANDROID_SERIAL=emulator-5554 ALPHA_RESIDENT_DISPOSABLE_CI=1 python3 scripts/ci/resident-phase.py --name native --seconds 5400 python3 scripts/ci/resident-native.py
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
@@ -545,7 +500,7 @@ jobs:
 
   recovery-ui:
     needs: build
-    if: (github.event_name != 'workflow_dispatch' || inputs.operation == 'build' || inputs.operation == '') && (github.event_name != 'workflow_dispatch' || inputs.runtime_profile != 'cloud')
+    if: (github.event_name != 'workflow_dispatch' || inputs.operation == 'build' || inputs.operation == '')
     runs-on: ubuntu-24.04
     timeout-minutes: 55
     env:
@@ -618,7 +573,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader -no-snapshot -noaudio -no-boot-anim
           disable-animations: true
           script: |
-            ANDROID_SERIAL=emulator-5554 python3 scripts/ci/resident-phase.py --name prepare-phone --seconds 300 node scripts/prepare-ci-emulator.mjs
+            ANDROID_SERIAL=emulator-5554 python3 scripts/ci/resident-phase.py --name prepare-phone --seconds 300 node scripts/prepare-ci-emulator.ts
             ANDROID_SERIAL=emulator-5554 ALPHA_RESIDENT_DISPOSABLE_CI=1 python3 scripts/ci/resident-phase.py --name pending-recovery-ui --seconds 2400 python3 scripts/ci/pending-recovery-ui.py
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()

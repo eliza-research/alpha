@@ -77,7 +77,7 @@
         "android/app/src/main/java/ai/alphacompute/alphaphone/VoiceEventAdmission.java",
         "vendor/eliza/packages/voice/src/voice-assistant-session.ts",
         "upstream.lock.json",
-        "scripts/prepare-client-features.mjs"
+        "scripts/prepare-client-features.ts"
       ],
       "tests": [
         "longGapAndPlaybackTest",
@@ -533,7 +533,8 @@
         "navStep/displayedStep/follow": "MapsScreenController.onFix, stopFollowing, recenter and view",
         "routePhase/pendingRoutes/abortedRequests/rerouteCleared": "MapsController.planRoute/leave and MapsScreenController.observe/rerouteFrom",
         "navSession/watch/bridgeOwner/registered": "MapsScreenController.start/end/hidden and BackgroundNavigation.start/stop",
-        "startCommands/stopCommands/backgroundStops": "BackgroundNavigation exact session commands and MapsScreenController native-stop continuation"
+        "startCommands/stopCommands/backgroundStops": "BackgroundNavigation exact session commands and MapsScreenController native-stop continuation",
+        "previousRoute": "Last admitted route restored when rerouting fails or a foreground-only reroute is suspended"
       },
       "abstractions": [
         "Initial state is one verified route already planned. Three maneuvers and two route identities use representative real geometry around the 40m maneuver and 25m arrival boundaries. Accuracy and timestamp cutoffs are exact.",
@@ -546,10 +547,10 @@
         "sparseProjectionDoesNotSkipManeuverTest",
         "exactManeuverAndArrivalClassesTest",
         "agedFixIsRetainedButCannotRerouteTest",
-        "rerouteFailureEndsGuidanceTest",
+        "rerouteFailureKeepsGuidanceTest",
         "retiredStartStopsOnlyItsOwnNativeIdTest",
         "endingAllowsRouteReplyWithoutRevivingGuidanceTest",
-        "releaseAbortsOutstandingRouteTest",
+        "hidingWithoutBackgroundKeepsAdmittedRouteTest",
         "pendingBackgroundKeepsHiddenScreenTest",
         "dragAndRecenterTest",
         "hiddenAvailabilityRefusalReleasesWatchTest",
@@ -616,12 +617,6 @@
         "permissionRevocationDoesNotCountCrashTest"
       ],
       "invariants": [
-        "updated",
-        "needsAttribution",
-        "answer",
-        "kept",
-        "appended",
-        "bounded",
         "FrameNeedsFreshLease",
         "FrameNeedsConsent",
         "AttributionAfterGrace",
@@ -700,13 +695,13 @@
       ],
       "stateMapping": {
         "unlocked/packaged/enabled/lifecycle/lastDecision": "ResidentScheduleRearm.decide full ordered decision table",
-        "running/epoch/starts": "admitAndStart synchronized decision/start and surrounding lifecycle ownership",
-        "replayedOccurrences": "rearm starts the resident only; upstream schedules own occurrence recovery"
+        "running/epoch/starts": "admitAndStart synchronized decision/start and surrounding lifecycle ownership"
       },
       "abstractions": [
         "Five broadcast classes, three lifecycle generations and three actual process starts.",
         "Decision and start are atomic under the same lock, matching admitAndStart. A canary shows the forbidden split-admission interleaving.",
-        "First-unlock state differs from screen lock. Occurrence execution remains in the shared runtime rather than the rearm policy."
+        "First-unlock state differs from screen lock. Occurrence execution remains in the shared runtime rather than the rearm policy.",
+        "This rearm model makes no occurrence-replay claim. TaskSchedulerRuntime and WorkflowScheduleTasks cover occurrence recovery with actual scheduler state."
       ],
       "tests": [
         "allRearmBroadcastsTest",
@@ -721,7 +716,6 @@
       "invariants": [
         "NoStartDuringLifecycle",
         "ActiveResidentAdmitted",
-        "NoOccurrenceReplay",
         "BoundedStarts"
       ]
     },

@@ -1,4 +1,5 @@
 import {test,expect,type Page} from '@playwright/test';
+test.use({locale:'en-GB'});
 import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 const place={name:'Ferry Building',latitude:37.7955,longitude:-122.3937,provider:'eliza-cloud',providerPlaceId:'osm:n1',formattedAddress:'1 Ferry Building, San Francisco',categories:[]};
 const attribution='© OpenStreetMap contributors';

@@ -96,8 +96,8 @@ test('tile service is protected by Android and introduces no permission, listene
 
 test('notification projection changes fixed product presentation while preserving lifecycle and provenance',()=>{
  // The pinned upstream rewrite owns the anchors; android/consumer-host.json supplies Alpha's
- // installed presentation names, exactly as scripts/stage-local-agent-sources.mjs passes them.
- const script=read('scripts/stage-local-agent-sources.mjs');
+ // installed presentation names, exactly as scripts/stage-local-agent-sources.ts passes them.
+ const script=read('scripts/stage-local-agent-sources.ts');
  const {residentHost}=JSON.parse(read('android/consumer-host.json'));
  const identity={packageName:JSON.parse(read('app.config.json')).appId,sockets:residentHost.sockets,notification:residentHost.notification,environmentHook:residentHost.environmentHook,lifecycleHooks:residentHost.lifecycleHooks};
  assert.ok(script.includes('lifecycleHooks:residentHost.lifecycleHooks')&&script.includes('classes:[...RESIDENT_HOST_CLASSES,...residentHost.classes]'));

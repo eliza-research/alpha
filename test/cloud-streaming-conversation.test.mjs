@@ -64,13 +64,32 @@ test('Stop during the Cloud continuation window never submits the pending words'
  }finally{f.close();await f.clock.flush();}
 });
 
-test('only an absent streaming route retains compatibility recording; auth and provider failures do not replay',async()=>{
- for(const code of ['cloud-http-404','voice-http-401','voice-http-503']){
+test('a streaming start that fails before audio moves the conversation to on-device speech, never to a Cloud batch clip',async()=>{
+ for(const code of ['cloud-http-404','voice-http-401','voice-http-402','voice-http-403','voice-http-429','voice-http-503','connect']){
   const f=fixture(code);
+  // The on-device clip loop (no live ASR in this fixture) records through the phone's own recorder.
+  f.box.nativeLiveVoiceReady=async()=>false;
+  try{
+   assert.equal(f.box.speechRoute(),'cloud',code);
+   await f.shell.startVoice();await f.clock.flush();
+   const view=f.renderChat();
+   assert.equal(f.attempts(),1,code+': one streaming attempt, no replay');
+   assert.ok(f.localFactories>0,code+': the on-device engine took over');
+   assert.equal(view.state,'listening',code);assert.equal(f.starts,1,code+': one on-device capture');
+   assert.doesNotMatch(JSON.stringify(view.lines),/Sign in|Voice stopped|sign-in expired|billing|request limit/,code);
+   assert.deepEqual(f.shell.messages,[],code);
+   // No Cloud batch upload or speech request: the old 404 clip fallback is gone.
+   assert.equal(f.uploads,0);assert.equal(f.cloudSpeech,0);assert.equal(f.sends,0);
+   assert.equal(f.box.speechRoute(),code==='connect'||/^(voice|cloud)-http-/.test(code)?'device':'cloud',code+': the next turn skips the network');
+  }finally{f.close();await f.clock.flush();}
+ }
+});
+test('a streaming failure that is not the network route\'s is not retried on another route',async()=>{
+ for(const code of ['permission-denied','protocol','voice-http-400']){
+  const f=fixture(code);f.box.nativeLiveVoiceReady=async()=>false;
   try{
    await f.shell.startVoice();await f.clock.flush();
-   assert.equal(f.starts,code==='cloud-http-404'?1:0,code);
-   assert.equal(f.uploads,0);assert.equal(f.sends,0);
+   assert.equal(f.renderChat().state,'error',code);assert.equal(f.starts,0,code);assert.equal(f.localFactories,0,code);assert.equal(f.box.speechRoute(),'cloud',code);
   }finally{f.close();await f.clock.flush();}
  }
 });
@@ -86,9 +105,11 @@ test('stopping streaming Talk retires capture and never falls back to batch reco
 
 // The native bridge rejects a refused streaming start as the batch route does: voice-http-<status>
 // with a 429's retry facts as data (cloud-http-404 alone means "no streaming route").
-test('a refused streaming start shows what the batch route shows for the same refusal, and waits the same way',async()=>{
+// On-device speech takes over a refused start (above). Without it, the network route's own
+// handling is all there is, and it is the same on both Cloud routes.
+test('without on-device speech, a refused streaming start shows what the batch route shows for the same refusal, and waits the same way',async()=>{
  const timeline=async(failure,streaming)=>{
-  const f=fixture(streaming?failure:undefined);
+  const f=fixture(streaming?failure:undefined);f.box.createOnDeviceVoice=()=>null;
   if(!streaming){f.box.nativeCloudStreamingAvailable=()=>false;f.startError=failure;}
   const shown=()=>{const view=f.renderChat();return JSON.stringify([view?.state,view?.lines,streaming?f.attempts():f.starts,f.shell.messages,f.uploads,f.sends]);};
   try{
@@ -103,7 +124,7 @@ test('a refused streaming start shows what the batch route shows for the same re
   const streaming=await timeline(refused(),true),batch=await timeline(refused(),false);
   assert.deepEqual(streaming,batch,`${status} ${JSON.stringify(data??{})}`);
  }
- const text=async status=>{const f=fixture(Object.assign(Error('refused'),{code:'voice-http-'+status}));try{await f.shell.startVoice();await f.clock.flush();return f.renderChat()?.lines?.[0]?.t;}finally{f.close();await f.clock.flush();}};
+ const text=async status=>{const f=fixture(Object.assign(Error('refused'),{code:'voice-http-'+status}));f.box.createOnDeviceVoice=()=>null;try{await f.shell.startVoice();await f.clock.flush();return f.renderChat()?.lines?.[0]?.t;}finally{f.close();await f.clock.flush();}};
  assert.equal(await text(401),'Eliza Cloud sign-in expired. Sign in again in Settings, then retry voice.');
  assert.match(await text(402),/declined voice for billing\. Check your account in Settings\./);
 });
@@ -125,15 +146,15 @@ test('a speech failure after a finished sentence keeps the whole reply and repor
  }finally{f.close();await f.clock.flush();}
 });
 
-test('the batch fallback after a missing streaming route shows no stale error',async()=>{
- const f=fixture();
+test('the on-device fallback after a missing streaming route shows no stale error',async()=>{
+ const f=fixture();f.box.nativeLiveVoiceReady=async()=>false;
  // The session publishes its error before start rejects, as a refused native start does.
  const Session=f.box.VoiceAssistantSession;
  f.box.VoiceAssistantSession=class extends Session{constructor(ports,options){super(ports,options);this.ports404=ports;}async start(){const failure=Object.assign(Error('Cloud streaming request failed'),{code:'cloud-http-404'});this.ports404.onState({phase:'error',error:failure});throw failure;}};
  try{
   await f.shell.startVoice();await f.clock.flush();
   const view=f.renderChat();
-  assert.equal(f.starts,1,'the recorded-clip loop took over');
+  assert.equal(f.starts,1,'the on-device clip loop took over');assert.ok(f.localFactories>0);assert.equal(f.uploads,0);assert.equal(f.cloudSpeech,0);
   assert.notEqual(view.state,'error');assert.doesNotMatch(JSON.stringify(view.lines),/Voice stopped/);
  }finally{f.close();await f.clock.flush();}
 });

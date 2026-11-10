@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 import {
 	CloudProtocol,
 	CloudProtocolError,
+	object,
+	type CloudNativeRequest,
+	type CloudCredential,
 } from "../apps/app/src/runtime/cloud-protocol";
 import { googleCalendarSyncPort } from "../apps/app/src/runtime/calendar-linked-provider";
 const binding = {
@@ -18,8 +21,13 @@ const binding = {
 };
 let current = true,
 	reads = 0;
-const calls: any[] = [];
-let credential: any = {
+const calls: Parameters<CloudNativeRequest>[0][] = [];
+const lastCall = () => {
+	const call = calls.at(-1);
+	assert.ok(call, "Expected a request");
+	return call;
+};
+let credential: CloudCredential = {
 	credentialId: "session",
 	token: "synthetic",
 	userId: "user",
@@ -35,8 +43,9 @@ const event = {
 	isAllDay: true,
 	attendees: [],
 };
-let stored: any = null,
-	failure: any = null,
+type StoredEvent = {eventId: string; etag: string; event: unknown; visibility: string; remindersDisabled: boolean};
+let stored: StoredEvent | null = null,
+	failure: {status: number; data: unknown} | null = null,
 	changeOwner = false;
 const client = new CloudProtocol(
 	"production",
@@ -66,14 +75,15 @@ const client = new CloudProtocol(
 			stored = {
 				eventId: "saved",
 				etag: '"1"',
-				event: input.body.event,
+				event: object(input.body).event,
 				visibility: "private",
 				remindersDisabled: true,
 			};
 		}
 		if (input.method === "PATCH") {
-			assert.equal(input.body.expectedEtag, '"1"');
-			stored = { ...stored, etag: '"2"', event: input.body.event };
+			assert.ok(stored, 'The fixture event must already exist');
+			assert.equal(object(input.body).expectedEtag, '"1"');
+			stored = { ...stored, etag: '"2"', event: object(input.body).event };
 		}
 		if (input.method === "DELETE") {
 			assert.equal(url.searchParams.get("expectedEtag"), '"2"');
@@ -102,7 +112,7 @@ const client = new CloudProtocol(
 	{
 		read: async () => credential,
 		write: async () => {},
-		remove: async () => {},
+		clear: async () => {},
 	},
 	async () => {},
 );
@@ -113,7 +123,17 @@ const port = await googleCalendarSyncPort(
 	() => current,
 	signal,
 );
-const row: any = {
+const row: Parameters<typeof port.get>[0] = {
+	id: "test-link",
+	localEventId: "local-event",
+	localRevision: "first",
+	lastCommonSemanticHash: null,
+	state: "dirty",
+	pendingOperation: "create",
+	lastErrorCode: null,
+	lastErrorMessage: null,
+	createdAt: "2026-10-16T00:00:00Z",
+	updatedAt: "2026-10-16T00:00:00Z",
 	agentId: "agent",
 	connectorAccountId: binding.connectionId,
 	providerCalendarId: "primary",
@@ -124,18 +144,18 @@ const row: any = {
 assert.equal(await port.get(row), null);
 const saved = await port.create(row, event);
 assert.equal(saved.eventId, "saved");
-assert.equal(calls.at(-1).body.accountId, "google-user");
+assert.equal(object(lastCall().body).accountId, "google-user");
 assert.deepEqual(await port.get(row), saved);
-assert.equal(calls.at(-1).method, "GET");
+assert.equal(lastCall().method, "GET");
 assert.equal(
-	new URL(calls.at(-1).url).searchParams.get("idempotencyKey"),
+	new URL(lastCall().url).searchParams.get("idempotencyKey"),
 	"retained-create",
 );
 row.providerEventId = saved.eventId;
 row.providerEtag = saved.etag;
 const updated = await port.update(row, { ...event, title: "Updated" });
 assert.equal(updated.event.title, "Updated");
-assert.equal(calls.at(-1).method, "PATCH");
+assert.equal(lastCall().method, "PATCH");
 failure = {
 	status: 412,
 	data: {
@@ -146,7 +166,7 @@ failure = {
 };
 await assert.rejects(
 	port.update(row, event),
-	(e: any) => e.outcome === "precondition_failed",
+	(error: unknown) => error instanceof Error && "outcome" in error && error.outcome === "precondition_failed",
 );
 failure = {
 	status: 502,
@@ -156,7 +176,7 @@ await assert.rejects(port.update(row, event), CloudProtocolError);
 failure = null;
 row.providerEtag = updated.etag;
 await port.delete(row);
-assert.equal(calls.at(-1).method, "DELETE");
+assert.equal(lastCall().method, "DELETE");
 const before = calls.length;
 current = false;
 await assert.rejects(port.create(row, event), { name: "AbortError" });
@@ -167,7 +187,7 @@ await assert.rejects(port.get({ ...row, connectorAccountId: "other" }), {
 });
 assert.equal(calls.length, before);
 changeOwner = true;
-await assert.rejects(port.get(row), (e: any) => e.code === "account-changed");
+await assert.rejects(port.get(row), (error: unknown) => error instanceof CloudProtocolError && error.code === "account-changed");
 assert.equal(reads, 3);
 console.log(
 	"PASS Calendar sync authenticated transport, conditional writes, lost-response lookup, identity fences and error classification",

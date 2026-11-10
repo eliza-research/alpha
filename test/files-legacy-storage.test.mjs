@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {distributionProblems, legacyStorageProblems} from '../scripts/apk.mjs';
+import {distributionProblems, legacyStorageProblems} from '../scripts/apk.ts';
 import {startupFilesAccess} from '../apps/app/src/startup-permission-flow.ts';
 
 const manifest = readFileSync('android/app/src/main/AndroidManifest.xml', 'utf8');

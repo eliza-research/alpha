@@ -5,10 +5,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { BUN_ENTRY, collectNotices, finishEntry, loadTemplates, packagedRuntimePresent, runtimeEntries, ROOT, UNKNOWN, UNVERIFIED } from '../scripts/generate-licenses.mjs';
-import {AGENT_BUNDLE_DEPENDENCIES, readAgentBundleDependencies, stageAgentBundleDependencies} from '../scripts/agent-bundle-dependencies.mjs';
+import { BUN_ENTRY, collectNotices, finishEntry, loadTemplates, packagedRuntimePresent, runtimeEntries, ROOT, UNKNOWN, UNVERIFIED } from '../scripts/generate-licenses.ts';
+import {AGENT_BUNDLE_DEPENDENCIES, readAgentBundleDependencies, stageAgentBundleDependencies} from '../scripts/agent-bundle-dependencies.ts';
 import {createHash} from 'node:crypto';
-import { licenceFlagLines } from '../scripts/licence-policy.mjs';
+import { licenceFlagLines } from '../scripts/licence-policy.ts';
 
 const canonicalTexts = { MIT: 'MIT terms', ISC: 'ISC terms', 'Apache-2.0': 'Apache terms', 'BSD-3-Clause': 'BSD terms' };
 const templates = { mit: 'MIT terms', isc: 'ISC terms', apache: 'Apache terms', canonical: expression => canonicalTexts[expression] ?? '' };

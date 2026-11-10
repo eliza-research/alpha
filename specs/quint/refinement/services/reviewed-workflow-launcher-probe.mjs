@@ -4,15 +4,15 @@ import {registerHooks} from 'node:module';
 import {execFileSync, spawn} from 'node:child_process';
 import {basename, dirname, join, resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {CORE_STATE_MANIFEST} from '../../../../scripts/core-state-patch.mjs';
-import {parseBuildPolicy} from '../../../../scripts/build-policy-source.mjs';
+import {CORE_STATE_MANIFEST} from '../../../../scripts/core-state-patch.ts';
+import {parseBuildPolicy} from '../../../../scripts/build-policy-source.ts';
 import {writeCoreStateFixture} from '../../../../test/fixtures/core-state-root.mjs';
 
 const repository = resolve(import.meta.dirname, '../../../..');
-const launcher = 'scripts/start-reviewed-workflow-agent.mjs';
+const launcher = 'scripts/start-reviewed-workflow-agent.ts';
 const support = [
-  'scripts/launcher-child.mjs',
-  'scripts/agent-model.mjs', 'scripts/agent-identity.mjs', 'scripts/agent-embeddings.mjs', 'apps/app/src/product/alpha-product-registration.ts',
+  'scripts/launcher-child.ts', 'scripts/private-runtime-launch.ts',
+  'scripts/agent-model.ts', 'scripts/agent-identity.ts', 'scripts/agent-embeddings.ts', 'apps/app/src/product/alpha-product-registration.ts',
   'vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs',
   'vendor/eliza/packages/agent/native-host/private-runtime-json.mjs',
 ];
@@ -232,7 +232,7 @@ process.send({kind:'boot'});
     },
     spawn(command, args, options) {
       assert.equal(command, f.tool);
-      assert.deepEqual(args, ['--preload', join(f.repo, 'scripts/core-state-preload.mjs'), '--conditions=eliza-source', f.entry]);
+      assert.deepEqual(args, ['--preload', join(f.repo, 'scripts/core-state-preload.ts'), '--conditions=eliza-source', f.entry]);
       assert.deepEqual(options.stdio, ['ignore', observation.logFd, observation.logFd]);
       assert.equal(fs.statSync(f.log).mode & 0o077, 0);
       assert.equal(options.cwd, f.profile);

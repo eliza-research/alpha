@@ -7,7 +7,7 @@ import {tmpdir} from 'node:os';
 import {execFileSync} from 'node:child_process';
 import {build} from 'esbuild';
 import {createServer} from 'node:http';
-import {sourceDirectory,verifySource} from '../scripts/local-agent-source.mjs';
+import {sourceDirectory,verifySource} from '../scripts/local-agent-source.ts';
 
 // The explicit-rejection receipt that Alpha once carried as a patch is part of the pinned upstream
 // (elizaOS/eliza#36598). Exercise that upstream managed transport and mutation port over bounded

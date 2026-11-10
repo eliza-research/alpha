@@ -27,7 +27,7 @@ test('browser host compiles once in its native module; resident admission stays 
  const native=descriptor.profile.modules.find(module=>module.name==='eliza-browser');
  assert.equal(native.source.root,'patchedNative');
  assert.equal(native.source.path,'plugins/plugin-native-browser-surface/android');
- const {preparePatchedNative}=await import('../scripts/prepare-patched-native.mjs');
+ const {preparePatchedNative}=await import('../scripts/prepare-patched-native.ts');
  const prepared=preparePatchedNative({root});
  for(const name of ['BrowserTabHostConfig','BrowserTabHostPlugin','BrowserProfilePolicy','BrowserReviewedReading']){
   const relative=prefix+name+'.java';assert.equal(sha(fs.readFileSync(path.join(prepared.root,relative))),prepared.files[relative]);

@@ -28,7 +28,7 @@ export function nativeLiveVoiceReady(signal: AbortSignal): Promise<boolean> { re
 /** Opens one native capture and its agent live session. */
 export const openNativeLiveStream = voice.open;
 /** The voice assistant's listen port over the native capture (echo-cancelled; shared `liveAssistantListener`). */
-export function nativeAssistantListener(options: { roomId?: string; onInterim?: (text: string) => void; onLatency?: (latency: LiveVoiceLatency) => void } = {}) {
+export function nativeAssistantListener(options: { roomId?: string; onInterim?: (text: string) => void; onLatency?: (latency: LiveVoiceLatency) => void; endHangoverMs?: number } = {}) {
   return voice.assistantListener(options);
 }
 /**

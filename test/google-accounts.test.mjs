@@ -1,1 +1,1 @@
-import '../scripts/test-google-accounts.mjs';
+import '../scripts/test-google-accounts.ts';

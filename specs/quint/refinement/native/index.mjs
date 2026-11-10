@@ -6,7 +6,7 @@ import {readdirSync} from 'node:fs';
 import {join} from 'node:path';
 import {checkTraces, captureInputs} from '../check-traces.mjs';
 import {app, sense, voice, directory, javaTraces, root} from './java.mjs';
-import {loadModels} from '../../../../scripts/quint-lib.mjs';
+import {loadModels} from '../../../../scripts/quint-lib.ts';
 import {captureRendererImplementation, voiceTraces} from './renderer.mjs';
 import {residentLifecycleTraces} from './local-agent.mjs';
 import {checkResetOrchestration} from './reset-orchestration.mjs';

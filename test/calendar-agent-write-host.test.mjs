@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {calendarAgentWrite as canonicalCalendarAgentWrite,CalendarAgentWriteRefused} from '../scripts/calendar-agent-write-host.ts';
+import {calendarAgentWrite as canonicalCalendarAgentWrite,CalendarAgentWriteRefused} from '../vendor/eliza/plugins/plugin-calendar/src/service/managed-calendar-host.ts';
 // Match Alpha's explicit source namespace at its managed provider boundary.
 const calendarAgentWrite=(...args)=>canonicalCalendarAgentWrite(...args,'alpha-google');
 const scope='a'.repeat(64),source=`alpha-google:${scope}`;

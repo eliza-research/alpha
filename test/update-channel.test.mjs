@@ -4,9 +4,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
-import {readUpdateChannel,apkUpdateChannel,validateUpdateChannel,UPDATE_CHANNEL_META,UPDATE_DIGEST_META} from '../scripts/update-channel.mjs';
-import {consumerBuildOptions} from '../scripts/build-android.mjs';
-import {parseXmlTree} from '../scripts/apk.mjs';
+import {readUpdateChannel,apkUpdateChannel,validateUpdateChannel,UPDATE_CHANNEL_META,UPDATE_DIGEST_META} from '../scripts/update-channel.ts';
+import {consumerBuildOptions} from '../scripts/build-android.ts';
+import {parseXmlTree} from '../scripts/apk.ts';
 
 const publicUrl='https://example.test/public-update.json';
 const hash=text=>createHash('sha256').update(text).digest('hex');
@@ -21,13 +21,14 @@ test('public builds retain their source URL and refuse undeclared private input'
  const {env}=input(t);assert.throws(()=>readUpdateChannel({...env,ALPHA_UPDATE_CHANNEL:'public'},publicUrl),/input refused/);
  assert.throws(()=>readUpdateChannel({ALPHA_UPDATE_CHANNEL:'unknown'},publicUrl),/input refused/);
 });
-test('protected input yields digest-only evidence and requires the complete Cloud profile',t=>{
+test('protected input yields digest-only evidence and requires a complete packaged build with test mocks off',t=>{
  const {env}=input(t),record=readUpdateChannel(env,publicUrl);
  assert.deepEqual(record,{kind:'private-qa',manifestUrlSha256:hash(privateUrl)});
- const options=consumerBuildOptions({runtimeProfile:'cloud',testMocks:false},env,process.cwd());
+ const options=consumerBuildOptions({testMocks:false},env,process.cwd());
  assert.deepEqual(options.record.metadata.updateChannel,record);
  assert.ok(!JSON.stringify(options.record).includes(privateUrl));
- assert.throws(()=>consumerBuildOptions({runtimeProfile:'native'},env,process.cwd()),/complete Cloud profile/);
+ // The private channel does not depend on a runtime profile (there is one); mocks and unpackaged builds are refused.
+ for(const refused of [{testMocks:true},{testMocks:false,allowUnpackagedRuntime:true}])assert.throws(()=>consumerBuildOptions(refused,env,process.cwd()),/complete packaged build with test mocks off/);
 });
 test('wrong digest, readable permissions, symlinks, oversized bytes and absent files are refused without echoing capability',t=>{
  const {file,env}=input(t);

@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { detectedCounterexample, sha256 } from '../../../scripts/quint-lib.mjs';
+import { detectedCounterexample, sha256 } from '../../../scripts/quint-lib.ts';
 
 // This local runner intentionally does not admit the runtime coverage ledger.
 // It checks only the four historical design translations and their frozen inputs.
@@ -30,7 +30,7 @@ for (const name of requested) if (!allModels.some(model => model.module === name
 const models = allModels.filter(model => requested.length === 0 || requested.includes(model.module));
 const configurations = option('configurations', '').split(',').filter(Boolean);
 for (const name of configurations) if (!models.some(model => model.configurations.some(config => config.name === name))) throw Error(`Unknown configuration ${name}`);
-const inputPaths = [documentPath, 'specs/quint/legacy/check-view-refresh.mjs', 'scripts/quint-lib.mjs',
+const inputPaths = [documentPath, 'specs/quint/legacy/check-view-refresh.mjs', 'scripts/quint-lib.ts',
   'specs/quint/tlc.json', 'package-lock.json', ...models.map(model => model.path)];
 const hashes = () => Object.fromEntries(inputPaths.map(path => [path, sha256(readFileSync(resolve(root, path)))]));
 const inputHashes = hashes();

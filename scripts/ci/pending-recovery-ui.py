@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Fresh disposable GitHub emulator only. Synthetic native fixtures; no live provider."""
-import hashlib,json,os,re,signal,subprocess,sys,uuid,zipfile
+import hashlib,json,os,re,signal,subprocess,sys,uuid
 from pathlib import Path
 from resident_absence import assert_no_resident
-from resident_native_source import verify_generated_native
+from resident_fixture import verify_resident_fixture
 from recovery_ui_guard import owned,admit_display,terminal
 import time
 assert os.environ.get('GITHUB_ACTIONS')=='true' and os.environ.get('RUNNER_ENVIRONMENT')=='github-hosted' and os.environ.get('ALPHA_RESIDENT_DISPOSABLE_CI')=='1'
@@ -19,34 +19,7 @@ assert run('shell','getprop','ro.kernel.qemu').strip()=='1';assert run('shell','
 assert run('shell','am','get-current-user').strip()=='0'
 assert set(re.findall(r'UserInfo\{(\d+):',run('shell','pm','list','users')))=={'0'}
 assert not any(p in run('shell','pm','list','packages') for p in [APP,TEST,HELPER]),'Fresh emulator required; never replace original packages'
-assert h((archive/'apk-manifest.json').read_bytes())==os.environ['ALPHA_RESIDENT_MANIFEST_SHA256']
-manifest=json.loads((archive/'apk-manifest.json').read_text());expected={v+'-'+k+'.apk' for v in ['standalone','launcher'] for k in ['debug','release-unsigned','androidTest']};expected|={'private-peer-debug.apk','private-peer-manifest.json'};assert set(manifest)==expected
-for n,digest in manifest.items():assert h((archive/n).read_bytes())==digest
-helper=json.loads((archive/'private-peer-manifest.json').read_text());assert helper['package']==HELPER and helper['schemaVersion']==1
-assert helper['apkSha256']==manifest['private-peer-debug.apk']
-expected_helper_sources={str(p) for p in Path('android/private-peer-fixture/src').rglob('*') if p.is_file()}|{'android/private-peer-fixture/build.gradle','scripts/ci/build-private-peer.py'}
-assert set(helper['sources'])==expected_helper_sources
-for relative,digest in helper['sources'].items():
- assert relative.startswith('android/private-peer-fixture/') or relative=='scripts/ci/build-private-peer.py'
- assert '..' not in Path(relative).parts and Path(relative).is_file() and h(Path(relative).read_bytes())==digest
-signer=Path(os.environ['ANDROID_HOME'])/'build-tools/36.0.0/apksigner'
-badging=subprocess.check_output([str(signer.parent/'aapt'),'dump','badging',str(archive/'private-peer-debug.apk')],text=True)
-assert re.search(r"^package: name='ai.alphacompute.alphaphone.peerfixture' ",badging,re.M)
-assert 'application-debuggable' in badging and 'launchable-activity:' not in badging and 'android.permission.INTERNET' not in badging
-for name in ['private-peer-debug.apk']+[v+'-'+k+'.apk' for v in ['standalone','launcher'] for k in ['debug','androidTest']]:
- certs=re.findall(r'^Signer #\d+ certificate SHA-256 digest: ([a-f0-9]{64})$',subprocess.check_output([str(signer),'verify','--print-certs',str(archive/name)],text=True),re.M)
- assert certs==[helper['signerSha256']]
-assert (archive/'inputs-before.json').read_bytes()==(archive/'inputs-after.json').read_bytes()
-frozen=json.loads((archive/'inputs-before.json').read_text())['files']
-lock=json.loads(Path('upstream.lock.json').read_text())
-assert frozen['upstream.lock.json']==h(Path('upstream.lock.json').read_bytes())
-assert subprocess.check_output(['git','-C','vendor/eliza','rev-parse','HEAD'],text=True).strip()==lock['commit']
-generated=json.loads((archive/'native-generated-source-manifest.json').read_text())
-assert h((archive/'native-generated-source-manifest.json').read_bytes())==frozen['android/app/build/generated/local-agent/source-manifest.json']
-verify_generated_native(generated,frozen)
-for relative,digest in frozen.items():
- if relative.startswith(('android/app/src/androidTest/','android/app/src/testMocks/','android/app/src/main/java/')):
-  assert Path(relative).is_file() and h(Path(relative).read_bytes())==digest
+manifest,frozen,_=verify_resident_fixture(archive,os.environ['ALPHA_RESIDENT_MANIFEST_SHA256'],os.environ['ANDROID_HOME'])
 
 PHASES=[('reminder-no-alert','ReminderTimingInstrumentedTest','noAlertBridgeWithoutPermissionRestoresAndCompletesWithoutDelivery','reminderTiming','none'),('reminder-alert-timing','ReminderTimingInstrumentedTest','numericLeadDueTimeStaleTargetsAndLegacyReceiptsRemainBound','reminderTiming','numeric'),('pending-storage','ReminderDeletionStorageInstrumentedTest','reminderDeletionSlotUsesEncryptedCompareExchange','pendingActionStorageFixture','1'),('calendar-recovery','CalendarCreationRecoveryInstrumentedTest','committedMarkerRecoveryAndMissingMarkerNeverReplay','calendarCreationRecovery','1'),('audio-fence','NoteAudioInstrumentedTest','optInRetiredDeletionCannotArriveAfterReloadAndRestore','audioFence','true'),('reminder-edit','ReminderAgentInstrumentedTest','selectedCrudPersistsExactReceiptsAndRejectsChangedBindings','reminderAgent','1'),('reminder-v2-transport','ConnectionInstrumentedTest','encryptedCredentialsAndHttpSurviveRecreationWithCancellationAndRedirectRejection',None,None),('cloud-callback-cold','CloudDelegationCallbackInstrumentedTest','coldCallbackSurvivesRecreationAndOnlyMatchingClear','cloudDelegationNative','1'),('cloud-callback-warm','CloudDelegationCallbackInstrumentedTest','warmCallbackRejectsMalformedLinksAndRetainsLatestOnRecreation','cloudDelegationNative','1'),('workflow-notice-tap','WorkflowNoticeTapInstrumentedTest','twoOpaqueNoticesRetainColdWarmAndFailedCaptureRoutes','workflowNoticeTap','1'),('workflow-notice-ask','WorkflowNoticeTapInstrumentedTest','askActionRetainsPurposeAndRequiresExactVisibleRevision','workflowNoticeTap','1'),('workflow-notice-process-death','WorkflowNoticeProcessDeathInstrumentedTest','originalNoticeLaunchesAbsentMainAfterOrdinaryProcessDeath','workflowNoticeProcessDeath','1'),('workflow-approval-process-death','WorkflowNoticeProcessDeathInstrumentedTest','approvalNoticeOpensOnlyItsApprovalAfterProcessDeath','workflowNoticeProcessDeath','approval'),('enabled-view-transport','ConnectionInstrumentedTest','enabledViewProfileHttpPreservesAuthenticationAndConditionalRevision',None,None),('reminder-tap-lifecycle','ReminderTapLifecycleInstrumentedTest','staleDismissDuplicateCaptureAndConsumedCapacityRemainExact','reminderTapLifecycle','1'),('reminder-tap-process-death','ReminderTapProcessDeathInstrumentedTest','capturedReminderTapSurvivesMainDeathWithoutAnotherNotificationIntent','reminderTapProcessDeath','1'),('native-slot-isolation','ConnectionInstrumentedTest','reservedNativeSlotsRejectEveryPublicStorageOperation','nativeSlotIsolation','1'),('clock-agent-review','ClockAgentReviewInstrumentedTest','journalBoundOwnerReviewManualSelectionCancellationAndRecreation','clockAgentReview','1')]
 # These run under WorkflowNoticeOwnerFixture: a prepare run in the same user restores its owner first.

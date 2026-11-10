@@ -18,7 +18,7 @@ import {returnToApps} from './app-navigation';
  *  - Hosted execution while the phone is POWERED OFF and delivery once on reconnect. That is owner decision A-09
  *    and is outside this browser check. The panel itself says
  *    "Schedules run while this app is open."
- *  - Resident-runtime restart/crash recovery (scripts/test-local-digest-restart.mjs), Doze/battery/lock, real
+ *  - Resident-runtime restart/crash recovery (scripts/test-local-digest-restart.ts), Doze/battery/lock, real
  *    provider sources, result notifications on a device.
  *
  * Missed occurrences follow the proposed scheduler policy ("explicit missed/overlap records", no backlog replay):
@@ -26,7 +26,7 @@ import {returnToApps} from './app-navigation';
  * DIGEST_RUN_WINDOW_MS) leaves exactly one `missed` record, is never run late, is
  * labelled "Missed — not run" in the panel and does not replace the last real brief on Home (asserted on the
  * rendered Home card; the development profile reads the same latestRetainedDigest source as the product profile). The resident engine's
- * own restart behaviour is covered by scripts/test-local-digest-restart.mjs, not here.
+ * own restart behaviour is covered by scripts/test-local-digest-restart.ts, not here.
  */
 import {test,expect,type Page} from '@playwright/test';
 

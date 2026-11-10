@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {checkIndicatorProvider,indicatorProviderScenarios,probeIndicatorProvider} from '../specs/quint/refinement/native/indicator-provider.mjs';
-import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
+import {preparePatchedNative} from '../scripts/prepare-patched-native.ts';
 
 test('actual SystemUI lease provider preserves generation/death ownership and restores caller identity', {timeout:360000},async()=>{
  const result=await checkIndicatorProvider(['test/quint-indicator-provider.test.mjs']);
@@ -27,7 +27,7 @@ test('both host distributions select the shared patched listener source set',()=
  const module='packages/app/platforms/android/sense';
  const descriptor=readFileSync('android/sense/build.gradle','utf8');
  assert.ok(staged.modules.includes(module));
- assert.match(descriptor,/commandLine 'node', 'scripts\/prepare-patched-native\.mjs'/);
+ assert.match(descriptor,/commandLine 'node', 'scripts\/prepare-patched-native\.ts'/);
  assert.match(descriptor,/ext\.elizaSenseSourceDir = new File\(preparedSense\.root\.toString\(\), 'packages\/app\/platforms\/android\/sense'\)/);
  assert.match(descriptor,/apply from: new File\(elizaSenseSourceDir, 'consumer.gradle'\)/);
  const profile=JSON.parse(readFileSync('android/consumer-host.json','utf8')).profile;

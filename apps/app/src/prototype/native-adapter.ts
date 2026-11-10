@@ -1,6 +1,7 @@
 import {cloudServiceName} from '../runtime/cloud-protocol';
 import {browserDevProfile} from '../browser/dev-profile';
-import { cloudRuntimeEnabled, testMocksEnabled } from '../build-flags';
+import { testMocksEnabled } from '../build-flags';
+import { speechRoute, type SpeechRoute } from '../runtime/voice-selection';
 import { Capacitor } from '@capacitor/core';
 import { DailyApps, type Action, type NativeResult } from '../daily';
 import { registerPlugin } from '../platform-plugins';
@@ -50,13 +51,11 @@ export function residentRecipients(connection: EgressConnection, native = Capaci
 }
 /** Per-connection wording. Only the packaged Android resident runtime is known to enable
  * the upstream secret and PII swaps; every other agent decides for itself and does not report it. */
-export function egressPrivacy(connection: EgressConnection, native = Capacitor.isNativePlatform()): EgressPrivacy {
-  if (cloudRuntimeEnabled && (connection.session || connection.cloudAccount)) {
-    const serviceName = cloudServiceName(connection.cloudAccount?.environment ?? 'production');
-    return { big: `Uses ${serviceName}`, sub: `When used, messages and selected content go to ${serviceName} for AI. Voice recordings and text for playback also go to Cloud.` };
-  }
+export function egressPrivacy(connection: EgressConnection, native = Capacitor.isNativePlatform(), speech: SpeechRoute = speechRoute()): EgressPrivacy {
   const resident = residentRecipients(connection, native);
-  if (resident) return { big: resident.big, sub: resident.sub };
+  // Cloud speech is in use now (voice-selection.ts): say what it sends. Own-key speech is named with its provider above.
+  const cloudSpeech = speech === 'cloud' ? ` Voice recordings and text for playback go to ${cloudServiceName(connection.cloudAccount?.environment ?? 'production')} while it is available; otherwise speech runs on this phone.` : '';
+  if (resident) return { big: resident.big, sub: resident.sub + cloudSpeech };
   if (connection.session || connection.cloudAccount) return { big: 'Not reported', sub: 'Depends on your agent' };
   // P-43: no session means the resident is starting or recovering, never "no agent".
   if (connection.kind === 'recovering') return { big: 'Agent not running', sub: 'No AI requests until your agent is running and AI is set up' };
@@ -160,10 +159,6 @@ export function installPrototypeNativeAdapters(
     } catch { notify(api, 'Enter a valid HTTP or HTTPS website without credentials.'); return; }
     return perform(module, api, 'browser', { url: url.href });
   }
-  const currentUrl = (st: Bag) => {
-    const tab = (st.tabs || []).find((t: Bag) => t.id === st.cur);
-    return st.addr || tab?.hist?.[tab.pos] || '';
-  };
   const smsPayload = (st: Bag) => ({
     // Only explicit user-entered recipients; seeded people never become real recipients.
     query: typeof st.thread === 'string' && st.thread.startsWith('n:') ? st.thread.slice(2) : '',
@@ -226,10 +221,9 @@ export function installPrototypeNativeAdapters(
     if (module === 'browser') {
       if (key === 'onAddrKey') return (e: KeyboardEvent) => { if (e.key === 'Enter') { e.preventDefault(); void browser(module, api, (e.target as HTMLInputElement)?.value); } else original(e); };
       if (key === 'go' && !path.startsWith('people.')) return () => browser(module, api, row.url || row.host);
-      if (['openNews', 'openEnc', 'openBook'].includes(key)) return unavailable(api, 'This page is a visual prototype. Enter a real website in the address field.');
+      if (['openNews', 'openEnc', 'openBook'].includes(key)) return unavailable(api, 'This page is not available. Enter a website in the address field.');
       if (['bookNow', 'cfOk'].includes(key)) return unavailable(api, 'Booking is not connected. No reservation or payment has been made.');
       if (key === 'readAloud') return unavailable(api, 'Read-aloud is not connected.');
-      if (key === 'copyLink') return async () => { try { const value = currentUrl(st); if (!value || value === 'newtab') throw new Error(); await navigator.clipboard.writeText(value); notify(api, 'Link copied'); } catch { notify(api, 'Clipboard unavailable'); } };
     }
     if (module === 'camera') {
       if (key === 'vfUp') return () => {}; // The camera adapter supplies real tap-to-focus.
@@ -306,7 +300,7 @@ export function installPrototypeNativeAdapters(
         const connection=connectionController.getSnapshot();
         result.val=connection.session&&connection.kind==='resident'&&!Capacitor.isNativePlatform()
           ? 'Prompts and selected context go to the development host and its configured inference provider'
-          : !cloudRuntimeEnabled&&residentRecipients(connection)?.leaves||'Depends on active services';
+          : residentRecipients(connection)?.leaves||'Depends on active services';
       }
       // Nothing here reads on-device model or speech readiness; say so instead of guessing.
       if (result.label === 'On-device model') result.val = 'Not reported';

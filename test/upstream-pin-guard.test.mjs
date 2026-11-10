@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {execFileSync, spawnSync} from 'node:child_process';
-import {ALLOW_OLDER_PIN, checkoutProblems, mainPinProblem, mainPinStatus, strictBuildInputs} from '../scripts/android-build-preflight.mjs';
+import {ALLOW_OLDER_PIN, checkoutProblems, mainPinProblem, mainPinStatus, strictBuildInputs} from '../scripts/android-build-preflight.ts';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const IDENTITY = ['-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', '-c', 'commit.gpgsign=false'];
@@ -16,6 +16,8 @@ const IDENTITY = ['-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.i
  * A product repository with vendor/eliza history A - B - C and a branch A - D, checked out at
  * `pin`. `mainPin` (when given) is the lock committed on refs/remotes/origin/main.
  */
+// These fixtures have no staged voice outputs; the voice host check is covered elsewhere.
+const noVoiceCheck = () => ({status: 'not-packaged'});
 function fixture(t, {pin = 'B', mainPin = 'B', shallow = false} = {}) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-pin-guard-')));
   t.after(() => fs.rmSync(root, {recursive: true, force: true}));
@@ -54,23 +56,23 @@ test('a pin equal to or descending from main passes', t => {
   let f = fixture(t, {pin: 'B', mainPin: 'B'});
   assert.equal(mainPinStatus(f.root, f.pin).state, 'equal');
   assert.equal(mainPinProblem(f.root, f.pin), null);
-  assert.deepEqual(checkoutProblems(f.root, {runtimeProfile: 'cloud'}), []);
+  assert.deepEqual(checkoutProblems(f.root, {voiceHost: noVoiceCheck}), []);
   f = fixture(t, {pin: 'C', mainPin: 'B'});
   assert.deepEqual(mainPinStatus(f.root, f.pin), {state: 'descendant', mainPin: f.commits.B, ref: 'refs/remotes/origin/main'});
-  assert.deepEqual(checkoutProblems(f.root, {runtimeProfile: 'cloud'}), []);
+  assert.deepEqual(checkoutProblems(f.root, {voiceHost: noVoiceCheck}), []);
 });
 
 test('a consistent but older or diverged pin is refused unless the reviewed rollback flag is given', t => {
   for (const pin of ['B', 'D']) {
     const f = fixture(t, {pin, mainPin: 'C'});
     assert.equal(mainPinStatus(f.root, f.pin).state, 'older');
-    const problems = checkoutProblems(f.root, {runtimeProfile: 'cloud'});
+    const problems = checkoutProblems(f.root, {voiceHost: noVoiceCheck});
     assert.equal(problems.length, 1);
     assert.match(problems[0], new RegExp(`pins ${f.pin}, which is older than or diverged from the pin ${f.commits.C} on refs/remotes/origin/main`));
     assert.match(problems[0], /Run: git fetch origin && git rebase origin\/main .*git submodule update --init vendor\/eliza/);
     assert.match(problems[0], /--allow-older-upstream-pin/);
     const notes = [];
-    assert.deepEqual(checkoutProblems(f.root, {runtimeProfile: 'cloud', allowOlderUpstreamPin: true, notes}), []);
+    assert.deepEqual(checkoutProblems(f.root, {voiceHost: noVoiceCheck, allowOlderUpstreamPin: true, notes}), []);
     assert.match(notes[0], new RegExp(`^${ALLOW_OLDER_PIN}: building upstream pin ${f.pin}`));
   }
 });
@@ -92,7 +94,7 @@ test('without an origin/main ref (a CI pull-request clone) the comparison is ski
   const f = fixture(t, {pin: 'B', mainPin: null});
   assert.equal(mainPinStatus(f.root, f.pin).state, 'unavailable');
   const notes = [];
-  assert.deepEqual(checkoutProblems(f.root, {runtimeProfile: 'cloud', notes}), []);
+  assert.deepEqual(checkoutProblems(f.root, {voiceHost: noVoiceCheck, notes}), []);
   assert.match(notes[0], /No origin\/main ref in this clone/);
 });
 
@@ -112,11 +114,14 @@ test('the inputs report marks the pinned checkout missing for an older pin', t =
 
 test('the preflight entry point exits 2 for an older pin and passes with the override', t => {
   const f = fixture(t, {pin: 'B', mainPin: 'C'});
-  for (const file of ['android-build-preflight.mjs', 'voice-host.mjs', 'stage-embedding-host.mjs', 'build-embedding-host.mjs', 'mobile-uuid-adapter.mjs', 'android-abis.mjs', 'embedding-native-contract.mjs', 'paradee-runtime.mjs', 'toolchain.mjs', 'copy-file-clone.mjs', 'core-state-patch.mjs', 'build-policy-source.mjs']) {
+  for (const file of ['android-build-preflight.ts', 'voice-host.ts', 'stage-embedding-host.ts', 'build-embedding-host.ts', 'mobile-uuid-adapter.ts', 'android-abis.ts', 'embedding-native-contract.ts', 'paradee-runtime.ts', 'toolchain.ts', 'copy-file-clone.ts', 'core-state-patch.ts', 'build-policy-source.ts', 'removed-profile-flags.ts']) {
     fs.mkdirSync(path.join(f.root, 'scripts'), {recursive: true});
     fs.copyFileSync(path.join(ROOT, 'scripts', file), path.join(f.root, 'scripts', file));
   }
-  const run = (...args) => spawnSync(process.execPath, ['scripts/android-build-preflight.mjs', '--before-prepare', '--runtime-profile=cloud', ...args], {cwd: f.root, encoding: 'utf8'});
+  // The unpackaged developer lane may omit the on-device voice outputs, so only the pin is in question here.
+  fs.mkdirSync(path.join(f.root, 'android/voice-host'), {recursive: true});
+  fs.copyFileSync(path.join(ROOT, 'android/voice-host/qualified-voice-host.json'), path.join(f.root, 'android/voice-host/qualified-voice-host.json'));
+  const run = (...args) => spawnSync(process.execPath, ['scripts/android-build-preflight.ts', '--before-prepare', '--allow-unpackaged-runtime', ...args], {cwd: f.root, encoding: 'utf8'});
   let result = run();
   assert.equal(result.status, 2, result.stderr);
   assert.match(result.stderr, /Android build prerequisites are missing:\n  - upstream\.lock\.json pins .* older than or diverged/);

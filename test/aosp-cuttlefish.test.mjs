@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {cuttlefishOptions} from '../scripts/aosp-cuttlefish.mjs';
+import {cuttlefishOptions} from '../scripts/aosp-cuttlefish.ts';
 
 test('explicit Cuttlefish target requires source and cannot consume Pixel factory authority', () => {
   assert.equal(cuttlefishOptions({target:'cuttlefish', source:'/reviewed/aosp'}), true);
@@ -13,7 +13,7 @@ test('explicit Cuttlefish target requires source and cannot consume Pixel factor
 test('Cuttlefish staging admits exactly the reviewed Android 17 source overrides', async t => {
   const fs = await import('node:fs'); const os = await import('node:os'); const path = await import('node:path');
   const {createHash} = await import('node:crypto');
-  const {reviewedSourceOverrides} = await import('../scripts/stage-aosp.mjs');
+  const {reviewedSourceOverrides} = await import('../scripts/stage-aosp.ts');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cf-overrides-')); t.after(() => fs.rmSync(dir, {recursive:true, force:true}));
   const lockPath = path.join(dir, 'lock.json'); const overrides = [{path:'frameworks/base/tools/aapt2/Android.bp', sha256:'a'.repeat(64), sizeBytes:1}];
   fs.writeFileSync(lockPath, JSON.stringify({overrides}));
@@ -26,7 +26,7 @@ test('Cuttlefish staging admits exactly the reviewed Android 17 source overrides
 
 
 test('image staging admits named SystemUI patches only through the exact Pixel source verifier', async () => {
-  const {stagingSystemuiPatches} = await import('../scripts/stage-aosp.mjs');
+  const {stagingSystemuiPatches} = await import('../scripts/stage-aosp.ts');
   assert.deepEqual(stagingSystemuiPatches([], false), []);
   assert.throws(() => stagingSystemuiPatches(['chip'], false), /requires --target pixel10a/);
   assert.throws(() => stagingSystemuiPatches(['chip', 'chip'], true), /Duplicate/);

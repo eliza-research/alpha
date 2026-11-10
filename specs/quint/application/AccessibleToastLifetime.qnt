@@ -3,11 +3,12 @@ module AccessibleToastLifetime {
   pure val Messages = Set(1, 2, 3)
   pure val Replies = Set(0, 100, 150, 200, 300, 600)
   type State = {scale: int, latest: int, started: Set[int], pending: Set[int],
-    message: int, undo: bool, duration: int, held: bool, timerDelay: int}
+    message: int, undo: bool, duration: int, held: bool, timerDelay: int,
+    queued: List[{message: int, undo: bool}]}
   var state: State
 
   action init = state' = {scale: 100, latest: 0, started: Set(), pending: Set(),
-    message: 0, undo: false, duration: 0, held: false, timerDelay: 0}
+    message: 0, undo: false, duration: 0, held: false, timerDelay: 0, queued: []}
   // Message 3 is the controlled 191-character passage; 1 and 2 are short.
   pure def duration(message: int, undo: bool, scale: int): int =
     (if (message == 3) 10050 else if (undo) 5000 else 1900) * scale / 100
@@ -27,9 +28,15 @@ module AccessibleToastLifetime {
   action reset = state' = {...state, scale: 100, latest: 0}
 
   action show(message: int, undo: bool): bool = all {
-    message.in(Messages), not(state.held),
-    state' = {...state, message: message, undo: undo,
-      duration: duration(message, undo, state.scale), timerDelay: duration(message, undo, state.scale)}
+    message.in(Messages), state.queued.length() < 3,
+    state' = if (state.message != 0 and state.undo) {
+      val queuedToast = {message: message, undo: undo}
+      val passiveTail = state.queued.length() > 0 and not(state.queued.nth(state.queued.length() - 1).undo) and not(undo)
+      {...state, queued: if (passiveTail) state.queued.slice(0, state.queued.length() - 1).append(queuedToast)
+        else state.queued.append(queuedToast)}
+    } else {...state, message: message, undo: undo,
+      duration: duration(message, undo, state.scale),
+      timerDelay: if (state.held) 0 else duration(message, undo, state.scale)}
   }
 
   action hold = all {state.message != 0, not(state.held), state' = {...state, held: true, timerDelay: 0}}
@@ -37,7 +44,12 @@ module AccessibleToastLifetime {
 
   action expire = all {
     state.message != 0, not(state.held),
-    state' = {...state, message: 0, undo: false, duration: 0, timerDelay: 0}
+    state' = if (state.queued.length() == 0)
+      {...state, message: 0, undo: false, duration: 0, timerDelay: 0}
+    else {val queuedToast = state.queued.head()
+      {...state, queued: state.queued.tail(), message: queuedToast.message, undo: queuedToast.undo,
+        duration: duration(queuedToast.message, queuedToast.undo, state.scale),
+        timerDelay: duration(queuedToast.message, queuedToast.undo, state.scale)}}
   }
 
   action step = any {
@@ -74,6 +86,7 @@ module AccessibleToastLifetime {
     .expect(safety and state.scale == 150 and state.duration == 2850)
   run refreshAffectsOnlyNewToastsTest = init.then(show(1, true)).then(request(1)).then(reply(1, 300))
     .expect(safety and state.duration == 5000).then(show(2, false))
+    .expect(safety and state.message == 1 and state.undo and state.duration == 5000).then(expire)
     .expect(safety and state.duration == 5700 and not(state.undo)).then(expire)
     .expect(safety and state.message == 0)
   run longMessageAndFocusHoldKeepCapturedDurationTest = init.then(show(3, false))
@@ -81,4 +94,11 @@ module AccessibleToastLifetime {
     .then(request(1)).then(reply(1, 600)).expect(safety and state.timerDelay == 0)
     .then(resume).expect(safety and state.timerDelay == 10050).then(expire)
     .expect(safety and state.message == 0)
+  run passiveNoticeKeepsCurrentUndoTest = init.then(show(1, true)).then(show(2, false)).then(show(3, false))
+    .expect(safety and state.message == 1 and state.undo and state.queued == [{message: 3, undo: false}])
+    .then(expire).expect(safety and state.message == 3 and not(state.undo))
+  run pendingUndoKeepsItsExactActionTest = init.then(show(1, true)).then(show(2, true)).then(show(3, false))
+    .expect(safety and state.message == 1 and state.queued.length() == 2)
+    .then(expire).expect(safety and state.message == 2 and state.undo)
+    .then(expire).expect(safety and state.message == 3 and not(state.undo))
 }

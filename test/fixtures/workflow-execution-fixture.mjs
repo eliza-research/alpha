@@ -1,5 +1,5 @@
 import vm from 'node:vm';import fs from 'node:fs';import {stripTypeScriptTypes} from '../support/strip-types.mjs';
-import {workflowRendererFixture} from '../../scripts/workflow-renderer-fixture.mjs';
+import {workflowRendererFixture} from '../../scripts/workflow-renderer-fixture.ts';
 import {WorkflowProtocol,WorkflowAdmissionRejected,WorkflowMetadataRejected,WorkflowLifecycleRejected} from '../../apps/app/src/runtime/workflow-protocol.ts';
 const source=fs.readFileSync('apps/app/src/prototype/workflow-adapter.ts','utf8').replace(/^import .*;\n/gm,'').replace('export function','function')+'\nglobalThis.install=installWorkflowAdapter;';
 const settle=async predicate=>{for(let i=0;i<100;i++){if(predicate())return;await new Promise(resolve=>setImmediate(resolve));}throw Error('Bounded workflow fixture did not settle');};

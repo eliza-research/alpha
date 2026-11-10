@@ -6,11 +6,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {assertReadOnlyEndpoint, fullName, ghGetAll, loadIocs, parseArgs} from '../scripts/owner/gh-readonly.mjs';
-import {exposureCutoff, forgedPrefixes, matchRuns, rotationState, auditRepository as auditCi} from '../scripts/owner/incident-ci-exposure.mjs';
-import {actorPermission, actorHasAccess, grantsAccess, hookRow, hostOf, keyRow, summarizeAudit, auditRepository as auditAccess} from '../scripts/owner/incident-access-audit.mjs';
-import {contentMarkers, initScripts, parseLsRemote, pathMarkers, scanExitCode, scanHead} from '../scripts/owner/forged-branch-scan.mjs';
-import {compareIntegrity} from '../scripts/owner/read-branch-integrity.mjs';
+import {assertReadOnlyEndpoint, fullName, ghGetAll, loadIocs, parseArgs} from '../scripts/owner/gh-readonly.ts';
+import {exposureCutoff, forgedPrefixes, matchRuns, rotationState, auditRepository as auditCi} from '../scripts/owner/incident-ci-exposure.ts';
+import {actorPermission, actorHasAccess, grantsAccess, hookRow, hostOf, keyRow, summarizeAudit, auditRepository as auditAccess} from '../scripts/owner/incident-access-audit.ts';
+import {contentMarkers, initScripts, parseLsRemote, pathMarkers, scanExitCode, scanHead} from '../scripts/owner/forged-branch-scan.ts';
+import {compareIntegrity} from '../scripts/owner/read-branch-integrity.ts';
 
 const root = path.resolve(import.meta.dirname, '..');
 const iocs = loadIocs(root);
@@ -30,11 +30,11 @@ test('the IOC file transcribes the cleanup record', () => {
 // The mutation checks cover every owner script. The secret-field check covers the incident scripts
 // only: other owner scripts belong to other issues and legitimately read fields such as `.value`
 // from non-secret data.
-const INCIDENT_SCRIPTS = new Set(['gh-readonly.mjs', 'incident-ci-exposure.mjs', 'incident-access-audit.mjs', 'forged-branch-scan.mjs', 'read-branch-integrity.mjs']);
+const INCIDENT_SCRIPTS = new Set(['gh-readonly.ts', 'incident-ci-exposure.ts', 'incident-access-audit.ts', 'forged-branch-scan.ts', 'read-branch-integrity.ts']);
 
 test('every owner script talks to GitHub with GET only and never mutates git state', () => {
   const dir = path.join(root, 'scripts/owner');
-  const files = fs.readdirSync(dir).filter(file => file.endsWith('.mjs'));
+  const files = fs.readdirSync(dir).filter(file => file.endsWith('.ts'));
   for (const file of INCIDENT_SCRIPTS) assert.ok(files.includes(file), file);
   for (const file of files) {
     const code = fs.readFileSync(path.join(dir, file), 'utf8').replace(/^\s*(\/\/|\*).*$/gm, '');

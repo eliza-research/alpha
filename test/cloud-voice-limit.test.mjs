@@ -121,12 +121,15 @@ test('native CloudVoiceLimit keeps the same facts, never the body text, and repl
  assert.deepEqual([...data.matchAll(/data\.put\("([a-zA-Z]+)"/g)].map(match=>match[1]),['retryAfterSeconds','limitCode','resetAt']);
 });
 
-test('only the explicit Cloud profile and development browser-resident builds reach Cloud speech',()=>{
+test('only a signed-in Cloud account with no limit in force, and development browser-resident builds, reach Cloud speech',()=>{
  const selection=fs.readFileSync('apps/app/src/runtime/voice-selection.ts','utf8').replace(/^import .*;\n/gm,'').replaceAll('export function','function').replaceAll('export type','type');
- for(const [cloud,mocks,expected] of [[false,false,'device'],[true,false,'cloud']]){
-  const box={cloudRuntimeEnabled:cloud,testMocksEnabled:mocks,browserDevProfile:false,localStorage:{getItem:()=>JSON.stringify({version:1,route:'cloud',disclosed:'cloud-speech-uses-plan',chosenAt:1}),setItem(){}},JSON,Number,Date,connectionController:{getSnapshot:()=>({residentInference:'cloud'}),getCloudEnvironment:()=>'production',getCloudClient:()=>({})}};
-  vm.runInNewContext('{'+stripTypeScriptTypes(selection,{mode:'strip'})+'\nglobalThis.api={selectVoiceRoute,voiceRoutePreference};}',box);
-  // A native flag-off build routes speech to the device even with a stored Cloud choice.
+ const now=Date.now(),limited={kind:'rate-limited',retryAfterMs:60_000,resetsAt:null,observedAt:now};
+ for(const [account,limit,expected] of [[false,null,'device'],[true,null,'cloud'],[true,limited,'device'],[true,{...limited,observedAt:now-120_000},'cloud']]){
+  const box={testMocksEnabled:false,localStorage:{getItem:()=>JSON.stringify({version:1,route:'cloud',disclosed:'cloud-speech-uses-plan',chosenAt:1}),setItem(){}},JSON,Number,Date,Math,connectionController:{getSnapshot:()=>({residentInference:'cloud',lastServiceLimit:limit}),getCloudEnvironment:()=>account?'production':null,getCloudClient:()=>account?{sessionId:'s',credentialId:'c'}:null}};
+  vm.runInNewContext('{'+stripTypeScriptTypes(selection,{mode:'strip'})+'\nglobalThis.api={selectVoiceRoute,speechRoute};}',box);
+  // The route is the account's, at run time; a stored choice from an earlier build has no effect,
+  // and a Cloud speech 429 recorded for the account (lastServiceLimit) keeps the next turns on this phone.
+  assert.equal(box.api.speechRoute(now),expected);
   for(const requested of ['default','device','manual','agent'])assert.equal(box.api.selectVoiceRoute(requested),expected);
  }
  // The development browser route is the only other caller: a test-mocks (development) surface.

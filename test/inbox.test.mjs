@@ -5,9 +5,9 @@ import {runChildSuite} from './fixtures/child-suite.mjs';
 
 // These cases use closed provider and storage fixtures.
 for (const [name, script, options] of [
-  ['inbox attention, links, folders and attachments', 'test-inbox-attention-flow.mjs', {flags: ['--import', 'tsx']}],
-  ['new email preserves unfinished emails as separate account-scoped local drafts', 'test-inbox-multiple-drafts.mjs', {timeout: 30_000}],
-  ['saved Inbox drafts use the platform store and preserve account/conflict boundaries', 'test-inbox-saved-drafts.mjs', {timeout: 30_000}],
+  ['inbox attention, links, folders and attachments', 'test-inbox-attention-flow.ts', {flags: ['--import', 'tsx']}],
+  ['new email preserves unfinished emails as separate account-scoped local drafts', 'test-inbox-multiple-drafts.ts', {timeout: 30_000}],
+  ['saved Inbox drafts use the platform store and preserve account/conflict boundaries', 'test-inbox-saved-drafts.ts', {timeout: 30_000}],
 ]) {
   test(name, () => runChildSuite(script, options));
 }

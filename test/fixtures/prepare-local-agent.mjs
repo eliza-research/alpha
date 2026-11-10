@@ -7,7 +7,7 @@ import {fileURLToPath} from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 export const preparedSourceFixtureInputs = [
-  'scripts/prepare-local-agent.mjs', 'scripts/local-agent-source.mjs', 'scripts/copy-file-clone.mjs',
+  'scripts/prepare-local-agent.ts', 'scripts/local-agent-source.ts', 'scripts/copy-file-clone.ts',
   'vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs',
   'vendor/eliza/packages/app/scripts/lib/committed-source.mjs',
 ];
@@ -55,7 +55,7 @@ export function prepareLocalAgentFixture(temp) {
   function prepare(args = [], overrides = {}, preload) {
     return spawnSync(process.execPath, [
       ...(preload ? ['--import', preload] : []),
-      path.join(product, 'scripts/prepare-local-agent.mjs'), '--source-only', ...args,
+      path.join(product, 'scripts/prepare-local-agent.ts'), '--source-only', ...args,
     ], {cwd: product, env: {...childEnv, ...overrides}, encoding: 'utf8', timeout: 60000});
   }
   const initial = prepare();

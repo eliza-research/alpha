@@ -3,7 +3,7 @@ import {mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync} from 'nod
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.mjs';
+import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.ts';
 import {jsonJar} from '../../../../test/fixtures/jvm-tools.mjs';
 import {captureInputs, checkTraces, qset} from '../check-traces.mjs';
 import {app, directory, javaTraceCampaign, root} from './java.mjs';
@@ -27,7 +27,7 @@ export async function checkNativeUpdateComposition(extraSources = []) {
     'test/fixtures/UpdateFlowTest.java', ...fixtures, join(directory, 'UpdateCompositionResidentPort.java')];
   const sources = [fileURLToPath(import.meta.url), product, ...compiled, join(directory, harness),
     join(directory, 'Trace.java'), join(directory, 'java.mjs'), join(directory, 'update-barrier.mjs'),
-    app + 'AlphaLocalAgentPlugin.java', 'scripts/upstream-native-source.mjs', 'upstream.lock.json',
+    app + 'AlphaLocalAgentPlugin.java', 'scripts/upstream-native-source.ts', 'upstream.lock.json',
     'test/fixtures/jvm-tools.mjs', 'specs/quint/native/NativeUpdateStaging.qnt', ...(jsonJar ? [jsonJar] : []), ...extraSources];
   const driverHashes = captureInputs(sources);
   const upstream = upstreamNativeSource(root);

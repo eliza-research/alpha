@@ -9,7 +9,7 @@ import fs from 'node:fs';
 const read = file => fs.readFileSync(file, 'utf8');
 const dir = 'android/app/src/main/java/ai/alphacompute/alphaphone/';
 // Downloads, blob capture and their list come from the reviewed pin (plugin-native-browser-surface),
-// staged into the app by scripts/stage-local-agent-sources.mjs.
+// staged into the app by scripts/stage-local-agent-sources.ts.
 const shared = 'vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/';
 // The tab host itself is shared too; AlphaBrowserPlugin names it and AlphaBrowserStores keeps Alpha's identity.
 const plugin = read(shared + 'BrowserTabHostPlugin.java');

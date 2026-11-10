@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 const store = new Map();
 globalThis.localStorage = {getItem: k => store.has(k) ? store.get(k) : null, setItem: (k, v) => store.set(k, String(v)), removeItem: k => store.delete(k)};
 const timing = await import('../apps/app/src/runtime/voice-timing.ts');
-const {aggregate} = await import('../scripts/aggregate-voice-latency.mjs');
+const {aggregate} = await import('../scripts/aggregate-voice-latency.ts');
 let now = 0;
 timing.setVoiceTimingClock(() => now);
 const RECOGNITION = 700, REVIEW = 2500, TOKEN = 400, REPLY = 900;

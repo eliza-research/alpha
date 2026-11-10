@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
-import {compareIntegrity} from '../scripts/owner/read-branch-integrity.mjs';
+import {compareIntegrity} from '../scripts/owner/read-branch-integrity.ts';
 
 const root = path.resolve(import.meta.dirname, '..');
 const repo = 'o/r';
@@ -35,7 +35,7 @@ if (endpoint in responses) process.stdout.write(JSON.stringify(responses[endpoin
 else { process.stderr.write('gh: Not Found (HTTP 404)\\n'); process.exit(1); }
 `, {mode: 0o755});
   try {
-    return spawnSync(process.execPath, ['scripts/owner/read-branch-integrity.mjs', '--repo', repo, '--branch', 'main', ...args], {cwd: root, encoding: 'utf8', env: {...process.env, GH_BIN: bin}});
+    return spawnSync(process.execPath, ['scripts/owner/read-branch-integrity.ts', '--repo', repo, '--branch', 'main', ...args], {cwd: root, encoding: 'utf8', env: {...process.env, GH_BIN: bin}});
   } finally {
     fs.rmSync(dir, {recursive: true, force: true});
   }

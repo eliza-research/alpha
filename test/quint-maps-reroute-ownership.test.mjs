@@ -23,6 +23,10 @@ test('mounted Maps settles an agent reroute for the exact guidance and route req
     assert.equal(state['s.watches'], 1);
   }
   assert.equal(completed.live_same_public_route_id['s.origin'], 2);
+  assert.equal(completed.live_provider_refusal['s.origin'], 1);
+  assert.equal(completed.live_provider_refusal['s.route'], 1);
+  assert.equal(completed.live_provider_refusal['s.phase'], 'ready');
+  assert.equal(completed.live_provider_refusal['s.watches'], 1);
   assert.equal(completed.end_without_new_route_preserves_review['s.origin'], 2);
   assert.equal(completed.end_without_new_route_preserves_review['s.guidanceSession'], 0);
 });

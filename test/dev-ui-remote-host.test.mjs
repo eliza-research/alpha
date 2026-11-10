@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
+import {readFileSync} from 'node:fs';
 
 // Execute the real CLI with only Vite replaced at its external module boundary.
 // The fake server records its configuration without starting a backend or network listener.
@@ -11,7 +12,7 @@ export async function loadConfigFromFile(){return {config:{plugins:[
  [{name:'alpha-browser-cloud-dev-bridge'},{name:'retained-plugin'}]
 ],server:{headers:{'x-fixture':'retained'}}}};}
 export async function createServer(config){
- const names=['ELIZA_DEV_ALLOW_TEST_MOCKS','VITE_ELIZA_DEV_ALLOW_TEST_MOCKS','VITE_ALPHA_CLOUD_RESIDENT','VITE_ALPHA_CLOUD_ENVIRONMENT','VITE_LOCAL_AGENT','VITE_ELIZA_RUNTIME_PROFILE','VITE_ALPHA_DEV_CLOUD_REALTIME_VOICE'];
+ const names=['ELIZA_DEV_ALLOW_TEST_MOCKS','VITE_ELIZA_DEV_ALLOW_TEST_MOCKS','VITE_ALPHA_CLOUD_RESIDENT','VITE_ALPHA_CLOUD_ENVIRONMENT','VITE_LOCAL_AGENT','VITE_ALPHA_DEV_CLOUD_REALTIME_VOICE'];
  console.log(JSON.stringify({fixture:'vite-config',env:Object.fromEntries(names.map(name=>[name,process.env[name]])),config}));
  return {listen:async()=>{},close:async()=>{}};
 }`;
@@ -21,9 +22,9 @@ registerHooks({resolve(name,context,next){
 }});`;
 const root=fileURLToPath(new URL('../',import.meta.url));
 function launch(extra={}){
- const result=spawnSync(process.execPath,['--import','data:text/javascript,'+encodeURIComponent(preload),'scripts/dev-ui-remote-host.mjs','--port=5494','--remote=http://127.0.0.1:5518','--environment=staging'],{
+ const result=spawnSync(process.execPath,['--import','data:text/javascript,'+encodeURIComponent(preload),'scripts/dev-ui-remote-host.ts','--port=5494','--remote=http://127.0.0.1:5518','--environment=staging'],{
   cwd:root,encoding:'utf8',timeout:10000,
-  env:{...process.env,ELIZA_DEV_ALLOW_TEST_MOCKS:'1',VITE_ELIZA_DEV_ALLOW_TEST_MOCKS:'1',VITE_ELIZA_RUNTIME_PROFILE:'native',ALPHA_CLOUD_REALTIME_VOICE:'',VITE_ALPHA_DEV_CLOUD_REALTIME_VOICE:'1',...extra},
+  env:{...process.env,ELIZA_DEV_ALLOW_TEST_MOCKS:'1',VITE_ELIZA_DEV_ALLOW_TEST_MOCKS:'1',ALPHA_CLOUD_REALTIME_VOICE:'',VITE_ALPHA_DEV_CLOUD_REALTIME_VOICE:'1',...extra},
  });
  assert.equal(result.status,0,result.stderr);
  const row=result.stdout.split('\n').find(line=>line.startsWith('{"fixture":"vite-config"'));
@@ -33,7 +34,8 @@ function launch(extra={}){
 
 test('remote renderer selects Cloud routing with mocks off before loading Vite',()=>{
  const {env}=launch();
- assert.equal(env.VITE_ELIZA_RUNTIME_PROFILE,'cloud');
+ // The renderer has no build-time speech profile: the route follows the signed-in account at run time.
+ assert.doesNotMatch(readFileSync(new URL('../scripts/dev-ui-remote-host.ts',import.meta.url),'utf8')+readFileSync(new URL('../scripts/dev-cloud.ts',import.meta.url),'utf8'),/RUNTIME_PROFILE/);
  assert.equal(env.VITE_ALPHA_CLOUD_RESIDENT,'1');
  assert.equal(env.VITE_ALPHA_CLOUD_ENVIRONMENT,'staging');
  assert.equal(env.VITE_LOCAL_AGENT,'1');
