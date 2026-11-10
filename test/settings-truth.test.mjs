@@ -119,7 +119,7 @@ test('native system facts are read without new permissions and are omitted when 
 test('the grouped Privacy page retains permission review and action-review controls',()=>{
  assert.match(source,/\['Privacy', \['Set up Alpha access', 'Review phone actions first'\]\]/);
  assert.match(source,/'Set up Alpha access': 'App permissions'/);
- assert.match(source,/name === 'Set up Alpha access'[^\n]+activeSettingsCategory='settings-privacy';api\.set\(\{page:'settings-permissions'\}\)/);
+ assert.match(source,/name === 'Set up Alpha access'[^\n]+api\.set\(\{page:'settings-permissions',settingsCategory:'settings-privacy'\}\)/);
  assert.match(source,/title:'App permissions',backLabel:'Back to Privacy'/);
  assert.match(source,/if\(key==='settings-apps'\)/,'app permissions remain separate from the app catalog');
 });
