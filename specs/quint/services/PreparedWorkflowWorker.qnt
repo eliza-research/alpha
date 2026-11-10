@@ -35,11 +35,15 @@ module PreparedWorkflowWorker {
     s.phase == "idle", s.quality == "valid",
     s' = {...s, quality: "corrupt", result: "none"},
   }
+  action corruptManifest = all {
+    s.phase == "idle", s.quality == "valid",
+    s' = {...s, quality: "corrupt", outputStamp: 0, outputLock: 0, result: "none"},
+  }
   action freshOutput = all {
     s.phase == "idle", s' = {...s, quality: "absent", outputStamp: 0, outputLock: 0, result: "none"},
   }
   action step = any {
-    begin, corrupt, freshOutput,
+    begin, corrupt, corruptManifest, freshOutput,
     {nondet a = Set(1, 2).oneOf(); nondet b = Set(1, 2).oneOf(); source(a, b)},
     {nondet outcome = Set("valid", "corrupt", "partial", "failed").oneOf(); finish(outcome)},
     s' = s,
@@ -57,6 +61,8 @@ module PreparedWorkflowWorker {
     .expect(s.result == "refused" and s.outputStamp == 1 and safety)
   run provenanceDriftRefusesBuildTest = init.then(begin).then(source(2, 1)).then(finish("valid"))
     .expect(s.result == "refused" and s.outputStamp == 1 and safety)
+  run malformedManifestRefusesReuseTest = init.then(begin).then(finish("valid")).then(corruptManifest).then(begin)
+    .expect(s.result == "refused" and s.builds == 1 and s.outputStamp == 0 and safety)
   run freshDirectoryPermitsRetryTest = init.then(begin).then(finish("partial")).then(freshOutput)
     .then(begin).then(finish("valid")).expect(s.result == "built" and s.builds == 2 and safety)
 }

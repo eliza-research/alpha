@@ -2546,6 +2546,7 @@
         "partialBuildIsRetainedTest",
         "changedStampRefusesOldWorkerTest",
         "provenanceDriftRefusesBuildTest",
+        "malformedManifestRefusesReuseTest",
         "freshDirectoryPermitsRetryTest"
       ],
       "invariants": [
@@ -2559,7 +2560,7 @@
         "scripts/build-workflow-worker.ts"
       ],
       "abstractions": [
-        "One sequential caller, two source-stamp and lock identities, at most three producer calls. Generic SDK bundling, concurrent producers and Android installation require separate evidence."
+        "One sequential caller, two source-stamp and lock identities, at most three producer calls. The actual verifier classifies complete manifested output, and independent whole-tree fingerprints check existing and retained interrupted bytes. Generic SDK bundling, concurrent producers and Android installation require separate evidence."
       ]
     }
   ]
