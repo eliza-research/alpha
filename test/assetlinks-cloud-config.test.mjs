@@ -43,7 +43,7 @@ test("the Cloud value adds Alpha's release certificate without touching other ap
 });
 
 test("the Cloud value is refused for an unset or debug release signer and for values Cloud would publish as []", () => {
-  assert.throws(() => cloudAssetLinksConfig({ packageName, signerSha256: "unset" }), /H-09/);
+  assert.throws(() => cloudAssetLinksConfig({ packageName, signerSha256: "unset" }), /record the release certificate first/);
   assert.throws(() => cloudAssetLinksConfig({ packageName, signerSha256: DEV, debugFingerprints: [DEV] }), /debug signing certificate/);
   const full = Array.from({ length: CLOUD_ASSET_LINKS.maxEntries }, (_, index) => ({ package_name: `org.example.app${index}`, sha256_cert_fingerprints: [fingerprint(OTHER)] }));
   assert.throws(() => cloudAssetLinksConfig({ entries: full, packageName, signerSha256: RELEASE }), /at most 16/);
@@ -66,7 +66,7 @@ test("the published-document check passes only for the recorded release certific
   assert.match(dev.notes.join(), /recorded debug signing certificate/);
   const unset = publishedAssetLinksCheck(developmentOnly, { packageName, signerSha256: "unset" });
   assert.equal(unset.granted, false);
-  assert.match(unset.problems.join(), /H-09/);
+  assert.match(unset.problems.join(), /release certificate is not recorded yet/);
   assert.match(publishedAssetLinksCheck("[]", { packageName, signerSha256: RELEASE }).problems.join(), /publishes \[\]/);
   assert.match(publishedAssetLinksCheck(publish([elizaEntry]), { packageName, signerSha256: RELEASE }).problems.join(), /no statement grants/);
   const loginOnly = JSON.stringify([{ relation: ["delegate_permission/common.get_login_creds"], target: { namespace: "android_app", package_name: packageName, sha256_cert_fingerprints: [fingerprint(RELEASE)] } }]);
