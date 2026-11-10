@@ -78,22 +78,18 @@ uses this ID; changing it would create a separate app and leave its private data
 behind. Branding is independent of this installed identity. Signing, callback
 registrations, native-library qualification and in-place data-retention tests remain required.
 
-The default native runtime uses libelizainference for local speech and embeddings.
-Stage on-device voice inputs with
+There is one runtime profile. Every build packages libelizainference with the
+on-device speech models and local embeddings. Stage on-device voice inputs with
 `node scripts/android-stage-voice-models.mjs --from <directory>`.
 The resident source and workflow worker are prepared from the locked upstream
 revision. Build inputs must agree with the staged runtime and native libraries.
 
-The explicit Cloud profile keeps the resident agent and database on the phone
-and uses Cloud inference, embeddings and speech, without local model payloads:
-
-```sh
-npm run agent:prepare
-npm run agent:build-workflow-worker
-npm run agent:stage-android -- --runtime-profile=cloud
-npm run licenses:packaged-runtime
-npm run android:build -- --runtime-profile=cloud
-```
+Speech is routed at run time, not at build time: the owner's Cartesia key when
+their own provider is selected, Eliza Cloud speech when signed in to Cloud with
+no plan limit in force, otherwise on-device speech. A Cloud or provider speech
+request that fails before audio plays falls back to on-device speech. The
+`--runtime-profile` and `--local-embeddings` options are gone; the scripts
+refuse them with a one-line message.
 
 Developer APKs may explicitly omit the runtime:
 
@@ -150,7 +146,7 @@ The existing workflow run number is the candidate versionCode, checked against
 all retained stable APKs, the public pointer and committed version floors.
 Failed or canceled runs consume their number. A manual release or workflow
 migration that exceeds this number stops candidate creation and needs a reviewed
-version migration. Manual Cloud builds keep their explicit profile/version input.
+version migration. Manual builds keep their explicit version input.
 Candidates are unsigned build evidence. Native application signing/voice
 admission, protected release review, exact signed APK voice tests, publication
 and both sideload/image phone drills remain required before automatic delivery
@@ -162,7 +158,7 @@ Complete it in this order:
 
 1. Admit native voice inputs for the exact SDK, then build and sign both
    distribution variants. Preserve advancing versions and the enrolled signer.
-2. Migrate the Cloud client and App Links to `ai.alphacompute.alphaphone`
+2. Verify the Cloud client and App Links retain `ai.elizaresearch.alphaphone`
    ([#666](https://github.com/eliza-research/alphaphone/issues/666),
    [#670](https://github.com/eliza-research/alphaphone/issues/670)). Keep
    `/alphaphone/auth/callback` in production and staging. Preserve the selected

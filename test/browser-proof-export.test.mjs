@@ -20,7 +20,7 @@ function fixture(t){
  git(root,'init','-q','--object-format=sha1');
  write('upstream.lock.json',JSON.stringify({commit:sdk}));
  write('.eliza/client-features/.source.json','{}');
- write('test-results/browser-proof-renderer/build-flags.json',JSON.stringify({testMocks:false,runtimeProfile:'cloud'}));
+ write('test-results/browser-proof-renderer/build-flags.json',JSON.stringify({testMocks:false}));
  write('test-results/browser-proof-renderer/index.html','<!doctype html><title>Fixture</title>');
  git(root,'add','upstream.lock.json');git(root,'update-index','--add','--cacheinfo',`160000,${sdk},vendor/eliza`);git(root,'commit','-qm','fixture');
  return {root,sdk,write,run:(mode='renderer')=>spawnSync(process.execPath,[exporter,mode],{cwd:root,env,encoding:'utf8'})};

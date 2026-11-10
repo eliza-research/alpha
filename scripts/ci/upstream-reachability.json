@@ -3,34 +3,52 @@
   "repository": "elizaOS/eliza",
   "base": "develop",
   "baseCommit": "6a30d1df11508f033b2522338e7d9477eb4be500",
-  "head": "268733c01f239b352396abefb1b9a112a3cb65a6",
+  "head": "b1b2606d736c2fa74ee50cbce839899989f83598",
   "recordedAt": "2026-11-10",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...268733c01f239b352396abefb1b9a112a3cb65a6",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...b1b2606d736c2fa74ee50cbce839899989f83598",
   "status": "diverged",
-  "aheadBy": 4,
+  "aheadBy": 9,
   "behindBy": 34,
   "mergeBase": "00edc8ce2e8b9bd47ad5cce33e1dff66c2fe47c0",
   "pinOnlyCommits": [
     {
-      "sha": "fe3648acb3ee7acc9a722655f3d4316dc284f625",
-      "subject": "Keep Google map tiles within current admission and viewport attribution"
+      "sha": "ece09b3a9d25d76fc910494bbeb5d7a71e46605c",
+      "subject": "Voice session: open microphone with speculative turns and barge-in"
     },
     {
-      "sha": "953e6895be42760e79a4fdf7ab5b1db01e4c4fcc",
-      "subject": "Refuse incomplete Google viewport copyright metadata"
+      "sha": "ea56e2d49a58e71da8341888fe19f04c491f3c47",
+      "subject": "Android speech: shorter configurable VAD hangover, gapless sentence append, low-latency output"
     },
     {
-      "sha": "841f8c0a19c06fa19dcc5197c31e54286c6051cc",
-      "subject": "Type the viewport model response action"
+      "sha": "26c7a03f42ab6066f866fb0008f6c2418a9ee85b",
+      "subject": "Voice session: pipeline the next sentence while the current one plays"
     },
     {
-      "sha": "268733c01f239b352396abefb1b9a112a3cb65a6",
-      "subject": "Keep map resource failures visible during copyright refresh"
+      "sha": "d12b2c1e7b277a9cf599e850e05e06c76e89a908",
+      "subject": "Admit Worker inference from an aged snapshot and refresh it off the response"
+    },
+    {
+      "sha": "c5be838eea835721457d513be615996fb6297b48",
+      "subject": "Join the rate verdict with the lease commit at the chat provider boundary"
+    },
+    {
+      "sha": "16174f7657aca735eb8ffb8cea752d13698288d0",
+      "subject": "Keep the Stage 1 transcript ahead of cache-unstable providers"
+    },
+    {
+      "sha": "b9107c917822f9cb9230b5178838a7670ed8ce95",
+      "subject": "Open Cloud speech input before quota and credits resolve"
+    },
+    {
+      "sha": "a4f9ef96a913d1612607a763e9931709f92e6c67",
+      "subject": "Model an authorized caller that declines the provider at zero"
+    },
+    {
+      "sha": "b1b2606d736c2fa74ee50cbce839899989f83598",
+      "subject": "Native live voice: accept the VAD end hangover on the assistant listener"
     }
   ],
   "pullRequests": [
-    "https://github.com/elizaOS/eliza/pull/39196",
-    "https://github.com/elizaOS/eliza/pull/39231"
-  ],
-  "pendingPullRequest": "https://github.com/elizaOS/eliza/pull/39231"
+    "https://github.com/elizaOS/eliza/pull/39196"
+  ]
 }

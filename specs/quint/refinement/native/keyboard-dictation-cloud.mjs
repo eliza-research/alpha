@@ -9,7 +9,7 @@ import {jsonJar} from '../../../../test/fixtures/jvm-tools.mjs';
 
 const model='KeyboardDictationCloud';
 const modelPath='specs/quint/native/KeyboardDictationCloud.qnt';
-const app='android/app/src/main/java/ai/alphacompute/alphaphone/';
+const app='android/app/src/main/java/ai/elizaresearch/alphaphone/';
 export async function checkKeyboardDictationCloud(extraSources=[]) {
   const temporary=mkdtempSync(join(tmpdir(),'quint-keyboard-cloud-'));
   try {

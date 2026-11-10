@@ -19,7 +19,7 @@ spec.loader.exec_module(module)
 
 class EmbeddingInputsTest(unittest.TestCase):
     def environment(self):
-        return {'ALPHA_LOCAL_EMBEDDINGS':'1','ALPHA_RUNTIME_PROFILE':'cloud',
+        return {'ALPHA_LOCAL_EMBEDDINGS':'1',
                 'ALPHA_EMBEDDING_COMPONENT_ARTIFACT_ID':'11','ALPHA_EMBEDDING_COMPONENT_SHA256':'a'*64,
                 'ALPHA_EMBEDDING_QUALIFICATION_ARTIFACT_ID':'12','ALPHA_EMBEDDING_QUALIFICATION_SHA256':'b'*64}
 
@@ -35,9 +35,10 @@ class EmbeddingInputsTest(unittest.TestCase):
             with self.subTest(key=key),self.assertRaises(ValueError):module.settings(env)
         with self.assertRaises(ValueError):module.settings({'ALPHA_EMBEDDING_COMPONENT_ARTIFACT_ID':'11'})
 
-    def test_wrong_profile_and_duplicate_artifacts_rejected(self):
+    def test_no_runtime_profile_is_required_and_duplicate_artifacts_rejected(self):
+        # One runtime profile: the inputs no longer depend on ALPHA_RUNTIME_PROFILE.
         env=self.environment();env['ALPHA_RUNTIME_PROFILE']='native'
-        with self.assertRaises(ValueError):module.settings(env)
+        self.assertEqual(module.settings(env), [('11','a'*64),('12','b'*64)])
         env=self.environment();env['ALPHA_EMBEDDING_QUALIFICATION_ARTIFACT_ID']='11'
         with self.assertRaises(ValueError):module.settings(env)
 

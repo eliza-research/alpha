@@ -9,7 +9,7 @@ const environment=options.environment||'production';
 if(!['production','staging'].includes(environment))throw Error('Invalid Cloud environment');
 // Realtime still requires the relay to be enabled on the existing remote host.
 // Match dev:cloud's explicit opt-in; this process only selects the renderer route.
-Object.assign(process.env,{ELIZA_DEV_ALLOW_TEST_MOCKS:'',VITE_ELIZA_DEV_ALLOW_TEST_MOCKS:'',VITE_ALPHA_CLOUD_RESIDENT:'1',VITE_ALPHA_CLOUD_ENVIRONMENT:environment,VITE_LOCAL_AGENT:'1',VITE_ELIZA_RUNTIME_PROFILE:'cloud',VITE_ALPHA_DEV_CLOUD_REALTIME_VOICE:process.env.ALPHA_CLOUD_REALTIME_VOICE==='1'?'1':''});
+Object.assign(process.env,{ELIZA_DEV_ALLOW_TEST_MOCKS:'',VITE_ELIZA_DEV_ALLOW_TEST_MOCKS:'',VITE_ALPHA_CLOUD_RESIDENT:'1',VITE_ALPHA_CLOUD_ENVIRONMENT:environment,VITE_LOCAL_AGENT:'1',VITE_ALPHA_DEV_CLOUD_REALTIME_VOICE:process.env.ALPHA_CLOUD_REALTIME_VOICE==='1'?'1':''});
 const loaded=await loadConfigFromFile({command:'serve',mode:'development'},resolve('vite.config.ts'));
 if(!loaded)throw Error('Vite configuration unavailable');
 const plugins=[];

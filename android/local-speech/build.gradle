@@ -16,12 +16,10 @@ if (!paradee.isDirectory()) {
  // Alpha's AlphaVoiceCloud bridge subclasses the shared LocalSpeechBridgePlugin.
  ext.elizaSpeechBridgeCapacitor = 'true'
  def nativeOutput = file('../../.eliza/paradee-voice/native')
- def cloudProfile = project.findProperty('ELIZA_RUNTIME_PROFILE')?.toString() == 'cloud'
  def unpackaged = project.findProperty('ELIZA_ALLOW_UNPACKAGED_RUNTIME')?.toString() == '1'
- if (cloudProfile || (unpackaged && !nativeOutput.exists())) {
-  // Cloud keeps the Java API without admitting a local engine or model, even
-  // when a developer has staged native speech for a separate build.
-  // The unpackaged developer lane also keeps this API when outputs are absent.
+ if (unpackaged && !nativeOutput.exists()) {
+  // Every packaged build ships the local engine and models. Only the unpackaged
+  // developer lane keeps the Java API alone, when native outputs are absent.
   apply plugin: 'com.android.library'
   android {
    namespace 'ai.eliza.voice'
@@ -45,9 +43,8 @@ if (!paradee.isDirectory()) {
   apply from: new File(paradee, 'consumer.gradle')
  }
  def verifySpeechInputs = tasks.register('verifySpeechInputs', Exec) {
-  onlyIf { !cloudProfile }
   workingDir rootProject.projectDir.parentFile
-  commandLine(['node', 'scripts/paradee-runtime.mjs'] + paradeeAbiArgs + ((unpackaged || cloudProfile) ? ['--allow-absent'] : []))
+  commandLine(['node', 'scripts/paradee-runtime.mjs'] + paradeeAbiArgs + (unpackaged ? ['--allow-absent'] : []))
  }
  tasks.named('preBuild').configure { dependsOn verifySpeechInputs }
 }

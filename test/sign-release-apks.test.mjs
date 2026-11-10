@@ -76,13 +76,22 @@ test("key files sign both releases, replace the unsigned files only after the si
   assert.ok(result.ran[1].includes("--apks"));
 });
 
-test("re-verification keeps the recorded runtime profile, and a test-mocks build is never signed for release", async t => {
+test("re-verification takes no profile option; a build recorded for a removed profile, and a test-mocks build, are never signed for release", async t => {
   const { tool } = stubSigner(t);
-  const cloud = product(t);
-  fs.writeFileSync(path.join(cloud, "artifacts/build-config.json"), JSON.stringify({ testMocks: false, runtimeProfile: "cloud" }));
-  const signed = await sign(cloud, ["--keys-dir", keys(t), "--apksigner", tool]);
+  const current = product(t);
+  fs.writeFileSync(path.join(current, "artifacts/build-config.json"), JSON.stringify({ testMocks: false, runtimeProfile: "native" }));
+  const signed = await sign(current, ["--keys-dir", keys(t), "--apksigner", tool]);
   assert.equal(signed.code, 0, signed.err);
-  assert.deepEqual(signed.ran[0], ["scripts/verify-apks.mjs", "--runtime-profile=cloud"]);
+  assert.deepEqual(signed.ran[0], ["scripts/verify-apks.mjs"]);
+  // One runtime profile: artifacts built for the removed Cloud profile or local-embeddings capability are refused.
+  for (const record of [{ testMocks: false, runtimeProfile: "cloud" }, { testMocks: false, runtimeProfile: "native", localEmbeddings: true }]) {
+    const stale = product(t);
+    fs.writeFileSync(path.join(stale, "artifacts/build-config.json"), JSON.stringify(record));
+    const refusedStale = await sign(stale, ["--keys-dir", keys(t), "--apksigner", tool]);
+    assert.equal(refusedStale.code, 1);
+    assert.match(refusedStale.err, /names a removed runtime profile; rebuild/);
+    assert.equal(fs.existsSync(path.join(stale, "artifacts/standalone-release.apk")), false);
+  }
   const mocks = product(t);
   fs.writeFileSync(path.join(mocks, "artifacts/build-config.json"), JSON.stringify({ testMocks: true, runtimeProfile: "native" }));
   const refused = await sign(mocks, ["--keys-dir", keys(t), "--apksigner", tool]);

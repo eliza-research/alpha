@@ -90,7 +90,7 @@ test('preflight names the exact command for each missing build input', t => {
   f.write('android/app/src/main/assets/agent/alpha-source.json', '{"stamp":1}\n');
   // agent:stage-android writes the profile marker; a native build refuses a missing or Cloud one.
   const marker = 'android/app/src/main/assets/agent/alpha-runtime-profile.json';
-  assert.match(preparedRuntimeProblems(f.root, f.source, {embeddingHost, googleHost: () => {}})[0], /not the native profile .*is missing.*Run: npm run agent:stage-android without --runtime-profile=cloud/);
+  assert.match(preparedRuntimeProblems(f.root, f.source, {embeddingHost, googleHost: () => {}})[0], /not the native profile .*is missing.*Run: npm run agent:stage-android \(or /);
   f.write(marker, JSON.stringify({version: 1, runtimeProfile: 'cloud', omittedLocalModels: []}));
   assert.match(preparedRuntimeProblems(f.root, f.source, {embeddingHost, googleHost: () => {}})[0], /not the native profile .*names "cloud"/);
   f.write(marker, JSON.stringify({version: 1, runtimeProfile: 'native'}, null, 2) + '\n');
@@ -143,7 +143,7 @@ test('preflight rejects an unpinned checkout and android:build stops before sync
   f.write('upstream.lock.json', JSON.stringify({commit: 'f'.repeat(40)}));
   assert.match(checkoutProblems(f.root)[0], /vendor\/eliza is at .*pins f{40}\. Run: git submodule update --init vendor\/eliza/);
   // The real entry point exits with status 2 and the guidance, without starting the build.
-  for (const file of ['android-abis.mjs', 'embedding-native-contract.mjs', 'paradee-runtime.mjs', 'voice-host.mjs', 'build-android.mjs', 'update-channel.mjs', 'android-build-preflight.mjs', 'mobile-uuid-adapter.mjs', 'build-policy-source.mjs', 'core-state-patch.mjs', 'stage-embedding-host.mjs', 'build-embedding-host.mjs', 'toolchain.mjs', 'copy-file-clone.mjs'])
+  for (const file of ['android-abis.mjs', 'embedding-native-contract.mjs', 'paradee-runtime.mjs', 'voice-host.mjs', 'build-android.mjs', 'update-channel.mjs', 'android-build-preflight.mjs', 'mobile-uuid-adapter.mjs', 'build-policy-source.mjs', 'core-state-patch.mjs', 'stage-embedding-host.mjs', 'build-embedding-host.mjs', 'toolchain.mjs', 'copy-file-clone.mjs', 'removed-profile-flags.mjs'])
     f.write('scripts/' + file, read('scripts/' + file));
   // build-android.mjs reads the release-signing environment names from the host descriptor.
   f.write('android/consumer-host.json', read('android/consumer-host.json'));
@@ -153,6 +153,14 @@ test('preflight rejects an unpinned checkout and android:build stops before sync
   assert.match(result.stderr, /git submodule update --init vendor\/eliza/);
   assert.equal(fs.existsSync(path.join(f.root, 'artifacts')), false);
   assert.equal(fs.existsSync(path.join(f.root, 'web-dist')), false);
+  // One runtime profile: the removed options fail with one line, in the build and in the preflight, before any work.
+  for (const [script, flag] of [['build-android.mjs', '--runtime-profile=cloud'], ['build-android.mjs', '--local-embeddings'], ['build-android.mjs', '--runtime-profile=native'], ['android-build-preflight.mjs', '--runtime-profile=cloud'], ['android-build-preflight.mjs', '--local-embeddings']]) {
+    const refused = spawnSync(process.execPath, ['scripts/' + script, flag], {cwd: f.root, encoding: 'utf8'});
+    assert.notEqual(refused.status, 0, script + ' ' + flag);
+    assert.match(refused.stderr, /There is one runtime profile now: remove --runtime-profile and --local-embeddings/, script + ' ' + flag);
+    assert.doesNotMatch(refused.stderr, /Android build prerequisites are missing/);
+  }
+  assert.equal(fs.existsSync(path.join(f.root, 'artifacts')), false);
 });
 
 test('worker build reuses only an artifact that verifies against the prepared source', async t => {

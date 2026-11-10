@@ -107,7 +107,7 @@ public final class AlphaKeyboardDictationService extends InputMethodService {
   KeyguardManager lock = getSystemService(KeyguardManager.class);
   AudioManager audio = getSystemService(AudioManager.class);
   PowerManager power = getSystemService(PowerManager.class);
-  return "cloud".equals(BuildConfig.ELIZA_RUNTIME_PROFILE) && fieldAllowed() && !destroyed
+  return fieldAllowed() && !destroyed
    && getCurrentInputConnection() != null && checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
    && lock != null && !lock.isKeyguardLocked() && power != null && power.isInteractive() && audio != null && audio.getMode() == AudioManager.MODE_NORMAL
    && !ai.eliza.plugins.passwords.PasswordSurfaces.visible();

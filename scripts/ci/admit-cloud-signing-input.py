@@ -24,9 +24,10 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def cloud_only(record):
-    local = record.get("localEmbeddings")
-    return record["runtimeProfile"] == "cloud" and (local is None or local is False)
+def single_profile(record):
+    """The one runtime profile. A record from the removed Cloud profile, or one naming the removed
+    local-embeddings capability, is refused."""
+    return record["runtimeProfile"] == "native" and "localEmbeddings" not in record
 
 
 def admit(archive, pin, stage=None):
@@ -79,7 +80,7 @@ def admit(archive, pin, stage=None):
                         private["alphaCommit"] == pin["alphaCommit"] and
                         private["sdkCommit"] == pin["sdkCommit"] and
                         private["versionCode"] == pin["versionCode"] and
-                        private["unsignedApkSHA256"] == apks and cloud_only(private),
+                        private["unsignedApkSHA256"] == apks and single_profile(private),
                         "Private producer identity differs from the reviewed build")
                 require(private.get("updateChannel") == channel, "Private producer update channel differs")
                 for check in ("productSourceGuard", "sdkSourceGuard", "normalPreparation",
@@ -90,8 +91,8 @@ def admit(archive, pin, stage=None):
             require(digest(producer_bytes) == pin["producerManifestSHA256"], "Producer manifest digest differs")
             producer = json.loads(producer_bytes)
             require(producer["source"] == pin["alphaCommit"] and producer["versionCode"] == pin["versionCode"]
-                    and cloud_only(producer),
-                    "Producer source, version or Cloud profile differs")
+                    and single_profile(producer),
+                    "Producer source, version or runtime profile differs")
             require(producer.get("updateChannel") == channel, "Producer update channel differs")
             apk_manifest = data("apk-verification.json")
             require(apk_manifest == data("producer-evidence/artifacts/apk-manifest.json"),
@@ -103,14 +104,14 @@ def admit(archive, pin, stage=None):
             verified = json.loads(apk_manifest)
             require(verified.get("updateChannel") == channel, "Verified update channel differs")
             require(verified["upstream"]["commit"] == pin["sdkCommit"], "Verified SDK commit differs")
-            require(cloud_only(verified) and verified["testMocks"] is False
+            require(single_profile(verified) and verified["testMocks"] is False
                     and verified.get("allowUnpackagedRuntime") is False,
-                    "APK verification is outside the reviewed Cloud profile")
+                    "APK verification is outside the reviewed distribution profile")
             config = json.loads(build)
             require(config.get("updateChannel") == channel, "Build update channel differs")
-            require(cloud_only(config) and config["testMocks"] is False and config["signingRequested"] is False
+            require(single_profile(config) and config["testMocks"] is False and config["signingRequested"] is False
                     and config["versionOverride"]["code"] == str(pin["versionCode"]),
-                    "Build flags or version differ from reviewed unsigned Cloud profile")
+                    "Build flags or version differ from the reviewed unsigned distribution build")
             name_map = json.loads(data("apk-manifest.json"))
             rows = [row for row in verified["results"] if row["mode"] == "release"]
             require(len(rows) == 2 and {row["variant"] for row in rows} == set(VARIANTS),
@@ -129,7 +130,7 @@ def admit(archive, pin, stage=None):
                         and row["bundleAudit"] == "passed" and row["licenceBlockers"] == []
                         and row["releaseAdmission"]["failures"] == []
                         and row["releaseAdmission"]["blockers"] == ["unsigned release"],
-                        f"{variant} is not the reviewed unsigned Cloud release")
+                        f"{variant} is not the reviewed unsigned release")
                 require(row["sha256"] == name_map[name] == apks[variant], f"{variant} APK digests disagree")
                 with bundle.open(member(name, 400_000_000)) as apk:
                     actual = hashlib.file_digest(apk, "sha256").hexdigest()

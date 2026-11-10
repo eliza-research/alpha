@@ -35,7 +35,7 @@ gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact" |
     .expired == false and (.workflow_run.id | tostring) == $run and
     .workflow_run.head_sha == $source and .digest == $digest and
     .size_in_bytes == $size and
-    .name == ("resident-cloud-archive-" + $source + "-" + $run)' >/dev/null
+    .name == ("resident-distribution-archive-" + $source + "-" + $run)' >/dev/null
 gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact/zip" > "$directory/producer.zip"
 unset GH_TOKEN
 test "$(wc -c < "$directory/producer.zip")" -eq "$size"

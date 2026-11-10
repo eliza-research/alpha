@@ -102,8 +102,6 @@ def main():
     target = os.environ.get('ELIZA_ANDROID_BUN_TARGET', 'linux-musl')
     if target == 'android' and os.environ.get('ELIZA_ANDROID_TARGET_ABIS') != 'arm64-v8a':
         raise ValueError('Android Bun acquisition requires explicit ARM64-only selection')
-    if os.environ.get('ALPHA_RUNTIME_PROFILE') == 'cloud' and target != 'android':
-        raise ValueError('Hosted Cloud candidate requires Android Bionic Bun')
     artifacts = read_artifacts(source, target)
     # Fresh per-run directory, outside the runtime source; no unverified cache hits.
     output = Path(os.environ['RUNNER_TEMP']) / 'alpha-pinned-android-bun'

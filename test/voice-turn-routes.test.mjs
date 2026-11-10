@@ -233,7 +233,7 @@ test('voice timing and diagnostics keep the endpoint path and heard outcome as e
 test('the end-of-turn chain keeps Clef off: the local scorer decides, and its path is kept as an enum', async () => {
   const {stripTypeScriptTypes} = await import('./support/strip-types.mjs'), vm = await import('node:vm');
   const source = fs.readFileSync(new URL('../apps/app/src/runtime/voice-selection.ts', import.meta.url), 'utf8').replace(/^import .*;\n/gm, '').replaceAll('export function', 'function').replaceAll('export type', 'type');
-  const box = {cloudRuntimeEnabled: false, testMocksEnabled: true, browserDevProfile: false, connectionController: {}};
+  const box = {testMocksEnabled: true, connectionController: {}};
   vm.runInNewContext('{' + stripTypeScriptTypes(source, {mode: 'strip'}) + '\nglobalThis.selection={clefEndpointStage};}', box);
   const selection = box.selection;
   assert.deepEqual(JSON.parse(JSON.stringify(selection.clefEndpointStage())), {enabled: false, client: null});
@@ -257,7 +257,7 @@ test('the end-of-turn chain keeps Clef off: the local scorer decides, and its pa
 
 test('sources: the adapter wires the endpoint and heard routes through the resident binding; Android allows exactly these routes', () => {
   const adapter = fs.readFileSync(new URL('../apps/app/src/prototype/voice-adapter.ts', import.meta.url), 'utf8');
-  assert.match(adapter, /\.\.\.\(streamingCloud\?\{\}:\{endpoint:\(text:string,signal:AbortSignal\)=>\{current\(\);return semanticEndpoint!\(text,signal\);\}\}\)/);
+  assert.match(adapter, /\.\.\.\(streamingCloud\|\|openMic\?\{\}:\{endpoint:\(text:string,signal:AbortSignal\)=>\{current\(\);return semanticEndpoint!\(text,signal\);\}\}\)/);
   // The chain: the resident's fused scorer, then Clef only through the #663 switch.
   assert.match(adapter, /const semanticEndpoint=streamingCloud\?undefined:createEndpointChain\(\{local:residentEndpoint\(residentRequest\),clef:clefEndpointStage\(\)\}\)!;/);
   assert.match(adapter, /connectionController\.voiceConversationCurrent\(binding,false\)/);

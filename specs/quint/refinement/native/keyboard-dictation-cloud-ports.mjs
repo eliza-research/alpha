@@ -1,7 +1,7 @@
 /** Synthetic credential, PCM and provider ports. No credential or network is read. */
 export const keyboardDictationCloudPorts = {
   'android/content/Context.java': 'package android.content; public class Context {}',
-  'ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java': `package ai.alphacompute.alphaphone;
+  'ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java': `package ai.elizaresearch.alphaphone;
 final class AlphaLocalAgentPlugin {
  static long epoch;
  static long credentialAuthorityEpoch(){return epoch;}
@@ -10,13 +10,13 @@ final class AlphaLocalAgentPlugin {
   return body.call();
  }
 }`,
-  'ai/alphacompute/alphaphone/AlphaCredentialStore.java': `package ai.alphacompute.alphaphone;
+  'ai/elizaresearch/alphaphone/AlphaCredentialStore.java': `package ai.elizaresearch.alphaphone;
 final class AlphaCredentialStore {
  static String provider, credential;
  AlphaCredentialStore(android.content.Context context){}
  String readCredentialSlot(String slot) {return slot.equals("local-agent-provider:v1")?provider:credential;}
 }`,
-  'ai/alphacompute/alphaphone/LocalAgentProviderAdmission.java': `package ai.alphacompute.alphaphone;
+  'ai/elizaresearch/alphaphone/LocalAgentProviderAdmission.java': `package ai.elizaresearch.alphaphone;
 final class LocalAgentProviderAdmission {
  static boolean validProviderToken(String token,int maximum){return token.matches("[!-~]{8,"+maximum+"}");}
  static void requireCloudVoiceSelection(String selected,String account) throws Exception {
@@ -39,7 +39,7 @@ public final class RecordingPcm {
   last=new byte[]{3,4,5,6};return last;
  }
 }`,
-  'ai/alphacompute/alphaphone/BuildConfig.java': `package ai.alphacompute.alphaphone;
+  'ai/elizaresearch/alphaphone/BuildConfig.java': `package ai.elizaresearch.alphaphone;
 final class BuildConfig {static final String ELIZA_RUNTIME_PROFILE="cloud";}`,
   'ai/eliza/voice/CartesiaSpeech.java': `package ai.eliza.voice;
 import java.io.*;

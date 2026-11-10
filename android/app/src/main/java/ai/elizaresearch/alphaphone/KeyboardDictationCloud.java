@@ -69,7 +69,7 @@ final class KeyboardDictationCloud implements CartesiaSpeech.Guard {
     String result = CartesiaSpeech.transcribe(directKey(), wav, this, CartesiaSpeech.HTTPS);
     check(); return result;
    }
-   String host = CloudSpeechPolicy.host(BuildConfig.ELIZA_RUNTIME_PROFILE, false, "production");
+   String host = CloudSpeechPolicy.host(false, "production");
    JSONObject saved = credential();
    String token = saved.getString("token");
    if (token.isEmpty() || token.length() > 16384 || token.contains("\r") || token.contains("\n")) throw new IOException("Sign in again");
@@ -88,7 +88,7 @@ final class KeyboardDictationCloud implements CartesiaSpeech.Guard {
    try (OutputStream output = request.getOutputStream()) { output.write(prefix); output.write(wav); output.write(suffix); }
    int status = request.getResponseCode();
    if (status < 200 || status >= 300) throw new IOException("Cloud dictation unavailable");
-   CloudSpeechPolicy.requireProvider(BuildConfig.ELIZA_RUNTIME_PROFILE, request.getHeaderField("X-Eliza-STT-Provider"));
+   CloudSpeechPolicy.requireProvider(request.getHeaderField("X-Eliza-STT-Provider"));
    ByteArrayOutputStream bytes = new ByteArrayOutputStream();
    try (InputStream input = request.getInputStream()) {
     byte[] buffer = new byte[8192]; int count;

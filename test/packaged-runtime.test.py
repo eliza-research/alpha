@@ -1,6 +1,8 @@
 """Exercise the APK provenance boundary with real ZIP payloads."""
+import contextlib
 import hashlib
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
@@ -214,46 +216,27 @@ class PackagedRuntimeTest(unittest.TestCase):
         self.assertEqual(result['runtime'], 'NOT_PACKAGED')
         self.assertFalse(result['runtimeExecution'])
 
-    def cloud_entries(self):
-        omitted = {'path': 'assets/agent/models/bge-small-en-v1.5-f16.gguf', 'sha256': 'f0b2fef971e8366438bfd2d9aefea1b0115919389448806d290237f638bae999'}
-        self.entries['assets/agent/pglite.data'] = b'database payload'
-        rows = [{'path': name, 'sha256': sha(data), 'size_bytes': len(data)} for name, data in self.entries.items() if name.endswith(('libeliza_bun.so', 'pglite.data', 'agent-bundle.js'))]
-        self.entries['assets/agent/alpha-runtime-profile.json'] = json.dumps({'version': 1, 'runtimeProfile': 'cloud', 'omittedLocalModels': [omitted]}).encode()
-        self.entries['assets/agent/android-agent-runtime-provenance.json'] = json.dumps({'schema': 'eliza.android_agent_runtime_provenance.v1', 'files': rows}).encode()
-        for name, data in self.entries.items():
-            if name.startswith('assets/'):
-                self.write('android/app/src/main/' + name, data)
-        return self.entries
+    def test_removed_cloud_profile_and_local_embedding_options_fail_with_one_line(self):
+        # One runtime profile: the Cloud packaging verifier and its options are gone.
+        apk = self.package()
+        for argv in (['--runtime-profile=cloud', str(apk)], ['--runtime-profile', 'native', str(apk)], ['--local-embeddings', str(apk)]):
+            stderr = io.StringIO()
+            with self.subTest(argv=argv[0]), contextlib.redirect_stderr(stderr), contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(verifier.main(argv), 2)
+            self.assertEqual(len(stderr.getvalue().strip().splitlines()), 1)
+            self.assertIn('There is one runtime profile now', stderr.getvalue())
+        with self.assertRaises(TypeError):
+            verifier.verify(apk, runtime_profile='cloud')
+        with self.assertRaises(TypeError):
+            verifier.verify(apk, local_embeddings=True)
+        self.assertEqual(verifier.verify(apk)['runtimeProfile'], 'native')
 
-    def test_cloud_apk_binds_database_and_producer_provenance_to_staged_bytes(self):
-        entries = dict(self.cloud_entries())
-        self.assertEqual(verifier.verify(self.package(entries), runtime_profile='cloud')['runtimeProfile'], 'cloud')
-        entries['assets/agent/pglite.data'] = b'replaced database'
-        provenance = json.loads(entries['assets/agent/android-agent-runtime-provenance.json'])
-        for row in provenance['files']:
-            if row['path'] == 'assets/agent/pglite.data':
-                row['sha256'] = sha(entries[row['path']])
-        entries['assets/agent/android-agent-runtime-provenance.json'] = json.dumps(provenance).encode()
-        with self.assertRaisesRegex(ValueError, 'differs from admitted staged provenance'):
-            verifier.verify(self.package(entries), runtime_profile='cloud')
-
-    def test_cloud_android_arm64_debug_and_release_match_provenance(self):
-        entries = dict(self.cloud_entries())
-        del entries['lib/x86_64/libeliza_bun.so']
-        name = 'assets/agent/android-agent-runtime-provenance.json'
-        provenance = json.loads(entries[name])
-        provenance['bun'] = {'target': 'android', 'architectures': ['arm64-v8a']}
-        provenance['files'] = [row for row in provenance['files'] if not row['path'].startswith('lib/x86_64/')]
-        entries[name] = json.dumps(provenance).encode()
-        self.write('android/app/src/main/' + name, entries[name])
-        for release in [False, True]:
-            self.assertEqual(verifier.verify(self.package(entries), release=release, runtime_profile='cloud')['runtime'], 'PACKAGED')
-
-    def test_cloud_apk_rejects_local_inference_and_models(self):
-        original = dict(self.cloud_entries())
-        for name in ['lib/x86_64/libggml-cpu.so', 'lib/arm64-v8a/libparadeevoicejni.so', 'assets/agent/models/extra.gguf']:
-            with self.subTest(name=name), self.assertRaisesRegex(ValueError, 'local inference'):
-                verifier.verify(self.package({**original, name: b'unadmitted local payload'}), runtime_profile='cloud')
+    def test_local_models_and_inference_libraries_are_not_refused(self):
+        # The removed Cloud verifier refused any local model or inference library in the APK.
+        # Every build packages them now; entries outside the runtime provenance are not its concern.
+        for name in ['lib/arm64-v8a/libelizainference.so', 'lib/arm64-v8a/libparadeevoicejni.so', 'assets/paradee-voice/model.onnx', 'assets/agent/models/bge-small-en-v1.5-f16.gguf']:
+            with self.subTest(name=name):
+                self.assertEqual(verifier.verify(self.package({**self.entries, name: b'local payload'}))['runtime'], 'PACKAGED')
 
     def test_duplicate_zip_entries_rejected(self):
         self.package()
@@ -263,87 +246,6 @@ class PackagedRuntimeTest(unittest.TestCase):
                 archive.writestr('assets/agent/agent-bundle.js', b'duplicate')
         with self.assertRaisesRegex(ValueError, 'Duplicate APK entries'):
             verifier.verify(self.apk)
-
-
-    def local_entries(self):
-        entries=dict(self.cloud_entries())
-        # ZIP-only fixtures stub the separately tested canonical native source gate.
-        source_gate=verifier.verify_local_embedding_source
-        verifier.verify_local_embedding_source=lambda root: None
-        self.addCleanup(setattr,verifier,'verify_local_embedding_source',source_gate)
-        entries.pop('lib/x86_64/libeliza_bun.so')
-        model=b'synthetic embedding model, not qualified device evidence'
-        old=verifier.LOCAL_EMBEDDING_MODEL
-        verifier.LOCAL_EMBEDDING_MODEL={**old,'sha256':sha(model)}
-        self.addCleanup(setattr,verifier,'LOCAL_EMBEDDING_MODEL',old)
-        entries[old['path']]=model
-        libraries=[]
-        for name in ['libelizainference.so','libelizavoicejni.so','libc++_shared.so']:
-            data=('synthetic '+name).encode();entries['lib/arm64-v8a/'+name]=data
-            self.write('android/app/src/main/jniLibs/arm64-v8a/'+name,data)
-            libraries.append({'name':name,'sha256':sha(data)})
-        record={'abi':'arm64-v8a','jniIdentityRelocated':True,'model':{'sha256':sha(model),'dimensions':384},'libraries':libraries}
-        self.write('android/embedding-host/qualified-host.json',json.dumps(record).encode())
-        self.record=record
-        entries['assets/agent/alpha-runtime-profile.json']=json.dumps({'version':1,'runtimeProfile':'cloud','omittedLocalModels':[],'localEmbeddings':True}).encode()
-        provenance=json.loads(entries['assets/agent/android-agent-runtime-provenance.json'])
-        provenance['bun']={'target':'android','architectures':['arm64-v8a']}
-        provenance['files']=[row for row in provenance['files'] if not row['path'].startswith('lib/x86_64/')]
-        provenance['files'].append({'path':old['path'],'sha256':sha(model),'size_bytes':len(model)})
-        entries['assets/agent/android-agent-runtime-provenance.json']=json.dumps(provenance).encode()
-        for name,data in entries.items():
-            if name.startswith('assets/'):self.write('android/app/src/main/'+name,data)
-        return entries
-
-    def test_explicit_capability_accepts_exact_model_and_three_libraries(self):
-        entries=self.local_entries();result=verifier.verify(self.package(entries),runtime_profile='cloud',local_embeddings=True)
-        self.assertEqual(result['runtime'],'PACKAGED');self.assertFalse(result['runtimeExecution'])
-
-    def test_capability_cannot_be_assumed_from_assets(self):
-        with self.assertRaisesRegex(ValueError,'profile mismatch'):
-            verifier.verify(self.package(self.local_entries()),runtime_profile='cloud')
-
-    def test_missing_library_rejected(self):
-        entries=self.local_entries();entries.pop('lib/arm64-v8a/libelizavoicejni.so')
-        with self.assertRaises(KeyError):verifier.verify(self.package(entries),runtime_profile='cloud',local_embeddings=True)
-
-    def test_wrong_model_rejected(self):
-        entries=self.local_entries();entries[verifier.LOCAL_EMBEDDING_MODEL['path']]=b'wrong'
-        with self.assertRaises(ValueError):verifier.verify(self.package(entries),runtime_profile='cloud',local_embeddings=True)
-
-    def test_stale_native_qualification_rejected(self):
-        entries=self.local_entries();self.record['jniIdentityRelocated']=False;self.write('android/embedding-host/qualified-host.json',json.dumps(self.record).encode())
-        with self.assertRaisesRegex(ValueError,'ABI or JNI identity differs'):verifier.verify(self.package(entries),runtime_profile='cloud',local_embeddings=True)
-
-    def test_speech_or_extra_model_rejected(self):
-        entries=self.local_entries()
-        for name in ['assets/paradee-voice/voice.gguf','assets/agent/models/chat.gguf','lib/arm64-v8a/libparadeevoicejni.so']:
-            with self.subTest(name=name),self.assertRaisesRegex(ValueError,'unadmitted local inference'):
-                verifier.verify(self.package({**entries,name:b'extra'}),runtime_profile='cloud',local_embeddings=True)
-
-    def test_model_free_cloud_rejected_when_local_capability_requested(self):
-        with self.assertRaisesRegex(ValueError,'profile mismatch'):verifier.verify(self.package(self.cloud_entries()),runtime_profile='cloud',local_embeddings=True)
-
-    def test_production_bge_pin_unchanged(self):
-        self.assertEqual(verifier.LOCAL_EMBEDDING_MODEL['sha256'],'f0b2fef971e8366438bfd2d9aefea1b0115919389448806d290237f638bae999')
-
-    def test_canonical_native_source_failure_refuses_matching_payload(self):
-        entries=self.local_entries()
-        def rejected(root):
-            raise ValueError('Local embedding source qualification failed')
-        verifier.verify_local_embedding_source=rejected
-        with self.assertRaisesRegex(ValueError,'source qualification failed'):
-            verifier.verify(self.package(entries),runtime_profile='cloud',local_embeddings=True)
-
-    def test_missing_canonical_source_checker_refuses_matching_payload(self):
-        entries=self.local_entries()
-        # Restore the actual subprocess gate: the fixture has no qualified checker/source.
-        import importlib.util
-        spec=importlib.util.spec_from_file_location('real_verifier',Path(__file__).resolve().parents[1]/'scripts/verify-packaged-runtime.py')
-        real=importlib.util.module_from_spec(spec);spec.loader.exec_module(real)
-        verifier.verify_local_embedding_source=real.verify_local_embedding_source
-        with self.assertRaises(FileNotFoundError):
-            verifier.verify(self.package(entries),runtime_profile='cloud',local_embeddings=True)
 
 
 if __name__ == '__main__':

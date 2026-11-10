@@ -173,8 +173,7 @@ GraphHopper setup is superseded for production.
    `--allow-unpackaged-runtime` is non-distributable.
 
    Install the intended variant through the existing owner-controlled update
-   process. Both variants use `ai.alphacompute.alphaphone` and replace each other;
-   the previous `ai.elizaresearch.alphaphone` identity is a separate app. Confirm
+   process. Both variants retain `ai.elizaresearch.alphaphone` and replace each other. Confirm
    the current package, signing and sign-in callback registration before testing.
    Sign in through Alpha with the provisioned production plan account, open Maps,
    and verify actual Google imagery, search, place details and a route. Grant

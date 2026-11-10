@@ -112,7 +112,7 @@ test('a floor advancing during the build refuses the final receipt without alter
   assert.equal(fs.existsSync(path.join(f.root, 'test-results/refused.json')), false);
 });
 
-test('real workflow keeps main candidates unsigned and isolated while preserving explicit qualification and Cloud inputs', () => {
+test('real workflow keeps main candidates unsigned and isolated while preserving explicit qualification and dispatched versions', () => {
   const workflow = YAML.parse(fs.readFileSync(path.join(root, '.github/workflows/resident-android.yml'), 'utf8'));
   const evaluate = (text, github, inputs = {}, vars = {}) => {
     const expression = text.startsWith('${{') ? text.slice(3, -2) : text;
@@ -123,18 +123,21 @@ test('real workflow keeps main candidates unsigned and isolated while preserving
   const build = workflow.jobs.build;
   assert.equal(evaluate(build.if, main), true);
   assert.equal(evaluate(build.env.ALPHA_APP_UPDATE_CANDIDATE, main), '1');
-  assert.equal(evaluate(build.env.ALPHA_RUNTIME_PROFILE, main), 'native');
+  assert.equal(build.env.ALPHA_RUNTIME_PROFILE, undefined);
+  assert.equal(build.env.ELIZA_ANDROID_BUN_TARGET, 'linux-musl');
+  assert.equal(build.env.ELIZA_ANDROID_TARGET_ABIS, 'arm64-v8a,x86_64');
   assert.equal(evaluate(workflow.concurrency['cancel-in-progress'], main), true);
   // One template string holds two GHA substitutions; test its auto-main key directly.
   const group = workflow.concurrency.group.match(/\$\{\{([\s\S]*?)\}\}/)[1];
   assert.equal(evaluate(group, main), evaluate(group, {...main, sha: 'b'.repeat(40)}));
-  const dispatch = {...main, event_name: 'workflow_dispatch'}, cloud = {operation: 'build', runtime_profile: 'cloud', build_version_code: '44'};
-  assert.equal(evaluate(build.if, dispatch, cloud), true);
-  assert.equal(evaluate(build.env.ALPHA_APP_UPDATE_CANDIDATE, dispatch, cloud), '0');
-  assert.equal(evaluate(build.env.ALPHA_RUNTIME_PROFILE, dispatch, cloud), 'cloud');
-  assert.equal(evaluate(build.env.ELIZAOS_VERSION_CODE, dispatch, cloud), '44');
-  assert.equal(evaluate(build.env.ELIZAOS_VERSION_CODE, dispatch, {...cloud, runtime_profile: 'native'}), '');
-  assert.notEqual(evaluate(group, main), evaluate(group, dispatch, cloud));
+  const dispatch = {...main, event_name: 'workflow_dispatch'}, manual = {operation: 'build', build_version_code: '44'};
+  assert.equal(evaluate(build.if, dispatch, manual), true);
+  assert.equal(evaluate(build.env.ALPHA_APP_UPDATE_CANDIDATE, dispatch, manual), '0');
+  assert.equal(workflow.on.workflow_dispatch.inputs.runtime_profile, undefined);
+  assert.equal(workflow.on.workflow_dispatch.inputs.local_embeddings, undefined);
+  assert.equal(evaluate(build.env.ELIZAOS_VERSION_CODE, dispatch, manual), '44');
+  assert.equal(evaluate(build.env.ELIZAOS_VERSION_CODE, main), '');
+  assert.notEqual(evaluate(group, main), evaluate(group, dispatch, manual));
   const develop = {...main, ref: 'refs/heads/develop'};
   assert.equal(evaluate(build.if, develop), false);
   assert.equal(evaluate(build.if, develop, {}, {ELIZA_RESIDENT_QUALIFICATION: 'push'}), true);
@@ -146,7 +149,7 @@ test('real workflow keeps main candidates unsigned and isolated while preserving
   assert.equal(candidate.if, "env.ALPHA_APP_UPDATE_CANDIDATE == '1'");
   assert.equal(candidate.with.path, 'test-results/resident-ci-distribution/');
   assert.equal(build.steps.find(step => step.id === 'apks').with.path,
-    "${{ env.ALPHA_RUNTIME_PROFILE == 'cloud' && 'test-results/resident-ci-cloud/' || 'test-results/resident-ci-archive/' }}");
+    'test-results/resident-ci-archive/');
   assert.equal(workflow.jobs.native.needs, 'build');
   assert.equal(workflow.jobs.native.env.ALPHA_RESIDENT_MANIFEST_SHA256, '${{ needs.build.outputs.manifest_sha256 }}');
 });

@@ -21,7 +21,7 @@ test('publication workflow preserves protected review, exact source and verifica
   assert.match(workflow.jobs.admit.if,/inputs.workflow_commit == github.sha/);
   const steps=publish.steps;
   assert(steps.filter(step=>step.uses?.startsWith('actions/checkout@')).every(step=>step.with['persist-credentials']===false));
-  const verification=steps.findIndex(step=>step.run?.includes('node scripts/verify-apks.mjs --runtime-profile=cloud --cloud-voice-evidence='));
+  const verification=steps.findIndex(step=>step.run?.includes('node scripts/verify-apks.mjs --cloud-voice-evidence='));
   const delivery=steps.findIndex(step=>step.run?.includes('node scripts/deliver-app-update.mjs --variant launcher'));
   assert(verification>=0&&delivery>verification);
   assert.match(steps[verification].run,/qualified-stage\/cloud-voice.json/);

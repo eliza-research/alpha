@@ -14,7 +14,7 @@ function fixture({ready=true,cloud=false,hold=false,cloudHold=false,canSpeak=()=
   play:async({playbackId})=>{const end=()=>{for(const l of f.listeners.playbackEnded??[])l({playbackId});};if(hold)f.end=end;else setTimeout(end,0);},cancel:async()=>{},stopPlayback:async()=>{}};
  const document=Object.assign(new EventTarget(),{hidden:false,documentElement:{dataset:{}}});
  const box={AbortController,DOMException,EventTarget,crypto,console,setTimeout,clearTimeout,queueMicrotask,document,Capacitor:{isNativePlatform:()=>true,isPluginAvailable:()=>true},registerPlugin:()=>native,planLocalSpeech:text=>[text],nativeVoiceTurnId:()=>undefined,
-  connectionController:{getSnapshot:()=>({}),getCloudClient:()=>({sessionId:f.account,credentialId:f.account}),getCloudEnvironment:()=>cloud?'production':undefined,subscribe:()=>()=>{}},cloudRuntimeEnabled:cloud,speakAppText:async(text,signal)=>{f.cloud.push(text);if(cloudHold)await new Promise((resolve,reject)=>f.pending.push({text,signal,resolve,reject}));}};
+  connectionController:{getSnapshot:()=>({}),getCloudClient:()=>({sessionId:f.account,credentialId:f.account}),getCloudEnvironment:()=>cloud?'production':undefined,subscribe:()=>()=>{}},speechRoute:()=>cloud?'cloud':'device',speakAppText:async(text,signal)=>{f.cloud.push(text);if(cloudHold)await new Promise((resolve,reject)=>f.pending.push({text,signal,resolve,reject}));}};
  load(box,'.eliza/client-features/packages/voice/src/native-speech-request.ts','createNativeSpeechRequests');
  load(box,'apps/app/src/local-speech-playback.ts','speakLocalText');
  load(box,'apps/app/src/runtime/local-voice.ts','createOnDeviceVoice');
@@ -64,7 +64,7 @@ test('speech that is unavailable with the screen on still turns voice guidance o
  assert.equal(voice.enabled,false);assert.equal(f.failed.length,1);assert.match(String(f.failed[0]),/On-device navigation speech is unavailable/);
 });
 
-test('the Cloud QA profile speaks navigation through the app Cloud route, not the on-device engine',async()=>{
+test('on the run-time Cloud route, navigation is spoken through the app speaker (which falls back to this phone), not the engine directly',async()=>{
  const {f,voice}=fixture({cloud:true});
  voice.update('step-1','Turn left');await settle();
  assert.deepEqual(f.cloud,['Turn left']);assert.deepEqual(f.spoken,[]);assert.equal(voice.enabled,true);

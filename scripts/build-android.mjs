@@ -28,6 +28,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {readUpdateChannel} from './update-channel.mjs';
+import {refuseRemovedProfileFlags} from './removed-profile-flags.mjs';
 
 const FLAG = "ELIZA_DEV_ALLOW_TEST_MOCKS";
 const FLAG_ENV_NAMES = [FLAG, `VITE_${FLAG}`, `ORG_GRADLE_PROJECT_${FLAG}`];
@@ -48,18 +49,16 @@ const USAGE = "Usage: npm run android:build -- [--test-mocks] [--allow-unpackage
 
 export function parseBuildArgs(argv) {
   const options = { testMocks: false, allowUnpackagedRuntime: false, skipInstrumentation: false };
+  // One profile: every build packages local speech and embeddings.
+  refuseRemovedProfileFlags(argv);
   for (const arg of argv) {
     if (arg === "--test-mocks") options.testMocks = true;
-    else if (arg === "--runtime-profile=cloud") options.runtimeProfile = "cloud";
-    else if (arg === "--local-embeddings") options.localEmbeddings = true;
     else if (arg === "--skip-instrumentation") options.skipInstrumentation = true;
     else if (arg === "--allow-unpackaged-runtime") options.allowUnpackagedRuntime = true;
     // Checked by the preflight only (it receives the same arguments): a reviewed upstream rollback.
     else if (arg === "--allow-older-upstream-pin") options.allowOlderUpstreamPin = true;
     else throw new Error(`Unknown option ${arg}. ${USAGE}`);
   }
-  if (options.runtimeProfile === "cloud" && (options.testMocks || options.allowUnpackagedRuntime)) throw Error("Cloud profile requires a genuine packaged resident and test mocks off");
-  if (options.localEmbeddings && options.runtimeProfile !== "cloud") throw Error("--local-embeddings requires the Cloud profile");
   if (options.testMocks && options.skipInstrumentation) throw new Error("Test-mocks builds require instrumentation APKs");
   return options;
 }
@@ -68,13 +67,12 @@ export function parseBuildArgs(argv) {
  * Child environment for a build: the flag is set only for --test-mocks, and a test-mocks build
  * never receives the release-signing variables, so its releases are never signed with the release key.
  */
-export function buildEnv(base, { testMocks, runtimeProfile = "native" }) {
+export function buildEnv(base, { testMocks }) {
   const env = { ...base };
   if (testMocks) for (const name of SIGNING_ENV) delete env[name];
   for (const name of FLAG_ENV_NAMES) delete env[name];
-  delete env.ELIZA_LOCAL_EMBEDDINGS;
-  delete env.ORG_GRADLE_PROJECT_ELIZA_LOCAL_EMBEDDINGS;
-  env.VITE_ELIZA_RUNTIME_PROFILE = runtimeProfile;
+  // The removed profile switches never reach Vite or Gradle from a caller's environment.
+  for (const name of ["ELIZA_LOCAL_EMBEDDINGS", "ORG_GRADLE_PROJECT_ELIZA_LOCAL_EMBEDDINGS", "ORG_GRADLE_PROJECT_ELIZA_RUNTIME_PROFILE", "VITE_ELIZA_RUNTIME_PROFILE"]) delete env[name];
   if (testMocks) {
     env[FLAG] = "1";
     env[`VITE_${FLAG}`] = "1";
@@ -82,8 +80,8 @@ export function buildEnv(base, { testMocks, runtimeProfile = "native" }) {
   return env;
 }
 
-export function gradleFlagArgs({ testMocks, allowUnpackagedRuntime = false, runtimeProfile = "native", localEmbeddings = false }) {
-  return [...(localEmbeddings ? ["-PELIZA_LOCAL_EMBEDDINGS=1"] : []),...(runtimeProfile === "cloud" ? ["-PELIZA_RUNTIME_PROFILE=cloud"] : []),`-P${FLAG}=${testMocks ? "1" : "0"}`, `-PELIZA_ALLOW_UNPACKAGED_RUNTIME=${allowUnpackagedRuntime ? "1" : "0"}`];
+export function gradleFlagArgs({ testMocks, allowUnpackagedRuntime = false }) {
+  return [`-P${FLAG}=${testMocks ? "1" : "0"}`, `-PELIZA_ALLOW_UNPACKAGED_RUNTIME=${allowUnpackagedRuntime ? "1" : "0"}`];
 }
 
 export const outputDirectory = ({ testMocks }) => (testMocks ? "artifacts/test-mocks" : "artifacts");
@@ -185,7 +183,7 @@ export function sbomArgs(outDir, root = process.cwd()) {
 async function main() {
   const options = parseBuildArgs(process.argv.slice(2));
   const channel=readUpdateChannel(process.env,JSON.parse(fs.readFileSync(new URL('../app.config.json',import.meta.url),'utf8')).updateManifestUrl);
-  if(channel.kind==='private-qa'&&(options.runtimeProfile!=='cloud'||options.testMocks||options.allowUnpackagedRuntime))throw Error('Private update QA requires the complete Cloud profile');
+  if(channel.kind==='private-qa'&&(options.testMocks||options.allowUnpackagedRuntime))throw Error('Private update QA requires a complete packaged build with test mocks off');
   // A partial signing set would silently produce unsigned releases; refuse it up front.
   const partial = partialSigningProblem(process.env);
   if (partial) throw new Error(partial);
@@ -212,7 +210,7 @@ async function main() {
  * signing variable names, build record and its own APK verification.
  */
 export function consumerBuildOptions(options, env, root, updateChannel = readUpdateChannel(env, JSON.parse(fs.readFileSync(new URL('../app.config.json',import.meta.url),'utf8')).updateManifestUrl)) {
-  if(updateChannel.kind==='private-qa'&&(options.runtimeProfile!=='cloud'||options.testMocks||options.allowUnpackagedRuntime))throw Error('Private update QA requires the complete Cloud profile');
+  if(updateChannel.kind==='private-qa'&&(options.testMocks||options.allowUnpackagedRuntime))throw Error('Private update QA requires a complete packaged build with test mocks off');
   return {
     root,
     environment: env,
@@ -236,9 +234,9 @@ export function consumerBuildOptions(options, env, root, updateChannel = readUpd
       metadata: {
         createdAt: new Date().toISOString(),
         testMocks: options.testMocks,
-        runtimeProfile: options.runtimeProfile || "native",
+        // Constant since the Cloud profile was removed; record readers still expect the field.
+        runtimeProfile: "native",
         updateChannel,
-        ...(options.localEmbeddings ? {localEmbeddings:true} : {}),
         // The renderer reads VITE_MAPS_BASE_URL only in test-mocks builds; every other build uses Cloud Maps.
         mapsProvider: options.testMocks && env.VITE_MAPS_BASE_URL ? "regional-gateway" : "cloud",
         signingRequested: signingRequested(env),
@@ -247,9 +245,7 @@ export function consumerBuildOptions(options, env, root, updateChannel = readUpd
     },
     verify: { command: "node", args: ["scripts/verify-apks.mjs",
       ...(options.testMocks ? ["--test-mocks"] : []),
-      ...(options.allowUnpackagedRuntime ? ["--allow-unpackaged-runtime"] : []),
-      ...(options.runtimeProfile === "cloud" ? ["--runtime-profile=cloud"] : []),
-      ...(options.localEmbeddings ? ["--local-embeddings"] : [])] },
+      ...(options.allowUnpackagedRuntime ? ["--allow-unpackaged-runtime"] : [])] },
     archive: null,
   };
 }
@@ -268,7 +264,7 @@ function build(options, baseEnv, run, buildAndroidConsumer) {
   const flagsFile = "web-dist/build-flags.json";
   if (fs.existsSync(flagsFile)) {
     const flags = JSON.parse(fs.readFileSync(flagsFile, "utf8"));
-    if ((flags.runtimeProfile || "native") !== (options.runtimeProfile || "native")) throw Error("Web runtime profile differs from Android profile");
+    if (flags.runtimeProfile !== undefined) throw Error(`${flagsFile} names a runtime profile; rebuild the renderer (there is one profile now)`);
     if (flags.testMocks !== options.testMocks)
       throw new Error(`${flagsFile} records testMocks=${flags.testMocks}; expected ${options.testMocks}`);
   }

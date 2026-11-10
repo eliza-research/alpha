@@ -628,7 +628,6 @@ private static final class ResidentAttachDiagnostic {
   // authenticated by WorkflowWorkerAssets.install, including every indexed hash.
   java.io.File google=nativeHostResources==null?null:new java.io.File(nativeHostResources,"google-host.mjs");
   if(google!=null&&google.isFile())env.put("ELIZA_NATIVE_GOOGLE_HOST_MODULE",google.getCanonicalPath());
-  else if("cloud".equals(BuildConfig.ELIZA_RUNTIME_PROFILE))throw new java.io.IOException("Native Cloud routing module unavailable");
   // The owner's Gmail changes / Calendar edits switches (setGoogleAgentAccess), read before every agent write.
   env.put("ALPHA_GOOGLE_AGENT_ACCESS_FILE",GoogleAgentAccessFile.in(context.getFilesDir()).getAbsolutePath());
   try {

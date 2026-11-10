@@ -2928,10 +2928,10 @@
         "malformedReplyStillWipesAudioTest"
       ],
       "sources": [
-        "android/app/src/main/java/ai/alphacompute/alphaphone/KeyboardDictationCloud.java",
-        "android/app/src/main/java/ai/alphacompute/alphaphone/KeyboardDictationPolicy.java",
-        "android/app/src/main/java/ai/alphacompute/alphaphone/CloudSpeechPolicy.java",
-        "android/app/src/main/java/ai/alphacompute/alphaphone/CloudDeployment.java"
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/KeyboardDictationCloud.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/KeyboardDictationPolicy.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CloudSpeechPolicy.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CloudDeployment.java"
       ],
       "abstractions": [
         "Closed credential, PCM, provider and HTTPS ports exercise one transport call per trace. Direct guard and PCM decoding have declared synthetic boundaries. Installed authority and provider acceptance remain separate."

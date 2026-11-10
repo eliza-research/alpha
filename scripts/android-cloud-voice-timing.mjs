@@ -80,7 +80,8 @@ export function sanitizeStreaming(value) {
   }) };
 }
 
-/** build-flags.json names runtimeProfile only for cloud builds; a readable file without it is native. */
+/** There is one runtime profile: a readable build-flags.json is native. An APK from before the
+ * profiles were merged may still name `cloud`; it is reported as such. */
 export function sanitizeBuild(value) {
   const testMocks = typeof value?.testMocks === 'boolean' ? value.testMocks : null;
   const runtimeProfile = ['native', 'cloud'].includes(value?.runtimeProfile) ? value.runtimeProfile
