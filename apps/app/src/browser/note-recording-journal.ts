@@ -8,7 +8,7 @@ const key=(id:string)=>'alpha.browser.note-recording.v1:'+encodeURIComponent(id)
 const clipKey=(id:string,segmentId:string)=>key(id)+':segment:'+encodeURIComponent(segmentId);
 function manifest(raw:string,id:string,binding:Binding):Manifest{
  const value=JSON.parse(raw) as Manifest;
- if(value?.version!==1||value.recordingId!==id||JSON.stringify(value.binding)!==JSON.stringify(binding)||!Array.isArray(value.segments)||!value.segments.length||value.segments.length>10000||new Set(value.segments.map(row=>row.segmentId)).size!==value.segments.length||value.segments.some(row=>typeof row.segmentId!=='string'||!row.segmentId||row.segmentId.length>160||!Number.isFinite(row.durationMs)||row.durationMs<=0||row.durationMs>MAX_SEGMENT_MS||row.text!==undefined&&(typeof row.text!=='string'||row.text.length>64000)||row.offsetMs!==undefined&&(!Number.isFinite(row.offsetMs)||row.offsetMs<0)))throw Error('Recording segment recovery needs review.');
+ if(value?.version!==1||value.recordingId!==id||value.binding?.ownerDigest!==binding.ownerDigest||value.binding?.folderId!==binding.folderId||!Array.isArray(value.segments)||!value.segments.length||value.segments.length>10000||new Set(value.segments.map(row=>row.segmentId)).size!==value.segments.length||value.segments.some(row=>typeof row.segmentId!=='string'||!row.segmentId||row.segmentId.length>160||!Number.isFinite(row.durationMs)||row.durationMs<=0||row.durationMs>MAX_SEGMENT_MS||row.text!==undefined&&(typeof row.text!=='string'||row.text.length>64000)||row.offsetMs!==undefined&&(!Number.isFinite(row.offsetMs)||row.offsetMs<0)))throw Error('Recording segment recovery needs review.');
  return value;
 }
 /** Pending browser capture only. The shared document store owns transactions;
@@ -29,7 +29,7 @@ export function createNoteRecordingJournal(documents:Documents){
     if(before?.raw===null)throw Error('Recording recovery was retired.');
     if(before){
      const prior=manifest(before.raw!,id,binding);
-     if(JSON.stringify(prior.segments.map(({text:_text,...row})=>row))!==JSON.stringify(value.segments.map(({text:_text,...row})=>row)))throw Error('Recording segments changed.');
+     if(prior.segments.length!==value.segments.length||prior.segments.some((row,index)=>row.segmentId!==value.segments[index].segmentId||row.durationMs!==value.segments[index].durationMs||row.offsetMs!==value.segments[index].offsetMs))throw Error('Recording segments changed.');
      value.segments=value.segments.map((row,index)=>({...row,...(prior.segments[index].text!==undefined?{text:prior.segments[index].text}:{})}));
     }
     return {raw:JSON.stringify(value),result:undefined};

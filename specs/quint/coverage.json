@@ -12582,7 +12582,7 @@
       "reviewStatus": "state-audit-required",
       "stateAnchors": [],
       "integrationReview": "Pending browser recording segments retain byte boundaries and completed text through restart. Regression tests cover late completion, incomplete-segment retry and retirement. The media-admission model stops at capture admission; it does not prove persistence or arbitrary crash recovery.",
-      "sha256": "eb124c09c0fb77ce7e54ba14793e145bfb03e5544a76d0c1e07f2cddb5a9f087"
+      "sha256": "b82d81e6d8508285533ba5b095b7c8947e00e54d415ad65b659d98cb63dc3e38"
     },
     {
       "path": "apps/app/src/browser/notice-action.ts",

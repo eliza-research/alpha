@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "3504bfbe6d264d1bf05bbc2224708131d41f3a6b",
-  "ledgerSha256": "48882429947564d2067ffe095e0ecf1cecf3a1f64fdad3d8bd3ff675fc02c8f1",
+  "ledgerSha256": "da68cc161658af660924f636f2195bf974ad143f94b7050c5e19dc2d30546dfa",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -31474,7 +31474,7 @@
     },
     {
       "path": "apps/app/src/browser/note-recording-journal.ts",
-      "sha256": "eb124c09c0fb77ce7e54ba14793e145bfb03e5544a76d0c1e07f2cddb5a9f087",
+      "sha256": "b82d81e6d8508285533ba5b095b7c8947e00e54d415ad65b659d98cb63dc3e38",
       "allocatedModels": [
         "NotesLifecycle",
         "NotesRecorderMediaAdmission"
@@ -226172,6 +226172,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "2471148a50da43ec7478def7a01aba7308ed662b3f23d2d493de201047befe31"
+    "sha256": "56bc7a1ef4e524f3b551f322b28e17ba5eb8c48e25f3dd617c0889439b59f21b"
   }
 }

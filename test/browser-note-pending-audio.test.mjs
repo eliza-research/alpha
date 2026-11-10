@@ -101,3 +101,15 @@ test('successful discard and commit retire pending segment bytes',async()=>{
   assert.equal((await f.make().noteRecordingStatus()).state,'idle');
  }
 });
+
+test('pending recording recovery compares binding fields independently of property order',async()=>{
+ const f=fixture(),voice=f.make();
+ await voice.startNoteRecording({folderId:null,ownerDigest:binding.ownerDigest});
+ await voice.stopNoteRecording({recordingId:id});
+ await voice.setNoteSegmentText({recordingId:id,segmentId:id,text:'Words retained across reload'});
+ const recovered=f.make(),status=await recovered.noteRecordingStatus();
+ assert.deepEqual(status.binding,binding);
+ assert.equal(status.segments[0].text,'Words retained across reload');
+ await recovered.discardNoteRecording({recordingId:id});
+ assert([...f.documents.values()].every(row=>row.raw===null));
+});
