@@ -110,3 +110,23 @@ test('a provider change clears a held provider origin and preserves an explicit 
  google.instance.activateProvider(google.config,google.backend);
  assert.deepEqual(google.instance.snapshot().origin,point);assert.equal(google.instance.snapshot().originLabel,'Explicit origin');
 });
+
+
+test('live non-Google selections require the controller and current connection to agree without admitting saved or Google content',()=>{
+ const f=controller('regional'),place={origin:'provider',providerId:'regional'};
+ const current=()=>({controller:f.instance.snapshot().provider,connection:f.config});
+ const google=id=>provider.isGoogleMapsProvider(id,customGoogle);
+ assert.equal(provider.isLocalMapsPlace(place,undefined,google,current()),true);
+ assert.equal(provider.isLocalMapsPlace(place,undefined,google,{...current(),connection:{...f.config,providerId:'changed'}}),false);
+ assert.equal(provider.isLocalMapsPlace(place,undefined,google,{...current(),connection:{status:'unconfigured'}}),false);
+ for(const providerId of ['eliza-cloud-google','deployment-google']){
+  const g=controller(providerId),live={controller:g.instance.snapshot().provider,connection:g.config};
+  assert.equal(provider.isLocalMapsPlace({origin:'provider',providerId},undefined,google,live),false);
+ }
+ assert.equal(provider.isLocalMapsPlace({...place,origin:'saved'},undefined,google,current()),false);
+ assert.equal(provider.isLocalMapsPlace({origin:'saved',providerId:'unknown-legacy-source'},undefined,google,current()),false);
+ f.instance.activateProvider({...f.config,providerId:'changed'},f.backend);
+ assert.equal(provider.isLocalMapsPlace(place,undefined,google,current()),false);
+ f.instance.activateProvider({status:'unconfigured'});
+ assert.equal(provider.isLocalMapsPlace(place,undefined,google,current()),false);
+});

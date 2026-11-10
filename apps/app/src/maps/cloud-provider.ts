@@ -1,3 +1,4 @@
+import type { ProviderConfig } from './contracts';
 import type { CloudMapsCoverage } from '../../../../.eliza/client-features/plugins/plugin-maps/src/client/cloud-provider.ts';
 export * from '../../../../.eliza/client-features/plugins/plugin-maps/src/client/cloud-provider.ts';
 
@@ -17,8 +18,12 @@ export function isLocalMapsPlace(
  place: {origin: 'manual' | 'location' | 'saved' | 'provider'; providerId?: string} | undefined,
  verifiedProviderId?: string,
  isGoogleProvider: (providerId: string) => boolean = isGoogleMapsProvider,
+ live?: {controller: ProviderConfig; connection: ProviderConfig},
 ): boolean {
  if (!place) return false;
  if (place.origin === 'manual' || place.origin === 'location' || !place.providerId) return true;
- return place.providerId === verifiedProviderId && !isGoogleProvider(place.providerId);
+ const liveProviderId = place.origin === 'provider' && live?.controller.status === 'configured'
+  && live.connection.status === 'configured' && live.controller.providerId === live.connection.providerId
+  ? live.controller.providerId : undefined;
+ return place.providerId === (verifiedProviderId || liveProviderId) && !isGoogleProvider(place.providerId);
 }

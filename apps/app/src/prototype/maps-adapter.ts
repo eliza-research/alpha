@@ -59,9 +59,13 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     if (isGoogleMapsCoverage(coverage)) googleProviders.add(coverage!.providerId);
     return isGoogleMapsCoverage(coverage) || isGoogleProvider(mapsController?.snapshot().route.value?.providerId);
   };
-  const localPlace = (view: MapsScreenView) => isLocalMapsPlace(
-    view.place, regionalMap()?.providerId || cloudMapsCoverage()?.providerId, isGoogleProvider,
-  );
+  const localPlace = (view: MapsScreenView) => {
+    const controller = mapsController?.snapshot().provider;
+    return isLocalMapsPlace(
+      view.place, regionalMap()?.providerId || cloudMapsCoverage()?.providerId, isGoogleProvider,
+      controller ? {controller, connection: mapsConnection().config} : undefined,
+    );
+  };
   const navigationVoice = new NavigationVoice(
     error => screen.notify((error instanceof Error ? error.message + ' ' : '') + 'Voice guidance paused. Tap Enable voice guidance to retry.'),
     () => !googleContent(),
