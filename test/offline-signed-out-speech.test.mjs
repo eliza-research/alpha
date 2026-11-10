@@ -16,14 +16,15 @@ const strip = (path, keep) => stripTypeScriptTypes(fs.readFileSync(path, 'utf8')
 test('signed out and offline, every voice route request stays on this device', () => {
   const network = offlineNetwork(), bytes = new Map([['alphaphone:voice-route:v1', JSON.stringify({version: 1, route: 'cloud', disclosed: 'cloud-speech-uses-plan', chosenAt: 1})]]);
   const box = {
-    ...network, cloudRuntimeEnabled: false, testMocksEnabled: false, browserDevProfile: false, Date, JSON, Number, Event: class { constructor(type) { this.type = type; } },
+    ...network, testMocksEnabled: false, browserDevProfile: false, Date, JSON, Number, Event: class { constructor(type) { this.type = type; } },
     localStorage: {getItem: key => bytes.get(key) ?? null, setItem: (key, value) => bytes.set(key, String(value)), removeItem: key => bytes.delete(key)},
     window: {dispatchEvent: () => true},
     // No Cloud environment, client or session: signed out.
     connectionController: {getCloudEnvironment: () => null, getCloudClient: () => null, getSnapshot: () => ({session: null, open: false})},
   };
-  vm.runInNewContext(strip('apps/app/src/runtime/voice-selection.ts', 'selectVoiceRoute'), box);
+  vm.runInNewContext(strip('apps/app/src/runtime/voice-selection.ts', 'selectVoiceRoute,speechRoute'), box);
   const v = box.api;
+  assert.equal(v.speechRoute(), 'device');
   for (const requested of [undefined, 'default', 'device', 'agent', 'manual']) assert.equal(v.selectVoiceRoute(requested), 'device', 'a stored legacy Cloud choice has no effect');
   assert.deepEqual(network.attempts, []);
 });

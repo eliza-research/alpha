@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import {git as fixtureGit} from './fixtures/git-fixture.mjs';
 import { createHash } from "node:crypto";
-import { verifySecureCameraSource, verifySecureCameraImage, writeSecureCameraOverlay, secureCameraComponent } from "../scripts/aosp-secure-camera-contract.mjs";
+import { verifySecureCameraSource, verifySecureCameraImage, writeSecureCameraOverlay, secureCameraComponent } from "../scripts/aosp-secure-camera-contract.ts";
 
 test("source admission rejects missing path, unreviewed revisions, dirty sources and mismatched bytes", t => {
  const root=fs.mkdtempSync(path.join(os.tmpdir(),"alpha-camera-"));t.after(()=>fs.rmSync(root,{recursive:true,force:true}));

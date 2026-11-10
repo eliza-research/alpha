@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {spawnSync,execFileSync} from 'node:child_process';
-import {localEmbeddingEnvironment} from '../scripts/agent-embeddings.mjs';
+import {localEmbeddingEnvironment} from '../scripts/agent-embeddings.ts';
 
 const root=path.resolve(import.meta.dirname,'..');
 const scratch=process.env.ALPHA_EMBEDDING_TEST_ROOT||os.tmpdir();
@@ -84,6 +84,6 @@ function launch(launcher,kind){
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 }
 
-for(const launcher of ['scripts/start-local-remote.mjs','scripts/start-reviewed-workflow-agent.mjs'])
+for(const launcher of ['scripts/start-local-remote.ts','scripts/start-reviewed-workflow-agent.ts'])
  for(const kind of ['file','directory','both','default','models','all'])
   test(`${launcher} forwards ${kind} embedding inputs into the actual inert child`,()=>launch(launcher,kind));

@@ -60,6 +60,27 @@ test('a zoomed recording stops when its camera source ends',async({page})=>{
  const saved=await page.evaluate(async()=>{const {browserCamera:c}=await import('/src/prototype/browser-camera.ts');const result=await c.stopRecording();await c.stopPreview();return {bytes:result.fileSize,released:(window as any).controlStreams.every((s:MediaStream)=>s.getTracks().every(t=>t.readyState==='ended'))};});expect(saved.bytes).toBeGreaterThan(0);expect(saved.released).toBe(true);
 });
 
+test('Ask mode reviews an unsaved frame and returns to Camera without adding a photo',async({page})=>{
+ await page.getByRole('button',{name:'Ask mode',exact:true}).click();
+ await page.getByRole('button',{name:'Ask about this',exact:true}).click();
+ const review=page.getByRole('dialog',{name:'Ask about selected content',exact:true});
+ await expect(review.getByRole('img',{name:'Image for question review'})).toBeVisible();
+ expect(await page.evaluate(async()=>{const {browserPhotoLibrary}=await import('/src/prototype/browser-camera.ts');return (await browserPhotoLibrary.list()).items.length;})).toBe(0);
+ await review.getByRole('button',{name:'Cancel',exact:true}).click();
+ await expect(page.locator('html')).toHaveAttribute('data-active-view','camera');
+ await expect(page.getByRole('button',{name:'Ask about this',exact:true})).toBeVisible();
+});
+
+test('the last capture opens directly and Back returns to the Camera viewfinder',async({page})=>{
+ await page.getByRole('button',{name:'Take photo',exact:true}).click();
+ await page.getByRole('button',{name:'Open last photo',exact:true}).click();
+ await expect(page.locator('[data-alpha-subview="photos-viewer"]')).toBeVisible();
+ await expect(page.getByText('No photos',{exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Back from photo',exact:true}).click();
+ await expect(page.locator('html')).toHaveAttribute('data-active-view','camera');
+ await expect(page.getByRole('button',{name:'Take photo',exact:true})).toBeVisible();
+});
+
 test('switching with flash on and zoom 2x keeps both reset when the switch fails',async({page})=>{
  await page.evaluate(async()=>{
   const {browserCamera:c}=await import('/src/prototype/browser-camera.ts');const calls=(window as any).flipCalls=[] as string[],setZoom=c.setZoom,switchCamera=c.switchCamera;

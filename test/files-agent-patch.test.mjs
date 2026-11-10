@@ -6,7 +6,7 @@ import path from 'node:path';
 import {tsImport} from 'tsx/esm/api';
 
 const root=path.resolve(import.meta.dirname,'..');
-import {upstreamNativeSource} from '../scripts/upstream-native-source.mjs';
+import {upstreamNativeSource} from '../scripts/upstream-native-source.ts';
 const sharedDirectory='plugins/plugin-assistant/src/services/device-actions';
 const vendor=path.join(root,'vendor/eliza');
 const features=path.join(root,'.eliza/client-features');

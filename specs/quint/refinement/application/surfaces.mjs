@@ -37,7 +37,7 @@ export async function developmentSurfaces() {
   const paths = ['apps/app/src/build-flags.ts', 'apps/app/src/browser/dev-profile.ts'];
   const traces = [];
   for (const enabled of [false, true]) {
-    const environment = {DEV: true, VITE_ELIZA_DEV_ALLOW_TEST_MOCKS: enabled ? '1' : '', VITE_ELIZA_RUNTIME_PROFILE: 'native'};
+    const environment = {DEV: true, VITE_ELIZA_DEV_ALLOW_TEST_MOCKS: enabled ? '1' : ''};
     const flags = stripTypeScriptTypes(read(paths[0]), {mode:'transform'}).replace(/export /g, '').replaceAll('import.meta.env', 'environment');
     const profile = stripTypeScriptTypes(read(paths[1]), {mode:'transform'}).replace(/^import.*$/gm, '').replace(/export /g, '')
       .replaceAll('devSurfacesEnabled', 'profileEnabled').replace(/:boolean/g, '').replaceAll('import.meta.env', 'environment');

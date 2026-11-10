@@ -3,7 +3,7 @@ import {resolve} from 'node:path';
 import {test} from 'node:test';
 import {chromium} from '@playwright/test';
 import {build} from 'esbuild';
-import {checkClientFeatures} from '../scripts/prepare-client-features.mjs';
+import {checkClientFeatures} from '../scripts/prepare-client-features.ts';
 
 const root = resolve(import.meta.dirname, '..');
 const fixtureOrigin = 'https://files-placement.refinement.invalid/';

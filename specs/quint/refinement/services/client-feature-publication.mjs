@@ -17,8 +17,8 @@ const indexed = read => qmap(actors.map((actor, index) => [index + 1, read(actor
 const action = (name, ...args) => ({name, args});
 
 export async function checkClientFeaturePublication(extraSources = []) {
-  const sources = [fileURLToPath(import.meta.url), 'scripts/prepare-client-features.mjs',
-    'scripts/upstream-native-source.mjs', 'test/client-feature-preparation.test.mjs',
+  const sources = [fileURLToPath(import.meta.url), 'scripts/prepare-client-features.ts',
+    'scripts/upstream-native-source.ts', 'test/client-feature-preparation.test.mjs',
     'test/fixtures/git-fixture.mjs', 'upstream.lock.json', 'package-lock.json',
     'vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs',
     'vendor/eliza/packages/app/scripts/lib/committed-source.mjs', ...extraSources];

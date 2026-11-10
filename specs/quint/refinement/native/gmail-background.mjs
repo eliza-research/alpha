@@ -7,8 +7,8 @@ import {captureInputs,checkTraces} from '../check-traces.mjs';
 import {app,directory,javaTraceCampaign,root} from './java.mjs';
 import {gmailBackgroundPlatform,gmailProduct,gmailShared,providerAdmission} from './gmail-background-platform.mjs';
 import {jsonJar} from '../../../../test/fixtures/jvm-tools.mjs';
-import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.mjs';
-import {verifyNativePatchReceipt} from '../../../../scripts/prepare-patched-native.mjs';
+import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.ts';
+import {verifyNativePatchReceipt} from '../../../../scripts/prepare-patched-native.ts';
 import {prepareNativeFixture} from '../../../../test/fixtures/native-source.mjs';
 
 const model='NativeGmailBackground';
@@ -33,9 +33,9 @@ export async function checkNativeGmailBackground(extraSources=[]) {
     const generatedSources=[...fixture.paths,...stagedSources,stagedReceipt];
     const compiled=[...gmailProduct,...stagedSources];
     const sources=[...compiled,...gmailShared.map(path=>'vendor/eliza/'+path),'vendor/eliza/'+providerAdmission,app+'AlphaCredentialStore.java',
-      hostPath,nativeManifest,'upstream.lock.json','scripts/upstream-native-source.mjs',
+      hostPath,nativeManifest,'upstream.lock.json','scripts/upstream-native-source.ts',
       capacitor+'Bridge.java',capacitor+'BridgeActivity.java',
-      'scripts/prepare-patched-native.mjs','test/fixtures/native-source.mjs',
+      'scripts/prepare-patched-native.ts','test/fixtures/native-source.mjs',
       'test/fixtures/jvm-tools.mjs',...(jsonJar?[jsonJar]:[]),...generatedSources,...extraSources,
       ...[harness,'Trace.java','java.mjs','gmail-background-platform.mjs'].map(name=>join(directory,name)),
       fileURLToPath(import.meta.url)];

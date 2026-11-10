@@ -9,10 +9,10 @@ const model = 'PilotApkUpdate';
 const modelPath = `specs/quint/services/${model}.qnt`;
 const sources = [
   modelPath, fileURLToPath(import.meta.url), 'test/fixtures/pilot-update.mjs',
-  'scripts/pilot-update.mjs', 'scripts/android-instrumentation.mjs', 'scripts/provision-unit.mjs',
-  'scripts/owner/pilot-rotation-journal.mjs', 'scripts/owner/pilot-rotation.mjs',
-  'scripts/owner/VerifyApkRotation.java', 'scripts/apk.mjs', 'scripts/build-android.mjs',
-  'scripts/toolchain.mjs', 'scripts/release-blockers.mjs',
+  'scripts/pilot-update.ts', 'scripts/android-instrumentation.ts', 'scripts/provision-unit.ts',
+  'scripts/owner/pilot-rotation-journal.ts', 'scripts/owner/pilot-rotation.ts',
+  'scripts/owner/VerifyApkRotation.java', 'scripts/apk.ts', 'scripts/build-android.ts',
+  'scripts/toolchain.ts', 'scripts/release-blockers.ts',
   'vendor/eliza/packages/os/scripts/android/apk-release-record.mjs',
 ];
 const action = (name, ...args) => ({name, args});
@@ -20,9 +20,9 @@ const action = (name, ...args) => ({name, args});
 export async function runPilotApkUpdateRefinement(extraSources = []) {
   const allSources = [...sources, ...extraSources];
   const driverHashes = captureInputs(allSources);
-  const {planHome, updateUnit} = await import('../../../../scripts/pilot-update.mjs');
+  const {planHome, updateUnit} = await import('../../../../scripts/pilot-update.ts');
   const {claimPilotInstall, beginPilotRotation, completePilotRotation, inspectPilotRotation} =
-    await import('../../../../scripts/owner/pilot-rotation-journal.mjs');
+    await import('../../../../scripts/owner/pilot-rotation-journal.ts');
   const {ALPHA, STOCK, APK, BEFORE, DATA, NONCE, exported, fakeUnit, timing} =
     await import('../../../../test/fixtures/pilot-update.mjs');
   const stockPackage = STOCK.split('/')[0];

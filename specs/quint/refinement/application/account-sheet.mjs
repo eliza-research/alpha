@@ -7,8 +7,8 @@ import {createRequire} from 'node:module';
 import {buildSync} from 'esbuild';
 import {chromium,expect as baseExpect} from '@playwright/test';
 import {createServer} from 'vite';
-import {checkClientFeatures} from '../../../../scripts/prepare-client-features.mjs';
-import {filesWithin,repositoryRoot as root,sha256} from '../../../../scripts/quint-lib.mjs';
+import {checkClientFeatures} from '../../../../scripts/prepare-client-features.ts';
+import {filesWithin,repositoryRoot as root,sha256} from '../../../../scripts/quint-lib.ts';
 import {seedCompletedAccessSetup} from '../../../../test/browser/flag-off-android.ts';
 import {entitlements,installNativeCloudPlanPorts,USER} from '../../../../test/browser/helpers/native-cloud-plan-fixture.ts';
 import {captureInputs,checkTraces,qset} from '../check-traces.mjs';
@@ -76,7 +76,7 @@ export async function checkAccountSheet(extraSources=[]){
  const sources=[...filesWithin(resolve(root,'apps/app/src')),...filesWithin(resolve(root,'.eliza/client-features')),
   ...configInputs,...ocrInputs,'app.config.json',
   cloudJava,'android/app/cloud-deployment.generated.gradle',
-  'apps/app/index.html','vite.config.ts','upstream.lock.json','package-lock.json','scripts/prepare-client-features.mjs',
+  'apps/app/index.html','vite.config.ts','upstream.lock.json','package-lock.json','scripts/prepare-client-features.ts',
   'test/browser/flag-off-android.ts','test/browser/helpers/native-cloud-plan-fixture.ts',
   'test/browser/helpers/resident-agent-plugin.ts','test/browser/helpers/native-navigation-protocol.ts',
   'specs/quint/refinement/application/index.mjs','test/quint-application-refinement.test.mjs',driver,...extraSources];

@@ -234,6 +234,8 @@ public final class AlphaDevicePlugin extends Plugin {
  static final long UPDATE_MAX_BYTES=2L<<30;
  /** Soft ceiling on one update download, checked only when a read returns: the read timeout bounds only silence, and a trickle never goes silent. A read in flight can outlast it by up to that 60 s timeout unless handleOnDestroy disconnects it first. Fits a 2 GiB APK from about 0.8 Mbit/s, so it ends only a stalled link's trickle. */
  static final long UPDATE_DEADLINE_NANOS=java.util.concurrent.TimeUnit.HOURS.toNanos(6);
+ /** Only declared-byte mismatches permit cache eviction followed by a new fetch. */
+ static final class UpdateMismatch extends java.io.IOException{UpdateMismatch(String message){super(message);}}
  /** 64 lowercase hex characters of a SHA-256 digest. */
  static String hex(byte[] digest){return String.format(java.util.Locale.ROOT,"%064x",new java.math.BigInteger(1,digest));}
  /** Stops an update attempt whose bridge is gone: handleOnDestroy interrupts updateWorker, and that bridge's receiver no longer hears any session's status. */
@@ -246,10 +248,10 @@ public final class AlphaDevicePlugin extends Plugin {
   byte[] buffer=new byte[65536];long total=0;
   for(int count;(count=in.read(buffer))!=-1;){
    throwIfDestroyed();if(System.nanoTime()>=deadline)throw new java.io.IOException("Update took too long");
-   total+=count;if(total>sizeBytes)throw new java.io.IOException("Update larger than declared");
+   total+=count;if(total>sizeBytes)throw new UpdateMismatch("Update larger than declared");
    digest.update(buffer,0,count);out.write(buffer,0,count);
   }
-  if(total!=sizeBytes||!hex(digest.digest()).equals(sha256))throw new java.io.IOException("Update does not match its manifest");
+  if(total!=sizeBytes||!hex(digest.digest()).equals(sha256))throw new UpdateMismatch("Update does not match its manifest");
  }
 
  private static final String UPDATE_STATUS="ai.alphacompute.alphaphone.UPDATE_STATUS";
@@ -584,8 +586,11 @@ public final class AlphaDevicePlugin extends Plugin {
   try{if(updateDue&&pastConfirmation(getContext().getPackageManager().getPackageInstaller().getSessionInfo(updateSession),updateConfirm))updateDue=false;}catch(RuntimeException unanswered){/* It opens as kept. */}
   if(!updateAutomatic)confirmUpdate();
  }
- /** The update download in the cache, deleted once the session has its copy or the download is refused. */
+ /** One download; only a verified automatic lifecycle deferral may keep it for this process. */
  private java.io.File updateApk(){return new java.io.File(getContext().getCacheDir(),"alpha-update.apk");}
+ /** Exact URL/size/digest/version, guarded by updating. This is only a cache hint:
+  * every reuse rereads the complete bytes and Android archive/signing metadata. */
+ private static String updateVerified;
  /**
   * Held by the process's one update attempt, from the start of its work until its session is committed or it
   * fails, by a load sweeping, or by a tap reading updatesCommitted. Static because every bridge (AlphaAssistActivity's beside MainActivity's) shares updateApk().
@@ -601,8 +606,9 @@ public final class AlphaDevicePlugin extends Plugin {
   super.load();
   registerUpdateBridge();
   PluginWorkers.submit(updateWorker,()->reconcileUpdate(),()->{});
-  // Deletes the download a killed process left (up to UPDATE_MAX_BYTES), never one in flight on another bridge.
-  if(updating.compareAndSet(false,true)){updateApk().delete();updating.set(false);}
+  // A process restart has no hint, so its orphan is swept. A sibling bridge may
+  // keep this process's deferred verified file, never a file another attempt owns.
+  if(updating.compareAndSet(false,true)){if(updateVerified==null||!java.nio.file.Files.isRegularFile(updateApk().toPath(),java.nio.file.LinkOption.NOFOLLOW_LINKS)){updateVerified=null;updateApk().delete();}updating.set(false);}
   androidx.core.content.ContextCompat.registerReceiver(getContext(),updateStatus,new android.content.IntentFilter(UPDATE_STATUS),androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED);
  }
  /** The connection updateWorker opened last, for handleOnDestroy: interrupting a worker does not stop its socket I/O. */
@@ -674,7 +680,8 @@ public final class AlphaDevicePlugin extends Plugin {
    // Read holding updating: an attempt ending between a read and the claim above would otherwise pass unseen.
    if(updatesCommitted.get()!=seen){updating.set(false);call.resolve();return;}
    java.io.File apk=updateApk();
-   UpdateActivation preparation=null;boolean pauseOwned=false;
+   String cacheKey=apkUrl+"/"+size+"/"+sha256+"/"+versionCode;
+   UpdateActivation preparation=null;boolean pauseOwned=false,keepApk=false;
    try{
     try{
      reconcileUpdate();
@@ -701,13 +708,23 @@ public final class AlphaDevicePlugin extends Plugin {
       if(!automatic)reopenUpdateConfirmation(pending);
      }else{
       if(UpdatePause.store().read()!=null)throw new java.io.IOException("Update outcome is pending");
-      if(automatic&&!automaticUpdateReady())throw new java.io.IOException("Automatic update deferred");
+      if(automatic&&!automaticUpdateReady()){keepApk=cacheKey.equals(updateVerified);throw new java.io.IOException("Automatic update deferred");}
       long deadline=System.nanoTime()+UPDATE_DEADLINE_NANOS;
-      javax.net.ssl.HttpsURLConnection connection=updateConnection(apkUrl);
-      try{
-       if(connection.getResponseCode()!=200)throw new java.io.IOException("Update unavailable");
-       try(java.io.InputStream in=connection.getInputStream();java.io.OutputStream out=new java.io.FileOutputStream(apk)){copyVerified(in,out,size,sha256,deadline);}
-      }finally{connection.disconnect();}
+      boolean cached=false;
+      if(cacheKey.equals(updateVerified)&&java.nio.file.Files.isRegularFile(apk.toPath(),java.nio.file.LinkOption.NOFOLLOW_LINKS)){
+       try(java.io.InputStream in=java.nio.file.Files.newInputStream(apk.toPath(),java.nio.file.StandardOpenOption.READ,java.nio.file.LinkOption.NOFOLLOW_LINKS)){
+        copyVerified(in,new java.io.OutputStream(){@Override public void write(int ignored){} @Override public void write(byte[] ignored,int offset,int length){}},size,sha256,deadline);cached=true;
+       }catch(UpdateMismatch invalid){throwIfDestroyed();updateVerified=null;}
+      }
+      if(!cached){
+       updateVerified=null;
+       if(java.nio.file.Files.exists(apk.toPath(),java.nio.file.LinkOption.NOFOLLOW_LINKS)&&!apk.delete())throw new java.io.IOException("Update cache unavailable");
+       javax.net.ssl.HttpsURLConnection connection=updateConnection(apkUrl);
+       try{
+        if(connection.getResponseCode()!=200)throw new java.io.IOException("Update unavailable");
+        try(java.io.InputStream in=connection.getInputStream();java.io.OutputStream out=java.nio.file.Files.newOutputStream(apk.toPath(),java.nio.file.StandardOpenOption.CREATE_NEW,java.nio.file.StandardOpenOption.WRITE,java.nio.file.LinkOption.NOFOLLOW_LINKS)){copyVerified(in,out,size,sha256,deadline);}
+       }finally{connection.disconnect();}
+      }
       // Android would also accept a same-versionCode reinstall; only the offered, newer build of this package goes on.
       android.content.pm.PackageInfo archive=getContext().getPackageManager().getPackageArchiveInfo(
        apk.getPath(),PackageManager.GET_PERMISSIONS|PackageManager.GET_SIGNING_CERTIFICATES);
@@ -722,6 +739,7 @@ public final class AlphaDevicePlugin extends Plugin {
       throwIfDestroyed();
       String binding="alpha-update://"+getContext().getPackageName()+"/"+versionCode+"/"+sha256+"/"+signer+"/"+updateBoot()+"/intent"+(automatic?"/automatic":"");
       if(!UPDATE_BINDING.matcher(binding).matches())throw new java.io.IOException("Update not admitted");
+      updateVerified=cacheKey;
       PackageInstaller.SessionParams params=new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
       params.setAppPackageName(getContext().getPackageName());params.setSize(size);params.setReferrerUri(android.net.Uri.parse(binding));
       if(automatic&&Build.VERSION.SDK_INT>=31)params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED);
@@ -730,7 +748,7 @@ public final class AlphaDevicePlugin extends Plugin {
       try(PackageInstaller.Session session=installer.openSession(id)){
        try(java.io.OutputStream out=session.openWrite("base.apk",0,size)){java.nio.file.Files.copy(apk.toPath(),out);session.fsync(out);}
        throwIfDestroyed();
-       if(automatic&&!automaticUpdateReady())throw new java.io.IOException("Automatic update deferred");
+       if(automatic&&!automaticUpdateReady()){keepApk=true;throw new java.io.IOException("Automatic update deferred");}
        java.util.List<AlphaDevicePlugin> participants;
        synchronized(updateBarrier){preparation=new UpdateActivation(this,automatic);activation=preparation;participants=new java.util.ArrayList<>(updateBridges);}
        for(AlphaDevicePlugin bridge:participants)bridge.notifyListeners("alphaUpdateReady",bridge.preparation(preparation));
@@ -744,7 +762,7 @@ public final class AlphaDevicePlugin extends Plugin {
        pauseOwned=true;UpdatePause.acquire(preparation.id,id,versionCode,sha256,updateBoot());
        UpdatePause.stop();
        throwIfDestroyed();
-       if(automatic&&!automaticUpdateReady())throw new java.io.IOException("Automatic update deferred");
+       if(automatic&&!automaticUpdateReady()){keepApk=true;throw new java.io.IOException("Automatic update deferred");}
        UpdatePause.committing(preparation.id);
        android.content.IntentSender status=android.app.PendingIntent.getBroadcast(getContext(),id,new Intent(UPDATE_STATUS).setPackage(getContext().getPackageName()),android.app.PendingIntent.FLAG_UPDATE_CURRENT|android.app.PendingIntent.FLAG_MUTABLE).getIntentSender();
        // The commit intent. Android holds this before the call returns, so on a level that orders a later read after it (above), a
@@ -774,7 +792,7 @@ public final class AlphaDevicePlugin extends Plugin {
       // After an uncertain commit the durable journal continues to own the pause.
       synchronized(updateBarrier){if(activation==preparation)activation=null;}
      }
-     apk.delete();updating.set(false);
+     if(!keepApk){updateVerified=null;apk.delete();}updating.set(false);
     }
     call.resolve();
    }catch(Exception unavailable){call.reject("Update unavailable");}

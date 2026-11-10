@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {parseNativeBlobBatch,upstreamNativeSource} from '../scripts/upstream-native-source.mjs';
+import {parseNativeBlobBatch,upstreamNativeSource} from '../scripts/upstream-native-source.ts';
 const a='a'.repeat(40),b='b'.repeat(40);
 const frame=(oid,bytes)=>Buffer.concat([Buffer.from(`${oid} blob ${bytes.length}\n`),bytes,Buffer.from('\n')]);
 test('batch parser preserves binary bytes and rejects reordered, malformed or truncated framing',()=>{

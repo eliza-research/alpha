@@ -6,7 +6,7 @@ import {existsSync,mkdtempSync,readFileSync,rmSync,writeFileSync} from 'node:fs'
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
+import {preparePatchedNative} from '../scripts/prepare-patched-native.ts';
 import {javaBinary} from './fixtures/jvm-tools.mjs';
 
 // Alpha's registration of the shared native Eliza Cloud sign-in client (elizaOS/eliza

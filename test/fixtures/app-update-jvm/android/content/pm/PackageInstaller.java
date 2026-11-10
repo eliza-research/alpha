@@ -30,6 +30,8 @@ public class PackageInstaller {
  public Runnable committing=()->{};
  /** Runs as Android answers getMySessions, while each read waits on its session's lock: to destroy a bridge at that moment, or to let validation end. */
  public volatile Runnable listing=()->{};
+ /** Runs on the session-list read even when Android has no sessions. */
+ public volatile Runnable querying=()->{};
  /** Runs as a returned session's progress is read, which a tap does between reading the kept confirmation and acting on it: to land a status at that moment. */
  public volatile Runnable asking=()->{};
  public boolean listDown,infoDown,abandonDown;
@@ -120,6 +122,7 @@ public class PackageInstaller {
   for(Internal session:internals.values()){session.validated=session.onDisk;session.active=0;session.progress=0;session.accepted=session.stageDirInUse=session.intended=false;}
  }
  public java.util.List<SessionInfo> getMySessions(){
+  querying.run();
   if(listDown)throw new RuntimeException("DeadSystemException");
   java.util.List<SessionInfo> mine=new java.util.ArrayList<>();
   for(int id:new java.util.ArrayList<>(sessions))mine.add(read(id,listing));

@@ -8,7 +8,7 @@ import tempfile
 
 root = Path(__file__).resolve().parents[1]
 source = (root / 'android/app/product.gradle').read_text()
-block = source[source.index('// One-tap app update'):source.index("def appLinksManifest =")]
+block = source[source.index('// One-tap app update'):source.index("\nandroid {")]
 java = str(Path(os.environ['JAVA_HOME']) / 'bin/java')
 classpath = str(Path(os.environ['GRADLE_LIB']) / '*')
 public = 'https://example.test/public-update.json'
@@ -24,14 +24,14 @@ with tempfile.TemporaryDirectory(prefix='alpha-channel-gradle-') as temporary:
     (directory / 'source/app.config.json').write_text(json.dumps({'updateManifestUrl': public}))
     script = directory / 'check.groovy'
     script.write_text("import org.gradle.api.GradleException\n"
-                     "def runtimeProfile=System.getenv('QA_TEST_RUNTIME') ?: 'cloud'\n"
-                     "def unpackagedRuntime=false\ndef testMocksRaw='0'\n"
+                     "def unpackagedRuntime=System.getenv('QA_TEST_UNPACKAGED')=='1'\n"
+                     "def testMocksRaw=System.getenv('QA_TEST_MOCKS') ?: '0'\n"
                      "def file={String name -> new File(System.getenv('QA_TEST_PROJECT'), name)}\n"
                      + block + "\nprintln(groovy.json.JsonOutput.toJson([kind:updateChannel,manifestUrlSha256:updateManifestSha256]))\n")
     input_file = directory / 'private-input'
     base = {key: value for key, value in os.environ.items()
             if key not in ('ALPHA_UPDATE_CHANNEL', 'ALPHA_PRIVATE_UPDATE_MANIFEST_FILE',
-                           'ALPHA_PRIVATE_UPDATE_MANIFEST_SHA256', 'QA_TEST_RUNTIME')}
+                           'ALPHA_PRIVATE_UPDATE_MANIFEST_SHA256', 'QA_TEST_UNPACKAGED', 'QA_TEST_MOCKS')}
     base['QA_TEST_PROJECT'] = str(project)
     cases = [
         ('public', {}, public, True),
@@ -41,7 +41,10 @@ with tempfile.TemporaryDirectory(prefix='alpha-channel-gradle-') as temporary:
         ('wrong-prefix', {}, url.replace('update-qa/', 'public/'), False),
         ('readable-file', {}, url, False),
         ('duplicate-query', {}, url + '&X-Goog-Expires=300', False),
-        ('native-profile', {'QA_TEST_RUNTIME': 'native'}, url, False),
+        # The private channel no longer depends on a runtime profile: it needs a complete packaged
+        # build with test mocks off.
+        ('unpackaged-runtime', {'QA_TEST_UNPACKAGED': '1'}, url, False),
+        ('test-mocks', {'QA_TEST_MOCKS': '1'}, url, False),
         ('symlink', {}, url, False),
         ('source-contained', {}, url, False),
         ('newline', {}, url + '\n', False),

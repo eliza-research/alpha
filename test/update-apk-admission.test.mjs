@@ -5,11 +5,11 @@ import os from 'node:os';
 import path from 'node:path';
 import {createHash, X509Certificate} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
-import {admitUpdateApkIdentity, admitPublicUpdateChannel, verifiedUpdateSigning} from '../scripts/update-apk-admission.mjs';
-import {inspectApk} from '../scripts/apk.mjs';
-import {PACKAGE} from '../scripts/provision-unit.mjs';
-import {androidEnv, tool} from '../scripts/toolchain.mjs';
-import {UPDATE_CHANNEL_META, UPDATE_DIGEST_META} from '../scripts/update-channel.mjs';
+import {admitUpdateApkIdentity, admitPublicUpdateChannel, verifiedUpdateSigning} from '../scripts/update-apk-admission.ts';
+import {inspectApk} from '../scripts/apk.ts';
+import {PACKAGE} from '../scripts/provision-unit.ts';
+import {androidEnv, tool} from '../scripts/toolchain.ts';
+import {UPDATE_CHANNEL_META, UPDATE_DIGEST_META} from '../scripts/update-channel.ts';
 
 const old = 'a'.repeat(64), active = 'b'.repeat(64), lineageHash = 'c'.repeat(64);
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');

@@ -2,7 +2,7 @@ import {readGmailAccountChoice,saveGmailAccountChoice} from '../apps/app/src/run
 import assert from 'node:assert/strict';
 import {GmailReadAhead} from '../apps/app/src/runtime/gmail-read-ahead';
 const signal=()=>new AbortController().signal;
-const gate=()=>{let resolve!:(value:string)=>void;const promise=new Promise<string>(done=>{resolve=done;});return {promise,resolve};};
+const gate=()=>Promise.withResolvers<string>();
 let calls=0,now=0;const loader=new GmailReadAhead<string>(30,()=>now),a=gate();
 loader.prepare('owner-a/query','cursor',async()=>{calls++;return a.promise;});
 loader.prepare('owner-a/query','cursor',async()=>{calls++;return 'duplicate';});
@@ -16,7 +16,7 @@ let cancelled=false;loader.prepare('owner-a/query','cursor',async s=>{s.addEvent
 loader.prepare('owner-a/query','cursor',async()=> 'expired');now=30;assert.equal(await loader.take('owner-a/query','cursor',signal()),undefined,'TTL expires without a timer or poll');
 const failure=new Error('provider failed');loader.prepare('owner-a/query','cursor',async()=>{throw failure;});await assert.rejects(loader.take('owner-a/query','cursor',signal()),e=>e===failure);
 assert.equal(await loader.take('owner-a/query','cursor',signal()),undefined,'failed read does not replay itself');
-const b=gate(),abort=new AbortController();loader.prepare('owner-a/query','cursor',async()=>b.promise);const taken=loader.take('owner-a/query','cursor',abort.signal);abort.abort();b.resolve('late');await assert.rejects(taken,e=>e.name==='AbortError');
+const b=gate(),abort=new AbortController();loader.prepare('owner-a/query','cursor',async()=>b.promise);const taken=loader.take('owner-a/query','cursor',abort.signal);abort.abort();b.resolve('late');await assert.rejects(taken,e=>e instanceof Error && e.name==='AbortError');
 console.log('PASS Gmail read-ahead: one-page budget, in-flight reuse, consumption, owner key isolation, cancellation, TTL and failures.');
 
 const rows=new Map<string,string>(),port={getItem:(k:string)=>rows.get(k)??null,setItem:(k:string,v:string)=>{rows.set(k,v);},removeItem:(k:string)=>{rows.delete(k);}};

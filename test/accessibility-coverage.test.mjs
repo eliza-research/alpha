@@ -193,7 +193,7 @@ test('TalkBack reading order is checked in every lane, as Android checks it, acr
   assert.match(viewFocus, /from '@elizaos\/ui\/accessibility\/screen-focus'/);
   assert.match(viewFocus, /createScreenFocus\(/);
   assert.doesNotMatch(viewFocus, /setAttribute\('tabindex'|requestAnimationFrame/, 'no local copy of the focus mover');
-  assert.match(read('scripts/prepare-client-features.mjs'), /'packages\/ui\/src\/accessibility\/screen-focus\.ts'/);
+  assert.match(read('scripts/prepare-client-features.ts'), /'packages\/ui\/src\/accessibility\/screen-focus\.ts'/);
 });
 
 test('both sweeps fail on a cut app title and allow a clamped preview', () => {
@@ -262,7 +262,7 @@ test('the layout hooks the sweep depends on stay in the template', () => {
   // by the sweep's clipping, overlap and target-size rules, not pinned here.
   const css = read('apps/app/src/prototype/phone.css');
   const template = read('apps/app/src/prototype/template.html');
-  for (const hook of ['data-alpha-camera-root', 'data-alpha-camera="viewfinder"', 'data-alpha-camera="capture"', 'data-alpha-camera="modes"', 'data-alpha-camera="zoom"', 'data-alpha-maps-sheet="results"', 'data-alpha-maps-sheet="place"', 'data-alpha-maps-sheet="directions"', 'data-alpha-maps-directions', 'data-alpha-map-canvas', 'class="calendar-block-text"'])
+  for (const hook of ['data-alpha-camera-root', 'data-alpha-camera="viewfinder"', 'data-alpha-camera="capture"', 'data-alpha-camera="modes"', 'data-alpha-camera="zoom"', 'data-alpha-maps-sheet="results"', 'data-alpha-maps-sheet="place"', 'data-alpha-maps-sheet="directions"', 'data-alpha-maps-directions', 'data-alpha-map-plane', 'class="calendar-block-text"'])
     assert.ok(template.includes(hook), `${hook} is in the template`);
   assert.ok(template.includes('data-alpha-browser-menu') && template.includes('data-alpha-header-grow'));
   // Home's app grid is the shared mobile shell's; Alpha maps its text scale to the measured text size.

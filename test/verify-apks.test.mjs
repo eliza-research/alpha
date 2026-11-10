@@ -7,15 +7,24 @@ import { serializeOwnerRouteTable } from "../apps/app/src/product/owner-route-ta
 import os from "node:os";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
-import { archiveWebPayload, parseXmlTree, readBuildFlags, validateApk, verifyOwnerRouteTable } from "../scripts/apk.mjs";
-import { webViewFilterProblems, webViewFilters } from "../scripts/render-assetlinks.mjs";
-import { voiceBundleAdmission, VOICE_BUNDLE_FORMAT } from "../scripts/voice-host.mjs";
+import { archiveWebPayload, parseXmlTree, readBuildFlags, validateApk, verifyOwnerRouteTable } from "../scripts/apk.ts";
+import { webViewFilterProblems, webViewFilters } from "../scripts/render-assetlinks.ts";
+import { voiceBundleAdmission, VOICE_BUNDLE_FORMAT } from "../scripts/voice-host.ts";
 const root = path.resolve(import.meta.dirname, "..");
-test("Cloud QA evidence requires one explicit Cloud profile before any APK work", () => {
-  for (const args of [["--cloud-voice-evidence=missing.json"], ["--runtime-profile=cloud", "--cloud-voice-evidence=a.json", "--cloud-voice-evidence=b.json"]]) {
-    const result=spawnSync(process.execPath,["scripts/verify-apks.mjs",...args],{cwd:root,encoding:"utf8"});
-    assert.notEqual(result.status,0);
-    assert.match(result.stderr,/Cloud voice evidence requires one explicit Cloud profile/);
+test("Cloud voice evidence is one readable file for a genuine build, and the removed profile options are refused, before any APK work", () => {
+  for (const [args, message] of [
+    [["--cloud-voice-evidence=a.json", "--cloud-voice-evidence=b.json"], /Specify --cloud-voice-evidence only once/],
+    [["--cloud-voice-evidence=missing.json"], /Cloud voice evidence could not be read as JSON/],
+    [["--test-mocks", "--cloud-voice-evidence=a.json"], /Cloud voice evidence requires a genuine resident without mocks/],
+    [["--allow-unpackaged-runtime", "--cloud-voice-evidence=a.json"], /Cloud voice evidence requires a genuine resident without mocks/],
+    // One runtime profile: every build packages local speech and embeddings.
+    [["--runtime-profile=cloud", "--cloud-voice-evidence=a.json"], /There is one runtime profile now: remove --runtime-profile and --local-embeddings/],
+    [["--runtime-profile=native"], /There is one runtime profile now/],
+    [["--local-embeddings"], /There is one runtime profile now/],
+  ]) {
+    const result=spawnSync(process.execPath,["scripts/verify-apks.ts",...args],{cwd:root,encoding:"utf8"});
+    assert.notEqual(result.status,0,args.join(" "));
+    assert.match(result.stderr,message,args.join(" "));
   }
 });
 /** Copy the committed AOSP product files into `dir` with every unset value filled, so production staging passes its lock check. */
@@ -66,7 +75,7 @@ test("AOSP staging refuses test-mocks and non-distributable inputs before any st
     fs.copyFileSync(path.join(root, "app.config.json"), path.join(dir, "app.config.json"));
     completeAospLock(dir);
     fs.mkdirSync(path.join(dir, "artifacts/test-mocks"), { recursive: true });
-    const stage = args => spawnSync(process.execPath, [path.join(root, "scripts/stage-aosp.mjs"), ...args], { cwd: dir, encoding: "utf8" });
+    const stage = args => spawnSync(process.execPath, [path.join(root, "scripts/stage-aosp.ts"), ...args], { cwd: dir, encoding: "utf8" });
     const flagOn = path.join(dir, "artifacts/test-mocks/launcher-debug.apk");
     zip(flagOn, { "assets/public/build-flags.json": JSON.stringify({ testMocks: true }) });
     let out = stage(["--apk", flagOn, "--development"]);
@@ -135,7 +144,7 @@ test("AOSP staging refuses --production without a descriptor, with --development
   try {
     fs.copyFileSync(path.join(root, "app.config.json"), path.join(dir, "app.config.json"));
     completeAospLock(dir);
-    const stage = args => spawnSync(process.execPath, [path.join(root, "scripts/stage-aosp.mjs"), ...args], { cwd: dir, encoding: "utf8" });
+    const stage = args => spawnSync(process.execPath, [path.join(root, "scripts/stage-aosp.ts"), ...args], { cwd: dir, encoding: "utf8" });
     // The missing-APK message says which staging was asked for.
     assert.match(stage(["--development"]).stderr, /Development staging: supply --apk PATH to a flag-off debug launcher APK\./);
     assert.match(stage(["--descriptor", "reviewed.json", "--production"]).stderr, /Production staging: supply --apk PATH to the signed launcher release APK that verify-apks recorded as distributable\./);
@@ -201,29 +210,31 @@ for (const testMocks of [false, true]) test(`archive retains actual APK web byte
 
 // Exercise the archive CLI, its child environments and real ZIP retention without
 // running Gradle. Only the Android builder and source snapshot are fixture commands.
-for (const mode of ['native', 'test-mocks', 'cloud', 'wrong-cloud-profile', 'private-cloud', 'wrong-cloud-channel']) test(`build archive preserves its selected runtime profile: ${mode}`, t => {
+// There is one runtime profile. `inherited` starts from an environment that still carries the
+// removed profile switch and the mock flags: a distribution archive strips them all.
+for (const mode of ['native', 'test-mocks', 'inherited', 'wrong-profile', 'private', 'wrong-channel']) test(`build archive keeps the one runtime profile and its update channel: ${mode}`, t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-build-archive-'));
   t.after(() => fs.rmSync(dir, {recursive:true, force:true}));
   for (const name of ['scripts', 'bin']) fs.mkdirSync(path.join(dir, name));
   fs.writeFileSync(path.join(dir,'app.config.json'),JSON.stringify({updateManifestUrl:'https://example.test/public-update.json'}));
-  fs.symlinkSync(path.join(root, 'scripts/audit-production-bundle.mjs'), path.join(dir, 'scripts/audit-production-bundle.mjs'));
-  fs.writeFileSync(path.join(dir, 'scripts/stage-local-agent-sources.mjs'), '');
+  fs.symlinkSync(path.join(root, 'scripts/audit-production-bundle.ts'), path.join(dir, 'scripts/audit-production-bundle.ts'));
+  fs.writeFileSync(path.join(dir, 'scripts/stage-local-agent-sources.ts'), '');
   // The generated Gradle host is written before the source snapshot; the stub stands in for it.
-  fs.writeFileSync(path.join(dir, 'scripts/android-host.mjs'), '');
-  fs.writeFileSync(path.join(dir, 'scripts/source-snapshot.mjs'), 'console.log(JSON.stringify({digest:"synthetic-stable-source"}));');
+  fs.writeFileSync(path.join(dir, 'scripts/android-host.ts'), '');
+  fs.writeFileSync(path.join(dir, 'scripts/source-snapshot.ts'), 'console.log(JSON.stringify({digest:"synthetic-stable-source"}));');
   fs.writeFileSync(path.join(dir, 'bin/npm'), `#!/usr/bin/env node
 import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
-const args=process.argv.slice(2), profile=process.env.VITE_ELIZA_RUNTIME_PROFILE||'native';
+const args=process.argv.slice(2), profile=process.env.VITE_ELIZA_RUNTIME_PROFILE??null;
 const mocks=process.env.ELIZA_DEV_ALLOW_TEST_MOCKS==='1';
 fs.appendFileSync('calls.jsonl',JSON.stringify({args,profile,mocks,privateInputPresent:!!process.env.ALPHA_PRIVATE_UPDATE_MANIFEST_FILE})+'\\n');
 if(args[1]==='android:build'){
  const output=mocks?'artifacts/test-mocks':'artifacts';
  fs.mkdirSync(output,{recursive:true});
  fs.mkdirSync('payload/assets/public',{recursive:true});
- fs.writeFileSync('payload/assets/public/build-flags.json',JSON.stringify({testMocks:mocks,runtimeProfile:profile}));
+ fs.writeFileSync('payload/assets/public/build-flags.json',JSON.stringify({testMocks:mocks}));
  fs.writeFileSync('payload/assets/public/index.html','<html>Synthetic build payload</html>');
  const results=[];
  for(const variant of ['standalone','launcher']){
@@ -237,55 +248,56 @@ if(args[1]==='android:build'){
  }
  const updateChannel={kind:process.env.ALPHA_UPDATE_CHANNEL||'public',manifestUrlSha256:process.env.ALPHA_PRIVATE_UPDATE_MANIFEST_SHA256||createHash('sha256').update(JSON.parse(fs.readFileSync('app.config.json','utf8')).updateManifestUrl).digest('hex')};
  if(process.env.FIXTURE_WRONG_CHANNEL)updateChannel.manifestUrlSha256='e'.repeat(64);
- fs.writeFileSync(path.join(output,'apk-manifest.json'),JSON.stringify({testMocks:mocks,runtimeProfile:process.env.FIXTURE_WRONG_PROFILE?'native':profile,updateChannel,results}));
+ fs.writeFileSync(path.join(output,'apk-manifest.json'),JSON.stringify({testMocks:mocks,runtimeProfile:process.env.FIXTURE_WRONG_PROFILE?'cloud':'native',updateChannel,results}));
 }
 `, {mode:0o755});
-  const cloud = mode.includes('cloud'), testMocks = mode === 'test-mocks';
-  const args = cloud ? ['--runtime-profile=cloud'] : testMocks ? ['--test-mocks'] : [];
+  const inherited = mode !== 'native' && mode !== 'test-mocks', testMocks = mode === 'test-mocks';
+  const args = testMocks ? ['--test-mocks'] : [];
   const env = {...process.env, PATH:path.join(dir, 'bin')+path.delimiter+process.env.PATH};
   for (const name of ['ELIZA_DEV_ALLOW_TEST_MOCKS', 'VITE_ELIZA_DEV_ALLOW_TEST_MOCKS', 'ORG_GRADLE_PROJECT_ELIZA_DEV_ALLOW_TEST_MOCKS', 'FIXTURE_WRONG_PROFILE','FIXTURE_WRONG_CHANNEL','ALPHA_UPDATE_CHANNEL','ALPHA_PRIVATE_UPDATE_MANIFEST_FILE','ALPHA_PRIVATE_UPDATE_MANIFEST_SHA256']) delete env[name];
-  if (cloud) Object.assign(env, {ELIZA_DEV_ALLOW_TEST_MOCKS:'1', VITE_ELIZA_DEV_ALLOW_TEST_MOCKS:'1', ORG_GRADLE_PROJECT_ELIZA_DEV_ALLOW_TEST_MOCKS:'1'});
-  if (mode === 'wrong-cloud-profile') env.FIXTURE_WRONG_PROFILE='1';
-  if(mode==='wrong-cloud-channel')env.FIXTURE_WRONG_CHANNEL='1';
-  if(mode==='private-cloud'){
+  delete env.VITE_ELIZA_RUNTIME_PROFILE;
+  if (inherited) Object.assign(env, {ELIZA_DEV_ALLOW_TEST_MOCKS:'1', VITE_ELIZA_DEV_ALLOW_TEST_MOCKS:'1', ORG_GRADLE_PROJECT_ELIZA_DEV_ALLOW_TEST_MOCKS:'1', VITE_ELIZA_RUNTIME_PROFILE:'cloud'});
+  if (mode === 'wrong-profile') env.FIXTURE_WRONG_PROFILE='1';
+  if(mode==='wrong-channel')env.FIXTURE_WRONG_CHANNEL='1';
+  if(mode==='private'){
     const url='https://storage.googleapis.com/alpha-aosp-lab-20261024-private-apks/update-qa/'+ 'a'.repeat(32)+'/alpha-update.json?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Expires=21600&X-Goog-Signature=synthetic';
     const file=dir+'-private-url';fs.writeFileSync(file,url,{mode:0o600});t.after(()=>fs.unlinkSync(file));
     Object.assign(env,{ALPHA_UPDATE_CHANNEL:'private-qa',ALPHA_PRIVATE_UPDATE_MANIFEST_FILE:file,ALPHA_PRIVATE_UPDATE_MANIFEST_SHA256:createHash('sha256').update(url).digest('hex')});
   }
-  const run = spawnSync(process.execPath, [path.join(root, 'scripts/build-archive.mjs'), ...args, 'test-results/archive'], {cwd:dir, env, encoding:'utf8'});
+  const run = spawnSync(process.execPath, [path.join(root, 'scripts/build-archive.ts'), ...args, 'test-results/archive'], {cwd:dir, env, encoding:'utf8'});
   const archive = path.join(dir, 'test-results/archive');
-  if (mode === 'wrong-cloud-profile'||mode==='wrong-cloud-channel') {
+  if (mode === 'wrong-profile'||mode==='wrong-channel') {
     assert.notEqual(run.status, 0);
-    assert.match(run.stderr, mode==='wrong-cloud-profile'?/Verified APK runtime profile differs from archive/:/Verified APK update channel differs from archive/);
+    assert.match(run.stderr, mode==='wrong-profile'?/Verified APK runtime profile differs from archive/:/Verified APK update channel differs from archive/);
     assert.ok(!fs.existsSync(path.join(archive, 'apk-manifest.json')));
     return;
   }
   assert.equal(run.status, 0, run.stderr);
   const calls = fs.readFileSync(path.join(dir, 'calls.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
   assert.deepEqual(calls.map(row => row.args[1]), ['android:sync', 'verify', 'android:build']);
-  assert.ok(calls.every(row => row.profile === (cloud ? 'cloud' : 'native')));
+  assert.ok(calls.every(row => row.profile === null), 'no profile switch reaches the renderer build, verification or the Android build');
   assert.equal(calls[1].mocks, false, 'verification stays flag-off even for a fixture archive');
   assert.equal(calls[1].privateInputPresent,false,'source verification never inherits the real private capability');
-  assert.equal(calls[2].privateInputPresent,mode==='private-cloud');
+  assert.equal(calls[2].privateInputPresent,mode==='private');
   assert.equal(calls[0].mocks, testMocks);
   assert.equal(calls[2].mocks, testMocks);
   assert.deepEqual(calls[2].args, ['run', 'android:build', ...(args.length ? ['--', ...args] : [])]);
   const configuration = JSON.parse(fs.readFileSync(path.join(archive, 'configuration.json')));
-  assert.equal(configuration.runtimeProfile, cloud ? 'cloud' : 'native');
+  assert.equal(configuration.runtimeProfile, 'native');assert.equal('localEmbeddings' in configuration, false);
   assert.equal(configuration.testMocks, testMocks);
   const manifest = JSON.parse(fs.readFileSync(path.join(archive, 'apk-manifest.json')));
   assert.equal(Object.keys(manifest).length, 6);
   for (const [name, expected] of Object.entries(manifest)) assert.equal(createHash('sha256').update(fs.readFileSync(path.join(archive, name))).digest('hex'), expected);
   const flags = JSON.parse(fs.readFileSync(path.join(archive, 'web-dist/build-flags.json')));
-  assert.equal(flags.runtimeProfile, cloud ? 'cloud' : 'native');
+  assert.equal(flags.runtimeProfile, undefined);
   assert.equal(flags.testMocks, testMocks);
 });
 
-test('archive rejects Cloud mocks and unsupported profile switches before creating output', t => {
+test('archive rejects the removed profile switches and unsupported options before creating output', t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-build-archive-invalid-'));
   t.after(() => fs.rmSync(dir, {recursive:true, force:true}));
   for (const args of [['--runtime-profile=cloud', '--test-mocks'], ['--runtime-profile=other'], ['--allow-unpackaged-runtime']]) {
-    const run = spawnSync(process.execPath, [path.join(root, 'scripts/build-archive.mjs'), ...args, 'test-results/archive'], {cwd:dir, encoding:'utf8'});
+    const run = spawnSync(process.execPath, [path.join(root, 'scripts/build-archive.ts'), ...args, 'test-results/archive'], {cwd:dir, encoding:'utf8'});
     assert.notEqual(run.status, 0);
     assert.ok(!fs.existsSync(path.join(dir, 'test-results')));
   }
@@ -387,11 +399,11 @@ test("APK verification rejects and names an extra web VIEW filter", () => {
     '          A: http://schemas.android.com/apk/res/android:host(0x01010028)="eliza.app" (Raw: "eliza.app")',
     '          A: http://schemas.android.com/apk/res/android:pathPrefix(0x0101002b)="/" (Raw: "/")'].join("\n");
   assert.deepEqual(webViewFilterProblems(parseXmlTree(webFilterTree(broad)), allowedWebFilters),
-    ["Unexpected web VIEW intent filter ai.alphacompute.alphaphone.MainActivity https://eliza.app/*; add it to the allowed set in scripts/verify-apks.mjs only if it is deliberate"]);
+    ["Unexpected web VIEW intent filter ai.alphacompute.alphaphone.MainActivity https://eliza.app/*; add it to the allowed set in scripts/verify-apks.ts only if it is deliberate"]);
   // A library activity's handler with no host and no path is reported too.
   const library = ["    E: activity (line=20)",
     '      A: http://schemas.android.com/apk/res/android:name(0x01010003)="com.example.Viewer" (Raw: "com.example.Viewer")',
     broad.replace(/\n.*android:host.*/, "").replace(/\n.*android:pathPrefix.*/, "")].join("\n");
   assert.deepEqual(webViewFilterProblems(parseXmlTree(webFilterTree(library)), allowedWebFilters),
-    ["Unexpected web VIEW intent filter com.example.Viewer https://(any host) (any path); add it to the allowed set in scripts/verify-apks.mjs only if it is deliberate"]);
+    ["Unexpected web VIEW intent filter com.example.Viewer https://(any host) (any path); add it to the allowed set in scripts/verify-apks.ts only if it is deliberate"]);
 });

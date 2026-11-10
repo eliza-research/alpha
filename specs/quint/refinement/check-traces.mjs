@@ -4,7 +4,7 @@ import {linkSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync,
 import {tmpdir} from 'node:os';
 import {dirname, isAbsolute, join, relative, resolve, sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {runQuintChecker} from '../../../scripts/quint-lib.mjs';
+import {runQuintChecker} from '../../../scripts/quint-lib.ts';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const identifier = /^[A-Za-z][A-Za-z0-9_]*$/;
@@ -13,7 +13,7 @@ const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const hash = path => digest(readFileSync(path));
 const hashPattern = /^[a-f0-9]{64}$/;
 const snapshotDirectory = join(root, 'test-results/quint-refinement/input-snapshots');
-const checkerSources = [fileURLToPath(import.meta.url), join(root, 'scripts/quint-lib.mjs')];
+const checkerSources = [fileURLToPath(import.meta.url), join(root, 'scripts/quint-lib.ts')];
 
 function containsPath(directory, file) {
   const name = relative(directory, file);

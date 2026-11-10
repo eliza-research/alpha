@@ -18,11 +18,7 @@
     "Preset Alpha Start and Camera End via the existing unset-slot fallback array; stored choices and explicit None remain authoritative"
   ],
   "localEvidenceScope": [
-    "Seven source and host tests passed against the packaged tools and existing offline inputs",
-    "Actual Java admission and decoration policy execution",
-    "New Java view compiles against installed Android API 36 with only SystemUI symbol stubs",
-    "Patch application roundtrip and staged SHA256 comparison",
-    "Exact preservation of existing header controls and selection/unlock/camera sources"
+    "Source packet regenerated for the existing installed namespace; current source checks must pass before image qualification."
   ],
   "notEstablishedByThisPackage": [
     "Complete SystemUI Kotlin/Dagger/resource compilation",
@@ -58,5 +54,16 @@
     "storedChoiceOrExplicitNone": "Preserved by unchanged pinned selection manager",
     "selectionWritesOrMigrationAdded": false,
     "OS17FactoryContainsNewFlagsOrDefaults": false
-  }
+  },
+  "priorIdentityEvidence": {
+    "patchSHA256": "58e75d2ad0e02198bc46e49d3100f8bb5a422c4e8e18781e3d2f9dd28b53d8a0",
+    "localEvidenceScope": [
+      "Seven source and host tests passed against the packaged tools and existing offline inputs",
+      "Actual Java admission and decoration policy execution",
+      "New Java view compiles against installed Android API 36 with only SystemUI symbol stubs",
+      "Patch application roundtrip and staged SHA256 comparison",
+      "Exact preservation of existing header controls and selection/unlock/camera sources"
+    ]
+  },
+  "qualificationTransferred": false
 }

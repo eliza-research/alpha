@@ -6,7 +6,7 @@
 // line arrives between a method's start and end records and must change no count.
 import assert from "node:assert/strict";
 import test from "node:test";
-import { instrumentationClassResults } from "../scripts/instrumentation-result.mjs";
+import { instrumentationClassResults } from "../scripts/instrumentation-result.ts";
 
 const C = name => `ai.alphacompute.alphaphone.${name}InstrumentedTest`;
 const record = (cls, method, code, extra = []) => [`INSTRUMENTATION_STATUS: class=${cls}`, `INSTRUMENTATION_STATUS: test=${method}`, ...extra, `INSTRUMENTATION_STATUS_CODE: ${code}`];

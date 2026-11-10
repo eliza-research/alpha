@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import * as audit from '../scripts/audit-production-bundle.mjs';
+import * as audit from '../scripts/audit-production-bundle.ts';
 
 const badge = (text, quote = '"') => `<span style=${quote}width: 30px; height: 30px; border-radius: 15px; background: #fff; font-weight: 700${quote}>${text}</span>`;
 

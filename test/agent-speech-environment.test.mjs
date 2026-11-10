@@ -1,11 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {agentAsrEnvironment} from '../scripts/agent-asr.mjs';
-import {agentTtsEnvironment} from '../scripts/agent-tts.mjs';
+import {speechEnvironment} from '../scripts/host-speech-admission.ts';
 
 const profiles = {
   ASR: {
-    configure: agentAsrEnvironment,
+    configure: env => speechEnvironment('asr', env),
     prefix: 'ELIZA_ASR',
     renames: {
       ALPHA_LOCAL_ASR: 'ELIZA_ASR_ENABLED',
@@ -14,7 +13,7 @@ const profiles = {
     retired: ['ALPHA_WHISPER_BIN', 'ALPHA_WHISPER_BACKEND', 'ALPHA_ASR_MODEL'],
   },
   TTS: {
-    configure: agentTtsEnvironment,
+    configure: env => speechEnvironment('tts', env),
     prefix: 'ELIZA_PARADEE',
     renames: {
       ALPHA_LOCAL_TTS: 'ELIZA_PARADEE_ENABLED',

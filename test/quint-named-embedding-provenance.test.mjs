@@ -5,7 +5,7 @@ import path from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {build} from 'esbuild';
 import {sql} from 'drizzle-orm';
-import {coreStateBuildPlugin, NAMED_EMBEDDING_TARGETS} from '../scripts/core-state-patch.mjs';
+import {coreStateBuildPlugin, NAMED_EMBEDDING_TARGETS} from '../scripts/core-state-patch.ts';
 import {loadEmbeddingStoreDatabase} from '../specs/quint/refinement/services/embedding-store-pglite.mjs';
 import {runNamedEmbeddingProvenanceRefinement} from '../specs/quint/refinement/services/named-embedding-provenance.mjs';
 import {captureInputs} from '../specs/quint/refinement/check-traces.mjs';

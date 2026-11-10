@@ -6,7 +6,7 @@ import { build } from 'esbuild';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { JSDOM } from 'jsdom';
-import { repositoryRoot } from '../scripts/quint-lib.mjs';
+import { repositoryRoot } from '../scripts/quint-lib.ts';
 
 async function sourceModule(path) {
   const bundled = await build({ absWorkingDir: repositoryRoot, entryPoints: [path],
@@ -127,6 +127,9 @@ test('Quint draft-conflict trace agrees with real revisioned composer writes', a
 });
 
 test('all 240 voice-deletion recovery evidence combinations agree with the real planner', async () => {
+  const registered = modelTrace('PermanentVoiceDeletion', 'decisionTableTest');
+  assert.equal(registered.length, 1, 'the registered main-module wrapper must execute');
+  assert.equal(registered[0].row, true);
   const states = modelTrace('PermanentVoiceDeletion', 'decisionTableTest', 'rows', 'PermanentVoiceDeletionContract');
   const rows = states[0]['#set'];
   assert.equal(rows.length, 240);

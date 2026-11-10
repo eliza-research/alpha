@@ -5,8 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {git as fixtureGit} from './fixtures/git-fixture.mjs';
-import {reviewedSourceOverrides,stagingBuildPatches} from '../scripts/stage-aosp.mjs';
-import {verifySecureCameraSource} from '../scripts/aosp-secure-camera-contract.mjs';
+import {reviewedSourceOverrides,stagingBuildPatches} from '../scripts/stage-aosp.ts';
+import {verifySecureCameraSource} from '../scripts/aosp-secure-camera-contract.ts';
 
 test('secure camera staging accepts exact reviewed SystemUI changes without admitting other source changes', t => {
   const source = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-staging-patches-'));

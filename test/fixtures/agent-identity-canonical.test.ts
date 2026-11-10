@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {AGENT_CHARACTER,AGENT_CHARACTER_ENVIRONMENT,agentIdentityConfiguration,freshAgentProfile,prepareAgentIdentityConfig} from '../../scripts/agent-identity.mjs';
+import {AGENT_CHARACTER,AGENT_CHARACTER_ENVIRONMENT,agentIdentityConfiguration,freshAgentProfile,prepareAgentIdentityConfig} from '../../scripts/agent-identity.ts';
 
 const source=process.env.ALPHA_IDENTITY_TEST_SOURCE;
 if(!source||!path.isAbsolute(source))throw Error('agent:test must select its exact prepared SDK source');

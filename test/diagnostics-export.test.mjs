@@ -192,7 +192,7 @@ test('voice timing: the export carries the timing records, aggregator-ready, and
  const store=new Map();
  globalThis.localStorage={getItem:k=>store.has(k)?store.get(k):null,setItem:(k,v)=>store.set(k,String(v)),removeItem:k=>store.delete(k)};
  const timing=await import('../apps/app/src/runtime/voice-timing.ts');
- const {collectRecords}=await import('../scripts/aggregate-voice-latency.mjs');
+ const {collectRecords}=await import('../scripts/aggregate-voice-latency.ts');
  const {readFileSync}=await import('node:fs');
  let clock=0;timing.setVoiceTimingClock(()=>clock);timing.clearVoiceTiming();
  // A reviewed conversation turn: the transcript passes through the send boundary, never into the record.
@@ -228,7 +228,7 @@ test('voice timing: the export carries the timing records, aggregator-ready, and
 });
 
 test('native voice timing (#395): linked monotonic trials, hashes and labels only, aggregator-ready',async()=>{
- const {aggregateNativeVoice,marks}=await import('../scripts/native-voice-latency.mjs');
+ const {aggregateNativeVoice,marks}=await import('../scripts/native-voice-latency.ts');
  const identity={sourceCommit:pin,sourceDirty:false,engineSha256:hash,modelSha256:'b'.repeat(64),models:{asr:'c'.repeat(64),tts:'d'.repeat(64),extra:secrets[0]},device:'Google Pixel 10a',environment:'device',abi:'arm64-v8a',sdk:36,build:'standalone-release',path:secrets[8]};
  const row={id:pin.slice(0,12)+'-1a2b3c-1',turnId:'7d3c1a52-6d5e-4e0f-9a43-5c1d2e3f4a5b',pipeline:'live-voice',clock:'native-monotonic-ms',captureClock:'audiorecord-timestamp',cold:true,coldReason:'process-first-turn+tts-load',outcome:'passed',audibleClock:'audiotrack-timestamp',network:'offline',thermal:'none',thermalHeadroom:0.4,identity,
   marks:{'last-user-audio':1000,endpoint:1550,'asr-final':1700,request:1720,'first-token':2900,'tts-start':3000,'tts-ready':3300,'first-pcm':3350,'audible-playback':3420,transcript:5},
@@ -322,7 +322,7 @@ test('confirmed clear cancels an outstanding inference refresh before it can app
  const source=readFileSync(new URL('../apps/app/src/prototype/settings-adapter.ts',import.meta.url),'utf8');
  const refresh=source.slice(source.indexOf('  async function refreshResidentDiagnostics(){'),source.indexOf('  async function refreshCapabilities(')).trim();
  const clear=source.slice(source.indexOf('  async function clearProblems(api: Bag) {'),source.indexOf('  async function refresh()')).trim();
- let records=0,clears=0;const context={inferenceAbort:null,owner:{toast:()=>{}},crashBusy:false,crashLog:null,AbortController,window:{confirm:()=>true},setTimeout:()=>1,clearTimeout:()=>{},connectionController:{readResidentDiagnostics:signal=>new Promise((_,reject)=>signal.addEventListener('abort',()=>reject(signal.reason),{once:true}))},recordCloudInferenceFailure:()=>{records++;return true;},readCrashLog:async()=>({entries:[],exitHistory:false}),clearCrashLog:async()=>{clears++;},changed:()=>{}};
+ let records=0,clears=0;const context={inferenceAbort:null,owner:{toast:()=>{}},crashBusy:false,crashLog:null,AbortController,review:async(id,title,details,label)=>{assert.equal(id,'clear-problems');assert.equal(label,'Clear log');return true;},setTimeout:()=>1,clearTimeout:()=>{},connectionController:{readResidentDiagnostics:signal=>new Promise((_,reject)=>signal.addEventListener('abort',()=>reject(signal.reason),{once:true}))},recordCloudInferenceFailure:()=>{records++;return true;},readCrashLog:async()=>({entries:[],exitHistory:false}),clearCrashLog:async()=>{clears++;},changed:()=>{}};
  vm.runInNewContext(stripTypeScriptTypes(refresh+'\n'+clear,{mode:'strip'})+'\nglobalThis.refresh=refreshResidentDiagnostics;globalThis.clear=clearProblems;',context);
  const pending=context.refresh();await context.clear({toast:()=>{}});await pending;assert.equal(clears,1);assert.equal(records,0);assert.equal(context.inferenceAbort,null);
 });

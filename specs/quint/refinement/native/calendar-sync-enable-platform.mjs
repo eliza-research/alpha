@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import {mkdtempSync,mkdirSync,readFileSync,rmSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {dirname,join} from 'node:path';
-import {materializeNativePatches} from '../../../../scripts/prepare-patched-native.mjs';
-import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.mjs';
+import {materializeNativePatches} from '../../../../scripts/prepare-patched-native.ts';
+import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.ts';
 import {root} from './java.mjs';
 import {calendarReviewPorts} from './scoped-calendar-review-platform.mjs';
 
@@ -211,8 +211,8 @@ export function calendarSyncEnablePlatform(){
     const compiled=[...generated,...pinnedPaths.map(name=>'vendor/eliza/'+name),shared+'content/ContentUris.java',
       shared+'database/Cursor.java',testFixture+'ContentProviderOperation.java',
       'test/fixtures/SqliteCalendarProvider.java','test/fixtures/CalendarSyncSnapshotTest.java'];
-    return {compiled,generated,expected,sources:[manifest,'upstream.lock.json','scripts/prepare-patched-native.mjs',
-      'scripts/upstream-native-source.mjs',...patches.map(row=>'patches/eliza/'+row.file),values,uri,resolver,
+    return {compiled,generated,expected,sources:[manifest,'upstream.lock.json','scripts/prepare-patched-native.ts',
+      'scripts/upstream-native-source.ts',...patches.map(row=>'patches/eliza/'+row.file),values,uri,resolver,
       ...stagedPaths.map(name=>'vendor/eliza/'+name)],close};
   } catch(error){close();throw error;}
 }

@@ -50,7 +50,7 @@ import static org.junit.Assert.*;
  * partially decoded during speech and finished at the endpoint (the shipped live route runs the same
  * decoder in the resident agent) → a fixed reply → Paradee-8M → MediaPlayer, timed exactly as
  * AlphaVoiceCloudPlugin.play. <b>No language model runs</b>: there is no hosted inference binding
- * here, so every trial is labelled {@code harness-no-inference} and scripts/native-voice-latency.mjs
+ * here, so every trial is labelled {@code harness-no-inference} and scripts/native-voice-latency.ts
  * never counts it as voice-assistant acceptance.
  *
  * <p>The audio comes from whatever drives the microphone: on an emulator, speech WAVs injected into

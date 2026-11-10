@@ -33,7 +33,7 @@ test('an empty optional Cloud store does not reopen sign-in or disturb the priva
 test('a replaced reference with the same credential ID cannot publish the old Cloud account',async()=>{
  const f=fixture({values:[credential,{...credential,credentialReference:'browser-cloud-reference:replacement'}]});await f.initialize();assert.deepEqual(f.calls,['attach','read','read']);assert.match(f.state.error,/Cloud account changed/);assert.equal(f.state.cloudAccount,null);assert.equal(f.context.active.kind,'resident');assert.equal(f.state.history,f.history);
 });
-// `npm run dev` sets the preview flag with test mocks on (scripts/dev-local.mjs): a page loaded while the
+// `npm run dev` sets the preview flag with test mocks on (scripts/dev-local.ts): a page loaded while the
 // agent restarts attaches in the background, so the failed attach (a 503) leaves the sheet closed.
 test('npm run dev: a failed startup attach leaves the sheet closed and the agent recovering, with test mocks on',async()=>{
  const f=fixture({attachFails:true,testMocks:true});await f.initialize();assert.deepEqual(f.calls,['attach']);

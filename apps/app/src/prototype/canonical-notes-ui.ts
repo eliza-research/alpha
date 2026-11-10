@@ -4,17 +4,17 @@ import {nextDefaultNoteTitle} from '../runtime/note-default-title';
 import {projectNoteForModel,reconstructNoteContent,type NoteJson,type StickyNote} from '../../../../.eliza/client-features/plugins/plugin-notes/src/types.ts';
 import {noteScheduleDraft,type NoteScheduleKind} from '../../../../.eliza/client-features/plugins/plugin-notes/src/client/note-schedule-draft.ts';
 import type {AppRecordPort} from '../runtime/app-record-route-policy';
-import {agentPendingText,agentAvailabilityNotice} from '../runtime/connection-ui';
+import {agentPendingText,agentAvailabilityNotice,connectionController} from '../runtime/connection-ui';
 import {DailyApps} from '../daily';
 import {CanonicalNotesController,type NotesPhase} from './canonical-notes-controller';
 import {CanonicalNotesEditor} from './canonical-notes-editor';
 import type {CanonicalNoteSaveIntent} from './note-recorder';
 type Bag=Record<string,any>;
-const UNAVAILABLE='Notes is unavailable for this agent connection. Check Settings › Agent connection.';
+const UNAVAILABLE='Your agent is not ready for Notes. Check the connection and try again.';
 /** Device-local handles (a recording, a picked document, a web source) belong to Older notes adapters, never to an agent record's view. */
 const LOCAL_HANDLES=['audio','documentSource','webSource'];
 /** View identity and presentation fields, never authored rich metadata. */
-const VIEW_FIELDS=new Set(['id','title','body','kind','canonicalRevision','createdAt','updatedAt','when','color','bodySeparator','authored']);
+const VIEW_FIELDS=new Set(['id','title','body','kind','canonicalRevision','createdAt','updatedAt','modifiedAt','when','color','bodySeparator','authored']);
 /** Older notes state (device recorder, playback, device Trash, recording deletions) is never read for agent Notes. */
 const DEVICE_ONLY_STATE={rec:null,proc:null,record:false,playing:false,dict:false,trash:[],trashConfirm:null,trashFull:null,audioDeletionChecked:true,audioDeletionPending:[],audioDeletionRecoveryFailed:false};
 const filled=(value:unknown)=>Array.isArray(value)&&value.length>0;
@@ -79,7 +79,7 @@ export class CanonicalNotesUi {
   const data:Bag=structuredClone(note.format?.data??{}),audio=note.format?.kind==='voice'?voiceAudio(data):undefined;for(const key of LOCAL_HANDLES)delete data[key];
   if(audio)data.audio=audio;
   const parts=projectNoteForModel(note),kind=shownKind(note.format?.kind??'text',data);
-  const row:Bag={...data,id:note.id,kind,title:parts.title,body:parts.body,canonicalRevision:revision};
+  const row:Bag={...data,id:note.id,kind,title:parts.title,body:parts.body,canonicalRevision:revision,createdAt:note.createdAt,updatedAt:note.updatedAt,modifiedAt:note.updatedAt};
   if(typeof row.when!=='string'){const at=Date.parse(note.updatedAt);row.when=Number.isFinite(at)?new Date(at).toLocaleDateString(undefined,{month:'short',day:'numeric'}):'';}
   if(kind==='voice'){if(audio)row.audio={...audio,noteId:note.id,transcript:parts.body};for(const key of ['lines','summary','actions'])if(!Array.isArray(row[key]))row[key]=[];row.lines=row.lines.map((line:Bag)=>({...line,at:Number.isFinite(line?.at)?line.at:0}));}
   if(kind==='link'&&typeof row.domain!=='string')row.domain=domainOf(row.url);
@@ -314,6 +314,6 @@ export function installCanonicalNotesView(Component:any,views:Record<string,Bag>
   if(ui)return {...ui.decorate(render(state,value),value,state),olderNotesAction,listActions:true};
   // A pending New note request waits for the binding instead of drafting into no collection.
   const waiting={...state,...DEVICE_ONLY_STATE,list:[],open:null,compose:false,trashOpen:false,storageStatus:state.storageStatus||agentAvailabilityNotice(undefined,UNAVAILABLE)};
-  return {...render(waiting,value),storageStatus:waiting.storageStatus,none:false,canCreate:false,browserRecovery:false,audioDeletionUnknown:false,trashAvailable:false,canRecord:false,canImportText:false,olderNotesAction,listActions:!!olderNotesAction};
+  return {...render(waiting,value),storageStatus:'',unavailable:true,unavailableMessage:waiting.storageStatus,connectNotes:()=>connectionController.open(),none:false,canCreate:false,browserRecovery:false,audioDeletionUnknown:false,trashAvailable:false,canRecord:false,canImportText:false,olderNotesAction,listActions:!!olderNotesAction};
  };
 }

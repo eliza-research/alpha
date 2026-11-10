@@ -3,9 +3,9 @@ import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {generateAlphaAndroidHost, HOST_DESCRIPTOR, readHostDescriptor} from '../../scripts/android-host.mjs';
-import {NATIVE_SOURCE_MANIFEST, preparePatchedNative, verifyNativePatchReceipt} from '../../scripts/prepare-patched-native.mjs';
-import {sha, upstreamNativeSource} from '../../scripts/upstream-native-source.mjs';
+import {generateAlphaAndroidHost, HOST_DESCRIPTOR, readHostDescriptor} from '../../scripts/android-host.ts';
+import {NATIVE_SOURCE_MANIFEST, preparePatchedNative, verifyNativePatchReceipt} from '../../scripts/prepare-patched-native.ts';
+import {sha, upstreamNativeSource} from '../../scripts/upstream-native-source.ts';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const nativeManifest = NATIVE_SOURCE_MANIFEST;
@@ -14,7 +14,7 @@ const lock = 'upstream.lock.json';
 const modulePath = 'plugins/plugin-native-browser-surface/android';
 const resourcePath = 'plugins/plugin-native-browser-surface/resources';
 const modules = [modulePath, resourcePath];
-const preparedScript = 'scripts/prepare-patched-native.mjs';
+const preparedScript = 'scripts/prepare-patched-native.ts';
 const sdk = 'vendor/eliza/';
 const generator = 'packages/app/scripts/mobile/android/consumer-host';
 const wrapper = 'packages/app/platforms/android/';
@@ -40,7 +40,7 @@ function inputs() {
   'This browser fixture compiles exact unpatched browser sources; unrelated native module patches remain independent');
   assert.ok(!descriptor.residentHost.helpers.some(file => file.startsWith(modulePath+'/')));
   const productFiles = [...new Set([...profile.generationInputs.map(row => row.path).filter(path => path !== ownerRoutes),
-    profile.manifest.path, ...profile.flavors.map(row => row.manifest.path), 'scripts/upstream-native-source.mjs'])];
+    profile.manifest.path, ...profile.flavors.map(row => row.manifest.path), 'scripts/upstream-native-source.ts'])];
   return {descriptor, browser, productFiles};
 }
 

@@ -1,3 +1,4 @@
+import {checkKeyboardDictationCloud} from './keyboard-dictation-cloud.mjs';
 import {checkKeyboardDictation} from './keyboard-dictation.mjs';
 import {collectRefinementCampaigns} from '../campaigns.mjs';
 import {fileURLToPath} from 'node:url';
@@ -5,7 +6,7 @@ import {readdirSync} from 'node:fs';
 import {join} from 'node:path';
 import {checkTraces, captureInputs} from '../check-traces.mjs';
 import {app, sense, voice, directory, javaTraces, root} from './java.mjs';
-import {loadModels} from '../../../../scripts/quint-lib.mjs';
+import {loadModels} from '../../../../scripts/quint-lib.ts';
 import {captureRendererImplementation, voiceTraces} from './renderer.mjs';
 import {residentLifecycleTraces} from './local-agent.mjs';
 import {checkResetOrchestration} from './reset-orchestration.mjs';
@@ -182,7 +183,7 @@ export async function runNativeRefinement(onProgress) {
       checkNativeUpdateStaging, checkCanonicalNotificationTap, checkWorkflowNoticeDelivery,
       checkNativeHostedResultNotices, checkNativeHostedInbox, checkNativeReminderDelivery, checkNativeClockReview,
       checkNativeSmsDispatch, checkNativeMmsDispatch, checkNativeTextScaleLifecycle, checkNativeCrashJournal,
-      checkNativeSettingsHandoff, checkNativeAppInfoHandoff, checkNativeSourceRenewal, checkNativeAssistantEntry, checkNativeActionRecovery,
+      checkNativeSettingsHandoff, checkNativeAppInfoHandoff, checkKeyboardDictationCloud, checkNativeSourceRenewal, checkNativeAssistantEntry, checkNativeActionRecovery,
       checkNativeGmailBackground, checkNativeDigestConsent, checkNativeCalendarScopedReview,
       checkNativeCalendarSyncEnable, checkBrowserUnderlay].map(withInputs(nativeInputs)),
   ];

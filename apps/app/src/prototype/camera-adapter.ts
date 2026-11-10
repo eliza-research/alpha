@@ -104,9 +104,11 @@ let frameQuestion:((question:string)=>boolean)|undefined;
 /** A request to scan what Camera sees; asking Alpha in Camera reaches it. */
 let scanRequest:(()=>boolean)|undefined;
 export function requestCameraScan():boolean{return scanRequest?.()??false;}
-const SCAN_REQUEST=/\bscan\b.*\b(document|doc|receipt|qr|code|poster|page|letter|form|card|menu|sign|this|that|it|text)\b/;
+const SCAN_REQUEST=/^(?:hey alpha,? )?(?:(?:can|could|would|will) you (?:please )?|please )?(?:scan|digitize)(?: (?:(?:this|that|the|my|a) )?(?:document|doc|receipt|qr(?: code)?|code|poster|page|letter|form|card|menu|sign|passport|whiteboard|text)| (?:this|that|it))?(?:,? (?:for me|please|now|right now))*[\s?.!]*$/;
 /** Whether a chat message asks to scan what the camera sees. */
-export function cameraScanRequested(text:unknown):boolean{return SCAN_REQUEST.test(String(text||'').toLowerCase().slice(0,200));}
+export function cameraScanRequested(text:unknown):boolean{
+ return typeof text==='string'&&text.length<=200&&SCAN_REQUEST.test(text.toLowerCase().trim());
+}
 export function askAboutCapture(item?:{id:string}):boolean{return captureQuestion?.(item)??false;}
 // Match a complete bounded question, so another request cannot be mistaken for a frame question.
 const FRAME_QUESTION=/^(?:hey alpha,? )?(?:please )?(?:what am i looking at|what(?:'s| is) (?:this|that|in front of me)|what do you see|describe (?:this|that|what you see)|what does (?:this|that|it) say|read (?:this|that)(?: (?:to me|for me))?)(?:,? (?:here|right now|now|please))*[\s?.!]*$/;
@@ -799,8 +801,10 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     const actions=document.createElement('div');actions.style.cssText='display:flex;gap:8px;justify-content:center;flex-wrap:wrap';
     const action=(text:string,go:()=>void)=>{const b=document.createElement('button');b.type='button';b.textContent=text;b.style.cssText='min-height:44px;padding:0 16px;border-radius:22px;background:rgba(255,255,255,.16);color:#fff;font:inherit';b.onclick=go;actions.append(b);return b;};
     if(!browserMode&&kind!=='unavailable')action('Open settings',()=>{void device.openSettings({page:'privacy'}).catch(()=>message('Settings could not open.'));});
-    action('Try again',()=>{hideAccess();if(kind==='camera'||kind==='unavailable')void start(true);else{session.clearDenied('microphone');message('');}});
-    panel.append(title,actions);
+    action('Try again',()=>{hideAccess();if(kind==='camera'||kind==='unavailable')void start(true);else{session.clearDenied('microphone');message('');void record();}});
+    const explanation=document.createElement('p');explanation.style.margin='0';
+    explanation.textContent=kind==='microphone'?'Microphone access records sound with your video. Allow access in Settings, then try recording again.':kind==='camera'?'Allow camera access in Settings to take photos, record video or scan a page.':'The camera could not start. Close other camera apps, then try again.';
+    panel.append(title,explanation,actions);
     screen.append(panel);accessPanel=panel;
   }
   let noticeTimer:number|undefined,noticeGeneration=0;
@@ -1170,7 +1174,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       if (!askCameraFrame(currentApi)) message(ready ? 'Finish the current capture, then ask again.' : 'Start the camera first.');
     };
     data.flip = () => { void flipLens(currentApi); };
-    data.flashAvailable = ready && (browserMode ? browserCamera.flashAvailable() : lens.hasFlash);
+    data.flashAvailable = ready && !recordingBusy && (browserMode ? browserCamera.flashAvailable() : lens.hasFlash);
     if (browserMode) data.flashLabel = browserCamera.lightingLabel(flash);
     data.toggleFlash = () => { const next = !flash; void control(() => camera.setSettings({ settings: { flash: next ? 'on' : 'off' } }), () => { flash = next; currentApi.set({ flash: next }); }); };
     const stops = ready ? zoomStops(lens) : [];
@@ -1195,16 +1199,22 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     };
     data.vfClick = (event: MouseEvent) => { if (event.detail === 0) focusAt(0.5, 0.5); };
     data.showModes = !recordingBusy;
-    data.modes = [...(data.modes || []),{label:'Alpha',css:st.mode==='alpha'?'color:white':'color:rgba(255,255,255,.55)',dot:st.mode==='alpha'?1:0}].map((m: Bag) => ({ ...m, pick: () => { if (recordingBusy || session.capturing) return; const mode = m.label.toLowerCase(); if (mode === 'photo' || mode === 'video' || mode === 'alpha') { if (currentApi.get('camera').mode !== mode) {pendingShot=undefined;bindMode(mode);} currentApi.set({ mode, rec: false }); } } }));
+    data.modes = [...(data.modes || []),{label:'Ask',mode:'alpha',css:st.mode==='alpha'?'color:var(--alpha-white)':'color:rgba(255,255,255,.55)',dot:st.mode==='alpha'?1:0}].map((m: Bag) => ({ ...m, pick: () => { if (recordingBusy || session.capturing) return; const mode = m.mode || m.label.toLowerCase(); if (mode === 'photo' || mode === 'video' || mode === 'alpha') { if (currentApi.get('camera').mode !== mode) {pendingShot=undefined;bindMode(mode);} currentApi.set({ mode, rec: false }); } } }));
     if(st.mode==='alpha'){
-      data.shutterLabel='Attach photo to chat';
+      data.shutterLabel='Ask about this';
+      data.shutter=data.ask;
       data.innerCss="width:62px;height:62px;border-radius:50%;background:white url('/logo-mark.svg') center/80% no-repeat";
     }
     const last = lastCapture;
     data.lastLabel = last?.kind === 'video' ? 'Open last video' : 'Open last photo';
     if (last) {
       data.hasLast = true; data.noLast = false; data.lastBg = `url("${last.image}") center / cover no-repeat`; data.lastTf = ''; data.lastFlt = '';
-      data.openLast = () => { currentApi.open('photos', { tab: 'lib', album: null, open: last.id || null, chrome: true, nativePhotoSelection: null }); };
+      data.openLast = () => {
+        if(!last.id)return;
+        // Keep the thumbnail visible while Photos validates and loads the full row.
+        captures=[last,...captures.filter(row=>row.id!==last.id)];
+        currentApi.open('photos', { tab: 'lib', album: null, open: last.id, from:'camera', chrome: true, nativePhotoSelection: null });
+      };
     } else { data.hasLast = false; data.noLast = true; data.openLast = () => {}; }
     return data;
   };
@@ -1555,7 +1565,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     if(data.alb)data.alb.menu=!!(data.alb.canSelect||data.alb.isCustom||data.alb.canEmpty);
     return data;
   };
-  if (views.photos) views.photos.back = (st: Bag, currentApi: Bag) => { if(edit){cancelEdit();currentApi.set({nativeEditRevision:Date.now()});return true;}if(selection){cancelPhotoSelection(currentApi);return true;}if(st.sheet==='owned-album'){manager=undefined;currentApi.set({sheet:null});return true;}if(st.sheet==='empty'){cancelPermanent(currentApi);return true;}if(st.sheet)return photosBack?.(st,currentApi); if (preview?.id === st.open || captures.some(c => c.id === st.open) || albumRows.some(c => c.id === st.open)) { retirePhotoRead();currentApi.set({ open: null, nativePhotoSelection: null }); preview = undefined; closeVideo(); return true; } return photosBack?.(st, currentApi); };
+  if (views.photos) views.photos.back = (st: Bag, currentApi: Bag) => { if(edit){cancelEdit();currentApi.set({nativeEditRevision:Date.now()});return true;}if(selection){cancelPhotoSelection(currentApi);return true;}if(st.sheet==='owned-album'){manager=undefined;currentApi.set({sheet:null});return true;}if(st.sheet==='empty'){cancelPermanent(currentApi);return true;}if(st.sheet)return photosBack?.(st,currentApi); if(st.from==='camera'&&currentApi.S?.stack?.length)return photosBack?.(st,currentApi); if (preview?.id === st.open || captures.some(c => c.id === st.open) || albumRows.some(c => c.id === st.open)) { retirePhotoRead();currentApi.set({ open: null, nativePhotoSelection: null }); preview = undefined; closeVideo(); return true; } return photosBack?.(st, currentApi); };
   if(views.photos)views.photos.onLeave=(owner:Bag)=>{cancelScan();retirePhotoRead();window.clearTimeout(thumbTimer);deviceLibrary.leave();shareReview=undefined;albumReview=undefined;closeQuestion?.();closeQuestion=undefined;void photoAttachments.cancelPhotoSelected().catch(()=>{});cancelEdit();editRecoveryChecked=false;automaticEditRecovery='';selection=undefined;selectionTab=undefined;swallowedTap='';endHold();manager=undefined;const old=prepared;prepared=undefined;if(old)void library.cancelDeleteTrash({confirmation:old.confirmation}).catch(()=>{});owner.set({sheet:null});photosLeave?.(owner);};
   async function playVideo(selected: SavedPhoto, owner: Bag) {
     if (selected.kind !== 'video') return;

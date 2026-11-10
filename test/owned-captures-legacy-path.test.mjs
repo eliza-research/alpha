@@ -12,7 +12,7 @@ const root=path.resolve(import.meta.dirname,'..');
 const ready=fs.existsSync(path.join(root,'vendor/eliza/plugins/plugin-native-media'));
 const javac=(()=>{try{execFileSync('javac',['-version'],{stdio:'ignore'});return true;}catch{return false;}})();
 test('a keep reserved under the earlier capture folder is still looked up there',{skip:(!ready&&'vendor/eliza not checked out')||(!javac&&'no JDK')},t=>{
- return import('../scripts/prepare-patched-native.mjs').then(({preparePatchedNative})=>{
+ return import('../scripts/prepare-patched-native.ts').then(({preparePatchedNative})=>{
   const media=path.join(preparePatchedNative({root}).root,'plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media');
   const captures=fs.readFileSync(path.join(media,'OwnedCaptures.java'),'utf8');
   const lookup=captures.slice(captures.indexOf('private Cursor lookup('),captures.indexOf('private Result recover('));

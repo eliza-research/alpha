@@ -1,8 +1,10 @@
 import { externalVoiceInvocationEnabled } from '../runtime/voice-entry-policy';
+import {BrowserReviews} from '../browser/review';
 import {residentRecoveryCopy} from '../runtime/resident-recovery';
 import {cloudServiceName} from '../runtime/cloud-protocol';
 import {browserDevProfile as devProfileQuery,developerTools} from '../browser/dev-profile';
-import {cloudRuntimeEnabled,testMocksEnabled,devSurfacesEnabled} from '../build-flags';
+import {testMocksEnabled,devSurfacesEnabled} from '../build-flags';
+import {speechRoute,type SpeechRoute} from '../runtime/voice-selection';
 import {openCalendarRecovery} from '../browser/calendar-recovery';
 import {openNotificationRecovery} from '../browser/notification-recovery';
 import {openAlertSoundRecovery,openDevicePreferencesRecovery,openDeviceRolesRecovery} from '../browser/preference-recovery';
@@ -42,7 +44,7 @@ const browserDevProfile = devSurfacesEnabled && devProfileQuery;
 /** Build version injected at build time from app.config.json or ELIZAOS_VERSION_NAME. */
 export const buildVersion = typeof __APP_VERSION__ === 'string' && __APP_VERSION__ ? __APP_VERSION__ : 'Unavailable';
 export type LicenseNotice = { name: string; version: string; license: string; source: string; text: string; flags?: unknown; obligations?: unknown };
-/** Labels for the flags scripts/licence-policy.mjs writes into the shipped notices. An unlisted flag is shown as written. */
+/** Labels for the flags scripts/licence-policy.ts writes into the shipped notices. An unlisted flag is shown as written. */
 const LICENSE_FLAG_LABELS: Record<string, string> = {
   'copyleft-strong': 'Copyleft (GPL family)', 'network-copyleft': 'Network copyleft (AGPL)', 'copyleft-weak': 'Weak copyleft (LGPL, MPL, EPL)',
   'share-alike-data': 'Share-alike data', 'unknown-licence': 'Unknown license', 'licence-text-missing-from-package': 'No license file in package',
@@ -192,11 +194,13 @@ export function automaticUpdateIdle(shell: {screen?:unknown;view?:unknown;voice?
     !shell.homeEdit && !shell.homeAdd && !shell.drawerMenu &&
     !connection.busy && !connection.open && !editor;
 }
-/** Cloud QA profile facts replace prototype navigation, not device settings links. */
-export function cloudPrivacyRow(label: string): [string, string] | null {
-  if (label === 'Leaves this device') return ['Shared with Cloud', 'Messages and selected content when you use AI'];
-  if (label === 'On-device model') return ['Voice', 'Recordings for transcription and text for playback, when used'];
-  return null;
+/** The Privacy page's voice fact: the speech route in use now (voice-selection.ts) and what it sends.
+ * It replaces the prototype's on-device model row; device settings links are untouched. */
+export function voicePrivacyRow(label: string, route: SpeechRoute, serviceName = 'Cloud'): [string, string] | null {
+  if (label !== 'On-device model') return null;
+  if (route === 'cloud') return ['Voice', `${serviceName} speech now: recordings and reply text go to ${serviceName}. On this phone when ${serviceName} is unavailable.`];
+  if (route === 'direct') return ['Voice', 'Cartesia now, with your key: recordings and reply text go to Cartesia. On this phone when Cartesia is unavailable.'];
+  return ['Voice', 'On this phone now. No recordings or reply text are sent.'];
 }
 /** A stale or direct Developer selection cannot open the page in a product build. */
 export function settingsPage(page: string | null | undefined, developerSurfaces: boolean): string | null | undefined {
@@ -269,6 +273,12 @@ export function installSettingsAdapter(Component: any, views: Bag) {
   let roles: Record<string, RoleRow> | null = null, launcher: boolean | null = null, roleBusy = false;
   let crashLog: CrashLog | null = null, crashBusy = false, diagnosticsBusy = false;
   let updateBusy: '' | 'check' | 'install' = '';
+  const reviews=new BrowserReviews();
+  async function review(id:string,title:string,details:string,label:string,guard:()=>boolean=()=>true){
+    const instance=owner,page=owner?.vget('settings').page,session=connectionController.getSnapshot().session,cloud=connectionController.getCloudClient()?.sessionId;
+    const current=()=>owner===instance&&owner?.S().view==='settings'&&owner.vget('settings').page===page&&connectionController.getSnapshot().session===session&&connectionController.getCloudClient()?.sessionId===cloud&&guard();
+    return await reviews.confirm(id,title,details,label,{current})&&current();
+  }
   let automaticUpdates: ReturnType<typeof createAppUpdateScheduler> | undefined;
   const automaticUpdateActive = () => automaticUpdates?.setActive(!document.hidden);
   async function pollAutomaticUpdate(current: () => boolean) {
@@ -373,7 +383,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
   async function disconnectGmail(account: GmailAccount) {
     const cloud = connectionController.getCloudClient(), instance = owner;
     if (!cloud || !account.connectionId || gmailBusy) return;
-    if (!window.confirm(googleDisconnectConfirmation(account.label,cloudServiceName(cloud.client.environment)))) return;
+    if (!await review('disconnect-google:'+account.connectionId,'Remove Google access?',googleDisconnectConfirmation(account.label,cloudServiceName(cloud.client.environment)),'Remove access')||gmailBusy||connectionController.getCloudClient()?.sessionId!==cloud.sessionId) return;
     gmailBusy = account.connectionId; changed();
     // Native background state is retired alongside the revoke; it never gates it.
     const retirement = retireGmailBackground(account.connectionId);
@@ -450,7 +460,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     finally { diagnosticsBusy = false; if (owner === instance) changed(); }
   }
   async function clearProblems(api: Bag) {
-    if (crashBusy || !window.confirm('Clear the local problem log?')) return;
+    if (crashBusy || !await review('clear-problems','Clear problem log?','This removes the local problem log. Saved notes, messages and accounts stay.','Clear log')||crashBusy) return;
     inferenceAbort?.abort();inferenceAbort=null;
     const instance = owner; crashBusy = true; changed();
     try { await clearCrashLog(); crashLog = await readCrashLog(); }
@@ -526,7 +536,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
   p.componentDidUpdate = function (previousProps: Bag, previousState: Bag) {
     update?.call(this, previousProps, previousState);
     // Switching away from Settings (Home, another view) locks and forgets the password manager.
-    if (typeof this.S === 'function' && this.S().view !== 'settings') leavePasswordManager();
+    if (typeof this.S === 'function' && this.S().view !== 'settings') { leavePasswordManager(); reviews.cancelAll(); }
     const theme = this.state?.theme;
     // The marker travels with React state, so queued external reads cannot echo an older theme.
     const external=this.state?.appearanceStorageRead;
@@ -537,6 +547,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     }
   };
   p.componentWillUnmount = function () {
+    reviews.cancelAll();
     automaticUpdates?.dispose(); automaticUpdates = undefined;
     document.removeEventListener('visibilitychange',automaticUpdateActive);
     if (owner === this) { capabilityAbort?.abort(); capabilityAbort = null; inferenceAbort?.abort();inferenceAbort=null; owner = null; ++generation; facts = {}; controls = {}; delivery = {}; cross={}; choices=null; history=null; roles=null; crashLog=null; }
@@ -593,11 +604,13 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     const nav = (label: string, page: string): Bag => ({ kNav: true, label, lbl: label, chev: true, noAB: true, go: manage(page) });
     const group = (rows: Bag[], id?: string) => ({ ...(id ? {id} : {}), css: 'background:var(--s2);padding:4px 0', rows });
     const run = async (task:()=>Promise<void>)=>{if(notificationBusy)return;notificationBusy=true;changed();const current=owner;try{await task();if(owner===current)await refresh();}catch{if(owner===current)api.toast('Notification settings changed or are unavailable. Refresh and try again.');}finally{notificationBusy=false;if(owner===current)changed();}};
-    // Speech follows the explicit production runtime profile; developer routes stay separate.
+    // Speech follows the run-time route (voice-selection.ts): the row names the route in use now,
+    // and Cloud speech says what it sends. Developer routes stay separate.
+    const voiceRoute = speechRoute();
     const speechRows = (): Bag[] => [
-      info('Speech', connection.residentInference==='direct'&&connection.providerStatus?.voiceConfigured?'Cartesia · own API key':connection.residentInference==='direct'&&(cloudRuntimeEnabled||testMocksEnabled)?'Off · add a Cartesia key':developmentCartesiaVoiceEnabled?'Cartesia · development':cloudRuntimeEnabled?`${serviceName} · Cartesia output (uses your plan)`:testMocksEnabled?`${serviceName} (counts toward your plan)`:'On this device'),
-      ...(cloudRuntimeEnabled&&!developmentCartesiaVoiceEnabled&&connection.residentInference!=='direct'
-        ? [note('Voice privacy', `Microphone audio and reply text go to ${serviceName}.`)]
+      info('Speech', voiceRoute==='direct'?'Cartesia · own API key':testMocksEnabled&&connection.residentInference==='direct'?'Off · add a Cartesia key':developmentCartesiaVoiceEnabled?'Cartesia · development':voiceRoute==='cloud'?`${serviceName} · Cartesia output (uses your plan)`:testMocksEnabled?`${serviceName} (counts toward your plan)`:'On this device'),
+      ...(voiceRoute==='cloud'&&!developmentCartesiaVoiceEnabled
+        ? [note('Voice privacy', `Microphone audio and reply text go to ${serviceName} while it is available. Otherwise speech runs on this phone.`)]
         : []),
       ...(wakeListeningStopUnconfirmed() ? [note('Wake listening', 'Could not confirm listening is off. Turn it off in Android settings.')] : []),
     ];
@@ -868,41 +881,42 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           nav('Manage mobile networks', 'mobile'), ...(Capacitor.isNativePlatform() ? [nav('Airplane mode in Android', 'airplane')] : [])])];
       } else if (page.title === 'Models') {
         const native=Capacitor.isNativePlatform();
-        page.hero = { ...page.hero, big: target, sub: native&&connection.residentInference==='direct'?'Cerebras · own key':cloudRuntimeEnabled?'':native?'Conversation uses the selected agent. Voice runs on this device.':developmentCartesiaVoiceEnabled?'Direct Cerebras and Cartesia · development':`Conversation uses the selected agent. Voice uses ${serviceName}.` };
-        page.groups = [group([info('Connection', runtimeLocation), ...(native?[info('Inference provider',residentProvider?residentProvider.configured?(residentProvider.provider==='elizacloud'?serviceName:'Cerebras'):'Not configured':'Status unavailable')]:browserLocalAgentEnabled ? [info('Inference provider', inferenceProvider)] : []), info('Inference model', inferenceModel), info('Voice', native&&connection.residentInference==='direct'&&connection.providerStatus?.voiceConfigured?'Cartesia · own API key':connection.residentInference==='direct'&&(cloudRuntimeEnabled||testMocksEnabled)?'Off · add a Cartesia key':cloudRuntimeEnabled?(account?`${serviceName} · Cartesia output`:'Cloud sign-in required'):native?'On this device':developmentCartesiaVoiceEnabled?'Cartesia · development':account ? serviceName : 'Sign-in required'), { kNav:true, label:`${serviceName} account`, lbl:`${serviceName} account`, chev:true, noAB:true, go:()=>connectionController.openCloudAccount() }])];
+        page.hero = { ...page.hero, big: target, sub: native&&connection.residentInference==='direct'?'Cerebras · own key':native&&voiceRoute==='cloud'?'':native?'Conversation uses the selected agent. Voice runs on this device.':developmentCartesiaVoiceEnabled?'Direct Cerebras and Cartesia · development':`Conversation uses the selected agent. Voice uses ${serviceName}.` };
+        page.groups = [group([info('Connection', runtimeLocation), ...(native?[info('Inference provider',residentProvider?residentProvider.configured?(residentProvider.provider==='elizacloud'?serviceName:'Cerebras'):'Not configured':'Status unavailable')]:browserLocalAgentEnabled ? [info('Inference provider', inferenceProvider)] : []), info('Inference model', inferenceModel), info('Voice', native&&voiceRoute==='direct'?'Cartesia · own API key':testMocksEnabled&&connection.residentInference==='direct'?'Off · add a Cartesia key':native&&voiceRoute==='cloud'?`${serviceName} · Cartesia output`:native?'On this device':developmentCartesiaVoiceEnabled?'Cartesia · development':account ? serviceName : 'Sign-in required'), { kNav:true, label:`${serviceName} account`, lbl:`${serviceName} account`, chev:true, noAB:true, go:()=>connectionController.openCloudAccount() }])];
       } else if (page.title === 'Developer') {
         page.groups = [group([info('App version', facts.appVersion || buildVersion), info('Agent memory', connection.session?'Usage not reported by agent':pending)]), group([problemsRow(), diagnosticsRow()]), group([nav('Android developer settings', 'developer')])];
       } else if (page.title === 'Notifications') {
         const custom = (label:string,go:()=>void,id=label):Bag=>({id,kNav:true,label,lbl:label,chev:true,noAB:true,busy:notificationBusy,hasVal:notificationBusy,val:'Working…',go:()=>{if(!notificationBusy)go();}});
-        const policy = (changes:Bag)=>void run(async()=>{await notifications.setNotificationPolicy({expectedRevision:cross.revision,...changes});if(changes.history===false)history=[];});
+        const policyRevision=cross.revision;
+        const policy = (changes:Bag)=>void run(async()=>{await notifications.setNotificationPolicy({expectedRevision:policyRevision,...changes});if(changes.history===false)history=[];});
         const selected:Bag[]=cross.apps||[];
         const showCrossAppNotifications = Capacitor.isNativePlatform() || devSurfacesEnabled;
         const crossRows:Bag[]=showCrossAppNotifications ? [info('Other apps',typeof cross.accessGranted!=='boolean'?'Unavailable':!cross.enabled?'Collection off':cross.paused?(testMocksEnabled?'Paused after mock mode':'Paused · resume to collect'):!cross.accessGranted?'Android access not granted':!cross.connected?'Waiting for Android listener':'Selected apps connected'),info('Notification privacy',!devSurfacesEnabled?'Alpha reads only the apps you select. Collected events feed only the local history below.':Capacitor.isNativePlatform()?'Android grants broad access. Alpha reads only selected apps; previews and history are separate choices.':'Preview events are stored in this app. Previews and history are separate choices.'),info('Agent access','Notification content is not sent to your agent')] : [];
         if(showCrossAppNotifications && cross.revision){
-          crossRows.push(custom(cross.enabled?'Turn off other-app collection':'Enable selected-app collection',()=>{
-            if(Capacitor.isNativePlatform()&&!cross.enabled&&!window.confirm('Collect notifications from your selected apps? Android grants broad access, but Alpha reads only these apps. Previews and history stay off until you turn them on.'))return;
+          crossRows.push(custom(cross.enabled?'Turn off other-app collection':'Enable selected-app collection',async()=>{
+            if(Capacitor.isNativePlatform()&&!cross.enabled&&!await review('notification-collection','Collect selected-app notifications?','Android grants broad access, but Alpha reads only your selected apps. Previews and history stay off until you turn them on.','Enable collection',()=>cross.revision===policyRevision))return;
             policy({enabled:!cross.enabled});
           }),custom(Capacitor.isNativePlatform()?'Manage notification access in Android':'Manage development notification access',()=>void run(async()=>{await notifications.openNotificationAccess();})),custom(choices?'Hide app choices':'Choose notification apps',()=>{
             if(choices){choices=null;owner?.vset('settings',{notificationChanged:Date.now()});return;}
             void run(async()=>{const next=await notifications.notificationApps();choices=next.apps;});
           }));
-          if(cross.paused)crossRows.push(custom('Resume selected-app collection',()=>void run(async()=>{if(window.confirm('Resume collection of notifications from your selected apps?'))await notifications.resumeCrossApp({expectedRevision:cross.revision});})));
-          for(const app of selected)crossRows.push(info(app.label,app.available===false?'App changed: remove and select again':app.preview?'Current title and text allowed':'Content hidden',`notification-app:${app.packageName}:status`),custom(`Remove ${app.label}`,()=>policy({apps:selected.filter(a=>a.packageName!==app.packageName).map(({packageName,preview})=>({packageName,preview}))}),`notification-app:${app.packageName}:remove`),custom(`${app.preview?'Hide':'Allow'} previews: ${app.label}`,()=>{
-            if(Capacitor.isNativePlatform()&&!app.preview&&!window.confirm(`Allow current notification titles and text from ${app.label} while unlocked? They stay on this phone and are not stored in history or sent to the agent.`))return;
+          if(cross.paused)crossRows.push(custom('Resume selected-app collection',async()=>{if(await review('notification-resume','Resume notification collection?','Resume collection from your selected apps. Your existing preview and history choices apply.','Resume collection',()=>cross.revision===policyRevision))void run(async()=>{await notifications.resumeCrossApp({expectedRevision:policyRevision});});}));
+          for(const app of selected)crossRows.push(info(app.label,app.available===false?'App changed: remove and select again':app.preview?'Current title and text allowed':'Content hidden',`notification-app:${app.packageName}:status`),custom(`Remove ${app.label}`,()=>policy({apps:selected.filter(a=>a.packageName!==app.packageName).map(({packageName,preview})=>({packageName,preview}))}),`notification-app:${app.packageName}:remove`),custom(`${app.preview?'Hide':'Allow'} previews: ${app.label}`,async()=>{
+            if(Capacitor.isNativePlatform()&&!app.preview&&!await review('notification-preview:'+app.packageName,'Allow notification previews?',`Allow current titles and text from ${app.label} while unlocked? They stay on this phone and are not stored in history or sent to the agent.`,'Allow previews',()=>cross.revision===policyRevision))return;
             policy({apps:selected.map(a=>({packageName:a.packageName,preview:a.packageName===app.packageName?!app.preview:a.preview}))});
           },`notification-app:${app.packageName}:preview`));
           for(const app of choices||[])if(!selected.some(a=>a.packageName===app.packageName))crossRows.push(custom(`Select ${app.label} (${app.packageName})`,()=>policy({apps:[...selected.map(({packageName,preview})=>({packageName,preview})),{packageName:app.packageName,preview:false}]}),`notification-app:${app.packageName}:select`));
-          crossRows.push(info('Local metadata history',cross.historyUnavailable?'Unavailable; clear local history to reset':cross.history?'On · 100 events, 24 hours · no message text':'Off'),custom(cross.history?'Turn off local metadata history':'Enable local metadata history',()=>{
-            if(Capacitor.isNativePlatform()&&!cross.history&&!window.confirm('Keep up to 100 redacted notification events for 24 hours in encrypted storage on this phone? Only selected app identity, event times and status are saved. No title or message text is stored.'))return;
+          crossRows.push(info('Local metadata history',cross.historyUnavailable?'Unavailable; clear local history to reset':cross.history?'On · 100 events, 24 hours · no message text':'Off'),custom(cross.history?'Turn off local metadata history':'Enable local metadata history',async()=>{
+            if(Capacitor.isNativePlatform()&&!cross.history&&!await review('notification-history','Keep notification history?','Keep up to 100 redacted events for 24 hours in encrypted storage on this phone. Only selected app identity, times and status are saved. No title or message text is stored.','Enable history',()=>cross.revision===policyRevision))return;
             policy({history:!cross.history});
-          }),custom('View local metadata history',()=>{if(notificationBusy)return;notificationBusy=true;const current=owner;void notifications.notificationHistory().then(result=>{if(owner===current){history=result.items;owner?.vset('settings',{notificationChanged:Date.now()});}}).catch(()=>api.toast('Local notification history is unavailable.')).finally(()=>{notificationBusy=false;});}),custom('Clear local metadata history',()=>{if(window.confirm('Permanently clear local notification metadata history?'))void run(async()=>{await notifications.clearNotificationHistory();history=[];});}));
+          }),custom('View local metadata history',()=>{if(notificationBusy)return;notificationBusy=true;const current=owner;void notifications.notificationHistory().then(result=>{if(owner===current){history=result.items;owner?.vset('settings',{notificationChanged:Date.now()});}}).catch(()=>api.toast('Local notification history is unavailable.')).finally(()=>{notificationBusy=false;});}),custom('Clear local metadata history',async()=>{if(await review('notification-clear-history','Clear notification history?','Permanently remove the local notification metadata history. Notifications in other apps stay.','Clear history',()=>cross.revision===policyRevision))void run(async()=>{await notifications.clearNotificationHistory();history=[];});}));
           if(history!==null){if(!history.length)crossRows.push(info('History','No retained events'));for(const row of history)crossRows.push(info(row.appLabel,`${row.state} · ${new Date(row.at).toLocaleString()} · no action available`,`notice:${row.id??JSON.stringify([row.packageName,row.at,row.state])}`));}
         }
         page.groups = [group(Capacitor.isNativePlatform()?[info('Alpha notifications',topValues.Notifications),info('Do Not Disturb',interruptionLabels[delivery.interruption]||'Not available'),nav('Manage Alpha notifications','notifications')]:[{kTog:true,label:'Allow alerts',aria:'Allow alerts',on:delivery.appEnabled===true,track:delivery.appEnabled?'background:var(--acc)':'background:var(--line)',kx:delivery.appEnabled?20:0,toggle:()=>void run(async()=>{await notifications.setAlertPreferences({appEnabled:delivery.appEnabled!==true});})}]),
           ...(Capacitor.isNativePlatform()?(delivery.channels||[]).map((channel:Bag)=>group([{id:`notification-channel:${channel.id}`,kNav:true,label:channel.name,lbl:channel.name,chev:true,noAB:true,go:()=>void notifications.openChannelSettings({id:channel.id})}],`notification-channel:${channel.id}`)):[]),...(crossRows.length?[group(crossRows)]:[])];
       } else if (page.title === 'Privacy & data') {
-        if (cloudRuntimeEnabled) page.groups = page.groups.map((g: Bag) => ({ ...g, rows: g.rows.map((row: Bag) => {
-          const fact = cloudPrivacyRow(row.label);
+        page.groups = page.groups.map((g: Bag) => ({ ...g, rows: g.rows.map((row: Bag) => {
+          const fact = voicePrivacyRow(row.label, voiceRoute, serviceName);
           return fact ? info(...fact) : row;
         }) }));
         // Alpha declares no Contacts permission; Calendar is the fourth runtime grant it uses.

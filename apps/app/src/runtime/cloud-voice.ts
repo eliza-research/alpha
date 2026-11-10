@@ -13,9 +13,9 @@ import { cloudServiceName } from './cloud-protocol';
 
 /**
  * A Cloud speech 429 as the shared ServiceLimit (`@elizaos/cloud-sdk` readServiceLimit), from the
- * retry facts only: its limit code, wait and reset. Reached only by the explicit Cloud runtime
- * profile and development browser-resident builds; a flag-off native build routes speech to the
- * device (voice-selection.ts) and never makes a Cloud speech request.
+ * retry facts only: its limit code, wait and reset. Cloud speech is requested only while the
+ * run-time route is Cloud (voice-selection.ts: a signed-in account with no limit in force) and by
+ * development browser-resident builds; a stored limit moves the next turns to on-device speech.
  */
 export function cloudVoiceServiceLimit(error: unknown, now: number = Date.now()): ServiceLimit | null {
   const facts = cloudVoiceLimitOf(error);

@@ -5,6 +5,10 @@ import {filesIndex} from './files-index';
 const documents=registerPlugin<{exportPdf(input:{title:string;dataBase64:string}):Promise<{status:string;message:string}>}>('AlphaNoteDocuments',{
  web:()=>import('../runtime/browser-note-documents').then(module=>new module.BrowserNoteDocuments()),
 });
+/** A readable local date, without filename separators or an internal operation timestamp. */
+export function scanExportTitle(kind='scan',date=new Date()){
+ return `Alpha ${kind} ${new Intl.DateTimeFormat('en',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}).format(date).replaceAll(':','.')}`;
+}
 export function createScanPdf(input:Blob|Blob[],signal:AbortSignal,textLayers?:ScanTextLine[][]) {
  return createPdf({title:'Alpha scan',creator:'Alpha Phone'},input,signal,textLayers);
 }

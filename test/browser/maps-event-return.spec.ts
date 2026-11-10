@@ -55,7 +55,7 @@ async function handOff(page: Page, title: string) {
   await page.getByRole('button', {name: new RegExp(`^${title},`)}).click();
   await expect(page.getByRole('heading', {name: title, exact: true})).toBeVisible();
   await button(page, address).click();
-  await expect(page.getByRole('textbox', {name: 'Search places', exact: true})).toHaveValue(address);
+  await expect(page.getByRole('searchbox', {name: 'Search places', exact: true})).toHaveValue(address);
   await expect(page.getByRole('button', {name: /^West entrance/}).first()).toBeVisible();
 }
 
@@ -91,7 +91,7 @@ test('Back to event returns to exactly the originating event from every Maps lay
   await expect(view(page)).toHaveAttribute('data-active-view', 'home');
   // Maps opened from the launcher has no event to return to and replays nothing.
   await button(page, 'Maps').click();
-  await expect(page.getByRole('textbox', {name: 'Search places', exact: true})).toHaveValue('');
+  await expect(page.getByRole('searchbox', {name: 'Search places', exact: true})).toHaveValue('');
   await expect(back(page)).toHaveCount(0);
   expect((await requests(page)).queries).toEqual([address]);
 
@@ -121,7 +121,7 @@ test('a deleted or moved event fails closed: Maps stays open and the control is 
     await expect(page.getByText('That event was deleted or moved.', {exact: true})).toBeVisible();
     await expect(view(page)).toHaveAttribute('data-active-view', 'maps');
     await expect(back(page)).toHaveCount(0);
-    await expect(page.getByRole('textbox', {name: 'Search places', exact: true})).toHaveValue(address);
+    await expect(page.getByRole('searchbox', {name: 'Search places', exact: true})).toHaveValue(address);
     // The other event is never opened in its place.
     await expect(page.getByRole('heading', {name: 'Dock meeting', exact: true})).toHaveCount(0);
     if (change === 'moved') { await returnToApps(page); await openBrowserCalendar(page); }
@@ -145,7 +145,7 @@ test('double activation returns once; a reload in Maps drops the return and repl
   await page.reload();
   await installMaps(page);
   await button(page, 'Maps').click();
-  await expect(page.getByRole('textbox', {name: 'Search places', exact: true})).toHaveValue('');
+  await expect(page.getByRole('searchbox', {name: 'Search places', exact: true})).toHaveValue('');
   await expect(back(page)).toHaveCount(0);
   expect((await requests(page)).queries).toEqual([address, address]);
   // Leaving through Home also drops it: Maps reopened later has no control.
@@ -197,7 +197,7 @@ test('system Back from the hand-off returns to that event; a place the user open
   await page.getByRole('button', {name: /^West entrance/}).first().click();
   await systemBack(page);
   await expect(view(page)).toHaveAttribute('data-active-view', 'maps');
-  await expect(page.getByRole('textbox', {name: 'Search places', exact: true})).toHaveValue(address);
+  await expect(page.getByRole('searchbox', {name: 'Search places', exact: true})).toHaveValue(address);
   await systemBack(page);
   await expect(view(page)).toHaveAttribute('data-active-view', 'calendar');
   await expect(page.getByRole('heading', {name: 'Dock meeting', exact: true})).toBeVisible();
@@ -205,7 +205,7 @@ test('system Back from the hand-off returns to that event; a place the user open
   // Maps opened afterwards carries no replayed search and no event to return to.
   await returnToApps(page);
   await button(page, 'Maps').click();
-  await expect(page.getByRole('textbox', {name: 'Search places', exact: true})).toHaveValue('');
+  await expect(page.getByRole('searchbox', {name: 'Search places', exact: true})).toHaveValue('');
   await expect(back(page)).toHaveCount(0);
   expect((await requests(page)).queries).toEqual([address, address]);
 });

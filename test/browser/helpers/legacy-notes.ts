@@ -1,7 +1,9 @@
 import {expect,test,type Page} from '@playwright/test';
+import type {DocumentNotesStore} from '../../../apps/app/src/runtime/browser-notes-document.ts';
+type RetainedNote = Parameters<DocumentNotesStore['replace']>[0][number];
 /** Seed only the isolated test's retained legacy document before selecting that source.
  * Production source selection never initializes or migrates a missing legacy document. */
-export async function openLegacyNotes(page:Page,records:Record<string,unknown>[]=[]){
+export async function openLegacyNotes(page:Page,records:RetainedNote[]=[]){
  if(test.info().project.name==='production')await seedRetainedNotes(page,records);
  else await page.evaluate(async records=>{
   const m=await import('/src/runtime/browser-notes-document.ts');
@@ -45,7 +47,7 @@ export async function openLegacyAttachment(page:Page){
 
 /** Seed the isolated browser context through its persisted wire format, never source imports
  * or a production-only testing hook. Existing documents are left untouched. */
-async function seedRetainedNotes(page:Page,records:Record<string,unknown>[]=[]){
+async function seedRetainedNotes(page:Page,records:RetainedNote[]=[]){
  await page.evaluate(async(records)=>{
   const keys=['alphaphone:prototype:notes:v1','alphaphone:notes:v2','alphaphone:daily:v1'];
   if(keys.some(key=>localStorage.getItem(key)!==null))throw Error('Retained Notes fixture requires an empty isolated legacy store');

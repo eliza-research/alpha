@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "description": "Model-agnostic ASR slot of the on-device voice bundle. libelizainference (built with LLAMA_BUILD_PARAKEET=ON) serves eliza_inference_asr_* and asr_stream_* from whatever sits under <bundle>/asr/: a parakeet-tdt GGUF (one file) or the Qwen3-ASR text + mmproj pair (two files). `backend` names which; `asr/` holds only that backend's files. Changing the ASR model means changing only this record and restaging; scripts/paradee-runtime.mjs admits exactly these files and refuses any other file under asr/.",
+  "description": "Model-agnostic ASR slot of the on-device voice bundle. libelizainference (built with LLAMA_BUILD_PARAKEET=ON) serves eliza_inference_asr_* and asr_stream_* from whatever sits under <bundle>/asr/: a parakeet-tdt GGUF (one file) or the Qwen3-ASR text + mmproj pair (two files). `backend` names which; `asr/` holds only that backend's files. Changing the ASR model means changing only this record and restaging; scripts/paradee-runtime.ts admits exactly these files and refuses any other file under asr/.",
   "slot": "asr",
   "backend": "parakeet",
   "runtimeEnv": {

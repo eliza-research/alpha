@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
-import {verifyParadeeRuntime,verifyParadeeAppLinkage,PARADEE_SOURCE,PARADEE_NATIVE} from '../scripts/paradee-runtime.mjs';
+import {verifyParadeeRuntime,verifyParadeeAppLinkage,PARADEE_SOURCE,PARADEE_NATIVE} from '../scripts/paradee-runtime.ts';
 function fixture(t){const root=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-paradee-'));t.after(()=>fs.rmSync(root,{recursive:true,force:true}));return root;}
 function write(root,name,value){const file=path.join(root,name);fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,value);return {path:name,bytes:Buffer.byteLength(value),sha256:createHash('sha256').update(value).digest('hex')};}
 function ffi(root){
@@ -74,7 +74,7 @@ test('voice build records must identify the exact Eliza and native source pins',
  f.record.nativeCommit=native;f.save();assert.deepEqual(verifyParadeeRuntime(root),{packaged:true,qualified:false});
 });
 
-import {selectedAndroidAbis,abiArguments} from '../scripts/android-abis.mjs';
+import {selectedAndroidAbis,abiArguments} from '../scripts/android-abis.ts';
 function arm64Only(root){const f=complete(root);f.record.abis=['arm64-v8a'];f.record.files=f.record.files.filter(row=>!row.path.startsWith('jniLibs/x86_64/'));fs.rmSync(path.join(f.native,'jniLibs/x86_64'),{recursive:true});f.save();return f;}
 test('default matrix still refuses missing x86',t=>{const root=fixture(t);arm64Only(root);assert.throws(()=>verifyParadeeRuntime(root),/missing a requested/);});
 test('explicit ARM64 admits exact complete ARM64 runtime',t=>{const root=fixture(t);arm64Only(root);assert.deepEqual(verifyParadeeRuntime(root,{abis:['arm64-v8a']}),{packaged:true,qualified:false});});
