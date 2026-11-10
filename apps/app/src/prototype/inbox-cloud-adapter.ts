@@ -964,9 +964,16 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
       const binding = connectionController.getCloudClient(), cloudAccount = connectionController.getSnapshot().cloudAccount;
       const grant = selected || homePreview?.accountId || readGmailAccountChoice(cloudAccount) || '';
       retireHomeLoad();
+      // The previous grant has not been reverified. Remove its visible summary
+      // before awaiting the account list, without deleting drafts or saved mail.
+      cancelOperation();stopBodyReads();readAhead.pause();
+      const change = generation;
+      ++homeSummaryEpoch;homePreview=null;inboxPreview=null;hasUnread=false;accountsChecked=false;
+      setAttention({state:'loading',unread:undefined,unreadMore:false,source:null,updatedAt:null});
+      publish({open:null,nativeMailSelection:null});
       let rows: GmailAccount[] | null = null;
       if (binding && grant) { try { rows = await binding.client.gmailAccounts(new AbortController().signal); } catch { rows = null; } }
-      if (binding && connectionController.getCloudClient()?.sessionId !== binding.sessionId) return;
+      if (change !== generation || binding && connectionController.getCloudClient()?.sessionId !== binding.sessionId) return;
       const next = rows?.find(a => a.connectionId === grant), prior = accounts.find(a => a.connectionId === grant);
       const dropped = !grant || !gmailReadable(next) || !!prior && gmailGrantChange({ sessionId: accountsSession || null, account: prior }, { sessionId: binding?.sessionId ?? null, account: next }).dropReadCache;
       if (dropped) { void withdrawGmailBackground(grant || undefined).catch(()=>{}); purgeOffline(); invalidateList(); }

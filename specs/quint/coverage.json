@@ -22841,7 +22841,7 @@
     },
     {
       "path": "apps/app/src/prototype/inbox-cloud-adapter.ts",
-      "sha256": "ee10bd34170d97bad21573ed4b6654009a3bff3624ca5b375c80eb14978094f2",
+      "sha256": "70bc73b991aa6021ab125addaae4b8ac4f4e2cccffdd754e2f20f4088d312e30",
       "models": [
         "InboxDelivery",
         "InboxCoordinator",
@@ -23892,7 +23892,7 @@
           "text": "void restoreHomeMailbox().finally(() => warmHomeMailbox(true).then(() => { const hint = readGmailAccountChoice(connectionController.getSnapshot().cloudAccount); if (hint && hint === selected && accoun"
         }
       ],
-      "integrationReview": "2026-11-09 mail reader: automatic same-account thread read preserves the fresher selected body and all operation receipts. Compact menu changes presentation only. Email chat attachment reuses message persistence, validates the exact selected source and destination before sending, and leaves provider text untrusted. Existing models remain projections; complete mail rendering and revision/expiry checks are tested separately.",
+      "integrationReview": "2026-11-10: account-change recheck immediately withdraws prior Home/mail previews, cancels old reads and fences late replies; stored drafts/credentials untouched. Delayed account response regression and retention suites pass.",
       "reviewStatus": "state-audit-required"
     },
     {
