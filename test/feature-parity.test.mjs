@@ -30,6 +30,16 @@ test('every Alpha-owned behavioural module is listed; moved modules leave the al
   assert.deepEqual(allowlist.modules, [...allowlist.modules].sort(), 'modules stay sorted');
 });
 
+
+test('reviewed product helpers retain an inventoried owner and focused validation', () => {
+  for (const [module, review] of Object.entries(allowlist.reviewedHelpers)) {
+    assert.ok(allowlist.modules.includes(module), `${module} remains in the exact inventory`);
+    assert.ok(allowlist.modules.includes(review.owner), `${module} names its existing owning module`);
+    assert.ok(review.reason.trim(), `${module} explains the extracted behavior`);
+    assert.ok(review.tests.length > 0 && review.tests.every(file => fs.existsSync(file)), `${module} names retained focused validation`);
+  }
+});
+
 test('branding never counts as a functional difference, and the launcher is shared by both brands', () => {
   assert.equal(allowlist.reference, 'ELIZA_MOBILE_PRODUCT');
   assert.equal(parity.alpha.branding.appId, 'ai.elizaresearch.alphaphone');
