@@ -132,7 +132,7 @@ const presentationEvent=(id,calendarId)=>({id,title:id,provider:'eliza',side:'ow
 test('canonical feed ignores obsolete hidden preferences while preserving the saved bytes',()=>{
  const f=fixture({events:[presentationEvent('verified','primary'),presentationEvent('unverified','unknown')]}),before=structuredClone(f.state);
  const out=f.views.calendar.render({},{});
- assert.deepEqual(out.renderedRows.map(row=>row.id),['verified']);assert.equal(out.nativeStatusLabel,'Refresh Calendar');
+ assert.deepEqual(out.renderedRows.map(row=>row.id),['verified']);assert.equal(out.calendarReadStatus,'Refresh Calendar');
  const prefs={'handle:primary':{on:false,color:'mut'}},saved=structuredClone(prefs),hidden=f.views.calendar.render({calPrefs:prefs},{});
  assert.deepEqual(hidden.renderedRows.map(row=>row.id),['verified']);assert.deepEqual(prefs,saved);assert.deepEqual(f.state,before);
 });
@@ -230,7 +230,7 @@ test('missing canonical authority never relabels the real Reminder choice as an 
 test('an empty partial Calendar offers refresh once without claiming no events',()=>{
  const f=fixture({status:'partial',empty:true}),before=structuredClone(f.state);
  const out=f.views.calendar.render({},{});
- assert.equal(out.nativeStatusLabel,'Refresh Calendar');
+ assert.equal(out.calendarReadStatus,'Refresh Calendar');
  assert.equal(typeof out.nativeStatusRetry,'function');
  assert.equal(out.empty,false);
  assert.doesNotMatch(out.emptyText,/No events/);
@@ -247,14 +247,14 @@ test('a verified empty Calendar retains its ordinary empty state',()=>{
 test('ready with an unverified event source offers refresh once and does not claim verified empty',()=>{
  const f=fixture({status:'ready',empty:true,events:[presentationEvent('unverified','unknown')]}),before=structuredClone(f.state);
  const out=f.views.calendar.render({},{});
- assert.equal(out.nativeStatusLabel,'Refresh Calendar');
+ assert.equal(out.calendarReadStatus,'Refresh Calendar');
  assert.deepEqual(out.renderedRows,[]);assert.equal(out.empty,false);
  assert.doesNotMatch(out.emptyText,/No events|Free all day/);assert.deepEqual(f.state,before);
 });
 test('unavailable uses natural recovery copy once and retry uses the existing refresh',()=>{
  const f=fixture({status:'unavailable',empty:true,error:'Implementation-only fallback'}),before=structuredClone(f.state),reads=f.refreshes.length;
  const out=f.views.calendar.render({},{});
- assert.equal(out.nativeStatusLabel,'Calendar is unavailable. Retry to load your schedule.');
+ assert.equal(out.calendarReadStatus,'Calendar is unavailable. Retry to load your schedule.');
  assert.equal(out.empty,false);assert.doesNotMatch(out.emptyText,/Implementation-only|Free all day|No events/);
  out.nativeStatusRetry();assert.equal(f.refreshes.length,reads+1);assert.deepEqual(f.state,before);
 });
@@ -262,7 +262,7 @@ test('partial empty selected day cannot claim free even when another day has a v
  const f=fixture({status:'partial',empty:true,events:[presentationEvent('verified elsewhere','primary')]}),before=structuredClone(f.state);
  const out=f.views.calendar.render({day:2},{});
  assert.deepEqual(out.renderedRows.map(row=>row.id),['verified elsewhere']);
- assert.equal(out.nativeStatusLabel,'Refresh Calendar');
+ assert.equal(out.calendarReadStatus,'Refresh Calendar');
  assert.doesNotMatch(out.emptyText,/Free all day|Free on these days|Nothing scheduled|No events/);
  assert.equal(out.empty,false);assert.deepEqual(f.state,before);
 });
