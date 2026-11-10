@@ -51,7 +51,7 @@ function fixture() {
 }
 
 export async function checkKeyboardFocus(extraSources = []) {
-  const sources = [source, 'android/app/src/main/java/ai/elizaresearch/alphaphone/MainActivity.java',
+  const sources = [source, 'android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java',
     'test/support/strip-types.mjs', fileURLToPath(import.meta.url), ...extraSources];
   const driverHashes = captureInputs(sources);
   const scenarios = [

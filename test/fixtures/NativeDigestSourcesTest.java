@@ -1,4 +1,4 @@
-package ai.elizaresearch.alphaphone;
+package ai.alphacompute.alphaphone;
 import org.json.*;
 import java.nio.file.*;
 import java.time.*;

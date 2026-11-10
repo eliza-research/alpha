@@ -1,4 +1,4 @@
-package ai.elizaresearch.alphaphone;
+package ai.alphacompute.alphaphone;
 
 import ai.eliza.plugins.calendar.ScopedCalendarReviewProvider;
 import android.os.SystemClock;

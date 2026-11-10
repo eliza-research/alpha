@@ -1,6 +1,6 @@
 package ai.eliza.sense;
 
-import ai.elizaresearch.alphaphone.Trace;
+import ai.alphacompute.alphaphone.Trace;
 import android.os.*;
 import java.lang.reflect.Field;
 import java.util.concurrent.*;

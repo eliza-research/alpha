@@ -122,7 +122,7 @@ export function readRoles(status: unknown): Record<string, RoleRow> {
 }
 /** Shared truthful wording: an empty holder lookup never claims that no app holds the role. */
 export function roleValue(row: RoleRow | undefined): string {
-  return androidRoleLabel(row, { packageName: 'ai.elizaresearch.alphaphone', appName: 'Alpha Phone' });
+  return androidRoleLabel(row, { packageName: 'ai.alphacompute.alphaphone', appName: 'Alpha Phone' });
 }
 
 // settings-facts:begin (dependency-free; exercised by test/settings-truth.test.mjs)
@@ -708,7 +708,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         }
         // calendar-settings:end
         // Only performRequested reads this preference: canonical Notes writes and in-app navigation are
-        // not reviewed (docs/decisions.md, November 6). Unreadable preferences never draw as Off.
+        // not reviewed (owner decision, November 6). Unreadable preferences never draw as Off.
         const preferences=devicePreferencesStatus();
         page.groups.push(group([{
           kTog:true,label:'Review phone actions first',aria:'Review phone actions first',hasSub:true,

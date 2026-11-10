@@ -1,4 +1,4 @@
-// Faithful translation of docs/ui-refresh-2026-11/tla/SettingsNav.tla.
+// Historical design translation; the executable Quint model is retained here.
 // Both full row inventories are retained, including duplicate historical entries.
 module SettingsNav {
   type Row = (str, str, str)

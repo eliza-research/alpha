@@ -38,7 +38,7 @@ async function blockStorage(page: Page) {
 async function open(page: Page, view: View, theme: 'light' | 'dark'): Promise<Locator> {
   if(view==='Maps')await page.route('https://tiles.openfreemap.org/**',route=>route.fulfill({json:{version:8,sources:{},layers:[{id:'background',type:'background',paint:{'background-color':'#e7ebed'}}]}}));
   // Android's shade is the notification surface (#416). This development build stands in for it,
-  // opened by a pull on launcher's empty Home (docs/gesture-zones.md); the standalone app has none.
+  // opened by a pull on launcher's empty Home; the standalone app has none.
   const launcher = view === 'Notifications' ? (theme === 'dark' ? '&shell=launcher' : '?shell=launcher') : '';
   await page.goto((theme === 'dark' ? '/?theme=dark' : '/') + launcher);
   // Home shortcuts cannot be restored when storage is blocked. Apps must

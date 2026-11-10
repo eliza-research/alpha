@@ -1,7 +1,7 @@
 package ai.eliza.plugins.reminders;
 
 import android.content.Context;
-import ai.elizaresearch.alphaphone.AlphaReminders;
+import ai.alphacompute.alphaphone.AlphaReminders;
 import org.json.JSONException;
 import org.json.JSONObject;
 

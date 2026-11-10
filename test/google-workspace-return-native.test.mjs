@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,readFileSync,writeFileSync,rmSync} from 'node:fs';
+import {existsSync,mkdtempSync,readFileSync,writeFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
@@ -10,7 +10,7 @@ test('actual native Workspace return contract validates exact callback, binding 
  const root=mkdtempSync(join(tmpdir(),'alpha-workspace-return-'));
  try {
   const source=join(root,'WorkspaceReturnTest.java');
-  writeFileSync(source,`package ai.elizaresearch.alphaphone;
+  writeFileSync(source,`package ai.alphacompute.alphaphone;
 public class WorkspaceReturnTest {
  static int checks;
  static final String HOST="eliza.app",CALLBACK="https://eliza.app/alphaphone/gmail/callback",NONCE="A".repeat(43),USER="11111111-1111-4111-8111-111111111111",ORG="22222222-2222-4222-8222-222222222222",HASH="a".repeat(64);
@@ -74,7 +74,7 @@ public class WorkspaceReturnTest {
  }
 }`);
   execFileSync(javaBinary('javac'),['--release','11','-d',root,nativeSource('GoogleWorkspaceReturn.java'),source],{timeout:30000,stdio:'pipe'});
-  assert.match(execFileSync(javaBinary('java'),['-cp',root,'ai.elizaresearch.alphaphone.WorkspaceReturnTest'],{timeout:30000,encoding:'utf8'}),/^PASS Workspace return pure contract 85/);
+  assert.match(execFileSync(javaBinary('java'),['-cp',root,'ai.alphacompute.alphaphone.WorkspaceReturnTest'],{timeout:30000,encoding:'utf8'}),/^PASS Workspace return pure contract 85/);
  }finally{rmSync(root,{recursive:true,force:true});}
 });
 
@@ -87,7 +87,7 @@ test('the Workspace return is the App Link on the build\'s ELIZAOS_APP_LINK_HOST
  assert.match(read('android/app/product.gradle'),/manifestPlaceholders\.put\('appLinkHost', appLinkHost\)/,'the placeholder is the build\'s App Link host');
  // The native host, association lookup and admission all read the build's App Link host.
  for(const call of ['new GoogleWorkspaceReturnFlow(BuildConfig.ELIZAOS_APP_LINK_HOST,','GoogleWorkspaceReturn.callback(BuildConfig.ELIZAOS_APP_LINK_HOST)','getHostToStateMap().get(BuildConfig.ELIZAOS_APP_LINK_HOST)','GoogleWorkspaceReturn.parse(BuildConfig.ELIZAOS_APP_LINK_HOST,url)'])assert.ok(connection.includes(call),call);
- const tracked=execFileSync('git',['ls-files','-z','android','apps/app/src'],{cwd:repo,encoding:'utf8'}).split('\0').filter(file=>/\.(java|kt|gradle|xml|ts|tsx|js|mjs|json)$/.test(file));
+ const tracked=execFileSync('git',['ls-files','-z','android','apps/app/src'],{cwd:repo,encoding:'utf8'}).split('\0').filter(file=>/\.(java|kt|gradle|xml|ts|tsx|js|mjs|json)$/.test(file)&&existsSync(join(repo,file)));
  assert.ok(tracked.length>100);
  for(const file of tracked)assert.doesNotMatch(read(file),/alphacompute\.ai/,file);
 });

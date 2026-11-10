@@ -145,7 +145,7 @@ test('CLI distinguishes insufficient samples, failed budgets and measured timing
 test('the Android collector times capture from AudioRecord and playback from the output timestamp (host JVM state)', async () => {
   const { nativeSource, runJvm, upstreamBridgeSource, upstreamVoiceFixture, upstreamVoiceSource } = await import('./fixtures/jvm-tools.mjs');
   assert.match(runJvm([upstreamVoiceSource('VoiceLatencyTrials.java'), upstreamVoiceFixture('VoiceLatencyTrialsTest.java')], 'ai.eliza.voice.VoiceLatencyTrialsTest'), /^PASS voice latency trials/);
-  const harness = fs.readFileSync(path.join(path.dirname(nativeSource('x')), '../../../../../androidTest/java/ai/elizaresearch/alphaphone/NativeVoiceLatencyInstrumentedTest.java'), 'utf8');
+  const harness = fs.readFileSync(path.join(path.dirname(nativeSource('x')), '../../../../../androidTest/java/ai/alphacompute/alphaphone/NativeVoiceLatencyInstrumentedTest.java'), 'utf8');
   assert.match(harness, /\},"harness-no-inference",source,LiveVoiceCapture\.detectors\(VoiceAssets\.sharedInference\(app\)\)\);/, 'the harness labels its own trials');
   const read = name => fs.readFileSync(nativeSource(name), 'utf8'), shared = name => fs.readFileSync(upstreamVoiceSource(name), 'utf8');
   const probe = shared('VoiceLatencyProbe.java'), capture = shared('LiveVoiceCapture.java'), plugin = fs.readFileSync(upstreamBridgeSource('LocalSpeechBridgePlugin.java'), 'utf8');

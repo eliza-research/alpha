@@ -11,9 +11,9 @@ test('consumer composition retains installed product, vendor and Pixel provider 
   const product=JSON.parse(fs.readFileSync('android/aosp/pixel10a-composition.json','utf8'));
   assert.equal(product.vendorDirectory,'alphaphone');
   assert.equal(product.productName,'alpha_stallion_phone');
-  assert.equal(product.launcher.packageName,'ai.elizaresearch.alphaphone');
-  assert.equal(product.sense.componentPackage,'ai.elizaresearch.alphaphone.sense');
-  assert.deepEqual(product.pixelConfig,{moduleName:'AlphaPixelConfig',packageName:'ai.elizaresearch.pixelconfig',mimeType:'vnd.android.cursor.dir/vnd.alpha.pixel-flags'});
+  assert.equal(product.launcher.packageName,'ai.alphacompute.alphaphone');
+  assert.equal(product.sense.componentPackage,'ai.alphacompute.alphaphone.sense');
+  assert.deepEqual(product.pixelConfig,{moduleName:'AlphaPixelConfig',packageName:'ai.alphacompute.pixelconfig',mimeType:'vnd.android.cursor.dir/vnd.alpha.pixel-flags'});
   assert.equal(product.releaseQualified,false);
 });
 
@@ -68,7 +68,7 @@ test('physical overlay installs ARM64 JNI and development product without boot c
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-pixel-stage-'));
   t.after(() => fs.rmSync(temporary, {recursive:true, force:true}));
   const {apk, output} = pixelOverlay(temporary, '# existing camera, clock and image capability\n');
-  writePixel10aProduct({root:process.cwd(), output, apk, identity:{moduleName:'AlphaPhone'}, launcher:{schemaVersion:1,brand:'alphaphone',moduleName:'AlphaPhone',packageName:'ai.elizaresearch.alphaphone',apkSha256:createHash('sha256').update(fs.readFileSync(apk)).digest('hex'),certificateSha256:'b'.repeat(64)}, sourceEvidence:{fixture:true}});
+  writePixel10aProduct({root:process.cwd(), output, apk, identity:{moduleName:'AlphaPhone'}, launcher:{schemaVersion:1,brand:'alphaphone',moduleName:'AlphaPhone',packageName:'ai.alphacompute.alphaphone',apkSha256:createHash('sha256').update(fs.readFileSync(apk)).digest('hex'),certificateSha256:'b'.repeat(64)}, sourceEvidence:{fixture:true}});
   assertSingleProductRegistration(output);
   const product = fs.readFileSync(path.join(output, 'product.mk'), 'utf8');
   assert.match(product, /existing camera, clock and image capability/);
@@ -85,7 +85,7 @@ test('production physical overlay sets no board AVB variables and records no bui
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-pixel-production-'));
   t.after(() => fs.rmSync(temporary, {recursive:true, force:true}));
   const {apk, output} = pixelOverlay(temporary, '# existing\n');
-  writePixel10aProduct({root:process.cwd(), output, apk, identity:{moduleName:'AlphaPhone'}, launcher:{schemaVersion:1,brand:'alphaphone',moduleName:'AlphaPhone',packageName:'ai.elizaresearch.alphaphone',apkSha256:createHash('sha256').update(fs.readFileSync(apk)).digest('hex'),certificateSha256:'b'.repeat(64)}, sourceEvidence:{fixture:true}, production:true});
+  writePixel10aProduct({root:process.cwd(), output, apk, identity:{moduleName:'AlphaPhone'}, launcher:{schemaVersion:1,brand:'alphaphone',moduleName:'AlphaPhone',packageName:'ai.alphacompute.alphaphone',apkSha256:createHash('sha256').update(fs.readFileSync(apk)).digest('hex'),certificateSha256:'b'.repeat(64)}, sourceEvidence:{fixture:true}, production:true});
   assertSingleProductRegistration(output);
   const productMk = fs.readFileSync(path.join(output, 'product.mk'), 'utf8');
   assert.doesNotMatch(productMk, /BOARD_AVB_|release-avb/);

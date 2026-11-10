@@ -48,7 +48,7 @@ class QualifiedUpdateTest(unittest.TestCase):
                    "versionCode": self.plan["versionCode"], "unsignedApkSHA256": self.plan["unsignedApkSHA256"],
                    "runtimeProfile": "cloud", "updateChannel": self.plan["updateChannel"],
                    "checks": {name: "passed" for name in ("productSourceGuard", "sdkSourceGuard", "normalPreparation",
-                                                         "combinedVerification", "packagedDependencyAudit", "apkArchive")}}
+                                                         "combinedVerification", "apkArchive")}}
         private_bytes = json.dumps(private).encode()
         self.plan["privateProducerReceiptSHA256"] = BRIDGE.sha(private_bytes)
         extra = {"private-producer.json": private_bytes}

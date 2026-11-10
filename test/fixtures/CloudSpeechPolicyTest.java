@@ -1,4 +1,4 @@
-package ai.elizaresearch.alphaphone;
+package ai.alphacompute.alphaphone;
 import java.io.IOException;
 public final class CloudSpeechPolicyTest {
  interface Checked {void run() throws Exception;}

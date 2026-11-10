@@ -2,7 +2,7 @@ import test from 'node:test';import assert from 'node:assert/strict';import {rea
 import {fixture,runJvm,jsonJarSkip} from './fixtures/jvm-tools.mjs';
 import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
 import path from 'node:path';
-// Files browser rules (design/view-refresh-2026-11/PLAN.md section 4; spec files-browser Design.cfg).
+// Files browser rules.
 const storage=await import('../.eliza/client-features/plugins/plugin-files/src/browser/storage-model.ts');
 const {BrowserStorageVolume}=await import('../.eliza/client-features/plugins/plugin-files/src/browser/storage-volume.ts');
 const contract=await import('../.eliza/client-features/plugins/plugin-files/src/browser/files-agent-contract.ts');
@@ -242,7 +242,7 @@ test('category counts and folder groups cover the whole category, not only the l
  assert.match(catalog,/out\.put\("count",tally\.count\);out\.put\("truncated",tally\.count>entries\.length\(\)\)/);
 });
 test('a folder watch also follows MediaStore, so provider writes (downloads, camera) refresh the open folder (ListingsConverge)',()=>{
- const plugin=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java','utf8');
+ const plugin=readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaFilesPlugin.java','utf8');
  const watch=plugin.slice(plugin.indexOf('public void storageWatch'),plugin.indexOf('public void storageUnwatch'));
  assert.match(watch,/android\.database\.ContentObserver media=new android\.database\.ContentObserver/,'the MediaStore observer is registered for every watch, folders included');
  assert.doesNotMatch(watch,/if\(category!=null\|\|path==null\)\{/);
@@ -256,9 +256,9 @@ test('every Browse category id has a native answer on Android; Downloads is the 
  assert.match(catalog,/if\(!"downloads"\.equals\(category\)\)return category\(resolver,category\);/);
  assert.match(catalog,/browser\.files\(DOWNLOAD_FOLDER,Integer\.MAX_VALUE\)/);
  for(const id of ids.filter(id=>id!=='downloads'))assert.ok(catalog.includes(`"${id}"`),`MediaStore category ${id}`);
- const plugin=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java','utf8');
+ const plugin=readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaFilesPlugin.java','utf8');
  assert.match(plugin,/StorageCatalog\.category\(resolver\(\),primaryBrowser\(\),call\.getString\("category",""\)\)/);
- const instrumented=readFileSync('android/app/src/androidTest/java/ai/elizaresearch/alphaphone/StorageCategoriesInstrumentedTest.java','utf8');
+ const instrumented=readFileSync('android/app/src/androidTest/java/ai/alphacompute/alphaphone/StorageCategoriesInstrumentedTest.java','utf8');
  assert.match(instrumented,/for\(String id:StorageCatalog\.CATEGORY_IDS\)/,'the device test answers every category id');
 });
 test('the agent filter queries documents as their types and folders by a walk, not the newest rows of any type',()=>{
@@ -266,7 +266,7 @@ test('the agent filter queries documents as their types and folders by a walk, n
  assert.match(adapter,/value\.kind === ["']document["']\s*\?\s*\{\s*documents: true\s*\}\s*:\s*value\.kind === ["']folder["']\s*\?\s*\{\s*folders: true\s*\}/);
  const catalog=readFileSync(`${nativeStorage}/StorageCatalog.java`,'utf8');
  assert.match(catalog,/if\(documents\)\{[^\n]*args\.add\(DOCUMENT_TYPES\[i\]\)[^\n]*MIME_TYPE\+" IN \("/);
- const plugin=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java','utf8');
+ const plugin=readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaFilesPlugin.java','utf8');
  assert.match(plugin,/call\.getBoolean\("folders",false\)[^\n]*primaryBrowser\(\)\.folders\(/);
  assert.match(plugin,/Boolean\.TRUE\.equals\(call\.getBoolean\("documents",false\)\)/);
  const catalogDocs=JSON.parse('['+catalog.match(/static final String\[\] DOCUMENT_TYPES=\{([^}]*)\};/s)[1].replace(/\s+/g,'')+']');
@@ -281,7 +281,7 @@ test('each mounted volume is its own Storage row and tree; Trash spans volumes a
  assert.match(adapter,/dialog = \{\s*kind: ["']empty["'],\s*items: \[\.\.\.trashItems\],?\s*\}/,'Empty deletes the rows the owner was shown');
  assert.match(adapter,/void emptyTrash\(d\.items\)/);
  assert.equal(Number(adapter.match(/const EMPTY_BATCH = (\d+);/)[1]),Number(readFileSync(`${nativeStorage}/StorageBrowser.java`,'utf8').match(/BATCH_MAX=(\d+)/)[1]));
- assert.match(readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java','utf8'),/b\.emptyTrash\(strings\(call,"ids",StorageBrowser\.BATCH_MAX\)\)/,'native refuses an Empty without ids');
+ assert.match(readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaFilesPlugin.java','utf8'),/b\.emptyTrash\(strings\(call,"ids",StorageBrowser\.BATCH_MAX\)\)/,'native refuses an Empty without ids');
  assert.match(adapter,/void restore\(\[d\.item\.id\], d\.item\.volume\)/);
  const catalog=readFileSync(`${nativeStorage}/StorageCatalog.java`,'utf8');
  assert.match(catalog,/for\(StorageVolume volume:manager\.getStorageVolumes\(\)\)/);
@@ -336,7 +336,7 @@ test('the Files agent contract carries opaque reviewed identities and refuses un
  assert.match(adapter,/storage\.storageTrash\(selection\)/);
  assert.match(adapter,/async reviewedIdentities\(paths, signal\)/);
  assert.doesNotMatch(adapter,/Restore from Files/);
- const plugin=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java','utf8');
+ const plugin=readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaFilesPlugin.java','utf8');
  assert.match(plugin,/b\.transfer\(paths,call\.getString\("dest",""\),copy,reviewed\)/);
  assert.match(plugin,/b\.trash\(paths,System\.currentTimeMillis\(\),reviewed\)/);
  assert.match(plugin,/public void storageReviewedIdentities\(PluginCall call\)/);
@@ -372,7 +372,7 @@ test('Browse requests count-only category summaries from the shared storage adap
 
 test('a superseded storage watch neither registers nor publishes an observer',{skip:jsonJarSkip},()=>{
  assert.match(runJvm([`${nativeStorage}/StorageBrowser.java`,fixture('android-stubs/android/webkit/MimeTypeMap.java'),fixture('StorageWatchSlotTest.java')],'ai.eliza.plugins.filesystem.browser.StorageWatchSlotTest',{json:true}),/^PASS storage watch slot/);
- const plugin=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java','utf8');
+ const plugin=readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaFilesPlugin.java','utf8');
  assert.match(plugin,/public void storageWatch\(PluginCall call\)\{long ticket=watch\.request\(\);storage\(call,b->\{/);
  assert.match(plugin,/watch\.install\(ticket,\(\)->\{/);
  assert.match(plugin,/private void stopWatching\(\)\{watch\.clear\(\);\}/);

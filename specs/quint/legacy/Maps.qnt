@@ -1,4 +1,4 @@
-// Faithful translation of docs/flow-redesign-2026-11/tla/Maps.tla.
+// Historical design translation; the executable Quint model is retained here.
 module Maps {
   type State = { Design: str, net: str, plan: str, cloud: str, session: str,
     tried: bool, message: str, screen: str, route: bool, assistant: bool,

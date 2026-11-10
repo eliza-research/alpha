@@ -1,8 +1,7 @@
 # Application state models
 
 These modules describe the current product shell and its storage and review
-boundaries. The exact entry-point paths are recorded in `manifest.json`. The
-repository-wide allocation and source hashes are recorded in `../coverage.json`.
+boundaries. The exact entry-point paths are recorded in `manifest.json`.
 
 | Module | Source symbols | Modeled state and abstraction |
 | --- | --- | --- |
@@ -85,9 +84,8 @@ conflicts. It also compares every one of the 240 finite voice-deletion evidence
 combinations from a Quint-generated table with the actual TypeScript planner.
 The delegation-return cases execute the real page script in an isolated DOM and
 compare its URL clearing and link exposure with Quint traces.
-`test/quint-coverage.test.mjs` rejects missing models, missing source
-allocation, changed hashes and inconsistent source links. These checks exercise
-selected contracts. General implementation refinement remains unproved.
+These checks exercise selected contracts. General implementation refinement
+remains unproved.
 
 ## Bounds and exclusions
 

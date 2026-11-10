@@ -14,7 +14,7 @@ const member = (source, regex) => {
 export function canonicalTapPlatform(actor, bridge, host, route) {
   const field = name => member(actor, new RegExp('^ private (?:static )?(?:volatile )?[^\\n=;]+ '+name+'(?:=[^;]+)?;', 'm'));
   return {
-    'ai/elizaresearch/alphaphone/AlphaCanonicalNotifications.java': `package ai.elizaresearch.alphaphone;
+    'ai/alphacompute/alphaphone/AlphaCanonicalNotifications.java': `package ai.alphacompute.alphaphone;
 import android.content.Context;
 import android.content.Intent;
 import android.os.SystemClock;
@@ -31,7 +31,7 @@ final class AlphaCanonicalNotifications {
  ${actor.slice(actor.indexOf(' static void captureTap('), actor.lastIndexOf('}'))}
 }
 `,
-    'ai/elizaresearch/alphaphone/AlphaNotificationsPlugin.java': `package ai.elizaresearch.alphaphone;
+    'ai/alphacompute/alphaphone/AlphaNotificationsPlugin.java': `package ai.alphacompute.alphaphone;
 import com.getcapacitor.*;
 import ai.eliza.plugins.notifications.ForegroundNoticeGate;
 import android.content.Context;
@@ -57,9 +57,9 @@ final class AlphaNotificationsPlugin extends TapBridgeHost {
    .replaceAll('@PluginMethod ', '')}
 }
 `,
-    'ai/elizaresearch/alphaphone/NativeNotificationRoute.java': route.replace(member(route, /^package ai\.elizaos\.app;$/m), 'package ai.elizaresearch.alphaphone;'),
+    'ai/alphacompute/alphaphone/NativeNotificationRoute.java': route.replace(member(route, /^package ai\.elizaos\.app;$/m), 'package ai.alphacompute.alphaphone;'),
     'android/os/SystemClock.java': `package android.os;
-public final class SystemClock {public static long elapsedRealtime(){return ai.elizaresearch.alphaphone.CanonicalTapTraces.elapsedRealtime();}}
+public final class SystemClock {public static long elapsedRealtime(){return ai.alphacompute.alphaphone.CanonicalTapTraces.elapsedRealtime();}}
 `,
     'android/content/Context.java': `package android.content;
 public class Context {public Context getApplicationContext(){return this;}}

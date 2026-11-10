@@ -33,7 +33,7 @@ export async function runNativeFixture({
 	);
 	assert.ok(appApk && testApk, "Matching archived app/test APK pair required");
 	const app = JSON.parse(fs.readFileSync("app.config.json")).appId;
-	assert.equal(app, "ai.elizaresearch.alphaphone");
+	assert.equal(app, "ai.alphacompute.alphaphone");
 	const apk = path.resolve(appApk),
 		test = path.resolve(testApk),
 		directory = path.resolve(output);

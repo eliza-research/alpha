@@ -206,8 +206,8 @@ function fixture(name, code) {
 
 export async function checkCanonicalNotificationTapAdmission() {
   const sources = [fileURLToPath(import.meta.url), adapter, 'apps/app/src/main.tsx', 'apps/app/src/runtime/connection-ui.tsx',
-    'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCanonicalNotifications.java',
-    'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNotificationsPlugin.java'];
+    'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCanonicalNotifications.java',
+    'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNotificationsPlugin.java'];
   captureSources([...sources, modelPath]);
   const text = read(adapter);
   const start = text.indexOf('export function installCanonicalNotificationTaps');

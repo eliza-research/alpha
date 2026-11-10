@@ -19,7 +19,7 @@
  * The shared job reads only public certificates and AVB public key metadata, refuses any
  * UNSET or mismatching reviewed digest, and writes the version/hash compatibility record
  * (release-record.json). A signed output is not an image boot, an applied update, a rollback
- * or recovery drill, or release qualification. See docs/pixel10a-staging.md.
+ * or recovery drill, or release qualification.
  */
 import path from "node:path";
 import { fileURLToPath } from "node:url";

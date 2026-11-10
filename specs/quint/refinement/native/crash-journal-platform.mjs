@@ -19,7 +19,7 @@ export function crashJournalPlatform(temporary) {
   assert.ok(destroy);
   const calls=readFileSync(join(root,crashCallSource),'utf8');
   const files={
-    'ai/elizaresearch/alphaphone/AlphaDevicePlugin.java': `package ai.elizaresearch.alphaphone;
+    'ai/alphacompute/alphaphone/AlphaDevicePlugin.java': `package ai.alphacompute.alphaphone;
 import com.getcapacitor.*;
 import android.os.Build;
 public final class AlphaDevicePlugin extends Plugin {
@@ -111,7 +111,7 @@ public record ApplicationExitInfo(long timestamp,int reason,int status,String pr
  public String getProcessName(){return processName;}
 }`,
     'ai/eliza/plugins/system/crash/System.java': `package ai.eliza.plugins.system.crash;
-final class System {static long currentTimeMillis(){return ai.elizaresearch.alphaphone.CrashJournalTraces.clock;}}`,
+final class System {static long currentTimeMillis(){return ai.alphacompute.alphaphone.CrashJournalTraces.clock;}}`,
     'android/util/AtomicFile.java': `package android.util;
 import java.io.*;
 import java.nio.file.*;

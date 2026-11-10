@@ -1,7 +1,7 @@
 // Read-only check of the always-on listener on a booted Alpha image (issue #424).
 // Usage: node scripts/verify-aosp-listener.mjs --serial SERIAL --user USER_ID
 // Reports package-manager facts only; the indicator, invocation and lock-screen behaviour are
-// manual device acceptance (docs/adr/0001-privileged-listener.md).
+// manual device acceptance.
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";

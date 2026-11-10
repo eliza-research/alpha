@@ -1,4 +1,4 @@
-package ai.elizaresearch.alphaphone;
+package ai.alphacompute.alphaphone;
 
 public final class NativeVoiceBindingTest {
  static void check(boolean value,String why){if(!value)throw new AssertionError(why);}

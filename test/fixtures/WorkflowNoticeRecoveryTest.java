@@ -1,4 +1,4 @@
-package ai.elizaresearch.alphaphone;
+package ai.alphacompute.alphaphone;
 import ai.eliza.plugins.notifications.NoticeRecovery;
 import java.nio.charset.StandardCharsets;import java.security.MessageDigest;import java.util.*;import org.json.*;
 public final class WorkflowNoticeRecoveryTest {

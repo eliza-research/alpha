@@ -7,7 +7,7 @@ import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {nativeInputPaths,nativeJavaPath,nativeBinding,nativeInputs,nativeGenerated,nativeCmakeOptions,verifyNativeJava,verifyNativeSymbols} from '../scripts/embedding-native-contract.mjs';
 import {verifyEmbeddingInputs} from '../scripts/stage-embedding-host.mjs';
-const identity='ai.elizaresearch.alphaphone';
+const identity='ai.alphacompute.alphaphone';
 const cpp='env->RegisterNatives(cls, methods, count); JNI_OnLoad(vm, reserved);\n'+[
  ['nativeEmbed','(JLjava/lang/String;I)[F'],['nativeEmbedUtf8','(J[BI)[F'],['nativeEmbedWithOptionsUtf8','(J[BIZ)[F']
 ].map(([name,signature])=>`ELIZA_NATIVE(${name}, "${signature}"),`).join('\n');
@@ -16,13 +16,13 @@ const java='package ai.elizaos.app; class ElizaVoiceNative {\nstatic native floa
 test('legacy exported JNI keeps the exact existing identity transformation and symbols',()=>{
  const binding=nativeBinding('Java_ai_elizaos_app_ElizaVoiceNative_nativeEmbed; ai/elizaos/app/ElizaVoiceNative','',identity);
  assert.equal(nativeInputs(binding).length,5);assert.deepEqual(nativeCmakeOptions(binding),[]);
- assert.equal(nativeGenerated('jni.cpp','Java_ai_elizaos_app_ElizaVoiceNative_nativeEmbed; ai/elizaos/app/ElizaVoiceNative',identity,binding),'Java_ai_elizaresearch_alphaphone_ElizaVoiceNative_nativeEmbed; ai/elizaresearch/alphaphone/ElizaVoiceNative');
- assert.doesNotThrow(()=>verifyNativeSymbols(['nativeEmbed','nativeEmbedUtf8','nativeEmbedWithOptionsUtf8'].map(name=>'000 T Java_ai_elizaresearch_alphaphone_ElizaVoiceNative_'+name).join('\n'),binding));
+ assert.equal(nativeGenerated('jni.cpp','Java_ai_elizaos_app_ElizaVoiceNative_nativeEmbed; ai/elizaos/app/ElizaVoiceNative',identity,binding),'Java_ai_alphacompute_alphaphone_ElizaVoiceNative_nativeEmbed; ai/alphacompute/alphaphone/ElizaVoiceNative');
+ assert.doesNotThrow(()=>verifyNativeSymbols(['nativeEmbed','nativeEmbedUtf8','nativeEmbedWithOptionsUtf8'].map(name=>'000 T Java_ai_alphacompute_alphaphone_ElizaVoiceNative_'+name).join('\n'),binding));
  assert.throws(()=>verifyNativeSymbols('000 T JNI_OnLoad',binding),/missing/);
 });
 test('registered JNI selects the product class without rewriting shared C++ and admits only JNI_OnLoad',()=>{
  const binding=nativeBinding(cpp,cmake,identity);assert.equal(nativeInputs(binding).at(-1),nativeJavaPath);
- assert.deepEqual(nativeCmakeOptions(binding),['-DELIZA_VOICE_JNI_CLASS=ai/elizaresearch/alphaphone/ElizaVoiceNative','-DELIZA_VOICE_JNI_SUBSET=full','-DELIZA_VOICE_JNI_LIBRARY=elizavoicejni']);
+ assert.deepEqual(nativeCmakeOptions(binding),['-DELIZA_VOICE_JNI_CLASS=ai/alphacompute/alphaphone/ElizaVoiceNative','-DELIZA_VOICE_JNI_SUBSET=full','-DELIZA_VOICE_JNI_LIBRARY=elizavoicejni']);
  assert.equal(nativeGenerated('jni.cpp',cpp,identity,binding),cpp);assert.equal(nativeGenerated(nativeJavaPath,java,identity,binding),java.replaceAll('ai.elizaos.app',identity));
  assert.equal(verifyNativeJava(cpp,java),3);
  assert.throws(()=>verifyNativeJava(cpp,java.replace('boolean parseSpecial','int parseSpecial')),/signature changed/);

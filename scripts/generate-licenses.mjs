@@ -17,10 +17,10 @@ import {readAgentBundleDependencies} from './agent-bundle-dependencies.mjs';
 //
 // Runtime enumeration is explicit: a staged runtime in a development checkout never changes the
 // committed notices. A PACKAGED distribution build regenerates them after staging with
-// --packaged-runtime (resident-android.yml). Without a flag, --check and generate() use the mode
-// the shipped notices were generated in, and --check also lists the staged runtime when present.
+// --packaged-runtime (resident-android.yml). Without a flag, generation lists source dependencies
+// only; --check also lists the staged runtime when present.
 //
-// Licence policy (docs/decisions.md P-09, scripts/licence-policy.mjs): generation never fails on
+// Licence policy (scripts/licence-policy.mjs): generation never fails on
 // what a licence is. Every entry has {name, version, license, source, text, flags}, plus
 // `obligations` ([{flag, note}]) when flagged and `textSource: "spdx-canonical"` when the package
 // ships no licence file and the canonical text of its declared licence is used instead. Copyleft,
@@ -622,7 +622,7 @@ function androidEntries(root, templates, errors) {
 /**
  * On-device speech: libelizainference with the shared paradee-voice library (Paradee-8M TTS, misaki
  * G2P with eSpeak NG out-of-lexicon fallback, the ASR slot (Phonon-2), Silero VAD), read from
- * the Android voice host record (schema in scripts/voice-host.mjs, documented in docs/fused-speech.md).
+ * the Android voice host record (schema in scripts/voice-host.mjs).
  * No other speech inference engine ships in any build. Every component, model, data file and notice
  * the record names is listed; copyleft (eSpeak NG GPL-3.0-or-later) and unverified licences are
  * flagged, never dropped and never blocking.
@@ -792,12 +792,6 @@ export function runtimeEntries(root, templates, errors, {agentDir = path.join(ro
 
 export const BUN_ENTRY = 'Bun JavaScript runtime (libeliza_bun.so)';
 
-/** True when the shipped notices were generated with --packaged-runtime (they list Bun). */
-export function shippedPackagedRuntime(root = ROOT) {
-  if (!exists(root, JSON_OUTPUT)) return false;
-  try { return readJson(root, JSON_OUTPUT).some(entry => entry?.name === BUN_ENTRY); } catch { return false; }
-}
-
 function payloadEntries(packaged) {
   return [
     {name: 'On-device elizaOS agent runtime payload', version: 'pinned upstream runtime when present in the APK payload', license: UNVERIFIED,
@@ -838,7 +832,7 @@ function applyReasons(root, entries, warnings, packagedRuntime) {
   for (const item of allowlist.entries) if (!used.has(item) && (!item.requires || exists(root, item.requires))) warnings.push(`${ALLOWLIST}: stale entry ${item.name}${item.sha256 ? ` (${item.sha256})` : ''}`);
 }
 
-export function collectNotices(root = ROOT, {packagedRuntime = shippedPackagedRuntime(root)} = {}) {
+export function collectNotices(root = ROOT, {packagedRuntime = false} = {}) {
   const errors = [], warnings = [];
   if (packagedRuntime && !packagedRuntimePresent(root))
     errors.push(`--packaged-runtime needs a staged runtime in ${AGENT_ASSETS}; run npm run agent:stage-android first`);
@@ -921,56 +915,6 @@ export function generate(root = ROOT, options = {}) {
   return {entries, errors, warnings, flagLines: licenceFlagLines(entries), json: renderJson(entries), text: renderText(entries)};
 }
 
-/** Read-only source-CI input. Explicit packaged generation still requires staged bytes.
- * The reviewed complete JSON/TXT hashes authenticate the retained runtime rows;
- * ordinary source rows are regenerated independently, so source changes remain detectable. */
-export function reviewedPackagedEntries(root = ROOT) {
-  const fail = message => { throw new Error(`Reviewed packaged notices: ${message}`); };
-  const readInput = (relative, limit) => {
-    const segments = relative.split('/');
-    if (path.isAbsolute(relative) || segments.some(part => !part || part === '.' || part === '..')) fail('unsafe input path');
-    let current = root;
-    for (const part of segments) { current = path.join(current, part); if (fs.lstatSync(current).isSymbolicLink()) fail('symlink input'); }
-    const fd = fs.openSync(current, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
-    try {
-      const stat = fs.fstatSync(fd);
-      if (!stat.isFile() || stat.size > limit) fail('input exceeds regular-file bound');
-      const data = fs.readFileSync(fd);
-      if (data.length !== stat.size || data.length > limit) fail('input changed while reading');
-      return data;
-    } finally { fs.closeSync(fd); }
-  };
-  const jsonInput = (relative, limit) => { try { return JSON.parse(readInput(relative, limit).toString('utf8')); } catch { fail('invalid or unavailable review input'); } };
-  const disposition = jsonInput('docs/dependency-audit.dispositions.json', 8 * 1024 * 1024).resident;
-  const evidence = disposition?.shippedSetEvidence;
-  if (typeof evidence !== 'string' || !/^docs\/security\/resident-staged-review-[A-Za-z0-9-]+\.json$/.test(evidence)) fail('missing fixed review path');
-  const review = jsonInput(evidence, 1024 * 1024), pin = jsonInput('upstream.lock.json', 131072).commit;
-  if (review.schema !== 1 || typeof pin !== 'string' || typeof review.sdk !== 'string' || review.sdk !== pin || typeof review.bundleSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(review.bundleSha256) || review.audit?.input !== 'packaged-runtime notices') fail('review does not bind this SDK and packaged inventory');
-  let jsonBytes;
-  for (const [file, name] of [[JSON_OUTPUT, 'third-party-notices.json'], [TEXT_OUTPUT, 'THIRD_PARTY_NOTICES.txt']]) {
-    const expected = review.evidenceFiles?.[name];
-    const bytes = readInput(file, 16 * 1024 * 1024);
-    if (!/^[a-f0-9]{64}$/.test(expected || '') || createHash('sha256').update(bytes).digest('hex') !== expected) fail(`${name} differs from the reviewed bytes`);
-    if (file === JSON_OUTPUT) jsonBytes = bytes;
-  }
-  const rows = JSON.parse(jsonBytes.toString('utf8'));
-  if (!Array.isArray(rows) || !rows.every(entry => entry && typeof entry.name === 'string' && typeof entry.text === 'string') || !rows.some(entry => entry.name === BUN_ENTRY)) fail('reviewed inventory has no Bun entry');
-  return rows.filter(entry => entry.name === BUN_ENTRY || entry.name === 'On-device elizaOS agent runtime payload' || /^Bundled in the on-device /.test(entry.text));
-}
-
-/** Verify a checked-in packaged notice set in a source checkout. This path never
- * writes assets and cannot substitute for --packaged-runtime generation. */
-export function verifyCommittedNotices(root = ROOT) {
-  if (!shippedPackagedRuntime(root) || packagedRuntimePresent(root)) return generate(root);
-  let runtime;
-  try { runtime = reviewedPackagedEntries(root); }
-  catch (error) { return {entries: [], errors: [error.message], warnings: [], flagLines: [], json: renderJson([]), text: renderText([])}; }
-  const source = collectNotices(root, {packagedRuntime: false});
-  const entries = [...source.entries.filter(entry => entry.name !== 'On-device elizaOS agent runtime payload'), ...runtime]
-    .sort((a, b) => a.name.localeCompare(b.name, 'en') || a.version.localeCompare(b.version, 'en'));
-  return {...source, entries, flagLines: licenceFlagLines(entries), json: renderJson(entries), text: renderText(entries)};
-}
-
 async function main(argv) {
   const check = argv.includes('--check');
   if (argv.includes('--refresh-android')) {
@@ -978,10 +922,8 @@ async function main(argv) {
     const snapshot = refreshAndroidClasspath(ROOT, androidEnv());
     console.log(`Resolved ${snapshot.coordinates.length} Android runtime coordinates into ${ANDROID_CLASSPATH}`);
   }
-  // Writing defaults to the committed (no runtime) form; --check follows the shipped form.
-  const packagedRuntime = argv.includes('--packaged-runtime') || (check && shippedPackagedRuntime(ROOT));
-  const {entries, errors, warnings, flagLines, json, text} = check && !argv.includes('--packaged-runtime')
-    ? verifyCommittedNotices(ROOT) : generate(ROOT, {packagedRuntime});
+  const packagedRuntime = argv.includes('--packaged-runtime');
+  const {entries, errors, warnings, flagLines, json, text} = generate(ROOT, {packagedRuntime});
   const summarize = (rows, label) => {
     const bundled = rows.filter(entry => /^Bundled in the on-device /.test(entry.text));
     const bun = rows.find(entry => entry.name === BUN_ENTRY);

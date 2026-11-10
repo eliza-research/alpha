@@ -20,7 +20,7 @@ test('upstream-valid repeat days (unordered or empty) are normalized natively, n
   return {days:operation.days,expected};
  });
  assert.throws(()=>validateClockOperation(set([1,1])),/Duplicate/,'upstream refuses duplicates itself');
- assert.match(runJvm([sharedClock('ClockDays.java'),fixture('ClockContractTest.java')],'ai.elizaresearch.alphaphone.ClockContractTest',{json:true,args:[JSON.stringify(cases)]}),/^PASS clock contract/);
+ assert.match(runJvm([sharedClock('ClockDays.java'),fixture('ClockContractTest.java')],'ai.alphacompute.alphaphone.ClockContractTest',{json:true,args:[JSON.stringify(cases)]}),/^PASS clock contract/);
 });
 
 test('surfaceInfo, clockHandoff and the shared ClockHandoff.launch carry repeat days end to end',()=>{

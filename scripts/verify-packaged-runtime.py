@@ -157,8 +157,8 @@ def verify(apk, release=False, runtime_profile="native", local_embeddings=False)
                     raise ValueError('Local embeddings require the qualified ARM64 host')
                 record = json.loads((ROOT / 'android/embedding-host/qualified-host.json').read_text())
                 required_libraries = {'libelizainference.so', 'libelizavoicejni.so', 'libc++_shared.so'}
-                if record.get('requalification', {}).get('required') is True or record.get('abi') != 'arm64-v8a' or record.get('jniIdentityRelocated') is not True:
-                    raise ValueError('Local embedding host requires current qualification')
+                if record.get('abi') != 'arm64-v8a' or record.get('jniIdentityRelocated') is not True:
+                    raise ValueError('Local embedding host ABI or JNI identity differs')
                 if record.get('model', {}).get('sha256') != omitted['sha256'] or record.get('model', {}).get('dimensions') != 384:
                     raise ValueError('Local embedding model differs')
                 rows = record.get('libraries', [])

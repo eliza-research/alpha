@@ -1,4 +1,4 @@
-package ai.elizaresearch.alphaphone;
+package ai.alphacompute.alphaphone;
 import java.io.File;
 import org.json.JSONObject;
 public final class ProviderOwnKeysTest {
