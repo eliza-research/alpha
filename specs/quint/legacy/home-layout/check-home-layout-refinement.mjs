@@ -313,6 +313,7 @@ async function collect(page) {
   const main = [
     ['HomeLayoutCurrentReplay', replay('mounted_launcher_content_and_measured_inset_arrival', 'current', events,
       (observation, index) => ({
+        ...(index === 1 ? {GridStable: observation.gridTop === pending.gridTop} : {}),
         ...(index === fullIndex ? {Shown: qset(observation.shown)} : {}),
       }))],
     ['HomeLayout', replay('mounted_launcher_source_and_dock_projection', 'proposed', events,
@@ -328,9 +329,6 @@ async function collect(page) {
       observation => ({SetupLink: observation.setup})],
   ].map(([id, model, name, observe]) => [id, model, replay(name,
     model === 'HomeLayout' ? 'proposed' : 'current', emptyEvents, (observation, index) => index === emptyIndex ? observe(observation) : {})]);
-  differences.push(['HomeLayoutCurrentGrid', 'HomeLayoutCurrentReplay', replay(
-    'historical_current_grid_moves_at_inset_readback', 'current', events.slice(0, 2),
-    (observation, index) => index === 1 ? {GridStable: observation.gridTop === pending.gridTop} : {})]);
   return {main, differences};
 }
 
