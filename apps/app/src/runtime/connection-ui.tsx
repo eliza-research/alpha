@@ -216,7 +216,7 @@ const RESIDENT_NAME = isAndroid ? 'On this device' : 'On this computer';
 export const RESIDENT_STARTING = 'Starting your agent…';
 /** Shown wherever a session is needed while the resident starts or recovers; nothing was sent. */
 export const RESIDENT_STARTING_NOTICE = privateLocalPreviewEnabled ? 'Connecting to the agent on this computer. Nothing was sent.' : 'Your agent is starting. Nothing was sent.';
-export const RESIDENT_RECOVERING_NOTICE = privateLocalPreviewEnabled ? 'The agent connection is unavailable. Retry in Settings › Agent connection. Nothing was sent.' : 'Your agent stopped. Retry in Settings › Agent connection. Nothing was sent.';
+export const RESIDENT_RECOVERING_NOTICE = privateLocalPreviewEnabled ? 'The agent connection is unavailable. Retry in Settings › Agent connection. Nothing was sent.' : 'Alpha isn’t connected. Reconnect in Settings. Nothing was sent.';
 /** Decision P-43: production has no remote-agent path. Where no resident runs in a production build
  * (the flag-off web preview) the agent is the phone's own, so the copy says so and how to reach it.
  * Remote-agent wording exists only in test-mocks builds (constant-folded out of production). */
@@ -228,7 +228,7 @@ export const NO_AGENT_VOICE = testMocksEnabled ? 'Connect your remote agent in S
 /** One wording for every surface that needs the agent and has no session yet. */
 export function residentPendingText(snapshot: Pick<ConnectionSnapshot, 'kind'|'residentRecoveryReason'> = state): string {
   if(snapshot.residentRecoveryReason)return residentRecoveryMessage(snapshot.residentRecoveryReason);
-  return snapshot.kind === 'recovering' ? 'Your agent stopped. Retry in Settings › Agent connection.' : 'Your agent is starting…';
+  return snapshot.kind === 'recovering' ? 'Alpha isn’t connected. Reconnect in Settings.' : 'Your agent is starting…';
 }
 /** Every surface that needs an agent and has no session: the resident state where the resident is
  * always present, otherwise the production web preview's on-phone wording (test mocks: the remote

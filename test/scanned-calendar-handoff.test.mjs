@@ -100,7 +100,7 @@ test('native Android Calendar keeps its own repeat and alert controls',()=>{
 });
 test('New Event with no current port explains pending state and does not replace a retained draft',()=>{
  const source=readFileSync('apps/app/src/runtime/connection-ui.tsx','utf8'),pendingCode=stripTypeScriptTypes(source.slice(source.indexOf('export function residentPendingText('),source.indexOf('/** Passive surfaces')).replace(/^export /gm,''),{mode:'strip'});
- for(const [kind,expected] of [['starting',/starting/],['recovering',/stopped/],['offline',/unavailable for this agent connection/]])for(const recordPort of [null,{current:()=>false}]){
+ for(const [kind,expected] of [['starting',/starting/],['recovering',/connected/],['offline',/unavailable for this agent connection/]])for(const recordPort of [null,{current:()=>false}]){
   const pendingText=new Function('state','residentAlwaysPresent','RESIDENT_RECOVERY_PENDING','PENDING_FALLBACK',pendingCode+';return agentPendingText;')({kind},kind!=='offline','Recovery review.','Unavailable.');
   const f=fixture({recordPort,pendingText}),before=structuredClone(f.calendar),toasts=[],api={get:()=>f.calendar,set:patch=>Object.assign(f.calendar,patch),toast:x=>toasts.push(x)};f.views.calendar.render(f.calendar,api).newEvent();assert.deepEqual(f.calendar,before);assert.deepEqual(f.creates,[]);assert.equal(toasts.length,1);assert.match(toasts[0],expected);
   f.calendar.form={title:'Keep my exact draft',repeat:'weekly',cal:'handle:0',canonicalOwnerKey:'owner-A'};const draft=f.calendar.form;f.views.calendar.render(f.calendar,api).newEvent();assert.equal(f.calendar.form,draft);assert.match(toasts.at(-1),/Keep or finish/);

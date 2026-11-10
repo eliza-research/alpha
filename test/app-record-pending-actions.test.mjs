@@ -20,12 +20,12 @@ function notesFixture({kind='offline',resident=false,status='',ready=false}={}){
  const views={notes:{render:(value)=>({storageStatus:value.storageStatus,list:value.list,none:!value.list?.length,canCreate:true,canRecord:true})}};module.installCanonicalNotesView(Shell,views);
  return{state,before,calls,toasts,render:()=>{const view=views.notes.render(shell.vget('notes'),shell.api('notes'));return{view,storageStatus:view.storageStatus,newNote:()=>shell.api('notes').set({compose:true})};}};
 }
-test('attempted New Note explains starting, stopped or unavailable without a placeholder or draft mutation',()=>{
+test('attempted New Note explains starting, disconnected or unavailable without a placeholder or draft mutation',()=>{
  for(const options of [{kind:'starting',resident:true},{kind:'recovering',resident:true},{kind:'cloud',resident:false}]){
   const f=notesFixture(options),view=f.render();if(options.kind==='starting')assert.equal(view.storageStatus,'','passive startup stays quiet');
   // Waiting for a connection: Alpha's Notes view without retained notes, New note or device recording.
   assert.deepEqual(view.view.list,[]);assert.equal(view.view.none,false);assert.equal(view.view.canCreate,false);assert.equal(view.view.canRecord,false);
-  assert.equal(view.newNote(),false);assert.deepEqual(f.state,f.before);assert.deepEqual(f.calls,[]);assert.equal(f.toasts.length,1);assert.match(f.toasts[0],options.kind==='starting'?/starting/:options.kind==='recovering'?/stopped/:/unavailable for this agent connection/);assert.doesNotMatch(f.toasts[0],/on.phone agent|runs on your phone/);
+  assert.equal(view.newNote(),false);assert.deepEqual(f.state,f.before);assert.deepEqual(f.calls,[]);assert.equal(f.toasts.length,1);assert.match(f.toasts[0],options.kind==='starting'?/starting/:options.kind==='recovering'?/connected/:/unavailable for this agent connection/);assert.doesNotMatch(f.toasts[0],/on.phone agent|runs on your phone/);
  }
 });
 test('a genuine Notes recovery error stays visible and is used by the attempted action',()=>{
