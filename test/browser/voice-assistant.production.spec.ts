@@ -1,6 +1,8 @@
 import {test,expect,type Page} from '@playwright/test';
 import {button} from './flag-off-android';
 import {setupLiveAssistant as setup} from './voice-assistant-fixture';
+import {attachVoiceFailureMetadata} from './voice-fixture-failure-metadata';
+test.afterEach(async({page},info)=>{await attachVoiceFailureMetadata(page,info);});
 const voice=(page:Page)=>page.getByRole('region',{name:'Voice conversation',exact:true});
 const transcription=(page:Page)=>page.getByRole('region',{name:'Voice transcription',exact:true});
 const live=<T,>(page:Page,read:(f:any)=>T)=>page.evaluate(`(${read.toString()})(window.live)`) as Promise<T>;

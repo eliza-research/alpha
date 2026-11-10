@@ -2,80 +2,15 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "b91f6f7e4665e2ab8b2dc4b1e9809c084e477e5f",
-  "head": "3504bfbe6d264d1bf05bbc2224708131d41f3a6b",
+  "baseCommit": "af497c134d4d662c8a2c74d4b9fa587a414425f2",
+  "head": "3ac3c95119e2ca11f6d72714899faafd064b2c38",
   "recordedAt": "2026-11-10",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...3504bfbe6d264d1bf05bbc2224708131d41f3a6b",
-  "status": "ahead",
-  "aheadBy": 16,
-  "behindBy": 0,
-  "mergeBase": "b91f6f7e4665e2ab8b2dc4b1e9809c084e477e5f",
-  "pinOnlyCommits": [
-    {
-      "sha": "073d390dbde3ed5261fb756832a503a3b7775956",
-      "subject": "Add inactive Android OS updater candidate with durable admission"
-    },
-    {
-      "sha": "0a2fb6cb81c23da23b2fb175f2852e44f1464fe9",
-      "subject": "Keep updater storage private and replace only unapplied offers"
-    },
-    {
-      "sha": "4471a944ee15b7ce921ba018f4a93e1dd0311534",
-      "subject": "Document updater isolation and product enrollment"
-    },
-    {
-      "sha": "19cf3960e9f45402107e768d8dd480f3d2426fcd",
-      "subject": "Stage the inactive updater in selected Pixel products"
-    },
-    {
-      "sha": "94881785db9beb564c40154c2969d6e630d44346",
-      "subject": "Use the client Calendar clock for reads and model grounding"
-    },
-    {
-      "sha": "50d14a35ca4ec112ef3f58012d558f17ff16a65e",
-      "subject": "Bind prompt automation delivery to the selected owner conversation"
-    },
-    {
-      "sha": "da6dec76452ffca5c0082bc81dabd5b97ea00c2e",
-      "subject": "Propagate failed prompt turns and fence retired runtime writes"
-    },
-    {
-      "sha": "9ac50d32dd79f063e14fe4aa49785d74b176c354",
-      "subject": "Use owner-local time for fresh morning schedules"
-    },
-    {
-      "sha": "9f6338cf3ac4cc4fb6c1480c836b44f4a0ee7638",
-      "subject": "Resolve generated mobile-loader probes from agent dependencies"
-    },
-    {
-      "sha": "ba76d1300cda0f4397f31235facd7af8253e1ea5",
-      "subject": "Resolve optional agent plugin types in isolated workspace installs"
-    },
-    {
-      "sha": "bf0f888222ce6f7f679cc35a306e2c14936dbdc6",
-      "subject": "fix(notes): retain stopped recordings before canonical save"
-    },
-    {
-      "sha": "07d680fa64b20999f5f25fe24d7cccb55b4bbc4d",
-      "subject": "Format reviewed release configuration for repository checks"
-    },
-    {
-      "sha": "3406b628f30a90c5b47128b6dc30bae177b7870e",
-      "subject": "fix(ui): let the host choose brief navigation semantics"
-    },
-    {
-      "sha": "1912bccbd282b3e6672eafc418e1ffa12a33ba86",
-      "subject": "Format isolated mobile loader regression fixture"
-    },
-    {
-      "sha": "10f95aa300c565cc14d74388f893d8b4ecb9c883",
-      "subject": "perf(voice): prepare Cloud successors before retirement"
-    },
-    {
-      "sha": "3504bfbe6d264d1bf05bbc2224708131d41f3a6b",
-      "subject": "Resolve optional agent plugin types in app host checks"
-    }
-  ],
+  "command": "gh api repos/elizaOS/eliza/compare/develop...3ac3c95119e2ca11f6d72714899faafd064b2c38",
+  "status": "behind",
+  "aheadBy": 0,
+  "behindBy": 17,
+  "mergeBase": "3ac3c95119e2ca11f6d72714899faafd064b2c38",
+  "pinOnlyCommits": [],
   "pullRequests": [
     "https://github.com/elizaOS/eliza/pull/39196"
   ]
