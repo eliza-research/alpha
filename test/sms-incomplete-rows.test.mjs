@@ -29,7 +29,7 @@ const tick=()=>new Promise(resolve=>setImmediate(resolve));
 const status={version:2,voiceCapable:true,smsCapable:true,
   permissions:{contacts:'granted',phoneState:'granted',sms:'granted',sendSms:'granted'},sendMode:'direct',
   roles:{dialer:{available:true,held:false,eligible:true},sms:{available:true,held:true,eligible:true}},
-  defaultDialer:'com.android.dialer',defaultSms:'ai.alphacompute.alphaphone',
+  defaultDialer:'com.android.dialer',defaultSms:'ai.elizaresearch.alphaphone',
   subscriptions:[{id:3,slot:0,displayName:'SIM',carrierName:'Carrier',defaultSms:true,defaultVoice:true}],defaultSmsSubscriptionId:3};
 const completeThread={id:'thread:1',date:1700000001000,messageCount:2,snippet:'Known preview',unread:true,addresses:['+15555550100']};
 const incompleteThread={id:'thread:2',date:1700000002000,incomplete:true,reason:'too-many-addresses'};

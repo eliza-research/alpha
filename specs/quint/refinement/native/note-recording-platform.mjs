@@ -11,13 +11,13 @@ export function noteRecordingPlatform() {
     'android/content/Context.java':`package android.content;
 import java.io.File;
 public class Context {
-  public File getNoBackupFilesDir(){return ai.alphacompute.alphaphone.NoteRecordingPorts.root;}
-  public File getCacheDir(){File cache=new File(ai.alphacompute.alphaphone.NoteRecordingPorts.root,"cache");cache.mkdirs();return cache;}
+  public File getNoBackupFilesDir(){return ai.elizaresearch.alphaphone.NoteRecordingPorts.root;}
+  public File getCacheDir(){File cache=new File(ai.elizaresearch.alphaphone.NoteRecordingPorts.root,"cache");cache.mkdirs();return cache;}
   public Context getApplicationContext(){return this;}
-  public <T>T getSystemService(Class<T> type){return type.cast(ai.alphacompute.alphaphone.NoteRecordingPorts.notifications);}
-  public android.content.ComponentName startForegroundService(Intent intent){ai.alphacompute.alphaphone.NoteRecordingPorts.commands.add(intent);return null;}
-  public android.content.ComponentName startService(Intent intent){if(ai.alphacompute.alphaphone.NoteRecordingPorts.failServiceLaunch)throw new IllegalStateException("background restricted");ai.alphacompute.alphaphone.NoteRecordingPorts.commands.add(intent);return null;}
-  public boolean stopService(Intent intent){ai.alphacompute.alphaphone.NoteRecordingPorts.stopServiceCalls++;return true;}
+  public <T>T getSystemService(Class<T> type){return type.cast(ai.elizaresearch.alphaphone.NoteRecordingPorts.notifications);}
+  public android.content.ComponentName startForegroundService(Intent intent){ai.elizaresearch.alphaphone.NoteRecordingPorts.commands.add(intent);return null;}
+  public android.content.ComponentName startService(Intent intent){if(ai.elizaresearch.alphaphone.NoteRecordingPorts.failServiceLaunch)throw new IllegalStateException("background restricted");ai.elizaresearch.alphaphone.NoteRecordingPorts.commands.add(intent);return null;}
+  public boolean stopService(Intent intent){ai.elizaresearch.alphaphone.NoteRecordingPorts.stopServiceCalls++;return true;}
 }`,
     'android/content/ComponentName.java':'package android.content; public class ComponentName {}',
     'android/content/Intent.java':`package android.content;
@@ -33,14 +33,14 @@ public class Intent {
   public Intent setFlags(int value){return this;}
 }`,
     'android/os/SystemClock.java':`package android.os;
-public class SystemClock {public static long elapsedRealtime(){return ai.alphacompute.alphaphone.NoteRecordingPorts.now;}}`,
+public class SystemClock {public static long elapsedRealtime(){return ai.elizaresearch.alphaphone.NoteRecordingPorts.now;}}`,
     'android/os/Looper.java':'package android.os; public class Looper {public static Looper getMainLooper(){return new Looper();}}',
     'android/os/Handler.java':`package android.os;
 public class Handler {
   public Handler(Looper looper){}
-  public boolean post(Runnable task){ai.alphacompute.alphaphone.NoteRecordingPorts.post(task);return true;}
-  public boolean postDelayed(Runnable task,long delay){ai.alphacompute.alphaphone.NoteRecordingPorts.timers.put(task,ai.alphacompute.alphaphone.NoteRecordingPorts.now+delay);return true;}
-  public void removeCallbacks(Runnable task){ai.alphacompute.alphaphone.NoteRecordingPorts.timers.remove(task);}
+  public boolean post(Runnable task){ai.elizaresearch.alphaphone.NoteRecordingPorts.post(task);return true;}
+  public boolean postDelayed(Runnable task,long delay){ai.elizaresearch.alphaphone.NoteRecordingPorts.timers.put(task,ai.elizaresearch.alphaphone.NoteRecordingPorts.now+delay);return true;}
+  public void removeCallbacks(Runnable task){ai.elizaresearch.alphaphone.NoteRecordingPorts.timers.remove(task);}
 }`,
     'android/os/Build.java':`package android.os;
 public class Build {public static class VERSION {public static int SDK_INT=36;}public static class VERSION_CODES {public static final int R=30,S=31;}}`,
@@ -53,13 +53,13 @@ public class AtomicFile {
   public AtomicFile(File file){this.file=file;}
   public FileInputStream openRead()throws IOException{return new FileInputStream(file);}
   public FileOutputStream startWrite()throws IOException{
-    if(ai.alphacompute.alphaphone.NoteRecordingPorts.failJournal){ai.alphacompute.alphaphone.NoteRecordingPorts.failJournal=false;throw new IOException("journal fixture");}
+    if(ai.elizaresearch.alphaphone.NoteRecordingPorts.failJournal){ai.elizaresearch.alphaphone.NoteRecordingPorts.failJournal=false;throw new IOException("journal fixture");}
     return new FileOutputStream(new File(file.getPath()+".new"));
   }
   public void finishWrite(FileOutputStream stream)throws IOException{
     stream.getFD().sync();stream.close();
     Files.move(new File(file.getPath()+".new").toPath(),file.toPath(),StandardCopyOption.REPLACE_EXISTING);
-    ai.alphacompute.alphaphone.NoteRecordingPorts.journalWrites++;
+    ai.elizaresearch.alphaphone.NoteRecordingPorts.journalWrites++;
   }
   public void failWrite(FileOutputStream stream){try{stream.close();}catch(IOException ignored){}new File(file.getPath()+".new").delete();}
 }`,
@@ -78,7 +78,7 @@ public class MediaRecorder {
   private File output,next;
   private OnInfoListener info;
   private OnErrorListener error;
-  public MediaRecorder(){if(ai.alphacompute.alphaphone.NoteRecordingPorts.failConstructor){ai.alphacompute.alphaphone.NoteRecordingPorts.failConstructor=false;throw new IllegalStateException("constructor fixture");}sequence=ai.alphacompute.alphaphone.NoteRecordingPorts.recorders.size()+1;ai.alphacompute.alphaphone.NoteRecordingPorts.recorders.add(this);}
+  public MediaRecorder(){if(ai.elizaresearch.alphaphone.NoteRecordingPorts.failConstructor){ai.elizaresearch.alphaphone.NoteRecordingPorts.failConstructor=false;throw new IllegalStateException("constructor fixture");}sequence=ai.elizaresearch.alphaphone.NoteRecordingPorts.recorders.size()+1;ai.elizaresearch.alphaphone.NoteRecordingPorts.recorders.add(this);}
   public MediaRecorder(android.content.Context context){this();}
   public void setAudioSource(int value){}
   public void setOutputFormat(int value){}
@@ -96,15 +96,15 @@ public class MediaRecorder {
   public void prepare()throws IOException{}
   private void bytes()throws IOException{try(FileOutputStream stream=new FileOutputStream(output)){stream.write(new byte[]{1,2,3,4});}}
   public void start()throws IOException{
-    if(ai.alphacompute.alphaphone.NoteRecordingPorts.failOpen){ai.alphacompute.alphaphone.NoteRecordingPorts.failOpen=false;throw new IOException("open fixture");}
+    if(ai.elizaresearch.alphaphone.NoteRecordingPorts.failOpen){ai.elizaresearch.alphaphone.NoteRecordingPorts.failOpen=false;throw new IOException("open fixture");}
     bytes();
   }
   public void pause(){paused=true;}
   public void resume(){paused=false;}
-  public void stop(){if(ai.alphacompute.alphaphone.NoteRecordingPorts.failStop){ai.alphacompute.alphaphone.NoteRecordingPorts.failStop=false;throw new IllegalStateException("short fixture");}}
+  public void stop(){if(ai.elizaresearch.alphaphone.NoteRecordingPorts.failStop){ai.elizaresearch.alphaphone.NoteRecordingPorts.failStop=false;throw new IllegalStateException("short fixture");}}
   public void release(){
-    if(ai.alphacompute.alphaphone.NoteRecordingPorts.failRelease){
-      ai.alphacompute.alphaphone.NoteRecordingPorts.failRelease=false;
+    if(ai.elizaresearch.alphaphone.NoteRecordingPorts.failRelease){
+      ai.elizaresearch.alphaphone.NoteRecordingPorts.failRelease=false;
       throw new IllegalStateException("release fixture");
     }
     released=true;
@@ -150,7 +150,7 @@ public class MediaMuxer {
   public int addTrack(MediaFormat format){return 0;}
   public void start(){}
   public void writeSampleData(int track,java.nio.ByteBuffer buffer,MediaCodec.BufferInfo info){
-    if(ai.alphacompute.alphaphone.NoteRecordingPorts.failJoin)throw new IllegalStateException("mux fixture");
+    if(ai.elizaresearch.alphaphone.NoteRecordingPorts.failJoin)throw new IllegalStateException("mux fixture");
     byte[] bytes=new byte[info.size];buffer.rewind();buffer.get(bytes);try{stream.write(bytes);}catch(java.io.IOException error){throw new IllegalStateException(error);}
   }
   public void stop(){}
@@ -164,11 +164,11 @@ public class Service extends android.content.Context {
   public android.os.IBinder onBind(android.content.Intent intent){return null;}
   public int onStartCommand(android.content.Intent intent,int flags,int startId){return START_NOT_STICKY;}
   public void onDestroy(){}
-  public void startForeground(int id,Notification value){if(ai.alphacompute.alphaphone.NoteRecordingPorts.failForeground)throw new IllegalStateException("foreground fixture");shown=true;notification=value;ai.alphacompute.alphaphone.NoteRecordingPorts.notifications.last=value;}
+  public void startForeground(int id,Notification value){if(ai.elizaresearch.alphaphone.NoteRecordingPorts.failForeground)throw new IllegalStateException("foreground fixture");shown=true;notification=value;ai.elizaresearch.alphaphone.NoteRecordingPorts.notifications.last=value;}
   public void startForeground(int id,Notification value,int type){startForeground(id,value);}
   public void stopForeground(int flags){shown=false;}
   public void stopSelf(int id){stopped=true;}
-  public boolean stopSelfResult(int id){if(id!=ai.alphacompute.alphaphone.NoteRecordingPorts.latestDeliveredStartId||ai.alphacompute.alphaphone.NoteRecordingPorts.newerStartPending)return false;stopped=true;return true;}
+  public boolean stopSelfResult(int id){if(id!=ai.elizaresearch.alphaphone.NoteRecordingPorts.latestDeliveredStartId||ai.elizaresearch.alphaphone.NoteRecordingPorts.newerStartPending)return false;stopped=true;return true;}
 }`,
     'android/content/pm/ServiceInfo.java':'package android.content.pm;public class ServiceInfo {public static final int FOREGROUND_SERVICE_TYPE_MICROPHONE=128;}',
     'android/app/Notification.java':`package android.app;
@@ -219,7 +219,7 @@ public class PendingIntent {
   public static PendingIntent getService(android.content.Context context,int request,android.content.Intent intent,int flags){return new PendingIntent();}
 }`,
     'android/R.java':'package android;public class R {public static class drawable {public static final int ic_btn_speak_now=1;}}',
-    'ai/alphacompute/alphaphone/MainActivity.java':'package ai.alphacompute.alphaphone;public class MainActivity {}',
+    'ai/elizaresearch/alphaphone/MainActivity.java':'package ai.elizaresearch.alphaphone;public class MainActivity {}',
   };
   for(const [name,body] of Object.entries(files)){const file=join(directory,name);mkdirSync(dirname(file),{recursive:true});writeFileSync(file,body);}
   return {directory,sources:files,paths:Object.keys(files).map(name=>join(directory,name)),close:()=>rmSync(directory,{recursive:true,force:true})};

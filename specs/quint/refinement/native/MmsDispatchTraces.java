@@ -1,8 +1,8 @@
 package ai.eliza.plugins.messages;
 
-import ai.alphacompute.alphaphone.AlphaSmsSendReceiver;
-import ai.alphacompute.alphaphone.AlphaTelephonyPlugin;
-import ai.alphacompute.alphaphone.Trace;
+import ai.elizaresearch.alphaphone.AlphaSmsSendReceiver;
+import ai.elizaresearch.alphaphone.AlphaTelephonyPlugin;
+import ai.elizaresearch.alphaphone.Trace;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.PendingIntent;

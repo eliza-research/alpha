@@ -45,9 +45,9 @@ test("image checks bind explicit user/fingerprint and only read system routing",
 });
 for(const [name,override,error] of [
  ["wrong image",{fingerprint:"other"},/fingerprint differs/],["missing or disabled system camera",{packages:"package:com.other.camera"},/not enabled/],
- ["Alpha secure handler",{globalHandler:"ai.alphacompute.alphaphone/.Camera"},/Alpha must not handle/],
+ ["Alpha secure handler",{globalHandler:"ai.elizaresearch.alphaphone/.Camera"},/Alpha must not handle/],
  ["wrong secure handler",{handler:"com.android.camera2/com.android.camera.CameraActivity"},/handler missing/],
- ["disabled power gesture",{gesture:"false"},/not enabled/],["wrong system target",{target:"ai.alphacompute.alphaphone"},/does not target/],
+ ["disabled power gesture",{gesture:"false"},/not enabled/],["wrong system target",{target:"ai.elizaresearch.alphaphone"},/does not target/],
  ["user opt out",{disabled:"1"},/user disabled/],["no camera",{features:""},/no camera feature/]
 ])test(`image rejects ${name}`,()=>assert.throws(()=>verifySecureCameraImage(device(override).run,"10","fixture/image"),error));
 test("staged overlay selects AOSP Camera2 and standard gesture while preserving unverified evidence",t=>{

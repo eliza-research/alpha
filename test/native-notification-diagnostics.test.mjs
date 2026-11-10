@@ -12,7 +12,7 @@ test('native diagnostics use only finite labels and preserve terminal authority 
  try{
   put('android/util/Log.java',`package android.util;public class Log {public static final java.util.List<String> values=new java.util.ArrayList<>();public static int w(String tag,String value){values.add(tag+":"+value);return 0;}}`);
   put('NativeNotificationDiagnostics.java',readFileSync(nativeSource('NativeNotificationDiagnostics.java'),'utf8'));
-  put('DiagnosticTest.java',`package ai.alphacompute.alphaphone;import java.util.concurrent.TimeUnit;import org.json.*;
+  put('DiagnosticTest.java',`package ai.elizaresearch.alphaphone;import java.util.concurrent.TimeUnit;import org.json.*;
 class ElizaAgentService {static class LocalStreamHandle{void cancel(){}}}
 public class DiagnosticTest {
  static class Actor {
@@ -37,6 +37,6 @@ public class DiagnosticTest {
   System.out.println("PASS bounded diagnostics and original authority/transient/stale failure semantics");
  }
 }`);
-  assert.match(runJvm(files,'ai.alphacompute.alphaphone.DiagnosticTest',{json:true}),/^PASS bounded diagnostics/);
+  assert.match(runJvm(files,'ai.elizaresearch.alphaphone.DiagnosticTest',{json:true}),/^PASS bounded diagnostics/);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });

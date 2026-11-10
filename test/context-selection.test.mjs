@@ -90,7 +90,7 @@ test('only an unredacted own notification is reviewable, and only while that exa
  // Android withholds content with fixed wording instead of an empty row. That wording is not content.
  // The shared host plugin (vendor/eliza) builds the hidden title from Alpha's appLabel().
  const host=readFileSync('vendor/eliza/plugins/plugin-native-notifications/android/src/capacitor/java/ai/eliza/plugins/notifications/NotificationsHostPlugin.java','utf8');
- const java=readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNotificationsPlugin.java','utf8');
+ const java=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNotificationsPlugin.java','utf8');
  const label=/protected String appLabel\(\)\{return "([^"]+)";\}/.exec(java)?.[1];
  assert.equal(`${label} notification`,m.HIDDEN_NOTICE_TITLE,'Android hidden title');
  assert.ok(host.includes('item.put("title",hidden?label+" notification":'),'Android hidden title');
@@ -127,7 +127,7 @@ test('a saved capture identity is its id and a local counter, never the library 
  // time nor the size is an identity, and the wire contract refuses '|', which would fail every
  // message sent while that item is open.
  // AlphaPhotos registers the shared PhotosPlugin with Alpha's media names; the shared bridge builds the library.
- const java=readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaPhotosPlugin.java','utf8');
+ const java=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPhotosPlugin.java','utf8');
  assert.match(java,/public class AlphaPhotosPlugin extends PhotosPlugin \{/);
  assert.match(java,/@Override protected OwnedMediaConfig mediaConfig\(\)\{return MEDIA_CONFIG;\}/);
  const bridge=readFileSync(new URL('../vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotosPlugin.java',import.meta.url),'utf8');
@@ -220,7 +220,7 @@ test('hosted-result, digest and workflow notices are never reviewable; reminder 
  // The native list returns a kind for every own row, from the posting channel.
  const host=readFileSync('vendor/eliza/plugins/plugin-native-notifications/android/src/capacitor/java/ai/eliza/plugins/notifications/NotificationsHostPlugin.java','utf8');
  assert.match(host,/item\.put\("source","own"\);item\.put\("kind",noticeKind\(n\.getChannelId\(\)\)\);/);
- const plugin=readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNotificationsPlugin.java','utf8');
+ const plugin=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNotificationsPlugin.java','utf8');
  assert.match(plugin,/@Override protected String noticeKind\(String channel\)\{return kind\(channel\);\}/);
  const kinds=plugin.slice(plugin.indexOf('static String kind('),plugin.lastIndexOf('\n}'));
  assert.match(kinds,/AlphaHostedResultsPlugin\.CHANNEL\.equals\(channel\)\)return "hosted-result";/);

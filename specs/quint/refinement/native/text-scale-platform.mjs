@@ -30,7 +30,7 @@ export function textScalePlatform() {
     }
 
     const device=readFileSync(join(root,deviceSource),'utf8');
-    put('ai/alphacompute/alphaphone/AlphaDevicePlugin.java',`package ai.alphacompute.alphaphone;
+    put('ai/elizaresearch/alphaphone/AlphaDevicePlugin.java',`package ai.elizaresearch.alphaphone;
 import android.content.Context;
 import android.os.Build;
 import com.getcapacitor.*;

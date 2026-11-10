@@ -134,7 +134,7 @@ test('the live client and adapter never store, log or send interim text and keep
 });
 
 test('Android: Silero VAD runs in the app process and only the live ASR and end-of-turn routes are added to the agent bridge', () => {
-  const plugin = fs.readFileSync(new URL('../android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java', import.meta.url), 'utf8');
+  const plugin = fs.readFileSync(new URL('../android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java', import.meta.url), 'utf8');
   // The end-of-turn route (#423, elizaOS #36546) carries text only; the heard route is covered in voice-turn-routes.test.mjs.
   assert.match(plugin, /\|asr\/local-inference\/\(live\(\/status\)\?\|end-of-turn\)\)\$"/);
   // Capture and VAD are the shared ai.eliza.voice pipeline on the process-wide inference session.
@@ -156,7 +156,7 @@ test('the app-process VAD gate opens and closes segments on Silero probabilities
 
 test('the native speech bridge and live transport are shared upstream; Alpha keeps only bindings', () => {
   const strip = source => source.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, '');
-  const alpha = strip(fs.readFileSync(new URL('../android/app/src/main/java/ai/alphacompute/alphaphone/AlphaVoiceCloudPlugin.java', import.meta.url), 'utf8'));
+  const alpha = strip(fs.readFileSync(new URL('../android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaVoiceCloudPlugin.java', import.meta.url), 'utf8'));
   assert.match(alpha, /@CapacitorPlugin\(name="AlphaVoiceCloud", permissions=\{@Permission\(alias="microphone"/);
   assert.match(alpha, /public final class AlphaVoiceCloudPlugin extends LocalSpeechBridgePlugin \{/);
   assert.match(alpha, /super\("alpha-cloud-voice-","alpha-cloud-tts-"\)/, 'installed cache prefixes are kept');
@@ -165,7 +165,7 @@ test('the native speech bridge and live transport are shared upstream; Alpha kee
   for (const moved of [/class AlphaCloudVoiceCapture/, /new MediaRecorder|MediaRecorder\(/, /new MediaPlayer/, /new LiveCaptureController/, /new LocalSpeechEngine/, /StreamingSpeechPlayback/, /SpeechAudioFocus/, /VoiceLatencyProbe|VoiceLatencyTrials/, /ThreadPoolExecutor|ExecutorService/,
     /public void (?:startRecording|stopRecording|cancelRecording|getRecordingMetrics|transcribeLocalRecording|synthesizeLocal|play|stopPlayback|cancel|liveCaptureStatus|startLiveCapture|stopLiveCapture|localSpeechStatus|releaseLocalSpeech|nativeVoiceTiming|markVoiceTurn|clearNativeVoiceTiming)\(PluginCall call\)/])
     assert.doesNotMatch(alpha, moved, String(moved));
-  assert.equal(fs.existsSync(new URL('../android/app/src/main/java/ai/alphacompute/alphaphone/AlphaVoicePcm.java', import.meta.url)), false);
+  assert.equal(fs.existsSync(new URL('../android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaVoicePcm.java', import.meta.url)), false);
   // The renderer transport is the shared @elizaos/voice/native-live; Alpha binds its bridge and resident.
   const binding = strip(fs.readFileSync(new URL('../apps/app/src/runtime/native-live-voice.ts', import.meta.url), 'utf8'));
   assert.match(binding, /createNativeLiveVoice\(\{ port: plugin, available, resident \}\)/);

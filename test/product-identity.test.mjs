@@ -65,8 +65,9 @@ function literalStorageKeys(root) {
   return keys;
 }
 
-test('app.config.json carries the Alpha Phone identity', () => {
-  assert.equal(identity.appId, 'ai.alphacompute.alphaphone');
+// The installed v44 package is an update contract, independent of company branding.
+test('app.config.json preserves the installed Alpha Phone update identity', () => {
+  assert.equal(identity.appId, 'ai.elizaresearch.alphaphone');
   assert.equal(identity.appName, 'Alpha Phone');
 });
 

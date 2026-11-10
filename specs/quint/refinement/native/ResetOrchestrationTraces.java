@@ -1,4 +1,4 @@
-package ai.alphacompute.alphaphone;
+package ai.elizaresearch.alphaphone;
 
 import ai.eliza.plugins.system.SenseListenerClient;
 import ai.eliza.plugins.system.reset.DataReset;

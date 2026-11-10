@@ -19,20 +19,20 @@ test('the reset step revokes each saved key once, a distinct legacy key too, bes
  const auth=resolve(root,'vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud');
  const shared=readdirSync(auth).filter(name=>name.endsWith('.java')&&!['CloudSignInPlugin.java','NativeGoogleCredential.java'].includes(name)).map(name=>join(auth,name));
  try{
-  put('ai/alphacompute/alphaphone/AlphaCalendarPlugin.java','package ai.alphacompute.alphaphone; final class AlphaCalendarPlugin {static ai.eliza.plugins.calendar.CalendarConfiguration CONFIGURATION;}');
-  put('ai/alphacompute/alphaphone/AlphaCredentialStore.java',`package ai.alphacompute.alphaphone;
+  put('ai/elizaresearch/alphaphone/AlphaCalendarPlugin.java','package ai.elizaresearch.alphaphone; final class AlphaCalendarPlugin {static ai.eliza.plugins.calendar.CalendarConfiguration CONFIGURATION;}');
+  put('ai/elizaresearch/alphaphone/AlphaCredentialStore.java',`package ai.elizaresearch.alphaphone;
 final class AlphaCredentialStore {
  static boolean unreadable;static java.util.Map<String,String> current=new java.util.HashMap<>(),legacy=new java.util.HashMap<>();
  static String readSlotBeforeAttach(android.content.Context c,String n)throws Exception{if(unreadable)throw new Exception("locked");return current.get(n);}
  static String readLegacySlotBeforeAttach(android.content.Context c,String n)throws Exception{if(unreadable)throw new Exception("locked");return legacy.get(n);}
 }`);
   // Not final here so a case can move the build to another deployment; the real one is a constant.
-  put('ai/alphacompute/alphaphone/LegacyCloudRecovery.java','package ai.alphacompute.alphaphone; final class LegacyCloudRecovery {static String LEGACY_NAMESPACE=CloudDeployment.STORAGE_NAMESPACE;}');
-  put('ai/alphacompute/alphaphone/AlphaCloudSignInPlugin.java',`package ai.alphacompute.alphaphone;
+  put('ai/elizaresearch/alphaphone/LegacyCloudRecovery.java','package ai.elizaresearch.alphaphone; final class LegacyCloudRecovery {static String LEGACY_NAMESPACE=CloudDeployment.STORAGE_NAMESPACE;}');
+  put('ai/elizaresearch/alphaphone/AlphaCloudSignInPlugin.java',`package ai.elizaresearch.alphaphone;
 import ai.eliza.auth.cloud.*;
 final class AlphaCloudSignInPlugin {static CloudSignInConfig REGISTRATION=registration(false);
- static CloudSignInConfig registration(boolean mocks){CloudSignInConfig.Builder b=CloudSignInConfig.builder().clientId("ai.alphacompute.alphaphone").deviceName("Alpha Phone").productName("Alpha Phone").googleClientId("alpha-phone").environment(new CloudSignInEnvironment("production","api.eliza.app","eliza.app","elizacloud","Eliza Cloud","/alphaphone/auth/callback"));if(mocks)b.environment(new CloudSignInEnvironment("staging","api-staging.eliza.app","staging.eliza.app","elizacloud-staging","Eliza Cloud","/alphaphone/auth/callback"));return b.build();}}`);
-  put('ai/alphacompute/alphaphone/Fixture.java',`package ai.alphacompute.alphaphone;
+ static CloudSignInConfig registration(boolean mocks){CloudSignInConfig.Builder b=CloudSignInConfig.builder().clientId("ai.elizaresearch.alphaphone").deviceName("Alpha Phone").productName("Alpha Phone").googleClientId("alpha-phone").environment(new CloudSignInEnvironment("production","api.eliza.app","eliza.app","elizacloud","Eliza Cloud","/alphaphone/auth/callback"));if(mocks)b.environment(new CloudSignInEnvironment("staging","api-staging.eliza.app","staging.eliza.app","elizacloud-staging","Eliza Cloud","/alphaphone/auth/callback"));return b.build();}}`);
+  put('ai/elizaresearch/alphaphone/Fixture.java',`package ai.elizaresearch.alphaphone;
 import ai.eliza.plugins.system.reset.DataReset;
 public class Fixture {
  static java.util.List<String> revoked=new java.util.ArrayList<>();static boolean block;
@@ -64,9 +64,9 @@ public class Fixture {
 `);
   const reset=['reset/DataReset','reset/DataResetCopy','reset/DataResetRecoveryActivity','reset/ResetAuthorization','SenseListenerClient','SenseInvocation'].map(name=>join(system,`${name}.java`));
   const calendar=resolve(root,'vendor/eliza/plugins/plugin-native-calendar/android/src/main/java/ai/eliza/plugins/calendar/CalendarConfiguration.java');
-  const alpha=['ResetBeforeDispatch','CloudDeployment'].map(name=>resolve(root,`android/app/src/main/java/ai/alphacompute/alphaphone/${name}.java`));
+  const alpha=['ResetBeforeDispatch','CloudDeployment'].map(name=>resolve(root,`android/app/src/main/java/ai/elizaresearch/alphaphone/${name}.java`));
   // org.json comes from the real jar ahead of android.jar's stubs.
   execFileSync(javaBinary('javac'),['--release','17','-proc:none','-cp',`${jsonJar}:${sdk}`,'-d',join(dir,'classes'),...files,...shared,...reset,calendar,...alpha],{timeout:120000});
-  assert.match(execFileSync(javaBinary('java'),['-cp',`${join(dir,'classes')}:${jsonJar}:${sdk}`,'ai.alphacompute.alphaphone.Fixture'],{encoding:'utf8',timeout:60000}),/PASS Alpha reset revocation binding/);
+  assert.match(execFileSync(javaBinary('java'),['-cp',`${join(dir,'classes')}:${jsonJar}:${sdk}`,'ai.elizaresearch.alphaphone.Fixture'],{encoding:'utf8',timeout:60000}),/PASS Alpha reset revocation binding/);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });

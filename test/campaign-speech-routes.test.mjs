@@ -5,7 +5,7 @@ import path from 'node:path';
 
 // Live campaigns intercept the paired speech routes the app calls. A route renamed in
 // PairedSpeechContract must fail here instead of leaving a campaign that never sees a request.
-const contract = fs.readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/PairedSpeechContract.java', 'utf8');
+const contract = fs.readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/PairedSpeechContract.java', 'utf8');
 const field = name => contract.match(new RegExp(`\\b${name}="([^"]+)"`))?.[1];
 const routes = { asr: field('ASR_PATH'), tts: field('TTS_PATH') };
 

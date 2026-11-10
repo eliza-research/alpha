@@ -132,7 +132,7 @@ edit(repo, text)
 
 config = 'packages/SystemUI/res/values/config.xml'
 text = original(config)
-alpha = 'custom(ai.alphacompute.alphaphone/.AlphaQuickSettingsTile),'
+alpha = 'custom(ai.elizaresearch.alphaphone/.AlphaQuickSettingsTile),'
 text = replace(text,
     'internet,bt,dnd,cast,flashlight,airplane,rotation,wallet,alarm,controls,screenrecord,battery',
     alpha + 'internet,bt,dnd,airplane,rotation,flashlight,battery,alarm,screenrecord')
@@ -209,7 +209,7 @@ for path, (before, after) in sorted(changes.items()):
 data = ''.join('\n' if line == ' \n' else line for line in patch).encode()
 (ROOT / 'alpha-core-launcher.patch').write_bytes(data)
 (ROOT / 'manifest.json').write_text(json.dumps({'schema': 1, 'project': PIN['project'],
-    'revision': PIN['revision'], 'targetAppId':'ai.alphacompute.alphaphone', 'patch': 'alpha-core-launcher.patch', 'patchSha256': sha(data),
+    'revision': PIN['revision'], 'targetAppId':'ai.elizaresearch.alphaphone', 'patch': 'alpha-core-launcher.patch', 'patchSha256': sha(data),
     'files': files, 'compilation': 'pending', 'imageBuilt': False, 'deviceQualified': False,
     'ownerCustomLayoutsPreserved': True, 'ownerExplicitStorageModesPreserved': True,
     'appPrivateStorageGranted': False, 'crashRecoveryAndVoiceControlsChanged': False}, indent=2) + '\n')

@@ -10,7 +10,7 @@ function run(files,main){assert.ok(jsonJar,'Pinned JSON dependency required; no 
 test('actual renderer read/write/remove/CAS methods reject every native notification session namespace',()=>{
  const source=readFileSync(nativeSource('AlphaConnectionPlugin.java'),'utf8');
  const methods=['secureRead','secureWrite','secureRemove','secureCompareExchange'].map(name=>method(source,name)).join('\n');
- const java=`package ai.alphacompute.alphaphone;
+ const java=`package ai.elizaresearch.alphaphone;
  import java.util.*;import org.json.*;
  class JSObject extends JSONObject {}
  class PluginCall {final JSONObject data=new JSONObject();boolean resolved,rejected;PluginCall(String slot)throws Exception{data.put("slot",slot).put("value","replacement").put("expectedValue",JSONObject.NULL);}String getString(String key){return data.isNull(key)?null:data.optString(key,null);}JSONObject getData(){return data;}void resolve(){resolved=true;}void resolve(JSObject x){resolved=true;}void reject(String... message){rejected=true;}}
@@ -28,12 +28,12 @@ test('actual renderer read/write/remove/CAS methods reject every native notifica
  for(String operation:new String[]{"write","read","remove","cas"}){String slot=operation.equals("cas")?"notes-records:v1:device":"device:fixture";PluginCall call=new PluginCall(slot);switch(operation){case "read":bridge.secureRead(call);break;case "write":bridge.secureWrite(call);break;case "remove":bridge.secureRemove(call);break;default:bridge.secureCompareExchange(call);}if(!call.resolved||call.rejected)throw new AssertionError("Allowed operation refused");checks++;}
  System.out.println("PASS renderer native-session boundary "+checks);
  }} `;
- assert.match(run([['SecureSlotPolicy.java',readFileSync(upstreamConnection('SecureSlotPolicy.java'),'utf8')],['RendererCredentialSlots.java',readFileSync(nativeSource('RendererCredentialSlots.java'),'utf8')],['CredentialBoundaryTest.java',java]],'ai.alphacompute.alphaphone.CredentialBoundaryTest'),/^PASS renderer native-session boundary 16/);
+ assert.match(run([['SecureSlotPolicy.java',readFileSync(upstreamConnection('SecureSlotPolicy.java'),'utf8')],['RendererCredentialSlots.java',readFileSync(nativeSource('RendererCredentialSlots.java'),'utf8')],['CredentialBoundaryTest.java',java]],'ai.elizaresearch.alphaphone.CredentialBoundaryTest'),/^PASS renderer native-session boundary 16/);
 });
 test('actual canonical renderer methods recheck foreground after queueing and before exposure or read dispatch',()=>{
  const source=readFileSync(nativeSource('AlphaNotificationsPlugin.java'),'utf8');
  const methods=['canonicalPending','acknowledgeCanonical'].map(name=>method(source,name)).join('\n');
- const java=`package ai.alphacompute.alphaphone;import java.util.*;import org.json.*;
+ const java=`package ai.elizaresearch.alphaphone;import java.util.*;import org.json.*;
  class JSObject extends JSONObject {public JSObject put(String key,boolean value)throws JSONException{super.put(key,value);return this;}static JSObject fromJSONObject(JSONObject value){return new JSObject();}}
  class PluginCall {boolean resolved,rejected;String getString(String key,String fallback){return "tap";}void resolve(JSObject x){resolved=true;}void reject(String text){rejected=true;}}
  class NoticeMethods {boolean focused=true,locked,destroyed;final List<Runnable> queue=new ArrayList<>();interface NoticeWork{void run()throws Exception;}Object getContext(){return this;}void requireNoticeForeground()throws Exception{if(!focused||locked||destroyed)throw new SecurityException();}void noticeWork(PluginCall c,String failure,NoticeWork w){queue.add(()->{try{requireNoticeForeground();w.run();}catch(Exception e){c.reject(failure);}});}void drain(){while(!queue.isEmpty())queue.remove(0).run();}
@@ -48,12 +48,12 @@ test('actual canonical renderer methods recheck foreground after queueing and be
  PluginCall accepted=new PluginCall();allowed.acknowledgeCanonical(accepted);allowed.drain();if(!accepted.resolved||accepted.rejected)throw new AssertionError("Visible read refused");checks++;
  System.out.println("PASS queued native foreground boundary "+checks);
  }} `;
- assert.match(run([['ForegroundBoundaryTest.java',java]],'ai.alphacompute.alphaphone.ForegroundBoundaryTest'),/^PASS queued native foreground boundary 10/);
+ assert.match(run([['ForegroundBoundaryTest.java',java]],'ai.elizaresearch.alphaphone.ForegroundBoundaryTest'),/^PASS queued native foreground boundary 10/);
 });
 
 test('actual acknowledgment body retains an undispatched tap and never revives an ambiguous POST',()=>{
  const actor=readFileSync(nativeSource('AlphaCanonicalNotifications.java'),'utf8');const start=actor.indexOf(' static void acknowledge('),end=actor.indexOf('\n }\n}',start);assert.ok(start>=0&&end>start);const ack=actor.slice(start,end+3);
- const java=`package ai.alphacompute.alphaphone;import org.json.*;
+ const java=`package ai.elizaresearch.alphaphone;import org.json.*;
  class AlphaLocalAgentPlugin {
   static int posts;static boolean lose;static String lastNotice;
   static JSONObject markNotificationRead(JSONObject session,String id)throws Exception{
@@ -96,7 +96,7 @@ test('actual acknowledgment body retains an undispatched tap and never revives a
  reset();AlphaLocalAgentPlugin.lose=true;rejected(()->AlphaCanonicalNotifications.acknowledge("A",()->{}));check(AlphaLocalAgentPlugin.posts==1);check(AlphaCanonicalNotifications.pendingTap==null);
  System.out.println("PASS actual native acknowledgment state "+checks);
  }} `;
- assert.match(run([['ActualAcknowledgmentTest.java',java]],'ai.alphacompute.alphaphone.ActualAcknowledgmentTest'),/^PASS actual native acknowledgment state/);
+ assert.match(run([['ActualAcknowledgmentTest.java',java]],'ai.elizaresearch.alphaphone.ActualAcknowledgmentTest'),/^PASS actual native acknowledgment state/);
 });
 
 test('actual tap capture expires five minutes after the tap, not after the first connection',()=>{
@@ -106,7 +106,7 @@ test('actual tap capture expires five minutes after the tap, not after the first
  const context=`package android.content;public class Context{}`;
  const intent=`package android.content;import java.util.*;public class Intent{public static final String ACTION_MAIN="main";final Map<String,String> extras=new HashMap<>();public Intent(){}public Intent(Intent o){extras.putAll(o.extras);}
   public Intent putExtra(String k,String v){extras.put(k,v);return this;}public boolean hasExtra(String k){return extras.containsKey(k);}public String getStringExtra(String k){return extras.get(k);}public void removeExtra(String k){extras.remove(k);}public Intent setData(Object d){return this;}public Intent setAction(String a){return this;}}`;
- const java=`package ai.alphacompute.alphaphone;import android.content.*;import android.os.SystemClock;import org.json.*;
+ const java=`package ai.elizaresearch.alphaphone;import android.content.*;import android.os.SystemClock;import org.json.*;
  class NativeNotificationProjector {static boolean onOpened(Context c,Intent tap,String owner){return true;}}
  class NativeNotificationRoute {static String view(String link){return link==null?null:"chat";}}
  class AlphaNotificationsPlugin {static int ready;static void canonicalTapReady(){ready++;}}
@@ -128,5 +128,5 @@ test('actual tap capture expires five minutes after the tap, not after the first
    long expires=AlphaCanonicalNotifications.pendingTap.getLong("expiresAt");check(expires>=before+240000&&expires<=System.currentTimeMillis()+240000);
    System.out.println("PASS tap age window "+checks);
   }}`;
- assert.match(run([['SystemClock.java',clock],['Context.java',context],['Intent.java',intent],['TapAgeTest.java',java]],'ai.alphacompute.alphaphone.TapAgeTest'),/^PASS tap age window 8/);
+ assert.match(run([['SystemClock.java',clock],['Context.java',context],['Intent.java',intent],['TapAgeTest.java',java]],'ai.elizaresearch.alphaphone.TapAgeTest'),/^PASS tap age window 8/);
 });

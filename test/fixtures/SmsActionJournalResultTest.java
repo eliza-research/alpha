@@ -1,4 +1,4 @@
-package ai.alphacompute.alphaphone;
+package ai.elizaresearch.alphaphone;
 import ai.eliza.plugins.messages.SmsSendJournal;
 import org.json.*;
 public final class SmsActionJournalResultTest {

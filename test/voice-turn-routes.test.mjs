@@ -262,7 +262,7 @@ test('sources: the adapter wires the endpoint and heard routes through the resid
   assert.match(adapter, /const semanticEndpoint=streamingCloud\?undefined:createEndpointChain\(\{local:residentEndpoint\(residentRequest\),clef:clefEndpointStage\(\)\}\)!;/);
   assert.match(adapter, /connectionController\.voiceConversationCurrent\(binding,false\)/);
   assert.match(adapter, /heardReporter\.report\(/);
-  const plugin = fs.readFileSync(new URL('../android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java', import.meta.url), 'utf8');
+  const plugin = fs.readFileSync(new URL('../android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java', import.meta.url), 'utf8');
   const line = plugin.split('\n').find(row => row.includes('Unsupported local agent request') === false && row.includes('path.matches("^/api/(auth/me'));
   const pattern = new RegExp(/path\.matches\("(.*?)"\)/.exec(line)[1].replace(/\\\\/g, '\\'));
   assert.equal(pattern.test('/api/asr/local-inference/end-of-turn'), true);

@@ -2,7 +2,7 @@ import test from 'node:test';import assert from 'node:assert/strict';import fs f
 import {javaBinary} from './fixtures/jvm-tools.mjs';
 const shared='vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeRuntimeEmbeddings.java';
 test('Alpha selects embeddings only through the shared native runtime profile',()=>{
- const source=fs.readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java','utf8');
+ const source=fs.readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java','utf8');
  // No Alpha copy of the embedding route: the build profile is passed to the shared class as-is.
  assert.doesNotMatch(source,/static void configureLocalEmbeddings\(/);
  assert.doesNotMatch(source,/bge-small-en-v1\.5-f16\.gguf/);

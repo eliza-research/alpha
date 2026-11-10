@@ -10,7 +10,7 @@
   "releaseConfig": "cp2a",
   "launcher": {
     "moduleName": "AlphaPhone",
-    "packageName": "ai.alphacompute.alphaphone",
+    "packageName": "ai.elizaresearch.alphaphone",
     "refuseLockScreenSurfaces": true,
     "assistantRole": false,
     "imageProvisioning": {
@@ -26,13 +26,13 @@
     "wakeNames": [
       "alpha"
     ],
-    "componentPackage": "ai.alphacompute.alphaphone.sense",
-    "assistActivity": "ai.alphacompute.alphaphone.AlphaAssistActivity",
+    "componentPackage": "ai.elizaresearch.alphaphone.sense",
+    "assistActivity": "ai.elizaresearch.alphaphone.AlphaAssistActivity",
     "storageName": "listener-settings"
   },
   "pixelConfig": {
     "moduleName": "AlphaPixelConfig",
-    "packageName": "ai.alphacompute.pixelconfig",
+    "packageName": "ai.elizaresearch.pixelconfig",
     "mimeType": "vnd.android.cursor.dir/vnd.alpha.pixel-flags"
   },
   "systemUpdater": true

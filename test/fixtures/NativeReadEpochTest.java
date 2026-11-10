@@ -1,4 +1,4 @@
-package ai.alphacompute.alphaphone;
+package ai.elizaresearch.alphaphone;
 public final class NativeReadEpochTest {
  static void require(boolean yes) { if (!yes) throw new AssertionError(); }
  public static void main(String[] args) {

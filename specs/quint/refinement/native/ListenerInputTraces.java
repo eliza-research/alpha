@@ -1,6 +1,6 @@
 package ai.eliza.sense;
 
-import ai.alphacompute.alphaphone.Trace;
+import ai.elizaresearch.alphaphone.Trace;
 import android.content.Intent;
 import android.media.*;
 import java.lang.reflect.Field;

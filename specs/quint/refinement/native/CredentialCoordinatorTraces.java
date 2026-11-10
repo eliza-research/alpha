@@ -1,4 +1,4 @@
-package ai.alphacompute.alphaphone;
+package ai.elizaresearch.alphaphone;
 
 import ai.eliza.plugins.securestore.nativeonly.JsonCredentialSlots;
 import com.getcapacitor.JSObject;

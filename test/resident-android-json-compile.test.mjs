@@ -19,7 +19,7 @@ test('resident session and transport compile against Android JSON signatures',{s
  try{
   const declarations=path.join(dir,'Collaborators.java');
   // Only collaborator type surfaces are fixtures. Both production classes and org.json are real.
-  fs.writeFileSync(declarations,`package ai.alphacompute.alphaphone;
+  fs.writeFileSync(declarations,`package ai.elizaresearch.alphaphone;
 import org.json.JSONObject;
 final class HostedInbox {
  interface Store {String read(String slot)throws Exception;void write(String slot,String value)throws Exception;void remove(String slot)throws Exception;}
@@ -30,6 +30,6 @@ final class HostedResultNotices {static String hash(String value){return value;}
 `);
   const session=process.env.ALPHA_RESIDENT_SESSION_SOURCE||nativeSource('ResidentResultSession.java');
   execFileSync(javaBinary('javac'),['--release','11','-cp',androidJar,'-sourcepath',dir,'-d',dir,declarations,nativeSource('ResidentResultTransport.java'),session],{stdio:'pipe',timeout:30000});
-  assert.ok(fs.existsSync(path.join(dir,'ai/alphacompute/alphaphone/ResidentResultSession.class')));
+  assert.ok(fs.existsSync(path.join(dir,'ai/elizaresearch/alphaphone/ResidentResultSession.class')));
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });

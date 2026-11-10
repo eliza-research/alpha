@@ -1,4 +1,4 @@
-package ai.alphacompute.alphaphone;
+package ai.elizaresearch.alphaphone;
 
 import android.content.Context;
 import androidx.lifecycle.Lifecycle;

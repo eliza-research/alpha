@@ -15,7 +15,7 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 
-const root = "android/app/src/main/java/ai/alphacompute/alphaphone";
+const root = "android/app/src/main/java/ai/elizaresearch/alphaphone";
 // Shared browser classes the app compiles from the reviewed pin (scripts/stage-local-agent-sources.mjs).
 const shared = "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface";
 // The browser tab host and its reviewed reading are the shared BrowserTabHostPlugin; AlphaBrowserPlugin only names it.
@@ -372,5 +372,5 @@ test("Contacts generic permission requests remain image and foreground gated",()
 test("an attachments instance's teardown removes only its own viewer copies", async () => {
   // Main surface and assistant each register AlphaMailAttachments over one cache folder.
   const { nativeSource, fixture, runJvm } = await import("./fixtures/jvm-tools.mjs");
-  assert.match(runJvm([nativeSource("ReviewedCopies.java"), fixture("ReviewedCopiesTest.java")], "ai.alphacompute.alphaphone.ReviewedCopiesTest"), /^PASS reviewed copies/);
+  assert.match(runJvm([nativeSource("ReviewedCopies.java"), fixture("ReviewedCopiesTest.java")], "ai.elizaresearch.alphaphone.ReviewedCopiesTest"), /^PASS reviewed copies/);
 });

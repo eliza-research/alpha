@@ -14,4 +14,4 @@ Run `python3 prepare.py --fetch` to fetch missing public hash-pinned baseline in
 
 The tool is read-only unless explicitly given `--apply`. Source policy tests do not prove a compiled SystemUI, booted image, update migration or Pixel behavior. Build and qualify the signed OS together with the keyboard change before deployment; do not replace the launcher's app data.
 
-The November 9 unified update decision retains the installed `ai.alphacompute.alphaphone` package for all phones; Alpha Compute branding stays separate. Migration version 2 also replaces an exact known stock layout carrying the intermediate renamed tile; owner-customized layouts remain untouched. See the app updater handoff for signed retention and wireless acceptance gates.
+The November 9 unified update decision retains the installed `ai.elizaresearch.alphaphone` package for all phones; Alpha Compute branding stays separate. Migration version 2 also replaces an exact known stock layout carrying the intermediate renamed tile; owner-customized layouts remain untouched. See the app updater handoff for signed retention and wireless acceptance gates.

@@ -13,7 +13,7 @@ import { javaBinary } from "./fixtures/jvm-tools.mjs";
 import { createAospTelephony, TelephonyUnavailable, parseTelephonyStatus, parseThreads, parseMessages, parseSmsSendResult, parseSmsJournal, smsBindingText, smsBindingHash, reviewSms } from "../apps/app/src/runtime/aosp-telephony.ts";
 
 const root = resolve(import.meta.dirname, "..");
-const JAVA = join(root, "android/app/src/main/java/ai/alphacompute/alphaphone");
+const JAVA = join(root, "android/app/src/main/java/ai/elizaresearch/alphaphone");
 const SHARED = join(root, "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages");
 const read = file => readFileSync(join(root, file), "utf8");
 const status = (patch = {}) => ({
@@ -38,14 +38,14 @@ test("JVM: Alpha's installed journal stays compatible with the shared reviewed-S
     execFileSync(javaBinary("javac"), ["--release", "11", "-d", dir, ...["SmsSendJournal", "SmsRecords", "SmsPageCursor"].map(name => join(SHARED, `${name}.java`)), join(root, "test/fixtures/SmsSendJournalTest.java")], { timeout: 60000 });
     const body = "Running late \"5\" min\né😀\t\u0001";
     const expected = createHash("sha256").update(smsBindingText({ recipients: ["+15555550100", "5550101"], body, subscriptionId: 3 })).digest("hex");
-    const namespace = read("android/app/src/main/java/ai/alphacompute/alphaphone/AlphaTelephony.java").match(/"(alpha-sms-operation:v1:)"/)[1];
+    const namespace = read("android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaTelephony.java").match(/"(alpha-sms-operation:v1:)"/)[1];
     assert.match(execFileSync(javaBinary("java"), ["-Djava.io.tmpdir=" + dir, "-cp", dir, "ai.eliza.plugins.messages.SmsSendJournalTest", expected, namespace], { encoding: "utf8", timeout: 120000 }), /PASS alpha sms journal compatibility/);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
 test("Alpha keeps its installed SMS identity when using the shared core", () => {
-  const identity = read("android/app/src/main/java/ai/alphacompute/alphaphone/AlphaTelephony.java");
-  for (const value of ["sms-send-ledger:v1:device", "alpha-sms-sends.journal", "alpha-sms-operation:v1:", "ai.alphacompute.alphaphone.SMS_SENT", "ai.alphacompute.alphaphone.SMS_DELIVERED", "alphaphone-sms", "operationId", "partIndex"])
+  const identity = read("android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaTelephony.java");
+  for (const value of ["sms-send-ledger:v1:device", "alpha-sms-sends.journal", "alpha-sms-operation:v1:", "ai.elizaresearch.alphaphone.SMS_SENT", "ai.elizaresearch.alphaphone.SMS_DELIVERED", "alphaphone-sms", "operationId", "partIndex"])
     assert.ok(identity.includes(`"${value}"`), `installed identity ${value} is kept`);
   assert.match(identity, /AlphaSmsSendReceiver\.class, AlphaImageCapability::verified,/, "callbacks keep the installed receiver; admission is the verified image");
   assert.match(identity, /store\.readCredentialSlot\(slot\)/); assert.match(identity, /store\.writeCredentialSlot\(slot, value\)/);
@@ -160,8 +160,8 @@ test("journal history restores unknown operations without draft content or optim
 test("native boundary: image-only plugin methods, immutable explicit callbacks, journal before dispatch", () => {
   const plugin = readFileSync(join(SHARED, "TelephonyPlugin.java"), "utf8");
   const sms = readFileSync(join(SHARED, "SmsTelephony.java"), "utf8");
-  const alpha = read("android/app/src/main/java/ai/alphacompute/alphaphone/AlphaTelephonyPlugin.java");
-  const receiver = read("android/app/src/main/java/ai/alphacompute/alphaphone/AlphaSmsSendReceiver.java");
+  const alpha = read("android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaTelephonyPlugin.java");
+  const receiver = read("android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaSmsSendReceiver.java");
   // Reads: READ_SMS, generation fence before and after the provider read, cancellation.
   assert.match(alpha, /alias = "sms", strings = \{ Manifest\.permission\.READ_SMS \}/);
   assert.match(alpha, /alias = "sendSms", strings = \{ Manifest\.permission\.SEND_SMS \}/);

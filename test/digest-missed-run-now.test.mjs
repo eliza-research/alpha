@@ -76,20 +76,20 @@ test('the resident is brought back after boot, update and clock or time-zone cha
  assert.match(receiver[0],/android:exported="false"/);
  for(const action of ['BOOT_COMPLETED','MY_PACKAGE_REPLACED','TIME_SET','TIMEZONE_CHANGED'])assert.match(receiver[1],new RegExp(`android\\.intent\\.action\\.${action}"`),action);
  assert.doesNotMatch(receiver[1],/LOCKED_BOOT_COMPLETED/,'credential-encrypted agent state needs unlock');
- const source=read('android/app/src/main/java/ai/alphacompute/alphaphone/ResidentScheduleReceiver.java');
+ const source=read('android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentScheduleReceiver.java');
  assert.match(source,/ElizaAgentService\.shouldAutoStart\(context\)/);
  assert.match(source,/AlphaLocalAgentPlugin\.startResidentIfAdmissible\(context,action,unlocked,packaged,enabled\)/);
  assert.doesNotMatch(source,/ElizaAgentService\.start\(/,'the receiver never starts outside the lifecycle lock');
- const plugin=read('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java');
+ const plugin=read('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java');
  assert.match(plugin,/ResidentScheduleRearm\.admitAndStart\(lifecycleLock,[\s\S]{0,240}\(\)->accepting&&!stopping&&credentialMutationEpoch<0&&credentialShutdownRequest==-1,\(\)->ElizaAgentService\.start\(context\)\)/,'admission and start share lifecycleLock');
  assert.doesNotMatch(source,/ACTION_RESTART|restart\(|runHostedDossier|dossier/i,'never restarts a running agent or runs a digest');
- assert.doesNotMatch(read('android/app/src/main/java/ai/alphacompute/alphaphone/ResidentScheduleRearm.java'),/import android\./,'pure policy');
+ assert.doesNotMatch(read('android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentScheduleRearm.java'),/import android\./,'pure policy');
 });
 
 test('resident schedule re-arming policy runs on the JVM',()=>{
  const temporary=mkdtempSync(join(tmpdir(),'resident-rearm-'));
  try{
-  execFileSync(javaBinary('javac'),['--release','11','-d',temporary,join(root,'android/app/src/main/java/ai/alphacompute/alphaphone/ResidentScheduleRearm.java'),join(root,'test/fixtures/ResidentScheduleRearmTest.java')],{timeout:60000});
-  assert.match(execFileSync(javaBinary('java'),['-cp',temporary,'ai.alphacompute.alphaphone.ResidentScheduleRearmTest'],{encoding:'utf8',timeout:60000}),/^PASS resident schedule rearm/);
+  execFileSync(javaBinary('javac'),['--release','11','-d',temporary,join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentScheduleRearm.java'),join(root,'test/fixtures/ResidentScheduleRearmTest.java')],{timeout:60000});
+  assert.match(execFileSync(javaBinary('java'),['-cp',temporary,'ai.elizaresearch.alphaphone.ResidentScheduleRearmTest'],{encoding:'utf8',timeout:60000}),/^PASS resident schedule rearm/);
  }finally{rmSync(temporary,{recursive:true,force:true});}
 });

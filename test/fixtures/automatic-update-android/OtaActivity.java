@@ -1,4 +1,4 @@
-package ai.alphacompute.alphaphone.otafixture;
+package ai.elizaresearch.alphaphone.otafixture;
 
 import android.app.Activity;
 import android.app.PendingIntent;

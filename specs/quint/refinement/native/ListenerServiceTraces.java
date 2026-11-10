@@ -1,6 +1,6 @@
 package ai.eliza.sense;
 
-import ai.alphacompute.alphaphone.Trace;
+import ai.elizaresearch.alphaphone.Trace;
 import android.media.AudioRecord;
 import java.nio.file.*;
 import java.nio.charset.StandardCharsets;

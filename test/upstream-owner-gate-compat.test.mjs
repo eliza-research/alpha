@@ -14,7 +14,7 @@ import {createHash} from 'node:crypto';
 
 const SERVER = 'vendor/eliza/packages/agent/src/api/server.ts';
 const PAIRING = 'vendor/eliza/packages/app/src/api/auth-pairing-routes.ts';
-const LOCAL_AGENT = 'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java';
+const LOCAL_AGENT = 'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java';
 // SHA-256 of isOwnerOnlyApiRequest as reviewed at elizaOS/eliza 86ab55fd81 (#37702, #37733, #37786, #37840,
 // #37861, #38121, #38126 /api/logs and /api/security/audit, and the other owner-only gates since 1f2a922f86). A pin that changes the gate fails here until its
 // new routes are checked against Alpha's route surface below and this hash is updated.

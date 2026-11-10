@@ -1,4 +1,4 @@
-package ai.alphacompute.alphaphone;
+package ai.elizaresearch.alphaphone;
 
 import ai.eliza.plugins.calendar.CalendarConfiguration;
 import ai.eliza.plugins.calendar.read.CalendarReadAccess;
@@ -16,7 +16,7 @@ import org.json.JSONObject;
  * not Android CalendarProvider and not a device run.
  */
 public final class CalendarListWindowTest {
- static final String PACKAGE="ai.alphacompute.alphaphone",NOTE_CREATION="afc732b3-416e-4dd3-98ce-0bd854106c46";
+ static final String PACKAGE="ai.elizaresearch.alphaphone",NOTE_CREATION="afc732b3-416e-4dd3-98ce-0bd854106c46";
  static void require(boolean value,String message){if(!value)throw new AssertionError(message);}
  static void same(Object expected,Object actual,String message){if(!String.valueOf(expected).equals(String.valueOf(actual)))throw new AssertionError(message+"\n expected "+expected+"\n actual   "+actual);}
  static final class Provider extends ContentResolver {

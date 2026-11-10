@@ -17,17 +17,17 @@ public class NativeGoogleCredential {
 public interface SharedPreferences {String getString(String key,String fallback);Editor edit();interface Editor {Editor remove(String key);Editor putString(String key,String value);void apply();}}`,
     'android/content/Context.java': `package android.content;
 import java.util.HashMap;import android.content.pm.PackageManager;
-public class Context {public static final int MODE_PRIVATE=0;private final HashMap<String,String> values=new HashMap<>();public Context getApplicationContext(){return this;}public String getPackageName(){return "ai.alphacompute.alphaphone";}public PackageManager getPackageManager(){return new PackageManager();}public <T>T getSystemService(Class<T> type){return null;}
+public class Context {public static final int MODE_PRIVATE=0;private final HashMap<String,String> values=new HashMap<>();public Context getApplicationContext(){return this;}public String getPackageName(){return "ai.elizaresearch.alphaphone";}public PackageManager getPackageManager(){return new PackageManager();}public <T>T getSystemService(Class<T> type){return null;}
  public SharedPreferences getSharedPreferences(String name,int mode){return new SharedPreferences(){public String getString(String key,String fallback){return values.getOrDefault(key,fallback);}public Editor edit(){return new Editor(){public Editor remove(String key){values.remove(key);return this;}public Editor putString(String key,String value){values.put(key,value);return this;}public void apply(){}};}};}}`,
     'android/content/Intent.java': `package android.content;
 import android.net.Uri;
 public class Intent {public static final String ACTION_VIEW="view",CATEGORY_BROWSABLE="browse";private Uri uri;public Intent(){}public Intent(String action){}public Intent(String action,Uri value){uri=value;}public Uri getData(){return uri;}public Intent setData(Uri value){uri=value;return this;}public Intent addCategory(String value){return this;}public Intent setPackage(String value){return this;}}`,
     'android/content/DialogInterface.java': `package android.content;public interface DialogInterface {interface OnClickListener {void onClick(DialogInterface dialog,int which);}interface OnCancelListener {void onCancel(DialogInterface dialog);}}`,
     'android/app/Activity.java': `package android.app;
-import android.content.*;import ai.alphacompute.alphaphone.SignInTestPorts;
+import android.content.*;import ai.elizaresearch.alphaphone.SignInTestPorts;
 public class Activity extends Context {public Intent getIntent(){return new Intent();}public boolean isFinishing(){return false;}public boolean isDestroyed(){return false;}public void runOnUiThread(Runnable task){task.run();}public void startActivity(Intent intent){SignInTestPorts.browserOpened=true;}}`,
     'android/app/AlertDialog.java': `package android.app;
-import android.content.*;import ai.alphacompute.alphaphone.SignInTestPorts;
+import android.content.*;import ai.elizaresearch.alphaphone.SignInTestPorts;
 public class AlertDialog implements DialogInterface {private OnClickListener yes;public void setCanceledOnTouchOutside(boolean value){}public void show(){SignInTestPorts.authorizations++;yes.onClick(this,1);}public void dismiss(){}
  public static class Builder {private final AlertDialog dialog=new AlertDialog();public Builder(Activity activity){}public Builder setTitle(String value){return this;}public Builder setMessage(String value){return this;}public Builder setPositiveButton(String name,OnClickListener yes){dialog.yes=yes;return this;}public Builder setNegativeButton(String name,OnClickListener no){return this;}public Builder setOnCancelListener(OnCancelListener cancel){return this;}public AlertDialog create(){return dialog;}}}`,
     'android/net/Uri.java': `package android.net;
@@ -61,15 +61,15 @@ public class CustomTabsIntent {public static final int SHARE_STATE_OFF=0;public 
 import org.json.JSONObject;
 public class JSObject extends JSONObject {public JSObject put(String key,boolean value){super.put(key,value);return this;}public JSObject put(String key,long value){super.put(key,value);return this;}public JSObject put(String key,int value){super.put(key,value);return this;}public JSObject put(String key,Object value){super.put(key,value);return this;}public static JSObject fromJSONObject(JSONObject object){JSObject value=new JSObject();for(String key:object.keySet())value.put(key,object.get(key));return value;}}`,
     'com/getcapacitor/PluginCall.java': `package com.getcapacitor;
-import ai.alphacompute.alphaphone.SignInTestPorts;
+import ai.elizaresearch.alphaphone.SignInTestPorts;
 public class PluginCall {private final JSObject input;public volatile JSObject result;public volatile String rejection;public PluginCall(JSObject data){input=data;}public JSObject getData(){return input;}public String getString(String key){return input.optString(key,null);}public String getString(String key,String fallback){return input.optString(key,fallback);}public Boolean getBoolean(String key,boolean fallback){return input.optBoolean(key,fallback);}public void resolve(){result=new JSObject();}public void resolve(JSObject value){result=value;SignInTestPorts.outcomes.add(value);}public void reject(String message,String code){rejection=code;}}`,
     'com/getcapacitor/Plugin.java': `package com.getcapacitor;
-import android.content.*;import android.app.Activity;import ai.alphacompute.alphaphone.SignInTestPorts;
+import android.content.*;import android.app.Activity;import ai.elizaresearch.alphaphone.SignInTestPorts;
 public class Plugin {private final Activity activity=new Activity();public void load(){}protected void handleOnNewIntent(Intent intent){}protected void handleOnPause(){}protected void handleOnResume(){}protected void handleOnDestroy(){}public Context getContext(){return activity;}public Activity getActivity(){return activity;}public void notifyListeners(String name,JSObject value,boolean retain){SignInTestPorts.outcomes.add(value);}}`,
     'com/getcapacitor/PluginMethod.java': 'package com.getcapacitor;public @interface PluginMethod {}',
     'com/getcapacitor/annotation/CapacitorPlugin.java': 'package com.getcapacitor.annotation;public @interface CapacitorPlugin {String name();}',
-    'ai/alphacompute/alphaphone/BuildConfig.java': 'package ai.alphacompute.alphaphone;public class BuildConfig {public static final boolean ELIZA_DEV_ALLOW_TEST_MOCKS=false;}',
-    'ai/alphacompute/alphaphone/AlphaCredentialStore.java': `package ai.alphacompute.alphaphone;
+    'ai/elizaresearch/alphaphone/BuildConfig.java': 'package ai.elizaresearch.alphaphone;public class BuildConfig {public static final boolean ELIZA_DEV_ALLOW_TEST_MOCKS=false;}',
+    'ai/elizaresearch/alphaphone/AlphaCredentialStore.java': `package ai.elizaresearch.alphaphone;
 import android.content.Context;
 public class AlphaCredentialStore {
   private final Runnable owner;
@@ -132,7 +132,7 @@ public class AlphaCredentialStore {
     SignInTestPorts.checkpoint("remove:" + key);
   }
 }`,
-    'ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java': 'package ai.alphacompute.alphaphone;public class AlphaLocalAgentPlugin {private static long intent;public static long reserveCredentialIntent(){return ++intent;}public static void requireCredentialIntent(long value){if(value!=intent)throw new IllegalStateException("changed");}public static <T>T withCredentialRead(java.util.concurrent.Callable<T> work)throws Exception{return work.call();}}',
+    'ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java': 'package ai.elizaresearch.alphaphone;public class AlphaLocalAgentPlugin {private static long intent;public static long reserveCredentialIntent(){return ++intent;}public static void requireCredentialIntent(long value){if(value!=intent)throw new IllegalStateException("changed");}public static <T>T withCredentialRead(java.util.concurrent.Callable<T> work)throws Exception{return work.call();}}',
   };
   const paths = [];
   for (const [name, source] of Object.entries(files)) { const path = join(root, name); mkdirSync(dirname(path), {recursive: true}); writeFileSync(path, source); paths.push(path); }

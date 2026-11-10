@@ -32,7 +32,7 @@ test('every Alpha-owned behavioural module is listed; moved modules leave the al
 
 test('branding never counts as a functional difference, and the launcher is shared by both brands', () => {
   assert.equal(allowlist.reference, 'ELIZA_MOBILE_PRODUCT');
-  assert.equal(parity.alpha.branding.appId, 'ai.alphacompute.alphaphone');
+  assert.equal(parity.alpha.branding.appId, 'ai.elizaresearch.alphaphone');
   assert.equal(parity.eliza.branding.appId, 'ai.elizaos.app');
   assert.equal(parity.alpha.branding.storage.launcherFavorites, 'alpha.launcher.favorites.v1');
   assert.equal(parity.eliza.branding.storage.launcherFavorites, 'eliza.launcher.favorites.v1');

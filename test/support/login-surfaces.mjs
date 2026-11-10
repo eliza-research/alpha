@@ -19,7 +19,7 @@ export const loginSurfaceInventory = {
       file: "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserLoginFields.java",
       pattern: "child\\.set(?:AutofillHints|InputType)\\(",
       count: 2,
-      owner: "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaBrowserPlugin.java (tabs; passes the integrated vault extras keys), shared plugin-native-browser-surface BrowserLoginFields (engine-attested field adapter and isolated-world reporter) and BrowserFieldOrigin (binding rule) at the reviewed pin",
+      owner: "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaBrowserPlugin.java (tabs; passes the integrated vault extras keys), shared plugin-native-browser-surface BrowserLoginFields (engine-attested field adapter and isolated-world reporter) and BrowserFieldOrigin (binding rule) at the reviewed pin",
       binding: "websiteBinding",
       providers: {
         integrated: {
@@ -75,14 +75,14 @@ export const loginSurfaceInventory = {
       id: "eliza-cloud-sign-in",
       kind: "external-browser",
       eligible: false,
-      owner: "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaConnectionPlugin.java (openExternal), apps/app/src/runtime/connection-ui.tsx (signInBrowser)",
+      owner: "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaConnectionPlugin.java (openExternal), apps/app/src/runtime/connection-ui.tsx (signInBrowser)",
       reason: "The Cloud sign-in hand-off, kept as the sign-in path until the in-app readiness probe passes (and as a test-mocks diagnostic afterwards), opens the user's own browser (AlphaConnectionPlugin.openExternal: ACTION_VIEW with CATEGORY_BROWSABLE, eliza.app hosts only). Alpha declares no general https VIEW handler, so the page never loads in Alpha; credentials are entered and filled by that browser's own manager."
     },
     {
       id: "eliza-cloud-sign-in-google",
       kind: "external-browser",
       eligible: false,
-      owner: "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCloudSignInPlugin.java (startGoogle), apps/app/src/runtime/cloud-sign-in-ui.tsx",
+      owner: "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCloudSignInPlugin.java (startGoogle), apps/app/src/runtime/cloud-sign-in-ui.tsx",
       reason: "Google sign-in opens the user's external browser (a Custom Tab when one is available, otherwise the default browser) so AOSP does not need Google Play services. Google credentials remain in that browser. Alpha's native bridge validates the returned state and exchanges the authorization code with its original PKCE verifier; no Google password or authorization code crosses the renderer bridge."
     },
     {
@@ -115,7 +115,7 @@ export const loginSurfaceInventory = {
       file: "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserHttpAuthAutofill.java",
       pattern: "TYPE_TEXT_VARIATION_PASSWORD|setAutofillHints|AUTOFILL_HINT_(?:PASSWORD|USERNAME)",
       count: 5,
-      owner: "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaBrowserPlugin.java (httpAuth), shared plugin-native-browser-surface BrowserHttpAuthAutofill and BrowserHttpAuthOrigin at the reviewed pin",
+      owner: "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaBrowserPlugin.java (httpAuth), shared plugin-native-browser-surface BrowserHttpAuthAutofill and BrowserHttpAuthOrigin at the reviewed pin",
       binding: "httpAuthBinding",
       fillRoute: "Engine-bound only (BrowserHttpAuthOrigin.bind). AlphaBrowserPlugin uses BrowserHttpAuthOrigin.STANDARD_WEBVIEW, which reports no challenge, so production refuses provider fill/save and the prompt states the reason; native fields are then IMPORTANT_FOR_AUTOFILL_NO with no hints. Manual entry remains available; every browser tab is excluded from Autofill while the prompt is open.",
       providers: {
