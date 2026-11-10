@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "75b44015561368fc8ca982b70b8bafbdf1672a7b",
-  "ledgerSha256": "0f2fb292fffa0ee26f597b8a96af96ea0f2ac6f03e4e23e33ac481193ebbf128",
+  "ledgerSha256": "d19a2a0c28e2932b7769178594d4cb34a15240d2a1c053b62512c59a7cb3607b",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -42440,7 +42440,7 @@
     },
     {
       "path": "apps/app/src/runtime/connection-ui.css",
-      "sha256": "0b4e4422e90808339d07ed9e48255d9678ce4dfa92b250ff09ffd1514127f0d3",
+      "sha256": "72c9304acded1ab2cf4865c39c0a1b18ce3321d5862a4ef72e9134d2f0df7753",
       "allocatedModels": [
         "Application",
         "CloudConnectionNotices",
@@ -42457,7 +42457,7 @@
     },
     {
       "path": "apps/app/src/runtime/connection-ui.tsx",
-      "sha256": "38970b2e7491b3498a90d658d223f56c24a81aa00ee159c630dd3a46e5d5a55c",
+      "sha256": "1d4e1075275421b71e5e121c3345801a4cdcfc0a4dd790cb8a17a686f2bd0bfa",
       "allocatedModels": [
         "Application",
         "ApplicationComposition",
@@ -42840,49 +42840,49 @@
         },
         {
           "owner": "ConnectionChooser",
-          "line": 3596,
+          "line": 3598,
           "bindings": 40,
           "writes": 15
         },
         {
-          "owner": "ConnectionChooser.ArrowFunction@3610",
-          "line": 3612,
+          "owner": "ConnectionChooser.ArrowFunction@3612",
+          "line": 3614,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "ConnectionChooser.ArrowFunction@3627",
-          "line": 3627,
+          "owner": "ConnectionChooser.ArrowFunction@3629",
+          "line": 3629,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "ConnectionChooser.ArrowFunction@3631",
-          "line": 3631,
+          "owner": "ConnectionChooser.ArrowFunction@3633",
+          "line": 3633,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "OwnKeyForm",
-          "line": 4001,
+          "line": 4003,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "OwnProviderChoice",
-          "line": 4022,
+          "line": 4024,
           "bindings": 4,
           "writes": 0
         },
         {
           "owner": "ProviderKeys",
-          "line": 4060,
+          "line": 4062,
           "bindings": 15,
           "writes": 16
         },
         {
           "owner": "ProviderKeys.run",
-          "line": 4078,
+          "line": 4080,
           "bindings": 1,
           "writes": 0
         }
@@ -226031,6 +226031,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "d85520dcd69fc9334938475fce92be10df4ac851d6dd37a33ba15ba169ce79c7"
+    "sha256": "bebd18448dbdf6ca5378e6f3e74f24c3bc783dfbdd72ba9030893dedcd8f371d"
   }
 }
