@@ -10,6 +10,7 @@ export function navigationServicePlatform(){
   'android/Manifest.java':`package android;public class Manifest {public static class permission {
    public static final String ACCESS_FINE_LOCATION="fine", ACCESS_COARSE_LOCATION="coarse";}}`,
   'android/R.java':'package android;public class R {public static class drawable {public static final int ic_menu_directions=1;}}',
+  'ai/elizaresearch/alphaphone/R.java':'package ai.elizaresearch.alphaphone;public class R {public static class drawable {public static final int ic_navigation=1;}}',
   'android/os/IBinder.java':'package android.os;public interface IBinder {}',
   'android/os/SystemClock.java':'package android.os;public class SystemClock {public static long elapsedRealtime(){return 1000;}}',
   'android/os/Build.java':`package android.os;public class Build {
@@ -82,6 +83,8 @@ export function navigationServicePlatform(){
   'android/app/Activity.java':`package android.app;
    public class Activity extends android.content.Context {
     public android.content.ComponentName getComponentName(){return new android.content.ComponentName(this,getClass());}
+    public boolean isFinishing(){return false;}
+    public boolean isDestroyed(){return false;}
    }`,
   'android/app/PendingIntent.java':`package android.app;
    import android.content.*;
@@ -193,7 +196,10 @@ export function navigationServicePlatform(){
     public void reject(String message,String reason){code=reason;reject(message);}
    }`,
   'ai/elizaresearch/alphaphone/BuildConfig.java':'package ai.elizaresearch.alphaphone;public class BuildConfig {public static final boolean ELIZA_DEV_ALLOW_TEST_MOCKS=false;}',
-  'ai/elizaresearch/alphaphone/MainActivity.java':'package ai.elizaresearch.alphaphone;public class MainActivity extends android.app.Activity {}',
+  'ai/elizaresearch/alphaphone/MainActivity.java':`package ai.elizaresearch.alphaphone;public class MainActivity extends android.app.Activity {
+   public boolean consumeNavigationOpen(){throw new AssertionError("Notification launch is outside this service-ownership campaign");}
+   public void clearNavigationOpen(){throw new AssertionError("Notification launch is outside this service-ownership campaign");}
+  }`,
   'ai/elizaresearch/alphaphone/AlphaAssistActivity.java':'package ai.elizaresearch.alphaphone;public class AlphaAssistActivity extends MainActivity {}',
   'ai/elizaresearch/alphaphone/AlphaPowerVoiceActivity.java':'package ai.elizaresearch.alphaphone;public class AlphaPowerVoiceActivity extends AlphaAssistActivity {}'
  };
