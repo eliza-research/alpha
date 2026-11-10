@@ -61,55 +61,8 @@ test('Notes create, edit, reload and delete to Recently deleted', async ({ page 
   await page.getByRole('button', { name: 'Recently deleted', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Browser audit note, 30 days left', exact: true })).toBeVisible();
 });
-test('Notes folders: create, move via ⋯, filter by chip, persist, rename by long-press, and delete without losing notes', async ({ page }) => {
-  await page.goto('/');
-  await openLegacyNotes(page);
-  await page.getByRole('button', { name: 'New note', exact: true }).click();
-  await page.getByRole('textbox', { name: 'Title', exact: true }).fill('Browser audit note');
-  await page.getByRole('textbox', { name: 'Note', exact: true }).fill('A real local draft.');
-  await page.getByRole('button', { name: 'Back to notes', exact: true }).click();
-  // A new folder; the note moves into it via ⋯ → Move to…, and the chip filters the list.
-  await page.getByRole('button', { name: 'New folder', exact: true }).click();
-  await page.getByRole('textbox', { name: 'Folder name', exact: true }).fill('Work');
-  await page.getByRole('button', { name: 'Create', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Work, folder options', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.getByRole('button', { name: 'Open Browser audit note', exact: true })).toHaveCount(0);
-  await page.getByRole('button', { name: 'All', exact: true }).click();
-  await page.getByRole('button', { name: 'Open Browser audit note', exact: true }).click();
-  await page.getByRole('button', { name: 'More', exact: true }).click();
-  await page.getByRole('dialog', { name: 'Note actions' }).getByRole('button', { name: 'Move to…', exact: true }).click();
-  await page.getByRole('dialog', { name: 'Move to' }).getByRole('button', { name: /^Work/ }).click();
-  await expect(page.getByText('Moved to Work', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Back to notes', exact: true }).click();
-  await page.getByRole('button', { name: 'Work', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Open Browser audit note', exact: true })).toBeVisible();
-  // Folders persist across a restart, outside the notes collection.
-  await page.reload();
-  await openLegacyNotes(page);
-  await page.getByRole('button', { name: 'Work', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Open Browser audit note', exact: true })).toBeVisible();
-  // Long-press a folder chip: Rename keeps the folder's notes and persists in the folder slot.
-  await page.getByRole('button', { name: 'All', exact: true }).click();
-  const chip = page.getByRole('button', { name: 'Work', exact: true });
-  await chip.hover();await page.mouse.down();await page.waitForTimeout(700);await page.mouse.up();
-  await page.getByRole('dialog', { name: 'Work' }).getByRole('button', { name: 'Rename', exact: true }).click();
-  await expect(page.getByRole('textbox', { name: 'Folder name', exact: true })).toHaveValue('Work');
-  await page.getByRole('textbox', { name: 'Folder name', exact: true }).fill('Office');
-  await page.getByRole('dialog', { name: 'Rename folder' }).getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'All', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await page.reload();
-  await openLegacyNotes(page);
-  await expect(page.getByRole('button', { name: /^Work/ })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Office', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Open Browser audit note', exact: true })).toBeVisible();
-  // Deleting the folder keeps its note, now under no folder.
-  await page.getByRole('button', { name: 'Office, folder options', exact: true }).click();
-  await page.getByRole('dialog', { name: 'Office' }).getByRole('button', { name: 'Delete folder', exact: true }).click();
-  await expect(page.getByRole('button', { name: /^Office/ })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Open Browser audit note', exact: true })).toBeVisible();
-  expect(await page.evaluate(async () => JSON.parse(await (await import('/src/runtime/browser-notes-document.ts')).readBrowserNotesRaw()).records[0].folderId)).toBeUndefined();
-});
+// Folder controls were removed at the owner's request. Canonical Notes CRUD and
+// retained-device-data isolation remain covered by canonical-notes.spec.ts.
 for (const [label, text] of [['unicode CRLF', 'Local 🧪 file\r\nExact bytes\n'], ['UTF-8 BOM', '\ufeffLocal 🧪 file\r\nExact bytes\n'], ['empty', '']]) test(`Local text import and complete selected-note download: ${label}`, async ({ page }) => {
   await page.goto('/');
   await openLegacyNotes(page);
