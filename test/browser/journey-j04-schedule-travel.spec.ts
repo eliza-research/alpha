@@ -23,6 +23,7 @@ import {openBrowserCalendar} from './helpers/browser-calendar';
 // Maps offers an explicit "Back to event" control when it was opened from an event's location; it
 // returns to that exact event and never replays the hand-off. System Back still works as before.
 import {test, expect, type Page} from '@playwright/test';
+test.use({locale:'en-US'});
 
 const address = '12 Market Street, Test Town';
 const LOG = 'journey-j04-maps';
@@ -103,13 +104,13 @@ test('calendar event location is handed to Maps once, routed by explicit choices
     await page.getByRole('button', {name: /^West entrance/}).first().click();
     await button(page, 'Directions').click();
     const status = page.getByRole('region', {name: 'Maps'}).getByRole('status');
-    await expect(status).toHaveText('Enter an origin latitude, longitude and press Enter, or explicitly use current location.');
+    await expect(status).toHaveText('Choose a starting point, or use your current location.');
     await expect(page.getByText('Choose a real origin to calculate a route.')).toBeVisible();
     expect((await requests(page)).routes).toEqual([]);
     const origin = page.getByRole('textbox', {name: 'Starting point'});
     await origin.fill('43.738, 7.424');
     await origin.press('Enter');
-    await expect(page.getByRole('region', {name: 'Maps'})).toContainText(/5 min\s*0\.4 km · no live traffic/);
+    await expect(page.getByRole('region', {name: 'Maps'})).toContainText(/5 min\s*0\.3 mi · no live traffic/);
     expect((await requests(page)).routes).toEqual([{from, to, mode: 'drive'}]);
     // A mode the provider does not offer is refused by name and requests nothing.
     await button(page, 'Transit').click();
@@ -123,7 +124,7 @@ test('calendar event location is handed to Maps once, routed by explicit choices
     await button(page, 'Walk').click();
     await expect(button(page, 'Walk')).toHaveAttribute('aria-pressed', 'true');
     await expect(button(page, 'Drive')).toHaveAttribute('aria-pressed', 'false');
-    await expect(page.getByRole('region', {name: 'Maps'})).toContainText(/9 min\s*0\.4 km · no live traffic/);
+    await expect(page.getByRole('region', {name: 'Maps'})).toContainText(/9 min\s*0\.2 mi · no live traffic/);
     expect((await requests(page)).routes).toEqual([{from, to, mode: 'drive'}, {from, to, mode: 'walk'}]);
     // Native-only: live navigation needs device location; the browser build says so.
     await button(page, 'Start').click();
