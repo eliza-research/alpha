@@ -13,11 +13,12 @@ for (const mode of ['pending', 'wrong-owner', 'expired', 'wrong-reminder-context
       w.Capacitor = {
         PluginHeaders: [
           { name: 'AlphaConnection', methods: methods(['request', 'cancel', 'secureRead', 'secureWrite','secureCompareExchange', 'secureRemove']) },
-          { name: 'AlphaActionJournal', methods: methods(['reserve', 'markApplying', 'finish']) },
+          { name: 'AlphaActionJournal', methods: methods(['get', 'reserve', 'markApplying', 'finish']) },
         ],
         nativePromise: async (plugin: string, method: string, input: any) => {
           if (plugin === 'AlphaActionJournal') {
             fixture.journal.push(method);
+            if (method === 'get') return {entry:null};
             if (method === 'reserve') return { created: true, entry: { ...input, phase: 'reserved' } };
             if (method === 'markApplying' || method === 'finish') return {};
             throw Error('Unexpected journal call');
@@ -125,8 +126,8 @@ for (const mode of ['pending', 'wrong-owner', 'expired', 'wrong-reminder-context
     } else if (mode === 'pending') {
       await expect(page.getByText(/Review the action below\./)).toBeVisible();
       await page.getByText('Create note', { exact: true }).click();
+      await expect.poll(counts).toEqual({ posts: 1, decisions: 1, claims: 1, receipts: 1, effects: 1, journal: ['get', 'reserve', 'markApplying', 'finish'] });
       await expect(page.getByText('Synthetic approved effect recorded', { exact: true }).last()).toBeVisible();
-      expect(await counts()).toEqual({ posts: 1, decisions: 1, claims: 1, receipts: 1, effects: 1, journal: ['reserve', 'markApplying', 'finish'] });
     } else {
       await expect(page.locator('.alpha-action-review')).toHaveCount(0);
       expect(await counts()).toEqual({ posts: 1, decisions: 0, claims: 0, receipts: 0, effects: 0, journal: [] });

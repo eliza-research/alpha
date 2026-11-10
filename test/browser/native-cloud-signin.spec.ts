@@ -142,7 +142,8 @@ test.describe('in-app Eliza Cloud sign-in on the production Android composition'
   await agent(page,'cloud');
   await page.evaluate(()=>{(window as any).signInFixture.signIn='readiness-hold';(window as any).planController.openPlan();});
   await page.getByRole('button',{name:'Approve this phone again',exact:true}).click();
-  await expect(page.getByText('Checking Eliza Cloud sign-in…',{exact:true})).toBeVisible();
+  await page.waitForFunction(()=>typeof (window as any).signInFixture.releaseReadiness==='function');
+  await expect(page.getByRole('button',{name:'Approve this phone again',exact:true})).toBeDisabled();
   await page.evaluate(()=>{(window as any).signInFixture.entitlementStatus='none';(window as any).planController.recheckPlanAfterRefusal();});
   await expect.poll(async()=>(await snapshot(page)).residentPlanNotice).toBe('needs-plan');
   expect((await snapshot(page)).busy).toBe(true);

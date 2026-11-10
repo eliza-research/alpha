@@ -113,7 +113,7 @@ async function openSettings(page: Page, tab: string) {
   while(!await current().getByRole('button',{name:'About',exact:true}).isVisible())
     await current().getByRole('button',{name:/^Back to /}).click();
   const path=tab==='AI provider'?['Account','AI connection']:tab==='App permissions'?['Privacy','App permissions']:[tab];
-  for(const name of path)await page.getByRole('button', { name, exact: true }).filter({visible:true}).click();
+  for(const name of path)await page.getByRole('button', { name: name==='AI connection'?/^AI connection(?:\s|$)/:name, exact: name!=='AI connection' }).filter({visible:true}).click();
 }
 async function rendererDump(page: Page) {
   return page.evaluate(() => {
@@ -151,7 +151,7 @@ for (const scenario of ['resident', 'remote', 'offline'] as const) test(`current
   await expect(provider.getByRole('button', {name: 'Own API keys', exact: true})).toHaveAttribute('aria-pressed', 'true');
   await expect(provider.getByText('Text connected · Voice off', {exact: true})).toBeVisible();
   await assertNoInventedActivity(page);
-  await provider.getByRole('button', {name: 'Close AI connection settings', exact: true}).click();
+  await provider.getByRole('button', {name: 'Close Account', exact: true}).click();
   // The slim Settings design delegates provider state to its dialog and exposes no old pages.
   for (const name of ['Privacy & data', 'Models', 'Activity']) await expect(page.getByRole('button', {name, exact: true})).toHaveCount(0);
   await openSettings(page,'About');
@@ -164,7 +164,9 @@ for (const scenario of ['resident', 'remote', 'offline'] as const) test(`current
 test('the Cloud provider selection does not present a raw provider path', async ({page}) => {
   await nativeStub(page, 'resident', {providerStatus: {provider: 'elizacloud', model: 'cerebras/qwen-3.8-27b'}});
   await connect(page, 'resident');
-  await openSettings(page, 'AI provider');
+  // This fixture has no Cloud account. Inspect the provider renderer through the
+  // development controller; product Account correctly requires sign-in first.
+  await page.evaluate(async()=>{const {connectionController}=await import('/src/runtime/connection-ui.tsx');connectionController.openProviderSettings();});
   const provider = page.getByRole('dialog', {name: 'AI connection', exact: true});
   await expect(provider.getByRole('button', {name: 'Cloud', exact: true})).toHaveAttribute('aria-pressed', 'true');
   expect(await page.locator('body').innerText()).not.toContain('cerebras/');
@@ -177,7 +179,7 @@ test('provider key never reaches current Settings, bridge payloads or test outpu
   page.on('console', message => console.push(message.text()));
   await openSettings(page, 'AI provider');
   await expect(page.getByText('Text connected · Voice off', {exact: true})).toBeVisible();
-  await page.getByRole('button', {name: 'Close AI connection settings', exact: true}).click();
+  await page.getByRole('button', {name: 'Close Account', exact: true}).click();
   await openSettings(page,'About');
   expect(await privacyContract(page)).toBe(REDACTION.resident);
   const statusCalls = await page.evaluate(() => (window as any).privacyFixture.calls.filter((call: any) => call.plugin === 'Agent' && call.method === 'providerStatus').length);
