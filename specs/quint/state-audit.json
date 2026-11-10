@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "3504bfbe6d264d1bf05bbc2224708131d41f3a6b",
-  "ledgerSha256": "eec7ff17d31a305910f737672251858c04f255971b07ff9fbbd96697d9ae26fe",
+  "ledgerSha256": "48882429947564d2067ffe095e0ecf1cecf3a1f64fdad3d8bd3ff675fc02c8f1",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -22,17 +22,17 @@
     "The ledger supplies pinned source bytes. Effective client/native/runtime patch outputs require their separately authenticated source mappings."
   ],
   "counts": {
-    "files": 5818,
+    "files": 5819,
     "testSupportFiles": 305,
     "testSupportCandidates": 11609,
-    "parsedFiles": 5723,
+    "parsedFiles": 5724,
     "languageReview": 95,
     "parseErrors": 0,
-    "candidates": 70014,
-    "writeSites": 68846,
-    "writeAssociations": 61714,
-    "asynchronous": 8632,
-    "unassignedWrites": 10545
+    "candidates": 70025,
+    "writeSites": 68867,
+    "writeAssociations": 61733,
+    "asynchronous": 8635,
+    "unassignedWrites": 10548
   },
   "files": [
     {
@@ -31473,6 +31473,40 @@
       "unassignedWrites": 0
     },
     {
+      "path": "apps/app/src/browser/note-recording-journal.ts",
+      "sha256": "eb124c09c0fb77ce7e54ba14793e145bfb03e5544a76d0c1e07f2cddb5a9f087",
+      "allocatedModels": [
+        "NotesLifecycle",
+        "NotesRecorderMediaAdmission"
+      ],
+      "sourceReview": "state-audit-required",
+      "sourcePathClass": "other-source-path",
+      "classification": "syntactic-candidates",
+      "owners": [
+        {
+          "owner": "createNoteRecordingJournal.save",
+          "line": 19,
+          "bindings": 4,
+          "writes": 3
+        },
+        {
+          "owner": "createNoteRecordingJournal.read",
+          "line": 40,
+          "bindings": 1,
+          "writes": 2
+        },
+        {
+          "owner": "createNoteRecordingJournal.setText.ArrowFunction@52",
+          "line": 54,
+          "bindings": 1,
+          "writes": 1
+        }
+      ],
+      "parseErrors": [],
+      "asynchronous": 0,
+      "unassignedWrites": 0
+    },
+    {
       "path": "apps/app/src/browser/notice-action.ts",
       "sha256": "30419b6f6077295504590f41c67af3609fafc0a4087321ada8ce06c955abb284",
       "allocatedModels": [
@@ -32499,7 +32533,7 @@
     },
     {
       "path": "apps/app/src/browser/voice.ts",
-      "sha256": "007c20b809f59b30dd2ec07e4352d4e55d5047a0ac9a65a548b07737c1d53bd8",
+      "sha256": "806005ab592eb97954b05249011d38629f5441937b3989913ebd84e667c2e435",
       "allocatedModels": [
         "NotesRecorderMediaAdmission",
         "VoiceSession"
@@ -32508,129 +32542,141 @@
       "classification": "syntactic-candidates",
       "owners": [
         {
-          "owner": "BrowserVoice",
-          "line": 20,
-          "bindings": 19,
-          "writes": 51
-        },
-        {
-          "owner": "BrowserVoice.ArrowFunction@20",
-          "line": 22,
+          "owner": "<module>",
+          "line": 21,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "BrowserVoice.ArrowFunction@32",
-          "line": 32,
+          "owner": "BrowserVoice",
+          "line": 24,
+          "bindings": 21,
+          "writes": 58
+        },
+        {
+          "owner": "BrowserVoice.ArrowFunction@24",
+          "line": 26,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "BrowserVoice.ArrowFunction@36",
+          "line": 36,
           "bindings": 1,
           "writes": 2
         },
         {
+          "owner": "BrowserVoice.recoverNote.ArrowFunction@45",
+          "line": 51,
+          "bindings": 2,
+          "writes": 3
+        },
+        {
           "owner": "BrowserVoice.noteStatus",
-          "line": 81,
+          "line": 115,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "BrowserVoice.startNoteRecording",
-          "line": 90,
+          "line": 124,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "BrowserVoice.startNoteRecording.onSegment",
-          "line": 92,
+          "line": 126,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "BrowserVoice.pauseNoteRecording",
-          "line": 100,
+          "line": 134,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "BrowserVoice.resumeNoteRecording",
-          "line": 101,
+          "line": 135,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "BrowserVoice.stopNoteRecording",
-          "line": 103,
+          "line": 137,
           "bindings": 1,
           "writes": 4
         },
         {
           "owner": "BrowserVoice.setNoteSegmentText",
-          "line": 108,
+          "line": 142,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "BrowserVoice.claimCanonicalNoteSave",
-          "line": 110,
+          "line": 144,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "BrowserVoice.saveNoteRecording",
-          "line": 118,
+          "line": 152,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "BrowserVoice.transcribeRecording.ArrowFunction@177",
-          "line": 180,
+          "owner": "BrowserVoice.transcribeRecording.ArrowFunction@212",
+          "line": 215,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "BrowserVoice.synthesizeDevelopmentCloud.ArrowFunction@204",
-          "line": 207,
+          "owner": "BrowserVoice.synthesizeDevelopmentCloud.ArrowFunction@239",
+          "line": 242,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "BrowserVoice.play",
-          "line": 243,
+          "line": 278,
           "bindings": 3,
           "writes": 16
         },
         {
           "owner": "BrowserVoice.abortSpeech",
-          "line": 322,
+          "line": 357,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "playbackWait.ArrowFunction@349",
-          "line": 350,
-          "bindings": 1,
-          "writes": 1
-        },
-        {
-          "owner": "StreamedSpeech",
-          "line": 371,
-          "bindings": 4,
-          "writes": 6
-        },
-        {
-          "owner": "StreamedSpeech.read",
+          "owner": "playbackWait.ArrowFunction@384",
           "line": 385,
           "bindings": 1,
           "writes": 1
         },
         {
+          "owner": "StreamedSpeech",
+          "line": 406,
+          "bindings": 4,
+          "writes": 6
+        },
+        {
+          "owner": "StreamedSpeech.read",
+          "line": 420,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
           "owner": "streamedSpeechSource",
-          "line": 400,
+          "line": 435,
           "bindings": 1,
           "writes": 2
         }
       ],
       "parseErrors": [],
-      "asynchronous": 31,
-      "unassignedWrites": 7
+      "asynchronous": 34,
+      "unassignedWrites": 10
     },
     {
       "path": "apps/app/src/browser/workflow-calendar.ts",
@@ -33921,7 +33967,7 @@
     },
     {
       "path": "apps/app/src/prototype/agent-calendar-adapter.ts",
-      "sha256": "a9984753f616a04faf41f3dbd788e82e187d03ba07a8ec966ff1989c27001e0a",
+      "sha256": "ba533fc78658d755b53b49ee98bd3c159c82317322b4973ab4f3e55a33d70f98",
       "allocatedModels": [
         "AgentCalendarMutation",
         "AgentCalendarRefresh",
@@ -33969,7 +34015,7 @@
           "owner": "installAgentCalendarAdapter.FunctionExpression@208",
           "line": 209,
           "bindings": 4,
-          "writes": 102
+          "writes": 104
         },
         {
           "owner": "installAgentCalendarAdapter.FunctionExpression@208.ArrowFunction@236",
@@ -35624,7 +35670,7 @@
     },
     {
       "path": "apps/app/src/prototype/inbox-cloud-adapter.ts",
-      "sha256": "70bc73b991aa6021ab125addaae4b8ac4f4e2cccffdd754e2f20f4088d312e30",
+      "sha256": "0747bddbc58910b015087ff95267e3fe4e7251c63edd75e1c6e911a92c321b56",
       "allocatedModels": [
         "InboxCoordinator",
         "InboxDelivery",
@@ -40305,7 +40351,7 @@
     },
     {
       "path": "apps/app/src/prototype/selection-adapter.ts",
-      "sha256": "cd7551e2e28fb585c22dba98e7b7f6c97119e618a05eb08a8cf9319f7ca77728",
+      "sha256": "3e7a197f80b5af1abfe9dc767e17a5259055a65221c7f686fee3b111993297f9",
       "allocatedModels": [
         "FilesBrowserController",
         "FilesFilter",
@@ -40658,7 +40704,7 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "97ae8628a3dbfafabd4c5a7b2323f83d9b2c93d4cec1f5d052ba4948039e26cf",
+      "sha256": "f56ec7dabb07bcc0057007c4b1d564d42faa6e951a09afd4a5e23e075c3ca661",
       "allocatedModels": [
         "CalendarPreservationConfirmation",
         "CameraPreviewRetirement",
@@ -226126,6 +226172,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "bc737f8c985f40995621d71f66417a98508de7fca94e70487efb16ae3b248587"
+    "sha256": "2471148a50da43ec7478def7a01aba7308ed662b3f23d2d493de201047befe31"
   }
 }

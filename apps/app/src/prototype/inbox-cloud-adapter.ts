@@ -977,7 +977,8 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
       const next = rows?.find(a => a.connectionId === grant), prior = accounts.find(a => a.connectionId === grant);
       const dropped = !grant || !gmailReadable(next) || !!prior && gmailGrantChange({ sessionId: accountsSession || null, account: prior }, { sessionId: binding?.sessionId ?? null, account: next }).dropReadCache;
       if (dropped) { void withdrawGmailBackground(grant || undefined).catch(()=>{}); purgeOffline(); invalidateList(); }
-      if (!grant || rows && !next) saveGmailAccountChoice(connectionController.getSnapshot().cloudAccount, null);
+      // A known unreadable grant must not seed refreshAccounts' speculative mail read.
+      if (!grant || !gmailReadable(next)) saveGmailAccountChoice(connectionController.getSnapshot().cloudAccount, null);
       if (api?.isActive() && !operation) { void refreshAccounts(); return; }
       // Drop provider content now; the next open re-checks accounts and rebinds drafts per account.
       cancelOperation(); messages = []; providerDrafts = []; body = null; thread = null; nextPageToken = null; loadedQuery = ''; hasUnread = false; inboxPreview=null;homeFailure=null;accountsChecked=false;failure = null;

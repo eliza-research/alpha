@@ -12572,6 +12572,19 @@
       "integrationReview": "Reviewed stopped-audio journal, accepted voice follow and canonical recording-summary update. Storage bytes/MIME, ownership, stale summaries and source-bound browser checks remain distinct; no final device acceptance is inferred."
     },
     {
+      "path": "apps/app/src/browser/note-recording-journal.ts",
+      "models": [
+        "NotesLifecycle",
+        "NotesRecorderMediaAdmission"
+      ],
+      "scope": "application",
+      "treatment": "state-and-transition-projection",
+      "reviewStatus": "state-audit-required",
+      "stateAnchors": [],
+      "integrationReview": "Pending browser recording segments retain byte boundaries and completed text through restart. Regression tests cover late completion, incomplete-segment retry and retirement. The media-admission model stops at capture admission; it does not prove persistence or arbitrary crash recovery.",
+      "sha256": "eb124c09c0fb77ce7e54ba14793e145bfb03e5544a76d0c1e07f2cddb5a9f087"
+    },
+    {
       "path": "apps/app/src/browser/notice-action.ts",
       "sha256": "30419b6f6077295504590f41c67af3609fafc0a4087321ada8ce06c955abb284",
       "models": [
@@ -13774,7 +13787,7 @@
     },
     {
       "path": "apps/app/src/browser/voice.ts",
-      "sha256": "007c20b809f59b30dd2ec07e4352d4e55d5047a0ac9a65a548b07737c1d53bd8",
+      "sha256": "806005ab592eb97954b05249011d38629f5441937b3989913ebd84e667c2e435",
       "models": [
         "NotesRecorderMediaAdmission",
         "VoiceSession"
@@ -15881,7 +15894,7 @@
       "scope": "application",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "a9984753f616a04faf41f3dbd788e82e187d03ba07a8ec966ff1989c27001e0a",
+      "sha256": "ba533fc78658d755b53b49ee98bd3c159c82317322b4973ab4f3e55a33d70f98",
       "stateAnchors": [
         {
           "line": 27,
@@ -21363,7 +21376,7 @@
     },
     {
       "path": "apps/app/src/prototype/inbox-cloud-adapter.ts",
-      "sha256": "70bc73b991aa6021ab125addaae4b8ac4f4e2cccffdd754e2f20f4088d312e30",
+      "sha256": "0747bddbc58910b015087ff95267e3fe4e7251c63edd75e1c6e911a92c321b56",
       "models": [
         "InboxCoordinator",
         "InboxDelivery",
@@ -33095,7 +33108,7 @@
     },
     {
       "path": "apps/app/src/prototype/selection-adapter.ts",
-      "sha256": "cd7551e2e28fb585c22dba98e7b7f6c97119e618a05eb08a8cf9319f7ca77728",
+      "sha256": "3e7a197f80b5af1abfe9dc767e17a5259055a65221c7f686fee3b111993297f9",
       "models": [
         "FilesBrowserController",
         "FilesFilter",
@@ -34103,7 +34116,7 @@
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "97ae8628a3dbfafabd4c5a7b2323f83d9b2c93d4cec1f5d052ba4948039e26cf",
+      "sha256": "f56ec7dabb07bcc0057007c4b1d564d42faa6e951a09afd4a5e23e075c3ca661",
       "stateAnchors": [],
       "integrationReview": "2026-11-10: Current boundary and presentation correction. Account revalidation hides old headers before awaiting the response; notice clearance changes the Home scrollport, and foreign schedule editing explicitly identifies its preserved clock. Relevant browser/source tests and finite models remain separate from final runtime/device qualification. 2026-11-10: Owner d3d01a6 Files sort/folder and scheduled ten-minute snooze source intake. Preserve retained-request recovery and saved recurrence timezone; exact-time protocol and source-model comparisons required."
     },

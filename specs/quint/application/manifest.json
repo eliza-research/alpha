@@ -2938,7 +2938,8 @@
       "apps/app/src/prototype/template.html",
       "apps/app/src/browser/voice.ts",
       "apps/app/src/browser/audio-capture.ts",
-      "apps/app/src/browser/note-audio-store.ts"
+      "apps/app/src/browser/note-audio-store.ts",
+      "apps/app/src/browser/note-recording-journal.ts"
     ],
     "stateMapping": {
       "view/owner/recorder": "Committed shell view, controlled canonical Notes identity and mounted recorder state",
