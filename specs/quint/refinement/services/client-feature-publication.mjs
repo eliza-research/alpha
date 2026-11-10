@@ -100,7 +100,7 @@ export async function checkClientFeaturePublication(extraSources = []) {
     expect: {...project(events.at(-1)), completed: indexed(() => true), accepted: indexed(() => 2)}});
   return checkTraces({model: 'ClientFeaturePublication', sources, driverHashes, traces: [trace],
     scope: 'bounded-orchestration', assumptions: [
-      'Three real Node preparer processes authenticate committed disposable Git source and fully materialize private candidates. The fixture gates real rename/lstat/rm syscalls; no collision or missing-path errors are invented.',
+      'Three real Node preparer processes authenticate committed disposable Git source and fully materialize private candidates behind a separate setup barrier bounded at 60 seconds. Only then do the controlled rename/lstat/rm gates begin, retaining their 20-second bounds; no collision or missing-path errors are invented.',
       'The first observed checkpoint joins three complete private candidates. The named preparedPublishers initializer is the actual model init followed by three prepare actions. Every later syscall boundary compares all candidate/aside byte classes, visible cache class and rename/probe counts.',
       'A present lstat is probe-only. The readback acceptance macrostep is justified by the actual successful function return after finally, the authenticated complete inventory and the source current() inode/stamp checks. No separate intermediate authentication callback is observed.',
       'Three finite same-target contenders, one stale cache and one actual vanished-directory readback. Model targets/foreign trees, timeout, initial path refusal, IO and cleanup failures have named model scenarios but are not additional source-conformance traces in this campaign.',
