@@ -12,18 +12,19 @@ The original HomeLayout actions and profile checks remain in the historical
 model. The bounded replay compares the selected source states and the composer
 bar versus reduced focused viewport. It compares the actual grid's change
 relative to the Home layer during a late native inset read with the current
-profile's boolean stability result. The original absolute pixel constants are
+profile's boolean stability result in a separate mismatch receipt: the current
+empty layout remains stable when native insets arrive. The original absolute pixel constants are
 kept in the model. The launcher HOME request can be declined and later read back
 as granted. The standalone renderer offers no request. This role check is part
 of the source campaign, outside the historical transition relation.
 
-The historic current profile predicts the Calendar, Workflows, and Inbox shell
-membership and conditionally adds a brief. The mounted renderer keeps a brief
-shell visible even before it has a retained result. The proposed profile
-predicts an empty-screen date and inline Google setup when the selected sources
-are empty or disconnected. Alpha instead keeps the widget shells available and
-puts Google setup in Settings. Both profiles compare the observed full set when
-all four have content. Each difference has a separate failing replay receipt.
+The historic current profile predicts permanent Calendar, Workflows and Inbox
+shells. The owner-approved renderer now hides empty cards. Both historical
+profiles compare source states and the full set when all four cards have content.
+The current-profile empty-shell difference has a failing replay receipt. The
+proposed profile's empty-screen date and inline Google setup also have separate
+mismatch receipts: current setup remains in Settings. The original models stay
+unchanged; these differences are not treated as release requirements.
 
 This campaign covers one bounded mounted schedule and one standalone role
 check. Physical IME and role-manager behavior, arbitrary screen sizes and text
