@@ -11,8 +11,8 @@
   },
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
-  "sourcePin": "ba76d1300cda0f4397f31235facd7af8253e1ea5",
-  "ledgerSha256": "1dc34d01d550d157dd2955ff3c2e50c4216f3fa69797dda7916e8b3f9702a622",
+  "sourcePin": "bf0f888222ce6f7f679cc35a306e2c14936dbdc6",
+  "ledgerSha256": "d6464dfd57d0cf56e35e3f1df8ad6e59d21464deb86ff95a1b9fa01571bde196",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -28,11 +28,11 @@
     "parsedFiles": 5722,
     "languageReview": 95,
     "parseErrors": 0,
-    "candidates": 69975,
-    "writeSites": 68744,
-    "writeAssociations": 61626,
-    "asynchronous": 8622,
-    "unassignedWrites": 10531
+    "candidates": 69993,
+    "writeSites": 68775,
+    "writeAssociations": 61650,
+    "asynchronous": 8625,
+    "unassignedWrites": 10538
   },
   "files": [
     {
@@ -31451,7 +31451,7 @@
     },
     {
       "path": "apps/app/src/browser/note-audio-store.ts",
-      "sha256": "918c9412a43387762bb3dd7e8d0f5332d787be701042db3ec442787e90df1747",
+      "sha256": "28cbfe1779ea411aebcbbb33858a220e21aca51d6bf2070448180fe0950a873f",
       "allocatedModels": [
         "NotesLifecycle",
         "NotesRecorderMediaAdmission"
@@ -32490,7 +32490,7 @@
     },
     {
       "path": "apps/app/src/browser/voice.ts",
-      "sha256": "895093f74afd65c2e1e43bf9d91b6861dec10115e96a87f4cf4a4cb1dafc39fa",
+      "sha256": "007c20b809f59b30dd2ec07e4352d4e55d5047a0ac9a65a548b07737c1d53bd8",
       "allocatedModels": [
         "NotesRecorderMediaAdmission",
         "VoiceSession"
@@ -32501,8 +32501,8 @@
         {
           "owner": "BrowserVoice",
           "line": 20,
-          "bindings": 17,
-          "writes": 46
+          "bindings": 19,
+          "writes": 51
         },
         {
           "owner": "BrowserVoice.ArrowFunction@20",
@@ -32518,104 +32518,110 @@
         },
         {
           "owner": "BrowserVoice.noteStatus",
-          "line": 61,
+          "line": 81,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "BrowserVoice.startNoteRecording",
-          "line": 69,
+          "line": 90,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "BrowserVoice.startNoteRecording.onSegment",
-          "line": 71,
+          "line": 92,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "BrowserVoice.pauseNoteRecording",
-          "line": 79,
+          "line": 100,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "BrowserVoice.resumeNoteRecording",
-          "line": 80,
+          "line": 101,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "BrowserVoice.stopNoteRecording",
-          "line": 82,
+          "line": 103,
           "bindings": 1,
           "writes": 4
         },
         {
           "owner": "BrowserVoice.setNoteSegmentText",
-          "line": 87,
+          "line": 108,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "BrowserVoice.claimCanonicalNoteSave",
-          "line": 89,
+          "line": 110,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "BrowserVoice.transcribeRecording.ArrowFunction@149",
-          "line": 152,
+          "owner": "BrowserVoice.saveNoteRecording",
+          "line": 118,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "BrowserVoice.synthesizeDevelopmentCloud.ArrowFunction@176",
-          "line": 179,
+          "owner": "BrowserVoice.transcribeRecording.ArrowFunction@177",
+          "line": 180,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "BrowserVoice.synthesizeDevelopmentCloud.ArrowFunction@204",
+          "line": 207,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "BrowserVoice.play",
-          "line": 215,
+          "line": 243,
           "bindings": 3,
           "writes": 16
         },
         {
           "owner": "BrowserVoice.abortSpeech",
-          "line": 294,
-          "bindings": 1,
-          "writes": 1
-        },
-        {
-          "owner": "playbackWait.ArrowFunction@321",
           "line": 322,
           "bindings": 1,
           "writes": 1
         },
         {
+          "owner": "playbackWait.ArrowFunction@349",
+          "line": 350,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
           "owner": "StreamedSpeech",
-          "line": 343,
+          "line": 371,
           "bindings": 4,
           "writes": 6
         },
         {
           "owner": "StreamedSpeech.read",
-          "line": 357,
+          "line": 385,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "streamedSpeechSource",
-          "line": 372,
+          "line": 400,
           "bindings": 1,
           "writes": 2
         }
       ],
       "parseErrors": [],
-      "asynchronous": 30,
-      "unassignedWrites": 6
+      "asynchronous": 31,
+      "unassignedWrites": 7
     },
     {
       "path": "apps/app/src/browser/workflow-calendar.ts",
@@ -33689,7 +33695,7 @@
     },
     {
       "path": "apps/app/src/prototype/agent-adapter.ts",
-      "sha256": "4fe2dc2d286aac1f6e59b56c88d05cab53fff33db994f4ea279b4a0af771e12a",
+      "sha256": "57168499cb89b4c751af28d509497464f16a70009a8ceb7028c4beddd615df46",
       "allocatedModels": [
         "Application",
         "AssistantConversation",
@@ -33699,7 +33705,9 @@
         "NotesTrashReadPublication",
         "PreviousNotesAvailability",
         "PreviousNotesSourceOpening",
-        "WorkflowClockAdmission"
+        "WorkflowClockAdmission",
+        "VoiceTranscriptFollow",
+        "CanonicalNotesMutation"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -33820,80 +33828,80 @@
           "writes": 2
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@683.ArrowFunction@870",
-          "line": 908,
+          "owner": "installAgentAdapter.FunctionExpression@683.ArrowFunction@871",
+          "line": 909,
           "bindings": 15,
           "writes": 16
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1148",
-          "line": 1151,
+          "owner": "installAgentAdapter.FunctionExpression@1149",
+          "line": 1152,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1248",
-          "line": 1249,
+          "owner": "installAgentAdapter.FunctionExpression@1249",
+          "line": 1250,
           "bindings": 1,
           "writes": 16
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1248.ArrowFunction@1260.ArrowFunction@1260",
-          "line": 1261,
+          "owner": "installAgentAdapter.FunctionExpression@1249.ArrowFunction@1261.ArrowFunction@1261",
+          "line": 1262,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAgentAdapter.recheckCloudFromCard.ArrowFunction@1337",
-          "line": 1338,
+          "owner": "installAgentAdapter.recheckCloudFromCard.ArrowFunction@1338",
+          "line": 1339,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installAgentAdapter.sendFromComposer",
-          "line": 1358,
+          "line": 1359,
           "bindings": 3,
           "writes": 3
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1378",
-          "line": 1379,
+          "owner": "installAgentAdapter.FunctionExpression@1379",
+          "line": 1380,
           "bindings": 3,
           "writes": 43
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1529",
-          "line": 1533,
+          "owner": "installAgentAdapter.FunctionExpression@1530",
+          "line": 1534,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1544",
-          "line": 1545,
+          "owner": "installAgentAdapter.FunctionExpression@1545",
+          "line": 1546,
           "bindings": 5,
           "writes": 5
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1613",
-          "line": 1614,
-          "bindings": 14,
-          "writes": 17
+          "owner": "installAgentAdapter.FunctionExpression@1614",
+          "line": 1615,
+          "bindings": 15,
+          "writes": 18
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1834",
-          "line": 1840,
+          "owner": "installAgentAdapter.FunctionExpression@1845",
+          "line": 1851,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1846",
-          "line": 1864,
+          "owner": "installAgentAdapter.FunctionExpression@1857",
+          "line": 1875,
           "bindings": 2,
           "writes": 4
         },
         {
-          "owner": "installAgentAdapter.FunctionExpression@1973",
-          "line": 1974,
+          "owner": "installAgentAdapter.FunctionExpression@1988",
+          "line": 1989,
           "bindings": 1,
           "writes": 12
         }
@@ -36180,7 +36188,7 @@
     },
     {
       "path": "apps/app/src/prototype/model.js",
-      "sha256": "0cb575ea29fd55ee88908f2fb9c5b8010be5bbc8066e03a7a4000bf4ac3a0599",
+      "sha256": "97fec1e2888a8851d9e5a87cfef01b4e0a3284dec46c717d05538175d03b5461",
       "allocatedModels": [
         "AccessibleToastLifetime",
         "AppearancePreferenceAdmission",
@@ -36197,7 +36205,8 @@
         "ShellNavigation",
         "WorkflowClockAdmission",
         "SettingsPageFocus",
-        "CalendarFormControls"
+        "CalendarFormControls",
+        "VoiceTranscriptFollow"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -38732,432 +38741,438 @@
         {
           "owner": "Component.componentDidMount",
           "line": 5063,
-          "bindings": 1,
+          "bindings": 2,
           "writes": 0
         },
         {
           "owner": "Component.transcriptWindow",
-          "line": 5071,
+          "line": 5075,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "Component.growChatWindow",
-          "line": 5079,
+          "line": 5083,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "Component.followVoiceTurn",
+          "line": 5095,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "Component.getSnapshotBeforeUpdate",
-          "line": 5086,
-          "bindings": 14,
+          "line": 5104,
+          "bindings": 16,
           "writes": 0
         },
         {
           "owner": "Component.componentDidUpdate",
-          "line": 5116,
+          "line": 5141,
           "bindings": 5,
           "writes": 5
         },
         {
-          "owner": "Component.componentDidUpdate.ArrowFunction@5122",
-          "line": 5123,
+          "owner": "Component.componentDidUpdate.ArrowFunction@5147",
+          "line": 5148,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.componentWillUnmount",
-          "line": 5144,
-          "bindings": 2,
+          "line": 5168,
+          "bindings": 3,
           "writes": 0
         },
         {
           "owner": "Component.S",
-          "line": 5148,
+          "line": 5174,
           "bindings": 1,
           "writes": 5
         },
         {
           "owner": "Component.later",
-          "line": 5155,
+          "line": 5181,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.every",
-          "line": 5157,
+          "line": 5183,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.toast",
-          "line": 5161,
+          "line": 5187,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "Component.scheduleToast",
-          "line": 5172,
+          "line": 5198,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "Component.closeToast",
-          "line": 5178,
+          "line": 5204,
           "bindings": 3,
           "writes": 0
         },
         {
           "owner": "Component.vget",
-          "line": 5188,
+          "line": 5214,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "Component.vset.FunctionExpression@5190",
-          "line": 5191,
+          "owner": "Component.vset.FunctionExpression@5216",
+          "line": 5217,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "Component.vreset.FunctionExpression@5197",
-          "line": 5198,
+          "owner": "Component.vreset.FunctionExpression@5223",
+          "line": 5224,
           "bindings": 4,
           "writes": 2
         },
         {
           "owner": "Component.api",
-          "line": 5206,
+          "line": 5232,
           "bindings": 3,
           "writes": 3
         },
         {
           "owner": "Component.api.person",
-          "line": 5209,
+          "line": 5235,
           "bindings": 3,
           "writes": 1
         },
         {
           "owner": "Component.rest",
-          "line": 5239,
+          "line": 5265,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.leave",
-          "line": 5241,
+          "line": 5267,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "Component.preset",
-          "line": 5247,
+          "line": 5273,
           "bindings": 6,
           "writes": 0
         },
         {
           "owner": "Component.runBoot",
-          "line": 5268,
+          "line": 5294,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.unlock",
-          "line": 5276,
+          "line": 5302,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.power",
-          "line": 5281,
+          "line": 5307,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.openView",
-          "line": 5306,
+          "line": 5332,
           "bindings": 6,
           "writes": 0
         },
         {
           "owner": "Component.shellNav",
-          "line": 5322,
+          "line": 5348,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.shellNavigate",
-          "line": 5326,
+          "line": 5352,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "Component.back",
-          "line": 5330,
+          "line": 5356,
           "bindings": 3,
           "writes": 0
         },
         {
           "owner": "Component.openShade",
-          "line": 5353,
+          "line": 5379,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.openSystemShade",
-          "line": 5365,
+          "line": 5391,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.syncShadeFocus",
-          "line": 5375,
+          "line": 5401,
           "bindings": 4,
           "writes": 0
         },
         {
           "owner": "Component.scale",
-          "line": 5387,
+          "line": 5413,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "Component.gDown",
-          "line": 5388,
+          "line": 5414,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.gUp",
-          "line": 5389,
+          "line": 5415,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.swipe",
-          "line": 5394,
+          "line": 5420,
           "bindings": 3,
           "writes": 0
         },
         {
           "owner": "Component.pullContext",
-          "line": 5406,
+          "line": 5432,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.sw",
-          "line": 5410,
+          "line": 5436,
           "bindings": 1,
           "writes": 6
         },
         {
           "owner": "Component.sw.down",
-          "line": 5413,
+          "line": 5439,
           "bindings": 3,
           "writes": 0
         },
         {
           "owner": "Component.sw.up",
-          "line": 5422,
+          "line": 5448,
           "bindings": 4,
           "writes": 0
         },
         {
           "owner": "Component.reply",
-          "line": 5438,
+          "line": 5464,
           "bindings": 9,
           "writes": 3
         },
         {
-          "owner": "Component.reply.FunctionExpression@5441",
-          "line": 5441,
+          "owner": "Component.reply.FunctionExpression@5467",
+          "line": 5467,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.send",
-          "line": 5458,
+          "line": 5484,
           "bindings": 6,
           "writes": 0
         },
         {
-          "owner": "Component.send.FunctionExpression@5470",
-          "line": 5471,
+          "owner": "Component.send.FunctionExpression@5496",
+          "line": 5497,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "Component.send.FunctionExpression@5470.FunctionExpression@5473",
-          "line": 5473,
+          "owner": "Component.send.FunctionExpression@5496.FunctionExpression@5499",
+          "line": 5499,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.agentSay",
-          "line": 5478,
+          "line": 5504,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.cardAct",
-          "line": 5482,
+          "line": 5508,
           "bindings": 4,
           "writes": 0
         },
         {
           "owner": "Component.startVoice",
-          "line": 5493,
+          "line": 5519,
           "bindings": 6,
           "writes": 1
         },
         {
-          "owner": "Component.startVoice.FunctionExpression@5505.FunctionExpression@5510",
-          "line": 5511,
+          "owner": "Component.startVoice.FunctionExpression@5531.FunctionExpression@5536",
+          "line": 5537,
           "bindings": 5,
           "writes": 1
         },
         {
-          "owner": "Component.startVoice.FunctionExpression@5505.FunctionExpression@5510.FunctionExpression@5517",
-          "line": 5517,
+          "owner": "Component.startVoice.FunctionExpression@5531.FunctionExpression@5536.FunctionExpression@5543",
+          "line": 5543,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "Component.startVoice.FunctionExpression@5505.FunctionExpression@5519",
-          "line": 5519,
+          "owner": "Component.startVoice.FunctionExpression@5531.FunctionExpression@5545",
+          "line": 5545,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.renderVals",
-          "line": 5530,
+          "line": 5556,
           "bindings": 45,
           "writes": 25
         },
         {
           "owner": "Component.renderVals.rootRef",
-          "line": 5541,
+          "line": 5567,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5572",
-          "line": 5573,
+          "owner": "Component.renderVals.FunctionExpression@5598",
+          "line": 5599,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5572.FunctionExpression@5573.FunctionExpression@5573",
-          "line": 5573,
+          "owner": "Component.renderVals.FunctionExpression@5598.FunctionExpression@5599.FunctionExpression@5599",
+          "line": 5599,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5580",
-          "line": 5583,
+          "owner": "Component.renderVals.FunctionExpression@5606",
+          "line": 5609,
           "bindings": 3,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5580.toggle",
-          "line": 5587,
+          "owner": "Component.renderVals.FunctionExpression@5606.toggle",
+          "line": 5613,
           "bindings": 1,
           "writes": 5
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5593",
-          "line": 5594,
+          "owner": "Component.renderVals.FunctionExpression@5619",
+          "line": 5620,
           "bindings": 4,
           "writes": 1
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5625",
-          "line": 5626,
+          "owner": "Component.renderVals.FunctionExpression@5651",
+          "line": 5652,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5629",
-          "line": 5630,
+          "owner": "Component.renderVals.FunctionExpression@5655",
+          "line": 5656,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5629.go",
-          "line": 5631,
+          "owner": "Component.renderVals.FunctionExpression@5655.go",
+          "line": 5657,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5646",
-          "line": 5648,
+          "owner": "Component.renderVals.FunctionExpression@5672",
+          "line": 5674,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.renderVals.backToApps",
-          "line": 5664,
+          "line": 5690,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.renderVals.doUndo",
-          "line": 5673,
+          "line": 5699,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5709",
-          "line": 5709,
+          "owner": "Component.renderVals.FunctionExpression@5735",
+          "line": 5735,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.renderVals.voiceToType",
-          "line": 5716,
+          "line": 5742,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.renderVals.fireHeads",
-          "line": 5722,
+          "line": 5748,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.renderVals.pUp",
-          "line": 5727,
+          "line": 5753,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "Component.renderVals.homeBar",
-          "line": 5737,
+          "line": 5763,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.renderVals.toggleFs",
-          "line": 5739,
+          "line": 5765,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5742",
-          "line": 5742,
+          "owner": "Component.renderVals.FunctionExpression@5768",
+          "line": 5768,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component",
           "line": 5059,
-          "bindings": 25,
-          "writes": 51
+          "bindings": 29,
+          "writes": 61
         }
       ],
       "parseErrors": [],
-      "asynchronous": 52,
+      "asynchronous": 54,
       "unassignedWrites": 418
     },
     {
@@ -40744,12 +40759,13 @@
     },
     {
       "path": "apps/app/src/prototype/voice-adapter.ts",
-      "sha256": "184549594547be71995cc61d06558e4048ae9c597e229574f8b248765a8eaae2",
+      "sha256": "2951ea2f23bbe17c30bef0dcdf04bdb0b5b4887e00c7a7d520d4f14defc10215",
       "allocatedModels": [
         "BatchCaptureCompletion",
         "ControllerComposition",
         "NotesRecorderMediaAdmission",
-        "VoiceSession"
+        "VoiceSession",
+        "VoiceTranscriptFollow"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -40769,139 +40785,139 @@
         },
         {
           "owner": "installPrototypeVoiceAdapter.cleanup",
-          "line": 254,
+          "line": 255,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installPrototypeVoiceAdapter.enter",
-          "line": 278,
+          "line": 279,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "installPrototypeVoiceAdapter.start",
-          "line": 335,
+          "line": 336,
           "bindings": 3,
           "writes": 4
         },
         {
           "owner": "installPrototypeVoiceAdapter.listen",
-          "line": 408,
+          "line": 409,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "installPrototypeVoiceAdapter.chatCurrent",
-          "line": 424,
+          "line": 425,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "installPrototypeVoiceAdapter.navigationContinuation",
-          "line": 432,
+          "line": 433,
           "bindings": 2,
           "writes": 4
         },
         {
           "owner": "installPrototypeVoiceAdapter.navigationContinuation.apply",
-          "line": 437,
+          "line": 438,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installPrototypeVoiceAdapter.cancelChat",
-          "line": 452,
+          "line": 453,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "installPrototypeVoiceAdapter.captureConversationAudio",
-          "line": 481,
+          "line": 482,
           "bindings": 11,
           "writes": 21
         },
         {
           "owner": "installPrototypeVoiceAdapter.beginConversation",
-          "line": 546,
+          "line": 547,
           "bindings": 8,
           "writes": 14
         },
         {
           "owner": "installPrototypeVoiceAdapter.beginConversation.sendTurn",
-          "line": 613,
+          "line": 614,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installPrototypeVoiceAdapter.beginConversation.sendTurn.send",
-          "line": 625,
+          "line": 626,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installPrototypeVoiceAdapter.beginConversation.speak",
-          "line": 702,
+          "line": 703,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "installPrototypeVoiceAdapter.beginConversation.listen",
-          "line": 716,
+          "line": 717,
           "bindings": 5,
           "writes": 14
         },
         {
           "owner": "installPrototypeVoiceAdapter.beginConversation.transcribe",
-          "line": 808,
+          "line": 809,
           "bindings": 2,
           "writes": 1
         },
         {
           "owner": "installPrototypeVoiceAdapter.conversationRecorderView",
-          "line": 866,
+          "line": 867,
           "bindings": 2,
           "writes": 3
         },
         {
           "owner": "installPrototypeVoiceAdapter.restoreDeletion",
-          "line": 916,
+          "line": 917,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installPrototypeVoiceAdapter.restoreDeletion.ArrowFunction@917",
-          "line": 940,
+          "owner": "installPrototypeVoiceAdapter.restoreDeletion.ArrowFunction@918",
+          "line": 941,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installPrototypeVoiceAdapter.deleteVoiceNote",
-          "line": 960,
+          "line": 961,
           "bindings": 2,
           "writes": 5
         },
         {
-          "owner": "installPrototypeVoiceAdapter.ArrowFunction@1170",
-          "line": 1186,
+          "owner": "installPrototypeVoiceAdapter.ArrowFunction@1171",
+          "line": 1187,
           "bindings": 5,
           "writes": 82
         },
         {
-          "owner": "installPrototypeVoiceAdapter.ArrowFunction@1170.ArrowFunction@1201",
-          "line": 1203,
+          "owner": "installPrototypeVoiceAdapter.ArrowFunction@1171.ArrowFunction@1202",
+          "line": 1204,
           "bindings": 3,
           "writes": 3
         },
         {
           "owner": "installPrototypeVoiceAdapter.recorderView",
-          "line": 1331,
+          "line": 1332,
           "bindings": 1,
           "writes": 7
         },
         {
-          "owner": "installPrototypeVoiceAdapter.FunctionExpression@1366",
-          "line": 1367,
+          "owner": "installPrototypeVoiceAdapter.FunctionExpression@1367",
+          "line": 1368,
           "bindings": 3,
           "writes": 41
         }
@@ -43020,9 +43036,10 @@
     },
     {
       "path": "apps/app/src/runtime/development-cartesia-conversation.ts",
-      "sha256": "e0567afa559337d619a218058c82dc7bd4e6d082f6488141d7fd9cbc757f031f",
+      "sha256": "e65e56436c0d73409c0f3f8233f0fdfa4ec776d558e07eab2a520a2aeb6fc9c3",
       "allocatedModels": [
-        "DevelopmentSurfaces"
+        "DevelopmentSurfaces",
+        "VoiceTranscriptFollow"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -43034,14 +43051,14 @@
           "writes": 70
         },
         {
-          "owner": "developmentCartesiaConversation.renewRenderer.ArrowFunction@154",
-          "line": 158,
+          "owner": "developmentCartesiaConversation.renewRenderer.ArrowFunction@156",
+          "line": 160,
           "bindings": 1,
           "writes": 8
         },
         {
-          "owner": "developmentCartesiaConversation.renewRenderer.ArrowFunction@154.ArrowFunction@159",
-          "line": 160,
+          "owner": "developmentCartesiaConversation.renewRenderer.ArrowFunction@156.ArrowFunction@161",
+          "line": 162,
           "bindings": 1,
           "writes": 1
         }
@@ -201726,7 +201743,7 @@
     },
     {
       "path": "vendor/eliza/plugins/plugin-notes/src/client/notes-audio-store.ts",
-      "sha256": "31daa18642b6c81ad925eef2d4e671251d44bc2debd4d1b4a293c617413d63ff",
+      "sha256": "ed8bf6ff5ab0547e53c6422f05cec074659f699f32dd4889382afc19f0f8343f",
       "allocatedModels": [
         "DurableStore",
         "NotesLifecycle",
@@ -201740,68 +201757,74 @@
       "owners": [
         {
           "owner": "sameBytes",
-          "line": 105,
+          "line": 126,
           "bindings": 3,
           "writes": 1
         },
         {
           "owner": "createNotesAudioStore",
-          "line": 139,
+          "line": 160,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "createNotesAudioStore.db.ArrowFunction@142",
-          "line": 144,
+          "owner": "createNotesAudioStore.db.ArrowFunction@163",
+          "line": 165,
           "bindings": 1,
           "writes": 3
         },
         {
           "owner": "createNotesAudioStore.normalize",
-          "line": 158,
+          "line": 179,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "createNotesAudioStore.mutate.ArrowFunction@207",
-          "line": 208,
+          "owner": "createNotesAudioStore.mutate.ArrowFunction@241",
+          "line": 242,
           "bindings": 4,
           "writes": 7
         },
         {
-          "owner": "createNotesAudioStore.changeAudioDeleted.ArrowFunction@284",
-          "line": 287,
+          "owner": "createNotesAudioStore.pendingAudio.ArrowFunction@307",
+          "line": 308,
+          "bindings": 4,
+          "writes": 7
+        },
+        {
+          "owner": "createNotesAudioStore.changeAudioDeleted.ArrowFunction@446",
+          "line": 453,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "createNotesAudioStore.purgeAudio.ArrowFunction@330",
-          "line": 333,
+          "owner": "createNotesAudioStore.purgeAudio.ArrowFunction@496",
+          "line": 503,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "createNotesAudioStore.migrateAudio",
-          "line": 362,
+          "line": 532,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "createNotesAudioStore.migrateAudio.ArrowFunction@364",
-          "line": 365,
+          "owner": "createNotesAudioStore.migrateAudio.ArrowFunction@534",
+          "line": 535,
           "bindings": 3,
           "writes": 5
         },
         {
-          "owner": "createNotesAudioStore.migrateAudio.ArrowFunction@364.ArrowFunction@376",
-          "line": 377,
+          "owner": "createNotesAudioStore.migrateAudio.ArrowFunction@534.ArrowFunction@546",
+          "line": 547,
           "bindings": 1,
           "writes": 1
         }
       ],
       "parseErrors": [],
       "asynchronous": 0,
-      "unassignedWrites": 4
+      "unassignedWrites": 10
     },
     {
       "path": "vendor/eliza/plugins/plugin-notes/src/client/notes-contract.ts",
@@ -226035,6 +226058,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "49258b90ae1c308f17d1c19da7261229722c0d3e190b845ae99a760965947165"
+    "sha256": "dcfc8f26b4f6f131454fab18e4499e7e3927545ad5cd4b64dc7a77d1753e4590"
   }
 }

@@ -1225,7 +1225,8 @@
       "apps/app/src/prototype/canonical-notes-editor.ts",
       ".eliza/client-features/plugins/plugin-notes/src/client/notes-editor.ts",
       ".eliza/client-features/plugins/plugin-notes/src/client/notes-controller.ts",
-      ".eliza/client-features/plugins/plugin-notes/src/client/notes-api.ts"
+      ".eliza/client-features/plugins/plugin-notes/src/client/notes-api.ts",
+      "apps/app/src/prototype/agent-adapter.ts"
     ],
     "abstractions": [
       "Two record identities, five editor tokens and four edit versions/revisions. One remove/restore continuation, rejected concurrent probes and independent save queue use settled promise macrosteps.",
