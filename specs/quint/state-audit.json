@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "80fbb1d25937585b24fd85132d623d5391c8ca07",
-  "ledgerSha256": "659048fa028f8107e59bae98ff06869e711cdcab113ac3b77198137072f35acd",
+  "ledgerSha256": "12db05b38f341da28e1af6f8c3251fc863a9a4ab7d1c871ac7d50ad59c158c57",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -29571,7 +29571,7 @@
     },
     {
       "path": "apps/app/src/browser/clock.ts",
-      "sha256": "d06f7d6578d69e7a0e6fa7962a4a43780e4d95e6ef4594b0abaff411480309f1",
+      "sha256": "197e7bb0b97e6b10abaeca309d831a1a8945da81bd715315c70e25009dd37b77",
       "allocatedModels": [
         "DeviceActions",
         "BrowserReminderOrphan",
@@ -221172,6 +221172,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "fd3812d684e6988f15f3842b7749f825a7ac76a44468eeb37d14a15edbc50f6b"
+    "sha256": "96133e4c3790830e97b97cdb8579a8a16e0be0fabdb5c145f6820a8a2f2c5e2d"
   }
 }

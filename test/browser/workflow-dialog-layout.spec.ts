@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test';
 test.use({viewport:{width:360,height:430}});
-const dialogs={result:['Workflow step result','Cancel run'],urgency:['Workflow urgency','Cancel run'],history:['Workflow history','Close history'],calendar:['App calendar recovery','Close recovery'],clock:['Clock alarms','Cancel']} as const;
+const dialogs={result:['Workflow step result','Cancel run'],urgency:['Workflow urgency','Cancel run'],history:['Workflow history','Close history'],calendar:['App calendar recovery','Close recovery'],clock:['Clock alarms','Back']} as const;
 for(const theme of ['light','dark'])for(const kind of Object.keys(dialogs) as (keyof typeof dialogs)[])test(`${theme} ${kind} dialog stays usable at compact height and large text`,async({page},info)=>{
  await page.goto(`/?mode=dev&theme=${theme}`);
  await page.evaluate(async kind=>{

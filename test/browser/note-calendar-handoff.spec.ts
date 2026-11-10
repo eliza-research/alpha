@@ -8,7 +8,7 @@
 import {test,expect,type Page} from '@playwright/test';
 import {returnToApps} from './app-navigation';
 import {openLegacyNotes,selectLegacyNotes} from './helpers/legacy-notes';
-import {openBrowserCalendar} from './helpers/browser-calendar';
+import {openBrowserCalendar,chooseCalendarEventAction} from './helpers/browser-calendar';
 import {canonicalNotesFixture,openCanonicalNotes} from './helpers/canonical-notes';
 test.setTimeout(240_000);
 const button=(page:Page,name:string|RegExp)=>page.getByRole('button',{name,exact:true});
@@ -155,7 +155,7 @@ test('a reminder from a note carries the same link; an unrelated event and remin
  // Deleting the reminder removes its link.
  await openCalendarItem(page,'Book the venue');
  await expect(page.getByText('From note: Venue meeting',{exact:true})).toBeVisible();
- await button(page,'Delete event').click();
+ await chooseCalendarEventAction(page,'Delete event');
  await page.getByRole('dialog',{name:'Delete reminder?',exact:true}).getByRole('button',{name:'Delete reminder',exact:true}).click();
  await expect(page.getByRole('complementary',{name:'Pending deletions'}).getByRole('button',{name:'Undo',exact:true})).toBeVisible();
  expect(await links(page)).toEqual({[`reminder:${reminder.id}`]:'Venue meeting'});

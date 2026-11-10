@@ -10412,7 +10412,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "d06f7d6578d69e7a0e6fa7962a4a43780e4d95e6ef4594b0abaff411480309f1",
+      "sha256": "197e7bb0b97e6b10abaeca309d831a1a8945da81bd715315c70e25009dd37b77",
       "stateAnchors": [
         {
           "line": 47,
@@ -10451,7 +10451,7 @@
           "text": "const save=this.save=this.button('Save alarm');save.style.cssText+=';background:var(--acc,#0000ff);border-color:transparent;color:#fff';"
         }
       ],
-      "integrationReview": "2026-11-09: Alarm presentation uses the existing inline modal owner and assistantFromSheet transition; save, delete, expiry and foreground alarm ownership are unchanged. Browser tests cover retained records, keyboard return and assistant access. State-audit and source-to-model refinement remain separate. 2026-11-09: shared overlay bounds, retained dismiss controls and alarm reading order validated in browser layout and interaction checks; storage and handoff transitions are unchanged."
+      "integrationReview": "2026-11-09: Alarm presentation uses the existing inline modal owner and assistantFromSheet transition; save, delete, expiry and foreground alarm ownership are unchanged. Browser tests cover retained records, keyboard return and assistant access. State-audit and source-to-model refinement remain separate. 2026-11-09: shared overlay bounds, retained dismiss controls and alarm reading order validated in browser layout and interaction checks; storage and handoff transitions are unchanged. 2026-11-10: Clock controls retain at least 48 CSS pixels after phone-canvas scaling; 360px light/dark rendered hit-area checks pass. No storage, alarm authority or transition change."
     },
     {
       "path": "apps/app/src/browser/cloud-connection.ts",
