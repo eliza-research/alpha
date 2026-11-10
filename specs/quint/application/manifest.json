@@ -3044,7 +3044,8 @@
       "viewRetirementDoesNotReadNativeDraftTest",
       "nativeDraftPresenceRequiresCurrentCollectionTest",
       "ownerSwitchClearsVisibleLegacyBeforeNewProbeTest",
-      "hideAndSuspendRetireVisibleProbeTest"
+      "hideAndSuspendRetireVisibleProbeTest",
+      "blockedStoreRemainsUnavailableTest"
     ],
     "invariants": [
       "ActiveProbeHasExactOwner",

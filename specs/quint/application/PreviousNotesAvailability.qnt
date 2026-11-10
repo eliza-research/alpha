@@ -70,4 +70,6 @@ module PreviousNotesAvailability {
     .expect(s.mode == "canonical" and s.epoch == 1 and s.cleared == 1 and s.availability == "unavailable" and safety)
   run hideAndSuspendRetireVisibleProbeTest = initBrowser.then(move(true)).then(hide(true)).then(hide(false)).then(suspend(true))
     .then(resolve(1, "present")).then(resolve(2, "present")).expect(s.paints == 0 and s.active == 0 and safety)
+  run blockedStoreRemainsUnavailableTest = initBrowser.then(move(true)).then(resolve(1, "unavailable"))
+    .expect(s.availability == "unavailable" and s.draftReads == 0 and s.paints == 1 and safety)
 }

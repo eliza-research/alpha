@@ -13,7 +13,7 @@ const read=name=>fs.readFileSync(path.join(changed,name),'utf8');
 const source=read('apps/app/src/prototype/agent-adapter.ts');
 const slice=(from,to)=>{const start=source.indexOf(from),end=source.indexOf(to,start);assert.ok(start>=0&&end>start);return source.slice(start,end);};
 const transform=text=>stripTypeScriptTypes(text,{mode:'transform'});
-function moduleLoader(){
+function moduleLoader(globals={}){
  const modules=new Map();
  function load(request){
   let file=path.resolve(request);if(!fs.existsSync(file))for(const suffix of ['.ts','.tsx','.js'])if(fs.existsSync(file+suffix)){file+=suffix;break;}
@@ -21,10 +21,21 @@ function moduleLoader(){
   if(modules.has(file))return modules.get(file).exports;
   const module={exports:{}};modules.set(file,module);
   const require=name=>{assert.match(name,/^\.\.?\//);const here=path.relative(changed,file);return load(path.resolve(path.dirname(here.startsWith('..')?file:path.join(root,here)),name));};
-  vm.runInNewContext(transformSync(fs.readFileSync(file,'utf8'),{loader:'ts',target:'es2022',format:'cjs'}).code,{exports:module.exports,module,require,AbortController,DOMException,crypto,structuredClone,TextEncoder,TextDecoder},{filename:file});return module.exports;
+  vm.runInNewContext(transformSync(fs.readFileSync(file,'utf8'),{loader:'ts',target:'es2022',format:'cjs'}).code,Object.defineProperties({exports:module.exports,module,require,AbortController,DOMException,crypto,structuredClone,TextEncoder,TextDecoder},Object.getOwnPropertyDescriptors(globals)),{filename:file});return module.exports;
  }
  return load;
 }
+test('blocked storage getter reports unavailable without throwing from a Notes render or reading another store',async()=>{
+ const globals={get localStorage(){throw new DOMException('Browser storage is blocked','SecurityError');}};
+ const access=moduleLoader(globals)(path.join(root,'apps/app/src/prototype/legacy-notes-access.ts'));
+ const signal=new AbortController().signal;let reads=0;
+ for(const method of ['browserPreviousNotesAvailability','devicePreviousNotesAvailability']){
+  const port={read:async()=>{reads++;return null;},readRaw:async()=>{reads++;return null;}};
+  let pending;assert.doesNotThrow(()=>{pending=access[method](port,signal,()=>true);});
+  assert.equal(await pending,'unavailable');
+ }
+ assert.equal(reads,0,'an unavailable presence probe must not inspect another store or initialize data');
+});
 test('empty previous Notes is distinct from retained keys and unreadable storage without initializing it',async()=>{
  const load=moduleLoader(),access=load(path.join(root,'apps/app/src/prototype/legacy-notes-access.ts')),keys=load(path.join(root,'apps/app/src/runtime/notes-secure-store.ts'));
  const signal=new AbortController().signal;

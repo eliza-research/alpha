@@ -24056,7 +24056,7 @@
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
-      "sha256": "beec749de9b332757e3acabaf32804144ee7cfe1b37835e46c36a41ac01c6946",
+      "sha256": "68e8d2b2e79b5dc04fd32c27c07f6f9321a5bab16eaddeb9b6b210d1a3fc9680",
       "stateAnchors": [
         {
           "line": 17,
@@ -24166,7 +24166,8 @@
           "line": 60,
           "text": "}catch(error){if(refused)throw new LegacyNotesReviewRequired();throw error;}"
         }
-      ]
+      ],
+      "integrationReview": "specs/quint/notes-storage-getter-review-20261109.md"
     },
     {
       "path": "apps/app/src/prototype/local-ocr.ts",
