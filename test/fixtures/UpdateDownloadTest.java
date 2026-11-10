@@ -43,6 +43,11 @@ public final class UpdateDownloadTest {
   check(!admitted(apk,apk.length+1,digest),"a download shorter than declared is refused");
   byte[] changed=apk.clone();changed[1234]^=1;
   check(!admitted(changed,changed.length,digest),"changed bytes are refused");
+  java.io.InterruptedIOException interruption=new java.io.InterruptedIOException("fixture interrupted read");
+  try{
+   AlphaDevicePlugin.copyVerified(new InputStream(){@Override public int read()throws IOException{throw interruption;}},new ByteArrayOutputStream(),apk.length,digest,System.nanoTime()+TimeUnit.MINUTES.toNanos(1));
+   throw new AssertionError("interrupted IO cannot verify");
+  }catch(IOException failure){check(failure==interruption&&!(failure instanceof AlphaDevicePlugin.UpdateMismatch),"ordinary and interrupted IO remain distinct from a cache byte mismatch");}
   check(!admitted(apk,apk.length,digest.toUpperCase(Locale.ROOT)),"a digest is 64 lowercase hex characters");
   check(!admitted(apk,apk.length,digest.substring(1))&&!admitted(apk,apk.length,null),"a short or missing digest is refused");
   check(!admitted(new byte[0],0,sha256(new byte[0])),"an empty APK is refused");

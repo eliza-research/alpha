@@ -91,6 +91,7 @@ public final class UpdateStagingHarness {
  private final Trace trace;
  private final PluginCall[] calls = new PluginCall[4];
  private int owner;
+ private final java.util.concurrent.atomic.AtomicInteger archiveReads=new java.util.concurrent.atomic.AtomicInteger();
  private String phase="idle", outcome="none";
  private final boolean bootTrace;
  private int boot=1, process=1;
@@ -99,7 +100,7 @@ public final class UpdateStagingHarness {
   this.cache=cache;this.offer=offer;apk=cache.resolve("alpha-update.apk");bootTrace=mode.startsWith("boot-");
   context=UpdateFlowTest.installing(cache.toFile());
   AlphaDevicePlugin.UpdatePause.configure(context);
-  context.packages.archiveRead=archive;
+  context.packages.archiveRead=()->{archiveReads.incrementAndGet();archive.run();};
   context.packages.installer.staging=stage;
   context.packages.installer.stagedOutput=id->{
    var sink=new ByteArrayOutputStream();copies.put(id,sink);return sink;
@@ -125,7 +126,10 @@ public final class UpdateStagingHarness {
   int bytes=present?Math.toIntExact(Files.size(apk)):0;
   boolean verified=phase.equals("verified")||phase.equals("staged")||(phase.equals("retiring")&&bytes==APK.length);
   if(verified)require(sha(Files.readAllBytes(apk)).equals(offer.getString("sha256")),"verified cache bytes equal the reviewed digest");
-  String file=!present?"absent":owner==0?"orphan":verified?"verified":"partial";
+  String hint=(String)staticField("updateVerified");
+  int kept=hint==null?0:1;
+  if(kept!=0)require(hint.equals(offer.getString("apkUrl")+"/"+offer.getLong("sizeBytes")+"/"+offer.getString("sha256")+"/"+offer.getLong("versionCode")),"hint names only the exact reviewed tuple");
+  String file=!present?"absent":kept!=0?(sha(Files.readAllBytes(apk)).equals(offer.getString("sha256"))?"verified":"corrupt"):owner==0?"orphan":verified?"verified":"partial";
   String session=installer.sessions.isEmpty()?"none":owner==0?"left":"staged";
   int stagedBytes=installer.sessions.isEmpty()?0:copies.get(installer.sessions.get(0)).size();
   boolean connected=connections.stream().anyMatch(connection->!connection.closed.get());
@@ -137,6 +141,7 @@ public final class UpdateStagingHarness {
   }
   JSONObject observed=Trace.fields("owner",owner,"target",owner==0?0:1,"phase",phase,"file",file,"bytes",bytes,
    "session",session,"stagedBytes",stagedBytes,"connected",connected,"fetches",connections.size(),
+   "kept",kept,"reuses",Math.max(0,archiveReads.get()-connections.size()),
    "created",installer.internals.size(),"abandoned",installer.abandoned.size(),"outcome",outcome);
   if(bootTrace)observed.put("s.platform",new JSONObject().put("sdk",Build.VERSION.SDK_INT<31?30:31)
    .put("consent",context.packages.installsAllowed).put("uptime",SystemClock.uptimeMillis())
@@ -159,9 +164,12 @@ public final class UpdateStagingHarness {
  }
  private void restart()throws Exception{
   require(owner==0,"process cut is between attempts");
+  boolean retained=staticField("updateVerified")!=null;
   UpdateFlowTest.retireFixtureWorkers();
   var forget=UpdateFlowTest.class.getDeclaredMethod("forgetProcess");forget.setAccessible(true);forget.invoke(null);
-  bridges.clear();register(1);process++;trace.step("processRestart",observe());
+  bridges.clear();register(1);process++;
+  if(retained)trace.macro("process loses cache hint; ordinary bridge load sweeps orphan",observe(),Trace.action("processRestart"),Trace.action("loadBridge",true));
+  else trace.step("processRestart",observe());
  }
  private void deferred(String status)throws Exception{
   // A shut-down worker proves this refusal occurs before executor admission.
@@ -217,6 +225,29 @@ public final class UpdateStagingHarness {
   register(1);
   require(AlphaDevicePlugin.appSigner(context).equals(offer.getString("signer")),"renderer fixture used actual synthetic signing lineage");
   switch(mode){
+   case "verified-cache-reuse":
+   case "verified-cache-corrupt-refetch":
+   case "verified-cache-restart-sweep":
+    start(1,true);verified();staged();
+    bridges.get(1).activity.focused=false;stage.open();settled("deferred",false,true);
+    register(2);trace.step("loadBridge",observe(),true);
+    calls[1]=payload();calls[1].getData().put("automatic",true);bridges.get(1).installUpdate(calls[1]);answer(1,false);
+    outcome="deferred";trace.step("deferBeforeWork",observe());
+    bridges.get(1).activity.focused=true;
+    if(mode.equals("verified-cache-corrupt-refetch")){
+     Files.write(apk,new byte[]{1,2,3,5});trace.step("cacheChanged",observe());
+    }
+    if(mode.equals("verified-cache-restart-sweep"))restart();
+    heldRead=new Gate();heldRead.open();calls[1]=payload();calls[1].getData().put("automatic",true);
+    bridges.get(1).installUpdate(calls[1]);answer(1,false);owner=0;phase="idle";outcome="barrier";
+    java.util.List<JSONObject> actions=new java.util.ArrayList<>();
+    actions.add(Trace.action("automaticTap",1));
+    if(mode.equals("verified-cache-corrupt-refetch"))actions.add(Trace.action("cacheMismatch"));
+    if(!mode.equals("verified-cache-reuse"))actions.add(Trace.action("chunk",4));
+    actions.add(Trace.action("verify",true,false));actions.add(Trace.action("stage",true));actions.add(Trace.action("settle","barrier",true,true));
+    trace.macro("actual retry revalidates bytes/archive then refuses renderer activation",observe(),actions.toArray(new JSONObject[0]));
+    require(connections.size()==(mode.equals("verified-cache-reuse")?1:2),"only an intact same-process exact cache avoids another transport call");
+    break;
    case "boot-inclusive-boundary-and-process":
     reboot(31,true);deferred("starting");clock(26681);deferred("starting");clock(29999);restart();deferred("starting");
     clock(30000);deferred("starting");clock(30001);start(1,true);verified();staged();stage.open();settled("barrier",true,true);
