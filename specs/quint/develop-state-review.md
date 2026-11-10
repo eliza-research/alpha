@@ -24,7 +24,7 @@ Shared code changes require an upstream commit and reviewed source pin.
 
 
 The four additions bring the registry to 263 models. Integrated source replays
-cover 82 traces and 385 checkpoints. All fields in their selected projections
+cover 82 traces and 391 checkpoints. All fields in their selected projections
 are observed. The worker and snooze models passed depth-eight symbolic checks.
 Notes and keyboard attempts could not start Apalache within the startup deadline.
 Their scenario and simulation checks passed.
