@@ -39,10 +39,12 @@ reviewed, source-identical commit `099e2d27ad7268fac0832c4a7e84cc707d2cf03e`; th
 and [Cloud APK build receipt](evidence/launcher-ota-cloud-apk-build-e359d8d9-20261109.json)
 remain historical evidence: the APK receipt names product commit `e359d8d928`
 and upstream `b1817660a0`, while the source comparison names `099e2d27ad`.
-Neither describes the integrated package identity. The integrated
-Alpha Compute branch pins merged upstream `dae11e0b7e3f40e5434fea21fd7c127e416f7016`
-and consumes the reviewed scheduler directly. The superseded client update patch
-has been removed. Earlier build evidence does
+Neither describes the integrated package identity. The earlier
+Alpha Compute integration pinned merged upstream `dae11e0b7e3f40e5434fea21fd7c127e416f7016`
+and consumed the reviewed scheduler directly. The superseded client update patch
+has been removed. The current reviewed pin
+`75b44015561368fc8ca982b70b8bafbdf1672a7b` retains that scheduler and adds the
+deferred-deletion owner-admission repair. Earlier build evidence does
 not transfer native, APK or device qualification to this integration.
 
 Automatic installation requires Android 12/API 31 or newer and Android's existing
@@ -200,6 +202,21 @@ shows simulated native IPC cancellation and draft restoration only. The prior
 is retained with its original bytes. These reports do not advance the current SDK
 pin or qualify the DAE bundle, current APKs, native speech/JNI, installed-device
 behavior or user acceptance.
+
+The historical [DAE source/build review](evidence/merged-upstream-source-dae11e0b-20261109.json)
+and [static review](security/resident-fresh-build-review-dae11e0b-2026-11-09.json)
+record a separate DAE bundle (`b345e6f0`). The current SDK `75b44015` and bundle
+`2deb6808` retain their separate records.
+Their original [graph](https://github.com/eliza-research/alphaphone/blob/a0c9cdecdd83e972c6b8031e9a2afa4d9f22fe41/specs/quint/refinement/services/runtime-bundle-inputs.json),
+[coverage](https://github.com/eliza-research/alphaphone/blob/a0c9cdecdd83e972c6b8031e9a2afa4d9f22fe41/specs/quint/coverage.json)
+and [state audit](https://github.com/eliza-research/alphaphone/blob/a0c9cdecdd83e972c6b8031e9a2afa4d9f22fe41/specs/quint/state-audit.json)
+remain bound to that immutable revision; they do not replace current SDK records or
+grant APK, native, device, security or user acceptance.
+
+That historical static review's missing-license entry for `async@0.2.10` means
+the single `license` field is absent. Its authenticated legacy `licenses` array
+declares MIT; current metadata honors that fallback. This note grants no legal
+clearance or new advisory disposition.
 
 The isolated API 36 PackageInstaller fixture can be rerun on an owned disposable
 emulator with SDK 36 build tools and JDK 21:

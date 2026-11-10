@@ -8,7 +8,7 @@
     "deferred": "Out of the MVP by recorded policy.",
     "blocked": "Cannot progress without an external decision, resource or artifact."
   },
-  "note": "Current source composition uses upstream dae11e0b7e3f40e5434fea21fd7c127e416f7016, as recorded in upstream.lock.json. Read each requirement with its own evidence class and recorded revision. Source and bounded model checks do not establish installed integrations, signed Android distribution, full-image boot, physical-device behavior or owner acceptance. Historical source-review notes are retained separately in historicalSourceNotes. Final combined verification and exact APK qualification remain separate gates.",
+  "note": "Current source composition uses upstream 75b44015561368fc8ca982b70b8bafbdf1672a7b, as recorded in upstream.lock.json. Read each requirement with its own evidence class and recorded revision. Source and bounded model checks do not establish installed integrations, signed Android distribution, full-image boot, physical-device behavior or owner acceptance. Historical source-review notes are retained separately in historicalSourceNotes. Final combined verification and exact APK qualification remain separate gates.",
   "requirements": [
     {
       "id": "AP-01",
