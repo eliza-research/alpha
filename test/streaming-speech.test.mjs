@@ -20,7 +20,7 @@ test('local speech streams through AudioTrack when the engine supports it and fa
   const plugin = strip(bridge()), output = strip(shared('AudioTrackSpeechOutput.java')), paradee = strip(shared('SessionSpeech.java'));
   // One process-wide session owns speech output, recognition and VAD. The engine's backend is its own
   // client of that session: its cancel and release never fence or unload another consumer's calls.
-  assert.match(plugin, /new LocalSpeechEngine\(\(\)->SessionSpeech\.shared\(getContext\(\)\)\)/);
+  assert.match(plugin, /new LocalSpeechEngine\(\(\)->\{useBigCores\(\);return SessionSpeech\.shared\(getContext\(\)\);\}\)/);
   assert.doesNotMatch(plugin, /ElizaVoiceNative|openInference\(\)|new ParadeeVoice|new NativeAsr/);
   assert.match(paradee, /public void close\(\)\{if\(owned\)inference\.close\(\);else client\.release\(\);\}/);
   assert.match(paradee, /public void cancel\(\)\{client\.cancel\(\);\}/);
