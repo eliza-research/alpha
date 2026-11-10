@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { detectedCounterexample, loadModels, missingQuintScenarios, quintModelOptions, readJson, repositoryRoot, runQuintChecker, runtimeScriptPaths, runtimeAssetPaths, sourceRoots, validateQuintModelMetadata } from '../scripts/quint-lib.mjs';
+import { detectedCounterexample, loadModels, missingQuintScenarios, quintModelOptions, readJson, repositoryRoot, runQuintChecker, runtimeScriptPaths, runtimeAssetPaths, sourceRoots, validateQuintModelMetadata } from '../scripts/quint-lib.ts';
 
 test('all registered scenarios need an actual successful execution record', () => {
   assert.deepEqual(missingQuintScenarios(['reviewTest', 'setup'], '\u001b[32m    ok reviewTest passed 1 test(s)\u001b[0m\n    ok setup passed 3 test(s)\n'), []);
@@ -74,7 +74,7 @@ test('runner records unexpected exceptions as failures and retains unfinished re
   };
   try {
     for (const path of [...sourceRoots, 'scripts']) mkdirSync(join(root, path), { recursive: true });
-    const runnerModules = ['check-quint.mjs', 'quint-lib.mjs', 'core-state-patch.mjs', 'build-policy-source.mjs'];
+    const runnerModules = ['check-quint.ts', 'quint-lib.ts', 'core-state-patch.ts', 'build-policy-source.ts'];
     for (const name of runnerModules) copyFileSync(join(repositoryRoot, 'scripts', name), join(root, 'scripts', name));
     const fixtureSources = [...runtimeScriptPaths, ...runtimeAssetPaths];
     for (const path of fixtureSources) if (!runnerModules.some(name => path === `scripts/${name}`)) write(path, '');
@@ -88,7 +88,7 @@ test('runner records unexpected exceptions as failures and retains unfinished re
     write('specs/quint/tlc.json', '{}');
     write('node_modules/@informalsystems/quint/package.json', JSON.stringify({ version: '0.33.1' }));
 
-    const compare = spawnSync(process.execPath, ['scripts/check-quint.mjs', 'compare', '--out=compare.json'], { cwd: root, encoding: 'utf8', timeout: 10000 });
+    const compare = spawnSync(process.execPath, ['scripts/check-quint.ts', 'compare', '--out=compare.json'], { cwd: root, encoding: 'utf8', timeout: 10000 });
     assert.equal(compare.status, 1, compare.stderr);
     const failure = readJson(join(root, 'compare.json'));
     assert.equal(failure.passed, false);
@@ -97,7 +97,7 @@ test('runner records unexpected exceptions as failures and retains unfinished re
     assert.deepEqual(failure.finalInputErrors, []);
 
     write('node_modules/@informalsystems/quint/dist/src/cli.js', 'setTimeout(() => {}, 60000);');
-    const interrupted = spawnSync(process.execPath, ['scripts/check-quint.mjs', 'typecheck', '--out=interrupted.json'], { cwd: root, encoding: 'utf8', timeout: 2000 });
+    const interrupted = spawnSync(process.execPath, ['scripts/check-quint.ts', 'typecheck', '--out=interrupted.json'], { cwd: root, encoding: 'utf8', timeout: 2000 });
     assert.equal(interrupted.error?.code, 'ETIMEDOUT');
     const unfinished = readJson(join(root, 'interrupted.json'));
     assert.equal(unfinished.passed, false);

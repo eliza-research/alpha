@@ -1,6 +1,7 @@
 // Alpha's remaining functional differences from Eliza's reference mobile shell.
 // The feature parity test checks each difference against its owner and requires
-// the inventory to shrink as Alpha-owned behaviour moves upstream.
+// the exact inventory; reviewed helper additions name an existing owner and
+// their focused validation below. Modules leave the inventory when moved upstream.
 export const featureParityAllowlist = {
   reference: "ELIZA_MOBILE_PRODUCT",
   differences: {
@@ -22,6 +23,12 @@ export const featureParityAllowlist = {
     "capability:reminders.local-record.v1:only-a": "apps/app/src/runtime/connection-ui.tsx deviceCapabilities and apps/app/src/runtime/device-actions.ts",
     "capability:reminders.local-record.v2:only-a": "apps/app/src/runtime/connection-ui.tsx deviceCapabilities and apps/app/src/runtime/device-actions.ts",
     "capability:sms.send.v1:only-a": "apps/app/src/runtime/connection-ui.tsx deviceCapabilities and apps/app/src/runtime/device-actions.ts"
+  },
+  reviewedHelpers: {
+    "android/app/src/main/java/ai/alphacompute/alphaphone/NavigationOpenRequest.java": {"owner": "android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java", "reason": "Bounds the existing Maps notification handoff to one consumption within 30 seconds; HOME retires it.", "tests": ["test/maps-notification-open.test.mjs"]},
+    "apps/app/src/prototype/template-source.ts": {"owner": "apps/app/src/prototype/dc-lite.js", "reason": "Composes the existing renderer template with development controls only when the explicit build flag admits them.", "tests": ["test/dev-surface-gates.test.mjs", "test/production-bundle-audit.test.mjs"]},
+    "apps/app/src/runtime/local-reply-speech.ts": {"owner": "apps/app/src/prototype/voice-adapter.ts", "reason": "Adapts the existing native speech bridge to the owning voice session, including sentence completion, cancellation and listener retirement.", "tests": ["test/local-reply-speech.test.mjs"]},
+    "apps/app/src/runtime/maps-notification-open.ts": {"owner": "apps/app/src/prototype/maps-adapter.ts", "reason": "Consumes the existing native Maps notification request only after the owning Maps surface is ready, with cancellation and disposal fences.", "tests": ["test/maps-notification-open.test.mjs"]},
   },
   modules: [
     "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaActionJournal.java",
@@ -119,6 +126,7 @@ export const featureParityAllowlist = {
     "android/app/src/main/java/ai/alphacompute/alphaphone/NativeOwnerReminderHost.java",
     "android/app/src/main/java/ai/alphacompute/alphaphone/NativeReadEpoch.java",
     "android/app/src/main/java/ai/alphacompute/alphaphone/NativeVoiceBinding.java",
+    "android/app/src/main/java/ai/alphacompute/alphaphone/NavigationOpenRequest.java",
     "android/app/src/main/java/ai/alphacompute/alphaphone/NoteSourceReferences.java",
     "android/app/src/main/java/ai/alphacompute/alphaphone/NotesDeletionLease.java",
     "android/app/src/main/java/ai/alphacompute/alphaphone/NotificationAccess.java",
@@ -398,6 +406,7 @@ export const featureParityAllowlist = {
     "apps/app/src/prototype/summary-note-review.ts",
     "apps/app/src/prototype/summary-source.ts",
     "apps/app/src/prototype/system-shade.ts",
+    "apps/app/src/prototype/template-source.ts",
     "apps/app/src/prototype/use-in-email-review.ts",
     "apps/app/src/prototype/video-edit-review.ts",
     "apps/app/src/prototype/voice-activity.tsx",
@@ -507,6 +516,7 @@ export const featureParityAllowlist = {
     "apps/app/src/runtime/local-agent-storage.ts",
     "apps/app/src/runtime/local-agent-stream.ts",
     "apps/app/src/runtime/local-agent.ts",
+    "apps/app/src/runtime/local-reply-speech.ts",
     "apps/app/src/runtime/local-speech-text.ts",
     "apps/app/src/runtime/local-voice.ts",
     "apps/app/src/runtime/mail-html.ts",
@@ -515,6 +525,7 @@ export const featureParityAllowlist = {
     "apps/app/src/runtime/managed-service-routes.ts",
     "apps/app/src/runtime/maps-contract.ts",
     "apps/app/src/runtime/maps-event-return.ts",
+    "apps/app/src/runtime/maps-notification-open.ts",
     "apps/app/src/runtime/media-copy-intent.ts",
     "apps/app/src/runtime/mock-admission.ts",
     "apps/app/src/runtime/modal-inert.ts",

@@ -36,6 +36,8 @@ module NativeUpdateStaging {
     target: int,
     phase: str,
     file: str,
+    kept: int,
+    reuses: int,
     bytes: int,
     session: str,
     stagedBytes: int,
@@ -56,7 +58,7 @@ module NativeUpdateStaging {
   action init = s' = {
     platform: Boot::initial, automatic: false, admitted: Boot::initial,
     clock: 0, checkedAt: -1, cached: 0, storedAt: -1, stored: 0, checking: false,
-    owner: 0, target: 0, phase: "idle", file: "absent", bytes: 0, session: "none",
+    owner: 0, target: 0, phase: "idle", file: "absent", kept: 0, reuses: 0, bytes: 0, session: "none",
     stagedBytes: 0, connected: false, fetches: 0, created: 0, abandoned: 0, outcome: "none"
   }
 
@@ -69,11 +71,13 @@ module NativeUpdateStaging {
   // sealed sessions and durable pause recovery remain RuntimeUpdatePause's scope.
   action processRestart = all {
     s.owner == 0, s.platform.process < 2,
-    s' = {...s, platform: Boot::restarted(s.platform), automatic: false}
+    s' = {...s, platform: Boot::restarted(s.platform), automatic: false, kept: 0,
+      file: if (s.kept != 0) "orphan" else s.file}
   }
   action reboot(sdk: int, permitted: bool): bool = all {
     s.owner == 0, s.platform.boot < 2, sdk.in(Set(30, 31)),
-    s' = {...s, platform: Boot::rebooted(s.platform, sdk, permitted), automatic: false}
+    s' = {...s, platform: Boot::rebooted(s.platform, sdk, permitted), automatic: false, kept: 0,
+      file: if (s.kept != 0) "orphan" else s.file}
   }
 
   action clockAt(minute: int): bool = all {
@@ -106,12 +110,21 @@ module NativeUpdateStaging {
     s' = { ...s, file: "orphan", bytes: bytes }
   }
   action loadBridge(deleted: bool): bool =
-    s' = if (s.phase == "idle" and deleted) { ...s, file: "absent", bytes: 0 } else s
+    s' = if (s.phase == "idle" and s.kept == 0 and deleted) { ...s, file: "absent", bytes: 0 } else s
+
+  // Only a same-process hint can avoid HTTP. It cannot admit changed bytes,
+  // another current offer, Android metadata, or any pending session/pause.
+  pure def cacheMatches(state: State): bool = state.kept == state.cached and
+    state.kept != 0 and state.file != "absent"
+  val attemptAvailable = if (cacheMatches(s)) s.reuses < 2 else s.fetches < 2
 
   pure def admittedCopy(state: State, bridge: int, automatic: bool): State =
     if (state.owner != 0) {...state, outcome: "quiet"}
-    else {...state, owner: bridge, target: state.cached, phase: "copying",
-      file: "partial", bytes: 0, connected: true, fetches: state.fetches + 1, outcome: "none",
+    else {...state, owner: bridge, target: state.cached, phase: if (cacheMatches(state)) "rechecking" else "copying",
+      file: if (cacheMatches(state)) state.file else "partial",
+      kept: if (cacheMatches(state)) state.kept else 0,
+      bytes: if (cacheMatches(state)) state.bytes else 0,
+      connected: not(cacheMatches(state)), fetches: state.fetches + (if (cacheMatches(state)) 0 else 1), outcome: "none",
       automatic: automatic, admitted: state.platform}
   action tap(bridge: int, permitted: bool): bool = all {
     bridgeIds.contains(bridge),
@@ -123,7 +136,7 @@ module NativeUpdateStaging {
       s' = admittedCopy(s, bridge, false)
     }
     else all {
-      s.fetches < 2,
+      attemptAvailable,
       s' = admittedCopy(s, bridge, false)
     }
   }
@@ -134,7 +147,7 @@ module NativeUpdateStaging {
     if (automaticCapability != "supported") s' = {...s, outcome: automaticCapability}
     else all {
       validOffer != 0, s.session != "left",
-      if (s.owner != 0) bridge != s.owner else s.fetches < 2,
+      if (s.owner != 0) bridge != s.owner else attemptAvailable,
       s' = admittedCopy(s, bridge, true)
     }
   }
@@ -147,15 +160,30 @@ module NativeUpdateStaging {
   }
   // copyVerified checks the deadline after non-EOF reads only.
   action verify(digestMatches: bool, lateEof: bool): bool = all {
-    s.phase == "copying",
+    s.phase.in(Set("copying", "rechecking")),
     s.bytes == 4,
     digestMatches,
-    s' = { ...s, phase: "verified", file: "verified", connected: false }
+    s.file != "corrupt",
+    s' = { ...s, phase: "verified", file: "verified", connected: false,
+      reuses: s.reuses + (if (s.phase == "rechecking") 1 else 0) }
+  }
+  action cacheChanged = all {
+    s.owner == 0, s.kept != 0, s.file == "verified",
+    s' = {...s, file: "corrupt"}
+  }
+  action cacheMismatch = all {
+    s.phase == "rechecking", s.fetches < 2,
+    s' = {...s, phase: "copying", file: "partial", kept: 0, bytes: 0,
+      connected: true, fetches: s.fetches + 1}
+  }
+  action deferBeforeWork = all {
+    s.owner == 0, s.kept == validOffer, s.kept != 0, s.session == "none",
+    s' = {...s, outcome: "deferred"}
   }
   action stage(archiveMatches: bool): bool = all {
     s.phase == "verified",
     archiveMatches,
-    s' = { ...s, phase: "staged", session: "staged", stagedBytes: s.bytes, created: s.created + 1 }
+    s' = { ...s, phase: "staged", kept: s.target, session: "staged", stagedBytes: s.bytes, created: s.created + 1 }
   }
   action retireBridge(bridge: int): bool = all {
     bridgeIds.contains(bridge),
@@ -167,10 +195,12 @@ module NativeUpdateStaging {
     if (reason == "download") s.phase == "copying"
     else if (reason == "archive") s.phase == "verified"
     else if (reason == "barrier") s.phase == "staged"
+    else if (reason == "deferred") s.phase == "staged" and s.automatic and not(deleted)
     else reason == "retired" and s.phase == "retiring",
     val left = s.session == "staged" and not(abandoned)
     s' = { ...s, owner: 0, target: 0, phase: "idle", connected: false, automatic: false,
-      file: if (deleted) "absent" else "orphan", bytes: if (deleted) 0 else s.bytes,
+      file: if (reason == "deferred") "verified" else if (deleted) "absent" else "orphan",
+      kept: if (reason == "deferred") s.target else 0, bytes: if (deleted) 0 else s.bytes,
       session: if (left) "left" else "none", stagedBytes: if (left) s.stagedBytes else 0,
       abandoned: s.abandoned + (if (s.session == "staged" and abandoned) 1 else 0),
       outcome: reason }
@@ -180,14 +210,17 @@ module NativeUpdateStaging {
     (s.owner == 0 or (offers.contains(s.target) and s.file != "orphan" and s.file != "absent"))
   val NoUnverifiedStaging = s.session == "none" or
     (s.stagedBytes == 4 and (s.session == "left" or s.file == "verified"))
-  val CleanupBound = s.abandoned <= s.created and s.created <= s.fetches
+  val CleanupBound = s.abandoned <= s.created and s.created <= s.fetches + s.reuses
+  val RetainedHintIsNotAdmission = s.kept.in(Set(0, 1, 2)) and s.reuses.in(0.to(2))
+    and (s.phase == "rechecking" implies not(s.connected) and s.session == "none")
+    and (s.file == "corrupt" implies s.phase.in(Set("idle", "rechecking", "retiring")))
   val ConnectionCustody = s.connected implies s.phase == "copying" and s.owner != 0
   val AutomaticAdmissionHadReadyBoot = not(s.automatic) or
     (Boot::capability(s.admitted) == "supported" and s.admitted.boot == s.platform.boot
       and s.admitted.uptime <= s.platform.uptime)
   val MonotonicBootReadiness = Boot::valid(s.platform)
   val safety = CacheCustody and NoUnverifiedStaging and CleanupBound and ConnectionCustody
-    and AutomaticAdmissionHadReadyBoot and MonotonicBootReadiness
+    and AutomaticAdmissionHadReadyBoot and MonotonicBootReadiness and RetainedHintIsNotAdmission
 
   action step = any {
     nondet uptime = Boot::uptimes.oneOf()
@@ -213,10 +246,10 @@ module NativeUpdateStaging {
     tap(bridge, permit),
     nondet count = 1.to(4).oneOf()
     chunk(count),
-    verify(true, false), verify(true, true), stage(true),
+    verify(true, false), verify(true, true), stage(true), cacheChanged, cacheMismatch, deferBeforeWork,
     nondet bridge = bridgeIds.oneOf()
     retireBridge(bridge),
-    nondet reason = Set("download", "archive", "barrier", "retired").oneOf()
+    nondet reason = Set("download", "archive", "barrier", "retired", "deferred").oneOf()
     nondet deleted = Bool.oneOf()
     nondet abandoned = Bool.oneOf()
     settle(reason, deleted, abandoned),
@@ -282,4 +315,19 @@ module NativeUpdateStaging {
   run manualColdAttemptKeepsItsExistingPathTest = offered.then(reboot(31, true)).then(tap(1, true))
     .then(chunk(4)).then(verify(true, false)).then(stage(true))
     .expect(safety and not(s.automatic) and automaticCapability == "starting" and s.created == 1)
+
+  action retainedAutomatic = offered.then(automaticTap(1)).then(chunk(4)).then(verify(true, false))
+    .then(stage(true)).then(settle("deferred", false, true))
+  run sameProcessDeferredCacheRevalidatesWithoutRefetchTest = retainedAutomatic.then(loadBridge(true))
+    .then(deferBeforeWork).expect(safety and s.kept == 1 and s.fetches == 1 and s.created == 1)
+    .then(automaticTap(1)).expect(s.phase == "rechecking" and not(s.connected))
+    .then(verify(true, false)).then(stage(true)).then(settle("barrier", true, true))
+    .expect(safety and s.fetches == 1 and s.reuses == 1 and s.created == 2 and s.kept == 0)
+  run corruptRetainedCacheMustRefetchTest = retainedAutomatic.then(cacheChanged).then(automaticTap(1))
+    .then(cacheMismatch).then(chunk(4)).then(verify(true, false)).then(stage(true))
+    .expect(safety and s.fetches == 2 and s.reuses == 0)
+  run changedOfferCannotUseRetainedCacheTest = retainedAutomatic.then(requestCheck(true)).then(answerCheck("offer2", true))
+    .then(automaticTap(1)).expect(safety and s.target == 2 and s.kept == 0 and s.fetches == 2)
+  run processRestartSweepsMarkedCacheTest = retainedAutomatic.then(processRestart).then(loadBridge(true))
+    .expect(safety and s.file == "absent" and s.kept == 0).then(automaticTap(1)).expect(s.fetches == 2)
 }

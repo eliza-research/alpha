@@ -35,7 +35,6 @@ def settings(env):
     if not enabled:
         require(not any(value for pair in inputs for value in pair), 'Embedding artifact inputs require explicit opt-in')
         return []
-    require(env.get('ALPHA_RUNTIME_PROFILE') == 'cloud', 'Local embeddings require the Cloud profile')
     for identity, digest in inputs:
         require(re.fullmatch(r'[1-9][0-9]{0,19}', identity), 'Embedding artifact ID is required')
         require(re.fullmatch(r'[0-9a-f]{64}', digest), 'Embedding artifact SHA-256 is required')

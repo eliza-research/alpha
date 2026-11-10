@@ -3,8 +3,8 @@ import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium, expect as baseExpect} from '@playwright/test';
 import {createServer} from 'vite';
-import {checkClientFeatures} from '../../../../scripts/prepare-client-features.mjs';
-import {filesWithin, repositoryRoot as root, sha256} from '../../../../scripts/quint-lib.mjs';
+import {checkClientFeatures} from '../../../../scripts/prepare-client-features.ts';
+import {filesWithin, repositoryRoot as root, sha256} from '../../../../scripts/quint-lib.ts';
 import {seedCompletedAccessSetup} from '../../../../test/browser/flag-off-android.ts';
 import {observeCloudNotices} from '../../../../test/browser/helpers/cloud-connection-notices.ts';
 import {entitlements, installNativeCloudPlanPorts} from '../../../../test/browser/helpers/native-cloud-plan-fixture.ts';
@@ -47,10 +47,12 @@ async function observe(page) {
 }
 
 async function proveHitTargets(page, {short = false} = {}) {
-  const overflow = await stack(page).evaluate(node => ({needed: node.scrollHeight > node.clientHeight + 1, enabled: node.dataset.scrollable === 'true'}));
-  assert.equal(overflow.enabled, overflow.needed, 'Only an overflowing notice stack owns body gestures');
-  const {notices} = await observeCloudNotices(page);
   // Back changes display before ResizeObserver measures the newly exposed stack.
+  await expect.poll(async () => {
+    const overflow = await stack(page).evaluate(node => ({needed: node.scrollHeight > node.clientHeight + 1, enabled: node.dataset.scrollable === 'true'}));
+    return overflow.enabled === overflow.needed;
+  }, {timeout:2000, message:'Only an overflowing notice stack owns body gestures'}).toBe(true);
+  const {notices} = await observeCloudNotices(page);
   await expect.poll(async()=>{
     const home=await page.locator('[data-alpha-layer="home"]').boundingBox(),noticeBox=await stack(page).boundingBox();
     return !!home&&!!noticeBox&&home.y>=noticeBox.y+noticeBox.height;
@@ -147,7 +149,7 @@ export async function checkCloudConnectionNotices(extraSources = []) {
   const sources = [...new Set([
     ...filesWithin(resolve(root, 'apps/app/src')), ...filesWithin(resolve(root, '.eliza/client-features')),
     'apps/app/index.html', 'vite.config.ts', 'upstream.lock.json', 'package-lock.json',
-    'scripts/prepare-client-features.mjs', modelPath, fileURLToPath(import.meta.url),
+    'scripts/prepare-client-features.ts', modelPath, fileURLToPath(import.meta.url),
     'test/browser/flag-off-android.ts', 'test/browser/helpers/cloud-connection-notices.ts',
     'test/browser/helpers/native-cloud-plan-fixture.ts', 'test/browser/helpers/resident-agent-plugin.ts',
     'test/browser/helpers/native-navigation-protocol.ts', ...extraSources,

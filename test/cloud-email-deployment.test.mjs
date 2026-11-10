@@ -4,8 +4,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {deploymentOutputs} from '../scripts/cloud-deployment.mjs';
-import {CLOUD_DEPLOYMENT} from '../scripts/cloud-deployment-policy.mjs';
+import {deploymentOutputs} from '../scripts/cloud-deployment.ts';
+import {CLOUD_DEPLOYMENT} from '../scripts/cloud-deployment-policy.ts';
 
 test('email send and verification use each configured tenant and preserve PKCE',async()=>{
  const root=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-email-deployment-'));

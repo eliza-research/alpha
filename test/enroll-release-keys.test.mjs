@@ -1,5 +1,5 @@
 // Release identity enrollment: Alpha's key list drives the
-// pinned upstream ceremony, and scripts/enroll-release-keys.mjs records only the ceremony's public
+// pinned upstream ceremony, and scripts/enroll-release-keys.ts records only the ceremony's public
 // digests in Alpha's three release records. No key material is created outside a temporary
 // directory, and nothing here signs an APK or image.
 import test from "node:test";
@@ -12,7 +12,7 @@ import path from "node:path";
 import {
   APPLICATION_KEY, CHANNEL, ENROLLMENT, IMAGE_CERTIFICATES, KEY_MANIFEST, PRODUCT, RELEASE_SIGNER,
   fingerprintProblems, formatRecord, main, testSubjectProblem,
-} from "../scripts/enroll-release-keys.mjs";
+} from "../scripts/enroll-release-keys.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
 const manifest = JSON.parse(fs.readFileSync(path.join(root, KEY_MANIFEST), "utf8"));

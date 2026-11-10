@@ -109,7 +109,7 @@ public class AppopProbe {
 export async function checkOSDefaults(extraSources=[]){
  const jars=kotlinJars(),sources=[driver,baseline,'app.config.json','specs/quint/refinement/application/os-host-support.mjs','test/fixtures/jvm-tools.mjs','test/fixtures/kotlin-tools.mjs',
   'android/gradle/verification-metadata.xml',jsonJar,...jars,...['manifest.json','alpha-core-launcher.patch','AlphaCoreLauncherPolicy.java','AlphaQsDefaultsPolicy.java','AlphaSharedStoragePolicy.java'].map(name=>folder+name),...extraSources];
- sources.push('test/fixtures/jvm-tools.mjs','scripts/prepare-patched-native.mjs','scripts/upstream-native-source.mjs','specs/quint/refinement/application/index.mjs','test/quint-application-refinement.test.mjs');
+ sources.push('test/fixtures/jvm-tools.mjs','scripts/prepare-patched-native.ts','scripts/upstream-native-source.ts','specs/quint/refinement/application/index.mjs','test/quint-application-refinement.test.mjs');
  const before=captureInputs(sources),temporary=mkdtempSync(join(tmpdir(),'alpha-os-defaults-'));
  try{
   const identity=JSON.parse(readFileSync(resolve(root,'app.config.json'),'utf8')).appId;

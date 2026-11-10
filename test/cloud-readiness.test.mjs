@@ -5,9 +5,9 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { CALLBACK_PATH, STEWARD_APP_CLIENT, formatProbe, main, probe, productRegistration, registrationValues } from "../scripts/cloud-readiness.mjs";
-import { CLOUD_DEPLOYMENT } from "../scripts/cloud-deployment-policy.mjs";
-import { fingerprint } from "../scripts/render-assetlinks.mjs";
+import { CALLBACK_PATH, STEWARD_APP_CLIENT, formatProbe, main, probe, productRegistration, registrationValues } from "../scripts/cloud-readiness.ts";
+import { CLOUD_DEPLOYMENT } from "../scripts/cloud-deployment-policy.ts";
+import { fingerprint } from "../scripts/render-assetlinks.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
 const RELEASE = "c3".repeat(32);

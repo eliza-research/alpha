@@ -6,7 +6,7 @@ import {fileURLToPath} from 'node:url';
 import {captureInputs, checkTraces, qmap, qset} from '../check-traces.mjs';
 import {app, directory, javaTraces, root} from './java.mjs';
 import {jsonJar} from '../../../../test/fixtures/jvm-tools.mjs';
-import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.mjs';
+import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.ts';
 
 const model = 'NativeHostedResultNotices';
 const ledger = app+'HostedResultNotices.java';
@@ -135,7 +135,7 @@ export async function checkNativeHostedResultNotices(extraSources = []) {
   const compiled = [ledger, app+'PluginWorkers.java', 'vendor/eliza/'+owner];
   const sources = [...compiled, plugin, app+'HostedInbox.java', app+'HostedDelivery.java',
     app+'HostedNoticePoster.java', fileURLToPath(import.meta.url), join(directory,harness),
-    join(directory,'Trace.java'), join(directory,'java.mjs'), 'scripts/upstream-native-source.mjs',
+    join(directory,'Trace.java'), join(directory,'java.mjs'), 'scripts/upstream-native-source.ts',
     'upstream.lock.json', 'test/fixtures/jvm-tools.mjs', ...(jsonJar ? [jsonJar] : []), ...extraSources];
   const driverHashes = captureInputs(sources);
   const pinned = upstreamNativeSource(root).read(owner).get(owner);

@@ -5,6 +5,10 @@ export async function setupNativeSpeech(page:Page){
  const foreign=await fenceNetwork(page);await flagOffAndroid(page);
  await page.addInitScript(()=>{
   const w=window as any,c=w.Capacitor,prior=c.nativePromise;
+  // This fixture exercises the supported local route: Text keys selected, no Cartesia key,
+  // and no saved Cloud account. The production renderer chooses its route normally.
+  delete w.flagOff.slots['cloud:production'];w.flagOff.persist();
+  const provider={mode:'own',revision:'synthetic-local-speech-provider-r1',persistence:'native-secure-store',keys:{text:{configured:true},voice:{configured:false}},provider:'cerebras',configured:true,selected:true,model:'qwen-3.8-27b',voiceConfigured:false};
   // Voice replies require correlated durable message identities; the generic text-chat
   // fixture omits them. Supply the provider's completed reply fields at its stream port.
   const emit=w.flagOff.emit;w.flagOff.emit=(plugin:string,event:string,value:any)=>{
@@ -20,6 +24,7 @@ export async function setupNativeSpeech(page:Page){
   header.methods=[...['checkPermissions','localSpeechStatus','startRecording','stopRecording','getRecordingMetrics','cancelRecording','transcribeLocalRecording','synthesizeLocal','play','stopPlayback','cancel','releaseLocalSpeech','markVoiceTurn'].map(name=>({name,rtype:'promise'})),{name:'addListener',rtype:'callback'},{name:'removeListener',rtype:'callback'}];
   const callback=c.nativeCallback;c.nativeCallback=(plugin:string,method:string,input:any,fn:any)=>{if(plugin==='AlphaVoiceCloud'&&method==='addListener'){events.push({event:input.eventName,callback:fn});return String(events.length);}return callback(plugin,method,input,fn);};
   c.nativePromise=async(plugin:string,method:string,input:any)=>{
+   if(plugin==='Agent'&&method==='providerStatus')return provider;
    if(plugin!=='AlphaVoiceCloud')return prior(plugin,method,input);
    if(method==='checkPermissions')return {microphone:'granted'};
    if(method==='localSpeechStatus')return {ready:f.ready,execution:'device'};

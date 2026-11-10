@@ -16,7 +16,7 @@ import path from "node:path";
 import test from "node:test";
 
 const root = "android/app/src/main/java/ai/alphacompute/alphaphone";
-// Shared browser classes the app compiles from the reviewed pin (scripts/stage-local-agent-sources.mjs).
+// Shared browser classes the app compiles from the reviewed pin (scripts/stage-local-agent-sources.ts).
 const shared = "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface";
 // The browser tab host and its reviewed reading are the shared BrowserTabHostPlugin; AlphaBrowserPlugin only names it.
 const sharedFiles = ["BrowserBlobCapture.java", "BrowserDownloads.java", "BrowserLoginFields.java", "BrowserReadingWorld.java", "BrowserReviewedReading.java", "BrowserTabHostPlugin.java"];

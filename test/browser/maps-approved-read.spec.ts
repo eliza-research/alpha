@@ -120,8 +120,9 @@ for (const mode of ['place', 'route', 'stale-before-approval', 'stale-after-read
     expect(await page.evaluate(()=>(window as any).recoveryFixture.claims)).toBe(0);
     if(mode==='stale-before-approval') {
       await page.evaluate(async()=>{const {clearMapsSelection}=await import('/src/maps/agent-context.ts');clearMapsSelection();});
+    } else {
+      await page.getByText('maps read selected',{exact:true}).click();
     }
-    await page.getByText('maps read selected',{exact:true}).click();
     if(mode==='stale-after-read'){
       await expect.poll(()=>page.evaluate(()=>typeof (window as any).releaseMapsFinish)).toBe('function');
       await page.evaluate(async()=>{const {clearMapsSelection}=await import('/src/maps/agent-context.ts');clearMapsSelection();(window as any).releaseMapsFinish();});
@@ -139,7 +140,8 @@ for (const mode of ['place', 'route', 'stale-before-approval', 'stale-after-read
       expect(await page.evaluate(()=>(window as any).recoveryFixture.journal.filter((x:string)=>x==='reserve').length)).toBe(1);
       expect(await page.evaluate(()=>(window as any).recoveryFixture.journal.filter((x:string)=>x==='finish').length)).toBe(1);
     } else if(mode==='stale-before-approval') {
-      await expect(page.getByText(/Review|context|confirmed result/i).last()).toBeVisible();
+      await expect(page.getByRole('button',{name:/^Review unavailable/})).toBeDisabled();
+      expect(await page.evaluate(()=>(window as any).recoveryFixture.claims)).toBe(0);
     } else {
       await expect(page.getByText('Shared the exact selected Maps snapshot with approval. Navigation was not started.',{exact:true}).last()).toBeVisible();
       const result=await page.evaluate(()=>(window as any).mapsUploaded);

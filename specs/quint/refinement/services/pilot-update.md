@@ -7,8 +7,8 @@ attempt. A verified install can be certified even if the agent fails to start af
 
 | Model boundary | Executed source |
 | --- | --- |
-| Device lock, durable rotation reservation and completion | `claimPilotInstall`, `beginPilotRotation`, `completePilotRotation` and `inspectPilotRotation` in `scripts/owner/pilot-rotation-journal.mjs` |
-| HOME admission, write/readback, final restore and explicit start | `planHome` and `updateUnit` in `scripts/pilot-update.mjs`, with `readHome` and `restoreHome` in `scripts/android-instrumentation.mjs` |
+| Device lock, durable rotation reservation and completion | `claimPilotInstall`, `beginPilotRotation`, `completePilotRotation` and `inspectPilotRotation` in `scripts/owner/pilot-rotation-journal.ts` |
+| HOME admission, write/readback, final restore and explicit start | `planHome` and `updateUnit` in `scripts/pilot-update.ts`, with `readHome` and `restoreHome` in `scripts/android-instrumentation.ts` |
 | Pre/post readback and admitted replacement verification | `updateUnit`, `packageFacts`, `installedApkSha256` and the pinned shared `apk-release-record.mjs` |
 
 The source witness captures real command order and returned update evidence from

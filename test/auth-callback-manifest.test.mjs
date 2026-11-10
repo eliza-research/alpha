@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {parseXmlTree} from '../vendor/eliza/packages/app/scripts/lib/android-manifest-facts.mjs';
-import {appLinkFilters, requiredAppLinkProblems} from '../scripts/render-assetlinks.mjs';
+import {appLinkFilters, requiredAppLinkProblems} from '../scripts/render-assetlinks.ts';
 
 const expected={host:'login.example.org',path:'/alphaphone/auth/callback',activity:'ai.alphacompute.alphaphone.MainActivity'};
 const attribute=(name,value,indent=8)=>`${' '.repeat(indent)}A: http://schemas.android.com/apk/res/android:${name}(0x01010000)=${value}`;

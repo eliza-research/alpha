@@ -1,4 +1,4 @@
-// Production bundle audit (scripts/audit-production-bundle.mjs) on fixture bundles. The flag-off
+// Production bundle audit (scripts/audit-production-bundle.ts) on fixture bundles. The flag-off
 // web-dist audit runs separately as npm run audit:bundle. LOOP-E, J04: the simulated password
 // provider and the Maps emulator gateway are denylisted in case their flags stop folding away.
 import test from 'node:test';
@@ -7,9 +7,9 @@ import {mkdtempSync,mkdirSync,writeFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {execFileSync,spawnSync} from 'node:child_process';
-import {auditWebBundle,DENYLIST} from '../scripts/audit-production-bundle.mjs';
+import {auditWebBundle,DENYLIST} from '../scripts/audit-production-bundle.ts';
 
-const script=path.resolve('scripts/audit-production-bundle.mjs');
+const script=path.resolve('scripts/audit-production-bundle.ts');
 function bundle(files,flags={testMocks:false}){
   const dir=mkdtempSync(path.join(tmpdir(),'alpha-bundle-audit-'));
   const all={'index.html':'<!doctype html><title>Alpha Phone</title>','assets/index.js':'console.log("Notes")',...files};

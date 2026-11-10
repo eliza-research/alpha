@@ -6,8 +6,11 @@ import {voiceFakeClock} from './fixtures/shared-batch-voice.mjs';
 import {voiceFailure} from '../apps/app/src/runtime/voice-states.ts';
 import {voiceMarkup} from './fixtures/voice-markup.mjs';
 
-// The actual voice adapter, production template and DCLogic renderer with closed ports only:
-// a Cloud voice 429/503 is waited out quietly, a terminal failure is said once and plainly.
+// The actual voice adapter, production template and DCLogic renderer with closed ports only.
+// Local models always ship, so a Cloud voice failure normally moves the conversation to on-device
+// speech at once (the last tests here). These scenarios set on-device speech unavailable
+// (`local:false`, the default of this helper): then a Cloud voice 429/503 is waited out quietly
+// and a terminal failure is said once and plainly.
 const CALM=[]; // Exhausted transient waits close quietly; no voice error toast.
 const SLOP=/request limit|Last transcript|Try voice again|Wait a moment|HTTP 503|Voice is unavailable/;
 const limited=(data={retryAfterSeconds:3,limitCode:'rate_limited'})=>Object.assign(Error('PRIVATE_PROVIDER_BODY'),{code:'voice-http-429',data});
@@ -20,9 +23,10 @@ test.before(async()=>{
 });
 test.after(()=>{page?.window.close();globalThis.document=before.document;globalThis.matchMedia=before.matchMedia;});
 
-async function voice(t,{startFailure}={}){
+async function voice(t,{startFailure,local=false}={}){
  const clock=voiceFakeClock();
  const f=cloudVoiceViewFixture({cloudProfile:true,clock});
+ if(!local)f.box.createOnDeviceVoice=()=>null;else f.box.nativeLiveVoiceReady=async()=>false;
  f.box.React={createElement:()=>'activity'};f.box.VoiceActivity=()=>null;
  const runs=[];
  f.box.BatchVoiceConversation=class{
@@ -168,10 +172,11 @@ test('a normal voice turn is unchanged',async t=>{
 });
 
 // The real shared batch loop: the quiet wait meets the loop's own retire, drain and fresh capture.
-async function realLoop(t){
+async function realLoop(t,{local=false}={}){
  const clock=voiceFakeClock();
  const f=cloudVoiceViewFixture({cloudProfile:true,clock,peak:.5});
  f.box.React={createElement:()=>null};f.box.VoiceActivity=()=>null;
+ if(!local)f.box.createOnDeviceVoice=()=>null;else f.box.nativeLiveVoiceReady=async()=>false;
  t.after(async()=>{f.close();await clock.flush();});
  await f.shell.startVoice();await clock.flush();
  const speakTurn=async()=>{f.peak=.5;await clock.advance(700);f.peak=0;await clock.advance(1_200);await clock.flush();};
@@ -203,6 +208,32 @@ test('a refusal from the real loop never flashes the stopped state before the qu
  assert.deepEqual(frames.map(frame=>frame.split('|')[0]),['listening','transcribing','thinking','preparing-speech','starting','listening']);
  assert.doesNotMatch(frames.join('\n'),/Voice conversation stopped|Start Cloud voice|Try voice again|request limit/);
  assert.equal(f.sends,1,'the answered turn is not sent again');
+});
+
+// With on-device speech (every packaged build), no Cloud voice failure reaches the user as a wait
+// or an error: the conversation continues on this phone, and the refused turn is not resent.
+for(const [name,failure] of [['429',limited()],['503',Object.assign(Error('PRIVATE'),{code:'voice-http-503'})],['402',Object.assign(Error('PRIVATE'),{code:'voice-http-402'})],['401',Object.assign(Error('PRIVATE'),{code:'voice-http-401'})],['an upload that could not be confirmed',Object.assign(Error('PRIVATE'),{code:'voice-stt-upload'})]])
+test(`with on-device speech, a Cloud ${name} moves the conversation to this phone at once`,async t=>{
+ const {f,clock,runs,view,fail}=await voice(t,{local:true});
+ assert.equal(view().model.state,'listening');assert.equal(f.localFactories,0,'Cloud voice first');
+ await fail(failure);
+ const after=view();
+ assert.equal(runs.length,2,'a fresh conversation, with no wait');
+ assert.equal(after.model.state,'listening');assert.ok(f.localFactories>0,'on this phone');
+ assert.doesNotMatch(after.text,SLOP);assert.doesNotMatch(after.text,/Sign in|sign-in expired|billing|could not be confirmed|Voice stopped/);
+ assert.ok(!after.model.recoveryLabel);assert.equal(after.doc.querySelector('[role="alert"]'),null);
+ assert.deepEqual(f.shell.messages,[],'no toast');
+ assert.equal(f.sends,0,'the refused turn is not resent');
+ assert.equal(f.box.speechRoute(),'device','the next turn skips the network');
+ // The on-device conversation's own failure is shown; it does not bounce back to Cloud.
+ const local=runs.at(-1);local.options.onState({phase:'idle'});local.options.onState({phase:'error',error:Object.assign(Error('PRIVATE'),{code:'capture'})});await clock.flush();
+ assert.equal(runs.length,2);assert.equal(view().model.state,'error');
+});
+
+test('a failure that is not the network route\'s is never moved to another route',async t=>{
+ const {f,runs,view,fail}=await voice(t,{local:true});
+ await fail(Object.assign(Error('PRIVATE'),{code:'no-speech'}));
+ assert.equal(runs.length,1);assert.equal(f.localFactories,0);assert.equal(view().model.state,'error');assert.equal(f.box.speechRoute(),'cloud');
 });
 
 test('Try voice again after a terminal error starts the quiet waits over',async t=>{

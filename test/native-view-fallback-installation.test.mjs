@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {randomUUID} from 'node:crypto';
 import vm from 'node:vm';
-import {nativeViewDeclarationsJson} from '../scripts/native-view-policy.mjs';
+import {nativeViewDeclarationsJson} from '../scripts/native-view-policy.ts';
 
 // Exercise the owning registry: a route-only test cannot detect plugin collisions.
 const source=stripTypeScriptTypes(readFileSync('vendor/eliza/packages/agent/src/api/view-installations.ts','utf8'),{mode:'strip'}).replace(/^import[\s\S]*?;\n/gm,'').replace(/^export /gm,'');

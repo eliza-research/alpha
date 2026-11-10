@@ -5,12 +5,12 @@ import os from 'node:os';
 import path from 'node:path';
 import {execFileSync, spawnSync} from 'node:child_process';
 import {git as fixtureGit} from './fixtures/git-fixture.mjs';
-import {checkoutProblems, embeddingHostProblems, preparedRuntimeProblems, VOICE_ASSET_ROOT, VOICE_HOST_MANIFEST} from '../scripts/android-build-preflight.mjs';
-import {TURBO_AGENT_DETECTION_ENV, preparedSourceEnv} from '../scripts/local-agent-source.mjs';
-import {ensurePreparedWorkflowWorker} from '../scripts/prepared-workflow-worker.mjs';
-import {workerHash} from '../scripts/workflow-worker-artifact.mjs';
-import {verifyNativeGoogleHost} from '../scripts/runtime-profile.mjs';
-import {coreStateBuildRecord} from '../scripts/core-state-patch.mjs';
+import {checkoutProblems, embeddingHostProblems, preparedRuntimeProblems, VOICE_ASSET_ROOT, VOICE_HOST_MANIFEST} from '../scripts/android-build-preflight.ts';
+import {TURBO_AGENT_DETECTION_ENV, preparedSourceEnv} from '../scripts/local-agent-source.ts';
+import {ensurePreparedWorkflowWorker} from '../scripts/prepared-workflow-worker.ts';
+import {workerHash} from '../scripts/workflow-worker-artifact.ts';
+import {verifyNativeGoogleHost} from '../scripts/runtime-profile.ts';
+import {coreStateBuildRecord} from '../scripts/core-state-patch.ts';
 import {writeCoreStateFixture} from './fixtures/core-state-root.mjs';
 
 const read = file => fs.readFileSync(file, 'utf8');
@@ -63,7 +63,7 @@ test('preflight names the exact command for each missing build input', t => {
   let problems = checkoutProblems(f.root, {voiceHost: () => { throw Error('Voice bundle lacks the ASR slot'); }});
   assert.equal(problems.length, 1);
   assert.ok(problems[0].startsWith(`The on-device voice outputs in ${VOICE_ASSET_ROOT} are not admitted by ${VOICE_HOST_MANIFEST} (Voice bundle lacks the ASR slot; Gradle :app:verifyVoiceHost rejects the build).`), problems[0]);
-  assert.match(problems[0], /npm run android:build:local does not produce them: stage them with node scripts\/android-stage-voice-models\.mjs --from <directory of the recorded voice outputs and models> \(see README\.md\)\./);
+  assert.match(problems[0], /npm run android:build:local does not produce them: stage them with node scripts\/android-stage-voice-models\.ts --from <directory of the recorded voice outputs and models> \(see README\.md\)\./);
   // Staged outputs that the record does not admit are refused by the real verifier, never repaired, in either lane.
   f.write(`${VOICE_ASSET_ROOT}/build-record.json`, '{}');
   assert.match(checkoutProblems(f.root, {allowUnpackagedRuntime: true})[0], /are not admitted by android\/voice-host\/qualified-voice-host\.json/);
@@ -90,7 +90,7 @@ test('preflight names the exact command for each missing build input', t => {
   f.write('android/app/src/main/assets/agent/alpha-source.json', '{"stamp":1}\n');
   // agent:stage-android writes the profile marker; a native build refuses a missing or Cloud one.
   const marker = 'android/app/src/main/assets/agent/alpha-runtime-profile.json';
-  assert.match(preparedRuntimeProblems(f.root, f.source, {embeddingHost, googleHost: () => {}})[0], /not the native profile .*is missing.*Run: npm run agent:stage-android without --runtime-profile=cloud/);
+  assert.match(preparedRuntimeProblems(f.root, f.source, {embeddingHost, googleHost: () => {}})[0], /not the native profile .*is missing.*Run: npm run agent:stage-android \(or /);
   f.write(marker, JSON.stringify({version: 1, runtimeProfile: 'cloud', omittedLocalModels: []}));
   assert.match(preparedRuntimeProblems(f.root, f.source, {embeddingHost, googleHost: () => {}})[0], /not the native profile .*names "cloud"/);
   f.write(marker, JSON.stringify({version: 1, runtimeProfile: 'native'}, null, 2) + '\n');
@@ -143,16 +143,24 @@ test('preflight rejects an unpinned checkout and android:build stops before sync
   f.write('upstream.lock.json', JSON.stringify({commit: 'f'.repeat(40)}));
   assert.match(checkoutProblems(f.root)[0], /vendor\/eliza is at .*pins f{40}\. Run: git submodule update --init vendor\/eliza/);
   // The real entry point exits with status 2 and the guidance, without starting the build.
-  for (const file of ['android-abis.mjs', 'embedding-native-contract.mjs', 'paradee-runtime.mjs', 'voice-host.mjs', 'build-android.mjs', 'update-channel.mjs', 'android-build-preflight.mjs', 'mobile-uuid-adapter.mjs', 'build-policy-source.mjs', 'core-state-patch.mjs', 'stage-embedding-host.mjs', 'build-embedding-host.mjs', 'toolchain.mjs', 'copy-file-clone.mjs'])
+  for (const file of ['android-abis.ts', 'embedding-native-contract.ts', 'paradee-runtime.ts', 'voice-host.ts', 'build-android.ts', 'update-channel.ts', 'android-build-preflight.ts', 'mobile-uuid-adapter.ts', 'build-policy-source.ts', 'core-state-patch.ts', 'stage-embedding-host.ts', 'build-embedding-host.ts', 'toolchain.ts', 'copy-file-clone.ts', 'removed-profile-flags.ts'])
     f.write('scripts/' + file, read('scripts/' + file));
-  // build-android.mjs reads the release-signing environment names from the host descriptor.
+  // build-android.ts reads the release-signing environment names from the host descriptor.
   f.write('android/consumer-host.json', read('android/consumer-host.json'));
-  const result = spawnSync(process.execPath, ['scripts/build-android.mjs'], {cwd: f.root, encoding: 'utf8'});
+  const result = spawnSync(process.execPath, ['scripts/build-android.ts'], {cwd: f.root, encoding: 'utf8'});
   assert.equal(result.status, 2, result.stderr);
   assert.match(result.stderr, /Android build prerequisites are missing/);
   assert.match(result.stderr, /git submodule update --init vendor\/eliza/);
   assert.equal(fs.existsSync(path.join(f.root, 'artifacts')), false);
   assert.equal(fs.existsSync(path.join(f.root, 'web-dist')), false);
+  // One runtime profile: the removed options fail with one line, in the build and in the preflight, before any work.
+  for (const [script, flag] of [['build-android.ts', '--runtime-profile=cloud'], ['build-android.ts', '--local-embeddings'], ['build-android.ts', '--runtime-profile=native'], ['android-build-preflight.ts', '--runtime-profile=cloud'], ['android-build-preflight.ts', '--local-embeddings']]) {
+    const refused = spawnSync(process.execPath, ['scripts/' + script, flag], {cwd: f.root, encoding: 'utf8'});
+    assert.notEqual(refused.status, 0, script + ' ' + flag);
+    assert.match(refused.stderr, /There is one runtime profile now: remove --runtime-profile and --local-embeddings/, script + ' ' + flag);
+    assert.doesNotMatch(refused.stderr, /Android build prerequisites are missing/);
+  }
+  assert.equal(fs.existsSync(path.join(f.root, 'artifacts')), false);
 });
 
 test('worker build reuses only an artifact that verifies against the prepared source', async t => {
@@ -185,7 +193,7 @@ test('android:build:local builds the workflow worker before staging and stages b
   const scripts = JSON.parse(read('package.json')).scripts;
   const chain = scripts['android:build:local'].split('&&').map(step => step.trim());
   assert.deepEqual(chain, [
-    'node scripts/android-build-preflight.mjs --before-prepare',
+    'node scripts/android-build-preflight.ts --before-prepare',
     // Before the long preparation: it either has the reviewed libraries, reproduces them, or
     // stops in under a second naming the person who must supply them.
     'npm run agent:build-embedding-host',
@@ -198,16 +206,16 @@ test('android:build:local builds the workflow worker before staging and stages b
     'npm run licenses:packaged-runtime',
     'npm run android:build',
   ]);
-  assert.equal(scripts['licenses:packaged-runtime'], 'node scripts/generate-licenses.mjs --packaged-runtime');
+  assert.equal(scripts['licenses:packaged-runtime'], 'node scripts/generate-licenses.ts --packaged-runtime');
   for (const step of chain.slice(1)) assert.ok(scripts[step.replace('npm run ', '')], step);
   // The chain ends in the strict build: no developer override may be baked into it.
   assert.doesNotMatch(scripts['android:build:local'], /--allow-unpackaged-runtime|--allow-unqualified-runtime|--test-mocks|--skip-instrumentation/);
-  assert.equal(scripts['android:build'], 'node scripts/build-android.mjs');
-  assert.equal(scripts['agent:build-embedding-host'], 'node scripts/build-embedding-host.mjs', 'no --candidate or other option in the chain');
+  assert.equal(scripts['android:build'], 'node scripts/build-android.ts');
+  assert.equal(scripts['agent:build-embedding-host'], 'node scripts/build-embedding-host.ts', 'no --candidate or other option in the chain');
   // Staging itself refuses a missing or foreign worker artifact before the long mobile bundle build.
-  const stage = read('scripts/stage-local-agent-runtime.mjs');
+  const stage = read('scripts/stage-local-agent-runtime.ts');
   assert.ok(stage.indexOf('verifyWorkerArtifact(workerArtifactDirectory(root)') > 0);
-  assert.ok(stage.indexOf('verifyWorkerArtifact(workerArtifactDirectory(root)') < stage.indexOf("'scripts/build-mobile-agent.mjs'"));
+  assert.ok(stage.indexOf('verifyWorkerArtifact(workerArtifactDirectory(root)') < stage.indexOf("'scripts/build-mobile-agent.ts'"));
 });
 
 test('preflight names missing embedding build inputs', t => {

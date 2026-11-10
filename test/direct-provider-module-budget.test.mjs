@@ -6,7 +6,7 @@ import vm from 'node:vm';
 import {execFileSync} from 'node:child_process';
 import {featureParityAllowlist} from './support/feature-parity.mjs';
 test('provider setup reuses its owning modules',()=>{
- const source=fs.readFileSync('scripts/feature-manifest.mjs','utf8');
+ const source=fs.readFileSync('scripts/feature-manifest.ts','utf8');
  const body=source.slice(source.indexOf('export function alphaBehaviouralModules('),source.indexOf('export async function featureParity(')).replace('export function','function');
  const modules=vm.runInNewContext(body+';alphaBehaviouralModules(cwd)',{fs,path,execFileSync,cwd:process.cwd()});
  assert.deepEqual(Array.from(modules).filter(file=>!featureParityAllowlist.modules.includes(file)),[]);

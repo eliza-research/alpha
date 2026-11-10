@@ -6,7 +6,7 @@ import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 
-const script=path.resolve(import.meta.dirname,'../scripts/source-snapshot.mjs');
+const script=path.resolve(import.meta.dirname,'../scripts/source-snapshot.ts');
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 const write=(root,name,bytes)=>{const target=path.join(root,name);fs.mkdirSync(path.dirname(target),{recursive:true});fs.writeFileSync(target,bytes);};
 const snapshot=root=>JSON.parse(execFileSync(process.execPath,[script],{cwd:root,encoding:'utf8'}));
@@ -44,10 +44,10 @@ test('source snapshot excludes generated native staging and unrelated private st
 test('source snapshot binds the shared client source preparer and managed source receipt',t=>{
  const root=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-client-source-snapshot-'));
  t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
- for(const name of ['scripts/prepare-client-features.mjs','.eliza/client-features/.source.json'])write(root,name,'first');
+ for(const name of ['scripts/prepare-client-features.ts','.eliza/client-features/.source.json'])write(root,name,'first');
  const before=snapshot(root);
  for(const name of Object.keys(before.files))assert.equal(before.files[name],sha('first'));
  assert.equal(Object.keys(before.files).length,2);
- write(root,'scripts/prepare-client-features.mjs','changed helper');
+ write(root,'scripts/prepare-client-features.ts','changed helper');
  assert.notEqual(snapshot(root).digest,before.digest);
 });

@@ -3,7 +3,8 @@ import {BrowserReviews} from '../browser/review';
 import {residentRecoveryCopy} from '../runtime/resident-recovery';
 import {cloudServiceName} from '../runtime/cloud-protocol';
 import {browserDevProfile as devProfileQuery,developerTools} from '../browser/dev-profile';
-import {cloudRuntimeEnabled,testMocksEnabled,devSurfacesEnabled} from '../build-flags';
+import {testMocksEnabled,devSurfacesEnabled} from '../build-flags';
+import {speechRoute,type SpeechRoute} from '../runtime/voice-selection';
 import {openCalendarRecovery} from '../browser/calendar-recovery';
 import {openNotificationRecovery} from '../browser/notification-recovery';
 import {openAlertSoundRecovery,openDevicePreferencesRecovery,openDeviceRolesRecovery} from '../browser/preference-recovery';
@@ -43,7 +44,7 @@ const browserDevProfile = devSurfacesEnabled && devProfileQuery;
 /** Build version injected at build time from app.config.json or ELIZAOS_VERSION_NAME. */
 export const buildVersion = typeof __APP_VERSION__ === 'string' && __APP_VERSION__ ? __APP_VERSION__ : 'Unavailable';
 export type LicenseNotice = { name: string; version: string; license: string; source: string; text: string; flags?: unknown; obligations?: unknown };
-/** Labels for the flags scripts/licence-policy.mjs writes into the shipped notices. An unlisted flag is shown as written. */
+/** Labels for the flags scripts/licence-policy.ts writes into the shipped notices. An unlisted flag is shown as written. */
 const LICENSE_FLAG_LABELS: Record<string, string> = {
   'copyleft-strong': 'Copyleft (GPL family)', 'network-copyleft': 'Network copyleft (AGPL)', 'copyleft-weak': 'Weak copyleft (LGPL, MPL, EPL)',
   'share-alike-data': 'Share-alike data', 'unknown-licence': 'Unknown license', 'licence-text-missing-from-package': 'No license file in package',
@@ -193,11 +194,13 @@ export function automaticUpdateIdle(shell: {screen?:unknown;view?:unknown;voice?
     !shell.homeEdit && !shell.homeAdd && !shell.drawerMenu &&
     !connection.busy && !connection.open && !editor;
 }
-/** Cloud QA profile facts replace prototype navigation, not device settings links. */
-export function cloudPrivacyRow(label: string): [string, string] | null {
-  if (label === 'Leaves this device') return ['Shared with Cloud', 'Messages and selected content when you use AI'];
-  if (label === 'On-device model') return ['Voice', 'Recordings for transcription and text for playback, when used'];
-  return null;
+/** The Privacy page's voice fact: the speech route in use now (voice-selection.ts) and what it sends.
+ * It replaces the prototype's on-device model row; device settings links are untouched. */
+export function voicePrivacyRow(label: string, route: SpeechRoute, serviceName = 'Cloud'): [string, string] | null {
+  if (label !== 'On-device model') return null;
+  if (route === 'cloud') return ['Voice', `${serviceName} speech now: recordings and reply text go to ${serviceName}. On this phone when ${serviceName} is unavailable.`];
+  if (route === 'direct') return ['Voice', 'Cartesia now, with your key: recordings and reply text go to Cartesia. On this phone when Cartesia is unavailable.'];
+  return ['Voice', 'On this phone now. No recordings or reply text are sent.'];
 }
 /** A stale or direct Developer selection cannot open the page in a product build. */
 export function settingsPage(page: string | null | undefined, developerSurfaces: boolean): string | null | undefined {
@@ -629,11 +632,13 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     const nav = (label: string, page: string): Bag => ({ kNav: true, label, lbl: label, chev: true, noAB: true, go: manage(page) });
     const group = (rows: Bag[], id?: string) => ({ ...(id ? {id} : {}), css: 'background:var(--s2);padding:4px 0', rows });
     const run = async (task:()=>Promise<void>)=>{if(notificationBusy)return;notificationBusy=true;changed();const current=owner;try{await task();if(owner===current)await refresh();}catch{if(owner===current)api.toast('Notification settings changed or are unavailable. Refresh and try again.');}finally{notificationBusy=false;if(owner===current)changed();}};
-    // Speech follows the explicit production runtime profile; developer routes stay separate.
+    // Speech follows the run-time route (voice-selection.ts): the row names the route in use now,
+    // and Cloud speech says what it sends. Developer routes stay separate.
+    const voiceRoute = speechRoute();
     const speechRows = (): Bag[] => [
-      info('Speech', connection.residentInference==='direct'&&connection.providerStatus?.voiceConfigured?'Cartesia · own API key':connection.residentInference==='direct'&&(cloudRuntimeEnabled||testMocksEnabled)?'Off · add a Cartesia key':developmentCartesiaVoiceEnabled?'Cartesia · development':cloudRuntimeEnabled?`${serviceName} · Cartesia output (uses your plan)`:testMocksEnabled?`${serviceName} (counts toward your plan)`:'On this device'),
-      ...(cloudRuntimeEnabled&&!developmentCartesiaVoiceEnabled&&connection.residentInference!=='direct'
-        ? [note('Voice privacy', `Microphone audio and reply text go to ${serviceName}.`)]
+      info('Speech', voiceRoute==='direct'?'Cartesia · own API key':testMocksEnabled&&connection.residentInference==='direct'?'Off · add a Cartesia key':developmentCartesiaVoiceEnabled?'Cartesia · development':voiceRoute==='cloud'?`${serviceName} · Cartesia output (uses your plan)`:testMocksEnabled?`${serviceName} (counts toward your plan)`:'On this device'),
+      ...(voiceRoute==='cloud'&&!developmentCartesiaVoiceEnabled
+        ? [note('Voice privacy', `Microphone audio and reply text go to ${serviceName} while it is available. Otherwise speech runs on this phone.`)]
         : []),
       ...(wakeListeningStopUnconfirmed() ? [note('Wake listening', 'Could not confirm listening is off. Turn it off in Android settings.')] : []),
     ];
@@ -905,8 +910,8 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           nav('Manage mobile networks', 'mobile'), ...(Capacitor.isNativePlatform() ? [nav('Airplane mode in Android', 'airplane')] : [])])];
       } else if (page.title === 'Models') {
         const native=Capacitor.isNativePlatform();
-        page.hero = { ...page.hero, big: target, sub: native&&connection.residentInference==='direct'?'Cerebras · own key':cloudRuntimeEnabled?'':native?'Conversation uses the selected agent. Voice runs on this device.':developmentCartesiaVoiceEnabled?'Direct Cerebras and Cartesia · development':`Conversation uses the selected agent. Voice uses ${serviceName}.` };
-        page.groups = [group([info('Connection', runtimeLocation), ...(native?[info('Inference provider',residentProvider?residentProvider.configured?(residentProvider.provider==='elizacloud'?serviceName:'Cerebras'):'Not configured':'Status unavailable')]:browserLocalAgentEnabled ? [info('Inference provider', inferenceProvider)] : []), info('Inference model', inferenceModel), info('Voice', native&&connection.residentInference==='direct'&&connection.providerStatus?.voiceConfigured?'Cartesia · own API key':connection.residentInference==='direct'&&(cloudRuntimeEnabled||testMocksEnabled)?'Off · add a Cartesia key':cloudRuntimeEnabled?(account?`${serviceName} · Cartesia output`:'Cloud sign-in required'):native?'On this device':developmentCartesiaVoiceEnabled?'Cartesia · development':account ? serviceName : 'Sign-in required'), { kNav:true, label:`${serviceName} account`, lbl:`${serviceName} account`, chev:true, noAB:true, go:()=>connectionController.openCloudAccount() }])];
+        page.hero = { ...page.hero, big: target, sub: native&&connection.residentInference==='direct'?'Cerebras · own key':native&&voiceRoute==='cloud'?'':native?'Conversation uses the selected agent. Voice runs on this device.':developmentCartesiaVoiceEnabled?'Direct Cerebras and Cartesia · development':`Conversation uses the selected agent. Voice uses ${serviceName}.` };
+        page.groups = [group([info('Connection', runtimeLocation), ...(native?[info('Inference provider',residentProvider?residentProvider.configured?(residentProvider.provider==='elizacloud'?serviceName:'Cerebras'):'Not configured':'Status unavailable')]:browserLocalAgentEnabled ? [info('Inference provider', inferenceProvider)] : []), info('Inference model', inferenceModel), info('Voice', native&&voiceRoute==='direct'?'Cartesia · own API key':testMocksEnabled&&connection.residentInference==='direct'?'Off · add a Cartesia key':native&&voiceRoute==='cloud'?`${serviceName} · Cartesia output`:native?'On this device':developmentCartesiaVoiceEnabled?'Cartesia · development':account ? serviceName : 'Sign-in required'), { kNav:true, label:`${serviceName} account`, lbl:`${serviceName} account`, chev:true, noAB:true, go:()=>connectionController.openCloudAccount() }])];
       } else if (page.title === 'Developer') {
         page.groups = [group([info('App version', facts.appVersion || buildVersion), info('Agent memory', connection.session?'Usage not reported by agent':pending)]), group([problemsRow(), diagnosticsRow()]), group([nav('Android developer settings', 'developer')])];
       } else if (page.title === 'Notifications') {
@@ -939,8 +944,8 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         page.groups = [group(Capacitor.isNativePlatform()?[info('Alpha notifications',topValues.Notifications),info('Do Not Disturb',interruptionLabels[delivery.interruption]||'Not available'),nav('Manage Alpha notifications','notifications')]:[{kTog:true,label:'Allow alerts',aria:'Allow alerts',on:delivery.appEnabled===true,track:delivery.appEnabled?'background:var(--acc)':'background:var(--line)',kx:delivery.appEnabled?20:0,toggle:()=>void run(async()=>{await notifications.setAlertPreferences({appEnabled:delivery.appEnabled!==true});})}]),
           ...(Capacitor.isNativePlatform()?(delivery.channels||[]).map((channel:Bag)=>group([{id:`notification-channel:${channel.id}`,kNav:true,label:channel.name,lbl:channel.name,chev:true,noAB:true,go:()=>void notifications.openChannelSettings({id:channel.id})}],`notification-channel:${channel.id}`)):[]),...(crossRows.length?[group(crossRows)]:[])];
       } else if (page.title === 'Privacy & data') {
-        if (cloudRuntimeEnabled) page.groups = page.groups.map((g: Bag) => ({ ...g, rows: g.rows.map((row: Bag) => {
-          const fact = cloudPrivacyRow(row.label);
+        page.groups = page.groups.map((g: Bag) => ({ ...g, rows: g.rows.map((row: Bag) => {
+          const fact = voicePrivacyRow(row.label, voiceRoute, serviceName);
           return fact ? info(...fact) : row;
         }) }));
         // Alpha declares no Contacts permission; Calendar is the fourth runtime grant it uses.

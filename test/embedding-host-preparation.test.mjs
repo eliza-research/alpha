@@ -4,9 +4,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
-import {embeddingBuildRemap} from '../scripts/embedding-build-remap.mjs';
+import {embeddingBuildRemap} from '../scripts/embedding-build-remap.ts';
 const root=path.resolve(import.meta.dirname,'..');
-const run=(...args)=>spawnSync(process.execPath,['scripts/prepare-embedding-host.mjs',...args],{cwd:root,encoding:'utf8'});
+const run=(...args)=>spawnSync(process.execPath,['scripts/prepare-embedding-host.ts',...args],{cwd:root,encoding:'utf8'});
 
 test('build path remapping uses stable SDK and native build paths without receipt files',()=>{
  const inputs={sdk:'/different/android-sdk',staging:'/isolated/source',fork:'/isolated/engine',build:'/isolated/jni'};

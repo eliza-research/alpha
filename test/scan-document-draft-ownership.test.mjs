@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {pathToFileURL} from 'node:url';
 import {tsImport} from 'tsx/esm/api';
-import {prepareClientFeatures} from '../scripts/prepare-client-features.mjs';
+import {prepareClientFeatures} from '../scripts/prepare-client-features.ts';
 
 const root = prepareClientFeatures();
 const {createScanDocument} = await tsImport(pathToFileURL(`${root}/plugins/plugin-native-camera/src/scan-document.ts`).href, import.meta.url);

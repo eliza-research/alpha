@@ -12,6 +12,7 @@ const stubs = new Map([
   ['./scan-dialog.css', ''],
   ['./scan-searchable-review', 'export const reviewSearchableScan = async () => undefined;'],
   ['./scan-correction-review', 'export const reviewScanCorrection = async () => undefined;'],
+  ['../browser/review', 'export class BrowserReviews { async confirm() { throw Error("Draft replacement is outside this export-preservation trace"); } }'],
   ['../browser/scan-draft', `
     export const readScanDraft = () => globalThis.scanPorts.read();
     export const saveScanDraft = (...args) => globalThis.scanPorts.save(...args);
@@ -21,7 +22,7 @@ const stubs = new Map([
   ['../browser/file-picker', 'export const inputFiles = async () => []; export const runFilePicker = async () => [];'],
   ['./scan-pdf', `
     export class ScanPdfExportError extends Error {}
-    export const scanExportTitle = () => 'Scan document';
+    export const scanExportTitle = kind => kind + "-conformance";
     export const exportScanPdf = () => globalThis.scanPorts.export();
     export const duringSystemPicker = task => task();
     export const systemPickerActive = () => false;
@@ -32,14 +33,13 @@ const stubs = new Map([
 ]);
 const bundle = await build({
   entryPoints: [sourcePath], bundle: true, write: false, format: 'iife',
-  globalName: 'ScanSource', platform: 'browser', loader:{'.css':'empty'},
+  globalName: 'ScanSource', platform: 'browser',
   plugins: [{
     name: 'isolated-scan-ports',
     setup(builder) {
       builder.onResolve({ filter: /.*/ }, args => {
         if (args.kind === 'entry-point' || args.path.includes('.eliza/client-features/plugins/plugin-native-camera/src/scan-document.ts')
           || args.importer.includes('.eliza/client-features/plugins/plugin-native-camera/src/')) return;
-        if(args.path==='../browser/review'||args.importer.endsWith('/browser/review.ts')&&['./review.css','./screen-locked'].includes(args.path))return;
         if (!stubs.has(args.path)) throw new Error(`Unreviewed scan dependency ${args.path}`);
         return { path: args.path, namespace: 'scan-port' };
       });

@@ -8,7 +8,7 @@ if(!process.versions.bun&&!process.execArgv.some(value=>value==='tsx'||value==='
  const child=spawnSync(process.execPath,['--import','tsx',process.argv[1]],{stdio:'inherit',timeout:60000});
  if(child.error)throw child.error;process.exit(child.status??1);
 }
-const {workflowRendererFixture}=await import('../scripts/workflow-renderer-fixture.mjs');
+const {workflowRendererFixture}=await import('../scripts/workflow-renderer-fixture.ts');
 const source=fs.readFileSync('apps/app/src/prototype/workflow-adapter.ts','utf8').replace(/^import .*;\n/gm,'').replace('export function','function')+'\nglobalThis.install=installWorkflowAdapter;';
 function fixture(){
  let session={sessionId:'same-id',ownerId:'first',agentId:'agent',origin:'https://synthetic.invalid'},answer=async()=>true,publications=0,statusReads=0,listReads=0;

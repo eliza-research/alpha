@@ -14,8 +14,8 @@ const commandCode=ts(browser.slice(commandStart,browser.indexOf('    this.browse
 const executorStart=agent.indexOf('    connectionController.setViewInteractionExecutor(');
 const executorCode=ts(agent.slice(executorStart,agent.indexOf('\n    });',executorStart)+8));
 
-function harness({command=async()=>({session:'native-session',id:'tab'}),view='browser',committed=true}={}){
- const calls=[],shell={S:()=>({view,shade:false})},tabState={cur:'tab'},info={committed,error:'',loading:false,navigation:'n1'};
+function harness({command=async()=>({session:'native-session',id:'tab'}),view='browser',committed=true,canBack=true,canForward=true}={}){
+ const calls=[],shell={S:()=>({view,shade:false})},tabState={cur:'tab'},info={committed,canBack,canForward,url:'https://browser-fixture.invalid/',error:'',loading:false,navigation:'n1'};
  const host={};
  new Function('parseNativeHistoryCommand','state','tabInfo','tabs','disposed','Capacitor','document','shell','Browser','session',commandCode).call(host,
   parseNativeHistoryCommand,()=>tabState,()=>info,{has:id=>id==='tab'},false,{isNativePlatform:()=>true},{hidden:false},shell,
@@ -34,8 +34,15 @@ test('an unsupported command returns UNSUPPORTED and never dispatches',async()=>
 
 test('a changed or unready browser tab returns UNAVAILABLE and never dispatches',async()=>{
  for(const options of [{view:'notes'},{committed:false}]){
-  const h=harness(options),result=await h.run({subaction:'reload'});
+  const h=harness(options),result=await h.run({subaction:'back'});
   assert.deepEqual([result.ok,result.code],[false,'UNAVAILABLE']);assert.equal(h.calls.length,0);
+ }
+});
+
+test('history commands refuse unavailable directions before native dispatch',async()=>{
+ for(const [subaction,options] of [['back',{canBack:false}],['forward',{canForward:false}]]){
+  const h=harness(options),result=await h.run({subaction});
+  assert.equal(result.code,'UNAVAILABLE');assert.equal(h.calls.length,0);
  }
 });
 

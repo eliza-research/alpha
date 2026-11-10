@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { sanitizeTurns, summarizeTurns, sanitizeNative, sanitizeBuild, evaluate } from '../scripts/android-cloud-voice-timing.mjs';
+import { sanitizeTurns, summarizeTurns, sanitizeNative, sanitizeBuild, evaluate } from '../scripts/android-cloud-voice-timing.ts';
 
 const turn = { route: 'eliza-cloud', cold: false, entry: 'conversation', marks: {
   'recording-end': 0, 'transcript-ready': 2100, send: 2120,

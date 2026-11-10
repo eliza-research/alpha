@@ -1,6 +1,6 @@
 package ai.alphacompute.alphaphone;
 
-/** Generated from scripts/cloud-deployment-policy.mjs. Run node scripts/cloud-deployment.mjs. */
+/** Generated from scripts/cloud-deployment-policy.ts. Run node scripts/cloud-deployment.ts. */
 final class CloudDeployment {
  private CloudDeployment() {}
  static final String PRODUCTION_API = "https://api.eliza.app";

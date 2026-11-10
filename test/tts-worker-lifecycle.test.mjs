@@ -2,8 +2,8 @@ import test from 'node:test';
 import { execFileSync } from 'node:child_process';
 
 const cases = [
-  ['configured host speech warms before requests and recovers from cold failure', 'test-tts-startup.mjs'],
-  ['shared speech workers contain pipe failures and recover after cancellation', 'test-tts-worker-lifecycle.mjs'],
+  ['configured host speech warms before requests and recovers from cold failure', 'test-tts-startup.ts'],
+  ['shared speech workers contain pipe failures and recover after cancellation', 'test-tts-worker-lifecycle.ts'],
 ];
 
 for (const [name, script] of cases) {

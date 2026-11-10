@@ -5,7 +5,7 @@ import {createHash} from 'node:crypto';
 const artifactHash = createHash('sha256').update('x').digest('hex');
 import os from 'node:os';
 import path from 'node:path';
-import {buildPinnedVoice} from '../scripts/build-pinned-voice.mjs';
+import {buildPinnedVoice} from '../scripts/build-pinned-voice.ts';
 
 function fixture(t) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'voice-build-')));

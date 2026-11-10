@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {auditWebBundle, DENYLIST} from '../scripts/audit-production-bundle.mjs';
+import {auditWebBundle, DENYLIST} from '../scripts/audit-production-bundle.ts';
 
 const SCOPE_COPY = /["'`][^"'`\n]*(?:deferred from the MVP|\bMVP\b)[^"'`\n]*["'`]/;
 

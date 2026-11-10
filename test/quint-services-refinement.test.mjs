@@ -4,7 +4,7 @@ import {spawnSync} from 'node:child_process';
 import {closeSync, fstatSync, mkdtempSync, openSync, readSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {loadModels} from '../scripts/quint-lib.mjs';
+import {loadModels} from '../scripts/quint-lib.ts';
 
 // The complete serial campaign was still producing passing receipts at its former
 // 880-second cutoff. Keep all campaigns and a finite budget matching the app aggregate.

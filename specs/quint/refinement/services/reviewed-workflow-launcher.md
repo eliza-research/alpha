@@ -1,7 +1,7 @@
 # Reviewed workflow launcher source refinement
 
 `ReviewedWorkflowLauncher` covers the profile and source admission owned by
-`scripts/start-reviewed-workflow-agent.mjs`. The launcher selects the prepared
+`scripts/start-reviewed-workflow-agent.ts`. The launcher selects the prepared
 artifact for the admitted pin by default, or an explicit source supplied by the
 caller. It checks dependencies and port before private state. The owner token
 is durable before the runtime entry check. Profile identity normalization

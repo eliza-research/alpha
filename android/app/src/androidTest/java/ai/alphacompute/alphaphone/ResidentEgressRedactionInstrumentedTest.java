@@ -21,7 +21,7 @@ import org.junit.runner.RunWith;
 /**
  * Resident agent with ELIZA_SECRET_SWAP_ENABLED/ELIZA_PII_SWAP_ENABLED on: the turn completes, and the recorded
  * provider request carries swap placeholders, never the raw identifiers. Requires an explicit fixture
- * (scripts/android-resident-instrumentation.mjs); a recorded trajectory is the request after the swap.
+ * (scripts/android-resident-instrumentation.ts); a recorded trajectory is the request after the swap.
  * Besides the contact identifiers, each RELEASE content class (a vault entry, a TOTP code, recovery
  * codes, an API-key-shaped token, and selected note, mail and file context) is sent in its own
  * conversation; its recorded requests must carry a placeholder and none of its raw value.

@@ -143,7 +143,7 @@ test('Android: Silero VAD runs in the app process and only the live ASR and end-
   assert.match(capture, /float\[\] probability=vad\.process\(pcm\);/);
   // The bridge is the shared LocalSpeechBridgePlugin that AlphaVoiceCloudPlugin subclasses.
   const voicePlugin = fs.readFileSync(new URL('../vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java', import.meta.url), 'utf8');
-  assert.match(voicePlugin, /new LiveVoiceCapture\(getContext\(\),VoiceAssets\.sharedInference\(getContext\(\)\),id,sink,echoCancel\)/);
+  assert.match(voicePlugin, /new LiveVoiceCapture\(getContext\(\),VoiceAssets\.sharedInference\(getContext\(\)\),id,sink,options\)/);
   assert.match(voicePlugin, /private final LiveCaptureController live=new LiveCaptureController\(/);
   assert.match(capture, /AudioFormat\.ENCODING_PCM_16BIT/);
   assert.doesNotMatch(capture, /FileOutputStream|openFileOutput|Log\./, 'no audio file and no log of audio or text');

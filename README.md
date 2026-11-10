@@ -26,6 +26,7 @@ npm run dev
 
 `npm run verify` runs deployment-output checks, source preparation, executable
 Quint models, LemmaScript function proofs, TypeScript, host tests, the production web build and its bundle audit.
+Host scripts use native TypeScript. `npm run typecheck:scripts` checks their interfaces.
 Host contract tests need a JDK and the `sqlite3` command-line tool on `PATH`
 for native Calendar queries. Archive builds check SQLite before verification.
 Tests that load the real SDK require the pinned Bun and a prepared SDK; set
@@ -77,22 +78,18 @@ requires matching signing, callback registrations and native-library qualificati
 An installation using the previous package ID is a separate application; this
 rename does not migrate its private data. Native qualification remains pending.
 
-The default native runtime uses libelizainference for local speech and embeddings.
-Stage on-device voice inputs with
-`node scripts/android-stage-voice-models.mjs --from <directory>`.
+There is one runtime profile. Every build packages libelizainference with the
+on-device speech models and local embeddings. Stage on-device voice inputs with
+`node scripts/android-stage-voice-models.ts --from <directory>`.
 The resident source and workflow worker are prepared from the locked upstream
 revision. Build inputs must agree with the staged runtime and native libraries.
 
-The explicit Cloud profile keeps the resident agent and database on the phone
-and uses Cloud inference, embeddings and speech, without local model payloads:
-
-```sh
-npm run agent:prepare
-npm run agent:build-workflow-worker
-npm run agent:stage-android -- --runtime-profile=cloud
-npm run licenses:packaged-runtime
-npm run android:build -- --runtime-profile=cloud
-```
+Speech is routed at run time, not at build time: the owner's Cartesia key when
+their own provider is selected, Eliza Cloud speech when signed in to Cloud with
+no plan limit in force, otherwise on-device speech. A Cloud or provider speech
+request that fails before audio plays falls back to on-device speech. The
+`--runtime-profile` and `--local-embeddings` options are gone; the scripts
+refuse them with a one-line message.
 
 Developer APKs may explicitly omit the runtime:
 
@@ -103,7 +100,7 @@ npm run android:build -- --test-mocks
 ```
 
 Test-mocks APKs go to `artifacts/test-mocks/`. Production Android builds remove
-mock flags from child environments. `scripts/audit-production-bundle.mjs` checks
+mock flags from child environments. `scripts/audit-production-bundle.ts` checks
 the web output and APK assets for developer code, fixtures and source maps.
 
 Release signing uses `ELIZAOS_KEYSTORE_PATH`, `ELIZAOS_KEYSTORE_PASSWORD`,
@@ -130,15 +127,73 @@ vendor add-on under `artifacts/aosp/`. APK builds, emulator HOME-role behavior,
 full AOSP boot, real integrations, physical-device testing and user acceptance
 are independent results.
 
-`scripts/deliver-app-update.mjs` publishes an admitted signed launcher APK and
+`scripts/deliver-app-update.ts` publishes an admitted signed launcher APK and
 checks anonymous readback. Merging source does not publish an application update.
 Android may require confirmation for installation.
+
+An automatic attempt that loses idle HOME after verifying its APK can retain
+that one file for a later attempt in the same process. Reuse checks the complete
+bytes and current package, version, variant and signer again. A process restart
+discards the cache hint; the durable installer journal still owns recovery.
+
+Main pushes automatically build unsigned native candidates in the existing
+Resident Android workflow. The separate `app-native-candidate-*` artifact holds
+the genuine distribution archive and `app-update-candidate.json`, which binds
+source, SDK, run/attempt, profile, channel and actual APK hashes. Test-mocks stay
+in the qualification archive. Primary main-push attempts share a canceling group;
+reruns use their own run ID group and do not cancel running work. GitHub does not
+guarantee commit order. Completion needs a quiet main, build capacity and admitted
+native inputs.
+The existing workflow run number is the candidate versionCode, checked against
+all retained stable APKs, the public pointer and committed version floors.
+Failed or canceled runs consume their number. A manual release or workflow
+migration that exceeds this number stops candidate creation and needs a reviewed
+version migration. Manual builds keep their explicit version input.
+Candidates are unsigned build evidence. Native application signing/voice
+admission, protected release review, exact signed APK voice tests, publication
+and both sideload/image phone drills remain required before automatic delivery
+to users; the current protected application promotion bridge supports Cloud only.
+
+The remaining release work is tracked in [native promotion #888](https://github.com/eliza-research/alphaphone/issues/888)
+and [wireless launcher acceptance #889](https://github.com/eliza-research/alphaphone/issues/889).
+Complete it in this order:
+
+1. Admit native voice inputs for the exact SDK, then build and sign both
+   distribution variants. Preserve advancing versions and the enrolled signer.
+2. Verify the Cloud client and App Links retain `ai.alphacompute.alphaphone`
+   ([#666](https://github.com/eliza-research/alphaphone/issues/666),
+   [#670](https://github.com/eliza-research/alphaphone/issues/670)). Keep
+   `/alphaphone/auth/callback` in production and staging. Preserve the selected
+   app identity, existing grants and other products' registrations.
+3. Qualify the exact signed APK bytes, publish the admitted launcher and
+   manifest, and verify anonymous full-byte readback. Then install the initial
+   baseline on each distribution form and run #889 on the machine with the phone.
+   The update itself must use the phone's channel; `scripts/pilot-update.ts` uses
+   `adb install -r` and supplies separate in-place replacement evidence.
+4. Before distributing the batch, verify wireless replacement, retained data and
+   Keystore, HOME, voice and recovery after interruption and process death.
+   API 36 fixture results do not qualify the Android 17 image or a physical phone.
+
+OS OTA is a separate A/B image path. The shared updater is staged disabled;
+keep `os_update_enabled` false until signed image, channel, trust, SELinux,
+engine and physical recovery gates pass. Resolve
+[cache retention #890](https://github.com/eliza-research/alphaphone/issues/890)
+and [applied-candidate recovery #891](https://github.com/eliza-research/alphaphone/issues/891)
+before enrollment. [#400](https://github.com/eliza-research/alphaphone/issues/400)
+tracks the overall release gate. A successful host test or model does not close
+these release and device gates. Alpha consumes the reviewed rejected-download
+retry repair [eliza#39235](https://github.com/elizaOS/eliza/pull/39235) at
+`ede068b56ab07df42e3038de9a108bc7daa6ae0c`, which combines that repair with the
+reviewed Maps and speech changes through [eliza#39255](https://github.com/elizaOS/eliza/pull/39255). Its dependency-upgrade ancestry changes
+the SDK lock; core/mobile builder and installed UUID inputs were compared
+separately. Earlier APK, voice and device evidence does not qualify this pin;
+rebuild and qualify the exact product inputs before OS enrollment.
 
 ## Generated files
 
 Build output belongs in ignored `web-dist/`, `artifacts/`, `test-results/` and
 `.eliza/` directories. Android host and Capacitor sync output are ignored too.
-Cloud deployment source is `scripts/cloud-deployment-policy.mjs`; regenerate its
-renderer and Android bindings with `node scripts/cloud-deployment.mjs`.
-`node scripts/cloud-deployment.mjs --pages-registration` prints the public Pages
+Cloud deployment source is `scripts/cloud-deployment-policy.ts`; regenerate its
+renderer and Android bindings with `node scripts/cloud-deployment.ts`.
+`node scripts/cloud-deployment.ts --pages-registration` prints the public Pages
 callback registration for an operator without creating a `config/` directory.

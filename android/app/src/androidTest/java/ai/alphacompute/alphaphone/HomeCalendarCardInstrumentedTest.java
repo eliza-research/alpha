@@ -21,7 +21,7 @@ import static org.junit.Assert.*;
 /** The Home calendar card (data-alpha-home-calendar) over the real CalendarProvider: the next event
  * of a named local calendar shows its title, the calendar's name and when this app read it; with
  * calendar access revoked the card shows the access-off state and no event or read time.
- * Run by scripts/test-calendar-regression.mjs in a disposable secondary user:
+ * Run by scripts/test-calendar-regression.ts in a disposable secondary user:
  *   --case=HomeCalendarCardInstrumentedTest#nextProviderEventShowsTitleCalendarNameAndReadTime (granted)
  *   --case=HomeCalendarCardInstrumentedTest#revokedAccessShowsTheAccessOffState (both permissions revoked
  *   before the process starts: revoking a runtime permission kills the app process, so the test
@@ -45,7 +45,7 @@ public class HomeCalendarCardInstrumentedTest {
  }
 
  @Test public void nextProviderEventShowsTitleCalendarNameAndReadTime() throws Exception {
-  Assume.assumeTrue("Run by scripts/test-calendar-regression.mjs with calendar access granted", "1".equals(InstrumentationRegistry.getArguments().getString("homeCalendar")));
+  Assume.assumeTrue("Run by scripts/test-calendar-regression.ts with calendar access granted", "1".equals(InstrumentationRegistry.getArguments().getString("homeCalendar")));
   Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
   assertEquals("The runner granted READ_CALENDAR", PackageManager.PERMISSION_GRANTED, context.checkSelfPermission(Manifest.permission.READ_CALENDAR));
   assertEquals("The runner granted WRITE_CALENDAR", PackageManager.PERMISSION_GRANTED, context.checkSelfPermission(Manifest.permission.WRITE_CALENDAR));
@@ -85,7 +85,7 @@ public class HomeCalendarCardInstrumentedTest {
  }
 
  @Test public void revokedAccessShowsTheAccessOffState() throws Exception {
-  Assume.assumeTrue("Run by scripts/test-calendar-regression.mjs after both calendar permissions are revoked", "revoked".equals(gate()));
+  Assume.assumeTrue("Run by scripts/test-calendar-regression.ts after both calendar permissions are revoked", "revoked".equals(gate()));
   Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
   assertNotEquals("The runner revoked READ_CALENDAR before this process started", PackageManager.PERMISSION_GRANTED, context.checkSelfPermission(Manifest.permission.READ_CALENDAR));
   try (BoundedActivityScenario<MainActivity> scenario = BoundedActivityScenario.launch(MainActivity.class)) {

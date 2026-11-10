@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {cloudQaConfiguration} from '../scripts/start-cloud-qa.mjs';
+import {cloudQaConfiguration} from '../scripts/start-cloud-qa.ts';
 function fixture(run){const root=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'alpha-cloud-qa-contract-')));try{const key=path.join(root,'staging-key');fs.writeFileSync(key,'synthetic-staging-key-only',{mode:0o600});return run({root,key,env:{ALPHA_QA_PROFILE:path.join(root,'fresh-profile'),ALPHA_QA_CLOUD_KEY_FILE:key,ALPHA_QA_PORT:'47859',ALPHA_QA_MODEL:'reviewed/provider-model'}});}finally{fs.rmSync(root,{recursive:true,force:true});}}
 test('Cloud QA builds the canonical staging authority and exact model without writing a profile or exposing a browser credential',()=>fixture(({env})=>{
  const c=cloudQaConfiguration({...env,ELIZAOS_CLOUD_BASE_URL:'https://api.eliza.app',CEREBRAS_API_KEY:'unrelated-do-not-use'});

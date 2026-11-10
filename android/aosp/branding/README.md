@@ -21,7 +21,7 @@ and truthful permission text are not relabeled as Alpha-owned services.
 
 ## Build and admission
 
-`scripts/generate-alpha-os-branding.mjs` renders the existing vector with the established
+`scripts/generate-alpha-os-branding.ts` renders the existing vector with the established
 Sharp toolchain, then uses the hash-pinned shared OS packer in `tools.lock.json`. Set
 `ALPHA_BRANDING_RENDER_PACKAGE` to a prepared package.json that resolves Sharp, and
 `ALPHA_OS_SOURCE_ROOT` to the pinned OS checkout. Render into a new output directory.

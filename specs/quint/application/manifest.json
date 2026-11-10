@@ -566,11 +566,11 @@
     "invariant": "safety",
     "sources": [
       "scripts/browser-cloud-dev-bridge.ts",
-      "scripts/cloud-resident-host.mjs",
-      "scripts/dev-cloud.mjs",
-      "scripts/dev-local.mjs",
-      "scripts/start-local-voice-agent.mjs",
-      "scripts/start-local-remote.mjs",
+      "scripts/cloud-resident-host.ts",
+      "scripts/dev-cloud.ts",
+      "scripts/dev-local.ts",
+      "scripts/start-local-voice-agent.ts",
+      "scripts/start-local-remote.ts",
       "scripts/cloud-email-code.ts"
     ],
     "tests": [
@@ -1089,7 +1089,7 @@
       "vendor/eliza/plugins/plugin-files/src/browser/storage-model.ts",
       "vendor/eliza/plugins/plugin-files/src/browser/files-agent-contract.ts",
       "upstream.lock.json",
-      "scripts/prepare-client-features.mjs"
+      "scripts/prepare-client-features.ts"
     ],
     "abstractions": [
       "One outstanding storageSelect capability, three owner epochs, one representative selected identity. The caller keeps the document visible while awaiting selection.",
@@ -3505,7 +3505,7 @@
     ],
     "sources": [
       "scripts/stage-alpha-os-branding.py",
-      "scripts/generate-alpha-os-branding.mjs",
+      "scripts/generate-alpha-os-branding.ts",
       "scripts/fetch-alpha-os-preset-inputs.py"
     ],
     "abstractions": [
@@ -3679,6 +3679,58 @@
       "One exact authenticated read admission is consumed before one typed POST with the captured revision.",
       "Actual source replay covers finite results, copied/terminal/expired/foreign rows, owner retirement including A-B-A, abort, late reply and lost response.",
       "DOM presentation reread and provider/server CAS behavior remain separate boundaries."
+    ]
+  },
+  {
+    "path": "specs/quint/application/BrowserNoteRecordingJournal.qnt",
+    "module": "BrowserNoteRecordingJournal",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "invariants": [
+      "RetiredBytesStayRetired",
+      "BoundFields"
+    ],
+    "tests": [
+      "bytesPrecedeManifestTest",
+      "retryPreservesLateTextTest",
+      "retirementFencesPreparedSaveTest",
+      "partialRetirementIsUnreadableTest",
+      "retiredReadCannotReturnDeletedBytesTest",
+      "retirementBeforePublicationIsNoOpTest",
+      "offsetSegmentsNeedNoClipsTest"
+    ],
+    "sources": [
+      "apps/app/src/browser/note-recording-journal.ts"
+    ],
+    "abstractions": [
+      "Closed multi-document store with one recording and representative owner/folder, read/write failure and retry schedules. Retirement before first manifest publication is a no-op. Browser persistence and unbounded concurrent writers remain separate."
+    ]
+  },
+  {
+    "path": "specs/quint/application/ScheduledSnoozeAdmission.qnt",
+    "module": "ScheduledSnoozeAdmission",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "invariants": [
+      "ExactRequest",
+      "ConfirmationRequiresRequest",
+      "FutureAtDispatch"
+    ],
+    "tests": [
+      "recurrenceDeferralTest",
+      "validDeferralContinuesTest",
+      "earlyDeferralRepairsTest",
+      "expiredReviewRefusesTest",
+      "mismatchedReceiptRefusesTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/automations-protocol.ts",
+      "apps/app/src/runtime/workflow-local-time.ts"
+    ],
+    "abstractions": [
+      "One explicit snooze request with representative recurring times, saved timezone and DST transitions. Response identity, expiry and cancellation execute through closed protocol ports. Scheduler persistence and actual delivery remain separate."
     ]
   }
 ]

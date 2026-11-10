@@ -21,7 +21,7 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
 /**
- * Release-build data integrity export for pilot updates (scripts/pilot-update.mjs). A release build
+ * Release-build data integrity export for pilot updates (scripts/pilot-update.ts). A release build
  * is not debuggable, so run-as cannot read its data; this provider lists every app-data file as
  * (domain, HMAC-SHA-256 of its relative path, HMAC-SHA-256 of its bytes), keyed by a nonce the caller
  * supplies, so a before/after comparison under one nonce shows any lost, changed or new file.

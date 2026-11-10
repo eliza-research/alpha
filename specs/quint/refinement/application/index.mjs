@@ -44,6 +44,8 @@ import {checkShadeNoticeQuestionAdmission} from './shade-notice-question-admissi
 import {checkWorkflowClockAdmission} from './workflow-clock-admission.mjs';
 import {checkBrowserAlbumStorage} from './browser-album-storage.mjs';
 import {checkShadeRowCustody} from './shade-row-custody.mjs';
+import {checkScheduledSnoozeAdmission} from './scheduled-snooze-admission.mjs';
+import {checkBrowserNoteRecordingJournal} from './browser-note-recording-journal.mjs';
 import {checkPhotosOwnedAlbumDialog} from './photos-owned-album-dialog.mjs';
 import {checkBrowserExternalHandoff} from './browser-external-handoff.mjs';
 import {checkObservationTurnDispatch} from './observation-turn-dispatch.mjs';
@@ -126,6 +128,8 @@ const adapters = [checkCalendarApprovalReview, checkDeviceActionReview, checkCal
   checkShadeNoticeQuestionAdmission, checkWorkflowClockAdmission,
   checkBrowserExternalHandoff,
   checkPhotosOwnedAlbumDialog,
+  checkBrowserNoteRecordingJournal,
+  checkScheduledSnoozeAdmission,
   checkShadeRowCustody,
   checkBrowserAlbumStorage,
   checkClientObservationSupport,

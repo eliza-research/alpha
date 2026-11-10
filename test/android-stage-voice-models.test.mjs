@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
-import {stageVoiceModels} from '../scripts/android-stage-voice-models.mjs';
+import {stageVoiceModels} from '../scripts/android-stage-voice-models.ts';
 import {fixtureProduct} from './fixtures/voice-host-product.mjs';
 
 // The current stager publishes verified engine/STL libraries for the selected ABI.

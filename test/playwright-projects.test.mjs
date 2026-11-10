@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readdirSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {test} from 'node:test';
-import {STORAGE_SPECS} from '../scripts/storage-specs.mjs';
+import {STORAGE_SPECS} from '../scripts/storage-specs.ts';
 
 // Loads the real Playwright config and routes every spec on disk through its projects.
 const specs = readdirSync('test/browser').filter(name => name.endsWith('.spec.ts')).map(name => `test/browser/${name}`);

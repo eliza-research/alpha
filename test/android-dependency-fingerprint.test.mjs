@@ -4,8 +4,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {git as fixtureGit} from './fixtures/git-fixture.mjs';
-import {androidDependencyFingerprint,parseGradleTree} from '../scripts/generate-licenses.mjs';
-import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
+import {androidDependencyFingerprint,parseGradleTree} from '../scripts/generate-licenses.ts';
+import {preparePatchedNative} from '../scripts/prepare-patched-native.ts';
 
 const descriptor = 'packages/auth/android/build.gradle';
 const original = "plugins { id 'com.android.library' }\ndependencies {\n implementation 'androidx.credentials:credentials:1.6.0'\n}\n";

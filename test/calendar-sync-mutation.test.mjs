@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import os from 'node:os';import path from 'node:path';import {execFileSync} from 'node:child_process';
 import {jsonJar,jsonJarSkip,javaBinary} from './fixtures/jvm-tools.mjs';
-import {materializeNativePatches} from '../scripts/prepare-patched-native.mjs';import {upstreamNativeSource} from '../scripts/upstream-native-source.mjs';
+import {materializeNativePatches} from '../scripts/prepare-patched-native.ts';import {upstreamNativeSource} from '../scripts/upstream-native-source.ts';
 const root=path.resolve(import.meta.dirname,'..');
 test('conditional native Calendar plans preserve rich metadata and refuse unsupported mutations',{skip:jsonJarSkip},()=>{
  const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-calendar-sync-plan-')),sourceRoot=process.env.ALPHA_NATIVE_UPSTREAM_ROOT||root;

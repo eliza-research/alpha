@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
-import {deliver, publicObject} from '../scripts/deliver-app-update.mjs';
+import {deliver, publicObject} from '../scripts/deliver-app-update.ts';
 
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const manifestUrl = 'https://github.com/eliza-research/alphaphone/releases/download/app-stable/alpha-update-stable.json';

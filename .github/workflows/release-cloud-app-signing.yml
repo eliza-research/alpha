@@ -102,8 +102,8 @@ jobs:
           import fs from 'node:fs';
           import path from 'node:path';
           import { execFileSync } from 'node:child_process';
-          import { manifestFacts, parseXmlTree } from './scripts/apk.mjs';
-          import { apkUpdateChannel, validateUpdateChannel } from './scripts/update-channel.mjs';
+          import { manifestFacts, parseXmlTree } from './scripts/apk.ts';
+          import { apkUpdateChannel, validateUpdateChannel } from './scripts/update-channel.ts';
           const directory = process.env.ALPHA_ADMITTED_APK_DIR;
           const plan = JSON.parse(fs.readFileSync(path.join(directory, '..', 'pins.json'), 'utf8'));
           const identity = JSON.parse(fs.readFileSync('app.config.json', 'utf8'));
@@ -134,7 +134,7 @@ jobs:
           import path from 'node:path';
           import { createHash } from 'node:crypto';
           import { execFileSync } from 'node:child_process';
-          import { approvedSigningRotation } from './scripts/sign-release-apks.mjs';
+          import { approvedSigningRotation } from './scripts/sign-release-apks.ts';
           const read = file => JSON.parse(fs.readFileSync(file, 'utf8'));
           const work = process.env.ALPHA_ROTATION_WORK;
           const plan = read(path.join(work, 'pins.json'));
@@ -187,7 +187,7 @@ jobs:
             rotation=(--rotation-lineage "$ALPHA_PROTECTED_WORK/rotation.lineage")
           fi
           for variant in standalone launcher; do
-            node scripts/sign-release-apks.mjs --keystore "$keystore" --key-label alpha-release "${rotation[@]}" --apk "$ALPHA_PROTECTED_WORK/unsigned/$variant-release-unsigned.apk"               --out "$ALPHA_PROTECTED_WORK/signed/$variant-release.apk"
+            node scripts/sign-release-apks.ts --keystore "$keystore" --key-label alpha-release "${rotation[@]}" --apk "$ALPHA_PROTECTED_WORK/unsigned/$variant-release-unsigned.apk"               --out "$ALPHA_PROTECTED_WORK/signed/$variant-release.apk"
           done
       - name: Verify signed outputs and deliver privately
         env:

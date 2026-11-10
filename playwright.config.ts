@@ -2,7 +2,7 @@ import {randomUUID} from 'node:crypto';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import { defineConfig, devices } from '@playwright/test';
-import { storageSpecPattern } from './scripts/storage-specs.mjs';
+import { storageSpecPattern } from './scripts/storage-specs.ts';
 const port=Number(process.env.ALPHA_BROWSER_TEST_PORT||5317);
 const productionPort=port+1;
 const productionOutput=`test-results/production-web-${productionPort}`;
@@ -42,7 +42,7 @@ const development={
 const production={
   // A flag-off production build served by vite preview: no mocks, fixtures or developer surfaces.
   // It is written outside web-dist so it never replaces a release or test-mocks build.
-  command: `npm run upstream:prepare-client && npx vite build --outDir ../../${productionOutput} && node scripts/audit-production-bundle.mjs ${productionOutput} && npx vite preview --outDir ../../${productionOutput} --host 127.0.0.1 --port ${productionPort} --strictPort`,
+  command: `npm run upstream:prepare-client && npx vite build --outDir ../../${productionOutput} && node scripts/audit-production-bundle.ts ${productionOutput} && npx vite preview --outDir ../../${productionOutput} --host 127.0.0.1 --port ${productionPort} --strictPort`,
   url: `http://127.0.0.1:${productionPort}`, reuseExistingServer: false, timeout: 180_000,
   env: { ELIZA_DEV_ALLOW_TEST_MOCKS: '', VITE_ELIZA_DEV_ALLOW_TEST_MOCKS: '', VITE_LOCAL_AGENT: '' },
 };

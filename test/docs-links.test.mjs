@@ -51,8 +51,8 @@ export function npmScriptReferences(text) {
 }
 
 test('reference extraction ignores longer vendor paths and keeps product paths', () => {
-  const found = scriptReferences('Use `scripts/qualify-head.mjs`, [speech](../scripts/local-speech/README.md) and `packages/app/scripts/mobile/context.ts`.').map(item => item.reference);
-  assert.deepEqual(found, ['scripts/qualify-head.mjs', 'scripts/local-speech/README.md']);
+  const found = scriptReferences('Use `scripts/qualify-head.ts`, [speech](../scripts/local-speech/README.md) and `packages/app/scripts/mobile/context.ts`.').map(item => item.reference);
+  assert.deepEqual(found, ['scripts/qualify-head.ts', 'scripts/local-speech/README.md']);
   assert.deepEqual(npmScriptReferences('Run `npm run verify` then npm run android:build -- --x.').map(item => item.name), ['verify', 'android:build']);
 });
 

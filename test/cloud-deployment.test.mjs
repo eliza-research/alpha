@@ -4,9 +4,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {deploymentOutputs,validateCloudDeployment,nativeAuthCallbackRegistration} from '../scripts/cloud-deployment.mjs';
-import {CLOUD_DEPLOYMENT as defaults} from '../scripts/cloud-deployment-policy.mjs';
-import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
+import {deploymentOutputs,validateCloudDeployment,nativeAuthCallbackRegistration} from '../scripts/cloud-deployment.ts';
+import {CLOUD_DEPLOYMENT as defaults} from '../scripts/cloud-deployment-policy.ts';
+import {preparePatchedNative} from '../scripts/prepare-patched-native.ts';
 import {runJvm} from './fixtures/jvm-tools.mjs';
 test('committed renderer, native and Gradle authorities match the deployment configuration',()=>{
  for(const [file,contents] of Object.entries(deploymentOutputs(defaults)))assert.equal(fs.readFileSync(file,'utf8'),contents);
@@ -100,7 +100,7 @@ test('configuration the shared native sign-in client cannot register fails at bu
 });
 
 test('build admission rejects drift in renderer, native or Gradle generated authorities',async()=>{
- const {checkCloudDeployment}=await import('../scripts/cloud-deployment.mjs');
+ const {checkCloudDeployment}=await import('../scripts/cloud-deployment.ts');
  const temp=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-cloud-build-'));
  try{
   const outputs=deploymentOutputs(defaults);
@@ -117,7 +117,7 @@ test('build admission rejects drift in renderer, native or Gradle generated auth
 });
 
 test('build admission rejects a staging-only change that would move production credentials without a migration',async()=>{
- const {checkCloudDeployment,storageFingerprint,STORAGE_NAMESPACES}=await import('../scripts/cloud-deployment.mjs');
+ const {checkCloudDeployment,storageFingerprint,STORAGE_NAMESPACES}=await import('../scripts/cloud-deployment.ts');
  assert.equal(storageFingerprint(defaults),STORAGE_NAMESPACES.at(-1));
  const temp=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-cloud-namespace-'));
  try{
@@ -130,8 +130,8 @@ test('build admission rejects a staging-only change that would move production c
 });
 
 test('build admission rejects a resident Cloud SDK base that disagrees with the deployment configuration',async()=>{
- const {checkCloudDeployment}=await import('../scripts/cloud-deployment.mjs');
- const {CLOUD_SDK_BASES,cloudSdkBases}=await import('../scripts/cloud-sdk-authority.mjs');
+ const {checkCloudDeployment}=await import('../scripts/cloud-deployment.ts');
+ const {CLOUD_SDK_BASES,cloudSdkBases}=await import('../scripts/cloud-sdk-authority.ts');
  assert.deepEqual(CLOUD_SDK_BASES,{production:defaults.production.api+'/api/v1',staging:defaults.staging.api+'/api/v1'});
  checkCloudDeployment();
  assert.throws(()=>checkCloudDeployment(undefined,{sdkBases:{...CLOUD_SDK_BASES,production:'https://api.example.org/api/v1'}}),/Cloud SDK bases .* disagree/);
@@ -139,7 +139,7 @@ test('build admission rejects a resident Cloud SDK base that disagrees with the 
  assert.equal(cloudSdkBases(config).production,'https://api.example.org/api/v1');
  for(const api of ['http://api.example.org','https://api.example.org/','not a url'])assert.throws(()=>cloudSdkBases({...config,production:{...config.production,api}}),/Invalid Cloud API origin/,api);
  // No second hard-coded authority: the resident hosts take the base from the configured module only.
- for(const file of ['scripts/cloud-sdk-authority.mjs','scripts/cloud-resident-host.mjs','scripts/start-cloud-qa.mjs'])assert.doesNotMatch(fs.readFileSync(file,'utf8'),/https:\/\/api(-staging)?\.eliza\.app/,file);
+ for(const file of ['scripts/cloud-sdk-authority.ts','scripts/cloud-resident-host.ts','scripts/start-cloud-qa.ts'])assert.doesNotMatch(fs.readFileSync(file,'utf8'),/https:\/\/api(-staging)?\.eliza\.app/,file);
 });
 
 test('every authority change gives renderer and native credentials a new namespace',async()=>{

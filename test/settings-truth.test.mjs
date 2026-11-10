@@ -19,7 +19,7 @@ test('recorded install-time formatting stays truthful and About never claims the
  // The old OS update-channel switch remains off; the clean About page has no status row.
  assert.match(readFileSync('apps/app/src/build-flags.ts','utf8'),/export const updateChannelCheckEnabled = false as boolean;/);
  assert.equal((source.match(/\.\.\.\(developerTools\?\[info\('Update channel \(development\)',updateChannelCheckEnabled\?'Read-only check on · never downloads or installs':'Off'\)\]:\[\]\)/g)??[]).length,0);
- assert.match(readFileSync('scripts/audit-production-bundle.mjs','utf8'),/'Update channel \(development\)'/);
+ assert.match(readFileSync('scripts/audit-production-bundle.ts','utf8'),/'Update channel \(development\)'/);
  // An answered manual check may report its result, but never claims this installation is current.
  assert.doesNotMatch(source,/Up to date|Update available|Update failed/);
  assert.doesNotMatch(java,/Up to date|Update available/);
@@ -124,16 +124,22 @@ test('the grouped Privacy page retains permission review and action-review contr
  assert.match(source,/if\(key==='settings-apps'\)/,'app permissions remain separate from the app catalog');
 });
 
-test('Cloud privacy hero includes speech while retaining native and offline/startup truth',async()=>{
+test('the privacy hero names Cloud speech only while it is the route in use, and retains native and offline/startup truth',async()=>{
  const nativeSource=readFileSync('apps/app/src/prototype/native-adapter.ts','utf8');
  const wording=nativeSource.slice(nativeSource.indexOf('type EgressConnection ='),nativeSource.indexOf('/** Only a verified resident session'));
- const load=async cloud=>import('data:text/javascript;base64,'+Buffer.from(`const cloudRuntimeEnabled=${cloud};const testMocksEnabled=false;const Capacitor={isNativePlatform:()=>true};const cloudServiceName=environment=>environment==='staging'?'Nebula':'Cloud Test';`+stripTypeScriptTypes(wording,{mode:'strip'})).toString('base64'));
- const cloud=await load(true),native=await load(false);
+ // The speech route is read at run time (voice-selection.ts speechRoute); no build profile is involved.
+ assert.doesNotMatch(nativeSource,/cloudRuntimeEnabled/);
+ const load=async route=>import('data:text/javascript;base64,'+Buffer.from(`const speechRoute=()=>${JSON.stringify(route)};const testMocksEnabled=false;const Capacitor={isNativePlatform:()=>true};const cloudServiceName=environment=>environment==='staging'?'Nebula':'Cloud Test';`+stripTypeScriptTypes(wording,{mode:'strip'})).toString('base64'));
+ const cloud=await load('cloud'),native=await load('device');
  const connected={kind:'resident',session:{sessionId:'qa'},cloudAccount:{environment:'staging'}};
- for(const isNative of [true,false]){
-  const fact=cloud.egressPrivacy(connected,isNative);
+ {
+  // Cloud inference with Cloud speech in use now: the hero says what speech sends, and when it does not.
+  const fact=cloud.egressPrivacy({...connected,residentInference:'cloud'},true);
   assert.equal(fact.big,'Uses Nebula');assert.ok(fact.sub.includes('go to Nebula for AI'));
-  for(const content of ['When used','messages','selected content','Voice recordings','text for playback'])assert.ok(fact.sub.includes(content),content);
+  for(const content of ['Messages','selected content','Voice recordings','text for playback','go to Nebula while it is available','otherwise speech runs on this phone'])assert.ok(fact.sub.includes(content),content);
+  // The route passed explicitly wins over the ambient one; on this phone nothing about speech leaves.
+  assert.ok(!cloud.egressPrivacy({...connected,residentInference:'cloud'},true,'device').sub.includes('Voice recordings'));
+  assert.ok(native.egressPrivacy({...connected,residentInference:'cloud'},true,'cloud').sub.includes('Voice recordings'));
  }
  assert.equal(native.egressPrivacy(connected,true).big,'Partly masked');
  assert.ok(native.egressPrivacy(connected,true).sub.includes('No AI requests until AI is set up'));

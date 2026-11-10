@@ -3,11 +3,12 @@ import vm from 'node:vm';
 import {fileURLToPath} from 'node:url';
 import {stripTypeScriptTypes} from '../../../../test/support/strip-types.mjs';
 import {checkTraces, qmap} from '../check-traces.mjs';
-import {boundInputs, call, captureSources, checkpoint, deferred, read, tick, trace} from './support.mjs';
+import {boundInputs, call, captureSources, checkpoint, deferred, read, sourceModule, tick, trace} from './support.mjs';
 
 const driver = fileURLToPath(import.meta.url);
 const adapterPath = 'apps/app/src/prototype/maps-adapter.ts';
 const helperPath = 'apps/app/src/runtime/maps-event-return.ts';
+const notificationPath = 'apps/app/src/runtime/maps-notification-open.ts';
 const marker = '  let returningToEvent: {raw: unknown; abort: AbortController} | undefined;';
 const noOrigin = {event: '', kind: ''};
 const noAttempt = {origin: 0, aborted: false, settled: false};
@@ -26,7 +27,7 @@ function compile() {
   return new vm.Script(code + '\nglobalThis.install = installPrototypeMapsAdapter;');
 }
 
-function fixture(compiled) {
+function fixture(compiled, providerHelpers, notificationHelpers) {
   const window = new EventTarget(), document = Object.assign(new EventTarget(), {hidden: false});
   const shell = {pageSuspended: false};
   const mapsModule = {render: () => ({cats: []})};
@@ -50,17 +51,22 @@ function fixture(compiled) {
   }
 
   class ScreenPort {
-    view() {return {status: {text: ''}, saved: [], results: [], mode: navigating ? 'navigation' : 'base', showSearch: true};}
+    view() {return {status: {text: ''}, saved: [], results: [], map: {overlay: {}}, mode: navigating ? 'navigation' : 'base', showSearch: true};}
     surface() {return {};}
     isNavigating() {return navigating;}
     release() {}
+    leaveView() {}
+    retireShare() {}
     refresh() {}
     hidden() {}
     unwind() {unwinds++;}
     dispose() {}
   }
   const context = vm.createContext({window, document, AbortController, queueMicrotask,
-    registerPlugin: name => name === 'AlphaCalendar' ? {list: input => request('native', input)} : {},
+    ...providerHelpers, ...notificationHelpers, googleMapsLogo: 'fixture-google-attribution.svg',
+    Capacitor: {isNativePlatform: () => false},
+    registerPlugin: name => name === 'AlphaCalendar' ? {list: input => request('native', input)}
+      : name === 'AlphaMapsTransport' ? {consumeNavigationOpen: async () => {throw Error('Notification launch is outside this Calendar-return campaign');}, clearNavigationOpen: async () => {}} : {},
     NavigationVoice: class {}, BackgroundNavigation: class {}, MapsScreenController: ScreenPort,
     mapsConnection: () => undefined, onMapsConnectionChange: () => () => {}, NativeMapsLocation: class {},
     locationPermissionGranted: () => false, shareMap: () => {}, isAndroid: false,
@@ -206,11 +212,13 @@ const cases = [
 ];
 
 export async function checkMapsEventReturn(extraSources = []) {
-  const sources = [adapterPath, helperPath, driver, ...extraSources];
+  const sources = [adapterPath, helperPath, notificationPath, driver, ...extraSources];
   captureSources(sources);
+  const providerHelpers = await sourceModule('apps/app/src/maps/cloud-provider.ts');
+  const notificationHelpers = await sourceModule(notificationPath);
   const compiled = compile(), traces = [];
   for (const [name, steps] of cases) {
-    const f = fixture(compiled), t = trace(name, f.observe());
+    const f = fixture(compiled, providerHelpers, notificationHelpers), t = trace(name, f.observe());
     try {
       for (const [operation, ...args] of steps) {
         await f[operation](...args);
@@ -224,5 +232,6 @@ export async function checkMapsEventReturn(extraSources = []) {
       'Executes the current Maps adapter and canonical/native origin helpers through the actual render bindings, with a read-only observer for its private return token.',
       'The screen, shell and native/Calendar ports supply two events, six exact origin objects and five attempts. Browser renderer regressions separately drive real navigation, pagehide and late canonical service readback.',
       'Native provider records and canonical readback outcomes are controlled. Installed-provider effects, screen rendering geometry and detailed route guidance have separate scope.',
+      'The actual notification-open helper runs against a non-native host here; native launch consumption and safe shell readiness are covered by separate Maps notification tests.',
     ]}));
 }

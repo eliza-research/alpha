@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {verifyPixel10aSource, defaultLockPath} from '../scripts/pixel10a-source-contract.mjs';
+import {verifyPixel10aSource, defaultLockPath} from '../scripts/pixel10a-source-contract.ts';
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 function fixture(t) {
  const base=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'pixel-source-')));
