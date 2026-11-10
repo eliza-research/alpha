@@ -68,6 +68,8 @@ jobs:
           ALPHA_REQUIRE_PREPARED_SDK: '1'
           ALPHA_ELIZA_SOURCE: ${{ env.ALPHA_CLOUD_COLLECTOR_SOURCE }}
           ALPHA_QUINT_BUN: ${{ env.ALPHA_BUN }}
+          # Give each aggregate the runner's resources; retain every test and deadline.
+          ALPHA_TEST_CONCURRENCY: '1'
       - name: Retain Quint model and implementation evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
