@@ -1,3 +1,4 @@
+import {checkKeyboardDictationCloud} from './keyboard-dictation-cloud.mjs';
 import {checkKeyboardDictation} from './keyboard-dictation.mjs';
 import {collectRefinementCampaigns} from '../campaigns.mjs';
 import {fileURLToPath} from 'node:url';
@@ -182,7 +183,7 @@ export async function runNativeRefinement(onProgress) {
       checkNativeUpdateStaging, checkCanonicalNotificationTap, checkWorkflowNoticeDelivery,
       checkNativeHostedResultNotices, checkNativeHostedInbox, checkNativeReminderDelivery, checkNativeClockReview,
       checkNativeSmsDispatch, checkNativeMmsDispatch, checkNativeTextScaleLifecycle, checkNativeCrashJournal,
-      checkNativeSettingsHandoff, checkNativeAppInfoHandoff, checkNativeSourceRenewal, checkNativeAssistantEntry, checkNativeActionRecovery,
+      checkNativeSettingsHandoff, checkNativeAppInfoHandoff, checkKeyboardDictationCloud, checkNativeSourceRenewal, checkNativeAssistantEntry, checkNativeActionRecovery,
       checkNativeGmailBackground, checkNativeDigestConsent, checkNativeCalendarScopedReview,
       checkNativeCalendarSyncEnable, checkBrowserUnderlay].map(withInputs(nativeInputs)),
   ];
