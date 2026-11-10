@@ -88,7 +88,7 @@
   ],
   "upstream": {
     "url": "https://github.com/elizaOS/eliza.git",
-    "commit": "dae11e0b7e3f40e5434fea21fd7c127e416f7016",
+    "commit": "75b44015561368fc8ca982b70b8bafbdf1672a7b",
     "appSource": "packages/app",
     "nativeSystemSource": "plugins/plugin-native-system",
     "osSource": "packages/os"
@@ -485691,7 +485691,7 @@
       "scope": "shared-module-dependency",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "bb36c4486dda2d3a381c36d736ee55fc4793f96fb864a9159014f2b3af4557f3",
+      "sha256": "0c6ccc6936f262d2367e3ce6dde0a73cb958572dde971dfe65e6194593633d5b",
       "stateAnchors": [
         {
           "line": 62,
@@ -485742,7 +485742,7 @@
           "text": "private JSONObject visibleOwner;"
         }
       ],
-      "integrationReview": "Reviewed merged source and upstream contract integration. Existing domain allocation is retained; refreshed hashes do not establish implementation refinement or device acceptance."
+      "integrationReview": "Reviewed authenticated-owner equality before the stale expected-identity fence. Known changed owners pause before provider effects; equal owners still require the final current fence. Existing domain allocation remains partial; bounded source traces, full coordinator refinement and Android/device qualification remain separate."
     },
     {
       "path": "vendor/eliza/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeferredDeletionJournal.java",
@@ -618276,7 +618276,7 @@
     },
     {
       "path": "android/embedding-host/qualified-host.json",
-      "sha256": "279286d1e2a59df378e93401894274c8ea1b2c5c35ab73cdd2866af1cd30019c",
+      "sha256": "ae29890809705a5af834da0eb5f94a6a1be547b356f48c7cd59285ba4ac4dffe",
       "models": [
         "NamedEmbeddingProvenance",
         "EmbeddingStoreIdentity",
@@ -618346,7 +618346,7 @@
         "NativeRecognizerAvailability",
         "NativeSpeechWarmup"
       ],
-      "sha256": "7f03ffb94f0da95212d0947992be40bdf90d7f78f79514b881173ed2abbc2734",
+      "sha256": "d7d72af5f96708418e63a9c1cd2ffbe03a0416d46e051eeb3cb89ee5abc45b9d",
       "integrationReview": "Current SDK source identity advances separately from the preserved historical voice/model/JNI evidence. Qualification, user acceptance and native qualification transfer remain false; unchanged source inputs do not establish device acceptance."
     },
     {
@@ -618637,7 +618637,7 @@
         "MobileBundleAdmission",
         "NativeGoogleHostArtifact"
       ],
-      "sha256": "c5fb225204857be987309a880645ef48e86ec0dc73e959ebf2fe70fcc4d0302c",
+      "sha256": "17574dbc96d8a3c5189971f72c0e76de1be5d8b75012eed2ee5283bb31e8e521",
       "integrationReview": "Reviewed exact final upstream source catalog at the merged pin; core target source hashes and authority are unchanged. Source admission is distinct from installed runtime qualification."
     },
     {
@@ -618646,7 +618646,7 @@
         "Application",
         "MobileBundleAdmission"
       ],
-      "sha256": "f5e89516f9fb612f6b1f96dd655f1eaf294ba99c434a46a7d113c87ee357b35d",
+      "sha256": "4ec55a7f3fe533ee28daa2f05a32564e997deed073a6b783e1a24826caac5ee1",
       "integrationReview": "Reviewed exact final upstream mobile producer catalog at the merged pin; builder/lock byte authority is unchanged. A fresh actual build graph is required separately; old producer evidence is not relabelled."
     },
     {
@@ -618673,7 +618673,7 @@
       "models": [
         "Application"
       ],
-      "sha256": "4e910d2c7f128f8d9bae18c024160c59e2306fba3edf353632ff3068aec4bff9",
+      "sha256": "7e54cc8248aa78b0c4e7bd025365da961816e1e908795ad123bea6c8cdd655a0",
       "integrationReview": "Current upstream TLA/TLC inventory is authenticated independently at the merged pin and remains empty. The 16 historical models, 31 configurations and 7 runtime artifacts remain bound to original 4787 source identity; no historical proof is transferred."
     },
     {
@@ -618711,7 +618711,7 @@
         "CoreRuntimeShutdown",
         "CoreServiceLifecycle"
       ],
-      "sha256": "612bb35c1dd4a79339fd25e1a5bc0873196d60fb9ad0cd72b88ec16206409fd0",
+      "sha256": "51cdb48a71122432271f1ea2cc785d794b7a0c3317c51f59da46ed8450f06c58",
       "integrationReview": "Fresh observation executes the actual mobile producer at the merged pin and authenticates emitted first-party inputs, source tree before/after and unchanged producer inputs. This source graph records current build provenance; old graphs and installed-runtime qualification are separate evidence."
     },
     {
@@ -618731,7 +618731,7 @@
         "ResidentJavaSourceStage",
         "TaskServiceLifecycle"
       ],
-      "sha256": "98807065a2d5a1a1a5842792e543a6da6861ad9aec9fef5ebe8f20033ddbb88b",
+      "sha256": "4263ceaf84bc55f0313e7eceddbdebda162d4417bef7e03fa6b5dc4b70a93815",
       "integrationReview": "Reviewed merged upstream commit supplies the shared source identity. Consumer product data remains downstream and signer, release, provider and qualification authority remain independent."
     },
     {
@@ -618740,6 +618740,42 @@
         "AlwaysOnListener"
       ],
       "sha256": "65a62b665e34dfc370cf10519f82cbfabce7089e65d11b7130498ccbb1b8fa89"
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-action-journal/quint/check-deletion-owner-admission.mjs",
+      "sha256": "3a247e841ce3a4aa92544f1eef0fb438df6d6cbdc4756d46d4a0074f3583386e",
+      "models": [],
+      "scope": "upstream-formal-catalog",
+      "treatment": "authenticated-catalog-data",
+      "reviewStatus": "catalog-only",
+      "integrationReview": "Exact upstream Git and byte identity for the partial DeletionOwnerAdmission model and its case, checker and coverage sidecars. Downstream model allocations, generated-trace equivalence, full coordinator refinement and Android/device qualification remain separate."
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-action-journal/quint/coverage.json",
+      "sha256": "257b1111c7f027178a85d5162de9b18be5686e28c5f61e472f6ac3798564a668",
+      "models": [],
+      "scope": "upstream-formal-catalog",
+      "treatment": "authenticated-catalog-data",
+      "reviewStatus": "catalog-only",
+      "integrationReview": "Exact upstream Git and byte identity for the partial DeletionOwnerAdmission model and its case, checker and coverage sidecars. Downstream model allocations, generated-trace equivalence, full coordinator refinement and Android/device qualification remain separate."
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-action-journal/quint/DeletionOwnerAdmission.cases.json",
+      "sha256": "0939834f14611298da39da0636fbe4512d67a81db5cf12c6b00bb47a263de4d9",
+      "models": [],
+      "scope": "upstream-formal-catalog",
+      "treatment": "authenticated-catalog-data",
+      "reviewStatus": "catalog-only",
+      "integrationReview": "Exact upstream Git and byte identity for the partial DeletionOwnerAdmission model and its case, checker and coverage sidecars. Downstream model allocations, generated-trace equivalence, full coordinator refinement and Android/device qualification remain separate."
+    },
+    {
+      "path": "vendor/eliza/plugins/plugin-native-action-journal/quint/DeletionOwnerAdmission.qnt",
+      "sha256": "01b047579da91de19b1f7bd76603b95c4bf9fad0c0627fb3a28a1e76d09e53e6",
+      "models": [],
+      "scope": "upstream-formal-catalog",
+      "treatment": "authenticated-catalog-data",
+      "reviewStatus": "catalog-only",
+      "integrationReview": "Exact upstream Git and byte identity for the partial DeletionOwnerAdmission model and its case, checker and coverage sidecars. Downstream model allocations, generated-trace equivalence, full coordinator refinement and Android/device qualification remain separate."
     },
     {
       "path": "vendor/eliza/tsconfig.json",
@@ -618755,7 +618791,7 @@
   "sharedSourceDiscovery": {
     "sharedSourceCount": 4909,
     "producer": "specs/quint/refinement/services/runtime-bundle-inputs.json",
-    "sourcePin": "dae11e0b7e3f40e5434fea21fd7c127e416f7016",
+    "sourcePin": "75b44015561368fc8ca982b70b8bafbdf1672a7b",
     "meaning": "Authenticated source identities and domain allocations. Runtime activation and implementation refinement require separate evidence."
   }
 }

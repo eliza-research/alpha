@@ -2143,9 +2143,31 @@
     }
   ],
   "currentUpstream": {
-    "revision": "dae11e0b7e3f40e5434fea21fd7c127e416f7016",
+    "revision": "75b44015561368fc8ca982b70b8bafbdf1672a7b",
     "classification": "current-upstream-formal-specifications",
     "models": [],
-    "note": "The current upstream tree has no tracked TLA modules or TLC configurations. Historical translations and source hashes above remain bound to revision 4787d51a142c63c98371c832997184c53f7218d3; this current inventory must separately allocate any future formal source."
+    "note": "The current upstream tree has no tracked TLA modules or TLC configurations. Historical translations and source hashes above remain bound to revision 4787d51a142c63c98371c832997184c53f7218d3. The four DeletionOwnerAdmission Quint sidecars below catalogue the upstream partial owner-admission model and checker at this current revision; downstream model allocations, generated-trace equivalence, full coordinator refinement and Android/device qualification remain separate. Any future TLA/TLC source requires separate allocation.",
+    "quintSidecars": [
+      {
+        "path": "plugins/plugin-native-action-journal/quint/DeletionOwnerAdmission.cases.json",
+        "gitObject": "a6c1687e076cce9cc64b36cc9b557ac716785ec9",
+        "sha256": "0939834f14611298da39da0636fbe4512d67a81db5cf12c6b00bb47a263de4d9"
+      },
+      {
+        "path": "plugins/plugin-native-action-journal/quint/DeletionOwnerAdmission.qnt",
+        "gitObject": "5cdb67be319115d8aba734cc5087f4260891fa25",
+        "sha256": "01b047579da91de19b1f7bd76603b95c4bf9fad0c0627fb3a28a1e76d09e53e6"
+      },
+      {
+        "path": "plugins/plugin-native-action-journal/quint/check-deletion-owner-admission.mjs",
+        "gitObject": "986b89cfbdbf43f2ebebaa564af31543cbab2214",
+        "sha256": "3a247e841ce3a4aa92544f1eef0fb438df6d6cbdc4756d46d4a0074f3583386e"
+      },
+      {
+        "path": "plugins/plugin-native-action-journal/quint/coverage.json",
+        "gitObject": "59d42061ee290863f5e6bcfabe844873b5ff4655",
+        "sha256": "257b1111c7f027178a85d5162de9b18be5686e28c5f61e472f6ac3798564a668"
+      }
+    ]
   }
 }

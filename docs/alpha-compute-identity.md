@@ -29,7 +29,7 @@ resident producer's migrated PGlite snapshot. The dependency lock and recorded
 engine/model bytes are unchanged; native, device and user qualification do not
 transfer to this application.
 
-The current pin `dae11e0b7e3f40e5434fea21fd7c127e416f7016`
+The earlier reviewed pin `dae11e0b7e3f40e5434fea21fd7c127e416f7016`
 ([elizaOS/eliza#39180](https://github.com/elizaOS/eliza/pull/39180)) merges
 those sources with the reviewed notice-publication cleanup and Unicode-safe Gmail
 body bound. Shared code takes an optional caller-owned body limit; Alpha selects
@@ -38,6 +38,14 @@ directly and carries no source patches. The dependency lock, recorded engine/mod
 bytes and shared speech inputs are unchanged from `489efc0b`; historical built
 reviews retain their original pins. Current native, device and user qualification
 remain pending.
+
+The current pin `75b44015561368fc8ca982b70b8bafbdf1672a7b`
+([elizaOS/eliza#39189](https://github.com/elizaOS/eliza/pull/39189)) adds the
+reviewed generic deferred-deletion owner check before the write fence. Retired
+ownership cannot fence the current owner. The consumer configuration remains
+product-owned. Voice/embedding engine, model and JNI inputs and the dependency
+lock are unchanged; native action-journal Java changed. The earlier DAE builds
+and all native/device/user acceptance retain their original source bindings.
 
 The separately reviewed source `450087e00e6dc1c289aab0c3e424560b7040d163`
 retains the callback identity and exact stock-biography fingerprint, preserves
