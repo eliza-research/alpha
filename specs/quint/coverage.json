@@ -47742,7 +47742,7 @@
     },
     {
       "path": "scripts/dev-ui-remote-host.mjs",
-      "sha256": "d6015a7ac14423995ce4befaedbf0932fc6d382abf6302f7e4096e0874e0a2d1",
+      "sha256": "e460212e94ae8ee931e74f6188c171283512918dd699d2d719051e4ca2ebceb2",
       "models": [
         "DevelopmentHost",
         "DevelopmentSurfaces"
@@ -47750,7 +47750,7 @@
       "scope": "development-runtime",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "integrationReview": "2026-11-10: explicit Cloud renderer profile matches standard dev-cloud entry point. Existing loopback remote host and HMR-off boundaries retained. Live profile and startup require separate observation."
+      "integrationReview": "2026-11-10: explicit Cloud renderer profile matches standard dev-cloud entry point. Existing loopback remote host and HMR-off boundaries retained. Live profile and startup require separate observation. Canonical realtime renderer flag matches existing remote host; attested health checked."
     },
     {
       "path": "scripts/generate-licenses.mjs",

@@ -7,7 +7,7 @@ if(!Number.isInteger(port)||port<1024||port>65535)throw Error('Invalid local por
 if(remote.protocol!=='http:'||remote.hostname!=='127.0.0.1'||!remote.port||remote.pathname!=='/'||remote.search||remote.hash||remote.username||remote.password||Number(remote.port)===port)throw Error('Remote host must be a separate explicit loopback port');
 const environment=options.environment||'production';
 if(!['production','staging'].includes(environment))throw Error('Invalid Cloud environment');
-Object.assign(process.env,{ELIZA_DEV_ALLOW_TEST_MOCKS:'',VITE_ELIZA_DEV_ALLOW_TEST_MOCKS:'',VITE_ALPHA_CLOUD_RESIDENT:'1',VITE_ALPHA_CLOUD_ENVIRONMENT:environment,VITE_LOCAL_AGENT:'1',VITE_ELIZA_RUNTIME_PROFILE:'cloud'});
+Object.assign(process.env,{ELIZA_DEV_ALLOW_TEST_MOCKS:'',VITE_ELIZA_DEV_ALLOW_TEST_MOCKS:'',VITE_ALPHA_CLOUD_RESIDENT:'1',VITE_ALPHA_CLOUD_ENVIRONMENT:environment,VITE_LOCAL_AGENT:'1',VITE_ELIZA_RUNTIME_PROFILE:'cloud',VITE_ALPHA_DEV_CLOUD_REALTIME_VOICE:'1'});
 const loaded=await loadConfigFromFile({command:'serve',mode:'development'},resolve('vite.config.ts'));
 if(!loaded)throw Error('Vite configuration unavailable');
 const plugins=[];
