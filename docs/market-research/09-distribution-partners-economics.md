@@ -2,7 +2,7 @@
 
 Product baseline, from [android-and-aosp.md](../android-and-aosp.md), [native-app-distribution.md](../native-app-distribution.md) and [enclave-candidate-validation.md](https://github.com/eliza-research/alphaphone/blob/d0a9db7829f7546668af46752bac57c6a339c7dd/docs/enclave-candidate-validation.md). Alpha Phone today is:
 
-- an Android app in two flavors, standalone and HOME launcher (`ai.alphacompute.alphaphone`);
+- an Android app in two flavors, standalone and HOME launcher (`ai.elizaresearch.alphaphone`);
 - a generated, non-privileged AOSP vendor add-on that has not been booted as a full signed image on a physical Pixel;
 - a cloud agent in AWS Nitro Enclaves that calls Cerebras `qwen-3.8-27b` for inference. The latest candidate is not deployed.
 

@@ -12,7 +12,7 @@ import {execFileSync} from 'node:child_process';
 import {prepareNativeFixture} from './fixtures/native-source.mjs';
 import {jsonJar as jar,jvmSkip,javaBinary} from './fixtures/jvm-tools.mjs';
 const root=resolve(import.meta.dirname,'..');
-const alpha=name=>readFileSync(join(root,'android/app/src/main/java/ai/alphacompute/alphaphone',name+'.java'),'utf8');
+const alpha=name=>readFileSync(join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone',name+'.java'),'utf8');
 
 test('the shared deadline, journal, dispatch claim, receipt recovery and coordinator pass at the pin',{skip:jvmSkip('json')},()=>{
  const dir=mkdtempSync(join(tmpdir(),'alpha-shared-deletion-'));
@@ -33,7 +33,7 @@ test('Alpha binds the shared coordinator with its installed slots, bridge and wo
  assert.match(binding,/ExistingWorkPolicy\.REPLACE/,'one wake-up replaces the last');
  assert.doesNotMatch(binding,/synchronized\(this\)|boolean reconcile\(/,'admission lives in the shared coordinator');
  for(const name of ['DeletionDeadline','DeferredDeletionJournal','NativeDeletionRecovery','NativeDeletionClaim'])
-  assert.equal(existsSync(join(root,'android/app/src/main/java/ai/alphacompute/alphaphone',name+'.java')),false,name+' is the shared module\'s');
+  assert.equal(existsSync(join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone',name+'.java')),false,name+' is the shared module\'s');
  assert.match(alpha('AlphaDeletionsPlugin'),/@CapacitorPlugin\(name="AlphaDeletions"\)/);
  assert.match(readFileSync(join(root,'apps/app/src/runtime/deletions.ts'),'utf8'),/\}>\('AlphaDeletions'\);/);
  assert.match(alpha('DeletionWorker'),/NativeDeletionCoordinator\.get\(getApplicationContext\(\)\)\.reconcile\(\)\?Result\.retry\(\):Result\.success\(\)/);

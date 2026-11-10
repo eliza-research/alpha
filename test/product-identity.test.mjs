@@ -66,7 +66,7 @@ function literalStorageKeys(root) {
 }
 
 test('app.config.json carries the Alpha Phone identity', () => {
-  assert.equal(identity.appId, 'ai.alphacompute.alphaphone');
+  assert.equal(identity.appId, 'ai.elizaresearch.alphaphone');
   assert.equal(identity.appName, 'Alpha Phone');
 });
 

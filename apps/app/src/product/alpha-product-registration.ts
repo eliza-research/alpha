@@ -7,7 +7,7 @@ export const ALPHA_PRODUCT_REGISTRATION = {
   revision: 2,
   identity: {
     appName: "Alpha Phone",
-    appId: "ai.alphacompute.alphaphone",
+    appId: "ai.elizaresearch.alphaphone",
     characterName: "Alpha"
   },
   theme: {

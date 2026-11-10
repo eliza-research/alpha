@@ -1,6 +1,6 @@
 package ai.eliza.auth.cloud;
 
-import ai.alphacompute.alphaphone.Trace;
+import ai.elizaresearch.alphaphone.Trace;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import org.json.JSONArray;

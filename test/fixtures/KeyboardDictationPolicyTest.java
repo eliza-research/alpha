@@ -1,4 +1,4 @@
-package ai.alphacompute.alphaphone;
+package ai.elizaresearch.alphaphone;
 public final class KeyboardDictationPolicyTest {
  static void check(boolean result) { if (!result) throw new AssertionError(); }
  public static void main(String[] args) {

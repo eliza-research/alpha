@@ -10,8 +10,8 @@ import { compareDomains, integrityQuery, INTEGRITY_AUTHORITY, parseIntegrityExpo
 import { beginPilotRotation, claimPilotInstall, inspectPilotRotation } from "../scripts/owner/pilot-rotation-journal.mjs";
 
 test("the export query is the read-only provider URI with a nonce, quoted for the device shell", () => {
-  assert.equal(INTEGRITY_AUTHORITY, "ai.alphacompute.alphaphone.integrity");
-  assert.deepEqual(integrityQuery(NONCE), ["shell", "content", "query", "--uri", `'content://ai.alphacompute.alphaphone.integrity/domains?nonce=${NONCE}'`]);
+  assert.equal(INTEGRITY_AUTHORITY, "ai.elizaresearch.alphaphone.integrity");
+  assert.deepEqual(integrityQuery(NONCE), ["shell", "content", "query", "--uri", `'content://ai.elizaresearch.alphaphone.integrity/domains?nonce=${NONCE}'`]);
   for (const nonce of ["", "abc", "z".repeat(64), `${NONCE}'; rm -rf /`]) assert.throws(() => integrityQuery(nonce), /nonce/);
 });
 
@@ -40,8 +40,8 @@ test("a lost, changed or new file after the update is reported per domain", () =
 });
 
 test("a refused, failed, truncated or malformed export never reads as an unchanged inventory", () => {
-  assert.equal(parseIntegrityExport("Error while accessing provider:ai.alphacompute.alphaphone.integrity\njava.lang.IllegalArgumentException: Could not find provider"), null);
-  assert.equal(parseIntegrityExport("[ERROR] Unknown authority ai.alphacompute.alphaphone.integrity"), null, "an older build without the export");
+  assert.equal(parseIntegrityExport("Error while accessing provider:ai.elizaresearch.alphaphone.integrity\njava.lang.IllegalArgumentException: Could not find provider"), null);
+  assert.equal(parseIntegrityExport("[ERROR] Unknown authority ai.elizaresearch.alphaphone.integrity"), null, "an older build without the export");
   assert.throws(() => parseIntegrityExport("Error while accessing provider:x\njava.lang.SecurityException: Permission Denial: opening provider requires android.permission.DUMP"), /Integrity export failed/);
   assert.throws(() => parseIntegrityExport("java.lang.IllegalStateException: Integrity export failed: IOException"), /Integrity export failed/);
   const output = exported(DATA);
@@ -59,14 +59,14 @@ test("the provider is a registered, read-only, DUMP-protected release component,
   assert.match(provider, /android:permission="android\.permission\.DUMP"/);
   assert.match(provider, /android:process=":integrity"/);
   assert.match(provider, /android:grantUriPermissions="false"/);
-  const source = fs.readFileSync("android/app/src/main/java/ai/alphacompute/alphaphone/release/DataIntegrityProvider.java", "utf8");
+  const source = fs.readFileSync("android/app/src/main/java/ai/elizaresearch/alphaphone/release/DataIntegrityProvider.java", "utf8");
   assert.doesNotMatch(source, /BuildConfig\.DEBUG|ELIZA_DEV_ALLOW_TEST_MOCKS|isDebuggable/);
   assert.match(source, /HmacSHA256/);
   for (const write of ["insert", "delete", "update"]) assert.match(source, new RegExp(`public (?:Uri|int) ${write}\\([^)]*\\)\\{throw new UnsupportedOperationException`));
   assert.match(source, /List\.of\("cache", "code_cache"\)/);
   const apk = fs.readFileSync("scripts/apk.mjs", "utf8");
   assert.match(apk, /"ai\.alphacompute\.alphaphone\.release\.DataIntegrityProvider": "android\.permission\.DUMP"/);
-  assert.ok(!fs.existsSync("android/app/src/testMocks/java/ai/alphacompute/alphaphone/release"), "no test-mocks variant of the export");
+  assert.ok(!fs.existsSync("android/app/src/testMocks/java/ai/elizaresearch/alphaphone/release"), "no test-mocks variant of the export");
 });
 
 const { planHome, updateUnit } = await import("../scripts/pilot-update.mjs");

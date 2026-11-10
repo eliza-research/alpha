@@ -30,7 +30,7 @@ key, so they are bound to a non-release certificate SHA-1 (which one is not visi
 operator access). A release-signed build will therefore be refused by Google until a client for the
 release SHA-1 exists, even though the probe passes. The probe cannot see which SHA-1 a client uses.
 
-Steward values (from `registration`): app client `alpha-phone`; package `ai.alphacompute.alphaphone`;
+Steward values (from `registration`): app client `alpha-phone`; package `ai.elizaresearch.alphaphone`;
 callbacks above; tenants `elizacloud` / `elizacloud-staging`.
 
 ## Operator runbook: Android OAuth client and `STEWARD_GOOGLE_NATIVE_CLIENT_IDS`
@@ -44,7 +44,7 @@ Who: Cloud operator with access to the Google Cloud project holding Steward's Go
    `node scripts/owner/google-native-client.mjs --certificate CEREMONY/alphaphone_app.x509.pem`.
    The certificate is public; the private key is never needed or read.
 2. In that Google Cloud project: APIs and Services, Credentials, Create credentials, OAuth client ID,
-   type **Android**; package name `ai.alphacompute.alphaphone`; SHA-1 certificate fingerprint = the
+   type **Android**; package name `ai.elizaresearch.alphaphone`; SHA-1 certificate fingerprint = the
    release SHA-1. Use the same project as the web client, or Google issues tokens whose audience
    Steward does not accept.
 3. Note the new client ID (`NNN-xxxx.apps.googleusercontent.com`, a public identifier).
@@ -94,6 +94,6 @@ Only on a **release-signed** build (signer equals `android/release-signer.json`)
 ## Draft decision entries
 
 - **P-NN — H-12 (#669):** Production Steward `STEWARD_GOOGLE_NATIVE_CLIENT_IDS.alpha-phone` lists only
-  the Android OAuth client for package `ai.alphacompute.alphaphone` and the release certificate
+  the Android OAuth client for package `ai.elizaresearch.alphaphone` and the release certificate
   SHA-1 `<SHA-1>` (option 1A). Staging native Google: `<enabled with a debug-signer client | email only>`.
   Policy, not evidence.

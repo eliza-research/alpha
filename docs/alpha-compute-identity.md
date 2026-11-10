@@ -1,7 +1,7 @@
 # Alpha Compute identity
 
 The November 9 company rename sets the Android application ID to
-`ai.alphacompute.alphaphone`. Standalone and launcher APKs share this ID. Java
+`ai.elizaresearch.alphaphone`. Standalone and launcher APKs share this ID. Java
 packages, the Sense listener, image provisioning, component names, IPC names,
 provider authorities, permissions and test fixtures use the same namespace.
 The reviewed upstream merge `86ab55fd81f68a2c5dd4fd32e1c1431723648c58`

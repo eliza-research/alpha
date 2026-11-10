@@ -1,4 +1,4 @@
-package ai.alphacompute.alphaphone;
+package ai.elizaresearch.alphaphone;
 
 import ai.eliza.plugins.agent.runtime.CredentialShutdownLease;
 import ai.eliza.plugins.agent.updater.RuntimeUpdatePause;

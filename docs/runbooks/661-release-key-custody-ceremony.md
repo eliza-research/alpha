@@ -216,7 +216,7 @@ both names. The repository receives only the H-09 enrollment commit.
    `artifacts/apk-manifest.json` and any `--debug-fingerprint`), certificates that do not hash to
    `fingerprints.json`, and any change to an already recorded digest (without `--replace`).
 3. Note the two printed application identities (public values, safe to share with the Cloud
-   operator): the **SHA-1** for the Google Android OAuth client of `ai.alphacompute.alphaphone`
+   operator): the **SHA-1** for the Google Android OAuth client of `ai.elizaresearch.alphaphone`
    (H-12) and the **colon SHA-256** for `ELIZA_ANDROID_ASSET_LINKS_JSON` (H-13).
 4. Write: the same command with `--write`. Review the diff (only digest lines change) and commit
    the three records together: `android/release-signer.json`, `android/aosp/pixel10a-product.json`,

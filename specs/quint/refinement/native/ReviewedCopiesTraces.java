@@ -1,4 +1,4 @@
-package ai.alphacompute.alphaphone;
+package ai.elizaresearch.alphaphone;
 
 import ai.eliza.plugins.media.ReviewedFileHandoff;
 import android.content.Context;
@@ -20,7 +20,7 @@ import org.json.JSONObject;
 
 /** Actual cache and provider source with real host files and an observed URI grant port. */
 public final class ReviewedCopiesTraces {
- private static final String FOLDER="mail-attachments",AUTHORITY="ai.alphacompute.alphaphone.mailattachments";
+ private static final String FOLDER="mail-attachments",AUTHORITY="ai.elizaresearch.alphaphone.mailattachments";
  private static final int LIMIT=5;
  private static void check(boolean ok,String label){if(!ok)throw new AssertionError(label);}
  private static void await(CountDownLatch gate){

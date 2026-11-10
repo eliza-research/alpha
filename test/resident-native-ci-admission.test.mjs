@@ -57,7 +57,7 @@ bridge=runpy.run_path(str(root/'scripts/ci/calendar-bridge.py'))
 assert bridge['SDK']==json.loads((root/'upstream.lock.json').read_text())['commit'], 'Calendar CI source pin is stale'
 assert bridge['NODE']==(root/'.nvmrc').read_text().strip(), 'Calendar CI Node declaration is stale'
 h=lambda path:hashlib.sha256(path.read_bytes()).hexdigest()
-assert h(root/'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCalendarPlugin.java')==bridge['HOST'], 'Calendar host source changed'
+assert h(root/'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCalendarPlugin.java')==bridge['HOST'], 'Calendar host source changed'
 for relative,expected in bridge['OWNING_SHA256'].items():
  assert h(root/'vendor/eliza'/relative)==expected, 'Calendar owning fixture changed: '+relative
 print('PASS: current Calendar CI pin and exact host/owning fixture bytes')

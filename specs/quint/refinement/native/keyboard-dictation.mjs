@@ -2,7 +2,7 @@ import {fileURLToPath} from 'node:url';
 import {captureInputs,checkTraces} from '../check-traces.mjs';
 import {directory,javaTraces} from './java.mjs';
 export async function checkKeyboardDictation(extraSources=[]){
- const compiled=['android/app/src/main/java/ai/alphacompute/alphaphone/KeyboardDictationPolicy.java'];
+ const compiled=['android/app/src/main/java/ai/elizaresearch/alphaphone/KeyboardDictationPolicy.java'];
  const sources=[...compiled,directory+'/KeyboardDictationTraces.java',directory+'/Trace.java',directory+'/java.mjs',fileURLToPath(import.meta.url),...extraSources];
  const driverHashes=captureInputs(sources);const traces=javaTraces('KeyboardDictationTraces.java',compiled);
  return checkTraces({model:'KeyboardDictation',sources,driverHashes,traces,scope:'bounded-component',assumptions:[

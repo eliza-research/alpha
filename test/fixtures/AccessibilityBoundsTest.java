@@ -1,4 +1,4 @@
-package ai.alphacompute.alphaphone;
+package ai.elizaresearch.alphaphone;
 import java.util.*;
 public final class AccessibilityBoundsTest {
  private static void check(int[] expected,int[] source,int[]...frames){

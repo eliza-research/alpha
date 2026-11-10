@@ -32,7 +32,7 @@ public class JsonCredentialSlots {
  public String slotHash(String name){return name;}
  public AtomicFile slotFile(String hash){return new AtomicFile();}
 }`,
-    'ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java': `package ai.alphacompute.alphaphone;
+    'ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java': `package ai.elizaresearch.alphaphone;
 import android.content.Context;
 public class AlphaLocalAgentPlugin {
  public interface CredentialMutation<T>{boolean requiresShutdown()throws Exception;T commit()throws Exception;}
@@ -51,7 +51,7 @@ public class AlphaLocalAgentPlugin {
  public static <T>T withCredentialAuthority(long expected,java.util.concurrent.Callable<T> action)throws Exception {if(expected!=authority)throw new IllegalStateException("retired authority");return action.call();}
  public static <T>T withCredentialSlotMutation(Runnable owner,java.util.concurrent.Callable<T> mutation)throws Exception {owner.run();return mutation.call();}
 }`,
-    'ai/alphacompute/alphaphone/AlphaConnectionPlugin.java': `package ai.alphacompute.alphaphone;
+    'ai/elizaresearch/alphaphone/AlphaConnectionPlugin.java': `package ai.elizaresearch.alphaphone;
 public class AlphaConnectionPlugin {public static void readCloudIdentity(String token){}}`,
   };
   const paths = [];

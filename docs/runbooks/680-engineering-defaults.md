@@ -106,7 +106,7 @@ provider checks still require separate evidence.
   `scripts/aosp-provisioning-overlay.mjs`, vendor
   `packages/os/scripts/android/launcher-provisioning.mjs` (writes `config_defaultAssistant`,
   `config_defaultAutofillService` and the HOME preferred-apps entry),
-  `android/app/src/launcher/java/ai/alphacompute/alphaphone/AlphaTelephonyRoles.java`.
+  `android/app/src/launcher/java/ai/elizaresearch/alphaphone/AlphaTelephonyRoles.java`.
 - **Options:**
   - A. Keep as is: user-chosen roles.
   - B. Preassign Alpha as dialer and SMS on production images. The shared

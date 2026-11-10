@@ -58,7 +58,7 @@ async function attachFixture(page, launcher) {
         if (method === 'getDeviceSettings') return {volumes: []};
         if (method === 'getStatus') {
           state.roleReads++;
-          return {packageName: 'ai.alphacompute.alphaphone',
+          return {packageName: 'ai.elizaresearch.alphaphone',
             roles: [{role: 'home', androidRole: 'android.app.role.HOME', available: true, held: state.held, holders: []}]};
         }
         if (method === 'requestRole') {

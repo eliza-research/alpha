@@ -215,7 +215,7 @@ def main():
     source_frame['afterNormalBuild'] = tracked_frame(root)
     require(safe_git(root, ['rev-parse', 'HEAD:vendor/eliza']) == SDK, 'Unexpected SDK gitlink')
     require(safe_git(root / 'vendor/eliza', ['rev-parse', 'HEAD']) == SDK, 'Unexpected SDK checkout')
-    host = root / 'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCalendarPlugin.java'
+    host = root / 'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCalendarPlugin.java'
     require(digest(host) == HOST, 'Unexpected Alpha calendar host')
     require((root / '.nvmrc').read_text().strip() == NODE, 'Unexpected Node declaration')
     node = Path(shutil.which('node')).resolve(strict=True)

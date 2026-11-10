@@ -1,4 +1,4 @@
-package ai.alphacompute.alphaphone;
+package ai.elizaresearch.alphaphone;
 
 import android.content.Context;
 import ai.eliza.plugins.agent.runtime.CredentialShutdownLease;

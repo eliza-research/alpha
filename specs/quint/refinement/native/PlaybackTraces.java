@@ -1,4 +1,4 @@
-package ai.alphacompute.alphaphone;
+package ai.elizaresearch.alphaphone;
 
 import ai.eliza.voice.StreamingSpeechPlayback;
 import ai.eliza.voice.VoiceLatencyTrials;

@@ -13,7 +13,7 @@ test('actual owner persistence distinguishes installation, session, agent, provi
   put('android/content/Context.java',`package android.content;public class Context {private final java.io.File files;public Context(java.io.File files){this.files=files;}public java.io.File getFilesDir(){return files;}public Context getApplicationContext(){return this;}}`);
   put('ai/eliza/plugins/securestore/nativeonly/JsonCredentialSlots.java','package ai.eliza.plugins.securestore.nativeonly;public class JsonCredentialSlots {public static final Object LOCK=new Object();}');
   put('NativeNotificationSession.java',readFileSync(nativeSource('NativeNotificationSession.java'),'utf8'));
-  put('PersistTest.java',`package ai.alphacompute.alphaphone;import org.json.*;import android.content.Context;import java.nio.file.*;
+  put('PersistTest.java',`package ai.elizaresearch.alphaphone;import org.json.*;import android.content.Context;import java.nio.file.*;
 class HostedInbox {static String id(String v){if(v==null||!v.matches("[A-Za-z0-9][A-Za-z0-9_-]{0,127}"))throw new IllegalArgumentException();return v;}}
 class HostedResultNotices {static String hash(String v)throws Exception{byte[] h=java.security.MessageDigest.getInstance("SHA-256").digest(v.getBytes(java.nio.charset.StandardCharsets.UTF_8));StringBuilder s=new StringBuilder();for(byte b:h)s.append(String.format("%02x",b&255));return s.toString();}}
 class ResidentResultSession {static final String PLACEHOLDER_AGENT="00000000-0000-0000-0000-000000000000";static JSONObject snapshot(String a,String b,long c,String d){throw new AssertionError();}}
@@ -50,6 +50,6 @@ public class PersistTest {
   System.out.println("PASS actual persistence valid path and eight distinct fail-closed branches with finite diagnostics");
  }
 }`);
- assert.match(runJvm(files,'ai.alphacompute.alphaphone.PersistTest',{json:true}),/^PASS actual persistence/);
+ assert.match(runJvm(files,'ai.elizaresearch.alphaphone.PersistTest',{json:true}),/^PASS actual persistence/);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });

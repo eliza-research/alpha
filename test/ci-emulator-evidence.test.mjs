@@ -215,7 +215,7 @@ test('suite plans: default classes; reading classes with the builds and gates th
 });
 
 test('a default class can run on the flag-off build it is run on',()=>{
- const dir='android/app/src/androidTest/java/ai/alphacompute/alphaphone/';
+ const dir='android/app/src/androidTest/java/ai/elizaresearch/alphaphone/';
  for(const name of DEFAULT_CLASSES){
   const spec=CLASS_REGISTRY[name];assert.ok(spec,name);
   for(const key of ['testMocks','requiresTestMocksBuild','secondaryUser','homeRole','campaign','requires'])assert.equal(spec[key],undefined,`${name}.${key} needs an option a default run does not pass`);
@@ -232,7 +232,7 @@ test('a default class can run on the flag-off build it is run on',()=>{
 /** A results.json as the instrumentation runner writes it, at the path a step names. */
 function results(root,step,statuses){
  const file=path.join(root,step.results);fs.mkdirSync(path.dirname(file),{recursive:true});
- const classes=Object.entries(statuses).map(([name,status])=>({variant:'standalone',class:`ai.alphacompute.alphaphone.${name}InstrumentedTest`,status,failed:status==='failed'?['m']:[]}));
+ const classes=Object.entries(statuses).map(([name,status])=>({variant:'standalone',class:`ai.elizaresearch.alphaphone.${name}InstrumentedTest`,status,failed:status==='failed'?['m']:[]}));
  fs.writeFileSync(file,JSON.stringify({passed:classes.every(row=>row.status==='passed'),classes}));
 }
 function inDirectory(t){const root=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'emulator-suite-')));const previous=process.cwd();process.chdir(root);t.after(()=>{process.chdir(previous);fs.rmSync(root,{recursive:true,force:true});});return root;}
@@ -341,7 +341,7 @@ test('speech candidate check refuses an APK whose voice bundle or x86_64 engine 
 test('speech package copies the run and its APK pair and reports only what the record shows',t=>{
  const root=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'speech-package-')));t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
  const put=(name,text)=>{fs.mkdirSync(path.dirname(path.join(root,name)),{recursive:true});fs.writeFileSync(path.join(root,name),text);};
- const record=(statuses,passed=true)=>put('runs/ci-fused-speech/results.json',JSON.stringify({passed,classes:Object.entries(statuses).map(([name,status])=>({variant:'standalone',class:`ai.alphacompute.alphaphone.${name}InstrumentedTest`,status}))}));
+ const record=(statuses,passed=true)=>put('runs/ci-fused-speech/results.json',JSON.stringify({passed,classes:Object.entries(statuses).map(([name,status])=>({variant:'standalone',class:`ai.elizaresearch.alphaphone.${name}InstrumentedTest`,status}))}));
  record(Object.fromEntries(FUSED_SPEECH_CLASSES.map(name=>[name,'passed'])));
  put('artifacts/standalone-debug.apk','app');put('artifacts/instrumentation/standalone-androidTest.apk','test');
  const result=packageSpeechRun({results:'runs/ci-fused-speech',output:'out',repository:root,environment:{GITHUB_SHA:'9'.repeat(40),GITHUB_RUN_ID:'12'},asr:true});

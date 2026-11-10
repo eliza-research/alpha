@@ -7,7 +7,7 @@ import {execFileSync} from 'node:child_process';
 import {nativeSource,fixture,runJvm,javaBinary,sharedSpeechSource,jsonJar} from './fixtures/jvm-tools.mjs';
 
 test('keyboard dictation fences duplicate, cancelled, replaced and changed-field/account results',()=>{
- assert.match(runJvm([nativeSource('KeyboardDictationPolicy.java'),fixture('KeyboardDictationPolicyTest.java')],'ai.alphacompute.alphaphone.KeyboardDictationPolicyTest'),/PASS keyboard dictation/);
+ assert.match(runJvm([nativeSource('KeyboardDictationPolicy.java'),fixture('KeyboardDictationPolicyTest.java')],'ai.elizaresearch.alphaphone.KeyboardDictationPolicyTest'),/PASS keyboard dictation/);
 });
 test('auxiliary voice entry is launcher-only and protected by Android binding permission',()=>{
  const manifest=readFileSync('android/app/src/launcher/AndroidManifest.xml','utf8');
@@ -28,7 +28,7 @@ test('Quint traces conform to the actual Java dictation gate at every transition
   const rows=readdirSync(work).filter(n=>n.endsWith('.json')).flatMap(n=>JSON.parse(readFileSync(join(work,n),'utf8')).states.map(s=>[s.op,num(s.inputTicket),s.sameEditor,s.account,s.phase,num(s.generation),num(s.inserted)].join(',')));
   assert.ok(rows.length>100);
   const harness=join(work,'KeyboardDictationConformance.java');
-  writeFileSync(harness,`package ai.alphacompute.alphaphone;
+  writeFileSync(harness,`package ai.elizaresearch.alphaphone;
 public final class KeyboardDictationConformance {
  public static void main(String[] args)throws Exception {
   var generation=KeyboardDictationPolicy.class.getDeclaredField("generation");generation.setAccessible(true);
@@ -41,7 +41,7 @@ public final class KeyboardDictationConformance {
  }
 }`);
   const input=join(work,'traces.csv');writeFileSync(input,rows.join('\n'));
-  assert.match(runJvm([nativeSource('KeyboardDictationPolicy.java'),harness],'ai.alphacompute.alphaphone.KeyboardDictationConformance',{args:[input]}),/actual Java transitions match Quint/);
+  assert.match(runJvm([nativeSource('KeyboardDictationPolicy.java'),harness],'ai.elizaresearch.alphaphone.KeyboardDictationConformance',{args:[input]}),/actual Java transitions match Quint/);
  } finally {rmSync(work,{recursive:true,force:true});}
 });
 
@@ -55,7 +55,7 @@ test('voice IME and Cloud adapter compile against Android API and shared real re
    'AlphaCredentialStore.java':'final class AlphaCredentialStore {AlphaCredentialStore(android.content.Context c){} String readCredentialSlot(String slot){return null;}}',
    'LocalAgentProviderAdmission.java':'final class LocalAgentProviderAdmission {static void requireCloudVoiceSelection(String s,String id){} static boolean validProviderToken(String s,int max){return true;}}',
   };
-  for(const [name,body] of Object.entries(stubs))writeFileSync(join(work,name),'package ai.alphacompute.alphaphone;'+body);
+  for(const [name,body] of Object.entries(stubs))writeFileSync(join(work,name),'package ai.elizaresearch.alphaphone;'+body);
   const revision=join(work,'NativeProviderSlot.java');writeFileSync(revision,'package ai.eliza.plugins.agent.runtime;public final class NativeProviderSlot{public static String managementRevision(String s,long epoch){return s;}}');
   const passwords=join(work,'PasswordSurfaces.java');writeFileSync(passwords,'package ai.eliza.plugins.passwords;public final class PasswordSurfaces{public static boolean visible(){return false;}}');
   const api=join(process.env.ANDROID_HOME||process.env.ANDROID_SDK_ROOT||join(homedir(),process.platform==='darwin'?'Library/Android/sdk':'Android/Sdk'),'platforms/android-36/android.jar');
@@ -70,17 +70,17 @@ test('real dictation transport preserves selected Direct/Cloud ownership and can
  try {
   assert.ok(jsonJar,'Pinned host JSON dependency required');
   const stubs={
-   'AlphaLocalAgentPlugin.java':`package ai.alphacompute.alphaphone;final class AlphaLocalAgentPlugin {static long epoch;static long credentialAuthorityEpoch(){return epoch;}static <T>T withCredentialAuthority(long e,java.util.concurrent.Callable<T> body)throws Exception{if(e!=epoch)throw new SecurityException();return body.call();}}`,
-   'AlphaCredentialStore.java':`package ai.alphacompute.alphaphone;final class AlphaCredentialStore {static String provider,credential;AlphaCredentialStore(android.content.Context c){}String readCredentialSlot(String name){return name.equals("local-agent-provider:v1")?provider:credential;}}`,
-   'LocalAgentProviderAdmission.java':`package ai.alphacompute.alphaphone;final class LocalAgentProviderAdmission {static boolean validProviderToken(String s,int max){return s.matches("[!-~]{8,"+max+"}");}static void requireCloudVoiceSelection(String s,String id)throws Exception{var p=new org.json.JSONObject(s);if(!p.getString("provider").equals("elizacloud")||!id.equals(p.getString("credentialId")))throw new SecurityException();}}`,
+   'AlphaLocalAgentPlugin.java':`package ai.elizaresearch.alphaphone;final class AlphaLocalAgentPlugin {static long epoch;static long credentialAuthorityEpoch(){return epoch;}static <T>T withCredentialAuthority(long e,java.util.concurrent.Callable<T> body)throws Exception{if(e!=epoch)throw new SecurityException();return body.call();}}`,
+   'AlphaCredentialStore.java':`package ai.elizaresearch.alphaphone;final class AlphaCredentialStore {static String provider,credential;AlphaCredentialStore(android.content.Context c){}String readCredentialSlot(String name){return name.equals("local-agent-provider:v1")?provider:credential;}}`,
+   'LocalAgentProviderAdmission.java':`package ai.elizaresearch.alphaphone;final class LocalAgentProviderAdmission {static boolean validProviderToken(String s,int max){return s.matches("[!-~]{8,"+max+"}");}static void requireCloudVoiceSelection(String s,String id)throws Exception{var p=new org.json.JSONObject(s);if(!p.getString("provider").equals("elizacloud")||!id.equals(p.getString("credentialId")))throw new SecurityException();}}`,
    'NativeProviderSlot.java':`package ai.eliza.plugins.agent.runtime;public final class NativeProviderSlot{public static String managementRevision(String s,long epoch){return s+":"+epoch;}}`,
    'PasswordSurfaces.java':`package ai.eliza.plugins.passwords;public final class PasswordSurfaces{public static boolean visible(){return false;}}`,
    'RecordingPcm.java':`package ai.eliza.voice;public final class RecordingPcm{public static byte[] decode(java.io.File f,java.util.function.BooleanSupplier cancelled)throws Exception{if(cancelled.getAsBoolean())throw new java.io.IOException();return new byte[44];}}`,
-   'BuildConfig.java':`package ai.alphacompute.alphaphone;final class BuildConfig{static final String ELIZA_RUNTIME_PROFILE="cloud";}`,
+   'BuildConfig.java':`package ai.elizaresearch.alphaphone;final class BuildConfig{static final String ELIZA_RUNTIME_PROFILE="cloud";}`,
   };
   for(const [name,body] of Object.entries(stubs))writeFileSync(join(work,name),body);
   const harness=join(work,'KeyboardAuthorityTest.java');
-  writeFileSync(harness,`package ai.alphacompute.alphaphone;
+  writeFileSync(harness,`package ai.elizaresearch.alphaphone;
 import java.net.*;import java.io.*;import java.nio.charset.StandardCharsets;
 public final class KeyboardAuthorityTest {
  static String host,authorization;static int requests,status=200;static boolean retire;static Runnable onResponse;
@@ -114,6 +114,6 @@ public final class KeyboardAuthorityTest {
   const api=join(process.env.ANDROID_HOME||process.env.ANDROID_SDK_ROOT||join(homedir(),process.platform==='darwin'?'Library/Android/sdk':'Android/Sdk'),'platforms/android-36/android.jar');
   const classpath=jsonJar+':'+api;
   execFileSync(javaBinary('javac'),['--release','17','-cp',classpath,'-d',work,...Object.keys(stubs).map(n=>join(work,n)),harness,...['KeyboardDictationCloud.java','KeyboardDictationPolicy.java','CloudSpeechPolicy.java','CloudDeployment.java'].map(nativeSource),sharedSpeechSource('CartesiaSpeech.java')],{timeout:60000});
-  assert.match(execFileSync(javaBinary('java'),['-cp',work+':'+classpath,'ai.alphacompute.alphaphone.KeyboardAuthorityTest'],{encoding:'utf8',timeout:15000}),/PASS nine selected-route/);
+  assert.match(execFileSync(javaBinary('java'),['-cp',work+':'+classpath,'ai.elizaresearch.alphaphone.KeyboardAuthorityTest'],{encoding:'utf8',timeout:15000}),/PASS nine selected-route/);
  }finally{rmSync(work,{recursive:true,force:true});}
 });

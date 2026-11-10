@@ -1,5 +1,5 @@
 package ai.eliza.plugins.agent.runtime;
-import ai.alphacompute.alphaphone.Trace;
+import ai.elizaresearch.alphaphone.Trace;
 
 import org.json.JSONArray;
 import org.json.JSONObject;

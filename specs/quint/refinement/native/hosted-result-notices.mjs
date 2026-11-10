@@ -20,7 +20,7 @@ function bridgeSource(source) {
     assert.ok(start >= 0 && end > start, `Hosted results source anchors ${first}, ${last}`);
     return source.slice(start, end).replaceAll('@PluginMethod ', '');
   }
-  return `package ai.alphacompute.alphaphone;
+  return `package ai.elizaresearch.alphaphone;
 import java.util.concurrent.*;
 import org.json.JSONObject;
 import ai.eliza.plugins.notifications.NoticeOwner;
@@ -49,7 +49,7 @@ public final class KeyguardManager {
  public boolean locked;
  public boolean isDeviceLocked(){return locked;}
 }`,
-  'ai/alphacompute/alphaphone/HostedBridgeHost.java': `package ai.alphacompute.alphaphone;
+  'ai/elizaresearch/alphaphone/HostedBridgeHost.java': `package ai.elizaresearch.alphaphone;
 import android.app.KeyguardManager;
 import org.json.JSONObject;
 
@@ -144,7 +144,7 @@ export async function checkNativeHostedResultNotices(extraSources = []) {
   let result;
   try {
     const files = {...platform,
-      'ai/alphacompute/alphaphone/AlphaHostedResultsPlugin.java': bridgeSource(readFileSync(join(root,plugin),'utf8'))};
+      'ai/elizaresearch/alphaphone/AlphaHostedResultsPlugin.java': bridgeSource(readFileSync(join(root,plugin),'utf8'))};
     const generated = Object.entries(files).map(([path,contents]) => {
       const file = join(temporary,path);
       mkdirSync(dirname(file),{recursive:true});

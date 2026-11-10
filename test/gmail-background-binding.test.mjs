@@ -12,7 +12,7 @@ import {mkdtempSync,rmSync} from 'node:fs';
 import {jsonJar,javaBinary} from './fixtures/jvm-tools.mjs';
 
 const root=resolve(import.meta.dirname,'..');
-const java=name=>readFileSync(join(root,'android/app/src/main/java/ai/alphacompute/alphaphone',name),'utf8');
+const java=name=>readFileSync(join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone',name),'utf8');
 
 test('the Alpha binding keeps the installed slot, notice identifiers and bridge name',()=>{
  const binding=java('GmailBackground.java'),plugin=java('AlphaGmailPlugin.java');
@@ -25,7 +25,7 @@ test('the Alpha binding keeps the installed slot, notice identifiers and bridge 
  assert.match(binding,/observeCloudChanges\(\(\)->created\.withdraw\(null\)\)/,'a replaced Cloud key retires background state');
  assert.match(plugin,/@CapacitorPlugin\(name="AlphaGmail"\)/);
  for(const removed of ['GmailDelivery.java','GmailNoticePoster.java','GmailReconciliation.java'])
-  assert.equal(existsSync(join(root,'android/app/src/main/java/ai/alphacompute/alphaphone',removed)),false,removed+' is shared upstream');
+  assert.equal(existsSync(join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone',removed)),false,removed+' is shared upstream');
  const renderer=readFileSync(join(root,'apps/app/src/runtime/gmail-background.ts'),'utf8');
  assert.match(renderer,/registerPlugin<MailBackgroundNative>\('AlphaGmail'\)/);
  assert.match(renderer,/GMAIL_BACKGROUND_CHANGED='alpha:gmail-background-changed'/);

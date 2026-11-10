@@ -28,7 +28,7 @@ class Flow(unittest.TestCase):
  def test_actual_command_flow_and_refusals(self):
   with tempfile.TemporaryDirectory(prefix='alpha-crash-projection-test-') as td:
    root=pathlib.Path(td);record=root/'commands';fake=root/'adb'
-   answers={'emu avd name':'test\nOK\n','shell getprop ro.kernel.qemu':'1','shell am get-current-user':'0','shell pm list users':'Users:\nUserInfo{0:Owner:13}\nUserInfo{10:alpha-ci-'+('a'*32)+':10}','shell run-as ai.alphacompute.alphaphone --user 10 id -u':str(UID),'shell date +%s':'1700000002','logcat -b crash -d -v threadtime -v epoch -v uid -t 512':lines()}
+   answers={'emu avd name':'test\nOK\n','shell getprop ro.kernel.qemu':'1','shell am get-current-user':'0','shell pm list users':'Users:\nUserInfo{0:Owner:13}\nUserInfo{10:alpha-ci-'+('a'*32)+':10}','shell run-as ai.elizaresearch.alphaphone --user 10 id -u':str(UID),'shell date +%s':'1700000002','logcat -b crash -d -v threadtime -v epoch -v uid -t 512':lines()}
    def install(values):
     fake.write_text('#!'+sys.executable+'\nimport json,sys\nfrom pathlib import Path\na=" ".join(sys.argv[3:])\nwith open('+repr(str(record))+',"a") as f:f.write(a+"\\n")\nd='+repr(values)+'\nif a not in d:sys.exit(91)\nprint(d[a])\n');fake.chmod(0o700)
    install(answers)
@@ -36,7 +36,7 @@ class Flow(unittest.TestCase):
    with patch.dict(os.environ,env):
     self.assertTrue(m.capture('emulator-5554','10','alpha-ci-'+'a'*32,'run',proof())['available'])
     self.assertEqual(len(record.read_text().splitlines()),7)
-    for key,value in [('shell am get-current-user','10'),('shell pm list users',answers['shell pm list users']+'\nUserInfo{11:Other:10}'),('shell run-as ai.alphacompute.alphaphone --user 10 id -u',str(UID+1))]:
+    for key,value in [('shell am get-current-user','10'),('shell pm list users',answers['shell pm list users']+'\nUserInfo{11:Other:10}'),('shell run-as ai.elizaresearch.alphaphone --user 10 id -u',str(UID+1))]:
      record.write_text('');install({**answers,key:value})
      self.assertFalse(m.capture('emulator-5554','10','alpha-ci-'+'a'*32,'run',proof())['available'])
      self.assertNotIn('logcat',record.read_text())
@@ -56,7 +56,7 @@ class Flow(unittest.TestCase):
   import subprocess,signal
   with tempfile.TemporaryDirectory(prefix='alpha-crash-cancel-') as td:
    root=pathlib.Path(td);ready=root/'ready';cleaned=root/'cleaned';fake=root/'adb'
-   answers={'emu avd name':'test\nOK\n','shell getprop ro.kernel.qemu':'1','shell am get-current-user':'0','shell pm list users':'Users:\nUserInfo{0:Owner:13}\nUserInfo{10:alpha-ci-'+('a'*32)+':10}','shell run-as ai.alphacompute.alphaphone --user 10 id -u':str(UID),'shell date +%s':'1700000002'}
+   answers={'emu avd name':'test\nOK\n','shell getprop ro.kernel.qemu':'1','shell am get-current-user':'0','shell pm list users':'Users:\nUserInfo{0:Owner:13}\nUserInfo{10:alpha-ci-'+('a'*32)+':10}','shell run-as ai.elizaresearch.alphaphone --user 10 id -u':str(UID),'shell date +%s':'1700000002'}
    fake.write_text('#!'+sys.executable+'\nimport os,sys,time\nfrom pathlib import Path\na=" ".join(sys.argv[3:])\nif a.startswith("logcat "):\n Path('+repr(str(ready))+').write_text(str(os.getpid()))\n time.sleep(30)\nelse: print('+repr(answers)+'[a])\n');fake.chmod(0o700)
    # Execute the actual optional finally branch, not a copied cancellation implementation.
    supervisor=source.parent/'resident-native.py'

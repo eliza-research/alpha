@@ -8,7 +8,7 @@ const now=Date.UTC(2026,9,8,12);
 const pin='45242af234e7f3d55c433f327798e7cb2130e06e';
 const hash='a'.repeat(64);
 // Synthetic sensitive values: note text, a provider key, a bearer token, account and session ids, mail and a URL.
-const secrets=['Buy milk and call Dana at 555-0100','csk-synthetic-provider-key-7f3a9c0e5b','Bearer synthetic-session-token','acct_7f3a9c0e5b11','6f1d3c3e-8c55-4c1b-9d1f-2b6f0b0d3a11','dana@example.com','https://agent.example.test/api','com.example.otherlauncher','/data/user/0/ai.alphacompute.alphaphone'];
+const secrets=['Buy milk and call Dana at 555-0100','csk-synthetic-provider-key-7f3a9c0e5b','Bearer synthetic-session-token','acct_7f3a9c0e5b11','6f1d3c3e-8c55-4c1b-9d1f-2b6f0b0d3a11','dana@example.com','https://agent.example.test/api','com.example.otherlauncher','/data/user/0/ai.elizaresearch.alphaphone'];
 
 const nativeInference={version:1,traceId:'ab'.repeat(16),totalMs:8000,timeToFirstVisibleMs:7700,timeToReplyMs:7750,timeToResponseFinalizedMs:7900,stages:[{stage:'llm-inference',totalMs:6700,toFirstVisibleMs:6600},{stage:'actions',totalMs:900,toFirstVisibleMs:900}]};
 test('native inference export keeps fixed durations and a valid trace, never arbitrary span or identity data',()=>{
@@ -39,7 +39,7 @@ test('diagnostics keep versions, pin, runtime hashes, permission and role state 
   os:{androidRelease:'16',securityPatch:'2026-09-05',sdkInt:36},upstreamPin:pin,
   runtimeHashes:{'agent/alpha-source.json':hash,'agent/agent-bundle.js':'b'.repeat(64)},
   permissions:{Microphone:true,Location:false,Camera:true,Calendar:false},
-  roles:[{role:'home',held:true,available:true,holders:['ai.alphacompute.alphaphone']},{role:'assistant',held:false,available:true,holders:['com.example.otherlauncher']}],
+  roles:[{role:'home',held:true,available:true,holders:['ai.elizaresearch.alphaphone']},{role:'assistant',held:false,available:true,holders:['com.example.otherlauncher']}],
   connection:{kind:'resident',connected:true},
   crashes:[{at:now-1000,source:'uncaught',errorClass:'java.lang.IllegalStateException',rootClass:'java.io.IOException',thread:'main',process:'main'},{at:now-500,source:'exit',reason:'anr',process:':isolated_pdf'},{at:now-100,source:'renderer',kind:'render',errorClass:'TypeError'}],
  },now);

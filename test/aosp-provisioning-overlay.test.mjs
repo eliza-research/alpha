@@ -6,7 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { provisioningComponents, renderProvisioningOverlay, requestsAllFilesAccess, writeProvisioningOverlay } from "../scripts/aosp-provisioning-overlay.mjs";
 
-const PKG = "ai.alphacompute.alphaphone";
+const PKG = "ai.elizaresearch.alphaphone";
 const str = value => `"${value}" (Raw: "${value}")`;
 const element = (indent, tag, attrs = {}) => [`${" ".repeat(indent)}E: ${tag} (line=1)`,
   ...Object.entries(attrs).map(([key, value]) => `${" ".repeat(indent + 2)}A: android:${key}(0x01010003)=${value.startsWith("(") ? value : str(value)}`)];

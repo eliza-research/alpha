@@ -7,7 +7,7 @@ import path from 'node:path';
 // (test/browser/notifications-handle.spec.ts) or only on an emulator (the instrumented classes).
 // These do not replace either; they stop the source drifting back while no emulator run exists.
 const read = file => readFileSync(file, 'utf8');
-const ANDROID_TESTS = 'android/app/src/androidTest/java/ai/alphacompute/alphaphone';
+const ANDROID_TESTS = 'android/app/src/androidTest/java/ai/elizaresearch/alphaphone';
 
 test('Android\'s shade is the only shade: the swipe handler asks Android, never opens an Alpha panel (#416, #417)', () => {
   const model = read('apps/app/src/prototype/model.js');
@@ -39,7 +39,7 @@ test('no instrumented test opens the panel with the removed swipe', () => {
 });
 
 test('the launcher keeps one MainActivity and its kind belongs to the task', () => {
-  const activity = read('android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java');
+  const activity = read('android/app/src/main/java/ai/elizaresearch/alphaphone/MainActivity.java');
   // A second instance never loads a page.
   assert.match(activity, /@Override protected void load\(\) \{ if \(!handedOff\) super\.load\(\); \}/);
   assert.match(activity, /MainActivity live = BuildConfig\.IS_LAUNCHER && !isAssistantSurface\(\) \? liveInstance\(\) : null;/);
@@ -51,7 +51,7 @@ test('the launcher keeps one MainActivity and its kind belongs to the task', () 
   assert.match(activity, /kind\.owner = new java\.lang\.ref\.WeakReference<>\(this\);\s*startedAsHome = kind\.home;/);
   // A replaced or merely stopped activity cannot erase a surviving task's classification.
   assert.match(activity, /if \(isFinishing\(\) && kind != null && kind\.owner\.get\(\) == this\) taskKinds\.remove\(getTaskId\(\)\);/);
-  assert.match(read('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaConnectionPlugin.java'), /getActivity\(\)\.setIntent\(intent\);delegationCallback=uri;/, 'the sign-in return is still kept with setIntent, which is why the kind is per task');
+  assert.match(read('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaConnectionPlugin.java'), /getActivity\(\)\.setIntent\(intent\);delegationCallback=uri;/, 'the sign-in return is still kept with setIntent, which is why the kind is per task');
   // An exported activity reads its own marker extra without trusting the sender's parcel.
   // Only this process's own token counts: another app setting the key is an ordinary start.
   assert.match(activity, /try \{ return FRONT_START_TOKEN\.equals\(intent\.getStringExtra\(EXTRA_FRONT_START\)\); \}\s*catch \(RuntimeException foreign\) \{ return false; \}/);

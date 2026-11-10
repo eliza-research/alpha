@@ -142,7 +142,7 @@ acknowledgements only to the lease provider resolved for the already admitted
 listener UID and package. Acquiring passes a SystemUI-owned `Binder` token.
 
 **Listener side** (`IndicatorLease`, `IndicatorLeaseProvider`, `ListeningService`).
-The provider `ai.alphacompute.alphaphone.sense.indicator` is exported only behind
+The provider `ai.elizaresearch.alphaphone.sense.indicator` is exported only behind
 the platform signature permission `STATUS_BAR_SERVICE`; `call()` re-checks that
 permission, a user-0 caller UID that maps to exactly `com.android.systemui`, and
 that this package is signed with the platform certificate. Alpha holds only

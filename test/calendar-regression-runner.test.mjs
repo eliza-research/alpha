@@ -25,7 +25,7 @@ for(const [kind,method] of [['agent','reviewedNativeCreateReadUpdateDeleteAndSta
  test(`Calendar ${kind} selects its exact native method in an isolated user`,()=>{
   const r=exercise('pass',kind);assert.equal(r.code,0,r.stderr);assert.equal(r.record.passed,true);
   const instrument=r.commands.find(a=>a.includes('instrument'));
-  assert.equal(instrument[instrument.indexOf('class')+1],`ai.alphacompute.alphaphone.${r.record.testClass}#${method}`);
+  assert.equal(instrument[instrument.indexOf('class')+1],`ai.elizaresearch.alphaphone.${r.record.testClass}#${method}`);
   assert.ok(instrument.includes(kind==='agent'?'calendarAgent':'calendarRange'));assert.equal(r.state.created,false);assert.equal(r.state.user,'0');
   const grants=r.commands.filter(a=>a.includes('grant'));assert.equal(grants.length,2);assert.ok(grants.every(a=>a[a.indexOf('--user')+1]==='10'));
  });
@@ -39,7 +39,7 @@ test('Calendar options case passes calendarOptions=1 to exactly directSaveReadsB
  assert.equal(r.record.testMethod,'directSaveReadsBackAllDayChosenZoneAndRrule');assert.equal(r.record.gate,'calendarOptions');
  assert.deepEqual(Object.keys(r.records),['standalone-CalendarAgentCrudInstrumentedTest-directSaveReadsBackAllDayChosenZoneAndRrule']);
  const instruments=r.commands.filter(a=>a.includes('instrument'));assert.equal(instruments.length,1);const instrument=instruments[0];
- assert.equal(instrument[instrument.indexOf('class')+1],'ai.alphacompute.alphaphone.CalendarAgentCrudInstrumentedTest#directSaveReadsBackAllDayChosenZoneAndRrule');
+ assert.equal(instrument[instrument.indexOf('class')+1],'ai.elizaresearch.alphaphone.CalendarAgentCrudInstrumentedTest#directSaveReadsBackAllDayChosenZoneAndRrule');
  assert.equal(instrument[instrument.indexOf('calendarOptions')+1],'1');assert.ok(!instrument.includes('calendarAgent'),'the reviewed-CRUD gate belongs to the other method');
  const grants=r.commands.filter(a=>a.includes('grant'));assert.equal(grants.length,2);assert.ok(grants.every(a=>a[a.indexOf('--user')+1]==='10'));
  assert.equal(r.state.created,false);assert.equal(r.state.user,'0');
@@ -59,10 +59,10 @@ test('Calendar availability runs the whole class with both calendar permissions 
  const r=exercise('pass','availability');assert.equal(r.code,0,r.stderr);assert.equal(r.record.passed,true);assert.equal(r.record.expectedTests,4);
  assert.equal(r.record.result.variants[0].instrumentation.totalTests,4);
  const instrument=r.commands.find(a=>a.includes('instrument'));
- assert.equal(instrument[instrument.indexOf('class')+1],'ai.alphacompute.alphaphone.CalendarAvailabilityInstrumentedTest','no method is selected: every test of the class must run');
+ assert.equal(instrument[instrument.indexOf('class')+1],'ai.elizaresearch.alphaphone.CalendarAvailabilityInstrumentedTest','no method is selected: every test of the class must run');
  const grants=r.commands.filter(a=>a.includes('grant'));
  assert.deepEqual(grants.map(a=>a.at(-1)).sort(),['android.permission.READ_CALENDAR','android.permission.WRITE_CALENDAR']);
- assert.ok(grants.every(a=>a[a.indexOf('--user')+1]==='10'&&a.includes('ai.alphacompute.alphaphone')));
+ assert.ok(grants.every(a=>a[a.indexOf('--user')+1]==='10'&&a.includes('ai.elizaresearch.alphaphone')));
  assert.ok(r.commands.findIndex(a=>a.includes('grant'))<r.commands.findIndex(a=>a.includes('instrument')),'granted before the class starts, or it skips');
  assert.equal(r.state.created,false);assert.equal(r.state.user,'0');
 });
@@ -72,13 +72,13 @@ test('Calendar availability rejects a run in which a method is missing or the cl
 test('Home calendar card runs its granted case, then its access-off case with both calendar permissions revoked before it starts',()=>{
  const granted=exercise('pass','home-card');assert.equal(granted.code,0,granted.stderr);assert.equal(granted.record.passed,true);
  const run=granted.commands.find(a=>a.includes('instrument'));
- assert.equal(run[run.indexOf('class')+1],'ai.alphacompute.alphaphone.HomeCalendarCardInstrumentedTest#nextProviderEventShowsTitleCalendarNameAndReadTime');
+ assert.equal(run[run.indexOf('class')+1],'ai.elizaresearch.alphaphone.HomeCalendarCardInstrumentedTest#nextProviderEventShowsTitleCalendarNameAndReadTime');
  assert.equal(run[run.indexOf('homeCalendar')+1],'1');
  assert.deepEqual(granted.commands.filter(a=>a.includes('grant')||a.includes('revoke')).map(a=>a[2]),['grant','grant']);
  const revoked=exercise('pass','home-card-revoked');assert.equal(revoked.code,0,revoked.stderr);assert.equal(revoked.record.passed,true);
  assert.equal(revoked.record.gateValue,'revoked');assert.equal(revoked.record.calendarPermissions,'revoked');
  const denied=revoked.commands.find(a=>a.includes('instrument'));
- assert.equal(denied[denied.indexOf('class')+1],'ai.alphacompute.alphaphone.HomeCalendarCardInstrumentedTest#revokedAccessShowsTheAccessOffState');
+ assert.equal(denied[denied.indexOf('class')+1],'ai.elizaresearch.alphaphone.HomeCalendarCardInstrumentedTest#revokedAccessShowsTheAccessOffState');
  assert.equal(denied[denied.indexOf('homeCalendar')+1],'revoked');
  const permissions=revoked.commands.filter(a=>a.includes('grant')||a.includes('revoke')||a.includes('clear-permission-flags'));
  assert.ok(permissions.length===4&&!permissions.some(a=>a[2]==='grant'),'no grant reaches the revoked case');

@@ -184,7 +184,7 @@ function nativeGate(config,cases){
  const gate=request.match(/\n  if\((.*)\)\{\n   logRequestFailure\(group==null\?\"other\":group,method,0,\"gate\"\);\n   call\.reject\("Unsupported local agent request\."\);return;/)[1];
  const directory=mkdtempSync(join(tmpdir(),'alpha-owner-routes-')),harness=join(directory,'OwnerRouteHarness.java');
  try{
-  writeFileSync(harness,`package ai.alphacompute.alphaphone;
+  writeFileSync(harness,`package ai.elizaresearch.alphaphone;
 public final class OwnerRouteHarness{
  static String config;
  static final OwnerRoutes.Assets CONFIG=name->new java.io.FileInputStream(config+name);
@@ -208,7 +208,7 @@ public final class OwnerRouteHarness{
  }
 }`);
   const field=value=>value===null?'-':Buffer.from(value,'utf8').toString('base64');
-  return runJvm([upstreamConnection('OwnerRoutePolicy.java'),nativeSource('OwnerRoutes.java'),harness],'ai.alphacompute.alphaphone.OwnerRouteHarness',{json:true,args:[config+'/'],input:cases.map(c=>[c.method,c.path,c.body,c.owner].map(field).join(' ')).join('\n')+'\n'}).trim().split('\n').map(line=>line.split(' '));
+  return runJvm([upstreamConnection('OwnerRoutePolicy.java'),nativeSource('OwnerRoutes.java'),harness],'ai.elizaresearch.alphaphone.OwnerRouteHarness',{json:true,args:[config+'/'],input:cases.map(c=>[c.method,c.path,c.body,c.owner].map(field).join(' ')).join('\n')+'\n'}).trim().split('\n').map(line=>line.split(' '));
  }finally{rmSync(directory,{recursive:true,force:true});}
 }
 
