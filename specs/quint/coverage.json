@@ -25027,7 +25027,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "a87bedaff7f4e123436cad651e93e715f2cffc0a03c506ef3fc13bf4946ff216",
+      "sha256": "615a3b0235596b4883f42ec1e406a3b89abec76eaade83b636215e35c4c2ce20",
       "stateAnchors": [
         {
           "line": 26,
@@ -30574,7 +30574,7 @@
           "text": "var ICON_ASSETS = Object.fromEntries(Object.entries(iconCatalog.ic).map(function (entry) { return [IC[entry[0]], '/icons/lucide/' + entry[1] + '.svg']; }));"
         }
       ],
-      "integrationReview": "Assistant entry Home and collapsed gesture exits use the existing closeAssistant boundary; launcher detents and drafts are unchanged. Browser captured gestures and extracted source navigation tests cover these changed paths. Existing allocation is retained; the source inventory and generic ShellNavigation/ChatInput models do not establish native Activity finish or full implementation refinement."
+      "integrationReview": "Assistant entry Home and collapsed gesture exits use the existing closeAssistant boundary; launcher detents and drafts are unchanged. Browser captured gestures and extracted source navigation tests cover these changed paths. Existing allocation is retained; the source inventory and generic ShellNavigation/ChatInput models do not establish native Activity finish or full implementation refinement. The conversation Home brand passes its existing detent to Home; app Back uses the normal Home rest detent. Browser keyboard/pointer draft and history checks cover that routing."
     },
     {
       "path": "apps/app/src/prototype/mvp-features.ts",
@@ -41997,7 +41997,7 @@
     },
     {
       "path": "apps/app/src/runtime/inline-modal.ts",
-      "sha256": "ec313b1d338f9d4ec8beb12ec2b6b02fa837bb59db75d3100dbbbd80926420b8",
+      "sha256": "4711ee06b7cc544290f01d61bafbb6228cd11f0c043a8d84a444023ffaa3e4ac",
       "models": [
         "ShellNavigation",
         "ModalScrimOwnership"
@@ -42090,7 +42090,7 @@
           "text": "const changed=()=>{if(displaced())stop();};"
         }
       ],
-      "integrationReview": "2026-11-09 image preview covers the assistant as an opaque modal. Default inline dialogs retain existing assistant behavior. Image zoom/pan stays local to the viewer and is discarded on close; draft and attachment are retained. ModalScrimOwnership image scenario and browser pointer/layout tests qualify this scope.",
+      "integrationReview": "Inline reviews may be mounted inside the assistant. A pointer on the dialog itself must not dismiss it as an assistant press; outside assistant presses retain existing dismissal. ModalScrimOwnership dialogContentsDoNotDismissReviewTest and rendered email review with zero provider writes cover this change. Native/exhaustive refinement remains separate.",
       "reviewStatus": "state-audit-required"
     },
     {

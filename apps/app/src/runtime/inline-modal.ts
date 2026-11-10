@@ -33,7 +33,7 @@ export function createInlineModal(close:()=>void,returnFocus?:()=>HTMLElement|nu
   };
   const back=(event:Event)=>{if(!ownsFocus())return;event.preventDefault();event.stopImmediatePropagation();close();};
   const assistantTarget=(target:EventTarget|null)=>!options.coverAssistant&&target instanceof Element&&!!target.closest('[data-alpha-layer="pill"],[data-alpha-layer="composer"],[data-alpha-layer="conversation"]');
-  const assistantPress=(event:PointerEvent)=>{if(ownsFocus()&&assistantTarget(event.target))close();};
+  const assistantPress=(event:PointerEvent)=>{if(ownsFocus()&&assistantTarget(event.target)&&!dialog.contains(event.target as Node))close();};
   const contain=()=>{if(ownsFocus()&&!dialog.contains(document.activeElement)&&!assistantTarget(document.activeElement))focus();};
   document.addEventListener('pointerdown',assistantPress,true);
   const isSheet=(dialog.style.bottom==='0px'||getComputedStyle(dialog).bottom==='0px')&&parseFloat(getComputedStyle(dialog).borderTopLeftRadius)>0;

@@ -2259,7 +2259,8 @@
       "sameTaskModalDoesNotRestoreOldPressTest",
       "nonmodalAndUninterruptedCompatibilityTest",
       "oldDeadlineCannotSettleANewPressTest",
-      "imagePreviewCoversComposerAndKeepsDraftTest"
+      "imagePreviewCoversComposerAndKeepsDraftTest",
+      "dialogContentsDoNotDismissReviewTest"
     ],
     "invariants": [
       "ExactPress",

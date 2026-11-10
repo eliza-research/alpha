@@ -42,6 +42,10 @@ module ModalScrimOwnership {
     s.modal != "none",
     s' = {...s, modal: "none", inputFocused: s.modal == "native-only" or s.modal == "nonmodal" and s.inputFocused}
   }
+  // An inline review can live inside the assistant itself. Its own controls
+  // keep the review; only a press on the assistant outside it dismisses it.
+  action assistantPress(inside: bool): bool =
+    if (s.modal == "inline" and not(inside)) close else s' = s
   action sameTaskModal(kind: str): bool = all {
     kind.in(Set("inline", "native-only")), s.chat == "input", s.modal == "none", s.press != "none",
     kind != "native-only" or s.inputFocused,
@@ -52,7 +56,7 @@ module ModalScrimOwnership {
     { nondet generation = Set(1, 2).oneOf(); deadline(generation) },
     { nondet kind = covers.union(Set("nonmodal")).oneOf(); open(kind) },
     { nondet kind = Set("inline", "native-only").oneOf(); sameTaskModal(kind) },
-    close, click(0), s' = s
+    close, assistantPress(true), assistantPress(false), click(0), s' = s
   }
 
   val ExactPress = (s.press == "none") == (s.pointer == 0)
@@ -76,4 +80,7 @@ module ModalScrimOwnership {
   run imagePreviewCoversComposerAndKeepsDraftTest = init.then(down(1)).then(open("image"))
     .expect(safety and inlineInert and not(cssPointer) and s.draft)
     .then(up(1)).then(close).then(click(1)).expect(safety and s.chat == "input" and s.draft)
+  run dialogContentsDoNotDismissReviewTest = init.then(open("inline")).then(assistantPress(true))
+    .expect(safety and s.modal == "inline" and s.draft)
+    .then(assistantPress(false)).expect(safety and s.modal == "none" and s.draft)
 }
