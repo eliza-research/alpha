@@ -41,7 +41,7 @@ function fixture(scratch, scenario) {
   write(join(source, '.gitignore'), 'node_modules/\n');
   if (scenario !== 'missing-entry') write(entry, `import {writeFileSync} from 'node:fs';
 import {value} from '../../../core/src/services/task.ts';
-if (value !== 'after') throw Error('Core preload did not patch the synthetic module');
+if (value !== 'reviewed') throw Error('Core preload changed the exact reviewed synthetic source');
 writeFileSync(${JSON.stringify(invoked)}, 'patched fixture entry', {mode: 0o600});
 `);
   const git = (...args) => execFileSync('git', args, {

@@ -19,9 +19,9 @@ test('pinned recovery and lifecycle sources match the reviewed upstream repair',
  // elizaOS/eliza#38821 adds only ELIZA_ANDROID_VOICE_BUNDLE_DIR to the agent's environment, from the
  // VoiceBundleAssets.bundleRoot the service already calls, which reads the manifest and writes nothing.
  // elizaOS/eliza#39007 also checks the durable update pause before resident start and recovery restart.
- // The reviewed86ab source also retains terminal failure notices, validates detached health,
- // and preserves the previous tree when replacement staging fails. The host descriptor keeps Stop.
- ['ElizaAgentService','b1f31509579329b3eaa09b89330873cb207bf19d2de116708276a18bd274c942'],
+ // The reviewed DAE source also stages both PGlite snapshots from the mobile producer.
+ // Terminal failure notices, detached health, previous-tree staging recovery and Stop remain intact.
+ ['ElizaAgentService','97afb73fc97b503c1f013038841d6b34efbab7b7d2aadf0ec5d5f6a2096708c6'],
  // The reviewed source retains directory/inode checks and now rotates oldest well-formed IPC
  // evidence into a bounded reviewed archive after process classification. Malformed/changing
  // records and interrupted explicit archive still refuse admission.
@@ -31,6 +31,7 @@ test('pinned recovery and lifecycle sources match the reviewed upstream repair',
  const service=fs.readFileSync('vendor/eliza/packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaAgentService.java','utf8');
  assert.match(service,/RuntimeUpdatePause\.beforeStart\(\); credentialShutdown\.beforeStart\(\)/);
  assert.match(service,/NOTIFICATION_PRIMARY_ACTION = "stop"/);
+ for(const name of ['pglite-initdb.bin','pglite-migrated.bin'])assert.ok(service.includes(`copyAssetIfPresent(assets, "agent/${name}", new File(stagingRoot, "${name}"));`));
  const ipc=fs.readFileSync('vendor/eliza/packages/app/platforms/android/app/src/main/java/ai/elizaos/app/IpcStartupRecovery.java','utf8');
  assert.match(ipc,/interrupted evidence archive requires review/);
  const rotation=ipc.indexOf('for(;quarantines>=RETAINED_LIMIT;quarantines--)rotateOldestRetained()');

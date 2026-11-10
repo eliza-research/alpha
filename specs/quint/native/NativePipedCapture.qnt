@@ -103,7 +103,7 @@ module NativePipedCapture {
   run warmBeforeNativeOpenTest = init.then(start).then(warmReply(true)).expect(safety and s.opening and not(s.physical))
     .then(finishOpen).expect(safety and s.published)
   run callDuringOpenRefusesPublicationTest = init.then(start).then(warmReply(true)).then(call(true))
-    .then(finishOpen).expect(safety and s.discard and not(s.current or s.physical or s.published) and s.frames == 0 and s.rendererPcm == 0 and s.transcripts == 0)
+    .then(finishOpen).expect(safety and s.discard and s.pending == "close" and not(s.current or s.physical or s.published) and s.frames == 0 and s.rendererPcm == 0 and s.transcripts == 0)
     .then(closeReply(true)).expect(safety and s.attempt == "cancelled" and s.discard and not(s.current or s.hasPipe))
   run retiredWarmCannotOpenTest = init.then(start).then(retireOwner).then(warmReply(true))
     .expect(safety and s.attempt == "cancelled" and not(s.physical))
