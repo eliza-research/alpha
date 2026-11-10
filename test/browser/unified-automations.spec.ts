@@ -56,18 +56,18 @@ test('Alpha unified list, filters, paused authoring and explicit owner review us
  await filterType(page,'Schedules');await expect(page.locator('[data-alpha-layer=app]').getByText('Weekly review',{exact:true})).toBeVisible();await expect(page.locator('[data-alpha-layer=app]').getByText('Document review',{exact:true})).toBeHidden();
  await filterType(page,'Reminders');await expect(page.locator('[data-alpha-layer=app]').getByText('Check the draft',{exact:true})).toBeVisible();await expect(page.locator('[data-alpha-layer=app]').getByText('Weekly review',{exact:true})).toBeHidden();
  await filterType(page,'All types');await page.getByRole('button',{name:'New automation',exact:true}).click();await page.getByRole('button',{name:/^Automation/,exact:false}).click();
- await page.getByLabel('What should Alpha do?',{exact:true}).fill('Use only text explicitly supplied in this prompt.');await page.getByRole('button',{name:'More options',exact:true}).click();await page.getByLabel('Name (optional)',{exact:true}).fill('Paused source review');
- await page.screenshot({path:testInfo.outputPath('prompt-editor.png')});await page.getByRole('button',{name:'Save automation',exact:true}).click();await expect(page.locator('[data-alpha-layer=app]').getByText('Paused source review',{exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Save',exact:true})).toBeDisabled();await page.getByLabel('What should Alpha do?',{exact:true}).fill('Use only text explicitly supplied in this prompt.');await expect(page.getByRole('button',{name:'More options',exact:true})).toHaveCount(0);
+ await page.screenshot({path:testInfo.outputPath('prompt-editor.png')});await page.getByRole('button',{name:'Save',exact:true}).click();await expect(page.locator('[data-alpha-layer=app]').getByText('Use only text explicitly supplied in this prompt.',{exact:true})).toBeVisible();
  const created=calls.find(call=>call.path==='/api/triggers'&&call.method==='POST');expect(created?.body.enabled).toBe(false);expect(calls.filter(call=>call.path.endsWith('/execute')||call.path.endsWith('/fire'))).toHaveLength(0);
  await page.locator('[data-alpha-layer=app]').getByText('Document review',{exact:true}).click();await page.getByRole('button',{name:'Enable',exact:true}).click();expect(calls.filter(call=>call.method==='PUT')).toHaveLength(0);await page.getByRole('button',{name:'Confirm Enable',exact:true}).click();await expect(page.locator('[data-alpha-subview=automations-detail]').getByText('Saved on this agent.',{exact:true})).toBeVisible();await expect(page.locator('[data-alpha-subview=workflows-list]')).toHaveAttribute('inert','');expect(calls.filter(call=>call.path==='/api/triggers/prompt'&&call.method==='PUT')).toHaveLength(1);
  await page.getByRole('button',{name:'Back to automations',exact:true}).click();await page.locator('[data-alpha-subview=workflows-list]').getByText('Reviewed workflow',{exact:true}).click();await expect(page.getByRole('heading',{name:'Reviewed workflow',exact:true})).toBeVisible();await page.getByRole('button',{name:'Back to workflows',exact:true}).click();
- await page.getByRole('button',{name:'New automation',exact:true}).click();await page.getByRole('button',{name:'More options',exact:true}).click();await page.getByRole('button',{name:'Reminder on this phone',exact:false}).click();await expect(page.getByRole('button',{name:'Reminders',exact:true})).toBeVisible();expect(calls.filter(call=>call.path==='/api/lifeops/definitions'&&call.method!=='GET')).toHaveLength(0);
+ await page.getByRole('button',{name:'New automation',exact:true}).click();await expect(page.getByRole('button',{name:'Reminder on this phone',exact:false})).toHaveCount(0);await expect(page.getByRole('button',{name:'Clock alarms',exact:true})).toBeVisible();await page.getByRole('button',{name:/^Reminder/,exact:false}).click();await expect(page.getByLabel('Reminder',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Save',exact:true})).toBeDisabled();await page.getByLabel('Reminder',{exact:true}).fill('Review this test');await expect(page.getByRole('button',{name:'Save',exact:true})).toBeEnabled();expect(calls.filter(call=>call.path==='/api/lifeops/definitions'&&call.method!=='GET')).toHaveLength(0);
  expect(errors).toEqual([]);
 });
 
 test('missing server capability is an explicit source state, not a healthy empty automation list',async({page})=>{
  const calls=await setup(page);await page.route('**/__unified_api/api/lifeops/reminders',route=>route.fulfill({status:404,contentType:'application/json',body:'{}'}));await page.getByRole('button',{name:'Filter workflows',exact:true}).click();await page.getByRole('dialog',{name:'Filter workflows',exact:true}).getByRole('button',{name:'Refresh list',exact:true}).click();await expect(page.getByRole('alert').filter({hasText:'Agent reminders are not available on this agent.'})).toHaveText('Agent reminders are not available on this agent.');await expect(page.locator('[data-alpha-layer=app]').getByText('Document review',{exact:true})).toBeVisible();
- await page.getByRole('button',{name:'New automation',exact:true}).click();await expect(page.getByRole('button',{name:/^Reminder(?! on this phone)/,exact:false})).toBeDisabled();await expect(page.getByRole('button',{name:/^Reminder(?! on this phone)/,exact:false})).toContainText('not available on this agent');await expect(page.getByRole('button',{name:/^Automation/,exact:false})).toBeEnabled();await page.getByRole('button',{name:'More options',exact:true}).click();await expect(page.getByRole('button',{name:'Reminder on this phone',exact:false})).toBeEnabled();expect(calls.filter(call=>call.method!=='GET')).toHaveLength(0);
+ await page.getByRole('button',{name:'New automation',exact:true}).click();await expect(page.getByRole('button',{name:/^Reminder(?! on this phone)/,exact:false})).toBeDisabled();await expect(page.getByRole('button',{name:/^Reminder(?! on this phone)/,exact:false})).toContainText('not available on this agent');await expect(page.getByRole('button',{name:/^Automation/,exact:false})).toBeEnabled();await expect(page.getByRole('button',{name:'More options',exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Clock alarms',exact:true})).toBeEnabled();expect(calls.filter(call=>call.method!=='GET')).toHaveLength(0);
 });
 
 test('a locked row shows the recovery line and Allow another asks before releasing it',async({page})=>{
@@ -100,12 +100,13 @@ test('schedule time and instructions change only after confirmation',async({page
  expect(writes()[0].body).toEqual({promptInstructions:'Review my week.',trigger:{kind:'cron',expression:'30 9 * * 1,3,5',tz:await page.evaluate(()=>Intl.DateTimeFormat().resolvedOptions().timeZone)}});
 });
 
-test('workflow choices collapse and a confirmed schedule run fires once',async({page})=>{
+test('workflow creation has three choices and a confirmed schedule run fires once',async({page})=>{
  const calls=await setup(page,true);
  await page.getByRole('button',{name:'New automation',exact:true}).click();
  await expect(page.getByRole('button',{name:'Clock alarms'})).toBeVisible();
- await page.getByRole('button',{name:'More options',exact:true}).click();
- await page.getByRole('button',{name:'Fewer options',exact:true}).click();
+ await expect(page.getByRole('button',{name:'More options',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:/^Automation/})).toBeVisible();
+ await expect(page.getByRole('button',{name:/^Reminder/})).toBeVisible();
  await expect(page.getByRole('button',{name:/Build step by step/})).toHaveCount(0);
  await page.getByLabel('Back to automations').click();
  await page.getByRole('region',{name:'Workflows',exact:true}).getByText('Weekly review',{exact:true}).click();

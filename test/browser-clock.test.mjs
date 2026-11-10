@@ -12,7 +12,7 @@ function setup(){
 }
 // Stands in for the clock's 1s refresh, which a poll already in flight would otherwise wait for.
 const refresh=()=>window.dispatchEvent(new Event('alpha:alarms-changed'));
-const button=name=>[...document.querySelectorAll('dialog button')].find(b=>b.textContent===name);
+const button=name=>[...document.querySelectorAll('dialog button')].find(b=>(b.getAttribute('aria-label')||b.textContent)===name);
 
 test('an alarm saved with notifications off says so, is listed and can be deleted',async()=>{
  const {harness}=setup();harness.notifications=false;
@@ -24,7 +24,7 @@ test('an alarm saved with notifications off says so, is listed and can be delete
  await until(()=>refresh()&&dialog.textContent.includes('Notifications off'),'the saved alarm row');
  const saved=await alarms();assert.equal(saved.length,1);assert.equal(saved[0].status,'permission-denied');
  button('Delete Alarm').click();
- await until(()=>refresh()&&dialog.textContent.includes('No alarms'),'the alarm to be deleted');
+ await until(()=>{refresh();return !button('Delete Alarm');},'the alarm to be deleted');
  assert.equal((await alarms())[0].status,'cancelled');
  dialog.close();
 });

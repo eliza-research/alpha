@@ -3328,17 +3328,12 @@
   </div>
   <sc-if value="{{workflows.automation.detail}}">
     <section ref="{{workflows.detailFocus}}" data-alpha-subview="automations-detail" class="automation-detail" aria-label="{{workflows.automation.title}}">
-      <div data-alpha-app-header="detail" class="automation-detail-header"><button class="ib" aria-label="Back to automations" disabled="{{workflows.automation.busy}}" onClick="{{workflows.automation.close}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button><h2 data-alpha-app-title>{{workflows.automation.title}}</h2></div>
+      <div data-alpha-app-header="detail" class="automation-detail-header"><button class="ib" aria-label="Back to automations" disabled="{{workflows.automation.busy}}" onClick="{{workflows.automation.close}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button><h2 data-alpha-app-title>{{workflows.automation.title}}</h2><sc-if value="{{workflows.automation.editing}}"><button class="automation-header-save" disabled="{{workflows.automation.saveDisabled}}" onClick="{{workflows.automation.save}}">Save</button></sc-if></div>
       <div data-alpha-app-scroll="automation-detail" class="automation-detail-body scr">
         <sc-if value="{{workflows.automation.creating}}"><div class="automation-new">
           <button class="workflow-choice" disabled="{{workflows.automation.agentUnavailable}}" onClick="{{workflows.automation.createPrompt}}"><svg class="i" aria-hidden="true" viewBox="0 0 24 24"><path d="{{ic.calRepeat}}"></path></svg><span><strong>Automation</strong><small>{{workflows.automation.promptDescription}}</small></span><svg class="i" aria-hidden="true" viewBox="0 0 24 24"><path d="{{ic.right}}"></path></svg></button>
           <button class="workflow-choice" disabled="{{workflows.automation.agentReminderUnavailable}}" onClick="{{workflows.automation.createReminder}}"><svg class="i" aria-hidden="true" viewBox="0 0 24 24"><path d="{{ic.bell}}"></path></svg><span><strong>Reminder</strong><small>{{workflows.automation.agentReminderDescription}}</small></span><svg class="i" aria-hidden="true" viewBox="0 0 24 24"><path d="{{ic.right}}"></path></svg></button>
           <button class="workflow-choice" aria-label="Clock alarms" onClick="{{workflows.openClock}}"><svg class="i" aria-hidden="true" viewBox="0 0 24 24"><path d="{{ic.clock}}"></path></svg><span><strong>Alarm</strong></span><svg class="i" aria-hidden="true" viewBox="0 0 24 24"><path d="{{ic.right}}"></path></svg></button>
-          <button class="automation-more" aria-expanded="{{workflows.automation.newMore}}" onClick="{{workflows.automation.toggleNewMore}}">{{workflows.automation.newMoreLabel}}</button>
-          <sc-if value="{{workflows.automation.newMore}}">
-          <button class="workflow-choice" disabled="{{workflows.automation.agentUnavailable}}" onClick="{{workflows.automation.createWorkflow}}"><svg class="i" aria-hidden="true" viewBox="0 0 24 24"><path d="{{ic.notesList}}"></path></svg><span><strong>Build step by step</strong><small>{{workflows.automation.workflowDescription}}</small></span><svg class="i" aria-hidden="true" viewBox="0 0 24 24"><path d="{{ic.right}}"></path></svg></button>
-          <button class="workflow-choice" onClick="{{workflows.automation.createDeviceReminder}}"><svg class="i" aria-hidden="true" viewBox="0 0 24 24"><path d="{{ic.phone}}"></path></svg><span><strong>Reminder on this phone</strong></span><svg class="i" aria-hidden="true" viewBox="0 0 24 24"><path d="{{ic.right}}"></path></svg></button>
-          </sc-if>
         </div></sc-if>
         <sc-if value="{{workflows.automation.source}}"><p class="automation-status">{{workflows.automation.source}} · {{workflows.automation.status}}</p></sc-if>
         <sc-if value="{{workflows.automation.schedule}}"><p>{{workflows.automation.schedule}}</p></sc-if>
@@ -3347,15 +3342,9 @@
 
           <div class="automation-fields"><sc-for list="{{workflows.automation.fields}}" as="field"><label><span>{{field.label}}</span><sc-if value="{{field.singleLine}}"><input type="{{field.type}}" value="{{field.value}}" disabled="{{workflows.automation.busy}}" onChange="{{field.change}}" /></sc-if><sc-if value="{{field.multiline}}"><textarea rows="5" value="{{field.value}}" disabled="{{workflows.automation.busy}}" onChange="{{field.change}}"></textarea></sc-if></label></sc-for></div>
           <sc-if value="{{workflows.automation.prompt}}">
-            <section class="automation-when" aria-label="When"><h3>When</h3><div class="automation-schedule-options"><sc-for list="{{workflows.automation.scheduleOptions}}" as="option"><button aria-pressed="{{option.selected}}" disabled="{{workflows.automation.busy}}" onClick="{{option.pick}}">{{option.label}}</button></sc-for></div><div class="automation-fields"><sc-for list="{{workflows.automation.whenFields}}" as="field"><label><span>{{field.label}}</span><input type="{{field.type}}" value="{{field.value}}" disabled="{{workflows.automation.busy}}" onChange="{{field.change}}" /></label></sc-for></div><p class="automation-status">{{workflows.automation.whenLabel}}</p></section>
-            <button class="automation-more" aria-expanded="{{workflows.automation.promptMore}}" disabled="{{workflows.automation.busy}}" onClick="{{workflows.automation.togglePromptMore}}">{{workflows.automation.promptMoreLabel}}</button>
-            <sc-if value="{{workflows.automation.promptMore}}"><div class="automation-options">
-              <div class="automation-filters" style="padding:0" aria-label="Custom schedule type"><sc-for list="{{workflows.automation.scheduleKinds}}" as="kind"><button aria-pressed="{{kind.selected}}" disabled="{{workflows.automation.busy}}" onClick="{{kind.pick}}">{{kind.label}}</button></sc-for></div>
-              <div class="automation-fields"><sc-for list="{{workflows.automation.moreFields}}" as="field"><label><span>{{field.label}}</span><input type="{{field.type}}" value="{{field.value}}" disabled="{{workflows.automation.busy}}" onChange="{{field.change}}" /></label></sc-for></div>
-            </div></sc-if>
-            <p class="automation-status automation-save-note">{{workflows.automation.promptSaveNote}}</p>
+            <section class="automation-when" aria-label="When"><h3>When</h3><div class="automation-schedule-options"><sc-for list="{{workflows.automation.scheduleOptions}}" as="option"><button aria-pressed="{{option.selected}}" disabled="{{workflows.automation.busy}}" onClick="{{option.pick}}">{{option.shortLabel}}</button></sc-for></div><div class="automation-fields"><sc-for list="{{workflows.automation.whenFields}}" as="field"><label><span>{{field.label}}</span><input type="{{field.type}}" value="{{field.value}}" disabled="{{workflows.automation.busy}}" onChange="{{field.change}}" /></label></sc-for></div></section>
           </sc-if>
-          <div class="automation-actions"><button class="primary" disabled="{{workflows.automation.saveDisabled}}" onClick="{{workflows.automation.save}}">{{workflows.automation.saveLabel}}</button><button disabled="{{workflows.automation.busy}}" onClick="{{workflows.automation.close}}">Cancel</button></div>
+
         </sc-if>
         <sc-if value="{{workflows.automation.locked}}"><p role="alert">Couldn’t confirm the last change. Check it, then allow another.</p><div class="automation-actions"><button disabled="{{workflows.automation.busy}}" onClick="{{workflows.automation.allowAnother}}">Allow another</button></div></sc-if>
         <sc-if value="{{workflows.automation.editingSchedule}}"><sc-if value="{{workflows.automation.scheduleClockEditable}}">
@@ -3530,7 +3519,6 @@
           <sc-if value="{{workflows.b.unknown}}"><button aria-label="Refresh saved change" onClick="{{workflows.b.refresh}}" style="min-height: 44px; padding: 0 18px; border-radius: 22px; background: var(--s2)">Refresh saved change</button></sc-if>
         </sc-if>
         <sc-if value="{{workflows.b.typed}}">
-          <details class="workflow-builder-options"><summary>More options</summary><label>Description (optional)<textarea aria-label="Workflow description" value="{{workflows.b.description}}" onChange="{{workflows.b.onDescription}}" maxlength="4000"></textarea></label></details>
           <p role="status" style="font-size:14px;color:var(--mut);line-height:1.45">{{workflows.b.typedStatus}}</p>
           <sc-if value="{{workflows.b.describeOn}}">
             <section aria-label="Describe workflow" style="padding:16px;border-radius:18px;background:var(--s2);margin:16px 0">
@@ -3557,7 +3545,6 @@
           <sc-if value="{{workflows.b.hasTypedReview}}"><section class="workflow-save-review" aria-label="Workflow save review"><h3>Review workflow</h3><p>{{workflows.b.typedReview}}</p><details><summary>Technical details</summary><pre>{{workflows.b.typedSpecification}}</pre></details></section></sc-if>
           <sc-if value="{{workflows.b.unknown}}"><button onClick="{{workflows.b.refresh}}" style="min-height:44px;padding:12px;border-radius:22px;background:var(--s2)">Refresh save receipt</button></sc-if>
           <sc-if value="{{workflows.b.canResend}}"><button onClick="{{workflows.b.resend}}" style="min-height:44px;padding:12px;border-radius:22px;background:var(--s2)">{{workflows.b.resendLabel}}</button></sc-if>
-          <sc-if value="{{workflows.b.canDiscard}}"><button onClick="{{workflows.b.discard}}" style="min-height:44px;padding:12px;border-radius:22px;background:var(--s2)">Discard local draft</button></sc-if>
         </sc-if>
         <sc-if value="{{workflows.b.fullEditor}}">
         <div style="display: flex; flex-direction: column; margin-top: 20px">
@@ -3597,9 +3584,7 @@
           </div>
         </sc-if>
         <sc-if value="{{workflows.b.empty}}">
-          <button onClick="{{workflows.b.describe}}" aria-label="Describe it to {{name}}" style="display: flex; align-items: center; gap: 8px; margin-top: 26px; height: 36px; padding: 0 16px 0 14px; border-radius: 18px; background: var(--s2); font-size: 14px; font-weight: 600">
-            <span style="font-family: Denton, Fraunces, Georgia, serif; font-style: italic; font-size: 19px; line-height: 1; color: var(--acct)"><span class="alpha-compute-mark" aria-hidden="true"></span></span>Describe it
-          </button>
+
         </sc-if>
       </div>
 
