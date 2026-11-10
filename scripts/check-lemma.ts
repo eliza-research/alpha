@@ -52,7 +52,8 @@ try {
   if (changed.length) throw Error(`Stale LemmaScript generated inputs: ${changed.join(', ')}. Review and commit regenerated artifacts.`);
   const backend = spawnSync('dafny', ['--version'], {encoding: 'utf8', timeout: 10000});
   receipt.dafnyVersion = backend.status === 0 ? backend.stdout.trim() : null;
-  if (receipt.dafnyVersion !== receipt.requiredDafnyVersion) {
+  // Official archives may include the release's Git commit as SemVer build metadata.
+  if (!/^4\.11\.0(?:\+[0-9a-f]{40})?$/.test(receipt.dafnyVersion ?? '')) {
     receipt.status = 'skipped-no-qualified-backend';
     receipt.reason = 'Dafny 4.11.0 is required; generation passed but no function proof ran.';
     console.warn(receipt.reason);

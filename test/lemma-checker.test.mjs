@@ -30,6 +30,9 @@ if(process.argv.includes('check')){
       return {result, receipt: JSON.parse(readFileSync(join(root, 'test-results/lemma/check.json'), 'utf8'))};
     };
     let check = run({}); assert.equal(check.result.status, 0, check.result.stderr); assert.equal(check.receipt.passed, true); assert.equal(check.receipt.verifiedConditions, 1);
+    check = run({LEMMA_FIXTURE_VERSION: '4.11.0+'+'f'.repeat(40)}); assert.equal(check.result.status, 0); assert.equal(check.receipt.passed, true);
+    check = run({LEMMA_FIXTURE_VERSION: '4.11.0-rc1'}); assert.equal(check.receipt.passed, false);
+    check = run({LEMMA_FIXTURE_VERSION: '4.11.0+unreviewed'}); assert.equal(check.receipt.passed, false);
     check = run({LEMMA_FIXTURE_VERSION: '4.10.0'}); assert.equal(check.result.status, 0); assert.equal(check.receipt.passed, false); assert.equal(check.receipt.status, 'skipped-no-qualified-backend');
     check = run({LEMMA_FIXTURE_VERSION: '4.10.0', LEMMA_REQUIRE_BACKEND: '1'}); assert.equal(check.result.status, 2); assert.equal(check.receipt.passed, false);
     check = run({LEMMA_FIXTURE_FAIL: '1'}); assert.equal(check.result.status, 1); assert.equal(check.receipt.status, 'failed');
