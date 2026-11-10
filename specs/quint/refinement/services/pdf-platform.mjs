@@ -20,6 +20,7 @@ public class Service {public IBinder onBind(Intent i){return null;}public boolea
 import java.util.HashMap;
 public class Bundle extends HashMap<String,Object> {
  public <T>T getParcelable(String key){return (T)get(key);}public String getString(String key){return (String)get(key);}public String getString(String key,String value){return (String)getOrDefault(key,value);}public int getInt(String key,int value){return (Integer)getOrDefault(key,value);}
+ public boolean getBoolean(String key,boolean fallback){Object value=get(key);return value instanceof Boolean?(Boolean)value:fallback;}
  public void putString(String key,String value){put(key,value);}public void putParcelable(String key,Object value){put(key,value);}public void putInt(String key,int value){put(key,value);}public void putBoolean(String key,boolean value){put(key,value);}
 }`,
     'android/os/Message.java': `package android.os;

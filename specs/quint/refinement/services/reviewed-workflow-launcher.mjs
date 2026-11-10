@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-import {mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync} from 'node:fs';
+import {mkdirSync, mkdtempSync, readFileSync, existsSync, realpathSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {isAbsolute, join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -46,7 +46,9 @@ function runScenario(name, bun) {
     });
     if (result.error) throw result.error;
     assert.equal(result.signal, null, name+' failed: '+result.stderr);
-    const trace = JSON.parse(readFileSync(join(scratch, 'report.json'), 'utf8'));
+    const report = join(scratch, 'report.json');
+    assert.ok(existsSync(report), `${name}: launcher probe exited ${result.status} without a report\n${result.stdout}${result.stderr}`);
+    const trace = JSON.parse(readFileSync(report, 'utf8'));
     assert.equal(trace.name, name);
     assert.equal(result.status, trace.steps.at(-1).expect['s.exitCode']);
     return trace;
@@ -62,7 +64,7 @@ export async function checkReviewedWorkflowLauncher(extraSources = [], bun) {
   return checkTraces({model: 'ReviewedWorkflowLauncher', id: bun ? 'ReviewedWorkflowLauncherWithBun' : undefined,
     sources, driverHashes, traces, scope: 'bounded-orchestration', assumptions: [
       'The exact launcher, source and profile helpers run in a disposable synthetic Git workspace and private home. Module hooks observe real filesystem operations and substitute a closed spawn port. All state files and child inputs belong to the fixture.',
-      'The opt-in Bun traces execute the actual core preload and a synthetic entry that checks one reviewed transformation. Each checkout is stable from the start of the launcher through child admission. Real workflows and provider behavior are separate.',
+      'The opt-in Bun traces execute the actual core preload and a synthetic entry that checks the unchanged reviewed source bytes. Each checkout is stable from the start of the launcher through child admission. Real workflows and provider behavior are separate.',
       'Fresh and saved profile cases observe identity, text routing, embeddings and the two optional plugin settings. Endpoint readiness remains a separate acceptance check.',
       'Revision read refusal closes the log before spawn. Receipt write refusal retains the supervised child until it closes. The shared supervisor escalation is exercised by the CombinedAgentLauncher fixture.',
     ]});
