@@ -1,3 +1,4 @@
+import {openRetainedDigests} from './helpers/retained-digests';
 import {returnToApps} from './app-navigation';
 import {openLegacyNotes} from './helpers/legacy-notes';
 import { test, expect } from '@playwright/test';
@@ -47,12 +48,15 @@ test('Conversation controls survive a keyboard-sized viewport and retain the dra
   await expect(draft).toHaveValue('Keep this unsent draft');
 });
 
-for(const theme of ['light','dark']) test(`Scheduled digests respects ${theme} appearance`,async({page},info)=>{
+for(const theme of ['light','dark']) test(`Retained digest panel respects ${theme} appearance without a Settings shortcut`,async({page},info)=>{
   await page.goto(`/?theme=${theme}`);
   await page.getByRole('button',{name:'Settings',exact:true}).click();
   await page.getByRole('button',{name:'Apps',exact:true}).click();
   await page.getByRole('button',{name:'Workflows',exact:true}).click();
-  await page.getByRole('button',{name:'Scheduled summaries',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Scheduled summaries',exact:true})).toHaveCount(0);
+  // The owner removed this Settings entry. Retained result/renewal handlers still use the panel.
+  // Exercise its existing event directly; this is component coverage, not a settings journey.
+  await openRetainedDigests(page);
   const dialog=page.getByRole('dialog',{name:'Scheduled digests',exact:true});
   await expect(dialog).toHaveCSS('background-color',theme==='dark'?'rgb(0, 0, 0)':'rgb(255, 255, 255)');
   await expect(dialog).toHaveCSS('color',theme==='dark'?'rgb(255, 255, 255)':'rgb(0, 0, 0)');
@@ -73,8 +77,8 @@ test('Sign-in dialog follows a live theme change and remains keyboard accessible
   await page.getByRole('button',{name:'Display',exact:true}).click();
   await page.getByRole('button',{name:'Theme: Dark',exact:true}).click();
   // Open by keyboard: WebKit intentionally does not focus buttons on a pointer click.
-  await returnToApps(page);await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Back to Settings',exact:true}).click();await page.getByRole('button',{name:'Account',exact:true}).click();
-  const opener=page.getByRole('button',{name:'Account & plan',exact:true});await opener.focus();await opener.press('Enter');
+  await returnToApps(page);await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Back to Settings',exact:true}).click();
+  const opener=page.getByRole('button',{name:'Account',exact:true});await opener.focus();await opener.press('Enter');
   const dialog=page.getByRole('dialog',{name:'Welcome to Alpha.',exact:true});
   await expect(dialog).toHaveCSS('background-color','rgb(0, 0, 0)');
   await page.setViewportSize({width:412,height:300});

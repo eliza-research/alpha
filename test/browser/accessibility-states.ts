@@ -127,11 +127,10 @@ export const LIVE_STATES: State[] = [
   live('Settings about', ['Settings', 'About']),
   // About exposes the existing connection recovery controls in the grouped layout.
   live('Settings licenses', ['Settings', 'About', 'Open source licenses']),
-  live('Settings scheduled summaries', ['Settings', 'Apps', 'Workflows', 'Scheduled summaries']),
   live('Settings app permissions', ['Settings', 'Privacy', 'App permissions']),
   // The remaining Settings pages, and each app's open menu, search field and editor.
   live('Settings apps', ['Settings', 'Apps']),
-  live('Settings accounts', ['Settings', 'Account', 'Account & plan']),
+  live('Settings accounts', ['Settings', 'Account']),
   live('Settings connections', ['Settings', 'Account', 'Google & email']),
   live('Settings notifications', ['Settings', 'General', 'Notifications']),
   live('Settings calendar', ['Settings', 'Apps', 'Calendar']),

@@ -1,3 +1,4 @@
+import {openRetainedDigests} from './helpers/retained-digests';
 import {openLegacyNotes} from './helpers/legacy-notes';
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
@@ -113,12 +114,10 @@ test('Notes rejects invalid text and cancels an empty file selection without cre
     expect(await page.evaluate(async ()=>JSON.parse((await (await import('/src/runtime/browser-notes-document.ts')).readBrowserNotesRaw())||'{"records":[]}').records.length)).toBe(0);
   }
 });
-test('Scheduled digests traps focus, closes on native Back, and restores the triggering control',async({page})=>{
+test('Retained digest panel traps focus, closes on native Back, and restores prior focus',async({page})=>{
   await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();
-  await page.getByRole('button',{name:'Apps',exact:true}).click();
-  await page.getByRole('button',{name:'Workflows',exact:true}).click();
-  const trigger=page.getByRole('button',{name:'Scheduled summaries',exact:true});
-  await trigger.focus();await trigger.press('Enter');
+  const trigger=page.getByRole('button',{name:'General',exact:true});
+  await trigger.focus();await openRetainedDigests(page);
   const dialog=page.getByRole('dialog',{name:'Scheduled digests',exact:true});
   await expect(dialog).toBeVisible();await expect(dialog).toBeFocused();
   await expect(dialog.getByRole('button',{name:'Result notifications',exact:true})).toBeVisible();
