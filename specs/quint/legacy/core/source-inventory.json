@@ -2143,10 +2143,10 @@
     }
   ],
   "currentUpstream": {
-    "revision": "3504bfbe6d264d1bf05bbc2224708131d41f3a6b",
+    "revision": "3ac3c95119e2ca11f6d72714899faafd064b2c38",
     "classification": "current-upstream-formal-specifications",
     "models": [],
-    "note": "The current upstream tree has no tracked TLA modules or TLC configurations. Historical translations and source hashes above remain bound to revision 4787d51a142c63c98371c832997184c53f7218d3. The four DeletionOwnerAdmission Quint sidecars below catalogue the upstream partial owner-admission model and checker at this current revision; downstream model allocations, generated-trace equivalence, full coordinator refinement and Android/device qualification remain separate. Any future TLA/TLC source requires separate allocation. CloudSpeechSuccessor is retained as an upstream source-owned model; its separate semantic, scenario and transport tests do not constitute device or live-provider proof.",
+    "note": "The current upstream tree has no tracked TLA modules or TLC configurations. Historical translations and source hashes above remain bound to revision 4787d51a142c63c98371c832997184c53f7218d3. The four DeletionOwnerAdmission Quint sidecars below catalogue the upstream partial owner-admission model and checker at this current revision; downstream model allocations, generated-trace equivalence, full coordinator refinement and Android/device qualification remain separate. Any future TLA/TLC source requires separate allocation. CloudSpeechSuccessor is retained as an upstream source-owned model; its separate semantic, scenario and transport tests do not constitute device or live-provider proof. StorageWatch and PhotoCopyRecovery model and case sidecars added since the preceding inventory revision are catalogued as source bytes only; this inventory records no new model verdict or device acceptance.",
     "quintSidecars": [
       {
         "path": "plugins/plugin-native-action-journal/quint/DeletionOwnerAdmission.cases.json",
@@ -2177,6 +2177,26 @@
         "path": "packages/host/quint/CloudSpeechSuccessor.cases.json",
         "gitObject": "b8e2b6cfc0550105b6e61c1a89143b95901b6ed7",
         "sha256": "83d6dc7f9b3f0c9353e16f02d145a46dee4db2256ae2e4bd848e6b184f0d0a9e"
+      },
+      {
+        "path": "plugins/plugin-native-filesystem/quint/StorageWatch.cases.json",
+        "gitObject": "1781fd63bbd8c117d0cc209449fce642ee017d9d",
+        "sha256": "20eaa49a275fbedb40344968389edf99140eb86f647e46cf1b182afce3aabbab"
+      },
+      {
+        "path": "plugins/plugin-native-filesystem/quint/StorageWatch.qnt",
+        "gitObject": "9ac1e76ac4a5e315c38c461d5f5ae5dd2ae7d995",
+        "sha256": "5931d660211d351ade970e756d449c80f5c5299a0f6aef3bd5d2e390a342b2cf"
+      },
+      {
+        "path": "plugins/plugin-native-media/quint/PhotoCopyRecovery.cases.json",
+        "gitObject": "a5285b5677902e3ffac48a2e1a4372c4f8455ac8",
+        "sha256": "696d1b874e5853806fac3de7219f14ea861c1b54dc11d9df1b35398f159505aa"
+      },
+      {
+        "path": "plugins/plugin-native-media/quint/PhotoCopyRecovery.qnt",
+        "gitObject": "28c5ec6fc5ce3045fc96d40603b841a96e8c11a6",
+        "sha256": "3697d40623e7b45464ddbb09bc9e6ac35c66c77336b0609e7ceec3b768e92076"
       }
     ]
   }

@@ -70,7 +70,9 @@ test('client feature publication retires once while a peer moves the winner',()=
   const [actor,root,control,preparer]=process.argv.slice(1),destination=path.join(root,'.eliza/client-features');
   const original={rename:fs.renameSync,lstat:fs.lstatSync,remove:fs.rmSync,mkdtemp:fs.mkdtempSync};
   const wait=new Int32Array(new SharedArrayBuffer(4));let stage,aside,retire=0,publish=0,read=0,collided=false;
-  function gate(key,value,timeout=20000){fs.writeFileSync(path.join(control,actor+'-'+key+'.json'),JSON.stringify({actor,...value,stage,aside}));const until=Date.now()+timeout;while(!fs.existsSync(path.join(control,actor+'-'+key+'.allow'))){if(Date.now()>until)throw Error('Fixture gate timed out: '+actor+' '+key);Atomics.wait(wait,0,0,5);}}
+  // Existence is the reader's signal: publish only complete JSON on the same filesystem.
+  function writeJson(file,value){const temporary=file+'.tmp-'+process.pid;fs.writeFileSync(temporary,JSON.stringify(value));original.rename(temporary,file);}
+  function gate(key,value,timeout=20000){writeJson(path.join(control,actor+'-'+key+'.json'),{actor,...value,stage,aside});const until=Date.now()+timeout;while(!fs.existsSync(path.join(control,actor+'-'+key+'.allow'))){if(Date.now()>until)throw Error('Fixture gate timed out: '+actor+' '+key);Atomics.wait(wait,0,0,5);}}
   fs.mkdtempSync=function(prefix,...args){const result=original.mkdtemp(prefix,...args);if(String(prefix).includes('client-features-stage-'))stage=result;return result;};
   fs.renameSync=function(from,to){
    const kind=from===destination?'retire':to===destination&&from===stage?'publish':undefined;
@@ -94,8 +96,8 @@ test('client feature publication retires once while a peer moves the winner',()=
    gate('cleanup-'+kind+'-ready',{operation:'cleanup',slot:kind,phase:'ready'});
    const result=original.remove(file,...args);gate('cleanup-'+kind+'-done',{operation:'cleanup',slot:kind,phase:'done',outcome:'success'});return result;
   };
-  try{const {prepareClientFeatures}=await import(preparer);prepareClientFeatures({root,projectVoice:false});fs.writeFileSync(path.join(control,actor+'-complete.json'),JSON.stringify({status:0,retire,publish,read}));}
-  catch(error){fs.writeFileSync(path.join(control,actor+'-complete.json'),JSON.stringify({status:1,retire,publish,read,error:error.stack}));process.exitCode=1;}
+  try{const {prepareClientFeatures}=await import(preparer);prepareClientFeatures({root,projectVoice:false});writeJson(path.join(control,actor+'-complete.json'),{status:0,retire,publish,read});}
+  catch(error){writeJson(path.join(control,actor+'-complete.json'),{status:1,retire,publish,read,error:error.stack});process.exitCode=1;}
  `;
  const children=actors.map(actor=>{
   const child=spawn(process.execPath,['--input-type=module','-e',worker,actor,root,control,pathToFileURL(path.resolve('scripts/prepare-client-features.ts')).href],{stdio:['ignore','ignore','pipe']});
