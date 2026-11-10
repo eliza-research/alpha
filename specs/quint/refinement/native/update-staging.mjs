@@ -52,8 +52,10 @@ const initialNative = {'s.owner':0, 's.target':0, 's.phase':'idle', 's.file':'ab
 
 function settingsProgram() {
   const source = readFileSync(join(root, settings), 'utf8');
-  const review = source.slice(source.indexOf('export const UPDATE_SCHEMA'), source.indexOf('/** Cloud QA profile facts'));
-  const cache = source.slice(source.indexOf('const UPDATE_KEY'), source.indexOf('/** Keep the reference settings components'));
+  const reviewStart=source.indexOf('export const UPDATE_SCHEMA'), reviewEnd=source.indexOf('/** Field updates wait for Home',reviewStart);
+  const cacheStart=source.indexOf('const UPDATE_KEY'), cacheEnd=source.indexOf('/** Keep the reference settings components',cacheStart);
+  assert.ok(reviewStart>=0&&reviewEnd>reviewStart&&cacheStart>reviewEnd&&cacheEnd>cacheStart,'Exact non-overlapping update parser and cache source blocks');
+  const review=source.slice(reviewStart,reviewEnd), cache=source.slice(cacheStart,cacheEnd);
   assert.ok(review.includes('function parseUpdateManifest(') && cache.includes('device.checkForUpdate()'));
   return new vm.Script(stripTypeScriptTypes((review + cache).replace(/^export /gm, '') + `
 globalThis.inspect = () => ({cache: savedUpdate(), checking: !!updateCheck});

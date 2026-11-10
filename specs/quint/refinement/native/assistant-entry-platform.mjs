@@ -111,8 +111,7 @@ public record Icon(int id) {public static Icon createWithResource(android.conten
   private String action, type, packageName;`);
     edit(intent,'    action = "explicit:" + target.getName();','    action = "explicit:" + target.getName(); this.target=target;');
     edit(intent,'    action = other.action;','    action = other.action; target=other.target; flags=other.flags; component=other.component;');
-    edit(intent,'  public String getAction() {',`  public Intent setAction(String value){action=value;return this;}
-  public Intent setComponent(ComponentName value){component=value;return this;}
+    edit(intent,'  public String getAction() {',`  public Intent setComponent(ComponentName value){component=value;return this;}
   public java.util.Set<String> extraKeys(){return extras.keySet();}
   public String getAction() {`);
     edit(intent,'  public Intent addFlags(int flags) {\n    return this;', '  public Intent addFlags(int flags) {\n    this.flags|=flags;return this;');
