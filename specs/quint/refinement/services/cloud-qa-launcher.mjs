@@ -40,7 +40,7 @@ export async function checkCloudQaLauncher(extraSources = []) {
   const core = coreStateReceipt(root);
   const sources = [
     fileURLToPath(import.meta.url), probe, 'test/fixtures/core-state-root.mjs',
-    'scripts/start-cloud-qa.ts', 'scripts/local-agent-source.ts', 'scripts/copy-file-clone.ts',
+    'scripts/start-cloud-qa.ts', 'scripts/private-runtime-launch.ts', 'scripts/local-agent-source.ts', 'scripts/copy-file-clone.ts',
     'scripts/cloud-sdk-authority.ts', 'scripts/native-view-policy.ts',
     'scripts/cloud-deployment-policy.ts', 'upstream.lock.json',
     'vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs',

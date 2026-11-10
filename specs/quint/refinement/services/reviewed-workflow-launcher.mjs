@@ -19,7 +19,7 @@ const cases = [
 function sourceInputs(extraSources) {
   const {files} = parseBuildPolicy(readFileSync(join(root, manifest)));
   return [
-    'scripts/launcher-child.ts', 'scripts/start-reviewed-workflow-agent.ts', 'scripts/agent-embeddings.ts', 'scripts/agent-identity.ts',
+    'scripts/launcher-child.ts', 'scripts/private-runtime-launch.ts', 'scripts/start-reviewed-workflow-agent.ts', 'scripts/agent-embeddings.ts', 'scripts/agent-identity.ts',
     'scripts/agent-model.ts', 'apps/app/src/product/alpha-product-registration.ts', 'scripts/local-agent-source.ts',
     'scripts/copy-file-clone.ts', 'scripts/core-state-preload.ts', 'scripts/core-state-patch.ts', 'scripts/build-policy-source.ts',
     'scripts/combined-agent-source.ts', manifest, 'upstream.lock.json',

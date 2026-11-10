@@ -236,7 +236,7 @@ public class SelectedDocumentInstrumentedTest {
    }
   }finally{if(selectionId!=null)SelectedDocumentAccess.forget(selectionId);if(file!=null)resolver.delete(file,null,null);if(bad!=null)resolver.delete(bad,null,null);}
  }
- /** Invoked by test-native-restart.mjs document in separate instrumentation processes. */
+ /** Invoked by test-native-restart.ts document in separate instrumentation processes. */
  @Test public void documentProcessRestartPhase()throws Exception{
   String phase=InstrumentationRegistry.getArguments().getString("documentPhase");org.junit.Assume.assumeTrue("Explicit process-restart runner only",phase!=null);
   Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();ContentResolver resolver=context.getContentResolver();android.content.SharedPreferences fixture=context.getSharedPreferences("document-restart-fixture",0);

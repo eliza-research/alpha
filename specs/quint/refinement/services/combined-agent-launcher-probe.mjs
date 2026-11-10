@@ -13,7 +13,7 @@ import {writeCoreStateFixture} from '../../../../test/fixtures/core-state-root.m
 const root = resolve(import.meta.dirname, '../../../..');
 const launcher = 'scripts/start-combined-agent.ts';
 const support = [
-  'scripts/launcher-child.ts',
+  'scripts/launcher-child.ts', 'scripts/private-runtime-launch.ts', 'scripts/speech-env.ts',
   'scripts/combined-agent-source.ts', 'scripts/host-speech-admission.ts', 'scripts/agent-model.ts',
   'scripts/agent-identity.ts', 'apps/app/src/product/alpha-product-registration.ts',
   'vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs',
@@ -85,7 +85,7 @@ function createFixture(scratch, scenario) {
 }
 
 const refusals = {
-  'node-version': /Combined runtime requires Node24\.15\.0 and Bun1\.4\.2/,
+  'node-version': /Combined runtime requires Node26\.13\.0 and Bun1\.4\.2/,
   'source-mismatch': /Frozen source content differs/,
   'port-busy': /Combined port47858 unavailable/,
   'profile-source': /Private profile must be outside frozen source/,

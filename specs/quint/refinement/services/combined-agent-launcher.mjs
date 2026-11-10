@@ -20,7 +20,7 @@ function sourceInputs(extraSources) {
   const {files} = parseBuildPolicy(readFileSync(join(root, manifest)));
   return [
     'scripts/launcher-child.ts', 'scripts/start-combined-agent.ts', 'scripts/combined-agent-source.ts',
-    'scripts/host-speech-admission.ts', 'scripts/host-speech-assets.json', 'scripts/agent-model.ts',
+    'scripts/private-runtime-launch.ts', 'scripts/host-speech-admission.ts', 'scripts/speech-env.ts', 'scripts/host-speech-assets.json', 'scripts/agent-model.ts',
     'scripts/agent-identity.ts', 'apps/app/src/product/alpha-product-registration.ts',
     'scripts/core-state-patch.ts', 'scripts/core-state-preload.ts', 'scripts/build-policy-source.ts',
     'scripts/local-agent-source.ts', 'scripts/copy-file-clone.ts', manifest, 'upstream.lock.json',

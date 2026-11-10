@@ -11,7 +11,7 @@ import {writeCoreStateFixture} from '../../../../test/fixtures/core-state-root.m
 const repository = resolve(import.meta.dirname, '../../../..');
 const launcher = 'scripts/start-reviewed-workflow-agent.ts';
 const support = [
-  'scripts/launcher-child.ts',
+  'scripts/launcher-child.ts', 'scripts/private-runtime-launch.ts',
   'scripts/agent-model.ts', 'scripts/agent-identity.ts', 'scripts/agent-embeddings.ts', 'apps/app/src/product/alpha-product-registration.ts',
   'vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs',
   'vendor/eliza/packages/agent/native-host/private-runtime-json.mjs',

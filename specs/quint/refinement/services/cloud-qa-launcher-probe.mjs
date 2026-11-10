@@ -14,7 +14,7 @@ const repository = resolve(import.meta.dirname, '../../../..');
 const launcher = 'scripts/start-cloud-qa.ts';
 const shared = 'vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs';
 const support = [
-  launcher, shared, 'vendor/eliza/packages/agent/native-host/private-runtime-json.mjs',
+  launcher, 'scripts/private-runtime-launch.ts', shared, 'vendor/eliza/packages/agent/native-host/private-runtime-json.mjs',
   'scripts/cloud-sdk-authority.ts', 'scripts/native-view-policy.ts',
   'scripts/cloud-deployment-policy.ts',
 ];
