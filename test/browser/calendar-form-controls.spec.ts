@@ -24,32 +24,31 @@ test.beforeEach(async ({ page }) => {
   await expect(page.locator('html')).toHaveAttribute('data-active-view', 'calendar');
 });
 
-test('day chips reach a month ahead, keep Today one tap away and mark the chosen day', async ({ page }) => {
-  await page.getByRole('button', { name: 'New event', exact: true }).click();
-  const row = page.locator('div.scr[style*="pan-x"]').first(), chips = row.locator('button');
-  await expect(chips.first()).toBeVisible();
-  for (let i = 0; i < 3 && (await calendar(page)).form.off < 30; i++) await chips.last().click();
-  expect((await calendar(page)).form.off).toBeGreaterThanOrEqual(30);
-  await expect(chips.first()).toContainText('Today');
-  await expect(chips.first()).toHaveAttribute('aria-pressed', 'false');
-  await expect(row.locator('button[aria-pressed="true"]')).toHaveCount(1);
-  await chips.first().click();
-  expect((await calendar(page)).form.off).toBe(0);
-  await expect(chips.first()).toHaveAttribute('aria-pressed', 'true');
+test('From and To keep the duration, carry across midnight and preserve hidden event data',async({page})=>{
+ await page.getByRole('button',{name:'New event',exact:true}).click();
+ await calendar(page,{t:23.5,d:1,where:'Retained room',who:['person@example.invalid']});
+ await expect(page.getByLabel('From time',{exact:true})).toHaveValue('23:30');
+ await expect(page.getByLabel('To date',{exact:true})).toHaveValue('2027-06-11');
+ await page.getByLabel('To time',{exact:true}).fill('01:30');
+ expect((await calendar(page)).form).toMatchObject({t:23.5,d:2,where:'Retained room',who:['person@example.invalid']});
+ await page.getByLabel('From date',{exact:true}).fill('2027-07-10');
+ await expect(page.getByLabel('To date',{exact:true})).toHaveValue('2027-07-11');
+ await expect(page.getByLabel('Location',{exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Add people',exact:true})).toHaveCount(0);
 });
 
-test('Start later near midnight never moves the start earlier', async ({ page }) => {
-  await page.getByRole('button', { name: 'New event', exact: true }).click();
-  const later = page.getByRole('button', { name: 'Start later', exact: true });
-  await calendar(page, { t: 23.5, d: 1 });
-  await later.click();
-  expect((await calendar(page)).form.t).toBe(23.5);
-  await calendar(page, { t: 22, d: 1 });
-  await later.click();
-  expect((await calendar(page)).form.t).toBe(22.25);
-  await calendar(page, { t: 22.75, d: 1.25 });
-  await later.click();
-  expect((await calendar(page)).form.t).toBe(22.75);
+test('All day uses exclusive end dates and preserves the previous timed duration',async({page})=>{
+ await page.getByRole('button',{name:'New event',exact:true}).click();
+ await calendar(page,{t:9.5,d:1.5});
+ await page.getByRole('switch',{name:'All day',exact:true}).click();
+ await expect(page.getByLabel('From time',{exact:true})).toBeDisabled();
+ await expect(page.getByLabel('From time',{exact:true})).toHaveValue('00:00');
+ await expect(page.getByLabel('To date',{exact:true})).toHaveValue('2027-06-11');
+ await page.getByLabel('To date',{exact:true}).fill('2027-06-13');
+ expect((await calendar(page)).form.canonicalAllDay).toEqual({startDate:'2027-06-10',endDateExclusive:'2027-06-13'});
+ await page.getByRole('switch',{name:'All day',exact:true}).click();
+ await expect(page.getByLabel('From time',{exact:true})).toHaveValue('09:30');
+ await expect(page.getByLabel('To time',{exact:true})).toHaveValue('11:00');
 });
 
 test('the Calendar form has no manual time zone picker and keeps a restored draft’s clock',async({page})=>{

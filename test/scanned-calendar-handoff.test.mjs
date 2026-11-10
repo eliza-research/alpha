@@ -9,10 +9,10 @@ import * as reminderJournal from '../.eliza/client-features/plugins/plugin-assis
 // Execute the complete adapter with only its platform/service dependencies
 // replaced. No Calendar write API is supplied: handoff must only open a form.
 const code=stripTypeScriptTypes(readFileSync('apps/app/src/prototype/agent-calendar-adapter.ts','utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'strip'});
-function fixture({status='ready',sources=1,authority='canonical',platform='web',form=null,provider='eliza',recordPort=null,pendingText=()=> 'Synthetic pending',testMocks=false,calendars=null,empty=false,events=[],error=null,row=e=>({id:e.id,title:e.title}),created=null,remembered=null}={}){
+function fixture({status='ready',sources=1,authority='canonical',platform='web',form=null,provider='eliza',recordPort=null,pendingText=()=> 'Synthetic pending',testMocks=false,calendars=null,empty=false,events=[],error=null,row=e=>({id:e.id,title:e.title}),created=null,remembered=null,createFailures=[]}={}){
  const state={status,savedAt:null,ownerKey:'owner-A',error,feed:{events},calendars:calendars??Array.from({length:sources},(_,i)=>({summary:`Source ${i}`,provider,side:'owner',grantId:provider==='eliza'?'eliza-calendar':'google-grant',calendarId:provider==='eliza'&&i===0?'primary':String(i),includeInFeed:true,accessRole:'owner'}))};
  const refreshes=[],creates=[],updates=[],listeners={};let published;
- class Calendar{state=state;subscribe(fn){published=fn;return()=>{};}refresh(window){refreshes.push(window);}create(sourceKey,input){creates.push({sourceKey,input});return {outcome:'created',event:created};}update(eventKey,providerVersion,input){updates.push({eventKey,providerVersion,input});return {outcome:'updated',event:null};}invalidateNext(){state.nextFresh=false;if(state.next?.event&&Date.parse(state.next.event.endAt)<=Date.now())state.next=null;}retire(){}selection(){}sourceHandle(key){return 'handle:'+key;}sourceKeyForHandle(handle){return handle.slice('handle:'.length);}}
+ class Calendar{state=state;subscribe(fn){published=fn;return()=>{};}refresh(window){refreshes.push(window);}create(sourceKey,input){creates.push({sourceKey,input});if(createFailures.length)throw createFailures.shift();return {outcome:'created',event:created};}update(eventKey,providerVersion,input){updates.push({eventKey,providerVersion,input});return {outcome:'updated',event:null};}invalidateNext(){state.nextFresh=false;if(state.next?.event&&Date.parse(state.next.event.endAt)<=Date.now())state.next=null;}retire(){}selection(){}sourceHandle(key){return 'handle:'+key;}sourceKeyForHandle(handle){return handle.slice('handle:'.length);}}
  const connection={getSnapshot:()=>({startupResolved:true,cloudAccount:null,residentSavedCredential:false}),subscribe:()=>()=>{},getAppRecordClient:()=>recordPort};
  const install=new Function('AgentCalendar','Capacitor','connectionController','calendarSourceKey','presentCalendarIntervals','calendarFormCreate','getZonedDateParts','addDaysToLocalDate','calendarOwnerKey','agentPendingText','testMocksEnabled','canonicalCalendarRow','calendarRange','calendarEventKey','eventEditorMutability','calendarFormPatch','rememberNoteOrigin','calendarFormMinutes','browserCloudResidentEnabled',code+';return installAgentCalendarAdapter;')(Calendar,{getPlatform:()=>platform},connection,c=>c.calendarId,()=>{},draft=>draft,()=>({}),()=>({}),target=>target.fixtureOwnerKey??state.ownerKey,pendingText,testMocks,row,records=>({events:records}),event=>event.id,()=>({kind:'editable',providerVersion:'version-1'}),draft=>draft,async(...args)=>{remembered?.push(args);return true;},hours=>Math.round(Number(hours)*60),false);
 
@@ -337,4 +337,15 @@ test('legacy rows keep their day across a spring DST change and for UTC-midnight
  assert.deepEqual(inZone('America/New_York',"[legacyDayOffset(new Date(2026,2,10,9).getTime(),false,new Date(2026,2,1,12)),legacyDayOffset(new Date(2026,2,10,10).getTime(),false,new Date(2026,2,1,12))]"),[9,9]);
  // Los Angeles: an all-day record for 10 March is stored as 2026-03-10T00:00Z and still shows on 10 March.
  assert.deepEqual(inZone('America/Los_Angeles',"[legacyDayOffset(Date.UTC(2026,2,10),true,new Date(2026,2,1,12)),legacyDayOffset(Date.UTC(2026,2,11),true,new Date(2026,2,1,12))]"),[9,10]);
+});
+
+test('a definitively expired pre-execution binding gets one fresh key; ambiguous failures do not replay',async()=>{
+ const terminal=Object.assign(Error('Local agent request failed (HTTP 409).'),{status:409,data:{error:'The bound calendar editor request is expired and cannot be replayed.'}});
+ const f=fixture({recordPort:availablePort,createFailures:[terminal]});f.shell.reviewScannedCalendarDraft(noteDraft);f.calendar.form=f.opened[0][1].form;
+ const old=f.calendar.form.creationId;await f.views.calendar.render(f.calendar,calendarApi(f)).f.save();
+ assert.equal(f.creates.length,2);assert.equal(f.creates[0].input.operationKey,old);assert.notEqual(f.creates[1].input.operationKey,old);assert.equal(f.calendar.form,null);
+ for(const failure of [Error('Network lost'),Object.assign(Error('Conflict'),{status:409,data:{error:'Event version changed'}})]){
+  const g=fixture({recordPort:availablePort,createFailures:[failure]});g.shell.reviewScannedCalendarDraft(noteDraft);g.calendar.form=g.opened[0][1].form;const form=g.calendar.form,toasts=[];
+  await g.views.calendar.render(g.calendar,calendarApi(g,toasts)).f.save();assert.equal(g.creates.length,1);assert.equal(g.calendar.form,form);assert.equal(toasts.length,1);
+ }
 });

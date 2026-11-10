@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {startMountedCalendar} from './fixtures/calendar-mounted-editor.mjs';
 
-test('mounted Calendar Edit keeps the retained draft until explicit Resume or Discard', {timeout: 240_000}, async t => {
+test('mounted Calendar Edit keeps the retained edit when opening another event and New event resumes it', {timeout: 240_000}, async t => {
   const browser = await startMountedCalendar();
   try {
     for (const [kind, nextTitle] of [['same', 'Fixture Existing Event A'], ['different', 'Fixture Existing Event B']]) {
@@ -27,7 +27,7 @@ test('mounted Calendar Edit keeps the retained draft until explicit Resume or Di
           await back();
           await detail.waitFor();
           await back();
-          await f.button('Resume event draft').waitFor();
+          assert.equal(await f.button('Resume event draft').count(),0);
 
           await open(nextTitle);
           await edit();
@@ -40,17 +40,11 @@ test('mounted Calendar Edit keeps the retained draft until explicit Resume or Di
           assert.ok((await detail.innerText()).includes(nextTitle));
 
           await back();
-          await f.button('Resume event draft').click();
+          await f.button('New event').click();
           assert.equal(await title.inputValue(), 'Retained edit A');
           assert.equal((await f.snapshot()).form.id, old.form.id);
-          await f.button('Back to calendar').click();
-          f.page.once('dialog', dialog => dialog.accept());
-          await f.button('Discard event draft').click();
-          await f.button('Resume event draft').waitFor({state: 'detached'});
-          await open(nextTitle);
-          await edit();
-          assert.equal(await title.inputValue(), nextTitle);
-          assert.notEqual((await f.snapshot()).form.id, old.form.id);
+          assert.equal(await f.invoke('saved', 'owner-a'), durable);
+          assert.equal(blocked.requests.filter(row => row.method !== 'GET').length,0);
         } finally {await f.close();}
       });
     }

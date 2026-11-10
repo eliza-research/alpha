@@ -27,6 +27,8 @@ type Bag=Record<string,any>;
 export const managedGoogleSource=(calendar:{provider?:string;grantId?:string|null}|undefined)=>calendar?.provider==='google'&&/^alpha-google:[a-f0-9]{64}$/.test(calendar.grantId??'');
 /** Owner text for a refused Calendar action. Messages from runtime/agent-calendar.ts and the host are mapped here. */
 const OWNER_ERRORS:[RegExp,string][]=[
+ [/title is required/i,'Add a title to save this event.'],
+ [/bound calendar editor request is (expired|rejected)/i,'Your draft is kept. Save again to use a fresh request.'],
  [/^Calendar owner or agent changed/,'Calendar changed. Try again.'],
  [/^Retain this (draft|deletion) operation key/,"This draft can't be saved. Reopen it and try again."],
  [/^Organizer disposition is unavailable; no cancellation was sent/,"This event can't be deleted here. No cancellation was sent."],
@@ -34,7 +36,8 @@ const OWNER_ERRORS:[RegExp,string][]=[
  [/^Review recurring-series changes in Calendar/,'Edit the whole series in Google Calendar.'],
 ];
 export function calendarErrorText(error:unknown):string{
- const message=error instanceof Error?error.message:typeof error==='string'?error:'';
+ const data=error&&typeof error==='object'&&'data' in error?(error as {data?:{error?:unknown;message?:unknown}}).data:undefined;
+ const message=typeof data?.error==='string'?data.error:typeof data?.message==='string'?data.message:error instanceof Error?error.message:typeof error==='string'?error:'';
  return OWNER_ERRORS.find(([pattern])=>pattern.test(message))?.[1]??(message||'Calendar could not be updated. Try again.');
 }
 const DAY=86400000;
@@ -193,7 +196,7 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
   const selectedSource=controller!.state.calendars.find(c=>calendarSourceKey(c)===sourceKey);
   if(!f.id){const source=newEventSource();if(!source)throw Error('Calendar is not ready to create an event. Your draft is kept.');if(calendarSourceKey(source)!==sourceKey)throw Error('Choose Calendar for this new event. Your draft is kept.');}
   if(selectedSource?.provider==='eliza'&&f.repeat!=='none')throw Error("Agent Calendar can't repeat events. Remove the repeat to save.");
-  if(f.video||f.alert!==null)throw Error("Agent Calendar can't add alerts or video rooms. Your draft is kept.");
+  if(f.video||f.alert!=null)throw Error("Agent Calendar can't add alerts or video rooms. Your draft is kept.");
   const day=addDaysToLocalDate(getZonedDateParts(new Date(),zone()),Number(f.off));
   const rules:Record<string,string[]>={none:[],daily:['RRULE:FREQ=DAILY'],weekdays:['RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR'],weekly:['RRULE:FREQ=WEEKLY']};if(f.repeat==='preserve'&&!f.id||f.repeat!=='preserve'&&!Object.hasOwn(rules,f.repeat))throw Error('Choose how this event repeats.');
   let allDayRange=f.canonicalAllDay;
@@ -267,16 +270,21 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
    // Unsupported retained intent stays in the draft until the owner removes it.
    if((original??selectedSource)?.provider==='eliza')out.f.repeats=f.repeat==='none'?null:[{label:'Remove requested repeat',on:false,pick:()=>api.set({form:{...f,repeat:'none'}})}];
    // aria-disabled does not stop a tap, so a disabled Save says why and does nothing.
-   const saveOffReason=!model||!['ready','partial','unavailable'].includes(model.status)?'Calendar is still loading. Try again in a moment.':model.mutating?'Calendar is saving. Try again in a moment.':f.canonicalOwnerKey!==model.ownerKey?'This draft is from another account.':f.canonicalUncertain===true?'Check this event in Calendar before saving again.':'';
+   const saveOffReason=!String(f.title||'').trim()?'Add a title.':!model||!['ready','partial','unavailable'].includes(model.status)?'Calendar is still loading. Try again in a moment.':model.mutating?'Calendar is saving. Try again in a moment.':f.canonicalOwnerKey!==model.ownerKey?'This draft is from another account.':f.canonicalUncertain===true?'Check this event in Calendar before saving again.':'';
    out.f.saveOff=!!saveOffReason;out.f.save=async()=>{if(saveOffReason){api.toast(saveOffReason);return;}try{
-    const draft=typedForm(f);if(f.id&&recurring&&draft.recurrence!==undefined&&f.recurrenceScope!=='series')throw Error('Choose Entire series to change how it repeats.');let saved:any;
+    let submitted=f;const draft=typedForm(f);if(f.id&&recurring&&draft.recurrence!==undefined&&f.recurrenceScope!=='series')throw Error('Choose Entire series to change how it repeats.');let saved:any;
     if(f.id){const event=model?.feed?.events.find(e=>calendarEventKey(e)===f.canonicalEventKey);if(!event)throw Error('Refresh this event before saving');const timing=JSON.stringify(f.canonicalTiming)!==JSON.stringify([f.off,f.t,f.d,f.zone,!!f.allDay]);saved=await controller!.update(f.canonicalEventKey,f.expectedProviderVersion,calendarFormPatch(draft,event,{timing,zone:f.zone!==f.canonicalTiming?.[3]}));}
-    else{saved=await controller!.create(draft.sourceKey,calendarFormCreate(draft));
+    else{try{saved=await controller!.create(draft.sourceKey,calendarFormCreate(draft));}catch(error){
+      const data=error&&typeof error==='object'&&'data' in error?(error as {data?:{error?:unknown}}).data:undefined;
+      // This terminal refusal is before execution. Retire its key once; unknown outcomes never take this path.
+      if(typeof data?.error!=='string'||!/^The bound calendar editor request is (expired|rejected) and cannot be replayed\.$/.test(data.error)||api.get('calendar').form!==f)throw error;
+      submitted={...f,creationId:crypto.randomUUID()};api.set({form:submitted});const fresh=typedForm(submitted);saved=await controller!.create(fresh.sourceKey,calendarFormCreate(fresh));
+     }
      // A note's draft links the event it created; note-origin-adapter finds it by the same event key.
      const shell=owner;if(f.origin&&saved.event)void rememberNoteOrigin('event',calendarEventKey(saved.event),f.origin).then(linked=>{if(!linked&&owner===shell&&shell?.live)api.toast('Event saved. The link to its note could not be saved.');});}
-    owner?.calendarFormCommitted?.(f);const latest=api.get('calendar').form;
-    if(latest===f)api.set({form:null});
-    else if(latest?.canonicalOwnerKey===f.canonicalOwnerKey&&latest.creationId===f.creationId){
+    owner?.calendarFormCommitted?.(submitted);const latest=api.get('calendar').form;
+    if(latest===submitted)api.set({form:null});
+    else if(latest?.canonicalOwnerKey===submitted.canonicalOwnerKey&&latest.creationId===submitted.creationId){
       if(saved.event){const policy=eventEditorMutability(saved.event),row=canonicalCalendarRow(saved.event,zone());api.set({form:{...latest,id:row.id,canonicalEventKey:calendarEventKey(saved.event),expectedProviderVersion:policy.kind==='editable'?policy.providerVersion:undefined,canonicalTiming:[row.off,row.t,row.d||1,zone(),!!saved.event.isAllDay],creationId:crypto.randomUUID()}});api.toast('Saved an earlier version. Your newer edits are kept.');}
       else{api.set({form:{...latest,canonicalUncertain:true}});api.toast('Saved an earlier version. Your newer edits are kept. Check this event before saving again.');}
     }

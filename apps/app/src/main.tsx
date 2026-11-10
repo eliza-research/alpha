@@ -1,3 +1,4 @@
+import {installCalendarFormPresentation} from './prototype/calendar-form-presentation';
 import { externalVoiceInvocationEnabled } from './runtime/voice-entry-policy';
 // Register browser implementations before any runtime module claims plugin identity.
 import './browser/register';
@@ -131,6 +132,7 @@ if (!fixture) {
   installPrototypeDataAdapter(Component, VIEWS);
   installAgentCalendarAdapter(Component,VIEWS);
   installCanonicalCalendarDrafts(Component,VIEWS);
+  installCalendarFormPresentation(VIEWS);
   // Android notification taps are independent of the development stand-in shade.
   if(isAndroid)installCanonicalNotificationTaps(Component);
   // Notice rows feed only the development stand-in shade; product builds read no notice list (#416).

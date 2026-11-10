@@ -44,7 +44,11 @@ export function calendarOptionEvent(form:Bag,deviceZone:string,now=new Date()):{
   const rrule=form.repeat&&form.repeat!=='none'?RRULES[form.repeat]:'';
   if(rrule===undefined)throw Error('Choose a supported repeat. Nothing was saved.');
   const base={title:String(form.title||'').trim(),body:form.notes||'',location:form.where||'',rrule};
-  if(form.allDay){const begin=Date.UTC(date.year,date.month-1,date.day);return {...base,begin,end:begin+DAY,allDay:true,timeZone:'UTC'};}
+  if(form.allDay){
+    const range=form.canonicalAllDay,begin=range?Date.parse(range.startDate+'T00:00:00Z'):Date.UTC(date.year,date.month-1,date.day),end=range?Date.parse(range.endDateExclusive+'T00:00:00Z'):begin+Math.max(1,Number(form.nativeAllDayEndOff??Number(form.off||0)+1)-Number(form.off||0))*DAY;
+    if(!Number.isFinite(begin)||!Number.isFinite(end)||end<=begin)throw Error('Choose an end date after the start date. Nothing was saved.');
+    return {...base,begin,end,allDay:true,timeZone:'UTC'};
+  }
   const zone=form.zone||deviceZone,start=Math.round(Number(form.t)*60),length=Math.round(Number(form.d)*60);
   if(!Number.isFinite(start)||!Number.isFinite(length)||length<=0)throw Error('Choose a start and end time. Nothing was saved.');
   const begin=zonedInstant(date,start,zone),end=zonedInstant(date,start+length,zone);

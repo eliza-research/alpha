@@ -19,15 +19,19 @@ export async function retainCalendarDraft(f) {
   await f.button('New event').click();
   await titleInput(f).fill(earlierTitle);
   await f.button('Back to calendar').click();
-  await f.button('Resume event draft').waitFor();
+  await f.page.waitForFunction(() => !!window.quintCalendar.snapshot().retainedForm);
   const old = await f.snapshot();
   await f.page.waitForFunction(async raw => await window.quintCalendar.saved('owner-a') === raw, old.retained, {polling: 100});
   return old.retained;
 }
+export async function requestCalendarDraftDiscard(f) {
+  // The owner removed draft toolbar buttons; the retained discard contract remains available.
+  const dialog=f.page.waitForEvent('dialog').then(dialog=>dialog.accept());
+  await Promise.all([f.page.evaluate(()=>window.quintMountedCalendar.renderVals().calendar.discardFormDraft()),dialog]);
+}
 export async function discardCalendarDraft(f) {
-  const dialog = f.page.waitForEvent('dialog').then(async dialog => dialog.accept());
-  await Promise.all([f.button('Discard event draft').click(), dialog]);
-  await f.button('Resume event draft').waitFor({state: 'detached'});
+  await requestCalendarDraftDiscard(f);
+  await f.page.waitForFunction(()=>!window.quintCalendar.snapshot().retained);
 }
 export async function openNote(f) {
   await f.button('Notes').click();
