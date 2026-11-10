@@ -172,7 +172,7 @@ function main(argv) {
   catch { /* a bundle without readable notices is reported by the APK checks, not here */ }
   // The one separately named font check. Reported, never failed here: a developer build may carry it.
   if (existsSync(dir)) { const fonts = fontLicenceFindings(dir); for (const row of [...fonts.unresolved, ...fonts.resolved]) console.warn(fontLicenceLine(row.message)); }
-  if (result.ok) console.log(`PASS ${path.relative(process.cwd(), dir) || '.'}: ${result.files} files, testMocks=${result.testMocks}${result.testMocks ? ' (denylist skipped for an explicit test-mocks bundle)' : ', no mock, fixture or developer surfaces found'}.`);
+  if (result.ok) console.log(`PASS ${path.relative(process.cwd(), dir) || '.'}: ${result.files} files, testMocks=${result.testMocks}${result.testMocks ? ' (denylist skipped for an explicit test-mocks bundle)' : ', no audited mock, fixture or developer markers found'}.`);
   else console.error(`FAIL ${result.findings.length} denylist hit(s), ${result.errors.length} error(s).`);
   return result.ok ? 0 : 1;
 }

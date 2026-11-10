@@ -13,6 +13,12 @@ module PermanentVoiceDeletion {
       else if (receipt == "removed") { if (inTrash) "restore-recording" else "review" }
       else if (inTrash) "review" else "retire"
     }
+  /// Shared by the registered state-machine scenario and the source planner table adapter.
+  pure val decisionRows = tuples(Set("original", "deleted", "changed"), Set(false, true),
+    Set(false, true), Set(false, true), Set("unknown", "removed", "restored", "purged", "unreadable"), Set(false, true))
+    .map(((note, known, owned, inTrash, receipt, referenced)) => { note: note, known: known,
+      owned: owned, inTrash: inTrash, receipt: receipt, referenced: referenced,
+      plan: recoveryPlan(note, known, owned, inTrash, receipt, referenced) })
   type State = { note: str, recordingKnown: bool, owned: bool, inTrash: bool,
     receipt: str, referenced: bool, row: bool, previousProcess: bool,
     claimedElsewhere: bool, lease: int, locked: bool, revision: int,
@@ -73,17 +79,14 @@ module PermanentVoiceDeletion {
     nondet referenced = Set(false, true).oneOf()
     initial(note, receipt, inTrash).then(s' = { ...s, recordingKnown: known, owned: owned, referenced: referenced })
   }
+  run decisionTableTest = init.expect(decisionRows.size() == 240)
 }
 
 /// Exhaustive finite decision table, kept separate from mutable recovery state.
 module PermanentVoiceDeletionContract {
-  import PermanentVoiceDeletion.recoveryPlan
+  import PermanentVoiceDeletion.decisionRows
   type Row = { note: str, known: bool, owned: bool, inTrash: bool, receipt: str, referenced: bool, plan: str }
   var rows: Set[Row]
-  action init = rows' = tuples(Set("original", "deleted", "changed"), Set(false, true),
-    Set(false, true), Set(false, true), Set("unknown", "removed", "restored", "purged", "unreadable"), Set(false, true))
-    .map(((note, known, owned, inTrash, receipt, referenced)) => { note: note, known: known,
-      owned: owned, inTrash: inTrash, receipt: receipt, referenced: referenced,
-      plan: recoveryPlan(note, known, owned, inTrash, receipt, referenced) })
+  action init = rows' = decisionRows
   run decisionTableTest = init.expect(rows.size() == 240)
 }
