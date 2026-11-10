@@ -44,7 +44,11 @@ export async function checkClientFeaturePublication(extraSources = []) {
   const counts = Object.fromEntries(actors.map(actor => [actor, {retire: 0, publish: 0, read: 0}]));
   const project = event => ({
     's.visible': tree(event.visible), 's.kind': 'regular',
-    candidates: indexed(actor => tree(event.actors[actor].stage) !== 0),
+    candidates: indexed(actor => {
+      const actual = tree(event.actors[actor].stage);
+      assert.ok(actual === 0 || actual === 2, 'Every live private stage has the exact authenticated target bytes');
+      return actual !== 0;
+    }),
     asides: indexed(actor => tree(event.actors[actor].aside)),
     retirements: indexed(actor => counts[actor].retire),
     publications: indexed(actor => counts[actor].publish),
