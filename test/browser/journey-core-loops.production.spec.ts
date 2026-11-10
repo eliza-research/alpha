@@ -1,3 +1,4 @@
+import {installNoteScheduleContract,reviewNoteScheduleContract} from './helpers/note-schedule-contract';
 import {openCloudPlanFromSettings} from './helpers/cloud-plan-settings';
 import {installNativeNavigationFixture} from './helpers/native-navigation-protocol';
 import {selectCalendarSource} from './helpers/browser-calendar';
@@ -18,6 +19,7 @@ import {seedCompletedAccessSetup} from './flag-off-android';
 // says the native side of that path works. See docs/core-loop-audit.md.
 import { test, expect, type Page } from '@playwright/test';
 import {completeAccessSetup,expectNoDevelopmentSurface,fenceNetwork,openYourAgent} from './flag-off-android';
+test.beforeEach(async({page})=>installNoteScheduleContract(page));
 
 const SELECTION = 'alpha.connection.selection.v1';
 const offline = () => localStorage.setItem('alpha.connection.selection.v1', JSON.stringify({ kind: 'offline' }));
@@ -797,7 +799,7 @@ async function openAndroidCalendar(page:Page){
  await selectCalendarSource(page, 'Android calendars');
 }
 
-test('loop B / J02 on Android: a recorded note, a resident summary and reviewed hand-offs save one reminder and one device event, each only on Save', async ({ page }) => {
+test('loop B / J02 on Android: recorded note UI and the retained scheduling contract save one reminder and device event only on Save', async ({ page }) => {
   test.setTimeout(240_000);
   // Tomorrow crosses the week boundary; the saved day must be reachable after reload.
   await page.clock.setFixedTime(new Date('2026-11-01T12:00:00Z'));
@@ -844,9 +846,9 @@ test('loop B / J02 on Android: a recorded note, a resident summary and reviewed 
   // Saving the summary schedules nothing.
   expect(await writes()).toEqual({ reminders: 0, events: 0 });
 
-  // 3. Reminder draft from the note: reviewed in Calendar, written once on Save.
+  // 3. Retained Notes-to-Calendar contract: reviewed in Calendar, written once on Save.
   await button(page, 'Minimize chat').click();
-  await button(page, 'Review reminder draft').click();
+  await reviewNoteScheduleContract(page,'reminder');
   await expect(page.getByRole('textbox', { name: 'Notes', exact: true })).toHaveValue(ACTIONS);
   expect(await writes()).toEqual({ reminders: 0, events: 0 });
   await page.getByRole('textbox', { name: 'Title', exact: true }).fill('Book the venue');
@@ -857,11 +859,11 @@ test('loop B / J02 on Android: a recorded note, a resident summary and reviewed 
   await page.getByRole('button', { name: /^Book the venue,/ }).click();
   await expect(page.getByText('From note: Venue meeting', { exact: true })).toBeVisible();
 
-  // 4. Calendar event draft from the note: written once to the device calendar on Save.
+  // 4. Retained event contract from the note: written once to the device calendar on Save.
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   await button(page, 'Notes').click();
   await button(page, 'Open Venue meeting').click();
-  await button(page, 'Review calendar event draft').click();
+  await reviewNoteScheduleContract(page,'event');
   await expect(page.getByRole('textbox', { name: 'Notes', exact: true })).toHaveValue(ACTIONS);
   expect(await writes()).toEqual({ reminders: 1, events: 0 });
   await page.getByRole('textbox', { name: 'Title', exact: true }).fill('Venue walkthrough');

@@ -184,7 +184,7 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
   type CachedMailbox = SavedMailbox<MailBody,GmailMessage>;
   const offlineOwner=()=>{const account=connectionController.getSnapshot().cloudAccount,binding=connectionController.getCloudClient();return account?.organizationId&&binding?{environment:account.environment,userId:account.userId,organizationId:account.organizationId,credentialId:binding.credentialId}:null;};
   async function offlineStore(){const owner=offlineOwner();if(!owner)return null;const identity=JSON.stringify(owner),cache=await serviceReadCache(owner);if(JSON.stringify(offlineOwner())!==identity)return null;offline=cache;offlineIdentity=identity;return cache;}
-  /** One local, owner-bound startup read; no mailbox refresh, body read or draft binding. */
+  /** Owner-bound startup snapshots; no mailbox refresh, body read or draft binding. */
   async function restoreHomeMailbox(){
     const binding=connectionController.getCloudClient(),owner=offlineOwner();
     // A grant this session saw revoked keeps its saved summary hidden until an accepted read, even if the purge failed.
@@ -194,10 +194,11 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
     homeRestoreAttempt=attempt;
     const token=generation,epoch=mailCacheEpoch,summaryEpoch=homeSummaryEpoch;
     try{
-      const saved=await(await offlineStore())?.get<CachedMailbox>('gmail:mailbox'),active=connectionController.getCloudClient();
+      const cache=await offlineStore(),saved=cache?await Promise.all(['gmail:mailbox','gmail:home'].map(key=>cache.get<CachedMailbox>(key))):[],active=connectionController.getCloudClient();
       // A saved summary that lands after Home's own network summary decision is older than it.
-      if(!saved||!shell||selected||api?.isActive()||generation!==token||mailCacheEpoch!==epoch||summaryEpoch!==homeSummaryEpoch||identity!==JSON.stringify(offlineOwner())||binding.client!==active?.client||binding.sessionId!==active?.sessionId)return;
-      const summary=readSavedInboxSummary(saved.value,readGmailAccountChoice(connectionController.getSnapshot().cloudAccount));
+      if(!shell||selected||api?.isActive()||generation!==token||mailCacheEpoch!==epoch||summaryEpoch!==homeSummaryEpoch||identity!==JSON.stringify(offlineOwner())||binding.client!==active?.client||binding.sessionId!==active?.sessionId)return;
+      const hint=readGmailAccountChoice(connectionController.getSnapshot().cloudAccount);
+      const summary=saved.map(row=>row&&readSavedInboxSummary(row.value,hint)).filter((row):row is NonNullable<typeof row>=>!!row).sort((a,b)=>b.readAt-a.readAt)[0];
       if(!summary)return;
       const key=gmailReadCacheKey(binding.sessionId,summary.account);if(!key)return;
       homePreview={key,owner:homeSummaryOwner(),label:summary.account.label,sessionId:binding.sessionId,accountId:summary.account.connectionId!,messages:summary.messages,more:summary.more,readAt:summary.readAt};
@@ -245,9 +246,12 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
         if(!current()||hint!==readGmailAccountChoice(connectionController.getSnapshot().cloudAccount)||readIdentity!==gmailReadCacheKey(binding.sessionId,accounts.find(a=>a.connectionId===chosen.connectionId)))return;
         const merged=mergeMailboxPage({messages:[],firstPageRevision:null,seenCursors:new Set<string>()},result,null),at=Date.now();spamTrashSearch=result.supportsSpamTrash===true;
         // Reuse the existing bounded list cache; opening Inbox consumes this same accepted page.
-        folderLists.remember({key:JSON.stringify([binding.sessionId,binding.credentialId,chosen.connectionId,'in:inbox']),at,firstPageRevision:merged.firstPageRevision,messages:merged.messages,query:'in:inbox',cursor:merged.nextPageToken,revision:result.syncedAt,cursors:[...merged.seenCursors],newerMail:false,status:mailboxListStatus(merged.messages.length,'in:inbox')});
+        const list={key:JSON.stringify([binding.sessionId,binding.credentialId,chosen.connectionId,'in:inbox']),at,firstPageRevision:merged.firstPageRevision,messages:merged.messages,query:'in:inbox',cursor:merged.nextPageToken,revision:result.syncedAt,cursors:[...merged.seenCursors],newerMail:false,status:mailboxListStatus(merged.messages.length,'in:inbox')};
+        folderLists.remember(list);
         homeSummaryEpoch++;homePreview={key:readIdentity,owner:homeSummaryOwner(),label:chosen.label,sessionId:binding.sessionId,accountId:chosen.connectionId!,messages:merged.messages.map(({id,subject,from,unread})=>({id,subject,from,unread})),more:result.nextPageToken!=null,readAt:at};
-        // Header warmup never overwrites the saved mailbox (which may retain bodies/other folders).
+        // Save only this accepted header page separately; the full mailbox keeps its bodies and other folders.
+        const snapshot:CachedMailbox={accounts:[chosen],selected:chosen.connectionId!,spamTrashSearch,lists:[list],bodies:[]},summaryEpoch=homeSummaryEpoch;
+        void offlineStore().then(cache=>{if(cache&&current()&&summaryEpoch===homeSummaryEpoch&&hint===readGmailAccountChoice(connectionController.getSnapshot().cloudAccount))return cache.put('gmail:home',snapshot);}).catch(()=>{});
         homeFailure=null;hasUnread=homePreview.messages.some(m=>m.unread);
         setAttention(inboxAttentionFor(homePreview.messages,homePreview.more,chosen.label,new Date(at).toISOString()));publish();
       }catch(error){
@@ -265,15 +269,20 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
   }
   function restoreAndWarmHome(resumed=false){void restoreHomeMailbox().finally(()=>warmHomeMailbox(resumed));}
   async function restoreMailbox(){
-    const binding=connectionController.getCloudClient(),token=generation,cacheEpoch=mailCacheEpoch;
+    const binding=connectionController.getCloudClient(),token=generation,cacheEpoch=mailCacheEpoch,summaryEpoch=homeSummaryEpoch;
     try{
-      const cache=await offlineStore(),saved=await cache?.get<CachedMailbox>('gmail:mailbox');
-      const active=connectionController.getCloudClient();if(!saved||generation!==token||cacheEpoch!==mailCacheEpoch||binding?.client!==active?.client||binding?.sessionId!==active?.sessionId||!api?.isActive())return false;
-      const value=readSavedMailbox<MailBody>(saved.value,readGmailAccountChoice(connectionController.getSnapshot().cloudAccount));if(!value)return false;
+      const cache=await offlineStore(),saved=cache?await Promise.all(['gmail:mailbox','gmail:home'].map(key=>cache.get<CachedMailbox>(key))):[];
+      // A live Home page accepted while disk was pending already owns the list cache.
+      const active=connectionController.getCloudClient();if(generation!==token||cacheEpoch!==mailCacheEpoch||summaryEpoch!==homeSummaryEpoch||binding?.client!==active?.client||binding?.sessionId!==active?.sessionId||!api?.isActive())return false;
+      const hint=readGmailAccountChoice(connectionController.getSnapshot().cloudAccount);
+      const values=saved.map(row=>row&&readSavedMailbox<MailBody>(row.value,hint)).filter((row):row is NonNullable<typeof row>=>!!row);
+      const readAt=(value:typeof values[number])=>Math.max(0,...value.lists.filter(row=>row.query===currentQuery()).map(row=>row.at));
+      const value=values.sort((a,b)=>readAt(b)-readAt(a))[0];if(!value)return false;
       const chosen=value.chosen;
+      const compatible=values.filter(row=>row.selected===value.selected&&gmailReadCacheKey(binding!.sessionId,row.chosen)===gmailReadCacheKey(binding!.sessionId,chosen));
       accounts=value.accounts;selected=value.selected;accountsChecked=true;accountsSession=binding!.sessionId;spamTrashSearch=value.spamTrashSearch;
-      for(const row of value.lists)folderLists.put({...row,key:JSON.stringify([binding!.sessionId,binding!.credentialId,selected,row.query])});
-      for(const row of value.bodies)messageBodies.put(bodyKey(row.body.message.id),row);
+      for(const row of compatible.flatMap(value=>value.lists).sort((a,b)=>a.at-b.at))folderLists.put({...row,key:JSON.stringify([binding!.sessionId,binding!.credentialId,selected,row.query])});
+      for(const row of compatible.flatMap(value=>value.bodies).sort((a,b)=>a.at-b.at))messageBodies.put(bodyKey(row.body.message.id),row);
       if(!restoreList())return false;phase='ready';publish();void provider.bind(selected);void drafts.bind(selected,chosen.label);return true;
     }catch{return false;}
   }
@@ -294,7 +303,7 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
 
   function rememberList(){if(operation||failure)return;if(folderLists.remember({key:listKey(),at:listReadAt,firstPageRevision,messages,query:loadedQuery,cursor:nextPageToken,revision,cursors:[...seenCursors],newerMail,status}))persistMailbox();}
   const listKey=(accountId=selected)=>{const binding=connectionController.getCloudClient();return JSON.stringify([binding?.sessionId,binding?.credentialId,accountId,currentQuery()]);};
-  function invalidateList(persist=true,keepReadAhead=false,homeRead?:AbortController){if(homeLoad&&homeLoad.abort!==homeRead)retireHomeLoad();++mailCacheEpoch;if(persist&&offline)void offline.put('gmail:mailbox',null).catch(()=>{});stopBodyReads();if(!keepReadAhead)readAhead.invalidate();folderLists.clear();messageBodies.clear();cachedListShown=false;}
+  function invalidateList(persist=true,keepReadAhead=false,homeRead?:AbortController){if(homeLoad&&homeLoad.abort!==homeRead)retireHomeLoad();++mailCacheEpoch;if(persist&&offline)void Promise.all(['gmail:mailbox','gmail:home'].map(key=>offline!.put(key,null))).catch(()=>{});stopBodyReads();if(!keepReadAhead)readAhead.invalidate();folderLists.clear();messageBodies.clear();cachedListShown=false;}
   function prepareNextPage(){
     const binding=connectionController.getCloudClient(),cursor=nextPageToken,key=listKey(),accountId=selected,query=currentQuery();
     if(!binding||!cursor||!api?.isActive()||document.hidden||draftsView()||loadedQuery!==query)return;

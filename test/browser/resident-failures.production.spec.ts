@@ -91,10 +91,10 @@ for (const [kind, text] of Object.entries(KINDS)) for (const frame of ['done', '
       await page.setViewportSize({width:412,height:915});
       // Plan selection opens Cloud billing only after the account check; nothing is bought here.
       await membership.getByRole('button', { name: 'Choose a monthly plan', exact: true }).click();
-      await expect(page.getByRole('heading',{name:'Check the billing account',exact:true})).toBeVisible();
-      await expect(page.getByRole('button',{name:'Open billing',exact:true})).toBeDisabled();
+      await expect(page.getByRole('heading',{name:'Billing',exact:true})).toBeVisible();
+      await expect(page.getByRole('button',{name:'Open billing',exact:true})).toBeEnabled();
       expect(await stub(page,s=>s.opened)).toEqual([]);
-      await page.getByRole('checkbox',{name:'I’ll check the account before paying.',exact:true}).check();
+      await expect(page.getByRole('checkbox')).toHaveCount(0);
       await page.getByRole('button',{name:'Open billing',exact:true}).click();
       await expect.poll(() => stub(page, s => s.opened)).toEqual(['https://cloud.eliza.app/cloud/billing']);
     } else {

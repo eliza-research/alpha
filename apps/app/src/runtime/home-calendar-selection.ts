@@ -4,7 +4,7 @@ import {
 	calendarSourceKey,
 	type AgentCalendarState,
 } from "./agent-calendar";
-/** Uses only the controller's current complete feed, never its future-only next-event query. */
+/** Uses the displayed feed; saved rows can supply an item but never a verified empty result. */
 export function homeCalendarSelection(
 	state: AgentCalendarState | undefined,
 	timeZone: string,
@@ -14,8 +14,7 @@ export function homeCalendarSelection(
 	const quiet = { event: null, verified: false, emptyLabel: "Calendar" };
 	if (
 		!state?.ownerKey ||
-		state.status !== "ready" ||
-		!!state.error ||
+		(state.savedAt == null && (state.status !== "ready" || !!state.error)) ||
 		state.mutating ||
 		state.feed?.state !== "complete"
 	)
@@ -81,7 +80,8 @@ export function homeCalendarSelection(
 			calendarEventKey(a).localeCompare(calendarEventKey(b));
 	});
 	if (candidates.length)
-		return { event: candidates[0], verified: true, emptyLabel: "" };
+		return { event: candidates[0], verified: state.savedAt == null, emptyLabel: "" };
+	if (state.savedAt != null) return quiet;
 	// Unknown sources only prevent empty when their event belongs to the
 	// existing Home periods. Undecidable bounds still cannot prove empty.
 	if (

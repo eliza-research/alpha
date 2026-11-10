@@ -198,7 +198,8 @@
       "apps/app/src/runtime/notes-folders.ts",
       "apps/app/src/runtime/notes-folders-model.ts",
       "apps/app/src/prototype/agent-adapter.ts",
-      "apps/app/src/prototype/legacy-notes-access.ts"
+      "apps/app/src/prototype/legacy-notes-access.ts",
+      "apps/app/src/runtime/note-default-title.ts"
     ],
     "abstractions": [
       "Legacy mode preserves the existing one-note local Trash/CAS compatibility contract. Canonical mode represents one existing record, one editor draft, one initial folder and one newly allocated folder identity.",
@@ -697,7 +698,8 @@
       "unavailableStorageRefusesHoldTest",
       "restartHeldSendRequiresReviewTest",
       "reopeningDoesNotOfferHeldTextTest",
-      "failedClearKeepsRecoveryTest"
+      "failedClearKeepsRecoveryTest",
+      "deferredComposerPaintBeforeDispatchTest"
     ],
     "sources": [
       "apps/app/src/prototype/assistant-draft-controller.ts",
@@ -3468,6 +3470,71 @@
     "abstractions": [
       "Two representative staged files; exact paths, hashes, asset generation, all-file admission and per-file backup/write are exercised by the existing Python staging cases. Partial I/O failure leaves preserved inputs and must not claim a completed image.",
       "Progress requires a stable admitted source and fair successful backup/write/readback operations. Permanent I/O failure does not promise completion. No image, signing, device operation or automatic rollback is proved."
+    ]
+  },
+  {
+    "path": "specs/quint/application/AccountSheet.qnt",
+    "module": "AccountSheet",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "settingsAndStartupShareAccount",
+      "switchedOwnerCannotConfirm",
+      "dismissPreservesData",
+      "modeAndSignOutPreserveKeys"
+    ],
+    "sources": [
+      "apps/app/src/runtime/connection-ui.tsx",
+      "apps/app/src/runtime/cloud-membership-ui.tsx",
+      "apps/app/src/prototype/settings-adapter.ts"
+    ],
+    "abstractions": [
+      "Two account identities and two connection modes. Data and key revisions abstract preserved stores. Billing, authentication and provider behavior retain their existing contracts.",
+      "Safety scenarios do not establish live-provider, device or UI conformance. No liveness claim."
+    ]
+  },
+  {
+    "path": "specs/quint/application/SavedServiceRead.qnt",
+    "module": "SavedServiceRead",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "savedThenFreshTest",
+      "lateSavedCannotReplaceLiveTest",
+      "refusedOldWindowStaysHiddenTest",
+      "changedOwnerStaysHiddenTest",
+      "changedCredentialStaysHiddenTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/agent-calendar.ts",
+      "apps/app/src/prototype/agent-calendar-adapter.ts",
+      "apps/app/src/prototype/inbox-cloud-adapter.ts"
+    ],
+    "abstractions": [
+      "Two owners, credentials and windows, three ordered clock values and eight read generations. Saved rows never authorize writes and never replace a settled fresh read.",
+      "Cache size/age policy is implemented by existing ServiceReadCache. Model scenarios and isolated implementation regressions do not prove live-provider or device behavior."
+    ]
+  },
+  {
+    "path": "specs/quint/application/CloudPlanRecheck.qnt",
+    "module": "CloudPlanRecheck",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "serverOutageKeepsRetryClockTest",
+      "realNetworkReturnAllowsOneImmediateCheckTest",
+      "backgroundNetworkReturnWaitsForVisibilityTest",
+      "changedScopeCannotSpendOldNetworkPermitTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/connection-ui.tsx"
+    ],
+    "abstractions": [
+      "One minute is a clock step, two account/provider scope classes and four reads. Server success and failure share settlement because neither changes the retry clock. An explicit owner action may cancel and lift the limit.",
+      "Android connectivity/visibility events and real provider access remain external inputs. Existing controller and browser regressions cover actual request counts; no network performance or device acceptance is inferred."
     ]
   }
 ]

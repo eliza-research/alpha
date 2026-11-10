@@ -1,16 +1,18 @@
+import {installNoteScheduleContract,reviewNoteScheduleContract} from './helpers/note-schedule-contract';
 import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import {openLegacyNotes} from './helpers/legacy-notes';
 import {openBrowserCalendar} from './helpers/browser-calendar';
 /*
  * Journey B / J02: Voice -> note -> calendar event and reminder, driven start to finish through
- * rendered controls in the browser build with the development agent profile.
+ * rendered controls in the browser build with the development agent profile. Notes-to-Calendar
+ * scheduling starts through the retained programmatic contract, not a menu control.
  *
  * Loop covered in one test:
  *  1. Notes "Record voice note" -> Done -> Cloud transcript saved as a voice note.
  *  2. Reload, reopen the saved recording and "Read aloud" / "Stop reading".
  *  3. "Review transcript with Alpha" -> Send -> "Review summary note" -> "Save recording summary".
- *  4. Hand-offs from the note: "Review reminder draft" -> Calendar form -> Save (a reminder), and
- *     "Review calendar event draft" -> Calendar form -> Save (a calendar event). Each saved record
+ *  4. Hand-offs from the note: the retained reminder contract -> Calendar form -> Save (a reminder), and
+ *     the retained event contract -> Calendar form -> Save (a calendar event). Each saved record
  *     shows "From note: Venue meeting" and opens that note.
  *  5. Agent path: a reminder-create and a calendar-create operation queued through
  *     "Development device actions", each reviewed and approved in the conversation.
@@ -44,6 +46,7 @@ import {test,expect,type Page} from '@playwright/test';
 import {returnToApps} from './app-navigation';
 import {installCloudVoiceFixture} from './cloud-voice-fixture';
 import {localBrowserVoice} from './voice-fixture';
+test.beforeEach(async({page})=>installNoteScheduleContract(page));
 
 test.setTimeout(420_000);
 
@@ -93,7 +96,7 @@ async function openHandoffDayInCalendar(page:Page,titles:string){
  await expect(page.getByRole('region',{name:'Calendar timeline'})).toBeVisible();
 }
 
-test('Journey B: recorded note is read aloud, summarized, and becomes an event and a reminder that persist once, then are edited and deleted',async({page})=>{
+test('Journey B: recorded note UI and retained scheduling contract save one event and reminder, then edit and delete them',async({page})=>{
  const dialogs:string[]=[];
  page.on('dialog',d=>{dialogs.push(d.message());void d.accept();});
  // Keep retained-audio playback silent; playback itself is real.
@@ -164,7 +167,7 @@ test('Journey B: recorded note is read aloud, summarized, and becomes an event a
 
  // ---- 4a. Hand-off from the note: reminder draft -> Calendar review -> Save ----
  await page.getByRole('button',{name:'Minimize chat',exact:true}).click();
- await page.getByRole('button',{name:'Review reminder draft',exact:true}).click();
+ await reviewNoteScheduleContract(page,'reminder');
  await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveValue('');
  await expect(page.getByRole('textbox',{name:'Notes',exact:true})).toHaveValue(actionText);
  await expect(page.getByRole('button',{name:'Save event',exact:true})).toBeDisabled();
@@ -183,7 +186,7 @@ test('Journey B: recorded note is read aloud, summarized, and becomes an event a
  // ---- 4b. Direct hand-off from the note: calendar event draft -> Calendar review -> Save ----
  await returnToApps(page);
  await openSavedRecording(page);
- await page.getByRole('button',{name:'Review calendar event draft',exact:true}).click();
+ await reviewNoteScheduleContract(page,'event');
  await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveValue('');
  await expect(page.getByRole('textbox',{name:'Notes',exact:true})).toHaveValue(actionText);
  await expect(page.getByRole('button',{name:'Save event',exact:true})).toBeDisabled();
