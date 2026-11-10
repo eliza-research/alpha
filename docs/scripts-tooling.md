@@ -19,12 +19,12 @@ live beside their implementations in the same TypeScript files.
 
 ## Python and shell consolidation review
 
-The 42 Python files and two shell entrypoints were reviewed for callers, shared
+The 42 Python files and three shell entrypoints were reviewed for callers, shared
 helpers and runtime requirements. They remain in their existing languages.
 The unused `verify-aosp-listener-apk.py` alias was removed; the canonical verifier
 is `vendor/eliza/packages/os/scripts/android/verify-sense-apk.py`. Shared resident
 fixture admission now lives in `scripts/ci/resident_fixture.py`; the 42 retained
-Python files and both shell entrypoints keep their native dependencies and
+Python files and all three shell entrypoints keep their native dependencies and
 separate qualification gates.
 
 | Group | Consolidation assessment |
@@ -34,7 +34,7 @@ separate qualification gates.
 | Regional Maps | `dataset_manifest.py` is already the common inventory/sealing guard. Preparation, PyOsmium indexing and the SQLite/HTTP gateway have different dependencies and lifetimes. Their scripts and tests remain used by `dev:maps` and regional dataset diagnostics. |
 | Native/AOSP adapters | Thin adapters delegate generic verification/staging to the pinned upstream Python tools while retaining Alpha policy and stable documented commands. Keep that boundary instead of duplicating the upstream implementation. |
 | Audio, image and reproduction tools | Emulator gRPC, image comparison, model conversion and Linux seccomp reproduction have explicit native/runtime dependencies and documented or campaign callers. They are manual diagnostics, not production startup code. |
-| Shell bootstrap | Host JSON preparation downloads and verifies the pinned JVM fixture dependency. Cloud signing-input admission preserves a separate protected workflow entrypoint with its own authority. |
+| Shell bootstrap | Host JSON preparation downloads and verifies the pinned JVM fixture dependency. Cloud signing-input admission preserves a separate protected workflow entrypoint with its own authority. `scripts/ci/prepare-dafny.sh` verifies and installs the pinned Dafny release for the proof workflow. |
 
 The Java and Gradle files below are native parser/compiler inputs:
 
