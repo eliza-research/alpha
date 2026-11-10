@@ -2409,15 +2409,17 @@ export const connectionController = {
         finally{appRequests.delete(controller);}
       }};
   },
-  getAutomationsClient(): {sessionId:string;scope?:string;preflight:(path:string,method:AutomationsMethod,body:unknown|undefined,signal:AbortSignal)=>void;request:(path:string,method:AutomationsMethod,body:unknown|undefined,signal:AbortSignal)=>Promise<unknown>} | null {
+  getAutomationsClient(): {sessionId:string;conversationId?:string;scope?:string;preflight:(path:string,method:AutomationsMethod,body:unknown|undefined,signal:AbortSignal)=>void;request:(path:string,method:AutomationsMethod,body:unknown|undefined,signal:AbortSignal)=>Promise<unknown>} | null {
     const selected=active,session=state.session,generation=epoch;
+    const conversationId=session?conversationMemory.get(conversationKey(session)):undefined;
     if(!selected||!session||(testMocksEnabled&&selected.kind==='cloud'&&!selected.phoneTarget))return null;
     const preflight=(path:string,method:AutomationsMethod,body:unknown|undefined,signal:AbortSignal)=>{
       assertAutomationRequestAllowed(path,method,body);
+      if(body&&typeof body==='object'&&'deliveryConversationId' in body&&(!conversationId||body.deliveryConversationId!==conversationId||!session||conversationMemory.get(conversationKey(session))!==conversationId))throw new AutomationRequestNotDispatchedError('The conversation changed. Reopen this automation before saving.');
       if(signal.aborted||generation!==epoch||selected!==active||session!==state.session)throw new AutomationRequestNotDispatchedError('The automation connection changed. Nothing was sent.');
       if(selected.kind!=='resident'&&!hosted)throw new AutomationRequestNotDispatchedError('Your agent runs on this phone. Nothing was sent.');
     };
-    return {sessionId:session.sessionId,scope:selected.actions?.scope,preflight,request:async(path,method,body,signal)=>{
+    return {sessionId:session.sessionId,conversationId,scope:selected.actions?.scope,preflight,request:async(path,method,body,signal)=>{
       preflight(path,method,body,signal);
       const controller=new AbortController(),bounded=anyAbortSignal([signal,controller.signal]);appRequests.add(controller);
       const current=()=>{bounded.throwIfAborted();if(generation!==epoch||selected!==active||session!==state.session)throw new DOMException('The connection changed','AbortError');};

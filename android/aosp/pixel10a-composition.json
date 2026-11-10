@@ -34,5 +34,6 @@
     "moduleName": "AlphaPixelConfig",
     "packageName": "ai.elizaresearch.pixelconfig",
     "mimeType": "vnd.android.cursor.dir/vnd.alpha.pixel-flags"
-  }
+  },
+  "systemUpdater": true
 }
