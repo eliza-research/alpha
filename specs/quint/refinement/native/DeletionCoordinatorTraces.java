@@ -330,6 +330,10 @@ public final class DeletionCoordinatorTraces {
               && paused.getString("reason").equals("owner-changed"),
           "Changed reminder owner did not record the owner-changed pause reason");
       trace.step("claim", observe());
+      check(!coordinator.reconcile() && DeletionTestPorts.reminderPauses == 1
+              && DeletionTestPorts.reminderSettles == 0 && DeletionTestPorts.deletes == 0,
+          "Repeated reconciliation replayed the retired reminder");
+      trace.stutter("changed owner remains paused without provider effects", observe());
       return;
     }
     if (scenario.equals("reminder-session-retired")) {
