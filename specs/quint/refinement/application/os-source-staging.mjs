@@ -19,7 +19,7 @@ real_replace=module.os.replace
 traces=[]
 def action(name,*args):return {'name':name,'args':list(args)}
 def trace(name):
- t={'name':name,'init':action('init'),'expect':{'s.source':callable(module.apply_plan) and callable(module.build_plan),'s.phase':'idle','s.backedUp':False,'s.writes':0,'s.accepted':False},'steps':[]}
+ t={'name':name,'init':action('init'),'expect':{'s.phase':'idle','s.backedUp':False,'s.writes':0,'s.accepted':False},'steps':[]}
  traces.append(t);return t
 def mark(t,label,call,**observed):t['steps'].append({'label':label,'action':call,'expect':{'s.'+key:value for key,value in observed.items()}})
 class AssetsAdmitted(Exception):pass
@@ -111,7 +111,7 @@ export async function checkOSSourceStaging(extraSources=[]){
   const traces=JSON.parse(execFileSync('python3',[generated[1],resolve(root,stage),generated[0]],{encoding:'utf8',timeout:120000}));assert.equal(traces.length,7);
   return await checkTraces({model:'OSSourceStaging',sources:[...sources,...generated],driverHashes,generatedSources:generated,traces,scope:'bounded-orchestration',assumptions:[
    'The actual Python build_plan asset-report/payload/geometry/package admission prefix and apply_plan filesystem implementation execute. One read-only observer marks completion of its all-preimage loop; real temporary files, backup writes, atomic replacements and final hash readback are used.',
-   'Git revision responses are a declared trusted port and build_plan stops at core_policy_plan. Source fetching, generated PNG/ZIP validity, core-patch materialization, whole-plan construction and AOSP source identity are separate existing staging-test obligations; these traces establish no image build or device qualification.',
+   'Source admission identity (s.source) is deliberately unobserved: Git revision responses are a declared trusted port and build_plan stops at core_policy_plan. Source fetching, generated PNG/ZIP validity, core-patch materialization, whole-plan construction and AOSP source identity are separate existing staging-test obligations; these traces establish no image build or device qualification.',
    'Two changed existing files represent the finite write bound. backedUp means exact recovery bytes for each write in the completed prefix; the source backs up per file immediately before replacement, rather than backing up every future file before its first write. Write failure and post-write corruption preserve backups and cannot return success; rollback, receipt publication and power-loss durability are outside this adapter.',
   ]});
  }finally{rmSync(temporary,{recursive:true,force:true});}
