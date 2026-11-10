@@ -77,23 +77,23 @@ test('the subscription sheet leads with the plan and reports its allowance and l
   assert.match(active, /25% of this billing period&#x27;s plan allowance is left/);
   assert.match(active, /Access through .+ days left/);
   assert.match(active, /<dt>AI requests<\/dt><dd role="status">The AI request rate limit was reached\. Try again in about (59|60) seconds\./);
-  assert.match(active, /aria-label="Subscription"/);
-  assert.match(active, /<dt>Plan<\/dt>/);
-  assert.match(active, />Manage subscription</);
+  assert.match(active, /aria-label="Balance and membership"/);
+  assert.match(active, /<dt>Membership<\/dt>/);
+  assert.match(active, />Manage plan</);
   assert.doesNotMatch(active, /Available credits|Add credits|\bUSD\b/);
-  assert.match(active, />Enter membership code</);
+  assert.match(active, />Use code</);
   const credits = render({balance: 'funded', plan: {kind: 'credits', source: 'billing-limits'}});
   assert.match(credits, /No active subscription/);
-  assert.match(credits, />Choose a monthly plan</);
+  assert.match(credits, />Choose a plan</);
   assert.doesNotMatch(credits, /Available credits|Add credits|\bUSD\b/);
   assert.doesNotMatch(credits, /plan allowance|AI requests/, 'no allowance or limit line without a reported allowance or a current limit');
   const none = render({balance: 'zero', plan: {kind: 'inactive', planName: null, status: 'none', source: 'billing-limits'}});
-  assert.match(none, /Choose a monthly plan or enter a membership code to ask Alpha\./);
+  assert.doesNotMatch(none, /Choose a plan or enter a membership code to ask Alpha\./);
   // After Cloud declined a turn for billing the sheet says so, above the same two actions.
   const refused = render({balance: 'funded', refused: true, plan: {kind: 'credits', source: 'billing-limits'}});
   assert.match(refused, /Your last request was declined for billing\./);
-  assert.match(refused, />Choose a monthly plan</);
-  assert.match(refused, />Enter membership code</);
+  assert.match(refused, />Choose a plan</);
+  assert.match(refused, />Use code</);
   // A lapsed limit is not shown.
   const lapsed = render({plan: {kind: 'credits', source: 'billing-limits'}, lastLimit: {kind: 'rate-limited', retryAfterMs: 1000, resetsAt: null, observedAt: Date.now() - 120000}});
   assert.doesNotMatch(lapsed, /AI requests/);
@@ -112,7 +112,7 @@ test('the subscription sheet leads with the plan and reports its allowance and l
   assert.match(hookSource, /const nextChange =\s+summary\.limit && lastLimit\s+\? serviceLimitNextChange\(lastLimit, lastLimit\.observedAt, now\)\s+: null;\s+useEffect\(\(\) => \{\s+if \(nextChange === null\) return;\s+const timer = setTimeout\(\(\) => tick\(\(value\) => value \+ 1\), nextChange\);/);
   const ui = fs.readFileSync('apps/app/src/runtime/connection-ui.tsx', 'utf8');
   assert.match(ui, /lastLimit=\{snapshot\.fundingRefused&&snapshot\.lastServiceLimit\?\.kind==='billing-refused'\?null:snapshot\.lastServiceLimit\} refused=\{!!snapshot\.fundingRefused\} serviceName=\{serviceName\}/, 'the sheet receives the latest Cloud limit; a billing refusal is said once, by the sheet');
-  assert.match(ui, /className="serif">Subscription<\/h1>/);
+  assert.match(ui, /className="alpha-connection alpha-account-sheet"/);
 });
 
 test('a resident turn failure forwards its own reset fields and records the latest Cloud limit for the account panel', () => {
@@ -126,7 +126,7 @@ test('a resident turn failure forwards its own reset fields and records the late
   assert.match(ui.slice(ui.indexOf('function detachService()'), ui.indexOf('async function verifyService')), /lastServiceLimit:null/);
   assert.match(ui, /lastLimit=\{snapshot\.fundingRefused&&snapshot\.lastServiceLimit\?\.kind==='billing-refused'\?null:snapshot\.lastServiceLimit\}/);
   // A limit seen on one account never appears for another, and it ends once AI gets through again.
-  assert.match(ui.slice(ui.indexOf('async function verifyService'), ui.indexOf('let pendingBillingReview')), /\.\.\.\(!same\?\{[^}]*lastServiceLimit:null/);
+  assert.match(ui.slice(ui.indexOf('async function verifyService'), ui.indexOf('let membershipRead')), /\.\.\.\(!same\?\{[^}]*lastServiceLimit:null/);
   assert.match(ui.slice(ui.indexOf('  async residentRedeem('), ui.indexOf("update({redeemNotice:redeemSuccessMessage(result)});")), /redeemed=true;[\s\S]*lastServiceLimit:null/);
   assert.match(ui.slice(ui.indexOf('  async send('), ui.indexOf('export function ConnectionChooser')), /if\(!failed&&\(state\.lastServiceLimit\|\|state\.fundingRefused\)\)update\(\{lastServiceLimit:null,fundingRefused:false\}\);/);
   // A request-level 429 that reads as a Cloud limit is recorded too; a refusal before the turn is the agent being busy.
@@ -223,8 +223,8 @@ test('Settings retains unknown, expired, inactive and credit-funded admission st
   assert.equal(credit.allowance, null);
   assert.equal(read({cloudAccount:null, residentSubscription:null, residentPlanNotice:null, lastServiceLimit:{kind:'rate-limited', retryAfterMs:60000, resetsAt:null, observedAt:Date.now()}}).limit, null, 'no limit is shown without an account');
   const settings = fs.readFileSync('apps/app/src/prototype/settings-adapter.ts', 'utf8');
-  assert.match(settings, /if\(plan\.allowance\)rows\.push\(info\('Plan allowance',plan\.allowance\)\);/);
-  assert.match(settings, /if\(plan\.limit\)rows\.push\(info\('AI requests',plan\.limit\)\);/);
+  assert.match(ui, /plan=\{snapshot\.membershipPlan\}/);
+  assert.match(ui, /lastLimit=\{snapshot\.fundingRefused/);
 });
 
 

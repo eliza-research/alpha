@@ -89,11 +89,14 @@ test('resident reading uses the resident binding and a binding change aborts it'
   const {createNativeReadingVoice}=await import('/src/runtime/native-reading-voice.ts');
   const controller=connectionController as any,proto=BrowserVoice.prototype as any,calls:any[]=[];
   let resident={execution:'device',ownerId:'fixture-owner',sessionId:'fixture-session'};
-  const listeners=new Set<()=>void>(),saved={resident:controller.getResidentReadingBinding,paired:controller.getPairedVoiceBinding,subscribe:controller.subscribe,synth:proto.synthesizeLocalBrowserReading,status:proto.localSpeechStatus};
+  const listeners=new Set<()=>void>(),saved={resident:controller.getResidentReadingBinding,paired:controller.getPairedVoiceBinding,subscribe:controller.subscribe,synth:proto.synthesizeLocalBrowserReading,status:proto.localSpeechStatus,cancel:proto.cancel};
   controller.getResidentReadingBinding=()=>resident;
   controller.getPairedVoiceBinding=()=>{throw Error('The paired voice must not be consulted while a resident binding exists');};
   controller.subscribe=(listener:()=>void)=>{listeners.add(listener);return ()=>{listeners.delete(listener);};};
-  proto.synthesizeLocalBrowserReading=function(input:any){calls.push(input);return new Promise(()=>{});};
+  let pending:{requestId:string;reject:(error:unknown)=>void}|null=null;
+  proto.synthesizeLocalBrowserReading=function(input:any){calls.push(input);return new Promise((_,reject)=>{pending={requestId:input.requestId,reject};});};
+  // The real native cancellation settles its owned preparation call.
+  proto.cancel=async(input:any)=>{if(pending&&(!input?.requestId||input.requestId===pending.requestId)){const owned=pending;pending=null;owned.reject(new DOMException('Cancelled','AbortError'));}};
   try{
    const voice=createNativeReadingVoice();
    if(!voice)return {voice:false};
@@ -111,7 +114,7 @@ test('resident reading uses the resident binding and a binding change aborts it'
    const outcome=await speaking;
    const next=await voice.speak('token-two',new AbortController().signal).then(()=>'finished',(error:any)=>`${error?.name}:${error?.message}`);
    return {voice:true,chosen,before,calls,outcome,afterChange:voice.isCurrent(),next,readAloudWithoutRecognition,readAloudWithoutPlayback};
-  }finally{Object.assign(controller,{getResidentReadingBinding:saved.resident,getPairedVoiceBinding:saved.paired,subscribe:saved.subscribe});if(saved.synth)proto.synthesizeLocalBrowserReading=saved.synth;else delete proto.synthesizeLocalBrowserReading;if(saved.status)proto.localSpeechStatus=saved.status;else delete proto.localSpeechStatus;}
+  }finally{Object.assign(controller,{getResidentReadingBinding:saved.resident,getPairedVoiceBinding:saved.paired,subscribe:saved.subscribe});if(saved.synth)proto.synthesizeLocalBrowserReading=saved.synth;else delete proto.synthesizeLocalBrowserReading;if(saved.status)proto.localSpeechStatus=saved.status;else delete proto.localSpeechStatus;if(saved.cancel)proto.cancel=saved.cancel;else delete proto.cancel;}
  });
  expect(result.voice).toBe(true);
  expect([result.readAloudWithoutRecognition,result.readAloudWithoutPlayback]).toEqual([true,false]);

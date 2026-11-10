@@ -1,4 +1,6 @@
 import {test,expect,type Page} from '@playwright/test';
+import {flagOffAndroid,fenceNetwork} from './flag-off-android';
+import {residentStub} from './resident-stub';
 
 // The flag-off product exposes grouped Settings. Native diagnostics and the former mail-image
 // switch have no product entry here. Their data contracts remain covered by the unit suites.
@@ -46,14 +48,17 @@ test('production Settings excludes developer and removed rows for every requeste
 });
 
 test('production Google account entry opens and dismisses its owned dialog',async({page})=>{
- await openSettings(page,'Account','Google & email');
+ const foreign=await fenceNetwork(page);await flagOffAndroid(page);await residentStub(page);
+ await openSettings(page,'Account');
+ await page.getByRole('dialog',{name:'Account',exact:true}).getByRole('button',{name:'Google & email',exact:true}).click();
  const panel=page.getByRole('dialog',{name:'Google accounts',exact:true});
  await expect(panel).toBeVisible();
- await expect(panel.getByRole('button',{name:'Sign in',exact:true})).toBeVisible();
+ await expect(panel.getByRole('button',{name:'Connect Google account',exact:true})).toBeVisible();
  await expect(panel.getByText('Gmail notification settings',{exact:true})).toHaveCount(0);
  await panel.getByRole('button',{name:'Close Google accounts',exact:true}).click();
  await expect(panel).toHaveCount(0);
- await expect(current(page).getByRole('button',{name:'AI connection',exact:true})).toBeVisible();
+ await expect(current(page).getByRole('button',{name:'Account',exact:true})).toBeVisible();
+ expect(foreign).toEqual([]);
 });
 
 test('production About exposes licenses without fabricated device facts or diagnostic controls',async({page})=>{

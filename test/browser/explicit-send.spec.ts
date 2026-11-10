@@ -12,12 +12,14 @@ async function ready(page:Page){
  });
  const input=page.getByRole('textbox',{name:'Ask Alpha',exact:true});await input.fill('Original request');await input.press('Enter');await expect(page.locator('[data-alpha-message-text]').filter({hasText:'Reply 1'})).toBeVisible();
 }
+// The transport binds a phone observation before the exact owner-authored prompt.
+const sent=(page:Page)=>page.evaluate(()=>(window as any).explicitSend.sent.map((text:string)=>text.split('[USER MESSAGE]\n').at(-1)));
 const bubbles=(page:Page,text:string)=>page.locator('[data-alpha-message-text]').filter({hasText:text});
 test('an explicit prompt with an empty composer posts once and shows one user bubble',async({page})=>{
  await ready(page);
  await page.evaluate(async()=>await(window as any).explicitSend.shell.send('Suggested prompt'));
  await expect(bubbles(page,'Reply 2')).toBeVisible();
- expect(await page.evaluate(()=>(window as any).explicitSend.sent)).toEqual(['Original request','Suggested prompt']);
+ expect(await sent(page)).toEqual(['Original request','Suggested prompt']);
  await expect(bubbles(page,'Suggested prompt')).toHaveCount(1);
 });
 test('an explicit prompt while a message edit is open is refused with a toast and keeps the edit',async({page})=>{
@@ -25,7 +27,7 @@ test('an explicit prompt while a message edit is open is refused with a toast an
  await expect(composer(page)).toHaveValue('Original request');await composer(page).fill('Edited request');
  await page.evaluate(async()=>await(window as any).explicitSend.shell.send('Suggested prompt'));
  await expect(page.getByText('Finish or cancel the message you are editing first.',{exact:true})).toBeVisible();
- expect(await page.evaluate(()=>(window as any).explicitSend.sent)).toEqual(['Original request']);
+ expect(await sent(page)).toEqual(['Original request']);
  await expect(bubbles(page,'Suggested prompt')).toHaveCount(0);await expect(composer(page)).toHaveValue('Edited request');
  expect(await page.evaluate(()=>!!(window as any).explicitSend.shell.messageEditTarget)).toBe(true);
 });

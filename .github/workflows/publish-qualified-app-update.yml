@@ -56,6 +56,7 @@ jobs:
     permissions:
       actions: read
       contents: write
+      id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -79,12 +80,24 @@ jobs:
         with:
           packages: platforms;android-36 build-tools;36.0.0
           log-accepted-android-sdk-licenses: false
+      - name: Authenticate private artifact transport
+        id: private_storage_auth
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          project_id: alpha-aosp-lab-20261024
+          workload_identity_provider: projects/484320254111/locations/global/workloadIdentityPools/alpha-github-release/providers/github
+          service_account: alpha-release-artifacts@alpha-aosp-lab-20261024.iam.gserviceaccount.com
+          token_format: access_token
+          access_token_lifetime: 3600s
+          access_token_scopes: https://www.googleapis.com/auth/devstorage.read_write
+          create_credentials_file: false
+          export_environment_variables: false
       - name: Re-admit and restore the exact producer and signed private object
         env:
           GH_TOKEN: ${{ github.token }}
           QUALIFICATION: ${{ inputs.qualification }}
           EXPECTED_QUALIFICATION: ${{ needs.admit.outputs.qualification_sha256 }}
-          ALPHA_PRIVATE_STORAGE_TOKEN: ${{ secrets.ALPHA_PRIVATE_APK_STORAGE_TOKEN }}
+          ALPHA_PRIVATE_STORAGE_TOKEN: ${{ steps.private_storage_auth.outputs.access_token }}
         run: |
           set -euo pipefail
           set +x

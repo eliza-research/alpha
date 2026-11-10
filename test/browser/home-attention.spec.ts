@@ -17,22 +17,23 @@ test('Home attention opens the local Inbox and tracks unread mail through reload
   await page.getByRole('button', { name: 'Unread, Reader, Visible unread', exact: true }).click();
   await expect(page.getByText('Local body', { exact: true }).last()).toBeVisible();
   await returnToApps(page);
-  await expect(home.locator('[data-alpha-home-inbox]')).toBeVisible();
+  await expect(home.locator('[data-alpha-home-inbox]')).toHaveCount(0);
   await page.reload();
-  await expect(home.locator('[data-alpha-home-inbox]')).toBeVisible();
+  await expect(home.locator('[data-alpha-home-inbox]')).toHaveCount(0);
   await home.getByRole('button', { name: 'Inbox', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-active-view', 'inbox');
 });
 
-test('a failed device-calendar read remains visible and recovers in Calendar', async ({ page }) => {
+test('a failed device-calendar read leaves no stale Home event and recovers in Calendar', async ({ page }) => {
   test.slow(); // Chooses the browser calendar in Calendar first.
   await page.goto('/');
   // Home's agenda reads the calendar chosen in Calendar (Agent Calendar by default); this case is
   // about a device-calendar read failure, so it chooses the test-mocks browser calendar first.
   await openBrowserCalendar(page);
+  await page.evaluate(async()=>{const {BrowserCalendar}=await import('/src/browser/calendar.ts'),begin=Date.now()+3600000;await new BrowserCalendar().save({calendarId:'local',title:'Recoverable browser event',begin,end:begin+1800000,allDay:false,creationId:crypto.randomUUID()});window.dispatchEvent(new Event('alpha:calendar-preferences'));});
   await returnToApps(page);
   const card = page.locator('[data-alpha-home-calendar]');
-  await expect(card).toBeVisible();
+  await expect(card).toContainText('Recoverable browser event');
   await page.evaluate(async () => {
     const { BrowserCalendar } = await import('/src/browser/calendar.ts');
     const proto = BrowserCalendar.prototype as any;
@@ -40,24 +41,25 @@ test('a failed device-calendar read remains visible and recovers in Calendar', a
     proto.list = () => Promise.reject(Error('Calendar storage unavailable'));
     window.dispatchEvent(new Event('alpha:calendar-preferences'));
   });
-  await expect(card).toBeVisible();
-  await expect(card).toContainText('Calendar unavailable');
+  await expect(card).toHaveCount(0);
+  await expect(page.getByRole('button',{name:'Calendar',exact:true})).toBeVisible();
   await page.evaluate(async () => {
     const { BrowserCalendar } = await import('/src/browser/calendar.ts');
     (BrowserCalendar.prototype as any).list = (window as any).__calendarList;
     window.dispatchEvent(new Event('alpha:calendar-preferences'));
   });
-  await expect(card).toBeVisible();
-  await expect(card).not.toContainText('Calendar unavailable');
+  await expect(card).toContainText('Recoverable browser event');
+  await card.click();await expect(page.locator('html')).toHaveAttribute('data-active-view','calendar');
+  await expect(page.getByText('Recoverable browser event',{exact:true}).first()).toBeVisible();
 });
 
-test('a failed Agent Calendar read remains visible and retries when Calendar opens', async ({ page }) => {
-  await page.goto('/');await installHomeCalendar(page);
+test('a failed Agent Calendar read leaves no stale Home event and retries when Calendar opens', async ({ page }) => {
+  await page.goto('/');const event={title:'Recoverable agent event',startAt:new Date(Date.now()+3600000).toISOString(),endAt:new Date(Date.now()+5400000).toISOString()};await installHomeCalendar(page,event);
   const card = page.locator('[data-alpha-home-calendar]');
-  await expect(card).toBeVisible();
+  await expect(card).toContainText(event.title);
   await refreshHomeCalendar(page,{fail:true});
-  await expect(card).toBeVisible();
-  await expect(card).toContainText('Calendar unavailable');
+  await expect(card).toHaveCount(0);
+  await expect(page.getByRole('button',{name:'Calendar',exact:true})).toBeVisible();
   await page.evaluate(()=>(window as any).homeCalendarFixture.fail=false);
   // Opening Calendar is the explicit retry and reads the agent calendar again.
   const before = await page.evaluate(()=>(window as any).homeCalendarFixture.requests.length);
@@ -65,8 +67,7 @@ test('a failed Agent Calendar read remains visible and retries when Calendar ope
   await expect(page.locator('html')).toHaveAttribute('data-active-view','calendar');
   await expect.poll(()=>page.evaluate(()=>(window as any).homeCalendarFixture.requests.length)).toBeGreaterThan(before);
   await returnToApps(page);
-  await expect(card).toBeVisible();
-  await expect(card).not.toContainText('Calendar unavailable');
+  await expect(card).toContainText(event.title);
 });
 
 // A retained brief sits beside the attention items without replacing them; a record of an
@@ -94,6 +95,6 @@ test('with only missed records the brief stays empty, and the attention items st
     { cursor: 1, runId: 'run-missed', completedAt: new Date(Date.now() - 3_600_000).toISOString(), status: 'missed', output: { status: 'missed', text: 'The scheduled time was missed. No backlog was executed.' }, error: null },
     { cursor: 2, runId: 'run-unavailable', completedAt: new Date(Date.now() - 1_800_000).toISOString(), status: 'unavailable', output: { status: 'unavailable', text: 'The source was not available.' }, error: null }]);
   await expect(home.getByRole('button', { name: /^Open Inbox: \d+ unread emails?$/ })).toHaveCount(1);
-  await expect(home.locator('[data-alpha-home-brief]')).toContainText('No brief yet');
+  await expect(home.locator('[data-alpha-home-brief]')).toHaveCount(0);
   await expect(home).not.toContainText(/scheduled time was missed|Did not run/);
 });

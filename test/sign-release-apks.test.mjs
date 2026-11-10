@@ -183,7 +183,7 @@ test("refusals: no enrolled signer, already signed releases, mixed modes, dry ru
   const { tool, calls } = stubSigner(t);
   const unset = await sign(product(t, "unset"), ["--keys-dir", keys(t), "--apksigner", tool]);
   assert.equal(unset.code, 1);
-  assert.match(unset.err, /H-09/);
+  assert.match(unset.err, /enroll the release certificate first/);
   const root = product(t);
   fs.writeFileSync(path.join(root, "artifacts/launcher-release.apk"), "signed by Gradle");
   const twice = await sign(root, ["--keys-dir", keys(t), "--apksigner", tool]);

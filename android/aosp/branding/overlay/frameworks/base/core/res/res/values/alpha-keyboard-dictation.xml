@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+ <!-- IMMS discovers and enables the preinstalled auxiliary voice IME on app installation/update.
+      It records DEFAULT_VOICE_INPUT_METHOD once and preserves the owner's selected keyboard. -->
+ <string name="config_systemSpeechRecognizer" translatable="false">ai.alphacompute.alphaphone</string>
+</resources>

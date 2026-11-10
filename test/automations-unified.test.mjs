@@ -1,3 +1,5 @@
+import React from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
@@ -7,7 +9,7 @@ import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {build} from 'esbuild';
 import {JSDOM} from 'jsdom';
 
-const bundle=await build({entryPoints:['apps/app/src/runtime/automations-protocol.ts'],bundle:true,write:false,format:'esm',platform:'neutral',logLevel:'silent'});
+const bundle=await build({stdin:{contents: "export * from './apps/app/src/runtime/automations-protocol.ts'; export * from './apps/app/src/runtime/workflow-local-time.ts';",resolveDir:process.cwd(),loader:'ts'},bundle:true,write:false,format:'esm',platform:'neutral',logLevel:'silent'});
 const protocol=await import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].text).toString('base64'));
 const {AutomationsProtocol}=protocol;
 const workflow={id:'workflow:flow',type:'workflow',title:'Reviewed workflow',description:'Existing typed steps',enabled:false,status:'paused',workflowId:'flow',schedules:[]};
@@ -31,7 +33,7 @@ const signal=()=>new AbortController().signal;
 test('unified read uses all four canonical sources and keeps stable source identities',async()=>{const f=await fixture(read);try{const snapshot=await f.client.list(signal());assert.deepEqual(snapshot.rows.map(row=>row.kind).sort(),['prompt','reminder','schedule','workflow']);assert.equal(snapshot.issues.length,0);assert.deepEqual(f.calls.map(call=>call.path).sort(),['/api/automations','/api/lifeops/definitions','/api/lifeops/reminders','/api/lifeops/scheduled-tasks?ownerVisibleOnly=1']);assert.equal(snapshot.rows.find(row=>row.kind==='schedule').enabled,false);assert.equal(snapshot.rows.find(row=>row.kind==='schedule').key,'scheduled:scheduled-task');}finally{await f.close();}});
 test('missing capability and denied owner remain distinct while other sources stay usable',async()=>{const f=await fixture(call=>call.path.includes('scheduled-tasks')?{status:404,body:{}}:call.path.includes('/reminders')?{status:403,body:{}}:read(call));try{const snapshot=await f.client.list(signal());assert.equal(snapshot.rows.length,2);assert.deepEqual(snapshot.issues.map(issue=>[issue.source,issue.unavailable]),[['schedules',true],['reminders',false]]);assert.match(snapshot.issues[1].message,/owner/);}finally{await f.close();}});
 test('unlisted scheduled rows and malformed identities fail their source instead of leaking into a healthy empty list',async()=>{const f=await fixture(call=>call.path.includes('scheduled-tasks')?{tasks:[{...schedule,ownerVisible:false}]}:read(call));try{const snapshot=await f.client.list(signal());assert.equal(snapshot.rows.some(row=>row.kind==='schedule'),false);assert.equal(snapshot.issues[0].source,'schedules');for(const id of ['../other','a/b','a%2fb','a?x=1',' a','a..b'])assert.throws(()=>protocol.automationId(id));}finally{await f.close();}});
-test('prompt creation is paused, edits preserve wake/enable policy, and invalid dates never send',async()=>{const f=await fixture(call=>({trigger:{id:'prompt',...call.body}}));try{const draft={title:'  Draft review  ',instructions:'Read only the supplied document',triggerType:'once',scheduledAt:future(),cron:'',eventKind:'',timezone:'UTC'};await f.client.savePrompt(draft,signal());assert.equal(f.calls[0].method,'POST');assert.equal(f.calls[0].body.enabled,false);assert.equal(f.calls[0].body.wakeMode,'inject_now');await f.client.savePrompt({...draft,triggerType:'cron',cron:'0 9 * * 1'},signal(),'prompt');assert.equal(f.calls[1].method,'PUT');assert.equal(Object.hasOwn(f.calls[1].body,'enabled'),false);assert.equal(Object.hasOwn(f.calls[1].body,'wakeMode'),false);await assert.rejects(f.client.savePrompt({...draft,scheduledAt:'2020-01-01T12:00'},signal()),/future/);assert.equal(f.calls.length,2);}finally{await f.close();}});
+for(const conversation of [undefined,'00000000-0000-4000-8000-000000000010'])test(`prompt creation is paused and preserves its delivery conversation: ${conversation||'legacy'}`,async()=>{const f=await fixture(call=>({trigger:{id:'prompt',...call.body},...(call.body.deliveryConversationId?{deliveryConversationId:call.body.deliveryConversationId}:{})}));if(conversation)f.client=new AutomationsProtocol(f.request,conversation);try{const draft={title:'  Draft review  ',instructions:'Read only the supplied document',triggerType:'once',scheduledAt:future(),cron:'',eventKind:'',timezone:'UTC'};await f.client.savePrompt(draft,signal());assert.equal(f.calls[0].method,'POST');assert.equal(f.calls[0].body.enabled,false);assert.equal(f.calls[0].body.wakeMode,'inject_now');assert.equal(f.calls[0].body.deliveryConversationId,conversation);await f.client.savePrompt({...draft,triggerType:'cron',cron:'0 9 * * 1'},signal(),'prompt');assert.equal(f.calls[1].method,'PUT');assert.equal(Object.hasOwn(f.calls[1].body,'enabled'),false);assert.equal(Object.hasOwn(f.calls[1].body,'wakeMode'),false);await assert.rejects(f.client.savePrompt({...draft,scheduledAt:'2020-01-01T12:00'},signal()),/future/);assert.equal(f.calls.length,2);}finally{await f.close();}});
 test('scheduled Run uses fire rather than acknowledgment and reports a non-fired outcome',async()=>{const f=await fixture(()=>({fire:{kind:'skipped',reason:'Owner paused this item',task:schedule}}));try{await assert.rejects(f.client.scheduledVerb('scheduled-task','fire',signal()),/Owner paused/);assert.deepEqual(f.calls.map(call=>call.path),['/api/lifeops/scheduled-tasks/scheduled-task/fire']);}finally{await f.close();}});
 test('LifeOps reminders use the existing in-app definition/idempotency contract and preserve unchanged past due dates',async()=>{const f=await fixture(call=>call.path.includes('/occurrences/')?{occurrence:{id:'occurrence',state:'pending'}}:{definition:{id:call.method==='POST'?'created':'definition',...call.body}});try{await f.client.createReminder({message:'Review this draft',due:future(),timezone:'UTC',idempotencyKey:'same-owned-key'},signal());assert.equal(f.calls[0].body.idempotencyKey,'same-owned-key');assert.equal(f.calls[0].body.metadata.nativeProjection,'in_app_only');assert.equal(f.calls[0].body.reminderPlan.steps[0].channel,'in_app');const row=(await new AutomationsProtocol(async()=>({reminders:[reminder],automations:[],tasks:[]})).list(signal())).rows[0];await f.client.editReminder(row,'Changed message',protocol.automationLocalDateInput(reminder.definition.cadence.dueAt),signal());assert.deepEqual(f.calls[1].body,{title:'Changed message'});await f.client.snoozeReminder('occurrence',signal());await f.client.cancelReminder('definition',signal());assert.deepEqual(f.calls.slice(1).map(call=>[call.path,call.method]),[['/api/lifeops/definitions/definition','PUT'],['/api/lifeops/occurrences/occurrence/snooze','POST'],['/api/lifeops/definitions/definition','PUT']]);}finally{await f.close();}});
 
@@ -53,7 +55,7 @@ function adapterFixture(request,storage={},options={}){
  let view=options.view===undefined?'workflows':options.view,workflowOpened='',deviceOpened='',newWorkflow=0;
  class Shell{live=true;renderVals(){return options.homeFallback||{};}componentDidMount(){}componentWillUnmount(){}S(){return {view};}vset(){}vget(){return {};}api(){return api;}openView(next){view=next;}refreshReminders(id){deviceOpened=id;}newDeviceReminderDraft(){deviceOpened='new-draft';}}
  const api={ic:{bell:'bell',spark:'sparkles',cal:'calendar',flow:'workflow'},track:()=>'',kx:()=>0,isActive:()=>true};
- const views={workflows:{render:()=>({cards:[],managementCards:[],openWorkflow:id=>workflowOpened=id,newFlow:()=>newWorkflow++,detail:false,builder:false,runOpen:false}),back:()=>false,onLeave(){}}};
+ const views={workflows:{render:()=>({cards:[],managementCards:[],openWorkflow:id=>workflowOpened=id,newFlow:()=>newWorkflow++,detail:false,builder:false,runOpen:false}),back:()=>false,onLeave(){},refreshManagement:options.refreshManagement}};
  const windowEvents=new Map();
  const dom=options.dom?new JSDOM('<div class="os"><button id="origin">Filters</button></div>',{pretendToBeVisual:true}):null;
  if(dom){dom.window.HTMLDialogElement.prototype.showModal=function(){this.open=true;};dom.window.document.querySelector('.os').inert=false;}
@@ -75,6 +77,20 @@ function adapterFixture(request,storage={},options={}){
  return {window:context.window,document:context.document,notify:(sessionId=session.sessionId)=>context.window.dispatchEvent(dom?new dom.window.CustomEvent(context.AUTOMATIONS_COMMITTED_EVENT,{detail:{sessionId}}):{type:context.AUTOMATIONS_COMMITTED_EVENT,detail:{sessionId}}),leave:()=>views.workflows.onLeave(),setView:next=>view=next,home:()=>shell.renderVals(),render:()=>views.workflows.render({},api),close:()=>shell.componentWillUnmount(),storage,retire:()=>{session.sessionId='replacement';session.ownerId='other';for(const fn of listeners)fn();},back:()=>views.workflows.back(),get workflowOpened(){return workflowOpened;},get deviceOpened(){return deviceOpened;},get newWorkflow(){return newWorkflow;}};
 }
 const wait=async fn=>{for(let count=0;count<300;count++){if(fn())return;await new Promise(resolve=>setTimeout(resolve,5));}throw Error('Unified automation UI did not settle.');};
+test('unified workflow management shares list cancellation and cannot outlive its visible owner visit',async()=>{
+ let release,probeSignal,current;
+ const held=new Promise(resolve=>release=resolve),calls=[];
+ const app=adapterFixture(async(path,method)=>{calls.push({path,method});return read({path});},{},{refreshManagement:async(signal,valid)=>{probeSignal=signal;current=valid;await held;}});
+ try{
+  app.render();await wait(()=>probeSignal);
+  assert.equal(current(),true);assert.equal(app.render().automation.loading,true);
+  app.leave();app.setView('');assert.equal(probeSignal.aborted,true);assert.equal(current(),false);
+  release();await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(app.home().homeWorkflowHasRows,undefined);
+  assert.equal(calls.filter(call=>call.path==='/api/automations').length,1);
+  assert.equal(calls.filter(call=>call.method!=='GET').length,0);
+ }finally{release();app.close();}
+});
 test('unified Workflows keeps browser request recovery in its management controls',async()=>{
  const f=await fixture(read);
  const browser=adapterFixture(f.request,{}, {native:false});
@@ -87,6 +103,37 @@ test('unified Workflows keeps browser request recovery in its management control
   assert.equal(typeof recovery(browser)[0].open,'function');
   assert.equal(recovery(native).length,0);
  }finally{browser.close();native.close();await f.close();}
+});
+
+test('editing an existing daily schedule preserves its clock without enabling it or running it',async()=>{
+ const before=process.env.TZ;process.env.TZ='America/Los_Angeles';
+ const task={...schedule,promptInstructions:'Good morning',trigger:{kind:'cron',expression:'0 8 * * *',tz:'UTC'},metadata:{recordKey:'gm'}};
+ const f=await fixture(call=>call.path.startsWith('/api/lifeops/scheduled-tasks')?(call.method==='GET'?{tasks:[task]}:{task:{...task,...call.body}}):read(call)),app=adapterFixture(f.request);
+ try{
+  app.render();await wait(()=>app.render().cards.length===5&&!app.render().automation.loading);app.render().cards.find(card=>card.name==='Good morning').open();
+  assert.match(app.render().automation.schedule,/^Next /);assert.doesNotMatch(app.render().automation.schedule,/UTC|America\//);
+  app.render().automation.scheduleMore.find(action=>action.label==='Edit schedule').run();assert.equal(app.render().automation.editedScheduleTime,'08:00');
+  app.render().automation.changeScheduleTime({target:{value:'10:00'}});app.back();assert.equal(app.render().automation.editingSchedule,false);assert.equal(f.calls.filter(call=>call.method!=='GET').length,0);
+  app.render().automation.scheduleMore.find(action=>action.label==='Edit schedule').run();assert.equal(app.render().automation.editedScheduleTime,'08:00');
+  app.render().automation.saveScheduleEdit();assert.equal(f.calls.filter(call=>call.method!=='GET').length,0);
+  app.render().automation.confirm();await wait(()=>f.calls.some(call=>call.method==='POST')&&!app.render().automation.busy);
+  const writes=f.calls.filter(call=>call.method!=='GET');assert.equal(writes.length,1);assert.equal(writes[0].path,'/api/lifeops/scheduled-tasks/scheduled-task/edit');
+  assert.deepEqual(writes[0].body,{promptInstructions:'Good morning'});
+ }finally{app.close();await f.close();if(before===undefined)delete process.env.TZ;else process.env.TZ=before;}
+});
+
+test('the actual schedule menu renders visible text and accessible names for every action',async()=>{
+ const f=await fixture(read),app=adapterFixture(f.request);
+ try{
+  app.render();await wait(()=>app.render().cards.length===5&&!app.render().automation.loading);app.render().cards.find(card=>card.name==='Weekly review').open();
+  const dom=new JSDOM('<!doctype html><body></body>'),document=dom.window.document,template=document.createElement('template');const htmlSource=fs.readFileSync('apps/app/src/prototype/template.html','utf8'),start=htmlSource.indexOf('<div class="schedule-controls">');template.innerHTML=htmlSource.slice(start,htmlSource.indexOf('\n        <div class="automation-actions">',start));
+  const source=fs.readFileSync('apps/app/src/prototype/dc-lite.js','utf8').replace(/^import .*;\n/gm,'');
+  const node=vm.runInNewContext(source.slice(0,source.indexOf('  const templateElement'))+';node;',{React,document,iconStyle:()=>({})});
+  const html=renderToStaticMarkup(node(template.content.querySelector('.schedule-controls'),{workflows:{automation:app.render().automation},ic:{}},'controls'));
+  const buttons=[...new JSDOM(html).window.document.querySelectorAll('button')];
+  assert.deepEqual(buttons.map(button=>button.textContent),['Run now','Edit schedule','Snooze 10 minutes','Complete','Dismiss']);
+  for(const button of buttons)assert.equal(button.getAttribute('aria-label'),button.textContent);
+ }finally{app.close();await f.close();}
 });
 test('actual Alpha adapter unifies five kinds, filters, delegates workflow/device detail and reviews canonical actions',async()=>{const f=await fixture(read),app=adapterFixture(f.request);try{app.render();await wait(()=>app.render().cards.length===5&&!app.render().automation.loading);assert.equal(app.home().homeWorkflowHasRows,true);assert.equal(app.home().homeWorkflowRows.length,2);assert.equal(app.home().homeWorkflowTime,'View automations');assert.deepEqual(Array.from(app.home().homeWorkflowRows,row=>row.name).sort(),['Check the draft','On-device reminder']);assert.match(app.home().homeWorkflowFreshness,/^Loaded \d{1,2}:\d{2}/);assert.match(app.home().homeWorkflowDescription,/^Automations from your agent and reminders on this phone, loaded \d/);app.render().automation.filters.find(filter=>filter.name==='Schedules').pick();assert.deepEqual(Array.from(app.render().cards,card=>card.name),['Weekly review']);app.render().automation.filters.find(filter=>filter.name==='All').pick();app.render().cards.find(card=>card.name==='Reviewed workflow').open();assert.equal(app.workflowOpened,'flow');app.render().cards.find(card=>card.name==='On-device reminder').open();assert.equal(app.deviceOpened,'device');}finally{app.close();await f.close();}});
 test('unknown mutation stays locked in the existing owner request journal after adapter recreation',async()=>{let writes=0;const f=await fixture((call,_req,res)=>{if(call.method!=='GET'){writes++;res.destroy();return;}return read(call);});const storage={};let app=adapterFixture(f.request,storage);try{app.render();await wait(()=>app.render().cards.length===5&&!app.render().automation.loading);app.render().cards.find(card=>card.name==='Owner prompt').open();app.render().automation.actions.find(action=>action.label==='Enable').run();assert.equal(writes,0);app.render().automation.confirm();await wait(()=>writes===1&&!app.render().automation.busy);assert.equal(app.render().automation.locked,true);assert.equal(Object.keys(storage).length,1);app.close();app=adapterFixture(f.request,storage);app.render();await wait(()=>app.render().cards.length===5&&!app.render().automation.loading);app.render().cards.find(card=>card.name==='Owner prompt').open();assert.equal(app.render().automation.actions.find(action=>action.label==='Enable').disabled,true);assert.equal(writes,1);}finally{app.close();await f.close();}});
@@ -135,10 +182,10 @@ test('nonexistent local DST time is rejected before either prompt or reminder mu
  const previous=process.env.TZ;process.env.TZ='America/New_York';const f=await fixture(call=>({trigger:{id:'prompt',...call.body},definition:{id:'definition',...call.body}}));
  try{await assert.rejects(f.client.savePrompt({title:'Gap',instructions:'Supplied text only',triggerType:'once',scheduledAt:'2030-03-10T02:30',cron:'',eventKind:'',timezone:'Asia/Tokyo'},signal()),/does not exist/);await assert.rejects(f.client.createReminder({message:'Gap',due:'2030-03-10T02:30',timezone:'Asia/Tokyo',idempotencyKey:'same'},signal()),/does not exist/);await assert.rejects(f.client.editReminder({kind:'reminder',id:'definition',record:reminder},'Changed','2030-03-10T02:30',signal()),/does not exist/);assert.equal(f.calls.length,0);}finally{if(previous===undefined)delete process.env.TZ;else process.env.TZ=previous;await f.close();}
 });
-test('once and reminder edit inputs name the browser zone while stored zones stay unchanged',async()=>{
- const when=new Date(Date.now()+3600000).toISOString(),zone=Intl.DateTimeFormat().resolvedOptions().timeZone;
+test('once and reminder edit inputs use local time while stored zones stay unchanged',async()=>{
+ const when=new Date(Date.now()+3600000).toISOString();
  const f=await fixture(call=>{if(call.path==='/api/triggers/prompt'&&call.method==='GET')return {trigger:{id:'prompt',displayName:'Owner prompt',instructions:'Keep this source',enabled:false,triggerType:'once',scheduledAtIso:when,timezone:'Asia/Tokyo'}};if(call.method==='PUT')return call.path.startsWith('/api/triggers')?{trigger:{id:'prompt',...call.body,enabled:false}}:{definition:{id:'definition',...call.body}};if(call.path==='/api/lifeops/reminders')return {reminders:[{...reminder,definition:{...reminder.definition,timezone:'Asia/Tokyo',cadence:{kind:'once',dueAt:when}}}]};return read(call);});const app=adapterFixture(f.request);
- try{app.render();await wait(()=>app.render().cards.length===5&&!app.render().automation.loading);app.render().cards.find(card=>card.name==='Owner prompt').open();app.render().automation.actions.find(action=>action.label==='Edit prompt').run();await wait(()=>app.render().automation.editing);assert.equal(app.render().automation.whenFields.find(field=>field.name==='scheduledAt').label,'Date and time');app.render().automation.moreFields.find(field=>field.name==='title').change({target:{value:'Revised prompt'}});app.render().automation.save();await wait(()=>f.calls.some(call=>call.method==='PUT')&&!app.render().automation.busy);const saved=f.calls.find(call=>call.method==='PUT');assert.equal(saved.body.timezone,'Asia/Tokyo');assert.equal(saved.body.scheduledAtIso,when);app.render().automation.close();app.render().cards.find(card=>card.name==='Check the draft').open();app.render().automation.actions.find(action=>action.label==='Edit reminder').run();assert.equal(app.render().automation.fields.find(field=>field.name==='due').label,'Due · '+zone);}finally{app.close();await f.close();}
+ try{app.render();await wait(()=>app.render().cards.length===5&&!app.render().automation.loading);app.render().cards.find(card=>card.name==='Owner prompt').open();app.render().automation.actions.find(action=>action.label==='Edit prompt').run();await wait(()=>app.render().automation.editing);assert.equal(app.render().automation.whenFields.find(field=>field.name==='scheduledAt').label,'Date and time');app.render().automation.moreFields.find(field=>field.name==='title').change({target:{value:'Revised prompt'}});app.render().automation.save();await wait(()=>f.calls.some(call=>call.method==='PUT')&&!app.render().automation.busy);const saved=f.calls.find(call=>call.method==='PUT');assert.equal(saved.body.timezone,'Asia/Tokyo');assert.equal(saved.body.scheduledAtIso,when);app.render().automation.close();app.render().cards.find(card=>card.name==='Check the draft').open();app.render().automation.actions.find(action=>action.label==='Edit reminder').run();assert.equal(app.render().automation.fields.find(field=>field.name==='due').label,'Due');}finally{app.close();await f.close();}
 });
 
 test('unchanged repeated local times keep the original later offset and sub-minute precision',async()=>{
@@ -170,7 +217,7 @@ test('shared canonical reminder labels and snooze policy cover delivery, termina
 test('snoozed occurrence due is displayed and message-only edit preserves the original cadence instant',async()=>{
  const due=new Date(Date.now()+7200000).toISOString(),snoozed={...reminder,occurrence:{id:'occurrence',state:'snoozed',dueAt:reminder.definition.cadence.dueAt,snoozedUntil:due}};
  const f=await fixture(call=>call.path==='/api/lifeops/reminders'?{reminders:[snoozed]}:call.method==='PUT'?{definition:{...snoozed.definition,...call.body}}:read(call));const app=adapterFixture(f.request);
- try{app.render();await wait(()=>app.render().cards.length===5&&!app.render().automation.loading);app.render().cards.find(card=>card.name==='Check the draft').open();assert.equal(app.render().automation.status,'Snoozed');assert.match(app.render().automation.schedule,/UTC/);app.render().automation.actions.find(action=>action.label==='Edit reminder').run();const fields=app.render().automation.fields;assert.equal(fields.find(field=>field.name==='due').value,protocol.automationLocalDateInput(due));fields.find(field=>field.name==='message').change({target:{value:'Only the message changes'}});app.render().automation.save();await wait(()=>f.calls.some(call=>call.method==='PUT')&&!app.render().automation.busy);assert.deepEqual(f.calls.find(call=>call.method==='PUT').body,{title:'Only the message changes'});assert.equal(presentation.reminderDue(snoozed),due);}finally{app.close();await f.close();}
+ try{app.render();await wait(()=>app.render().cards.length===5&&!app.render().automation.loading);app.render().cards.find(card=>card.name==='Check the draft').open();assert.equal(app.render().automation.status,'Snoozed');assert.equal(app.render().automation.schedule,new Date(due).toLocaleString(undefined,{dateStyle:'full',timeStyle:'short'}));app.render().automation.actions.find(action=>action.label==='Edit reminder').run();const fields=app.render().automation.fields;assert.equal(fields.find(field=>field.name==='due').value,protocol.automationLocalDateInput(due));fields.find(field=>field.name==='message').change({target:{value:'Only the message changes'}});app.render().automation.save();await wait(()=>f.calls.some(call=>call.method==='PUT')&&!app.render().automation.busy);assert.deepEqual(f.calls.find(call=>call.method==='PUT').body,{title:'Only the message changes'});assert.equal(presentation.reminderDue(snoozed),due);}finally{app.close();await f.close();}
 });
 for(const status of ['archived','completed'])test(`canonical ${status} reminder has details but no edit/cancel/snooze controls`,async()=>{
  const f=await fixture(call=>call.path==='/api/lifeops/reminders'?{reminders:[{...reminder,definition:{...reminder.definition,status}}]}:read(call));const app=adapterFixture(f.request);
@@ -216,4 +263,31 @@ test('Home hides only a fresh complete empty unified snapshot',async()=>{
   app.retire();assert.equal(app.home().homeWorkflowConfirmedEmpty,false,'another owner cannot inherit the empty snapshot');
   assert.ok(f.calls.every(call=>call.method==='GET'));
  }finally{app.close();await f.close();}
+});
+
+// The runner stores the one-off snooze in firedAt without rewriting the recurrence.
+test('scheduled snooze displays the acknowledged local time and preserves its cron',async()=>{
+ const until='2026-11-10T10:00:00.000Z';const snoozed={...schedule,trigger:{kind:'cron',expression:'0 8 * * *',tz:'owner_local'},state:{status:'scheduled',firedAt:until,lastDecisionLog:`snoozed until ${until} (ladder reset)`}};
+ const f=await fixture(call=>call.path.startsWith('/api/lifeops/scheduled-tasks')?{tasks:[snoozed]}:read(call));try{const row=(await f.client.list(signal())).rows.find(row=>row.kind==='schedule');assert.equal(row.status,'snoozed');assert.match(row.schedule,/Every day at 8am/);assert.ok(row.schedule.includes('Snoozed until '+protocol.workflowSnoozeTime(until)));assert.deepEqual(row.record.trigger,snoozed.trigger);assert.equal(f.calls.some(call=>call.method!=='GET'),false);}finally{await f.close();}
+});
+
+test('snooze uses an explicit future instant and requires its exact durable readback',async()=>{
+ const until=new Date(Date.now()+600000).toISOString();let wrong=false;
+ const f=await fixture(call=>({task:{taskId:'scheduled-task',state:{status:'scheduled',firedAt:wrong?'2000-01-01T00:00:00.000Z':call.body.untilIso}}}));
+ try{await f.client.snoozeSchedule('scheduled-task',until,signal());assert.deepEqual(f.calls[0].body,{untilIso:until});wrong=true;await assert.rejects(f.client.snoozeSchedule('scheduled-task',until,signal()),/not confirmed/);const n=f.calls.length;await assert.rejects(f.client.snoozeSchedule('scheduled-task','2000-01-01T00:00:00Z',signal()),/future/);assert.equal(f.calls.length,n);}finally{await f.close();}
+});
+
+test('ten-minute snooze confirms one scheduled instant, then refreshes the same recurring task',async()=>{
+ let task={...schedule,trigger:{kind:'cron',expression:'0 8 * * *',tz:'owner_local'}};
+ const f=await fixture(call=>{
+  if(call.path.endsWith('/snooze')){task={...task,state:{status:'scheduled',firedAt:call.body.untilIso,lastDecisionLog:`snoozed until ${call.body.untilIso} (ladder reset)`}};return {task};}
+  return call.path.startsWith('/api/lifeops/scheduled-tasks')?{tasks:[task]}:read(call);
+ });const app=adapterFixture(f.request);
+ try{app.render();await wait(()=>app.render().cards.length===5&&!app.render().automation.loading);app.render().cards.find(card=>card.name==='Weekly review').open();const expected=protocol.scheduledSnoozeAt({record:task,status:task.state.status});app.render().automation.scheduleMore.find(action=>action.label==='Snooze 10 minutes').run();assert.equal(f.calls.some(call=>call.method==='POST'),false);assert.match(app.render().automation.reviewPrompt,/^Snooze until /);app.render().automation.confirm();await wait(()=>app.render().automation.schedule.includes('Snoozed until ')&&!app.render().automation.busy);const mutation=f.calls.find(call=>call.path.endsWith('/snooze'));assert.ok(Math.abs(Date.parse(mutation.body.untilIso)-Date.parse(expected))<1000);assert.equal('minutes' in mutation.body,false);assert.deepEqual(task.trigger,{kind:'cron',expression:'0 8 * * *',tz:'owner_local'});}finally{app.close();await f.close();}
+});
+
+test('8am recurrence snoozes to8:10 and repairs an earlier from-now deferral',()=>{
+ const now=new Date(2026,10,10,1,0).getTime(),before=new Date(2026,10,10,1,54).toISOString(),task={...schedule,trigger:{kind:'cron',expression:'0 8 * * *',tz:'owner_local'},state:{status:'scheduled',firedAt:before}};
+ assert.equal(protocol.scheduledSnoozeAt({record:task,status:'snoozed'},now),new Date(2026,10,10,8,10).toISOString());
+ const valid=new Date(2026,10,10,8,10).toISOString();task.state.firedAt=valid;assert.equal(protocol.scheduledSnoozeAt({record:task,status:'snoozed'},new Date(2026,10,10,8,5).getTime()),new Date(2026,10,10,8,20).toISOString());
 });

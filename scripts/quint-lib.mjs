@@ -6,7 +6,8 @@ import { fileURLToPath } from 'node:url';
 export const repositoryRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
 export const quintRoot = join(repositoryRoot, 'specs/quint');
 export const sourceRoots = ['apps/app/src', 'apps/app/public', 'android'];
-export const runtimeScriptPaths = ['scripts/browser-cloud-dev-bridge.ts', 'scripts/cloud-resident-host.mjs',
+export const runtimeScriptPaths = ['scripts/stage-alpha-os-branding.py', 'scripts/generate-alpha-os-branding.mjs', 'scripts/fetch-alpha-os-preset-inputs.py',
+  'scripts/browser-cloud-dev-bridge.ts', 'scripts/cloud-resident-host.mjs',
   'scripts/cloud-email-code.ts', 'scripts/dev-cloud.mjs', 'scripts/dev-local.mjs',
   'scripts/start-local-voice-agent.mjs', 'scripts/start-local-remote.mjs',
   'scripts/core-state-patch.mjs', 'scripts/core-state-preload.mjs', 'scripts/build-policy-source.mjs',
@@ -34,7 +35,7 @@ export const runtimeScriptPaths = ['scripts/browser-cloud-dev-bridge.ts', 'scrip
   'scripts/update-apk-admission.mjs', 'scripts/update-artifact.mjs', 'scripts/owner/InspectUpdateApk.java',
   'scripts/ci/qualified-app-update.py', 'scripts/ci/admit-cloud-signing-input.py', 'scripts/ci/private-apk-storage.py'];
 export const runtimeAssetPaths = ['apps/app/index.html'];
-const omittedDirectories = new Set(['node_modules', 'build', '.generated', '.gradle', '.cxx', '.kotlin', 'assets', 'jniLibs', 'capacitor-cordova-android-plugins']);
+const omittedDirectories = new Set(['.cache', 'node_modules', 'build', '.generated', '.gradle', '.cxx', '.kotlin', 'assets', 'jniLibs', 'capacitor-cordova-android-plugins']);
 const sourceExtensions = new Set(['.ts', '.tsx', '.js', '.java', '.kt', '.cpp', '.h', '.c', '.html', '.mjs', '.jsx', '.cc', '.hpp', '.rs', '.swift']);
 
 export function filesWithin(directory, accept = () => true) {

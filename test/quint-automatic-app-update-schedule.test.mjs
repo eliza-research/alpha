@@ -4,7 +4,7 @@ import {checkAutomaticAppUpdateSchedule} from '../specs/quint/refinement/applica
 
 test('foreground updates keep polling, back off offline, and retire stale owners without overlapping native calls',{timeout:60000},async()=>{
   const receipt=await checkAutomaticAppUpdateSchedule();
-  assert.equal(receipt.traceInputs.length,4);
-  assert.equal(receipt.observedFields.length,7);
+  assert.equal(receipt.traceInputs.length,16);
+  assert.equal(receipt.observedFields.length,17);
   assert.ok(receipt.passed&&receipt.inputsUnchanged&&receipt.driverInputsBound);
 });

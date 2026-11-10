@@ -5,9 +5,9 @@ test('Camera cover, menu selection, info swipe and photo chat share use the save
  await page.goto('/?mode=dev');
  await page.evaluate(async()=>{
   const {importBrowserPhoto}=await import('/src/prototype/browser-camera.ts');
-  const canvas=document.createElement('canvas');canvas.width=100;canvas.height=100;
-  const context=canvas.getContext('2d')!;context.fillStyle='green';context.fillRect(0,0,100,100);
-  await importBrowserPhoto({original:new File(['fixture'],'sample.png'),image:canvas.toDataURL('image/png'),width:100,height:100},new AbortController().signal);
+  const canvas=document.createElement('canvas');canvas.width=1000;canvas.height=800;
+  const context=canvas.getContext('2d')!;context.fillStyle='green';context.fillRect(0,0,1000,800);
+  await importBrowserPhoto({original:new File(['fixture'],'sample.png'),image:canvas.toDataURL('image/png'),width:1000,height:800},new AbortController().signal);
  });
  await page.getByRole('button',{name:'Photos',exact:true}).click();
  await expect(page.getByRole('button',{name:'Select photos',exact:true})).toBeHidden();
@@ -31,13 +31,47 @@ test('Camera cover, menu selection, info swipe and photo chat share use the save
  await page.mouse.move(box.x+box.width/2,box.y+15);await page.mouse.down();
  await page.mouse.move(box.x+box.width/2,box.y+135,{steps:8});await page.mouse.up();
  await expect(dialog).toHaveCount(0);
- await page.getByRole('button',{name:'Ask Alpha about this photo',exact:true}).click();
+ await page.getByLabel('Photo actions',{exact:true}).click();
+ await page.getByRole('button',{name:'Ask Alpha',exact:true}).click();
  await expect(page.getByRole('dialog',{name:'Ask about selected content'})).toHaveCount(0);
  await expect(page.getByAltText('Captured photo')).toBeVisible();
+ await page.getByRole('textbox',{name:'Message Alpha',exact:true}).fill('Keep this draft');
  await page.getByRole('button',{name:'Preview attached photo',exact:true}).click();
- await expect(page.getByRole('dialog',{name:'Image preview',exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Close image preview',exact:true}).click();
+ const preview=page.getByRole('dialog',{name:'Image preview',exact:true}),image=page.getByAltText('Attached image preview');
+ await expect(preview).toBeVisible();
+ const coverage=await page.locator('.chat-image-preview').evaluate(el=>{
+  const screen=el.closest('[data-screen]')!.getBoundingClientRect(),box=el.getBoundingClientRect();
+  const bottom=document.elementFromPoint(screen.x+screen.width/2,screen.bottom-10);
+  return {height:box.height,screenHeight:screen.height,bottom:!!bottom?.closest('.chat-image-preview'),background:getComputedStyle(el).backgroundColor,composerInert:!!document.querySelector('[data-alpha-layer="conversation"][inert]')};
+ });
+ expect(coverage.height).toBeCloseTo(coverage.screenHeight,0);expect(coverage.bottom).toBe(true);expect(coverage.background).toBe('rgb(0, 0, 0)');expect(coverage.composerInert).toBe(true);
+ await image.dblclick();
+ await expect.poll(()=>image.evaluate(el=>new DOMMatrixReadOnly(getComputedStyle(el).transform).a)).toBe(2);
+ const imageBox=(await image.boundingBox())!;
+ await page.mouse.move(imageBox.x+imageBox.width/2,imageBox.y+imageBox.height/2);await page.mouse.down();await page.mouse.move(imageBox.x+imageBox.width/2+40,imageBox.y+imageBox.height/2,{steps:5});await page.mouse.up();
+ expect(await image.evaluate(el=>new DOMMatrixReadOnly(getComputedStyle(el).transform).e)).toBeGreaterThan(0);
+ await image.dblclick();
+ await expect.poll(()=>image.evaluate(el=>new DOMMatrixReadOnly(getComputedStyle(el).transform).a)).toBe(1);
+ const previewBox=(await preview.boundingBox())!;await page.mouse.click(previewBox.x+5,previewBox.y+80);
  await expect(page.getByRole('dialog',{name:'Image preview',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('textbox',{name:'Message Alpha',exact:true})).toHaveValue('Keep this draft');
+ await page.getByRole('button',{name:'Preview attached photo',exact:true}).click();
+ await expect.poll(()=>image.evaluate(el=>el.complete&&el.naturalWidth>0)).toBe(true);
+ const touch=await page.context().newCDPSession(page),pinchBox=(await image.boundingBox())!,viewport=page.viewportSize()!;
+ const left=Math.max(0,pinchBox.x),right=Math.min(viewport.width,pinchBox.x+pinchBox.width),top=Math.max(0,pinchBox.y),bottom=Math.min(viewport.height,pinchBox.y+pinchBox.height),cx=(left+right)/2,cy=(top+bottom)/2,spread=Math.min(30,(right-left)/6);
+ expect(spread).toBeGreaterThan(5);
+ await touch.send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:2});
+ await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:cx-spread,y:cy,id:1},{x:cx+spread,y:cy,id:2}]});
+ await touch.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:cx-spread*2,y:cy,id:1},{x:cx+spread*2,y:cy,id:2}]});
+ await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+ await expect.poll(()=>image.evaluate(el=>new DOMMatrixReadOnly(getComputedStyle(el).transform).a)).toBeGreaterThan(1);
+ await touch.detach();
+ await page.setViewportSize({width:915,height:412});
+ await expect(page.locator('html')).toHaveClass(/browser-desktop/);
+ const wide=await page.locator('.chat-image-preview').evaluate(el=>{const box=el.getBoundingClientRect(),screen=el.closest('[data-screen]')!.getBoundingClientRect();return {height:box.height,screenHeight:screen.height,coversBottom:!!document.elementFromPoint(screen.x+screen.width/2,screen.bottom-8)?.closest('.chat-image-preview')};});
+ expect(wide.height).toBeCloseTo(wide.screenHeight,0);expect(wide.coversBottom).toBe(true);
+ await page.getByRole('button',{name:'Close image preview',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'Message Alpha',exact:true})).toHaveValue('Keep this draft');
 });
 
 test('custom albums can be created, filled, renamed and removed without deleting their photos',async({page})=>{
@@ -73,4 +107,43 @@ test('custom albums can be created, filled, renamed and removed without deleting
  await page.getByRole('button',{name:'Confirm delete album',exact:true}).click();
  await page.getByRole('button',{name:'Library',exact:true}).click();
  await expect(page.getByRole('button',{name:/^Photo, /})).toHaveCount(1);
+});
+
+test('Files selects the existing Photos items, saves original bytes and restores Trash after reload',async({page})=>{
+ await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
+ await page.goto('/?mode=dev');
+ const source=await page.evaluate(async()=>{
+  const {importBrowserPhoto}=await import('/src/prototype/browser-camera.ts');
+  const c=document.createElement('canvas');c.width=30;c.height=20;c.getContext('2d')!.fillRect(0,0,30,20);
+  const image=c.toDataURL('image/png');const row=await importBrowserPhoto({original:new File(['fixture'],'selection.png'),image,width:30,height:20},new AbortController().signal);
+  return {id:row.id,image};
+ });
+ await page.getByRole('button',{name:'Files',exact:true}).click();await page.getByRole('button',{name:'Images',exact:true}).click();
+ await page.getByRole('button',{name:'Open Images',exact:true}).click();
+ await page.getByRole('button',{name:'Files options',exact:true}).click();await page.getByRole('button',{name:'Select',exact:true}).click();
+ await page.getByRole('button',{name:'Select all',exact:true}).click();const actions=page.getByRole('toolbar',{name:'Selection actions'});
+ await expect(actions.getByRole('button',{name:'Move',exact:true})).toHaveCount(0);
+ await actions.getByRole('button',{name:'Share',exact:true}).click();
+ const download=page.waitForEvent('download');await page.getByRole('button',{name:'Save file',exact:true}).click();
+ const file=await download;const {readFile}=await import('node:fs/promises');expect(await readFile((await file.path())!)).toEqual(Buffer.from(source.image.split(',')[1],'base64'));
+ await actions.getByRole('button',{name:'Delete',exact:true}).click();
+ await expect.poll(()=>page.evaluate(async id=>(await (await import('/src/prototype/browser-camera.ts')).browserPhotoLibrary.read({id})).trashed,source.id)).toBe(true);
+ await page.reload();await page.getByRole('button',{name:'Files',exact:true}).click();await page.getByRole('button',{name:'Trash',exact:true}).click();
+ expect(await page.evaluate(async id=>{const {registerPlugin}=await import('/src/platform-plugins.ts');try{await registerPlugin<any>('AlphaFiles').storageEmptyTrash({ids:['photo:'+id],confirmed:false});return false;}catch{return true;}},source.id)).toBe(true);
+
+ const photo=page.getByRole('button',{name:/^Photo /}).first();await photo.click();await page.getByRole('button',{name:'Restore',exact:true}).click();
+ await expect.poll(()=>page.evaluate(async id=>{const row=await (await import('/src/prototype/browser-camera.ts')).browserPhotoLibrary.read({id});return {trashed:row.trashed,image:row.image};},source.id)).toEqual({trashed:false,image:source.image});
+});
+
+test('Files adds selected media to a real folder and keeps the original photo',async({page})=>{
+ await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
+ await page.goto('/?mode=dev');
+ const original=await page.evaluate(async()=>{const {importBrowserPhoto}=await import('/src/prototype/browser-camera.ts');const c=document.createElement('canvas');c.width=10;c.height=10;const image=c.toDataURL('image/png');return {row:await importBrowserPhoto({original:new File(['fixture'],'folder.png'),image,width:10,height:10},new AbortController().signal),image};});
+ await page.getByRole('button',{name:'Files',exact:true}).click();await page.getByLabel('Files tools',{exact:true}).click();await page.getByRole('button',{name:'New folder',exact:true}).click();
+ const create=page.getByRole('dialog',{name:'New folder',exact:true});await create.getByRole('textbox',{name:'Name',exact:true}).fill('Pictures');await create.getByRole('button',{name:'Create',exact:true}).click();
+ await page.getByRole('button',{name:'Back',exact:true}).click();await page.getByRole('button',{name:'Images',exact:true}).click();await page.getByRole('button',{name:'Open Images',exact:true}).click();
+ await page.getByRole('button',{name:'Files options',exact:true}).click();await page.getByRole('button',{name:'Select',exact:true}).click();await page.getByRole('button',{name:'Select all',exact:true}).click();await page.getByRole('button',{name:'Add to folder',exact:true}).click();
+ const copy=page.getByRole('dialog',{name:'Copy to',exact:true});await copy.getByRole('button',{name:'Open Pictures',exact:true}).click();await copy.getByRole('button',{name:'Copy here',exact:true}).click();await expect(copy).toHaveCount(0);
+ const saved=await page.evaluate(async id=>{const {registerPlugin}=await import('/src/platform-plugins.ts');const files=registerPlugin<any>('AlphaFiles');const rows=(await files.storageList({path:'Pictures'})).entries;const selected=await files.storageSelect({path:rows[0].path});const content=await files.attachment(selected);const original=await (await import('/src/prototype/browser-camera.ts')).browserPhotoLibrary.read({id});return {count:rows.length,content:content.dataBase64,original:original.image,trashed:original.trashed};},original.row.id);
+ expect(saved).toEqual({count:1,content:original.image.split(',')[1],original:original.image,trashed:false});
 });

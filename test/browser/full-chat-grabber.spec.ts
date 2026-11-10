@@ -289,6 +289,25 @@ test.describe('raised dock',()=>{
   await page.getByRole('button',{name:'Calendar',exact:true}).click();
   await expect(page.locator('html')).toHaveAttribute('data-active-view','calendar');
  });
+ test('native keyboard dismissal permits one-tap reentry without changing the draft',async({page})=>{
+  await open(page);
+  const composer=page.locator('[data-alpha-layer="composer"] textarea[data-alpha-composer]');
+  await composer.fill('Keep this draft');
+  await composer.evaluate((input:HTMLTextAreaElement)=>input.setSelectionRange(4,9));
+  const size=page.viewportSize();
+  await page.evaluate(()=>window.dispatchEvent(new CustomEvent('alpha-keyboard-visibility',{detail:{visible:true}})));
+  await page.evaluate(()=>window.dispatchEvent(new CustomEvent('alpha-keyboard-visibility',{detail:{visible:false}})));
+  await expect(composer).not.toBeFocused();
+  await expect(composer).toHaveValue('Keep this draft');
+  await expect(page.locator('[data-alpha-chat-scrim]')).toHaveCSS('pointer-events','none');
+  expect(page.viewportSize()).toEqual(size);
+  expect(await composer.evaluate((input:HTMLTextAreaElement)=>[input.selectionStart,input.selectionEnd])).toEqual([4,9]);
+  await composer.click();
+  await expect(composer).toBeFocused();
+  await page.evaluate(()=>window.dispatchEvent(new CustomEvent('alpha-keyboard-visibility',{detail:{visible:false}})));
+  await expect(composer).toBeFocused();
+  await expect(composer).toHaveValue('Keep this draft');
+ });
  test('an upward drag on Home content opens nothing; a drag up from the bar opens the chat',async({page})=>{
   await open(page);
   const conversation=page.locator('[data-alpha-layer="conversation"]');

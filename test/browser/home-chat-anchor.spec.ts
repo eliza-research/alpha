@@ -27,6 +27,8 @@ for(const shell of ['standalone','launcher'])for(const size of [{width:360,heigh
  expect(Math.abs(after.gridTop-before.gridTop),'collapse must preserve the Home icon anchor').toBeLessThan(1);
  // The overlay remains nonblocking; a lower app can still scroll above it and receive focus.
  await page.getByRole('button',{name:'Open conversation',exact:true}).click();await expect(screen).toHaveAttribute('data-alpha-chat-half','true');
+ // Focus scrolling must use the settled sheet edge, as the pointer drag above does.
+ await handle.click({trial:true});
  const settings=home.getByRole('button',{name:'Settings',exact:true});await settings.focus();
  await expect.poll(async()=>{const a=(await settings.boundingBox())!,p=(await panel.boundingBox())!;return a.y+a.height<=p.y;}).toBe(true);
  const scrolled=await measure();expect(scrolled.scrollTop).toBeGreaterThan(0);expect(await home.getAttribute('inert')).toBeNull();

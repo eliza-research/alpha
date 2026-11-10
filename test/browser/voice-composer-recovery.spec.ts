@@ -9,7 +9,7 @@ async function setup(page:Page){
  export const developmentCartesiaVoiceEnabled=true;
  export async function developmentCartesiaConversation(input){
   const f=window.voicePresentationFixture;let muted=false;
-  f.navigate=event=>input.onNavigate(event);f.context=()=>input.getUiContext();f.phase=phase=>{f.currentPhase=phase;input.onState(phase);};f.partial=text=>input.onTranscript(text);f.fail=()=>input.onError(Error('Synthetic voice unavailable'));
+  f.navigate=event=>input.onNavigate(event);f.context=()=>input.getUiContext();f.phase=phase=>{f.currentPhase=phase;input.onState(phase);};f.partial=text=>input.onTranscript(text);f.accepted=text=>input.onAcceptedTurn?.(text);f.fail=()=>input.onError(Error('Synthetic voice unavailable'));
   return {start:async()=>{f.starts++;if(f.startHold){input.onState('connecting');await new Promise(resolve=>f.releaseStart=resolve);}input.onState('listening');},stop:async()=>{f.stops++;if(f.stopHold)await new Promise(resolve=>f.releaseStop=resolve);if(f.stopFailure)throw Error('Synthetic retirement unconfirmed');},recheck:()=>{},resume:()=>false,
    get microphoneAutomaticallyMuted(){return f.currentPhase==='speaking';},get microphoneMuted(){return muted;},setMicrophoneMuted:value=>{muted=value;f.muted=value;},needsPlaybackUnlock:false,unlockPlayback:async()=>{}};
  }`}));
@@ -92,9 +92,10 @@ test('synthetic pending retirement stays unconfirmed until Stop acknowledgement'
 
 test('synthetic pending microphone startup is unconfirmed until the ready state',async({page})=>{
  await setup(page);await page.evaluate(()=>(window as any).voicePresentationFixture.startHold=true);await page.getByRole('button',{name:'Talk',exact:true}).click();const controls=page.locator('.alpha-voice-composer');await expect(controls).toHaveAttribute('data-voice-state','starting');
- await expect(controls.locator('[data-alpha-voice-animation]')).toBeVisible();
+ await expect(controls.locator('[data-alpha-voice-animation]')).toHaveCount(0);
+ await expect(controls.getByText('Connecting…',{exact:true})).toBeVisible();
  const mic=controls.getByRole('button',{name:'Microphone status unconfirmed',exact:true});await expect(mic).toBeDisabled();await expect(mic).toHaveAttribute('aria-pressed','mixed');
- await page.evaluate(()=>(window as any).voicePresentationFixture.releaseStart());await expect(controls.getByRole('button',{name:'Mute microphone',exact:true})).toBeEnabled();await controls.getByRole('button',{name:'Stop voice conversation',exact:true}).click();await expect(controls).toHaveCount(0);await noMediaOrSends(page);
+ await page.evaluate(()=>(window as any).voicePresentationFixture.releaseStart());await expect(controls.getByRole('button',{name:'Mute microphone',exact:true})).toBeEnabled();await expect(controls.locator('[data-alpha-voice-animation]')).toBeVisible();await controls.getByRole('button',{name:'Stop voice conversation',exact:true}).click();await expect(controls).toHaveCount(0);await noMediaOrSends(page);
 });
 
 
@@ -168,5 +169,35 @@ test('speaking shows automatic microphone pause without changing the manual mute
  await expect(paused).toBeDisabled();
  await page.evaluate(()=>(window as any).voicePresentationFixture.phase('listening'));
  await expect(voice.getByRole('button',{name:'Mute microphone',exact:true})).toBeEnabled();
+ await noMediaOrSends(page);
+});
+
+for(const reading of [false,true])for(const deliveredFirst of [false,true])test(`accepted voice follows new history only while following: reading=${reading}, deliveredFirst=${deliveredFirst}`,async({page})=>{
+ await setup(page);
+ await page.evaluate(()=>new Promise<void>(resolve=>{
+  const f=(window as any).voicePresentationFixture;
+  const msgs=Array.from({length:60},(_,i)=>({id:`history-${i}`,from:i%2?'agent':'user',text:`History ${i}. More text for a real scrollable conversation.`,messageBinding:{conversationId:'synthetic-room'}}));
+  f.shell.setState({msgs,chat:'input',typing:false},resolve);
+ }));
+ await page.getByRole('button',{name:'Talk',exact:true}).click();
+ await expect(page.locator('.alpha-voice-composer')).toHaveAttribute('data-voice-state','listening');
+ const list=page.locator('[data-alpha-transcript]');
+ await expect(list.locator('[data-alpha-message-id]')).toHaveCount(60);
+ // Wait for the real sheet height animation before observing its anchor.
+ let priorHeight=-1;
+ await expect.poll(async()=>{const height=await list.evaluate(e=>Math.round(e.getBoundingClientRect().height));const settled=height===priorHeight&&height>100;priorHeight=height;return settled;}).toBe(true);
+ if(reading){
+  await list.hover();await page.mouse.wheel(0,-600);
+  await expect.poll(()=>list.evaluate(e=>e.scrollHeight-e.scrollTop-e.clientHeight)).toBeGreaterThan(200);
+ }
+ const before=await list.evaluate(e=>e.scrollTop);
+ await page.evaluate(({deliveredFirst})=>new Promise<void>(resolve=>{
+  const f=(window as any).voicePresentationFixture;
+  const msgs=[...f.shell.S().msgs,{id:'voice-user',from:'user',text:'Accepted voice question',messageBinding:{conversationId:'synthetic-room'}},{id:'voice-answer',from:'agent',text:'Verified voice answer',messageBinding:{conversationId:'synthetic-room'}}];
+  if(deliveredFirst)f.shell.setState({msgs,typing:false},()=>{f.accepted('Accepted voice question');f.shell.setState({},resolve);});
+  else{f.accepted('Accepted voice question');f.shell.setState({msgs,typing:false},resolve);}
+ }),{deliveredFirst});
+ if(reading)await expect.poll(()=>list.evaluate((e,before)=>Math.abs(e.scrollTop-before),before)).toBeLessThan(3);
+ else await expect(list.locator('[data-alpha-message-id="voice-answer"]')).toBeInViewport();
  await noMediaOrSends(page);
 });

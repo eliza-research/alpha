@@ -256,7 +256,9 @@ public final class AlphaDevicePlugin extends Plugin {
  /** Self-update without a system dialog is supported from Android 12. Android still decides at commit. */
  static String automaticUpdateStatus(Context context){
   if(Build.VERSION.SDK_INT<31)return "unsupported";
-  return context.getPackageManager().canRequestPackageInstalls()?"supported":"permission-required";
+  if(!context.getPackageManager().canRequestPackageInstalls())return "permission-required";
+  // Android's default silent-update policy also throttles a first attempt during early boot.
+  return android.os.SystemClock.uptimeMillis()<=30_000L?"starting":"supported";
  }
  /** A downloaded automatic update may only replace idle, unlocked Home. The image also hosts calls. */
  private boolean automaticUpdateReady(){

@@ -13,11 +13,13 @@ export async function photosBridge(page:Page,scope='full',openPhotos=true,authen
   const ownedRows=owned?[ownedRow]:[];
   const state=w.mediaFixture={scope,calls,emit:()=>listeners['AlphaPhotos:libraryChanged']?.(),row,ownedRow};
   const access=()=>({scope:state.scope,images:state.scope==='partial'?'full':state.scope,videos:state.scope==='partial'?'denied':state.scope});
-  const plugins:Record<string,string[]>={AlphaMailAttachments:['readPhotoSelected','cancelPhotoSelected'],AlphaPhotos:['libraryAccess','requestLibraryAccess','openLibrarySettings','listPermitted','list','summary','albums','read','beginVideoEdit','saveVideoEdit','cancelVideoEdit','editResult','watchLibrary'],ElizaSystem:['getBuildInfo','getLaunchInfo','getLocaleInfo','listLauncherApps','resolveDefaultApp'],DailyApps:['surfaceInfo','listReminders','pendingReminderTap'],AlphaNotifications:['status','list'],AlphaVoiceCloud:['checkPermissions']};
+  const ownsAgent=!previous?.PluginHeaders?.some((p:any)=>p.name==='Agent');
+  const plugins:Record<string,string[]>={...(ownsAgent?{Agent:['setGoogleAgentAccess']}:{}),AlphaMailAttachments:['readPhotoSelected','cancelPhotoSelected'],AlphaPhotos:['libraryAccess','requestLibraryAccess','openLibrarySettings','listPermitted','list','summary','albums','read','beginVideoEdit','saveVideoEdit','cancelVideoEdit','editResult','watchLibrary'],ElizaSystem:['getBuildInfo','getLaunchInfo','getLocaleInfo','listLauncherApps','resolveDefaultApp'],DailyApps:['surfaceInfo','listReminders','pendingReminderTap'],AlphaNotifications:['status','list'],AlphaVoiceCloud:['checkPermissions']};
   w.Capacitor={Plugins:{},PluginHeaders:[...(previous?.PluginHeaders||[]).filter((p:any)=>!(p.name in plugins)),...Object.entries(plugins).map(([name,methods])=>({name,methods:[...methods,'addListener','removeListener'].map(name=>({name,rtype:name==='addListener'?'callback':'promise'}))}))],
    nativeCallback:(plugin:string,method:string,input:any,callback:()=>void)=>{if(!(plugin in plugins)&&previous?.nativeCallback)return previous.nativeCallback(plugin,method,input,callback);if(method==='addListener')listeners[plugin+':'+input.eventName]=callback;return plugin+':'+input.eventName;},
    nativePromise:async(plugin:string,method:string,input:any)=>{
     calls.push({plugin,method,input});
+    if(ownsAgent&&plugin==='Agent'&&method==='setGoogleAgentAccess')return {};
     if(plugin==='AlphaMailAttachments'){
      if(method==='cancelPhotoSelected')return {};
      if(state.scope==='denied'||input.revision!==row.mutationRevision)throw Error('Photo unavailable');

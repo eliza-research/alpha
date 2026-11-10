@@ -1,0 +1,116 @@
+{
+  "project": "frameworks/base",
+  "revision": "94b4c163b7dfe5ce3607f7bb8456f9573f7de57d",
+  "files": [
+    {
+      "path": "packages/SystemUI/src/com/android/systemui/keyguard/data/quickaffordance/KeyguardQuickAffordanceConfig.kt",
+      "beforeSha256": "ec21667425255bec5bef0f4eecc2eb96756dd99abb88553548fdeac767956371",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/packages/SystemUI/src/com/android/systemui/keyguard/data/quickaffordance/KeyguardQuickAffordanceConfig.kt"
+    },
+    {
+      "path": "packages/SystemUI/src/com/android/systemui/keyguard/data/quickaffordance/VideoCameraQuickAffordanceConfig.kt",
+      "beforeSha256": "3cdce42d790bb77d4f39e980e691512ef6de82b67fc1a414cb8f8acc0d6aa66f",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/packages/SystemUI/src/com/android/systemui/keyguard/data/quickaffordance/VideoCameraQuickAffordanceConfig.kt"
+    },
+    {
+      "path": "packages/SystemUI/src/com/android/systemui/keyguard/data/quickaffordance/KeyguardDataQuickAffordanceModule.kt",
+      "beforeSha256": "7fb17d0c926501e02437c1c6fbecd414060b6583e2e02413687448254f63bb75",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/packages/SystemUI/src/com/android/systemui/keyguard/data/quickaffordance/KeyguardDataQuickAffordanceModule.kt"
+    },
+    {
+      "path": "packages/SystemUI/src/com/android/systemui/keyguard/domain/interactor/KeyguardQuickAffordanceInteractor.kt",
+      "beforeSha256": "8f009edbfb742c541b6c76d62425fbd68a2f6ae5c5c24bc6d3a4589c5eee00c7",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/packages/SystemUI/src/com/android/systemui/keyguard/domain/interactor/KeyguardQuickAffordanceInteractor.kt"
+    },
+    {
+      "path": "packages/SystemUI/src/com/android/systemui/keyguard/data/quickaffordance/KeyguardQuickAffordanceLocalUserSelectionManager.kt",
+      "beforeSha256": "ef9fd31b012e77c7638942fd149749aa1eab17a6ab0e13cd06fd662a9e5240ea",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/packages/SystemUI/src/com/android/systemui/keyguard/data/quickaffordance/KeyguardQuickAffordanceLocalUserSelectionManager.kt"
+    },
+    {
+      "path": "packages/SystemUI/src/com/android/systemui/keyguard/data/repository/KeyguardQuickAffordanceRepository.kt",
+      "beforeSha256": "9d2f99846ba958ed4fa945fbf2024e173970f99a9f10182118f752a0568a49fb",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/packages/SystemUI/src/com/android/systemui/keyguard/data/repository/KeyguardQuickAffordanceRepository.kt"
+    },
+    {
+      "path": "packages/SystemUI/res/values/config.xml",
+      "beforeSha256": "f9556cc853a04591a54f8470904f023bb41d7c9980217fd7306117dcafcae513",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/packages/SystemUI/res/values/config.xml"
+    },
+    {
+      "path": "packages/SystemUI/compose/features/src/com/android/systemui/shade/ui/composable/ShadeHeader.kt",
+      "beforeSha256": "4fecfe8289d38854835041984e07dbab7991051067de0e0b0782df0592d41feb",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/packages/SystemUI/compose/features/src/com/android/systemui/shade/ui/composable/ShadeHeader.kt"
+    },
+    {
+      "path": "packages/SystemUI/src/com/android/systemui/shade/ShadeHeaderController.kt",
+      "beforeSha256": "2c04a9e17b91f70d42839b1ef0b5ca8fdcce3c3c2068ad9b98569b61f7bab43a",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/packages/SystemUI/src/com/android/systemui/shade/ShadeHeaderController.kt"
+    },
+    {
+      "path": "packages/SystemUI/res/xml/combined_qs_header_scene.xml",
+      "beforeSha256": "21b48fc44e72370676054d03561c86d2fd087bcf09b586cedf116e2e8903e80c",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/packages/SystemUI/res/xml/combined_qs_header_scene.xml"
+    },
+    {
+      "path": "packages/SystemUI/res/layout/keyguard_bottom_area.xml",
+      "beforeSha256": "a41bb4a5b4704da871e5f79049f1043e19aa7f62549a150a2e6efc7ef961b446",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/packages/SystemUI/res/layout/keyguard_bottom_area.xml"
+    },
+    {
+      "path": "packages/SystemUI/src/com/android/systemui/keyguard/ui/view/layout/sections/DefaultIndicationAreaSection.kt",
+      "beforeSha256": "579405f851dbdd608d5cd012c960274fa9731301d9e95bfce974ab58d2fd4e82",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/packages/SystemUI/src/com/android/systemui/keyguard/ui/view/layout/sections/DefaultIndicationAreaSection.kt"
+    },
+    {
+      "path": "packages/SystemUI/res/layout/combined_qs_header.xml",
+      "beforeSha256": "62288a31eb150c8aa2263e0d3e95755bf7db04bd2d43374613cac5fd3de6f694",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/packages/SystemUI/res/layout/combined_qs_header.xml"
+    },
+    {
+      "path": "packages/SystemUI/src/com/android/systemui/keyguard/data/quickaffordance/BuiltInKeyguardQuickAffordanceKeys.kt",
+      "beforeSha256": "ddcd9ee7fbc28422eccaabbb25005911952b3887fbdb0238b62d48ed8fcf5514",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/packages/SystemUI/src/com/android/systemui/keyguard/data/quickaffordance/BuiltInKeyguardQuickAffordanceKeys.kt"
+    },
+    {
+      "path": "packages/SystemUI/src/com/android/systemui/keyguard/data/quickaffordance/QrCodeScannerKeyguardQuickAffordanceConfig.kt",
+      "beforeSha256": "62ce33ba41a793759cae95a02ae71677ede4fbb8c427edf50916bed353a6297e",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/packages/SystemUI/src/com/android/systemui/keyguard/data/quickaffordance/QrCodeScannerKeyguardQuickAffordanceConfig.kt"
+    },
+    {
+      "path": "packages/SystemUI/res/xml/qs_header.xml",
+      "beforeSha256": "94be4e434aa01ac8672ee5204eaa4e1fa8de4c182e64e32051bfa68af8a0bf17",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/packages/SystemUI/res/xml/qs_header.xml"
+    },
+    {
+      "path": "packages/SystemUI/res/xml/qqs_header.xml",
+      "beforeSha256": "6e66593c00a421d60e943c8e100c0e6f2c3adca3d4221fd455f8dcc817742d38",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/packages/SystemUI/res/xml/qqs_header.xml"
+    },
+    {
+      "path": "packages/SystemUI/res/xml/large_screen_shade_header.xml",
+      "beforeSha256": "fc9d383dfba209e8585bdcd709f5e494637091094b2183ef065d2cd610a8ffec",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/packages/SystemUI/res/xml/large_screen_shade_header.xml"
+    },
+    {
+      "path": "packages/SystemUI/src/com/android/systemui/settings/UserTracker.kt",
+      "beforeSha256": "dfcf9f5832231087f313c592c5640ad91ce4e522698a20a999af7065f13dc14f",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/packages/SystemUI/src/com/android/systemui/settings/UserTracker.kt"
+    },
+    {
+      "path": "packages/SystemUI/src/com/android/systemui/ActivityIntentHelper.java",
+      "beforeSha256": "711495c4e5e1e2a79e4b8fed00d6f3ee3aca5d3574801767f22021fe00c48d0b",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/packages/SystemUI/src/com/android/systemui/ActivityIntentHelper.java"
+    },
+    {
+      "path": "packages/SystemUI/src/com/android/systemui/keyguard/data/quickaffordance/CameraQuickAffordanceConfig.kt",
+      "beforeSha256": "baf1c654f701e32f81f6f59ea83a940ec3999d7a6502e161b43eb30b82c9f00d",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/packages/SystemUI/src/com/android/systemui/keyguard/data/quickaffordance/CameraQuickAffordanceConfig.kt"
+    },
+    {
+      "path": "packages/SystemUI/src/com/android/systemui/keyguard/ui/view/layout/sections/ClockSection.kt",
+      "beforeSha256": "c0e9361adca769dc45ce748d7b8636bf8b903b874f315fbbfe3848d671ab1f1d",
+      "url": "https://android.googlesource.com/platform/frameworks/base/+/94b4c163b7dfe5ce3607f7bb8456f9573f7de57d/packages/SystemUI/src/com/android/systemui/keyguard/ui/view/layout/sections/ClockSection.kt"
+    }
+  ]
+}

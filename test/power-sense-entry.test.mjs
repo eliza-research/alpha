@@ -75,6 +75,8 @@ public final class PowerEntryTest {
   p.bridge=new MainActivity.Bridge();p.onNewIntent(new Intent(p,AlphaPowerVoiceActivity.class));check(SenseListenerClient.powerAttempts==1&&SenseListenerClient.powerAccepted==1);check(p.bridge.events==1&&p.superNew==1);check(p.intent.target==AlphaPowerVoiceActivity.class&&p.intent.extras==1);
   // API35's two-argument callback delegates once through the actual override, not twice.
   p.onNewIntent(new Intent(p,AlphaPowerVoiceActivity.class),new ComponentCaller("foreign.package"));check(SenseListenerClient.powerAttempts==2&&p.bridge.events==2&&p.superNew==2);
+  // Capacitor's load bounce forwards the sanitized intent, never a second Power offer.
+  int beforeLoad=SenseListenerClient.powerAttempts;p.load();check(SenseListenerClient.powerAttempts==beforeLoad&&SenseListenerClient.origin.equals("power"));check(p.bridge.events==3&&p.superNew==3);
   // Session/owner reset makes the shared offer fail; no queued Power survives for a later bind.
   SenseListenerClient.bound=false;p.onNewIntent(new Intent(p,AlphaPowerVoiceActivity.class));check(SenseListenerClient.powerAccepted==2&&SenseListenerClient.origin==null);
   // Another Activity owns a newer valid listener lease. Stale child rejection has no foreign effect.

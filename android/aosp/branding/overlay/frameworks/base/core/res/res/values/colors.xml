@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Existing DeviceDefault and Material roles: inherit full native UI and behavior. -->
+<resources>
+    <color name="accent_device_default_light">#0000FF</color>
+    <color name="accent_device_default_dark">#B8C0FF</color>
+    <color name="background_device_default_dark">#050505</color>
+    <color name="background_device_default_light">#FAFAFA</color>
+    <color name="primary_device_default_dark">#050505</color>
+    <color name="primary_device_default_light">#FAFAFA</color>
+    <color name="primary_device_default_settings">#050505</color>
+    <color name="primary_dark_device_default_settings">#050505</color>
+    <color name="surface_header_dark">#16161E</color>
+    <color name="surface_variant_dark">#1C1C24</color>
+    <color name="surface_dark">#121218</color>
+    <color name="system_primary_light">#0000FF</color>
+    <color name="system_on_primary_light">#FFFFFF</color>
+    <color name="system_primary_container_light">#E2E4FF</color>
+    <color name="system_on_primary_container_light">#11115C</color>
+    <color name="system_surface_light">#FAFAFA</color>
+    <color name="system_on_surface_light">#15151C</color>
+    <color name="system_primary_dark">#B8C0FF</color>
+    <color name="system_on_primary_dark">#050540</color>
+    <color name="system_primary_container_dark">#0000FF</color>
+    <color name="system_on_primary_container_dark">#FFFFFF</color>
+    <color name="system_primary_dim_dark">#99A9FF</color>
+    <color name="system_surface_dark">#050505</color>
+    <color name="system_surface_dim_dark">#050505</color>
+    <color name="system_under_surface_dark">#050505</color>
+    <color name="system_surface_bright_dark">#272731</color>
+    <color name="system_surface_container_lowest_dark">#000000</color>
+    <color name="system_surface_container_low_dark">#0D0D12</color>
+    <color name="system_surface_container_dark">#121218</color>
+    <color name="system_surface_container_high_dark">#1A1A22</color>
+    <color name="system_surface_container_highest_dark">#24242E</color>
+    <color name="system_on_surface_dark">#F5F5FF</color>
+    <color name="system_on_surface_variant_dark">#C7C7D6</color>
+    <color name="system_surface_tint_dark">#B8C0FF</color>
+    <color name="system_surface_variant_dark">#24242E</color>
+    <color name="system_outline_dark">#8D8D9F</color>
+    <color name="system_outline_variant_dark">#444452</color>
+</resources>

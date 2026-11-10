@@ -334,7 +334,8 @@
         "apps/app/src/prototype/video-edit-review.ts",
         "android/app/src/main/java/ai/alphacompute/alphaphone/NativeReadEpoch.java",
         "android/app/src/main/java/ai/alphacompute/alphaphone/SelectedDocumentAccess.java",
-        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaPhotoLibraryPlugin.java"
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaPhotoLibraryPlugin.java",
+        "apps/app/src/browser/files.ts"
       ],
       "tests": [
         "reviewedPublicationTest",
@@ -355,7 +356,8 @@
       "abstractions": [
         "One selected media item, two source revisions and four native read generations.",
         "Full/selected summarize permitted access; mixed/partial policies are represented by current per-item permission.",
-        "Exact content/hash equality is represented by matching revision identities; codecs and pixel transforms are omitted."
+        "Exact content/hash equality is represented by matching revision identities; codecs and pixel transforms are omitted.",
+        "Files Photos collections reference the existing media rows; this model covers their media identity and lifecycle guards. Cross-store batch atomicity and native chooser outcomes remain outside the bounded projection."
       ],
       "sharedSources": [
         "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotoLibraryAccess.java",
@@ -1837,13 +1839,17 @@
       "tests": [
         "exactBarrierAndLeasePrecedeReconnectTest",
         "refusedPreparationLeavesNoPauseTest",
-        "unconfirmedTombstoneDoesNotAuthorizeReconnectTest"
+        "unconfirmedTombstoneDoesNotAuthorizeReconnectTest",
+        "coldAutomaticCannotAcquireBarrierPauseOrStopTest",
+        "manualColdBootStillUsesExactBarrierTest",
+        "processReplacementPreservesWarmBootTest"
       ],
       "invariants": [
         "DurablePauseHasExactBarrier",
         "StopRequiresOwnedPause",
         "CommitRequiresConfirmedStop",
-        "ResumeRequiresReleasedLease"
+        "ResumeRequiresReleasedLease",
+        "AutomaticAuthorityHadReadyBoot"
       ],
       "sources": [
         "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java",
@@ -1855,11 +1861,14 @@
         "state.activation/state.pause": "Imported activation and journal models share one exact observed UUID and installer session",
         "startupAdmitted": "Actual journal-plus-activation start gate and native renderer pending readback",
         "residentStartAdmitted": "Start gate combined with the actual service shutdown lease policy",
-        "resumeAudience": "Exact native terminal readback recipient while startup is admitted"
+        "resumeAudience": "Exact native terminal readback recipient while startup is admitted",
+        "admission.platform/admission.captured": "The shared staging boot-admission policy and captured automatic authority; cold deferral frames activation, durable pause, shutdown lease, stop and commit components"
       },
       "abstractions": [
         "One activation and one committed Android session with two synthetic renderer receipts. Source checkpoints use the actual updater, POSIX journal and exact shutdown lease under controlled Android and stop observation ports.",
-        "An observed confirmed stop is a macrostep. Session handoff retains the native reconnect receipt until exact settlement; a visible unconfirmed tombstone still retains the separate service lease. Independent journal and activation campaigns exercise additional branches."
+        "An observed confirmed stop is a macrostep. Session handoff retains the native reconnect receipt until exact settlement; a visible unconfirmed tombstone still retains the separate service lease. Independent journal and activation campaigns exercise additional branches.",
+        "The staging policy uses SDK classes 30/31 and monotonic uptime observations 0,26681,29999,30000,30001,35000. This composition permits one pre-attempt process boundary (same-boot replacement or new boot), at most two boots/processes, and leaves in-flight process-death/reboot recovery to the unchanged RuntimeUpdatePause model.",
+        "Actual extracted-Java traces exercise cold and unsupported automatic no-effect paths, later warm exact barrier/pause/stop/commit handoff, cold manual readiness and warm same-boot replacement. Bounded safety and selected traces do not prove uptime progress, Android acceptance, network availability or eventual installation."
       ],
       "bounds": {
         "maxSamples": 1000,
@@ -1933,13 +1942,22 @@
         "busyPeerCannotSweepOwnedFileTest",
         "retiredOwnerClosesAndCleansTest",
         "failedCacheDeleteLeavesUnownedFileTest",
-        "failedAbandonKeepsUncommittedCopyTest"
+        "failedAbandonKeepsUncommittedCopyTest",
+        "coldAutomaticDefersThroughInclusiveBoundaryTest",
+        "unsupportedPrecedesConsentAndBootTest",
+        "permissionPrecedesColdBootTest",
+        "processRestartCannotFabricateBootReadinessTest",
+        "downloadFailureAndRestartKeepWarmReadinessTest",
+        "newBootReturnsWarmProcessToStartingTest",
+        "manualColdAttemptKeepsItsExistingPathTest"
       ],
       "invariants": [
         "CacheCustody",
         "NoUnverifiedStaging",
         "CleanupBound",
-        "ConnectionCustody"
+        "ConnectionCustody",
+        "AutomaticAdmissionHadReadyBoot",
+        "MonotonicBootReadiness"
       ],
       "sources": [
         "apps/app/src/prototype/settings-adapter.ts",
@@ -1951,11 +1969,14 @@
         "clock/checkedAt/cached/storedAt/stored/checking": "Actual Settings clock, retained manifest and check promise",
         "owner/target/phase/file/bytes/connected": "Process guard, exact reviewed tuple, active bridge connection and real cache-file bytes",
         "session/stagedBytes/created/abandoned": "Synthetic PackageInstaller custody and actual staged output bytes",
-        "outcome/fetches": "Observed tap settlement class and controlled HTTPS opens"
+        "outcome/fetches": "Observed tap settlement class and controlled HTTPS opens",
+        "platform/automatic/admitted": "Actual SDK capability class, install consent, controlled Android SystemClock uptime, boot/process identities and automatic call captured before worker admission"
       },
       "abstractions": [
         "Two reviewed tuples and one installed identity, three bridge classes, four byte positions and up to two admitted attempts. Native source checks terminate at the activation boundary.",
-        "Actual renderer review and cache share the selected tuple with the JVM. Native response limits and soft expiry run through controlled inputs. Independent durable pause and install-session behavior remain separate."
+        "Actual renderer review and cache share the selected tuple with the JVM. Native response limits and soft expiry run through controlled inputs. Independent durable pause and install-session behavior remain separate.",
+        "SDK classes 30 and 31 represent below31 and at-least31 capability. Six boot-relative monotonic uptime observations are 0,26681,29999,30000,30001,35000. At most two boots and two process identities; same-boot process replacement preserves uptime and only reboot resets readiness.",
+        "Cold automatic refusals frame all network/cache/session custody fields and precede worker submission. Manual admission is unchanged. Selected actual-Java traces use a shut-down executor, exact boundary observations, failure cleanup and later warm admission. These between-attempt process cuts do not replace the separate durable journal model or establish clock/network/install progress."
       ],
       "bounds": {
         "maxSamples": 1000,
@@ -2861,6 +2882,35 @@
         "maxSteps": 80,
         "maxVerifyDepth": 4
       }
+    },
+    {
+      "path": "specs/quint/native/KeyboardDictation.qnt",
+      "module": "KeyboardDictation",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "android/app/src/main/java/ai/alphacompute/alphaphone/KeyboardDictationPolicy.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/KeyboardDictationCloud.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaKeyboardDictationService.java",
+        "android/app/src/launcher/res/xml/alpha_keyboard_dictation.xml",
+        "android/app/src/launcher/res/values/alpha_keyboard_dictation.xml"
+      ],
+      "tests": [
+        "currentStopInsertsOnceTest",
+        "cancelledResultNeverInsertsTest",
+        "replacedCaptureRejectsOldResultTest",
+        "fieldOrAccountChangedTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "AtMostOneInsertPerCapture"
+      ],
+      "abstractions": [
+        "One current editor and account; eligibility and same-editor/account checks are input facts. Exact Android InputConnection behavior and physical Cartesia output remain device gates.",
+        "Six bounded generation advances; every emitted Quint transition is compared with the actual Java gate in test/keyboard-dictation.test.mjs. The recording-id fence and sensitive field admission have separate host Java scenarios.",
+        "Network transport, Android media capture and framework voice IME selection are not established by this gate model."
+      ]
     }
   ]
 }

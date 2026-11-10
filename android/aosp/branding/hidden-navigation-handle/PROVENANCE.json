@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "platformProject": "packages/apps/Launcher3",
+  "platformRevision": "c612e6ece389f21c40f8cb9cd9a4b44239f00009",
+  "sourcePath": "quickstep/src/com/android/launcher3/taskbar/StashedHandleView.java",
+  "sourceBeforeSHA256": "a2229256598aca3b35730eacf47e4edef309f45a04d5c5bd55e12829e5a2a6f6",
+  "sourceAfterSHA256": "5d2a1e95d2fbdf8493a1497fd349338a1362e0021d123d6d883f9bb6529d0eff",
+  "patchSHA256": "6417efc1b667471c604d7975937e369b30b7c05bf9c0eb9b9d53e2ea2e4431a6",
+  "triggeringEvidence": "Parent's physical inspection identified Taskbar as the visible navigation window while SystemUI handle resource lookups correctly resolved Alpha blue/white",
+  "existingGestureBaseline": "Parent reported Display and Alpha Home retained their respective screens after horizontal swipes; vertical Home returned from Display to Alpha Home",
+  "scope": "Draw suppression only for exact taskbar handle id with the existing Alpha Home/Back flag enabled; both SystemUI handle colors transparent as fallback",
+  "unchanged": [
+    "Bubble handle rendering and default-off rendering",
+    "View visibility and layout",
+    "Touch, gesture geometry and insets",
+    "IME and accessibility controls",
+    "Color sampling and animation implementations",
+    "Home, Back, Recents and horizontal-switch behavior"
+  ],
+  "localVerification": {
+    "testCount": 5,
+    "passed": 5,
+    "actualDrawJVMTruthTableCases": 20,
+    "actualViewAndroidAPI36Compile": true,
+    "patchRoundtripAndSHA256": true,
+    "overlayScopeAndExistingBoolContracts": true,
+    "fullLauncher3Build": false,
+    "imageBuilt": false,
+    "deviceQualified": false
+  },
+  "pending": [
+    "Owner review and actual Launcher3/SystemUI overlay component compile",
+    "Packaged view/resource and idmap readback",
+    "Preserving image update and physical indicator/gesture/IME/bubble/accessibility verification"
+  ],
+  "VMOrDeviceOperationsDuringPreparation": false
+}

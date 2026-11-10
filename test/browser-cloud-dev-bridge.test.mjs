@@ -948,7 +948,7 @@ async function wholeGoogleStackFixture(options={}){
  const from=source.indexOf('  async cancelSignIn() {'),to=source.indexOf('  /** Sends a six-digit code',from);assert.ok(from>=0&&to>from);
  const methods=stripTypeScriptTypes('({'+source.slice(from,to)+'})',{mode:'strip'});
  const signed=stripTypeScriptTypes(source.slice(source.indexOf('async function signedIn('),source.indexOf('/** The development hosted-agent client.')),{mode:'strip'});
- const verify=stripTypeScriptTypes(source.slice(source.indexOf('async function verifyService('),source.indexOf('let pendingBillingReview:')),{mode:'strip'});
+ const verify=stripTypeScriptTypes(source.slice(source.indexOf('async function verifyService('),source.indexOf('let membershipRead:')),{mode:'strip'});
  const part=(start,end)=>stripTypeScriptTypes(source.slice(source.indexOf(start),source.indexOf(end)),{mode:'strip'});
  // The real admission path; only the shared binding controller and the agent start are stubbed.
  const admission=part('async function readCloudCredential(','/** Notice shown when Cloud inference')+part('function signInClient(','/**\n * A new key was stored')+part('async function residentSignedIn(','/** The key is stored;')+part('async function admitCloudResident(','/**\n * Cloud reported, on a background refresh');

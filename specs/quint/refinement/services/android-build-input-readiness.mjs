@@ -38,11 +38,11 @@ const kinds = [
 ];
 const signingNames = ['ELIZAOS_KEYSTORE_PATH', 'ELIZAOS_KEYSTORE_PASSWORD', 'ELIZAOS_KEY_ALIAS', 'ELIZAOS_KEY_PASSWORD'];
 const marker = 'synthetic-signing-environment-marker';
-const git = (cwd, ...args) => execFileSync('git', ['--no-lazy-fetch', '-C', cwd, '-c', 'user.name=Quint Fixture',
+const git = (cwd, ...args) => execFileSync('git', ['-C', cwd, '-c', 'user.name=Quint Fixture',
   '-c', 'user.email=quint-fixture@example.invalid', '-c', 'commit.gpgsign=false',
   '-c', 'core.hooksPath=/dev/null', ...args], {
   encoding: 'utf8', env: {PATH: process.env.PATH, GIT_CONFIG_NOSYSTEM: '1',
-    GIT_CONFIG_GLOBAL: '/dev/null', GIT_OPTIONAL_LOCKS: '0'}, stdio: ['ignore', 'pipe', 'pipe'],
+    GIT_CONFIG_GLOBAL: '/dev/null', GIT_OPTIONAL_LOCKS: '0', GIT_NO_LAZY_FETCH: '1'}, stdio: ['ignore', 'pipe', 'pipe'],
 }).trim();
 
 function fixture(root) {

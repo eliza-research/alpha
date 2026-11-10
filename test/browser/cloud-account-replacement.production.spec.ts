@@ -1,4 +1,4 @@
-import {openCloudPlanFromSettings} from './helpers/cloud-plan-settings';
+import {openCloudPlanFromSettings,confirmCloudSignOut} from './helpers/cloud-plan-settings';
 import {seedCompletedAccessSetup} from './flag-off-android';
 // Replacing one Eliza Cloud account with another on the flag-off Android renderer, and a second
 // sign-in over a saved key.
@@ -17,8 +17,7 @@ const bubble = (page: Page, text: string) => page.getByRole('button', { name: 'M
 async function cloudPlan(page: Page) {
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   await button(page, 'Settings').click();
-  await openCloudPlanFromSettings(page);
-  return page.locator('[data-settings-page]:not([inert])').last();
+  return openCloudPlanFromSettings(page);
 }
 
 test('signing out of account A and into account B stops the resident before A is revoked and uses only B afterwards', async ({ page }) => {
@@ -38,6 +37,7 @@ test('signing out of account A and into account B stops the resident before A is
   await expect(bubble(page, 'Resident reply 1')).toHaveCount(1);
   let dialog = await cloudPlan(page);
   await expect(dialog.getByText(A.email, { exact: true })).toBeVisible();
+  await dialog.getByRole('button',{name:'Close Account',exact:true}).click();
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   await button(page, 'Inbox').click();
   // Inbox reads A's Gmail accounts with A's key (the account label is shown only beside a second account).
@@ -45,8 +45,7 @@ test('signing out of account A and into account B stops the resident before A is
 
   // Sign out of A: the resident stops before A's key is revoked and removed.
   dialog = await cloudPlan(page);
-  page.once('dialog', prompt => void prompt.accept());
-  await dialog.getByRole('button', { name: 'Sign out of Eliza Cloud', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Sign out', exact: true }).click();await confirmCloudSignOut(page);
   dialog=page.locator('[role="main"].alpha-cloud-sign-in');
   await expect(dialog.getByRole('button', { name: 'Email me a code', exact: true })).toBeEnabled({ timeout: 30_000 });
   const signOut = await stub(page, s => s.order.length) as number;
@@ -82,7 +81,7 @@ test('signing out of account A and into account B stops the resident before A is
   await expect(dialog.getByText(A.email, { exact: true })).toHaveCount(0);
   await expect(dialog).toContainText('Plus');
   await expect(dialog).not.toContainText(/Credits available|Add credits/);
-  await dialog.getByRole('button', { name: 'Back to Account', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Close Account', exact: true }).click();
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   await button(page, 'Inbox').click();
   await expect.poll(() => stub(page, s => s.cloud.filter((row: any) => row.path === '/api/v1/eliza/google/accounts' && row.auth === 'Bearer account-b-key').length), { timeout: 30_000 }).toBeGreaterThan(0);

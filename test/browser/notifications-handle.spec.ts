@@ -207,11 +207,14 @@ test.describe('launcher Home taller than a short portrait screen', () => {
 
   test('a downward touch pull at the top of an overflowing Home opens the shade; upward still scrolls', async ({ page }) => {
     await home(page);
+    // The adaptive icon grid fits short phones. Model the dock clearance that makes Home
+    // overflow, as in the scroll-ownership regression above, before exercising real touch.
+    await page.locator('[data-alpha-home-clearance]').evaluate(element=>{(element as HTMLElement).style.height='160px';});
     const layer = page.locator('[data-alpha-layer="home"]');
     await expect(layer).toHaveAttribute('data-alpha-home-fits', 'false');
     expect(await layer.evaluate(element => element.scrollTop)).toBe(0);
     // Empty Home, clear of every control and below the status bar, where vertical touch would scroll Home.
-    const start = await page.evaluate(() => {
+    const emptyHome = () => page.evaluate(() => {
       const screen = document.querySelector('[data-screen]')!.getBoundingClientRect();
       // Below Android's 44px status band in canvas pixels (the canvas is scaled to the screen).
       for (let y = screen.top + Math.ceil(60 * screen.width / 412); y < screen.bottom; y += 4) for (let x = screen.left + 12; x < screen.right; x += 12) {
@@ -220,7 +223,7 @@ test.describe('launcher Home taller than a short portrait screen', () => {
       }
       return null;
     });
-    expect(start).not.toBeNull();
+    const start = await emptyHome();expect(start).not.toBeNull();
     // The first app row is on screen; the lower rows may sit under the dock.
     const icons = (await page.locator('[data-alpha-home-apps] button').first().boundingBox())!;
     // An upward drag on the app row is ordinary scrolling: Home moves, no shade.
@@ -230,12 +233,14 @@ test.describe('launcher Home taller than a short portrait screen', () => {
     // Scrolled away from its top, a downward drag scrolls Home back instead of opening the shade.
     // Drag on empty Home: the cards keep vertical drags for themselves.
     const scrolled = await layer.evaluate(element => element.scrollTop);
-    await touchDrag(page, start!.x, start!.y, 120);
+    const scrolledStart=await emptyHome();expect(scrolledStart).not.toBeNull();
+    await touchDrag(page, scrolledStart!.x, scrolledStart!.y, 120);
     await expect.poll(() => layer.evaluate(element => element.scrollTop)).toBeLessThan(scrolled);
     await closed(page, 'scrolled Home scrolls back');
     await layer.evaluate(element => { element.scrollTop = 0; });
     // At the top, a downward pull on empty Home reaches Alpha and opens the shade.
-    await touchDrag(page, start!.x, start!.y, 160);
+    const topStart=await emptyHome();expect(topStart).not.toBeNull();
+    await touchDrag(page, topStart!.x, topStart!.y, 160);
     await expect(shade(page)).toHaveAttribute('aria-hidden', 'false');
   });
 });

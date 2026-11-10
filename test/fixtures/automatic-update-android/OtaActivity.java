@@ -28,13 +28,15 @@ import org.json.JSONObject;
 public final class OtaActivity extends Activity {
  private static final String ALIAS="alpha-ota-platform-fixture";
  private static final byte[] VALUE="synthetic retained value".getBytes(StandardCharsets.UTF_8);
+ private final android.os.Handler finishHandler=new android.os.Handler(android.os.Looper.getMainLooper());
+ private final Runnable finishReadback=this::finish;
  static void save(Context context,String name,JSONObject result)throws Exception{
   try(FileOutputStream out=context.openFileOutput(name,Context.MODE_PRIVATE)){out.write(result.toString().getBytes(StandardCharsets.UTF_8));out.getFD().sync();}
  }
  static String digest(byte[] bytes)throws Exception{return java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));}
  private JSONObject snapshot()throws Exception{
   var info=getPackageManager().getPackageInfo(getPackageName(),PackageManager.GET_SIGNING_CERTIFICATES);
-  JSONObject result=new JSONObject().put("versionCode",info.getLongVersionCode()).put("uid",android.os.Process.myUid()).put("pid",android.os.Process.myPid())
+  JSONObject result=new JSONObject().put("versionCode",info.getLongVersionCode()).put("uid",android.os.Process.myUid()).put("pid",android.os.Process.myPid()).put("uptimeMillis",android.os.SystemClock.uptimeMillis())
    .put("firstInstallTime",info.firstInstallTime).put("lastUpdateTime",info.lastUpdateTime)
    .put("signerSha256",digest(info.signingInfo.getSigningCertificateHistory()[0].toByteArray()))
    .put("automaticCapability",SourcePolicy.automaticUpdateStatus(this)).put("sessionCount",getPackageManager().getPackageInstaller().getMySessions().size());
@@ -50,6 +52,8 @@ public final class OtaActivity extends Activity {
   return result;
  }
  private void prepare()throws Exception{
+  // Activity recreation must not replace the committed baseline or its Keystore key/ciphertext.
+  if(new File(getFilesDir(),"baseline.json").isFile())return;
   if(!getSharedPreferences("retained",MODE_PRIVATE).edit().putString("sentinel","retain-through-self-update").commit())throw new IllegalStateException();
   KeyGenerator generator=KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES,"AndroidKeyStore");
   generator.init(new KeyGenParameterSpec.Builder(ALIAS,KeyProperties.PURPOSE_ENCRYPT|KeyProperties.PURPOSE_DECRYPT).setBlockModes(KeyProperties.BLOCK_MODE_GCM).setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE).build());
@@ -59,7 +63,7 @@ public final class OtaActivity extends Activity {
  }
  private void install()throws Exception{
   String admitted=SourcePolicy.automaticUpdateStatus(this);
-  if(!"supported".equals(admitted)){save(this,"attempt.json",new JSONObject().put("status",admitted));return;}
+  if(!"supported".equals(admitted)){save(this,"attempt.json",new JSONObject().put("status",admitted).put("uptimeMillis",android.os.SystemClock.uptimeMillis()));return;}
   File apk=new File(getFilesDir(),"candidate.apk");
   if(!getIntent().getStringExtra("sha256").equals(digest(Files.readAllBytes(apk.toPath()))))throw new IllegalArgumentException();
   var archive=getPackageManager().getPackageArchiveInfo(apk.getPath(),PackageManager.GET_SIGNING_CERTIFICATES);
@@ -71,23 +75,38 @@ public final class OtaActivity extends Activity {
   int id=installer.createSession(params);
   try(PackageInstaller.Session session=installer.openSession(id)){
    try(var in=new FileInputStream(apk);var out=session.openWrite("base.apk",0,apk.length())){in.transferTo(out);session.fsync(out);}
-   save(this,"attempt.json",new JSONObject().put("status","committing").put("session",id).put("pid",android.os.Process.myPid()));
+   save(this,"attempt.json",new JSONObject().put("status","committing").put("session",id).put("pid",android.os.Process.myPid()).put("uptimeMillis",android.os.SystemClock.uptimeMillis()));
    session.commit(PendingIntent.getBroadcast(this,id,new Intent(this,ResultReceiver.class),PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_MUTABLE).getIntentSender());
   }
  }
  @Override public void onCreate(Bundle saved){
   super.onCreate(saved);
+  handlePhase();
+ }
+ @Override protected void onNewIntent(Intent intent){
+  super.onNewIntent(intent);setIntent(intent);handlePhase();
+ }
+ private void handlePhase(){
+  finishHandler.removeCallbacks(finishReadback);
   boolean readback=false;
   try{
    String phase=getIntent().getStringExtra("phase");
    if("prepare".equals(phase))prepare();else if("install".equals(phase))install();else{save(this,"readback.json",snapshot());readback=true;}
   }catch(Exception failed){try{save(this,"error.json",new JSONObject().put("errorClass",failed.getClass().getSimpleName()));}catch(Exception ignored){}}
   // Give Android's deferred terminal broadcast a foreground successor, as resuming a real app does.
-  if(readback)new android.os.Handler(getMainLooper()).postDelayed(this::finish,1500);else finish();
+  if(readback)finishHandler.postDelayed(finishReadback,1500);else finish();
  }
  public static final class ResultReceiver extends BroadcastReceiver {
   @Override public void onReceive(Context context,Intent intent){
-   try{save(context,"status.json",new JSONObject().put("status",intent.getIntExtra(PackageInstaller.EXTRA_STATUS,PackageInstaller.STATUS_FAILURE)).put("session",intent.getIntExtra(PackageInstaller.EXTRA_SESSION_ID,-1)).put("pid",android.os.Process.myPid()));}catch(Exception ignored){}
+   try{
+    Intent confirmation=intent.getParcelableExtra(Intent.EXTRA_INTENT,Intent.class);
+    String message=intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE);
+    JSONObject result=new JSONObject().put("status",intent.getIntExtra(PackageInstaller.EXTRA_STATUS,PackageInstaller.STATUS_FAILURE)).put("session",intent.getIntExtra(PackageInstaller.EXTRA_SESSION_ID,-1)).put("pid",android.os.Process.myPid()).put("uptimeMillis",android.os.SystemClock.uptimeMillis())
+     .put("statusMessage",message==null?JSONObject.NULL:message)
+     .put("confirmationAction",confirmation==null||confirmation.getAction()==null?JSONObject.NULL:confirmation.getAction())
+     .put("confirmationComponent",confirmation==null||confirmation.getComponent()==null?JSONObject.NULL:confirmation.getComponent().flattenToString());
+    save(context,"status.json",result);
+   }catch(Exception ignored){}
    // Deliberately never launch optional confirmation: this campaign asserts that none was needed.
   }
  }

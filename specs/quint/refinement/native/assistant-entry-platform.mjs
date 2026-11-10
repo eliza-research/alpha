@@ -34,7 +34,6 @@ export function assistantEntryPlatform() {
     for(const name of ['android/app/KeyguardManager.java','android/os/SystemClock.java','android/os/Bundle.java',
       'android/net/Uri.java','android/content/pm/ApplicationInfo.java','android/content/pm/ActivityInfo.java'])
       put(name,sense[name]);
-    put('android/content/ComponentName.java',sense['android/content/ComponentName.java'].replace('public ComponentName(String','public ComponentName(){this("","");}public ComponentName(String'));
     put('android/content/ContentResolver.java',`package android.content;
 public final class ContentResolver {
  public android.os.Bundle call(android.net.Uri uri,String name,String arg,android.os.Bundle extras){throw new AssertionError("Provider is outside assistant entry");}

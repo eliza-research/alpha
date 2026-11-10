@@ -22,7 +22,7 @@ for(const mode of ['compose','cancel','source-changed','owner-changed'] as const
   if(mode!=='owner-changed')await review.getByRole('button',{name:'Use in conversation',exact:true}).click();
   if(mode==='compose'){await expect(page.getByRole('textbox',{name:'Message Alpha',exact:true})).toHaveValue(/Public subject/);await expect(page.getByRole('textbox',{name:'Message Alpha',exact:true})).not.toHaveValue(/PRIVATE BODY/);expect(await page.evaluate(()=>(window as any).deliveryFixture.consumed)).toBe(1);}
   else {
-   if(mode==='source-changed')await expect(page.getByText('The notification or selected agent changed. Nothing was added to your conversation.',{exact:true})).toBeVisible();
+   if(mode==='source-changed')await expect(page.getByText('This notification changed.',{exact:true})).toBeVisible();
    expect(await page.evaluate(()=>(window as any).deliveryFixture.consumed||0)).toBe(0);
   }
  }

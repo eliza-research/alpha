@@ -37,14 +37,14 @@ async function emptyHome(page:Page){
  });
  await page.getByRole('button',{name:'Inbox',exact:true}).click();await expect.poll(()=>page.evaluate(()=>(window as any).emptyHomeFixture.mailReads)).toBeGreaterThan(0);await returnToApps(page);
  await page.getByRole('button',{name:'Workflows',exact:true}).click();await expect(page.locator('[data-alpha-subview="workflows-list"]').getByText('No workflows yet',{exact:true})).toBeVisible();await returnToApps(page);
- await expect(page.locator('[data-alpha-home-calendar]')).toHaveCount(0);await expect(page.locator('[data-alpha-home-inbox]')).toHaveCount(0);await expect(page.locator('[data-alpha-home-workflows]')).toHaveCount(0);
+ for(const kind of ['calendar','inbox','workflows'])await expect(page.locator(`[data-alpha-home-${kind}]`)).toHaveCount(0);
  await expect(page.locator('[data-mobile-shell-cards]')).toBeHidden();await expect(page.getByRole('button',{name:'Calendar',exact:true})).toBeVisible();expect(await page.evaluate(()=>(window as any).emptyHomeFixture.writes)).toBe(0);
 }
 for(const [orientation,viewport] of [['portrait',{width:412,height:915}],['landscape',{width:915,height:412}]] as const)test.describe(orientation,()=>{
  test.use({viewport,hasTouch:true,isMobile:true});
  test.beforeEach(async({page})=>{await page.route(/^https?:\/\/(?!127\.0\.0\.1:|localhost:)/,route=>route.abort());});
- test('confirmed-empty Home collapses the rail and keeps every app entry',async({page},info)=>{await emptyHome(page);await capture(page,info,`home-confirmed-empty-${orientation}`);});
- test('unconnected Home keeps app entries without placeholder cards',async({page},info)=>{
+ test('confirmed-empty Home hides attention cards and keeps every app entry',async({page},info)=>{await emptyHome(page);await capture(page,info,`home-confirmed-empty-${orientation}`);});
+ test('unconnected Home keeps app entries without attention cards',async({page},info)=>{
   await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));await page.goto('/');
   for(const name of ['Calendar','Inbox','Workflows'])await expect(page.getByRole('button',{name,exact:true})).toBeVisible();
   for(const kind of ['calendar','inbox','workflows'])await expect(page.locator(`[data-alpha-home-${kind}]`)).toHaveCount(0);

@@ -42,6 +42,11 @@
       permission; see SystemShade.java. The standalone app does not request it. -->
  <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
  <application>
+  <service android:name=".AlphaKeyboardDictationService" android:label="@string/alpha_keyboard_dictation_name"
+   android:exported="true" android:permission="android.permission.BIND_INPUT_METHOD">
+   <intent-filter><action android:name="android.view.InputMethod" /></intent-filter>
+   <meta-data android:name="android.view.im" android:resource="@xml/alpha_keyboard_dictation" />
+  </service>
   <!-- The launcher is portrait only. The standalone app keeps app.config.json's orientation and rotates. -->
   <activity android:name=".AlphaAssistActivity" android:screenOrientation="portrait" tools:replace="android:screenOrientation" />
   <activity android:name=".AlphaPowerVoiceActivity" android:screenOrientation="portrait" tools:replace="android:screenOrientation" />

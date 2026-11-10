@@ -23,8 +23,8 @@ const producerFiles = [generator+'.mjs', 'packages/app/scripts/lib/android-runti
   ...['app.gradle', 'build.gradle', 'settings.gradle', 'toolchain.json'].map(name => `${generator}/${name}`)];
 const write = (file, data) => {fs.mkdirSync(dirname(file), {recursive: true});fs.writeFileSync(file, data);};
 const read = file => fs.readFileSync(join(root, file));
-const gitEnv = {...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_SYSTEM: '/dev/null'};
-const git = (directory, ...args) => execFileSync('git', ['--no-lazy-fetch', '-C', directory,
+const gitEnv = {...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_SYSTEM: '/dev/null', GIT_NO_LAZY_FETCH: '1'};
+const git = (directory, ...args) => execFileSync('git', ['-C', directory,
   '-c', 'user.name=Quint Fixture', '-c', 'user.email=quint-fixture@localhost', ...args], {env: gitEnv, encoding: 'utf8'}).trim();
 
 function inputs() {

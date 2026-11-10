@@ -66,6 +66,8 @@ export function voiceHostProblems(record, label = VOICE_HOST_MANIFEST) {
   if (!Array.isArray(record.components)) at('components', 'must be an array');
   for (const [index, component] of (Array.isArray(record.components) ? record.components : []).entries())
     for (const key of ['name', 'license', 'source']) if (typeof component?.[key] !== 'string' || !component[key]) at(`components[${index}].${key}`, 'is missing');
+  if (!record.evidence || typeof record.evidence.deviceExecuted !== 'boolean' || typeof record.evidence.emulatorDeviceExecuted !== 'boolean') at('evidence', 'must record emulator and device execution');
+  if (record.qualified === true && (record.evidence?.deviceExecuted !== true || record.evidence?.userAccepted !== true)) at('qualified', 'cannot be true without device execution and user acceptance');
   return problems;
 }
 

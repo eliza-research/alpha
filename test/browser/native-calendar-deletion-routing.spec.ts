@@ -1,4 +1,4 @@
-import {openBrowserCalendar} from './helpers/browser-calendar';
+import {openBrowserCalendar,chooseCalendarEventAction} from './helpers/browser-calendar';
 import {test,expect} from '@playwright/test';
 for(const scope of ['occurrence','series'] as const)test(`native Calendar ${scope} deletion carries only its exact inspected identity`,async({page})=>{
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
@@ -21,7 +21,8 @@ for(const scope of ['occurrence','series'] as const)test(`native Calendar ${scop
  // Exercise the native deletion routing branch after the real browser provider has loaded.
  // The platform and storage remain web; this is renderer routing evidence only.
  await page.evaluate(()=>{(window as any).Capacitor.isNativePlatform=()=>true;});await event.click();
- await page.getByRole('button',{name:scope==='series'?'Delete series':'Delete event',exact:true}).click();
+ if(scope==='series')await page.getByRole('button',{name:'Delete series',exact:true}).click();
+ else await chooseCalendarEventAction(page,'Delete event');
  await expect.poll(()=>page.evaluate(()=>(window as any).nativeDeletion.staged.length)).toBe(1);
  const result=await page.evaluate(async()=>({fixture:(window as any).nativeDeletion,data:JSON.parse((await(await import('/src/browser/calendar-store.ts')).calendarDocument.readRaw())!)}));
  expect(result.fixture.legacy).toBe(0);expect(result.fixture.staged[0]).toEqual({eventId:scope==='series'?'delete2:42:series':'delete2:42:occurrence:1791766800000',sourceId:'local',sourceRevision:'a'.repeat(64),revision:'b'.repeat(64)});

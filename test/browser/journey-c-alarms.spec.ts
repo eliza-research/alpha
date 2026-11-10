@@ -52,7 +52,7 @@ test('journey C: agent-proposed alarm is reviewed, saved once, survives reload, 
  // 1. The development Clock starts empty.
  let dialog=await openClock(page);
  await expect(dialog.getByText('No alarms',{exact:true})).toBeVisible();
- await dialog.getByRole('button',{name:'Cancel',exact:true}).click();await expect(dialog).toHaveCount(0);
+ await dialog.getByRole('button',{name:'Back',exact:true}).click();await expect(dialog).toHaveCount(0);
  await returnToApps(page);
 
  // 2. Connect the development agent and let it propose a Clock handoff.
@@ -100,7 +100,7 @@ test('journey C: agent-proposed alarm is reviewed, saved once, survives reload, 
  await expect(dialog.getByText(LABEL,{exact:true})).toHaveCount(1);
  await expect(dialog.getByRole('button',{name:'Delete '+LABEL,exact:true})).toHaveCount(1);
  await expect(dialog.getByText('Ringing',{exact:true})).toHaveCount(0);
- await dialog.getByRole('button',{name:'Cancel',exact:true}).click();await expect(dialog).toHaveCount(0);
+ await dialog.getByRole('button',{name:'Back',exact:true}).click();await expect(dialog).toHaveCount(0);
  await expect.poll(async()=>(await actions(page)).proposals.map((p:any)=>[p.payload.operation.action,p.state,p.receipt?.result?.status])).toEqual([['set','completed','opened'],['show','completed','opened']]);
  expect(await alarms(page)).toEqual([{title:LABEL,at,status:'scheduled'}]);
 
@@ -110,7 +110,7 @@ test('journey C: agent-proposed alarm is reviewed, saved once, survives reload, 
  await expect(dialog.getByText(LABEL,{exact:true})).toHaveCount(1);
  await expect(dialog.getByText('Ringing',{exact:true})).toHaveCount(0);
  expect(await alarms(page)).toEqual([{title:LABEL,at,status:'scheduled'}]);
- await dialog.getByRole('button',{name:'Cancel',exact:true}).click();await expect(dialog).toHaveCount(0);
+ await dialog.getByRole('button',{name:'Back',exact:true}).click();await expect(dialog).toHaveCount(0);
 
  // 7. Ring in the foreground, snooze, ring again, dismiss.
  await page.clock.setFixedTime(new Date('2027-06-01T07:15:02Z'));
@@ -136,7 +136,7 @@ test('journey C: agent-proposed alarm is reviewed, saved once, survives reload, 
  dialog=await openClock(page);
  await expect(dialog.getByText('No alarms',{exact:true})).toBeVisible();
  await expect(dialog.getByText('Ringing',{exact:true})).toHaveCount(0);
- await dialog.getByRole('button',{name:'Cancel',exact:true}).click();
+ await dialog.getByRole('button',{name:'Back',exact:true}).click();
  await returnToApps(page);
  await page.getByRole('button',{name:'Settings',exact:true}).click();
  await openConnectionDiagnostics(page);
@@ -180,7 +180,7 @@ test('journey C: a declined alarm proposal hands nothing to Clock, before or aft
  await returnToApps(page);
  let dialog=await openClock(page);
  await expect(dialog.getByText('No alarms',{exact:true})).toBeVisible();
- await dialog.getByRole('button',{name:'Cancel',exact:true}).click();
+ await dialog.getByRole('button',{name:'Back',exact:true}).click();
 
  // The alarm's time passes: nothing rings, because nothing was set.
  await page.clock.setFixedTime(new Date('2027-06-01T07:15:02Z'));

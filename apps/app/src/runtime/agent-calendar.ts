@@ -1,6 +1,7 @@
 import type {CreateLifeOpsCalendarEventRequest,LifeOpsCalendarEvent,LifeOpsCalendarEventUpdate,LifeOpsCalendarFeed,LifeOpsCalendarSummary,LifeOpsNextCalendarEventContext,GetLifeOpsCalendarFeedRequest,LifeOpsLinkedCalendarControl,LifeOpsLinkedCalendarEventView,UpdateLifeOpsLinkedCalendarControlRequest} from '../../../../.eliza/client-features/packages/contracts/src/calendar';
 import {eventEditorMutability,cancellationModeForEditorEvent} from '../../../../.eliza/client-features/plugins/plugin-calendar/src/components/event-editor-policy';
 import {agentCalendarClient,type AgentCalendarClient,type AppRecordPort} from './agent-calendar-client';
+import type {ServiceReadCache} from './service-read-cache';
 export type AgentCalendarSyncReview={binding:string;control:LifeOpsLinkedCalendarControl;sources:LifeOpsCalendarSummary[];visibleLocalEventIds:string[]};
 export type LegacyCalendarCapture={fingerprint:string;present:boolean;readable:boolean;pending:boolean;records:readonly unknown[]};
 export interface CalendarPreservation {
@@ -9,18 +10,47 @@ export interface CalendarPreservation {
  /** Only an explicit owner transition action may call this; never a refresh. */
  confirmReadOnly?(ownerKey:string,fingerprint:string,signal:AbortSignal,current:()=>void):Promise<void>;
 }
-export type AgentCalendarState={ownerKey:string|null;status:'disconnected'|'transition-required'|'legacy-recovery'|'loading'|'ready'|'partial'|'unavailable'|'error';feed:LifeOpsCalendarFeed|null;calendars:LifeOpsCalendarSummary[];next:LifeOpsNextCalendarEventContext|null;nextFresh:boolean;legacy:LegacyCalendarCapture|null;error:string|null;mutating:boolean};
+export type AgentCalendarState={ownerKey:string|null;status:'disconnected'|'transition-required'|'legacy-recovery'|'loading'|'ready'|'partial'|'unavailable'|'error';feed:LifeOpsCalendarFeed|null;calendars:LifeOpsCalendarSummary[];next:LifeOpsNextCalendarEventContext|null;nextFresh:boolean;savedAt:number|null;legacy:LegacyCalendarCapture|null;error:string|null;mutating:boolean};
 export const calendarOwnerKey=(p:AppRecordPort)=>JSON.stringify([new URL(p.identity.origin).origin,p.identity.ownerId,p.identity.agentId]);
 export const calendarSourceKey=(s:Pick<LifeOpsCalendarSummary,'provider'|'side'|'grantId'|'calendarId'|'connectorAccountId'>)=>JSON.stringify([s.provider,s.side,s.grantId,s.connectorAccountId,s.calendarId]);
 export const calendarEventKey=(e:LifeOpsCalendarEvent)=>JSON.stringify([e.provider,e.side,e.grantId??'',e.connectorAccountId??'',e.calendarId,e.externalId,e.id]);
-const empty=():AgentCalendarState=>({ownerKey:null,status:'disconnected',feed:null,calendars:[],next:null,nextFresh:false,legacy:null,error:null,mutating:false});
+const empty=():AgentCalendarState=>({ownerKey:null,status:'disconnected',feed:null,calendars:[],next:null,nextFresh:false,savedAt:null,legacy:null,error:null,mutating:false});
 /** A response that cannot belong to this owner, agent or window; never kept across a refresh. */
 class CalendarIntegrityError extends Error{}
 type ClientFactory=(p:AppRecordPort,s:AbortSignal)=>Pick<AgentCalendarClient,'getLifeOpsCalendarFeed'|'getLifeOpsCalendars'|'getLifeOpsNextCalendarEventContext'|'createLifeOpsCalendarEvent'|'updateLifeOpsCalendarEvent'|'deleteLifeOpsCalendarEvent'|'getLinkedCalendarControl'|'updateLinkedCalendarControl'>;
+type CalendarReadCache=Pick<ServiceReadCache,'get'|'put'>;
+// A failed local write must not reopen refused data on controller retirement or remount.
+const refusedCalendarCacheOwners=new Set<string>();
+type SavedCalendar={version:1;ownerKey:string;query:string;feed:LifeOpsCalendarFeed;calendars:LifeOpsCalendarSummary[]};
+const record=(value:unknown):value is Record<string,unknown>=>!!value&&typeof value==='object'&&!Array.isArray(value);
+const sourceMatches=(source:LifeOpsCalendarSummary,event:LifeOpsCalendarEvent)=>source.provider===event.provider&&source.side===event.side&&source.grantId===event.grantId&&source.connectorAccountId===event.connectorAccountId&&source.calendarId===event.calendarId;
+const calendarSourceRevisions=(sources:LifeOpsCalendarSummary[])=>Promise.all(sources.map(async source=>[calendarSourceKey(source),Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(calendarSourceKey(source))))).map(n=>n.toString(16).padStart(2,'0')).join('')] as const));
+/** Persisted rows are untrusted presentation data, not provider revisions or grants. */
+function savedCalendar(value:unknown,ownerKey:string,query:string,agentId:string,window:GetLifeOpsCalendarFeedRequest):SavedCalendar|null{
+ if(!record(value)||value.version!==1||value.ownerKey!==ownerKey||value.query!==query||!record(value.feed)||!Array.isArray(value.calendars))return null;
+ const feed=value.feed,calendars=value.calendars;
+ const string=(v:unknown)=>typeof v==='string',nullable=(v:unknown)=>v===null||string(v),date=(v:unknown)=>string(v)&&Number.isFinite(Date.parse(v as string));
+ const source=(c:unknown):c is LifeOpsCalendarSummary=>record(c)&&['eliza','google','microsoft','apple_calendar','ics'].includes(c.provider as string)&&['owner','agent'].includes(c.side as string)&&['grantId','connectorAccountId','calendarId','summary','accessRole'].every(k=>string(c[k]))&&['accountEmail','description','backgroundColor','foregroundColor','timeZone'].every(k=>nullable(c[k]))&&['primary','selected','includeInFeed'].every(k=>typeof c[k]==='boolean')&&Number.isSafeInteger(c.selectionVersion)&&Number(c.selectionVersion)>=0;
+ if(!calendars.every(source)||new Set(calendars.map(calendarSourceKey)).size!==calendars.length||!['complete','partial','unavailable'].includes(feed.state as string)||!['cache','synced'].includes(feed.source as string)||!string(feed.calendarId)||!date(feed.timeMin)||!date(feed.timeMax)||Date.parse(feed.timeMin as string)>=Date.parse(feed.timeMax as string)||!(feed.syncedAt===null||date(feed.syncedAt))||!Array.isArray(feed.events)||!Array.isArray(feed.sources))return null;
+ if(window.timeMin&&Date.parse(window.timeMin)!==Date.parse(feed.timeMin as string)||window.timeMax&&Date.parse(window.timeMax)!==Date.parse(feed.timeMax as string))return null;
+ if(!feed.events.every((e:unknown)=>record(e)&&e.agentId===agentId&&['id','externalId','title','description','location','status'].every(k=>string(e[k]))&&date(e.startAt)&&date(e.endAt)&&Date.parse(e.endAt as string)>Date.parse(e.startAt as string)&&typeof e.isAllDay==='boolean'&&['timezone','htmlLink','conferenceLink'].every(k=>nullable(e[k]))&&(e.organizer===null||record(e.organizer))&&record(e.metadata)&&Array.isArray(e.attendees)&&e.attendees.every(a=>record(a)&&['email','displayName','responseStatus'].every(k=>nullable(a[k]))&&['self','organizer','optional'].every(k=>typeof a[k]==='boolean'))&&(e.recurrence==null||Array.isArray(e.recurrence)&&e.recurrence.every(string))&&(e.recurringEventId==null||string(e.recurringEventId))&&calendars.filter(c=>sourceMatches(c,e as unknown as LifeOpsCalendarEvent)&&c.includeInFeed&&['owner','writer','reader'].includes(c.accessRole)).length===1))return null;
+ return value as unknown as SavedCalendar;
+}
+/** Last verified resident identity only; the actual rows stay in their existing per-window entry. */
+function savedCalendarOwner(value:unknown):{ownerKey:string;scope:string;agentId:string}|null{
+ if(!record(value)||value.version!==1||typeof value.ownerKey!=='string'||value.ownerKey.length>4096||typeof value.scope!=='string'||value.scope.length>4096)return null;
+ try{
+  const parts:unknown=JSON.parse(value.ownerKey);
+  if(!Array.isArray(parts)||parts.length!==3||parts.some(part=>typeof part!=='string'||!part||part.length>1024))return null;
+  const [origin,,agentId]=parts as string[],url=new URL(origin);
+  if(!['https:','http:'].includes(url.protocol)||url.origin!==origin||url.username||url.password)return null;
+  return{ownerKey:value.ownerKey,scope:value.scope,agentId};
+ }catch{return null;}
+}
 /** UI snapshot only. CalendarService remains the sole app-record authority. */
 export class AgentCalendar {
  private value=empty();private epoch=0;private abort:AbortController|undefined;private reading:AbortController|undefined;private listeners=new Set<()=>void>();private binding='';private nextQuery='';private deferredRefresh:GetLifeOpsCalendarFeedRequest|undefined;private sourceRevisions=new Map<string,string>();
- constructor(private port:()=>AppRecordPort|null,private preservation:CalendarPreservation,private client:ClientFactory=agentCalendarClient){}
+ constructor(private port:()=>AppRecordPort|null,private preservation:CalendarPreservation,private client:ClientFactory=agentCalendarClient,private cache:(port:AppRecordPort)=>Promise<CalendarReadCache|null>=async()=>null,private cacheIdentity:()=>string|null=()=>null,private bootstrapDiagnostic:(stage:string)=>void=()=>{}){}
  get state():Readonly<AgentCalendarState>{return this.value;}
  /** A retained ready feed can still have an outstanding read. */
  get refreshing(){return this.reading!==undefined;}
@@ -28,6 +58,27 @@ export class AgentCalendar {
  private publish(patch:Partial<AgentCalendarState>){this.value={...this.value,...patch};for(const fn of this.listeners)fn();}
  retire(){++this.epoch;this.abort?.abort();this.abort=this.reading=undefined;this.binding='';this.nextQuery='';this.deferredRefresh=undefined;this.sourceRevisions.clear();this.publish(empty());}
  private current(port:AppRecordPort,epoch:number,signal:AbortSignal){signal.throwIfAborted();if(!port.current())throw new CalendarIntegrityError('Calendar owner or agent changed');const now=this.port();if(!now||epoch!==this.epoch||this.binding!==JSON.stringify([calendarOwnerKey(now),now.sessionId,now.scope]))throw new CalendarIntegrityError('Calendar owner or agent changed');}
+ /** Bootstrap presentation before the resident connects. The caller supplies the
+  * current local Cloud credential binding, never an invented AppRecordPort. */
+ async restoreSaved(window:GetLifeOpsCalendarFeedRequest,cache:CalendarReadCache,current:()=>boolean,verify:()=>Promise<boolean>,cacheIdentity=this.cacheIdentity()??''){
+  if(this.port()?.current()||this.reading){this.bootstrapDiagnostic('resident-already-ready');return;}
+  this.abort?.abort();const controller=this.abort=new AbortController(),signal=controller.signal,epoch=++this.epoch,query=JSON.stringify(window);
+  const check=()=>{if(!current()||this.port()?.current()||epoch!==this.epoch||signal.aborted)throw new DOMException('Saved Calendar owner changed','AbortError');};
+  try{
+   this.bootstrapDiagnostic('owner-read-start');const owner=savedCalendarOwner((await cache.get<unknown>('calendar:owner:v1'))?.value);this.bootstrapDiagnostic('owner-read-finished');check();if(!owner||refusedCalendarCacheOwners.has(JSON.stringify([cacheIdentity,owner.ownerKey,owner.scope]))){this.bootstrapDiagnostic(owner?'owner-refused':'owner-invalid');this.publish(empty());return;}
+   this.bootstrapDiagnostic('preservation-start');const legacy=await this.preservation.capture(signal);this.bootstrapDiagnostic(legacy.present?'preservation-present':'preservation-empty');check();
+   if(!legacy.readable||legacy.pending){this.bootstrapDiagnostic('preservation-unavailable');this.publish(empty());return;}
+   if(legacy.present&&!await this.preservation.retainedReadOnly(owner.ownerKey,legacy.fingerprint,signal)){check();this.bootstrapDiagnostic('retention-required');this.publish(empty());return;}
+   check();
+   const key=JSON.stringify(['calendar:feed:v1',owner.ownerKey,owner.scope,query]),refusalKey=JSON.stringify(['calendar:access-refused:v1',owner.ownerKey,owner.scope]);
+   this.bootstrapDiagnostic('snapshot-read-start');const [entry,refusal]=await Promise.all([cache.get<unknown>(key),cache.get<number>(refusalKey)]);this.bootstrapDiagnostic('snapshot-read-finished');check();
+   if(!entry||typeof refusal?.value==='number'&&entry.at<=refusal.value){this.bootstrapDiagnostic(entry?'snapshot-refused':'snapshot-missing');this.publish(empty());return;}
+   const snapshot=savedCalendar(entry.value,owner.ownerKey,query,owner.agentId,window);if(!snapshot){this.bootstrapDiagnostic('snapshot-invalid');this.publish(empty());return;}
+   this.bootstrapDiagnostic('snapshot-valid-'+snapshot.feed.state);this.bootstrapDiagnostic('verify-start');const revisions=await calendarSourceRevisions(snapshot.calendars);if(!await verify()){this.bootstrapDiagnostic('verify-refused');if(epoch===this.epoch&&!this.port()?.current())this.publish(empty());return;}check();
+   this.binding='';this.nextQuery=query;this.sourceRevisions=new Map(revisions);
+   this.publish({ownerKey:owner.ownerKey,status:'loading',feed:snapshot.feed,calendars:snapshot.calendars,legacy,savedAt:entry.at,next:null,nextFresh:false,error:null,mutating:false});this.bootstrapDiagnostic('published');
+  }catch{this.bootstrapDiagnostic(signal.aborted||epoch!==this.epoch?'retired':'local-read-failed');}
+ }
  /** Invalidate presentation freshness without changing the authoritative event/feed. */
  invalidateNext(){
   const event=this.value.next?.event,ended=!!event&&!(Date.parse(event.endAt)>Date.now());
@@ -46,19 +97,57 @@ export class AgentCalendar {
   if(!port.current()){this.reading=undefined;this.binding='';this.publish(empty());return;}const ownerKey=calendarOwnerKey(port),binding=JSON.stringify([ownerKey,port.sessionId,port.scope]),query=JSON.stringify(window);
   // A re-read of the same owner and window keeps the shown feed until it is replaced, so the
   // visible day and selection (and with them a live turn and its proposals) stay stable.
-  const revalidating=this.binding===binding&&this.nextQuery===query&&(this.value.status==='ready'||this.value.status==='partial');
-  if(this.binding!==binding||this.nextQuery!==query)this.value=empty();this.binding=binding;this.nextQuery=query;
+  const sameWindow=this.binding===binding&&this.nextQuery===query,revalidating=sameWindow&&(this.value.status==='ready'||this.value.status==='partial'),saved=this.value.ownerKey===ownerKey&&this.nextQuery===query&&this.value.savedAt!==null;
+  if(!saved&&(this.binding!==binding||this.nextQuery!==query))this.value=empty();this.binding=binding;this.nextQuery=query;
   this.invalidateNext();
-  if(revalidating)this.publish({error:null});else this.publish({ownerKey,status:'loading',error:null,feed:null,calendars:[],nextFresh:false,mutating:false});
+  if(revalidating||saved)this.publish({error:null,...(saved?{status:'loading' as const}:{})});else this.publish({ownerKey,status:'loading',error:null,feed:null,calendars:[],nextFresh:false,savedAt:null,mutating:false});
   try{
    const legacy=await this.preservation.capture(signal);this.current(port,epoch,signal);this.publish({legacy});
-   if(!legacy.readable||legacy.pending){this.publish({status:'legacy-recovery',feed:null,calendars:[]});return;}
-   if(legacy.present&&!await this.preservation.retainedReadOnly(ownerKey,legacy.fingerprint,signal)){this.current(port,epoch,signal);this.publish({status:'transition-required',feed:null,calendars:[]});return;}
+   if(!legacy.readable||legacy.pending){this.publish({status:'legacy-recovery',feed:null,calendars:[],savedAt:null,next:null,nextFresh:false});return;}
+   if(legacy.present&&!await this.preservation.retainedReadOnly(ownerKey,legacy.fingerprint,signal)){this.current(port,epoch,signal);this.publish({status:'transition-required',feed:null,calendars:[],savedAt:null,next:null,nextFresh:false});return;}
    this.current(port,epoch,signal);const api=this.client(port,signal);
-   const [feedRead,sourcesRead,nextRead]=await Promise.allSettled([api.getLifeOpsCalendarFeed(window,{signal}),api.getLifeOpsCalendars({side:window.side,mode:window.mode},{signal}),api.getLifeOpsNextCalendarEventContext({side:window.side,mode:window.mode,timeZone:window.timeZone})]);
-   this.current(port,epoch,signal);
+   const cacheKey=JSON.stringify(['calendar:feed:v1',ownerKey,port.scope??'',query]);
+   const refusalKey=JSON.stringify(['calendar:access-refused:v1',ownerKey,port.scope??'']);
+   const refusedOwner=JSON.stringify([this.cacheIdentity()??'',ownerKey,port.scope??'']);
+   let liveSettled=false;
+   const cache=this.cache(port).catch(()=>null);
+   // Local storage and the existing three provider reads run together. A slow
+   // local read cannot delay or replace the newer provider result.
+   const restoration=(async()=>{try{
+    if(revalidating||saved||refusedCalendarCacheOwners.has(refusedOwner))return;
+    const store=await cache,[entry,refusal]=await Promise.all([store?.get<unknown>(cacheKey),store?.get<number>(refusalKey)]);
+    this.current(port,epoch,signal);if(liveSettled||!entry)return;
+    if(typeof refusal?.value==='number'&&entry.at<=refusal.value)return;
+    const snapshot=savedCalendar(entry.value,ownerKey,query,port.identity.agentId,window);if(!snapshot)return;
+    const revisions=await calendarSourceRevisions(snapshot.calendars);
+    this.current(port,epoch,signal);if(liveSettled)return;
+    this.sourceRevisions=new Map(revisions);this.publish({feed:snapshot.feed,calendars:snapshot.calendars,savedAt:entry.at,next:null,nextFresh:false});
+   }catch{/* A missing or invalid local snapshot never blocks a live read. */}})();
+   const save=(value:SavedCalendar|null)=>cache.then(async store=>{this.current(port,epoch,signal);await store?.put(cacheKey,value);this.current(port,epoch,signal);if(value)await store?.put('calendar:owner:v1',{version:1,ownerKey,scope:port.scope??''});}).catch(()=>{});
+   let authorizationRefused=false,refusalSaved:Promise<unknown>|undefined;
+   const refuseUnauthorized=(error:unknown):never=>{
+    if(record(error)&&(error.status===401||error.status===403)){
+     this.current(port,epoch,signal);
+     if(!authorizationRefused){
+      authorizationRefused=true;liveSettled=true;refusedCalendarCacheOwners.add(refusedOwner);this.sourceRevisions.clear();
+      this.publish({status:'error',error:'Calendar access was refused. Check your connection before trying again.',feed:null,calendars:[],savedAt:null,next:null,nextFresh:false});
+      // Other months of this owner can contain the same refused source. Their
+      // older snapshots remain hidden on reload even when they were not open.
+      const refusedAt=Date.now();
+      refusalSaved=cache.then(async store=>{this.current(port,epoch,signal);await store?.put(cacheKey,null);await store?.put(refusalKey,refusedAt);}).catch(()=>{});
+     }
+    }
+    throw error;
+   };
+   const [feedRead,sourcesRead,nextRead]=await Promise.allSettled([api.getLifeOpsCalendarFeed(window,{signal}).catch(refuseUnauthorized),api.getLifeOpsCalendars({side:window.side,mode:window.mode},{signal}).catch(refuseUnauthorized),api.getLifeOpsNextCalendarEventContext({side:window.side,mode:window.mode,timeZone:window.timeZone})]);
+   if(authorizationRefused){await refusalSaved;return;}
+   if(feedRead.status==='rejected'||sourcesRead.status==='rejected')await restoration;
+   liveSettled=true;this.current(port,epoch,signal);
    if(sourcesRead.status==='rejected')throw sourcesRead.reason;
    const sources=sourcesRead.value;
+   if(this.value.savedAt!==null&&this.value.feed?.events.some(event=>!sources.calendars.some(source=>sourceMatches(source,event)&&source.includeInFeed&&['owner','writer','reader'].includes(source.accessRole)))){
+    this.publish({feed:null,calendars:[],savedAt:null});void save(null);
+   }
    // Home next-context is aggregated with hidden calendars excluded, even when
    // the separate visible feed query explicitly includes a hidden source.
    const ownsNext=(next:LifeOpsNextCalendarEventContext|null)=>{const event=next?.event;return !event||event.agentId===port.identity.agentId&&sources.calendars.some(source=>source.includeInFeed===true&&['owner','writer','reader'].includes(source.accessRole)&&source.provider===event.provider&&source.side===event.side&&source.grantId===event.grantId&&source.calendarId===event.calendarId&&(!event.connectorAccountId||source.connectorAccountId===event.connectorAccountId));};
@@ -72,17 +161,22 @@ export class AgentCalendar {
    }
    const feed=feedRead.status==='fulfilled'?feedRead.value:null;
    // A failed feed read during a re-read is a transport failure: keep the shown feed (catch below).
-   if(revalidating&&feedRead.status==='rejected')throw feedRead.reason;
+   if((revalidating||this.value.savedAt!==null)&&feedRead.status==='rejected')throw feedRead.reason;
    if(feed&&(window.timeMin&&Date.parse(window.timeMin)!==Date.parse(feed.timeMin)||window.timeMax&&Date.parse(window.timeMax)!==Date.parse(feed.timeMax)))throw new CalendarIntegrityError('Calendar response window changed');
    if(feed?.events.some((e:LifeOpsCalendarEvent)=>e.agentId!==port.identity.agentId))throw new CalendarIntegrityError('Calendar response belongs to another agent');
-   const revisions=await Promise.all(sources.calendars.map(async(source:LifeOpsCalendarSummary)=>[calendarSourceKey(source),Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(calendarSourceKey(source))))).map(n=>n.toString(16).padStart(2,'0')).join('')] as const));this.current(port,epoch,signal);this.sourceRevisions=new Map(revisions);
+   const revisions=await calendarSourceRevisions(sources.calendars);this.current(port,epoch,signal);this.sourceRevisions=new Map(revisions);
    const nextFresh=nextRead.status==='fulfilled'&&!ended&&feed?.state==='complete'&&next?.calendarFeedState==='complete';
-   this.publish({feed,calendars:sources.calendars,next,nextFresh:!!nextFresh,status:!feed?'error':feed.state==='complete'?'ready':feed.state==='partial'?'partial':'unavailable',error:feedRead.status==='rejected'?'Calendar could not be refreshed. Saved next event is unverified.':nextRead.status==='rejected'?'Next event could not be refreshed. Saved event is unverified.':null});
+   if(feed?.state==='complete')refusedCalendarCacheOwners.delete(refusedOwner);
+   const snapshot={version:1 as const,ownerKey,query,feed:feed!,calendars:sources.calendars};void save(feed?savedCalendar(snapshot,ownerKey,query,port.identity.agentId,window):null);
+   this.publish({feed,calendars:sources.calendars,savedAt:null,next,nextFresh:!!nextFresh,status:!feed?'error':feed.state==='complete'?'ready':feed.state==='partial'?'partial':'unavailable',error:feedRead.status==='rejected'?'Calendar could not be refreshed. Saved next event is unverified.':nextRead.status==='rejected'?'Next event could not be refreshed. Saved event is unverified.':null});
   }catch(error){
+   if(error instanceof CalendarIntegrityError&&epoch===this.epoch&&!signal.aborted){
+    void this.cache(port).then(store=>{this.current(port,epoch,signal);return store?.put(JSON.stringify(['calendar:feed:v1',ownerKey,port.scope??'',query]),null);}).catch(()=>{});
+   }
    if(epoch===this.epoch&&!signal.aborted){
     // A failed re-read keeps the shown feed; a response that fails an ownership or window check never does.
-    if(revalidating&&!(error instanceof CalendarIntegrityError))this.publish({error:'Calendar could not load. Try again.',next:null,nextFresh:false});
-    else this.publish({status:'error',error:'Calendar could not load. Try again.',feed:null,calendars:[],next:null,nextFresh:false});
+    if((revalidating||this.value.savedAt!==null)&&!(error instanceof CalendarIntegrityError))this.publish({error:'Calendar could not load. Try again.',next:null,nextFresh:false});
+    else this.publish({status:'error',error:'Calendar could not load. Try again.',feed:null,calendars:[],savedAt:null,next:null,nextFresh:false});
    }
   }
   finally{if(this.reading===controller){this.reading=undefined;const pending=this.deferredRefresh;this.deferredRefresh=undefined;if(pending&&epoch===this.epoch)void this.refresh(pending);else this.publish({});}}
@@ -96,6 +190,7 @@ export class AgentCalendar {
   await this.preservation.confirmReadOnly(ownerKey,fresh.fingerprint,signal,current);current();
  }
  selection(eventKey:string){
+  if(this.value.savedAt!==null)return;
   const e=this.value.feed?.events.find(e=>calendarEventKey(e)===eventKey);if(!e||typeof e.metadata.etag!=='string'||!e.metadata.etag.trim()||!e.grantId)return;
   const matches=this.value.calendars.filter(c=>c.provider===e.provider&&c.side===e.side&&c.grantId===e.grantId&&c.calendarId===e.calendarId&&(!e.connectorAccountId||c.connectorAccountId===e.connectorAccountId));if(matches.length!==1)return;
   return{kind:'canonical-calendar-event',id:e.id,revision:e.metadata.etag.trim(),accountId:e.grantId,sourceRevision:this.sourceRevisions.get(calendarSourceKey(matches[0]))};
@@ -120,11 +215,11 @@ export class AgentCalendar {
   const readable=sources.calendars.filter(source=>source.includeInFeed===true&&['owner','writer','reader'].includes(source.accessRole)&&source.provider===event.provider&&source.side===event.side&&source.grantId===event.grantId&&source.calendarId===event.calendarId&&(!event.connectorAccountId||source.connectorAccountId===event.connectorAccountId));
   return readable.length===1?'found':'missing';
  }
- sourceSelection(sourceKey:string){const c=this.value.calendars.find(c=>calendarSourceKey(c)===sourceKey);if(!c||(!Number.isSafeInteger(c.selectionVersion)||c.selectionVersion<0))return;return{kind:'canonical-calendar-source',id:c.calendarId,revision:String(c.selectionVersion),accountId:c.grantId,sourceRevision:this.sourceRevisions.get(sourceKey)};}
+ sourceSelection(sourceKey:string){if(this.value.savedAt!==null)return;const c=this.value.calendars.find(c=>calendarSourceKey(c)===sourceKey);if(!c||(!Number.isSafeInteger(c.selectionVersion)||c.selectionVersion<0))return;return{kind:'canonical-calendar-source',id:c.calendarId,revision:String(c.selectionVersion),accountId:c.grantId,sourceRevision:this.sourceRevisions.get(sourceKey)};}
  sourceHandle(key:string){const revision=this.sourceRevisions.get(key);return revision?'agent:'+revision:undefined;}
  sourceKeyForHandle(handle:string){return this.value.calendars.map(calendarSourceKey).find(key=>this.sourceHandle(key)===handle);}
  private async mutate<T>(operation:(api:ReturnType<ClientFactory>,port:AppRecordPort)=>Promise<T>,creation=false):Promise<T>{
-  if(this.reading||this.value.mutating||!(creation?['ready','partial','unavailable']:['ready','partial']).includes(this.value.status))throw Error('Wait for the current Calendar source');
+  if(this.value.savedAt!==null||this.reading||this.value.mutating||!(creation?['ready','partial','unavailable']:['ready','partial']).includes(this.value.status))throw Error('Wait for the current Calendar source');
   const port=this.port();if(!port||calendarOwnerKey(port)!==this.value.ownerKey)throw Error('Calendar owner changed');if(!port.current())throw Error('Calendar owner or agent changed');
   const epoch=this.epoch,signal=this.abort?.signal;if(!signal)throw Error('Calendar is not ready');
   this.publish({mutating:true});
@@ -186,6 +281,7 @@ export class AgentCalendar {
   },true);
  }
  private eventForMutation(key:string,version:string,scope?:LifeOpsCalendarEventUpdate['recurrenceScope']){
+  if(this.value.savedAt!==null)throw Error('Refresh this event before editing');
   const event=this.value.feed?.events.find(e=>calendarEventKey(e)===key);if(!event)throw Error('Refresh this event before editing');const policy=eventEditorMutability(event);
   if(policy.kind!=='editable'||policy.providerVersion!==version)throw Error('The provider version changed or is read only');
   if((event.recurringEventId||event.recurrence?.length)&&!scope)throw Error('Choose occurrence or series scope before changing a repeating event');return event;

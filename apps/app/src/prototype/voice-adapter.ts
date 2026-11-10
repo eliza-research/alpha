@@ -1,4 +1,6 @@
 import {STARTUP_PERMISSIONS_REOPEN} from '../startup-permission-flow';
+import {copySelectedText} from '../runtime/text-share';
+import {nextDefaultNoteTitle} from '../runtime/note-default-title';
 import type {VoiceStartupStage} from '../runtime/diagnostics-export';
 import type {RealtimeCancellationCause} from '../../../../.eliza/client-features/packages/voice/src/realtime-voice-timing.ts';
 import { cloudServiceName } from '../runtime/cloud-protocol';
@@ -235,6 +237,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     abandonVoiceTurn();conversationReview=undefined;conversationReplyWatch=undefined;
     const hadCapture=!!recordingId||!!startingCapture||!!clip;
     const previousChat=chatDestination;const chatShell=previousChat?.shell,previousSpeech=conversationSpeech,previousNotesSpeech=notesSpeech;conversationVoice=undefined;conversationPrepared=undefined;
+    chatShell?.cancelVoiceScrollFollow?.();
     conversationLive=undefined;conversationInterim='';assistantState={phase:'idle'};conversationDenied=false;
     // Stopping the assistant cancels its capture, request and playback and releases its agent session.
     const conversationStopped=previousConversation?.stop();
@@ -575,7 +578,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
       current();
       if(browserStartup){
         browserStartup.mark('renderer-channel');
-        const direct=await developmentCartesiaConversation({binding:prepared.binding,assertCurrent:current,getUiContext:()=>{current();const context=chat.shell.voiceConversationContext(prepared.binding);const metadata=connectionController.voiceRendererMetadata(context);if(metadata.viewDelivery!=='completed-action')throw Error('The voice renderer is not bound to completed-action navigation.');return {viewDelivery:metadata.viewDelivery,uiViewPath:alphaViewPath(context.view),uiBrowserSurface:'native' as const,uiTimeZone:Intl.DateTimeFormat().resolvedOptions().timeZone};},onNavigate:async event=>{current();chat.shell.voiceSendTurnId=event.traceId;try{await chat.shell.applyRealtimeVoiceNavigation({...event,binding:prepared.binding,assertCurrent:current,navigation:navigationContinuation(chat,token,event.traceId)});current();}finally{if(chat.shell.voiceSendTurnId===event.traceId)chat.shell.voiceSendTurnId=undefined;}},onState:(phase,progressText='')=>{if(token!==generation)return;if(phase==='idle'&&['starting','error'].includes(conversationState.phase))return;if(phase==='listening'){browserStartup.finish('listening');conversationInterim='';}conversationState={phase:['connecting','ready'].includes(phase)?'starting':['complete','interrupted'].includes(phase)?'listening':['listening','transcribing','thinking','speaking'].includes(phase)?phase as 'listening'|'transcribing'|'thinking'|'speaking':'idle',progressText};refresh();},onPlaybackUnlockChange:()=>{if(token===generation)refresh();},onActionResult:summary=>{if(token===generation)chat.shell.toast(summary);},onTranscript:text=>{if(token===generation){if(!conversationInterim)conversationInterimKnownMessages=new Set((chat.shell.S().msgs||[]).map((m:Bag)=>String(m.id)));conversationLastTranscript=text;conversationInterim=text;refresh();}},onError:failure=>{if(token===generation){browserStartup.finish('failed');error=failure.message;conversationState={phase:'error',error:failure};refresh();}}});
+        const direct=await developmentCartesiaConversation({binding:prepared.binding,assertCurrent:current,getUiContext:()=>{current();const context=chat.shell.voiceConversationContext(prepared.binding);const metadata=connectionController.voiceRendererMetadata(context);if(metadata.viewDelivery!=='completed-action')throw Error('The voice renderer is not bound to completed-action navigation.');return {viewDelivery:metadata.viewDelivery,uiViewPath:alphaViewPath(context.view),uiBrowserSurface:'native' as const,uiTimeZone:Intl.DateTimeFormat().resolvedOptions().timeZone};},onNavigate:async event=>{current();chat.shell.voiceSendTurnId=event.traceId;try{await chat.shell.applyRealtimeVoiceNavigation({...event,binding:prepared.binding,assertCurrent:current,navigation:navigationContinuation(chat,token,event.traceId)});current();}finally{if(chat.shell.voiceSendTurnId===event.traceId)chat.shell.voiceSendTurnId=undefined;}},onState:(phase,progressText='')=>{if(token!==generation)return;if(phase==='idle'&&['starting','error'].includes(conversationState.phase))return;if(phase==='listening'){browserStartup.finish('listening');conversationInterim='';}conversationState={phase:['connecting','ready'].includes(phase)?'starting':['complete','interrupted'].includes(phase)?'listening':['listening','transcribing','thinking','speaking'].includes(phase)?phase as 'listening'|'transcribing'|'thinking'|'speaking':'idle',progressText};refresh();},onPlaybackUnlockChange:()=>{if(token===generation)refresh();},onActionResult:summary=>{if(token===generation)chat.shell.toast(summary);},onAcceptedTurn:text=>{current();chat.shell.followVoiceTurn(prepared.binding.conversationId,text);},onTranscript:text=>{if(token===generation){if(!conversationInterim)conversationInterimKnownMessages=new Set((chat.shell.S().msgs||[]).map((m:Bag)=>String(m.id)));conversationLastTranscript=text;conversationInterim=text;refresh();}},onError:failure=>{if(token===generation){browserStartup.finish('failed');error=failure.message;conversationState={phase:'error',error:failure};refresh();}}});
         current();conversationVoice=direct;browserStartup.mark('speech-session');await direct.start();current();return;
       }
       const networkSpeech = !deviceOnly&&(provider.residentInference==='direct'&&provider.providerStatus?.voiceConfigured===true||cloudRuntimeEnabled || testMocksEnabled);
@@ -855,7 +858,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     const state=this.S();
     const chat:ChatDestination={shell:this,view:state.view||null,chat:state.chat,draft:String(state.draft||''),reply:this.messageReplyTarget,edit:this.messageEditTarget,binding:composerBinding(),...(typeof HTMLElement!=='undefined'&&document.activeElement instanceof HTMLElement?{opener:document.activeElement}:{})};
     const readingStopped=stopLocalSpeechPlayback();
-    enter(undefined,'default',chat);stopping=Promise.all([stopping,Promise.resolve(readingStopped)]).then(()=>{}).catch(failure=>{mediaUnconfirmed=failure;throw failure;});void stopping.catch(()=>{});conversationLastTranscript='';conversationLastReply='';quietRetries=0;const token=generation;
+    enter(undefined,'default',chat);this.beginVoiceScrollFollow();stopping=Promise.all([stopping,Promise.resolve(readingStopped)]).then(()=>{}).catch(failure=>{mediaUnconfirmed=failure;throw failure;});void stopping.catch(()=>{});conversationLastTranscript='';conversationLastReply='';quietRetries=0;const token=generation;
     await new Promise<void>(resolve=>this.setState({chat:state.chat==='hidden'&&!cloudRuntimeEnabled?'hidden':state.chat==='full'?'full':'sheet',voice:'off'},()=>{document.querySelector<HTMLElement>(state.chat==='hidden'&&!cloudRuntimeEnabled?'[data-alpha-pill-voice] button':'[data-alpha-chat-recorder] button')?.focus({preventScroll:true});if(chatDestination===chat&&generation===token){void beginConversation().finally(resolve);}else resolve();}));
   };
   function conversationRecorderView(icons:Bag){
@@ -1116,7 +1119,8 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     // A retried Done after a lost save response: the note is already there with this audio.
     const existing = latest.find((n: Bag) => n.id === saved.noteId);
     if (existing) return existing.audio?.audioId === saved.audioId;
-    const note = { id: saved.noteId, kind: 'voice', title: 'Voice note', body: transcript, audio: saved, transcription: transcript ? noteProvenance ?? { route: 'manual' } : { route: 'manual' }, dur: saved.durationMs / 1000, summary: [], actions: [], lines: [{ s: 'me', at: 0, t: transcript }], pinned: false, when: 'Now', createdAt: Date.now(), modifiedAt: Date.now(), ...(folderId ? { folderId } : {}) };
+    const title=nextDefaultNoteTitle([...latest,...(owner.get('notes').trash||[]).map((entry:Bag)=>entry.note||entry),...(owner.get('notes').audioDeletionPending||[]).map((entry:Bag)=>entry.note)],'Voice note');
+    const note = { id: saved.noteId, kind: 'voice', title, body: transcript, audio: saved, transcription: transcript ? noteProvenance ?? { route: 'manual' } : { route: 'manual' }, dur: saved.durationMs / 1000, summary: [], actions: [], lines: [{ s: 'me', at: 0, t: transcript }], pinned: false, when: 'Now', createdAt: Date.now(), modifiedAt: Date.now(), ...(folderId ? { folderId } : {}) };
     return await owner.saveVoiceNote({ list: [note, ...latest], open: saved.noteId }) === true;
   };
   const finishNoteRecording = () => noteRecorder.finishAudio(persistNoteRecording, !!noteDestination?.canonical);
@@ -1224,12 +1228,6 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
         }catch(failure){if(!controller.signal.aborted)current.toast(cloudVoiceFailure(failure,{recording:true})||(failure instanceof Error&&'code' in failure&&failure.code==='no-speech'?failure.message:'Couldn’t generate the transcript. Your recording is kept.'));}
         finally{controller.signal.removeEventListener('abort',cancel);unsubscribe();document.removeEventListener('visibilitychange',changed);if(driver&&requestId)await driver.cancel({requestId}).catch(()=>{});if(savedTranscription===task)savedTranscription=undefined;if(current.isActive()&&current.voiceNoteActive())current.setView('notes',{noteTranscriptRevision:Date.now()});}
       };
-      vo.reviewTranscript=()=>{
-        stopSaved();
-        if(current.isActive() && current.voiceNoteActive() && current.get('notes').open===selected.id) {
-          current.composeTranscriptQuestion(selected.id, selected.title || 'Voice note');
-        }
-      };
       // Both hand-offs open a Calendar draft only. Nothing is written until the user saves there.
       // The draft carries a back-reference to this exact note (id, recording and reviewed revision).
       const draftFromNote=async(kind:'reminder'|'event')=>{
@@ -1280,6 +1278,20 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
       const reviewed=structuredClone(selected);
       if(!current.canonicalNotes)vo.del = () => { void deleteVoiceNote(current,reviewed,false); };
 
+    }
+    if(selected&&result.vo){
+      const vo=result.vo,transcriptSource=JSON.stringify(selected);
+      const body=String(selected.body||''),transcriptText=body.trim()?body:String(selected.audio?.transcript||(selected.lines||[]).map((line:Bag)=>String(line.t??'')).join('\n'));
+      vo.canReviewTranscript=!!transcriptText.trim();
+      vo.copyTranscript=()=>{
+        const currentNote=current.get('notes').list.find((note:Bag)=>note.id===selected.id);
+        if(!current.isActive()||document.hidden||current.get('notes').open!==selected.id||JSON.stringify(currentNote)!==transcriptSource||!transcriptText.trim())return;
+        void copySelectedText(transcriptText).then(()=>{if(current.isActive())current.toast('Text copied.');},()=>{if(current.isActive())current.toast('Couldn’t copy text. Try again.');});
+      };
+      vo.reviewTranscript=()=>{
+        stopSaved();
+        if(current.isActive()&&current.voiceNoteActive()&&current.get('notes').open===selected.id)current.composeTranscriptQuestion(selected.id,selected.title||'Voice note');
+      };
     }
     result.record = startNoteRecorder;
     // Read aloud follows the runtime profile. Closing, leaving or editing the note stops it.

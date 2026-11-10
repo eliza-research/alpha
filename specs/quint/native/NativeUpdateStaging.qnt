@@ -1,8 +1,31 @@
+// Shared observation classes for Android's monotonic, boot-relative uptime.
+// A process restart preserves uptime. Only a new boot resets readiness.
+module UpdateBootAdmissionPolicy {
+  type Boot = {sdk: int, consent: bool, uptime: int, boot: int, process: int, readySeen: bool}
+  pure val uptimes = Set(0, 26681, 29999, 30000, 30001, 35000)
+  pure val initial: Boot = {sdk: 31, consent: true, uptime: 35000, boot: 1, process: 1, readySeen: true}
+  pure def capability(p: Boot): str = if (p.sdk < 31) "unsupported"
+    else if (not(p.consent)) "permission-required"
+    else if (p.uptime <= 30000) "starting" else "supported"
+  pure def advanced(p: Boot, uptime: int): Boot =
+    {...p, uptime: uptime, readySeen: p.readySeen or uptime > 30000}
+  pure def restarted(p: Boot): Boot = {...p, process: p.process + 1}
+  pure def rebooted(p: Boot, sdk: int, consent: bool): Boot =
+    {sdk: sdk, consent: consent, uptime: 0, boot: p.boot + 1, process: 1, readySeen: false}
+  pure def valid(p: Boot): bool = p.sdk.in(Set(30, 31)) and p.uptime.in(uptimes)
+    and p.boot.in(Set(1, 2)) and p.process.in(Set(1, 2))
+    and (p.readySeen implies p.uptime > 30000)
+}
+
 // Bounded Settings offer and Android cache-file custody before activation.
 // A target is one exact reviewed URL/digest/size/version tuple. Four bytes
 // represent a synthetic APK. PackageInstaller.commit is beyond this model.
 module NativeUpdateStaging {
+  import UpdateBootAdmissionPolicy as Boot
   type State = {
+    platform: Boot::Boot,
+    automatic: bool,
+    admitted: Boot::Boot,
     clock: int,
     checkedAt: int,
     cached: int,
@@ -28,11 +51,29 @@ module NativeUpdateStaging {
   val bridgeIds = Set(1, 2, 3)
   val validOffer = if (offers.contains(s.cached)) s.cached else 0
   val checkDue = not(s.clock >= s.checkedAt and s.checkedAt >= 0 and s.clock - s.checkedAt < 15)
+  val automaticCapability = Boot::capability(s.platform)
 
   action init = s' = {
+    platform: Boot::initial, automatic: false, admitted: Boot::initial,
     clock: 0, checkedAt: -1, cached: 0, storedAt: -1, stored: 0, checking: false,
     owner: 0, target: 0, phase: "idle", file: "absent", bytes: 0, session: "none",
     stagedBytes: 0, connected: false, fetches: 0, created: 0, abandoned: 0, outcome: "none"
+  }
+
+  action bootClockAt(uptime: int): bool = all {
+    uptime.in(Boot::uptimes), uptime >= s.platform.uptime,
+    s' = {...s, platform: Boot::advanced(s.platform, uptime)}
+  }
+  action consent(value: bool): bool = s' = {...s, platform: {...s.platform, consent: value}}
+  // These two actions cover admission between attempts. In-flight process death,
+  // sealed sessions and durable pause recovery remain RuntimeUpdatePause's scope.
+  action processRestart = all {
+    s.owner == 0, s.platform.process < 2,
+    s' = {...s, platform: Boot::restarted(s.platform), automatic: false}
+  }
+  action reboot(sdk: int, permitted: bool): bool = all {
+    s.owner == 0, s.platform.boot < 2, sdk.in(Set(30, 31)),
+    s' = {...s, platform: Boot::rebooted(s.platform, sdk, permitted), automatic: false}
   }
 
   action clockAt(minute: int): bool = all {
@@ -67,6 +108,11 @@ module NativeUpdateStaging {
   action loadBridge(deleted: bool): bool =
     s' = if (s.phase == "idle" and deleted) { ...s, file: "absent", bytes: 0 } else s
 
+  pure def admittedCopy(state: State, bridge: int, automatic: bool): State =
+    if (state.owner != 0) {...state, outcome: "quiet"}
+    else {...state, owner: bridge, target: state.cached, phase: "copying",
+      file: "partial", bytes: 0, connected: true, fetches: state.fetches + 1, outcome: "none",
+      automatic: automatic, admitted: state.platform}
   action tap(bridge: int, permitted: bool): bool = all {
     bridgeIds.contains(bridge),
     validOffer != 0,
@@ -74,12 +120,22 @@ module NativeUpdateStaging {
     if (not(permitted)) s' = { ...s, outcome: "settings" }
     else if (s.owner != 0) all {
       bridge != s.owner,
-      s' = { ...s, outcome: "quiet" }
+      s' = admittedCopy(s, bridge, false)
     }
     else all {
       s.fetches < 2,
-      s' = { ...s, owner: bridge, target: validOffer, phase: "copying",
-        file: "partial", bytes: 0, connected: true, fetches: s.fetches + 1, outcome: "none" }
+      s' = admittedCopy(s, bridge, false)
+    }
+  }
+  // This branch precedes worker submission, download, session allocation and the
+  // activation/pause composition. Refusal changes only the returned status.
+  action automaticTap(bridge: int): bool = all {
+    bridgeIds.contains(bridge),
+    if (automaticCapability != "supported") s' = {...s, outcome: automaticCapability}
+    else all {
+      validOffer != 0, s.session != "left",
+      if (s.owner != 0) bridge != s.owner else s.fetches < 2,
+      s' = admittedCopy(s, bridge, true)
     }
   }
 
@@ -113,7 +169,7 @@ module NativeUpdateStaging {
     else if (reason == "barrier") s.phase == "staged"
     else reason == "retired" and s.phase == "retiring",
     val left = s.session == "staged" and not(abandoned)
-    s' = { ...s, owner: 0, target: 0, phase: "idle", connected: false,
+    s' = { ...s, owner: 0, target: 0, phase: "idle", connected: false, automatic: false,
       file: if (deleted) "absent" else "orphan", bytes: if (deleted) 0 else s.bytes,
       session: if (left) "left" else "none", stagedBytes: if (left) s.stagedBytes else 0,
       abandoned: s.abandoned + (if (s.session == "staged" and abandoned) 1 else 0),
@@ -126,9 +182,24 @@ module NativeUpdateStaging {
     (s.stagedBytes == 4 and (s.session == "left" or s.file == "verified"))
   val CleanupBound = s.abandoned <= s.created and s.created <= s.fetches
   val ConnectionCustody = s.connected implies s.phase == "copying" and s.owner != 0
+  val AutomaticAdmissionHadReadyBoot = not(s.automatic) or
+    (Boot::capability(s.admitted) == "supported" and s.admitted.boot == s.platform.boot
+      and s.admitted.uptime <= s.platform.uptime)
+  val MonotonicBootReadiness = Boot::valid(s.platform)
   val safety = CacheCustody and NoUnverifiedStaging and CleanupBound and ConnectionCustody
+    and AutomaticAdmissionHadReadyBoot and MonotonicBootReadiness
 
   action step = any {
+    nondet uptime = Boot::uptimes.oneOf()
+    bootClockAt(uptime),
+    nondet value = Bool.oneOf()
+    consent(value),
+    nondet sdk = Set(30, 31).oneOf()
+    nondet permitted = Bool.oneOf()
+    reboot(sdk, permitted),
+    processRestart,
+    nondet bridge = bridgeIds.oneOf()
+    automaticTap(bridge),
     nondet minute = Set(0, 14, 15, 30).oneOf()
     clockAt(minute),
     requestCheck(false), requestCheck(true),
@@ -184,4 +255,31 @@ module NativeUpdateStaging {
   run failedAbandonKeepsUncommittedCopyTest = offered.then(tap(1, true)).then(chunk(4))
     .then(verify(true, false)).then(stage(true)).then(settle("barrier", true, false))
     .expect(s.session == "left" and s.stagedBytes == 4 and s.file == "absent")
+
+  run coldAutomaticDefersThroughInclusiveBoundaryTest = offered.then(reboot(31, true))
+    .then(automaticTap(1)).expect(s.outcome == "starting" and s.fetches == 0 and s.created == 0 and s.owner == 0)
+    .then(bootClockAt(30000)).then(automaticTap(1))
+    .expect(s.outcome == "starting" and s.file == "absent" and s.session == "none")
+    .then(bootClockAt(30001)).then(automaticTap(1))
+    .expect(safety and s.automatic and s.fetches == 1 and s.admitted.uptime == 30001)
+  run unsupportedPrecedesConsentAndBootTest = offered.then(reboot(30, false)).then(automaticTap(1))
+    .expect(s.outcome == "unsupported" and s.fetches == 0).then(consent(true)).then(bootClockAt(35000))
+    .then(automaticTap(1)).expect(safety and s.outcome == "unsupported" and s.created == 0)
+  run permissionPrecedesColdBootTest = offered.then(reboot(31, false)).then(automaticTap(1))
+    .expect(s.outcome == "permission-required" and s.fetches == 0)
+    .then(consent(true)).then(automaticTap(1)).expect(safety and s.outcome == "starting" and s.fetches == 0)
+  run processRestartCannotFabricateBootReadinessTest = offered.then(reboot(31, true))
+    .then(bootClockAt(29999)).then(processRestart).then(automaticTap(1))
+    .expect(safety and s.platform.process == 2 and s.platform.uptime == 29999 and s.outcome == "starting")
+    .then(bootClockAt(30001)).then(automaticTap(1)).expect(safety and s.fetches == 1)
+  run downloadFailureAndRestartKeepWarmReadinessTest = offered.then(automaticTap(1))
+    .then(settle("download", true, true)).then(processRestart)
+    .expect(automaticCapability == "supported" and s.platform.uptime == 35000)
+    .then(automaticTap(1)).expect(safety and s.fetches == 2)
+  run newBootReturnsWarmProcessToStartingTest = offered.then(processRestart).then(reboot(31, true))
+    .then(automaticTap(1)).expect(safety and s.platform.boot == 2 and s.platform.process == 1
+      and s.platform.uptime == 0 and s.outcome == "starting" and s.fetches == 0)
+  run manualColdAttemptKeepsItsExistingPathTest = offered.then(reboot(31, true)).then(tap(1, true))
+    .then(chunk(4)).then(verify(true, false)).then(stage(true))
+    .expect(safety and not(s.automatic) and automaticCapability == "starting" and s.created == 1)
 }

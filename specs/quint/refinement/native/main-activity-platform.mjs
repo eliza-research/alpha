@@ -28,7 +28,35 @@ public class Build {
   }
 }`,
     'android/content/ComponentName.java': `package android.content;
-public class ComponentName {}`,
+public final class ComponentName {
+  private final String pkg, name;
+  public ComponentName(){this("", "");}
+  public ComponentName(String pkg,String name){this.pkg=pkg;this.name=name;}
+  public ComponentName(com.getcapacitor.BridgeActivity context,Class<?> type){this(context.getPackageName(),type.getName());}
+  public String getPackageName(){return pkg;}
+  public String getClassName(){return name;}
+  public static ComponentName unflattenFromString(String value){
+    int split=value.indexOf('/');
+    if(split<0||split+1>=value.length())return null;
+    String pkg=value.substring(0,split),name=value.substring(split+1);
+    return new ComponentName(pkg,name.startsWith(".")?pkg+name:name);
+  }
+  @Override public boolean equals(Object other){return other instanceof ComponentName value&&pkg.equals(value.pkg)&&name.equals(value.name);}
+  @Override public int hashCode(){return java.util.Objects.hash(pkg,name);}
+}`,
+    'android/content/ContentResolver.java': `package android.content;
+public final class ContentResolver {}`,
+    'android/provider/Settings.java': `package android.provider;
+public final class Settings {
+  public static final class Secure {
+    public static final String DEFAULT_INPUT_METHOD="default_input_method";
+    // These recovery campaigns do not select the auxiliary keyboard or claim IME acceptance.
+    public static String getString(android.content.ContentResolver resolver,String key){
+      if(!DEFAULT_INPUT_METHOD.equals(key))throw new AssertionError(key);
+      return null;
+    }
+  }
+}`,
     'android/content/Intent.java': `package android.content;
 public class Intent {
   public static final String ACTION_MAIN = "android.intent.action.MAIN",
@@ -472,6 +500,8 @@ public class BridgeActivity {
   public androidx.lifecycle.Lifecycle getLifecycle(){return new androidx.lifecycle.Lifecycle();}
   public void onStart() {}
   public void onResume() {}
+  public void onStop() {}
+  public android.content.ContentResolver getContentResolver(){return new android.content.ContentResolver();}
   public void onConfigurationChanged(android.content.res.Configuration value) {}
   public void onNewIntent(android.content.Intent value) {}
   public void onWindowFocusChanged(boolean value) {}
@@ -522,6 +552,7 @@ public class AlphaDevicePlugin extends com.getcapacitor.Plugin {
   }
 }`,
   };
+  sources['ai/alphacompute/alphaphone/AlphaKeyboardDictationService.java'] = 'package ai.alphacompute.alphaphone; public final class AlphaKeyboardDictationService {}';
   const activity = readFileSync(join(root, app, 'MainActivity.java'), 'utf8');
   sources['ai/alphacompute/alphaphone/AlphaVoiceCloudPlugin.java'] = 'package ai.alphacompute.alphaphone; public class AlphaVoiceCloudPlugin extends com.getcapacitor.Plugin {public static class Streaming extends com.getcapacitor.Plugin {}}';
   sources['ai/alphacompute/alphaphone/AlphaTelephonyRoles.java'] = 'package ai.alphacompute.alphaphone; public class AlphaTelephonyRoles {public static void sync(Object host){}}';

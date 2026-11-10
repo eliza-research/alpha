@@ -89,7 +89,6 @@ const DISTRIBUTABLE = {
 
 test("a release is distributable only when every term holds", () => {
   assert.equal(releaseDistributable(DISTRIBUTABLE), true);
-  assert.equal(releaseDistributable({...DISTRIBUTABLE, voiceHost: {...DISTRIBUTABLE.voiceHost, qualified: false}}), true, "device approval flags are separate from build integrity");
   const broken = {
     "test-mocks build": { testMocks: true },
     "unsigned": { signed: false },
@@ -102,6 +101,7 @@ test("a release is distributable only when every term holds", () => {
     "notices lack the runtime": { runtimeNotices: false },
     "no on-device voice": { voiceHost: { ...DISTRIBUTABLE.voiceHost, packaged: false } },
     "no on-device ASR": { voiceHost: { ...DISTRIBUTABLE.voiceHost, asr: false } },
+    "voice host not qualified": { voiceHost: { ...DISTRIBUTABLE.voiceHost, qualified: false } },
     "licence blocker": { licenceBlockers: ["unresolved-font-licence: x"] },
   };
   for (const [name, change] of Object.entries(broken))
