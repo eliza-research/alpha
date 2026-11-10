@@ -52,8 +52,14 @@ const initialNative = {'s.owner':0, 's.target':0, 's.phase':'idle', 's.file':'ab
 
 function settingsProgram() {
   const source = readFileSync(join(root, settings), 'utf8');
-  const review = source.slice(source.indexOf('export const UPDATE_SCHEMA'), source.indexOf('/** Cloud QA profile facts'));
-  const cache = source.slice(source.indexOf('const UPDATE_KEY'), source.indexOf('/** Keep the reference settings components'));
+  // Both slices end at the comment opening the next unrelated declaration; a missing marker fails here.
+  const between = (start, end) => {
+    const from = source.indexOf(start), to = source.indexOf(end, from);
+    assert.ok(from >= 0 && to > from, `settings source markers: ${start} .. ${end}`);
+    return source.slice(from, to);
+  };
+  const review = between('export const UPDATE_SCHEMA', "/** The Privacy page's voice fact");
+  const cache = between('const UPDATE_KEY', '/** Keep the reference settings components');
   assert.ok(review.includes('function parseUpdateManifest(') && cache.includes('device.checkForUpdate()'));
   return new vm.Script(stripTypeScriptTypes((review + cache).replace(/^export /gm, '') + `
 globalThis.inspect = () => ({cache: savedUpdate(), checking: !!updateCheck});

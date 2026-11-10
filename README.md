@@ -168,7 +168,7 @@ Complete it in this order:
 3. Qualify the exact signed APK bytes, publish the admitted launcher and
    manifest, and verify anonymous full-byte readback. Then install the initial
    baseline on each distribution form and run #889 on the machine with the phone.
-   The update itself must use the phone's channel; `pilot-update.mjs` uses
+   The update itself must use the phone's channel; `scripts/pilot-update.ts` uses
    `adb install -r` and supplies separate in-place replacement evidence.
 4. Before distributing the batch, verify wireless replacement, retained data and
    Keystore, HOME, voice and recovery after interruption and process death.

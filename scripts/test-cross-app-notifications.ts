@@ -44,7 +44,7 @@ const installedPackage = (pkg: string) => run('shell', 'pm', 'list', 'packages',
 const companion = ['selected', 'excluded'].map(name => {
   const row = fixture.apks[name];
   const apk = path.join(fixtureDirectory, `${name}.apk`);
-  const pkg = `ai.alphacompute.notificationfixture.${name}`;
+  const pkg = `ai.elizaresearch.notificationfixture.${name}`;
   if (row.packageName !== pkg || row.sha256 !== hash(apk) || signer(apk) !== row.signer || row.signer === alphaSigner) {
     throw Error('Unqualified companion identity/hash/signer');
   }
