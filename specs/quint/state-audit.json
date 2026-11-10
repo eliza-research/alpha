@@ -11,8 +11,8 @@
   },
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
-  "sourcePin": "75b44015561368fc8ca982b70b8bafbdf1672a7b",
-  "ledgerSha256": "94bdf67b56f85c1029113a95910303a051cd1c357653290742f75275a7aed89d",
+  "sourcePin": "9ac50d32dd79f063e14fe4aa49785d74b176c354",
+  "ledgerSha256": "d15892cd14960ec38ba70e1f04e5ae96f3f11a2b11f4c3c489288d6a4eab3dfb",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -22,15 +22,15 @@
     "The ledger supplies pinned source bytes. Effective client/native/runtime patch outputs require their separately authenticated source mappings."
   ],
   "counts": {
-    "files": 5818,
+    "files": 5817,
     "testSupportFiles": 305,
     "testSupportCandidates": 11609,
     "parsedFiles": 5722,
-    "languageReview": 96,
+    "languageReview": 95,
     "parseErrors": 0,
-    "candidates": 69971,
-    "writeSites": 68739,
-    "writeAssociations": 61621,
+    "candidates": 69975,
+    "writeSites": 68744,
+    "writeAssociations": 61626,
     "asynchronous": 8622,
     "unassignedWrites": 10531
   },
@@ -33996,7 +33996,7 @@
     },
     {
       "path": "apps/app/src/prototype/automations-adapter.ts",
-      "sha256": "87c366822ad3f38b743ec22393978f7f08de675547b19053b57114907fa2a2d6",
+      "sha256": "685d9185626f69e2da42960324556dc6d1376ed3eacbe845c6a1686f76ea41ef",
       "allocatedModels": [
         "ReminderOpenIntent",
         "ScheduledTaskControls",
@@ -41577,7 +41577,7 @@
     },
     {
       "path": "apps/app/src/runtime/automations-protocol.ts",
-      "sha256": "d47943bea26fa2f06a43b7fe680ebc80334d5601ddee01cf2840945af60f2d6e",
+      "sha256": "897a985b76c744216a16370337faa6802c3f87277187d8131edce7bb73cdd5f7",
       "allocatedModels": [
         "ScheduledTaskControls",
         "WorkflowExecution"
@@ -42457,7 +42457,7 @@
     },
     {
       "path": "apps/app/src/runtime/connection-ui.tsx",
-      "sha256": "1d4e1075275421b71e5e121c3345801a4cdcfc0a4dd790cb8a17a686f2bd0bfa",
+      "sha256": "2276f87ae118203983ba92fa08a7170fd9b6f8b61474ae09133dfd90aff3fafd",
       "allocatedModels": [
         "Application",
         "ApplicationComposition",
@@ -42714,175 +42714,175 @@
         },
         {
           "owner": "getAutomationsClient.request",
-          "line": 2422,
+          "line": 2424,
           "bindings": 2,
           "writes": 3
         },
         {
-          "owner": "initialize.ArrowFunction@2568",
-          "line": 2572,
+          "owner": "initialize.ArrowFunction@2570",
+          "line": 2574,
           "bindings": 3,
           "writes": 3
         },
         {
           "owner": "configureLocal",
-          "line": 2651,
+          "line": 2653,
           "bindings": 3,
           "writes": 3
         },
         {
-          "owner": "configureLocal.ArrowFunction@2659.ArrowFunction@2665",
-          "line": 2665,
+          "owner": "configureLocal.ArrowFunction@2661.ArrowFunction@2667",
+          "line": 2667,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "selectSavedProvider",
-          "line": 2683,
+          "line": 2685,
           "bindings": 2,
           "writes": 2
         },
         {
-          "owner": "newConversation.ArrowFunction@2724",
-          "line": 2731,
+          "owner": "newConversation.ArrowFunction@2726",
+          "line": 2733,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "confirmRecovery",
-          "line": 2759,
+          "line": 2761,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "beginSignIn",
-          "line": 2816,
+          "line": 2818,
           "bindings": 3,
           "writes": 4
         },
         {
           "owner": "cancelSignIn",
-          "line": 2879,
+          "line": 2881,
           "bindings": 2,
           "writes": 4
         },
         {
-          "owner": "signInGoogle.ArrowFunction@2899",
-          "line": 2905,
+          "owner": "signInGoogle.ArrowFunction@2901",
+          "line": 2907,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "reopenGoogle",
-          "line": 2925,
+          "line": 2927,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "verifySignInCode.ArrowFunction@2957",
-          "line": 2959,
+          "owner": "verifySignInCode.ArrowFunction@2959",
+          "line": 2961,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "signInReturned",
-          "line": 2999,
+          "line": 3001,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "residentRedeem",
-          "line": 3076,
+          "line": 3078,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "residentRedeem.ArrowFunction@3079",
-          "line": 3082,
+          "owner": "residentRedeem.ArrowFunction@3081",
+          "line": 3084,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "disconnect.ArrowFunction@3201",
-          "line": 3205,
+          "owner": "disconnect.ArrowFunction@3203",
+          "line": 3207,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "cloudSignOut.ArrowFunction@3222",
-          "line": 3224,
+          "owner": "cloudSignOut.ArrowFunction@3224",
+          "line": 3226,
           "bindings": 2,
           "writes": 2
         },
         {
-          "owner": "mock.ArrowFunction@3262",
-          "line": 3269,
+          "owner": "mock.ArrowFunction@3264",
+          "line": 3271,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "truncateMessage",
-          "line": 3296,
+          "line": 3298,
           "bindings": 2,
           "writes": 1
         },
         {
           "owner": "prepareVoiceConversation",
-          "line": 3326,
+          "line": 3328,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "send",
-          "line": 3338,
+          "line": 3340,
           "bindings": 10,
           "writes": 12
         },
         {
           "owner": "ConnectionChooser",
-          "line": 3598,
+          "line": 3600,
           "bindings": 40,
           "writes": 15
         },
         {
-          "owner": "ConnectionChooser.ArrowFunction@3612",
-          "line": 3614,
+          "owner": "ConnectionChooser.ArrowFunction@3614",
+          "line": 3616,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "ConnectionChooser.ArrowFunction@3629",
-          "line": 3629,
+          "owner": "ConnectionChooser.ArrowFunction@3631",
+          "line": 3631,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "ConnectionChooser.ArrowFunction@3633",
-          "line": 3633,
+          "owner": "ConnectionChooser.ArrowFunction@3635",
+          "line": 3635,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "OwnKeyForm",
-          "line": 4003,
+          "line": 4005,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "OwnProviderChoice",
-          "line": 4024,
+          "line": 4026,
           "bindings": 4,
           "writes": 0
         },
         {
           "owner": "ProviderKeys",
-          "line": 4062,
+          "line": 4064,
           "bindings": 15,
           "writes": 16
         },
         {
           "owner": "ProviderKeys.run",
-          "line": 4080,
+          "line": 4082,
           "bindings": 1,
           "writes": 0
         }
@@ -48223,7 +48223,7 @@
     },
     {
       "path": "vendor/eliza/packages/agent/scripts/build-mobile-bundle.ts",
-      "sha256": "e69f129507bdbff5a3536994473da06b19018bc0193f18cfca2d23fe022c38e8",
+      "sha256": "4f4a3a133fd685f0d01527bcec852e42cc6fc1c8dde5d6b2784103cde32753fb",
       "allocatedModels": [
         "MobileBundleAdmission"
       ],
@@ -48233,49 +48233,49 @@
       "owners": [
         {
           "owner": "<module>",
-          "line": 87,
+          "line": 88,
           "bindings": 31,
           "writes": 29
         },
         {
           "owner": "findPgliteDist",
-          "line": 188,
+          "line": 189,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "findPgliteDist.ArrowFunction@207",
-          "line": 216,
+          "owner": "findPgliteDist.ArrowFunction@208",
+          "line": 217,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "setup",
-          "line": 579,
+          "line": 580,
           "bindings": 4,
           "writes": 1
         },
         {
           "owner": "findEthersCommonJsIndex",
-          "line": 811,
+          "line": 812,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "findViemPackageRoot",
-          "line": 864,
+          "line": 865,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "findInstalledPackageRoot",
-          "line": 937,
+          "line": 938,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "setup.ArrowFunction@1389",
-          "line": 1396,
+          "owner": "setup.ArrowFunction@1390",
+          "line": 1397,
           "bindings": 1,
           "writes": 1
         }
@@ -50616,7 +50616,7 @@
     },
     {
       "path": "vendor/eliza/packages/agent/src/api/conversation-routes.ts",
-      "sha256": "bb323001c862e7568447470bbdd9960a3d391dcfdd7a25ea5f72be5a79c3920b",
+      "sha256": "8fb71d3b6efbdabc1d401fb12dacb69f3dcb6b4a4ace3291ce41e98098fc70ca",
       "allocatedModels": [
         "ApplicationComposition",
         "CoreRuntimeShutdown",
@@ -50744,91 +50744,91 @@
         },
         {
           "owner": "listConversationMessages",
-          "line": 3609,
+          "line": 3626,
           "bindings": 6,
           "writes": 11
         },
         {
           "owner": "importConversation",
-          "line": 4013,
+          "line": 4030,
           "bindings": 21,
           "writes": 35
         },
         {
           "owner": "truncateConversationMessagesRoute",
-          "line": 4488,
+          "line": 4505,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "deleteConversationMessageRoute",
-          "line": 4590,
+          "line": 4607,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "recordHeardConversationMessageRoute",
-          "line": 4700,
+          "line": 4717,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "retryConversationReply",
-          "line": 4820,
+          "line": 4837,
           "bindings": 3,
           "writes": 3
         },
         {
           "owner": "retryConversationReply.recoverAttempt",
-          "line": 5091,
+          "line": 5108,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "streamConversationMessage",
-          "line": 5358,
+          "line": 5375,
           "bindings": 20,
           "writes": 27
         },
         {
-          "owner": "streamConversationMessage.completeGeneration.ArrowFunction@5902",
-          "line": 5993,
+          "owner": "streamConversationMessage.completeGeneration.ArrowFunction@5919",
+          "line": 6010,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "sendConversationMessage",
-          "line": 6629,
+          "line": 6646,
           "bindings": 8,
           "writes": 10
         },
         {
-          "owner": "sendConversationMessage.completeGeneration.ArrowFunction@6908",
-          "line": 6966,
+          "owner": "sendConversationMessage.completeGeneration.ArrowFunction@6925",
+          "line": 6983,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "greetConversation",
-          "line": 7142,
+          "line": 7159,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "patchConversation",
-          "line": 7214,
+          "line": 7231,
           "bindings": 3,
           "writes": 8
         },
         {
           "owner": "cleanupEmptyConversations",
-          "line": 7304,
+          "line": 7321,
           "bindings": 3,
           "writes": 3
         },
         {
           "owner": "deleteConversation",
-          "line": 7395,
+          "line": 7412,
           "bindings": 2,
           "writes": 3
         },
@@ -54302,7 +54302,7 @@
     },
     {
       "path": "vendor/eliza/packages/agent/src/api/server.ts",
-      "sha256": "b6b742645932e8a07033e1d588303ad26bd9e7362e4997e218bff79a910c7e7a",
+      "sha256": "85de7c9dc04c9eceee49f2d1e4bb41950a43a170bb5d2d3a5ef57ede3854a2c3",
       "allocatedModels": [
         "ApplicationComposition",
         "CoreRuntimeShutdown",
@@ -54350,97 +54350,97 @@
         },
         {
           "owner": "handleRequestForViewClient.tryAcquireTerminalRunSlot",
-          "line": 3288,
+          "line": 3300,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "handleRequestForViewClient.resolveConversationRoomId",
-          "line": 3371,
+          "line": 3383,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "startApiServer",
-          "line": 3660,
+          "line": 3672,
           "bindings": 26,
           "writes": 74
         },
         {
           "owner": "startApiServer.addLog",
-          "line": 3793,
+          "line": 3805,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "startApiServer.invalidateSessionSocket",
-          "line": 4044,
+          "line": 4056,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "startApiServer.validateSessionSocket",
-          "line": 4050,
+          "line": 4062,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "startApiServer.ArrowFunction@4082",
-          "line": 4083,
+          "owner": "startApiServer.ArrowFunction@4094",
+          "line": 4095,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "startApiServer.bindRuntimeStreams",
-          "line": 4164,
+          "line": 4176,
           "bindings": 2,
           "writes": 3
         },
         {
-          "owner": "startApiServer.ArrowFunction@4402",
-          "line": 4435,
+          "owner": "startApiServer.ArrowFunction@4414",
+          "line": 4447,
           "bindings": 3,
           "writes": 3
         },
         {
-          "owner": "startApiServer.ArrowFunction@4556",
-          "line": 4559,
+          "owner": "startApiServer.ArrowFunction@4568",
+          "line": 4571,
           "bindings": 6,
           "writes": 10
         },
         {
-          "owner": "startApiServer.ArrowFunction@4556.activateAuthenticatedConnection",
-          "line": 4686,
+          "owner": "startApiServer.ArrowFunction@4568.activateAuthenticatedConnection",
+          "line": 4698,
           "bindings": 2,
           "writes": 2
         },
         {
-          "owner": "startApiServer.ArrowFunction@4556.ArrowFunction@4761",
-          "line": 4775,
+          "owner": "startApiServer.ArrowFunction@4568.ArrowFunction@4773",
+          "line": 4787,
           "bindings": 5,
           "writes": 13
         },
         {
-          "owner": "startApiServer.ArrowFunction@4556.ArrowFunction@5000",
-          "line": 5007,
+          "owner": "startApiServer.ArrowFunction@4568.ArrowFunction@5012",
+          "line": 5019,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "startApiServer.ArrowFunction@4556.ArrowFunction@5018",
-          "line": 5027,
+          "owner": "startApiServer.ArrowFunction@4568.ArrowFunction@5030",
+          "line": 5039,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "startApiServer.broadcastStatus",
-          "line": 5040,
+          "line": 5052,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "startApiServer.overlayDbCharacter",
-          "line": 5166,
+          "line": 5178,
           "bindings": 1,
           "writes": 7
         }
@@ -66083,7 +66083,7 @@
     },
     {
       "path": "vendor/eliza/packages/agent/src/triggers/runtime.ts",
-      "sha256": "41d7b12b8de109cc38cd403ac60a6f6b4ed9747e9cfbfa0e9233eab1d30feddd",
+      "sha256": "ab8d25ef1deab393d87d5550cf744c960041718b56afc5482ef78a216695b031",
       "allocatedModels": [
         "AssistantConversation",
         "ResidentRuntime"
@@ -66112,31 +66112,31 @@
         },
         {
           "owner": "executeTriggerTask",
-          "line": 799,
+          "line": 817,
           "bindings": 7,
           "writes": 11
         },
         {
           "owner": "serializableEventPayload",
-          "line": 1223,
+          "line": 1241,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "dispatchRuntimeEventTriggers",
-          "line": 1352,
+          "line": 1370,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "listTriggerTasks",
-          "line": 1469,
+          "line": 1487,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "getTriggerHealthSnapshot",
-          "line": 1590,
+          "line": 1608,
           "bindings": 5,
           "writes": 5
         }
@@ -73984,20 +73984,6 @@
       "parseErrors": [],
       "asynchronous": 2,
       "unassignedWrites": 2
-    },
-    {
-      "path": "vendor/eliza/packages/auth/tsconfig.build.json",
-      "sha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-      "allocatedModels": [
-        "Application"
-      ],
-      "sourceReview": "state-audit-required",
-      "sourcePathClass": "other-source-path",
-      "classification": "language-review-required",
-      "owners": [],
-      "parseErrors": [],
-      "asynchronous": 0,
-      "unassignedWrites": 0
     },
     {
       "path": "vendor/eliza/packages/cloud/sdk/native-host/subscription-grant.mjs",
@@ -139511,7 +139497,7 @@
     },
     {
       "path": "vendor/eliza/plugins/plugin-calendar/src/actions/calendar-handler.ts",
-      "sha256": "0065610f413cd63cfa12a56cf6e4bfc27d6aecb6795d35392c81ffabf53f2e5c",
+      "sha256": "3a18b44693c983347da4bb6eb2cc117f121aa653f5f84ea6050d9782ceabe68b",
       "allocatedModels": [
         "CalendarLinkedSync",
         "CalendarPresentation"
@@ -139660,37 +139646,37 @@
         },
         {
           "owner": "formatCalendarSearchResults",
-          "line": 4754,
+          "line": 4755,
           "bindings": 1,
           "writes": 3
         },
         {
           "owner": "userAuthorizedCalendarAttendees",
-          "line": 4809,
+          "line": 4812,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "latestCalendarTimestamp",
-          "line": 4898,
+          "line": 4901,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "createCalendarActionRunner.handler",
-          "line": 5559,
+          "line": 5572,
           "bindings": 14,
           "writes": 21
         },
         {
-          "owner": "createCalendarActionRunner.handler.ArrowFunction@7418",
-          "line": 7419,
+          "owner": "createCalendarActionRunner.handler.ArrowFunction@7439",
+          "line": 7440,
           "bindings": 2,
           "writes": 3
         },
         {
           "owner": "inferNativeCalendarCreate",
-          "line": 8003,
+          "line": 8028,
           "bindings": 1,
           "writes": 1
         }
@@ -140126,7 +140112,7 @@
     },
     {
       "path": "vendor/eliza/plugins/plugin-calendar/src/calendar-read-result.ts",
-      "sha256": "a1f9e2bb088f229ba94a5e7d64f42592fceb392d3eb9b41a4d22689ba4698d37",
+      "sha256": "e483ec2117ad24aa58931f4499139a00ca005798d5ed0af4993f8f56030b58d5",
       "allocatedModels": [
         "CalendarLinkedSync",
         "CalendarPresentation"
@@ -140137,7 +140123,7 @@
       "owners": [
         {
           "owner": "calendarReadPromptProjection",
-          "line": 90,
+          "line": 121,
           "bindings": 4,
           "writes": 4
         }
@@ -141117,7 +141103,7 @@
     },
     {
       "path": "vendor/eliza/plugins/plugin-calendar/src/internal/format.ts",
-      "sha256": "eff9f2a69906319c6d323d83a13cfd29bd37cb9f9291c569b718174d18242d2d",
+      "sha256": "4b00800fef77809e3fa6ba09b908f9020f423c19a68850d37b5244a2d06e6819",
       "allocatedModels": [
         "CalendarLinkedSync",
         "CalendarPresentation"
@@ -141128,13 +141114,13 @@
       "owners": [
         {
           "owner": "formatCalendarFeed",
-          "line": 166,
+          "line": 167,
           "bindings": 2,
           "writes": 4
         },
         {
           "owner": "formatNextEventContextForUser",
-          "line": 229,
+          "line": 230,
           "bindings": 4,
           "writes": 15
         }
@@ -171893,7 +171879,7 @@
     },
     {
       "path": "vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeProcessSupervisor.java",
-      "sha256": "60ca05a5da87382041e8d0cb679a27cc3684b6f103619a92318c0ebfa48ed8ad",
+      "sha256": "7c07dfc3173bab47c04b53e14e1b789ae42d37ae23526cb9c0854526df4c4e89",
       "allocatedModels": [
         "AssistantConversation",
         "ResidentRuntime"
@@ -171999,26 +171985,32 @@
           "writes": 0
         },
         {
-          "owner": "NativeProcessSupervisor.Scope.alive@133",
-          "line": 135,
+          "owner": "NativeProcessSupervisor.Scope.requireChildren@133",
+          "line": 133,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "NativeProcessSupervisor.Scope.awaitReady@138",
-          "line": 138,
+          "owner": "NativeProcessSupervisor.Scope.alive@137",
+          "line": 139,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "NativeProcessSupervisor.Scope.awaitReady@144",
+          "line": 144,
           "bindings": 10,
           "writes": 3
         },
         {
-          "owner": "NativeProcessSupervisor.Scope.close@166",
-          "line": 168,
+          "owner": "NativeProcessSupervisor.Scope.close@172",
+          "line": 174,
           "bindings": 5,
           "writes": 3
         },
         {
-          "owner": "NativeProcessSupervisor.terminate@182",
-          "line": 182,
+          "owner": "NativeProcessSupervisor.terminate@188",
+          "line": 188,
           "bindings": 3,
           "writes": 0
         }
@@ -219020,7 +219012,7 @@
     },
     {
       "path": "vendor/eliza/plugins/plugin-scheduling/src/scheduled-task/default-pack.ts",
-      "sha256": "4068aa54ba0837f94820417ca85b9fd10d63b879d80775fce2a7d16da5d406a9",
+      "sha256": "6bc676f10297d91f8675c3877da2fdea732dacef6612427147847977da4136ad",
       "allocatedModels": [
         "Application"
       ],
@@ -219030,7 +219022,7 @@
       "owners": [
         {
           "owner": "<module>",
-          "line": 37,
+          "line": 38,
           "bindings": 1,
           "writes": 0
         }
@@ -219352,7 +219344,7 @@
     },
     {
       "path": "vendor/eliza/plugins/plugin-scheduling/src/scheduled-task/runner-service.ts",
-      "sha256": "36484778997a130445875e9cc163a99d4055742ea931e66052b9ff1bf73df5f3",
+      "sha256": "0fd5600619e13b5f54d487168d1313f2b6052f819ac3aab35fc5adf1537b175b",
       "allocatedModels": [
         "Application"
       ],
@@ -219362,49 +219354,49 @@
       "owners": [
         {
           "owner": "<module>",
-          "line": 151,
+          "line": 153,
           "bindings": 6,
           "writes": 5
         },
         {
           "owner": "registerScheduledTaskRunnerBootHook",
-          "line": 231,
+          "line": 233,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "makeMissingActivityBusView",
-          "line": 407,
+          "line": 409,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "makeMissingSubjectStoreView",
-          "line": 422,
+          "line": 424,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "buildRunner",
-          "line": 502,
+          "line": 503,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "ScheduledTaskRunnerService",
-          "line": 617,
+          "line": 618,
           "bindings": 3,
           "writes": 2
         },
         {
           "owner": "ScheduledTaskRunnerService.start",
-          "line": 645,
+          "line": 646,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "ScheduledTaskRunnerService.getRunner",
-          "line": 658,
+          "line": 659,
           "bindings": 1,
           "writes": 2
         }
@@ -220824,7 +220816,7 @@
     },
     {
       "path": "vendor/eliza/plugins/plugin-sql/src/pglite/initdb-snapshot.ts",
-      "sha256": "cfaf1aa89b097967f329d0e2ecce8583e4819a6d5fcee88e79b84b98db95cbbf",
+      "sha256": "0bad1c34eadf4736c0ce4115ad39a5be901f056a687297e84672519b8a53161a",
       "allocatedModels": [
         "CoreRuntimeShutdown",
         "CoreServiceLifecycle",
@@ -220835,8 +220827,20 @@
       "classification": "syntactic-candidates",
       "owners": [
         {
+          "owner": "initdbSnapshotCandidates",
+          "line": 73,
+          "bindings": 1,
+          "writes": 2
+        },
+        {
+          "owner": "loadInitdbSnapshot",
+          "line": 111,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
           "owner": "readInitdbSnapshot",
-          "line": 81,
+          "line": 136,
           "bindings": 1,
           "writes": 1
         }
@@ -220861,7 +220865,7 @@
     },
     {
       "path": "vendor/eliza/plugins/plugin-sql/src/pglite/manager.ts",
-      "sha256": "5cd1110bbd5a4d4e57500b31aa806149f56d56c40c357c9bbdd1a901fcf68462",
+      "sha256": "9a18b4fb56f3a22a9a68ba6c4d9d1085bdd1508e9705f9fc91de59c2603d01af",
       "allocatedModels": [
         "CoreRuntimeShutdown",
         "CoreServiceLifecycle",
@@ -220897,7 +220901,7 @@
         },
         {
           "owner": "PGliteClientManager.acquireDataDirLockIfNeeded",
-          "line": 706,
+          "line": 715,
           "bindings": 1,
           "writes": 1
         }
@@ -225924,7 +225928,7 @@
     },
     {
       "path": "vendor/eliza/plugins/plugin-workflow/src/trigger-routes.ts",
-      "sha256": "70eb7fec110790ed8117e11dfaf86965103a579889060b9574383e56b839597d",
+      "sha256": "0bfa37a4cc1b894accacc148502c7d8cf8e6f97c00cdb5dd9f0be056f8993bcd",
       "allocatedModels": [
         "WorkflowExecution"
       ],
@@ -225934,9 +225938,9 @@
       "owners": [
         {
           "owner": "handleTriggerRoutes",
-          "line": 586,
-          "bindings": 3,
-          "writes": 4
+          "line": 515,
+          "bindings": 4,
+          "writes": 6
         }
       ],
       "parseErrors": [],
@@ -226031,6 +226035,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "18af85e80ab7439aeb08c7e17d1c31db8286253836803844fa956b002109c736"
+    "sha256": "aa5db05e70ec99946a3b86b97ab18a95d9556ad969b955d4d96e7914407a01fa"
   }
 }
