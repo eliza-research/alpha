@@ -15,6 +15,7 @@ export async function cloudNotesVoiceFixture(page:Page,signed=true,development=f
  await page.route(/^https?:\/\/(?!127\.0\.0\.1:|localhost:)/,async route=>{foreign.push(route.request().url());await route.abort();});
  await page.addInitScript(()=>{
   localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));
+  localStorage.setItem('alpha:startup-permission-walkthrough:v1',JSON.stringify({version:1,status:'completed',step:4}));
   const f=(window as any).cloudNotesVoice={owner:'a',mic:0,plays:0,starts:0,stops:0,uploads:0,local:0,paired:0,syntheses:0,cancels:0,active:null,clip:null,hold:false,holdSave:false,saveAttempts:0,releaseSave:null as null|(()=>void),billing:false,failureCode:null,denied:false,empty:false,transcript:'Closed Cloud transcript',requests:[]};
   Object.defineProperty(window,'AudioContext',{configurable:true,value:class{state='suspended';resume=async()=>{};close=async()=>{};}});
   Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:{getUserMedia:async()=>{f.mic++;throw Error('Physical media forbidden');}}});

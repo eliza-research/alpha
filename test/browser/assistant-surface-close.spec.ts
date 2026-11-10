@@ -34,23 +34,34 @@ test.describe('on the assistant surface', () => {
   });
 
   test('dragging the conversation down closes the window', async ({ page }) => {
-    await onShell(page, 'shell.chatMotion = { mode: "full", offset: 400, scale: 1, height: 0, floor: 120, full: 800, flick: "down", moved: false }; shell.settleChatMotion("down");');
-    expect(await closed(page)).toBe(1);
+    // The full surface first shrinks to a sheet. Its actual captured pointer gesture
+    // then dismisses to the app below, rather than leaving an unreachable Home behind.
+    await page.getByRole('button', {name: 'Shrink chat', exact: true}).click();
+    await expect(page.getByRole('button', {name: 'Expand chat', exact: true})).toBeVisible();
+    const grip = page.getByRole('button', {name: 'Resize chat', exact: true});
+    await grip.click({trial: true});
+    const box = await grip.boundingBox();
+    expect(box).not.toBeNull();
+    await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2 + 600, {steps: 20});
+    await page.mouse.up();
+    await expect.poll(() => closed(page)).toBe(1);
   });
 });
 
-test('Back over Home\'s drawer stops voice, then lowers the conversation, then closes the drawer', async ({ page }) => {
+test('Back closes Home\'s drawer, then stops voice and lowers the conversation', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('alpha.connection.selection.v1', JSON.stringify({ kind: 'offline' })));
   await page.goto('/');
-  await expect(page.getByRole('button', { name: 'All apps', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Apps', exact: true })).toBeVisible();
   const state = () => onShell<{ drawer: boolean; chat: string; stopped: number }>(page, 'const s = shell.S(); return { drawer: !!s.drawer, chat: s.chat, stopped: window.__stopped || 0 };');
   await onShell(page, 'window.__stopped = 0; shell.stopVoice = () => { window.__stopped++; shell.setState({ voice: "off" }); }; shell.setState({ drawer: true, chat: "full", voice: "listening" });');
   await onShell(page, 'shell.back();');
-  expect(await state()).toEqual({ drawer: true, chat: 'full', stopped: 1 });
+  expect(await state()).toEqual({ drawer: false, chat: 'full', stopped: 0 });
   await onShell(page, 'shell.back();');
-  expect(await state()).toEqual({ drawer: true, chat: 'sheet', stopped: 1 });
+  expect(await state()).toEqual({ drawer: false, chat: 'full', stopped: 1 });
   await onShell(page, 'shell.back();');
-  expect(await state()).toEqual({ drawer: true, chat: 'input', stopped: 1 });
+  expect(await state()).toEqual({ drawer: false, chat: 'sheet', stopped: 1 });
   await onShell(page, 'shell.back();');
-  expect((await state()).drawer).toBe(false);
+  expect(await state()).toEqual({ drawer: false, chat: 'input', stopped: 1 });
 });

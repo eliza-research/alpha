@@ -19,7 +19,7 @@ export function installSharePanelAdapter(Component:any,views:Record<string,Bag>)
     const before=shareSnapshot(shell.vget(module)),browser=module==='browser'?JSON.stringify(shell.browserSelection?.()):'';
     const current=()=>!document.hidden&&shell.S().view===module&&before===shareSnapshot(shell.vget(module))&&browser===(module==='browser'?JSON.stringify(shell.browserSelection?.()):'');
     const api=shell.api(module),safe=(run:()=>unknown)=>async()=>{try{if(!current())throw Error('The selection changed. Choose it again.');await run();}catch(error){if(!(error instanceof DOMException&&error.name==='AbortError'))api.toast(error instanceof Error?error.message:'Sharing is unavailable.');}};
-    void openSharePanel({title:options.title,current,external:safe(()=>external()),email:options.email?safe(options.email):undefined,emailUnavailable:options.emailUnavailable===null?null:'Email attachments are unavailable for this selection. Open one supported item to use its email review.',copy:options.copy?safe(options.copy):undefined,save:options.save?safe(options.save):undefined});
+    void openSharePanel({title:options.title,current,external:target.shareAvailable===false?undefined:safe(()=>external()),email:options.email?safe(options.email):undefined,emailUnavailable:null,copy:options.copy?safe(options.copy):undefined,save:options.save?safe(options.save):undefined});
    };
   };
   if(values.browser){const view=values.browser;bind('browser',view,'openShare',{title:'Current page',email:typeof view.shareEmail==='function'?view.shareEmail:undefined,copy:typeof view.copyLink==='function'?view.copyLink:undefined});}

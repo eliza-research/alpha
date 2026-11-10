@@ -1,0 +1,5 @@
+# Notes storage getter admission
+
+Previous Notes presence now resolves optional localStorage inside the existing guarded asynchronous read. A SecurityError from the browser getter becomes unavailable instead of throwing during renderer setup. The canonical/previous source selection, ownership checks, retained keys, draft probes and store opening/writing are unchanged. No absent state is inferred and no reset or migration runs.
+
+The actual module regression fails before this change and passes after it. Both browser and native availability wrappers refuse a blocked global storage getter without reading a different store. The existing model unavailable result covers this path; blockedStoreRemainsUnavailableTest makes that outcome explicit. Existing source conformance and owner-retirement campaigns retain stale/ABA/suspend and device-draft obligations. The actual blocked-storage browser Notes case passes after the guard correction. This is source/browser evidence, not a signed APK, native storage or Pixel acceptance result.

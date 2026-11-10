@@ -46,6 +46,7 @@ html:not(.standalone-app) [data-alpha-layer="home"][data-alpha-home-fits="true"]
  * (--phone-scale, main.tsx): the inset and its 12px margin are divided by that scale, so the
  * handle starts 12 screen pixels below the bar on a narrow phone as well as on a 412px one. */
 [data-alpha-home-layout] { padding-top:max(20px,calc((var(--native-top-inset,0px) + 12px) / var(--phone-scale,1) - 44px))!important; }
+.alpha-phone [data-alpha-layer="home"] { top:calc(44px + var(--alpha-home-notice-clearance,0px) / var(--phone-scale,1))!important; }
 /* Home cards are at least their design size and grow with their text (PRD AP-15 large font).
  * Android delivers large text as WebView text zoom, which leaves a fixed 196px box and an em
  * max-height at their authored size while the glyphs double: the title was then printed over the
@@ -125,6 +126,12 @@ html:not(.standalone-app) [data-alpha-layer="home"][data-alpha-home-fits="true"]
 .note-transcript-action, .note-transcript-progress { margin-top:12px; min-height:44px; font:inherit; }
 .note-transcript-action { align-self:flex-start; padding:0 14px; border-radius:22px; background:var(--s2); color:var(--fg); }
 .note-transcript-action:disabled { color:var(--mut); }
+.note-transcript-actions { display:flex;flex-wrap:wrap;gap:8px;margin-top:12px; }
+.note-transcript-actions .note-transcript-action { display:inline-flex;align-items:center;justify-content:center;gap:8px;margin-top:0; }
+.note-transcript-actions .alpha-compute-mark,.note-transcript-actions .i { width:18px;height:18px;flex:none; }
+.note-transcript-text { margin:0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5;user-select:text;-webkit-user-select:text;touch-action:pan-y;cursor:text; }
+.note-transcript-line { display:flex;gap:8px;align-items:flex-start;padding:10px 0; }
+.note-transcript-seek { display:flex;align-items:center;justify-content:center;width:44px;min-height:44px;flex:none;border-radius:16px; }
 .note-transcript-progress { display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .note-transcript-progress [role="status"] { display:inline-flex; align-items:center; gap:8px; color:var(--mut); }
 .note-transcript-progress i { width:14px; height:14px; border:2px solid var(--line); border-top-color:var(--acct); border-radius:50%; animation:note-transcribing 1s linear infinite; }
@@ -219,7 +226,7 @@ html:not(.standalone-app) [data-alpha-layer="home"][data-alpha-home-fits="true"]
 /* Standalone Alpha uses Android system chrome, including in its app preview. */
 .standalone-app [data-alpha-system-cutout],.native-phone [data-alpha-system-cutout]{display:none}
 /* The app WebView is already fitted below native bars; only the launcher reserves OS chrome. */
-.standalone-app [data-alpha-layer="home"]{top:0!important}
+.standalone-app [data-alpha-layer="home"]{top:calc(var(--alpha-home-notice-clearance,0px) / var(--phone-scale,1))!important}
 .standalone-app [data-alpha-home-layout]{padding-top:12px!important}
 
 [data-alpha-message-text][role="button"] { cursor: pointer; }
@@ -342,6 +349,7 @@ html:not(.alpha-landscape) .alpha-phone [data-screen]:not([data-alpha-chat-half=
    scroll above the dock because the clearance belongs inside the list. */
 html:not(.alpha-landscape) .alpha-phone [data-alpha-layer="drawer"] { padding-bottom:0!important; }
 .alpha-app-drawer [data-installed-apps-scroll] { min-height:0; padding-bottom:var(--alpha-dock-reserve)!important; scroll-padding-bottom:var(--alpha-dock-reserve); }
+.alpha-app-drawer [data-alpha-dialog-toast] { max-height:min(15dvh,112px)!important; }
 .alpha-landscape .alpha-app-drawer [data-installed-apps-scroll] { padding-bottom:16px!important; scroll-padding-bottom:16px; }
 /* Under the resting half sheet Home keeps its layout and gains scroll range: what the sheet
  * covers beyond the reserve Home already leaves. */
@@ -798,11 +806,14 @@ dialog.alarm-page{position:fixed;inset:0 auto auto 0;margin:0;width:100vw;height
 [data-alpha-view-actions]{bottom:var(--alpha-dock-reserve,108px)!important}
 [data-alpha-photo-actions]>div{padding-bottom:12px!important}
 [data-alpha-popup] [role="dialog"],[data-alpha-album-manager]{bottom:var(--alpha-dock-reserve,108px)!important;max-height:calc(100% - var(--alpha-dock-reserve,108px) - 32px)!important;overflow-y:auto;box-sizing:border-box}
+/* The overflow menu is anchored below its header, so a dock bottom must cap,
+ * not stretch, its intrinsic height. Keep short screens scrollable. */
+[data-alpha-popup] .notes-menu[role="dialog"]{bottom:auto!important;height:auto;min-width:min(208px,calc(100% - 20px));max-width:calc(100% - 20px);max-height:max(0px,calc(100% - 56px - var(--alpha-dock-reserve,108px) - 8px))!important}
 
-.chat-image-preview{position:absolute;inset:0 0 var(--alpha-dock-reserve,108px);z-index:130;background:rgba(0,0,0,.94);color:white}
-.chat-image-preview>[role="dialog"]{height:100%;display:flex;align-items:center;justify-content:center;padding:64px 16px 16px;box-sizing:border-box}
-.chat-image-preview img{max-width:100%;max-height:100%;object-fit:contain}
-.chat-image-preview .ib{position:absolute;right:16px;top:16px;background:rgba(255,255,255,.15);border-radius:50%}
+.chat-image-preview{position:absolute;inset:0;z-index:130;background:var(--alpha-black);color:var(--alpha-white);overflow:hidden;touch-action:none}
+.chat-image-preview>[role="dialog"]{height:100%;display:flex;align-items:center;justify-content:center;padding:64px 16px 16px;box-sizing:border-box;overflow:hidden}
+.chat-image-preview img{max-width:100%;max-height:100%;object-fit:contain;user-select:none;-webkit-user-drag:none;touch-action:none}
+.chat-image-preview .ib{position:absolute;right:16px;top:16px;z-index:1;background:rgba(255,255,255,.15);border-radius:50%}
 
 [data-alpha-message-composer]{padding-bottom:calc(var(--alpha-dock-reserve,108px) + 12px)!important}
 [data-alpha-maps-guidance-controls]{bottom:max(var(--alpha-maps-guidance-bottom,26px),var(--alpha-dock-reserve,108px))!important}
@@ -813,7 +824,9 @@ dialog.alarm-page{position:fixed;inset:0 auto auto 0;margin:0;width:100vw;height
 [data-voice-state="starting"] .alpha-voice-startup-status::before,
 [data-voice-state="connecting"] .alpha-voice-startup-status::before,
 .alpha-pill-voice-synth[data-connecting="true"]::before { content:"";display:block;width:18px;height:18px;box-sizing:border-box;border:2px solid var(--line);border-top-color:var(--acc);border-radius:50%;animation:alpha-voice-connect-spin .9s linear infinite; }
-.alpha-pill-voice-controls .alpha-voice-startup-status {padding-right:8px;}
+/* The compact pill keeps its three control slots; the spinner/waveform shows
+   progress while its live status remains available to screen readers. */
+.alpha-pill-voice-controls .alpha-voice-startup-status {position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
 @keyframes alpha-voice-connect-spin {to {transform:rotate(360deg);}}
 @media(prefers-reduced-motion:reduce){[data-voice-state="starting"] .alpha-voice-startup-status::before,[data-voice-state="connecting"] .alpha-voice-startup-status::before,.alpha-pill-voice-synth[data-connecting="true"]::before{animation:none;}}
 
@@ -828,3 +841,34 @@ html[data-alpha-browser-underlay] [data-alpha-layer="app"]{background:linear-gra
 
 [data-alpha-backdrop],[data-alpha-clock-page]{bottom:var(--alpha-dock-reserve,108px)!important}
 [data-alpha-clock-page]{padding-bottom:24px!important}
+
+/* Message actions share the existing compact overflow menu. */
+.mail-message-menu > div { min-width:200px; max-width:calc(100vw - 40px); }
+.mail-message-menu > div button { display:flex; align-items:center; gap:12px; }
+.mail-message-menu .alpha-compute-mark { width:20px; height:20px; flex-shrink:0; }
+.mail-thread { margin-bottom:20px; }
+.mail-thread-message { display:flex; flex-direction:column; gap:5px; width:100%; padding:14px 0; text-align:left; border-bottom:1px solid var(--line); }
+.mail-thread-message > span:first-child { display:flex; align-items:baseline; gap:12px; justify-content:space-between; }
+.mail-thread-message strong { font-size:14px; }
+.mail-thread-message small { color:var(--mut); white-space:nowrap; }
+.mail-thread-message > span:last-child { color:var(--mut); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; font-size:14px; }
+.mail-thread-page { min-height:44px; color:var(--acct); }
+
+/* The viewer has one secondary-action menu; primary controls stay above the dock. */
+.photo-viewer-menu > div { min-width:208px; max-width:calc(100vw - 40px); }
+.photo-viewer-menu > div button { display:flex; align-items:center; gap:12px; white-space:nowrap; }
+.photo-viewer-menu .alpha-compute-mark { width:20px; height:20px; flex-shrink:0; }
+.photo-viewer-menu .i { width:20px; height:20px; flex-shrink:0; }
+[data-alpha-popup] .photo-info-sheet[role="dialog"] { left:8px!important; right:8px!important; bottom:calc(var(--alpha-dock-reserve,108px) + 8px)!important; border-radius:28px!important; padding:12px 24px 24px!important; }
+.alpha-share-panel::backdrop { background:rgba(0,0,0,.35); }
+.alpha-share-panel h2 { margin:0; font-size:1.5em; line-height:1.2; }
+.alpha-share-panel .share-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:20px; }
+.alpha-share-panel .share-close { width:44px; min-height:44px; padding:10px; border:0; border-radius:50%; background:var(--s2); color:inherit; display:grid; place-items:center; }
+.alpha-share-panel .share-close::before { content:""; display:block; width:22px; height:22px; background:currentColor; mask:url('/icons/lucide/x.svg') center/contain no-repeat; }
+.alpha-share-panel .share-row { display:flex; align-items:center; gap:12px; width:100%; min-height:52px; padding:14px 16px; margin-top:8px; border:0; border-radius:16px; background:var(--s2); color:inherit; text-align:left; font:inherit; }
+.alpha-share-panel .share-row::before { content:""; width:21px; height:21px; flex:none; background:currentColor; mask:var(--share-icon) center/contain no-repeat; }
+.alpha-share-panel [role="status"]:empty { display:none; }
+
+[data-alpha-popup] .files-actions-menu[role="dialog"] { bottom:auto!important; height:auto; max-height:calc(100% - var(--alpha-dock-reserve,108px) - 112px)!important; }
+
+.file-sort-icon{display:block;width:20px;height:20px;flex:none;background:currentColor}.file-sort-direction{display:block;width:12px;height:16px;flex:none;background:currentColor;margin-left:-9px}

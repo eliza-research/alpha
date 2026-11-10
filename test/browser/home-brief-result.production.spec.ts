@@ -6,7 +6,8 @@
 //    the renderer reads its retained history, the normal route on Android;
 //  - `renderer`: background delivery could not be configured, so the renderer reads the agent's
 //    result page over the bridge, commits each result to the secure store and acknowledges it.
-// From there the shipped digest panel publishes the newest result that ran and Home renders it.
+// The retained-result binding publishes the newest result that ran and Home renders it.
+// The removed Scheduled summaries entry/popup is not used to inspect these deliveries.
 // Nothing is placed in the retained-result store or the renderer by the test.
 //
 // Evidence boundary: source/test evidence for the flag-off renderer with the Android bridge
@@ -43,12 +44,9 @@ for (const route of ['native', 'renderer'] as const) test(`a digest result from 
   const foreign = await fenceNetwork(page);
   await flagOffAndroid(page, { digests: route });
   await residentHome(page);
-  // The first sync finds no result; the widget retains an honest empty state.
+  // The first sync finds no result; there is no empty brief widget.
   await expect.poll(() => harness(page, f => f.digests.syncs + f.digests.pages), { timeout: 30_000 }).toBeGreaterThan(0);
-  await expect(brief(page)).toBeVisible();
-  await expect(brief(page).locator('.home-brief-title')).toHaveText('Your brief');
-  await expect(brief(page).locator('.home-brief-status')).toHaveText('No brief yet');
-  await expect(brief(page)).toHaveAccessibleName('Open your brief');
+  await expect(brief(page)).toHaveCount(0);
 
   // 1. A run finishes. Its summary is the typed-steps text; the step payload is source material.
   const now = Date.now(), ranAt = now - 2 * 3_600_000;
@@ -60,7 +58,7 @@ for (const route of ['native', 'renderer'] as const) test(`a digest result from 
   await expect(card.locator('.home-brief-title')).toHaveText('Synthetic brief: two meetings and one reply to send.');
   // Source attribution is the connected agent; freshness is when the run completed, not when it was read.
   await expect(card.locator('.home-brief-status')).toHaveText(`${AGENT_NAME} · Ran ${ran}`);
-  await expect(card).toHaveAccessibleName(`Open scheduled digests. Latest brief from ${AGENT_NAME}, ran ${ran}: Synthetic brief: two meetings and one reply to send.`);
+  expect(await card.getAttribute('aria-label')).toContain(`Latest brief from ${AGENT_NAME}, ran ${ran}: Synthetic brief: two meetings and one reply to send.`);
   await expect(card).toHaveAttribute('data-alpha-home-brief-failed', 'false');
   expect(await page.evaluate(() => document.body.innerText.includes('SYNTHETIC_RAW_SOURCE_456'))).toBe(false);
   await card.scrollIntoViewIfNeeded();
@@ -73,21 +71,13 @@ for (const route of ['native', 'renderer'] as const) test(`a digest result from 
     result(2, 'run-missed', now - 3_600_000, { status: 'missed', output: { status: 'missed', text: 'The scheduled time was missed. No backlog was executed.' } }),
     result(3, 'run-overlap', now - 1_800_000, { status: 'overlap', output: { status: 'overlap', text: 'An earlier run was still active.' } }),
     result(4, 'run-unavailable', now - 1_500_000, { status: 'unavailable', output: { status: 'unavailable', text: 'The source was not available.' } })]);
-  await card.click();
-  const list = page.getByRole('dialog', { name: 'Scheduled digests', exact: true });
-  // The list received all three records (so the card had every chance to show them) and labels them honestly.
-  await expect(list.locator('#hosted-result-run-missed')).toContainText('Missed — not run', { timeout: 20_000 });
-  await expect(list.locator('#hosted-result-run-overlap')).toContainText('Skipped — an earlier run was still active');
-  await expect(list.locator('#hosted-result-run-unavailable')).toContainText('Not run — source unavailable');
-  await expect(list.locator('#hosted-result-run-morning')).toContainText('Synthetic brief: two meetings and one reply to send.');
-  // Execution details are a readable run summary, never the agent's raw output (owner decision 2026-10-30).
-  const morning = list.locator('#hosted-result-run-morning');
-  await morning.getByText('Execution details', { exact: true }).click();
-  await expect(morning.locator('details p')).toHaveText(/^Started .+\. Finished .+\.$/);
-  await expect(morning.locator('details pre')).toHaveCount(0);
-  await expect(morning).not.toContainText('SYNTHETIC_RAW_SOURCE_456');
-  await expect(morning).not.toContainText('"nodeId"');
-  await button(page, 'Close scheduled digests').click();
+  // Every non-run occurrence reached the real result reader. Native delivery commits
+  // full entries; renderer delivery acknowledges only after committing the page.
+  if(route==='native')await expect.poll(()=>harness(page,f=>f.digests.inbox.map(row=>[row.runId,row.status]))).toEqual([
+    ['run-morning','finished'],['run-missed','missed'],['run-overlap','overlap'],['run-unavailable','unavailable']]);
+  else await expect.poll(()=>harness(page,f=>f.digests.acked)).toBe(4);
+  await expect(page.getByRole('dialog',{name:'Scheduled digests',exact:true})).toHaveCount(0);
+  expect(await page.evaluate(()=>document.body.innerText.includes('SYNTHETIC_RAW_SOURCE_456'))).toBe(false);
   await expect(card.locator('.home-brief-title')).toHaveText('Synthetic brief: two meetings and one reply to send.');
   await expect(card.locator('.home-brief-status')).toHaveText(`${AGENT_NAME} · Ran ${ran}`);
   await expect(card).not.toContainText(/missed|Did not run|earlier run|not available/i);
@@ -107,7 +97,7 @@ for (const route of ['native', 'renderer'] as const) test(`a digest result from 
   await expect(card.locator('.home-brief-status')).toHaveText(`${AGENT_NAME} · Failed ${await when(page, failedAt)}`);
 
   // The harness counters start again when the page reloads, so what the first session asked of the
-  // agent is checked here: showing and opening the card started or changed no schedule, and on the
+  // agent is checked here: delivering and showing results started or changed no schedule, and on the
   // native route the renderer never read the agent's result page itself.
   const firstSession = await harness(page, f => ({ refused: f.digests.refused as string[], runs: f.digests.runs, pages: f.digests.pages, configured: f.digests.configured.length, unexpected: f.unexpected }));
   expect(firstSession.refused).toEqual([]);
@@ -120,6 +110,8 @@ for (const route of ['native', 'renderer'] as const) test(`a digest result from 
   await page.reload();
   await expect(brief(page)).toHaveAttribute('data-alpha-home-brief-failed', 'true', { timeout: 30_000 });
   await expect(brief(page).locator('.home-brief-title')).toHaveText('Synthetic source expired');
+  expect(await page.evaluate(() => document.body.innerText.includes('SYNTHETIC_RAW_SOURCE_456'))).toBe(false);
+  await expect(home(page)).not.toContainText('"nodeId"');
 
   // After the reload, too, nothing was started or changed on the agent.
   const state = await harness(page, f => ({ refused: f.digests.refused as string[], runs: f.digests.runs, pages: f.digests.pages, acks: f.digests.acks, configured: f.digests.configured.length, inbox: f.digests.inbox.length, unexpected: f.unexpected }));
@@ -140,7 +132,7 @@ for (const route of ['native', 'renderer'] as const) test(`a digest result from 
   expect(foreign).toEqual([]);
 });
 
-test('with only occurrences that did not run, Home keeps its empty brief widget', async ({ page }) => {
+test('with only occurrences that did not run, Home keeps the brief hidden', async ({ page }) => {
   test.setTimeout(120_000);
   await flagOffAndroid(page, { digests: 'native' });
   await residentHome(page);
@@ -149,22 +141,24 @@ test('with only occurrences that did not run, Home keeps its empty brief widget'
   await deliver(page, [
     result(1, 'run-missed', now - 3_600_000, { status: 'missed', output: { status: 'missed', text: 'The scheduled time was missed. No backlog was executed.' } }),
     result(2, 'run-unavailable', now - 1_800_000, { status: 'unavailable', output: { status: 'unavailable', text: 'The source was not available.' } })]);
-  // The list proves the records arrived. Home still has no completed brief.
-  await button(page, 'Settings').click();
-  await button(page, 'Apps').click();
-  await button(page, 'Workflows').click();
-  await button(page, 'Scheduled summaries').click();
-  const list = page.getByRole('dialog', { name: 'Scheduled digests', exact: true });
-  await expect(list.locator('#hosted-result-run-missed')).toContainText('Missed — not run', { timeout: 20_000 });
-  await expect(list.locator('#hosted-result-run-unavailable')).toContainText('Not run — source unavailable');
-  await button(page, 'Close scheduled digests').click();
-  await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
-  await expect(page.locator('html')).toHaveAttribute('data-active-view', 'home');
-  await expect(brief(page)).toBeVisible();
-  await expect(brief(page).locator('.home-brief-title')).toHaveText('Your brief');
-  await expect(brief(page).locator('.home-brief-status')).toHaveText('No brief yet');
-  await expect(brief(page)).not.toContainText(/scheduled time was missed|Did not run/);
+  await expect.poll(()=>harness(page,f=>f.digests.inbox.map(row=>[row.runId,row.status]))).toEqual([
+    ['run-missed','missed'],['run-unavailable','unavailable']]);
+  await expect(brief(page)).toHaveCount(0);
+  await expect(home(page)).not.toContainText(/No brief yet|scheduled time was missed|Did not run/);
+  await expect(page.getByRole('dialog',{name:'Scheduled digests',exact:true})).toHaveCount(0);
+  expect(await harness(page,f=>f.digests.runs)).toBe(0);
   expect(await harness(page, f => f.unexpected)).toEqual([]);
+});
+
+test('a retained Home brief does not reopen the retired Scheduled digests popup',async({page})=>{
+  await flagOffAndroid(page,{digests:'native'});await residentHome(page);
+  await expect.poll(()=>harness(page,f=>f.digests.syncs),{timeout:30000}).toBeGreaterThan(0);
+  await deliver(page,[result(1,'route-proof',Date.now()-60000,{status:'finished',output:{summary:'Synthetic retained brief route.'}})]);
+  await expect(brief(page)).toContainText('Synthetic retained brief route.');
+  await brief(page).click();
+  await expect(page.getByRole('dialog',{name:'Scheduled digests',exact:true})).toHaveCount(0);
+  await expect(page.locator('html')).toHaveAttribute('data-active-view','workflows');
+  expect(await harness(page,f=>f.digests.runs)).toBe(0);
 });
 
 // ---- Canonical Agent Calendar owns the Home card; native provider rows cannot replace its authority. ----
@@ -192,6 +186,11 @@ async function canonicalHome(page: Page, mode: 'event' | 'empty' | 'stale-empty'
     };
   }, mode);
   await residentHome(page);
+  // Hidden cards must be checked after the owner-bound reads, not against the
+  // transient empty markup before the fixture responses have been processed.
+  await expect.poll(()=>page.evaluate(()=>[...new Set((window as any).canonicalHomeReads)].sort())).toEqual([
+    '/api/lifeops/calendar/calendars','/api/lifeops/calendar/feed','/api/lifeops/calendar/next-context']);
+  await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>resolve())));
 }
 
 test('Home renders the canonical agent event without borrowing device names or inventing a fresh device read', async ({ page }) => {
@@ -212,18 +211,16 @@ test('Home renders the canonical agent event without borrowing device names or i
 
 test('a verified empty Agent Calendar does not substitute device events', async ({ page }) => {
   await canonicalHome(page, 'empty');
-  await expect(calendarCard(page)).toHaveAttribute('data-alpha-home-calendar-event', 'false');
-  await expect(calendarCard(page).locator('.home-calendar-title')).toHaveText('Nothing planned');
-  await expect(calendarCard(page)).not.toContainText(/Device-only event|Private device calendar/);
+  await expect(calendarCard(page)).toHaveCount(0);
+  await expect(home(page)).not.toContainText(/Nothing planned|Device-only event|Private device calendar/);
   expect(await harness(page, f => f.calendar.requests)).toBe(0);
   expect(await harness(page, f => f.unexpected)).toEqual([]);
 });
 
-for (const mode of ['stale-empty', 'future-empty'] as const) test(`a ${mode} Calendar read keeps the visible calendar unverified`, async ({page}) => {
+for (const mode of ['stale-empty', 'future-empty'] as const) test(`a ${mode} Calendar read stays hidden without claiming a verified empty calendar`, async ({page}) => {
   await canonicalHome(page, mode);
-  await expect(calendarCard(page)).toHaveAttribute('data-alpha-home-calendar-event', 'false');
-  await expect(calendarCard(page).locator('.home-calendar-title')).toHaveText('Calendar has not been verified');
-  await expect(calendarCard(page)).toContainText('Open Calendar to retry');
+  await expect(calendarCard(page)).toHaveCount(0);
+  await expect(home(page)).not.toContainText(/Nothing planned|Calendar has not been verified|Open Calendar to retry/);
   await expect(home(page)).not.toContainText(/Device-only event|Private device calendar/);
   expect(await harness(page, f => f.calendar.requests)).toBe(0);
   expect(await harness(page, f => f.unexpected)).toEqual([]);
@@ -251,11 +248,10 @@ test('Calendar settings retain canonical Home authority even when native device 
 
 test('an event from another agent is not presented as this agent’s next event or as a verified empty calendar', async ({ page }) => {
   await canonicalHome(page, 'wrong-owner');
-  // The invalid source leaves a visible failure and never borrows another calendar.
-  await expect(calendarCard(page)).toHaveAttribute('data-alpha-home-calendar-event', 'false');
-  await expect(calendarCard(page).locator('.home-calendar-title')).toHaveText('Calendar unavailable');
-  await expect(calendarCard(page)).not.toContainText(/Nothing planned|Device-only event|Private device calendar/);
+  // No authorized item means no Home card; the existing Calendar entry still exposes the failure.
+  await expect(calendarCard(page)).toHaveCount(0);
+  await expect(home(page)).not.toContainText(/Nothing planned|Agent calendar meeting|Device-only event|Private device calendar/);
   await page.getByRole('button',{name:'Calendar',exact:true}).click();
-  await expect(page.getByRole('region',{name:'Calendar',exact:true})).toContainText(/another agent|Calendar unavailable/);
+  await expect(page.getByRole('region',{name:'Calendar',exact:true})).toContainText(/another agent|Calendar unavailable|Calendar could not load/);
   expect(await harness(page, f => f.unexpected)).toEqual([]);
 });

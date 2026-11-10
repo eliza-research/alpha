@@ -14,7 +14,7 @@ const admissionCode=stripTypeScriptTypes(ui.slice(ui.indexOf('const unverifiedAc
 const loadCode=stripTypeScriptTypes(ui.slice(ui.indexOf(' function accountRead()'),ui.indexOf('\n useEffect(()=>{if(!open)return;void load();')),{mode:'strip'});
 const connectCode=stripTypeScriptTypes(ui.slice(ui.indexOf(' async function connect('),ui.indexOf(' async function disconnect(')),{mode:'strip'});
 function deferred(){let resolve;const promise=new Promise(r=>{resolve=r;});return {promise,resolve};}
-function fixture({heldStatus=false,heldOpen=false,heldRetry=false,panelClosed=false,accountRows,verifiedRows}={}){
+function fixture({isAndroid=true,heldStatus=false,heldOpen=false,heldRetry=false,panelClosed=false,accountRows,verifiedRows}={}){
  let foreground=true,panelOpen=!panelClosed,revision=0,nativeListener,removed=0,visibility,focus;
  const registration=deferred(),status=deferred(),opening=deferred(),retry=deferred(),published=[],notices=[],scopeCalls=[];
  let reads=0,initiations=0,opens=0,waits=0,statusSignal,loadPromise;
@@ -25,7 +25,7 @@ function fixture({heldStatus=false,heldOpen=false,heldRetry=false,panelClosed=fa
  // measure new reads triggered by the return lifecycle.
  const verifiedAccounts={current:panelClosed?null:{binding,rows:verifiedRows??[]}};
  const liveCloud=()=>current?{client:current.client,sessionId:current.sessionId,credentialId:current.credentialId}:null;
- const globals={identity:"synthetic",AbortController,DOMException,isAndroid:true,browserReturned:{current:false},browserReturnPending:{current:false},returnedWorkspace:{current:null},returnedWorkspaceOwner:{current:null},disconnectNotice:{current:null},sameGoogleWorkspaceBinding,prepareGoogleWorkspaceReturn,watchGoogleWorkspaceReturn,googleWorkspaceReturnPort:undefined,currentWorkspaceBinding:()=>current,createGoogleAccounts,sameGoogleConnectionReturnBinding,gmailGrantTier,verifiedAccounts,active,binding,cloud:liveCloud(),key:{environment:'production',userId:'owner',organizationId:'tenant'},serviceName:'Cloud',googleConnectionController:{getSnapshot:()=>panelOpen,close:()=>{panelOpen=false;},open:()=>{panelOpen=true;},calendar:()=>null},connectionController:{getCloudClient:liveCloud,rejectCloudSession(){throw Error('Unexpected sign-in mutation');},openCloudAccount(){throw Error('Unexpected sign-in');}},currentGoogleConnectionReturnBinding:()=>current,
+ const globals={isAndroid,browserReturned:{current:false},browserReturnPending:{current:false},identity:"synthetic",AbortController,DOMException,returnedWorkspace:{current:null},returnedWorkspaceOwner:{current:null},disconnectNotice:{current:null},sameGoogleWorkspaceBinding,prepareGoogleWorkspaceReturn,watchGoogleWorkspaceReturn,googleWorkspaceReturnPort:undefined,currentWorkspaceBinding:()=>current,createGoogleAccounts,sameGoogleConnectionReturnBinding,gmailGrantTier,verifiedAccounts,active,binding,cloud:liveCloud(),key:{environment:'production',userId:'owner',organizationId:'tenant'},serviceName:'Cloud',googleConnectionController:{getSnapshot:()=>panelOpen,close:()=>{panelOpen=false;},open:()=>{panelOpen=true;},calendar:()=>null},connectionController:{getCloudClient:liveCloud,rejectCloudSession(){throw Error('Unexpected sign-in mutation');},openCloudAccount(){throw Error('Unexpected sign-in');}},currentGoogleConnectionReturnBinding:()=>current,
   setRevision:update=>{revision=update(revision);loadPromise=globals.load();},setAccounts:rows=>published.push(rows),setConfirm(){},setBusy(){},setNotice:text=>notices.push(text),
   openConnectionBrowser:async()=>{opens++;return heldOpen?opening.promise:undefined;},returnWatch:{current:null},
   setTimeout(callback,delay){assert.equal(delay,350);waits++;if(heldRetry)void retry.promise.then(callback);else queueMicrotask(callback);},
@@ -52,7 +52,7 @@ test('retained native resume after registration and arming cannot consume a retu
  f.foreground();f.nativeResume();f.focus();await f.loadPromise;assert.equal(f.reads,1);assert.equal(f.revision,1);assert.equal(f.initiations,1);f.close();
 });
 test('immediate browser-open completion leaves a pending genuine return and duplicate events load once',async()=>{
- const f=fixture();await f.registered();await f.globals.connect();assert.equal(f.opens,1);assert.equal(f.reads,0);f.nativeResume();f.focus();assert.equal(f.reads,0);
+ const f=fixture();await f.registered();await f.globals.connect();assert.equal(f.opens,1);assert.equal(f.globals.browserReturnPending.current,false);assert.equal(f.reads,0);f.nativeResume();f.focus();assert.equal(f.reads,0);
  f.background();f.foreground();f.nativeResume();f.focus();await f.loadPromise;assert.equal(f.reads,1);assert.equal(f.published.at(-1)[0].connected,true);assert.equal(f.initiations,1);f.close();
 });
 test('foreground events without an authorization attempt never load connections',async()=>{
@@ -191,4 +191,11 @@ test('a retained disconnect notice cannot cross to a replacement owner',async()=
  f.change({userId:'replacement-owner'});f.globals.binding={...f.binding,userId:'replacement-owner'};
  await f.globals.load();assert.ok(!f.notices.some(text=>text.includes('Private prior account label')));
  assert.equal(f.globals.disconnectNotice.current,null);f.close();
+});
+
+test('browser authorization marks a pending return and clears it when external open fails',async()=>{
+ const f=fixture({isAndroid:false});await f.globals.connect();
+ assert.equal(f.opens,1);assert.equal(f.globals.browserReturnPending.current,true);
+ f.globals.openConnectionBrowser=async()=>{throw new DOMException('Cancelled','AbortError');};
+ await f.globals.connect();assert.equal(f.globals.browserReturnPending.current,false);f.close();
 });

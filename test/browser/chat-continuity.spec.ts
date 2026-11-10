@@ -41,6 +41,7 @@ async function remoteAgent(page: Page, options: Options = {}) {
       PluginHeaders: [
         { name: 'AlphaConnection', methods: methods(['secureRead', 'secureWrite', 'secureCompareExchange', 'secureRemove', 'request', 'cancel', 'addListener', 'removeListener', 'pauseNotificationCollection']) },
         { name: 'AlphaActionJournal', methods: methods(['list', 'get']) },
+        { name: 'Agent', methods: methods(['setGoogleAgentAccess']) },
         { name: 'AlphaNotifications', methods: methods(['status', 'crossAppStatus', 'addListener', 'removeListener']) },
         { name: 'AlphaVoiceCloud', methods: methods(['checkPermissions']) },
         { name: 'ElizaSystem', methods: methods(['getBuildInfo']) },
@@ -48,6 +49,7 @@ async function remoteAgent(page: Page, options: Options = {}) {
         ...(options.assistantEntry ? [{ name: 'DailyApps', methods: methods(['surfaceInfo', 'closeAssistant']) }] : []),
       ],
       nativePromise: async (plugin: string, method: string, input: any) => {
+        if (plugin === 'Agent' && method === 'setGoogleAgentAccess') return {};
         if (plugin === 'AlphaNotifications') return { permissionGranted: true, appEnabled: true };
         if (plugin === 'AlphaVoiceCloud') return { microphone: 'granted' };
         if (plugin === 'ElizaSystem' && method === 'getBuildInfo') return { launcher: false, version: 'continuity-fixture' };
@@ -329,7 +331,7 @@ test('Stop asks the agent to cancel exactly once and reports a confirmed cancel 
   expect(await fixture(page, f => ({ posts: f.posts, aborts: f.aborts, reads: f.historyReads }))).toEqual({ posts: 1, aborts: 1, reads: 1 });
 });
 
-test('a new message after Stop retires the pending check and says so; nothing is resent', async ({ page }) => {
+test('a new message after Stop retires the pending check and stale notice; nothing is resent', async ({ page }) => {
   test.setTimeout(90_000);
   await connected(page);
   await typeDraft(page, 'First question');
@@ -341,7 +343,7 @@ test('a new message after Stop retires the pending check and says so; nothing is
   await composer(page).press('Enter');
   await expect.poll(() => fixture(page, f => f.posts), { timeout: 15_000 }).toBe(2);
   await expect(conversation(page).getByText(MAY_FINISH, { exact: true })).toHaveCount(0);
-  await expect(conversation(page).getByText(UNCHECKED, { exact: true })).toHaveCount(1);
+  await expect(conversation(page).getByText(UNCHECKED, { exact: true })).toHaveCount(0);
   await fixture(page, f => f.release('Answer to the second question'));
   await expect(conversation(page).getByText('Answer to the second question', { exact: true })).toHaveCount(1);
   // Two messages the person sent, two distinct identities, no automatic history replacement.
@@ -465,6 +467,9 @@ test('a restored conversation longer than the chat window scrolls up to its firs
   await expect(rows).toHaveCount(100);
   await expect.poll(async () => { await transcript.evaluate(element => { element.scrollTop = 0; }); return rows.first().textContent(); }, { timeout: 20_000 }).toContain('Synthetic message 0');
   await expect(rows).toHaveCount(232);
+  // Prepending a history page preserves the reading anchor. Once the oldest page
+  // is mounted, the next upward scroll reaches its first message.
+  await transcript.evaluate(element => { element.scrollTop = 0; });
   await expect(transcript.getByText('Synthetic message 0', { exact: true })).toBeInViewport();
   expect(await fixture(page, f => f.posts)).toBe(0);
 });
@@ -515,11 +520,11 @@ test('a confirmed stop of one turn is never repeated as the outcome of a later s
   await expect.poll(() => fixture(page, f => f.posts), { timeout: 15_000 }).toBe(2);
   await stop(page).click();
   await expect(conversation(page).getByText(CHECK_PENDING)).toHaveCount(1, { timeout: 15_000 });
-  // A third message retires the second turn's check before it ran: its outcome is unknown, not "stopped".
+  // A third message retires the second check. The first confirmed stop remains; no second outcome is invented.
   await typeDraft(page, 'A third message');
   await composer(page).press('Enter');
   await expect.poll(() => fixture(page, f => f.posts), { timeout: 15_000 }).toBe(3);
-  await expect(conversation(page).getByText(UNCHECKED, { exact: true })).toHaveCount(1);
+  await expect(conversation(page).getByText(UNCHECKED, { exact: true })).toHaveCount(0);
   await expect(conversation(page).getByText('The agent stopped this reply.', { exact: true })).toHaveCount(1);
   expect(await fixture(page, f => ({ aborts: f.aborts, reads: f.historyReads }))).toEqual({ aborts: 2, reads: 1 });
 });

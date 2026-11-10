@@ -518,10 +518,12 @@ export async function auditPage(page: Page, options: PageAuditOptions = {}): Pro
         const text = (el.textContent || '').trim(); if (!text || !shown(el)) continue;
         const mirrored = el.matches('[data-alpha-toast]') && Array.from(document.querySelectorAll('[data-alpha-dialog-toast]')).some(copy => shown(copy) && (copy.textContent || '').trim() === text);
         if (mirrored) continue;
-        const body = el.firstElementChild || el, box = body.getBoundingClientRect();
+        const body = el.firstElementChild || el, box = painted(body.getBoundingClientRect(), body);
         const modal = Array.from(document.querySelectorAll('dialog[open]')).filter(item => item.matches(':modal')).at(-1);
         if (el.closest('[inert]') || (modal && !modal.contains(el))) { out.push({ rule: 'toast-not-announced', target: describe(el), detail: `"${text.slice(0, 40)}" is inert${modal ? ' under a modal dialog' : ''}` }); continue; }
-        const hit = box.width > 1 && box.height > 1 ? document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2) : null;
+        // A scrollable notice can retain more text than it currently paints. Hit-test
+        // its visible part, while still rejecting a fully clipped or covered notice.
+        const hit = box ? document.elementFromPoint((box.left + box.right) / 2, (box.top + box.bottom) / 2) : null;
         // pointer-events:none wrappers are skipped by hit testing; the toast body takes pointer events.
         if (!hit || !(body === hit || body.contains(hit) || hit.contains(body) && el.contains(hit))) out.push({ rule: 'toast-covered', target: describe(el), detail: `"${text.slice(0, 40)}" is under ${hit ? describe(hit).slice(0, 80) : 'nothing painted'}` });
       }

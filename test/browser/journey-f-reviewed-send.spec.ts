@@ -25,6 +25,10 @@ import {createHash} from 'node:crypto';
 import {test, expect, type Page} from '@playwright/test';
 
 const button = (page: Page, name: string) => page.getByRole('button', {name, exact: true});
+async function messageAction(page:Page,name:string){
+  await page.locator('summary[aria-label="Message actions"]').click();
+  await button(page,name).click();
+}
 const KEY = 'journey-f-review-provider';
 type Options = {inbox?: string[]; pageSize?: number; strictCursors?: boolean; forward?: boolean; accounts?: number; deferPaging?:boolean};
 
@@ -223,7 +227,7 @@ test('F-5: a forward lists the original attachments it will send, and removing o
   await openInbox(page, {forward: true});
   await button(page, 'Sender m1, Subject m1').click();
   await expect(page.getByRole('region', {name: 'Email message'})).toContainText('Body of m1');
-  await button(page, 'Forward').click();
+  await messageAction(page, 'Forward');
   await expect(button(page, 'Remove original-plan.pdf (original)')).toBeVisible();
   await page.getByRole('textbox', {name: 'To', exact: true}).fill('friend@example.invalid');
   await page.getByRole('textbox', {name: 'To', exact: true}).press('Enter');
@@ -462,7 +466,7 @@ test('F-13: Trash and its undo are reviewed operations and the restored message 
   await openInbox(page);
   await button(page, 'Sender m1, Subject m1').click();
   await expect(page.getByRole('region', {name: 'Email message'})).toContainText('Body of m1');
-  await button(page, 'Move to Trash').click();
+  await messageAction(page, 'Move to Trash');
   const review = page.getByRole('dialog', {name: 'Review mail operation'});
   await expect(review.getByRole('heading', {name: 'Move message to Trash', exact: true})).toBeVisible();
   await expect(review.getByRole('status')).toHaveText('Review this change before confirming. Nothing has been changed.');
@@ -506,7 +510,7 @@ test('F-13: a lost Trash reply is an unknown outcome, handled like an unknown se
   test.setTimeout(180_000);
   await openInbox(page);
   await button(page, 'Sender m2, Subject m2').click();
-  await button(page, 'Move to Trash').click();
+  await messageAction(page, 'Move to Trash');
   const review = page.getByRole('dialog', {name: 'Review mail operation'});
   await expect(review.getByRole('button', {name: 'Confirm this change', exact: true})).toBeVisible();
   await setProvider(page, {loseNextReply: true, unsure: true});
@@ -533,7 +537,7 @@ test('F-13: a lost Trash reply is an unknown outcome, handled like an unknown se
   await expect(review.getByRole('button', {name: 'Close receipt', exact: true})).toHaveCount(0);
   await review.getByRole('button', {name: 'Close mail review', exact: true}).click();
   await button(page, 'Sender m1, Subject m1').click();
-  await button(page, 'Move to Trash').click();
+  await messageAction(page, 'Move to Trash');
   await expect(review.getByRole('status')).toHaveText('Review the saved operation before starting another.');
   await expect(review).toContainText('Selected message/draft: m2');
   await expect(review.getByRole('button', {name: 'Confirm this change', exact: true})).toHaveCount(0);
@@ -565,7 +569,9 @@ test('F-12: new mail between pages never shows a message twice, and the list say
   // list states that newer mail is missing from it and how to load it.
   await expect.poll(() => rows(page)).toEqual(['m1', 'm2', 'm3']);
   await expect(page.getByText(mailboxChanged, {exact: true}).first()).toBeVisible();
-  // The notice passes; a control that loads the newer mail stays until the list is read again.
+  // Dismiss the readable notice through its real control. A later new notice must still fail
+  // the absence assertion below; the newer-mail control stays until the list is read again.
+  await page.locator('[data-alpha-toast]').filter({hasText:mailboxChanged}).click();
   await expect(button(page, 'Load newer mail')).toBeVisible();
   await button(page, 'Load more').click();
   await expect.poll(() => rows(page)).toEqual(['m1', 'm2', 'm3', 'm4', 'm5']);
@@ -603,7 +609,7 @@ test('F-12: a cursor the provider refuses after the mailbox changed keeps the lo
   expect(await rows(page)).toEqual(['m1', 'm2']);
   await expect(button(page, 'Load more')).toHaveCount(0);
   expect((await provider(page)).searches).toEqual([['in:inbox', null], ['in:inbox', '1:2']]);
-  await button(page, 'Retry').click();
+  await button(page, 'Refresh inbox').click();
   await expect.poll(() => rows(page)).toEqual(['m1', 'm3']);
   await button(page, 'Load more').click();
   await expect.poll(() => rows(page)).toEqual(['m1', 'm3', 'm4']);

@@ -66,6 +66,11 @@ The build produces standalone and launcher, debug and release APKs under
 another; only the launcher declares HOME. Phone, Contacts and SMS/MMS require
 an admitted AOSP image capability; a launcher APK alone does not supply it.
 
+The package and native namespace are `ai.alphacompute.alphaphone`. This identity
+requires matching signing, callback registrations and native-library qualification.
+An installation using the previous package ID is a separate application; this
+rename does not migrate its private data. Native qualification remains pending.
+
 The default native runtime uses libelizainference for local speech and embeddings.
 Stage on-device voice inputs with
 `node scripts/android-stage-voice-models.mjs --from <directory>`.

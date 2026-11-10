@@ -384,7 +384,8 @@
         "apps/app/src/browser/workflow-trigger-runtime.ts",
         "apps/app/src/browser/workflow-triggers.ts",
         "apps/app/src/prototype/workflow-authoring.ts",
-        "apps/app/src/prototype/workflow-adapter.ts"
+        "apps/app/src/prototype/workflow-adapter.ts",
+        "apps/app/src/runtime/workflow-local-time.ts"
       ],
       "stateMapping": {
         "version/reviewedVersion/phase": "normalized authoring, validation and exact-version save/run",

@@ -28,6 +28,7 @@ test('landscape lays Home and the composer side by side and keeps every Home con
   const draft = page.getByRole('textbox', { name: 'Ask Alpha', exact: true });
   await reachable(page, draft);
   await draft.fill('Rotation keeps this draft');
+  await page.locator('[data-alpha-dock-scrim="true"]').click({position:{x:12,y:12}});
   await page.getByRole('button', { name: 'Notes', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-active-view', 'notes');
   // Rotate to portrait: the active view and the composer draft survive.

@@ -12,7 +12,7 @@ test('A document receipt that arrives while the page is hidden is shown once the
   await expect(page.getByRole('textbox', { name: 'Note', exact: true })).toHaveValue('Receipt body\n');
   await page.getByRole('button',{name:'More',exact:true}).click();
   await page.getByRole('dialog',{name:'Note actions',exact:true}).getByRole('button',{name:'Share note',exact:true}).click();
-  const exportButton = page.getByRole('button', { name: 'Save locally', exact: true });
+  const exportButton = page.getByRole('button', { name: 'Save file', exact: true });
   await expect(exportButton).toBeVisible();
   const receipt = page.locator('[data-alpha-toast]').getByText('Download requested. Check your browser downloads.', { exact: true });
   // Only this adapter's view of visibility changes: no visibilitychange is sent while hiding, so
@@ -56,7 +56,7 @@ test('A document failure that arrives while the page is hidden is shown once the
   await expect(page.getByRole('textbox', { name: 'Note', exact: true })).toHaveValue('Failure body\n');
   await page.getByRole('button',{name:'More',exact:true}).click();
   await page.getByRole('dialog',{name:'Note actions',exact:true}).getByRole('button',{name:'Share note',exact:true}).click();
-  const exportButton = page.getByRole('button', { name: 'Save locally', exact: true });
+  const exportButton = page.getByRole('button', { name: 'Save file', exact: true });
   await expect(exportButton).toBeVisible();
   const failure = page.locator('[data-alpha-toast]').getByText('That didn\'t finish. Check your file and try again.', { exact: true });
   // The export itself fails (no object URL can be made), and it fails while the page is hidden.

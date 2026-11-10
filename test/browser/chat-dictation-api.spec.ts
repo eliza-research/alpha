@@ -78,8 +78,8 @@ test('API dictation and assistant stay distinct: draft editing never sends, voic
  await button(page,'Talk').click();
  await expect(voice(page)).toHaveAttribute('data-voice-state','listening');
  expect(await live(page,f=>f.captures.map((c:any)=>c.echoCancel))).toEqual([false,true]);
- // 5f669f286 (#745) shortened the assistant status to 'Listening…'; interruption stays behavioural (mic open while speaking).
- await expect(voice(page)).toContainText('Listening…');
+ // Status copy stays secondary to the capture state and interruption assertions.
+ await expect(voice(page)).toContainText('Listening');
  await say(page,'What is on my calendar today');
  await expect.poll(()=>posts(page)).toEqual(['What is on my calendar today']);
  await expect(voice(page)).toHaveAttribute('data-voice-state','speaking');
@@ -99,7 +99,7 @@ test('API interruptSpeech preserves listening; Mute controls capture with presse
  await mute.click();
  await expect(voice(page).getByRole('button',{name:'Unmute microphone',exact:true})).toHaveAttribute('aria-pressed','true');
  await expect.poll(()=>live(page,f=>f.stops.length)).toBe(1);
- await expect(voice(page)).toContainText('Microphone off');
+ await expect(voice(page)).toContainText('Muted');
  await voice(page).getByRole('button',{name:'Unmute microphone',exact:true}).click();
  await expect.poll(()=>live(page,f=>f.captures.length)).toBe(2);
  await say(page,'How is the weather');

@@ -51,6 +51,18 @@ async function attachNativeFixture(page) {
 }
 
 async function snapshot(page, expectedTitle) {
+  if (expectedTitle === 'Account & plan') {
+    const sheet = page.getByRole('dialog', {name: 'Account', exact: true});
+    await expect(sheet).toBeVisible();
+    const state = await current(page).evaluate(element => ({
+      title: 'Account & plan', renderedTitle: 'Account', layer: 'account-sheet',
+      view: window.quintLegacySettings.S().view,
+      route: window.quintLegacySettings.vget('settings').page || 'top', confirming: false,
+    }));
+    assert.equal(state.view, 'settings');
+    assert.equal(state.route, 'top', 'The Account sheet preserves the selected Settings root');
+    return state;
+  }
   await expect(current(page)).toHaveAttribute('data-settings-page', expectedTitle);
   const state = await current(page).evaluate(element => ({
     title: element.getAttribute('data-settings-page'),
@@ -75,7 +87,9 @@ function projection(state, profile) {
     'License details': ['license-detail', ['top', 'about', 'licenses', 'license-detail']],
     Calendar: ['calendar', ['top', 'calendar']],
     'Password manager': ['password-provider', ['top', 'passwords']],
-    'Account & plan': ['cloud-plan', ['top', profile === 'current' ? 'cloudplan' : 'account']],
+    // The current Account sheet overlays Settings; project that explicit leaf to the
+    // historical plan page while retaining its actual root route in the receipt.
+    'Account & plan': [state.layer === 'account-sheet' ? 'top' : 'cloud-plan', ['top', profile === 'current' ? 'cloudplan' : 'account']],
   };
   const [route, stack] = routes[state.title];
   assert.ok([route].flat().includes(state.route), 'Selected route matches mounted '+state.title+': '+state.route);
@@ -157,33 +171,24 @@ async function collect(page, notice) {
 
   const account = schedule(page, top);
   await button(page, 'Account').click();
-  await account.point('Account index opens as a grouping step', 'Account');
-  await button(page, 'Account & plan').click();
-  const plan = await account.point('The signed-in plan opens from its actual row', 'Account & plan',
+  const plan = await account.point('The signed-in Account sheet opens from Settings', 'Account & plan',
     open('Eliza Cloud', 'account'), open('Eliza Cloud account & plan', 'cloudplan'));
+  const sheet = page.getByRole('dialog', {name: 'Account', exact: true});
   const infoLabel = 'AI connection';
-  await expect(current(page).getByText(infoLabel, {exact: true})).toBeVisible();
-  await expect(button(page, infoLabel)).toHaveCount(0);
-  const noInfoRows = !(await current(page).getByText(infoLabel, {exact: true}).isVisible());
+  await expect(sheet.getByRole('button', {name: /^AI connection/})).toBeVisible();
+  const noInfoRows = !(await sheet.getByText(infoLabel, {exact: true}).isVisible());
   const accountSlot = () => page.evaluate(() => window.flagOff.slots['cloud:production']);
   const before = await accountSlot();
   assert.ok(before, 'Synthetic Cloud owner is signed in');
-  let clicked;
-  const pendingDialog = page.waitForEvent('dialog', {timeout: 15000});
-  try {
-    clicked = button(page, 'Sign out of Eliza Cloud').click();
-    const dialog = await Promise.race([pendingDialog, clicked.then(() => pendingDialog)]);
-    try {
-      assert.equal(dialog.type(), 'confirm');
-      assert.match(dialog.message(), /^Sign out of Eliza Cloud\?/);
-      account.events.push({label: 'Actual sign-out callback opens a confirmation before destructive work',
-        state: {...plan, confirming: dialog.type() === 'confirm'},
-        proposed: action('Destroy', 'Sign out', 'danger', 'confirm'),
-        current: action('Destroy', 'Sign out', 'danger', 'direct')});
-    } finally {await dialog.dismiss();}
-    await clicked;
-  } finally {await clicked?.catch(() => {});}
-  await account.point('Dismissing confirmation leaves the same plan selected', 'Account & plan', action('Answer'));
+  await sheet.getByRole('button', {name: 'Sign out', exact: true}).click();
+  const confirmation = page.getByRole('dialog', {name: 'Sign out?', exact: true});
+  await expect(confirmation).toBeVisible();
+  account.events.push({label: 'Actual Account callback opens a confirmation before destructive work',
+    state: {...plan, confirming: true},
+    proposed: action('Destroy', 'Sign out', 'danger', 'confirm'),
+    current: action('Destroy', 'Sign out', 'danger', 'direct')});
+  await confirmation.getByRole('button', {name: 'Close Account', exact: true}).click();
+  await account.point('Dismissing confirmation leaves the same account selected', 'Account & plan', action('Answer'));
   assert.equal(await accountSlot(), before, 'Dismissal preserves the synthetic durable Cloud owner');
 
   const proposed = [
@@ -194,10 +199,10 @@ async function collect(page, notice) {
   const historical = [
     about.replay('current_about_license_search_and_delivered_back', 'current'),
     apps.replay('current_calendar_and_passwords_via_grouped_apps', 'current'),
-    replay('current_account_plan_navigation_before_sign_out', 'current', top, account.events.slice(0, 2)),
+    replay('current_account_plan_navigation_before_sign_out', 'current', top, account.events.slice(0, 1)),
   ];
-  const directSignOut = replay('current_direct_sign_out_diverges_from_confirm_dialog', 'current', top, account.events.slice(0, 3));
-  const infoRows = replay('proposed_account_omits_visible_information_rows', 'proposed', top, account.events.slice(0, 2));
+  const directSignOut = replay('current_direct_sign_out_diverges_from_confirm_dialog', 'current', top, account.events.slice(0, 2));
+  const infoRows = replay('proposed_account_omits_visible_information_rows', 'proposed', top, account.events.slice(0, 1));
   infoRows.steps.at(-1).expect.NoInfoRows = noInfoRows;
   const directWifi = {name: 'current_root_wifi_entry_is_absent', expect: {...projection(top, 'current'), HasTopWifi: hasTopWifi},
     steps: [{label: 'Read the mounted Settings root', action: null, expect: projection(top, 'current')}]};
@@ -285,7 +290,7 @@ export async function checkSettingsNavRefinement(extraSources = []) {
   const shared = {sources, driverHashes, modelPath: comparison, scope: 'bounded-orchestration', assumptions: [
     'Actual grouped Settings and its alpha-back handler execute in flag-off Chromium. Native and resident transport ports are synthetic and requests outside loopback are fenced.',
     'Mounted DOM title and actual selected route establish the semantic Settings page. Account and Apps grouping indexes project to top for shared leaf navigation; grouping and license query are explicit projection boundaries.',
-    'The source confirm observation is the real browser dialog type. Only dismissal is exercised, with the selected plan and synthetic durable Cloud owner checked after dismissal.',
+    'The current Account sheet overlays the Settings root and is explicitly projected to the historical plan leaf. Its visible Sign out confirmation is observed as a rendered dialog; only dismissal is exercised and the durable Cloud owner remains unchanged.',
     'Replay aliases supply the original row tuples and original profile initializers. ProfileSafety checks each original model profile; it does not assert equivalence of the full rendered row inventory.',
   ]};
   const receipts = [];

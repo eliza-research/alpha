@@ -74,7 +74,7 @@ test('Photos tabs stay aligned in Albums and selection opens the real media libr
  await settle();const after=await library.boundingBox();expect(after!.x).toBe(before!.x);expect(after!.y).toBe(before!.y);
  // Select belongs to grids (the Library and each album), not the album list.
  await expect(select).toHaveCount(0);await library.click();
- await select.click();await expect(page.getByRole('button',{name:'Cancel selection',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Delete selected',exact:true})).toBeVisible();
+ await page.getByLabel('Photos tools',{exact:true}).click();await select.click();await expect(page.getByRole('button',{name:'Cancel selection',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Delete selected',exact:true})).toBeVisible();
 });
 
 test('image question review is compact and only stages explicitly reviewed text',async({page},info)=>{

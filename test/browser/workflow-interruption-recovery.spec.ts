@@ -165,13 +165,13 @@ test('a new-workflow save that never reached the agent can be sent again once an
  await page.getByRole('textbox',{name:'Workflow name',exact:true}).fill('Recovered save');await page.getByRole('button',{name:'Add Read step',exact:true}).click();await page.getByRole('textbox',{name:'Text supplied to workflow',exact:true}).fill('Reviewed input');await page.getByRole('button',{name:'Done',exact:true}).click();
  await rule(page,{method:'POST',suffix:'/api/workflow/phone/workflows',kind:'lost',times:1});
  await page.getByRole('button',{name:'Save workflow',exact:true}).click();await expect(page.getByText(/Review the steps, then tap Save again/)).toBeVisible();await page.getByRole('button',{name:'Save workflow',exact:true}).click();
- const builder=page.locator('[role=status]').filter({hasText:/Save outcome unknown|unconfirmed save|no record of this save|Tap Confirm/});
+ const builder=page.locator('[role=status]').filter({hasText:/Save outcome unknown|unconfirmed save|may not have arrived|no record of this save|Tap Confirm/});
  await expect(builder).toContainText('Save outcome unknown. Refresh the exact save receipt. The app will not submit a second workflow.');await expect(page.getByRole('button',{name:'Send again',exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Discard local draft',exact:true})).toHaveCount(0);
  // The draft stays locked across a reload; the resend is offered only after the agent reports no record.
  await page.reload();await setup(page);await returnToApps(page);await page.getByRole('button',{name:'Workflows',exact:true}).click();await newWorkflow(page);
  await expect(builder).toContainText('An unconfirmed save for Recovered save is still pending. Refresh to check it.');await expect(page.getByRole('button',{name:'Send again',exact:true})).toHaveCount(0);
- await page.getByRole('button',{name:'Refresh save receipt',exact:true}).click();await expect(builder).toContainText('The agent has no record of this save, so it may never have arrived. No new request was sent. Send exact save again repeats the same request; the agent applies one save identity at most once.');expect(await posts(page,'/api/workflow/phone/workflows')).toHaveLength(0);
- await page.getByRole('button',{name:'Send again',exact:true}).click();await expect(builder).toContainText('Tap Confirm exact resend to send the same save request once more. It carries the original save identity, so it cannot create a second workflow.');expect(await posts(page,'/api/workflow/phone/workflows')).toHaveLength(0);
+ await page.getByRole('button',{name:'Refresh save receipt',exact:true}).click();await expect(builder).toContainText('The agent has no record of this save, so it may never have arrived. No new request was sent.');expect(await posts(page,'/api/workflow/phone/workflows')).toHaveLength(0);
+ await page.getByRole('button',{name:'Send again',exact:true}).click();await expect(builder).toContainText('Tap Confirm exact resend to send the same save request once more.');expect(await posts(page,'/api/workflow/phone/workflows')).toHaveLength(0);
  await page.getByRole('button',{name:'Confirm',exact:true}).click();await expect(page.getByRole('heading',{name:'Recovered save',exact:true})).toBeVisible();await expect(runNow(page)).toBeVisible();
  const sent=await posts(page,'/api/workflow/phone/workflows');expect(sent).toHaveLength(1);const data=await stored(page);expect(data.workflows.map(row=>row.name)).toEqual(['Recovered save']);expect(data.receipts).toHaveLength(1);expect(data.receipts[0].mutationId??data.receipts[0].id??sent[0].mutationId).toBe(sent[0].mutationId);expect(data.workflows[0].active).toBe(false);
  // The local draft is gone: New workflow starts clean.
@@ -182,7 +182,7 @@ test('an edit the agent refused because the workflow changed saves nothing and u
  await setup(page);await seed(page);await openFixture(page);await page.getByRole('button',{name:'Change',exact:true}).click();await expect(page.getByRole('button',{name:'Add Read step',exact:true})).toBeVisible();
  await page.getByRole('textbox',{name:'Workflow name',exact:true}).fill('Edited too late');await rule(page,{method:'POST',suffix:'/phone-spec',kind:'refuse-typed',times:1});
  await page.getByRole('button',{name:'Save workflow',exact:true}).click();await expect(page.getByLabel('Workflow save review',{exact:true})).toBeVisible();await page.getByRole('button',{name:'Save workflow',exact:true}).click();
- await expect(page.locator('[role=status]').filter({hasText:'This workflow changed on the agent before your edit was saved. Nothing was saved. Your draft stays on this phone: discard it and choose Change again to edit the current version.'})).toBeVisible();
+ await expect(page.locator('[role=status]').filter({hasText:'This workflow changed on the agent before your edit was saved. Nothing was saved.'})).toBeVisible();
  // A known refusal is not an unknown outcome: no receipt to wait for, and the draft can be edited or discarded.
  await expect(page.getByRole('button',{name:'Refresh save receipt',exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Send again',exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Discard local draft',exact:true})).toBeVisible();
  await expect(page.getByRole('textbox',{name:'Workflow name',exact:true})).toHaveValue('Edited too late');expect(await posts(page,'/phone-spec')).toHaveLength(1);
@@ -232,7 +232,7 @@ test('editing while a run awaits approval leaves that run on its reviewed versio
  await expect(page.getByText('Remove workflow; keep execution history. Future runs are blocked. This does not undo completed effects.',{exact:true})).toBeVisible();expect(await posts(page,'/run')).toHaveLength(1);
 });
 
-test('the assistant shows no suggestion chips',async({page})=>{
+test('the assistant offers current actions without prototype automation suggestions',async({page})=>{
  // The reference model still carries the design prototype's "Every weekday at 6, …" chip text. The connected
  // product shows no suggestion chips, on Home or inside Workflows.
  await setup(page);
@@ -240,5 +240,7 @@ test('the assistant shows no suggestion chips',async({page})=>{
  await returnToApps(page);await page.getByRole('button',{name:'Workflows',exact:true}).click();await newWorkflow(page);await page.evaluate(()=>window.dispatchEvent(new Event('alpha-back')));await returnToApps(page);
  const lists=await page.evaluate(()=>(window as any).chipLists as Record<string,string[]>);
  expect(Object.keys(lists)).toEqual(expect.arrayContaining(['home','workflows']));
- for(const [view,chips] of Object.entries(lists))expect(chips,view).toEqual([]);
+ const currentActions=new Set(['Create a note','Set a reminder','Open Calendar','Open Notes']);
+ for(const [view,chips] of Object.entries(lists))for(const chip of chips)expect(currentActions.has(chip),view+': '+chip).toBe(true);
+ expect(await posts(page,'/run')).toHaveLength(0);
 });

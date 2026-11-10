@@ -609,6 +609,8 @@ test('a plan check that cannot reach Cloud admits nothing and reports no plan as
     vm.createContext(box); vm.runInContext(recheckCode, box);
     const admit = box.admitCloudResident; box.admitCloudResident = async signal => { const admission = await admit(signal); admitted.push(admission.binding); return admission; };
     await box.recheckResidentPlan();
+    assert.equal(box.lastPlanRecheck, 0, `${name}: server failure preserves the retry clock`);
+    assert.equal(box.networkLostUnder, null, `${name}: server failure is not a new network transition`);
     assert.deepEqual({notice: box.state.residentPlanNotice, subscription: {...box.state.residentSubscription}, planEndsAt: box.state.planEndsAt, open: box.state.open, account: box.state.cloudAccount, operation: box.operation, calls, admitted, recorded: records.filter(Boolean)}, {notice, subscription, planEndsAt: null, open: false, account, operation: null, calls: [], admitted: [binding], recorded: []}, name);
   }
   // The check runs under its own controller: a network return shares it, and it never holds the operation slot.
@@ -670,7 +672,7 @@ test('closing unknown balance preserves required sign-in for signed-out and expi
 });
 
 const verifyServiceCode = stripTypeScriptTypes(
-  section('async function verifyService(', 'let pendingBillingReview:'),
+  section('async function verifyService(', 'let membershipRead:'),
   {mode: 'strip'},
 );
 function serviceVerificationFixture({replaceCredential, identityPatch} = {}) {
@@ -755,7 +757,7 @@ for (const identityPatch of [{userId: 'other-owner'}, {organizationId: 'other-or
 // Actual saved-credential admission + production projection, with synthetic identity failures only.
 const savedAdmissionCode=stripTypeScriptTypes([
  section('function signInRefused(', '/** Notice shown when Cloud inference'),
- section('async function verifyService(', 'let pendingBillingReview:'),
+ section('async function verifyService(', 'let membershipRead:'),
  section('function signInClient(', '/**\n * A new key was stored'),
  section('async function admitCloudResident(', '/**\n * Cloud reported, on a background refresh'),
  section('async function applyResidentBinding(', '/** The packaged-runtime refusal.'),
@@ -864,7 +866,7 @@ test('the automatic entry is one full page with no Back on every platform; opene
  for(const purpose of ['cloud-account','plan'])for(const android of [false,true]){
   const opened=fixture({android,browserResident:!android,account:null,purpose,open:true});
   opened.update({startupResolved:true,residentSavedCredential:false,providerStatus:{provider:'cerebras',selected:true,configured:true}});
-  assert.equal(opened.context.explicitSignedOutCloudEntry(opened.snapshot()),true);
+  assert.equal(opened.context.explicitSignedOutCloudEntry(opened.snapshot()),false,'Own keeps Account and provider settings available without a Cloud sign-in gate');
   assert.equal(opened.context.signInEntryPage(opened.snapshot()),false,`${purpose} opened on ${android?'Android':'browser'} keeps its Back`);
  }
 });

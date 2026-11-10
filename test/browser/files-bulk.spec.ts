@@ -3,7 +3,7 @@ import {execFileSync} from 'node:child_process';
 test.beforeEach(async({page})=>{await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));await page.goto('/?mode=dev');});
 // Files browser (PLAN section 4): select mode from the folder menu; Delete moves to Trash; only a confirmed Empty deletes.
 async function openStorage(page:Page){await page.getByRole('button',{name:'Files',exact:true}).click();await page.getByRole('button',{name:'Internal storage',exact:true}).click();}
-async function startSelect(page:Page){await page.getByRole('button',{name:'Sort files',exact:true}).click();await page.getByRole('button',{name:'Select',exact:true}).click();}
+async function startSelect(page:Page){await page.getByRole('button',{name:'Files options',exact:true}).click();await page.getByRole('button',{name:'Select',exact:true}).click();}
 const zipJson=(path:string)=>JSON.parse(execFileSync('python3',['-c','import zipfile,json,sys; z=zipfile.ZipFile(sys.argv[1]); assert z.testzip() is None; print(json.dumps({n:z.read(n).decode() for n in z.namelist()}))',path],{encoding:'utf8'}));
 test('select, move together into a folder, delete to Trash, restore, and Empty only after confirming',async({page})=>{
  await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');const f=registerPlugin<any>('AlphaFiles');await f.importFile(new File(['Café\n'],'one.txt',{type:'text/plain'}));await f.importFile(new File(['two'],'two.txt',{type:'text/plain'}));await f.createFolder({id:'root',name:'Destination'});});
@@ -64,8 +64,8 @@ for(const mode of ['supported','unsupported','cancelled'])test('sharing a select
  await openStorage(page);await startSelect(page);await page.getByRole('button',{name:'Select one.txt',exact:true}).click();
  await page.getByRole('toolbar',{name:'Selection actions'}).getByRole('button',{name:'Share',exact:true}).click();
  // Files' share panel has no unavailable-email row and no explanatory text.
- const panel=page.getByRole('dialog',{name:'Share',exact:true});await expect(panel.getByRole('button',{name:'Share to email',exact:true})).toHaveCount(0);await expect(panel.getByText(/unavailable/i)).toHaveCount(0);
- await panel.getByRole('button',{name:'Share externally',exact:true}).click();
+ const panel=page.getByRole('dialog',{name:'Share',exact:true});await expect(panel.getByRole('button',{name:'Email',exact:true})).toHaveCount(0);await expect(panel.getByText(/unavailable/i)).toHaveCount(0);
+ await panel.getByRole('button',{name:'Share',exact:true}).click();
  if(mode==='unsupported')await expect(page.getByText('Sharing is unavailable in this browser.',{exact:true})).toBeVisible();
  else await expect.poll(()=>page.evaluate(()=>(window as any).bulkShareCalls.length)).toBe(1);
  expect(downloads).toEqual([]);await expect(page.getByRole('button',{name:'Deselect one.txt',exact:true})).toBeVisible();
@@ -78,7 +78,7 @@ test('a pending share chooser keeps the selection busy and dispatches only once'
  let downloads=0;page.on('download',()=>downloads++);
  await page.evaluate(async()=>{(window as any).bulkShareCalls=0;Object.defineProperty(navigator,'canShare',{configurable:true,value:()=>true});Object.defineProperty(navigator,'share',{configurable:true,value:()=>{(window as any).bulkShareCalls++;return new Promise<void>(resolve=>{(window as any).finishBulkShare=resolve;});}});const {registerPlugin}=await import('/src/platform-plugins.ts');await registerPlugin<any>('AlphaFiles').importFile(new File(['one'],'one.txt'));});
  await openStorage(page);await startSelect(page);await page.getByRole('button',{name:'Select one.txt',exact:true}).click();
- const bar=page.getByRole('toolbar',{name:'Selection actions'});await bar.getByRole('button',{name:'Share',exact:true}).click();await page.getByRole('dialog',{name:'Share',exact:true}).getByRole('button',{name:'Share externally',exact:true}).click();await expect.poll(()=>page.evaluate(()=>(window as any).bulkShareCalls)).toBe(1);
+ const bar=page.getByRole('toolbar',{name:'Selection actions'});await bar.getByRole('button',{name:'Share',exact:true}).click();await page.getByRole('dialog',{name:'Share',exact:true}).getByRole('button',{name:'Share',exact:true}).click();await expect.poll(()=>page.evaluate(()=>(window as any).bulkShareCalls)).toBe(1);
  await expect(bar.getByRole('button',{name:'Share',exact:true})).toBeDisabled();await expect(bar.getByRole('button',{name:'Move',exact:true})).toBeDisabled();
  await page.evaluate(()=>(window as any).finishBulkShare());await expect(bar.getByRole('button',{name:'Share',exact:true})).toBeEnabled();expect(await page.evaluate(()=>(window as any).bulkShareCalls)).toBe(1);expect(downloads).toBe(0);await expect(page.getByRole('button',{name:'Deselect one.txt',exact:true})).toBeVisible();
 });

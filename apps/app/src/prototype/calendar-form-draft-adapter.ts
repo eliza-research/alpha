@@ -40,7 +40,8 @@ export function installCalendarFormDraftAdapter(Component:any,views:Bag,options:
   const out=render(state,api),shell=owner,controller=shell?.calendarDraft,draft=controller?.state;
   if(!shell||!controller)return out;
   const active=!!state.form&&!state.form.id;
-  out.formDraftAvailable=!state.form&&!!shell.calendarDraftText;
+  // New event reopens this retained form; discard stays inside its editor.
+  out.formDraftAvailable=false;
   out.canDiscardFormDraft=active&&!!shell.calendarDraftText;
   out.formDraftStatus=active?(shell.calendarFormValidationError?'This draft is too large or has unsupported values. Current edits are not saved.':draft.message.replace('before sending','before saving')):'';
   out.formDraftConflict=active&&draft.conflict;

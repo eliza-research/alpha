@@ -273,7 +273,7 @@ for (const row of release) {
   if(runtimeProfile==='cloud')row.cloudVoice=cloudVoiceAdmission(row.sha256,cloudEvidence,cloudEvidenceSha256);
   const speechQualified=runtimeProfile==='cloud'
     ? cloudVoiceBlockers(row,'cartesia').length===0
-    : row.voiceHost.packaged===true&&row.voiceHost.asr===true;
+    : row.voiceHost.packaged===true&&row.voiceHost.asr===true&&row.voiceHost.qualified===true;
   const releaseReady = runtimeProfile === 'native'
     ? releaseDistributable({testMocks, signed: row.signed, releaseAdmission: row.releaseAdmission,
       runtime, runtimeNotices: row.runtimeNotices, voiceHost: row.voiceHost, licenceBlockers: row.licenceBlockers})

@@ -48,7 +48,7 @@ export function scenario({caps={},accounts=null}={}){
    if(query==='in:inbox is:unread')return {messages:inboxPage.filter(m=>m.unread),syncedAt:'2026-10-08T12:00:00Z',nextPageToken:null};
    if(query==='in:inbox')return {messages:inboxPage,syncedAt:'2026-10-08T12:01:00Z',nextPageToken:null};
    return {messages:query==='in:archive'?[mail('arch-1')]:query==='in:trash'?[mail('trash-1')]:[],syncedAt:'2026-10-08T12:02:00Z',nextPageToken:null};},
-  gmailRead:async(_grant,id)=>{calls.push(['read',id]);const m=inboxPage.find(x=>x.id===id)||mail(id);return {message:m,bodyText:bodies[id]?.bodyText||'Plain body',links:bodies[id]?.links||[]};},
+  gmailRead:async(_grant,id)=>{calls.push(['read',id]);const m=inboxPage.find(x=>x.id===id)||mail(id);return {message:m,bodyText:bodies[id]?.bodyText||'Plain body',links:bodies[id]?.links||[],historyId:'h-'+id,attachments:bodies[id]?.attachments||[]};},
   gmailThread:async(_grant,threadId)=>{calls.push(['thread',threadId]);const id=threadId.slice(7),m=inboxPage.find(x=>x.id===id)||mail(id);return {messages:[{message:m,bodyText:bodies[id]?.bodyText||'Plain body',links:bodies[id]?.links||[],historyId:'h-'+id,attachments:bodies[id]?.attachments||[]}],total:1,offset:0,historyId:'th',nextOffset:null};},
   gmailInboxCapabilities:async()=>capabilities,
   gmailDrafts:async()=>{calls.push('drafts');return {drafts:[{draftId:'d1',messageId:'dm1',subject:'Plan draft',to:['friend@example.invalid'],snippet:'Draft body',updatedAt:today.toISOString()},{draftId:'d2',messageId:'dm2',subject:'Re: thread',to:[],snippet:'',updatedAt:null}],nextPageToken:null};},
@@ -79,7 +79,7 @@ export function scenario({caps={},accounts=null}={}){
   secureConnectionStore:{read:async key=>structuredClone(slots.get(key)??null),compareExchange:async(key,prior,next)=>{if(JSON.stringify(slots.get(key)??null)!==JSON.stringify(prior))return {status:'conflict'};if(next===null)slots.delete(key);else slots.set(key,structuredClone(next));return {status:'saved'};}},
   connectionController:controller,
   DailyApps:{addListener:async(name,fn)=>{if(name==='appResumed')resume.push(fn);return {remove:async()=>{}};},perform:async()=>({status:'selected',selectionId:'sel-'+(selectionCount++),name:'file'}),forgetSelected:async()=>{}},
-  openConnectionBrowser:async()=>{throw new Error('No OAuth');},queueMicrotask,setTimeout,AbortController,DOMException,console,window:windowFixture,CustomEvent:class{constructor(t,i){this.type=t;this.detail=i?.detail;}},document:{addEventListener(){},removeEventListener(){},documentElement:{dataset:{connectionMode:'live'}}},atob,btoa};
+  openConnectionBrowser:async()=>{throw new Error('No OAuth');},queueMicrotask,setTimeout,AbortController,DOMException,console,window:windowFixture,CustomEvent:class{constructor(t,i){this.type=t;this.detail=i?.detail;}},document:{querySelector(){return null;},addEventListener(){},removeEventListener(){},documentElement:{dataset:{connectionMode:'live'}}},atob,btoa};
  return {choices,mailNotices,sandbox,client,calls,toasts,prepared,dispatched,opened,saved,navigations,confirms,resume,views,Shell,listeners,slots,
   setSession:v=>{session=v;for(const fn of listeners)fn();},advance:ms=>{clock+=ms;},gate:()=>{let open;probeGate=new Promise(r=>{open=r;});return ()=>{probeGate=null;open();};},failProbe:e=>{probeFail=e;},answer:v=>{confirmAnswer=v;}};
 }

@@ -74,7 +74,7 @@ test('explicit Stop drains playback, keeps only the played sentence and a restar
  await clean(page,foreign);
 });
 
-test('Mute controls capture, Stop speaking shows while speaking and Stop retires playback',async({page})=>{
+test('Mute controls capture and Stop retires playback',async({page})=>{
  const foreign=await setup(page);
  await page.evaluate(()=>{(window as any).flagOff.replies.push('Here is a long answer about the weather this week.');});
  await button(page,'Talk').click();
@@ -84,12 +84,13 @@ test('Mute controls capture, Stop speaking shows while speaking and Stop retires
  await mute.click();
  await expect(voice(page).getByRole('button',{name:'Unmute microphone',exact:true})).toHaveAttribute('aria-pressed','true');
  await expect.poll(()=>live(page,f=>f.stops.length)).toBe(1);
- await expect(voice(page)).toContainText('Microphone off');
+ await expect(voice(page).getByRole('status',{name:'Voice conversation status',exact:true})).toHaveText('Muted');
  await voice(page).getByRole('button',{name:'Unmute microphone',exact:true}).click();
  await expect.poll(()=>live(page,f=>f.captures.length)).toBe(2);
  await say(page,'How is the weather');
  await expect(voice(page)).toHaveAttribute('data-voice-state','speaking');
  await expect(button(page,'Stop speaking')).toBeVisible();
+ await expect(button(page,'Stop voice conversation')).toBeVisible();
  await button(page,'Stop voice conversation').click();
  await expect(voice(page)).toHaveCount(0);
  await expect.poll(()=>live(page,f=>f.stopped)).toBeGreaterThan(0);

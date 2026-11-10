@@ -1,4 +1,6 @@
 import {parseNoteFormat} from '../../../../.eliza/client-features/plugins/plugin-notes/src/note-format.ts';
+import {authoredNoteText} from '../../../../.eliza/client-features/plugins/plugin-notes/src/note-authored.ts';
+import {nextDefaultNoteTitle} from '../runtime/note-default-title';
 import {projectNoteForModel,reconstructNoteContent,type NoteJson,type StickyNote} from '../../../../.eliza/client-features/plugins/plugin-notes/src/types.ts';
 import {noteScheduleDraft,type NoteScheduleKind} from '../../../../.eliza/client-features/plugins/plugin-notes/src/client/note-schedule-draft.ts';
 import type {AppRecordPort} from '../runtime/app-record-route-policy';
@@ -43,6 +45,7 @@ export class CanonicalNotesUi {
  private idleWaiters:(()=>void)[]=[];
  private baseRows:Bag[]=[];
  private rowsValue:Bag[]=[];
+ private defaultTitle:{token:string;title:string}|null=null;
  private openValue:string|null=null;
  private blankCreationValue:string|null=null;
  private trashValue:{id:string;title:string;kind:string}[]=[];
@@ -96,7 +99,8 @@ export class CanonicalNotesUi {
  }
  get current():boolean{return this.controller.current;}
  get pending():boolean{return this.controller.pending;}
- get dirty():boolean{return !!this.editor.draft?.version;}
+ private get defaultOnly():boolean{const draft=this.editor.draft;return !!draft&&!draft.id&&!!this.defaultTitle&&draft.token===this.defaultTitle.token&&draft.title===this.defaultTitle.title&&!draft.body.trim()&&!authoredNoteText(draft.format).trim();}
+ get dirty():boolean{return !!this.editor.draft?.version&&!this.defaultOnly;}
  get editing():boolean{return !!this.editor.draft;}
  get list():Bag[]{return this.controller.current?this.rowsValue.slice():[];}
  get open():string|null{return this.controller.current?this.openValue:null;}
@@ -119,7 +123,7 @@ export class CanonicalNotesUi {
  async leave(next:string|null=null):Promise<boolean>{
   await this.settle();
   const draft=this.editor.draft;
-  if(draft?.version&&(draft.id||this.editor.hasAuthoredContent)&&!await this.editor.save())return false;
+  if(draft?.version&&!this.defaultOnly&&(draft.id||this.editor.hasAuthoredContent)&&!await this.editor.save())return false;
   // The awaited save may have been retired or replaced while pending.
   if(!this.controller.current||draft&&this.editor.draft?.token!==draft.token)return false;
   if(next===null){this.editor.close();return true;}
@@ -136,9 +140,10 @@ export class CanonicalNotesUi {
    if(!await this.leave(null))return false;
    if(this.controller.revision===null)await this.controller.refresh();
    this.editor.begin(kind);
+   const title=nextDefaultNoteTitle([...(this.controller.snapshot?.notes??[]),...(this.controller.snapshot?.trash??[]).map(entry=>entry.note)],'New note');
+   this.defaultTitle={token:this.editor.draft!.token,title};
    const folder:Record<string,string>=folderId?{folderId}:{};
-   if(kind==='list')this.editor.edit({format:{kind:'list',data:{items:[],pinned:false,...folder}}});
-   else if(folderId)this.editor.edit({format:{kind:'text',data:folder}});
+   this.editor.edit({title,...(kind==='list'?{format:{kind:'list' as const,data:{items:[],pinned:false,...folder}}}:folderId?{format:{kind:'text' as const,data:folder}}:{})});
    return true;}
   catch{if(this.controller.current)this.needsReview();return false;}
  }
@@ -184,8 +189,10 @@ export class CanonicalNotesUi {
    await this.controller.refresh();
    if(!current()||this.pending)return false;
    const duration=Math.round(durationMs)/1000,audioOnly=typeof intent.retainAudio==='function';
-   const content=transcript?`Voice note\n${transcript}`:'Voice note';
    const belongs=(note:StickyNote)=>note.format?.kind==='voice'&&note.format.data.recordingId===recordingId;
+   const snapshot=this.controller.snapshot,prior=(snapshot?.notes??[]).filter(belongs);
+   const title=prior.length===1?prior[0].title:nextDefaultNoteTitle([...(snapshot?.notes??[]),...(snapshot?.trash??[]).map(entry=>entry.note)],'Voice note');
+   const content=transcript?`${title}\n${transcript}`:title;
    const matches=(note:StickyNote)=>belongs(note)&&reconstructNoteContent(note)===content&&
     note.format?.data.dur===duration&&(note.format?.data.folderId??null)===folderId&&
     (!audioOnly||voiceAudio(note.format?.data??{})?.audioId===recordingId);
@@ -197,10 +204,8 @@ export class CanonicalNotesUi {
     if(!this.dirty){this.editor.open(note.id);this.hooks.committed?.(note.id);}
     return true;
    };
-   const snapshot=this.controller.snapshot;
    // A recording already moved to Trash is not resurrected by a delayed Stop.
    if((snapshot?.trash??[]).some(entry=>belongs(entry.note)))return false;
-   const prior=(snapshot?.notes??[]).filter(belongs);
    if(prior.length)return prior.length===1&&await complete(prior[0]);
    if(intent.pending||!await intent.claim()||!current()||this.pending)return false;
    const data:Record<string,NoteJson>={recordingId,lines:transcript?[{s:'me',at:0,t:transcript}]:[],summary:[],actions:[],dur:duration,...(audioOnly?{audio:{audioId:recordingId,durationMs}}:{}),...(folderId?{folderId}:{})};

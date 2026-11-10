@@ -20,9 +20,10 @@ import type {CanonicalCalendarSyncSettings} from './calendar-sync-settings';
 type GoogleCalendarIntent=CanonicalCalendarSyncSettings&{authorizing:boolean;review?:AgentCalendarSyncReview;retained:Map<string,GoogleDisconnectContext>};
 type GoogleAccountRead={binding:GoogleConnectionReturnBinding;rows:GmailAccount[]};
 type GoogleCalendarAccessChoice={calendar:GoogleCalendarIntent;rows:GmailAccount[]|null;read:GoogleAccountRead};
+let returnToAccount=false;
 let opened=false,calendarIntent:GoogleCalendarIntent|null=null;const listeners=new Set<()=>void>();
 /** openCalendar opens this same panel to link the same Eliza Calendar with Google; closing cancels it. */
-export const googleConnectionController={open(){opened=true;for(const listener of listeners)listener();},openCalendar(scope:CanonicalCalendarSyncSettings){calendarIntent={...scope,authorizing:false,retained:new Map()};googleConnectionController.open();},close(){opened=false;calendarIntent=null;for(const listener of listeners)listener();},calendar:()=>calendarIntent,subscribe(listener:()=>void){listeners.add(listener);return()=>{listeners.delete(listener);};},getSnapshot:()=>opened};
+export const googleConnectionController={openFromAccount(){returnToAccount=true;googleConnectionController.open();},open(){opened=true;for(const listener of listeners)listener();},openCalendar(scope:CanonicalCalendarSyncSettings){calendarIntent={...scope,authorizing:false,retained:new Map()};googleConnectionController.open();},close(){opened=false;calendarIntent=null;for(const listener of listeners)listener();if(returnToAccount){returnToAccount=false;connectionController.openPlan();}},calendar:()=>calendarIntent,subscribe(listener:()=>void){listeners.add(listener);return()=>{listeners.delete(listener);};},getSnapshot:()=>opened};
 export function googleCalendarAccountKey(){const account=connectionController.getSnapshot().cloudAccount;return account?.organizationId?{environment:account.environment,userId:account.userId,organizationId:account.organizationId}:null;}
 function currentGoogleConnectionReturnBinding():GoogleConnectionReturnBinding|null {
  const cloud=connectionController.getCloudClient(),key=googleCalendarAccountKey();
@@ -155,14 +156,14 @@ export function GoogleConnectionsPanel(){
  useEffect(()=>{if(!open)return;const accountsChanged=()=>setRevision(value=>value+1);window.addEventListener(GOOGLE_ACCOUNTS_CHANGED,accountsChanged);return()=>window.removeEventListener(GOOGLE_ACCOUNTS_CHANGED,accountsChanged);},[open]);
  useEffect(()=>{
   if(!open)return;
-  const element=panel.current,previous=document.activeElement,phone=document.querySelector<HTMLElement>('.os');
+  const element=panel.current,previous=document.activeElement,phone=document.querySelector<HTMLElement>('.os'),accountReturn=returnToAccount;
   const releaseInert=holdPhoneInert(phone);
   if(phone&&element){const theme=getComputedStyle(phone);for(const token of ['bg','fg','s2','line','mut','acc'])element.style.setProperty(`--connection-${token}`,theme.getPropertyValue(token==='acc'?'--acct':`--${token}`));}
   element?.focus();
   const back=(event:Event)=>{if(document.querySelector('dialog[open]'))return;event.preventDefault();event.stopImmediatePropagation();active.current?.abort();googleConnectionController.close();};
   const keydown=(event:KeyboardEvent)=>{if(event.key==='Escape'){back(event);return;}if(event.key==='Tab'&&element){const items=[...element.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),select:not(:disabled),a[href],summary')];if(event.shiftKey&&document.activeElement===items[0]){event.preventDefault();items.at(-1)?.focus();}else if(!event.shiftKey&&document.activeElement===items.at(-1)){event.preventDefault();items[0]?.focus();}}};
   window.addEventListener('alpha-back',back,true);document.addEventListener('keydown',keydown);
-  return()=>{window.removeEventListener('alpha-back',back,true);document.removeEventListener('keydown',keydown);releaseInert();if(previous instanceof HTMLElement&&previous.isConnected)previous.focus();};
+  return()=>{window.removeEventListener('alpha-back',back,true);document.removeEventListener('keydown',keydown);releaseInert();if(accountReturn)queueMicrotask(()=>{if(!opened)document.querySelector<HTMLElement>('[data-alpha-account-google]')?.focus();});else if(previous instanceof HTMLElement&&previous.isConnected)previous.focus();};
  },[open]);
  /** Connect asks once for everything Cloud grants (Gmail read and send, Calendar read and edit), so the agent works on first use.
   * Gmail drafts, archive, trash and read state (gmail.compose/gmail.modify) are not in Cloud's Google scope allowlist yet. */
@@ -313,6 +314,6 @@ export function GoogleConnectionsPanel(){
   </section>}
   {choice&&calendarReadCurrent(choice.calendar,choice.read)&&<section aria-label="Calendar changes"><p>Sync creates and updates events in your Google calendar, so it needs Calendar edits on. Gmail access stays as it is.</p><button disabled={busy} onClick={()=>void allowCalendarChanges(choice)}>Allow Calendar changes</button></section>}
   {confirm&&<section role="alert"><p style={{whiteSpace:'pre-line'}}>{googleDisconnectConfirmation(confirm.label,serviceName)}</p><button disabled={busy} onClick={()=>void disconnect(confirm)}>Confirm disconnect Google account</button><button disabled={busy} onClick={()=>setConfirm(null)}>Keep connected</button></section>}
-  <div className="alpha-connection-actions">{calendarIntent&&cloud?<button className="alpha-btn alpha-btn--primary" disabled={busy} onClick={()=>void connectCalendar(calendarIntent)}>{calendarGranted?'Sync Calendar with Google':'Connect Google Calendar'}</button>:<button className="alpha-btn alpha-btn--primary" disabled={busy} onClick={()=>void connect()}>{cloud?(accounts.some(account=>account.connected)?'Add Google account':'Connect Google account'):'Sign in'}</button>}{cloud&&<button className="alpha-btn alpha-btn--secondary" disabled={busy} onClick={()=>setRevision(value=>value+1)}>Check Google connections</button>}</div>
+  <div className="alpha-connection-actions">{calendarIntent&&cloud?<button className="alpha-btn alpha-btn--primary" disabled={busy} onClick={()=>void connectCalendar(calendarIntent)}>{calendarGranted?'Sync Calendar with Google':'Connect Google Calendar'}</button>:<button className="alpha-btn alpha-btn--primary" disabled={busy} onClick={()=>void connect()}>{cloud?(accounts.some(account=>account.connected)?'Add Google account':'Connect Google account'):'Sign in'}</button>}</div>
  </div></div>;
 }

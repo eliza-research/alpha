@@ -1,7 +1,13 @@
+import {returnToApps} from './app-navigation';
 import {test,expect} from '@playwright/test';
 async function setup(page:any){
  await page.route('https://**/*',r=>r.abort());await page.addInitScript(()=>{localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));(window as any).sendFocus={sent:[],holdConsume:false};if(navigator.mediaDevices)navigator.mediaDevices.getUserMedia=async()=>{throw Error('No real microphone');};});await page.goto('/?connections=advanced');await expect(page.getByRole('textbox',{name:'Ask Alpha',exact:true})).toBeEnabled();
- await page.evaluate(async()=>{const {Component}=await import('/src/prototype/model.js'),{alphaClient}=await import('/src/runtime/alpha-client.ts');const f=(window as any).sendFocus;Component.prototype.connectAgent=async()=>{};alphaClient.send=async(text:string)=>{f.sent.push(text);await new Promise<void>(r=>f.reply=r);return {text:'Closed fixture reply'};};const render=Component.prototype.renderVals;Component.prototype.renderVals=function(){f.shell=this;return render.call(this);};});await expect.poll(()=>page.evaluate(()=>!!(window as any).sendFocus.shell)).toBe(true);
+ await page.evaluate(async()=>{const {Component}=await import('/src/prototype/model.js'),{alphaClient}=await import('/src/runtime/alpha-client.ts');const f=(window as any).sendFocus;Component.prototype.connectAgent=async()=>{};alphaClient.send=async(text:string)=>{f.sent.push(text);await new Promise<void>(r=>f.reply=r);return {text:'Closed fixture reply'};};const render=Component.prototype.renderVals;Component.prototype.renderVals=function(){f.shell=this;return render.call(this);};});
+ // Capture the instrumented shell during an explicit render; a settled startup need not
+ // produce another incidental render just to initialize this fixture.
+ await page.getByRole('button',{name:'Settings',exact:true}).click();
+ await expect.poll(()=>page.evaluate(()=>!!(window as any).sendFocus.shell)).toBe(true);
+ await returnToApps(page);
  await page.evaluate(()=>{(window as any).sendFocus.shell.connectAgent=async()=>{};});
 }
 for(const detent of ['input','sheet','full'])for(const method of ['Enter','click'])test(`Send preserves composer focus ${detent} ${method}`,async({page})=>{

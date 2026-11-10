@@ -23,13 +23,11 @@ import { releaseAdmission } from "./build-android.mjs";
 const FONT_CHECK = /^(unresolved-font-licence: |font licence check failed: )/;
 
 export function releaseBlockers(row, { fontLicenceBlocks = UNRESOLVED_FONT_LICENCE_BLOCKS_DISTRIBUTION, ...options } = {}) {
-  const blockers = apkReleaseBlockers(row, {
+  return apkReleaseBlockers(row, {
     ...options,
     admitSigner: releaseAdmission,
     signerFile: "android/release-signer.json",
     cloudVoiceProvider: "cartesia",
     licenceBlocks: item => fontLicenceBlocks && FONT_CHECK.test(item),
   });
-  // Device acceptance is observed separately; a checked-in approval flag is not a build gate.
-  return blockers.filter(item => item !== 'unqualified on-device voice (device qualification pending)');
 }

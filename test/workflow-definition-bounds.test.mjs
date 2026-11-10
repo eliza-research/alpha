@@ -66,6 +66,8 @@ console.log(JSON.stringify(out));`);
 
 test('a typed workflow carries the manual trigger or a reviewed local time, and the agent must offer it',()=>{
  const out=run(prelude+`
+process.env.TZ='UTC';Date.now=()=>Date.UTC(2026,10,10,12);
+const L=await import(${JSON.stringify(resolve(root,'apps/app/src/prototype/locale-time.ts'))});L.setLocalePreferences({locale:'en-US',hourCycle:'h23'});
 const weekdays={kind:'time',localTime:'07:30',timeZone:'Europe/Paris',days:[1,2,3,4,5]};
 out.manual=A.normalizePhoneSpec(base).trigger;out.time=A.normalizePhoneSpec({...base,trigger:weekdays}).trigger;
 out.describe=[A.describePhoneTrigger(weekdays),A.describePhoneTrigger({kind:'manual'})];
@@ -77,7 +79,7 @@ out.timeOffered=await message(async()=>A.assertPhoneCapabilities(A.normalizePhon
 console.log(JSON.stringify(out));`);
  assert.deepEqual(out.manual,{kind:'manual'});
  assert.deepEqual(out.time,{kind:'time',localTime:'07:30',timeZone:'Europe/Paris',days:[1,2,3,4,5]});
- assert.deepEqual(out.describe,['Weekdays at 07:30 (Europe/Paris)','Only when you choose Run now']);
+ assert.deepEqual(out.describe,['Next Nov 11, 2026, 06:30','Only when you choose Run now'],'a foreign saved clock names its next instant in the device zone');
  for(const name of ['schedule','cron','event'])assert.equal(out[name],'PhoneWorkflowSpecError: This workflow trigger is unavailable',name);
  assert.equal(out.legacyTime,'PhoneWorkflowSpecError: Unsupported workflow field');
  for(const name of ['unordered','noDays','badZone','badTime'])assert.equal(out[name],'PhoneWorkflowSpecError: Choose a local time, a valid time zone and at least one day',name);

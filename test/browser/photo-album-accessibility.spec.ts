@@ -1,3 +1,4 @@
+import {choosePhotoAction} from './helpers/owned-photo';
 import {guardCalendarFixture as guardNoMedia} from './calendar-draft-readiness';
 import {test,expect} from '@playwright/test';
 test.beforeEach(async({context,page})=>{await guardNoMedia(context);await page.route(/^https?:\/\/(?!127\.0\.0\.1:|localhost:)/,route=>route.abort());});
@@ -11,10 +12,10 @@ for(const theme of ['light','dark'])test(`${theme} album manager owns keyboard f
  await page.getByRole('button',{name:/^Photo, /}).click();
  const info=page.getByRole('button',{name:'Photo info',exact:true});
  await info.focus();await page.keyboard.press('Enter');
- // Info lists the facts and offers Add to album, which opens the album sheet.
+ // Info lists the selected photo facts; album actions live in the photo menu.
  const sheet=page.getByRole('dialog',{name:'Photo info',exact:true});
  await expect(sheet.getByText('Dimensions',{exact:true})).toBeVisible();await expect(sheet.getByText('100 × 80',{exact:true})).toBeVisible();
- await sheet.getByRole('button',{name:'Add to album',exact:true}).click();
+ await page.keyboard.press('Escape');await expect(sheet).toHaveCount(0);await choosePhotoAction(page,'Add to album');
  const dialog=page.locator('[data-alpha-album-manager]');
  await expect(dialog.getByRole('button',{name:'Close dialog',exact:true})).toBeFocused();
  await expect(page.getByRole('button',{name:'Back from photo',exact:true})).toHaveCount(0);
@@ -30,10 +31,10 @@ for(const theme of ['light','dark'])test(`${theme} album manager owns keyboard f
  await page.keyboard.press('Escape');
  await expect(dialog).toHaveCount(0);
  await expect(info).toBeFocused();
- await info.click();await sheet.getByRole('button',{name:'Add to album',exact:true}).click();await expect(dialog).toBeVisible();
+ await choosePhotoAction(page,'Add to album');await expect(dialog).toBeVisible();
  await page.evaluate(()=>window.dispatchEvent(new Event('alpha-back')));
  await expect(dialog).toHaveCount(0);await expect(info).toBeFocused();
- await info.click();await sheet.getByRole('button',{name:'Add to album',exact:true}).click();await expect(dialog).toBeVisible();
+ await choosePhotoAction(page,'Add to album');await expect(dialog).toBeVisible();
  await page.evaluate(()=>window.dispatchEvent(new Event('launcher-home')));
  await expect(dialog).toHaveCount(0);
  await expect(page.getByRole('button',{name:'Photos',exact:true})).toBeVisible();
