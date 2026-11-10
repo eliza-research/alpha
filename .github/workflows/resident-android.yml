@@ -57,11 +57,11 @@ on:
 permissions:
   contents: read
 concurrency:
-  # Only newer main candidates supersede automatic candidate work. They contain
-  # earlier merged changes; candidate completion needs a quiet main and resources.
+  # Primary main-push attempts share a canceling group. Reruns use their own
+  # run ID and cannot cancel that group. GitHub does not guarantee commit order.
   # Manual qualification keeps its separate, existing cancellation group.
-  group: resident-${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'app-candidate-main' || (github.event_name == 'workflow_dispatch' && github.ref || format('{0}-{1}', github.event_name, github.sha)) }}${{ inputs.operation == 'publish-qualification' && '-carrier' || '' }}
-  cancel-in-progress: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
+  group: resident-${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && (github.run_attempt == 1 && 'app-candidate-main' || format('app-candidate-run-{0}', github.run_id)) || (github.event_name == 'workflow_dispatch' && github.ref || format('{0}-{1}', github.event_name, github.sha)) }}${{ inputs.operation == 'publish-qualification' && '-carrier' || '' }}
+  cancel-in-progress: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main' && github.run_attempt == 1) }}
 jobs:
   publish-qualification:
     if: github.event_name == 'workflow_dispatch' && inputs.operation == 'publish-qualification'

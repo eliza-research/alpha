@@ -138,8 +138,10 @@ Main pushes automatically build unsigned native candidates in the existing
 Resident Android workflow. The separate `app-native-candidate-*` artifact holds
 the genuine distribution archive and `app-update-candidate.json`, which binds
 source, SDK, run/attempt, profile, channel and actual APK hashes. Test-mocks stay
-in the qualification archive. New main pushes supersede older candidate runs;
-completion needs a quiet main, build capacity and admitted native inputs.
+in the qualification archive. Primary main-push attempts share a canceling group;
+reruns use their own run ID group and do not cancel running work. GitHub does not
+guarantee commit order. Completion needs a quiet main, build capacity and admitted
+native inputs.
 The existing workflow run number is the candidate versionCode, checked against
 all retained stable APKs, the public pointer and committed version floors.
 Failed or canceled runs consume their number. A manual release or workflow
