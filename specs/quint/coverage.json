@@ -21376,7 +21376,7 @@
     },
     {
       "path": "apps/app/src/prototype/inbox-cloud-adapter.ts",
-      "sha256": "0747bddbc58910b015087ff95267e3fe4e7251c63edd75e1c6e911a92c321b56",
+      "sha256": "6b32aee37b7d86d13d605409f85137b2b05b6e13afefb2e975243f85030a775a",
       "models": [
         "InboxCoordinator",
         "InboxDelivery",
@@ -22451,7 +22451,7 @@
           "text": "void restoreHomeMailbox().finally(() => warmHomeMailbox(true).then(() => { const hint = readGmailAccountChoice(connectionController.getSnapshot().cloudAccount); if (hint && hint === selected && accoun"
         }
       ],
-      "integrationReview": "2026-11-10: Account-change revalidation immediately hides old Home header metadata and clears attention before awaiting the account list. Existing generation and summary epochs fence late reads; stored drafts/credentials remain untouched. The accepted account is then read normally. Final model/browser acceptance follows the current source."
+      "integrationReview": "2026-11-10: Account-change revalidation immediately hides old Home header metadata and clears attention before awaiting the account list. Existing generation and summary epochs fence late reads; stored drafts/credentials remain untouched. The accepted account is then read normally. Final model/browser acceptance follows the current source. 2026-11-10 follow-up: Honor the durable email-image preference and existing one-message Show images override. Loading/unreadable preference does not fetch remote HTML images."
     },
     {
       "path": "apps/app/src/prototype/inbox-drafts.ts",
@@ -33368,7 +33368,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "e61f789abe16837b49516802cb07fcaf70edf89b1b13213792411df84bee14fc",
+      "sha256": "ea16e8ed15a7e2b053ab8b0c3e2e15a721bab736fed52f09004a76d97a252e5e",
       "stateAnchors": [
         {
           "line": 213,
@@ -33443,7 +33443,7 @@
           "text": "owner?.setState({theme,appearanceStorageRead:{theme}});"
         }
       ],
-      "integrationReview": "Keep the actual unconfirmed wake-stop state visible in Settings; no new listening control or capture path. Production stopped/unconfirmed companion checks pass."
+      "integrationReview": "Keep the actual unconfirmed wake-stop state visible in Settings; no new listening control or capture path. Production stopped/unconfirmed companion checks pass. 2026-11-10 follow-up: Restore the durable email-image preference under Settings \u2192 Apps \u2192 Inbox; unreadable preferences disable the toggle and expose existing recovery."
     },
     {
       "path": "apps/app/src/prototype/share-panel-adapter.ts",
@@ -34116,9 +34116,9 @@
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "f56ec7dabb07bcc0057007c4b1d564d42faa6e951a09afd4a5e23e075c3ca661",
+      "sha256": "87e07de05cf496ede2a5c84ac07ca50e890938466324cb877561551ed37114b6",
       "stateAnchors": [],
-      "integrationReview": "2026-11-10: Current boundary and presentation correction. Account revalidation hides old headers before awaiting the response; notice clearance changes the Home scrollport, and foreign schedule editing explicitly identifies its preserved clock. Relevant browser/source tests and finite models remain separate from final runtime/device qualification. 2026-11-10: Owner d3d01a6 Files sort/folder and scheduled ten-minute snooze source intake. Preserve retained-request recovery and saved recurrence timezone; exact-time protocol and source-model comparisons required."
+      "integrationReview": "2026-11-10: Current boundary and presentation correction. Account revalidation hides old headers before awaiting the response; notice clearance changes the Home scrollport, and foreign schedule editing explicitly identifies its preserved clock. Relevant browser/source tests and finite models remain separate from final runtime/device qualification. 2026-11-10: Owner d3d01a6 Files sort/folder and scheduled ten-minute snooze source intake. Preserve retained-request recovery and saved recurrence timezone; exact-time protocol and source-model comparisons required. 2026-11-10 follow-up: Expose only the existing owner-fenced Previous notes action when retained storage or recovery is available; no storage initialization or migration."
     },
     {
       "path": "apps/app/src/prototype/use-in-email-review.ts",

@@ -2,8 +2,8 @@ import {test,expect,type Page} from '@playwright/test';
 import {flagOffAndroid,fenceNetwork} from './flag-off-android';
 import {residentStub} from './resident-stub';
 
-// The flag-off product exposes grouped Settings. Native diagnostics and the former mail-image
-// switch have no product entry here. Their data contracts remain covered by the unit suites.
+// The flag-off product exposes grouped Settings. Native diagnostics stay absent, and app-specific
+// controls are reached through Apps rather than added to the top-level list.
 const current=(page:Page)=>page.locator('[data-settings-page]:not([inert])').last();
 const offline=()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));
 test.describe.configure({timeout:240_000});

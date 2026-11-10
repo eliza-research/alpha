@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "3504bfbe6d264d1bf05bbc2224708131d41f3a6b",
-  "ledgerSha256": "24b904503ae9255983596e3f202e8da5e17c668fb547cd5cc670cc1c4573fe55",
+  "ledgerSha256": "0e41b30e3684261c87985cd717de329adb8256f67534be09b37ba7fe33d9303d",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -29,10 +29,10 @@
     "languageReview": 95,
     "parseErrors": 0,
     "candidates": 70025,
-    "writeSites": 68874,
-    "writeAssociations": 61740,
+    "writeSites": 68878,
+    "writeAssociations": 61757,
     "asynchronous": 8635,
-    "unassignedWrites": 10548
+    "unassignedWrites": 10549
   },
   "files": [
     {
@@ -35670,7 +35670,7 @@
     },
     {
       "path": "apps/app/src/prototype/inbox-cloud-adapter.ts",
-      "sha256": "0747bddbc58910b015087ff95267e3fe4e7251c63edd75e1c6e911a92c321b56",
+      "sha256": "6b32aee37b7d86d13d605409f85137b2b05b6e13afefb2e975243f85030a775a",
       "allocatedModels": [
         "InboxCoordinator",
         "InboxDelivery",
@@ -35690,7 +35690,7 @@
           "owner": "installInboxCloudAdapter",
           "line": 56,
           "bindings": 59,
-          "writes": 348
+          "writes": 349
         },
         {
           "owner": "installInboxCloudAdapter.openNotice",
@@ -40387,7 +40387,7 @@
     },
     {
       "path": "apps/app/src/prototype/settings-adapter.ts",
-      "sha256": "e61f789abe16837b49516802cb07fcaf70edf89b1b13213792411df84bee14fc",
+      "sha256": "ea16e8ed15a7e2b053ab8b0c3e2e15a721bab736fed52f09004a76d97a252e5e",
       "allocatedModels": [
         "AppearancePreferenceAdmission",
         "AutomaticAppUpdateSchedule",
@@ -40447,7 +40447,7 @@
           "owner": "installSettingsAdapter.ArrowFunction@568",
           "line": 573,
           "bindings": 36,
-          "writes": 558
+          "writes": 574
         },
         {
           "owner": "installSettingsAdapter.ArrowFunction@568.ArrowFunction@917",
@@ -40458,7 +40458,7 @@
       ],
       "parseErrors": [],
       "asynchronous": 46,
-      "unassignedWrites": 52
+      "unassignedWrites": 53
     },
     {
       "path": "apps/app/src/prototype/share-panel-adapter.ts",
@@ -40704,7 +40704,7 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "f56ec7dabb07bcc0057007c4b1d564d42faa6e951a09afd4a5e23e075c3ca661",
+      "sha256": "87e07de05cf496ede2a5c84ac07ca50e890938466324cb877561551ed37114b6",
       "allocatedModels": [
         "CalendarPreservationConfirmation",
         "CameraPreviewRetirement",
@@ -226172,6 +226172,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "96e167c3a5b9e2842317f95672d9ae4f40223f71bb32f43b40b8fb0ec90d4b4b"
+    "sha256": "ba7fb26f8748e1ac20794dcc80e4d3d0282f46a792f61c942dfcde258f0de981"
   }
 }
