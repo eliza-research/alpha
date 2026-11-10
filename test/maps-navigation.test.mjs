@@ -16,13 +16,13 @@ test('upstream plugin-maps navigation tests pass on the pinned source', () => {
 
 test('guidance presents the next maneuver, the following step and the remaining trip', async () => {
   const { guidanceView, guidanceDistance, maneuverIcon, MANEUVER_ICONS } = await import('../apps/app/src/maps/guidance.ts');
-  assert.equal(guidanceDistance(42), '40 m');
-  assert.equal(guidanceDistance(437), '440 m');
-  assert.equal(guidanceDistance(1830), '1.8 km');
+  assert.equal(guidanceDistance(42,'en-GB'), '40 m');
+  assert.equal(guidanceDistance(437,'en-GB'), '440 m');
+  assert.equal(guidanceDistance(1830,'en-GB'), '1.8 km');
   assert.equal(maneuverIcon(undefined), MANEUVER_ICONS.continue);
   const step = (instruction, maneuver) => ({ instruction, maneuver, coordinate: { latitude: 0, longitude: 0 }, distanceMeters: 1 });
   const view = guidanceView({ offRouteMeters: 2, alongMeters: 100, remainingMeters: 900, remainingSeconds: 150, stepIndex: 0,
-    next: { index: 1, step: step('Turn left onto Rue A', 'left'), distanceMeters: 120 }, then: { index: 2, step: step('Turn right', 'right') } }, new Date(2026, 9, 8, 12, 0));
+    next: { index: 1, step: step('Turn left onto Rue A', 'left'), distanceMeters: 120 }, then: { index: 2, step: step('Turn right', 'right') } }, new Date(2026, 9, 8, 12, 0),'none','en-GB');
   assert.equal(view.icon, MANEUVER_ICONS.left);
   assert.equal(view.distance, '120 m');
   assert.equal(view.instruction, 'Turn left onto Rue A');
@@ -30,7 +30,7 @@ test('guidance presents the next maneuver, the following step and the remaining 
   assert.equal(view.thenIcon, MANEUVER_ICONS.right);
   assert.equal(view.remainingTime, '3 min');
   assert.match(view.remaining, /^900 m · arrive .+ · no live traffic$/);
-  assert.equal(view.spoken, 'Turn left onto Rue A');
+  assert.equal(view.spoken, 'In 120 m, Turn left onto Rue A');
   const near = guidanceView({ offRouteMeters: 1, alongMeters: 0, remainingMeters: 10, remainingSeconds: 5, stepIndex: 0, next: { index: 1, step: step('Arrive at destination', 'arrive'), distanceMeters: 10 } });
   assert.equal(near.spoken, 'Arrive at destination');
   assert.equal(near.hasThen, false);

@@ -32,6 +32,11 @@ export const DENYLIST = Object.freeze([
   'Set one up on the agent',
   'Maya Chen', 'Jordan Park', 'Priya Nair', 'Alex Kim', 'you@gmail.example', 'Ritual Coffee',
   'news.example', 'Design review at', 'Unlock for details',
+  // Fixture-only Wallet/Settings effects and the desktop development rail must
+  // fold away at the build flag boundary, even when their views are hidden.
+  'Kitchen Speaker', '4000 1234 5678 9017', 'Card scanned', 'Simulated payment',
+  'Memory wiped', 'Logs saved to Downloads', 'Up to date',
+  'This page is a visual prototype', 'Pixel 11 Pro', 'Powered by elizaOS ·',
   'Development vault secret', 'synthetic-dev-',
   // The simulated password provider (browser/password-provider.ts) reaches a bundle only if
   // browserDevProfile stops constant-folding to false; these catch that regression.
@@ -167,7 +172,7 @@ function main(argv) {
   catch { /* a bundle without readable notices is reported by the APK checks, not here */ }
   // The one separately named font check. Reported, never failed here: a developer build may carry it.
   if (existsSync(dir)) { const fonts = fontLicenceFindings(dir); for (const row of [...fonts.unresolved, ...fonts.resolved]) console.warn(fontLicenceLine(row.message)); }
-  if (result.ok) console.log(`PASS ${path.relative(process.cwd(), dir) || '.'}: ${result.files} files, testMocks=${result.testMocks}${result.testMocks ? ' (denylist skipped for an explicit test-mocks bundle)' : ', no mock, fixture or developer surfaces found'}.`);
+  if (result.ok) console.log(`PASS ${path.relative(process.cwd(), dir) || '.'}: ${result.files} files, testMocks=${result.testMocks}${result.testMocks ? ' (denylist skipped for an explicit test-mocks bundle)' : ', no audited mock, fixture or developer markers found'}.`);
   else console.error(`FAIL ${result.findings.length} denylist hit(s), ${result.errors.length} error(s).`);
   return result.ok ? 0 : 1;
 }

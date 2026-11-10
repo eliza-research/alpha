@@ -11,7 +11,7 @@ const template = '<main class="os"><section data-screen><sc-for list="{{groups}}
 const code = buildSync({
   stdin: {contents:readFileSync('apps/app/src/prototype/dc-lite.js', 'utf8')
     .replace('import {iconStyle} from \'../icon-style\';', 'const iconStyle = () => ({});')
-    .replace('import templateHtml from "./template.html?raw";', `const templateHtml = ${JSON.stringify(template)};`),
+    .replace('import templateHtml from "./template-source";', `const templateHtml = ${JSON.stringify(template)};`),
   resolveDir:process.cwd(), loader:'js'},
   bundle:true, write:false, platform:'node', format:'cjs', external:['react'],
 }).outputFiles[0].text;

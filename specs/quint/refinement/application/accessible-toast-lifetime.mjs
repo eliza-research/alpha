@@ -38,7 +38,7 @@ function fixture(name, code) {
   const {refresh, start, scale, latest, ShellTimers} = context.api;
   const shell = new ShellTimers();
   shell.state = {toast: '', toastUndo: false};
-  shell.setState = patch => Object.assign(shell.state, patch);
+  shell.setState = (patch, committed) => {Object.assign(shell.state, patch); committed?.();};
   const observe = () => ({
     'state.scale': Math.round(scale() * 100),
     'state.latest': [...requests].find(([, owner]) => owner === latest())?.[0] ?? 0,
@@ -49,6 +49,7 @@ function fixture(name, code) {
     'state.duration': shell.state.toast ? shell.toastDuration : 0,
     'state.held': !!shell.toastHeld,
     'state.timerDelay': timers.values().next().value?.delay ?? 0,
+    'state.queued': Array.from(shell.toastQueue ?? [], row => ({message: Number(row.msg[0]), undo: typeof row.undo === 'function'})),
   });
   const result = trace(name, observe());
   const save = (label, ...action) => {
@@ -155,6 +156,12 @@ globalThis.api = {refresh: refreshAccessibilityTimeout, start: startAccessibilit
   });
   await run('long_message_focus_hold_keeps_captured_duration', async f => {
     f.show(3, false); f.hold(); f.request(1); await f.reply(1, 30000, 6); f.resume(); f.expire();
+  });
+  await run('passive_notices_preserve_current_undo', async f => {
+    f.show(1, true); f.show(2, false); f.show(3, false); f.expire(); f.expire();
+  });
+  await run('every_queued_undo_keeps_its_own_slot', async f => {
+    f.show(1, true); f.show(2, true); f.show(3, false); f.expire(); f.expire(); f.expire();
   });
 
   return checkTraces(boundInputs({model, modelPath: 'specs/quint/application/AccessibleToastLifetime.qnt',

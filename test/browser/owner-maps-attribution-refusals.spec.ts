@@ -41,7 +41,7 @@ async function openMaps(page: Page) {
 
 async function search(page: Page, text: string) {
   const before = await page.evaluate(() => (window as any).mapsSearches as number);
-  const query = page.getByRole('textbox', { name: 'Search places', exact: true });
+  const query = page.getByRole('searchbox', { name: 'Search places', exact: true });
   await query.fill(text);
   await query.press('Enter');
   await expect.poll(() => page.evaluate(() => (window as any).mapsSearches as number)).toBeGreaterThan(before);

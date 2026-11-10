@@ -27,7 +27,7 @@ for(const broken of [false,true])test(`Google raster transport and attribution $
   };
  },{png,broken});
  await residentHome(page);await button(page,'Maps').click();
- const search=page.getByRole('textbox',{name:'Search places',exact:true});await search.fill('Synthetic harbour');await search.press('Enter');
+ const search=page.getByRole('searchbox',{name:'Search places',exact:true});await search.fill('Synthetic harbour');await search.press('Enter');
  const plane=page.locator('[data-alpha-map-plane]');await expect(plane).toBeVisible();
  await expect.poll(()=>page.evaluate(()=>(window as any).googleRaster.tiles)).toBeGreaterThan(0);
  await expect(page.locator('.alpha-map-credits').getByText('Google Maps',{exact:true})).toBeVisible();

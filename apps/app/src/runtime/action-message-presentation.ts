@@ -169,7 +169,7 @@ export function collapseSystemNotices<T extends ChatRow>(messages: T[]): T[] {
 
 
 /** Display-only projection of an agent Maps card. Links are shown as text, never opened. */
-export type MapsChatCard={kind:MapsCardSpec['kind'];title:string;lines:string[];attribution:string};
+export type MapsChatCard={kind:MapsCardSpec['kind'];title:string;lines:string[];attribution:string;mapQuery?:string};
 /** The plugin-maps share gate: exactly two bounded answers that are sent back verbatim. */
 export type MapsShareChoice={id:string;options:{label:string;value:string}[]};
 
@@ -180,11 +180,11 @@ const LOCATE_LINE='Alpha does not send your location to the agent. Name a starti
 
 function present(card:MapsCardSpec):MapsChatCard{
  switch(card.kind){
-  case 'place':return {kind:card.kind,title:card.place.name,lines:card.place.formattedAddress?[card.place.formattedAddress]:[],attribution:card.attribution||''};
-  case 'places':return {kind:card.kind,title:`Places for “${card.query}”`,lines:card.places.map(placeLine),attribution:card.attribution||''};
-  case 'route':return {kind:card.kind,title:`Route to ${card.destination.name}`,lines:[`From ${card.origin.name}`,`${MODES[card.travelMode]} · ${guidanceDistance(card.distanceMeters)} · ${guidanceDuration(card.durationSeconds)}`,...card.warnings],attribution:card.attribution||''};
-  case 'handoff':return {kind:card.kind,title:card.handoffKind==='share'?`Location link for ${card.place.name}`:`Directions to ${card.place.name}`,lines:[...(card.place.formattedAddress?[card.place.formattedAddress]:[]),card.webUri],attribution:''};
-  case 'locate':return {kind:card.kind,title:'Location needed',lines:[LOCATE_LINE],attribution:''};
+  case 'place':return {kind:card.kind,title:card.place.name,lines:card.place.formattedAddress?[card.place.formattedAddress]:[],attribution:card.attribution||'',mapQuery:`${card.place.latitude}, ${card.place.longitude}`};
+  case 'places':return {kind:card.kind,title:`Places for “${card.query}”`,lines:card.places.map(placeLine),attribution:card.attribution||'',mapQuery:card.query};
+  case 'route':return {kind:card.kind,title:`Route to ${card.destination.name}`,lines:[`From ${card.origin.name}`,`${MODES[card.travelMode]} · ${guidanceDistance(card.distanceMeters)} · ${guidanceDuration(card.durationSeconds)}`,...card.warnings],attribution:card.attribution||'',mapQuery:`${card.destination.latitude}, ${card.destination.longitude}`};
+  case 'handoff':return {kind:card.kind,title:card.handoffKind==='share'?`Location link for ${card.place.name}`:`Directions to ${card.place.name}`,lines:[...(card.place.formattedAddress?[card.place.formattedAddress]:[]),card.webUri],attribution:'',mapQuery:`${card.place.latitude}, ${card.place.longitude}`};
+  case 'locate':return {kind:card.kind,title:'Location needed',lines:[card.intent==='place-near'?'Choose an area in Maps to search nearby. Your position is not sent to the agent.':LOCATE_LINE],attribution:''};
  }
 }
 

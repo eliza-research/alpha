@@ -416,6 +416,8 @@ public class MainActivity extends BridgeActivity {
    else unackedFrontStarts = 0;
    return;
   }
+  if (getBridge() != null && !isAssistantSurface() && intent != null && AlphaNavigationService.ACTION_SHOW_MAPS.equals(intent.getAction()))
+   getBridge().getWebView().evaluateJavascript("window.dispatchEvent(new Event('alpha:maps-open'))", null);
   if (getBridge() != null && !isAssistantSurface() && isHomeIntent(intent))
    getBridge().getWebView().evaluateJavascript("window.dispatchEvent(new Event('launcher-home'))", null);
  }

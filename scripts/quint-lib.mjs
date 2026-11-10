@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { createRequire } from 'node:module';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -113,6 +114,55 @@ export async function runQuintChecker(run) {
   return {result: await run(), interruptedAttempt: {exitCode: first.status, signal: first.signal}};
 }
 
+/** Match the pinned CLI's successful scenario records, not its aggregate exit code. */
+export function missingQuintScenarios(tests, output) {
+  const plain = output.replace(/\u001b\[[0-9;]*m/g, '');
+  const executed = new Set([...plain.matchAll(/^\s*ok ([A-Za-z][A-Za-z0-9_]*) passed [1-9][0-9]* test\(s\)\s*$/gm)].map(match => match[1]));
+  return tests.filter(name => !executed.has(name));
+}
+
+/** Explicit CLI values override recorded per-model simulation/proof budgets. */
+export function quintModelOptions(model, command, overrides = {}) {
+  const checking = ['verify', 'temporal', 'compare'].includes(command);
+  return {
+    samples: overrides.samples ?? model.bounds?.maxSamples ?? 80,
+    steps: overrides.steps ?? (checking ? model.bounds?.maxVerifyDepth : model.bounds?.maxSteps)
+      ?? (command === 'compare' ? 20 : checking ? 6 : 40),
+    seed: String(overrides.seed ?? model.bounds?.seed ?? '20261107'),
+  };
+}
+
+export function validateQuintModelMetadata(model, text) {
+  for (const test of model.tests) if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(test)) throw Error(`Invalid scenario ${model.module}.${test}`);
+  if (new Set(model.tests).size !== model.tests.length) throw Error(`Duplicate scenarios in ${model.module}`);
+  for (const key of ['maxSamples', 'maxSteps', 'maxVerifyDepth']) {
+    const value = model.bounds?.[key];
+    if (value !== undefined && (!Number.isSafeInteger(value) || value < 1)) throw Error(`Invalid bounds.${key} in ${model.module}`);
+  }
+  if (!model.invariants && !model.additionalProofInit) return;
+  // Use Quint's own parser: an action-local val is not a declared invariant.
+  const require = createRequire(import.meta.url);
+  const {parsePhase1fromText} = require('@informalsystems/quint/dist/src/parsing/quintParserFrontend.js');
+  const {newIdGenerator} = require('@informalsystems/quint/dist/src/idGenerator.js');
+  const parsed = parsePhase1fromText(newIdGenerator(), text, model.path);
+  if (parsed.errors.length) throw Error(`Cannot parse metadata for ${model.module}: ${parsed.errors.map(error => error.message).join('; ')}`);
+  const declarations = parsed.modules.find(module => module.name === model.module)?.declarations ?? [];
+  for (const name of model.invariants ?? []) {
+    const [qualifier, member] = name.split('::');
+    const instance = member ? declarations.find(declaration => declaration.kind === 'instance' && declaration.qualifiedName === qualifier) : undefined;
+    const instanceModule = instance && parsed.modules.find(module => module.name === instance.protoName);
+    const declared = member
+      ? instanceModule?.declarations.some(declaration => declaration.kind === 'export' && declaration.defName === member
+        || declaration.kind === 'def' && declaration.name === member && ['val', 'pureval'].includes(declaration.qualifier))
+      : declarations.some(declaration => declaration.kind === 'def' && declaration.name === name && ['val', 'pureval'].includes(declaration.qualifier));
+    if (!declared) throw Error(`Missing top-level invariant ${model.module}.${name}`);
+  }
+  if (model.additionalProofInit && !declarations.some(declaration => declaration.kind === 'def'
+    && declaration.name === model.additionalProofInit && declaration.qualifier === 'action')) {
+    throw Error(`Missing additional proof init ${model.module}.${model.additionalProofInit}`);
+  }
+}
+
 export function loadModels() {
   const models = ['application', 'services', 'native', 'legacy'].flatMap(family => {
     const document = readJson(join(quintRoot, family, 'manifest.json'));
@@ -127,6 +177,7 @@ export function loadModels() {
     for (const field of ['init', 'step', 'invariant']) if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(model[field])) throw Error(`Invalid ${field} in ${model.module}`);
     if (!Array.isArray(model.tests) || model.tests.length === 0) throw Error(`No scenarios declared for ${model.module}`);
     const text = readFileSync(join(repositoryRoot, model.path), 'utf8');
+    validateQuintModelMetadata(model, text);
     for (const test of model.tests) if (!new RegExp(`\\brun\\s+${test}\\s*=`).test(text)) throw Error(`Missing scenario ${model.module}.${test}`);
     for (const source of model.sources || []) readFileSync(join(repositoryRoot, source));
     names.add(model.module);

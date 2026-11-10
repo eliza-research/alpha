@@ -4,7 +4,35 @@ import { spawnSync } from 'node:child_process';
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { detectedCounterexample, readJson, repositoryRoot, runQuintChecker, runtimeScriptPaths, runtimeAssetPaths, sourceRoots } from '../scripts/quint-lib.mjs';
+import { detectedCounterexample, loadModels, missingQuintScenarios, quintModelOptions, readJson, repositoryRoot, runQuintChecker, runtimeScriptPaths, runtimeAssetPaths, sourceRoots, validateQuintModelMetadata } from '../scripts/quint-lib.mjs';
+
+test('all registered scenarios need an actual successful execution record', () => {
+  assert.deepEqual(missingQuintScenarios(['reviewTest', 'setup'], '\u001b[32m    ok reviewTest passed 1 test(s)\u001b[0m\n    ok setup passed 3 test(s)\n'), []);
+  assert.deepEqual(missingQuintScenarios(['reviewTest', 'setup'], '2 passing\n    ok reviewTest passed 1 test(s)\n'), ['setup']);
+  assert.deepEqual(missingQuintScenarios(['reviewTest'], '    ok reviewTest passed 0 test(s)\n'), ['reviewTest']);
+});
+
+test('manifest budgets and extra proof initializers cannot silently disappear', () => {
+  const model = {module: 'Fixture', path: 'Fixture.qnt', tests: ['exampleTest'],
+    bounds: {maxSamples: 1000, maxSteps: 60, maxVerifyDepth: 8, seed: '123'},
+    invariants: ['safety'], additionalProofInit: 'counterInit'};
+  const source = 'module Fixture { var n: int action counterInit = n\' = 1 val safety = n >= 0 run exampleTest = counterInit }';
+  validateQuintModelMetadata(model, source);
+  assert.throws(() => validateQuintModelMetadata({...model, invariants: ['local']},
+    'module Fixture { var n: int action counterInit = { val local = true n\' = 1 } run exampleTest = counterInit }'), /Missing top-level invariant/);
+  assert.throws(() => validateQuintModelMetadata({...model, additionalProofInit: 'missing'}, source), /Missing additional proof init/);
+  assert.throws(() => validateQuintModelMetadata({...model, bounds: {maxVerifyDepth: 0}}, source), /Invalid bounds/);
+  assert.deepEqual(quintModelOptions(model, 'check'), {samples: 1000, steps: 60, seed: '123'});
+  assert.deepEqual(quintModelOptions(model, 'verify'), {samples: 1000, steps: 8, seed: '123'});
+  assert.deepEqual(quintModelOptions(model, 'check', {samples: 3, steps: 2, seed: '1'}), {samples: 3, steps: 2, seed: '1'});
+});
+
+test('the admitted model registry retains the audited families and scenarios', () => {
+  const models = loadModels();
+  const floors = {application: 116, services: 51, native: 65, legacy: 27};
+  for (const [family, floor] of Object.entries(floors)) assert.ok(models.filter(model => model.family === family).length >= floor, `${family} lost registered models; review an intentional retirement explicitly`);
+  assert.ok(models.reduce((count, model) => count + model.tests.length, 0) >= 1841, 'registered scenario count regressed');
+});
 
 test('counterexample admission requires the pinned CLI violation markers and rejects tool errors', () => {
   assert.equal(detectedCounterexample('[violation] Found an issue (42ms).\nerror: found a counterexample\n'), true);

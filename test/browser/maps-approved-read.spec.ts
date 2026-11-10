@@ -86,12 +86,12 @@ for (const mode of ['place', 'route', 'stale-before-approval', 'stale-after-read
     });
     await returnToApps(page);
     await page.getByRole('button',{name:'Maps',exact:true}).click();
-    const query=page.getByRole('textbox',{name:'Search places',exact:true});
+    const query=page.getByRole('searchbox',{name:'Search places',exact:true});
     await query.fill('Private fixture destination');await query.press('Enter');
     await page.getByRole('button',{name:/^Private fixture destination/}).first().click();
     if(mode==='route'){
       await page.getByRole('button',{name:'Directions',exact:true}).click();
-      const origin=page.getByRole('textbox',{name:'Route origin coordinates'});await origin.fill('43.738,7.424');await origin.press('Enter');
+      const origin=page.getByRole('textbox',{name:'Starting point'});await origin.fill('43.738,7.424');await origin.press('Enter');
       await expect(page.getByText(/no live traffic/).first()).toBeVisible();
     }
     if(mode==='basemap-ready'){

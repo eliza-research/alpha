@@ -5,3 +5,14 @@ for(const theme of ['light','dark'])for(const height of [640,360])test(`operatio
  const dialog=page.getByRole('dialog'),cancel=dialog.getByRole('button',{name:'Cancel',exact:true}),confirm=dialog.getByRole('button',{name:'Confirm',exact:true});expect(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);await expect(cancel).toBeInViewport();await expect(confirm).toBeInViewport();await expect(confirm).toHaveCSS('color-scheme',theme);await expect(confirm).toHaveCSS('font-size','24px');expect((await confirm.boundingBox())!.height).toBeGreaterThanOrEqual(44);const content=dialog.getByLabel('Operation details');await content.focus();await page.keyboard.press('End');await expect.poll(()=>content.evaluate(el=>el.scrollTop)).toBeGreaterThan(0);await page.screenshot({path:info.outputPath('review.png')});await cancel.click();await expect(dialog).toHaveCount(0);expect(await page.evaluate(()=>(window as any).reviewResult)).toBe(false);await expect(trigger).toBeFocused();
 });
 for(const event of ['pagehide','alpha:device-state','alpha-back'])test(`operation review cancels on ${event}`,async({page})=>{await page.goto('/?mode=dev');await page.evaluate(async()=>{const {BrowserReviews}=await import('/src/browser/review.ts');void new BrowserReviews().confirm('test','Test operation','Details').then(value=>(window as any).reviewResult=value);});await expect(page.getByRole('dialog')).toBeVisible();expect(await page.evaluate(()=>(window as any).reviewResult)).toBeUndefined();await page.evaluate(event=>window.dispatchEvent(new Event(event,{cancelable:true})),event);await expect(page.getByRole('dialog')).toHaveCount(0);expect(await page.evaluate(()=>(window as any).reviewResult)).toBe(false);});
+
+for(const changed of ['owner','abort','retire'])test(`operation review cannot approve after ${changed} changes`,async({page})=>{
+ await page.goto('/?mode=dev');await page.evaluate(async()=>{
+  const {BrowserReviews}=await import('/src/browser/review.ts'),reviews=new BrowserReviews(),abort=new AbortController();const state=(window as any).ownedReview={current:true,abort,reviews,result:'pending'};
+  void reviews.confirm('settings','Clear history?','Only this phone’s metadata history is removed.','Clear history',{signal:abort.signal,current:()=>state.current}).then(value=>state.result=value);
+ });
+ const dialog=page.getByRole('dialog',{name:'Clear history?'});await expect(dialog).toBeVisible();
+ await page.evaluate(changed=>{const state=(window as any).ownedReview;if(changed==='owner')state.current=false;else if(changed==='abort')state.abort.abort();else state.reviews.cancelAll();},changed);
+ if(changed==='owner')await dialog.getByRole('button',{name:'Clear history',exact:true}).click();
+ await expect(dialog).toHaveCount(0);expect(await page.evaluate(()=>(window as any).ownedReview.result)).toBe(false);
+});

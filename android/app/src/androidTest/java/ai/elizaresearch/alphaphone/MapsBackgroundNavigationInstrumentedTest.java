@@ -80,7 +80,7 @@ public final class MapsBackgroundNavigationInstrumentedTest {
    waitFor("document.querySelector('[data-alpha-map-plane]')?.dataset.mapReady==='true'");
    input("Search places", "Casino de Monte Carlo");
    String result = "[...document.querySelectorAll('[data-alpha-maps-root] button')].find(e=>e.textContent.trim().startsWith('Casino de Monte Carlo'))"; waitFor(result); js("(" + result + ").click()");
-   click("Directions"); input("Route origin coordinates", "43.7384, 7.4246");
+   click("Directions"); input("Starting point", "43.7384, 7.4246");
    waitFor("document.querySelector('[data-alpha-maps-root]').textContent.includes('no live traffic')");
    phase("background-origin");
    int stopsBefore = Integer.parseInt(AlphaNavigationService.snapshot()[1]);
@@ -122,7 +122,7 @@ public final class MapsBackgroundNavigationInstrumentedTest {
    assertNotNull(current);
    Notification.Action[] actions = current.getNotification().actions;
    assertNotNull("Stop action", actions);
-   assertEquals("Stop", String.valueOf(actions[0].title));
+   assertEquals("End navigation", String.valueOf(actions[0].title));
    actions[0].actionIntent.send();
    for (int i = 0; i < 100 && !AlphaNavigationService.snapshot()[0].isEmpty(); i++) SystemClock.sleep(100);
    assertEquals("Session ended", "", AlphaNavigationService.snapshot()[0]);

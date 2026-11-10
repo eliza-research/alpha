@@ -68,7 +68,9 @@ test('Android foundation runs on main and develop pushes and both workflows end 
   assert.match(android, /name: Prepare pinned SDK for manual verification[\s\S]*node scripts\/prepare-local-agent\.mjs/);
   assert.match(android, /name: Prepare pinned native lifecycle sources\n\s+if: github\.event_name != 'workflow_dispatch'/);
 
-  assert.match(browser, /name: Browser MVP result\n    needs: \[changes, verify, browser, production\]\n    if: always\(\)/);
+  assert.match(browser, /name: Browser MVP result\n    needs: \[changes, verify, formal, browser, production\]\n    if: always\(\)/);
+  assert.match(browser, /name: Changed-model proofs[\s\S]*?run: npm run quint:changed/);
+  assert.ok(browser.includes('"formal=$FORMAL:$VERIFY_SELECTED"'), 'a failed or skipped selected proof lane must fail the stable aggregate');
   assert.match(browser, /name: Repository verification\n/);
   assert.match(browser, /node scripts\/verify-upstream\.mjs/);
   const residentFull = read('.github/workflows/resident-android.yml');

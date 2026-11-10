@@ -27,6 +27,7 @@ import java.util.function.BooleanSupplier;
  * the notification, or when the task is removed.</p>
  */
 public final class AlphaNavigationService extends Service {
+ static final String ACTION_SHOW_MAPS="ai.alphacompute.alphaphone.action.SHOW_NAVIGATION";
  static final String CHANNEL = "alpha.maps.navigation";
  static final int NOTIFICATION_ID = 0x4d415053; // "MAPS"
  static final String ACTION_START = "ai.elizaresearch.alphaphone.navigation.START";
@@ -250,10 +251,10 @@ public final class AlphaNavigationService extends Service {
    channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
    manager.createNotificationChannel(channel);
   }
-  Intent open = new Intent(this, MainActivity.class).setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+  Intent open = new Intent(this, MainActivity.class).setAction(ACTION_SHOW_MAPS).setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
   PendingIntent content = PendingIntent.getActivity(this, 0, open, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
   Notification.Builder notification = new Notification.Builder(this, CHANNEL)
-   .setSmallIcon(android.R.drawable.ic_menu_directions)
+   .setSmallIcon(R.drawable.ic_navigation)
    .setContentTitle(session == null || session.title.isEmpty() ? "Navigation" : session.title)
    .setContentText(session == null ? "" : session.text)
    .setContentIntent(content)
@@ -268,7 +269,7 @@ public final class AlphaNavigationService extends Service {
    Intent stopIntent = intent(this, ACTION_STOP, session).putExtra(EXTRA_REASON, "notification")
     .setData(Uri.parse("alphaphone-navigation:" + session.authority));
    PendingIntent stop = PendingIntent.getService(this, 1, stopIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-   notification.addAction(new Notification.Action.Builder(null, "Stop", stop).build());
+   notification.addAction(new Notification.Action.Builder(null, "End navigation", stop).build());
   }
   return notification.build();
  }

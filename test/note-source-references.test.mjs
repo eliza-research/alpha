@@ -20,7 +20,7 @@ test('Notes source links keep their installed preference names and use the share
 test('forgetting or evicting a picker selection never releases a grant a note link names',()=>{
  const access=readFileSync(nativeSource('SelectedDocumentAccess.java'),'utf8');
  assert.match(access,/static final String PREFERENCES="selected-documents",PREVIEW_PREFIX="document-";/,'installed registry and preview names');
- assert.match(access,/new SelectedDocuments\(app,PREFERENCES,PREVIEW_PREFIX,NoteSourceReferences\.store\(app\)::retains\)/,'the shared registry keeps grants a note link names');
+ assert.match(access,/new SelectedDocuments\(app,PREFERENCES,PREVIEW_PREFIX,NoteSourceReferences\.store\(app\)::retains,IsolatedPdfService\.class\)/,'the shared registry keeps source grants and binds selected PDF previews to the isolated renderer');
  assert.doesNotMatch(access,/releasePersistableUriPermission|getPersistedUriPermissions/,'grant handling lives in the shared module');
 });
 

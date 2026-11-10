@@ -65,7 +65,7 @@ test('calendar event location is handed to Maps once, routed by explicit choices
   await page.goto('/?mode=dev&tools=1');
   await installMaps(page);
   const heading = page.getByRole('heading', {name: 'Harbour meeting', exact: true});
-  const search = page.getByRole('textbox', {name: 'Search places', exact: true});
+  const search = page.getByRole('searchbox', {name: 'Search places', exact: true});
   const from = {latitude: 43.738, longitude: 7.424}, to = {latitude: 43.74, longitude: 7.425};
 
   await test.step('create an event with a location through the editor', async () => {
@@ -106,7 +106,7 @@ test('calendar event location is handed to Maps once, routed by explicit choices
     await expect(status).toHaveText('Enter an origin latitude, longitude and press Enter, or explicitly use current location.');
     await expect(page.getByText('Choose a real origin to calculate a route.')).toBeVisible();
     expect((await requests(page)).routes).toEqual([]);
-    const origin = page.getByRole('textbox', {name: 'Route origin coordinates'});
+    const origin = page.getByRole('textbox', {name: 'Starting point'});
     await origin.fill('43.738, 7.424');
     await origin.press('Enter');
     await expect(page.getByRole('region', {name: 'Maps'})).toContainText(/5 min\s*0\.4 km · no live traffic/);

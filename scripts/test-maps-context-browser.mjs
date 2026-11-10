@@ -13,7 +13,7 @@ try {
  await page.goto(url, { waitUntil: 'load' });
  await page.getByRole('button', { name: 'Maps', exact: true }).click();
  await page.waitForFunction(() => document.documentElement.dataset.activeView === 'maps');
- const input = page.getByRole('textbox', { name: 'Search places', exact: true });
+ const input = page.getByRole('searchbox', { name: 'Search places', exact: true });
  await input.fill('37.123456, -122.654321'); await input.press('Enter');
  await page.getByRole('button', { name: 'Rename place' }).waitFor();
  assert.equal(await page.getByRole('textbox', { name: 'Place name' }).count(), 0);

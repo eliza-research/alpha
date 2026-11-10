@@ -10,7 +10,7 @@ const raise = (page: Page, message: string, undo = false) => page.evaluate(({ me
   let fiber = screen[key];
   while (fiber && !(fiber.stateNode && typeof fiber.stateNode.toast === 'function')) fiber = fiber.return;
   (window as any).__undone = 0;
-  fiber.stateNode.toast(message, undo ? { undo: () => { (window as any).__undone++; } } : undefined);
+  fiber.stateNode.toast(message, undo ? { undo: () => { (window as any).__undone++; ((window as any).__undoOrder ||= []).push(message); } } : undefined);
 }, { message, undo });
 const pill = (page: Page) => page.locator('[data-alpha-toast] .drop');
 
@@ -37,6 +37,28 @@ test('a toast with Undo stays at least 5 s', async ({ page }) => {
   await page.waitForTimeout(4700);
   await expect(pill(page).getByRole('button', { name: 'Undo', exact: true })).toBeVisible();
   await expect(pill(page)).toHaveCount(0, { timeout: 2000 });
+});
+
+test('passive notices keep the current Undo and show the latest notice afterward', async ({page}) => {
+  await raise(page, 'First item deleted', true);
+  await raise(page, 'Older passive notice');
+  await raise(page, 'Latest passive notice');
+  await expect(pill(page)).toContainText('First item deleted');
+  await pill(page).getByRole('button', {name:'Undo', exact:true}).click();
+  await expect(pill(page)).toContainText('Latest passive notice');
+  expect(await page.evaluate(() => (window as any).__undoOrder)).toEqual(['First item deleted']);
+  await expect(pill(page).getByRole('button', {name:'Undo', exact:true})).toHaveCount(0);
+});
+
+test('consecutive deletion notices retain both exact Undo callbacks', async ({page}) => {
+  await raise(page, 'First item deleted', true);
+  await raise(page, 'Second item deleted', true);
+  await expect(pill(page)).toContainText('First item deleted');
+  await pill(page).getByRole('button', {name:'Undo', exact:true}).click();
+  await expect(pill(page)).toContainText('Second item deleted');
+  await pill(page).getByRole('button', {name:'Undo', exact:true}).click();
+  await expect(pill(page)).toHaveCount(0);
+  expect(await page.evaluate(() => (window as any).__undoOrder)).toEqual(['First item deleted', 'Second item deleted']);
 });
 
 test('keyboard focus on Undo holds the toast, and focus returns when it ends', async ({ page }) => {

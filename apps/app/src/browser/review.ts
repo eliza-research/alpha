@@ -4,8 +4,10 @@ import {browserScreenLocked} from './screen-locked';
 export class BrowserReviews {
   private pending = new Map<string, () => void>();
   cancel(id: string) { this.pending.get(id)?.(); }
-  async confirm(id: string, title: string, details: string, confirmLabel = 'Confirm'): Promise<boolean> {
-    if (this.pending.has(id) || document.hidden || document.documentElement.dataset.devBackground==='true' || browserScreenLocked()) return false;
+  cancelAll() { for (const cancel of [...this.pending.values()]) cancel(); }
+  async confirm(id: string, title: string, details: string, confirmLabel = 'Confirm', options?: {signal?:AbortSignal;current?:()=>boolean}): Promise<boolean> {
+    const current=()=>{try{return !options?.signal?.aborted&&options?.current?.()!==false;}catch{return false;}};
+    if (this.pending.has(id) || !current() || document.hidden || document.documentElement.dataset.devBackground==='true' || browserScreenLocked()) return false;
     const previous = document.activeElement as HTMLElement | null;
     return new Promise(resolve => {
       const dialog = document.createElement('dialog');
@@ -22,6 +24,7 @@ export class BrowserReviews {
       const finish = (confirmed: boolean) => {
         if (settled) return; settled = true;
         this.pending.delete(id); document.removeEventListener('visibilitychange', visibility);
+        options?.signal?.removeEventListener('abort',cancelReview);
         window.removeEventListener('alpha-back', back, true);
         window.removeEventListener('pagehide', cancelReview);window.removeEventListener('alpha:device-state', cancelReview);
         dialog.remove(); previous?.isConnected && previous.focus(); resolve(confirmed);
@@ -29,9 +32,10 @@ export class BrowserReviews {
       const back = (event: Event) => { event.preventDefault(); event.stopImmediatePropagation(); finish(false); };
       const cancelReview=()=>finish(false);
       const visibility = () => { if (document.hidden) finish(false); };
-      cancel.onclick = () => finish(false); approve.onclick = () => finish(!document.hidden && document.documentElement.dataset.devBackground!=='true' && !browserScreenLocked());
+      cancel.onclick = () => finish(false); approve.onclick = () => finish(current() && !document.hidden && document.documentElement.dataset.devBackground!=='true' && !browserScreenLocked());
       dialog.oncancel = () => finish(false); dialog.onclose = () => finish(false);
       this.pending.set(id, () => finish(false));
+      options?.signal?.addEventListener('abort',cancelReview,{once:true});
       document.addEventListener('visibilitychange', visibility);
       window.addEventListener('alpha-back', back, true);
       window.addEventListener('pagehide',cancelReview);window.addEventListener('alpha:device-state',cancelReview);

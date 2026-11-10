@@ -179,6 +179,9 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
       let input = parseBrowserAddressInput(raw, {defaultProtocol: 'https:'});
       // The shared parser reads any word:digits as host:port; an all-digit, dotless host (10:30, 3:16) is a search, not 0.0.0.10:30.
       if (input.kind === 'url' && /^\d+:\d+(?:[/?#]|$)/.test(raw.trim())) input = {kind: 'search', query: raw.trim()};
+      // A bare email address, handle or sentence containing @ is a search. Keep
+      // scheme/user-info inputs rejected rather than uploading a password as a query.
+      if (input.kind === 'rejected' && input.reason === 'credentials' && !raw.includes(':') && !raw.includes('//')) input = {kind:'search',query:raw.trim()};
       if (input.kind === 'rejected') throw new Error();
       if (input.kind === 'url') { url = new URL(input.href); if (!url.hostname) throw new Error(); }
       // Alpha's alias: a bare localhost (with an optional path) stays an address, as it was before the shared parser.
@@ -278,6 +281,15 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
     if(disposed||document.hidden||shell.S().view!=='browser'||!info?.committed||info.loading||info.error||!info.url||tabs.revision(id)!==revision){report(new Error('Load the current page before sharing it.'));return;}
     shell.vset('browser',{menu:false,share:false});
     shell.api('browser').open('inbox',{compose:{subject:info.title||'Shared page',body:info.url}});
+  }
+  async function copyPageLink(){
+    // Read the committed page at the tap, never the address-bar draft or the render
+    // that opened the menu. Redirects and in-page navigation can change that URL.
+    const id=state()?.cur,info=tabInfo(id),revision=tabs.revision(id);
+    const current=()=>!disposed&&!document.hidden&&shell.S().view==='browser'&&state()?.cur===id&&tabs.revision(id)===revision;
+    if(!current()||!info?.committed||info.loading||info.error||!info.url){report(new Error('Load the current page before copying its link.'));return;}
+    try{await navigator.clipboard.writeText(info.url);if(current()){shell.vset('browser',{menu:false,share:false});shell.api('browser').toast('Link copied');}}
+    catch{if(current())report(new Error('Clipboard unavailable'));}
   }
   const externalHandoff = createExternalBrowserHandoff({tabs, reviews, shell: () => shell, Browser, state, isPrivate, update: () => update(), report, flags: {
     get sharing() { return sharing; }, set sharing(value) { sharing = value; },
@@ -382,9 +394,13 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
     const openNew = (priv = false) => { if (s.tabs.length >= MAX_TABS) { api.toast('Close a tab before opening another.'); return; } const id=newTabId(); api.set({ tabs:[...s.tabs,{id,hist:['newtab'],pos:0,...(priv?{priv:true}:{})}],cur:id,tabsOpen:false,menu:false,editing:true,addr:'' }); };
     const priv = !!s.tabs.find((tab: Bag) => tab.id === s.cur)?.priv;
     const known = (id: string) => tabInfo(id) || restored.get(id);
+    const query=String(s.addr||'').trim().toLocaleLowerCase();
+    const localSuggestions=Array.from(new Set<string>([...s.marks,...(priv?[]:s.visits)])).filter(value=>value!=='newtab'&&(!query||value.toLocaleLowerCase().includes(query))).slice(0,8).flatMap(value=>{
+      try{const address=new URL(value);if(!['https:','http:'].includes(address.protocol)||address.username||address.password)return [];return [{title:address.hostname,url:address.pathname+address.search+address.hash,d:s.marks.includes(value)?api.ic.star:api.ic.clock,go:()=>void navigate(value)}];}catch{return [];}
+    });
     return { ...out, profileUnsupportedPage:profileUnsupportedTab===s.cur&&!s.editing,profileUnsupportedEditing:profileUnsupportedTab===s.cur&&!!s.editing,profileUnsupportedMessage:PROFILE_UNSUPPORTED_MESSAGE,isNews:false,isEnc:false,isBook:false,isSearch:false,isGeneric:false,isNew:!info,
       privateNotice:Capacitor.isNativePlatform()?'Private tab. Its cookies, sign-ins, site data and pages are deleted when you close it, and it is not saved in history.':'This tab is not saved in Alpha history. Website cookies and sign-ins are managed by your browser.',isPrivate:priv,openPrivate:()=>openNew(true),clearData:()=>void clearBrowsingData(),clearSite:()=>void clearSiteData(),canClearSite:Capacitor.isNativePlatform()&&!!info?.committed&&!info?.error&&!!url,
-      recents:[],sugg:[],people:[],agOn:false,confirm:false,
+      recents:[],sugg:localSuggestions,people:[],agOn:false,confirm:false,clearAddress:(event:Event)=>{api.set({addr:''});(event.currentTarget as HTMLElement).parentElement?.querySelector('input')?.focus();},
       // Find in page is native findAllAsync. A web build's page is an opaque-origin sandboxed frame the host
       // cannot search, so the menu offers no Find there (the template keys on openFind).
       openFind:Capacitor.isNativePlatform()?()=>openFind():undefined,canFind:Capacitor.isNativePlatform()&&!!info?.committed&&!info?.error,finding:!!s.finding&&s.findTab===s.cur,
@@ -394,7 +410,7 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
         onKey:(e:KeyboardEvent)=>{if(e.key==='Enter'){e.preventDefault();findStep(!e.shiftKey);}else if(e.key==='Escape'){e.preventDefault();closeFind();}},
         next:()=>findStep(true),prev:()=>findStep(false),close:()=>closeFind(),nextOp:s.findCount?1:0.3,prevOp:s.findCount?1:0.3},
       host:url?.host || 'Search or address',hostCss:url?'':'color:var(--mut)',path:url ? url.pathname + url.search : '', hasLock:Capacitor.isNativePlatform() && !!url && url.protocol==='https:' && !!info?.committed && !info?.loading && !info?.error,
-      pageShareAvailable:Capacitor.isNativePlatform(),pageContentAvailable:Capacitor.isNativePlatform()||!!info?.committed&&!info.loading&&!info.error&&!info.externalOnly,nativeControls:true,externalBrowserAvailable:Capacitor.isNativePlatform(),openExternalBrowser:()=>void externalHandoff.open(),openPasswordProvider:()=>{api.set({menu:false});api.open('settings',{page:'password-provider'});},openDownloads:()=>{api.set({menu:false});void Browser.downloads({session}).catch(report);},reload:()=>{api.set({menu:false});void command('reload');},stopLoading:()=>{api.set({menu:false});void command('stop');},loading:!!info?.loading,goBack:()=>void command('back'),goFwd:()=>void command('forward'),backOp:info?.canBack?1:0.3,fwdOp:info?.canForward?1:0.3,
+      pageShareAvailable:Capacitor.isNativePlatform(),canCopyLink:!!info?.committed&&!info.loading&&!info.error,pageContentAvailable:Capacitor.isNativePlatform()||!!info?.committed&&!info.loading&&!info.error&&!info.externalOnly,nativeControls:true,externalBrowserAvailable:Capacitor.isNativePlatform(),openExternalBrowser:()=>void externalHandoff.open(),openPasswordProvider:()=>{api.set({menu:false});api.open('settings',{page:'password-provider'});},openDownloads:()=>{api.set({menu:false});void Browser.downloads({session}).catch(report);},copyLink:()=>void copyPageLink(),reload:()=>{api.set({menu:false});void command('reload');},stopLoading:()=>{api.set({menu:false});void command('stop');},loading:!!info?.loading,goBack:()=>void command('back'),goFwd:()=>void command('forward'),backOp:info?.canBack?1:0.3,fwdOp:info?.canForward?1:0.3,
       startEdit:()=>api.set({editing:true,addr:info?.url||'',menu:false}),onAddrKey:(e:KeyboardEvent)=>{ if(e.key==='Enter'){e.preventDefault();void navigate((e.target as HTMLInputElement).value);} else if(e.key==='Escape')api.set({editing:false}); },
       toggleMark:()=>{if((!info?.committed&&!(info?.externalOnly&&!Capacitor.isNativePlatform())) || info.loading || info.error || url?.protocol!=='https:'){api.toast('Load an HTTPS page before bookmarking it.');return;}saveBookmark(info.url);},markLabel:s.marks.includes(info?.url)?'Bookmarked':'Bookmark',markFill:s.marks.includes(info?.url)?'currentColor':'none',libRows:[...(bookmarkRecovery&&s.lib!=='history'?[{id:'bookmark-recovery',title:'Recover saved bookmarks',host:'Saved bookmarks could not be opened. Their original data is retained.',ini:'!',go:openBookmarkRecovery,canRemove:false,removeAria:'',remove:()=>{}}]:[]),...Array.from(new Set<string>(s.lib==='history'?s.visits:s.marks)).map((u:string)=>({id:u,title:u,host:u,ini:new URL(u).hostname[0],go:()=>void navigate(u),canRemove:s.lib!=='history',removeAria:'Remove bookmark',remove:()=>saveBookmark(u,false)}))],libEmpty:!(bookmarkRecovery&&s.lib!=='history')&&!(s.lib==='history'?s.visits:s.marks).length,newTab:()=>openNew(false),askPage:()=>void askPage(),readAloud:()=>void readPage(),readingUnavailable:readingSupport?.state==='unavailable',readingNote:READING_UNSUPPORTED_MESSAGE,readAloudAvailable:!(Capacitor.isNativePlatform()&&cloudRuntimeEnabled),bookNow:unavailable,cfOk:unavailable,openShare:()=>void sharePage(),shareEmail:()=>sharePageEmail(),
       tabCards:s.tabs.map((tab:Bag)=>{const page=known(tab.id),label=page?.title||(tab.priv?'New private tab':'New tab');return {id:tab.id,title:page?.title || page?.url || (tab.priv?'New private tab':'New tab'),host:(tab.priv?'Private · ':'')+(page?.url||''),css:tab.id===s.cur?'box-shadow:inset 0 0 0 2px var(--acc)':'',prev:tab.priv?'background:var(--fg);opacity:.85':'background:var(--s2)',aria:'Switch to '+(tab.priv?'private tab ':'')+label,closeAria:tab.priv?'Close private tab':'Close tab',pick:()=>api.set({cur:tab.id,tabsOpen:false}),close:()=>{ const rest=state().tabs.filter((t:Bag)=>t.id!==tab.id); const fallback=newTabId();if(tabs.has(tab.id))void Browser.close({session,id:tab.id}).catch(report);tabs.forget([tab.id]);restored.delete(tab.id);api.set({tabs:rest.length?rest:[{id:fallback,hist:['newtab'],pos:0}],cur:state().cur===tab.id?(rest[0]?.id||fallback):state().cur}); }};}),
@@ -415,7 +431,10 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
       try{command=parseNativeHistoryCommand(raw);}catch(error){return {ok:false,code:'UNSUPPORTED',message:error instanceof Error?error.message:String(error)};}
       const id=state()?.cur,info=tabInfo(id);
       const admittedNavigation=info?.navigation;
-      const bound=()=>{signal.throwIfAborted();current();if(disposed||!Capacitor.isNativePlatform()||document.hidden||shell.S().view!=='browser'||state()?.menu||state()?.tabsOpen||state()?.lib||state()?.share||state()?.editing||shell.S().shade||state()?.cur!==id||!tabs.has(id)||!info?.committed||info.error||info.loading||tabInfo(id)?.navigation!==admittedNavigation)throw Error('Current native browser tab changed');};
+      const bound=()=>{signal.throwIfAborted();current();if(disposed||!Capacitor.isNativePlatform()||document.hidden||shell.S().view!=='browser'||state()?.menu||state()?.tabsOpen||state()?.lib||state()?.share||state()?.editing||shell.S().shade||state()?.cur!==id||!tabs.has(id)||!info||(command.subaction==='reload'?!info.url:!info.committed||info.error||info.loading)||tabInfo(id)?.navigation!==admittedNavigation)throw Error('Current native browser tab changed');
+        if(command.subaction==='back'&&!info.canBack)throw Error('There is no previous page in this tab.');
+        if(command.subaction==='forward'&&!info.canForward)throw Error('There is no next page in this tab.');
+      };
       try{bound();}catch(error){return {ok:false,code:'UNAVAILABLE',message:error instanceof Error?error.message:String(error)};}
       const receipt=await Browser.command({session,id,command:command.subaction,navigation:admittedNavigation});
       // A back/reload dispatch may change its own document. Keep exact tab/session
@@ -428,7 +447,10 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
       if (url.protocol !== 'https:' || url.username || url.password) throw new Error('Only HTTPS destinations may be approved');
       signal.throwIfAborted();
       const selected = state()?.cur;
-      const id = await navigate(url.href, true, signal, false, deferPresentation);
+      // A request made from a private page stays in that profile. Opening a
+      // destination must not silently switch to saved sign-ins and history.
+      const privateTab=!!(shell.S?.().view==='browser'&&isPrivate(selected));
+      const id = await navigate(url.href, true, signal, privateTab, deferPresentation);
       const present = () => {
         signal.throwIfAborted();
         if (!id || disposed || document.hidden || state()?.cur !== (deferPresentation ? selected : id) || !tabs.has(id)) return;
