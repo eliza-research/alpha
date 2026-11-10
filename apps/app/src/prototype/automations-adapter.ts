@@ -195,7 +195,7 @@ export function installAutomationsAdapter(Component:any,views:Bag){
     action('Run now',(client,signal)=>client.scheduledVerb(scheduled.id,'fire',signal));
     actions.push({label:'Edit schedule',disabled:!!controller||selectedLocked||scheduleBlocked,run:()=>{if(controller||locked(scheduled)||scheduleBlock())return;scheduleDraft=scheduled.description;setClock(scheduleClock?.time??'');scheduleDays=scheduleClock?[...scheduleClock.days]:[0,1,2,3,4,5,6];publish();}});
     actions.push({label:'Snooze 10 minutes',disabled:!!controller||selectedLocked||scheduleBlocked,run:()=>{if(controller||locked(scheduled)||scheduleBlocked)return;const untilIso=scheduledSnoozeAt(scheduled);ask('Snooze until '+workflowSnoozeTime(untilIso),scheduled,(client,signal)=>client.snoozeSchedule(scheduled.id,untilIso,signal));}});
-    for(const [label,verb] of [['Acknowledge','acknowledge'],['Complete','complete'],['Dismiss','dismiss']] as const)
+    for(const [label,verb] of [['Complete','complete'],['Dismiss','dismiss']] as const)
      action(label,(client,signal)=>client.scheduledVerb(scheduled.id,verb,signal));
    }
   }

@@ -63,7 +63,7 @@ export class BrowserFiles extends SharedFiles {
    const blob=await (await fetch(source.path||source.image)).blob(),latest=await browserPhotoLibrary.read({id:source.id});
    if(latest.trashed||latest.mutationRevision!==row.revision){outcomes.push({path:row.path,status:'changed'});continue;}
    const selected=await super.importFile(new File([blob],row.name,{type:row.mimeType}),folderId);
-   await super.forgetSelected({selectionId:selected.selectionId});
+   await this.forgetSelected({selectionId:selected.selectionId});
    const saved=(await super.list({id:folderId})).entries.find(file=>file.name===row.name);
    if(!saved||saved.size!==blob.size)throw Error('The copied file could not be confirmed. Check the folder before trying again.');
    outcomes.push({path:row.path,status:'copied',to:[input.dest,row.name].filter(Boolean).join('/')});
