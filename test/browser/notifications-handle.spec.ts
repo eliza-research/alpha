@@ -207,6 +207,9 @@ test.describe('launcher Home taller than a short portrait screen', () => {
 
   test('a downward touch pull at the top of an overflowing Home opens the shade; upward still scrolls', async ({ page }) => {
     await home(page);
+    // The adaptive icon grid fits short phones. Model the dock clearance that makes Home
+    // overflow, as in the scroll-ownership regression above, before exercising real touch.
+    await page.locator('[data-alpha-home-clearance]').evaluate(element=>{(element as HTMLElement).style.height='160px';});
     const layer = page.locator('[data-alpha-layer="home"]');
     await expect(layer).toHaveAttribute('data-alpha-home-fits', 'false');
     expect(await layer.evaluate(element => element.scrollTop)).toBe(0);

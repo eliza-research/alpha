@@ -13,7 +13,7 @@ test('PDF selection renders actual pages and releases previews',async({page})=>{
 });
 test('Files renderer confirms folder creation and closes its mutation dialog',async({page})=>{
  await page.getByRole('button',{name:'Files',exact:true}).click();await page.getByRole('button',{name:'Internal storage',exact:true}).click();
- await page.getByRole('button',{name:'New folder',exact:true}).click();
+ await page.getByRole('button',{name:'Files options',exact:true}).click();await page.getByRole('button',{name:'New folder',exact:true}).click();
  await page.getByRole('textbox',{name:'Name'}).fill('UI folder');await page.getByRole('button',{name:'Create',exact:true}).click();await expect(page.getByRole('button',{name:'Open UI folder',exact:true})).toBeVisible();
 });
 test('mail attachment bridge preserves exact bytes and validates reviewed hashes',async({page})=>{

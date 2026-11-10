@@ -1,3 +1,4 @@
+import {choosePhotoAction} from './helpers/owned-photo';
 import {chooseMailAction} from './helpers/mail-actions';
 import {test,expect,type Page} from '@playwright/test';
 // Each test loads the app and drives Files, Inbox or the shade; under four workers on a loaded machine
@@ -222,7 +223,7 @@ test.describe('capture',()=>{
   await photo(page,'FIRST');await photo(page,'SECOND');
   await page.getByRole('button',{name:'Photos',exact:true}).click();await page.getByRole('button',{name:/^Photo, /}).first().click();
   await expect.poll(async()=>(await selectedObject(page))?.kind).toBe('photo');const selected=await selectedObject(page);
-  await page.getByRole('button',{name:'Ask Alpha about this photo',exact:true}).click();
+  await choosePhotoAction(page,'Ask Alpha');
   await expect(review(page)).toHaveCount(0);
   await expect(page.getByAltText('Captured photo')).toBeVisible();
   await expect(composer(page)).toHaveValue('');
@@ -252,7 +253,7 @@ test.describe('capture',()=>{
     library.read=async input=>{if(input.id!==id)return read(input);(window as any).photoReadHeld=true;await new Promise<void>(resolve=>(window as any).releasePhotoRead=resolve);return read(input);};
    });
   },selected!.id.replace(/^native-camera-/,''));
-  await page.getByRole('button',{name:'Ask Alpha about this photo',exact:true}).click();
+  await choosePhotoAction(page,'Ask Alpha');
   await expect.poll(()=>page.evaluate(()=>(window as any).photoReadHeld)).toBe(true);
   await page.evaluate(async id=>{const {browserPhotoLibrary}=await import('/src/prototype/browser-camera.ts');const row=await (window as any).readOriginalPhoto({id});await browserPhotoLibrary.setTrashed({id,revision:row.mutationRevision,trashed:true});(window as any).releasePhotoRead();},selected!.id.replace(/^native-camera-/,''));
   await expect(page.getByText('This photo changed. Open it again.',{exact:true})).toBeVisible();

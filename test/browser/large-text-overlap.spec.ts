@@ -1,3 +1,4 @@
+import {openPhotoShare} from './helpers/owned-photo';
 import {installHomeCalendar} from './helpers/home-calendar';
 import { test, expect, type Page } from '@playwright/test';
 import { auditPage, format } from './accessibility-audit';
@@ -206,7 +207,7 @@ test('Files locations, share targets and avatar initials keep whole words at 200
   for (const start of ['calendar:event', 'photos:viewer']) {
     await page.goto(`/?mode=mock&start=${start}`);
     await expect(page.locator('.alpha-phone')).toBeVisible();
-    if (start === 'photos:viewer') await page.getByRole('button', { name: 'Share photo', exact: true }).click();
+    if (start === 'photos:viewer') await openPhotoShare(page);
     await setTextScale(page, 2);
     found = blocking(format(await auditPage(page, { clipping: true, overlap: true })));
     expect(found, `${start}\n${found.join('\n')}`).toEqual([]);

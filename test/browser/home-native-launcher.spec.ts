@@ -16,6 +16,7 @@ async function nativeStub(page: Page, stub: Stub) {
       DailyApps: ['surfaceInfo', 'requestPermissions', 'closeAssistant'],
       AlphaNotifications: ['status', 'list'],
       AlphaVoiceCloud: ['checkPermissions', 'requestPermissions'],
+      Agent: ['getStatus', 'setGoogleAgentAccess'],
       AlphaDevice: ['openSettings', ...(stub.update ? ['updateState','activateUpdate','continueUpdate'] : [])],
     };
     if (stub.update) {
@@ -25,6 +26,8 @@ async function nativeStub(page: Page, stub: Stub) {
       plugins.AlphaConnection = ['secureRead','secureCompareExchange'];
     }
     const answer = async (plugin: string, method: string, options: any) => {
+      if (plugin === 'Agent' && method === 'setGoogleAgentAccess') return {};
+      if (plugin === 'Agent' && method === 'getStatus') return {packaged:false,state:'stopped',serviceActive:false,socketListening:false};
       if (plugin === 'AlphaDevice' && method === 'updateState') return structuredClone(w.updateState);
       if (plugin === 'AlphaConnection' && method === 'secureRead') {
         if (options.slot.startsWith('assistant-draft:v1:')) await w.holdDraftRead;
@@ -252,16 +255,22 @@ test('typing a search while the installed-app list is still loading still shows 
   await expect(list).not.toHaveAttribute('aria-busy', 'true');
 });
 
-test('required denied notification remains pending after cold start without repeating a prompt',async({page})=>{
+test('denied notification access stays pending after account restoration without repeating its prompt',async({page})=>{
  await nativeStub(page,{notifications:{permissionGranted:false,appEnabled:false},microphone:'granted'});
+ const restoreAccount=()=>page.evaluate(async()=>{
+  const {connectionController:c}=await import('/src/runtime/connection-ui.tsx'),snapshot=c.getSnapshot();
+  const restored={...snapshot,startupResolved:true,cloudAccount:{environment:'production',userId:'fixture-owner',credentialId:'fixture-permissions',sessionId:'fixture-cloud'},setupRevision:1,busy:false,signIn:null} as any;c.getSnapshot=()=>restored;
+  c.close();
+ });
  await page.goto('/');const panel=page.locator('dialog.alpha-startup-permissions');await expect(panel).toHaveCount(0);
- await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Finish setup',exact:true}).click();
+ await restoreAccount();
  await expect(panel.getByRole('heading',{name:'Notifications',exact:true})).toBeVisible();await panel.getByRole('button',{name:'Allow',exact:true}).click();
  await expect.poll(()=>calls(page,'DailyApps','requestPermissions')).toEqual([{permissions:['notifications']}]);
  await expect(panel.getByRole('button',{name:'Open Android settings',exact:true})).toBeVisible();
+ // Walkthrough choices do not grant OS permission. A denied prompt is not requested again.
  await expect(panel.getByRole('button',{name:/Skip|Not now|Back/})).toHaveCount(0);
- await page.keyboard.press('Escape');await expect(panel).toBeVisible();await page.reload();
- await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Finish setup',exact:true}).click();
+ await page.keyboard.press('Escape');await expect(panel).toBeVisible();
+ await page.reload();await restoreAccount();
  await expect(panel.getByRole('button',{name:'Open Android settings',exact:true})).toBeVisible();
  expect(await calls(page,'DailyApps','requestPermissions')).toEqual([]);
  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('alpha:startup-permission-walkthrough:v1')!))).toEqual({version:4,status:'pending',step:0});

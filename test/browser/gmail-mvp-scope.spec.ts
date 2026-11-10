@@ -127,10 +127,13 @@ test('opening an unread message marks it read once through a reviewed operation 
  await setup(page);
  await page.getByRole('button',{name:'Inbox',exact:true}).click();
  await page.getByRole('button',{name:'Unread, Sender in-0-a, Subject in-0-a',exact:true}).click();
+ await page.getByLabel('Message actions',{exact:true}).click();
  await expect(page.getByRole('button',{name:'Mark unread',exact:true})).toBeVisible();
  expect((await gm(page)).dispatches).toEqual([{kind:'mark-read',messageId:'in-0-a',expectedHistoryId:'h-in-0-a'}]);
  await page.getByRole('button',{name:'Mark unread',exact:true}).click();
+ await page.getByLabel('Message actions',{exact:true}).click();
  await expect(page.getByRole('button',{name:'Mark read',exact:true})).toBeVisible();
+ await page.keyboard.press('Escape');
  expect((await gm(page)).dispatches.at(-1)).toEqual({kind:'mark-unread',messageId:'in-0-a',expectedHistoryId:'h2-in-0-a'});
  await page.getByRole('button',{name:'Back to inbox',exact:true}).click();
  await expect(page.getByRole('button',{name:'Unread, Sender in-0-a, Subject in-0-a',exact:true})).toBeVisible();
@@ -169,7 +172,7 @@ test('a stale archive review is discarded and retried against the current messag
  await page.getByRole('button',{name:'Inbox',exact:true}).click();
  await page.getByRole('button',{name:'Sender in-0-b, Subject in-0-b',exact:true}).click();
  await page.evaluate(()=>(window as any).gm.stale=true);
- await page.getByRole('button',{name:'Archive',exact:true}).click();
+ await page.getByLabel('Message actions',{exact:true}).click();await page.getByRole('button',{name:'Archive',exact:true}).click();
  const review=page.getByRole('dialog',{name:'Review mail operation',exact:true});
  await expect(review.getByRole('status')).toContainText('changed in Gmail since it was loaded');
  await review.getByRole('button',{name:'Retry with the current message',exact:true}).click();
@@ -185,7 +188,7 @@ for(const [kind,text] of [['offline',/offline/],[409,/revoked or needs authoriza
  await expect(page.getByText(text)).toBeVisible();
  if(kind===409)await expect(page.getByRole('button',{name:'Reconnect Gmail',exact:true})).toBeVisible();
  expect((await gm(page)).searches.length).toBe(1);
- await page.getByRole('button',{name:'Retry',exact:true}).click();
+ await page.getByRole('button',{name:'Refresh inbox',exact:true}).click();
  await expect(page.getByText('Subject in-0-b',{exact:true})).toBeVisible();
  expect((await gm(page)).searches.length).toBe(2);
 });
@@ -193,18 +196,18 @@ for(const [kind,text] of [['offline',/offline/],[409,/revoked or needs authoriza
 test('Settings disconnect asks first and Inbox then shows the honest disconnected state',async({page})=>{
  await setup(page);await page.getByRole('button',{name:'Inbox',exact:true}).click();
  await expect(page.getByRole('region',{name:'Inbox',exact:true}).getByText('Subject in-0-a',{exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Back to apps',exact:true}).click();await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Account',exact:true}).filter({visible:true}).click();await page.getByRole('button',{name:'Google & email',exact:true}).click();
+ await page.getByRole('button',{name:'Back to apps',exact:true}).click();await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('region',{name:'Settings',exact:true}).getByRole('button',{name:'Apps',exact:true}).click();await page.getByRole('region',{name:'Settings',exact:true}).getByRole('button',{name:'Inbox',exact:true}).click();await page.getByRole('button',{name:'Google & email',exact:true}).click();
  const disconnect=page.getByRole('button',{name:'Disconnect Google account owner@example.test',exact:true});await expect(disconnect).toBeVisible();
  await disconnect.click();await page.getByRole('button',{name:'Keep connected',exact:true}).click();expect((await gm(page)).disconnects).toEqual([]);
- await disconnect.click();const review=page.getByRole('alert');await expect(review).toContainText('including Gmail and Calendar');await expect(review).toContainText('mail and calendar events are not deleted');await review.getByRole('button',{name:'Confirm disconnect Google account',exact:true}).click();
+ await disconnect.click();const review=page.getByRole('alert');await expect(review).toContainText('Gmail and Calendar access through Eliza Cloud end');await expect(review).toContainText("mail and events aren't deleted");await review.getByRole('button',{name:'Confirm disconnect Google account',exact:true}).click();
  await expect(disconnect).toHaveCount(0);expect((await gm(page)).disconnects).toEqual(['grant-0']);
- await page.getByRole('button',{name:'Close Google accounts',exact:true}).click();await returnToApps(page);await page.getByRole('button',{name:'Inbox',exact:true}).click();await expect(page.getByText('Subject in-0-a',{exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Close Google accounts',exact:true}).click();await returnToApps(page);await page.getByRole('button',{name:'Inbox',exact:true}).click();await expect(page.getByText('Subject in-0-a',{exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Connect Gmail',exact:true})).toBeVisible();
 });
 
 test('Settings Connections disconnects one confirmed account and reports the read-back',async({page})=>{
  await setup(page,{accounts:['first@example.test','second@example.test']});
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await page.getByRole('button',{name:'Account',exact:true}).filter({visible:true}).click();await page.getByRole('button',{name:'Google & email',exact:true}).click();
+ await page.getByRole('region',{name:'Settings',exact:true}).getByRole('button',{name:'Apps',exact:true}).click();await page.getByRole('region',{name:'Settings',exact:true}).getByRole('button',{name:'Inbox',exact:true}).click();await page.getByRole('button',{name:'Google & email',exact:true}).click();
  await expect(page.getByRole('button',{name:'Disconnect Google account second@example.test',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Disconnect Google account second@example.test',exact:true}).click();
  await expect(page.getByRole('alert')).toContainText('Calendar');await page.getByRole('button',{name:'Confirm disconnect Google account',exact:true}).click();
@@ -292,10 +295,10 @@ test('a failed Load more drops the stale cursor and Retry reloads from the first
  await expect(page.getByText('Subject in-0-b',{exact:true})).toBeVisible();
  await page.waitForFunction(()=>!!(window as any).gm.releasePage);await page.evaluate(()=>{(window as any).gm.failCursor=true;(window as any).gm.releasePage();});
  await page.getByRole('button',{name:'Load more',exact:true}).click();
- await expect(page.getByRole('button',{name:'Retry',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toBeVisible();
  await expect(page.getByText('Subject in-0-b',{exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:'Load more',exact:true})).toHaveCount(0);
- await page.getByRole('button',{name:'Retry',exact:true}).click();
+ await page.getByRole('button',{name:'Refresh inbox',exact:true}).click();
  await page.getByRole('button',{name:'Load more',exact:true}).click();
  await expect(page.getByText('Subject in-1-b',{exact:true})).toBeVisible();
  await expect(page.getByText('Subject in-0-b',{exact:true})).toHaveCount(1);

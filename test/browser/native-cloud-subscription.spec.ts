@@ -47,7 +47,8 @@ async function boot(page:Page,initial:NativePlanFixture={}){
   const w=window as any;w.planController=(await import('/src/runtime/connection-ui.tsx')).connectionController;
   w.planFlags={native:(await import('/src/native.ts')).isAndroid?'android':'web',mocks:(await import('/src/build-flags.ts')).testMocksEnabled};
  });
- await expect.poll(()=>page.evaluate(()=>(window as any).planFlags)).toEqual({native:'android',mocks:false});
+ // A cold isolated Vite composition must finish its module graph before product assertions.
+ await expect.poll(()=>page.evaluate(()=>(window as any).planFlags),{timeout:90_000}).toEqual({native:'android',mocks:false});
 }
 type Call={plugin:string;method:string;path?:string;url?:string;httpMethod?:string};
 const calls=(page:Page)=>page.evaluate(()=>(window as any).planFixture.calls as Call[]);

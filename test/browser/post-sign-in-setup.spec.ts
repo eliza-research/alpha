@@ -163,7 +163,9 @@ test('a first start shows a neutral loading screen, never Home, until the sign-i
  // However long the agent takes to start, nothing usable is shown before the sign-in.
  await expect.poll(()=>!!host.release,{timeout:60_000}).toBe(true);
  await expect(startupLoading(page)).toBeVisible();await page.waitForTimeout(500);
- await expect(page.locator('[data-alpha-layer="home"]')).toHaveCount(0);
+ await expect(page.getByRole('region',{name:'Home',exact:true})).toHaveCount(0);
+ await expect(page.locator('[data-alpha-startup-shell]')).toHaveAttribute('inert','');
+ await expect(page.locator('[data-alpha-startup-shell]')).toHaveCSS('opacity','0');
  host.release!();
  await expect(page.getByRole('main',{name:'Welcome to Alpha.',exact:true})).toBeVisible({timeout:30_000});
  await expect(startupLoading(page)).toHaveCount(0);await expect(page.locator('[data-alpha-layer="home"]')).toHaveCount(1);
@@ -176,7 +178,9 @@ test('a signed-in start opens access setup directly, with no Home while the acco
  await page.goto(origin+'/');
  await expect.poll(()=>!!host.admit,{timeout:60_000}).toBe(true);
  await expect(startupLoading(page)).toBeVisible();await page.waitForTimeout(500);
- await expect(page.locator('[data-alpha-layer="home"]')).toHaveCount(0);
+ await expect(page.getByRole('region',{name:'Home',exact:true})).toHaveCount(0);
+ await expect(page.locator('[data-alpha-startup-shell]')).toHaveAttribute('inert','');
+ await expect(page.locator('[data-alpha-startup-shell]')).toHaveCSS('opacity','0');
  host.admit!();
  await expect(page.locator('dialog.alpha-startup-permissions').getByRole('heading',{name:'Notifications',exact:true})).toBeFocused({timeout:30_000});
  await expect(startupLoading(page)).toHaveCount(0);

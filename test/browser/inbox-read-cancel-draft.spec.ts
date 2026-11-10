@@ -5,7 +5,7 @@ import {test,expect} from '@playwright/test';
 // Model an existing configured account; permission onboarding has its own acceptance tests.
 test.beforeEach(async({context})=>{await context.addInitScript(()=>{localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));localStorage.setItem('alpha.startup-permissions.v1',JSON.stringify({dismissed:true,attempted:{}}));});});
 
-for(const request of ['Refresh inbox','Search Gmail','Check connection'])for(const saved of [false,true])test(`Cancelling ${request} retains ${saved?'edited saved':'unsaved'} local mail`,async({page})=>{
+for(const request of ['Refresh inbox','Search Gmail','Account revalidation'])for(const saved of [false,true])test(`${request==='Account revalidation'?'Late account revalidation after leaving Inbox':'Cancelling '+request} retains ${saved?'edited saved':'unsaved'} local mail`,async({page})=>{
  await page.goto('/');
  await page.evaluate(async()=>{
   const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');
@@ -46,7 +46,7 @@ for(const request of ['Refresh inbox','Search Gmail','Check connection'])for(con
  }
  const before=await page.evaluate(()=>JSON.stringify((window as any).cancelMail.slots));
  await page.evaluate(()=>(window as any).cancelMail.hold=true);
- if(request==='Check connection')await page.evaluate(()=>window.dispatchEvent(new Event('alpha:google-accounts-changed')));else if(request==='Search Gmail')await page.getByPlaceholder('Search mail').press('Enter');else await page.getByRole('button',{name:request,exact:true}).click();
+ if(request==='Account revalidation')await page.evaluate(()=>window.dispatchEvent(new Event('alpha:google-accounts-changed')));else if(request==='Search Gmail')await page.getByPlaceholder('Search mail').press('Enter');else await page.getByRole('button',{name:request,exact:true}).click();
  await expect.poll(()=>page.evaluate(()=>typeof (window as any).cancelMail.release)).toBe('function');
  await returnToApps(page);
  await expect(page.getByRole('button',{name:'Inbox',exact:true})).toBeVisible();
@@ -60,7 +60,8 @@ for(const request of ['Refresh inbox','Search Gmail','Check connection'])for(con
  await expect(page.getByRole('textbox',{name:'Bcc',exact:true})).toHaveValue('blind@example.invalid');
  await expect(page.getByText('fixture@example.invalid',{exact:true})).toBeVisible();
  expect(await page.evaluate(()=>JSON.stringify((window as any).cancelMail.slots))).toBe(before);
- expect(await page.evaluate(()=>({aborts:(window as any).cancelMail.aborts,mutations:(window as any).cancelMail.mutations}))).toEqual({aborts:1,mutations:0});
+ // Shared account metadata also serves Home, so it outlives this view. Explicit Inbox reads are cancelled.
+ expect(await page.evaluate(()=>({aborts:(window as any).cancelMail.aborts,mutations:(window as any).cancelMail.mutations}))).toEqual({aborts:request==='Account revalidation'?0:1,mutations:0});
 });
 
 test('Compose waits for the selected account draft read before accepting a click',async({page})=>{
