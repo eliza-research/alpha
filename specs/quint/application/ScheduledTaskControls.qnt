@@ -24,7 +24,7 @@ module ScheduledTaskControls {
   pure def status(kind: str, current: str): str =
     if (kind == "manual" and not(Terminal.contains(current))) "paused" else current
   pure def menuFor(current: str): List[str] =
-    if (Terminal.contains(current)) List("reopen") else List("fire", "edit", "snooze", "complete", "dismiss")
+    if (Terminal.contains(current)) List("reopen") else List("fire", "edit", "snooze")
   pure def ownerHasIntent(state: State): bool = state.intents.exists(entry => entry.owner == state.owner)
   pure def retired(state: State): State =
     {...state, detail: false, shownStatus: "", editing: false, draft: "", review: Empty, message: ""}
@@ -120,7 +120,7 @@ module ScheduledTaskControls {
   action leave = all {s.visible, s' = {...retired(s), visible: false, source: "idle"}}
   action step = any {
     open, save, cancelEdit, cancelReview, confirm, refresh, switchOwner, leave,
-    {nondet verb = Set("fire", "edit", "snooze", "complete", "dismiss", "reopen").oneOf(); pick(verb)},
+    {nondet verb = Set("fire", "edit", "snooze", "reopen").oneOf(); pick(verb)},
     {nondet days = Set("", "1", "0,6", "1,3,5").oneOf(); chooseDays(days)},
     {nondet text = Drafts.oneOf(); nondet time = Times.oneOf(); enter(text, time)},
     {nondet catalog = Catalogs.oneOf(); chooseCatalog(catalog)},

@@ -179,8 +179,6 @@ export function installAutomationsAdapter(Component:any,views:Bag){
     action('Run now',(client,signal)=>client.scheduledVerb(scheduled.id,'fire',signal));
     actions.push({label:'Edit schedule',disabled:!!controller||selectedLocked||scheduleBlocked,run:()=>{if(controller||locked(scheduled)||scheduleBlock())return;scheduleDraft=scheduled.description;setClock(scheduleClock?.time??'');scheduleDays=scheduleClock?[...scheduleClock.days]:[0,1,2,3,4,5,6];publish();}});
     actions.push({label:'Snooze 10 minutes',disabled:!!controller||selectedLocked||scheduleBlocked,run:()=>{if(controller||locked(scheduled)||scheduleBlocked)return;const untilIso=scheduledSnoozeAt(scheduled);ask('Snooze until '+workflowSnoozeTime(untilIso),scheduled,(client,signal)=>client.snoozeSchedule(scheduled.id,untilIso,signal));}});
-    for(const [label,verb] of [['Complete','complete'],['Dismiss','dismiss']] as const)
-     action(label,(client,signal)=>client.scheduledVerb(scheduled.id,verb,signal));
    }
   }
   if(detail?.kind==='reminder'&&!['archived','completed'].includes(detail.record.definition.status)){const row=detail;actions.push({label:'Edit reminder',run:()=>editReminder(row),disabled:!!controller||selectedLocked});actions.push({label:'Snooze 10 minutes',run:()=>{if(canSnoozeReminder(row.record as Parameters<typeof canSnoozeReminder>[0])&&row.occurrenceId)ask('Snooze 10 minutes',row,(client,signal)=>client.snoozeReminder(row.occurrenceId!,signal));},disabled:!!controller||selectedLocked||!canSnoozeReminder(row.record as Parameters<typeof canSnoozeReminder>[0])});action('Cancel reminder',(client,signal)=>client.cancelReminder(row.id,signal));}

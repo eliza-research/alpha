@@ -117,7 +117,7 @@ test('the actual schedule menu renders visible text and accessible names for eve
   const node=vm.runInNewContext(source.slice(0,source.indexOf('  const templateElement'))+';node;',{React,document,iconStyle:()=>({})});
   const html=renderToStaticMarkup(node(template.content.querySelector('.schedule-controls'),{workflows:{automation:app.render().automation},ic:{}},'controls'));
   const buttons=[...new JSDOM(html).window.document.querySelectorAll('button')];
-  assert.deepEqual(buttons.map(button=>button.textContent),['Run now','Edit schedule','Snooze 10 minutes','Complete','Dismiss']);
+  assert.deepEqual(buttons.map(button=>button.textContent),['Run now','Edit schedule','Snooze 10 minutes']);
   for(const button of buttons)assert.equal(button.getAttribute('aria-label'),button.textContent);
  }finally{app.close();await f.close();}
 });
