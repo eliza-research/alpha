@@ -27,10 +27,14 @@ export async function checkClientFeaturePublication(extraSources = []) {
   let concrete;
   try {
     const output = join(directory, 'observations.json');
+    const childEnv = {...process.env, ALPHA_CLIENT_FEATURE_PUBLICATION_TRACE: output};
+    // This is an independent runner, including when the caller is itself a test worker.
+    // Inheriting the outer worker context can bypass discovery and produce no trace.
+    delete childEnv.NODE_TEST_CONTEXT;
     const child = spawnSync(process.execPath, ['--test',
       '--test-name-pattern=^client feature publication retires once while a peer moves the winner$',
       'test/client-feature-preparation.test.mjs'], {cwd: root,
-      env: {...process.env, ALPHA_CLIENT_FEATURE_PUBLICATION_TRACE: output},
+      env: childEnv,
       encoding: 'utf8', timeout: 120000, maxBuffer: 4 * 1024 * 1024});
     assert.equal(child.error, undefined, child.error?.message);
     assert.equal(child.status, 0, child.stderr + child.stdout);

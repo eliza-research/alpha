@@ -197,6 +197,24 @@ async function roleSchedule(page, launcher) {
   await expect(home(page)).toBeVisible();
 }
 
+async function settleHomeLayout(page) {
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    const layer = document.querySelector('[data-alpha-home-layout]');
+    const grid = layer.querySelector('[data-alpha-home-apps]');
+    let previous, stable = 0;
+    for (let frame = 0; frame < 120; frame++) {
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      const top = Math.round((grid.getBoundingClientRect().top
+        - layer.getBoundingClientRect().top + layer.scrollTop) * 100) / 100;
+      if (top === previous) stable++; else stable = 0;
+      if (stable === 3) return;
+      previous = top;
+    }
+    throw Error('Mounted Home grid did not settle for inset observation');
+  });
+}
+
 async function collect(page) {
   const events = [];
   async function point(label, readback = {}) {
@@ -207,10 +225,12 @@ async function collect(page) {
   await expect(card(page, 'workflows')).toHaveCount(0);
   await expect(card(page, 'inbox')).toHaveCount(0);
   await expect(card(page, 'brief')).toHaveCount(0);
+  await settleHomeLayout(page);
   const pending = await point('Mounted Home hides empty cards before the workflow and inset readbacks');
   assert.equal(pending.insets, 'pending');
   await page.evaluate(() => window.homeFixture.releaseInsets());
   await expect.poll(async () => (await snapshot(page)).insets).toBe('native');
+  await settleHomeLayout(page);
   const inset = await point('Native inset readback moves the actual grid relative to the Home layer');
   events.at(-1).label += ' from '+pending.gridTop+' to '+inset.gridTop+' CSS pixels';
   assert.equal(inset.insets, 'native');
@@ -401,7 +421,7 @@ export async function checkHomeLayoutRefinement(extraSources = []) {
   const {main, differences, sources, driverHashes} = await mounted(extraSources);
   const shared = {sources, driverHashes, scope: 'bounded-orchestration', assumptions: [
     'Actual flag-off Home and Settings run in Chromium with synthetic native role, inset, canonical Calendar, resident workflow, managed mail and retained-digest ports. Network traffic outside loopback is fenced.',
-    'Content states are derived from mounted card copy, visibility, event identity and retained-result presentation. Unknown transient copy is left unobserved. Actual Home grid movement is compared as a boolean at inset readback, without identifying CSS pixels with the historical constants.',
+    'Content states are derived from mounted card copy, visibility, event identity and retained-result presentation. Unknown transient copy is left unobserved. Font readiness and stable animation frames separate completed layout from the native CSS-variable readback. Actual Home grid movement is compared as a boolean, without identifying CSS pixels with the historical constants.',
     'The reduced focused viewport represents the keyboard. HOME offer, decline, readback grant and standalone absence are checked at visible Settings controls. Role status itself is outside the historical Home model.',
     'Both historical profiles compare source states and the full card set when all four have content. The original current profile retains empty shells that the owner-approved renderer now hides; that difference and the proposed date/setup differences have separate mismatch receipts. Historical models are unchanged.',
   ]};
