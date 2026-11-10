@@ -35,7 +35,7 @@ test('the workflow offers no runtime profile or local-embeddings input and no Cl
  assert.match(fs.readFileSync(new URL('../scripts/ci/verify-cloud-signing-input.sh',import.meta.url),'utf8'),/\.name == \("resident-distribution-archive-" \+ \$source \+ "-" \+ \$run\)/);
  assert.match(workflow,/out = root \/ 'test-results\/resident-ci-distribution\/producer-evidence'/);
  assert.match(workflow,/'runtimeProfile': 'native', 'updateChannel': channel, 'versionCode'/);
- assert.match(workflow,/node scripts\/runtime-profile\.mjs --verify-native\n/);
+ assert.match(workflow,/node scripts\/runtime-profile\.ts --verify-native\n/);
 });
 
 function jobCondition(name,event,operation,mode='off'){
