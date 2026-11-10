@@ -9,7 +9,7 @@ export const repositoryRoot = resolve(fileURLToPath(new URL('..', import.meta.ur
 export const quintRoot = join(repositoryRoot, 'specs/quint');
 export const sourceRoots = ['apps/app/src', 'apps/app/public', 'android'];
 export const runtimeScriptPaths = ['scripts/browser-cloud-dev-bridge.ts', 'scripts/cloud-resident-host.mjs',
-  'scripts/cloud-email-code.ts', 'scripts/dev-cloud.mjs', 'scripts/dev-local.mjs',
+  'scripts/cloud-email-code.ts', 'scripts/dev-cloud.mjs', 'scripts/dev-local.mjs', 'scripts/dev-ui-remote-host.mjs',
   'scripts/start-local-voice-agent.mjs', 'scripts/start-local-remote.mjs',
   'scripts/core-state-patch.mjs', 'scripts/core-state-preload.mjs', 'scripts/start-reviewed-workflow-agent.mjs',
   'scripts/start-cloud-qa.mjs', 'scripts/start-combined-agent.mjs', 'scripts/launcher-child.mjs',
