@@ -22,7 +22,7 @@ async function nativeStub(page:Page,options:Options={}){
    PluginHeaders:[
     {name:'AlphaNotifications',methods:methods(['status','crossAppStatus','addListener','removeListener'])},
     {name:'AlphaVoiceCloud',methods:methods(['checkPermissions'])},
-    {name:'Agent',methods:methods(['getStatus'])},
+    {name:'Agent',methods:methods(['getStatus','setGoogleAgentAccess'])},
     {name:'AlphaConnection',methods:methods(['secureRead','secureWrite','secureCompareExchange','secureRemove','addListener','removeListener'])},
     {name:'ElizaSystem',methods:methods(['getStatus','requestRole','getDeviceSettings','getBuildInfo'])},
     {name:'AlphaDevice',methods:methods(['snapshot','crashLog','clearCrashLog','recordRendererFailure','diagnosticsFacts','shareDiagnostics','openSettings','checkForUpdate','installUpdate'])},
@@ -64,13 +64,13 @@ async function nativeStub(page:Page,options:Options={}){
  },{launcher:options.launcher??true,decline:options.decline??0,updates:options.updates??[],upstreamPin});
 }
 const settings=async(page:Page,query='')=>{await page.goto(`/${query}`);await page.getByRole('button',{name:'Settings',exact:true}).click();await expect(page.locator('html')).toHaveAttribute('data-active-view','settings');};
-const about=async(page:Page)=>{await app(page).getByRole('button',{name:'About',exact:true}).click();};
+const general=async(page:Page)=>{await app(page).getByRole('button',{name:'General',exact:true}).click();};
 const app=(page:Page)=>page.locator('[data-alpha-layer="app"]');
 const calls=(page:Page,plugin:string,method:string)=>page.evaluate(([plugin,method])=>(window as any).settingsFixture.calls.filter((c:any)=>c.plugin===plugin&&c.method===method).length,[plugin,method]);
 
 test('Settings shows HOME and assistant role state and reads it back after a declined then accepted request',async({page})=>{
  await nativeStub(page,{launcher:true,decline:1});
- await settings(page);
+ await settings(page);await general(page);
  const make=app(page).getByRole('button',{name:'Make Alpha your Home app',exact:true});
  const reads=await calls(page,'ElizaSystem','getStatus');
  await make.click();
@@ -85,48 +85,40 @@ test('Settings shows HOME and assistant role state and reads it back after a dec
  const before=await calls(page,'ElizaSystem','getStatus');
  await page.evaluate(()=>(window as any).settingsFixture.resume());
  await expect.poll(()=>calls(page,'ElizaSystem','getStatus')).toBeGreaterThan(before);
- await app(page).getByRole('button',{name:'Android settings',exact:true}).click();
- await expect.poll(()=>page.evaluate(()=>(window as any).settingsFixture.calls.some((c:any)=>c.method==='openSettings'&&c.input.page==='system'))).toBe(true);
+ await app(page).getByRole('button',{name:'Default apps in Android',exact:true}).click();
+ await expect.poll(()=>page.evaluate(()=>(window as any).settingsFixture.calls.some((c:any)=>c.method==='openSettings'&&c.input.page==='default-apps'))).toBe(true);
 });
 
 test('the standalone variant shows role state but never offers the HOME request',async({page})=>{
  await nativeStub(page,{launcher:false});
- await settings(page);
+ await settings(page);await general(page);
  await expect(app(page).getByRole('button',{name:'Make Alpha your Home app',exact:true})).toHaveCount(0);
  expect(await calls(page,'ElizaSystem','requestRole')).toBe(0);
 });
 
-test('Permissions handoff, gated Developer and diagnostic export preserve their boundaries',async({page})=>{
+test('permission handoffs and developer navigation retain their boundaries while product About stays quiet',async({page})=>{
  await nativeStub(page);
- // Developer appears only behind the one gate: a development server opened with ?tools=1.
- await settings(page);
+ await settings(page);await general(page);
  await expect(app(page).getByRole('button',{name:'Developer',exact:true})).toHaveCount(0);
  await settings(page,'?tools=1');
+ await app(page).getByRole('button',{name:'Privacy',exact:true}).click();
  await app(page).getByRole('button',{name:'App permissions',exact:true}).click();
+ await app(page).getByRole('button',{name:'Location',exact:true}).click();
  await expect.poll(()=>page.evaluate(()=>(window as any).settingsFixture.calls.some((c:any)=>c.method==='openSettings'&&c.input.page==='privacy'))).toBe(true);
  await expect(app(page).getByText('Contacts',{exact:true})).toHaveCount(0);
- await app(page).getByRole('button',{name:'Developer',exact:true}).click();
- const developer=await app(page).innerText();
- expect(developer).not.toMatch(/NPU|Device uptime|Uptime/);
+ await page.getByRole('button',{name:'Back to Privacy',exact:true}).click();
  await page.getByRole('button',{name:'Back to Settings',exact:true}).click();
-
+ await general(page);
+ await app(page).getByRole('button',{name:'Developer',exact:true}).click();
+ expect(await app(page).innerText()).not.toMatch(/NPU|Device uptime|Uptime/);
+ await page.getByRole('button',{name:'Back to General',exact:true}).click();
+ await page.getByRole('button',{name:'Back to Settings',exact:true}).click();
  await app(page).getByRole('button',{name:'About',exact:true}).click();
- await expect(app(page).getByRole('button',{name:'Problem log',exact:true})).toContainText('3');
- await app(page).getByRole('button',{name:'Problem log',exact:true}).click();
- await expect(app(page).getByText(/App crashed · java\.lang\.IllegalStateException · main thread/)).toBeVisible();
- await expect(app(page).getByText(/App process stopped: anr/)).toBeVisible();
- expect(await app(page).innerText()).not.toContain('Fixture note text');
- await page.getByRole('button',{name:'Back to About',exact:true}).click();
- await app(page).getByRole('button',{name:'Export diagnostics',exact:true}).click();
- await expect.poll(()=>page.evaluate(()=>(window as any).settingsFixture.shared.length)).toBe(1);
- const shared=await page.evaluate(()=>(window as any).settingsFixture.shared[0]);
- const report=JSON.parse(shared);
- expect(report.format).toBe('alpha-diagnostics/v1');
- expect(report.upstreamPin).toBe(upstreamPin);
- expect(report.permissions).toEqual({Microphone:true,Location:false,Camera:false,Calendar:true,Notifications:true});
- expect(report.roles.find((r:any)=>r.role==='home')).toEqual({role:'home',held:false,available:true});
- expect(report.crashes.count).toBe(3);
- for(const leak of ['csk-synthetic','Fixture note text','com.android.launcher3','holders','Fixture phone'])expect(shared).not.toContain(leak);
+ // Export payload privacy stays covered by diagnostics-export.test.mjs; these removed controls
+ // must not be restored merely to satisfy a historical Settings navigation fixture.
+ await expect(app(page).getByRole('button',{name:'Problem log',exact:true})).toHaveCount(0);
+ await expect(app(page).getByRole('button',{name:'Export diagnostics',exact:true})).toHaveCount(0);
+ expect(await page.evaluate(()=>(window as any).settingsFixture.shared)).toEqual([]);
 });
 
 // Software update: what the app start, resume and owner taps send to AlphaDevice, and the rows they leave.
@@ -135,7 +127,7 @@ const saved=(page:Page)=>page.evaluate(()=>localStorage.getItem('alpha.app-updat
 
 test('a failed update check stays due, one check runs at a time, and Install update sends the offered APK',async({page})=>{
  await nativeStub(page,{updates:['fail',update]});
- await settings(page);await about(page);
+ await settings(page);await general(page);
  const install=app(page).getByRole('button',{name:'Install update',exact:true});
  // The check at app start fails quietly: nothing is offered or recorded, so the next resume checks again.
  await expect.poll(()=>calls(page,'AlphaDevice','checkForUpdate')).toBe(1);
@@ -159,7 +151,7 @@ test('a failed update check stays due, one check runs at a time, and Install upd
  const {apkUrl,sha256,sizeBytes,versionCode}=update;
  expect(await page.evaluate(()=>(window as any).settingsFixture.calls.find((c:any)=>c.method==='installUpdate').input)).toEqual({apkUrl,sha256,sizeBytes,versionCode});
  // A restart offers the kept answer without checking again.
- await settings(page);await about(page);
+ await settings(page);await general(page);
  await expect(install).toBeVisible();
  await page.waitForTimeout(500);
  expect(await calls(page,'AlphaDevice','checkForUpdate')).toBe(0);
@@ -168,7 +160,7 @@ test('a failed update check stays due, one check runs at a time, and Install upd
 
 test('an update whose versionName cannot be shown is still offered, under its versionCode',async({page})=>{
  await nativeStub(page,{updates:[{...update,versionName:'x'.repeat(65)}]});
- await settings(page);await about(page);
+ await settings(page);await general(page);
  const row=app(page).getByRole('button',{name:'Install update',exact:true});
  await expect(row).toBeVisible();
  await expect(app(page).getByText('8',{exact:true})).toBeVisible();
@@ -179,7 +171,7 @@ test('an update whose versionName cannot be shown is still offered, under its ve
 
 test('Install update appears only for a newer build of this flavor and signer, and a withdrawn release removes it',async({page})=>{
  await nativeStub(page,{updates:[{...update,versionCode:7},{...update,variant:'standalone'},{...update,signerSha256:'6d'.repeat(32)},update,null]});
- await settings(page);await about(page);
+ await settings(page);await general(page);
  const install=app(page).getByRole('button',{name:'Install update',exact:true}),check=app(page).getByRole('button',{name:'Check for updates',exact:true});
  await expect.poll(()=>calls(page,'AlphaDevice','checkForUpdate')).toBe(1);
  for(const [count,offered] of [[2,false],[3,false],[4,true],[5,false]] as const){
