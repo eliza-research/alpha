@@ -16216,7 +16216,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "3dce6dc59241a4b933dd252370db0d02e58865070e5196a7c7fbf3f2e4cc9999",
+      "sha256": "14e8073c9d79b2436efc4c2d0f4dfdecc56b9cb7536eddef66bc9b2cafbbf24c",
       "stateAnchors": [
         {
           "line": 32,
@@ -31805,7 +31805,7 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "000b1b42ec39b1f0d4236e5ffca738117b4b2b19161dfff80dd2550408b535f1",
+      "sha256": "c79331061a75b494e92e3b985ad2bad6443c029501d147e04ba8d2eb306180f6",
       "stateAnchors": [],
       "integrationReview": "2026-11-10: Current boundary and presentation correction. Account revalidation hides old headers before awaiting the response; notice clearance changes the Home scrollport, and foreign schedule editing explicitly identifies its preserved clock. Relevant browser/source tests and finite models remain separate from final runtime/device qualification. 2026-11-10: Apps notice height is bounded and remains scrollable so 300% text does not remove the app list; four browser cases pass. 2026-11-10: Owner d3d01a6 Files sort/folder and scheduled ten-minute snooze source intake. Preserve retained-request recovery and saved recurrence timezone; exact-time protocol and source-model comparisons required."
     },
@@ -34698,7 +34698,7 @@
     },
     {
       "path": "apps/app/src/prototype/workflow-adapter.ts",
-      "sha256": "df9902d4d1ae744f38753dfab53eed9da60c43cc1f7176c07a93b430cf88e024",
+      "sha256": "baa304f92077f528dce05664984ab27de692faf210050adb9f318dfe72ae5fe6",
       "models": [
         "NoticesAndCaches",
         "WorkflowExecution"
@@ -46225,7 +46225,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "e72d30afa3fe671d1ea3e82de5637d9fa4283a1f30a2e756e67b6e1f03d08a25",
+      "sha256": "ec011df550cf131639ef244e3b26ec6edead1d7e240c894079523853289df5ba",
       "stateAnchors": [
         {
           "line": 10,
@@ -611867,7 +611867,7 @@
       "models": [
         "PilotApkUpdate"
       ],
-      "sha256": "e824ddd3f4fdd2f4e9c566de48d82b3d7ac9980e378fed3deb8d5c65d69891f4"
+      "sha256": "6b401cf5634e0af917a9c3b445b3475a13ccb56016d4f1bea668dd61e6c7864f"
     },
     {
       "path": "android/aosp/pixel10a-composition.json",

@@ -412,6 +412,7 @@ async function mounted(extraSources) {
         const fixturePage = {
           on: page.on.bind(page), route: page.route.bind(page),
           addInitScript: page.addInitScript.bind(page), evaluate: page.evaluate.bind(page),
+          addScriptTag: page.addScriptTag.bind(page), waitForFunction: page.waitForFunction.bind(page),
           goto: path => page.goto(path, {waitUntil: 'domcontentloaded', timeout: 60000}),
         };
         const {foreign, errors} = await canonicalNotesFixture(fixturePage, {notes});

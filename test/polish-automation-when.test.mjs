@@ -2,16 +2,33 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {build} from 'esbuild';
 
-const bundle=await build({entryPoints:['apps/app/src/runtime/automations-protocol.ts'],bundle:true,write:false,format:'esm',platform:'neutral',logLevel:'silent'});
-const {automationWhen,AutomationsProtocol}=await import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].text).toString('base64'));
+const bundle=await build({stdin:{contents:"export * from './apps/app/src/runtime/automations-protocol.ts'; export {workflowLocalInstant} from './apps/app/src/runtime/workflow-local-time.ts'; export {setLocalePreferences} from './apps/app/src/prototype/locale-time.ts';",resolveDir:process.cwd(),loader:'ts'},bundle:true,write:false,format:'esm',platform:'neutral',logLevel:'silent'});
+const {automationWhen,AutomationsProtocol,workflowLocalInstant,workflowSnoozeTime,setLocalePreferences}=await import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].text).toString('base64'));
 
-test('automationWhen renders a short month, no seconds, in the named zone, and ignores a zone it cannot use',()=>{
- assert.equal(automationWhen('2026-10-29T18:00:00Z','UTC','en-US'),'Oct 29, 2026, 6:00 PM');
- assert.equal(automationWhen('2026-10-29T18:00:00Z','America/New_York','en-US'),'Oct 29, 2026, 2:00 PM');
- assert.equal(automationWhen(Date.parse('2026-10-29T18:00:00Z'),'Asia/Tokyo','en-US'),'Oct 30, 2026, 3:00 AM');
- assert.equal(automationWhen('2026-10-29T18:00:00Z','Not/AZone','en-US'),automationWhen('2026-10-29T18:00:00Z',undefined,'en-US'));
- assert.equal(automationWhen('not a date'),'');
- assert.equal(automationWhen(Number.NaN),'');
+test('automationWhen renders the device-local instant consistently across saved source zones',()=>{
+ setLocalePreferences({locale:'en-US',hourCycle:'h12'});
+ try{
+  const local=new Date(2026,9,29,18),stamp=local.toISOString();
+  for(const zone of ['UTC','America/New_York','Asia/Tokyo','Not/AZone',undefined])assert.equal(automationWhen(stamp,zone,'en-US'),'Oct 29, 2026, 6:00 PM');
+  assert.equal(automationWhen(local.getTime(),'Asia/Tokyo','en-US'),'Oct 29, 2026, 6:00 PM');
+  assert.equal(automationWhen('not a date'),'');assert.equal(automationWhen(Number.NaN),'');
+ }finally{setLocalePreferences({});}
+});
+
+for(const hourCycle of ['h23','h12'])test(`workflow instants and snoozes honor the device ${hourCycle} choice rather than the locale default`,()=>{
+ const locale=hourCycle==='h23'?'en-US':'en-GB',date=new Date(2026,9,7,15,4),now=new Date(2026,9,7,9).getTime();
+ setLocalePreferences({locale,hourCycle});
+ try{
+  const time=hourCycle==='h23'?'15:04':'3:04 pm';
+  const expected=hourCycle==='h23'?'Oct 7, 2026, 15:04':'7 Oct 2026, 3:04 pm';
+  assert.equal(workflowLocalInstant(date.getTime(),'fr-FR'),expected);
+  assert.equal(workflowSnoozeTime(date.getTime(),now),time);
+  assert.notEqual(workflowSnoozeTime(date.getTime(),now),date.toLocaleTimeString(locale,{hour:'numeric',minute:'2-digit'}),'vanilla Intl cannot see Android\'s hour-cycle override');
+  const tomorrow=new Date(2026,9,8,15,4),nextYear=new Date(2027,9,8,15,4);
+  assert.equal(workflowSnoozeTime(tomorrow.getTime(),now),(hourCycle==='h23'?'Oct 8':'8 Oct')+', '+time);
+  assert.equal(workflowSnoozeTime(nextYear.getTime(),now),(hourCycle==='h23'?'Oct 8, 2027':'8 Oct 2027')+', '+time);
+  assert.equal(workflowSnoozeTime('invalid',now),'');
+ }finally{setLocalePreferences({});}
 });
 
 test('once prompts and agent reminders share the human instant format instead of the raw locale dump',async()=>{

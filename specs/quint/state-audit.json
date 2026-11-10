@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "3504bfbe6d264d1bf05bbc2224708131d41f3a6b",
-  "ledgerSha256": "da68cc161658af660924f636f2195bf974ad143f94b7050c5e19dc2d30546dfa",
+  "ledgerSha256": "24b904503ae9255983596e3f202e8da5e17c668fb547cd5cc670cc1c4573fe55",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -29,8 +29,8 @@
     "languageReview": 95,
     "parseErrors": 0,
     "candidates": 70025,
-    "writeSites": 68867,
-    "writeAssociations": 61733,
+    "writeSites": 68874,
+    "writeAssociations": 61740,
     "asynchronous": 8635,
     "unassignedWrites": 10548
   },
@@ -34065,7 +34065,7 @@
     },
     {
       "path": "apps/app/src/prototype/automations-adapter.ts",
-      "sha256": "3dce6dc59241a4b933dd252370db0d02e58865070e5196a7c7fbf3f2e4cc9999",
+      "sha256": "14e8073c9d79b2436efc4c2d0f4dfdecc56b9cb7536eddef66bc9b2cafbbf24c",
       "allocatedModels": [
         "ReminderOpenIntent",
         "ScheduledTaskControls",
@@ -34122,7 +34122,7 @@
           "owner": "installAutomationsAdapter.ArrowFunction@172",
           "line": 178,
           "bindings": 5,
-          "writes": 16
+          "writes": 17
         }
       ],
       "parseErrors": [],
@@ -39867,7 +39867,7 @@
     },
     {
       "path": "apps/app/src/prototype/phone.css",
-      "sha256": "000b1b42ec39b1f0d4236e5ffca738117b4b2b19161dfff80dd2550408b535f1",
+      "sha256": "c79331061a75b494e92e3b985ad2bad6443c029501d147e04ba8d2eb306180f6",
       "allocatedModels": [
         "ChatInput",
         "DockClearanceOwnership",
@@ -41002,7 +41002,7 @@
     },
     {
       "path": "apps/app/src/prototype/workflow-adapter.ts",
-      "sha256": "df9902d4d1ae744f38753dfab53eed9da60c43cc1f7176c07a93b430cf88e024",
+      "sha256": "baa304f92077f528dce05664984ab27de692faf210050adb9f318dfe72ae5fe6",
       "allocatedModels": [
         "NoticesAndCaches",
         "WorkflowExecution"
@@ -41021,77 +41021,77 @@
           "owner": "installWorkflowAdapter",
           "line": 66,
           "bindings": 43,
-          "writes": 228
+          "writes": 233
         },
         {
           "owner": "installWorkflowAdapter.work",
-          "line": 99,
+          "line": 108,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "installWorkflowAdapter.checkNotice",
-          "line": 136,
+          "line": 145,
           "bindings": 2,
           "writes": 1
         },
         {
-          "owner": "installWorkflowAdapter.refresh.ArrowFunction@177",
-          "line": 177,
+          "owner": "installWorkflowAdapter.refresh.ArrowFunction@186",
+          "line": 186,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installWorkflowAdapter.open.ArrowFunction@200",
-          "line": 203,
+          "owner": "installWorkflowAdapter.open.ArrowFunction@209",
+          "line": 212,
           "bindings": 3,
           "writes": 4
         },
         {
           "owner": "installWorkflowAdapter.restore",
-          "line": 270,
+          "line": 279,
           "bindings": 1,
           "writes": 2
         },
         {
-          "owner": "installWorkflowAdapter.submitRun.ArrowFunction@316",
-          "line": 317,
+          "owner": "installWorkflowAdapter.submitRun.ArrowFunction@325",
+          "line": 326,
           "bindings": 2,
           "writes": 2
         },
         {
-          "owner": "installWorkflowAdapter.resubmitRun.ArrowFunction@327",
-          "line": 330,
+          "owner": "installWorkflowAdapter.resubmitRun.ArrowFunction@336",
+          "line": 339,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installWorkflowAdapter.read.ArrowFunction@353",
-          "line": 354,
+          "owner": "installWorkflowAdapter.read.ArrowFunction@362",
+          "line": 363,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installWorkflowAdapter.saveMetadata.ArrowFunction@377",
-          "line": 378,
-          "bindings": 1,
-          "writes": 1
-        },
-        {
-          "owner": "installWorkflowAdapter.lifecycle.ArrowFunction@387",
+          "owner": "installWorkflowAdapter.saveMetadata.ArrowFunction@386",
           "line": 387,
+          "bindings": 1,
+          "writes": 1
+        },
+        {
+          "owner": "installWorkflowAdapter.lifecycle.ArrowFunction@396",
+          "line": 396,
           "bindings": 2,
           "writes": 2
         },
         {
-          "owner": "installWorkflowAdapter.ArrowFunction@389",
-          "line": 392,
+          "owner": "installWorkflowAdapter.ArrowFunction@398",
+          "line": 401,
           "bindings": 1,
-          "writes": 4
+          "writes": 5
         },
         {
-          "owner": "installWorkflowAdapter.FunctionExpression@408",
-          "line": 410,
+          "owner": "installWorkflowAdapter.FunctionExpression@418",
+          "line": 420,
           "bindings": 1,
           "writes": 1
         }
@@ -46042,7 +46042,7 @@
     },
     {
       "path": "apps/app/src/runtime/workflow-local-time.ts",
-      "sha256": "e72d30afa3fe671d1ea3e82de5637d9fa4283a1f30a2e756e67b6e1f03d08a25",
+      "sha256": "ec011df550cf131639ef244e3b26ec6edead1d7e240c894079523853289df5ba",
       "allocatedModels": [
         "ScheduledTaskControls",
         "WorkflowExecution"
@@ -46053,13 +46053,13 @@
       "owners": [
         {
           "owner": "workflowClockSchedule",
-          "line": 10,
+          "line": 11,
           "bindings": 2,
           "writes": 3
         },
         {
           "owner": "workflowNextClockOccurrence",
-          "line": 53,
+          "line": 56,
           "bindings": 1,
           "writes": 1
         }
@@ -226172,6 +226172,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "56bc7a1ef4e524f3b551f322b28e17ba5eb8c48e25f3dd617c0889439b59f21b"
+    "sha256": "96e167c3a5b9e2842317f95672d9ae4f40223f71bb32f43b40b8fb0ec90d4b4b"
   }
 }

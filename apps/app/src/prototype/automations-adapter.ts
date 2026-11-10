@@ -95,7 +95,7 @@ export function installAutomationsAdapter(Component:any,views:Bag){
   const valid=()=>ticket===epoch&&!abort.signal.aborted&&visible()&&selected?.sessionId===binding()?.sessionId;
   try{
    const ownerContext=connectionController.getSnapshot().session,store=ownerContext?new WorkflowIntentStore(ownerContext):null;
-   const [remote,local,pending]=await Promise.allSettled([selected?new AutomationsProtocol(selected.request).list(abort.signal):Promise.resolve({rows:[] as AutomationRow[],issues:ownerContext?[{source:'automations' as const,unavailable:true,message:'Agent automations are unavailable on this connection.'}]:[]}),DailyApps.listReminders(),store?.load(abort.signal)]);
+   const [remote,local,pending]=await Promise.allSettled([selected?new AutomationsProtocol(selected.request).list(abort.signal):Promise.resolve({rows:[] as AutomationRow[],issues:ownerContext?[{source:'automations' as const,unavailable:true,message:'Agent automations are unavailable on this connection.'}]:[]}),DailyApps.listReminders(),store?.load(abort.signal),view.refreshManagement?.(abort.signal,valid)]);
    if(!valid())return;
    const next:AutomationRow[]=[],failures:AutomationIssue[]=[];
    if(remote.status==='fulfilled'){next.push(...remote.value.rows);failures.push(...remote.value.issues);}else failures.push(automationIssue('automations',remote.reason));
@@ -176,6 +176,9 @@ export function installAutomationsAdapter(Component:any,views:Bag){
   const cards=rows.filter(row=>rowPasses(row,typeFilter)&&rowPasses(row,statusFilter)).map(row=>({name:row.title,icon:current.ic[row.kind==='reminder'||row.kind==='device-reminder'?'bell':row.kind==='prompt'?'spark':row.kind==='schedule'||row.kind==='routine'?'cal':'flow'],short:row.schedule||row.source.replace(/^Agent /,''),statusLabel:locked(row)?'Outcome unknown':row.kind==='workflow'&&row.workflowId&&workflow.waitingFor?.(row.workflowId)?'Waiting for you':rowStatus(row),on:row.enabled,track:current.track(row.enabled),kx:current.kx(row.enabled),dim:'',failed:row.status==='failed',open:()=>show(row),toggle:()=>show(row)}));
   const empty=state==='ready'&&!cards.length&&!issues.length;
   const managementCards=[...(workflow.managementCards||[])];
+  managementCards.push({
+   name:'Scheduled digests',short:'Review schedules, sources and saved summaries',open:()=>window.dispatchEvent(new Event('alpha:hosted-digests')),
+  });
 
   if(intentStore&&!Capacitor.isNativePlatform())managementCards.push({
    name:'Workflow request recovery',short:'Back up or reset this agent’s pending requests',open:recoverRequests,

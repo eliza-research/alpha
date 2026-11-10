@@ -865,7 +865,7 @@ html[data-alpha-browser-underlay] [data-alpha-layer="app"]{background:linear-gra
 .alpha-share-panel .share-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:20px; }
 .alpha-share-panel .share-close { width:44px; min-height:44px; padding:10px; border:0; border-radius:50%; background:var(--s2); color:inherit; display:grid; place-items:center; }
 .alpha-share-panel .share-close::before { content:""; display:block; width:22px; height:22px; background:currentColor; mask:url('/icons/lucide/x.svg') center/contain no-repeat; }
-.alpha-share-panel .share-row { display:flex; align-items:center; gap:12px; width:100%; min-height:52px; padding:14px 16px; margin-top:8px; border:0; border-radius:16px; background:var(--s2,#eee); color:inherit; text-align:left; font:inherit; }
+.alpha-share-panel .share-row { display:flex; align-items:center; gap:12px; width:100%; min-height:52px; padding:14px 16px; margin-top:8px; border:0; border-radius:16px; background:var(--s2); color:inherit; text-align:left; font:inherit; }
 .alpha-share-panel .share-row::before { content:""; width:21px; height:21px; flex:none; background:currentColor; mask:var(--share-icon) center/contain no-repeat; }
 .alpha-share-panel [role="status"]:empty { display:none; }
 

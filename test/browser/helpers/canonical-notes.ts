@@ -1,4 +1,4 @@
-import {preloadPageModules} from './page-modules';
+import {preloadPageModules} from './page-modules.ts';
 import {expect,type Page} from '@playwright/test';
 /** Closed canonical app-record transport. Real Notes controller/client/editor/rendering run unchanged.
  * This fixture tests UI contracts, not the server store or account/provider integration.

@@ -55,7 +55,7 @@ function adapterFixture(request,storage={},options={}){
  let view=options.view===undefined?'workflows':options.view,workflowOpened='',deviceOpened='',newWorkflow=0;
  class Shell{live=true;renderVals(){return options.homeFallback||{};}componentDidMount(){}componentWillUnmount(){}S(){return {view};}vset(){}vget(){return {};}api(){return api;}openView(next){view=next;}refreshReminders(id){deviceOpened=id;}newDeviceReminderDraft(){deviceOpened='new-draft';}}
  const api={ic:{bell:'bell',spark:'sparkles',cal:'calendar',flow:'workflow'},track:()=>'',kx:()=>0,isActive:()=>true};
- const views={workflows:{render:()=>({cards:[],managementCards:[],openWorkflow:id=>workflowOpened=id,newFlow:()=>newWorkflow++,detail:false,builder:false,runOpen:false}),back:()=>false,onLeave(){}}};
+ const views={workflows:{render:()=>({cards:[],managementCards:[],openWorkflow:id=>workflowOpened=id,newFlow:()=>newWorkflow++,detail:false,builder:false,runOpen:false}),back:()=>false,onLeave(){},refreshManagement:options.refreshManagement}};
  const windowEvents=new Map();
  const dom=options.dom?new JSDOM('<div class="os"><button id="origin">Filters</button></div>',{pretendToBeVisual:true}):null;
  if(dom){dom.window.HTMLDialogElement.prototype.showModal=function(){this.open=true;};dom.window.document.querySelector('.os').inert=false;}
@@ -77,6 +77,20 @@ function adapterFixture(request,storage={},options={}){
  return {window:context.window,document:context.document,notify:(sessionId=session.sessionId)=>context.window.dispatchEvent(dom?new dom.window.CustomEvent(context.AUTOMATIONS_COMMITTED_EVENT,{detail:{sessionId}}):{type:context.AUTOMATIONS_COMMITTED_EVENT,detail:{sessionId}}),leave:()=>views.workflows.onLeave(),setView:next=>view=next,home:()=>shell.renderVals(),render:()=>views.workflows.render({},api),close:()=>shell.componentWillUnmount(),storage,retire:()=>{session.sessionId='replacement';session.ownerId='other';for(const fn of listeners)fn();},back:()=>views.workflows.back(),get workflowOpened(){return workflowOpened;},get deviceOpened(){return deviceOpened;},get newWorkflow(){return newWorkflow;}};
 }
 const wait=async fn=>{for(let count=0;count<300;count++){if(fn())return;await new Promise(resolve=>setTimeout(resolve,5));}throw Error('Unified automation UI did not settle.');};
+test('unified workflow management shares list cancellation and cannot outlive its visible owner visit',async()=>{
+ let release,probeSignal,current;
+ const held=new Promise(resolve=>release=resolve),calls=[];
+ const app=adapterFixture(async(path,method)=>{calls.push({path,method});return read({path});},{},{refreshManagement:async(signal,valid)=>{probeSignal=signal;current=valid;await held;}});
+ try{
+  app.render();await wait(()=>probeSignal);
+  assert.equal(current(),true);assert.equal(app.render().automation.loading,true);
+  app.leave();app.setView('');assert.equal(probeSignal.aborted,true);assert.equal(current(),false);
+  release();await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(app.home().homeWorkflowHasRows,undefined);
+  assert.equal(calls.filter(call=>call.path==='/api/automations').length,1);
+  assert.equal(calls.filter(call=>call.method!=='GET').length,0);
+ }finally{release();app.close();}
+});
 test('unified Workflows keeps browser request recovery in its management controls',async()=>{
  const f=await fixture(read);
  const browser=adapterFixture(f.request,{}, {native:false});
