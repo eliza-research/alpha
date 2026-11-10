@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {LISTENER_RECORD,listenerApkRow,listenerManifestSection,listenerRecordProblems,readListenerRecord} from '../scripts/listener-qualification.mjs';
+import {LISTENER_RECORD,listenerApkRow,listenerManifestSection,listenerRecordProblems,readListenerRecord} from '../scripts/listener-qualification.ts';
 
 const root=path.resolve(import.meta.dirname,'..');
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
@@ -85,7 +85,7 @@ test('listener APK rows are APK-build evidence only and never distributable whil
 });
 
 test('verify-apks writes the listener section into apk-manifest.json and fails on an unsafe listener APK',()=>{
- const source=read('scripts/verify-apks.mjs');
+ const source=read('scripts/verify-apks.ts');
  assert.match(source,/const listenerRecord = readListenerRecord\(\);/);
  assert.match(source,/\["sense-debug\.apk", "debug", true\], \["sense-release\.apk", "release", true\], \["sense-release-unsigned\.apk", "release", false\]/);
  assert.match(source,/checkListenerPermissions\(dump,/);

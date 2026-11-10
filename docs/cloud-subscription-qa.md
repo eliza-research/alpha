@@ -10,7 +10,7 @@ against the staging Cloud. Nothing on this page has been run against a real acco
 
 Staging is reachable only in **test-mocks builds** (`ELIZA_DEV_ALLOW_TEST_MOCKS=1`), the repo's
 existing staging switch. Distribution builds fold the staging authority away, and
-`scripts/audit-production-bundle.mjs` refuses `api-staging.eliza.app`, `cloud-staging` and the QA
+`scripts/audit-production-bundle.ts` refuses `api-staging.eliza.app`, `cloud-staging` and the QA
 surface strings in a production bundle.
 
 In a test-mocks build, **Subscription gate QA** runs the production sign-in and plan gate (not
@@ -38,7 +38,7 @@ Inputs as in the README (pinned `vendor/eliza`, speech AAR, embedding host libra
 
 ```sh
 npm ci
-node scripts/android-build-preflight.mjs --before-prepare
+node scripts/android-build-preflight.ts --before-prepare
 npm run agent:build-embedding-host
 npm run agent:prepare
 npm run agent:build-workflow-worker
@@ -150,7 +150,7 @@ not reuse production codes.
   every plan state, billing snapshot fallback, outage and offline grace, redeem success, invalid,
   rate-limited, already redeemed and transport replay, plan panel and Settings data, sign-in
   expiry warning (flag-off Android composition, synthetic native ports and ES256 tokens).
-- `scripts/test-cloud-subscription.mjs`, `test/subscription-entitlement.test.mjs`: protocol and
+- `scripts/test-cloud-subscription.ts`, `test/subscription-entitlement.test.mjs`: protocol and
   presentation; `test/connection-routes.test.mjs` with `test/fixtures/ConnectionRoutesTest.java`:
   native allowlist, reset revocation target, direct-provider gating.
 - `test/browser/native-cloud-signin.spec.ts`: in-app sign-in screens on the flag-off Android
@@ -170,7 +170,7 @@ not reuse production codes.
   - source checks: store before ack, pending burned before exchange, nothing logged.
 - `test/cloud-sign-in-flow.test.mjs`: Alpha's registration (client, callback, deployments,
   installed names), its callback contract through the shared parser, and the renderer wiring.
-- `scripts/test-cloud-protocol.mjs`, `test/browser-cloud-dev-bridge.test.mjs`: renderer sign-in
+- `scripts/test-cloud-protocol.ts`, `test/browser-cloud-dev-bridge.test.mjs`: renderer sign-in
   contract and the development bridge's email sign-in.
 - `CloudSignInCallbackInstrumentedTest` (emulator, `-e cloudSignInNative 1`):
   - the return link resolves only to MainActivity;

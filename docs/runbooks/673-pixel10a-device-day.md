@@ -21,7 +21,7 @@ the [pilot acceptance runbook](../pilot-acceptance-runbook.md) entry conditions 
     one per drill, for the `signedUpdateRecovery` gate and the channel `drills`.
   - `docs/runbooks/templates/cuttlefish-boot-evidence.template.json`: `evidenceClass: "cuttlefish-image-boot"`,
     for the `cuttlefishBoot` gate (#672), so the virtual-target record has its own shape.
-- `scripts/owner/evidence-class-check.mjs` (read-only): refuses a record of the wrong class under a
+- `scripts/owner/evidence-class-check.ts` (read-only): refuses a record of the wrong class under a
   gate (a Cuttlefish file under `physicalDevice`, for example), a release-level entry without a
   class, a cited file with `UNSET` fields or a non-passed result under a passed gate, one file cited
   by two gates, and a channel drill marked `passed` without its own drill record. The shared gate
@@ -30,7 +30,7 @@ the [pilot acceptance runbook](../pilot-acceptance-runbook.md) entry conditions 
 
 ## Read-only state on 2026-10-28 (main 94676c82)
 
-`npm run human:status` reads exactly these records for the two steps (`scripts/human-actions.mjs`):
+`npm run human:status` reads exactly these records for the two steps (`scripts/human-actions.ts`):
 
 - H-24 `open`: `physicalDevice gate: development` (status of `physicalDevice` in
   `android/aosp/pixel10a-qualification-gates.json`; its only evidence is the October 19
@@ -41,8 +41,8 @@ the [pilot acceptance runbook](../pilot-acceptance-runbook.md) entry conditions 
 
 `human:status` trusts the recorded status; the shared gate rules (`node --test test/pixel10a-gates.test.mjs`)
 require release-level evidence for `passed` and that `signedUpdateRecovery` agrees with the channel
-drills and known-good release; `evidence-class-check.mjs` adds the class separation. Run all three
-after recording. `node scripts/owner/evidence-class-check.mjs` today: 0 problems, 2 notes (the two
+drills and known-good release; `evidence-class-check.ts` adds the class separation. Run all three
+after recording. `node scripts/owner/evidence-class-check.ts` today: 0 problems, 2 notes (the two
 development records predate evidence classes).
 
 ## Decisions for the owner
@@ -51,12 +51,12 @@ development records predate evidence classes).
 
 | Option | Result | What it changes |
 | --- | --- | --- |
-| Relock after enrolling `avb_custom_key` (recommended) | Verified boot **yellow** (custom key) | `verify-pixel10a-image.mjs` accepts green or yellow and refuses orange, so only this option lets the `physicalDevice` verifier pass. Locking wipes user data again. |
+| Relock after enrolling `avb_custom_key` (recommended) | Verified boot **yellow** (custom key) | `verify-pixel10a-image.ts` accepts green or yellow and refuses orange, so only this option lets the `physicalDevice` verifier pass. Locking wipes user data again. |
 | Leave unlocked | Verified boot **orange** | The verifier refuses the image, so the `physicalDevice` gate cannot pass through it; release notes must state the weaker trust state (upstream signing README section 5). |
 
 ### D2. OEM unlocking on released units
 
-Stock recovery (`aosp-ota-update.mjs stock-archive`) starts with `fastboot flashing unlock`, which
+Stock recovery (`aosp-ota-update.ts stock-archive`) starts with `fastboot flashing unlock`, which
 the bootloader refuses unless OEM unlocking was enabled from the running image's developer
 options; a unit that no longer boots cannot enable it. Options: leave OEM unlocking enabled on
 pilot units (stock recovery stays possible; anyone with the unlocked phone and physical access can
@@ -72,7 +72,7 @@ written consent to wipe; record its alias in each drill record.
 
 ### D4. Second signed release for the update drills
 
-`aosp-ota-update.mjs check` refuses a candidate that is not newer (build date), lowers the security
+`aosp-ota-update.ts check` refuses a candidate that is not newer (build date), lowers the security
 patch level or any AVB rollback index, or changes the OTA certificate or AVB key. The signed-update,
 interrupted-update and compatible-rollback drills therefore need **a second release-signed build
 (N+1)** from the same keys, built and signed through #672 H-21/H-22 again. Default: none exists.
@@ -95,7 +95,7 @@ On the image host (once per release):
 /absolute/otatools/bin/img_from_target_files /absolute/release/signed-target_files.zip /absolute/release/signed-img.zip
 sha256sum /absolute/release/signed-img.zip /absolute/release/avb_pkmd.bin
 # bootloader and radio images come from the locked factory archive; print its verified plan:
-node scripts/aosp-ota-update.mjs stock-archive --archive /absolute/stallion-cp3a.261005.005-factory-d1d25502.zip
+node scripts/aosp-ota-update.ts stock-archive --archive /absolute/stallion-cp3a.261005.005-factory-d1d25502.zip
 ```
 
 On each unit (owner consent recorded first; this wipes user data):
@@ -123,7 +123,7 @@ After first boot (and setup), on each unit:
 2. Read-only verifier, with the reviewed launcher descriptor and the exact fingerprint from
    `release-record.json`:
    ```sh
-   node scripts/verify-pixel10a-image.mjs --serial SERIAL --user 0 --descriptor /absolute/reviewed-launcher.json \
+   node scripts/verify-pixel10a-image.ts --serial SERIAL --user 0 --descriptor /absolute/reviewed-launcher.json \
      --fingerprint '<exact build fingerprint>' --apk-path /product/app/AlphaPhone/AlphaPhone.apk \
      --out /absolute/new-report.json --listener
    ```
@@ -136,18 +136,18 @@ After first boot (and setup), on each unit:
    `docs/evidence/pixel10a-<alias>-device-<date>.json` (serial and fingerprint hashed; no account
    data), add a `level: "release"` entry per unit to `physicalDevice`, and set the gate `passed` only
    when every unit's record is `passed`.
-5. `node scripts/owner/evidence-class-check.mjs --strict`, `node --test test/pixel10a-gates.test.mjs`,
+5. `node scripts/owner/evidence-class-check.ts --strict`, `node --test test/pixel10a-gates.test.mjs`,
    `npm run human:status` (H-24 `done`).
 
 ## H-25 Update and recovery drills (release owner, drill unit)
 
-All drill commands are `scripts/aosp-ota-update.mjs` ([staging guide](../pixel10a-staging.md#update-interruption-rollback-and-recovery)).
+All drill commands are `scripts/aosp-ota-update.ts` ([staging guide](../pixel10a-staging.md#update-interruption-rollback-and-recovery)).
 Release N is installed through H-24; N+1 comes from D4. Each run writes a journal; keep it.
 
 1. **signedUpdate**
    ```sh
-   node scripts/aosp-ota-update.mjs check --from N/release-record.json --to N1/release-record.json
-   node scripts/aosp-ota-update.mjs apply --serial SERIAL --from N/release-record.json \
+   node scripts/aosp-ota-update.ts check --from N/release-record.json --to N1/release-record.json
+   node scripts/aosp-ota-update.ts apply --serial SERIAL --from N/release-record.json \
      --to N1/release-record.json --ota N1/ota.zip --journal /abs/new-journal-signed.json
    # review the printed plan, then the same command with --execute --confirm-update
    ```
@@ -156,18 +156,18 @@ Release N is installed through H-24; N+1 comes from D4. Each run writes a journa
    verified boot no weaker than before; user data preserved.
 2. **interruptedUpdate**: reinstall N (H-24) or use a second N/N+1 pair, start `apply --execute
    --confirm-update`, and interrupt during the sideload transfer (disconnect USB). Then
-   `node scripts/aosp-ota-update.mjs status --serial SERIAL --journal <journal>` and re-run the
+   `node scripts/aosp-ota-update.ts status --serial SERIAL --journal <journal>` and re-run the
    same `apply` with the same journal. Pass: it resumes from the observed state without assuming
    success and ends on the candidate.
 3. **compatibleRollback**: after an update to N+1 and **before** the updated slot is marked
    successful, while the bootloader reports a `snapshotted` update (Virtual A/B):
-   `node scripts/aosp-ota-update.mjs fallback --serial SERIAL --journal <journal>` then with
+   `node scripts/aosp-ota-update.ts fallback --serial SERIAL --journal <journal>` then with
    `--execute --confirm-fallback`. Pass: the original slot boots N. A rollback after the slot is
    marked successful is a newer release that passes `check`; downgrades stay refused
    (`downgradeAllowed: false`); record that a lower build was refused.
 4. **stockRecovery** (wipes; consent): run the plan `stock-archive` printed (it starts with
    `fastboot flashing unlock`, needs D2), then
-   `node scripts/aosp-ota-update.mjs verify-stock --serial SERIAL`. Pass: the stock build verifies.
+   `node scripts/aosp-ota-update.ts verify-stock --serial SERIAL`. Pass: the stock build verifies.
    Relock (`fastboot flashing lock`, wipes again) only after `verify-stock` passes, then reinstall
    the release with H-24.
 
@@ -175,10 +175,10 @@ For each drill: fill `pixel10a-drill-evidence.template.json` into
 `docs/evidence/pixel10a-drill-<drill>-<date>.json`, add a `level: "release"` entry to
 `signedUpdateRecovery`, and set the channel's `drills.<drill>` to `passed` (or `failed`) in
 `android/aosp/pixel10a-ota-channel.json`. Set the gate `passed` only when all four drills passed
-and the known-good release is recorded. Then `node scripts/owner/evidence-class-check.mjs --strict`,
+and the known-good release is recorded. Then `node scripts/owner/evidence-class-check.ts --strict`,
 `node --test test/pixel10a-gates.test.mjs` and `npm run human:status` (H-25 `done`).
 
-For APK-only updates of the launcher, `node scripts/pilot-update.mjs --serial <serial> --alias <alias>
+For APK-only updates of the launcher, `node scripts/pilot-update.ts --serial <serial> --alias <alias>
 --apk-manifest <new build>/apk-manifest.json` checks an in-place update with the same signer and a
 higher versionCode. That is an APK update record, not one of the four image drills.
 

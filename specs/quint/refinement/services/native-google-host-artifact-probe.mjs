@@ -5,8 +5,8 @@ import {execFileSync} from 'node:child_process';
 import {registerHooks} from 'node:module';
 import {pathToFileURL} from 'node:url';
 import {writeCoreStateFixture} from '../../../../test/fixtures/core-state-root.mjs';
-import {workerHash, verifyWorkerArtifact} from '../../../../scripts/workflow-worker-artifact.mjs';
-import {CORE_STATE_MANIFEST, PLUGIN_CONNECTOR_TARGET} from '../../../../scripts/core-state-patch.mjs';
+import {workerHash, verifyWorkerArtifact} from '../../../../scripts/workflow-worker-artifact.ts';
+import {CORE_STATE_MANIFEST, PLUGIN_CONNECTOR_TARGET} from '../../../../scripts/core-state-patch.ts';
 import {controlName, digest, eventsName, fixtureModule, fixtureSource, productInput}
   from '../../../../test/fixtures/native-google-host-builder-port.mjs';
 
@@ -14,11 +14,11 @@ const repository = path.resolve(import.meta.dirname, '../../../..');
 const scratch = path.resolve(process.argv[2]);
 assert.equal(process.cwd(), scratch);
 assert.equal(process.env.TMPDIR, scratch);
-const artifactSource = pathToFileURL(path.join(repository, 'scripts/native-google-host-artifact.mjs')).href;
+const artifactSource = pathToFileURL(path.join(repository, 'scripts/native-google-host-artifact.ts')).href;
 let projection;
 globalThis.nativeGoogleFixtureProjection = options => projection(options);
 const hooks = registerHooks({resolve(specifier, context, next) {
-  if (context.parentURL === artifactSource && specifier === './prepare-client-features.mjs') return {
+  if (context.parentURL === artifactSource && specifier === './prepare-client-features.ts') return {
     url: 'data:text/javascript,export const prepareClientFeatures = globalThis.nativeGoogleFixtureProjection;',
     shortCircuit: true,
   };
@@ -33,8 +33,8 @@ const idle = {operation: 'none', result: 'none'};
 const noAttempt = {projection: false, version: false, compile: false, moduleWritten: false, metadata: false, tempClean: true,
   previousHost: 0, previousReceipt: {bundle: 0, source: 0, connector: false}};
 const productFiles = [
-  'scripts/build-native-google-host.ts', 'scripts/local-agent-source.mjs', 'scripts/native-google-host-artifact.mjs',
-  'scripts/prepare-client-features.mjs', 'scripts/client-speech-patch.mjs', 'package.json', 'tsconfig.json',
+  'scripts/build-native-google-host.ts', 'scripts/local-agent-source.ts', 'scripts/native-google-host-artifact.ts',
+  'scripts/prepare-client-features.ts', 'scripts/client-speech-patch.ts', 'package.json', 'tsconfig.json',
   'vendor/eliza/tsconfig.json',
 ];
 const optionalFiles = ['patches/eliza/cloud-speech-client-manifest.json', 'patches/eliza/cloud-speech-client.patch'];
@@ -73,7 +73,7 @@ function setup(number, simpleCore = false) {
   write(source, fixtureSource(1));
   write(path.join(root, 'linked-target.ts'), 'export const synthetic = true;');
   const transient = ['linked-input.ts', 'unavailable-input.ts'].map(name => path.join(root, name));
-  const fixedInput = path.join(root, 'scripts/client-speech-patch.mjs');
+  const fixedInput = path.join(root, 'scripts/client-speech-patch.ts');
   const fixedInputBytes = fs.readFileSync(fixedInput);
   const readPair = () => ({
     host: fs.existsSync(modulePath) ? {bytes: fs.readFileSync(modulePath), mode: fs.statSync(modulePath).mode} : null,

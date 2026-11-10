@@ -3,8 +3,8 @@ import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium, expect as baseExpect} from '@playwright/test';
 import {createServer} from 'vite';
-import {checkClientFeatures} from '../../../../scripts/prepare-client-features.mjs';
-import {filesWithin, repositoryRoot as root, sha256} from '../../../../scripts/quint-lib.mjs';
+import {checkClientFeatures} from '../../../../scripts/prepare-client-features.ts';
+import {filesWithin, repositoryRoot as root, sha256} from '../../../../scripts/quint-lib.ts';
 import {seedCompletedAccessSetup} from '../../../../test/browser/flag-off-android.ts';
 import {observeCloudNotices} from '../../../../test/browser/helpers/cloud-connection-notices.ts';
 import {entitlements, installNativeCloudPlanPorts} from '../../../../test/browser/helpers/native-cloud-plan-fixture.ts';
@@ -139,7 +139,7 @@ export async function checkCloudConnectionNotices(extraSources = []) {
     ...filesWithin(resolve(root, 'apps/app/src')), ...filesWithin(resolve(root, '.eliza/client-features')),
     ...filesWithin(resolve(root, 'config')), ...filesWithin(resolve(root, 'patches/eliza')),
     'apps/app/index.html', 'vite.config.ts', 'upstream.lock.json', 'package-lock.json',
-    'scripts/prepare-client-features.mjs', modelPath, fileURLToPath(import.meta.url),
+    'scripts/prepare-client-features.ts', modelPath, fileURLToPath(import.meta.url),
     'test/browser/flag-off-android.ts', 'test/browser/helpers/cloud-connection-notices.ts',
     'test/browser/helpers/native-cloud-plan-fixture.ts', 'test/browser/helpers/resident-agent-plugin.ts',
     'test/browser/helpers/native-navigation-protocol.ts', ...extraSources,

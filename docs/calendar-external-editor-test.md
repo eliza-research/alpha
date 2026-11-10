@@ -16,7 +16,7 @@ Required pins:
 ALPHA_CALENDAR_TEST_SERIAL=emulator-N \
 ALPHA_CALENDAR_TEST_AVD=owned-avd-name \
 ALPHA_CALENDAR_TEST_ABI=x86_64 \
-node scripts/test-calendar-regression.mjs --external
+node scripts/test-calendar-regression.ts --external
 ```
 
 The runner leases the emulator and refuses existing Alpha or Etar package

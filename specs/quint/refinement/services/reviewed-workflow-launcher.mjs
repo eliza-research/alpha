@@ -18,10 +18,10 @@ const cases = [
 function sourceInputs(extraSources) {
   const {patches} = JSON.parse(readFileSync(join(root, manifest), 'utf8'));
   return [
-    'scripts/launcher-child.mjs', 'scripts/start-reviewed-workflow-agent.mjs', 'scripts/agent-embeddings.mjs', 'scripts/agent-identity.mjs',
-    'scripts/agent-model.mjs', 'config/alpha-product.json', 'scripts/local-agent-source.mjs',
-    'scripts/copy-file-clone.mjs', 'scripts/core-state-preload.mjs', 'scripts/core-state-patch.mjs',
-    'scripts/combined-agent-source.mjs', manifest, 'upstream.lock.json',
+    'scripts/launcher-child.ts', 'scripts/start-reviewed-workflow-agent.ts', 'scripts/agent-embeddings.ts', 'scripts/agent-identity.ts',
+    'scripts/agent-model.ts', 'config/alpha-product.json', 'scripts/local-agent-source.ts',
+    'scripts/copy-file-clone.ts', 'scripts/core-state-preload.ts', 'scripts/core-state-patch.ts',
+    'scripts/combined-agent-source.ts', manifest, 'upstream.lock.json',
     'vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs',
     'vendor/eliza/packages/app/scripts/lib/committed-source.mjs',
     'vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs',

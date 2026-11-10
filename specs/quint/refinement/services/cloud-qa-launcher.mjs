@@ -4,7 +4,7 @@ import {mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync} from 'node:f
 import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {CORE_STATE_MANIFEST, coreStateReceipt} from '../../../../scripts/core-state-patch.mjs';
+import {CORE_STATE_MANIFEST, coreStateReceipt} from '../../../../scripts/core-state-patch.ts';
 import {captureInputs, checkTraces} from '../check-traces.mjs';
 
 const root = resolve(import.meta.dirname, '../../../..');
@@ -40,8 +40,8 @@ export async function checkCloudQaLauncher(extraSources = []) {
   const core = coreStateReceipt(root);
   const sources = [
     fileURLToPath(import.meta.url), probe, 'test/fixtures/core-state-root.mjs',
-    'scripts/start-cloud-qa.mjs', 'scripts/local-agent-source.mjs', 'scripts/copy-file-clone.mjs',
-    'scripts/cloud-sdk-authority.mjs', 'scripts/native-view-policy.mjs',
+    'scripts/start-cloud-qa.ts', 'scripts/local-agent-source.ts', 'scripts/copy-file-clone.ts',
+    'scripts/cloud-sdk-authority.ts', 'scripts/native-view-policy.ts',
     'config/cloud-deployment.json', 'config/native-view-declarations.json', 'upstream.lock.json',
     'vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs',
     'vendor/eliza/packages/agent/native-host/private-runtime-json.mjs',

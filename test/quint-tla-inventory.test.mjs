@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
-import {loadModels, readJson, repositoryRoot, sha256} from '../scripts/quint-lib.mjs';
+import {loadModels, readJson, repositoryRoot, sha256} from '../scripts/quint-lib.ts';
 
 const sourcePath = 'specs/quint/legacy/core/source-inventory.json';
 const viewRefreshPath = 'specs/quint/legacy/view-refresh-configurations.json';

@@ -5,7 +5,7 @@ import {fileURLToPath} from 'node:url';
 import {JSDOM} from 'jsdom';
 import {stripTypeScriptTypes} from '../../../../test/support/strip-types.mjs';
 import {checkTraces, qset} from '../check-traces.mjs';
-import {checkClientFeatures} from '../../../../scripts/prepare-client-features.mjs';
+import {checkClientFeatures} from '../../../../scripts/prepare-client-features.ts';
 import {boundInputs, captureSources, checkpoint, deferred, read, tick, trace, call} from './support.mjs';
 
 const model = 'StartupUpdateAdmission';
@@ -131,7 +131,7 @@ function fixture(name, code) {
 export async function checkStartupUpdateAdmission() {
   const sources = [fileURLToPath(import.meta.url), 'apps/app/src/main.tsx', 'vendor/eliza/' + shared, effective, projection,
     'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java',
-    'upstream.lock.json', 'scripts/prepare-client-features.mjs', 'scripts/pinned-upstream-source.mjs',
+    'upstream.lock.json', 'scripts/prepare-client-features.ts', 'scripts/pinned-upstream-source.ts',
     'patches/eliza/app-update-resume-client.patch', 'patches/eliza/app-update-resume-client-manifest.json'];
   captureSources([...sources, modelPath]);
   checkClientFeatures();

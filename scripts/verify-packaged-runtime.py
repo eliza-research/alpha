@@ -55,7 +55,7 @@ def file_hash(path):
 
 def verify_local_embedding_source(root):
     # This is the existing source/receipt/model/library gate, not a second qualification schema.
-    script = (root / 'scripts/stage-embedding-host.mjs').resolve(strict=True)
+    script = (root / 'scripts/stage-embedding-host.ts').resolve(strict=True)
     result = subprocess.run(
         [os.environ.get('ALPHA_NODE', 'node'), '--input-type=module', '-e',
          'const {verifyEmbeddingHost}=await import(process.argv[1]); verifyEmbeddingHost(process.argv[2],{requireProducerInputs:true});',
@@ -83,7 +83,7 @@ def verify(apk, release=False, runtime_profile="native", local_embeddings=False)
         pin = json.loads((ROOT / 'upstream.lock.json').read_text())['commit']
         if stamp.get('base') != pin or stamp.get('patches') != []:
             raise ValueError('Staged runtime does not match patchless pin')
-        for field, source in [('lockSha256', 'upstream.lock.json'), ('preparerSha256', 'scripts/prepare-local-agent.mjs'), ('guardSha256', 'scripts/local-agent-source.mjs')]:
+        for field, source in [('lockSha256', 'upstream.lock.json'), ('preparerSha256', 'scripts/prepare-local-agent.ts'), ('guardSha256', 'scripts/local-agent-source.ts')]:
             if stamp.get(field) != file_hash(ROOT / source):
                 raise ValueError('Staged source manifest mismatch')
         checks = {}
@@ -210,7 +210,7 @@ def verify(apk, release=False, runtime_profile="native", local_embeddings=False)
                     transforms[0].get('sourceSha256') != mobile_policy['package']['files']['dist-node/index.js'] or
                     not re.fullmatch('[a-f0-9]{64}', str(transforms[0].get('bridgeSha256', '')))):
                 raise ValueError('Packaged mobile UUID transform differs')
-            expected_adapters = ['scripts/build-mobile-agent.mjs', 'scripts/mobile-uuid-adapter.mjs', 'scripts/mobile-bundle-smoke.mjs']
+            expected_adapters = ['scripts/build-mobile-agent.ts', 'scripts/mobile-uuid-adapter.ts', 'scripts/mobile-bundle-smoke.ts']
             if mobile_receipt.get('adapterFiles') != {name: file_hash(ROOT / name) for name in expected_adapters}:
                 raise ValueError('Packaged mobile producer adapter changed')
             core_manifest_file = ROOT / 'patches/eliza/core-state-manifest.json'
@@ -235,8 +235,8 @@ def verify(apk, release=False, runtime_profile="native", local_embeddings=False)
                     core_transforms.append({'path': core_target, 'sourceSha256': core_file['beforeSha256'],
                                             'outputSha256': core_file['afterSha256']})
                 core_patches.append({'file': patch_name, 'sha256': core_patch['sha256']})
-            core_inputs = ['scripts/core-state-patch.mjs', 'scripts/core-state-preload.mjs',
-                           'scripts/combined-agent-source.mjs', 'patches/eliza/core-state-manifest.json'] + [
+            core_inputs = ['scripts/core-state-patch.ts', 'scripts/core-state-preload.ts',
+                           'scripts/combined-agent-source.ts', 'patches/eliza/core-state-manifest.json'] + [
                            'patches/eliza/' + name for name, _targets in MOBILE_CORE_PATCH_TARGETS]
             expected_core = {'version': 1, 'baseCommit': pin,
                              'manifestSha256': file_hash(core_manifest_file),

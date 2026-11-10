@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { checkClientFeatures } from '../scripts/prepare-client-features.mjs';
+import { checkClientFeatures } from '../scripts/prepare-client-features.ts';
 
 test('upstream plugin-maps navigation tests pass on the pinned source', () => {
   // Check only: the shared tree is prepared by npm run upstream:prepare-client, never by a test.

@@ -5,7 +5,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { humanActionStates } from "../scripts/human-actions.mjs";
+import { humanActionStates } from "../scripts/human-actions.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
 const read = file => fs.readFileSync(path.join(root, file), "utf8");
@@ -50,7 +50,7 @@ test("the per-unit evidence record and the pilot drafts have no credential or id
 });
 
 test("the provisioning record keeps only its secret-free fields", () => {
-  const source = read("scripts/provision-unit.mjs");
+  const source = read("scripts/provision-unit.ts");
   const body = /const record = \{([\s\S]*?)\n  \};/.exec(source)[1];
   const keys = [...body.matchAll(/^\s{4}([a-zA-Z]+)[:,]/gm)].map(match => match[1]);
   assert.deepEqual(keys, ["schema", "alias", "createdAt", "sourceCommit", "evidence", "notEvidenceFor", "device", "apk", "installed", "runtimeIdentity", "homeRole"]);

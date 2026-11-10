@@ -6,7 +6,7 @@ import {fileURLToPath} from 'node:url';
 import {captureInputs, checkTraces, qmap, qset} from '../check-traces.mjs';
 import {app, directory, javaTraceCampaign, root} from './java.mjs';
 import {jsonJar} from '../../../../test/fixtures/jvm-tools.mjs';
-import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.mjs';
+import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.ts';
 
 const model = 'NativeHostedInbox';
 const owner = 'plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NoticeOwner.java';
@@ -62,7 +62,7 @@ export async function checkNativeHostedInbox(extraSources = []) {
     'ResidentResultSession', 'ResidentResultTransport', 'HostedTransport', 'NativeDigestSources', 'NativeDeviceEnrollmentKey',
     'CloudDeployment'].map(name => app+name+'.java').concat('vendor/eliza/'+owner);
   const sources = [...compiled, fileURLToPath(import.meta.url), join(directory,harness), join(directory,'Trace.java'),
-    join(directory,'java.mjs'), 'scripts/upstream-native-source.mjs', 'upstream.lock.json',
+    join(directory,'java.mjs'), 'scripts/upstream-native-source.ts', 'upstream.lock.json',
     'test/fixtures/jvm-tools.mjs', ...(jsonJar ? [jsonJar] : []), ...extraSources];
   const driverHashes = captureInputs(sources);
   assert.equal(driverHashes[join(root,'vendor/eliza',owner)],upstreamNativeSource(root).read(owner).get(owner).sha256);

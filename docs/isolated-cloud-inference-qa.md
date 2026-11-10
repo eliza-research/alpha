@@ -2,7 +2,7 @@
 
 The ordinary Mac QA launcher uses direct Cerebras. Signing into a Cloud account in Alpha connects managed services; it does not switch that launcher's text route. Subscription-gate staging QA also stops at admission and is not an inference benchmark.
 
-`scripts/start-cloud-qa.mjs` launches the normal Eliza source entrypoint with a canonical staging Cloud route in a separate private profile. It requires an explicitly selected staging credential file, an exact model, and a separate port. It refuses existing non-QA profiles and active Alpha port conventions. It neither copies the current user's profile nor embeds a credential in Vite variables or source. Production phone inference binding is unchanged.
+`scripts/start-cloud-qa.ts` launches the normal Eliza source entrypoint with a canonical staging Cloud route in a separate private profile. It requires an explicitly selected staging credential file, an exact model, and a separate port. It refuses existing non-QA profiles and active Alpha port conventions. It neither copies the current user's profile nor embeds a credential in Vite variables or source. Production phone inference binding is unchanged.
 
 Provide these host-side inputs:
 
@@ -10,9 +10,9 @@ Provide these host-side inputs:
 - `ALPHA_QA_PORT`: an independently checked free loopback port, such as 47859.
 - `ALPHA_QA_CLOUD_KEY_FILE`: the absolute owner-only regular file containing the already authorized **staging** QA key. Do not use the production Google/Cloud profile or paste a key into the command.
 - `ALPHA_QA_MODEL`: the exact reviewed Cloud model for the matched comparison.
-- `ALPHA_ELIZA_SOURCE` and `ALPHA_BUN`: the reviewed Eliza source and its pinned Bun executable, as with `start-local-remote.mjs`.
+- `ALPHA_ELIZA_SOURCE` and `ALPHA_BUN`: the reviewed Eliza source and its pinned Bun executable, as with `start-local-remote.ts`.
 
-Then run `node scripts/start-cloud-qa.mjs`. The private profile records its route, source commit, port, and PID in `process.json`; the key stays in the child process environment and is omitted from that receipt. No prompt is submitted by this launcher. Startup does not establish owner identity or an inference success: the receipt intentionally starts with `identityVerified: false`.
+Then run `node scripts/start-cloud-qa.ts`. The private profile records its route, source commit, port, and PID in `process.json`; the key stays in the child process environment and is omitted from that receipt. No prompt is submitted by this launcher. Startup does not establish owner identity or an inference success: the receipt intentionally starts with `identityVerified: false`.
 
 For the actual Alpha UI, use a separate preview origin and empty browser Cloud profile with the normal Vite local-agent bridge:
 

@@ -9,11 +9,11 @@ should paste keys, passphrases or PINs into an issue, PR, chat or commit.
 Sources: [human actions](../human-actions.md) H-01/H-08/H-09, the pinned upstream
 `vendor/eliza/packages/os/android/signing/README.md` (the offline ceremony), P-16 in
 [decisions](../decisions.md), `android/signing/alpha-key-manifest.json`,
-`scripts/enroll-release-keys.mjs`, `scripts/sign-release-apks.mjs`,
-`scripts/sign-aosp-release.mjs` and [Pixel 10a staging](../pixel10a-staging.md) (managed signing).
+`scripts/enroll-release-keys.ts`, `scripts/sign-release-apks.ts`,
+`scripts/sign-aosp-release.ts` and [Pixel 10a staging](../pixel10a-staging.md) (managed signing).
 Added for the 2026-10-29 custody decision: the draft CI job
 [drafts/661-release-signing.workflow.yml](drafts/661-release-signing.workflow.yml) (not enabled),
-`scripts/owner/release-signing-readiness.mjs` (read-only) and its test.
+`scripts/owner/release-signing-readiness.ts` (read-only) and its test.
 
 ## Read-only state on 2026-10-28 (main 94676c82, Eliza pin 1f2a922f)
 
@@ -41,7 +41,7 @@ Added for the 2026-10-29 custody decision: the draft CI job
 These are unit tests with throwaway keys. They show the refusals work; they are not a ceremony.
 
 Re-checked 2026-10-29 on this branch:
-- `node scripts/owner/release-signing-readiness.mjs --remote`, which makes GET requests only:
+- `node scripts/owner/release-signing-readiness.ts --remote`, which makes GET requests only:
   - draft safety rules hold, and no enabled workflow reads a release secret;
   - H-09 is not enrolled;
   - the `avb` key manifest label is still `hsm`;
@@ -72,7 +72,7 @@ what was considered:
 
 | Option | Status | Why it matters later |
 | --- | --- | --- |
-| A. Encrypted key files, ephemeral signing job | **Chosen, with GitHub Actions as the job host** | APKs: `sign-release-apks.mjs --keys-dir`, tested against a real apksigner. Image/OTA: `sign-aosp-release.mjs --keys-dir`, tested only with mocked releasetools. |
+| A. Encrypted key files, ephemeral signing job | **Chosen, with GitHub Actions as the job host** | APKs: `sign-release-apks.ts --keys-dir`, tested against a real apksigner. Image/OTA: `sign-aosp-release.ts --keys-dir`, tested only with mocked releasetools. |
 | B. HSM over PKCS#11 | Not chosen | Moving to B later still works: both signing tools accept `--pkcs11-config`. signapk opens the token without a PIN, and the AVB helper and OTA payload signer still have to be written. |
 | C. Managed key service over PKCS#11 | Not chosen | Same tool path as B. |
 
@@ -209,7 +209,7 @@ both names. The repository receives only the H-09 enrollment commit.
    every `*.x509.pem`, and `avb_pkmd.bin`. Never the `.enc` files.
 2. Dry run (writes nothing):
    ```sh
-   node scripts/enroll-release-keys.mjs --fingerprints <copy>/fingerprints.json --certificates <copy>
+   node scripts/enroll-release-keys.ts --fingerprints <copy>/fingerprints.json --certificates <copy>
    ```
    It refuses: a test-key ceremony, a key list different from `alpha-key-manifest.json`, one
    certificate under two names, a debug signing certificate (debug rows of
@@ -222,9 +222,9 @@ both names. The repository receives only the H-09 enrollment commit.
    the three records together: `android/release-signer.json`, `android/aosp/pixel10a-product.json`,
    `android/aosp/pixel10a-ota-channel.json`.
 5. **Separately** set `signer.platformCertificateSha256` in `android/aosp/product.json` (the
-   Cuttlefish product) to the same `platform` certificate SHA-256: `enroll-release-keys.mjs` does
+   Cuttlefish product) to the same `platform` certificate SHA-256: `enroll-release-keys.ts` does
    not write that file, and Cuttlefish production staging (H-23) refuses while it is `UNSET`.
-   `node scripts/owner/production-staging-preflight.mjs` lists it as `H-09 (manual)`.
+   `node scripts/owner/production-staging-preflight.ts` lists it as `H-09 (manual)`.
 6. `npm run human:status` must show H-09 `done`.
 
 ## CI signing path (GitHub Actions secrets)
@@ -263,7 +263,7 @@ for n in apex_payload avb; do
 done
 ```
 
-The names are fixed by `scripts/owner/release-signing-readiness.mjs` (`expectedSecrets`) and by
+The names are fixed by `scripts/owner/release-signing-readiness.ts` (`expectedSecrets`) and by
 the draft workflow. `test/owner-release-signing-readiness.test.mjs` rebuilds the ceremony layout
 from values produced exactly this way, using a throwaway `--test-keys` ceremony, runs both draft
 decrypt steps, and checks three things: the right keys come out, every image-key file is 0600,
@@ -272,7 +272,7 @@ and nothing is left in tmpfs.
 ### 3. Check (read-only, names only)
 
 ```sh
-GH_BIN=gh node scripts/owner/release-signing-readiness.mjs --remote
+GH_BIN=gh node scripts/owner/release-signing-readiness.ts --remote
 ```
 
 It must report all 14 names present in `release` and none at repository level. GitHub never
@@ -293,8 +293,8 @@ enabled readers" to "exactly this file".
    Compute `sha256sum`, host the tarball per D2, then dispatch with `target=apks`. Approve the
    environment gate only after checking the workflow file at the run's commit.
 2. Download `signed-release-apks-<run>` into the same build tree's `artifacts/`. Remove the
-   unsigned files, then run `node scripts/verify-apks.mjs` and
-   `node scripts/generate-sbom.mjs ...` there (as `sign-release-apks.mjs` would without
+   unsigned files, then run `node scripts/verify-apks.ts` and
+   `node scripts/generate-sbom.ts ...` there (as `sign-release-apks.ts` would without
    `--no-verify`). Both release rows must read `distributable: true`.
 3. Image/OTA (H-22, see [#672](672-pixel10a-production-image.md)): tar
    `unsigned-target_files.zip`, `otatools/` and optionally `apk-manifest.json`. Dispatch with

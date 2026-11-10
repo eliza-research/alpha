@@ -1,4 +1,4 @@
-// One invocation of scripts/start-combined-agent.mjs and its returned child.
+// One invocation of scripts/start-combined-agent.ts and its returned child.
 module CombinedAgentLauncher {
   type Launcher = {
     checks: int, port: str, profile: bool, marker: bool, config: bool, identity: bool,

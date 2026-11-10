@@ -7,8 +7,8 @@ import os from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {ALLOWED_REPOSITORIES, ALLOWED_REPOSITORY_URLS, CLASSPATH, HOST_TEMPLATES, METADATA, MIRROR_PROPERTY, REVIEWED_GROUPS, VERIFIED_TASKS, addArtifact, buildScripts, checkVerification, coordinateChecksum, declaredRepositories, parseVerificationArgs, parseVerificationMetadata, referencePath, repositoryProblem} from '../scripts/gradle-verification.mjs';
-import {HOST_DESCRIPTOR} from '../scripts/android-host.mjs';
+import {ALLOWED_REPOSITORIES, ALLOWED_REPOSITORY_URLS, CLASSPATH, HOST_TEMPLATES, METADATA, MIRROR_PROPERTY, REVIEWED_GROUPS, VERIFIED_TASKS, addArtifact, buildScripts, checkVerification, coordinateChecksum, declaredRepositories, parseVerificationArgs, parseVerificationMetadata, referencePath, repositoryProblem} from '../scripts/gradle-verification.ts';
+import {HOST_DESCRIPTOR} from '../scripts/android-host.ts';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const read = rel => fs.readFileSync(path.join(ROOT, rel), 'utf8');
@@ -41,10 +41,10 @@ test('the committed metadata verifies every artifact by SHA-256 and trusts nothi
   // Gradle reads this file from the root project's gradle/ directory; no property can leave it lenient or off.
   // The generated host's gradle.properties is written by the pinned upstream generator.
   assert.doesNotMatch(read('vendor/eliza/packages/app/scripts/mobile/android/consumer-host.mjs'), /dependency\.verification/);
-  for (const script of ['scripts/build-android.mjs', 'scripts/build-notification-fixture.mjs', 'scripts/generate-licenses.mjs'])
+  for (const script of ['scripts/build-android.ts', 'scripts/build-notification-fixture.ts', 'scripts/generate-licenses.ts'])
     assert.doesNotMatch(read(script), /dependency-verification|-F\b/, `${script} must not relax verification`);
   // Nor may the environment the scripts and workflows hand to Gradle (a system property turns it lenient or off).
-  for (const file of ['scripts/toolchain.mjs', 'scripts/build-archive.mjs', ...fs.readdirSync(path.join(ROOT, '.github/workflows')).map(name => `.github/workflows/${name}`)])
+  for (const file of ['scripts/toolchain.ts', 'scripts/build-archive.ts', ...fs.readdirSync(path.join(ROOT, '.github/workflows')).map(name => `.github/workflows/${name}`)])
     assert.doesNotMatch(read(file), /org\.gradle\.dependency\.verification|--dependency-verification/, `${file} must not relax verification`);
 });
 
@@ -152,16 +152,16 @@ test('every Gradle script of the build declares only reviewed repositories and e
 
 test('the write command covers every Gradle task the scripts run and is the only step that reaches the network', () => {
   const tasks = source => [...read(source).matchAll(/["'`](:[a-z-]+:[A-Za-z]+)["'`]/g)].map(match => match[1]);
-  for (const task of [...tasks('scripts/build-android.mjs'), ...tasks('scripts/build-notification-fixture.mjs')]) assert.ok(VERIFIED_TASKS.includes(task), task);
-  // build-android.mjs also composes per-variant task names in its low-disk path.
+  for (const task of [...tasks('scripts/build-android.ts'), ...tasks('scripts/build-notification-fixture.ts')]) assert.ok(VERIFIED_TASKS.includes(task), task);
+  // build-android.ts also composes per-variant task names in its low-disk path.
   for (const variant of ['Standalone', 'Launcher'])
     for (const suffix of ['Debug', 'Release', 'DebugAndroidTest']) assert.ok(VERIFIED_TASKS.includes(`:app:assemble${variant}${suffix}`));
   const scripts = JSON.parse(read('package.json')).scripts;
-  assert.equal(scripts['android:deps:check'], 'node scripts/gradle-verification.mjs --check');
-  assert.equal(scripts['android:deps:write-verification'], 'node scripts/gradle-verification.mjs --write');
+  assert.equal(scripts['android:deps:check'], 'node scripts/gradle-verification.ts --check');
+  assert.equal(scripts['android:deps:write-verification'], 'node scripts/gradle-verification.ts --write');
   // verify and the push workflows never write metadata; they only read it (npm test) or let Gradle enforce it.
   assert.doesNotMatch(scripts.verify + scripts.test, /write-verification|--write/);
-  for (const workflow of fs.readdirSync(path.join(ROOT, '.github/workflows'))) assert.doesNotMatch(read(`.github/workflows/${workflow}`), /write-verification|gradle-verification\.mjs --write/, workflow);
+  for (const workflow of fs.readdirSync(path.join(ROOT, '.github/workflows'))) assert.doesNotMatch(read(`.github/workflows/${workflow}`), /write-verification|gradle-verification\.ts --write/, workflow);
 });
 
 test('a host-specific archive is inserted in order and only once', () => {

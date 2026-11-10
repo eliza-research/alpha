@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {materializeNativePatches,verifyNativePatchReceipt} from '../scripts/prepare-patched-native.mjs';
-import {sha} from '../scripts/upstream-native-source.mjs';
+import {materializeNativePatches,verifyNativePatchReceipt} from '../scripts/prepare-patched-native.ts';
+import {sha} from '../scripts/upstream-native-source.ts';
 const module='plugins/plugin-native-test/android',target=module+'/src/main/java/Test.java';
 function fixture(run,sourceModule=module,sourceTarget=sourceModule+'/src/main/java/Test.java'){const root=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-patch-test-'));try{const before=Buffer.from('old\n'),after=Buffer.from('new\n'),patch=`--- a/${sourceTarget}\n+++ b/${sourceTarget}\n@@ -1 +1 @@\n-old\n+new\n`,patchRoot=path.join(root,'patches'),temporary=path.join(root,'stage');fs.mkdirSync(patchRoot);fs.mkdirSync(temporary);fs.writeFileSync(path.join(patchRoot,'test.patch'),patch);const manifest={schema:1,baseCommit:'pin',patches:[{module:sourceModule,file:'test.patch',sha256:sha(patch),targets:[{path:sourceTarget,beforeSha256:sha(before),afterSha256:sha(after)}]}]};const source={pin:'pin',read:()=>new Map([[sourceTarget,{bytes:before,mode:'100644',sha256:sha(before)}]])};run({root,manifest,source,patchRoot,temporary});}finally{fs.rmSync(root,{recursive:true,force:true});}}
 test('admission materializes only authenticated declared source',()=>fixture(args=>{const result=materializeNativePatches(args);assert.equal(result.files[target],sha('new\n'));assert.equal(fs.readFileSync(path.join(args.temporary,target),'utf8'),'new\n');}));

@@ -9,7 +9,7 @@ test-mocks renderer evidence only: not a deployed service, real coverage or a de
 
 | File | Purpose |
 | --- | --- |
-| [`scripts/owner/maps-coverage.mjs`](../../scripts/owner/maps-coverage.mjs) | `coverage FILE` validates `ELIZA_MAPS_COVERAGE_JSON` with the pinned parser's rules (plus extract bounds and sample points); `checklist` prints the H-16 settings per environment and, given a JSON list of set names, which are missing (names only, never values) |
+| [`scripts/owner/maps-coverage.ts`](../../scripts/owner/maps-coverage.ts) | `coverage FILE` validates `ELIZA_MAPS_COVERAGE_JSON` with the pinned parser's rules (plus extract bounds and sample points); `checklist` prints the H-16 settings per environment and, given a JSON list of set names, which are missing (names only, never values) |
 | [`drafts/667-maps-coverage.example.json`](drafts/667-maps-coverage.example.json) | The upstream Monaco example in the exact shape |
 | [`test/owner-maps-coverage.test.mjs`](../../test/owner-maps-coverage.test.mjs) | Parser-rule tests and the names-only checklist |
 | [`test/browser/owner-maps-attribution-refusals.spec.ts`](../../test/browser/owner-maps-attribution-refusals.spec.ts) | Test-only renderer check: OpenStreetMap copyright credit visible beside Cloud results, and each typed Cloud refusal shown as its own message with no invented result |
@@ -33,7 +33,7 @@ bounds inside the served extract. Any invalid value makes every Maps route answe
 | D. Planet | The largest option: very large memory and disk, multi-day import | Not proportionate for a pilot. |
 
 Bounding boxes over-claim at their edges when an extract boundary is irregular; choose boxes inside
-the extract (`maps-coverage.mjs coverage FILE --extract-bounds W,S,E,N` refuses one that is not).
+the extract (`maps-coverage.ts coverage FILE --extract-bounds W,S,E,N` refuses one that is not).
 
 ### 2. Who operates the geocoder and router
 
@@ -68,7 +68,7 @@ the graph cache; and a periodic check that no backend or proxy logs query text o
 
 ## H-16 per-environment checklist
 
-`node scripts/owner/maps-coverage.mjs checklist --environment staging|production [--names names.json]`
+`node scripts/owner/maps-coverage.ts checklist --environment staging|production [--names names.json]`
 prints this list; `--names` takes the set names only (for example from `wrangler secret list`).
 
 | Setting | Required | Value comes from |
@@ -79,7 +79,7 @@ prints this list; `--names` takes the set names only (for example from `wrangler
 | `ELIZA_MAPS_ROUTER_API_KEY` (secret) | reference stack: yes | its `MAPS_ACCESS_KEY` |
 | `ELIZA_MAPS_ROUTER_PROFILES` | no | default `{"drive":"car","walk":"foot","bicycle":"bike"}` |
 | `ELIZA_MAPS_ROUTE_ALTERNATIVES` | no | `false` if the router cannot compute alternatives |
-| `ELIZA_MAPS_COVERAGE_JSON` | yes | H-05 option 1, validated by `maps-coverage.mjs coverage` |
+| `ELIZA_MAPS_COVERAGE_JSON` | yes | H-05 option 1, validated by `maps-coverage.ts coverage` |
 | `ELIZA_MAPS_DATASET_REVISION` | yes | the extract date, changed on every refresh |
 | `ELIZA_MAPS_OPERATOR` | recommended | H-05 option 2; shown in the location disclosure |
 | `ELIZA_MAPS_ATTRIBUTION` / `ELIZA_MAPS_PROVIDER_ID` | no | only to override the composed credit / identity |
@@ -148,7 +148,7 @@ assertion failures, and the clean run passed every case.
 2. Operator: provision hosts, DNS, TLS and the stack (or the hosted vendor); confirm Nominatim does
    not log queries.
 3. Operator, after #665 H-03/H-04: per environment set the H-16 settings; run
-   `maps-coverage.mjs checklist --names` against each environment's names.
+   `maps-coverage.ts checklist --names` against each environment's names.
 4. Operator: complete the production strong-revocation canary before production Maps.
 5. Owner or counsel: the ODbL checklist above as part of H-35.
 6. Evidence (separately recorded): with a signed-in plan, `GET /api/v1/maps/capabilities` lists the

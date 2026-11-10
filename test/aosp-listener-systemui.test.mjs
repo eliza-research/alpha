@@ -5,7 +5,7 @@ import path from 'node:path';
 import os from 'node:os';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
-import {prepareListenerSystemui, verifyListenerSystemui} from '../scripts/aosp-listener-systemui.mjs';
+import {prepareListenerSystemui, verifyListenerSystemui} from '../scripts/aosp-listener-systemui.ts';
 const directory = 'vendor/eliza/packages/os/android/sense/systemui';
 const manifest = JSON.parse(fs.readFileSync(`${directory}/manifest.json`));
 const patch = fs.readFileSync(`${directory}/microphone-ops.patch`, 'utf8');
@@ -65,7 +65,7 @@ test('Alpha SystemUI CLI applies the reviewed copy fix and preserves existing de
   fs.cpSync('vendor/eliza/packages/os/test/fixtures/sense-systemui',path.join(source,'frameworks/base'),{recursive:true});
   for(const bundle of ['chip','assist']){
     const output=path.join(temporary,bundle);
-    const args=['scripts/aosp-listener-systemui.mjs','--source',source,'--output',output,...(bundle==='ops'?[]:['--'+bundle])];
+    const args=['scripts/aosp-listener-systemui.ts','--source',source,'--output',output,...(bundle==='ops'?[]:['--'+bundle])];
     const result=JSON.parse(execFileSync(process.execPath,args,{encoding:'utf8'}));
     assert.equal(result.state,'after');
     assert.equal(result.systemUiCompiled,false);

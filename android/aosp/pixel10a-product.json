@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "description": "Alpha Phone production product descriptor for Pixel 10a (stallion) on Android 17. scripts/stage-aosp.mjs --target pixel10a --production refuses to stage while any field here is UNSET or a placeholder, while the pinned source lock differs from sourceLock.sha256 or is still marked developmentOnly, or while android/release-signer.json has no reviewed signer. scripts/sign-aosp-release.mjs reads the avb and ota sections. Values are reviewed public identities only (certificate and key digests, never key material). releaseQualified and deviceAcceptanceVerified are recorded by release evidence, never by software.",
+  "description": "Alpha Phone production product descriptor for Pixel 10a (stallion) on Android 17. scripts/stage-aosp.ts --target pixel10a --production refuses to stage while any field here is UNSET or a placeholder, while the pinned source lock differs from sourceLock.sha256 or is still marked developmentOnly, or while android/release-signer.json has no reviewed signer. scripts/sign-aosp-release.ts reads the avb and ota sections. Values are reviewed public identities only (certificate and key digests, never key material). releaseQualified and deviceAcceptanceVerified are recorded by release evidence, never by software.",
   "product": "alpha_stallion_phone",
   "target": "pixel10a",
   "device": {

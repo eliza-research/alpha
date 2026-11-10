@@ -5,8 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {nativeInputPaths,nativeJavaPath,nativeBinding,nativeInputs,nativeGenerated,nativeCmakeOptions,verifyNativeJava,verifyNativeSymbols} from '../scripts/embedding-native-contract.mjs';
-import {verifyEmbeddingInputs} from '../scripts/stage-embedding-host.mjs';
+import {nativeInputPaths,nativeJavaPath,nativeBinding,nativeInputs,nativeGenerated,nativeCmakeOptions,verifyNativeJava,verifyNativeSymbols} from '../scripts/embedding-native-contract.ts';
+import {verifyEmbeddingInputs} from '../scripts/stage-embedding-host.ts';
 const identity='ai.elizaresearch.alphaphone';
 const cpp='env->RegisterNatives(cls, methods, count); JNI_OnLoad(vm, reserved);\n'+[
  ['nativeEmbed','(JLjava/lang/String;I)[F'],['nativeEmbedUtf8','(J[BI)[F'],['nativeEmbedWithOptionsUtf8','(J[BIZ)[F']

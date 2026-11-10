@@ -5,7 +5,7 @@ import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import test from "node:test";
-import { CORE_STATE_MANIFEST } from "../scripts/core-state-patch.mjs";
+import { CORE_STATE_MANIFEST } from "../scripts/core-state-patch.ts";
 import { writeCoreStateFixture } from "./fixtures/core-state-root.mjs";
 
 function fixture(t) {
@@ -34,8 +34,8 @@ function fixture(t) {
 	fs.mkdirSync(path.join(upstream, "plugins"));
 	for (const file of [
 		"backend/loader.ts",
-		"scripts/verify-upstream.mjs",
-		"scripts/pinned-upstream-source.mjs",
+		"scripts/verify-upstream.ts",
+		"scripts/pinned-upstream-source.ts",
 		...[
 			"immutable-workspace-source.mjs",
 			"committed-source.mjs",
@@ -94,7 +94,7 @@ for (const mutation of [
 			loadPinnedRuntime(),
 			/Unexpected runtime source change|Unexpected untracked runtime source|Prepared runtime base commit changed/,
 		);
-		const gate = spawnSync(process.execPath, ["scripts/verify-upstream.mjs"], {
+		const gate = spawnSync(process.execPath, ["scripts/verify-upstream.ts"], {
 			cwd: f.root,
 			encoding: "utf8",
 		});
@@ -121,7 +121,7 @@ test("clean pinned source is admitted and loader reauthenticates on each build",
 			`vendor/eliza/plugins/plugin-native-${name}/android/build/generated/output.bin`,
 			"generated output",
 		);
-	const gate = spawnSync(process.execPath, ["scripts/verify-upstream.mjs"], {
+	const gate = spawnSync(process.execPath, ["scripts/verify-upstream.ts"], {
 		cwd: f.root,
 		encoding: "utf8",
 	});
@@ -161,7 +161,7 @@ test("only the pinned voice builder's untracked tree is admitted under .cache", 
 	f.git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-m", "Tracked cache file");
 	f.write("upstream.lock.json", JSON.stringify({ commit: f.git("rev-parse", "HEAD") }));
 	const { verifyPinnedUpstream } = await import(
-		pathToFileURL(path.join(f.root, "scripts/pinned-upstream-source.mjs"))
+		pathToFileURL(path.join(f.root, "scripts/pinned-upstream-source.ts"))
 	);
 	f.write("vendor/eliza/.cache/elizavoice-android/espeak-ng/build/out.o", "object");
 	verifyPinnedUpstream(f.root);

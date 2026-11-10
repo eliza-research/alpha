@@ -32,7 +32,7 @@ async function compile(extraSources){
   const discovered=inputs(await build(buildOptions));
   const sources=[...new Set([...discovered, 'apps/app/src/build-flags.ts',
     'apps/app/src/platform-plugins.ts','package-lock.json','upstream.lock.json',
-    'scripts/prepare-client-features.mjs',fileURLToPath(import.meta.url),...extraSources,
+    'scripts/prepare-client-features.ts',fileURLToPath(import.meta.url),...extraSources,
     ...readdirSync(new URL('../../../../patches/eliza/',import.meta.url))
       .filter(name=>/\.(patch|json)$/.test(name)).map(name=>'patches/eliza/'+name)])];
   const driverHashes=captureInputs(sources);

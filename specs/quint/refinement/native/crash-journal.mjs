@@ -8,8 +8,8 @@ import {app,directory,javaTraceCampaign,root} from './java.mjs';
 import {crashCallSource,crashDeviceSource,crashJournalPlatform,crashLogPath} from './crash-journal-platform.mjs';
 import {jsonJar} from '../../../../test/fixtures/jvm-tools.mjs';
 import {prepareNativeFixture} from '../../../../test/fixtures/native-source.mjs';
-import {verifyNativePatchReceipt} from '../../../../scripts/prepare-patched-native.mjs';
-import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.mjs';
+import {verifyNativePatchReceipt} from '../../../../scripts/prepare-patched-native.ts';
+import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.ts';
 
 const model='NativeCrashJournal';
 const harness='CrashJournalTraces.java';
@@ -28,7 +28,7 @@ export async function checkNativeCrashJournal(extraSources=[]) {
     const product=app+'PluginWorkers.java';
     const sources=[product,crashDeviceSource,crashCallSource,'vendor/eliza/'+crashLogPath,
       'android/consumer-host.json','upstream.lock.json','patches/eliza/native-manifest.json','test/fixtures/native-source.mjs',
-      'test/fixtures/jvm-tools.mjs','scripts/prepare-patched-native.mjs','scripts/upstream-native-source.mjs',
+      'test/fixtures/jvm-tools.mjs','scripts/prepare-patched-native.ts','scripts/upstream-native-source.ts',
       join(directory,harness),join(directory,'Trace.java'),join(directory,'java.mjs'),join(directory,'crash-journal-platform.mjs'),
       fileURLToPath(import.meta.url),...(jsonJar?[jsonJar]:[]),...generatedSources,...extraSources];
     const driverHashes=captureInputs(sources);

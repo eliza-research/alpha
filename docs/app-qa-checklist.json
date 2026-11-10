@@ -2070,7 +2070,7 @@
       "evidence": [
         "backend/native-google-agent-host.ts",
         "backend/native-google-cloud-port.ts",
-        "scripts/native-google-host-artifact.mjs",
+        "scripts/native-google-host-artifact.ts",
         "test/native-google-agent-host.test.mjs"
       ],
       "notes": "Do not transfer browser B4 credentials to phone A1 or treat browser prompt proof as resident-agent proof."

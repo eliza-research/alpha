@@ -6,10 +6,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {execFileSync, spawn, spawnSync} from 'node:child_process';
-import {clientSpeechPatch} from '../scripts/client-speech-patch.mjs';
-import {upstreamNativeSource} from '../scripts/upstream-native-source.mjs';
+import {clientSpeechPatch} from '../scripts/client-speech-patch.ts';
+import {upstreamNativeSource} from '../scripts/upstream-native-source.ts';
 import {git as fixtureGit} from './fixtures/git-fixture.mjs';
-import {prepareClientFeatures, CLIENT_FEATURE_PATHS, satisfiesRange} from '../scripts/prepare-client-features.mjs';
+import {prepareClientFeatures, CLIENT_FEATURE_PATHS, satisfiesRange} from '../scripts/prepare-client-features.ts';
 function fixture(run) {
  const root=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-client-source-'));
  const vendor=path.join(root,'vendor/eliza');fs.mkdirSync(vendor,{recursive:true});
@@ -44,7 +44,7 @@ test('concurrent preparers after a source change all succeed and leave one authe
  fs.appendFileSync(path.join(vendor,CLIENT_FEATURE_PATHS[0]),'export const changed = 2;\n');
  git(['add','.']);git(['-c','user.name=Source fixture','-c','user.email=fixture@example.invalid','commit','-qm','Change']);
  const commit=git(['rev-parse','HEAD']);fs.writeFileSync(path.join(root,'upstream.lock.json'),JSON.stringify({commit}));
- const script=`import {prepareClientFeatures} from ${JSON.stringify(path.resolve('scripts/prepare-client-features.mjs'))};prepareClientFeatures({root:${JSON.stringify(root)},projectVoice:false});`;
+ const script=`import {prepareClientFeatures} from ${JSON.stringify(path.resolve('scripts/prepare-client-features.ts'))};prepareClientFeatures({root:${JSON.stringify(root)},projectVoice:false});`;
  const run=()=>new Promise(resolve=>{const child=spawn(process.execPath,['--input-type=module','-e',script],{stdio:['ignore','ignore','pipe']});let stderr='';child.stderr.on('data',chunk=>{stderr+=chunk;});child.on('close',status=>resolve({status,stderr}));});
  for(const result of await Promise.all(Array.from({length:12},run))) assert.equal(result.status,0,result.stderr);
  const source=path.join(root,'.eliza/client-features'),stamp=JSON.parse(fs.readFileSync(path.join(source,'.source.json')));
@@ -97,11 +97,11 @@ test('copied client features fail on an unmet dependency range unless a reviewed
  assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/exception has no reason: plugins\/plugin-maps maplibre-gl/);
 }));
 test('direct local development launcher prepares a clean client tree before starting services',()=>fixture(({root,commit})=>{
- for(const file of ['scripts/dev-local.mjs','scripts/dev-speech-settings.mjs','scripts/speech-env.mjs','scripts/local-agent-source.mjs','scripts/copy-file-clone.mjs','scripts/prepare-client-features.mjs','scripts/client-speech-patch.mjs','scripts/upstream-native-source.mjs']){const target=path.join(root,file);fs.mkdirSync(path.dirname(target),{recursive:true});fs.copyFileSync(file,target);}
+ for(const file of ['scripts/dev-local.ts','scripts/dev-speech-settings.ts','scripts/speech-env.ts','scripts/local-agent-source.ts','scripts/copy-file-clone.ts','scripts/prepare-client-features.ts','scripts/client-speech-patch.ts','scripts/upstream-native-source.ts']){const target=path.join(root,file);fs.mkdirSync(path.dirname(target),{recursive:true});fs.copyFileSync(file,target);}
  // The generic copier fixture explicitly tests the non-voice projection path.
- const prep=path.join(root,'scripts/prepare-client-features.mjs');fs.writeFileSync(prep,fs.readFileSync(prep,'utf8').replace('projectVoice = true','projectVoice = false'));
+ const prep=path.join(root,'scripts/prepare-client-features.ts');fs.writeFileSync(prep,fs.readFileSync(prep,'utf8').replace('projectVoice = true','projectVoice = false'));
  // Source hashing and materialization can exceed 20 seconds on a loaded build host.
- const result=spawnSync(process.execPath,[path.join(root,'scripts/dev-local.mjs')],{cwd:root,env:{...process.env,ALPHA_REMOTE_PORT:'0',ALPHA_REMOTE_PROFILE:path.join(root,'empty-profile')},encoding:'utf8',timeout:120000});
+ const result=spawnSync(process.execPath,[path.join(root,'scripts/dev-local.ts')],{cwd:root,env:{...process.env,ALPHA_REMOTE_PORT:'0',ALPHA_REMOTE_PROFILE:path.join(root,'empty-profile')},encoding:'utf8',timeout:120000});
  assert.equal(result.status,1);assert.match(result.stderr,/Invalid local agent port/);
  assert.equal(JSON.parse(fs.readFileSync(path.join(root,'.eliza/client-features/.source.json'))).baseCommit,commit);
  // Development uses authenticated upstream source without a patch cache.

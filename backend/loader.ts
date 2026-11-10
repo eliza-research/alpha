@@ -1,9 +1,9 @@
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { createConsumerSourceResolver } from "../vendor/eliza/packages/app/scripts/lib/consumer-source-resolver.mjs";
-import { verifyPinnedUpstream } from "../scripts/pinned-upstream-source.mjs";
+import { verifyPinnedUpstream } from "../scripts/pinned-upstream-source.ts";
 import { randomBytes } from "node:crypto";
-import { coreStateBuildPlugin, coreStateBuildRecord, coreStateRequiredTargets } from "../scripts/core-state-patch.mjs";
+import { coreStateBuildPlugin, coreStateBuildRecord, coreStateRequiredTargets } from "../scripts/core-state-patch.ts";
 export async function loadPinnedRuntime() {
 	if (process.env.ELIZA_DEV_ALLOW_TEST_MOCKS !== "1") throw new Error("Development runtime is disabled");
 	// Authenticate on every build, before resolution, generated output or private state.

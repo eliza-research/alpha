@@ -42,7 +42,7 @@ format, explicit upload consent, native session binding and cancellation.
 
 Historical: `patches/eliza/0003-explicit-standalone-whisper.patch` (historical; retired in `34b3c82a`) applied after patch0002;
 its digest/base were recorded in `standalone-whisper-source-base.json`. Upstream changes now arrive only through a reviewed pin move in `upstream.lock.json`; the product's `patches/eliza` series is historical: this repository retired it in `34b3c82a` (2026-10-03) and `55c2944f` (2026-10-04), and the last reference went in `530d3b26` (2026-10-10), each when the pinned upstream already carried the change.
-`start-local-voice-agent.mjs` only enables the provider with all of:
+`start-local-voice-agent.ts` only enables the provider with all of:
 
 ```text
 ELIZA_WHISPER_ENABLED=1
@@ -100,7 +100,7 @@ Typecheck and renderer lifecycle fixture pass, including explicit upload,
 reviewed composer draft and cancelled old-account result. Native execution is
 pending: `PairedAsrInstrumentedTest` covers real AAC conversion plus synthetic
 native HTTP; `PairedAsrLiveInstrumentedTest` is gated `pairedAsrLive=1` and its
-runner `android-paired-asr-live.mjs` verifies archived matching APKs and real
+runner `node scripts/android-paired-speech-live.ts asr` verifies archived matching APKs and real
 47846 transcription/review/edit/TTS playback. It reads the host's owner token from
 `ALPHA_ASR_PROFILE/owner-token` to get a pairing code. The live fixture injects only a
 test-owned synthesized AAC recording at capture ingress; it never opens a
@@ -108,4 +108,4 @@ microphone. There is still no physical microphone/user speech acceptance.
 
 ## Build65 Android evidence
 
-Both standalone and launcher pass `PairedAsrInstrumentedTest` plus the real `android-paired-asr-live.mjs` runner against Eliza47846. The native flow decodes the test-owned AAC, explicitly uploads PCM to the authenticated Whisper endpoint, reviews and edits the actual transcript, and plays/cancels real TTS. Original connection/credential selection is restored. Evidence: `test-results/prototype-build65/paired-asr-live/result.json` and `photos-files-asr/result.json`. Audio ingress is synthetic; microphone, Cloud and enclave voice remain separate acceptance gates.
+Both standalone and launcher pass `PairedAsrInstrumentedTest` plus the live ASR campaign against Eliza47846. The native flow decodes the test-owned AAC, explicitly uploads PCM to the authenticated Whisper endpoint, reviews and edits the actual transcript, and plays/cancels real TTS. Original connection/credential selection is restored. Evidence: `test-results/prototype-build65/paired-asr-live/result.json` and `photos-files-asr/result.json`. Audio ingress is synthetic; microphone, Cloud and enclave voice remain separate acceptance gates.

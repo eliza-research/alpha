@@ -1,5 +1,5 @@
 // Offline: checks the committed audit snapshot and reviewed dispositions against package-lock.json.
-// The network audit itself is `node scripts/dependency-audit.mjs` (docs/dependency-audit.md).
+// The network audit itself is `node scripts/dependency-audit.ts` (docs/dependency-audit.md).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -9,7 +9,7 @@ import {spawnSync} from 'node:child_process';
 import {
   checkDispositions, dependencyPaths, loadAndCheck, normalizeAudit, sha256, DISPOSITIONS, LOCK, MAX_EXCEPTION_DAYS, REFRESH, SNAPSHOT,
   bunLockPackages, checkResident, inRange, noticePackages, normalizeResident, residentBinding, RESIDENT_REFRESH, RESIDENT_SNAPSHOT, UPSTREAM_BUN_LOCK, UPSTREAM_LOCK,
-} from '../scripts/dependency-audit.mjs';
+} from '../scripts/dependency-audit.ts';
 
 const lockText = fs.readFileSync(LOCK, 'utf8');
 const lock = JSON.parse(lockText);
@@ -30,7 +30,7 @@ test('the committed audit snapshot matches package-lock.json and every advisory 
 test('a lockfile change makes the snapshot stale', () => {
   const problems = check({lockText: `${lockText}\n`});
   assert.equal(problems.length, 1);
-  assert.match(problems[0], /different package-lock\.json; re-audit with: node scripts\/dependency-audit\.mjs --write/);
+  assert.match(problems[0], /different package-lock\.json; re-audit with: node scripts\/dependency-audit\.ts --write/);
 });
 
 test('an unrecorded high or critical advisory fails, as does a recorded advisory on a new path', () => {
@@ -116,7 +116,7 @@ test('docs/dependency-audit.md records every disposition', () => {
     assert.ok(docs.includes(item.reviewBy), `${item.advisory} review date`);
     for (const chain of item.paths) assert.ok(docs.includes(chain), chain);
   }
-  assert.ok(docs.includes('node scripts/dependency-audit.mjs'));
+  assert.ok(docs.includes('node scripts/dependency-audit.ts'));
 });
 
 test('a network run fails on an advisory published after the snapshot (the scheduled audit comparison)', t => {
@@ -139,11 +139,11 @@ test('a network run fails on an advisory published after the snapshot (the sched
   t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
   const file = path.join(dir, 'audit.json');
   fs.writeFileSync(file, JSON.stringify(fresh));
-  const run = spawnSync(process.execPath, ['scripts/dependency-audit.mjs', '--from', file], {encoding: 'utf8'});
+  const run = spawnSync(process.execPath, ['scripts/dependency-audit.ts', '--from', file], {encoding: 'utf8'});
   assert.equal(run.status, 1);
   assert.match(run.stderr, /FAIL Unrecorded advisory: high GHSA-zzzz-zzzz-zzzz via react/);
   fs.writeFileSync(file, JSON.stringify(report));
-  assert.equal(spawnSync(process.execPath, ['scripts/dependency-audit.mjs', '--from', file], {encoding: 'utf8'}).status, 0);
+  assert.equal(spawnSync(process.execPath, ['scripts/dependency-audit.ts', '--from', file], {encoding: 'utf8'}).status, 0);
 });
 
 test('the scheduled advisory workflow runs the network audit read-only and is not a required check', () => {
@@ -153,8 +153,8 @@ test('the scheduled advisory workflow runs the network audit read-only and is no
   assert.match(workflow, /^permissions:\n  contents: read\n/m);
   assert.doesNotMatch(workflow, /secrets\./);
   for (const [, ref] of workflow.matchAll(/uses: ([^\s]+)/g)) assert.match(ref, /@[0-9a-f]{40}$/, `${ref} is pinned by commit`);
-  assert.match(workflow, /run: node scripts\/dependency-audit\.mjs\n/);
-  assert.match(workflow, /run: node scripts\/dependency-audit\.mjs --resident\n/);
+  assert.match(workflow, /run: node scripts\/dependency-audit\.ts\n/);
+  assert.match(workflow, /run: node scripts\/dependency-audit\.ts --resident\n/);
 });
 
 // ---------------------------------------------------------------- resident runtime

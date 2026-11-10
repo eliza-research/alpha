@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {entryOf, failingTitles, fixtureFacts, mapSpec, parseCases, predictedSurface, SPEC} from '../scripts/owner/subscription-spec-map.mjs';
+import {entryOf, failingTitles, fixtureFacts, mapSpec, parseCases, predictedSurface, SPEC} from '../scripts/owner/subscription-spec-map.ts';
 
 const sample = [
  "test.describe('plan state',()=>{",

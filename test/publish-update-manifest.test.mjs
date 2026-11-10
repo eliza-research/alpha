@@ -7,7 +7,7 @@ import os from "node:os";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { stripTypeScriptTypes } from "node:module";
-import { main, MANIFEST_NAME } from "../scripts/publish-update-manifest.mjs";
+import { main, MANIFEST_NAME } from "../scripts/publish-update-manifest.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
 // The phone's own parser (the dependency-free settings-facts region, as test/settings-truth.test.mjs loads it).

@@ -4,7 +4,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { checkCoverage, detectedCounterexample, loadModels, readJson, repositoryRoot, runQuintChecker, runtimeScriptPaths, runtimeAssetPaths, sha256, sourceRoots } from '../scripts/quint-lib.mjs';
+import { checkCoverage, detectedCounterexample, loadModels, readJson, repositoryRoot, runQuintChecker, runtimeScriptPaths, runtimeAssetPaths, sha256, sourceRoots } from '../scripts/quint-lib.ts';
 
 test('counterexample admission requires the pinned CLI violation markers and rejects tool errors', () => {
   assert.equal(detectedCounterexample('[violation] Found an issue (42ms).\nerror: found a counterexample\n'), true);
@@ -46,9 +46,9 @@ test('runner records unexpected exceptions as failures and labels coverage evide
   };
   try {
     for (const path of [...sourceRoots, 'scripts']) mkdirSync(join(root, path), { recursive: true });
-    for (const name of ['check-quint.mjs', 'quint-lib.mjs', 'core-state-patch.mjs']) copyFileSync(join(repositoryRoot, 'scripts', name), join(root, 'scripts', name));
+    for (const name of ['check-quint.ts', 'quint-lib.ts', 'core-state-patch.ts']) copyFileSync(join(repositoryRoot, 'scripts', name), join(root, 'scripts', name));
     const fixtureSources = [...runtimeScriptPaths, ...runtimeAssetPaths];
-    for (const path of fixtureSources) if (path !== 'scripts/core-state-patch.mjs') write(path, '');
+    for (const path of fixtureSources) if (path !== 'scripts/core-state-patch.ts') write(path, '');
     const model = { module: 'Fixture', path: 'specs/quint/application/Fixture.qnt', init: 'init', step: 'step', invariant: 'safety', tests: ['exampleTest'], currentChecks: [null] };
     write(model.path, 'module Fixture { run exampleTest = true }');
     for (const family of ['application', 'services', 'native', 'legacy']) {
@@ -63,7 +63,7 @@ test('runner records unexpected exceptions as failures and labels coverage evide
     write('specs/quint/tlc.json', '{}');
     write('node_modules/@informalsystems/quint/package.json', JSON.stringify({ version: '0.33.1' }));
 
-    const compare = spawnSync(process.execPath, ['scripts/check-quint.mjs', 'compare', '--out=compare.json'], { cwd: root, encoding: 'utf8', timeout: 10000 });
+    const compare = spawnSync(process.execPath, ['scripts/check-quint.ts', 'compare', '--out=compare.json'], { cwd: root, encoding: 'utf8', timeout: 10000 });
     assert.equal(compare.status, 1, compare.stderr);
     const failure = readJson(join(root, 'compare.json'));
     assert.equal(failure.passed, false);
@@ -71,7 +71,7 @@ test('runner records unexpected exceptions as failures and labels coverage evide
     assert.match(failure.error, /TypeError/);
     assert.deepEqual(failure.finalCoverageErrors, []);
 
-    const coverage = spawnSync(process.execPath, ['scripts/check-quint.mjs', 'coverage', '--out=coverage.json'], { cwd: root, encoding: 'utf8', timeout: 10000 });
+    const coverage = spawnSync(process.execPath, ['scripts/check-quint.ts', 'coverage', '--out=coverage.json'], { cwd: root, encoding: 'utf8', timeout: 10000 });
     assert.equal(coverage.status, 0, coverage.stderr);
     const success = readJson(join(root, 'coverage.json'));
     assert.equal(success.passed, true);
@@ -79,7 +79,7 @@ test('runner records unexpected exceptions as failures and labels coverage evide
     assert.equal(success.evidence, 'source coverage admission');
 
     write('node_modules/@informalsystems/quint/dist/src/cli.js', 'setTimeout(() => {}, 60000);');
-    const interrupted = spawnSync(process.execPath, ['scripts/check-quint.mjs', 'typecheck', '--out=interrupted.json'], { cwd: root, encoding: 'utf8', timeout: 2000 });
+    const interrupted = spawnSync(process.execPath, ['scripts/check-quint.ts', 'typecheck', '--out=interrupted.json'], { cwd: root, encoding: 'utf8', timeout: 2000 });
     assert.equal(interrupted.error?.code, 'ETIMEDOUT');
     const unfinished = readJson(join(root, 'interrupted.json'));
     assert.equal(unfinished.passed, false);
@@ -145,7 +145,7 @@ test('source discovery follows consumed shared modules and rejects a stale clien
   try {
     for (const path of sourceRoots) mkdirSync(join(root, path), {recursive: true});
     mkdirSync(join(root, 'scripts'), {recursive: true});
-    for (const name of ['quint-lib.mjs', 'core-state-patch.mjs']) copyFileSync(join(repositoryRoot, 'scripts', name), join(root, 'scripts', name));
+    for (const name of ['quint-lib.ts', 'core-state-patch.ts']) copyFileSync(join(repositoryRoot, 'scripts', name), join(root, 'scripts', name));
     write('upstream.lock.json', {commit: 'fixture', appSource: 'packages/app'});
     write('.eliza/client-features/.source.json', {baseCommit: 'fixture', sourceFiles: {'packages/ui/src/state.ts': 'fixture'}});
     write('android/consumer-host.json', {profile: {modules: [{source: {root: 'upstream', path: 'plugins/fixture/android'}}]}, residentHost: {helpers: ['packages/runtime/Owner.java']}});
@@ -165,7 +165,7 @@ test('source discovery follows consumed shared modules and rejects a stale clien
     write('vendor/eliza/packages/runtime/Owner.java', 'class Owner {}');
     mkdirSync(join(root, 'vendor/eliza/packages/app/platforms/android/sense/src/main'), {recursive: true});
     mkdirSync(join(root, 'vendor/eliza/packages/os/android/sense/systemui/chip/source'), {recursive: true});
-    const run = () => spawnSync(process.execPath, ['--input-type=module', '-e', "import {sharedSourcePaths} from './scripts/quint-lib.mjs'; console.log(JSON.stringify(sharedSourcePaths()));"], {cwd: root, encoding: 'utf8'});
+    const run = () => spawnSync(process.execPath, ['--input-type=module', '-e', "import {sharedSourcePaths} from './scripts/quint-lib.ts'; console.log(JSON.stringify(sharedSourcePaths()));"], {cwd: root, encoding: 'utf8'});
     const result = run();
     assert.equal(result.status, 0, result.stderr);
     assert.deepEqual(JSON.parse(result.stdout), [
@@ -174,7 +174,7 @@ test('source discovery follows consumed shared modules and rejects a stale clien
       'vendor/eliza/plugins/fixture/android/src/main/java/Fixture.java',
       'vendor/eliza/plugins/worker/src/state.ts',
     ]);
-    const authored = spawnSync(process.execPath, ['--input-type=module', '-e', "import {sourcePaths} from './scripts/quint-lib.mjs'; console.log(JSON.stringify(sourcePaths()));"], {cwd: root, encoding: 'utf8'});
+    const authored = spawnSync(process.execPath, ['--input-type=module', '-e', "import {sourcePaths} from './scripts/quint-lib.ts'; console.log(JSON.stringify(sourcePaths()));"], {cwd: root, encoding: 'utf8'});
     assert.equal(authored.status, 0, authored.stderr);
     const paths = JSON.parse(authored.stdout);
     assert.ok(paths.includes('apps/app/src/visibility.css'));

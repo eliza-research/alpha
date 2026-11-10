@@ -71,8 +71,8 @@ jobs:
         run: |
           export ALPHA_BUN="$(command -v bun)"
           test "$("$ALPHA_BUN" --version)" = '1.4.2'
-          node scripts/prepare-local-agent.mjs
-          prepared_source=$(node --input-type=module -e "import {sourceDirectory,verifySource} from './scripts/local-agent-source.mjs'; import fs from 'node:fs'; const source=sourceDirectory(process.cwd()); verifySource(source,JSON.parse(fs.readFileSync('upstream.lock.json','utf8')).commit); process.stdout.write(source);")
+          node scripts/prepare-local-agent.ts
+          prepared_source=$(node --input-type=module -e "import {sourceDirectory,verifySource} from './scripts/local-agent-source.ts'; import fs from 'node:fs'; const source=sourceDirectory(process.cwd()); verifySource(source,JSON.parse(fs.readFileSync('upstream.lock.json','utf8')).commit); process.stdout.write(source);")
           echo "ALPHA_BUN=$ALPHA_BUN" >> "$GITHUB_ENV"
           echo "ALPHA_CLOUD_COLLECTOR_SOURCE=$prepared_source" >> "$GITHUB_ENV"
       - name: Verify standalone manual qualification
@@ -86,7 +86,7 @@ jobs:
       # outputs, so Gradle compiles the real Java API unpackaged and the APKs report speech unavailable.
       - name: Prepare pinned native lifecycle sources
         if: github.event_name != 'workflow_dispatch'
-        run: node scripts/prepare-local-agent.mjs --source-only
+        run: node scripts/prepare-local-agent.ts --source-only
       # Distribution build: flag-off whatever the runner exports. This job stages no
       # resident runtime, so releases are recorded distributable:false (APK-build
       # evidence only); the resident workflow builds and verifies PACKAGED releases.
@@ -112,7 +112,7 @@ jobs:
         run: python scripts/ci/calendar-bridge.py
       - name: Require test-mock-free distribution
         run: |
-          node scripts/audit-production-bundle.mjs web-dist
+          node scripts/audit-production-bundle.ts web-dist
           node - <<'NODE'
           const fs = require('node:fs');
           const manifest = JSON.parse(fs.readFileSync('artifacts/apk-manifest.json', 'utf8'));
@@ -137,7 +137,7 @@ jobs:
           name: android-build-evidence
           path: |
             artifacts/*.json
-            # Written offline by the build beside the APKs it verified (scripts/generate-sbom.mjs).
+            # Written offline by the build beside the APKs it verified (scripts/generate-sbom.ts).
             artifacts/sbom/*.json
             artifacts/aosp/
             !artifacts/aosp/**/*.apk
@@ -168,4 +168,4 @@ jobs:
           SELECTED: ${{ needs.changes.outputs.android }}
           CHANGES: ${{ needs.changes.result }}
           BUILD: ${{ needs.build.result }}
-        run: node scripts/ci/required-result.mjs "changes=$CHANGES" "build=$BUILD:$SELECTED"
+        run: node scripts/ci/required-result.ts "changes=$CHANGES" "build=$BUILD:$SELECTED"

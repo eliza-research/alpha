@@ -10,7 +10,7 @@ Settings Text size now changes the actual host WebView text zoom, persisted in A
 
 Android documents [WebSettings.setTextZoom](https://developer.android.com/reference/android/webkit/WebSettings#setTextZoom(int)) as a percentage. Chromium's [AwSettings implementation](https://chromium.googlesource.com/chromium/src/+/main/android_webview/java/src/org/chromium/android_webview/AwSettings.java) records an explicit embedder zoom and skips its automatic fontScale update afterward. Alpha therefore includes Android fontScale exactly once when applying its own relative preference. Different WebView releases and physical large-font layouts still require qualification.
 
-`TextScaleInstrumentedTest#textSizeChangesRealNotesAndSurvivesActivityRecreation` changes the actual Settings slider, verifies native persisted/effective zoom and enlarged rendered Notes glyph bounds, recreates the Activity and verifies again, then restores the prior preference. The separate gated `textScaleProcessRestartPhase` uses prepare/verify/cleanup and `scripts/test-native-restart.mjs text-scale APP.apk MATCHING_TEST.apk OUTPUT` with the [owned-emulator configuration](verification.md) and matching archived APKs; the shared upstream lifecycle isolates a fresh user and force-stops between phases, verifies real glyph geometry in the new process, records matching APK hashes and restores only the fixture's prior preference. Current-source native execution must be recorded separately from fixture compilation.
+`TextScaleInstrumentedTest#textSizeChangesRealNotesAndSurvivesActivityRecreation` changes the actual Settings slider, verifies native persisted/effective zoom and enlarged rendered Notes glyph bounds, recreates the Activity and verifies again, then restores the prior preference. The separate gated `textScaleProcessRestartPhase` uses prepare/verify/cleanup and `scripts/test-native-restart.ts text-scale APP.apk MATCHING_TEST.apk OUTPUT` with the [owned-emulator configuration](verification.md) and matching archived APKs; the shared upstream lifecycle isolates a fresh user and force-stops between phases, verifies real glyph geometry in the new process, records matching APK hashes and restores only the fixture's prior preference. Current-source native execution must be recorded separately from fixture compilation.
 
 ## Completeness and recovery
 
@@ -36,8 +36,8 @@ before UI assertions, and deletes only that calendar. Inserts use batches of at
 most 200 and require a URI for every result. Do not assume recurrence expansion
 will produce enough rows to exercise the limit.
 
-Run `node scripts/test-calendar-regression.mjs --case=CalendarRangeInstrumentedTest`
-and `node scripts/test-calendar-regression.mjs --case=CalendarTruncationInstrumentedTest`
+Run `node scripts/test-calendar-regression.ts --case=CalendarRangeInstrumentedTest`
+and `node scripts/test-calendar-regression.ts --case=CalendarTruncationInstrumentedTest`
 after `npm run android:build -- --test-mocks` (the runner installs the verified
 `artifacts/test-mocks/` pair). Set `ALPHA_CALENDAR_TEST_SERIAL`,
 `ALPHA_CALENDAR_TEST_AVD` and `ALPHA_CALENDAR_TEST_ABI` (`x86_64` or `arm64-v8a`).

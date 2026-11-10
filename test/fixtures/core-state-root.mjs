@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
-import {CORE_STATE_INPUTS, CORE_STATE_TARGET, PLUGIN_CONNECTOR_TARGET, CORE_STATE_MANIFEST} from '../../scripts/core-state-patch.mjs';
+import {CORE_STATE_INPUTS, CORE_STATE_TARGET, PLUGIN_CONNECTOR_TARGET, CORE_STATE_MANIFEST} from '../../scripts/core-state-patch.ts';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const repository = path.resolve(import.meta.dirname, '../..');
 
@@ -12,7 +12,7 @@ export function writeCoreStateFixture(root, source, pin, simple = false) {
     fs.mkdirSync(path.dirname(file), {recursive: true}); fs.writeFileSync(file, bytes);
   };
   for (const name of [...CORE_STATE_INPUTS.filter(name => name.startsWith('scripts/')),
-    'scripts/local-agent-source.mjs', 'scripts/copy-file-clone.mjs',
+    'scripts/local-agent-source.ts', 'scripts/copy-file-clone.ts',
     'vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs',
     'vendor/eliza/packages/app/scripts/lib/committed-source.mjs']) write(name, fs.readFileSync(path.join(repository, name)));
   const manifest = JSON.parse(fs.readFileSync(path.join(repository, CORE_STATE_MANIFEST)));

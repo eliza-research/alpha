@@ -1,4 +1,4 @@
-// scripts/audit-production-copy.mjs on fixture sources: it reports implementation terms in
+// scripts/audit-production-copy.ts on fixture sources: it reports implementation terms in
 // user copy, keeps reviewed uses, and never reads protocol keys or test-mocks-only branches.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -6,7 +6,7 @@ import {mkdtempSync,mkdirSync,writeFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
-import {scanScriptSource,scanJavaSource,copyFindings,readLexicon,auditProductionCopy} from '../scripts/audit-production-copy.mjs';
+import {scanScriptSource,scanJavaSource,copyFindings,readLexicon,auditProductionCopy} from '../scripts/audit-production-copy.ts';
 
 const lexicon=readLexicon();
 const findings=(file,source)=>copyFindings(scanScriptSource(file,source),lexicon).map(({term,text})=>({term,text}));
@@ -78,8 +78,8 @@ test('the CLI reports findings and exits 0 while ignored development sources are
   const result=auditProductionCopy({root,lexicon});
   assert.deepEqual(result.findings.map(item=>`${item.term} ${item.file}:${item.line}`).sort(),
     ['MVP apps/app/src/runtime/a.tsx:1','provider apps/app/src/runtime/a.tsx:1','receipt android/app/src/main/java/C.java:1']);
-  const run=spawnSync(process.execPath,[path.resolve('scripts/audit-production-copy.mjs')],{encoding:'utf8'});
+  const run=spawnSync(process.execPath,[path.resolve('scripts/audit-production-copy.ts')],{encoding:'utf8'});
   assert.equal(run.status,0,run.stderr);
   assert.match(run.stdout,/^REPORT \d+ implementation term\(s\) in \d+ pieces of user copy/m);
-  assert.equal(spawnSync(process.execPath,[path.resolve('scripts/audit-production-copy.mjs'),'--strict'],{encoding:'utf8'}).status,2);
+  assert.equal(spawnSync(process.execPath,[path.resolve('scripts/audit-production-copy.ts'),'--strict'],{encoding:'utf8'}).status,2);
 });

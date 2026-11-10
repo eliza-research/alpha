@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "status": "draft evidence record prepared for #666 (owner may promote it to docs/evidence/)",
-  "command": "node scripts/cloud-readiness.mjs probe [--environment staging] --json",
+  "command": "node scripts/cloud-readiness.ts probe [--environment staging] --json",
   "checkout": "origin/main 94676c82123a16e3c1f49521f391b0d929329f9d (branch i-cloud)",
   "scope": "Unauthenticated, read-only deployment probes (the requests the phone sign-in readiness and plan check make, once each). No account, key, code, email or subscription was used or changed; the email code route was probed with an empty body, which Steward refuses without sending email. Deployment configuration evidence only: not a sign-in, plan admission, App Link verification on a device, Maps coverage, Google connector or device result.",
   "releaseSigner": "unset",

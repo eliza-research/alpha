@@ -24,8 +24,8 @@ class PackagedRuntimeTest(unittest.TestCase):
         self.addCleanup(setattr, verifier, 'ROOT', self.previous)
         self.pin = 'a' * 40
         sources = {'upstream.lock.json': json.dumps({'commit': self.pin}).encode(),
-                   'scripts/prepare-local-agent.mjs': b'prepare',
-                   'scripts/local-agent-source.mjs': b'guard'}
+                   'scripts/prepare-local-agent.ts': b'prepare',
+                   'scripts/local-agent-source.ts': b'guard'}
         for name, data in sources.items():
             self.write(name, data)
         stamp = {'base': self.pin, 'patches': []}
@@ -187,7 +187,7 @@ class PackagedRuntimeTest(unittest.TestCase):
                 verifier.verify(self.package(changed))
 
     def test_changed_source_guard_rejects_otherwise_identical_apk(self):
-        self.write('scripts/local-agent-source.mjs', b'new guard')
+        self.write('scripts/local-agent-source.ts', b'new guard')
         with self.assertRaisesRegex(ValueError, 'manifest mismatch'):
             verifier.verify(self.package())
 

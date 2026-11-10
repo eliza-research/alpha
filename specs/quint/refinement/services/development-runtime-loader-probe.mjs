@@ -3,7 +3,7 @@ import {execFileSync} from 'node:child_process';
 import {mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync} from 'node:fs';
 import {dirname, join, resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {CORE_STATE_MANIFEST, CORE_STATE_TARGET, verifyCoreStateBuildRecord} from '../../../../scripts/core-state-patch.mjs';
+import {CORE_STATE_MANIFEST, CORE_STATE_TARGET, verifyCoreStateBuildRecord} from '../../../../scripts/core-state-patch.ts';
 import {writeCoreStateFixture} from '../../../../test/fixtures/core-state-root.mjs';
 
 const repository = resolve(import.meta.dirname, '../../../..');
@@ -23,7 +23,7 @@ function fixture(scratch, {duplicate = false, customState = false} = {}) {
     mkdirSync(dirname(path), {recursive: true});
     writeFileSync(path, value);
   };
-  for (const name of ['backend/loader.ts', 'scripts/pinned-upstream-source.mjs', resolver])
+  for (const name of ['backend/loader.ts', 'scripts/pinned-upstream-source.ts', resolver])
     write(name, readFileSync(join(repository, name)));
   write('package.json', '{"type":"module"}');
   write('vendor/eliza/package.json', '{"workspaces":["packages/*"]}');

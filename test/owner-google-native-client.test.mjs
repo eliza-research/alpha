@@ -8,7 +8,7 @@ import { X509Certificate } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { STEWARD_APP_CLIENT, checkNativeClient, main } from "../scripts/owner/google-native-client.mjs";
+import { STEWARD_APP_CLIENT, checkNativeClient, main } from "../scripts/owner/google-native-client.ts";
 
 function throwaway(t) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "alpha-native-client-"));

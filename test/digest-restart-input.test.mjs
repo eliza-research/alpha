@@ -8,7 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 
-const run=source=>spawnSync(process.execPath,['scripts/test-local-digest-restart.mjs'],{env:{PATH:process.env.PATH,HOME:process.env.HOME,ALPHA_ELIZA_SOURCE:source},encoding:'utf8',timeout:60000});
+const run=source=>spawnSync(process.execPath,['scripts/test-local-digest-restart.ts'],{env:{PATH:process.env.PATH,HOME:process.env.HOME,ALPHA_ELIZA_SOURCE:source},encoding:'utf8',timeout:60000});
 const commit=JSON.parse(fs.readFileSync('upstream.lock.json','utf8')).commit;
 
 test('digest restart check stops before any process work and names the exact preparation when its input is missing',()=>{
@@ -28,7 +28,7 @@ test('digest restart check stops before any process work and names the exact pre
 });
 
 test('the documented command and preparation match the script',()=>{
- assert.equal(JSON.parse(fs.readFileSync('package.json','utf8')).scripts['agent:test-digest-restart'],'node scripts/test-local-digest-restart.mjs');
+ assert.equal(JSON.parse(fs.readFileSync('package.json','utf8')).scripts['agent:test-digest-restart'],'node scripts/test-local-digest-restart.ts');
  const guide=fs.readFileSync('docs/local-agent-development.md','utf8');
  for(const text of ['ALPHA_RUNTIME_GIT_CACHE="$PWD/vendor/eliza" npm run agent:prepare','npm run agent:test-digest-restart','artifacts/local-agent-resident-<commit>'])assert.ok(guide.includes(text),`docs/local-agent-development.md must show: ${text}`);
 });

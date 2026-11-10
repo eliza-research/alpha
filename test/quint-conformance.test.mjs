@@ -6,7 +6,7 @@ import { build } from 'esbuild';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { JSDOM } from 'jsdom';
-import { repositoryRoot } from '../scripts/quint-lib.mjs';
+import { repositoryRoot } from '../scripts/quint-lib.ts';
 
 async function sourceModule(path) {
   const bundled = await build({ absWorkingDir: repositoryRoot, entryPoints: [path],

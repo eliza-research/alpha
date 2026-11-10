@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "description": "Alpha's Android host descriptor. The upstream generator (vendor/eliza/packages/app/scripts/mobile/android/consumer-host.mjs) owns the Gradle setup, toolchain, variants, signing and version policy and writes the build files into android/ (node scripts/android-host.mjs). This file supplies only Alpha's identity inputs, modules, dependencies, admission and installed-data compatibility names. References use the consumer, upstream (vendor/eliza) and dependencies (node_modules) roots; patchedNative names the authenticated staging of patches/eliza/native-manifest.json.",
+  "description": "Alpha's Android host descriptor. The upstream generator (vendor/eliza/packages/app/scripts/mobile/android/consumer-host.mjs) owns the Gradle setup, toolchain, variants, signing and version policy and writes the build files into android/ (node scripts/android-host.ts). This file supplies only Alpha's identity inputs, modules, dependencies, admission and installed-data compatibility names. References use the consumer, upstream (vendor/eliza) and dependencies (node_modules) roots; patchedNative names the authenticated staging of patches/eliza/native-manifest.json.",
   "profile": {
     "schema": 1,
     "sdk": { "min": 29, "target": 36, "compile": 36 },
@@ -95,11 +95,11 @@
       "androidTest": { "java": [{ "root": "consumer", "path": "android/app/src/testMocks/androidTest/java" }] }
     },
     "settingsAdmission": [
-      { "command": ["node", "scripts/prepare-patched-native.mjs"], "directory": { "root": "consumer", "path": "." } }
+      { "command": ["node", "scripts/prepare-patched-native.ts"], "directory": { "root": "consumer", "path": "." } }
     ],
     "admission": [
-      { "name": "stageLocalAgentSources", "command": ["node", "scripts/stage-local-agent-sources.mjs"], "directory": { "root": "consumer", "path": "." } },
-      { "name": "verifyCloudDeployment", "command": ["node", "scripts/cloud-deployment.mjs", "--check"], "directory": { "root": "consumer", "path": "." } }
+      { "name": "stageLocalAgentSources", "command": ["node", "scripts/stage-local-agent-sources.ts"], "directory": { "root": "consumer", "path": "." } },
+      { "name": "verifyCloudDeployment", "command": ["node", "scripts/cloud-deployment.ts", "--check"], "directory": { "root": "consumer", "path": "." } }
     ],
     "sourceSets": {
       "main": {
@@ -117,8 +117,8 @@
       { "root": "consumer", "path": "app.config.json" },
       { "root": "consumer", "path": "upstream.lock.json" },
       { "root": "consumer", "path": "patches/eliza/native-manifest.json" },
-      { "root": "consumer", "path": "scripts/prepare-patched-native.mjs" },
-      { "root": "consumer", "path": "scripts/android-host.mjs" }
+      { "root": "consumer", "path": "scripts/prepare-patched-native.ts" },
+      { "root": "consumer", "path": "scripts/android-host.ts" }
     ]
   },
   "residentHost": {

@@ -4,7 +4,7 @@ Reference: https://alpha-phone-prototype.pages.dev/; HTML snapshot SHA-256 `fd1e
 
 ## Evidence and method
 
-[Capture script](../scripts/prototype-capture.mjs) records the live reference and local fixture for each named state in light/dark themes, with each `[data-screen]` captured at 412 × 915 pixels, device scale 1, US English, America/New_York, reduced motion and loaded fonts. The remote desktop viewport is 960 × 1020; local phone viewport is 412 × 915. Screenshots crop to the phone content element, excluding the demo rail and outer device bezel.
+[Capture script](../scripts/prototype-capture.ts) records the live reference and local fixture for each named state in light/dark themes, with each `[data-screen]` captured at 412 × 915 pixels, device scale 1, US English, America/New_York, reduced motion and loaded fonts. The remote desktop viewport is 960 × 1020; local phone viewport is 412 × 915. Screenshots crop to the phone content element, excluding the demo rail and outer device bezel.
 
 [Comparison script](../scripts/compare-prototype.py) reads existing screenshots only:
 
@@ -77,7 +77,7 @@ The three residual light-theme pairs are Calendar month, Phone recents and voice
 Reproduction of the final targeted pass (supply your installed Playwright modules/browser paths):
 
 ```sh
-node scripts/prototype-capture.mjs --deterministic \
+node scripts/prototype-capture.ts --deterministic \
   --modules=/path/to/node_modules --executable=/path/to/chromium \
   --local=http://127.0.0.1:5175/ \
   --states=maps:nav,maps:route,lock,calendar,calendar:month,phone,phone:voicemail,contacts:detail,voice \

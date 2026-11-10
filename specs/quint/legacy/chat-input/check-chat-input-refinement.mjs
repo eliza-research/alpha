@@ -4,8 +4,8 @@ import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium, expect as baseExpect} from '@playwright/test';
 import {createServer} from 'vite';
-import {checkClientFeatures} from '../../../../scripts/prepare-client-features.mjs';
-import {filesWithin, sha256, repositoryRoot as root} from '../../../../scripts/quint-lib.mjs';
+import {checkClientFeatures} from '../../../../scripts/prepare-client-features.ts';
+import {filesWithin, sha256, repositoryRoot as root} from '../../../../scripts/quint-lib.ts';
 import {flagOffAndroid, fenceNetwork} from '../../../../test/browser/flag-off-android.ts';
 import {residentStub, setStub} from '../../../../test/browser/resident-stub.ts';
 import {captureInputs, checkTraces} from '../../refinement/check-traces.mjs';
@@ -119,7 +119,7 @@ async function mounted(extraSources, run) {
     'vendor/eliza/packages/core/src/utils/uuid.ts',
     ...filesWithin(resolve(root, 'patches/eliza')),
     'apps/app/index.html', 'vite.config.ts', 'package.json', 'package-lock.json', 'upstream.lock.json',
-    'scripts/prepare-client-features.mjs', 'scripts/quint-lib.mjs',
+    'scripts/prepare-client-features.ts', 'scripts/quint-lib.ts',
     'test/browser/flag-off-android.ts', 'test/browser/resident-stub.ts',
     'test/browser/helpers/native-navigation-protocol.ts', 'test/browser/full-chat-grabber.spec.ts',
     'test/browser/composer-send-focus.spec.ts', currentPath, fileURLToPath(import.meta.url), ...extraSources,

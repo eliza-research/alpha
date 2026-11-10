@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {embeddingBuildRemap,SDK_PROVENANCE_RECEIPT} from '../scripts/embedding-build-remap.mjs';
+import {embeddingBuildRemap,SDK_PROVENANCE_RECEIPT} from '../scripts/embedding-build-remap.ts';
 const root=path.resolve(import.meta.dirname,'..');
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 // The committed historical receipt owns this fixture even after the active
@@ -24,7 +24,7 @@ function historicalFixture(t){
  for(const [name,bytes] of [['android/embedding-host/qualified-host.json',JSON.stringify(historical)],[SDK_PROVENANCE_RECEIPT,fs.readFileSync(path.join(root,SDK_PROVENANCE_RECEIPT))]]){const file=path.join(dir,name);fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,bytes);}
  return dir;
 }
-const run=(...args)=>spawnSync(process.execPath,['scripts/prepare-embedding-host.mjs',...args],{cwd:root,encoding:'utf8'});
+const run=(...args)=>spawnSync(process.execPath,['scripts/prepare-embedding-host.ts',...args],{cwd:root,encoding:'utf8'});
 test('remapping authenticates the reviewed SDK root and covers NDK header debug paths',t=>{
  const fixture=historicalFixture(t);
  const env=embeddingBuildRemap(fixture,{sdk:'/different/android-sdk',staging:'/isolated/source',fork:'/isolated/engine',build:'/isolated/jni'});

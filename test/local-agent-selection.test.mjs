@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {sourceDirectory,workerArtifactDirectory} from '../scripts/local-agent-source.mjs';
+import {sourceDirectory,workerArtifactDirectory} from '../scripts/local-agent-source.ts';
 
 test('normal source and worker selection follows the admitted commit without altering old trees',()=>{
  const root=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'alpha-selection-')));

@@ -8,10 +8,10 @@ import os from "node:os";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { CHANNEL, CUTTLEFISH_PRODUCT, GATES, PIXEL10A_PRODUCT, RELEASE_SIGNER, filledBy, placeholderFields, stagingPreflight } from "../scripts/owner/production-staging-preflight.mjs";
+import { CHANNEL, CUTTLEFISH_PRODUCT, GATES, PIXEL10A_PRODUCT, RELEASE_SIGNER, filledBy, placeholderFields, stagingPreflight } from "../scripts/owner/production-staging-preflight.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
-const script = path.join(root, "scripts/owner/production-staging-preflight.mjs");
+const script = path.join(root, "scripts/owner/production-staging-preflight.ts");
 const read = (base, rel) => JSON.parse(fs.readFileSync(path.join(base, rel), "utf8"));
 const sha256 = bytes => createHash("sha256").update(bytes).digest("hex");
 const pixelLock = read(root, PIXEL10A_PRODUCT).sourceLock.file;
@@ -63,7 +63,7 @@ test("the committed records: every UNSET field is listed once with the step that
   assert.deepEqual(byFile[CHANNEL].map(item => item.field).sort(), ["avbPublicKeySha256", "otaCertificateSha256", "recovery.knownGoodRelease.buildFingerprint", "recovery.knownGoodRelease.otaSha256", "recovery.knownGoodRelease.recordFile"]);
   assert.ok(byFile[PIXEL10A_PRODUCT].some(item => item.field === "avb.publicKeySha256"));
   assert.ok(byFile[CUTTLEFISH_PRODUCT].some(item => item.field === "hostPackages[0].sha256" && item.step === "A-01 / H-23"));
-  // enroll-release-keys.mjs does not write product.json, so its platform digest is a separate edit.
+  // enroll-release-keys.ts does not write product.json, so its platform digest is a separate edit.
   assert.equal(byFile[CUTTLEFISH_PRODUCT].find(item => item.field === "signer.platformCertificateSha256")?.step, "H-09 (manual)");
   assert.equal(byFile[pixelLock], undefined, "the admitted Pixel 10a source lock carries no placeholder");
   for (const item of result.open) assert.notEqual(item.step, "unmapped", `${item.file} ${item.field}`);

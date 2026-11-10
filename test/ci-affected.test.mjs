@@ -21,7 +21,7 @@ test('CI selection follows changed files, renames, missing history and manual di
   const select = (event, eventName='pull_request', sha=git('rev-parse','HEAD')) => {
     const eventPath=join(cwd,'event.json'), output=join(cwd,'output'), summary=join(cwd,'summary');
     writeFileSync(eventPath, JSON.stringify(event)); writeFileSync(output,''); writeFileSync(summary,'');
-    execFileSync(process.execPath, [resolve('scripts/ci/affected.mjs')], {cwd, encoding:'utf8', env:{...process.env,
+    execFileSync(process.execPath, [resolve('scripts/ci/affected.ts')], {cwd, encoding:'utf8', env:{...process.env,
       GITHUB_EVENT_PATH:eventPath, GITHUB_EVENT_NAME:eventName, GITHUB_SHA:sha, GITHUB_OUTPUT:output, GITHUB_STEP_SUMMARY:summary}});
     assert.match(readFileSync(summary,'utf8'), /Change selection/);
     return Object.fromEntries(readFileSync(output,'utf8').trim().split('\n').map(line=>{
@@ -55,7 +55,7 @@ test('CI selection follows changed files, renames, missing history and manual di
 });
 
 test('docs read by node tests select verify; design and research notes select nothing', async () => {
-  const {affected, testReadReference} = await import('../scripts/ci/affected.mjs');
+  const {affected, testReadReference} = await import('../scripts/ci/affected.ts');
   const lanes = paths => {const r=affected(paths);return [r.verify,r.browser,r.android,r.prepare];};
   for (const path of ['docs/dependency-audit.dispositions.json','docs/dependency-audit.snapshot.json','docs/ci-cost-policy.md',
     'docs/requirements.json','docs/mvp-remaining-work-2026-10-09.json','docs/mvp-remaining-work-2026-10-09.md','docs/core-loop-audit.md','README.md']) {
@@ -64,7 +64,7 @@ test('docs read by node tests select verify; design and research notes select no
   }
   assert.deepEqual(lanes(['design/prototype.html','design/assets/icon.svg']), [false,false,false,false]);
   assert.deepEqual(lanes(['.github/workflows/dependency-audit.yml']), [true,false,false,false], 'the scheduled audit workflow selects verify only');
-  assert.deepEqual(lanes(['specs/quint/application/Application.qnt','specs/quint/coverage.json','scripts/check-quint.mjs']), [true,false,false,false], 'formal specifications run repository verification');
+  assert.deepEqual(lanes(['specs/quint/application/Application.qnt','specs/quint/coverage.json','scripts/check-quint.ts']), [true,false,false,false], 'formal specifications run repository verification');
   assert.deepEqual(lanes(['docs/market-research/proposal.md','AGENTS.md','LICENSE']), [false,false,false,false]);
   // Every docs file a node test names must select verify.
   const named = new Set();
@@ -75,7 +75,7 @@ test('docs read by node tests select verify; design and research notes select no
 });
 
 test('Android files that browser specs read select the browser lane', async () => {
-  const {affected, browserReadAndroid} = await import('../scripts/ci/affected.mjs');
+  const {affected, browserReadAndroid} = await import('../scripts/ci/affected.ts');
   const read = new Set();
   for (const file of readdirSync('test/browser', {recursive:true}).filter(name => /\.[cm]?[jt]s$/.test(name)))
     for (const [, path] of readFileSync(join('test/browser', file), 'utf8').matchAll(/['"`](?:\.\.\/\.\.\/|\.\/)?(android\/[A-Za-z0-9_.\/-]+)['"`]/g)) read.add(path);

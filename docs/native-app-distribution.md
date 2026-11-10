@@ -77,7 +77,7 @@ This document concerns third-party native apps. Alpha Phone's own APKs follow
 [the Android build contract](android-and-aosp.md): distribution builds exclude every
 mock, fixture and developer surface (`ELIZA_DEV_ALLOW_TEST_MOCKS` off); release signing
 uses `ELIZAOS_KEYSTORE_PATH`, `ELIZAOS_KEYSTORE_PASSWORD`, `ELIZAOS_KEY_ALIAS` and
-`ELIZAOS_KEY_PASSWORD`, or `scripts/sign-release-apks.mjs` with the ceremony key files or a
+`ELIZAOS_KEY_PASSWORD`, or `scripts/sign-release-apks.ts` with the ceremony key files or a
 PKCS#11 token after an unsigned build; version comes from `ELIZAOS_VERSION_CODE`/`ELIZAOS_VERSION_NAME`
 or `app.config.json`; release variants are R8-minified with retained mapping files; and
 App Links stay inactive until the release signer is enrolled and the Eliza Cloud web host
@@ -108,10 +108,10 @@ The target is a phone, not tablet; the hardware target is now Pixel 10a on Andro
 
 ## Reproducible offline AOSP staging
 
-The checked-in [pinned candidate manifest](../config/native-apps.json) records the three official native apps above. The [staging script](../scripts/stage-native-apps.mjs) accepts an operator-supplied directory containing those exact approved APK filenames; it never downloads artifacts or follows mutable release URLs. It uses the project's Android SDK build-tools 36.0.0 and JDK configuration from `scripts/toolchain.mjs`.
+The checked-in [pinned candidate manifest](../config/native-apps.json) records the three official native apps above. The [staging script](../scripts/stage-native-apps.ts) accepts an operator-supplied directory containing those exact approved APK filenames; it never downloads artifacts or follows mutable release URLs. It uses the project's Android SDK build-tools 36.0.0 and JDK configuration from `scripts/toolchain.ts`.
 
 ```sh
-node scripts/stage-native-apps.mjs \
+node scripts/stage-native-apps.ts \
   --apk-dir /path/to/approved-native-apks \
   --output /path/to/existing-parent/new-native-apps
 ```
@@ -126,4 +126,4 @@ $(call inherit-product, vendor/alphaphone/native-apps/product.mk)
 
 The script does not select default apps, grant privileges, configure accounts, enable autofill, alter update authorities, or include the Chromium development snapshot. It stages candidates, not a production release approval. License/source URLs are provenance metadata: the release process must still supply required license texts, third-party notices and exact corresponding source where applicable, confirm trademark/distribution rights, define publisher-compatible updates, and build/boot/test the selected phone image. The owned Chromium distribution requires its independent upstream build and signing flow.
 
-Staging verification on 2026-09-29: `node --check scripts/stage-native-apps.mjs` passed. Running the script against the three actual verified artifacts in `artifacts/native-apps` completed successfully and produced `/private/tmp/alpha-native-apps-verified-20260929`; generated `Android.bp` and `product.mk` were inspected. A second run refused the existing output directory. A deliberately altered fixture failed the SHA-256 check, produced no output directory and removed its temporary staging directory. These checks exercise artifact validation and packaging generation only. AOSP Soong validation (including preprocessed APK compression/alignment constraints), target image build/boot and device acceptance have not been performed by this staging task; an official APK that cannot pass the selected branch's presigned-preprocessed checks must be resolved without silently rewriting its signature.
+Staging verification on 2026-09-29: `node --check scripts/stage-native-apps.ts` passed. Running the script against the three actual verified artifacts in `artifacts/native-apps` completed successfully and produced `/private/tmp/alpha-native-apps-verified-20260929`; generated `Android.bp` and `product.mk` were inspected. A second run refused the existing output directory. A deliberately altered fixture failed the SHA-256 check, produced no output directory and removed its temporary staging directory. These checks exercise artifact validation and packaging generation only. AOSP Soong validation (including preprocessed APK compression/alignment constraints), target image build/boot and device acceptance have not been performed by this staging task; an official APK that cannot pass the selected branch's presigned-preprocessed checks must be resolved without silently rewriting its signature.

@@ -193,7 +193,7 @@ test('TalkBack reading order is checked in every lane, as Android checks it, acr
   assert.match(viewFocus, /from '@elizaos\/ui\/accessibility\/screen-focus'/);
   assert.match(viewFocus, /createScreenFocus\(/);
   assert.doesNotMatch(viewFocus, /setAttribute\('tabindex'|requestAnimationFrame/, 'no local copy of the focus mover');
-  assert.match(read('scripts/prepare-client-features.mjs'), /'packages\/ui\/src\/accessibility\/screen-focus\.ts'/);
+  assert.match(read('scripts/prepare-client-features.ts'), /'packages\/ui\/src\/accessibility\/screen-focus\.ts'/);
 });
 
 test('both sweeps fail on a cut app title and allow a clamped preview', () => {

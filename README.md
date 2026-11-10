@@ -98,7 +98,7 @@ its packaged resident, worker and source provenance and excludes local speech
 models. Direct mode and embedding routing are not changed by release admission.
 
 A Cloud release needs passing voice evidence for each exact signed APK, supplied
-after testing with `node scripts/verify-apks.mjs --runtime-profile=cloud
+after testing with `node scripts/verify-apks.ts --runtime-profile=cloud
 --cloud-voice-evidence=/absolute/path/cloud-voice.json`. The receipt format is
 `alpha-cloud-voice-qualification-v1`, with a `results` array. Each result names
 `apkSha256`, `provider: "cartesia"`, `outcome: "passed"`, and a `checks` object
@@ -169,14 +169,15 @@ npm run verify
 npm run dev
 ```
 
+`npm run typecheck` checks the renderer and repository TypeScript scripts.
 `npm run verify` needs a JDK (`JAVA_HOME` or `javac` on `PATH`) for the host contract tests.
 The tests that load the real SDK need Bun 1.4.2 and the prepared SDK; without them they
 skip. To run them, as CI's Repository verification does:
 
 ```sh
 export ALPHA_BUN="$(command -v bun)"   # must report 1.4.2
-node scripts/prepare-local-agent.mjs
-export ALPHA_CLOUD_COLLECTOR_SOURCE="$(node --input-type=module -e "import {sourceDirectory} from './scripts/local-agent-source.mjs'; process.stdout.write(sourceDirectory(process.cwd()))")"
+node scripts/prepare-local-agent.ts
+export ALPHA_CLOUD_COLLECTOR_SOURCE="$(node --input-type=module -e "import {sourceDirectory} from './scripts/local-agent-source.ts'; process.stdout.write(sourceDirectory(process.cwd()))")"
 ALPHA_REQUIRE_PREPARED_SDK=1 npm run verify   # fails instead of skipping when preparation is missing
 ```
 
@@ -216,7 +217,7 @@ passed as the Gradle property `-PELIZA_DEV_ALLOW_TEST_MOCKS=1`, exposed as
 debug variants only when on. A web build writes `web-dist/build-flags.json`
 (`{"testMocks": false}` for production).
 
-`node scripts/audit-production-bundle.mjs web-dist` fails on any mock/developer string,
+`node scripts/audit-production-bundle.ts web-dist` fails on any mock/developer string,
 fixture name, `img/` fixture image or source map in a production bundle;
 `--expect-test-mocks` audits a deliberate test-mocks build instead. The Android
 verification applies the same audit to the extracted web assets of every distribution APK.
@@ -314,7 +315,7 @@ publication is required for this shell.
 On-device speech uses only the llama.cpp-based libelizainference engine (decision P-42) through
 the shared elizaOS paradee-voice library: Paradee-8M speech output (P-54) and the voice bundle's
 model-agnostic ASR slot (P-55; Phonon-2 is the intended model). Build and stage it as described in
-[fused speech](docs/fused-speech.md): `node scripts/android-stage-voice-models.mjs --from <dir>`
+[fused speech](docs/fused-speech.md): `node scripts/android-stage-voice-models.ts --from <dir>`
 writes the engine and the bundle (about 1.1 GB, shipped in the APK assets) to the ignored
 `.eliza/paradee-voice/native`, checked against `android/voice-host/qualified-voice-host.json`
 and `android/paradee-voice/asr-inputs.json` by Gradle (`:local-speech:verifySpeechInputs`,
@@ -371,7 +372,7 @@ npm run agent:prepare -- --source-only
 npm run android:build -- --allow-unpackaged-runtime
 ```
 
-`npm run android:build` first runs `scripts/android-build-preflight.mjs` and stops
+`npm run android:build` first runs `scripts/android-build-preflight.ts` and stops
 (exit 2), before the web sync and Gradle, naming the command to run when the pinned
 `vendor/eliza` checkout, the prepared runtime source or (for distribution builds) the staged
 runtime payload is missing or stale, or when the on-device voice outputs are missing (distribution
@@ -387,7 +388,7 @@ pull-request checkout) it prints a note and skips the comparison. Run `git fetch
 so the ref is current. `--allow-older-upstream-pin` (to the preflight or `npm run android:build
 --`) is only for a deliberate, reviewed upstream rollback. `npm run android:build:local` does not
 pass it to its first (`--before-prepare`) check, so a rollback runs the steps of that script
-itself, starting with `node scripts/android-build-preflight.mjs --before-prepare
+itself, starting with `node scripts/android-build-preflight.ts --before-prepare
 --allow-older-upstream-pin`. The comparison is only as current as the local `origin/main` ref:
 a clone that has not fetched since main was repinned still passes.
 
@@ -404,9 +405,9 @@ Three inputs of a distributable build cannot come from a script, and
   moved from `cc8c9791` to `b3eb2bf6` and no rebuild has compared the bytes, so the step
   stops (exit 3) before any build and a distribution build needs a new reviewed receipt.
   `npm run android:build:inputs` names who supplies it: whoever holds the reviewed libraries
-  and their receipt stages them (`node scripts/stage-embedding-host.mjs --receipt
+  and their receipt stages them (`node scripts/stage-embedding-host.ts --receipt
   <QUALIFICATION.json>`), or a reviewer qualifies a rebuilt candidate
-  (`node scripts/build-embedding-host.mjs --candidate`, which never stages it). The staging
+  (`node scripts/build-embedding-host.ts --candidate`, which never stages it). The staging
   command checks the staged embedding model, so run `agent:prepare`,
   `agent:build-workflow-worker` and `agent:stage-android` before it; and it refuses to
   replace a differing `qualified-host.json`, so a new qualification removes the old one in
@@ -418,13 +419,13 @@ Three inputs of a distributable build cannot come from a script, and
   Staged voice outputs in `.eliza/paradee-voice/native` keep `:app:verifyParadeeAppLinkage`
   checking the app libraries, so remove that directory too or stage the host.
 - **The on-device voice outputs** ([fused speech](docs/fused-speech.md)). A person stages
-  them with `node scripts/android-stage-voice-models.mjs --from <directory>`;
+  them with `node scripts/android-stage-voice-models.ts --from <directory>`;
   `npm run android:build:inputs` lists them. The voice host record is not qualified, so
   `verify-apks` records the releases `distributable:false` and names the reason.
 - **The release signer** (decision P-16; [human actions](docs/human-actions.md) H-08 to H-10).
-  `node scripts/enroll-release-keys.mjs` records the key ceremony's certificate digest in
+  `node scripts/enroll-release-keys.ts` records the key ceremony's certificate digest in
   `android/release-signer.json`; releases are then signed by Gradle with the `ELIZAOS_KEYSTORE_*`
-  values or afterwards with `node scripts/sign-release-apks.mjs` (ceremony key files or a PKCS#11
+  values or afterwards with `node scripts/sign-release-apks.ts` (ceremony key files or a PKCS#11
   token). Without either the chain completes with unsigned, non-distributable releases.
   `npm run human:status` lists every step only a person can take and what this checkout records.
 
@@ -506,11 +507,11 @@ Release signing and version use the upstream elizaOS names:
 | `ELIZAOS_VERSION_CODE`, `ELIZAOS_VERSION_NAME` | Override `versionCode`/`versionName` (defaults from `app.config.json`). |
 | `VITE_MAPS_BASE_URL` | Regional Maps gateway for test-mocks builds only (development prototype). Other builds ignore it and use Eliza Cloud Maps after Cloud sign-in. |
 
-`node scripts/verify-apks.mjs` (`npm run android:verify`) inspects APK bytes: package
+`node scripts/verify-apks.ts` (`npm run android:verify`) inspects APK bytes: package
 IDs, HOME/LAUNCHER filters, debug flags and signatures, the absence of test-mock
 native classes, cleartext configuration and fixture-package queries in distribution
 APKs, and the production bundle audit of each APK's `assets/public`.
-`node scripts/qualify-head.mjs` is the entry point for qualifying the checked-out
+`node scripts/qualify-head.ts` is the entry point for qualifying the checked-out
 commit (repository verification, distribution builds and their audits); it is source/build evidence for that
 exact commit only and does not stand in for emulator, AOSP image, real-integration or
 device acceptance.
@@ -548,7 +549,7 @@ result is recorded for the current source ([current status](docs/mvp-current-sta
 
 The independent native Calendar consumer comes from the pinned upstream source.
 Build its app and instrumentation APKs with
-`node scripts/test-native-calendar-consumer.mjs --build-only` using JDK 21 and
+`node scripts/test-native-calendar-consumer.ts --build-only` using JDK 21 and
 `ANDROID_HOME`. Outputs remain under `artifacts/`, outside source. To run recovery,
 set `ALPHA_CALENDAR_TEST_SERIAL`, `ALPHA_CALENDAR_TEST_AVD` and
 `ALPHA_CALENDAR_TEST_ABI` (`x86_64` or `arm64-v8a`), then omit `--build-only`.
@@ -560,7 +561,7 @@ users and retains uncertain cleanup for explicit recovery. Reports are under
 The camera denial/retry campaign uses the same leased emulator and disposable-user
 harness. Set `ANDROID_SERIAL`, `ALPHA_NATIVE_TEST_AVD` and
 `ALPHA_NATIVE_TEST_ABI`, then run
-`node scripts/test-native-permissions.mjs camera APP.apk MATCHING_TEST.apk NEW_OUTPUT`.
+`node scripts/test-native-permissions.ts camera APP.apk MATCHING_TEST.apk NEW_OUTPUT`.
 Use `settings` or `channels` in place of `camera` for location/Accounts settings
 or notification-channel recovery with the same archived pair and emulator inputs;
 `voice`, `voice-revoke` and `voice-limit` for the denied, revoked-while-recording and
@@ -575,7 +576,7 @@ changes affect only the fixture user; unproven package cleanup retains that user
 for recovery. The output records APK admission, test identities and user cleanup.
 
 Process-restart acceptance for Inbox, Notes and selected Files uses
-`node scripts/test-native-restart.mjs inbox|notes|document APP.apk TEST.apk NEW_OUTPUT`
+`node scripts/test-native-restart.ts inbox|notes|document APP.apk TEST.apk NEW_OUTPUT`
 with the same archive, owned-emulator environment and HOME configuration as the
 permission campaign. The shared harness authenticates both APKs, runs exact
 prepare/restore/cleanup methods in a disposable user and records strict phase
@@ -583,7 +584,7 @@ results. Inbox uses a closed synthetic provider transport in the test APK and ex
 These checks do not establish physical-device or real-provider acceptance.
 
 Installed Calendar and reminder upgrade acceptance uses
-`node scripts/test-installed-upgrade.mjs calendar` or `node scripts/test-installed-upgrade.mjs reminder`.
+`node scripts/test-installed-upgrade.ts calendar` or `node scripts/test-installed-upgrade.ts reminder`.
 Set `ANDROID_HOME` and the matching `ALPHA_CALENDAR_` or `ALPHA_REMINDER_` variables:
 `BASELINE_DIR` (absolute), `TEST_SERIAL`, `TEST_AVD`, and `TEST_ABI`. Baselines contain
 `standalone-debug.apk` and `launcher-debug.apk`; reminder baselines also require
@@ -600,7 +601,7 @@ emulator lease. Missing package-cleanup proof retains the test user for recovery
 These campaigns require an owned disposable emulator and do not prove device acceptance.
 
 The browser storage-format campaign uses the same archived APK and owned-emulator
-inputs: `node scripts/test-browser-storage-format.mjs APP.apk TEST.apk NEW_OUTPUT`.
+inputs: `node scripts/test-browser-storage-format.ts APP.apk TEST.apk NEW_OUTPUT`.
 It runs in a fresh disposable user and checks the real product stores against the
 deployed Keystore ciphertext format in both directions, including bookmarks,
 tabs/history and site permissions. It does not open a website or establish browser
@@ -625,7 +626,7 @@ The opt-in always-on listener ships only in the image. Build it with `./gradlew 
 it with `--listener-apk FILE` (optionally with `--listener-descriptor FILE`, an independently reviewed
 JSON record of `packageName`, `apkSha256` and `certificateSha256`). While P-78 defers wake listening,
 only `--development` staging takes it; production staging refuses `--listener-apk` and the image
-ships without AlphaSense. `node scripts/verify-aosp-listener.mjs --serial SERIAL --user 0` is a read-only
+ships without AlphaSense. `node scripts/verify-aosp-listener.ts --serial SERIAL --user 0` is a read-only
 check of a booted image. See [ADR 0001](docs/adr/0001-privileged-listener.md) for the privilege
 boundary and the remaining device gates.
 

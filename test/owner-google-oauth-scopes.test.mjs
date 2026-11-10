@@ -4,7 +4,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import { spawnSync } from "node:child_process";
-import { ALPHA_CONSENT_PATHS, EMBEDDED_CAPABILITY_SCOPES, GOOGLE_SCOPE_CLASS, loadMapping, matrix, parseCloudMapping, probeServiceDocument, scopesFor } from "../scripts/owner/google-oauth-scopes.mjs";
+import { ALPHA_CONSENT_PATHS, EMBEDDED_CAPABILITY_SCOPES, GOOGLE_SCOPE_CLASS, loadMapping, matrix, parseCloudMapping, probeServiceDocument, scopesFor } from "../scripts/owner/google-oauth-scopes.ts";
 
 const G = "https://www.googleapis.com/auth/";
 const vendorFile = "vendor/eliza/packages/cloud/shared/src/lib/services/agent-google-connector/shared.ts";

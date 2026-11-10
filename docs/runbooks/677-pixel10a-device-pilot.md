@@ -12,7 +12,7 @@ one class. A provisioning record is not acceptance of any journey.
 
 Prepared on this branch:
 
-- `node scripts/owner/voice-trial-export.mjs extract|check|dry-run` and
+- `node scripts/owner/voice-trial-export.ts extract|check|dry-run` and
   `test/owner-voice-trial-export.test.mjs` (voice-trial layout and a dry run of the aggregator).
 
 ## Prerequisite tracker
@@ -28,7 +28,7 @@ pilot needs them.
 | SIMs and owned endpoints | H-28 | #675 | telephony |
 | Password test vault and test site | H-29 | #675 | password save/fill |
 | Release key custody, ceremony, public identities | H-01, H-08, H-09 | [#661](https://github.com/eliza-research/alphaphone/issues/661) | any release-signed APK or image |
-| Distributable release APKs, both variants | H-10 | [#662](https://github.com/eliza-research/alphaphone/issues/662) | provisioning (`provision-unit.mjs` refuses anything else) |
+| Distributable release APKs, both variants | H-10 | [#662](https://github.com/eliza-research/alphaphone/issues/662) | provisioning (`provision-unit.ts` refuses anything else) |
 | On-device voice host admitted | H-18 | [#663](https://github.com/eliza-research/alphaphone/issues/663) | a distributable H-10 build; on-device speech; voice trials |
 | Always-on listener qualified | H-20 | [#664](https://github.com/eliza-research/alphaphone/issues/664) | listening controls; production image staging |
 | Catalog, plan limits, Maps allowance | H-02, H-03, H-04 | [#665](https://github.com/eliza-research/alphaphone/issues/665) | plan admission and expiry; every Maps request |
@@ -55,13 +55,13 @@ or skip is recorded, never retried as a write.
 ### 1. Provision and record the release (H-32)
 
 - [ ] Owner consent to the exact provisioning/reset of this unit recorded (date only).
-- [ ] `node scripts/provision-unit.mjs --serial <serial> --alias <unit> --apk-manifest <release build>/apk-manifest.json --home-wait-ms 120000`;
+- [ ] `node scripts/provision-unit.ts --serial <serial> --alias <unit> --apk-manifest <release build>/apk-manifest.json --home-wait-ms 120000`;
   the operator makes the Home choice. Record `test-results/pilot-units/<unit>.json` (serial and
   fingerprint as SHA-256 only).
 - [ ] After all four units carry the release: release owner runs
-  `node scripts/record-release.mjs --apk-manifest <release build>/apk-manifest.json` (dry run), then
+  `node scripts/record-release.ts --apk-manifest <release build>/apk-manifest.json` (dry run), then
   the same with `--write`, in a reviewed commit. From then on that versionCode is refused.
-- [ ] In-place update on a designated unit: `node scripts/pilot-update.mjs --serial <serial> --alias <unit> --apk-manifest <new build>/apk-manifest.json`
+- [ ] In-place update on a designated unit: `node scripts/pilot-update.ts --serial <serial> --alias <unit> --apk-manifest <new build>/apk-manifest.json`
   (same signer, higher versionCode; release units read back package identity only).
 
 ### 2. Runbook journeys (every unit)
@@ -72,7 +72,7 @@ From [Execute on every unit](../pilot-acceptance-runbook.md#execute-on-every-uni
 - [ ] Resident startup and chat (runtime identity, typed and spoken requests, context reaches the
   intended conversation; hosted Cerebras inference disclosed).
 - [ ] Lifecycle and recovery (background, lock, network loss, kill, runtime restart and stop, reboot).
-- [ ] Distribution has no mock surfaces (plus `node scripts/verify-apks.mjs` output for the exact APK).
+- [ ] Distribution has no mock surfaces (plus `node scripts/verify-apks.ts` output for the exact APK).
 - [ ] Speech and Notes; Calendar; Reminders; Clock; Workflows and results; Browser and passwords;
   Files, capture, photos and Maps; Settings and notifications; Email.
 - [ ] Wrong-owner, revoked permission, stale target and lost-response cases on designated fixtures.
@@ -177,13 +177,13 @@ Copy it for `unit-b`, `unit-c` and `unit-d`. The four Status cells of the
 
 Settings › Export diagnostics writes an `alpha-diagnostics/v1` report; its `nativeVoiceTiming`
 member is the `alpha-native-voice-timing-v3` export. **Passing the diagnostics report directly to
-`scripts/aggregate-voice-latency.mjs` exits 1** (it is not a timing export); extract the member
+`scripts/aggregate-voice-latency.ts` exits 1** (it is not a timing export); extract the member
 first:
 
 ```sh
-node scripts/owner/voice-trial-export.mjs extract <diagnostics.json> --unit unit-a --variant launcher --session 20261105T1430Z --root voice-trials
-node scripts/owner/voice-trial-export.mjs check --root voice-trials
-node scripts/aggregate-voice-latency.mjs voice-trials/*/*/*.native-voice-timing.json --out voice-trials/summary.json
+node scripts/owner/voice-trial-export.ts extract <diagnostics.json> --unit unit-a --variant launcher --session 20261105T1430Z --root voice-trials
+node scripts/owner/voice-trial-export.ts check --root voice-trials
+node scripts/aggregate-voice-latency.ts voice-trials/*/*/*.native-voice-timing.json --out voice-trials/summary.json
 ```
 
 Layout: `voice-trials/<unit-a…d>/<launcher|standalone>/<yyyymmddThhmmZ>.native-voice-timing.json`,
@@ -192,7 +192,7 @@ permission data from the report) and refuses to overwrite a file. `check` report
 cohort, how many passed, warm and cold trials it still needs, and flags a trial whose `build` does
 not match its directory.
 
-How the aggregator groups trials (read from `scripts/native-voice-latency.mjs`), which decides how
+How the aggregator groups trials (read from `scripts/native-voice-latency.ts`), which decides how
 many trials the pilot needs:
 
 - A cohort is one combination of source commit, dirty state, engine SHA-256, model SHA-256, device
@@ -206,7 +206,7 @@ many trials the pilot needs:
   variant and each network condition present needs its own 50 trials (20 warm, 5 cold). Any invalid
   or conflicting record anywhere blocks exit 0.
 
-Dry run on this branch (`node scripts/owner/voice-trial-export.mjs dry-run`, synthetic fixtures of
+Dry run on this branch (`node scripts/owner/voice-trial-export.ts dry-run`, synthetic fixtures of
 the shape `test/native-voice-latency.test.mjs` uses; not evidence):
 
 | Case | Expected exit | Observed |
@@ -229,7 +229,7 @@ recorded release manifest; the operator does not help beyond handing over a unit
    the release APK SHA-256 and signer in the recorded `apk-manifest.json`, and `lastRelease` in
    `android/release-signer.json`. Run `npm run human:status` and record its output.
 3. Reproduce setup on a designated unit or a disposable unit the owner assigns: provision with
-   `scripts/provision-unit.mjs` (or confirm the existing provision record matches the manifest),
+   `scripts/provision-unit.ts` (or confirm the existing provision record matches the manifest),
    select Alpha as Home, sign in with the account assigned for review.
 4. Run one complete journey end to end without help, chosen by the owner from the per-unit checklist
    (recommended: voice request → note → calendar event, J02, with the Home brief card afterwards).

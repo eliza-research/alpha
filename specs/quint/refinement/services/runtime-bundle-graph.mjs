@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {createRequire} from 'node:module';
-import {verifyCoreStateBuildRecord,coreStateRequiredTargets} from '../../../../scripts/core-state-patch.mjs';
+import {verifyCoreStateBuildRecord,coreStateRequiredTargets} from '../../../../scripts/core-state-patch.ts';
 
 const hash = file => createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 const relative = (root, file) => path.relative(root, file).split(path.sep).join('/');
@@ -96,7 +96,7 @@ export function writeRuntimeBundleGraph(root, source, observationPath, outputPat
   const generated = build.firstParty.length - tracked;
   const graph = {
     schema: 1, classification: 'observed-product-android-bundle-inputs', sourcePin: observation.sourcePin,
-    producer: {script: 'scripts/build-mobile-agent.mjs', observer: relative(root, path.join(root, 'specs/quint/refinement/services/runtime-bundle-audit.mjs')),
+    producer: {script: 'scripts/build-mobile-agent.ts', observer: relative(root, path.join(root, 'specs/quint/refinement/services/runtime-bundle-audit.mjs')),
       inputHashes: Object.fromEntries(Object.entries(observation.inputHashesBefore).map(([file, digest]) => [relative(root, file), digest])),
       coreState: observation.coreState, bun: observation.bun, bundleSha256: observation.bundleSha256, sourceTreeVerifiedBeforeAndAfter: true,
       inputHashesUnchanged: true, rawMetafileSha256: build.rawMetafileSha256, producerObservationSha256: hash(observationPath)},

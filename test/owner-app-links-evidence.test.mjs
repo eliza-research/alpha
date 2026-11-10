@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { decide, main, parseGetAppLinks } from "../scripts/owner/app-links-evidence.mjs";
+import { decide, main, parseGetAppLinks } from "../scripts/owner/app-links-evidence.ts";
 
 const RELEASE = "c3".repeat(32);
 const colon = value => value.toUpperCase().match(/../g).join(":");

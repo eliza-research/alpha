@@ -7,7 +7,7 @@ device acceptance evidence; those gates stay open in [current status](mvp-curren
 ## Shared ownership (October 27 direction)
 
 The overview domain and cards are upstream elizaOS code that Alpha consumes through the pin
-(`scripts/prepare-client-features.mjs` stages them):
+(`scripts/prepare-client-features.ts` stages them):
 
 - `packages/ui/src/overview/daily-overview.ts`: presenters for every card state (loading, ready,
   empty, stale, error, access off, not connected), agenda selection (`selectOverviewAgenda`:
@@ -88,7 +88,7 @@ arrival, text size, the dock and the keyboard independently.
 ## Tests
 
 - `test/home-cards.test.mjs`: presentation of every card state.
-- `scripts/test-inbox-cloud-flow.mjs` (run by `test/adapter-contracts.test.mjs`): the Inbox read
+- `scripts/test-inbox-cloud-flow.ts` (run by `test/adapter-contracts.test.mjs`): the Inbox read
   time across a first page, a later page and a refresh.
 - `test/home-cards.test.mjs` also covers `homeCalendarName`, the lookup of the calendar an event
   was read from: the event's own calendar id in the same read, exact string ids, no name for an

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {AsyncLocalStorage} from 'node:async_hooks';
 import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {CORE_STATE_INPUTS, ROOM_QUEUE_TARGET, coreStatePatch} from '../../../../scripts/core-state-patch.mjs';
+import {CORE_STATE_INPUTS, ROOM_QUEUE_TARGET, coreStatePatch} from '../../../../scripts/core-state-patch.ts';
 import {checkTraces, qmap, qset} from '../../refinement/check-traces.mjs';
 import {bundleVendorCore, deferred, observeFile, root, tick} from './source-support.mjs';
 

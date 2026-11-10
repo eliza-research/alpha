@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { cacheMissKeysNeeded, checkConfig, checkReport, credentialFindings, main, requestBudget } from "../scripts/owner/latency-report.mjs";
+import { cacheMissKeysNeeded, checkConfig, checkReport, credentialFindings, main, requestBudget } from "../scripts/owner/latency-report.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
 const template = JSON.parse(fs.readFileSync(path.join(root, "docs/runbooks/drafts/666-latency-config.staging.template.json"), "utf8"));

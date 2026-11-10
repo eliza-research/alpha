@@ -97,7 +97,7 @@ Still open:
   assigned by the provider and can be reused, so the link is not keyed by them, and the pinned
   reader now returns `creationId` on events this app created (elizaOS/eliza#35912). The link is
   remembered at save and dropped when the event is deleted (`calendar-adapter.ts`,
-  `note-origin-adapter.ts`; `scripts/test-calendar-crud-review.mjs`, class S); no Android run.
+  `note-origin-adapter.ts`; `scripts/test-calendar-crud-review.ts`, class S); no Android run.
   It names a link, not ownership: another app with calendar write access can set the same
   fields. An event that Android Calendar saves (the guests, video or alert hand-off) carries no
   creation id and is not linked, and its draft says so before Save. Reminder links use
@@ -152,7 +152,7 @@ Spec: `journey-d-digests.spec.ts`
 | --- | --- | --- | --- |
 | Create morning and evening schedules from a reviewed snapshot (Settings → Scheduled digests) | yes | — | Real provider sources and their consent |
 | Morning occurrence runs once; result retained, shown once, acknowledged | yes (development scheduler; output is the scripted reply) | Resident and hosted workers | Real model output |
-| Restart inside the scheduled minute does not admit the occurrence twice | yes | Resident restart at an admission boundary (`scripts/test-local-digest-restart.mjs`) | Worker crash on a device |
+| Restart inside the scheduled minute does not admit the occurrence twice | yes | Resident restart at an admission boundary (`scripts/test-local-digest-restart.ts`) | Worker crash on a device |
 | Evening occurrence runs once for the evening schedule only | yes | — | — |
 | App closed across a scheduled time: no backlog replay, never run late | yes | — | Power loss, Doze, battery |
 | The missed time leaves exactly one explicit `missed` record, labelled "Missed — not run", acknowledged once, unchanged by later ticks and restart | yes | — | — |
@@ -219,7 +219,7 @@ Open items:
   subject, body, attachments, reply target, forwarded originals); a copy restored to
   exactly the sent content counts as the sent email and is removed. A reload between the
   confirmation and the cleanup finishes the cleanup from the saved receipt. Cases:
-  `scripts/test-inbox-sent-cleanup.mjs`. Both that script and the journey supply their
+  `scripts/test-inbox-sent-cleanup.ts`. Both that script and the journey supply their
   own slot store; the removal of the saved draft relies on the platform store's
   compare-exchange (Android Keystore slots), which no run here exercises. The saved
   receipt is trusted to the same degree as the drafts stored beside it: it is not
@@ -335,7 +335,7 @@ and `JourneyJ05InstrumentedTest` has not run.
 | A | A spoken turn with the development profile always stopped after the reply: the development agent returned no message identities | development fixture | Fixed in `development-connection.ts`; journey A now has a spoken request |
 | D | The development profile's Home never showed a brief | development profile | It now reads the retained brief; journey D asserts the rendered card |
 | E | Read aloud on a page whose address is no longer known was refused behind the open menu | product bug | Fixed in `browser-adapter.ts`; journey E navigates during the review |
-| F | A saved review could still be sent after a reload with the edit only in the retained copy, or after the email was moved to another From account and sent there | product bug | Fixed in `runtime/inbox-operation.ts` and `inbox-provider-controls.ts`: a review is bound to its local draft and to the exact content in the composer when Send is confirmed (`journey-f-reviewed-send.spec.ts`, `scripts/test-inbox-sent-cleanup.mjs`) |
+| F | A saved review could still be sent after a reload with the edit only in the retained copy, or after the email was moved to another From account and sent there | product bug | Fixed in `runtime/inbox-operation.ts` and `inbox-provider-controls.ts`: a review is bound to its local draft and to the exact content in the composer when Send is confirmed (`journey-f-reviewed-send.spec.ts`, `scripts/test-inbox-sent-cleanup.ts`) |
 | F | A message listed twice in one provider page was shown twice | product bug | Fixed in `inbox-cloud-adapter.ts` (`journey-f-reviewed-send.spec.ts`) |
 | B | An agent update to an all-day event was saved with instants that are not whole dates | product bug | Refused before review in `browser/calendar.ts` (`calendar-agent-all-day-review.spec.ts`) |
 

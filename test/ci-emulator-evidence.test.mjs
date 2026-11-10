@@ -5,10 +5,10 @@ import os from 'node:os';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
-import {AVD,FUSED_SPEECH_CLASSES,READING_CLASSES,READING_TEST_MOCKS_CLASSES,SERIAL,disableEmulatorNetwork,runSuite,suitePlan,summarize} from '../scripts/ci/emulator-suite.mjs';
-import {CANONICAL_TEST,asrPackaged,candidateProblems,packageSpeechRun} from '../scripts/ci/speech-candidate.mjs';
-import {CLASS_REGISTRY,DEFAULT_CLASSES,parseInstrumentationArgs} from '../scripts/android-instrumentation.mjs';
-import {affected} from '../scripts/ci/affected.mjs';
+import {AVD,FUSED_SPEECH_CLASSES,READING_CLASSES,READING_TEST_MOCKS_CLASSES,SERIAL,disableEmulatorNetwork,runSuite,suitePlan,summarize} from '../scripts/ci/emulator-suite.ts';
+import {CANONICAL_TEST,asrPackaged,candidateProblems,packageSpeechRun} from '../scripts/ci/speech-candidate.ts';
+import {CLASS_REGISTRY,DEFAULT_CLASSES,parseInstrumentationArgs} from '../scripts/android-instrumentation.ts';
+import {affected} from '../scripts/ci/affected.ts';
 import {assertBefore} from './fixtures/assert-order.mjs';
 
 const read=file=>fs.readFileSync(file,'utf8');
@@ -44,7 +44,7 @@ test('every emulator job is selected by the suite input, needs the build, and it
   assert.ok(text.includes(`\n    if: inputs.suite == '${name}' || inputs.suite == 'all'\n`),`${name} runs only when selected`);
   assert.match(text,/\n    timeout-minutes: \d+\n/,name);
   assert.equal((text.match(/reactivecircus\/android-emulator-runner@/g)??[]).length,1,name);
-  assert.ok(text.includes(`\n          script: node scripts/ci/emulator-suite.mjs ${name}\n`),`${name} runs its own suite`);
+  assert.ok(text.includes(`\n          script: node scripts/ci/emulator-suite.ts ${name}\n`),`${name} runs its own suite`);
   // API 35 default x86_64 is the fixture the preparation scripts admit (AVD "test", emulator-5554).
   assert.match(text,/api-level: 35\n          target: default\n          arch: x86_64\n/,name);
   // The APKs are the build job's, proven by the manifest hash, at the build job's commit.
@@ -141,9 +141,9 @@ test('the build job refuses the speech suite until hosted Paradee staging exists
  for(const output of ['manifest_sha256','test_mocks_manifest_sha256','artifact_id','source_sha'])assert.match(build,new RegExp(`\\n      ${output}: \\$\\{\\{ `),output);
  // The speech job checks the APK it was handed against that record before booting anything.
  const speech=job['fused-speech'];
- assert.ok(speech.indexOf('node scripts/ci/speech-candidate.mjs check artifacts/standalone-debug.apk')>0);
- assertBefore(speech,'speech-candidate.mjs check','android-emulator-runner@');
- assert.match(speech,/node scripts\/ci\/speech-candidate\.mjs package test-results\/android-instrumentation\/ci-fused-speech test-results\/fused-speech-x86_64/);
+ assert.ok(speech.indexOf('node scripts/ci/speech-candidate.ts check artifacts/standalone-debug.apk')>0);
+ assertBefore(speech,'speech-candidate.ts check','android-emulator-runner@');
+ assert.match(speech,/node scripts\/ci\/speech-candidate\.ts package test-results\/android-instrumentation\/ci-fused-speech test-results\/fused-speech-x86_64/);
 });
 
 test('the reading job provisions the pinned WebView on the fixture its provisioner admits',()=>{
@@ -166,9 +166,9 @@ test('suite plans: default classes; reading classes with the builds and gates th
 
  const reading=suitePlan('browser-reading');
  assert.deepEqual(reading.map(step=>step.name),['prepare-emulator','prepare-webview','ci-reading','ci-reading-test-mocks']);
- assert.deepEqual(reading[1].command.slice(1),['scripts/prepare-ci-webview.mjs']);
+ assert.deepEqual(reading[1].command.slice(1),['scripts/prepare-ci-webview.ts']);
  assert.deepEqual(reading[1].env,{ANDROID_SERIAL:'emulator-5554',ALPHA_DISPOSABLE_WEBVIEW_FIXTURE:'api35-default-x86_64'});
- assert.deepEqual(reading[0].command.slice(1),['scripts/prepare-ci-emulator.mjs']);
+ assert.deepEqual(reading[0].command.slice(1),['scripts/prepare-ci-emulator.ts']);
  assert.deepEqual([...READING_CLASSES,...READING_TEST_MOCKS_CLASSES].sort(),['BrowserIsolatedReading','BrowserPageQuestion','BrowserReading','BrowserReadingNavigation','BrowserSensitiveReading']);
  // The runner itself accepts both invocations, on both distributions, with each class's own gate.
  const flagOff=parseInstrumentationArgs(reading[2].command.slice(4)),mocks=parseInstrumentationArgs(reading[3].command.slice(4));
@@ -234,7 +234,7 @@ test('suite run: preparation failure stops it; evidence steps are independent; a
 
  // A provider that cannot be installed stops the suite: the reading classes are not run on WebView 124.
  fs.rmSync(path.join(root,'test-results'),{recursive:true,force:true});calls=[];
- const stopped=runSuite('browser-reading',{environment:hosted,execute:command=>{calls.push(command);return command.includes('scripts/prepare-ci-webview.mjs')?1:0;}});
+ const stopped=runSuite('browser-reading',{environment:hosted,execute:command=>{calls.push(command);return command.includes('scripts/prepare-ci-webview.ts')?1:0;}});
  assert.equal(calls.length,2);assert.deepEqual(stopped.steps.map(row=>row.status),['passed','failed','not-run','not-run']);assert.equal(stopped.passed,false);
 
  // A skipped or missing class is not a pass, whatever the exit status says; neither is a run that left no record.
@@ -350,10 +350,10 @@ test('the suite command refuses to start, and writes nothing, outside a hosted r
  const root=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'emulator-suite-cli-')));t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
  const env={PATH:process.env.PATH,HOME:process.env.HOME};
  for(const suite of emulatorJobs){
-  const run=spawnSync(process.execPath,[path.resolve('scripts/ci/emulator-suite.mjs'),suite],{cwd:root,env,encoding:'utf8'});
+  const run=spawnSync(process.execPath,[path.resolve('scripts/ci/emulator-suite.ts'),suite],{cwd:root,env,encoding:'utf8'});
   assert.notEqual(run.status,0,suite);assert.match(run.stderr,/only on a GitHub-hosted runner/,suite);
  }
- const unknown=spawnSync(process.execPath,[path.resolve('scripts/ci/emulator-suite.mjs'),'all'],{cwd:root,env:{...env,GITHUB_ACTIONS:'true',RUNNER_ENVIRONMENT:'github-hosted'},encoding:'utf8'});
+ const unknown=spawnSync(process.execPath,[path.resolve('scripts/ci/emulator-suite.ts'),'all'],{cwd:root,env:{...env,GITHUB_ACTIONS:'true',RUNNER_ENVIRONMENT:'github-hosted'},encoding:'utf8'});
  assert.notEqual(unknown.status,0);assert.match(unknown.stderr,/Unknown suite/);
  assert.deepEqual(fs.readdirSync(root),[]);
 });

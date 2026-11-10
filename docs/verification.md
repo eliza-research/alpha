@@ -20,7 +20,7 @@ is signed by the certificate recorded in `android/release-signer.json` (`unset` 
 release keys exist) and its versionCode exceeds that file's last recorded release; a signed
 release with another certificate or a non-advancing versionCode fails verification.
 The committed notices carry only the umbrella runtime entry, so a staged runtime in a
-development checkout never makes them stale. `node scripts/generate-licenses.mjs --packaged-runtime`
+development checkout never makes them stale. `node scripts/generate-licenses.ts --packaged-runtime`
 adds Bun (with its JavaScriptCore LGPL notice, its corresponding-source addresses and the written
 offer recorded in `config/source-offer.json`, if any) and every npm package bundled
 into the staged agent and workflow worker; the resident workflow runs it after staging, and an
@@ -30,10 +30,10 @@ entries when one is present. Record the product commit,
 `upstream.lock.json` revision, generated input provenance and APK hashes.
 Unsigned release APKs require controlled signing before distribution.
 The gates downstream of `verify-apks` read that record back through
-`scripts/release-blockers.mjs` and name every unresolved blocker: pilot provisioning and
-update (`scripts/provision-unit.mjs`, `scripts/pilot-update.mjs`) and AOSP staging
-(`scripts/stage-aosp.mjs`) refuse a release that is not distributable, and
-`scripts/qualify-head.mjs` records the blockers and reports `releasesDistributable: false`
+`scripts/release-blockers.ts` and name every unresolved blocker: pilot provisioning and
+update (`scripts/provision-unit.ts`, `scripts/pilot-update.ts`) and AOSP staging
+(`scripts/stage-aosp.ts`) refuse a release that is not distributable, and
+`scripts/qualify-head.ts` records the blockers and reports `releasesDistributable: false`
 while one remains. Only the debug emulator rehearsal (`--build debug`) and `--development`
 staging of a debug APK proceed without a distributable release, and both are decided from
 the APK file, not only its manifest row: `--development` refuses a non-debuggable APK that has
@@ -57,14 +57,14 @@ Alpha APKs; `verify-apks` then adds a `listener` section to `apk-manifest.json`
 voice bundle) and fails on a listener APK that requests network access or
 unreviewed permissions. Without listener APKs the section records that none was
 built. Its rows are APK-build evidence (class B) and stay `distributable: false`
-while the record is unqualified; `scripts/listener-qualification.mjs` refuses a
+while the record is unqualified; `scripts/listener-qualification.ts` refuses a
 record that claims qualification without passed gates and image/device evidence.
 
 | Check | Class | What it does not prove |
 | --- | --- | --- |
 | `node --test test/always-on-listener.test.mjs test/aosp-listener.test.mjs test/listener-qualification.test.mjs` (the first two run the upstream sense suites at the pin) | S | That the listener or SystemUI builds as an APK/image, or that any indicator is visible |
 | A `listener` row in `apk-manifest.json` | B | Privileges, the lease or capture on an image |
-| `node scripts/verify-aosp-listener.mjs --serial S --user 0` on a booted image | I | Indicator visibility, stop reliability, coexistence, battery |
+| `node scripts/verify-aosp-listener.ts --serial S --user 0` on a booted image | I | Indicator visibility, stop reliability, coexistence, battery |
 | Gates G3–G6 on a Pixel 10a | D | Other devices |
 
 ### Speech engine (decision P-42)
@@ -85,8 +85,8 @@ Each kind of evidence proves only its own class:
 Run `npm run test:browser` for the affected flows and inspect the generated reports
 and screenshots under `test-results/`. The browser workflow also exercises storage
 contracts in Firefox and WebKit. Record the browser, project, test selection and
-fixture profile. `scripts/storage-specs.mjs` is the shared storage-spec inventory
-for browser lanes and `scripts/qualify-head.mjs`. Qualification requires every
+fixture profile. `scripts/storage-specs.ts` is the shared storage-spec inventory
+for browser lanes and `scripts/qualify-head.ts`. Qualification requires every
 listed spec to execute, passing terminal attempts, matching report counts and no
 runner errors, skipped tests or flaky results. A simulated adapter test verifies
 its contract, not a live provider.
@@ -113,7 +113,7 @@ are expanded); the default list covers the product-surface classes; `--all` runs
 whole androidTest suite in one process; `--test-mocks` uses the separate
 `artifacts/test-mocks/` pair for fixture-dependent classes such as BrowserAutofill
 and the browser loopback cases. `<output>/results.json` (via
-`scripts/instrumentation-result.mjs`) records per-class `passed`, `failed`, `skipped`
+`scripts/instrumentation-result.ts`) records per-class `passed`, `failed`, `skipped`
 (every method skipped by its own assumption gate) or `missing`, bound to the commit, a
 dirty flag and every installed APK's SHA-256, with raw output per class. It is labelled
 emulator class E evidence and is never device or user acceptance. Process-death,
@@ -121,7 +121,7 @@ permission-changing and provider-credential campaigns (ReminderTapProcessDeath,
 WorkflowNoticeProcessDeath, NotificationChannels, VoicePermissionDenied,
 VoicePermissionRevoke, LocalVoiceRecordingLimit, ResidentEgressRedaction) are refused
 there with the command of the campaign that owns them; text-scale, bookmark and sign-in restart
-phases run through `scripts/test-native-restart.mjs`. Classes that assume a test-mocks app
+phases run through `scripts/test-native-restart.ts`. Classes that assume a test-mocks app
 build (ConnectionChooser, BrowserWebFeatures, CloudVoice and the other loopback-fixture
 classes) are refused without `--test-mocks` instead of reporting `skipped`. The reading
 classes that give the product a loopback HTTP speech route (BrowserReading,
@@ -161,7 +161,7 @@ boot-time HOME, a custom image, or the recovery and emergency routes of a phone.
 every class with an `@Test` method under `android/app/src/androidTest` or
 `android/app/src/testMocks/androidTest` must have a `CLASS_REGISTRY` entry, be named by one
 of the `CAMPAIGN_RUNNERS` scripts, or be listed in `NOT_RUN_BY_A_RUNNER` with the reason
-(all three are in `scripts/android-instrumentation.mjs`). A new class with none of these
+(all three are in `scripts/android-instrumentation.ts`). A new class with none of these
 fails `npm test`, and so does a listed class that has since gained a runner. AccessibilityInstrumentedTest
 (ATF plus TalkBack-order checks at 200% font) and RotationInstrumentedTest (which needs
 the landscape layout and fails, not skips, without it) run through the same runner. See the [Android/AOSP guide](android-and-aosp.md)
@@ -175,7 +175,7 @@ that remote content cannot paint over or receive touches through host controls,
 sheets or the keyboard. Phone geometry and real provider behavior require their
 own evidence; desktop screenshots cannot establish native isolation.
 
-Calendar CRUD cases run through `scripts/test-calendar-regression.mjs` with
+Calendar CRUD cases run through `scripts/test-calendar-regression.ts` with
 `--case=CalendarCrudInstrumentedTest` or `--case=CalendarAgentCrudInstrumentedTest`.
 `--case=` takes a class (every case of it) or `Class#method`. CalendarAgentCrud has two
 cases, each with its own gate and result folder: the reviewed create/read/update/delete
@@ -188,12 +188,12 @@ run by default; `--variant=standalone` or `--variant=launcher` selects one.
 These cases use the built app/test APKs, isolated-user Calendar grants, and
 retained instrumentation and cleanup evidence.
 
-The native workflow campaign uses `node scripts/android-workflow-native.mjs` with
+The native workflow campaign uses `node scripts/android-workflow-native.ts` with
 `ANDROID_SERIAL`, `ALPHA_WORKFLOW_TEST_AVD`, `ALPHA_WORKFLOW_TEST_ABI`, and
 `ALPHA_BUILD_ARCHIVE`. The archive must contain both distributions' debug and
 instrumentation APKs plus their filename-to-SHA256 `apk-manifest.json`:
-`node scripts/build-archive.mjs test-results/<new>` makes it from the strict build, and
-`node scripts/developer-archive.mjs [--test-mocks] test-results/<new>` copies it from a
+`node scripts/build-archive.ts test-results/<new>` makes it from the strict build, and
+`node scripts/developer-archive.ts [--test-mocks] test-results/<new>` copies it from a
 developer build that verify-apks recorded in `artifacts/` (it admits each APK against
 `artifacts/apk-manifest.json` and writes `archive-source.json` saying it is a developer
 archive). `ALPHA_BUILD_ARCHIVE` must be a flag-off archive; the cases that restore a synthetic
@@ -214,7 +214,7 @@ package termination or cleanup cannot be proven. These synthetic read/draft test
 do not establish paired-host workflow execution.
 
 Native permission, restart, one-off reminder, and recurrence runners share
-`scripts/native-test-fixture.mjs`: AlphaPhone owns the exact archived APK pair
+`scripts/native-test-fixture.ts`: AlphaPhone owns the exact archived APK pair
 and SDK configuration; upstream owns the emulator lease, isolated user, strict
 instrumentation admission, and cleanup. Set `ANDROID_SERIAL`,
 `ALPHA_NATIVE_TEST_AVD`, `ALPHA_NATIVE_TEST_ABI`, and the fixture's stock
@@ -225,7 +225,7 @@ the shared lifecycle, `verification.json` the instrumentation and package
 cleanup, and `result.json` the product scenario. Deferred cleanup is a failure
 requiring explicit recovery of the owned fixture.
 
-`node scripts/test-native-permissions.mjs <scenario> APP.apk TEST.apk NEW_OUTPUT` sets the
+`node scripts/test-native-permissions.ts <scenario> APP.apk TEST.apk NEW_OUTPUT` sets the
 permission before the app process starts and runs one exact method:
 
 | Scenario | Permission state | What runs |
@@ -246,7 +246,7 @@ imitate the kill: a recording process that survives `pm revoke` fails the campai
 its grants, so nothing is restored afterwards. None of this is microphone, speaker or
 notification behaviour on a phone.
 
-Process-restart campaigns use `node scripts/test-native-restart.mjs` with `inbox`,
+Process-restart campaigns use `node scripts/test-native-restart.ts` with `inbox`,
 `notes`, `document`, `text-scale`, `tree`, `bookmark`, or `signin`, a matching archived APK pair and a new output directory.
 Use the owned-emulator configuration in the README. Require successful prepare,
 restore/verify and cleanup phases; Notes and Inbox reports also require distinct
@@ -303,7 +303,7 @@ run; nothing installed.
 - `npm run upstream:verify`: source verified at `fb62325230`; reachability re-recorded
   (`identical` to `develop`, 2026-10-14) with #36271 and #36261 added to the record.
 - `npm run upstream:prepare-client`: the voice projection inputs are unchanged at the new pin.
-- Engine (class B): `scripts/prepare-embedding-host.mjs --build --remap-build-path` (NDK 28.2)
+- Engine (class B): `scripts/prepare-embedding-host.ts --build --remap-build-path` (NDK 28.2)
   rebuilt the engine and the registered `ElizaVoiceNative` JNI for both ABIs at the pin with a
   clean llama.cpp checkout at `56e70ff2` (receipt checks passed: ELF ABI, embedding symbols, only
   `JNI_OnLoad` exported, 16 KiB alignment; 85 `eliza_inference_*` exports including the six
@@ -335,17 +335,17 @@ hosted run; nothing installed.
   (NDK 28.2) built both ABIs with `LLAMA_BUILD_PARAKEET=ON` and eSpeak NG `N_PATH_HOME=1024`
   (voice ABI 18, `paradee_supported()=1`, `asr_supported()=1`, 83 exports, LOAD alignment 16 KiB)
   and converted the Paradee GGUF (now `357477…`, the v1_0 metadata of #36239) and the misaki
-  lexicon from pinned sources, both equal to their pins. `scripts/prepare-embedding-host.mjs
+  lexicon from pinned sources, both equal to their pins. `scripts/prepare-embedding-host.ts
   --build --remap-build-path` built the path-independent engine and the registered
   `ElizaVoiceNative` JNI for both ABIs (receipt checks passed: ELF ABI, embedding symbols, only
   `JNI_OnLoad` exported, 16 KiB alignment); those engine bytes are the voice host record's.
   The Phonon-2 GGUF is the byte-reproducible conversion (`dc552eb7…`, 330,632,256 bytes) of
   `FermionResearch/Phonon-2@7e153e40` made earlier with the pinned converter's `--verify`.
-- Voice staging: `node scripts/android-stage-voice-models.mjs --from <outputs>` staged both engines
+- Voice staging: `node scripts/android-stage-voice-models.ts --from <outputs>` staged both engines
   and the bundle (Paradee, misaki, eSpeak NG data, Phonon-2, Silero VAD, notices including
   Fermion's NOTICE and the CC-BY-4.0 text) with every byte equal to
-  `android/voice-host/qualified-voice-host.json`; `scripts/paradee-runtime.mjs --app-linkage` and
-  `scripts/voice-host.mjs --verify` admitted them (`qualified:false`).
+  `android/voice-host/qualified-voice-host.json`; `scripts/paradee-runtime.ts --app-linkage` and
+  `scripts/voice-host.ts --verify` admitted them (`qualified:false`).
 - Gradle `--offline -PELIZA_ALLOW_UNPACKAGED_RUNTIME=1 -x :app:verifyEmbeddingHost`, with the
   candidate embedding host libraries (not reviewed) copied into the ignored app `jniLibs`:
   `:app:compileStandaloneDebugJavaWithJavac`, `:app:compileLauncherReleaseJavaWithJavac`,
@@ -392,10 +392,10 @@ Development machine, load average 25 to 45 from other sessions. No emulator, dev
 - `npm run verify`: exit 0, run again at the final content (prepare-client, `tsc --noEmit`, node tests 1170 of 1170 plus
   `scripts/test-notes-query-flow.ts`, `npm run build`, `npm run audit:bundle` PASS, 389 files,
   `testMocks=false`).
-- Voice staging (class B inputs): `node scripts/android-stage-voice-models.mjs --from <build-native output> --from <models>`
+- Voice staging (class B inputs): `node scripts/android-stage-voice-models.ts --from <build-native output> --from <models>`
   staged both engines and the whole bundle, including the ASR slot pair, with every byte equal to
-  `android/voice-host/qualified-voice-host.json`; `node scripts/paradee-runtime.mjs` and
-  `node scripts/voice-host.mjs --verify` admitted them (`qualified:false`).
+  `android/voice-host/qualified-voice-host.json`; `node scripts/paradee-runtime.ts` and
+  `node scripts/voice-host.ts --verify` admitted them (`qualified:false`).
 - Gradle `--offline -PELIZA_ALLOW_UNPACKAGED_RUNTIME=1 -x :app:verifyEmbeddingHost`, with the
   voice outputs staged and the candidate embedding host libraries (the voice host engine plus the
   registered `ElizaVoiceNative` JNI; not reviewed) copied into the ignored app `jniLibs`:
@@ -450,7 +450,7 @@ with this branch's fixes re-applied on top:
 - Toasts under dialogs, the floating dock and app titles at large text use main's
   `toast-layer.ts`, dock audit and `alpha-text-xl` rules; this branch's dialog toast mirror and
   `focus-under-composer` rule were dropped as duplicates.
-- SBOM and Gradle verification use main's `gradle-verification.mjs` and metadata, with this
+- SBOM and Gradle verification use main's `gradle-verification.ts` and metadata, with this
   branch's voice-host components and no web-speech or Sherpa components; the strict-build input
   report lists the optional on-device voice bundle in place of the removed Sherpa AAR.
 - The explicit native patches (`patches/eliza`) were rebased from `13c9857598` to `bc71e21f3b`
@@ -493,20 +493,20 @@ E, I, R or D. The latest emulator record is still round 8, below, at `13c9857598
 - Playwright `chromium` and `production` projects on the seven spec files the consumed changes
   touch (Stop, Inbox paging, app library, note to calendar hand-off, J04 Android, phone sources
   and dossier, Gmail scope): 62 passed, 0 failed.
-- Resident dependency audit (plan step A-3): `node scripts/dependency-audit.mjs --resident --write`
+- Resident dependency audit (plan step A-3): `node scripts/dependency-audit.ts --resident --write`
   99 findings, none without a reviewed disposition; `--resident` exits 0
   ([dependency audit](dependency-audit.md)).
 - `test/calendar-availability-reader.test.mjs`: the upstream `SelectedCalendarReader`
   availability read on the JVM with the `sqlite3` provider stand-in, PASS.
 - Gradle, compile only, against the prepared source at the pin
-  (`node scripts/prepare-local-agent.mjs --source-only`):
+  (`node scripts/prepare-local-agent.ts --source-only`):
   `./gradlew --offline -PELIZA_ALLOW_UNPACKAGED_RUNTIME=1` compiled
   `:app:compileStandaloneDebugJavaWithJavac`, `:app:compileLauncherDebugJavaWithJavac` and both
   `…DebugAndroidTestJavaWithJavac` tasks: BUILD SUCCESSFUL. No APK, no install.
 - Embedding host: the engine gitlink and `stage-elizavoice-lib.ts` changed, so
   `android/embedding-host/qualified-host.json` is marked for requalification and
-  `node scripts/stage-embedding-host.mjs --verify` refuses a distribution build. A candidate was
-  built with `node scripts/prepare-embedding-host.mjs --abi arm64-v8a --build` at engine
+  `node scripts/stage-embedding-host.ts --verify` refuses a distribution build. A candidate was
+  built with `node scripts/prepare-embedding-host.ts --abi arm64-v8a --build` at engine
   `7efee0037524` (NDK 29.0.13113456): ELF ABI, 16 KiB alignment and every embedding and voice
   symbol checked by that script. Its hashes are recorded in the file; it was not reviewed, staged
   or run (class B for the build only).
@@ -657,7 +657,7 @@ class B or class E evidence, and no fix below has been shown to hold on Android.
   `RUN --variants launcher --home-role --classes SettingsRoles,LauncherHome`, repeated, since
   the crash it found appeared once in 22 runs; and, for the plugin methods now routed through
   `LateLaunch`, `RUN --classes DailyApps,ReminderLifecycle,HostedResultsLifecycle,StartupReadiness`
-  with the voice permission campaigns of `scripts/test-native-permissions.mjs`. These exercise
+  with the voice permission campaigns of `scripts/test-native-permissions.ts`. These exercise
   the changed plugins while the activity is alive, and LauncherHome destroys it; none delivers
   a call to a destroyed plugin on purpose, so a pass is regression evidence only.
 
@@ -674,7 +674,7 @@ Class S only. Nothing in this section ran on an emulator or a device, and no APK
   touched. This is an engineering default, not an owner decision
   ([owner actions](mvp-owner-actions.md), decision 18). Before this change the notice stayed in
   the shade and its tap answered "Connect its original agent".
-- `scripts/android-workflow-native.mjs` has a third phase, `approval-notice-recovery`, two
+- `scripts/android-workflow-native.ts` has a third phase, `approval-notice-recovery`, two
   cases on each distribution (18 cases in all):
   `WorkflowApprovalNoticeProcessDeathInstrumentedTest` under the instrumentation APK's
   `WorkflowNoticeProcessRunner` (the test runs in a helper process of the app and kills the
@@ -682,7 +682,7 @@ Class S only. Nothing in this section ran on an emulator or a device, and no APK
   `WorkflowApprovalNoticeInstrumentedTest#ownerChangeWithdrawsThePendingApprovalNoticeAndItsTapOpensNothing`.
   Each case runs in its own disposable user from the hash-admitted archive pair, records the
   pair and its runner, and a failed, skipped or missing case stops the campaign and exits
-  non-zero. `scripts/android-instrumentation.mjs` names the process-death class as a campaign
+  non-zero. `scripts/android-instrumentation.ts` names the process-death class as a campaign
   class; `--classes WorkflowApprovalNotice` now runs three methods, two of which post.
 - What the process-death case asserts: one receipt and one route before the death; after the
   main process is killed and proven absent, the same OS notice (key, post time, PendingIntent)
@@ -714,7 +714,7 @@ Class S only. Nothing in this section ran on an emulator or a device, and no APK
   The owner-change instrumented case also refuses to start with an approval route left by an
   earlier test and releases its own routes when it fails.
 - Ledger check (MVP-12): the inventory still said no runner grants the Calendar permissions to
-  `CalendarAvailabilityInstrumentedTest`. `scripts/test-calendar-regression.mjs` has done so
+  `CalendarAvailabilityInstrumentedTest`. `scripts/test-calendar-regression.ts` has done so
   since round 8 and the class passed on both flavors in the run recorded below; the entry was
   corrected.
 
@@ -756,7 +756,7 @@ differences (9,152 and 256 bytes) are about 50 bytes per embedded path, which is
 shorter build directory would give. The
 reviewed build's directory is recorded only in its receipt, which is not in the
 repository, so no script can reproduce those bytes. With the new
-`prepare-embedding-host.mjs --remap-build-path`, two builds in different directories were
+`prepare-embedding-host.ts --remap-build-path`, two builds in different directories were
 byte-identical to each other (6,187,152 and 1,009,560 bytes; hashes in
 `android/embedding-host/build-toolchain.json` under `unqualifiedCandidateMeasurement`).
 Those bytes are not reviewed, not qualified and not staged by any script.
@@ -775,7 +775,7 @@ uncommitted edit of `qualified-host.json` (both reverted afterwards):
   release, 1,121 per debug APK, upstream commit `13c98575987a`), bundle audit passed.
 - The first of those two runs recorded the releases not distributable for five reasons. One
   was a chain defect: "notices lack the packaged runtime", because nothing in
-  `android:build:local` ran `generate-licenses.mjs --packaged-runtime` (the hosted
+  `android:build:local` ran `generate-licenses.ts --packaged-runtime` (the hosted
   resident job does). With that step added (660 entries, 66 flagged, exit 0) the second
   run recorded `runtimeNotices: true` and four reasons, all of which need a person: speech
   native bytes not admitted, speech functional acceptance pending or failed, unsigned
@@ -802,7 +802,7 @@ configuration runs, no APK task, no native build, nothing installed):
   the documents say what is declared
   ([dependency audit](dependency-audit.md#gradle-dependency-verification)).
 - The instruction printed for the embedding host did not work as written on a clean
-  checkout: `stage-embedding-host.mjs --receipt` reads the staged embedding model, which
+  checkout: `stage-embedding-host.ts --receipt` reads the staged embedding model, which
   only `agent:stage-android` stages and which the chain reaches after the step that stops;
   and it refuses to replace a differing `qualified-host.json`. The message, the README and
   the owner action now say both, and the staging command names the missing model instead
@@ -819,7 +819,7 @@ configuration runs, no APK task, no native build, nothing installed):
 - The recorded checksums were compared with the origin: the 71 shipped coordinates and the
   three `aapt2` archives were fetched again from Google's Maven repository and Maven Central
   and matched. `android/gradle/verification-metadata.xml` is now part of the build-input
-  snapshot (`scripts/source-snapshot.mjs`), and the check accepts one checksum per artifact.
+  snapshot (`scripts/source-snapshot.ts`), and the check accepts one checksum per artifact.
 - Gradle was run twice, offline, to see the metadata refuse: with the Android Gradle plugin
   jar's checksum changed `./gradlew help` failed on dependency verification (the file was
   restored). `:app:dependencies` does not verify, because it resolves no artifact. No APK
@@ -850,16 +850,16 @@ each fix named here is shown to hold, to fail or to be still unrun.
   `CalendarRangeReader` again. `test/calendar-range-reader.test.mjs` runs that reader on the
   JVM against a stand-in provider (2,000 returned whole, 2,001 reported incomplete, reading
   stops at the first row past the bound). The instrumentation is unchanged and not rerun.
-- PasswordBrowserFill, `test-native-restart.mjs notes` and FilesTree (each failed once or
+- PasswordBrowserFill, `test-native-restart.ts notes` and FilesTree (each failed once or
   twice in round 7, "cause not established"): each has a cause read from the saved result
   files and the source, and a fix. The causes, the fixes and the repeat commands that would
   show them hold are in the [core loop audit](core-loop-audit.md), "Repeat runs for the round 7
   failures". One of them changes the product: a document receipt in Notes now waits until the
   page is visible (`test/browser/notes-document-receipt.spec.ts`).
 - Runner cases, checked against the synthetic `adb` fixtures only:
-  `scripts/test-calendar-regression.mjs` runs `directSaveReadsBackAllDayChosenZoneAndRrule`
+  `scripts/test-calendar-regression.ts` runs `directSaveReadsBackAllDayChosenZoneAndRrule`
   with `calendarOptions=1` and the whole `CalendarAvailabilityInstrumentedTest`;
-  `scripts/developer-archive.mjs` assembles the archive `scripts/android-workflow-native.mjs`
+  `scripts/developer-archive.ts` assembles the archive `scripts/android-workflow-native.ts`
   reads from a verify-apks developer build, and that campaign accepts `--variant=` and
   `--phase=`; BrowserDownload left the default class list, because on a build without test
   mocks it can only be skipped and a skipped class fails the run.
@@ -1069,7 +1069,7 @@ Results are standalone / launcher, instrumentation set 1 unless a row says other
 | NotesTrashBackstop | failed / failed with set 1 (8 of 9 methods); passed / passed with set 2 (9 of 9) | Test defect in a method that had never run (`unreadableStoresMakeThePermanentDeletionPassANoOp`, round 9): it wrote text that is not JSON into the pending slot, and the secure store refuses such a write. The test now asserts that refusal, the unchanged slot and that the pass erases nothing (`008ccf9d`). |
 | BrowserReadingNavigation | failed / failed | Environment: this WebView reports `JS_INJECTION_IN_FRAME_AND_WORLD=false`. Hosted job `browser-reading` is the way to run it. |
 
-### Calendar (`scripts/test-calendar-regression.mjs`)
+### Calendar (`scripts/test-calendar-regression.ts`)
 
 | Case | Result | Classification |
 | --- | --- | --- |
@@ -1080,17 +1080,17 @@ Results are standalone / launcher, instrumentation set 1 unless a row says other
 
 ### Campaigns from the developer archive
 
-`node scripts/developer-archive.mjs` assembled the archive from the verified developer pairs
+`node scripts/developer-archive.ts` assembled the archive from the verified developer pairs
 (set 2, and set 3 for `channels`).
 
 | Campaign | Result | Classification |
 | --- | --- | --- |
-| `test-native-restart.mjs notes` | launcher passed 3 of 3, standalone passed 1 of 1 | After the guest reboot. Before it every campaign that writes a fixture through MediaStore failed with `SQLiteException: Exception thrown by custom scalar function` from the provider's insert, on an emulator that had been up for three hours; those attempts are not counted. Three runs do not prove the round 7 timeout closed. |
-| `test-native-restart.mjs document` | standalone passed | The cancellation notice and the import receipt are still observed with the visibility-aware receipts. Launcher not run. |
-| `test-native-restart.mjs inbox` | passed / passed | Includes the round 8 step: after the restart with local apps chosen, Inbox's "Connect Eliza Cloud" panel offers "Retry saved connection" and a new sign-in and shows no account. Superseded by P-43 (2026-10-13): the local-apps selection is retired; needs a re-run. |
-| `test-native-permissions.mjs channels` | failed / failed with set 2 (twice); passed / passed with set 3 | Test defect caused by round 8 and missed by its review: the test clicked the first visible button whose text starts with "Notifications", which since round 8 is Home's handle (Home stays laid out under Settings), so it never reached the channel page. `CrossAppNotificationsRestartInstrumentedTest` had the same selector. Both now exclude the handle (`f87850fa`). |
-| `android-workflow-native.mjs --phase=approval-notice` | 4 of 4 cases passed (2 per flavor) | A selection: `selectionPassed` true, `passed` false by design. |
-| `android-workflow-native.mjs` (WorkflowPhoneNative and approval notice, 14 cases) | failed at its first case twice with set 2; **14 of 14 passed** with app APKs B and the final set (`passed: true`) | Test defect in a class that had never run: `privateReadResultSurvivesRecreationButNeverExpandsPassiveHistory` removed its journal fixture through the page's `AlphaConnection.secureRemove` and asserted success, but that bridge refuses native-only journal slots (`RendererCredentialSlots`). The test now asserts the refusal and removes the fixture through the native store (`9a1ca161`). `deniedCalendarGrantReturnsNoEvents` passed on both flavors (B-25, J01-7). |
+| `test-native-restart.ts notes` | launcher passed 3 of 3, standalone passed 1 of 1 | After the guest reboot. Before it every campaign that writes a fixture through MediaStore failed with `SQLiteException: Exception thrown by custom scalar function` from the provider's insert, on an emulator that had been up for three hours; those attempts are not counted. Three runs do not prove the round 7 timeout closed. |
+| `test-native-restart.ts document` | standalone passed | The cancellation notice and the import receipt are still observed with the visibility-aware receipts. Launcher not run. |
+| `test-native-restart.ts inbox` | passed / passed | Includes the round 8 step: after the restart with local apps chosen, Inbox's "Connect Eliza Cloud" panel offers "Retry saved connection" and a new sign-in and shows no account. Superseded by P-43 (2026-10-13): the local-apps selection is retired; needs a re-run. |
+| `test-native-permissions.ts channels` | failed / failed with set 2 (twice); passed / passed with set 3 | Test defect caused by round 8 and missed by its review: the test clicked the first visible button whose text starts with "Notifications", which since round 8 is Home's handle (Home stays laid out under Settings), so it never reached the channel page. `CrossAppNotificationsRestartInstrumentedTest` had the same selector. Both now exclude the handle (`f87850fa`). |
+| `android-workflow-native.ts --phase=approval-notice` | 4 of 4 cases passed (2 per flavor) | A selection: `selectionPassed` true, `passed` false by design. |
+| `android-workflow-native.ts` (WorkflowPhoneNative and approval notice, 14 cases) | failed at its first case twice with set 2; **14 of 14 passed** with app APKs B and the final set (`passed: true`) | Test defect in a class that had never run: `privateReadResultSurvivesRecreationButNeverExpandsPassiveHistory` removed its journal fixture through the page's `AlphaConnection.secureRemove` and asserted success, but that bridge refuses native-only journal slots (`RendererCredentialSlots`). The test now asserts the refusal and removes the fixture through the native store (`9a1ca161`). `deniedCalendarGrantReturnsNoEvents` passed on both flavors (B-25, J01-7). |
 
 ### Found and changed in this run
 
@@ -1135,7 +1135,7 @@ source. The section below this one is the first campaign and is kept as history.
   campaign and the notes rerun), test-mocks `559ae5f8…` / `da62c9db…`; RealClock ran with the
   set built at `55737f3b` (`19fe5d0d…` / `bc3c503e…`).
 - The fixture campaigns ran from a hand-assembled directory of those APKs with a name-to-hash
-  manifest; `scripts/build-archive.mjs` needs the strict build and was not run. The resident
+  manifest; `scripts/build-archive.ts` needs the strict build and was not run. The resident
   campaign (owner-held provider key) was not run.
 - Host load was 13 to 60 during these runs. On the first attempt at the launcher half the
   emulator's `system_server` was killed by its watchdog (WindowManager blocked for 74 s) and the
@@ -1180,17 +1180,17 @@ Result files: `test-results/r7-camp/<campaign>-<flavor>`, `test-results/calendar
 
 | Campaign | Result (standalone / launcher) | Classification |
 | --- | --- | --- |
-| `test-native-restart.mjs signin`, `document` | passed / passed | |
-| `test-native-restart.mjs notes` | passed / failed then passed | The first launcher run timed out waiting for "Export saved and exact bytes verified." after the system picker; the rerun passed. Cause not established. |
-| `test-native-restart.mjs inbox` | passed / passed | Was failing. Test: the Android account panel names the signed-in state differently, Inbox loads the mailbox itself, and after a restart with local apps chosen the saved sign-in is offered as "Retry saved connection" in Settings, not restored. Superseded by P-43 (2026-10-13): the local-apps selection is retired; needs a re-run. |
-| `test-native-permissions.mjs channels`, `settings`, `voice-limit`, `voice-revoke` | passed / passed | |
-| `test-native-permissions.mjs camera` | passed / passed | Was failing. Product defect fixed: a second permission dialog opened straight after "Don't allow". |
-| `test-native-permissions.mjs voice` | passed / passed | Was failing. Product defect fixed (the "Open app settings" control the denied message names was missing) and the test now signs in through the closed synthetic Cloud transport, because a build without test mocks records only through Eliza Cloud voice. |
-| `test-native-permissions.mjs notice`, `notice-denied` | passed / passed | Was failing. Test: the fixture wrote native-only result slots through the page bridge, which refuses them. |
-| `test-reminder-one-off.mjs` | passed / passed | |
-| `test-reminder-recovery.mjs` | passed / passed | First run. Reboots the emulator. |
-| `test-calendar-regression.mjs` CalendarCrud, CalendarAgentCrud, CalendarFlow, CalendarRange, CalendarCreationRecovery | passed / passed | CalendarCrud was failing. Test: the modal access panel covered the real touch, and scroll-driven animations report running forever. |
-| `test-calendar-regression.mjs` CalendarTruncation | failed / not run | First run of this class. "Calendar results incomplete" never appears. Not triaged. The runner stops at the first failure, so the launcher cases above were run one by one with `--variant=launcher --case=`. |
+| `test-native-restart.ts signin`, `document` | passed / passed | |
+| `test-native-restart.ts notes` | passed / failed then passed | The first launcher run timed out waiting for "Export saved and exact bytes verified." after the system picker; the rerun passed. Cause not established. |
+| `test-native-restart.ts inbox` | passed / passed | Was failing. Test: the Android account panel names the signed-in state differently, Inbox loads the mailbox itself, and after a restart with local apps chosen the saved sign-in is offered as "Retry saved connection" in Settings, not restored. Superseded by P-43 (2026-10-13): the local-apps selection is retired; needs a re-run. |
+| `test-native-permissions.ts channels`, `settings`, `voice-limit`, `voice-revoke` | passed / passed | |
+| `test-native-permissions.ts camera` | passed / passed | Was failing. Product defect fixed: a second permission dialog opened straight after "Don't allow". |
+| `test-native-permissions.ts voice` | passed / passed | Was failing. Product defect fixed (the "Open app settings" control the denied message names was missing) and the test now signs in through the closed synthetic Cloud transport, because a build without test mocks records only through Eliza Cloud voice. |
+| `test-native-permissions.ts notice`, `notice-denied` | passed / passed | Was failing. Test: the fixture wrote native-only result slots through the page bridge, which refuses them. |
+| `test-reminder-one-off.ts` | passed / passed | |
+| `test-reminder-recovery.ts` | passed / passed | First run. Reboots the emulator. |
+| `test-calendar-regression.ts` CalendarCrud, CalendarAgentCrud, CalendarFlow, CalendarRange, CalendarCreationRecovery | passed / passed | CalendarCrud was failing. Test: the modal access panel covered the real touch, and scroll-driven animations report running forever. |
+| `test-calendar-regression.ts` CalendarTruncation | failed / not run | First run of this class. "Calendar results incomplete" never appears. Not triaged. The runner stops at the first failure, so the launcher cases above were run one by one with `--variant=launcher --case=`. |
 | Resident campaign (`ResidentEgressRedaction`, `ResidentService`) | not run | Needs the packaged runtime and reads an owner-held provider key. |
 
 ### Product defects found by these runs and fixed on this branch
@@ -1213,7 +1213,7 @@ Result files: `test-results/r7-camp/<campaign>-<flavor>`, `test-results/calendar
 - Inbox's "Connect Eliza Cloud" panel offers only a new sign-in when a saved sign-in exists and
   local apps are selected; the saved one is offered in Settings › Agent connection. Owner decision.
   Superseded by P-43 (2026-10-13, resident agent always present): there is no local-apps
-  selection any more, so this observation and the `test-native-restart.mjs inbox` steps above
+  selection any more, so this observation and the `test-native-restart.ts inbox` steps above
   that restart "with local apps chosen" describe a retired state. The records stand as the
   evidence of their date; the campaign and `LocalAgentOfflineAppsInstrumentedTest` (replaced by
   `ResidentAlwaysPresentInstrumentedTest`) need a re-run.
@@ -1323,7 +1323,7 @@ kind of record: a written summary whose result files under `test-results/` are n
   `2bf1dcce…` / `3bf3eef7…` (rows marked A) and at `73b973a5` `5b3cdd0e…` / `755acbc2…` (rows
   marked B). Test-mocks pair: `5b126815…` / `8c13d13a…` with `caccd38c…` / `4c0c9cc9…`.
 - The fixture campaigns ran from a hand-assembled directory of those APKs with a name-to-hash
-  manifest; `scripts/build-archive.mjs` needs the strict build and was not run.
+  manifest; `scripts/build-archive.ts` needs the strict build and was not run.
 - The machine was heavily loaded (load average 30 to 140), so a timeout seen once is listed as
   not reproduced rather than as a defect.
 
@@ -1365,17 +1365,17 @@ Results are standalone / launcher. "skipped" names the gate.
 
 | Campaign | Result (standalone / launcher) | Classification |
 | --- | --- | --- |
-| `test-native-restart.mjs signin`, `notes`, `document` | passed / passed (A) | |
-| `test-native-restart.mjs inbox` | failed / failed (A, B) | The test waited for the "Cloud services connected" heading removed in `9aa75ce1`. With the wait changed to the signed-in account summary it still times out: the synthetic sign-in never shows a signed-in account. Unresolved. |
-| `test-native-permissions.mjs channels`, `settings`, `voice-limit` | passed / passed (A) | |
-| `test-native-permissions.mjs voice-revoke` | passed (B) / passed (A) | The first standalone run stopped in the runner, which parsed `cat`'s "No such file" text as the marker; fixed. |
-| `test-native-permissions.mjs camera` | failed / failed (A) | Test expects "Tap the shutter to retry"; the product shows "Camera access is off" with Open Android settings and Try again. Stale expectation or changed denial path; unresolved. |
-| `test-native-permissions.mjs voice` | failed / failed (A) | "Record without transcription" never offered. Unresolved. |
-| `test-native-permissions.mjs notice`, `notice-denied` | failed / failed (A, B) | The test reflected a plugin field that no longer exists (fixed); it now fails on a later bare assertion. Unresolved. |
-| `test-reminder-one-off.mjs` | passed / passed (A) | |
-| `test-calendar-regression.mjs --case=CalendarAgentCrudInstrumentedTest` | passed / passed (A) | |
-| `test-calendar-regression.mjs --case=CalendarCrudInstrumentedTest` | failed twice / not run (A, B) | An event row never satisfies the visible-and-hit-testable condition. Unresolved; the runner stops before the launcher variant. |
-| `test-reminder-recovery.mjs`, resident campaign (`ResidentEgressRedaction`, `ResidentService`) | not run | Recovery reboots the emulator (left for last); the resident campaign needs the packaged runtime and reads an owner-held provider key. |
+| `test-native-restart.ts signin`, `notes`, `document` | passed / passed (A) | |
+| `test-native-restart.ts inbox` | failed / failed (A, B) | The test waited for the "Cloud services connected" heading removed in `9aa75ce1`. With the wait changed to the signed-in account summary it still times out: the synthetic sign-in never shows a signed-in account. Unresolved. |
+| `test-native-permissions.ts channels`, `settings`, `voice-limit` | passed / passed (A) | |
+| `test-native-permissions.ts voice-revoke` | passed (B) / passed (A) | The first standalone run stopped in the runner, which parsed `cat`'s "No such file" text as the marker; fixed. |
+| `test-native-permissions.ts camera` | failed / failed (A) | Test expects "Tap the shutter to retry"; the product shows "Camera access is off" with Open Android settings and Try again. Stale expectation or changed denial path; unresolved. |
+| `test-native-permissions.ts voice` | failed / failed (A) | "Record without transcription" never offered. Unresolved. |
+| `test-native-permissions.ts notice`, `notice-denied` | failed / failed (A, B) | The test reflected a plugin field that no longer exists (fixed); it now fails on a later bare assertion. Unresolved. |
+| `test-reminder-one-off.ts` | passed / passed (A) | |
+| `test-calendar-regression.ts --case=CalendarAgentCrudInstrumentedTest` | passed / passed (A) | |
+| `test-calendar-regression.ts --case=CalendarCrudInstrumentedTest` | failed twice / not run (A, B) | An event row never satisfies the visible-and-hit-testable condition. Unresolved; the runner stops before the launcher variant. |
+| `test-reminder-recovery.ts`, resident campaign (`ResidentEgressRedaction`, `ResidentService`) | not run | Recovery reboots the emulator (left for last); the resident campaign needs the packaged runtime and reads an owner-held provider key. |
 
 ### Confirmed on this image
 
@@ -1433,13 +1433,13 @@ case is `AssistantResidentReuseInstrumentedTest`; it uses a synthetic runtime ob
 enrollment and streams, so a passing run is emulator-class evidence of surface ownership only,
 not of a live inference stream surviving, and never device acceptance.
 
-Native runner phases (MVP-18): `node scripts/test-installed-upgrade.mjs reminder` now also runs
+Native runner phases (MVP-18): `node scripts/test-installed-upgrade.ts reminder` now also runs
 `WorkflowLegacyReminderUpgradeInstrumentedTest` on both distributions after the candidate verify
 phase, against the same upgraded data. Calendar and reminder upgrades admit the candidate app
 and instrumentation APK as one verified pair from `artifacts/apk-manifest.json` and
 `artifacts/instrumentation/` (`npm run android:build`); shared Gradle outputs are no longer
 installed, and companion classes run only while the installed bytes match that pair.
-`node scripts/android-workflow-native.mjs` adds an `approval-notice` phase
+`node scripts/android-workflow-native.ts` adds an `approval-notice` phase
 (`WorkflowApprovalNoticeInstrumentedTest`, both methods, both distributions; the OS-posting
 case is granted `POST_NOTIFICATIONS` in its owned user). Each receipt names its phase and APK
 hashes; a failed, skipped or missing phase is recorded (`failedPhase` / `failure`) and exits
@@ -1507,10 +1507,10 @@ The pin moves to eliza `develop` `afd44a8544b4aed3bae7824be5d261270a69540e`, who
 elizaOS/eliza PRs (#36309, #36398 and the Maps relay PRs), so the reachability record is now `behind` with no pin-only commits.
 The llama.cpp move adds bounded Paradee streaming PCM (elizaOS/llama.cpp#82, voice ABI 19) and rejects undersized ASR stream
 transcript buffers (#81). The elizavoice-jni Java class now declares `nativeParadeeSynthesizeStream(long, byte[], float, Object)`;
-`scripts/embedding-native-contract.mjs` accepts the `Object` sink descriptor and its test covers the new signature.
+`scripts/embedding-native-contract.ts` accepts the `Object` sink descriptor and its test covers the new signature.
 
 - Native (class B, development machine): both ABIs rebuilt with NDK 28.2.13676358 by
-  `node scripts/prepare-embedding-host.mjs --build --remap-build-path`. Voice ABI 19; paradee, paradee-stream and ASR support
+  `node scripts/prepare-embedding-host.ts --build --remap-build-path`. Voice ABI 19; paradee, paradee-stream and ASR support
   all report 1; 87 `eliza_inference_*` exports including six `asr_stream_*`; 16 KiB LOAD alignment; full JNI exports only
   `JNI_OnLoad`. Voice-subset JNI bridges built by `./gradlew :local-speech:assembleRelease` export only `JNI_OnLoad`.
   `android/voice-host/qualified-voice-host.json` records the new bytes and stays `qualified: false`; the embedding host
@@ -1553,5 +1553,5 @@ agent's environment, so those paths stay refused until Seeker acceptance and the
 The pin moved from `985322b5df96` to the eliza `develop` tip `3d76ff5acacb369e2c58fc8512e69e59f53ce69b` (223 commits ahead,
 none behind). The llama.cpp gitlink (`6e6a4401aae4`), every native build input, the elizavoice-jni Java class and the voice
 projection inputs are byte-identical, so the recorded native bytes are unchanged and no rebuild was needed; regenerated
-notices differ only in the pin. `bun.lock` changed, so the resident audit was re-run (`dependency-audit.mjs --resident
+notices differ only in the pin. `bun.lock` changed, so the resident audit was re-run (`dependency-audit.ts --resident
 --write`). Reachability: `behind`, no pin-only commits. The carried patches apply unchanged.

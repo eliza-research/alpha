@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { KEY_READERS, auditSources, keyFileStatus, main, scanBundle } from "../scripts/owner/cerebras-key-status.mjs";
+import { KEY_READERS, auditSources, keyFileStatus, main, scanBundle } from "../scripts/owner/cerebras-key-status.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
 const scratch = t => { const dir = fs.mkdtempSync(path.join(os.tmpdir(), "alpha-key-status-")); fs.chmodSync(dir, 0o700); t.after(() => fs.rmSync(dir, { recursive: true, force: true })); return dir; };
@@ -43,7 +43,7 @@ test("every repository script that reads the key refuses a shared file and logs 
   const { findings, workflowsReferencingCerebras } = auditSources(root);
   assert.deepEqual(findings, []);
   assert.deepEqual(workflowsReferencingCerebras, [], "no workflow reads a Cerebras secret today; #671 step 2 adds one");
-  assert.ok(KEY_READERS.some(reader => reader.file === "scripts/android-resident-instrumentation.mjs"));
+  assert.ok(KEY_READERS.some(reader => reader.file === "scripts/android-resident-instrumentation.ts"));
 });
 
 test("the audit catches a log call that names the key variable, but not literal text", t => {
@@ -51,8 +51,8 @@ test("the audit catches a log call that names the key variable, but not literal 
   fs.mkdirSync(path.join(dir, "scripts"));
   for (const reader of KEY_READERS) fs.writeFileSync(path.join(dir, reader.file), "// cerebras-key\nif (stat.mode & 0o077) throw 1; if(st.mode&0o077)x; st_mode & 0o077\nconsole.log('the key is never printed')\n");
   assert.deepEqual(auditSources(dir).findings, []);
-  fs.writeFileSync(path.join(dir, "scripts/start-local-agent.mjs"), "// cerebras-key\nif (stat.mode & 0o077) throw 1;\nconst key = 1; console.log(`using ${key}`)\n");
-  assert.deepEqual(auditSources(dir).findings, ["scripts/start-local-agent.mjs:3 logs key, which holds the key"]);
+  fs.writeFileSync(path.join(dir, "scripts/start-local-agent.ts"), "// cerebras-key\nif (stat.mode & 0o077) throw 1;\nconst key = 1; console.log(`using ${key}`)\n");
+  assert.deepEqual(auditSources(dir).findings, ["scripts/start-local-agent.ts:3 logs key, which holds the key"]);
   fs.writeFileSync(path.join(dir, "scripts/new-launcher.mjs"), "read('.config/alphaphone/cerebras-key')");
   assert.ok(auditSources(dir).findings.some(line => /new-launcher\.mjs reads the key file but is not audited/.test(line)));
 });

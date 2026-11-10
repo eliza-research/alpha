@@ -1006,7 +1006,7 @@ This delivers WP1 (Section 14). With it, egress E6 in Section 4 is no longer unp
   - Person names still egress until an NER recognizer is registered (Section 14).
   - The desktop backend's vendor pin is unpatched.
   - Emulator and physical-device evidence for the resident agent are separate gates.
-- **Emulator evidence:** `ResidentEgressRedactionInstrumentedTest` ran through `scripts/android-resident-instrumentation.mjs` on a disposable API 35 arm64 emulator with 6 GB RAM, in a fresh secondary user, with the debug APK built from the series that includes the patch. Result:
+- **Emulator evidence:** `ResidentEgressRedactionInstrumentedTest` ran through `scripts/android-resident-instrumentation.ts` on a disposable API 35 arm64 emulator with 6 GB RAM, in a fresh secondary user, with the debug APK built from the series that includes the patch. Result:
   - The resident agent, with both swaps on, answered the turn ("56").
   - Its one recorded provider request contained `__ELIZA_SECRET_` placeholders and none of the raw email, card number or SSN.
 

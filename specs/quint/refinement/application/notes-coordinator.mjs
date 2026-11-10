@@ -21,7 +21,7 @@ async function fixture(extraSources) {
     define:{'import.meta.env':'{"VITE_ELIZA_DEV_ALLOW_TEST_MOCKS":""}'}});
   const sources=[...Object.keys(built.metafile.inputs).filter(path=>!path.startsWith('<')),
     'apps/app/src/prototype/agent-adapter.ts','specs/quint/refinement/application/support.mjs',
-    'test/support/strip-types.mjs','upstream.lock.json','scripts/prepare-client-features.mjs',
+    'test/support/strip-types.mjs','upstream.lock.json','scripts/prepare-client-features.ts',
     ...readdirSync(resolve(root,'patches/eliza')).filter(name=>/\.(patch|json)$/.test(name)).map(name=>'patches/eliza/'+name),driver,...extraSources];
   const driverHashes=captureInputs(sources);
   const module={exports:{}};

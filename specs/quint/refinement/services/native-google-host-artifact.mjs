@@ -4,7 +4,7 @@ import {existsSync, mkdirSync, mkdtempSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {coreStateReceipt} from '../../../../scripts/core-state-patch.mjs';
+import {coreStateReceipt} from '../../../../scripts/core-state-patch.ts';
 import {captureInputs, checkTraces} from '../check-traces.mjs';
 
 const repository = resolve(import.meta.dirname, '../../../..');
@@ -39,9 +39,9 @@ export async function checkNativeGoogleHostArtifact(extraSources = []) {
     .filter(name => existsSync(join(repository,name)));
   const sources = [
     fileURLToPath(import.meta.url), probe, 'test/fixtures/native-google-host-builder-port.mjs', 'test/fixtures/core-state-root.mjs',
-    'scripts/native-google-host-artifact.mjs', 'scripts/build-native-google-host.ts', 'scripts/workflow-worker-artifact.mjs',
-    'scripts/local-agent-source.mjs', 'scripts/copy-file-clone.mjs', 'scripts/prepare-client-features.mjs',
-    'scripts/client-speech-patch.mjs', 'package.json', 'tsconfig.json', 'upstream.lock.json', 'vendor/eliza/tsconfig.json',
+    'scripts/native-google-host-artifact.ts', 'scripts/build-native-google-host.ts', 'scripts/workflow-worker-artifact.ts',
+    'scripts/local-agent-source.ts', 'scripts/copy-file-clone.ts', 'scripts/prepare-client-features.ts',
+    'scripts/client-speech-patch.ts', 'package.json', 'tsconfig.json', 'upstream.lock.json', 'vendor/eliza/tsconfig.json',
     'vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs',
     'vendor/eliza/packages/app/scripts/lib/committed-source.mjs',
     ...optional, ...Object.keys(core.inputHashes), ...Object.keys(core.files).map(name => 'vendor/eliza/'+name),

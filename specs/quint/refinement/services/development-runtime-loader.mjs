@@ -14,9 +14,9 @@ const model = 'DevelopmentRuntimeLoader';
 function sourceInputs(extraSources) {
   const {patches} = JSON.parse(readFileSync(join(root, manifest), 'utf8'));
   return [
-    'backend/loader.ts', 'scripts/pinned-upstream-source.mjs', 'scripts/core-state-patch.mjs',
-    'scripts/core-state-preload.mjs', 'scripts/combined-agent-source.mjs',
-    'scripts/local-agent-source.mjs', 'scripts/copy-file-clone.mjs', manifest,
+    'backend/loader.ts', 'scripts/pinned-upstream-source.ts', 'scripts/core-state-patch.ts',
+    'scripts/core-state-preload.ts', 'scripts/combined-agent-source.ts',
+    'scripts/local-agent-source.ts', 'scripts/copy-file-clone.ts', manifest,
     'upstream.lock.json', 'test/fixtures/core-state-root.mjs',
     ...['consumer-source-resolver.mjs', 'immutable-workspace-source.mjs', 'committed-source.mjs']
       .map(name => 'vendor/eliza/packages/app/scripts/lib/'+name),

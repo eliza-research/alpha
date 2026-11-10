@@ -4,7 +4,7 @@ Owner prep for [#664](https://github.com/eliza-research/alphaphone/issues/664) (
 H-20 in [human actions](../human-actions.md), P-40, requirements AP-06 and AP-14, umbrellas #377
 and #424). It turns the gate table of [ADR 0001](../adr/0001-privileged-listener.md) into device
 steps with adb commands and expected results, and adds a read-only evidence capture script,
-`scripts/owner/listener-evidence.mjs`. It also records read-only checks of the SystemUI bundles
+`scripts/owner/listener-evidence.ts`. It also records read-only checks of the SystemUI bundles
 against the pinned Android tree. Nothing here built an image or an APK, booted anything or
 touched a device.
 
@@ -38,7 +38,7 @@ All three manifests' `baselineLockSha256` (`760a7184…`) equals the SHA-256 of 
 same revision. This checks only the listed SystemUI files. It is not a full-tree verification,
 a SystemUI compile or an image build.
 
-**Wiring into listener staging.** At the pin, `stageSenseListener` (`scripts/aosp-listener.mjs`
+**Wiring into listener staging.** At the pin, `stageSenseListener` (`scripts/aosp-listener.ts`
 calls it from `npm run aosp:stage`) handles the bundles like this:
 
 - `chip`: copied to `listener/systemui/chip`. Staging generates the certificate overlay and
@@ -69,7 +69,7 @@ records it as `gates.G2.g1Observation`), and see D-2.
 
 ## The capture script
 
-`scripts/owner/listener-evidence.mjs` (tests: `test/owner-listener-evidence.test.mjs`, fixtures in
+`scripts/owner/listener-evidence.ts` (tests: `test/owner-listener-evidence.test.mjs`, fixtures in
 `test/fixtures/owner-listener-evidence`, all synthetic).
 
 - It talks only to the `--serial` the operator names. It sends only read-only commands
@@ -82,7 +82,7 @@ records it as `gates.G2.g1Observation`), and see D-2.
   wakefulness. It drops other apps' notification text, user names and unrelated logcat, and
   hashes the serial.
 - G2 runs the existing upstream verifier (`verifyAospListener`, the same check as
-  `node scripts/verify-aosp-listener.mjs`). It needs `vendor/eliza` at the pin.
+  `node scripts/verify-aosp-listener.ts`). It needs `vendor/eliza` at the pin.
 - It writes a **new** file (never overwrites, never `android/sense/qualified-listener.json`).
   The file holds per-gate automated checks, the manual items with the operator's attestations,
   and `candidateRecord`: the committed record with only this run's earned gates applied,
@@ -93,8 +93,8 @@ records it as `gates.G2.g1Observation`), and see D-2.
   and the evidence class is allowed for that gate.
 
 ```sh
-node scripts/owner/listener-evidence.mjs --dry-run --gates G2,G3,G4,G5,G6        # prints every command, contacts nothing
-node scripts/owner/listener-evidence.mjs --serial <serial> --user 0 --class device --gates G3 \
+node scripts/owner/listener-evidence.ts --dry-run --gates G2,G3,G4,G5,G6        # prints every command, contacts nothing
+node scripts/owner/listener-evidence.ts --serial <serial> --user 0 --class device --gates G3 \
   --label "G3 lock screen + AOD" --attest /abs/attest-G3.json --out docs/evidence/listener-<date>/g3.json
 ```
 
@@ -114,9 +114,9 @@ Abbreviations: `S` is the serial, `PKG` is `ai.elizaresearch.alphaphone.sense`.
 1. Prepare the three SystemUI overlays from the original, verified source (each `--output` is new
    and outside the source):
    ```sh
-   node scripts/aosp-listener-systemui.mjs --source /abs/aosp --output /abs/ovl-ops
-   node scripts/aosp-listener-systemui.mjs --source /abs/aosp --chip --output /abs/ovl-chip
-   node scripts/aosp-listener-systemui.mjs --source /abs/aosp --assist --output /abs/ovl-assist
+   node scripts/aosp-listener-systemui.ts --source /abs/aosp --output /abs/ovl-ops
+   node scripts/aosp-listener-systemui.ts --source /abs/aosp --chip --output /abs/ovl-chip
+   node scripts/aosp-listener-systemui.ts --source /abs/aosp --assist --output /abs/ovl-assist
    ```
    Expected: JSON with each file's before and after hashes, plus `derived-source.json` in each
    output.
@@ -124,7 +124,7 @@ Abbreviations: `S` is the serial, `PKG` is `ai.elizaresearch.alphaphone.sense`.
    (`--source /abs/build-copy`, `… --chip`, `… --assist`), copy only the listed
    `frameworks/base/packages/SystemUI` files, then check each bundle with `--after`.
 3. Check the build copy against the lock:
-   `node scripts/verify-pixel10a-source.mjs --aosp-source /abs/build-copy --factory-image /abs/stallion-….zip --applied-systemui-patch chip --applied-systemui-patch ops --applied-systemui-patch assist --out /abs/new-source-receipt.json`.
+   `node scripts/verify-pixel10a-source.ts --aosp-source /abs/build-copy --factory-image /abs/stallion-….zip --applied-systemui-patch chip --applied-systemui-patch ops --applied-systemui-patch assist --out /abs/new-source-receipt.json`.
 4. Build the listener APK (`HEAVY_ANDROID=1 heavy ./gradlew :sense:assembleRelease --no-daemon`
    from `android/`), then preprocess and sign it with the launcher certificate as the ADR
    Consequences describe. Check it with `python3 scripts/verify-aosp-listener-apk.py <apk>`.
@@ -152,13 +152,13 @@ Abbreviations: `S` is the serial, `PKG` is `ai.elizaresearch.alphaphone.sense`.
 ### G2 Boot and grants (image-boot evidence; Cuttlefish or Pixel)
 
 1. Before turning listening on:
-   `node scripts/verify-aosp-listener.mjs --serial S --user 0`. Expected JSON:
+   `node scripts/verify-aosp-listener.ts --serial S --user 0`. Expected JSON:
    `privileged: true`, `persistent: true`, `captureHotwordGranted: true`,
    `recordAudioGranted: false`, `indicatorVerified: false`. Any refusal (not system, not
    privileged, forbidden permission, Alpha privileged, `ro.hotword.detection_service_required`
    not `true`, `camera_mic_icons_enabled` `false`, an indicator-exempt role held) fails G2.
 2. Same state:
-   `node scripts/owner/listener-evidence.mjs --serial S --user 0 --class image --gates G2 --label "G2 pre-consent" --attest … --out …/g2.json`.
+   `node scripts/owner/listener-evidence.ts --serial S --user 0 --class image --gates G2 --label "G2 pre-consent" --attest … --out …/g2.json`.
    Expected: 5/5 automated checks pass (`G2.verifyAospListener`, hotword property, mic icons, roles
    empty, verified boot `green` or `yellow`). `facts.audio.listenerRecording` must be `false`.
    `gates.G2.g1Observation.enforced` must be `true`.
@@ -271,7 +271,7 @@ Power runs:
 2. Multi-hour run (`G6.multiHourRun`), for example 4 h:
    `--gates G6 --samples 9 --interval-min 30`.
 3. 24-hour run (`G6.twentyFourHourRun`):
-   `node scripts/owner/listener-evidence.mjs --serial S --user 0 --class device --gates G6 --samples 49 --interval-min 30 --label "24h listening" --attest … --out …/g6-24h.json`.
+   `node scripts/owner/listener-evidence.ts --serial S --user 0 --class device --gates G6 --samples 49 --interval-min 30 --label "24h listening" --attest … --out …/g6-24h.json`.
    Expected automated checks: `G6.unpluggedThroughout`, `G6.listeningThroughout`,
    `G6.thermalBelowSevere` (thermal status below 3), and `G6.twentyFourHourSpan` (at least 24 h).
    The file reports `drainPercentPerHour`, `maxSkinC` and the listener's batterystats lines.
@@ -293,7 +293,7 @@ node --test test/owner-listener-evidence.test.mjs test/human-actions.test.mjs
 npm run human:status        # H-20 done
 ```
 
-`scripts/verify-apks.mjs` copies the record into each listener row. That is still APK-build
+`scripts/verify-apks.ts` copies the record into each listener row. That is still APK-build
 evidence, and a listener row is distributable only once the record says so.
 
 ## Decisions for the owner
@@ -305,7 +305,7 @@ evidence, and a listener row is distributable only once the record says so.
   `ops` and `assist` are applied, and record them in `listener/evidence.json`.
 - Default today: (a).
 - Recommendation: (b), because G3 and G4 depend on them. The change belongs upstream in the
-  shared `stageSenseListener` and in Alpha's `scripts/stage-aosp.mjs`, plus a doc fix for the two
+  shared `stageSenseListener` and in Alpha's `scripts/stage-aosp.ts`, plus a doc fix for the two
   pages that say staging copies them.
 - What changes: (b) makes a production image without them unstageable. (a) relies on the
   operator remembering both flags.

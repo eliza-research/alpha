@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createLocalAsr} from '../scripts/local-asr.mjs';
+import {createLocalAsr} from '../scripts/local-asr.ts';
 function fixture(options={}){
  const calls=[];const service={initialized:false,async initialize(){await options.boot?.();this.initialized=true;},async transcribe(id,samples,rate,signal){calls.push({id,samples,rate,signal});return options.transcribe?options.transcribe(signal):'  reviewed transcript  ';},stop(){calls.push('stop');this.initialized=false;}};
  return {service,calls,load:async()=>({service,readAudio:audio=>{assert.equal(audio.toString(),'synthetic-wave');return{samples:Buffer.from([1,0,2,0]),sampleRate:16000};}})};

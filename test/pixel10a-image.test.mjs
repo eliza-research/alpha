@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {verifyPixel10aImage, verifiedBootProblem, main} from '../scripts/verify-pixel10a-image.mjs';
+import {verifyPixel10aImage, verifiedBootProblem, main} from '../scripts/verify-pixel10a-image.ts';
 const pkg='ai.elizaresearch.alphaphone';
 const expected={packageName:pkg,apkSha256:'a'.repeat(64),certificateSha256:'b'.repeat(64),fingerprint:'Alpha/alpha_stallion_phone/stallion:17/test:user/release-keys',apkPath:'/product/app/AlphaPhone/AlphaPhone.apk'};
 // Self-contained so the same responder also serves as a fake adb executable for the CLI test.

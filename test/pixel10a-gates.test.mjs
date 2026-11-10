@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {GATE_NAMES, PIXEL10A_GATES, pixel10aGateProblems} from '../scripts/pixel10a-gates.mjs';
+import {GATE_NAMES, PIXEL10A_GATES, pixel10aGateProblems} from '../scripts/pixel10a-gates.ts';
 
 const FILES = [PIXEL10A_GATES, 'android/aosp/pixel10a-product.json', 'vendor/eliza/packages/os/android/sources/pixel10a-stallion.json', 'android/aosp/pixel10a-ota-channel.json',
   'docs/pixel10a-source-verification-2026-10-25.json', 'docs/pixel10a-code6-boot-evidence.json', 'docs/evidence/cuttlefish-observation-2026-10-25.json'];

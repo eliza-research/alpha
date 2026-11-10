@@ -26,7 +26,7 @@ compatibility references; the platform baseline is AOSP.
 Run against an already prepared source checkout and retained factory archive:
 
 ```sh
-node scripts/verify-pixel10a-source.mjs \
+node scripts/verify-pixel10a-source.ts \
   --aosp-source /absolute/prepared/stallion-source \
   --factory-image /absolute/stallion-cp3a.261005.005-factory-d1d25502.zip \
   --out /absolute/new-source-check.json
@@ -66,7 +66,7 @@ refuses it. The admission evidence,
 was produced with:
 
 ```sh
-node scripts/verify-pixel10a-source.mjs \
+node scripts/verify-pixel10a-source.ts \
   --aosp-source /absolute/prepared/stallion-source \
   --factory-image /absolute/stallion-cp3a.261005.005-factory-d1d25502.zip \
   --applied-systemui-patch chip --out /absolute/new-source-check.json
@@ -91,7 +91,7 @@ boot evidence, such as the [October 19 image](pixel10a-code6-boot-evidence.md) o
 [development Cuttlefish observation](evidence/cuttlefish-observation-2026-10-25.json), keeps a
 gate at `development`. The signed update/recovery gate cannot pass while any drill in
 `android/aosp/pixel10a-ota-channel.json` is not `passed`. User acceptance cannot pass before
-every other gate has. `scripts/pixel10a-gates.mjs` enforces these rules (`test/pixel10a-gates.test.mjs`).
+every other gate has. `scripts/pixel10a-gates.ts` enforces these rules (`test/pixel10a-gates.test.mjs`).
 The product descriptor's `releaseQualified` and `deviceAcceptanceVerified` stay `false`.
 
 Remaining work includes integrating these inputs with the current admitted APK and

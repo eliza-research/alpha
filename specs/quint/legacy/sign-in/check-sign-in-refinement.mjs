@@ -3,8 +3,8 @@ import {existsSync, readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium, expect as baseExpect} from '@playwright/test';
-import {checkClientFeatures} from '../../../../scripts/prepare-client-features.mjs';
-import {filesWithin, repositoryRoot as root, sha256} from '../../../../scripts/quint-lib.mjs';
+import {checkClientFeatures} from '../../../../scripts/prepare-client-features.ts';
+import {filesWithin, repositoryRoot as root, sha256} from '../../../../scripts/quint-lib.ts';
 import {fenceNetwork} from '../../../../test/browser/flag-off-android.ts';
 import {entitlements, startNativeCloudSignInFixture, USER} from '../../../../test/browser/helpers/native-cloud-signin.ts';
 import {captureInputs, checkTraces, qset} from '../../refinement/check-traces.mjs';
@@ -115,7 +115,7 @@ async function mounted(extraSources) {
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-passwords/src')),
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-system/src')),
     'vendor/eliza/packages/core/src/utils/uuid.ts', 'vite.config.ts', 'package.json', 'package-lock.json', 'upstream.lock.json',
-    'scripts/prepare-client-features.mjs', 'scripts/quint-lib.mjs', fileURLToPath(import.meta.url),
+    'scripts/prepare-client-features.ts', 'scripts/quint-lib.ts', fileURLToPath(import.meta.url),
     'test/browser/flag-off-android.ts', 'test/browser/helpers/native-navigation-protocol.ts',
     'test/browser/helpers/native-cloud-signin.ts', ...extraSources,
   ])];

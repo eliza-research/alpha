@@ -24,7 +24,7 @@ public class ReminderRecoveryInstrumentedTest {
   android.content.SharedPreferences state=c.getSharedPreferences(PREFS,Context.MODE_PRIVATE);
   String phase=InstrumentationRegistry.getArguments().getString("reminderPhase","");
   // Not a standalone test: the runner must perform actual external permission/reboot boundaries.
-  org.junit.Assume.assumeTrue("Use test-reminder-recovery.mjs",!phase.isEmpty());
+  org.junit.Assume.assumeTrue("Use test-reminder-recovery.ts",!phase.isEmpty());
   String id=state.getString("id",null);
   if(phase.equals("prepare")){
    assertNull("Previous fixture requires cleanup",id);id="recovery_"+java.util.UUID.randomUUID();assertTrue(state.edit().putString("id",id).putInt("pid",android.os.Process.myPid()).commit());

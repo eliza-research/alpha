@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { spawnSync } from 'node:child_process';
-import { assessDevelopReachability, reachabilityMode, REACHABILITY_RECORD } from '../scripts/pinned-upstream-source.mjs';
+import { assessDevelopReachability, reachabilityMode, REACHABILITY_RECORD } from '../scripts/pinned-upstream-source.ts';
 
 const pin = 'a'.repeat(40);
 const base = { schema: 1, base: 'develop', head: pin, mergeBase: 'b'.repeat(40), recordedAt: '2026-10-08' };
@@ -42,7 +42,7 @@ test('the committed record is valid for the current pin, and verify-upstream war
   const result = assessDevelopReachability(record, lock.commit);
   assert.notEqual(result.reason, 'invalid');
   assert.notEqual(result.reason, 'stale', 'refresh scripts/ci/upstream-reachability.json after a pin change');
-  const run = env => spawnSync(process.execPath, ['scripts/verify-upstream.mjs', '--reachability-only'], { encoding: 'utf8', env: { ...process.env, ...env } });
+  const run = env => spawnSync(process.execPath, ['scripts/verify-upstream.ts', '--reachability-only'], { encoding: 'utf8', env: { ...process.env, ...env } });
   const warn = run({ ELIZA_UPSTREAM_REACHABILITY: 'warn' });
   assert.equal(warn.status, 0, warn.stderr);
   const fail = run({ ELIZA_UPSTREAM_REACHABILITY: 'fail' });

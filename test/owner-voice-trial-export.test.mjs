@@ -1,12 +1,12 @@
-// scripts/owner/voice-trial-export.mjs (issue #677, H-33): extraction from the diagnostics report,
-// the export layout, and the dry run of scripts/aggregate-voice-latency.mjs on synthetic fixtures.
+// scripts/owner/voice-trial-export.ts (issue #677, H-33): extraction from the diagnostics report,
+// the export layout, and the dry run of scripts/aggregate-voice-latency.ts on synthetic fixtures.
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { checkLayout, dryRun, layoutPath, nativeExport, syntheticTrial } from "../scripts/owner/voice-trial-export.mjs";
-import { rejection } from "../scripts/native-voice-latency.mjs";
+import { checkLayout, dryRun, layoutPath, nativeExport, syntheticTrial } from "../scripts/owner/voice-trial-export.ts";
+import { rejection } from "../scripts/native-voice-latency.ts";
 
 test("synthetic trials have the shape the native aggregator accepts", () => {
   assert.equal(rejection(syntheticTrial(0)), null);

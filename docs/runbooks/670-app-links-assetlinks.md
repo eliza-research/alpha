@@ -7,13 +7,13 @@ Only the Cloud operator can change `ELIZA_ANDROID_ASSET_LINKS_JSON`. Nothing was
 
 | File | Purpose |
 | --- | --- |
-| [`scripts/owner/app-links-evidence.mjs`](../../scripts/owner/app-links-evidence.mjs) | Reads a saved `adb shell pm get-app-links ai.elizaresearch.alphaphone` output; passes only for `eliza.app: verified` and an installed signature equal to the enrolled release certificate (`approved` is an override, not server verification) |
+| [`scripts/owner/app-links-evidence.ts`](../../scripts/owner/app-links-evidence.ts) | Reads a saved `adb shell pm get-app-links ai.elizaresearch.alphaphone` output; passes only for `eliza.app: verified` and an installed signature equal to the enrolled release certificate (`approved` is an override, not server verification) |
 | [`test/owner-app-links-evidence.test.mjs`](../../test/owner-app-links-evidence.test.mjs) | Synthetic `pm get-app-links` samples |
 | Evidence template | Below |
 
 ## Read-only findings (2026-10-28)
 
-`node scripts/render-assetlinks.mjs --check https://eliza.app/.well-known/assetlinks.json` **exits 1**:
+`node scripts/render-assetlinks.ts --check https://eliza.app/.well-known/assetlinks.json` **exits 1**:
 `android/release-signer.json signerSha256 is "unset"`. The published document (HTTP 200,
 `application/json`, no redirect) holds exactly one statement, for `ai.elizaresearch.alphaphone`,
 `delegate_permission/common.handle_all_urls`, with two fingerprints:
@@ -41,7 +41,7 @@ Other prepared checks:
   "ELIZAOS_APP_LINK_HOST unset" for this environment.
 - `ELIZAOS_APP_LINK_HOST`: `MainActivity` declares the HTTPS autoVerify filters on
   `config/cloud-deployment.json` `production.web` (`eliza.app`) in every build, and
-  `android/app/product.gradle` refuses any other value. `scripts/verify-apks.mjs` records `appLinks`
+  `android/app/product.gradle` refuses any other value. `scripts/verify-apks.ts` records `appLinks`
   per APK but does not include it in `distributable`. Check the `appLinks` row (`present: true`,
   hosts `["eliza.app"]`) of every release in `artifacts/apk-manifest.json` before distribution.
 - Hosted fallback page `https://eliza.app/alphaphone/auth/callback` answers 200 (probe "callback
@@ -49,20 +49,20 @@ Other prepared checks:
 
 ## Operator steps (after H-09)
 
-1. `node scripts/render-assetlinks.mjs --cloud-config --published https://eliza.app/.well-known/assetlinks.json`
+1. `node scripts/render-assetlinks.ts --cloud-config --published https://eliza.app/.well-known/assetlinks.json`
    prints the full `ELIZA_ANDROID_ASSET_LINKS_JSON` value with Alpha's entry carrying the release
    fingerprint and every other app's entry kept unchanged. Add `--keep-fingerprint HEX` only for a
    certificate decision 1 keeps. One entry per package: a malformed value or a duplicate package
    publishes `[]` for **every** app.
 2. Set the printed value as the GitHub variable of the Cloud production environment; deploy.
-3. `node scripts/render-assetlinks.mjs --check https://eliza.app/.well-known/assetlinks.json` must
-   exit 0; `node scripts/cloud-readiness.mjs probe` App Links gate must pass.
-4. Staging keeps the debug signer of test-mocks builds (`node scripts/cloud-readiness.mjs probe --environment staging --signer <SHA-256>`
+3. `node scripts/render-assetlinks.ts --check https://eliza.app/.well-known/assetlinks.json` must
+   exit 0; `node scripts/cloud-readiness.ts probe` App Links gate must pass.
+4. Staging keeps the debug signer of test-mocks builds (`node scripts/cloud-readiness.ts probe --environment staging --signer <SHA-256>`
    names a specific build's certificate).
-5. Keep Alpha's `ELIZA_NATIVE_AUTH_CALLBACKS_JSON` entry (printed by `cloud-readiness.mjs registration`).
+5. Keep Alpha's `ELIZA_NATIVE_AUTH_CALLBACKS_JSON` entry (printed by `cloud-readiness.ts registration`).
 6. On an installed release build:
    `adb shell pm get-app-links ai.elizaresearch.alphaphone > pm-get-app-links.txt`, then
-   `node scripts/owner/app-links-evidence.mjs pm-get-app-links.txt` must exit 0. If the state is not
+   `node scripts/owner/app-links-evidence.ts pm-get-app-links.txt` must exit 0. If the state is not
    `verified`, re-trigger with `adb shell pm verify-app-links --re-verify ai.elizaresearch.alphaphone`
    and wait; never force it with `pm set-app-links`.
 
@@ -70,7 +70,7 @@ Other prepared checks:
 
 | Question | Options | Default / recommendation | What each choice changes |
 | --- | --- | --- | --- |
-| 1. Which certificates stay in production `assetlinks.json`? | A. Release certificate only. B. Release plus the debug signer `22:42:99:...`. C. Release plus both current entries. | **A**. H-13 leaves it to the operator; release-only matches `render-assetlinks.mjs` refusing debug certificates. | A: development builds lose verified `eliza.app` returns in production (they use staging, which lists its own debug signer). B/C: those signers keep verified handling of Alpha's production callback. |
+| 1. Which certificates stay in production `assetlinks.json`? | A. Release certificate only. B. Release plus the debug signer `22:42:99:...`. C. Release plus both current entries. | **A**. H-13 leaves it to the operator; release-only matches `render-assetlinks.ts` refusing debug certificates. | A: development builds lose verified `eliza.app` returns in production (they use staging, which lists its own debug signer). B/C: those signers keep verified handling of Alpha's production callback. |
 | 2. Should a release without the App Link filter be blocked? | A. Add an `appLinks.present` requirement to the release distributable rule (an app change, separate PR). B. Keep it a manual check. | Not decided anywhere; recommendation A | A: a release built without `ELIZAOS_APP_LINK_HOST=eliza.app` is refused by `verify-apks`. B: rely on the H-10 instruction and this runbook. |
 
 ## Evidence template (fill after the steps; commit under `docs/evidence/`)
@@ -83,17 +83,17 @@ Other prepared checks:
   "releaseSignerSha256": "<android/release-signer.json signerSha256>",
   "published": {
     "url": "https://eliza.app/.well-known/assetlinks.json",
-    "command": "node scripts/render-assetlinks.mjs --check https://eliza.app/.well-known/assetlinks.json",
+    "command": "node scripts/render-assetlinks.ts --check https://eliza.app/.well-known/assetlinks.json",
     "exitCode": 0,
     "fingerprintsListedForAlpha": ["<colon SHA-256>"]
   },
-  "probe": { "command": "node scripts/cloud-readiness.mjs probe", "appLinksGate": "pass" },
+  "probe": { "command": "node scripts/cloud-readiness.ts probe", "appLinksGate": "pass" },
   "device": {
     "evidenceClass": "device (installed release build)",
     "build": { "versionCode": 0, "versionName": "<name>", "appLinkHost": "eliza.app", "apkSha256": "<sha256 of the installed APK>" },
     "deviceModel": "<model>", "androidVersion": "<version>",
     "command": "adb shell pm get-app-links ai.elizaresearch.alphaphone",
-    "checker": "node scripts/owner/app-links-evidence.mjs pm-get-app-links.txt",
+    "checker": "node scripts/owner/app-links-evidence.ts pm-get-app-links.txt",
     "elizaAppState": "verified",
     "signatureMatchesRelease": true
   },

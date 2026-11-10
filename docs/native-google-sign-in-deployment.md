@@ -72,7 +72,7 @@ those through an explicitly initiated sign-in on the physical device.
 
 ## Credential-free probe, October 27, 2026
 
-`node scripts/cloud-readiness.mjs probe` (and `--environment staging`) repeats these
+`node scripts/cloud-readiness.ts probe` (and `--environment staging`) repeats these
 observations with the requests the phone makes, once each, and names the owning step in
 [human actions](human-actions.md). Recorded in
 [cloud-readiness-2026-10-27.json](evidence/cloud-readiness-2026-10-27.json):

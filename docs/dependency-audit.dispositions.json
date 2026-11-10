@@ -261,7 +261,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list katex@0.16.47, katex@0.17.0. In vendor/eliza/bun.lock it is reached only from @elizaos/plugin-agent-orchestrator (dependency), @elizaos/plugin-workflow (dependency), outside the mobile agent bundle.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): katex@0.16.47 -> 0.18.2 (needs a parent bump: micromark-extension-math@3.1.0 ^0.16.0); katex@0.17.0 -> 0.18.2 (needs a parent bump: @milkdown/crepe@7.21.2 ^0.17.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves katex@0.16.47, katex@0.17.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves katex@0.16.47, katex@0.17.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -278,7 +278,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list js-yaml@4.3.0. In vendor/eliza/bun.lock it is reached only from @elizaos/capacitor-gateway (devDependency), @elizaos/operator (dependency), @elizaos/plugin-wallet (dependency), eliza (devDependency), outside the mobile agent bundle.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): js-yaml@4.3.0 -> 4.3.2 (needs a parent bump: @kubernetes/client-node@1.4.0 ^4.1.0; cosmiconfig@9.0.0 ^4.1.0; lerna@10.0.1 4.3.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves js-yaml@4.3.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves js-yaml@4.3.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -296,7 +296,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list undici@7.28.0, undici@8.10.0. In vendor/eliza/bun.lock it is reached only from @elizaos/cloud-api (devDependency/dependency), @elizaos/operator (dependency), outside the mobile agent bundle. The agent bundle's require(\"undici\") resolves to Bun's built-in module, not to an npm undici copy.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): undici@7.28.0 -> 7.29.1 (needs a parent bump: miniflare@4.20260730.0 7.28.0); undici@8.10.0 -> 8.10.2 (needs a parent bump: kubernetes-fluent-client@3.12.3 8.10.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves undici@7.28.0, undici@8.10.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves undici@7.28.0, undici@8.10.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -314,7 +314,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list undici@7.28.0, undici@8.10.0. In vendor/eliza/bun.lock it is reached only from @elizaos/cloud-api (devDependency/dependency), @elizaos/operator (dependency), outside the mobile agent bundle. The agent bundle's require(\"undici\") resolves to Bun's built-in module, not to an npm undici copy.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): undici@7.28.0 -> 7.29.1 (needs a parent bump: miniflare@4.20260730.0 7.28.0); undici@8.10.0 -> 8.10.2 (needs a parent bump: kubernetes-fluent-client@3.12.3 8.10.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves undici@7.28.0, undici@8.10.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves undici@7.28.0, undici@8.10.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -331,7 +331,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list undici@5.29.0. In vendor/eliza/bun.lock it is reached only from @elizaos/plugin-wallet (dependency), outside the mobile agent bundle. The agent bundle's require(\"undici\") resolves to Bun's built-in module, not to an npm undici copy.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): undici@5.29.0 -> 6.28.1 (needs a parent bump: hardhat@2.29.1 ^5.14.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves undici@5.29.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves undici@5.29.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -348,7 +348,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list undici@5.29.0. In vendor/eliza/bun.lock it is reached only from @elizaos/plugin-wallet (dependency), outside the mobile agent bundle. The agent bundle's require(\"undici\") resolves to Bun's built-in module, not to an npm undici copy.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): undici@5.29.0 -> 6.28.1 (needs a parent bump: hardhat@2.29.1 ^5.14.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves undici@5.29.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves undici@5.29.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -365,7 +365,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list bigint-buffer@1.1.5. In vendor/eliza/bun.lock it is reached only from @elizaos/cloud-shared (dependency), @elizaos/plugin-wallet (dependency), @elizaos/ui (dependency), outside the mobile agent bundle.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): bigint-buffer@1.1.5: no patched release. Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves bigint-buffer@1.1.5 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves bigint-buffer@1.1.5 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -382,7 +382,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list axios@1.19.0. In vendor/eliza/bun.lock it is reached only from @elizaos/cloud-shared (dependency), @elizaos/plugin-slack (dependency), @elizaos/plugin-wallet (dependency), @elizaos/ui (dependency), eliza (devDependency), outside the mobile agent bundle. The upstream root override pins axios to 1.19.0.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): axios@1.19.0 -> 1.20.0 (needs a parent bump: @coinbase/cdp-sdk@1.56.0 ^1.18.0; @raydium-io/raydium-sdk@1.3.1-beta.58 ^1.6.2; @sendgrid/client@8.1.6 ^1.12.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves axios@1.19.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves axios@1.19.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -400,7 +400,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list undici@7.28.0, undici@8.10.0. In vendor/eliza/bun.lock it is reached only from @elizaos/cloud-api (devDependency/dependency), @elizaos/operator (dependency), outside the mobile agent bundle. The agent bundle's require(\"undici\") resolves to Bun's built-in module, not to an npm undici copy.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): undici@7.28.0 -> 7.29.1 (needs a parent bump: miniflare@4.20260730.0 7.28.0); undici@8.10.0 -> 8.10.2 (needs a parent bump: kubernetes-fluent-client@3.12.3 8.10.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves undici@7.28.0, undici@8.10.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves undici@7.28.0, undici@8.10.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -418,7 +418,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list undici@7.28.0, undici@8.10.0. In vendor/eliza/bun.lock it is reached only from @elizaos/cloud-api (devDependency/dependency), @elizaos/operator (dependency), outside the mobile agent bundle. The agent bundle's require(\"undici\") resolves to Bun's built-in module, not to an npm undici copy.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): undici@7.28.0 -> 7.29.1 (needs a parent bump: miniflare@4.20260730.0 7.28.0); undici@8.10.0 -> 8.10.2 (needs a parent bump: kubernetes-fluent-client@3.12.3 8.10.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves undici@7.28.0, undici@8.10.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves undici@7.28.0, undici@8.10.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -435,7 +435,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list axios@1.19.0. In vendor/eliza/bun.lock it is reached only from @elizaos/cloud-shared (dependency), @elizaos/plugin-slack (dependency), @elizaos/plugin-wallet (dependency), @elizaos/ui (dependency), eliza (devDependency), outside the mobile agent bundle. The upstream root override pins axios to 1.19.0.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): axios@1.19.0 -> 1.20.0 (needs a parent bump: @coinbase/cdp-sdk@1.56.0 ^1.18.0; @raydium-io/raydium-sdk@1.3.1-beta.58 ^1.6.2; @sendgrid/client@8.1.6 ^1.12.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves axios@1.19.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves axios@1.19.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -452,7 +452,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list pbkdf2@3.1.6. In vendor/eliza/bun.lock it is reached only from eliza (devDependency), outside the mobile agent bundle.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): pbkdf2@3.1.6 -> 3.1.7 (inside every declared range). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves pbkdf2@3.1.6 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves pbkdf2@3.1.6 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -469,7 +469,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list undici@5.29.0. In vendor/eliza/bun.lock it is reached only from @elizaos/plugin-wallet (dependency), outside the mobile agent bundle. The agent bundle's require(\"undici\") resolves to Bun's built-in module, not to an npm undici copy.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): undici@5.29.0 -> 6.28.1 (needs a parent bump: hardhat@2.29.1 ^5.14.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves undici@5.29.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves undici@5.29.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -486,7 +486,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list undici@7.28.0. In vendor/eliza/bun.lock it is reached only from @elizaos/cloud-api (devDependency/dependency), outside the mobile agent bundle. The agent bundle's require(\"undici\") resolves to Bun's built-in module, not to an npm undici copy.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): undici@7.28.0 -> 7.29.1 (needs a parent bump: miniflare@4.20260730.0 7.28.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves undici@7.28.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves undici@7.28.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -503,7 +503,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list axios@1.19.0. In vendor/eliza/bun.lock it is reached only from @elizaos/cloud-shared (dependency), @elizaos/plugin-slack (dependency), @elizaos/plugin-wallet (dependency), @elizaos/ui (dependency), eliza (devDependency), outside the mobile agent bundle. The upstream root override pins axios to 1.19.0.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): axios@1.19.0 -> 1.20.0 (needs a parent bump: @coinbase/cdp-sdk@1.56.0 ^1.18.0; @raydium-io/raydium-sdk@1.3.1-beta.58 ^1.6.2; @sendgrid/client@8.1.6 ^1.12.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves axios@1.19.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves axios@1.19.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -520,7 +520,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list stream-json@1.9.1. In vendor/eliza/bun.lock it is reached only from @elizaos/auth (dependency), @elizaos/cloud-shared (dependency), @elizaos/plugin-wallet (dependency), @elizaos/ui (dependency), outside the mobile agent bundle.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): stream-json@1.9.1 -> 3.6.0 (needs a parent bump: jayson@4.3.0 ^1.9.1). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves stream-json@1.9.1 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves stream-json@1.9.1 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -537,7 +537,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list axios@1.19.0. In vendor/eliza/bun.lock it is reached only from @elizaos/cloud-shared (dependency), @elizaos/plugin-slack (dependency), @elizaos/plugin-wallet (dependency), @elizaos/ui (dependency), eliza (devDependency), outside the mobile agent bundle. The upstream root override pins axios to 1.19.0.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): axios@1.19.0 -> 1.20.0 (needs a parent bump: @coinbase/cdp-sdk@1.56.0 ^1.18.0; @raydium-io/raydium-sdk@1.3.1-beta.58 ^1.6.2; @sendgrid/client@8.1.6 ^1.12.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves axios@1.19.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves axios@1.19.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -554,7 +554,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list js-yaml@4.3.0. In vendor/eliza/bun.lock it is reached only from @elizaos/capacitor-gateway (devDependency), @elizaos/operator (dependency), @elizaos/plugin-wallet (dependency), eliza (devDependency), outside the mobile agent bundle.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): js-yaml@4.3.0 -> 4.3.2 (needs a parent bump: @kubernetes/client-node@1.4.0 ^4.1.0; cosmiconfig@9.0.0 ^4.1.0; lerna@10.0.1 4.3.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves js-yaml@4.3.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves js-yaml@4.3.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -571,7 +571,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list file-type@16.5.4. In vendor/eliza/bun.lock it is reached only from @elizaos/plugin-computeruse (dependency), outside the mobile agent bundle.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): file-type@16.5.4 -> 21.3.1 (needs a parent bump: @jimp/core@0.22.12 ^16.5.4). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves file-type@16.5.4 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves file-type@16.5.4 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -588,7 +588,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list esbuild@0.18.20. In vendor/eliza/bun.lock it is reached only from @elizaos/cloud-api (devDependency), @elizaos/cloud-shared (devDependency), @elizaos/plugin-sql (devDependency), @elizaos/testing (devDependency), outside the mobile agent bundle.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): esbuild@0.18.20 -> 0.25.0 (needs a parent bump: @esbuild-kit/core-utils@3.3.2 ~0.18.20). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves esbuild@0.18.20 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves esbuild@0.18.20 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -605,7 +605,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list source-map-js@1.2.1. In vendor/eliza/bun.lock it is reached only from @elizaos/agent (devDependency), @elizaos/app (devDependency), @elizaos/auth (devDependency), @elizaos/bench-eliza-1 (devDependency), @elizaos/bench-vision-language (devDependency), @elizaos/benchmark-eliza-host (devDependency) and 93 more workspaces, outside the mobile agent bundle.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): source-map-js@1.2.1 -> 1.2.2 (inside every declared range). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves source-map-js@1.2.1 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves source-map-js@1.2.1 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -622,7 +622,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list brace-expansion@5.0.9. In vendor/eliza/bun.lock it is reached only from eliza (devDependency), outside the mobile agent bundle.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): brace-expansion@5.0.9 -> 5.0.12 (needs a parent bump: nx@23.2.1 5.0.9). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves brace-expansion@5.0.9 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves brace-expansion@5.0.9 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -639,7 +639,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list @modelcontextprotocol/sdk@1.30.1. In vendor/eliza/bun.lock it is reached only from @elizaos/claude-subscription-gateway (dependency), @elizaos/cloud-shared (dependency), @elizaos/plugin-agent-orchestrator (dependency), @elizaos/plugin-computeruse (optional), @elizaos/plugin-mcp (dependency), @elizaos/plugin-workflow (dependency), outside the mobile agent bundle. Its consumers in the agent graph (plugin-agent-orchestrator, plugin-computeruse) are null-plugin stubs in the mobile bundle.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): @modelcontextprotocol/sdk@1.30.1 -> 1.31.0 (inside every declared range). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves @modelcontextprotocol/sdk@1.30.1 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves @modelcontextprotocol/sdk@1.30.1 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -656,7 +656,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list diff@7.0.0. In vendor/eliza/bun.lock it is reached only from @elizaos/plugin-wallet (dependency), outside the mobile agent bundle.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): diff@7.0.0 -> 8.0.3 (needs a parent bump: mocha@11.8.0 ^7.0.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves diff@7.0.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves diff@7.0.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -673,7 +673,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list extract-zip@2.0.1. In vendor/eliza/bun.lock it is reached only from @elizaos/app (devDependency), @elizaos/plugin-browser (devDependency), @elizaos/plugin-computeruse (dependency), outside the mobile agent bundle.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): extract-zip@2.0.1: no patched release. Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves extract-zip@2.0.1 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves extract-zip@2.0.1 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -690,7 +690,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list adm-zip@0.6.0. In vendor/eliza/bun.lock it is reached only from @elizaos/app (dependency), @elizaos/plugin-wallet (dependency), outside the mobile agent bundle. The upstream root override pins adm-zip to 0.6.0.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): adm-zip@0.6.0: no patched release. Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves adm-zip@0.6.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves adm-zip@0.6.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -707,7 +707,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list smol-toml@1.6.1. In vendor/eliza/bun.lock it is reached only from eliza (devDependency), outside the mobile agent bundle.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): smol-toml@1.6.1 -> 1.9.0 (needs a parent bump: nx@23.2.1 1.6.1). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves smol-toml@1.6.1 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves smol-toml@1.6.1 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -724,7 +724,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list adm-zip@0.6.0. In vendor/eliza/bun.lock it is reached only from @elizaos/app (dependency), @elizaos/plugin-wallet (dependency), outside the mobile agent bundle. The upstream root override pins adm-zip to 0.6.0.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): adm-zip@0.6.0: no patched release. Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves adm-zip@0.6.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves adm-zip@0.6.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -741,7 +741,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list toml@3.0.0. In vendor/eliza/bun.lock it is reached only from @elizaos/plugin-wallet (dependency), outside the mobile agent bundle.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): toml@3.0.0 -> 4.2.0 (needs a parent bump: @coral-xyz/anchor@0.32.1 ^3.0.0; @coral-xyz/anchor@0.31.0 ^3.0.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves toml@3.0.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves toml@3.0.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -759,7 +759,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list undici@7.28.0, undici@8.10.0. In vendor/eliza/bun.lock it is reached only from @elizaos/cloud-api (devDependency/dependency), @elizaos/operator (dependency), outside the mobile agent bundle. The agent bundle's require(\"undici\") resolves to Bun's built-in module, not to an npm undici copy.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): undici@7.28.0 -> 7.29.1 (needs a parent bump: miniflare@4.20260730.0 7.28.0); undici@8.10.0 -> 8.10.2 (needs a parent bump: kubernetes-fluent-client@3.12.3 8.10.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves undici@7.28.0, undici@8.10.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves undici@7.28.0, undici@8.10.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -776,7 +776,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list elliptic@6.6.1. In vendor/eliza/bun.lock it is reached only from @elizaos/plugin-wallet (dependency), eliza (devDependency), outside the mobile agent bundle.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): elliptic@6.6.1: no patched release. Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves elliptic@6.6.1 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves elliptic@6.6.1 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -794,7 +794,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list undici@5.29.0, undici@7.28.0. In vendor/eliza/bun.lock it is reached only from @elizaos/plugin-wallet (dependency), @elizaos/cloud-api (devDependency/dependency), outside the mobile agent bundle. The agent bundle's require(\"undici\") resolves to Bun's built-in module, not to an npm undici copy.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): undici@5.29.0 -> 6.28.1 (needs a parent bump: hardhat@2.29.1 ^5.14.0); undici@7.28.0 -> 7.29.1 (needs a parent bump: miniflare@4.20260730.0 7.28.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves undici@5.29.0, undici@7.28.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves undici@5.29.0, undici@7.28.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -811,7 +811,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list axios@1.19.0. In vendor/eliza/bun.lock it is reached only from @elizaos/cloud-shared (dependency), @elizaos/plugin-slack (dependency), @elizaos/plugin-wallet (dependency), @elizaos/ui (dependency), eliza (devDependency), outside the mobile agent bundle. The upstream root override pins axios to 1.19.0.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): axios@1.19.0 -> 1.20.0 (needs a parent bump: @coinbase/cdp-sdk@1.56.0 ^1.18.0; @raydium-io/raydium-sdk@1.3.1-beta.58 ^1.6.2; @sendgrid/client@8.1.6 ^1.12.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves axios@1.19.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves axios@1.19.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -828,7 +828,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list axios@1.19.0. In vendor/eliza/bun.lock it is reached only from @elizaos/cloud-shared (dependency), @elizaos/plugin-slack (dependency), @elizaos/plugin-wallet (dependency), @elizaos/ui (dependency), eliza (devDependency), outside the mobile agent bundle. The upstream root override pins axios to 1.19.0.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): axios@1.19.0 -> 1.20.0 (needs a parent bump: @coinbase/cdp-sdk@1.56.0 ^1.18.0; @raydium-io/raydium-sdk@1.3.1-beta.58 ^1.6.2; @sendgrid/client@8.1.6 ^1.12.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves axios@1.19.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves axios@1.19.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -845,7 +845,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list basic-ftp@5.3.1. In vendor/eliza/bun.lock it is reached only from @elizaos/app (devDependency), @elizaos/electrobun (dependency), @elizaos/os-usb-installer (devDependency), @elizaos/plugin-browser (devDependency), @elizaos/plugin-computeruse (dependency), @elizaos/setup (devDependency), outside the mobile agent bundle.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): basic-ftp@5.3.1 -> 6.2.1 (needs a parent bump: get-uri@6.0.5 ^5.0.2). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves basic-ftp@5.3.1 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves basic-ftp@5.3.1 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -862,7 +862,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list adm-zip@0.6.0. In vendor/eliza/bun.lock it is reached only from @elizaos/app (dependency), @elizaos/plugin-wallet (dependency), outside the mobile agent bundle. The upstream root override pins adm-zip to 0.6.0.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): adm-zip@0.6.0: no patched release. Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves adm-zip@0.6.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves adm-zip@0.6.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -879,7 +879,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list esbuild@0.27.7. In vendor/eliza/bun.lock it is reached only from @elizaos/plugin-agent-orchestrator (devDependency), @elizaos/plugin-anthropic (devDependency), @elizaos/plugin-assistant (devDependency), @elizaos/plugin-blocker (devDependency), @elizaos/plugin-browser (devDependency), @elizaos/plugin-calendar (devDependency) and 29 more workspaces, outside the mobile agent bundle.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): esbuild@0.27.7 -> 0.28.1 (needs a parent bump: vite@7.3.5 ^0.27.0; tsup@8.5.1 ^0.27.0; tsx@4.21.0 ~0.27.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves esbuild@0.27.7 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves esbuild@0.27.7 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -896,7 +896,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list undici@5.29.0. In vendor/eliza/bun.lock it is reached only from @elizaos/plugin-wallet (dependency), outside the mobile agent bundle. The agent bundle's require(\"undici\") resolves to Bun's built-in module, not to an npm undici copy.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): undici@5.29.0 -> 6.28.1 (needs a parent bump: hardhat@2.29.1 ^5.14.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves undici@5.29.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves undici@5.29.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -913,7 +913,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list undici@5.29.0. In vendor/eliza/bun.lock it is reached only from @elizaos/plugin-wallet (dependency), outside the mobile agent bundle. The agent bundle's require(\"undici\") resolves to Bun's built-in module, not to an npm undici copy.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): undici@5.29.0 -> 6.28.1 (needs a parent bump: hardhat@2.29.1 ^5.14.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves undici@5.29.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves undici@5.29.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -930,7 +930,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list @fastify/busboy@2.1.1. In vendor/eliza/bun.lock it is reached only from @elizaos/plugin-wallet (dependency), outside the mobile agent bundle.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): @fastify/busboy@2.1.1 -> 3.2.2 (needs a parent bump: undici@5.29.0 ^2.0.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves @fastify/busboy@2.1.1 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves @fastify/busboy@2.1.1 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -947,7 +947,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list stream-json@1.9.1. In vendor/eliza/bun.lock it is reached only from @elizaos/auth (dependency), @elizaos/cloud-shared (dependency), @elizaos/plugin-wallet (dependency), @elizaos/ui (dependency), outside the mobile agent bundle.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): stream-json@1.9.1 -> 3.6.0 (needs a parent bump: jayson@4.3.0 ^1.9.1). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves stream-json@1.9.1 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves stream-json@1.9.1 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -964,7 +964,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list adm-zip@0.6.0. In vendor/eliza/bun.lock it is reached only from @elizaos/app (dependency), @elizaos/plugin-wallet (dependency), outside the mobile agent bundle. The upstream root override pins adm-zip to 0.6.0.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): adm-zip@0.6.0: no patched release. Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves adm-zip@0.6.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves adm-zip@0.6.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -981,7 +981,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list axios@1.19.0. In vendor/eliza/bun.lock it is reached only from @elizaos/cloud-shared (dependency), @elizaos/plugin-slack (dependency), @elizaos/plugin-wallet (dependency), @elizaos/ui (dependency), eliza (devDependency), outside the mobile agent bundle. The upstream root override pins axios to 1.19.0.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): axios@1.19.0 -> 1.20.0 (needs a parent bump: @coinbase/cdp-sdk@1.56.0 ^1.18.0; @raydium-io/raydium-sdk@1.3.1-beta.58 ^1.6.2; @sendgrid/client@8.1.6 ^1.12.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves axios@1.19.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves axios@1.19.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -998,7 +998,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list extract-zip@2.0.1. In vendor/eliza/bun.lock it is reached only from @elizaos/app (devDependency), @elizaos/plugin-browser (devDependency), @elizaos/plugin-computeruse (dependency), outside the mobile agent bundle.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): extract-zip@2.0.1: no patched release. Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves extract-zip@2.0.1 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves extract-zip@2.0.1 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -1015,7 +1015,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list undici@7.28.0. In vendor/eliza/bun.lock it is reached only from @elizaos/cloud-api (devDependency/dependency), outside the mobile agent bundle. The agent bundle's require(\"undici\") resolves to Bun's built-in module, not to an npm undici copy.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): undici@7.28.0 -> 7.29.1 (needs a parent bump: miniflare@4.20260730.0 7.28.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves undici@7.28.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves undici@7.28.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -1032,7 +1032,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list axios@1.19.0. In vendor/eliza/bun.lock it is reached only from @elizaos/cloud-shared (dependency), @elizaos/plugin-slack (dependency), @elizaos/plugin-wallet (dependency), @elizaos/ui (dependency), eliza (devDependency), outside the mobile agent bundle. The upstream root override pins axios to 1.19.0.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): axios@1.19.0 -> 1.20.0 (needs a parent bump: @coinbase/cdp-sdk@1.56.0 ^1.18.0; @raydium-io/raydium-sdk@1.3.1-beta.58 ^1.6.2; @sendgrid/client@8.1.6 ^1.12.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves axios@1.19.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves axios@1.19.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -1050,7 +1050,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list undici@5.29.0, undici@7.28.0. In vendor/eliza/bun.lock it is reached only from @elizaos/plugin-wallet (dependency), @elizaos/cloud-api (devDependency/dependency), outside the mobile agent bundle. The agent bundle's require(\"undici\") resolves to Bun's built-in module, not to an npm undici copy.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): undici@5.29.0 -> 6.28.1 (needs a parent bump: hardhat@2.29.1 ^5.14.0); undici@7.28.0 -> 7.29.1 (needs a parent bump: miniflare@4.20260730.0 7.28.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves undici@5.29.0, undici@7.28.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves undici@5.29.0, undici@7.28.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -1067,7 +1067,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list axios@1.19.0. In vendor/eliza/bun.lock it is reached only from @elizaos/cloud-shared (dependency), @elizaos/plugin-slack (dependency), @elizaos/plugin-wallet (dependency), @elizaos/ui (dependency), eliza (devDependency), outside the mobile agent bundle. The upstream root override pins axios to 1.19.0.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): axios@1.19.0 -> 1.20.0 (needs a parent bump: @coinbase/cdp-sdk@1.56.0 ^1.18.0; @raydium-io/raydium-sdk@1.3.1-beta.58 ^1.6.2; @sendgrid/client@8.1.6 ^1.12.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves axios@1.19.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves axios@1.19.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -1084,7 +1084,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list stream-json@1.9.1. In vendor/eliza/bun.lock it is reached only from @elizaos/auth (dependency), @elizaos/cloud-shared (dependency), @elizaos/plugin-wallet (dependency), @elizaos/ui (dependency), outside the mobile agent bundle.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): stream-json@1.9.1 -> 3.6.0 (needs a parent bump: jayson@4.3.0 ^1.9.1). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves stream-json@1.9.1 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves stream-json@1.9.1 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -1101,7 +1101,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list adm-zip@0.6.0. In vendor/eliza/bun.lock it is reached only from @elizaos/app (dependency), @elizaos/plugin-wallet (dependency), outside the mobile agent bundle. The upstream root override pins adm-zip to 0.6.0.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): adm-zip@0.6.0: no patched release. Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves adm-zip@0.6.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves adm-zip@0.6.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -1118,7 +1118,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list undici@5.29.0. In vendor/eliza/bun.lock it is reached only from @elizaos/plugin-wallet (dependency), outside the mobile agent bundle. The agent bundle's require(\"undici\") resolves to Bun's built-in module, not to an npm undici copy.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): undici@5.29.0 -> 6.28.1 (needs a parent bump: hardhat@2.29.1 ^5.14.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves undici@5.29.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves undici@5.29.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -1135,7 +1135,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list @toon-format/toon@2.3.0. In vendor/eliza/bun.lock it is reached only from @elizaos/plugin-agent-orchestrator (dependency), @elizaos/plugin-workflow (dependency), outside the mobile agent bundle.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): @toon-format/toon@2.3.0 -> 2.3.1 (needs a parent bump: @smthrs/cli@0.35.0 2.3.0; incur@0.4.26 ^2.1.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves @toon-format/toon@2.3.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves @toon-format/toon@2.3.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -1153,7 +1153,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list undici@7.28.0, undici@8.10.0. In vendor/eliza/bun.lock it is reached only from @elizaos/cloud-api (devDependency/dependency), @elizaos/operator (dependency), outside the mobile agent bundle. The agent bundle's require(\"undici\") resolves to Bun's built-in module, not to an npm undici copy.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): undici@7.28.0 -> 7.29.1 (needs a parent bump: miniflare@4.20260730.0 7.28.0); undici@8.10.0 -> 8.10.2 (needs a parent bump: kubernetes-fluent-client@3.12.3 8.10.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves undici@7.28.0, undici@8.10.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves undici@7.28.0, undici@8.10.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -1170,7 +1170,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list shell-quote@1.10.0. In vendor/eliza/bun.lock it is reached only from @elizaos/app (dependency), @elizaos/ui (dependency), outside the mobile agent bundle.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): shell-quote@1.10.0 -> 1.11.0 (inside every declared range). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves shell-quote@1.10.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves shell-quote@1.10.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -1187,7 +1187,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list cookie@0.4.2. In vendor/eliza/bun.lock it is reached only from @elizaos/plugin-wallet (dependency), outside the mobile agent bundle.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): cookie@0.4.2 -> 0.7.0 (needs a parent bump: @sentry/node@5.30.0 ^0.4.1). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves cookie@0.4.2 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves cookie@0.4.2 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -1204,7 +1204,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list brace-expansion@5.0.9. In vendor/eliza/bun.lock it is reached only from eliza (devDependency), outside the mobile agent bundle.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): brace-expansion@5.0.9 -> 5.0.12 (needs a parent bump: nx@23.2.1 5.0.9). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves brace-expansion@5.0.9 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves brace-expansion@5.0.9 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -1221,7 +1221,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list brace-expansion@5.0.9. In vendor/eliza/bun.lock it is reached only from eliza (devDependency), outside the mobile agent bundle.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): brace-expansion@5.0.9 -> 5.0.12 (needs a parent bump: nx@23.2.1 5.0.9). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves brace-expansion@5.0.9 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves brace-expansion@5.0.9 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -1238,7 +1238,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list js-yaml@5.3.0. In vendor/eliza/bun.lock it is reached only from @elizaos/operator (dependency), outside the mobile agent bundle.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): js-yaml@5.3.0 -> 5.4.1 (needs a parent bump: kubernetes-fluent-client@3.12.3 5.3.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves js-yaml@5.3.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves js-yaml@5.3.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -1255,7 +1255,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list axios@1.19.0. In vendor/eliza/bun.lock it is reached only from @elizaos/cloud-shared (dependency), @elizaos/plugin-slack (dependency), @elizaos/plugin-wallet (dependency), @elizaos/ui (dependency), eliza (devDependency), outside the mobile agent bundle. The upstream root override pins axios to 1.19.0.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): axios@1.19.0 -> 1.20.0 (needs a parent bump: @coinbase/cdp-sdk@1.56.0 ^1.18.0; @raydium-io/raydium-sdk@1.3.1-beta.58 ^1.6.2; @sendgrid/client@8.1.6 ^1.12.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves axios@1.19.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves axios@1.19.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -1272,7 +1272,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list smol-toml@1.6.1. In vendor/eliza/bun.lock it is reached only from eliza (devDependency), outside the mobile agent bundle.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): smol-toml@1.6.1 -> 1.9.0 (needs a parent bump: nx@23.2.1 1.6.1). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves smol-toml@1.6.1 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves smol-toml@1.6.1 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -1291,7 +1291,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list undici@5.29.0, undici@7.28.0, undici@8.10.0. In vendor/eliza/bun.lock it is reached only from @elizaos/plugin-wallet (dependency), @elizaos/cloud-api (devDependency/dependency), @elizaos/operator (dependency), outside the mobile agent bundle. The agent bundle's require(\"undici\") resolves to Bun's built-in module, not to an npm undici copy.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): undici@5.29.0 -> 6.28.1 (needs a parent bump: hardhat@2.29.1 ^5.14.0); undici@7.28.0 -> 7.29.1 (needs a parent bump: miniflare@4.20260730.0 7.28.0); undici@8.10.0 -> 8.10.2 (needs a parent bump: kubernetes-fluent-client@3.12.3 8.10.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves undici@5.29.0, undici@7.28.0, undici@8.10.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves undici@5.29.0, undici@7.28.0, undici@8.10.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -1308,7 +1308,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list adm-zip@0.6.0. In vendor/eliza/bun.lock it is reached only from @elizaos/app (dependency), @elizaos/plugin-wallet (dependency), outside the mobile agent bundle. The upstream root override pins adm-zip to 0.6.0.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): adm-zip@0.6.0: no patched release. Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves adm-zip@0.6.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves adm-zip@0.6.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -1326,7 +1326,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list undici@7.28.0, undici@8.10.0. In vendor/eliza/bun.lock it is reached only from @elizaos/cloud-api (devDependency/dependency), @elizaos/operator (dependency), outside the mobile agent bundle. The agent bundle's require(\"undici\") resolves to Bun's built-in module, not to an npm undici copy.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): undici@7.28.0 -> 7.29.1 (needs a parent bump: miniflare@4.20260730.0 7.28.0); undici@8.10.0 -> 8.10.2 (needs a parent bump: kubernetes-fluent-client@3.12.3 8.10.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves undici@7.28.0, undici@8.10.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves undici@7.28.0, undici@8.10.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -1343,7 +1343,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list sharp@0.35.2. In vendor/eliza/bun.lock it is reached only from @elizaos/cloud-api (devDependency/dependency), outside the mobile agent bundle. The mobile bundle replaces sharp with a throw-on-call stub (packages/agent/scripts/mobile-stubs/sharp.ts).",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): sharp@0.35.2 -> 0.35.5 (needs a parent bump: miniflare@4.20260730.0 0.35.2). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves sharp@0.35.2 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves sharp@0.35.2 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -1361,7 +1361,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list undici@7.28.0, undici@8.10.0. In vendor/eliza/bun.lock it is reached only from @elizaos/cloud-api (devDependency/dependency), @elizaos/operator (dependency), outside the mobile agent bundle. The agent bundle's require(\"undici\") resolves to Bun's built-in module, not to an npm undici copy.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): undici@7.28.0 -> 7.29.1 (needs a parent bump: miniflare@4.20260730.0 7.28.0); undici@8.10.0 -> 8.10.2 (needs a parent bump: kubernetes-fluent-client@3.12.3 8.10.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves undici@7.28.0, undici@8.10.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves undici@7.28.0, undici@8.10.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -1379,7 +1379,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list undici@5.29.0, undici@7.28.0. In vendor/eliza/bun.lock it is reached only from @elizaos/plugin-wallet (dependency), @elizaos/cloud-api (devDependency/dependency), outside the mobile agent bundle. The agent bundle's require(\"undici\") resolves to Bun's built-in module, not to an npm undici copy.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): undici@5.29.0 -> 6.28.1 (needs a parent bump: hardhat@2.29.1 ^5.14.0); undici@7.28.0 -> 7.29.1 (needs a parent bump: miniflare@4.20260730.0 7.28.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves undici@5.29.0, undici@7.28.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves undici@5.29.0, undici@7.28.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -1396,7 +1396,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list toml@3.0.0. In vendor/eliza/bun.lock it is reached only from @elizaos/plugin-wallet (dependency), outside the mobile agent bundle.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): toml@3.0.0 -> 4.2.0 (needs a parent bump: @coral-xyz/anchor@0.32.1 ^3.0.0; @coral-xyz/anchor@0.31.0 ^3.0.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves toml@3.0.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves toml@3.0.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -1413,7 +1413,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list undici@5.29.0. In vendor/eliza/bun.lock it is reached only from @elizaos/plugin-wallet (dependency), outside the mobile agent bundle. The agent bundle's require(\"undici\") resolves to Bun's built-in module, not to an npm undici copy.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): undici@5.29.0 -> 6.28.1 (needs a parent bump: hardhat@2.29.1 ^5.14.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves undici@5.29.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves undici@5.29.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -1430,7 +1430,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list axios@1.19.0. In vendor/eliza/bun.lock it is reached only from @elizaos/cloud-shared (dependency), @elizaos/plugin-slack (dependency), @elizaos/plugin-wallet (dependency), @elizaos/ui (dependency), eliza (devDependency), outside the mobile agent bundle. The upstream root override pins axios to 1.19.0.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): axios@1.19.0 -> 1.20.0 (needs a parent bump: @coinbase/cdp-sdk@1.56.0 ^1.18.0; @raydium-io/raydium-sdk@1.3.1-beta.58 ^1.6.2; @sendgrid/client@8.1.6 ^1.12.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves axios@1.19.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves axios@1.19.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -1447,7 +1447,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list undici@5.29.0. In vendor/eliza/bun.lock it is reached only from @elizaos/plugin-wallet (dependency), outside the mobile agent bundle. The agent bundle's require(\"undici\") resolves to Bun's built-in module, not to an npm undici copy.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): undici@5.29.0 -> 6.28.1 (needs a parent bump: hardhat@2.29.1 ^5.14.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves undici@5.29.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves undici@5.29.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -1464,7 +1464,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list adm-zip@0.6.0. In vendor/eliza/bun.lock it is reached only from @elizaos/app (dependency), @elizaos/plugin-wallet (dependency), outside the mobile agent bundle. The upstream root override pins adm-zip to 0.6.0.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): adm-zip@0.6.0: no patched release. Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves adm-zip@0.6.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves adm-zip@0.6.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -1481,7 +1481,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list undici@5.29.0. In vendor/eliza/bun.lock it is reached only from @elizaos/plugin-wallet (dependency), outside the mobile agent bundle. The agent bundle's require(\"undici\") resolves to Bun's built-in module, not to an npm undici copy.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): undici@5.29.0 -> 6.28.1 (needs a parent bump: hardhat@2.29.1 ^5.14.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves undici@5.29.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves undici@5.29.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -1499,7 +1499,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list undici@7.28.0, undici@8.10.0. In vendor/eliza/bun.lock it is reached only from @elizaos/cloud-api (devDependency/dependency), @elizaos/operator (dependency), outside the mobile agent bundle. The agent bundle's require(\"undici\") resolves to Bun's built-in module, not to an npm undici copy.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): undici@7.28.0 -> 7.29.1 (needs a parent bump: miniflare@4.20260730.0 7.28.0); undici@8.10.0 -> 8.10.2 (needs a parent bump: kubernetes-fluent-client@3.12.3 8.10.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves undici@7.28.0, undici@8.10.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves undici@7.28.0, undici@8.10.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -1536,7 +1536,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list sharp@0.35.2, sharp@0.35.4. In vendor/eliza/bun.lock it is reached only from @elizaos/cloud-api (devDependency/dependency), @elizaos/app (devDependency), @elizaos/bench-eliza-1-vision-cua-e2e (dependency), @elizaos/plugin-personal-assistant (dependency), @elizaos/plugin-vision (dependency), @elizaos/testing (dependency) and 1 more workspaces, outside the mobile agent bundle. The mobile bundle replaces sharp with a throw-on-call stub (packages/agent/scripts/mobile-stubs/sharp.ts).",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): sharp@0.35.2 -> 0.35.5 (needs a parent bump: miniflare@4.20260730.0 0.35.2); sharp@0.35.4 -> 0.35.5 (inside every declared range). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves sharp@0.35.2, sharp@0.35.4 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves sharp@0.35.2, sharp@0.35.4 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -1553,7 +1553,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list @fastify/busboy@2.1.1. In vendor/eliza/bun.lock it is reached only from @elizaos/plugin-wallet (dependency), outside the mobile agent bundle.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): @fastify/busboy@2.1.1 -> 3.2.2 (needs a parent bump: undici@5.29.0 ^2.0.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves @fastify/busboy@2.1.1 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves @fastify/busboy@2.1.1 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -1570,7 +1570,7 @@
         "ships": false,
         "reachability": "Not in the APK. The packaged-runtime notices of the payload staged at upstream 13c98575987a on 2026-10-12 (npm run agent:stage-android, then generate-licenses --packaged-runtime: 550 npm packages bundled in the agent and workflow worker) do not list axios@1.19.0. In vendor/eliza/bun.lock it is reached only from @elizaos/cloud-shared (dependency), @elizaos/plugin-slack (dependency), @elizaos/plugin-wallet (dependency), @elizaos/ui (dependency), eliza (devDependency), outside the mobile agent bundle. The upstream root override pins axios to 1.19.0.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The fix belongs upstream in elizaOS (vendor/eliza is a pinned submodule): axios@1.19.0 -> 1.20.0 (needs a parent bump: @coinbase/cdp-sdk@1.56.0 ^1.18.0; @raydium-io/raydium-sdk@1.3.1-beta.58 ^1.6.2; @sendgrid/client@8.1.6 ^1.12.0). Plan item U-7 batches these upstream bumps.",
-        "removeWhen": "The upstream lock no longer resolves axios@1.19.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves axios@1.19.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "MVP vulnerability review 2026-10-12 (docs/security/vulnerability-review-2026-10-12.md): npm bulk advisories at the pin, GitHub advisory ranges, bun.lock dependency chains, and the packaged-runtime notices of a payload staged at the pin",
         "reviewedOn": "2026-10-12",
         "reviewBy": "2027-01-10"
@@ -1655,7 +1655,7 @@
         "ships": false,
         "reachability": "Not in the APK. In vendor/eliza/bun.lock toml@3.0.0 is reached only from @coral-xyz/anchor (^3.0.0, also via @meteora-ag/dlmm), a dependency of @elizaos/plugin-wallet, which earlier reviews of the staged packaged-runtime notices place outside the mobile agent bundle.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The advisories (toml.parse CPU DoS) were published after the previous audit; the fix belongs upstream in elizaOS: toml@3.0.0 -> 5.0.1 needs a parent bump of @coral-xyz/anchor.",
-        "removeWhen": "The upstream lock no longer resolves toml@3.0.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves toml@3.0.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "Pin bump review 2026-10-22: npm bulk advisories at the pin, GitHub advisory ranges and bun.lock dependency chains",
         "reviewedOn": "2026-10-22",
         "reviewBy": "2027-01-10"
@@ -1672,7 +1672,7 @@
         "ships": false,
         "reachability": "Not in the APK. In vendor/eliza/bun.lock toml@3.0.0 is reached only from @coral-xyz/anchor (^3.0.0, also via @meteora-ag/dlmm), a dependency of @elizaos/plugin-wallet, which earlier reviews of the staged packaged-runtime notices place outside the mobile agent bundle.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The advisories (toml.parse CPU DoS) were published after the previous audit; the fix belongs upstream in elizaOS: toml@3.0.0 -> 5.0.1 needs a parent bump of @coral-xyz/anchor.",
-        "removeWhen": "The upstream lock no longer resolves toml@3.0.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves toml@3.0.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "Pin bump review 2026-10-22: npm bulk advisories at the pin, GitHub advisory ranges and bun.lock dependency chains",
         "reviewedOn": "2026-10-22",
         "reviewBy": "2027-01-10"
@@ -1689,7 +1689,7 @@
         "ships": false,
         "reachability": "Not in the APK. In vendor/eliza/bun.lock toml@3.0.0 is reached only from @coral-xyz/anchor (^3.0.0, also via @meteora-ag/dlmm), a dependency of @elizaos/plugin-wallet, which earlier reviews of the staged packaged-runtime notices place outside the mobile agent bundle.",
         "justification": "Not shipped by Alpha Phone, so no Alpha Phone user is exposed. The advisories (toml.parse CPU DoS) were published after the previous audit; the fix belongs upstream in elizaOS: toml@3.0.0 -> 5.0.1 needs a parent bump of @coral-xyz/anchor.",
-        "removeWhen": "The upstream lock no longer resolves toml@3.0.0 at a new pin (re-run node scripts/dependency-audit.mjs --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
+        "removeWhen": "The upstream lock no longer resolves toml@3.0.0 at a new pin (re-run node scripts/dependency-audit.ts --resident --write), or a packaged-runtime notices audit (--resident --notices) shows it shipping, which voids this exception.",
         "reviewedBy": "Pin bump review 2026-10-22: npm bulk advisories at the pin, GitHub advisory ranges and bun.lock dependency chains",
         "reviewedOn": "2026-10-22",
         "reviewBy": "2027-01-10"

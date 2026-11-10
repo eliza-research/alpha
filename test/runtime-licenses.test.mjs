@@ -5,10 +5,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { BUN_ENTRY, collectNotices, finishEntry, loadTemplates, packagedRuntimePresent, runtimeEntries, ROOT, shippedPackagedRuntime, UNKNOWN, UNVERIFIED } from '../scripts/generate-licenses.mjs';
-import {AGENT_BUNDLE_DEPENDENCIES, readAgentBundleDependencies, stageAgentBundleDependencies} from '../scripts/agent-bundle-dependencies.mjs';
+import { BUN_ENTRY, collectNotices, finishEntry, loadTemplates, packagedRuntimePresent, runtimeEntries, ROOT, shippedPackagedRuntime, UNKNOWN, UNVERIFIED } from '../scripts/generate-licenses.ts';
+import {AGENT_BUNDLE_DEPENDENCIES, readAgentBundleDependencies, stageAgentBundleDependencies} from '../scripts/agent-bundle-dependencies.ts';
 import {createHash} from 'node:crypto';
-import { licenceFlagLines } from '../scripts/licence-policy.mjs';
+import { licenceFlagLines } from '../scripts/licence-policy.ts';
 
 const canonicalTexts = { MIT: 'MIT terms', ISC: 'ISC terms', 'Apache-2.0': 'Apache terms', 'BSD-3-Clause': 'BSD terms' };
 const templates = { mit: 'MIT terms', isc: 'ISC terms', apache: 'Apache terms', canonical: expression => canonicalTexts[expression] ?? '' };
@@ -294,7 +294,7 @@ test('generation follows the shipped mode, and --packaged-runtime is wired into 
   fs.writeFileSync(path.join(root, 'apps/app/public/licenses/third-party-notices.json'), JSON.stringify([{ name: BUN_ENTRY }]));
   assert.equal(shippedPackagedRuntime(root), true);
   const resident = fs.readFileSync(path.join(ROOT, '.github/workflows/resident-android.yml'), 'utf8');
-  assert.match(resident, /node scripts\/generate-licenses\.mjs --packaged-runtime\n/);
+  assert.match(resident, /node scripts\/generate-licenses\.ts --packaged-runtime\n/);
 });
 
 test('compiled Google host enumerates its actual scoped package inputs and deduplicates shared packages', t => {

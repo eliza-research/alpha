@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
-import {ROOT, VOICE_HOST, collectNotices, voiceHostProblems} from '../scripts/generate-licenses.mjs';
-import {buildSbom as generateSbom} from '../scripts/generate-sbom.mjs';
-import {readVoiceHost, verifyVoiceHost, VOICE_ASR_SLOT} from '../scripts/voice-host.mjs';
-import {stageVoiceModels} from '../scripts/android-stage-voice-models.mjs';
+import {ROOT, VOICE_HOST, collectNotices, voiceHostProblems} from '../scripts/generate-licenses.ts';
+import {buildSbom as generateSbom} from '../scripts/generate-sbom.ts';
+import {readVoiceHost, verifyVoiceHost, VOICE_ASR_SLOT} from '../scripts/voice-host.ts';
+import {stageVoiceModels} from '../scripts/android-stage-voice-models.ts';
 import {fixtureProduct} from './fixtures/voice-host-product.mjs';
 
 // The on-device speech engine is libelizainference with the shared paradee-voice library. Its

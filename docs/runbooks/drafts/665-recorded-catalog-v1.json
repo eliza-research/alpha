@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "source": "GET https://api.eliza.app/api/v1/subscriptions/plans (unauthenticated), observed 2026-10-28 by scripts/owner/subscription-limits.mjs catalog",
+  "source": "GET https://api.eliza.app/api/v1/subscriptions/plans (unauthenticated), observed 2026-10-28 by scripts/owner/subscription-limits.ts catalog",
   "status": "recorded observation of the server-published catalog; becomes the H-02 record only when the owner confirms it in a dated P- entry",
   "catalog": {
     "catalogVersion": "v1",

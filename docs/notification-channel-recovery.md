@@ -9,7 +9,7 @@ Official platform contracts: [NotificationManager](https://developer.android.com
 Run each immutable distribution separately:
 
 ```sh
-ANDROID_SERIAL=emulator-N ALPHA_NATIVE_TEST_AVD=owned-avd-name ALPHA_NATIVE_TEST_ABI=x86_64 node scripts/test-native-permissions.mjs channels ARCHIVE/standalone-debug.apk ARCHIVE/standalone-androidTest.apk OUTPUT
+ANDROID_SERIAL=emulator-N ALPHA_NATIVE_TEST_AVD=owned-avd-name ALPHA_NATIVE_TEST_ABI=x86_64 node scripts/test-native-permissions.ts channels ARCHIVE/standalone-debug.apk ARCHIVE/standalone-androidTest.apk OUTPUT
 ```
 
 The shared runner validates both archived hashes, leases the emulator, and refuses existing product packages. It grants POST_NOTIFICATIONS only in a fresh secondary user, runs the exact opt-in method, and verifies owned package/user cleanup. Uncertain termination preserves the fixture for recovery. The test creates one UUID synthetic channel; it changes that channel through real Android Settings, observes blocked status while app permission stays allowed, explicitly restores it through Settings, then posts a real notification and taps its actual prototype shade row. An exact package-scoped synthetic broadcast receipt proves the original PendingIntent target was invoked; no real mail/message or user reminder is sent. Unknown channel IDs are rejected. Cleanup cancels only its notification and deletes only the newly-created channel; existing user channels are never changed. Android may internally retain a tombstone for deleted channel IDs; no claim of removing platform audit history is made.

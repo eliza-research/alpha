@@ -38,7 +38,7 @@ for(const scenario of [{name:'repeated clock time runs once at the earlier offse
 
 // Missed-occurrence policy (docs/decisions.md A-09 option under the current documentation): nothing runs
 // while the host is down. Development schedules run only while this app is open, so "down" here is a
-// closed or sleeping app. The resident agent's own overdue path is scripts/test-local-digest-restart.mjs.
+// closed or sleeping app. The resident agent's own overdue path is scripts/test-local-digest-restart.ts.
 const digestState=(page:import('@playwright/test').Page)=>page.evaluate(async()=>{const state=await (await import('/src/browser/development-digest-document.ts')).readDevelopmentDigests((await import('/src/browser/development-identity.ts')).developmentIdentity('local'));return {results:state.results,loops:state.loops};});
 const digestCall=(page:import('@playwright/test').Page,path:string,body?:unknown)=>page.evaluate(async({path,body})=>{const {developmentDigestRequest:request}=await import('/src/browser/development-digests.ts'),{developmentIdentity}=await import('/src/browser/development-identity.ts');localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'development',profile:'local'}));return request(developmentIdentity('local'),'/api/workflow/hosted/'+path,body) as Promise<any>;},{path,body});
 async function seedLoops(page:import('@playwright/test').Page,templates:Array<{template:'morning'|'evening';localTime:string;text:string}>,zone='UTC'){

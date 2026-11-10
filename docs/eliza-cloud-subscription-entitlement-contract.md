@@ -239,7 +239,7 @@ reset is recorded; a failure never blocks the local reset.
 ## Deployed production observations (2026-10-26)
 
 Unauthenticated, read-only GET requests to `https://api.eliza.app`, recorded with
-`node scripts/cloud-subscription-latency.mjs` in
+`node scripts/cloud-subscription-latency.ts` in
 [subscription-latency-deployed-public-2026-10-26.json](evidence/subscription-latency-deployed-public-2026-10-26.json).
 No account, key, code or subscription was used or changed.
 

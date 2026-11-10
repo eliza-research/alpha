@@ -10,7 +10,7 @@ After preparing the genuine resident bundle, stage the existing runtime/model us
 npm run agent:stage-android -- --runtime-profile=cloud --local-embeddings
 ```
 
-Staging declares the requested capability and preserves the producer's BGE provenance. It does not qualify native libraries. Build and qualify the current embedding host through the existing component producer, then stage its reviewed receipt with `scripts/stage-embedding-host.mjs --receipt <receipt>`. The old recorded libraries cannot pass this gate. The component producer's import closure must be qualified separately before running it.
+Staging declares the requested capability and preserves the producer's BGE provenance. It does not qualify native libraries. Build and qualify the current embedding host through the existing component producer, then stage its reviewed receipt with `scripts/stage-embedding-host.ts --receipt <receipt>`. The old recorded libraries cannot pass this gate. The component producer's import closure must be qualified separately before running it.
 
 Then use:
 

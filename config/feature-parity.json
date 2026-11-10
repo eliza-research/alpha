@@ -1,5 +1,5 @@
 {
-  "$comment": "Parity of Alpha with Eliza's reference mobile registration (test/feature-parity.test.mjs, scripts/feature-manifest.mjs --parity). Brands may differ only by identity and theme. 'differences' are the functional manifest differences still open, each with the Alpha module that owns it; 'modules' are the Alpha source files that still carry behaviour (everything but apps/app/src/product). Add an entry when Alpha gains behaviour of its own, and remove it when the behaviour moves upstream.",
+  "$comment": "Parity of Alpha with Eliza's reference mobile registration (test/feature-parity.test.mjs, scripts/feature-manifest.ts --parity). Brands may differ only by identity and theme. 'differences' are the functional manifest differences still open, each with the Alpha module that owns it; 'modules' are the Alpha source files that still carry behaviour (everything but apps/app/src/product). Add an entry when Alpha gains behaviour of its own, and remove it when the behaviour moves upstream.",
   "reference": "ELIZA_MOBILE_PRODUCT",
   "differences": {
     "view:clock:only-b": "Eliza offers Clock; Alpha hands alarms and timers to the Android clock (clock.handoff) without a Clock view.",

@@ -7,17 +7,17 @@ import vm from 'node:vm';
 import {createHash,randomUUID,randomBytes} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
-import {verifySource,preparedSourceEnv,workerArtifactDirectory,digest} from '../scripts/local-agent-source.mjs';
-import {verifyWorkerArtifact} from '../scripts/workflow-worker-artifact.mjs';
+import {verifySource,preparedSourceEnv,workerArtifactDirectory,digest} from '../scripts/local-agent-source.ts';
+import {verifyWorkerArtifact} from '../scripts/workflow-worker-artifact.ts';
 import {preparePrivateRuntimeProfile,runtimeEnvironment} from '../vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs';
-import {CLOUD_SDK_BASES} from '../scripts/cloud-sdk-authority.mjs';
+import {CLOUD_SDK_BASES} from '../scripts/cloud-sdk-authority.ts';
 const product=JSON.parse(fs.readFileSync('config/alpha-product.json','utf8'));
 const hash=b=>createHash('sha256').update(b).digest('hex');
 import {productCharacterHostFixture as fixture} from './fixtures/product-character-host.mjs';
 test('native declaration uses canonical product name and the existing bio without a renderer or credential input',()=>{
  const text=fs.readFileSync('backend/native-cloud-runtime.ts','utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,'');const js=stripTypeScriptTypes(text,{mode:'strip'});const value=vm.runInNewContext(js+';nativeCloudRuntime',{product,productionCloud:{api:'https://api.example'}});
  assert.equal(value.productCharacter.name,product.identity.characterName);assert.equal(JSON.stringify(value.productCharacter.bio),JSON.stringify([`The assistant built into ${product.identity.appName} for writing, research, decisions and practical follow-through.`]));assert.equal(Object.isFrozen(value),true);assert.equal(Object.isFrozen(value.productCharacter),true);assert.equal(Object.isFrozen(value.productCharacter.bio),true);assert.equal(value.apiBaseUrl,'https://api.example/api/v1');
- const identity=fs.readFileSync('scripts/agent-identity.mjs','utf8');assert.ok(identity.includes('The assistant built into ${identity.appName} for writing, research, decisions and practical follow-through.'));
+ const identity=fs.readFileSync('scripts/agent-identity.ts','utf8');assert.ok(identity.includes('The assistant built into ${identity.appName} for writing, research, decisions and practical follow-through.'));
 });
 test('bound and unbound Cloud launches get only the verified packaged module paths, independently of credential settings',async()=>{
  const f=fixture();let host;try{host=await f.make();await host.clear();await host.bind({token:'synthetic-token',credentialId:'one',reference:'one'});await host.clear();assert.equal(f.launches.length,3);

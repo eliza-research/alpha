@@ -174,7 +174,7 @@ Data flows to document, each with its own diagram in the description:
 
 | Flow | Path | Notes |
 | --- | --- | --- |
-| F1 Voice | mic → on-device ASR → transcript → (redaction) → agent | Audio is never forwarded to Cerebras. `local-asr.mjs` already asserts this for the host path [repo: agent-integration]. |
+| F1 Voice | mic → on-device ASR → transcript → (redaction) → agent | Audio is never forwarded to Cerebras. `local-asr.ts` already asserts this for the host path [repo: agent-integration]. |
 | F2 Inference | agent → TLS → Cerebras → response | Model ID recorded per request. No embeddings, because Cerebras supplies none [repo]. |
 | F3 Tool actions | agent proposal → user approval → native bridge → Android provider (Calendar, etc.) → receipt | |
 | F4 Account | phone → `/api/auth/cli-session` → browser approval → 90-day org API key → stored in Keystore [repo] | |
@@ -338,7 +338,7 @@ CC8.1 controls for Alpha:
 - Require PRs; **≥1 approving review from someone other than the author**; dismiss stale approvals; require status checks (`Android foundation`, `Browser MVP`, CodeQL, dependency review); require linear history; block force-push and deletion; include administrators.
 - Rulesets on private repos require GitHub Team or Enterprise ([GitHub rulesets](https://docs.github.com/en/enterprise-cloud@latest/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets); [community discussion](https://github.com/orgs/community/discussions/184363)). The org must upgrade.
 
-**(2) CODEOWNERS.** Required owners for `patches/eliza/**` (historical; the series was retired in `34b3c82a` and upstream changes now arrive through a reviewed pin move in `upstream.lock.json`), `upstream.lock.json`, `.gitmodules`, `android/**/AndroidManifest.xml`, `scripts/stage-aosp.mjs`, `.github/workflows/**`, Terraform and KMS policy.
+**(2) CODEOWNERS.** Required owners for `patches/eliza/**` (historical; the series was retired in `34b3c82a` and upstream changes now arrive through a reviewed pin move in `upstream.lock.json`), `upstream.lock.json`, `.gitmodules`, `android/**/AndroidManifest.xml`, `scripts/stage-aosp.ts`, `.github/workflows/**`, Terraform and KMS policy.
 
 **(3) Signed commits** (SSH or gitsign/Sigstore keyless). Require them on `main`. All 144 commits today show `%G?`=`N` [repo].
 

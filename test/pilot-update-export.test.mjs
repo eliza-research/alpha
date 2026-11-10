@@ -6,8 +6,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { ALPHA, STOCK, APK, BEFORE, DATA, NONCE, exported, hmac, fakeUnit, timing } from "./fixtures/pilot-update.mjs";
-import { compareDomains, integrityQuery, INTEGRITY_AUTHORITY, parseIntegrityExport } from "../scripts/pilot-update.mjs";
-import { beginPilotRotation, claimPilotInstall, inspectPilotRotation } from "../scripts/owner/pilot-rotation-journal.mjs";
+import { compareDomains, integrityQuery, INTEGRITY_AUTHORITY, parseIntegrityExport } from "../scripts/pilot-update.ts";
+import { beginPilotRotation, claimPilotInstall, inspectPilotRotation } from "../scripts/owner/pilot-rotation-journal.ts";
 
 test("the export query is the read-only provider URI with a nonce, quoted for the device shell", () => {
   assert.equal(INTEGRITY_AUTHORITY, "ai.elizaresearch.alphaphone.integrity");
@@ -64,12 +64,12 @@ test("the provider is a registered, read-only, DUMP-protected release component,
   assert.match(source, /HmacSHA256/);
   for (const write of ["insert", "delete", "update"]) assert.match(source, new RegExp(`public (?:Uri|int) ${write}\\([^)]*\\)\\{throw new UnsupportedOperationException`));
   assert.match(source, /List\.of\("cache", "code_cache"\)/);
-  const apk = fs.readFileSync("scripts/apk.mjs", "utf8");
+  const apk = fs.readFileSync("scripts/apk.ts", "utf8");
   assert.match(apk, /"ai\.elizaresearch\.alphaphone\.release\.DataIntegrityProvider": "android\.permission\.DUMP"/);
   assert.ok(!fs.existsSync("android/app/src/testMocks/java/ai/elizaresearch/alphaphone/release"), "no test-mocks variant of the export");
 });
 
-const { planHome, updateUnit } = await import("../scripts/pilot-update.mjs");
+const { planHome, updateUnit } = await import("../scripts/pilot-update.ts");
 const indexOf = (calls, predicate, from = 0) => calls.findIndex((call, index) => index >= from && predicate(call));
 const lastIndexOf = (calls, predicate) => calls.findLastIndex(predicate);
 

@@ -34,10 +34,10 @@ prints is misleading.
 
 ## Which fields block `qualified: true`
 
-`scripts/voice-host.mjs` `voiceHostProblems` refuses `qualified: true` unless
+`scripts/voice-host.ts` `voiceHostProblems` refuses `qualified: true` unless
 `evidence.deviceExecuted === true` **and** `evidence.userAccepted === true`.
 `evidence.emulatorDeviceExecuted` must also be a boolean. Release admission
-(`scripts/release-blockers.mjs`, `scripts/verify-apks.mjs`) also needs the packaged bytes to
+(`scripts/release-blockers.ts`, `scripts/verify-apks.ts`) also needs the packaged bytes to
 match the record exactly.
 
 | Field | Now | Blocks `qualified: true`? | What sets it |
@@ -85,7 +85,7 @@ the vendor checkout.
 ### 2. Build the voice outputs at the pin
 
 ```sh
-node scripts/build-pinned-voice.mjs --workspace /abs/voice-work --out /abs/voice-out-$(date +%F)
+node scripts/build-pinned-voice.ts --workspace /abs/voice-work --out /abs/voice-out-$(date +%F)
 ```
 
 `--out` must be a new directory outside `vendor`. The wrapper checks that sources are clean
@@ -102,9 +102,9 @@ Put these in `/abs/voice-models` with the exact bytes the record pins:
 licence text (`licenses/Phonon-2-*`).
 
 ```sh
-node scripts/android-stage-voice-models.mjs --plan
-node scripts/android-stage-voice-models.mjs --from /abs/voice-out-… --from /abs/voice-models
-node scripts/voice-host.mjs --verify        # {"status":"packaged","qualified":false}
+node scripts/android-stage-voice-models.ts --plan
+node scripts/android-stage-voice-models.ts --from /abs/voice-out-… --from /abs/voice-models
+node scripts/voice-host.ts --verify        # {"status":"packaged","qualified":false}
 npm run android:build:inputs                # "on-device voice outputs" now [ready]
 ```
 
@@ -183,7 +183,7 @@ build ([local speech research](../local-speech-research-2026-10-12.md)). What sh
 - The 300/600/1,200 ms values are engineering defaults, not measurements.
 
 Any small model admitted here must be GGUF on libelizainference: no other neural runtime may
-ship (`test/llama-cpp-only.test.mjs`, `scripts/audit-production-bundle.mjs`, P-42). An ONNX model
+ship (`test/llama-cpp-only.test.mjs`, `scripts/audit-production-bundle.ts`, P-42). An ONNX model
 such as Smart Turn v3 (8M, acoustic) would need an upstream GGUF port first.
 
 ## Decisions for the owner
@@ -207,7 +207,7 @@ owner (P-16).
 
 Default: leave the schema as is. Recommendation: add the required `installedApp` and
 `physicalAudio` evidence fields described above, so `qualified: true` cannot be recorded without
-them. Changes `scripts/voice-host.mjs` and its test, and does not touch the record bytes.
+them. Changes `scripts/voice-host.ts` and its test, and does not touch the record bytes.
 
 ## Draft decision entries
 
@@ -228,6 +228,6 @@ merge time; P-56 is the last entry on `main` today).
 2. Operator: steps 1 to 6 above on a physical ARM64 Pixel and the API 35 emulator. Commit the records.
 3. Reviewer: step 7, plus the chosen decision entry in `docs/decisions.md`.
 4. Anyone, after the first strict build on the release host: `npm run android:build:inputs`. If
-   the embedding host row turns `[PERSON]`, do H-19 (`node scripts/stage-embedding-host.mjs
+   the embedding host row turns `[PERSON]`, do H-19 (`node scripts/stage-embedding-host.ts
    --receipt docs/evidence/native-c95a/embedding-QUALIFICATION.json`, or qualify a candidate with
    ARM64 execution evidence).

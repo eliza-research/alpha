@@ -1,5 +1,5 @@
 // docs/human-actions.md is the single ordered checklist of human-only MVP steps, and
-// scripts/human-actions.mjs reports the ones this repository records. These cases keep the page
+// scripts/human-actions.ts reports the ones this repository records. These cases keep the page
 // well-formed (sequential steps, each with its seam and Verify line, every path and link real) and
 // check the recorded states against fixture records. They establish nothing about the steps themselves.
 import test from "node:test";
@@ -8,7 +8,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { CHECKLIST, CHECKS, checklistSteps, formatStates, humanActionStates } from "../scripts/human-actions.mjs";
+import { CHECKLIST, CHECKS, checklistSteps, formatStates, humanActionStates } from "../scripts/human-actions.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
 const text = fs.readFileSync(path.join(root, CHECKLIST), "utf8");
@@ -52,7 +52,7 @@ test("every repository path and document link on the page exists", () => {
   const npm = [...text.matchAll(/npm run ([a-z][a-z0-9:_-]*)/g)].map(match => match[1]);
   const scripts = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")).scripts;
   assert.deepEqual(npm.filter(name => !Object.hasOwn(scripts, name)), []);
-  assert.equal(scripts["human:status"], "node scripts/human-actions.mjs");
+  assert.equal(scripts["human:status"], "node scripts/human-actions.ts");
 });
 
 test("every upstream elizaOS path the page names exists at the pinned commit", t => {

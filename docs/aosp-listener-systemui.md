@@ -34,8 +34,8 @@ read SystemUI as its caller. It grants no permission and changes no other launch
 verify it like the other bundles with `--assist`:
 
 ```sh
-node scripts/aosp-listener-systemui.mjs --source /absolute/original-aosp --assist --output /absolute/new-assist-overlay
-node scripts/aosp-listener-systemui.mjs --source /absolute/disposable-build-copy --assist --after
+node scripts/aosp-listener-systemui.ts --source /absolute/original-aosp --assist --output /absolute/new-assist-overlay
+node scripts/aosp-listener-systemui.ts --source /absolute/disposable-build-copy --assist --after
 ```
 
 Image staging and the Pixel source check record it with `--applied-systemui-patch assist`. Without
@@ -53,7 +53,7 @@ been compiled or booted.
 2. Produce a separate two-file overlay from the original source:
 
    ```sh
-   node scripts/aosp-listener-systemui.mjs --source /absolute/original-aosp --output /absolute/new-systemui-overlay
+   node scripts/aosp-listener-systemui.ts --source /absolute/original-aosp --output /absolute/new-systemui-overlay
    ```
 
    The destination must be new and outside the source. The tool validates exact
@@ -66,7 +66,7 @@ been compiled or booted.
    `frameworks/base/packages/SystemUI` files into the build copy. Verify with:
 
    ```sh
-   node scripts/aosp-listener-systemui.mjs --source /absolute/disposable-build-copy --after
+   node scripts/aosp-listener-systemui.ts --source /absolute/disposable-build-copy --after
    ```
 
 4. Keep both original and derived receipts with build inputs. The derived receipt

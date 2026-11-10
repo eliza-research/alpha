@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { dirtyPaths, parseQualifyArgs, readCiArchive, recordCandidate } from "../scripts/qualify-head.mjs";
+import { dirtyPaths, parseQualifyArgs, readCiArchive, recordCandidate } from "../scripts/qualify-head.ts";
 
 const git = (cwd, ...args) => {
   const out = spawnSync("git", args, { cwd, encoding: "utf8" });
@@ -40,7 +40,7 @@ test("resident instrumentation binds by apkSha256 and resident CI binds only to 
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const write = (rel, value) => { fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true }); fs.writeFileSync(path.join(root, rel), JSON.stringify(value)); };
   const local = "1".repeat(64), ci = "2".repeat(64), ciTest = "3".repeat(64);
-  // The record shape android-resident-instrumentation.mjs writes.
+  // The record shape android-resident-instrumentation.ts writes.
   write("test-results/resident-instrumentation/redaction.json", { runId: "r", user: "11", test: "T", apkSha256: local, passed: true });
   write("test-results/resident-ci-archive/apk-manifest.json", { "launcher-debug.apk": ci, "launcher-androidTest.apk": ciTest });
   write("test-results/resident-ci-native/launcher-recovery.json", { passed: true });

@@ -7,7 +7,7 @@ import {captureInputs, checkTraces} from '../check-traces.mjs';
 import {app, javaTraces, root} from './java.mjs';
 import {workflowNoticePlatform} from './workflow-notice-platform.mjs';
 import {jsonJar} from '../../../../test/fixtures/jvm-tools.mjs';
-import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.mjs';
+import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.ts';
 
 const model = 'WorkflowNoticeDelivery';
 const driver = fileURLToPath(import.meta.url);
@@ -24,7 +24,7 @@ const nativeManifest = 'patches/eliza/native-manifest.json';
 export async function checkWorkflowNoticeDelivery(extraSources = []) {
   assert.ok(jsonJar, 'the pinned org.json fixture is required');
   const paths = [driver, join(here, 'WorkflowNoticeTraces.java'), join(here, 'Trace.java'), join(here, 'java.mjs'),
-    join(here, 'workflow-notice-platform.mjs'), 'test/fixtures/jvm-tools.mjs', 'scripts/upstream-native-source.mjs',
+    join(here, 'workflow-notice-platform.mjs'), 'test/fixtures/jvm-tools.mjs', 'scripts/upstream-native-source.ts',
     'upstream.lock.json', nativeManifest, bridge, ...product,
     ...[host, ...shared].map(path => 'vendor/eliza/'+path), jsonJar, ...extraSources];
   const driverHashes = captureInputs(paths);

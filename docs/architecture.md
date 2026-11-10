@@ -60,7 +60,7 @@ do not change credential authority or its storage namespace. `entitlementAudienc
 selects the signed plan contract the client verifies; its default is
 `cloud-subscription`. The Eliza records explicitly retain `eliza-alpha-phone`
 for compatibility with the deployed signer. Eliza Cloud remains the default. Run
-`node scripts/cloud-deployment.mjs` after changing it; renderer and Android builds
+`node scripts/cloud-deployment.ts` after changing it; renderer and Android builds
 reject stale generated TypeScript or Java. The current configuration accepts
 canonical HTTPS origins on the default port, without base paths or credentials.
 
@@ -203,7 +203,7 @@ resources, environment hook). Upstream build orchestration collects the four APK
 Alpha keeps only data and its product admission and APK verification. The APK inspection
 itself (aapt/unzip facts, dex markers, signer digests, backup/cleartext/export/test-only/
 source-map/version checks) is upstream `artifact-inspection/apk-distribution.mjs`; Alpha's
-`scripts/apk.mjs` supplies `DISTRIBUTION_POLICY` as data (exported-component allowlist,
+`scripts/apk.ts` supplies `DISTRIBUTION_POLICY` as data (exported-component allowlist,
 development hooks, removed speech runtimes) plus the Quick Settings tile and per-flavor
 permission checks.
 
@@ -285,7 +285,7 @@ Playwright and explicit test-mocks builds, and off for `npm run build`,
 
 The resident runtime carries the native Google host. `scripts/build-native-google-host.ts` bundles
 `backend/native-google-agent-host.ts` and its imports into `google-host.mjs`;
-`scripts/stage-local-agent-runtime.mjs` verifies and stages it with the resident runtime, and
+`scripts/stage-local-agent-runtime.ts` verifies and stages it with the resident runtime, and
 `AlphaLocalAgentPlugin` loads it through `ELIZA_NATIVE_GOOGLE_HOST_MODULE`.
 
 ## Runtime and permissions
@@ -394,7 +394,7 @@ There is no automatic Eliza Cloud website sign-in fallback.
   - For in-app sign-in, Cloud must register `ai.elizaresearch.alphaphone` in
     `ELIZA_MOBILE_APP_AUTH_CLIENTS_JSON`, allowlist the return URL for tenant `elizacloud`, serve
     `/.well-known/assetlinks.json` on `eliza.app` with the release certificate
-    (`scripts/render-assetlinks.mjs`), and deploy the email code routes. The APK automatically
+    (`scripts/render-assetlinks.ts`), and deploy the email code routes. The APK automatically
     declares the configured return App Link (`eliza.app` by default). `staging.eliza.app`
     serves the same with the debug certificate added.
   - The callback fallback page (`/alphaphone/auth/callback` when Android did not hand the link to
@@ -438,10 +438,10 @@ recovery policy.
 
 Image staging, APK release records and update tooling are shared `packages/os` modules that
 Alpha binds with its policy only. `image-apk-admission.mjs` admits the launcher APK and the
-reviewed source overrides for `scripts/stage-aosp.mjs`; `apk-release-record.mjs` names a
-release row's blockers for `scripts/release-blockers.mjs` (Alpha supplies the release-signer
+reviewed source overrides for `scripts/stage-aosp.ts`; `apk-release-record.mjs` names a
+release row's blockers for `scripts/release-blockers.ts` (Alpha supplies the release-signer
 admission and the font-licence switch; open-source licence flags never block, P-09) and holds
-the in-place update checks `scripts/pilot-update.mjs` uses; `aosp-ota-update.mjs` owns the
+the in-place update checks `scripts/pilot-update.ts` uses; `aosp-ota-update.ts` owns the
 operator update, fallback, stock-recovery and known-good retention commands. The read-only
 update-channel client is upstream and registered off in Alpha. Alpha's remaining staging code is
 its product policy (descriptor, listener, provisioning, capability and Pixel 10a/Cuttlefish
@@ -452,8 +452,8 @@ Phone, Contacts and SMS exist only on the Alpha AOSP image (decision P-36). The 
 capability is decided natively by the shared plugin-native-messages `ImageCapability`, which
 `AlphaImageCapability` feeds with Alpha's build flags and provisioning resource: the release
 launcher build without test mocks, installed from a system partition (`FLAG_SYSTEM`), with the `<package>.aosp_image`
-system feature that `scripts/stage-aosp.mjs` declares in the image product (see the release
-tooling paragraph below). The provisioning resource comes from the overlay `stage-aosp.mjs` writes
+system feature that `scripts/stage-aosp.ts` declares in the image product (see the release
+tooling paragraph below). The provisioning resource comes from the overlay `stage-aosp.ts` writes
 only for `--production`, so a development image never passes the capability. The launcher
 flavor, test mocks, URLs and saved state never establish it. Only then does `MainActivity`
 register `AlphaTelephonyPlugin` (read-only contacts through the shared `ContactsCatalog`, role
@@ -663,7 +663,7 @@ Text messaging has no account or OAuth grant: identity is the device's active su
 Android roles. Only the launcher manifest declares `READ_SMS`, `SEND_SMS` and the SMS-role
 `RECEIVE_*` permissions (all hard-restricted, so an ordinary sideloaded install cannot hold them)
 and the non-exported `AlphaSmsSendReceiver`;
-the standalone manifest removes them and `scripts/apk.mjs` checks the packaged permissions per flavor.
+the standalone manifest removes them and `scripts/apk.ts` checks the packaged permissions per flavor.
 `AlphaTelephonyPlugin` adds, behind the same image capability and unlocked-foreground check:
 
 - `listThreads`/`listMessages`: bounded pages (50 rows, 2000 characters per body, 20 addresses) from

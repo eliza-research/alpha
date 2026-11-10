@@ -2,7 +2,7 @@ import {fileURLToPath} from 'node:url';
 import {createHash} from 'node:crypto';
 import {app,directory,javaTraces,root} from './java.mjs';
 import {join} from 'node:path';
-import {preparePatchedNative} from '../../../../scripts/prepare-patched-native.mjs';
+import {preparePatchedNative} from '../../../../scripts/prepare-patched-native.ts';
 import {captureInputs,checkTraces} from '../check-traces.mjs';
 import {deletionPlatform} from './deletion-platform.mjs';
 const deletionProductSources=['NativeDeletionCoordinator.java','NativeOwnerReminderHost.java',

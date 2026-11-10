@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
 import {fixture,runJvm,jsonJarSkip} from './fixtures/jvm-tools.mjs';
-import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
+import {preparePatchedNative} from '../scripts/prepare-patched-native.ts';
 import path from 'node:path';
 // Files browser rules (design/view-refresh-2026-11/PLAN.md section 4; spec files-browser Design.cfg).
 const storage=await import('../.eliza/client-features/plugins/plugin-files/src/browser/storage-model.ts');

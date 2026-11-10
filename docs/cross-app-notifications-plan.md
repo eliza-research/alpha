@@ -81,17 +81,19 @@ In test-mocks builds only (`ELIZA_DEV_ALLOW_TEST_MOCKS=1`), both `connectionCont
 The `notification-fixture` Gradle module is not a dependency of Alpha and has no Internet permission. Its two variants use separate package/UID identities, exact UUID notification namespaces, synthetic-only posting and an actual content-Activity tap receipt. Build the witnesses separately with:
 
 ```sh
-node scripts/build-notification-fixture.mjs test-results/notification-fixture-NN
+node scripts/build-notification-fixture.ts test-results/notification-fixture-NN
 ```
 
 That script generates an owner-only disposable test signer distinct from Alpha. The test refuses a matching Alpha signer, existing listener grant, enabled/nonempty/history policy, or preinstalled witness packages. Root alone runs:
 
 ```sh
-ANDROID_SERIAL=emulator-5554 node scripts/test-cross-app-notifications.mjs \
+ANDROID_SERIAL=emulator-5554 node scripts/test-cross-app-notifications.ts \
   test-results/prototype-buildNN/standalone-debug.apk \
   test-results/prototype-buildNN/standalone-androidTest.apk \
   test-results/notification-fixture-NN test-results/prototype-buildNN/cross-notifications-standalone
 ```
+
+Pass `--restart` to run the process-restart campaign with the same arguments and a new output directory.
 
 Repeat the corresponding launcher pair only after inspecting the first result. The test uses actual Android consent UI, confirms empty selection after grant, redaction/default previews, excludes the unselected package, rejects a stale replacement action, dispatches a real PendingIntent, clears only an immutable synthetic external snapshot, preserves ongoing/unselected notices, reads encrypted redacted metadata after Activity recreation, verifies durable pause and explicit resume, deselects and revokes. Its runner preserves exact APK/signer hashes and cleanup evidence; a failed cleanup remains failure. The runner never shell-grants notification listener access. Runtime POST_NOTIFICATIONS grants apply only to newly installed disposable synthetic packages, which the runner removes.
 

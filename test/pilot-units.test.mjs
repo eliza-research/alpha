@@ -6,10 +6,10 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { createHash } from "node:crypto";
-import { admitUnitApk, apkContradictions, apkFacts, apkRuntimeIdentity, packageFacts, parseUnitArgs, requireConsistentApk } from "../scripts/provision-unit.mjs";
-import { releaseBlockers } from "../scripts/release-blockers.mjs";
-import { CAMPAIGNS, candidateManifest, parseQualifyArgs, readCampaigns, recordCandidate, releaseDistribution, verdict } from "../scripts/qualify-head.mjs";
-import { compareDomains, DOMAIN_SCRIPT, parseDomainInventory, readbackInventory, unitApkMismatch, updateAdmission } from "../scripts/pilot-update.mjs";
+import { admitUnitApk, apkContradictions, apkFacts, apkRuntimeIdentity, packageFacts, parseUnitArgs, requireConsistentApk } from "../scripts/provision-unit.ts";
+import { releaseBlockers } from "../scripts/release-blockers.ts";
+import { CAMPAIGNS, candidateManifest, parseQualifyArgs, readCampaigns, recordCandidate, releaseDistribution, verdict } from "../scripts/qualify-head.ts";
+import { compareDomains, DOMAIN_SCRIPT, parseDomainInventory, readbackInventory, unitApkMismatch, updateAdmission } from "../scripts/pilot-update.ts";
 
 const sha = text => createHash("sha256").update(text).digest("hex");
 const SIGNER = "a".repeat(64);
@@ -231,7 +231,7 @@ test("head qualification records the full Chromium suite and the production surf
   }
   // Campaign evidence never enters the S/B verdict, whatever it says.
   assert.equal(verdict({ ...result, candidate: { complete: false, campaigns: [] }, candidateQualified: false }), true);
-  const source = fs.readFileSync("scripts/qualify-head.mjs", "utf8");
+  const source = fs.readFileSync("scripts/qualify-head.ts", "utf8");
   assert.match(source, /step\("browser-chromium", "npm", \["run", "test:browser"\]/);
   assert.match(source, /step\("browser-production", "npm", \["run", "test:browser:production"\], flagOff\)/);
   assert.deepEqual(parseQualifyArgs(["--candidate"]).candidateOnly, true);

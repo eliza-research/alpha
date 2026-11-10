@@ -67,7 +67,7 @@
     "registryQueryRepeated": false
   },
   "packagedAudit": {
-    "description": "Advisories for the resident runtime's npm packages at the pinned upstream commit, from the npm bulk advisory endpoint. Regenerate with: node scripts/dependency-audit.mjs --resident --write. Dispositions live in docs/dependency-audit.dispositions.json under \"resident\".",
+    "description": "Advisories for the resident runtime's npm packages at the pinned upstream commit, from the npm bulk advisory endpoint. Regenerate with: node scripts/dependency-audit.ts --resident --write. Dispositions live in docs/dependency-audit.dispositions.json under \"resident\".",
     "upstreamCommit": "a95cd4d28eb2bcd5fe5527e98058c167ff480557",
     "input": "packaged-runtime notices",
     "auditedOn": "2026-10-25",

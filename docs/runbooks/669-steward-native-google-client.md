@@ -8,16 +8,16 @@ not exist yet. Nothing here creates an OAuth client, changes Steward or signs an
 
 | File | Purpose |
 | --- | --- |
-| [`scripts/owner/google-native-client.mjs`](../../scripts/owner/google-native-client.mjs) | After enrollment: from the public `alphaphone_app.x509.pem`, checks it is the enrolled certificate (SHA-256 equals `signerSha256`), not a debug certificate, prints its SHA-1, and compares the SHA-1 configured on the Google Android OAuth client and the `STEWARD_GOOGLE_NATIVE_CLIENT_IDS` value. Public data only |
+| [`scripts/owner/google-native-client.ts`](../../scripts/owner/google-native-client.ts) | After enrollment: from the public `alphaphone_app.x509.pem`, checks it is the enrolled certificate (SHA-256 equals `signerSha256`), not a debug certificate, prints its SHA-1, and compares the SHA-1 configured on the Google Android OAuth client and the `STEWARD_GOOGLE_NATIVE_CLIENT_IDS` value. Public data only |
 | [`test/owner-google-native-client.test.mjs`](../../test/owner-google-native-client.test.mjs) | Tests with a throwaway self-signed certificate |
 
 Why a certificate is needed: `android/release-signer.json` stores only the SHA-256, and a SHA-1 cannot
-be derived from it. `node scripts/enroll-release-keys.mjs --fingerprints ... --certificates DIR`
+be derived from it. `node scripts/enroll-release-keys.ts --fingerprints ... --certificates DIR`
 prints the SHA-1 once; nothing committed records it. Record it in the H-12 evidence below.
 
 ## Read-only findings (2026-10-28)
 
-`node scripts/cloud-readiness.mjs registration` and `probe` (both environments, unauthenticated):
+`node scripts/cloud-readiness.ts registration` and `probe` (both environments, unauthenticated):
 
 | Gate | Production (`elizacloud`) | Staging (`elizacloud-staging`) |
 | --- | --- | --- |
@@ -39,9 +39,9 @@ Who: Cloud operator with access to the Google Cloud project holding Steward's Go
 (the audience Steward verifies), and Steward deployment/tenant admin.
 
 1. After H-09, get the release SHA-1:
-   `node scripts/enroll-release-keys.mjs --fingerprints CEREMONY/fingerprints.json --certificates CEREMONY`
+   `node scripts/enroll-release-keys.ts --fingerprints CEREMONY/fingerprints.json --certificates CEREMONY`
    (dry run prints "SHA-1 for the Google Android OAuth client"), or
-   `node scripts/owner/google-native-client.mjs --certificate CEREMONY/alphaphone_app.x509.pem`.
+   `node scripts/owner/google-native-client.ts --certificate CEREMONY/alphaphone_app.x509.pem`.
    The certificate is public; the private key is never needed or read.
 2. In that Google Cloud project: APIs and Services, Credentials, Create credentials, OAuth client ID,
    type **Android**; package name `ai.elizaresearch.alphaphone`; SHA-1 certificate fingerprint = the
@@ -54,8 +54,8 @@ Who: Cloud operator with access to the Google Cloud project holding Steward's Go
 5. Confirm tenant app client `alpha-phone` allows Google; keep the redirect allowlists (both admit
    Alpha's return URL today) and the email and code routes.
 6. Deploy Steward; then check:
-   `node scripts/owner/google-native-client.mjs --certificate CEREMONY/alphaphone_app.x509.pem --configured-sha1 <SHA-1 shown on the Android client> --client-id <client id> --steward-client-ids <file holding the STEWARD_GOOGLE_NATIVE_CLIENT_IDS JSON>`
-   (exit 0), and `node scripts/cloud-readiness.mjs probe` (email sign-in, native Google and browser
+   `node scripts/owner/google-native-client.ts --certificate CEREMONY/alphaphone_app.x509.pem --configured-sha1 <SHA-1 shown on the Android client> --client-id <client id> --steward-client-ids <file holding the STEWARD_GOOGLE_NATIVE_CLIENT_IDS JSON>`
+   (exit 0), and `node scripts/cloud-readiness.ts probe` (email sign-in, native Google and browser
    return gates pass).
 7. Staging (optional, decision 2): add an Android client for the **debug** signer that signs test-mocks
    builds (SHA-1 from `apksigner verify --print-certs` on that APK, or `keytool -list -v` of the debug

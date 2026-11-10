@@ -4,7 +4,7 @@ import {spawnSync} from 'node:child_process';
 import {closeSync, fstatSync, mkdtempSync, openSync, readSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {loadModels} from '../scripts/quint-lib.mjs';
+import {loadModels} from '../scripts/quint-lib.ts';
 
 test('service components and coordinators check real-source traces and preserve explicit platform obligations', {timeout: 900000}, () => {
   const expected = new Set(loadModels().filter(model => model.family === 'services').map(model => model.module));

@@ -35,9 +35,9 @@ an explicit usability limitation, not exactly-once execution.
 
 ## Evidence and native gate
 
-- `scripts/test-workflow-protocol.mjs`: actual HTTP cancellation/terminal read,
+- `scripts/test-workflow-protocol.ts`: actual HTTP cancellation/terminal read,
   stale version refusal, dropped accepted POST without retry.
-- `scripts/test-workflow-ui-flow.mjs`: actual adapter plus protocol over HTTP;
+- `scripts/test-workflow-ui-flow.ts`: actual adapter plus protocol over HTTP;
   disable remains distinct, cancellation requires confirmation, receipt identity
   and version appear, uncertain submission stays blocked after recreation.
 - `test-results/workflow-cancellation/real-host.json`: real authenticated47840
@@ -144,8 +144,8 @@ using the identical source then produced exactly one synthetic file effect.
 The temporary effect directory was removed. Primary47840 was untouched.
 
 Reproduce only on this disposable isolated profile, with its protected existing
-paired session: start `scripts/start-reviewed-workflow-agent.mjs`, run
-`scripts/test-workflow-cancel-recovery.mjs --prepare` (explicitly hard-stops that
+paired session: start `scripts/start-reviewed-workflow-agent.ts`, run
+`scripts/test-workflow-cancel-recovery.ts --prepare` (explicitly hard-stops that
 host), start it again, then run the same test script without the flag. These
 are real backend/process tests, not native phone acceptance.
 

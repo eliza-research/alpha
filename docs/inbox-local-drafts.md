@@ -87,7 +87,7 @@ disposable emulator:
 
 ```sh
 ANDROID_SERIAL=emulator-N ALPHA_NATIVE_TEST_AVD=owned-avd ALPHA_NATIVE_TEST_ABI=x86_64 \
-node scripts/test-native-restart.mjs inbox \
+node scripts/test-native-restart.ts inbox \
   test-results/inbox-archive/standalone-debug.apk \
   test-results/inbox-archive/standalone-androidTest.apk \
   test-results/inbox-standalone

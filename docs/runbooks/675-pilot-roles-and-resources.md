@@ -14,7 +14,7 @@ bought a plan, minted a grant code, sent a message or touched a unit.
   a handle the owner chooses (for example `operator-1`); the mapping from handle to person stays in
   the owner's private records.
 - Units are `unit-a` to `unit-d`. Never write a serial, IMEI, phone number, SIM ICCID, email address
-  or account ID here. `scripts/provision-unit.mjs` records only the SHA-256 of the serial and build
+  or account ID here. `scripts/provision-unit.ts` records only the SHA-256 of the serial and build
   fingerprint.
 - Never write a password, PIN, passphrase, token, grant code, API key, OTP or recovery code anywhere:
   not in this page, an issue, a PR, a commit or a test report. A cell that would need one records
@@ -30,7 +30,7 @@ bought a plan, minted a grant code, sent a message or touched a unit.
 | Reviewer | `<reviewer-handle>` | must not be the operator; reproduces setup and a journey (H-34) | `<yyyy-mm-dd>` | `<yes/no>` |
 | Support owner | `<support-handle>` | named contact during the pilot | `<yyyy-mm-dd>` | `<yes/no>` |
 | Rollback owner | Shaw (P-16) | accountable release, support and rollback owner | fixed by P-16 | n/a |
-| Release owner | `<release-owner-handle>` | records `lastRelease` with `scripts/record-release.mjs` (H-32) | `<yyyy-mm-dd>` | `<yes/no>` |
+| Release owner | `<release-owner-handle>` | records `lastRelease` with `scripts/record-release.ts` (H-32) | `<yyyy-mm-dd>` | `<yes/no>` |
 | Key custodian | `<custodian-handle>` | from the key ceremony issue (#661, H-01/H-08) | `<yyyy-mm-dd>` | `<yes/no>` |
 | Key ceremony witness | `<witness-handle>` | must not be the custodian (#661, H-08) | `<yyyy-mm-dd>` | `<yes/no>` |
 | Target user 1 to 4 | `<user-1>` … `<user-4>` | the cohort that records acceptance (H-34) | `<yyyy-mm-dd>` | `<yes/no>` |
@@ -129,13 +129,13 @@ Checked on this branch (`test/owner-pilot-templates.test.mjs`):
 - The two drafts on this page and the unit record of [#677](677-pixel10a-device-pilot.md) have no
   column or field for a password, PIN, token, key, grant code, OTP, recovery code, phone number,
   email address or serial.
-- `scripts/provision-unit.mjs` writes `schema, alias, createdAt, sourceCommit, evidence,
+- `scripts/provision-unit.ts` writes `schema, alias, createdAt, sourceCommit, evidence,
   notEvidenceFor, device, apk, installed, runtimeIdentity, homeRole`; the device block holds the
   serial and fingerprint as SHA-256 only.
 
 ## What `npm run human:status` reports
 
-Read on this branch on 2026-10-28 (`node scripts/human-actions.mjs`):
+Read on this branch on 2026-10-28 (`node scripts/human-actions.ts`):
 
 | Step | State | Detail printed |
 | --- | --- | --- |

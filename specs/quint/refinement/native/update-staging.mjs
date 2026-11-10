@@ -7,7 +7,7 @@ import {fileURLToPath} from 'node:url';
 import vm from 'node:vm';
 import {stripTypeScriptTypes} from '../../../../test/support/strip-types.mjs';
 import {jsonJar} from '../../../../test/fixtures/jvm-tools.mjs';
-import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.mjs';
+import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.ts';
 import {captureInputs, checkTraces} from '../check-traces.mjs';
 import {app, directory, javaTraceCampaign, root} from './java.mjs';
 import {exactUpdateMembers} from './update-barrier.mjs';
@@ -147,7 +147,7 @@ export async function checkNativeUpdateStaging(extraSources = []) {
     'test/fixtures/UpdateFlowTest.java', ...fixtureSources];
   const sources = [fileURLToPath(import.meta.url), plugin, settings, ...compiled, join(directory,harness),
     join(directory,'Trace.java'), join(directory,'java.mjs'), join(directory,'update-barrier.mjs'),
-    'scripts/upstream-native-source.mjs', 'upstream.lock.json', 'test/fixtures/jvm-tools.mjs',
+    'scripts/upstream-native-source.ts', 'upstream.lock.json', 'test/fixtures/jvm-tools.mjs',
     'test/support/strip-types.mjs', ...(jsonJar ? [jsonJar] : []), ...extraSources];
   const driverHashes = captureInputs(sources);
   const upstream = upstreamNativeSource(root);

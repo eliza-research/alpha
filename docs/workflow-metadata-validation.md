@@ -14,7 +14,7 @@ Account/view changes abort the active request and clear its visible editor. An u
 
 ## Validation
 
-`node --import=tsx scripts/test-workflow-metadata-ui-flow.mjs` checks metadata-only editing, retained nonsecret intent, account changes and exact receipt reconciliation against a synthetic HTTP host.
+`node --import=tsx scripts/test-workflow-metadata-ui-flow.ts` checks metadata-only editing, retained nonsecret intent, account changes and exact receipt reconciliation against a synthetic HTTP host.
 
 The shared implementation is consumed through [upstream.lock.json](../upstream.lock.json); see [agent integration](agent-integration.md) for the product boundary. These adapter checks are not live-provider, native process-death, HOME-role, AOSP or device acceptance.
 

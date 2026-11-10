@@ -15,10 +15,10 @@ that a rotation happened; those need the human steps below.
 | File | Purpose |
 |---|---|
 | `scripts/owner/incident-2026-10-27-iocs.json` | The 102 forged branches (pre-attack and forged SHA prefixes), the 18 repositories with CI runs on forged commits, the attack window, the cleanup end (end of the cleanup day until the owner records the exact time), and the marker patterns. Transcribed from the owner's private cleanup record, which is held off-repo and is not in this repository, so the transcription cannot be checked from here; the owner can compare it with that record. |
-| `scripts/owner/incident-ci-exposure.mjs` | Lists workflow runs, up to `window.cleanupEnd` in the IOC file, whose head SHA is a forged commit or descends from one, and the secret, variable and environment NAMES per repository with `updated_at` and `NOT-ROTATED-YET` / `UPDATED-AFTER-INCIDENT`. |
-| `scripts/owner/incident-access-audit.mjs` | Per repository: the actor's effective permission, outside collaborators, pending invitations, deploy keys (no key material) and webhooks (host only). Per organization: membership, outside-collaborator and invitation state of the actor, GitHub App installations, and audit-log event counts for the actor since 2026-10-21. |
-| `scripts/owner/forged-branch-scan.mjs` | Scans every current branch and tag of a remote, without a checkout, for ancestry to a forged commit, marker paths, `node init` script hooks and loader patterns. |
-| `scripts/owner/read-branch-integrity.mjs` | Reads back which ruleset or classic protection blocks force push, deletion and unsigned commits on `main` and `develop`. |
+| `scripts/owner/incident-ci-exposure.ts` | Lists workflow runs, up to `window.cleanupEnd` in the IOC file, whose head SHA is a forged commit or descends from one, and the secret, variable and environment NAMES per repository with `updated_at` and `NOT-ROTATED-YET` / `UPDATED-AFTER-INCIDENT`. |
+| `scripts/owner/incident-access-audit.ts` | Per repository: the actor's effective permission, outside collaborators, pending invitations, deploy keys (no key material) and webhooks (host only). Per organization: membership, outside-collaborator and invitation state of the actor, GitHub App installations, and audit-log event counts for the actor since 2026-10-21. |
+| `scripts/owner/forged-branch-scan.ts` | Scans every current branch and tag of a remote, without a checkout, for ancestry to a forged commit, marker paths, `node init` script hooks and loader patterns. |
+| `scripts/owner/read-branch-integrity.ts` | Reads back which ruleset or classic protection blocks force push, deletion and unsigned commits on `main` and `develop`. |
 | `scripts/owner/rulesets/shared-branch-integrity.json` | Repository ruleset draft for eliza-research/alphaphone: no deletion, no force push, signed commits on `~DEFAULT_BRANCH` and `develop`. |
 | `scripts/owner/rulesets/default-branch-baseline.json` | Optional repository ruleset draft restoring "pull request required" on `main` (squash only, zero approvals). |
 | `scripts/owner/rulesets/alphacompute-org-shared-branch-integrity.json` | AlphaCompute organization ruleset draft (Enterprise): the same three rules on default, `develop`, `dev`, `staging`, `next` and `enterprise` in every repository, starting in `evaluate` mode. |
@@ -57,7 +57,7 @@ missing admin rights or the `admin:org` token scope).
   (and the other four) still returns the commit. No branch or tag reaches them, but anyone can
   fetch the payload from this public repository by SHA until GitHub garbage-collects it. Ask GitHub
   Support to purge the unreachable objects (step 6).
-- **Branch scan: clean.** `node scripts/owner/forged-branch-scan.mjs` against
+- **Branch scan: clean.** `node scripts/owner/forged-branch-scan.ts` against
   `https://github.com/eliza-research/alphaphone.git`: 138 refs (branches and tags), all scanned,
   0 flagged; all five forged commits were present locally for the ancestry check. The same scan
   flags the forged commit itself (ancestry, `init`, `.env`, `.vscode/tasks.json` with `folderOpen`,
@@ -91,14 +91,14 @@ missing admin rights or the `admin:org` token scope).
 - The per-repository secret, variable and environment snapshot (counts and rotation state) is not
   published here: this repository is public, and which credentials are still unrotated, or which
   repositories hold cloud-role variables, would help anyone holding stolen values. It is in the
-  owner's private incident record. Re-create it at any time with `incident-ci-exposure.mjs`.
-- `incident-ci-exposure.mjs` lists names only. Variables are shown as `VARIABLE` (not secret)
+  owner's private incident record. Re-create it at any time with `incident-ci-exposure.ts`.
+- `incident-ci-exposure.ts` lists names only. Variables are shown as `VARIABLE` (not secret)
   because some name cloud roles used through OIDC, which a `pull_request` run could have assumed.
   Check those roles' trust policies.
 
 ## Per-repository rotation checklist (step 1)
 
-For each repository: run `GH_BIN=... node scripts/owner/incident-ci-exposure.mjs --repo <owner/name>`
+For each repository: run `GH_BIN=... node scripts/owner/incident-ci-exposure.ts --repo <owner/name>`
 with an admin token, rotate every listed secret at its issuer (not only in GitHub), update the
 GitHub secret, and re-run until every row shows `UPDATED-AFTER-INCIDENT`. Also rotate organization
 secrets the repository could read, cloud credentials those secrets granted, and any role an OIDC
@@ -123,15 +123,15 @@ check the AlphaCompute organization secrets that were shared with it before the 
 
 1. **Rotate secrets** (organization owner, per the private table above). Command for all
    repositories in the IOC file:
-   `GH_BIN=... node scripts/owner/incident-ci-exposure.mjs --all --json > ci-exposure.json`,
-   or for one repository: `GH_BIN=... node scripts/owner/incident-ci-exposure.mjs --repo <owner/name> --json`.
+   `GH_BIN=... node scripts/owner/incident-ci-exposure.ts --all --json > ci-exposure.json`,
+   or for one repository: `GH_BIN=... node scripts/owner/incident-ci-exposure.ts --repo <owner/name> --json`.
    Keep the JSON private (it holds names and dates only, but shows what is still unrotated).
 2. **Revoke access** (organization owners of AlphaCompute and eliza-research):
    - Cancel the pending eliza-research/alphaphone invitation (Settings > Collaborators and teams,
      or `gh api --method DELETE repos/eliza-research/alphaphone/invitations/<id>`; the id is in
      `GET repos/eliza-research/alphaphone/invitations`). Ask the account that created it why it was
      sent (named in the private incident record).
-   - Run `GH_BIN=... node scripts/owner/incident-access-audit.mjs --all` with a token that has
+   - Run `GH_BIN=... node scripts/owner/incident-access-audit.ts --all` with a token that has
      `admin:org` and `admin:repo_hook`. Remove any outside collaborator, invitation, deploy key,
      webhook or app installation you do not recognize. Exit 0 means the actor has no remaining
      access and everything was readable.
@@ -145,7 +145,7 @@ check the AlphaCompute organization secrets that were shared with it before the 
    2026-10-29** (see "Owner decision" below). When revisited, install the rulesets below, then
    post the read-back output.
 5. **Review the audit log** for `gabrielbarbera` from 2026-10-21 in AlphaCompute (Enterprise):
-   `incident-access-audit.mjs` prints event counts per action when run by an owner; open the full
+   `incident-access-audit.ts` prints event counts per action when run by an owner; open the full
    log in Settings > Audit log with `actor:gabrielbarbera created:>=2026-10-21`, and look in
    particular at `git.push`, `repo.*`, `org.*`, `oauth_*`, `personal_access_token.*`,
    `secret_scanning*`, `workflows.*` and `environment.*`. Inspect the earlier pushes to
@@ -165,7 +165,7 @@ gh api --method POST repos/eliza-research/alphaphone/rulesets --input scripts/ow
 # Optional, see decision D2
 gh api --method POST repos/eliza-research/alphaphone/rulesets --input scripts/owner/rulesets/default-branch-baseline.json
 # Read back (read-only)
-node scripts/owner/read-branch-integrity.mjs --repo eliza-research/alphaphone
+node scripts/owner/read-branch-integrity.ts --repo eliza-research/alphaphone
 gh api --method GET repos/eliza-research/alphaphone/rulesets
 gh api --method GET repos/eliza-research/alphaphone/rules/branches/main
 ```
@@ -178,11 +178,11 @@ gh api --method POST orgs/AlphaCompute/rulesets --input scripts/owner/rulesets/a
 # After a week of Rule insights without surprises, switch to active:
 #   gh api --method PUT orgs/AlphaCompute/rulesets/<id> -f enforcement=active
 # Read back per repository (read-only)
-node scripts/owner/read-branch-integrity.mjs --repo AlphaCompute/vera --branch main --branch staging
+node scripts/owner/read-branch-integrity.ts --repo AlphaCompute/vera --branch main --branch staging
 gh api --method GET orgs/AlphaCompute/rulesets
 ```
 
-`read-branch-integrity.mjs` names the ruleset enforcing each rule, which is the evidence the issue
+`read-branch-integrity.ts` names the ruleset enforcing each rule, which is the evidence the issue
 asks for ("ruleset names now enforcing no-force-push and signed commits"). A ruleset in `evaluate`
 mode is reported separately and does not count. It also reads each enforcing ruleset's bypass
 actors: any bypass actor exits 1 unless `--allow-bypass` is passed, and a ruleset whose bypass list
@@ -214,7 +214,7 @@ a. Disable VS Code automatic tasks: Settings > `task.allowAutomaticTasks` = `off
 b. Find payload files: `find ~ -name 'fa-brand-400.orc' -o -path '*/reminders/public/fonts/*.orc' 2>/dev/null`
    and `find ~ -maxdepth 6 -name init -type f -size +20k 2>/dev/null | xargs -r sha256sum | grep 13aceeef`.
 c. Search local clones without checking out (inside each clone):
-   `node <alphaphone>/scripts/owner/forged-branch-scan.mjs --git-dir . --repo <name>`; for a local
+   `node <alphaphone>/scripts/owner/forged-branch-scan.ts --git-dir . --repo <name>`; for a local
    branch, `git merge-base --is-ancestor <forged-sha> <branch> && echo REACHES-FORGED`.
 d. Processes and connections: look for long-running `node` processes started from a repository
    directory (`ps -eo pid,lstart,args | grep -i node`), and outbound connections or DNS lookups to
@@ -241,7 +241,7 @@ comment) are not affected by this decision. Consequence to keep in view: until a
 installed, any account with write access can push unsigned commits straight to `main`
 (classic protection blocks only force push and deletion, with `enforce_admins` off) and
 `develop` has no protection at all; the read-only
-`node scripts/owner/forged-branch-scan.mjs` is the detection control in the meantime (re-run
+`node scripts/owner/forged-branch-scan.ts` is the detection control in the meantime (re-run
 2026-10-29: 146 heads, 0 flagged).
 
 ## Decisions for the owner
@@ -300,14 +300,14 @@ Not added to `docs/decisions.md`; copy the chosen ones with the next free `P-` n
   2026-10-27 incident is deferred. No 'Shared branch integrity' or 'Default branch baseline'
   ruleset is installed on eliza-research/alphaphone or AlphaCompute; the drafts stay in
   `scripts/owner/rulesets/`. Shared branches are monitored with
-  `node scripts/owner/forged-branch-scan.mjs`. Revisit at <trigger>."
+  `node scripts/owner/forged-branch-scan.ts`. Revisit at <trigger>."
 
 The entries below apply only when the deferral is lifted.
 
 - P-xx (draft): "2026-10-__: Shared branches (`main`, `develop`) of eliza-research/alphaphone are
   protected by the repository ruleset 'Shared branch integrity': no deletion, no force push, signed
   commits, no bypass actors. Agent branches are not covered. Read back with
-  `node scripts/owner/read-branch-integrity.mjs`."
+  `node scripts/owner/read-branch-integrity.ts`."
 - P-xx (draft): "2026-10-__: `main` requires a pull request (ruleset 'Default branch baseline',
   squash only, <0|1> approvals)."
 - P-xx (draft): "2026-10-__: AlphaCompute organization ruleset 'Shared branch integrity' covers
@@ -324,12 +324,12 @@ The entries below apply only when the deferral is lifted.
 
 ### 1. Secrets rotated
 Rotation finished for every repository in the IOC file: <yes/no>, checked <date> with
-`incident-ci-exposure.mjs --all` (no NOT-ROTATED-YET rows). The per-repository record is kept
+`incident-ci-exposure.ts --all` (no NOT-ROTATED-YET rows). The per-repository record is kept
 privately at <private location>; do not paste names, counts or remaining items here.
 Org secrets reviewed: AlphaCompute <date>. OIDC roles reviewed: <yes/no>.
 
 ### 2. Access revoked
-- `incident-access-audit.mjs --all` (owner token) exit code: <0/1/2>, run <date>.
+- `incident-access-audit.ts --all` (owner token) exit code: <0/1/2>, run <date>.
 - Pending invitation on eliza-research/alphaphone cancelled: <date>.
 - Tokens / SSH keys / OAuth and app grants revoked: <date, by whom>.
 
@@ -338,7 +338,7 @@ Org secrets reviewed: AlphaCompute <date>. OIDC roles reviewed: <yes/no>.
 |---|---|---|---|
 
 ### 4. Branch protection
-- eliza-research/alphaphone: ruleset "<name>" (id <id>); `read-branch-integrity.mjs` output: <paste>.
+- eliza-research/alphaphone: ruleset "<name>" (id <id>); `read-branch-integrity.ts` output: <paste>.
 - AlphaCompute: organization ruleset "<name>" (id <id>), enforcement <evaluate/active>.
 
 ### 5. Audit log

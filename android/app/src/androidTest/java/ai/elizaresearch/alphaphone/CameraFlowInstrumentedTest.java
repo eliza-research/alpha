@@ -69,7 +69,7 @@ public class CameraFlowInstrumentedTest {
    if(c!=null)while(c.moveToNext())images.add(ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,c.getLong(0)));
   }return images;
  }
- /** Run by the camera-capture campaign (scripts/test-native-permissions.mjs camera-capture), which grants CAMERA in a fresh user. */
+ /** Run by the camera-capture campaign (scripts/test-native-permissions.ts camera-capture), which grants CAMERA in a fresh user. */
  @Test public void photoCapturePublishesReadableImageAndShowsRealViewer()throws Exception{
   Assume.assumeTrue("Granted-camera campaign: -e cameraCapture 1", "1".equals(InstrumentationRegistry.getArguments().getString("cameraCapture")));
   InstrumentationRegistry.getInstrumentation().getUiAutomation().grantRuntimePermission(context().getPackageName(),Manifest.permission.CAMERA);

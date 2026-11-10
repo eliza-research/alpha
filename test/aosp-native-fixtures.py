@@ -107,9 +107,9 @@ class Packaging(unittest.TestCase):
         trust = self.root / 'trust'
         pin_files = {
             'upstream.lock.json': json.dumps({'commit': '1' * 40}).encode(),
-            'scripts/prepare-local-agent.mjs': (ROOT / 'scripts/prepare-local-agent.mjs').read_bytes(),
-            'scripts/copy-file-clone.mjs': (ROOT / 'scripts/copy-file-clone.mjs').read_bytes(),
-            'scripts/local-agent-source.mjs': b'guard fixture',
+            'scripts/prepare-local-agent.ts': (ROOT / 'scripts/prepare-local-agent.ts').read_bytes(),
+            'scripts/copy-file-clone.ts': (ROOT / 'scripts/copy-file-clone.ts').read_bytes(),
+            'scripts/local-agent-source.ts': b'guard fixture',
             'vendor/eliza/bun.lock': b'dependency lock fixture',
             'config/native-view-declarations.json': b'{}',
         }
@@ -127,7 +127,7 @@ class Packaging(unittest.TestCase):
             path.write_bytes(data)
         # Evaluate the actual preparer's stamp expression against synthetic pins.
         # A new/removed field in production must exercise the native verifier too.
-        expression = re.search(r'const stamp=(.+);', pin_files['scripts/prepare-local-agent.mjs'].decode()).group(1)
+        expression = re.search(r'const stamp=(.+);', pin_files['scripts/prepare-local-agent.ts'].decode()).group(1)
         script = "const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');const root=process.argv[1];const lock=JSON.parse(fs.readFileSync(path.join(root,'upstream.lock.json')));const digest=file=>crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');console.log(JSON.stringify(" + expression + "))"
         stamp = json.loads(subprocess.check_output(['node', '-e', script, str(trust)]))
         stamp_bytes = json.dumps(stamp).encode()
@@ -283,7 +283,7 @@ class Packaging(unittest.TestCase):
         trust, entries = self.resident_fixture()
         self.archive(list(entries.items()))
         self.overlay()
-        (trust / 'scripts/copy-file-clone.mjs').write_text('changed copier')
+        (trust / 'scripts/copy-file-clone.ts').write_text('changed copier')
         with patch.object(native, 'ROOT', trust), self.assertRaisesRegex(ValueError, 'source stamp'):
             native.stage(self.apk, self.output, 'AlphaPhone')
         self.assertEqual(set(self.output.iterdir()), {self.output / 'Android.bp', self.output / 'Launcher.apk'})

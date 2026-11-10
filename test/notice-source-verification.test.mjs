@@ -5,7 +5,7 @@ import path from 'node:path';
 import os from 'node:os';
 import {createHash} from 'node:crypto';
 import vm from 'node:vm';
-const source=fs.readFileSync(new URL('../scripts/generate-licenses.mjs',import.meta.url),'utf8');
+const source=fs.readFileSync(new URL('../scripts/generate-licenses.ts',import.meta.url),'utf8');
 const start=source.indexOf('export function reviewedPackagedEntries('),end=source.indexOf('/** Verify a checked-in packaged notice set',start);
 assert.ok(start>=0&&end>start);
 const JSON_OUTPUT='apps/app/public/licenses/third-party-notices.json',TEXT_OUTPUT='apps/app/public/licenses/THIRD_PARTY_NOTICES.txt';

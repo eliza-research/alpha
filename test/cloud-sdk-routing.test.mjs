@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
-import {CLOUD_SDK_BASES} from '../scripts/cloud-sdk-authority.mjs';
+import {CLOUD_SDK_BASES} from '../scripts/cloud-sdk-authority.ts';
 import fs from 'node:fs';
 const deployment=JSON.parse(fs.readFileSync(new URL('../config/cloud-deployment.json',import.meta.url),'utf8'));
 // Uses the pinned resident's actual installed provider SDK. Fetch is intercepted;

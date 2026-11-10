@@ -6,7 +6,7 @@ import {captureInputs,checkTraces,qmap} from '../check-traces.mjs';
 import {app,directory,javaTraceCampaign,root} from './java.mjs';
 import {assistantAgent,assistantEntryPlatform,assistantShared,senseFixtures,systemModule} from './assistant-entry-platform.mjs';
 import {jsonJar} from '../../../../test/fixtures/jvm-tools.mjs';
-import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.mjs';
+import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.ts';
 
 const model='NativeAssistantEntry';
 const harness='AssistantEntryTraces.java';
@@ -37,7 +37,7 @@ export async function checkNativeAssistantEntry(extraSources=[]) {
   try {
     const sources=[...appSources,assistantAgent,...sharedSources,senseFixtures,
       'android/app/src/main/AndroidManifest.xml',hostPath,patchManifest,'upstream.lock.json',
-      capacitor+'BridgeActivity.java',capacitor+'Bridge.java','scripts/upstream-native-source.mjs',
+      capacitor+'BridgeActivity.java',capacitor+'Bridge.java','scripts/upstream-native-source.ts',
       'test/fixtures/jvm-tools.mjs',...(jsonJar?[jsonJar]:[]),...ports,
       ...[harness,'Trace.java','java.mjs','main-activity-platform.mjs','assistant-entry-platform.mjs']
         .map(name=>join(directory,name)),

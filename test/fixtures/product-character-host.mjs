@@ -1,22 +1,23 @@
 import {writeCoreStateFixture} from './core-state-root.mjs';
-import {coreRuntimeArguments,coreStateBuildRecord} from '../../scripts/core-state-patch.mjs';
+import {coreRuntimeArguments,coreStateBuildRecord} from '../../scripts/core-state-patch.ts';
 import fs from 'node:fs';
-import {verifyNativeGoogleHostArtifact} from '../../scripts/native-google-host-artifact.mjs';
+import {verifyNativeGoogleHostArtifact} from '../../scripts/native-google-host-artifact.ts';
 import {createProviderKeySession} from '../../vendor/eliza/packages/host/native-host/provider-key-session.mjs';
 import os from 'node:os';
 import path from 'node:path';
 import vm from 'node:vm';
+import {stripTypeScriptTypes} from '../support/strip-types.mjs';
 import {createHash,randomUUID,randomBytes} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
-import {verifySource,preparedSourceEnv,workerArtifactDirectory,digest} from '../../scripts/local-agent-source.mjs';
-import {verifyWorkerArtifact} from '../../scripts/workflow-worker-artifact.mjs';
+import {verifySource,preparedSourceEnv,workerArtifactDirectory,digest} from '../../scripts/local-agent-source.ts';
+import {verifyWorkerArtifact} from '../../scripts/workflow-worker-artifact.ts';
 import {preparePrivateRuntimeProfile,writePrivateRuntimeJson,runtimeEnvironment} from '../../vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs';
-import {LOCAL_EMBEDDING_ROUTE,localEmbeddingEnvironment} from '../../scripts/agent-embeddings.mjs';
-import {CLOUD_SDK_BASES} from '../../scripts/cloud-sdk-authority.mjs';
+import {LOCAL_EMBEDDING_ROUTE,localEmbeddingEnvironment} from '../../scripts/agent-embeddings.ts';
+import {CLOUD_SDK_BASES} from '../../scripts/cloud-sdk-authority.ts';
 const hash=b=>createHash('sha256').update(b).digest('hex');
 // Real host function and admission helpers; only its product-root location and
 // process launch port are fixture-owned. No verifier is mocked or disabled.
-const source=fs.readFileSync('scripts/cloud-resident-host.mjs','utf8').replace(/^import .*;\n/gm,'').replaceAll('import.meta.dirname','scriptDirectory').replace(/^export /gm,'');
+const source=stripTypeScriptTypes(fs.readFileSync('scripts/cloud-resident-host.ts','utf8')).replace(/^import .*;\n/gm,'').replaceAll('import.meta.dirname','scriptDirectory').replace(/^export /gm,'');
 export function productCharacterHostFixture(mode,options={}){
  const root=fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()),'product-character-host-')),sdk=path.join(root,'sdk'),profile=path.join(root,'profile'),worker=path.join(root,'artifacts','fixture-worker');
  fs.mkdirSync(sdk,{recursive:true});fs.writeFileSync(path.join(sdk,'bun.lock'),'{}');fs.writeFileSync(path.join(sdk,'package.json'),JSON.stringify({name:'fixture',workspaces:[]}));fs.writeFileSync(path.join(sdk,'turbo.json'),JSON.stringify({tasks:{}}));

@@ -4,8 +4,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {materializeNativePatches} from '../scripts/prepare-patched-native.mjs';
-import {upstreamNativeSource} from '../scripts/upstream-native-source.mjs';
+import {materializeNativePatches} from '../scripts/prepare-patched-native.ts';
+import {upstreamNativeSource} from '../scripts/upstream-native-source.ts';
 import {jsonJar,javaBinary,jvmSkip} from './fixtures/jvm-tools.mjs';
 const root=path.resolve(import.meta.dirname,'..');
 test('scoped Calendar snapshot binds occurrence, dependencies and one atomic provider transaction',{skip:jvmSkip(['json','javac','sqlite3'])},()=>{

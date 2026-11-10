@@ -54,13 +54,13 @@ async function bundle() {
   return compiled;
 }
 export async function inboxDriverSources() {
-  return [...(await bundle()).sources, 'upstream.lock.json', 'scripts/prepare-client-features.mjs',
+  return [...(await bundle()).sources, 'upstream.lock.json', 'scripts/prepare-client-features.ts',
     ...readdirSync(resolve(root,'patches/eliza')).filter(name=>/\.(patch|json)$/.test(name))
       .map(name=>'patches/eliza/'+name)];
 }
 export function rebuildInboxDriver(expected) {
   compiled = undefined;
-  expectedInputs = JSON.stringify(expected.filter(path=>!path.startsWith("patches/")&&path!=="upstream.lock.json"&&path!=="scripts/prepare-client-features.mjs").sort());
+  expectedInputs = JSON.stringify(expected.filter(path=>!path.startsWith("patches/")&&path!=="upstream.lock.json"&&path!=="scripts/prepare-client-features.ts").sort());
 }
 export async function createInboxFixture() {
   const artifact = await bundle();

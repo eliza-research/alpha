@@ -12,10 +12,10 @@ framework-independent client session and text chunking live in
 Alpha supplies only its plugin name, Cloud origin, credential-authority ports and
 connection lifecycle. The pinned `vendor/eliza` checkout is never edited.
 
-`prepare-patched-native.mjs` binds the exact base revision, patch digest, absent
+`prepare-patched-native.ts` binds the exact base revision, patch digest, absent
 preimage, output digest and complete native module inventory before Gradle uses
 the staged source. Additions are admitted only in the shared speech Java package;
-existing native patch rules remain in force. `prepare-client-features.mjs` likewise
+existing native patch rules remain in force. `prepare-client-features.ts` likewise
 authenticates the base voice tree and the client patch's exact additions before
 copying them into its managed cache. Its receipt includes the patch and preparer
 hashes. Neither preparation overlays the immutable resident runtime.
@@ -36,7 +36,7 @@ Qwen3-ASR alternative, not shipped), the **Paradee-8M** speech graph on the shar
 (P-54), the native **misaki** English G2P, **eSpeak NG 1.52.0** (statically linked, used only for
 words the misaki lexicon does not know, data path limit raised to 1024 bytes) and Silero VAD. It
 loads GGUF models only; no other neural runtime or model ships anywhere
-(`test/llama-cpp-only.test.mjs`, `scripts/audit-production-bundle.mjs`).
+(`test/llama-cpp-only.test.mjs`, `scripts/audit-production-bundle.ts`).
 
 | Where | Engine | Route |
 | --- | --- | --- |
@@ -72,9 +72,9 @@ names in the sections below refer to these shared classes.
 
 The app's own `ElizaVoiceNative` (embeddings and the host natives) is built from the same
 upstream `elizavoice-jni.cpp` with `-DELIZA_VOICE_JNI_CLASS=ai/elizaresearch/alphaphone/ElizaVoiceNative`
-and no source rewrite (`scripts/embedding-native-contract.mjs`). The paradee-voice library links
+and no source rewrite (`scripts/embedding-native-contract.ts`). The paradee-voice library links
 the app's engine instead of packaging a second copy, so the two must be byte-identical
-(`node scripts/paradee-runtime.mjs --app-linkage`, Gradle `:app:verifyParadeeAppLinkage`).
+(`node scripts/paradee-runtime.ts --app-linkage`, Gradle `:app:verifyParadeeAppLinkage`).
 
 ## November 5 device measurements
 
@@ -94,7 +94,7 @@ excludes input endpointing and is not a microphone-to-speaker acoustic measure.
 The native Android bridge now records decode/upload/response/download/prepare
 stages and the bounded numeric server timing fields. The streaming bridge records
 session bootstrap, STT final, first PCM and AudioTrack playback timing. Export
-only these fields with `node scripts/android-cloud-voice-timing.mjs --out FILE`;
+only these fields with `node scripts/android-cloud-voice-timing.ts --out FILE`;
 it excludes credentials, transcripts and reply text.
 
 The Cloud client uses one native PCM WebSocket for input and output, with final
@@ -177,10 +177,10 @@ downloaded).
 libelizainference serves `eliza_inference_asr_*` and `asr_stream_*` from whatever sits under
 `asr/`: a parakeet-tdt GGUF (one file) or the Qwen3-ASR text + mmproj pair (two files).
 `android/paradee-voice/asr-inputs.json` (schema 2) names the backend (`parakeet`) and pins its
-files; `scripts/paradee-runtime.mjs` admits exactly the files that backend needs (one for
+files; `scripts/paradee-runtime.ts` admits exactly the files that backend needs (one for
 parakeet, two for qwen3) and refuses any other file under `asr/`, because the library would load
 a stray parakeet GGUF first. The voice host record carries the same rows
-(`asrSlot.backend`, `scripts/voice-host.mjs`). At runtime `parakeet` names the model
+(`asrSlot.backend`, `scripts/voice-host.ts`). At runtime `parakeet` names the model
 architecture, not a backend: the pinned `ElizaVoiceNative`/`ElizaAsrNativeEnv` and the shared
 paradee-voice `VoiceNative` (loaded by the `SessionSpeech` backend) export
 `ELIZA_ASR_BACKEND=ggml` before the library loads, so Phonon-2 runs on the in-tree ggml path.
@@ -331,12 +331,12 @@ or a device. Echo, Stop speaking timing, lock, calls and Bluetooth need device a
 - `vendor/eliza/packages/app/platforms/android/paradee-voice/inputs.json` (upstream): the Paradee
   GGUF and misaki lexicon pins and the eSpeak NG source.
 - `android/paradee-voice/asr-inputs.json`: the ASR slot (backend `parakeet`, the Phonon-2 GGUF).
-- `android/voice-host/qualified-voice-host.json` (schema 2, `scripts/voice-host.mjs`): the exact
+- `android/voice-host/qualified-voice-host.json` (schema 2, `scripts/voice-host.ts`): the exact
   engine library per ABI (`libelizainference.so`, `libc++_shared.so`), every bundle file, the
   components and their licences, the reference JNI builds and the evidence. `qualified` is
   **false** and stays false until on-device qualification on both ABIs and device acceptance are
   recorded; the schema refuses `qualified: true` without them. The notices
-  (`scripts/generate-licenses.mjs`) and the SBOM (`scripts/generate-sbom.mjs`) read it.
+  (`scripts/generate-licenses.ts`) and the SBOM (`scripts/generate-sbom.ts`) read it.
 
 ## Build, stage and verify
 
@@ -350,7 +350,7 @@ claim that the current development build reproduces those bytes.
 
 1. Build the shared outputs at the pin with the upstream builder, outside `vendor/eliza`
    (NDK 28.2; it converts the Paradee GGUF and misaki lexicon from pinned sources and checks them):
-   `node scripts/build-pinned-voice.mjs --workspace <dir> --out <fresh-dir>`.
+   `node scripts/build-pinned-voice.ts --workspace <dir> --out <fresh-dir>`.
    This consumer wrapper verifies clean pinned Eliza/FFI sources before and after the upstream
    builder, then verifies the shared builder's recorded revisions and every fresh output hash. At `968348d792d3` the upstream builder
    emits both source fields; the wrapper rejects disagreement and unrecorded engine staging
@@ -365,21 +365,21 @@ claim that the current development build reproduces those bytes.
    Both hosts select the same engine bytes; see the [component evidence](evidence/native-58df/README.md).
 2. Put the Phonon-2 GGUF, its NOTICE and licence text, and Silero VAD in a directory (their
    pinned sources are in the record).
-3. Stage: `node scripts/android-stage-voice-models.mjs --from <build-native output> --from <model directory>`.
+3. Stage: `node scripts/android-stage-voice-models.ts --from <build-native output> --from <model directory>`.
    Every file is checked by size and SHA-256 against the record and written to
    `.eliza/paradee-voice/native` (`jniLibs/<abi>/libelizainference.so`, the bundle under
    `assets/paradee-voice/v1`, and `build-record.json`). `--plan` lists the rows. Changed bytes are
    refused, never repaired. `--unrecorded-engine` exists only for hosted developer-APK runs that
    rebuild the engine: it rewrites that workspace's record (never committed) and stays unqualified.
 4. Gradle checks the staged outputs: `:local-speech:verifySpeechInputs`
-   (`scripts/paradee-runtime.mjs`), `:app:verifyParadeeAppLinkage` and `:app:verifyVoiceHost`
-   (`scripts/voice-host.mjs --verify`). A distribution build needs them; the explicit
+   (`scripts/paradee-runtime.ts`), `:app:verifyParadeeAppLinkage` and `:app:verifyVoiceHost`
+   (`scripts/voice-host.ts --verify`). A distribution build needs them; the explicit
    `--allow-unpackaged-runtime` developer lane may omit them, and local speech then reports
    unavailable.
 5. `npm run android:build:inputs` lists "on-device voice outputs" and "on-device voice qualified"
-   as inputs only a person can supply. `scripts/verify-apks.mjs` checks a packaged bundle and
+   as inputs only a person can supply. `scripts/verify-apks.ts` checks a packaged bundle and
    engine against the record and records a release distributable only with a qualified voice host
-   (`scripts/release-blockers.mjs`).
+   (`scripts/release-blockers.ts`).
 
 The app's engine comes from the embedding host (`android/embedding-host/qualified-host.json`).
 The full Alpha JNI bridge and current engine passed BGE component qualification on ARM64
@@ -388,7 +388,7 @@ checked separately; this does not establish installed-app or device acceptance.
 
 ## Development host (browser with the local agent)
 
-Configuration uses the upstream names only (`scripts/speech-env.mjs`):
+Configuration uses the upstream names only (`scripts/speech-env.ts`):
 `ELIZA_INFERENCE_LIBRARY` with its independently reviewed `ELIZA_INFERENCE_LIBRARY_SHA256`,
 `ELIZA_PARADEE_ENABLED` / `ELIZA_PARADEE_MODEL_DIR` for TTS and `ELIZA_ASR_ENABLED` /
 `ELIZA_ASR_MODEL_DIR` for ASR (`1` requires, `0` turns off, unset enables only with a model
@@ -404,7 +404,7 @@ The AOSP-image-only listener APK uses the same library: `ListeningService` insta
 `VoiceAssets.install` and opens `NativeAsr` on the ASR slot. It packages its own copy of the staged
 engine (`.eliza/paradee-voice/native/jniLibs`). `stage-aosp` warns about a listener APK without
 the bundle manifest, without the Phonon-2 ASR file or whose engine is not the recorded bytes
-(`scripts/aosp-listener.mjs`); production staging refuses any listener while P-78 defers wake listening. No listener APK with a voice bundle has been built, staged or booted.
+(`scripts/aosp-listener.ts`); production staging refuses any listener while P-78 defers wake listening. No listener APK with a voice bundle has been built, staged or booted.
 
 The listener only decides whether the user addressed Alpha: energy VAD (`SpeechGate`), batch
 Phonon-2 recognition of the utterance in RAM, then `WakePhrase`. It has no network permission and
@@ -518,7 +518,7 @@ Android mobile bundle: Bun 1.4.2 lowered UUID's named re-export barrel into an
 undeclared `default10` binding. The bundle loaded, but creating a message response
 ID failed before any model request. `patches/eliza/mobile-uuid-build.json` admits
 the exact upstream producer, Bun revision, dependency lock, and UUID 14.0.2 module
-hashes. `scripts/build-mobile-agent.mjs` runs that unchanged producer with a
+hashes. `scripts/build-mobile-agent.ts` runs that unchanged producer with a
 bounded build adapter for the one admitted UUID barrel. The adapter imports the
 real UUID algorithms through CommonJS namespace properties; it does not supply a
 replacement UUID implementation or rewrite emitted bundle text.

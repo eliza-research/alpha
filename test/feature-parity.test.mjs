@@ -5,11 +5,11 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {featureParity} from '../scripts/feature-manifest.mjs';
+import {featureParity} from '../scripts/feature-manifest.ts';
 
 const allowlist = JSON.parse(fs.readFileSync('config/feature-parity.json', 'utf8'));
 const parity = await featureParity();
-const regenerate = 'Run node scripts/feature-manifest.mjs --parity to see the current lists.';
+const regenerate = 'Run node scripts/feature-manifest.ts --parity to see the current lists.';
 
 test('Alpha and Eliza differ functionally only where the allowlist says so', () => {
   const allowed = Object.keys(allowlist.differences);

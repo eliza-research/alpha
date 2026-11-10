@@ -143,14 +143,14 @@ only.
 
 Use the [verification guide](verification.md) for owned-emulator configuration,
 archived app/test APKs, isolated-user runners, and retained cleanup evidence.
-Run `scripts/test-reminder-one-off.mjs` and `scripts/test-reminder-recurrence.mjs`
+Run `scripts/test-reminder-one-off.ts` and `scripts/test-reminder-recurrence.ts`
 for both distributions. The latter runs the real alarm/Snooze/visible Done flow
 and the civil-time/edit-invalidation flow. Inexact delivery has a bounded native
 wait of up to 13 minutes and a 16-minute instrumentation deadline; a skipped test
 or a saved schedule is not delivery evidence.
 
-The separate recovery scenarios are `scripts/test-reminder-recovery.mjs` and
-`scripts/test-reminder-recurrence-recovery.mjs`. They require their own dedicated
+The separate recovery scenarios are `scripts/test-reminder-recovery.ts` and
+`scripts/test-reminder-recurrence-recovery.ts`. They require their own dedicated
 disposable emulator and matching archived APKs. Set `ANDROID_SERIAL`,
 `ALPHA_NATIVE_TEST_AVD`, and `ALPHA_NATIVE_TEST_ABI` explicitly, plus
 `ALPHA_TEST_HOME_PACKAGE` for a non-default stock HOME. Pass the matching app APK,

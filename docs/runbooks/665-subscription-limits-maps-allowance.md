@@ -11,7 +11,7 @@ Cloud operator applies them (#666 for H-15, #667 for H-16).
 | [`drafts/665-recorded-catalog-v1.json`](drafts/665-recorded-catalog-v1.json) | The production catalog as published on 2026-10-28 (unauthenticated GET), recorded so a later read can be compared field by field |
 | [`drafts/665-plan-rate-limits.draft.json`](drafts/665-plan-rate-limits.draft.json) | `ELIZA_CLOUD_PLAN_RATE_LIMITS` in the upstream schema, every number a `<...>` placeholder |
 | [`drafts/665-maps-request-allowances.draft.json`](drafts/665-maps-request-allowances.draft.json) | `ELIZA_CLOUD_MAPS_REQUEST_ALLOWANCES` in the upstream schema, placeholders only |
-| [`scripts/owner/subscription-limits.mjs`](../../scripts/owner/subscription-limits.mjs) | Read-only: `catalog` compares the live catalog with the record; `rate-limits` and `maps-allowances` validate a filled draft with the pinned upstream parser rules and print the one-line operator value |
+| [`scripts/owner/subscription-limits.ts`](../../scripts/owner/subscription-limits.ts) | Read-only: `catalog` compares the live catalog with the record; `rate-limits` and `maps-allowances` validate a filled draft with the pinned upstream parser rules and print the one-line operator value |
 | [`test/owner-subscription-limits.test.mjs`](../../test/owner-subscription-limits.test.mjs) | Stubbed tests for the comparison and both validators |
 
 Schemas were read at the pin in `upstream.lock.json` (`1f2a922f86e2a1f3d6cd62e097145492bd49ebfc`):
@@ -21,7 +21,7 @@ Schemas were read at the pin in `upstream.lock.json` (`1f2a922f86e2a1f3d6cd62e09
 
 ## Read-only findings (2026-10-28)
 
-`node scripts/owner/subscription-limits.mjs catalog`:
+`node scripts/owner/subscription-limits.ts catalog`:
 
 - **Production** `GET https://api.eliza.app/api/v1/subscriptions/plans`: HTTP 200, catalog `v1`,
   identical to H-02's text. Plus (`plus_monthly`) USD 30.00 a month, USD 25.00 allowance, no
@@ -86,7 +86,7 @@ cache misses and outages. These are options with their arithmetic, not selected 
 For Maps, either omit `maps` (Maps then uses the plan numbers above) or add per plan, for example
 `maps: { burst: 5 @ 0.2/s, sustained: 60 @ 1/60 per s }` so a misbehaving client cannot exhaust a
 day's Maps allowance in a minute. Validate the filled file with
-`node scripts/owner/subscription-limits.mjs rate-limits FILE`.
+`node scripts/owner/subscription-limits.ts rate-limits FILE`.
 
 ### H-04 Maps request allowance (`ELIZA_CLOUD_MAPS_REQUEST_ALLOWANCES`)
 
@@ -101,7 +101,7 @@ close to zero; the cost is the fixed hosting chosen in H-05.
 | B. 30-day windows | 3000 / 2592000 s | 15000 / 2592000 s | Fewer refusals for bursty users, but windows start at UTC epoch multiples of 30 days, not the billing date; harder to explain. |
 | C. Closed until Maps is provisioned | 0 / 86400 s | 0 / 86400 s | Valid closed allowance: requests are refused as allowance exhausted instead of `maps_allowance_unconfigured`. Useful to deploy the setting before H-16 without serving Maps. |
 
-Validate with `node scripts/owner/subscription-limits.mjs maps-allowances FILE --rate-limits LIMITS_FILE`.
+Validate with `node scripts/owner/subscription-limits.ts maps-allowances FILE --rate-limits LIMITS_FILE`.
 
 ## Exact remaining human steps
 
@@ -111,7 +111,7 @@ Validate with `node scripts/owner/subscription-limits.mjs maps-allowances FILE -
 3. Cloud operator: set the printed one-line values per environment (#666 step H-15 for the rate
    limits, #667 step H-16 for the Maps allowance). Staging first.
 4. Operator: investigate the staging catalog 503 before staging QA.
-5. Evidence: `node scripts/owner/subscription-limits.mjs catalog` exits 0 for production (it does
+5. Evidence: `node scripts/owner/subscription-limits.ts catalog` exits 0 for production (it does
    today); an authenticated Maps request on a signed-in phone returns a result or a typed refusal,
    not `maps_allowance_unconfigured` (real-integration evidence, recorded separately).
 

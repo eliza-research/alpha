@@ -31,7 +31,7 @@ role assignment or OTA was observed.
    result of an active **morning** digest over a current source. Overlap ("an earlier run was still
    active") never offers it, as the issue says.
 3. **The image already preassigns three roles, not dialer or SMS.** Alpha's production staging
-   (`scripts/stage-aosp.mjs --production`, upstream `launcher-provisioning.mjs`) writes default HOME
+   (`scripts/stage-aosp.ts --production`, upstream `launcher-provisioning.mjs`) writes default HOME
    (preferred-apps), `config_defaultAssistant` and `config_defaultAutofillService`. Dialer and SMS
    are not preassigned. Eliza's own generic image overlay does preassign them to `ai.elizaos.app`
    (`packages/os/android/vendor/eliza/overlays/frameworks/base/core/res/res/values/config.xml`).
@@ -40,7 +40,7 @@ role assignment or OTA was observed.
    `config_defaultDialer` naming Alpha would point at disabled components on first boot. Preassigning
    therefore also needs a role re-evaluation after the components are enabled; see option 4B.
 4. **Neither update mode exists on the device today.** The only update path is the operator client
-   `scripts/aosp-ota-update.mjs` (shared `packages/os/scripts/android/aosp-ota-update.mjs`): ADB
+   `scripts/aosp-ota-update.ts` (shared `packages/os/scripts/android/aosp-ota-update.mjs`): ADB
    sideload through stock recovery, with `--execute --confirm-update` on the operator's host. The
    channel `android/aosp/pixel10a-ota-channel.json` has `otaCertificateSha256`, `avbPublicKeySha256`
    and the known-good release `UNSET`, and every drill "not run". Both a user-confirmed on-device
@@ -95,9 +95,9 @@ role assignment or OTA was observed.
 
 - **Default:** kept as a developer surface. It runs only with `ELIZA_DEV_ALLOW_TEST_MOCKS=1`, uses
   canonical action names and backs `agent:dev` and `agent:diagnostic`.
-- **Footprint:** `scripts/dev-agent.mjs` ("Loopback-only emulator development chat"),
-  `scripts/start-local-agent.mjs`, `scripts/configure-dev-agent.mjs` (`agent:configure-emulator`),
-  `scripts/test-dev-agent.mjs`, `backend/runtime.ts`, `backend/proposal-action.ts`,
+- **Footprint:** `scripts/dev-agent.ts` ("Loopback-only emulator development chat"),
+  `scripts/start-local-agent.ts`, `scripts/configure-dev-agent.ts` (`agent:configure-emulator`),
+  `scripts/test-dev-agent.ts`, `backend/runtime.ts`, `backend/proposal-action.ts`,
   `backend/loader.ts`, `backend/test-runtime.ts`, `backend/test-actions.mjs`,
   `apps/app/src/runtime/development-transport.ts`, `development-view-contract.ts`,
   `android/app/src/testMocks/java/ai/elizaresearch/alphaphone/DevelopmentAgentPlugin.java` (loaded
@@ -118,8 +118,8 @@ role assignment or OTA was observed.
 
 - **Default:** not preassigned. The owner picks Alpha in Android's own role dialog after the image
   verifies.
-- **Code:** `scripts/stage-aosp.mjs` (production provisioning overlay, line 300 onward),
-  `scripts/aosp-provisioning-overlay.mjs`, vendor
+- **Code:** `scripts/stage-aosp.ts` (production provisioning overlay, line 300 onward),
+  `scripts/aosp-provisioning-overlay.ts`, vendor
   `packages/os/scripts/android/launcher-provisioning.mjs` (writes `config_defaultAssistant`,
   `config_defaultAutofillService` and the HOME preferred-apps entry),
   `android/app/src/launcher/java/ai/elizaresearch/alphaphone/AlphaTelephonyRoles.java`.
@@ -138,9 +138,9 @@ role assignment or OTA was observed.
 ### 5. Field updates
 
 - **Default:** user-confirmed.
-- **Code:** `scripts/aosp-ota-update.mjs` (operator client binding), vendor
+- **Code:** `scripts/aosp-ota-update.ts` (operator client binding), vendor
   `packages/os/scripts/android/aosp-ota-update.mjs`, `android/aosp/pixel10a-ota-channel.json`,
-  `scripts/sign-aosp-release.mjs`.
+  `scripts/sign-aosp-release.ts`.
 - **Options:**
   - A. Operator-assisted sideload only, for the pilot: what exists today.
   - B. User-confirmed on-device updates. This needs an on-device client that checks the signed
@@ -162,7 +162,7 @@ role assignment or OTA was observed.
   new reviewed run behind the two-step confirmation. It is never offered for an occurrence skipped
   because an earlier run was still active.
 - **P-__ (dev host)** — #680 item 3 (owner, 2026-__-__): the emulator development host
-  (`scripts/dev-agent.mjs`, `agent:dev`, `agent:diagnostic`) [stays a test-mocks-only developer
+  (`scripts/dev-agent.ts`, `agent:dev`, `agent:diagnostic`) [stays a test-mocks-only developer
   surface | is deleted].
 - **P-__ (default roles)** — #680 item 4 (owner, 2026-__-__): production Alpha images [do not
   preassign | preassign Alpha as] the default dialer and SMS app. HOME, assistant and Autofill
@@ -188,7 +188,7 @@ role assignment or OTA was observed.
   three package scripts, then update the docs. Run `npm run verify` and `audit:bundle`.
 - **4B (upstream, then Alpha):** "Opt-in dialer and SMS defaults in launcher provisioning".
   Upstream adds `roles: {dialer, sms}` options to `launcher-provisioning.mjs` and validate checks.
-  Alpha passes them from `stage-aosp.mjs --production`, and either enables the role components on
+  Alpha passes them from `stage-aosp.ts --production`, and either enables the role components on
   verified images at install or asks for the role after enabling them. It adds an image role
   readback to qualification.
 - **5B/5C (upstream os, then Alpha):** "On-device signed update client". A privileged updater app

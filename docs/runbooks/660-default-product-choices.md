@@ -43,7 +43,7 @@ browser, an APK, an emulator, an image or on a device.
   Cloud credits rather than an active plan". It does not say whether Add funds may be offered.
   Confirming the default should record which entry permits Add funds. If no entry permits it, the
   default needs a P-26 exception.
-- **H-37 status.** `npm run human:status` (read-only, `scripts/human-actions.mjs`) prints
+- **H-37 status.** `npm run human:status` (read-only, `scripts/human-actions.ts`) prints
   `H-37 external  Confirm or override the default product choices`. H-37 has no repository check, so
   the status can never read **done**, and the issue's "human:status shows H-37 done" cannot happen
   as written. A check is drafted below.
@@ -73,7 +73,7 @@ guard. **Do not loosen** the guard in either case (#659).
 - Code: none. Optional: name the Oct 16 entry in the `cloud-membership-ui.tsx` header comment.
 - Tests: reconcile `test/browser/native-cloud-subscription.spec.ts` with the guard. Every case
   boots the resident flow (see the #659 reviewer table,
-  `node scripts/owner/subscription-spec-map.mjs`). Cases that wait for the resident panel keep
+  `node scripts/owner/subscription-spec-map.ts`). Cases that wait for the resident panel keep
   `accountPanel`; a case that reaches a zero balance must expect the sheet, and a case that opens
   the account through the cloud-account entry (Settings > Manage Cloud account, Inbox Connect,
   voice) must expect the sheet at any signed-in balance.
@@ -118,7 +118,7 @@ grep for device-local Notes markers (`Older notes`, `notes-trash:v1`, `AlphaNote
   `test/browser/notes-permanent-delete-backstop.spec.ts`, `test/browser/notes-review.spec.ts`,
   `test/browser/journey-j05-web-research-note.spec.ts`.
 - Node and flow checks: `test/notes-view-defaults.test.mjs`,
-  `scripts/test-notes-documents-browser.mjs`, `scripts/test-notes-store-flow.ts` and
+  `scripts/test-notes-documents-browser.ts`, `scripts/test-notes-store-flow.ts` and
   `scripts/test-notes-trash-flow.ts` (both drive the device-local `apps/app/src/runtime/notes-store.ts`
   `NotesStore`, including its legacy-key migration).
 - Android instrumentation (emulator evidence class):
@@ -163,7 +163,7 @@ Copy one entry per item into `docs/decisions.md` with the next free number and t
   device-local Older notes collection and its specifications are retired after a reviewed
   migration into canonical records.
 
-## Draft H-37 status check (for `scripts/human-actions.mjs`)
+## Draft H-37 status check (for `scripts/human-actions.ts`)
 
 Today H-37 always prints `external`. A repository check, added to the `checks` map, would print
 `done` once both entries exist:
@@ -179,7 +179,7 @@ Today H-37 always prints `external`. A repository check, added to the `checks` m
 ```
 
 This check is a draft. It was not added here, because other work may be editing
-`scripts/human-actions.mjs`.
+`scripts/human-actions.ts`.
 
 ## Remaining human steps
 

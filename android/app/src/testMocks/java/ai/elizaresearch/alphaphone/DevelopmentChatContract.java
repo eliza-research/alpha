@@ -7,7 +7,7 @@ import java.util.List;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-/** Debug source-set only. The limits scripts/dev-agent.mjs enforces, applied on the phone before a
+/** Debug source-set only. The limits scripts/dev-agent.ts enforces, applied on the phone before a
  * request is queued, and the proposal checks applied to its reply. Capacitor-free for host tests. */
 final class DevelopmentChatContract {
  static final int MAX_TEXT = 12000;

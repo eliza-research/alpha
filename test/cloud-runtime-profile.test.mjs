@@ -6,9 +6,9 @@ import {createHash,randomUUID} from 'node:crypto';
 import os from 'node:os';
 import {git as fixtureGit} from './fixtures/git-fixture.mjs';
 import {gzipSync} from 'node:zlib';
-import {verifyCloudResident} from '../scripts/runtime-profile.mjs';
-import {parseBuildArgs,buildEnv,gradleFlagArgs} from '../scripts/build-android.mjs';
-import {preparedRuntimeProblems,checkoutProblems} from '../scripts/android-build-preflight.mjs';
+import {verifyCloudResident} from '../scripts/runtime-profile.ts';
+import {parseBuildArgs,buildEnv,gradleFlagArgs} from '../scripts/build-android.ts';
+import {preparedRuntimeProblems,checkoutProblems} from '../scripts/android-build-preflight.ts';
 test('Cloud profile explicitly selects renderer and Gradle without mock switches',()=>{
  const options=parseBuildArgs(['--runtime-profile=cloud']);
  assert.equal(options.runtimeProfile,'cloud');
@@ -29,7 +29,7 @@ test('Cloud profile checks the explicitly selected prepared source even when ano
 test('Cloud profile keeps native speech and embeddings guards as default',()=>{
  const gradle=fs.readFileSync('android/app/product.gradle','utf8');
  assert.match(gradle,/ELIZA_RUNTIME_PROFILE.*native/);
- assert.match(gradle,/runtimeProfile == 'cloud'.*runtime-profile.mjs/);
+ assert.match(gradle,/runtimeProfile == 'cloud'.*runtime-profile.ts/);
  assert.match(fs.readFileSync('android/local-speech/build.gradle','utf8'),/cloudProfile \|\| \(unpackaged && !nativeOutput\.exists\(\)\)/);
  // Routing belongs to the shared upstream profile; Alpha declares only its deployment.
  const declaration=fs.readFileSync('backend/native-cloud-runtime.ts','utf8');

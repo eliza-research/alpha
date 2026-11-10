@@ -58,7 +58,7 @@ reload, truncation, unusual CSS visibility and failure recovery in both variants
 ### Prepared combined-host campaign
 
 `BrowserReadingLiveInstrumentedTest` and
-`scripts/android-browser-reading-live.mjs` are a separate **unexecuted** campaign.
+`scripts/android-browser-reading-live.ts` are a separate **unexecuted** campaign.
 The wrapper requires `ANDROID_SERIAL`, `ALPHA_BUILD_ARCHIVE`,
 `ALPHA_COMBINED_OWNER_SESSION` and `ALPHA_COMBINED_SOURCE_MANIFEST`; it verifies
 archived APK hashes and the running combined source manifest before opening a

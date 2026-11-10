@@ -7,7 +7,7 @@ import {captureInputs,checkTraces,qmap,qset} from '../check-traces.mjs';
 import {app,directory,javaTraceCampaign,root} from './java.mjs';
 import {renewalBridge,renewalOwner,sourceRenewalPlatform} from './source-renewal-platform.mjs';
 import {jsonJar} from '../../../../test/fixtures/jvm-tools.mjs';
-import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.mjs';
+import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.ts';
 
 const model='NativeSourceRenewal';
 const harness='SourceRenewalTraces.java';
@@ -22,7 +22,7 @@ export async function checkNativeSourceRenewal(extraSources=[]) {
     const core='vendor/eliza/'+renewalOwner;
     const nativeManifest='patches/eliza/native-manifest.json';
     const sources=[...product,core,renewalBridge,app+'NativeDigestHost.java',app+'NativeDigestSources.java',
-      nativeManifest,'upstream.lock.json','scripts/upstream-native-source.mjs','test/fixtures/jvm-tools.mjs',
+      nativeManifest,'upstream.lock.json','scripts/upstream-native-source.ts','test/fixtures/jvm-tools.mjs',
       join(directory,harness),join(directory,'Trace.java'),join(directory,'java.mjs'),join(directory,'source-renewal-platform.mjs'),
       fileURLToPath(import.meta.url),...(jsonJar?[jsonJar]:[]),...ports,...extraSources];
     const driverHashes=captureInputs(sources);

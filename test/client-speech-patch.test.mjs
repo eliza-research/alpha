@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import {createHash} from 'node:crypto';
-import {clientSpeechPatch} from '../scripts/client-speech-patch.mjs';
+import {clientSpeechPatch} from '../scripts/client-speech-patch.ts';
 
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 const target='packages/voice/src/native-cloud-speech.ts';

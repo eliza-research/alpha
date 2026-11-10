@@ -1,6 +1,6 @@
 import {mapsTilePath} from '../apps/app/src/runtime/managed-service-routes.ts';
 import {productionCloud, stagingCloud, cloudStorageNamespace} from '../apps/app/src/runtime/cloud-deployment.generated.ts';
-import {createCloudResidentHost,type ProviderSelection,type ProviderKeyEdit,type ProviderKeyRequest} from './cloud-resident-host.mjs';
+import {createCloudResidentHost,type ProviderSelection,type ProviderKeyEdit,type ProviderKeyRequest} from './cloud-resident-host.ts';
 import {startManagedGoogleAgentHost} from '../backend/native-google-agent-host.ts';
 import {managedGoogleRequest,boundedServiceJson,object} from '../backend/managed-google-route-policy.ts';
 import {CLOUD_EMAIL_CODE,emailCodeExpiresAt,emailCodeResendAt,emailCodeSendBody,emailCodeVerifyBody} from './cloud-email-code.ts';

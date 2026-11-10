@@ -1,4 +1,4 @@
-// Edge cases of Alpha's Pixel 10a release signing binding (scripts/sign-aosp-release.mjs, issue #672):
+// Edge cases of Alpha's Pixel 10a release signing binding (scripts/sign-aosp-release.ts, issue #672):
 // managed (PKCS#11 / AVB helper / payload signer) options and the APEX container and payload keys,
 // through Alpha's own descriptor, channel and APK signer. Releasetools are the upstream test doubles
 // and every key is a throwaway value generated here. Nothing here signs a real target-files, boots an
@@ -10,8 +10,8 @@ import os from "node:os";
 import path from "node:path";
 import { createHash, createPublicKey, generateKeyPairSync } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { PIXEL10A_PRODUCT, PIXEL10A_RELEASE } from "../scripts/aosp-pixel10a.mjs";
-import { X509_KEYS, parseSigningArgs, signRelease } from "../scripts/sign-aosp-release.mjs";
+import { PIXEL10A_PRODUCT, PIXEL10A_RELEASE } from "../scripts/aosp-pixel10a.ts";
+import { X509_KEYS, parseSigningArgs, signRelease } from "../scripts/sign-aosp-release.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
 const vendorPresent = fs.existsSync(path.join(root, "vendor/eliza/packages/os/scripts/android/aosp-release-signing.mjs"));

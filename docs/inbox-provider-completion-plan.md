@@ -39,7 +39,7 @@ The client also:
   `stale`, with an unread count, the account label and a time) and `openInbox()`, without subjects,
   senders or bodies. Home consumes it (`apps/app/src/main.tsx`). The unread count reflects only Inbox
   data the user explicitly loaded: there is no background unread probe, and Home and resume fetch no
-  Gmail metadata (`scripts/test-inbox-attention-flow.mjs`). The count is unknown until a read happens; a
+  Gmail metadata (`scripts/test-inbox-attention-flow.ts`). The count is unknown until a read happens; a
   stale summary keeps the last real count and time, and Home shows a dash when none exists. Leaving Inbox
   marks the summary stale. New-mail awareness remains blocked on A-05;
 - turns plain-text `https` URLs in a body into the same link list (`inbox.d.links`). A link opens only in
@@ -113,7 +113,7 @@ attached by a suggestion or by sharing; the composer's Attach picker remains the
 
 Nothing in this path prepares or dispatches a provider operation; sending still requires the composer and the provider review.
 Evidence is source and browser tests with synthetic data only: `test/use-in-email-review.test.mjs`, sections 7 to 7e of
-`scripts/test-inbox-attention-flow.mjs`, `test/browser/use-in-email.spec.ts` (development lane, a synthetic Cloud client and
+`scripts/test-inbox-attention-flow.ts`, `test/browser/use-in-email.spec.ts` (development lane, a synthetic Cloud client and
 agent placed in the page) and `test/browser/use-in-email.production.spec.ts` (flag-off build with only the Android bridge
 stubbed by `test/browser/flag-off-android.ts`). The flag-off spec drives the control from an agent reply that streams back over
 the stubbed bridge, against a synthetic managed Gmail answered at the native HTTP boundary: review and insert into a reply draft

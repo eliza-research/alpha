@@ -1,5 +1,5 @@
 {
-  "description": "Reviewed gaps between a copied client feature package's declared dependency range and the version Alpha installs. scripts/prepare-client-features.mjs fails on any other gap and on an entry that no longer matches.",
+  "description": "Reviewed gaps between a copied client feature package's declared dependency range and the version Alpha installs. scripts/prepare-client-features.ts fails on any other gap and on an entry that no longer matches.",
   "exceptions": [
     {
       "package": "packages/ui",

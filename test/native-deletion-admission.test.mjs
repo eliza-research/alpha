@@ -45,7 +45,7 @@ test('a deterministic stage refusal never leaves a permanent agent claim',()=>{
  assert.match(adapter,/const refusal=reminderDeletionRefusal\(reviewed\.status\);/);
  // Refusal wording is the shared contract's; Alpha re-exports it from the pin.
  // A local wrapper, not a re-export: a forwarded re-export let the bundler move the browser
- // development modules out of the entry chunk (scripts/audit-production-bundle.mjs).
+ // development modules out of the entry chunk (scripts/audit-production-bundle.ts).
  assert.match(readFileSync('apps/app/src/runtime/deletions.ts','utf8'),/export function reminderDeletionRefusal\(status:string\)\{return sharedRefusal\(status\);\}/);
  const contract=readFileSync('.eliza/client-features/packages/contracts/src/deletion-window.ts','utf8');
  for(const status of ['stale','unavailable','not-staged'])assert.match(contract,new RegExp(`case "${status}":`));

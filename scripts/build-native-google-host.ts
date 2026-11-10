@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {isBuiltin} from 'node:module';
-import {coreStateBuildPlugin,coreStateBuildRecord,coreStateRequiredTargets} from './core-state-patch.mjs';
+import {coreStateBuildPlugin,coreStateBuildRecord,coreStateRequiredTargets} from './core-state-patch.ts';
 
 const [root,sdk,file,metadataFile]=process.argv.slice(2);
 if(!root||!sdk||!file||!metadataFile)throw Error('Native host build paths are required');

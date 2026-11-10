@@ -42,7 +42,7 @@
     "listenerPrivileges": "not run"
   },
   "verifierReport": {
-    "command": "node scripts/verify-pixel10a-image.mjs --serial <serial> --user 0 --descriptor <reviewed launcher descriptor> --fingerprint <exact> --apk-path /product/app/AlphaPhone/AlphaPhone.apk --out <new report> --listener",
+    "command": "node scripts/verify-pixel10a-image.ts --serial <serial> --user 0 --descriptor <reviewed launcher descriptor> --fingerprint <exact> --apk-path /product/app/AlphaPhone/AlphaPhone.apk --out <new report> --listener",
     "reportSha256": "UNSET",
     "exitCode": "UNSET"
   },

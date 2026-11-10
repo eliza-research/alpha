@@ -5,9 +5,9 @@ import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath, pathToFileURL} from 'node:url';
-import {preparedSourceEnv, sourceDirectory, verifySource} from '../../../../scripts/local-agent-source.mjs';
-import {CORE_STATE_INPUTS, coreStatePatch} from '../../../../scripts/core-state-patch.mjs';
-import {verifyMobileBuildReceipt} from '../../../../scripts/mobile-uuid-adapter.mjs';
+import {preparedSourceEnv, sourceDirectory, verifySource} from '../../../../scripts/local-agent-source.ts';
+import {CORE_STATE_INPUTS, coreStatePatch} from '../../../../scripts/core-state-patch.ts';
+import {verifyMobileBuildReceipt} from '../../../../scripts/mobile-uuid-adapter.ts';
 import {writeRuntimeBundleGraph} from './runtime-bundle-graph.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
@@ -20,13 +20,13 @@ if (Bun.version !== policy.bun.version || Bun.revision !== policy.bun.revision) 
 verifySource(source, pin);
 fs.mkdirSync(output, {recursive: true});
 const inputFiles = [fileURLToPath(import.meta.url), 'specs/quint/refinement/services/runtime-bundle-graph.mjs', 'upstream.lock.json', 'patches/eliza/mobile-uuid-build.json',
-  'scripts/build-mobile-agent.mjs', 'scripts/mobile-uuid-adapter.mjs', 'scripts/mobile-bundle-smoke.mjs',
-  'scripts/local-agent-source.mjs', ...CORE_STATE_INPUTS].map(file => path.resolve(root, file));
+  'scripts/build-mobile-agent.ts', 'scripts/mobile-uuid-adapter.ts', 'scripts/mobile-bundle-smoke.ts',
+  'scripts/local-agent-source.ts', ...CORE_STATE_INPUTS].map(file => path.resolve(root, file));
 const core = coreStatePatch(root, source);
 const before = Object.fromEntries(inputFiles.map(file => [file, hash(fs.readFileSync(file))]));
 const tracked = new Map(execFileSync('git', ['ls-tree', '-r', '-z', pin], {cwd: source, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024})
   .split('\0').filter(Boolean).map(row => {const at = row.indexOf('\t'); return [row.slice(at + 1), row.slice(0, at).split(' ')[2]];}));
-const evidence = {schema: 1, sourcePin: pin, source, producer: 'scripts/build-mobile-agent.mjs',
+const evidence = {schema: 1, sourcePin: pin, source, producer: 'scripts/build-mobile-agent.ts',
   bun: {version: Bun.version, revision: Bun.revision}, startedAt: new Date().toISOString(),
   inputHashesBefore: before, builds: [], passed: false};
 const evidencePath = path.join(output, 'producer-observation.json');
@@ -76,8 +76,8 @@ try {
     }
     return result;
   };
-  process.argv = [process.execPath, path.join(root, 'scripts/build-mobile-agent.mjs'), source, '--target=android'];
-  await import(pathToFileURL(path.join(root, 'scripts/build-mobile-agent.mjs')).href);
+  process.argv = [process.execPath, path.join(root, 'scripts/build-mobile-agent.ts'), source, '--target=android'];
+  await import(pathToFileURL(path.join(root, 'scripts/build-mobile-agent.ts')).href);
   verifySource(source, pin);
   evidence.coreState = verifyMobileBuildReceipt(root, source).coreState;
   evidence.bundleSha256 = hash(fs.readFileSync(path.join(source, 'packages/agent/dist-mobile/agent-bundle.js')));

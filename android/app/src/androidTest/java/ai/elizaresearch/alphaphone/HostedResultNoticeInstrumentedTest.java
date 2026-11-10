@@ -12,7 +12,7 @@ import java.nio.charset.StandardCharsets;
 import static org.junit.Assert.*;
 
 /** Explicit campaign only. The runner owns notification permission state in a temporary user:
- * node scripts/test-native-permissions.mjs notice|notice-denied APP.apk TEST.apk NEW_OUTPUT. */
+ * node scripts/test-native-permissions.ts notice|notice-denied APP.apk TEST.apk NEW_OUTPUT. */
 public final class HostedResultNoticeInstrumentedTest {
  private JSONObject call(String expression)throws Exception {
   long ready=SystemClock.elapsedRealtime()+20000;while(SystemClock.elapsedRealtime()<ready&&!"true".equals(WebViewTestDriver.evaluate("Boolean(window.Capacitor?.Plugins?.AlphaHostedResults)")))SystemClock.sleep(50);

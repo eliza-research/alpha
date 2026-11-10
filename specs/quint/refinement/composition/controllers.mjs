@@ -2,7 +2,7 @@ import {createServer} from 'vite';
 import {chromium} from '@playwright/test';
 import {fileURLToPath} from 'node:url';
 import {resolve} from 'node:path';
-import {sourcePaths} from '../../../../scripts/quint-lib.mjs';
+import {sourcePaths} from '../../../../scripts/quint-lib.ts';
 import {captureInputs,checkTraces} from '../check-traces.mjs';
 import {serviceInputs} from '../services/source-inputs.mjs';
 import {flagOffAndroid,fenceNetwork} from '../../../../test/browser/flag-off-android.ts';
@@ -15,7 +15,7 @@ const accounts=[{token:'quint-owner-a',userId:'9f1dc45a-4011-4e44-947a-30d999d24
 const action=(name,...args)=>({name,args});
 
 export async function runControllerCompositionRefinement(extraSources=[]) {
-  const sources=serviceInputs([...sourcePaths(),'vite.config.ts','package.json','scripts/quint-lib.mjs',
+  const sources=serviceInputs([...sourcePaths(),'vite.config.ts','package.json','scripts/quint-lib.ts',
     'test/browser/flag-off-android.ts','test/browser/resident-stub.ts','specs/quint/refinement/composition/ports.mjs',fileURLToPath(import.meta.url),...extraSources]);
   const driverHashes=captureInputs(sources);
   const prior=process.env.ELIZA_DEV_ALLOW_TEST_MOCKS;

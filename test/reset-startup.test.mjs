@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os';
 import {join,resolve,dirname} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {javaBinary} from './fixtures/jvm-tools.mjs';
-import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
+import {preparePatchedNative} from '../scripts/prepare-patched-native.ts';
 const root=resolve(import.meta.dirname,'..');
 // Alpha's registration (AlphaDataReset, AlphaApplication) compiled with the shared coordinator from the
 // reviewed pin (plugin-native-system reset.DataReset); Android and Alpha's other startup classes are stand-ins.

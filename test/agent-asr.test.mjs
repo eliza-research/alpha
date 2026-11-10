@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {agentAsrEnvironment as configure} from '../scripts/agent-asr.mjs';
+import {speechEnvironment} from '../scripts/host-speech-admission.ts';
+const configure = env => speechEnvironment('asr', env);
 test('ASR is opt-in, off is authoritative, required refuses absent configuration',()=>{
  assert.deepEqual(configure({}),{}); assert.deepEqual(configure({ELIZA_ASR_ENABLED:'0',ELIZA_ASR_MODEL_DIR:'/missing'}),{});
  assert.throws(()=>configure({ELIZA_ASR_ENABLED:'1'}),/absolute/);

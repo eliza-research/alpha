@@ -40,7 +40,7 @@ public class ReminderRecurrenceInstrumentedTest {
   String id="repeat_"+UUID.randomUUID();Context c=context();
   // The external runner owns grant/restore: revoking this app's permission here can kill instrumentation.
   try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
-   AppNavigation.liveMode();ReminderTestAccess.channel(c);assertTrue("Use test-reminder-recurrence.mjs with notifications granted and channel enabled",ReminderTestAccess.allowed(c));
+   AppNavigation.liveMode();ReminderTestAccess.channel(c);assertTrue("Use test-reminder-recurrence.ts with notifications granted and channel enabled",ReminderTestAccess.allowed(c));
    ZonedDateTime first=ZonedDateTime.now().plusMinutes(1).withSecond(0).withNano(0);if(first.toInstant().toEpochMilli()-System.currentTimeMillis()<8000)first=first.plusMinutes(1);
    JSONObject created=ReminderTestAccess.schedule(c,id,"Recurring native fixture "+id,"Owned recurrence test",first.toInstant().toEpochMilli(),rule("daily",first.getZone().getId(),first.toLocalDate(),first.toLocalTime()));
    String occurrence=created.getString("occurrenceId");state(id,"posted");StatusBarNotification posted=notification(id);assertNotNull("Actual AlarmManager delivery",posted);

@@ -8,7 +8,7 @@ import test from 'node:test';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {DENYLIST, RETIRED_NO_AGENT_TEXT, RETIRED_REMOTE_AGENT_TEXT} from '../scripts/audit-production-bundle.mjs';
+import {DENYLIST, RETIRED_NO_AGENT_TEXT, RETIRED_REMOTE_AGENT_TEXT} from '../scripts/audit-production-bundle.ts';
 
 const read = file => readFileSync(new URL('../' + file, import.meta.url), 'utf8');
 const ui = read('apps/app/src/runtime/connection-ui.tsx');

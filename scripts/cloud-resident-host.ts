@@ -1,0 +1,197 @@
+import {coreRuntimeArguments} from './core-state-patch.ts';
+import fs from 'node:fs';
+import {createProviderKeySession} from '../vendor/eliza/packages/host/native-host/provider-key-session.mjs';
+import path from 'node:path';
+import {randomUUID,randomBytes} from 'node:crypto';
+import {preparePrivateRuntimeProfile,writePrivateRuntimeJson,runtimeEnvironment,startPrivateRuntimeProcess} from './private-runtime-launch.ts';
+import {verifySource,preparedSourceEnv,workerArtifactDirectory,digest} from './local-agent-source.ts';
+import {verifyWorkerArtifact} from './workflow-worker-artifact.ts';
+import {verifyNativeGoogleHostArtifact} from './native-google-host-artifact.ts';
+import {nativeViewDeclarationsJson} from './native-view-policy.ts';
+import {LOCAL_EMBEDDING_ROUTE,localEmbeddingEnvironment} from './agent-embeddings.ts';
+import {CLOUD_SDK_BASES,type CloudEnvironment} from './cloud-sdk-authority.ts';
+import type {ResidentLaunchOptions} from './private-runtime-launch.ts';
+
+export interface CloudResidentBinding {token:string;credentialId:string;reference:string;expiresAt?:number}
+export type ProviderKey='text'|'voice';
+export interface ProviderSelection {mode:'cloud'|'own';expectedRevision:string}
+export interface ProviderKeyEdit {textKey?:string;voiceKey?:string;expectedRevision:string}
+export interface ProviderKeyRequest {key:ProviderKey;expectedRevision:string}
+export interface CloudResidentStatus {provider:'elizacloud'|'cerebras';configured:boolean;selected:boolean;model:string;attachable:boolean;voiceConfigured:boolean;persistence:'host-session';revision:string;mode:'cloud'|'own';keys:{text:{configured:boolean};voice:{configured:boolean}}}
+export interface CloudResidentHost {
+ bind(credential:CloudResidentBinding):Promise<CloudResidentStatus>;
+ clear():Promise<CloudResidentStatus>;
+ selectOwn(input:{apiKey:string;cartesiaKey?:string},signal?:AbortSignal):Promise<CloudResidentStatus>;
+ selectCloud(signal?:AbortSignal):Promise<CloudResidentStatus>;
+ selectProvider(input:ProviderSelection,signal?:AbortSignal):Promise<CloudResidentStatus>;
+ editProviderKeys(input:ProviderKeyEdit,signal?:AbortSignal):Promise<CloudResidentStatus>;
+ removeProviderKey(input:ProviderKeyRequest,signal?:AbortSignal):Promise<CloudResidentStatus>;
+ revealProviderKey(input:ProviderKeyRequest,signal?:AbortSignal):Promise<{key:ProviderKey;value:string;revision:string}>;
+ invalidateProviderRequests():void;
+ status(id?:string):CloudResidentStatus;
+ ready(signal:AbortSignal):Promise<{state:string}>;
+ close():Promise<void>;
+}
+
+type ProviderOperation = ['edit', ProviderKeyEdit] | ['select', ProviderSelection] | ['remove', ProviderKeyRequest];
+type CredentialReference = Pick<CloudResidentBinding,'credentialId'|'reference'>;
+type BoundCredential = Omit<CloudResidentBinding,'token'>;
+interface DirectKeys {apiKey?: string; cartesiaKey?: string; revision: string}
+interface GoogleHost {port: number; close(): Promise<void>}
+interface RunningResident {completion: Promise<unknown>; stop(): Promise<unknown>}
+type ResidentLaunch = (input: ResidentLaunchOptions) => Promise<RunningResident>;
+interface CloudResidentOptions {
+ source: string;
+ profile: string;
+ port: number;
+ environment?: CloudEnvironment;
+ profileMode?: 'lean'|'full';
+ cloudRealtimeVoice?: boolean;
+ launch?: ResidentLaunch;
+ inherited?: NodeJS.ProcessEnv;
+ request?: typeof fetch;
+ startGoogleHost?: (apiToken: string, binding: CredentialReference) => Promise<GoogleHost>;
+}
+type KeyStatus = Pick<CloudResidentStatus,'mode'|'revision'|'keys'|'persistence'>;
+interface ProviderKeySession {
+ status(): KeyStatus;
+ check(revision: unknown): void;
+ edit(input: ProviderKeyEdit): KeyStatus;
+ select(input: ProviderSelection): KeyStatus;
+ remove(input: ProviderKeyRequest): KeyStatus;
+ reveal(input: ProviderKeyRequest): {key: ProviderKey; value: string; revision: string};
+ launchKeys(): DirectKeys|null;
+ invalidate(): void;
+ close(): void;
+}
+
+export const CLOUD_MODEL='cerebras/qwen-3.8-27b';
+/** Host-owned process. No provider key is written to configuration or returned to the renderer. */
+export async function createCloudResidentHost({source,profile,port,environment='production',profileMode='lean',launch=startPrivateRuntimeProcess,inherited=process.env,request=fetch,startGoogleHost,cloudRealtimeVoice=false}: CloudResidentOptions): Promise<CloudResidentHost> {
+ if(!['production','staging'].includes(environment))throw Error('Invalid Cloud environment');
+ if(profileMode!=='lean'&&profileMode!=='full')throw Error('Invalid Cloud resident profile mode');
+ const root=path.resolve(import.meta.dirname,'..');
+ const commit=JSON.parse(fs.readFileSync(path.join(root,'upstream.lock.json'),'utf8')).commit;
+ verifySource(source,commit);
+ // The product declaration comes only from the current verified worker module,
+ // independent of provider credentials. No inherited module path or character JSON.
+ const worker=workerArtifactDirectory(root,inherited);
+ verifyWorkerArtifact(worker,{sourceStampSha256:digest(path.join(source,'.alpha-runtime-source.json')),lockSha256:digest(path.join(source,'bun.lock'))});
+ verifyNativeGoogleHostArtifact(root,worker);
+ const nativeHostEnvironment={ELIZA_SMTHRS_RUNTIME_DIR:worker,ELIZA_NATIVE_GOOGLE_HOST_MODULE:path.join(worker,'google-host.mjs')};
+ if(!Number.isInteger(port)||port<1024||port>65535)throw Error('Invalid resident port');
+ fs.mkdirSync(profile,{recursive:true,mode:0o700});
+ const st=fs.lstatSync(profile);if(!st.isDirectory()||st.isSymbolicLink()||(st.mode&0o077)||st.uid!==process.getuid?.())throw Error('Private resident directory required');
+ const tokenPath=path.join(profile,'owner-token'),configPath=path.join(profile,'eliza.json');
+ const privateProfile=await preparePrivateRuntimeProfile({tokenPath,configPath,createToken:()=>randomBytes(32).toString('hex'),initialConfig:{cloud:{enabled:true},serviceRouting:{llmText:{backend:'elizacloud',transport:'cloud-proxy',smallModel:CLOUD_MODEL,largeModel:CLOUD_MODEL},embeddings:{backend:'elizacloud',transport:'cloud-proxy'}},plugins:{entries:{'personal-assistant':{enabled:profileMode==='full'}}}}});
+ const route=privateProfile.config.serviceRouting?.llmText;
+ if(route?.backend!=='elizacloud'||route?.transport!=='cloud-proxy'||privateProfile.config.cloud?.enabled!==true||privateProfile.config.cloud?.apiKey)throw Error('Select a separate Cloud-only resident profile');
+ // A full host must not silently reverse a saved assistant opt-out.
+ if(profileMode==='full'&&privateProfile.config.plugins?.entries?.['personal-assistant']?.enabled!==true)throw Error('Full Cloud profile requires personal-assistant explicitly enabled');
+ // Headless Linux has no OS keychain. Keep its supported vault passphrase in this private host profile.
+ const vaultPath=path.join(profile,'vault-passphrase');
+ try{const fd=fs.openSync(vaultPath,'wx',0o600);try{fs.writeFileSync(fd,randomBytes(32).toString('hex'));}finally{fs.closeSync(fd);}}catch(error){if(!(typeof error==='object' && error!==null && 'code' in error && error.code==='EEXIST'))throw error;}
+ const vaultFd=fs.openSync(vaultPath,fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW|fs.constants.O_NONBLOCK);let vaultPassphrase: string;
+ try{const stat=fs.fstatSync(vaultFd);if(!stat.isFile()||stat.nlink!==1||(stat.mode&0o077)||stat.uid!==process.getuid?.()||stat.size!==64)throw Error('Private vault passphrase required');vaultPassphrase=fs.readFileSync(vaultFd,'utf8');if(!/^[a-f0-9]{64}$/.test(vaultPassphrase))throw Error('Invalid vault passphrase');}finally{fs.closeSync(vaultFd);}
+ const providerKeys=createProviderKeySession() as ProviderKeySession;
+ let direct: DirectKeys|null = null;
+ let cloudCredential: CloudResidentBinding|null = null;
+ let runningDirectRevision: string|null = null;
+ let googleHost: GoogleHost|null = null;
+ let running: RunningResident|null = null;
+ let bound: BoundCredential|null = null;
+ let queue: Promise<unknown> = Promise.resolve();
+ let expiry: ReturnType<typeof setTimeout>|undefined;
+ let closed=false,retiring=false;
+ const serial=<T>(run: () => T | Promise<T>)=>{const next=queue.then(run,run);queue=next.catch(()=>{});return next;};
+ async function stop(){
+  clearTimeout(expiry);retiring=true;const old=running,oldGoogle=googleHost;
+  const failures: unknown[] = [];
+  // Revoke the read broker even when child retirement fails. Never let an old
+  // binding resolve a replacement account through the shared host port.
+  if(oldGoogle)try{await oldGoogle.close();if(googleHost===oldGoogle)googleHost=null;}catch(error){failures.push(error);}
+  if(old)try{await old.stop();if(running===old){running=null;bound=null;runningDirectRevision=null;}}catch(error){failures.push(error);}
+  if(failures.length)throw new AggregateError(failures,'Resident retirement could not be confirmed');
+  retiring=false;
+ }
+ async function replace(credential: CloudResidentBinding|null){
+  if(closed)throw Error('Cloud resident host closed');
+  if(!retiring&&running&&runningDirectRevision===(direct?.revision??null)&&bound?.credentialId===credential?.credentialId&&bound?.reference===credential?.reference&&bound?.expiresAt===credential?.expiresAt)return status(credential?.credentialId);
+  if(credential&&(!credential.token||typeof credential.token!=='string'||!credential.credentialId||credential.expiresAt!==undefined&&(!Number.isFinite(credential.expiresAt)||credential.expiresAt<=Date.now())))throw Error('Invalid Cloud resident binding');
+  await stop();
+  const settings: NodeJS.ProcessEnv = {...(environment==='staging'?{ELIZA_DEV_SOURCE:'1',ELIZA_DEV_CLOUD_ENV_AUTHORITY:'staging-explicit'}:{}),ELIZA_PGLITE_AUTO_RESET:'0',ELIZA_VAULT_PASSPHRASE:vaultPassphrase,ELIZAOS_CLOUD_USE_INFERENCE:credential?'true':'false',ELIZAOS_CLOUD_USE_EMBEDDINGS:credential?'true':'false',ELIZA_DISABLE_LOCAL_EMBEDDINGS:'true',ELIZA_LOCAL_EMBEDDING_ENABLED:'0',ELIZA_ASR_ENABLED:'0',ELIZA_PARADEE_ENABLED:'0',...(credential?{ELIZAOS_CLOUD_API_KEY:credential.token,ELIZAOS_CLOUD_BASE_URL:CLOUD_SDK_BASES[environment],ELIZAOS_CLOUD_SMALL_MODEL:CLOUD_MODEL,ELIZAOS_CLOUD_LARGE_MODEL:CLOUD_MODEL,ELIZAOS_CLOUD_IMAGE_DESCRIPTION_MODEL:CLOUD_MODEL,ELIZAOS_CLOUD_EMBEDDING_MODEL:'bge-small-en-v1.5',ELIZAOS_CLOUD_EMBEDDING_DIMENSIONS:'384'}:{})};
+  if(credential&&!direct&&cloudRealtimeVoice)Object.assign(settings,{ELIZA_SELF_HOSTED_VOICE_ENABLED:'1',ELIZA_SELF_HOSTED_VOICE_CLOUD_RELAY_ENABLED:'1'});
+  if(direct){Object.assign(settings,localEmbeddingEnvironment(inherited),{ELIZA_DISABLE_LOCAL_EMBEDDINGS:'false',ELIZA_LOCAL_EMBEDDING_ENABLED:'1',...(direct.apiKey?{CEREBRAS_API_KEY:direct.apiKey}:{}),CEREBRAS_BASE_URL:'https://api.cerebras.ai/v1',CEREBRAS_MODEL:'qwen-3.8-27b',OPENAI_IMAGE_DESCRIPTION_MODEL:'qwen-3.8-27b',OPENAI_IMAGE_DESCRIPTION_BASE_URL:'https://api.cerebras.ai/v1',CEREBRAS_SMALL_MODEL:'qwen-3.8-27b',CEREBRAS_LARGE_MODEL:'qwen-3.8-27b',ELIZA_PROVIDER:'cerebras',ELIZAOS_CLOUD_USE_INFERENCE:'false',ELIZAOS_CLOUD_USE_EMBEDDINGS:'false',...(direct.cartesiaKey?{CARTESIA_API_KEY:direct.cartesiaKey,ELIZA_SELF_HOSTED_VOICE_ENABLED:'1'}:{})});for(const key of ['ELIZAOS_CLOUD_API_KEY','ELIZAOS_CLOUD_BASE_URL','ELIZAOS_CLOUD_SMALL_MODEL','ELIZAOS_CLOUD_LARGE_MODEL'])delete settings[key];}
+  // Derive only the nonsecret route for this launch; account, history and base config are retained.
+  const launchConfigPath=path.join(profile,'provider-launch.json');
+  await writePrivateRuntimeJson(launchConfigPath,{...privateProfile.config,cloud:{...privateProfile.config.cloud,enabled:!direct},serviceRouting:{...privateProfile.config.serviceRouting,...(direct?{embeddings:LOCAL_EMBEDDING_ROUTE}:{}),llmText:direct?{backend:'cerebras',transport:'direct',smallModel:'qwen-3.8-27b',largeModel:'qwen-3.8-27b'}:route}});
+  googleHost=credential&&startGoogleHost?await startGoogleHost(privateProfile.token,{credentialId:credential.credentialId,reference:credential.reference}):null;
+  let log;
+  try{
+  if(googleHost&&(!Number.isInteger(googleHost.port)||googleHost.port<1024||googleHost.port>65535||typeof googleHost.close!=='function'))throw Error('Invalid private Google host');
+  const env=runtimeEnvironment({inherited:preparedSourceEnv(inherited),allow:['PATH','TMPDIR','LANG','SHELL','USER','LOGNAME','HOME'],settings,owned:{...nativeHostEnvironment,ELIZA_MANAGED_CALENDAR_READ_BROKER:googleHost?`http://127.0.0.1:${googleHost.port}/__alpha-owner-gmail`:'',ELIZA_MANAGED_GMAIL_READ_BROKER:googleHost?`http://127.0.0.1:${googleHost.port}/__alpha-owner-gmail`:'',ELIZA_HEADLESS:'1',ELIZA_DISTRIBUTION_PROFILE:'store',...(profileMode==='lean'?{ELIZA_PLUGIN_SET:'lean-chat',ELIZA_LEAN_CHAT_WORKFLOWS:'1'}:{}),ELIZA_REQUIRE_LOCAL_AUTH:'1',ELIZA_API_BIND:'127.0.0.1',ELIZA_API_PORT:String(port),ELIZA_API_EXPOSE_PORT:'1',ELIZA_STATE_DIR:profile,ELIZA_CONFIG_PATH:launchConfigPath,ELIZA_API_TOKEN:privateProfile.token,ELIZA_HOST_CONTEXT_REVISION:'cloud:'+randomUUID(),ELIZA_NATIVE_VIEW_DECLARATIONS:nativeViewDeclarationsJson,ELIZA_NATIVE_BROWSER_COMMANDS:'back,forward,reload',ELIZA_BROWSER_NATIVE_TARGET:'off'}});
+  log=fs.openSync(path.join(profile,'server.log'),fs.constants.O_WRONLY|fs.constants.O_APPEND|fs.constants.O_CREAT|fs.constants.O_NOFOLLOW,0o600);fs.fchmodSync(log,0o600);
+  running=await launch({command:inherited.ALPHA_BUN||'bun',args:coreRuntimeArguments(root,source,['--no-install','--conditions=eliza-source',path.join(source,'packages/app/src/runtime/dev-server.ts')]),cwd:profile,env:{...env,ALPHA_CORE_STATE_SOURCE:source},stdio:['ignore',log,log]});
+  }catch(error){const failedGoogle=googleHost;if(failedGoogle){try{await failedGoogle.close();if(googleHost===failedGoogle)googleHost=null;}catch(cleanup){retiring=true;throw new AggregateError([error,cleanup],'Resident startup and private Google cleanup failed');}}throw error;}finally{if(log!==undefined)fs.closeSync(log);}
+
+  const current=running;runningDirectRevision=direct?.revision??null;bound=credential?{credentialId:credential.credentialId,reference:credential.reference,expiresAt:credential.expiresAt}:null;
+  const finished=()=>serial(async()=>{if(running!==current)return;retiring=true;running=null;bound=null;clearTimeout(expiry);const endedGoogle=googleHost;if(endedGoogle)await endedGoogle.close();if(googleHost===endedGoogle)googleHost=null;retiring=false;});
+  void current.completion.then(finished,finished).catch(()=>{retiring=true;});
+  const expiresAt = credential?.expiresAt;
+  if(credential && expiresAt){const expire=()=>{const remaining=expiresAt-Date.now();if(remaining<=0){if(bound?.credentialId!==credential.credentialId||bound?.reference!==credential.reference)return;invalidateProviderRequests();void serial(()=>{if(bound?.credentialId!==credential.credentialId||bound?.reference!==credential.reference)return;cloudCredential=null;return replace(null);});return;}expiry=setTimeout(expire,Math.min(remaining,2147483647));};expire();}
+  return status(credential?.credentialId);
+ }
+ function status(id?: string): CloudResidentStatus {return {...providerKeys.status(),provider:direct?'cerebras':'elizacloud',selected:!!direct||!!bound,configured:!!running&&!retiring&&!!(direct?direct.apiKey:bound),model:direct?'qwen-3.8-27b':CLOUD_MODEL,voiceConfigured:!!direct?.cartesiaKey,attachable:!retiring&&!!running&&!!bound&&bound.credentialId===id};}
+ async function ready(signal: AbortSignal){
+  if(retiring)throw Error('Resident retirement unconfirmed');
+  if(!running)await serial(()=>{if(!running)return replace(cloudCredential);});
+  const current=running,deadline=Date.now()+110000;
+  while(Date.now()<deadline){signal.throwIfAborted();if(running!==current)throw Error('Resident changed during startup');
+   try{const response=await request(`http://127.0.0.1:${port}/api/agents`,{headers:{Authorization:'Bearer '+privateProfile.token},redirect:'error',signal:AbortSignal.any([signal,AbortSignal.timeout(2000)])});if(response.ok){const value=await response.json();signal.throwIfAborted();if(running!==current||retiring)throw Error('Resident changed during startup');if(Array.isArray(value.agents)&&value.agents.length===1&&value.agents[0]?.status==='running')return {state:'host-managed'};}else await response.body?.cancel();}catch(error){signal.throwIfAborted();}
+   await new Promise(resolve=>setTimeout(resolve,300));
+  }throw Error('Cloud resident startup timed out');
+ }
+ async function validateTextKey(apiKey: unknown, signal: AbortSignal){
+  if(typeof apiKey!=='string'||!/^[!-~]{8,1024}$/.test(apiKey))throw Error('Enter a valid Text key.');
+  const response=await request('https://api.cerebras.ai/v1/models',{headers:{Authorization:'Bearer '+apiKey,Accept:'application/json'},redirect:'error',signal:AbortSignal.any([signal,AbortSignal.timeout(10000)])});
+  signal.throwIfAborted();const body=await response.text();signal.throwIfAborted();if(!response.ok||body.length>262144)throw Error('Cerebras did not confirm the key. Nothing was saved.');let data: {data?: {id?: string}[]};try{data=JSON.parse(body);}catch{throw Error('Cerebras did not confirm the key. Nothing was saved.');}if(!Array.isArray(data.data)||!data.data.some(row=>row.id==='qwen-3.8-27b'))throw Error('The required Cerebras model is unavailable. Nothing was saved.');
+ }
+ function check(input: {expectedRevision: string}, signal: AbortSignal){signal.throwIfAborted();providerKeys.check(input?.expectedRevision);}
+ async function applyProvider(signal: AbortSignal, ...[operation,input]: ProviderOperation){
+  check(input,signal);
+  const allowed=operation==='edit'?['expectedRevision','textKey','voiceKey']:operation==='select'?['expectedRevision','mode']:['expectedRevision','key'];
+  if(Object.keys(input).some(key=>!allowed.includes(key)))throw Error('Invalid provider request.');
+  if(operation==='select'&&(!['cloud','own'].includes(input.mode)||input.mode==='own'&&!providerKeys.status().keys.text.configured))throw Error('Add a Text key before selecting Own.');
+  if(operation==='remove'&&!['text','voice'].includes(input.key))throw Error('Invalid provider key.');
+  if(operation==='edit'){
+   if(!['textKey','voiceKey'].some(key=>Object.hasOwn(input,key)))throw Error('Choose a provider key to edit.');
+   if(Object.hasOwn(input,'textKey'))await validateTextKey(input.textKey,signal);
+   if(Object.hasOwn(input,'voiceKey')&&(typeof input.voiceKey!=='string'||!/^[!-~]{8,1024}$/.test(input.voiceKey)))throw Error('Enter a valid Voice key.');
+  }
+  check(input,signal);
+  // An inactive key edit cannot restart or alter the selected Cloud route.
+  const restart=operation==='select'||providerKeys.status().mode==='own';
+  if(restart){await stop();check(input,signal);}
+  if(operation==='edit')providerKeys.edit(input);
+  else if(operation==='select')providerKeys.select(input);
+  else providerKeys.remove(input);
+  direct=providerKeys.launchKeys();
+  return restart?replace(cloudCredential):status();
+ }
+ const editProviderKeys=(input: ProviderKeyEdit,signal=new AbortController().signal)=>serial(()=>applyProvider(signal,'edit',input));
+ const selectProvider=(input: ProviderSelection,signal=new AbortController().signal)=>serial(()=>applyProvider(signal,'select',input));
+ const removeProviderKey=(input: ProviderKeyRequest,signal=new AbortController().signal)=>serial(()=>applyProvider(signal,'remove',input));
+ const invalidateProviderRequests=()=>{if(closed)return;providerKeys.invalidate();direct=providerKeys.launchKeys();};
+ return {bind:credential=>{if(cloudCredential?.credentialId!==credential?.credentialId||cloudCredential?.reference!==credential?.reference)invalidateProviderRequests();return serial(async()=>{const result=await replace(credential);cloudCredential=credential;return result;});},clear:()=>{invalidateProviderRequests();return serial(()=>{cloudCredential=null;return replace(null);});},
+ editProviderKeys,selectProvider,removeProviderKey,invalidateProviderRequests,
+ revealProviderKey:(input,signal=new AbortController().signal)=>serial(()=>{check(input,signal);return providerKeys.reveal(input);}),
+ // Compatibility for existing owner setup callers. Omitted Voice preserves its key.
+ selectOwn:(input,signal=new AbortController().signal)=>{const expectedRevision=providerKeys.status().revision;return serial(async()=>{
+  signal.throwIfAborted();await validateTextKey(input?.apiKey,signal);
+  const edit={expectedRevision,textKey:input.apiKey,...(Object.hasOwn(input,'cartesiaKey')?{voiceKey:input.cartesiaKey}:{})};
+  if(Object.hasOwn(edit,'voiceKey')&&(typeof edit.voiceKey!=='string'||!/^[!-~]{8,1024}$/.test(edit.voiceKey)))throw Error('Enter a valid Voice key.');
+  check(edit,signal);await stop();check(edit,signal);providerKeys.edit(edit);providerKeys.select({mode:'own',expectedRevision:providerKeys.status().revision});direct=providerKeys.launchKeys();return replace(cloudCredential);
+ });},
+ selectCloud:(signal=new AbortController().signal)=>{const expectedRevision=providerKeys.status().revision;return selectProvider({mode:'cloud',expectedRevision},signal);},
+ status,ready,close:()=>{invalidateProviderRequests();return serial(async()=>{closed=true;await stop();direct=null;cloudCredential=null;providerKeys.close();});}};
+}

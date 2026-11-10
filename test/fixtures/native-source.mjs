@@ -1,7 +1,7 @@
 /** Stage exact pinned native inputs privately; never write through shared staging aliases. */
 import {mkdirSync,cpSync,symlinkSync,realpathSync} from 'node:fs';
 import {join} from 'node:path';
-import {preparePatchedNative} from '../../scripts/prepare-patched-native.mjs';
+import {preparePatchedNative} from '../../scripts/prepare-patched-native.ts';
 /** Shared host notice classes (receipts, owner fence, routes, coordination, recovery) in a staged native root. */
 export const noticeSources=(staged,...names)=>names.map(name=>join(staged,'plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications',name+'.java'));
 export function prepareNativeFixture(root,directory) {

@@ -12,11 +12,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
-import {ALLOWLIST, COMMERCIAL_FONT, FONT_LICENSES, HELD_OUTSIDE_REPOSITORY, NO_FONT_LICENCE, ROOT, UNVERIFIED, collectNotices, fontLicense, fontNames, sha256} from '../scripts/generate-licenses.mjs';
-import {FONT_BLOCKER, FONT_BLOCKER_REFERENCE, FONT_FLAG, FONT_HELD_FLAG, RESOLVED_BY_OWNER_STATEMENT, fontLicenceCheck, fontLicenceFindings, fontLicenceLine, fontLicenseBlockers, readOwnerStatedFontHashes, readUnverifiedFontHashes} from '../scripts/font-license-blockers.mjs';
-import {UNRESOLVED_FONT_LICENCE_BLOCKS_DISTRIBUTION, classifyLicence} from '../scripts/licence-policy.mjs';
-import {releaseBlockers} from '../scripts/release-blockers.mjs';
-import {releaseDistributable} from '../scripts/release-distributable.mjs';
+import {ALLOWLIST, COMMERCIAL_FONT, FONT_LICENSES, HELD_OUTSIDE_REPOSITORY, NO_FONT_LICENCE, ROOT, UNVERIFIED, collectNotices, fontLicense, fontNames, sha256} from '../scripts/generate-licenses.ts';
+import {FONT_BLOCKER, FONT_BLOCKER_REFERENCE, FONT_FLAG, FONT_HELD_FLAG, RESOLVED_BY_OWNER_STATEMENT, fontLicenceCheck, fontLicenceFindings, fontLicenceLine, fontLicenseBlockers, readOwnerStatedFontHashes, readUnverifiedFontHashes} from '../scripts/font-license-blockers.ts';
+import {UNRESOLVED_FONT_LICENCE_BLOCKS_DISTRIBUTION, classifyLicence} from '../scripts/licence-policy.ts';
+import {releaseBlockers} from '../scripts/release-blockers.ts';
+import {releaseDistributable} from '../scripts/release-distributable.ts';
 
 const DENTON = 'apps/app/public/denton-300.woff2';
 const dentonBytes = fs.readFileSync(path.join(ROOT, DENTON));
@@ -156,7 +156,7 @@ test('the one constant decides whether an unresolved font withholds distribution
 
 test('the bundle audit prints licence flags and the font check as flag lines, never as a release blocker', t => {
   const files = {'index.html': '<!doctype html>', 'build-flags.json': JSON.stringify({testMocks: false})};
-  const audit = dir => spawnSync(process.execPath, [path.join(ROOT, 'scripts/audit-production-bundle.mjs'), dir], {encoding: 'utf8'});
+  const audit = dir => spawnSync(process.execPath, [path.join(ROOT, 'scripts/audit-production-bundle.ts'), dir], {encoding: 'utf8'});
   const run = audit(payload(t, {notices: committedNotices, files: {...files, 'denton-300.woff2': dentonBytes}}));
   assert.equal(run.status, 0, run.stderr);
   assert.match(run.stdout, /^PASS /m);
@@ -172,7 +172,7 @@ test('the bundle audit prints licence flags and the font check as flag lines, ne
 });
 
 test('verify-apks records licence flags and keeps font blockers and private QA out of distribution', () => {
-  const source = fs.readFileSync(path.join(ROOT, 'scripts/verify-apks.mjs'), 'utf8');
+  const source = fs.readFileSync(path.join(ROOT, 'scripts/verify-apks.ts'), 'utf8');
   // The font check is recorded in full; only its `blockers` (empty while the constant is false) reach `distributable`.
   assert.match(source, /fontCheck = fontLicenceCheck\(payload\.public\);/);
   assert.match(source, /const licenceBlockers = fontCheck\.blockers;/);

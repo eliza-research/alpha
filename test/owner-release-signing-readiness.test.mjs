@@ -9,7 +9,7 @@ import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {
   DRAFT, KEY_MANIFEST, SECRET_LIMIT_BYTES, draftProblems, expectedSecrets, jobBlocks, keySecretName, localReport, remoteReport,
-} from '../scripts/owner/release-signing-readiness.mjs';
+} from '../scripts/owner/release-signing-readiness.ts';
 
 const root = path.resolve(import.meta.dirname, '..');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, KEY_MANIFEST), 'utf8'));
@@ -88,7 +88,7 @@ function stepScript(name) {
   const out = [];
   let listed = false;
   for (let i = 0; i < body.length; i++) {
-    if (!/node scripts\/sign-(aosp-release|release-apks)\.mjs/.test(body[i])) { out.push(body[i]); continue; }
+    if (!/node scripts\/sign-(aosp-release|release-apks)\.ts/.test(body[i])) { out.push(body[i]); continue; }
     const listing = process.platform === 'darwin' ? '/usr/bin/stat -f "%OLp %N" *' : 'stat -c "%a %n" *';
     out.push(listed ? ':' : `(cd "$keys" && ${listing}) > "$RUNNER_TEMP/listing"`);
     listed = true;

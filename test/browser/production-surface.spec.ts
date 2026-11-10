@@ -5,7 +5,7 @@ import { test, expect, type Page } from '@playwright/test';
 import {installResidentAgentPlugin} from './helpers/resident-agent-plugin';
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { FORBIDDEN_ENGINE_PATH, engineFindings } from '../../scripts/audit-production-bundle.mjs';
+import { FORBIDDEN_ENGINE_PATH, engineFindings } from '../../scripts/audit-production-bundle.ts';
 import { openLegacyNotes } from './helpers/legacy-notes';
 // Runs only in the `production` project: a flag-off `vite build` served by `vite preview`.
 // It proves the shipped web bundle exposes no mock, fixture or developer surface.

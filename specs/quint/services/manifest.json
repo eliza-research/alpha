@@ -910,7 +910,7 @@
         "patches/eliza/inbox-confirmation-client.patch",
         "patches/eliza/inbox-cleanup-client-manifest.json",
         "patches/eliza/inbox-cleanup-client.patch",
-        "scripts/prepare-client-features.mjs"
+        "scripts/prepare-client-features.ts"
       ],
       "components": [
         "specs/quint/services/InboxCoordinator.qnt",
@@ -1269,7 +1269,7 @@
         "vendor/eliza/plugins/plugin-sql/src/base.ts",
         "vendor/eliza/plugins/plugin-sql/src/stores/task-wake.ts",
         "patches/eliza/task-service-stop.patch",
-        "scripts/core-state-patch.mjs"
+        "scripts/core-state-patch.ts"
       ],
       "tests": [
         "stoppedManualAdmissionTest",
@@ -1410,7 +1410,7 @@
         "vendor/eliza/packages/core/src/services/task-scheduler.ts",
         "vendor/eliza/packages/core/src/services/task.ts",
         "patches/eliza/task-service-stop.patch",
-        "scripts/core-state-patch.mjs"
+        "scripts/core-state-patch.ts"
       ],
       "tests": [
         "mixedScopeBatchesInOrderTest",
@@ -1448,11 +1448,11 @@
       "step": "step",
       "invariant": "safety",
       "sources": [
-        "scripts/pilot-update.mjs",
-        "scripts/android-instrumentation.mjs",
-        "scripts/provision-unit.mjs",
-        "scripts/owner/pilot-rotation-journal.mjs",
-        "scripts/owner/pilot-rotation.mjs",
+        "scripts/pilot-update.ts",
+        "scripts/android-instrumentation.ts",
+        "scripts/provision-unit.ts",
+        "scripts/owner/pilot-rotation-journal.ts",
+        "scripts/owner/pilot-rotation.ts",
         "scripts/owner/VerifyApkRotation.java",
         "vendor/eliza/packages/os/scripts/android/apk-release-record.mjs"
       ],
@@ -1689,8 +1689,8 @@
       ],
       "sources": [
         "backend/loader.ts",
-        "scripts/pinned-upstream-source.mjs",
-        "scripts/core-state-patch.mjs",
+        "scripts/pinned-upstream-source.ts",
+        "scripts/core-state-patch.ts",
         "vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs",
         "vendor/eliza/packages/app/scripts/lib/consumer-source-resolver.mjs"
       ],
@@ -1736,13 +1736,13 @@
         "ChildCustodyAfterLaunch"
       ],
       "sources": [
-        "scripts/start-combined-agent.mjs",
-        "scripts/combined-agent-source.mjs",
-        "scripts/host-speech-admission.mjs",
-        "scripts/agent-identity.mjs",
-        "scripts/agent-model.mjs",
-        "scripts/core-state-patch.mjs",
-        "scripts/launcher-child.mjs"
+        "scripts/start-combined-agent.ts",
+        "scripts/combined-agent-source.ts",
+        "scripts/host-speech-admission.ts",
+        "scripts/agent-identity.ts",
+        "scripts/agent-model.ts",
+        "scripts/core-state-patch.ts",
+        "scripts/launcher-child.ts"
       ],
       "stateMapping": {
         "checks/port": "Exact version calls and synthetic fixed-port probe completion",
@@ -1786,14 +1786,14 @@
         "ClosedChildReleasesLog"
       ],
       "sources": [
-        "scripts/start-reviewed-workflow-agent.mjs",
-        "scripts/local-agent-source.mjs",
-        "scripts/agent-identity.mjs",
-        "scripts/agent-model.mjs",
-        "scripts/agent-embeddings.mjs",
-        "scripts/core-state-preload.mjs",
-        "scripts/core-state-patch.mjs",
-        "scripts/launcher-child.mjs"
+        "scripts/start-reviewed-workflow-agent.ts",
+        "scripts/local-agent-source.ts",
+        "scripts/agent-identity.ts",
+        "scripts/agent-model.ts",
+        "scripts/agent-embeddings.ts",
+        "scripts/core-state-preload.ts",
+        "scripts/core-state-patch.ts",
+        "scripts/launcher-child.ts"
       ],
       "stateMapping": {
         "source/deps/profile/token/entryChecked/entry": "Actual path admission, directory and entry checks, private profile and durable token",
@@ -1842,7 +1842,7 @@
         "vendor/eliza/packages/core/src/runtime.ts",
         "patches/eliza/plugin-connector-custody.patch",
         "patches/eliza/core-state-manifest.json",
-        "scripts/core-state-patch.mjs"
+        "scripts/core-state-patch.ts"
       ],
       "stateMapping": {
         "lanes.owner/lanes.rival/lanes.claims": "Actual public plugin ownership record and exact account/default/message/post/legacy claims",
@@ -1882,10 +1882,10 @@
         "CandidateRecordsExactTransforms"
       ],
       "sources": [
-        "scripts/mobile-uuid-adapter.mjs",
-        "scripts/core-state-patch.mjs",
-        "scripts/build-mobile-agent.mjs",
-        "scripts/mobile-bundle-smoke.mjs",
+        "scripts/mobile-uuid-adapter.ts",
+        "scripts/core-state-patch.ts",
+        "scripts/build-mobile-agent.ts",
+        "scripts/mobile-bundle-smoke.ts",
         "patches/eliza/mobile-uuid-build.json",
         "patches/eliza/core-state-manifest.json",
         "patches/eliza/plugin-connector-custody.patch",
@@ -1954,8 +1954,8 @@
         "UncertainWriteRetainsBackup"
       ],
       "sources": [
-        "scripts/workflow-worker-artifact.mjs",
-        "scripts/stage-workflow-worker.mjs"
+        "scripts/workflow-worker-artifact.ts",
+        "scripts/stage-workflow-worker.ts"
       ],
       "abstractions": [
         "Exact verified worker artifact, copied extraction index, previous directory, target publication, rollback and uncertain cleanup outcomes.",
@@ -1990,11 +1990,11 @@
         "PeerReplacementRetainsPriorReceipt"
       ],
       "sources": [
-        "scripts/native-google-host-artifact.mjs",
+        "scripts/native-google-host-artifact.ts",
         "scripts/build-native-google-host.ts",
-        "scripts/workflow-worker-artifact.mjs",
-        "scripts/local-agent-source.mjs",
-        "scripts/core-state-patch.mjs",
+        "scripts/workflow-worker-artifact.ts",
+        "scripts/local-agent-source.ts",
+        "scripts/core-state-patch.ts",
         "vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs",
         "apps/app/src/browser/calendar-sync-fields.ts",
         "apps/app/src/runtime/browser-cloud-resident.ts",
@@ -2026,11 +2026,11 @@
         "patches/eliza/room-queue-admission.patch",
         "patches/eliza/task-service-stop.patch",
         "patches/eliza/turn-controller-isolation.patch",
-        "scripts/client-speech-patch.mjs",
-        "scripts/combined-agent-source.mjs",
-        "scripts/core-state-preload.mjs",
+        "scripts/client-speech-patch.ts",
+        "scripts/combined-agent-source.ts",
+        "scripts/core-state-preload.ts",
         "scripts/gmail-agent-mailbox-host.ts",
-        "scripts/prepare-client-features.mjs",
+        "scripts/prepare-client-features.ts",
         "tsconfig.json",
         "upstream.lock.json",
         "vendor/eliza/packages/auth/src/auth/native-cloud-sign-in.ts",
@@ -2085,9 +2085,9 @@
         "SuccessRequiresCurrentVerifiedSource"
       ],
       "sources": [
-        "scripts/prepare-local-agent.mjs",
-        "scripts/local-agent-source.mjs",
-        "scripts/copy-file-clone.mjs",
+        "scripts/prepare-local-agent.ts",
+        "scripts/local-agent-source.ts",
+        "scripts/copy-file-clone.ts",
         "vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs",
         "vendor/eliza/packages/app/scripts/lib/committed-source.mjs"
       ],
@@ -2137,10 +2137,10 @@
         "RejectedPreloadHasNoAdmission"
       ],
       "sources": [
-        "scripts/start-cloud-qa.mjs",
-        "scripts/core-state-preload.mjs",
-        "scripts/cloud-sdk-authority.mjs",
-        "scripts/native-view-policy.mjs",
+        "scripts/start-cloud-qa.ts",
+        "scripts/core-state-preload.ts",
+        "scripts/cloud-sdk-authority.ts",
+        "scripts/native-view-policy.ts",
         "config/cloud-deployment.json",
         "config/native-view-declarations.json",
         "vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs"
@@ -2306,9 +2306,9 @@
         "SuccessfulAuditRequiresExactBytes"
       ],
       "sources": [
-        "scripts/android-gzip-assets.mjs",
-        "scripts/build-android.mjs",
-        "scripts/verify-apks.mjs",
+        "scripts/android-gzip-assets.ts",
+        "scripts/build-android.ts",
+        "scripts/verify-apks.ts",
         "vendor/eliza/plugins/plugin-files/src/documents/local-ocr.ts"
       ],
       "stateMapping": {
@@ -2347,8 +2347,8 @@
         "FailedRestoreRetainsBothPairs"
       ],
       "sources": [
-        "scripts/stage-local-agent-sources.mjs",
-        "scripts/local-agent-source.mjs",
+        "scripts/stage-local-agent-sources.ts",
+        "scripts/local-agent-source.ts",
         "android/consumer-host.json",
         "app.config.json",
         "upstream.lock.json",

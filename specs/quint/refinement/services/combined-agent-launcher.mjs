@@ -18,11 +18,11 @@ const scenarios = [
 function sourceInputs(extraSources) {
   const {patches} = JSON.parse(readFileSync(join(root, manifest), 'utf8'));
   return [
-    'scripts/launcher-child.mjs', 'scripts/start-combined-agent.mjs', 'scripts/combined-agent-source.mjs',
-    'scripts/host-speech-admission.mjs', 'scripts/host-speech-assets.json', 'scripts/agent-model.mjs',
-    'scripts/agent-identity.mjs', 'config/alpha-product.json',
-    'scripts/core-state-patch.mjs', 'scripts/core-state-preload.mjs',
-    'scripts/local-agent-source.mjs', 'scripts/copy-file-clone.mjs', manifest, 'upstream.lock.json',
+    'scripts/launcher-child.ts', 'scripts/start-combined-agent.ts', 'scripts/combined-agent-source.ts',
+    'scripts/host-speech-admission.ts', 'scripts/host-speech-assets.json', 'scripts/agent-model.ts',
+    'scripts/agent-identity.ts', 'config/alpha-product.json',
+    'scripts/core-state-patch.ts', 'scripts/core-state-preload.ts',
+    'scripts/local-agent-source.ts', 'scripts/copy-file-clone.ts', manifest, 'upstream.lock.json',
     'vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs',
     'vendor/eliza/packages/agent/native-host/private-runtime-json.mjs',
     'vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs',

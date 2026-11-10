@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "alphaphone/docs/runbooks/drafts/666-latency-report.schema.json",
   "title": "Deployed plan-admission latency report (committed form)",
-  "description": "The results.json written by the pinned upstream packages/cloud/scripts/plan-admission-deployed-latency.ts (DeployedLatencyResult, schema 1), wrapped with the provenance Alpha needs. It holds timings, statuses and outcome counts only: no key, token, account, organization, query text or response body. scripts/owner/latency-report.mjs check enforces this schema and a credential scan.",
+  "description": "The results.json written by the pinned upstream packages/cloud/scripts/plan-admission-deployed-latency.ts (DeployedLatencyResult, schema 1), wrapped with the provenance Alpha needs. It holds timings, statuses and outcome counts only: no key, token, account, organization, query text or response body. scripts/owner/latency-report.ts check enforces this schema and a credential scan.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema", "kind", "environment", "upstreamRevision", "harness", "operatorConfirmation", "result"],

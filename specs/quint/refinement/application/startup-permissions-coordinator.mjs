@@ -48,7 +48,7 @@ export const {useLayoutEffect,useSyncExternalStore}=React;`;
     .filter(path => !path.startsWith('coordinator:') && path !== '<stdin>' && !path.startsWith('node_modules/')), driver,
     'test/quint-permission-coordinator-refinement.test.mjs', 'specs/quint/refinement/application/contracts.mjs',
     'specs/quint/refinement/application/support.mjs', 'specs/quint/refinement/application/index.mjs',
-    'upstream.lock.json', 'scripts/prepare-client-features.mjs',
+    'upstream.lock.json', 'scripts/prepare-client-features.ts',
     ...readdirSync(resolve(root, 'patches/eliza')).filter(name => /\.(patch|json)$/.test(name)).map(name => 'patches/eliza/' + name)])];
   const driverHashes = captureInputs(sources);
   const module = {exports:{}};

@@ -5,7 +5,7 @@ import path from 'node:path';
 import vm from 'node:vm';
 import {execFileSync} from 'node:child_process';
 test('provider setup reuses its owning modules',()=>{
- const source=fs.readFileSync('scripts/feature-manifest.mjs','utf8');
+ const source=fs.readFileSync('scripts/feature-manifest.ts','utf8');
  const body=source.slice(source.indexOf('export function alphaBehaviouralModules('),source.indexOf('export async function featureParity(')).replace('export function','function');
  const modules=vm.runInNewContext(body+';alphaBehaviouralModules(cwd)',{fs,path,execFileSync,cwd:process.cwd()});
  const allow=JSON.parse(fs.readFileSync('config/feature-parity.json','utf8'));

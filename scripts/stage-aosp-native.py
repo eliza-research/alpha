@@ -48,9 +48,9 @@ def admission(root, apk):
     lock_bytes = (root / 'upstream.lock.json').read_bytes()
     stamp = {
         'lockSha256': digest(lock_bytes),
-        'preparerSha256': digest((root / 'scripts/prepare-local-agent.mjs').read_bytes()),
-        'guardSha256': digest((root / 'scripts/local-agent-source.mjs').read_bytes()),
-        'copySha256': digest((root / 'scripts/copy-file-clone.mjs').read_bytes()),
+        'preparerSha256': digest((root / 'scripts/prepare-local-agent.ts').read_bytes()),
+        'guardSha256': digest((root / 'scripts/local-agent-source.ts').read_bytes()),
+        'copySha256': digest((root / 'scripts/copy-file-clone.ts').read_bytes()),
         'base': json.loads(lock_bytes)['commit'], 'patches': [],
     }
     bun_target, channel = bun_identity(apk)

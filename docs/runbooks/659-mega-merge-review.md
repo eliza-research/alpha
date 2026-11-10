@@ -13,9 +13,9 @@ as such.
 Reproduce everything here with:
 
 ```sh
-node scripts/owner/merge-review.mjs 91c83b3c          # scripts, binaries, forged markers, descriptor
-node scripts/owner/subscription-spec-map.mjs           # reviewer table for the subscription spec
-node scripts/owner/subscription-spec-map.mjs --results <playwright --reporter=list log>
+node scripts/owner/merge-review.ts 91c83b3c          # scripts, binaries, forged markers, descriptor
+node scripts/owner/subscription-spec-map.ts           # reviewer table for the subscription spec
+node scripts/owner/subscription-spec-map.ts --results <playwright --reporter=list log>
 ```
 
 Both scripts read local files and git objects only. They fetch nothing, run no package script and
@@ -23,13 +23,13 @@ contact no service.
 
 ## 1. package.json scripts and binary assets
 
-`node scripts/owner/merge-review.mjs 91c83b3c`, run on 2026-10-28:
+`node scripts/owner/merge-review.ts 91c83b3c`, run on 2026-10-28:
 
 - **package.json scripts:** one added, none removed or changed. The only `package.json` in the diff
   is the root one.
-  - added `android:host`: `node scripts/android-host.mjs`. The script (93 lines) imports the pinned
+  - added `android:host`: `node scripts/android-host.ts`. The script (93 lines) imports the pinned
     upstream generator `vendor/eliza/packages/app/scripts/mobile/android/consumer-host.mjs` and
-    `scripts/prepare-patched-native.mjs`, then writes the generated Gradle host into `android/`.
+    `scripts/prepare-patched-native.ts`, then writes the generated Gradle host into `android/`.
     It makes no network call and does not exec a downloaded file. The Gradle files it writes are
     git-ignored build outputs (`.gitignore` lines 19-30).
 - **Binary files:** none added or modified. Two were deleted:
@@ -184,7 +184,7 @@ Draft note for the #657 review comment:
 > generic-schedule run without a valid `missedOccurrenceAt` was removed in #683 (`e9941dec5`). The
 > shared `WorkflowClient` reads `missedOccurrenceAt` since elizaOS/eliza#38100 (`ebe97741`), which
 > the current pin `1f2a922f86` (#691) includes. `test/workflow-typed-schedule.test.mjs` and
-> `scripts/test-workflow-protocol.mjs` cover the engine-written field, including a bare or forged
+> `scripts/test-workflow-protocol.ts` cover the engine-written field, including a bare or forged
 > `status:'missed'` output that carries no marker. No further action.
 
 ## 6. Other items in the issue for the reviewer

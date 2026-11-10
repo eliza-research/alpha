@@ -1,6 +1,6 @@
 import {fileURLToPath} from 'node:url';
 import {join} from 'node:path';
-import {preparePatchedNative} from '../../../../scripts/prepare-patched-native.mjs';
+import {preparePatchedNative} from '../../../../scripts/prepare-patched-native.ts';
 import {root} from '../native/java.mjs';
 import {checkTraces, captureInputs} from '../check-traces.mjs';
 import {javaTraceCampaign} from '../native/java.mjs';

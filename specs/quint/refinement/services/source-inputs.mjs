@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
-import {CLIENT_FEATURE_PATCHES, prepareClientFeatures} from '../../../../scripts/prepare-client-features.mjs';
+import {CLIENT_FEATURE_PATCHES, prepareClientFeatures} from '../../../../scripts/prepare-client-features.ts';
 
 const staged = '.eliza/client-features/';
 const digest = file => createHash('sha256').update(fs.readFileSync(file)).digest('hex');
@@ -22,7 +22,7 @@ export function serviceInputs(entries) {
       found.add(original);
     }
   }
-  for (const entry of ['specs/quint/refinement/services/source-inputs.mjs', 'package-lock.json', 'upstream.lock.json', staged + '.source.json', 'scripts/prepare-client-features.mjs', 'scripts/upstream-native-source.mjs', 'scripts/client-speech-patch.mjs']) found.add(entry);
+  for (const entry of ['specs/quint/refinement/services/source-inputs.mjs', 'package-lock.json', 'upstream.lock.json', staged + '.source.json', 'scripts/prepare-client-features.ts', 'scripts/upstream-native-source.ts', 'scripts/client-speech-patch.ts']) found.add(entry);
   const accounted = new Set();
   for (const [key, prefix] of CLIENT_FEATURE_PATCHES) {
     const receipt = provenance[key];
@@ -33,7 +33,7 @@ export function serviceInputs(entries) {
   }
   if (provenance.speechPatch) {
     const manifestPath = 'patches/eliza/cloud-speech-client-manifest.json', receipt = provenance.speechPatch;
-    if (digest(manifestPath) !== receipt.manifestSha256 || digest('scripts/client-speech-patch.mjs') !== receipt.preparerSha256) throw Error('Stale client speech patch provenance');
+    if (digest(manifestPath) !== receipt.manifestSha256 || digest('scripts/client-speech-patch.ts') !== receipt.preparerSha256) throw Error('Stale client speech patch provenance');
     found.add(manifestPath);accounted.add('speechPatch');
     for (const patch of JSON.parse(fs.readFileSync(manifestPath, 'utf8')).patches) {
       const file = 'patches/eliza/' + patch.file;

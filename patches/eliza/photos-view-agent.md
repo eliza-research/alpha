@@ -3,7 +3,7 @@
 Current integration uses the shared Photos contracts in SDK
 `99b49439ce9d0cb5607e9831b9f7f58d89525029`. Library cards receive their concise
 presentation through the reviewed `photos-library-presentation-client.patch`,
-whose base and output hashes are checked by `prepare-client-features.mjs`.
+whose base and output hashes are checked by `prepare-client-features.ts`.
 The proposal below records the earlier SDK and is retained as historical input.
 
 ## Historical proposal

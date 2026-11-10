@@ -5,7 +5,7 @@ import {fileURLToPath} from 'node:url';
 import {dirname, resolve, relative, sep} from 'node:path';
 import {build} from 'esbuild';
 import {captureInputs} from '../../check-traces.mjs';
-import {CORE_STATE_INPUTS, coreStatePatch, coreStateBuildRecord, coreStateRequiredTargets} from '../../../../../scripts/core-state-patch.mjs';
+import {CORE_STATE_INPUTS, coreStatePatch, coreStateBuildRecord, coreStateRequiredTargets} from '../../../../../scripts/core-state-patch.ts';
 
 /** Compile the real shared classes and bind exact input bytes before evaluating them. */
 async function loadCoreSource(contents, extraSources) {

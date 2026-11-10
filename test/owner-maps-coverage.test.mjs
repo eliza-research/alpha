@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { SETTINGS, contains, coverageProblems, main, namesFrom } from "../scripts/owner/maps-coverage.mjs";
+import { SETTINGS, contains, coverageProblems, main, namesFrom } from "../scripts/owner/maps-coverage.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
 const example = JSON.parse(fs.readFileSync(path.join(root, "docs/runbooks/drafts/667-maps-coverage.example.json"), "utf8"));

@@ -25,7 +25,7 @@ android {
 // witness APK.
 def preparedNative=new groovy.json.JsonSlurper().parseText(providers.exec {
  workingDir rootProject.projectDir.parentFile
- commandLine 'node', 'scripts/prepare-patched-native.mjs'
+ commandLine 'node', 'scripts/prepare-patched-native.ts'
 }.standardOutput.asText.get())
 def nativeMediaRoot={ new File(preparedNative.root.toString(), 'plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media') }
 def stageVideoSources=tasks.register('stageVideoSources',Copy){

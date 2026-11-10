@@ -8,7 +8,7 @@ import {execFileSync} from 'node:child_process';
 import {nativeSource,javaBinary,jsonJar} from './fixtures/jvm-tools.mjs';
 
 // Portable producer/consumer contract; Android serializer causal proof is kept
-// separately in scripts/test-android-notification-device-slot.mjs.
+// separately in scripts/test-android-notification-device-slot.ts.
 test('native owner lookup matches the renderer device key exactly',()=>{
  assert.ok(jsonJar,'Pinned JVM JSON dependency required');
  const dir=mkdtempSync(join(tmpdir(),'alpha-device-key-'));const files=[];

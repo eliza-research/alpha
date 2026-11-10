@@ -4,8 +4,8 @@ import {createHash} from 'node:crypto';
 import {mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {inspectJavaFiles} from '../scripts/quint-java-state-audit.mjs';
-import {inspectStateCandidates, writeStateAudit, checkStateAudit} from '../scripts/quint-state-audit.mjs';
+import {inspectJavaFiles} from '../scripts/quint-java-state-audit.ts';
+import {inspectStateCandidates, writeStateAudit, checkStateAudit} from '../scripts/quint-state-audit.ts';
 test('state audit retains mutable readonly containers and asynchronous closure writes', () => {
   const report = inspectStateCandidates('fixture.ts', `
     let generation = 0;

@@ -1,0 +1,40 @@
+/** Actual Chromium CSS chart and independent sequential sRGB candidate math.
+ * No app/Android mutations. This is reference evidence, not native acceptance. */
+import fs from 'node:fs';import path from 'node:path';import assert from 'node:assert/strict';import {createRequire} from 'node:module';
+import { playwright } from './fixtures/playwright.ts';
+const modules=process.env.ALPHA_BROWSER_MODULES;
+if(!modules)throw Error('ALPHA_BROWSER_MODULES required');
+const {chromium}=playwright(import.meta.url, modules);
+const require=createRequire(path.join(modules,'__photo_chart.cjs'));
+interface ImageBuffer {data: Buffer}
+const {PNG}: {PNG: {
+  new (size: {width: number; height: number}): ImageBuffer;
+  sync: {read(data: Buffer): ImageBuffer; write(png: ImageBuffer): Buffer};
+}}=require('pngjs');
+type Filter = keyof typeof filters;
+type Operation = 'saturate'|'contrast'|'sepia'|'hue'|'brightness'|'grayscale';
+type Steps = readonly (readonly [Operation, number])[];
+type Rgba = [number, number, number, number];
+const output=process.env.ALPHA_FILTER_RESULTS||'test-results/photo-filter-png-reference';fs.mkdirSync(output,{recursive:true});
+const filters={none:'none',vivid:'saturate(1.55) contrast(1.08)',warm:'sepia(.3) saturate(1.35) hue-rotate(-8deg)',cool:'saturate(1.1) hue-rotate(14deg) brightness(1.03)',mono:'grayscale(1) contrast(1.05)',fade:'contrast(.78) brightness(1.12) saturate(.75)',noir:'grayscale(1) contrast(1.55) brightness(.88)'};
+const operations: Record<Filter, Steps>={none:[],vivid:[['saturate',1.55],['contrast',1.08]],warm:[['sepia',.3],['saturate',1.35],['hue',-8]],cool:[['saturate',1.1],['hue',14],['brightness',1.03]],mono:[['grayscale',1],['contrast',1.05]],fade:[['contrast',.78],['brightness',1.12],['saturate',.75]],noir:[['grayscale',1],['contrast',1.55],['brightness',.88]]};
+const colors: Rgba[]=[];for(const r of[0,64,128,192,255])for(const g of[0,128,255])for(const b of[0,128,255])colors.push([r,g,b,255]);for(const alpha of[0,64,128,192])for(const rgb of[[255,0,0],[0,255,0],[0,0,255],[30,170,220],[230,130,20]] as const)colors.push([...rgb,alpha]);
+const clamp=(x: number)=>Math.max(0,Math.min(1,x));
+function matrix(rgb: readonly number[],m: readonly (readonly number[])[]){return m.map(row=>row.reduce((n,v,i)=>n+v*rgb[i],0));}
+function operation(rgb: readonly number[],kind: Operation,t: number){
+ if(kind==='brightness')return rgb.map(x=>x*t);if(kind==='contrast')return rgb.map(x=>(x-.5)*t+.5);
+ if(kind==='sepia')return matrix(rgb,[[1-.607*t,.769*t,.189*t],[.349*t,1-.314*t,.168*t],[.272*t,.534*t,1-.869*t]]);
+ if(kind==='grayscale'){const lum=.2126*rgb[0]+.7152*rgb[1]+.0722*rgb[2];return rgb.map(x=>x*(1-t)+lum*t);}
+ if(kind==='saturate'){const [r,g,b]=[.213,.715,.072];return matrix(rgb,[[r+(1-r)*t,g-g*t,b-b*t],[r-r*t,g+(1-g)*t,b-b*t],[r-r*t,g-g*t,b+(1-b)*t]]);}
+ const rad=t*Math.PI/180,c=Math.cos(rad),s=Math.sin(rad);return matrix(rgb,[[.213+.787*c-.213*s,.715-.715*c-.715*s,.072-.072*c+.928*s],[.213-.213*c+.143*s,.715+.285*c+.140*s,.072-.072*c-.283*s],[.213-.213*c-.787*s,.715-.715*c+.715*s,.072+.928*c+.072*s]]);
+}
+function predict(color: Rgba,ops: Steps,clipping: boolean){let rgb=color.slice(0,3).map(x=>x/255);for(const [kind,t]of ops){rgb=operation(rgb,kind,t);if(clipping)rgb=rgb.map(clamp);}return [...rgb.map(x=>Math.round(clamp(x)*255)),color[3]];}
+function premultipliedCandidate(color: Rgba,ops: Steps){const alpha=color[3];if(!alpha)return [0,0,0,0];let rgb=color.slice(0,3).map(v=>Math.round(Math.round(v*alpha/255)*255/alpha)/255);for(const [kind,t]of ops)rgb=operation(rgb,kind,t).map(clamp);return [...rgb.map(v=>Math.round(Math.round(v*alpha)*255/alpha)),alpha];}
+const browser=await chromium.launch({headless:true});try{
+ const width=colors.length*10,height=Object.keys(filters).length*10,page=await browser.newPage({viewport:{width,height},deviceScaleFactor:1});
+ const source=new PNG({width,height:10});for(let x=0;x<width;x++)for(let y=0;y<10;y++){const rgba=colors[Math.floor(x/10)],index=(y*width+x)*4;source.data.set(rgba,index);}const encoded=PNG.sync.write(source);fs.writeFileSync(path.join(output,'source-chart.png'),encoded);
+ await page.setContent('<style>html,body{margin:0;background:transparent}img{position:absolute;left:0;width:'+width+'px;height:10px}</style>'+Object.entries(filters).map(([key,css],row)=>`<img src="data:image/png;base64,${encoded.toString('base64')}" style="top:${row*10}px;filter:${css}">`).join(''));await page.locator('img').evaluateAll(images=>Promise.all(images.map(image=>(image as HTMLImageElement).decode())));
+ const screenshot=await page.screenshot({omitBackground:true});fs.writeFileSync(path.join(output,'css-chart.png'),screenshot);const png=PNG.sync.read(screenshot),results=[];
+ for(const [row,key]of (Object.keys(filters) as Filter[]).entries()){const css=filters[key];let opaqueMax=0,alphaMax=0,noIntermediateClampMax=0,premultipliedMax=0,premultipliedStorageMax=0;const samples=colors.map((input,col)=>{const i=((row*10+5)*width+col*10+5)*4,actual=[...png.data.subarray(i,i+4)],expected=predict(input,operations[key],true),combined=predict(input,operations[key],false);const premultiplied=premultipliedCandidate(input,operations[key]);premultipliedStorageMax=Math.max(premultipliedStorageMax,...actual.slice(0,3).map((v,i)=>Math.abs(Math.round(v*input[3]/255)-Math.round(premultiplied[i]*input[3]/255))));if(input[3]>0)premultipliedMax=Math.max(premultipliedMax,...actual.slice(0,3).map((v,i)=>Math.abs(v-premultiplied[i])));const difference=Math.max(...actual.slice(0,3).map((v,i)=>Math.abs(v-expected[i])));if(input[3]===255){opaqueMax=Math.max(opaqueMax,difference);noIntermediateClampMax=Math.max(noIntermediateClampMax,...actual.slice(0,3).map((v,i)=>Math.abs(v-combined[i])));}else if(input[3]>0)alphaMax=Math.max(alphaMax,difference);assert.equal(actual[3],input[3],key+' alpha retained');return {input,actual,expected,premultiplied};});assert.equal(opaqueMax,0,key+' opaque sRGB candidate must match actual CSS exactly');assert.ok(premultipliedStorageMax<=1,key+' premultiplied channel exceeds one stored LSB');results.push({key,css,opaqueMax,alphaMax,noIntermediateClampMax,premultipliedMax,premultipliedStorageMax,samples});}
+ const summary={browser:await browser.version(),sampleCount:colors.length,filters:results.map(({samples,...s})=>s),scope:'Actual Chromium CSS filtering of canonical shared PNG bytes; independent straight-alpha candidate, no Android equivalence claim'};fs.writeFileSync(path.join(output,'expected-pixels.json'),JSON.stringify({version:1,...summary,results},null,2));fs.writeFileSync(path.join(output,'summary.json'),JSON.stringify(summary,null,2));console.log(JSON.stringify(summary,null,2));
+}finally{await browser.close();}

@@ -4,8 +4,8 @@ import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium, expect as baseExpect} from '@playwright/test';
 import {createServer} from 'vite';
-import {checkClientFeatures} from '../../../../scripts/prepare-client-features.mjs';
-import {filesWithin, sha256, repositoryRoot as root} from '../../../../scripts/quint-lib.mjs';
+import {checkClientFeatures} from '../../../../scripts/prepare-client-features.ts';
+import {filesWithin, sha256, repositoryRoot as root} from '../../../../scripts/quint-lib.ts';
 import {fenceNetwork} from '../../../../test/browser/flag-off-android.ts';
 import {preloadPageModules} from '../../../../test/browser/helpers/page-modules.ts';
 import {captureInputs, checkTraces, qmap, qset} from '../../refinement/check-traces.mjs';
@@ -317,7 +317,7 @@ async function mounted(extraSources) {
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-system/src')),
     'vendor/eliza/packages/core/src/utils/uuid.ts',
     'apps/app/index.html', 'vite.config.ts', 'package.json', 'package-lock.json', 'upstream.lock.json',
-    'scripts/prepare-client-features.mjs', 'scripts/quint-lib.mjs', modelPath, fileURLToPath(import.meta.url),
+    'scripts/prepare-client-features.ts', 'scripts/quint-lib.ts', modelPath, fileURLToPath(import.meta.url),
     'test/browser/flag-off-android.ts', 'test/browser/helpers/native-navigation-protocol.ts',
     'test/browser/helpers/page-modules.ts', ...extraSources,
   ])];

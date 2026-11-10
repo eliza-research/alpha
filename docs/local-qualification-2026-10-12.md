@@ -117,7 +117,7 @@ counted as behavior passes or failures.
 
 ## Existing Cuttlefish image, read-only
 
-The new `scripts/verify-cuttlefish-launcher.mjs` passed on the already booted image:
+The new `scripts/verify-cuttlefish-launcher.ts` passed on the already booted image:
 `Alpha/alpha_cf_x86_64_phone/vsoc_x86_64_only:Baklava/CP2A.260605.016/eng.shaw:userdebug/test-keys`.
 The checked system APK hash was
 `1312001d90af337185432fa3fa744819851301e0e4ceb4735e67dbd82c8231cf`, which differs

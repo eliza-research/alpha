@@ -6,9 +6,9 @@ import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {
   ROOT, JSON_OUTPUT, TEXT_OUTPUT, ALLOWLIST, NO_FONT_LICENCE, UNKNOWN, UNVERIFIED, generate, verifyCommittedNotices, collectNotices, detectLicenceFromText, loadTemplates, packageNotice,
-} from '../scripts/generate-licenses.mjs';
-import {FLAGS, classifyLicence, licenceFlagLines, licenceFlagRecords, obligationNote} from '../scripts/licence-policy.mjs';
-import {releaseBlockers} from '../scripts/release-blockers.mjs';
+} from '../scripts/generate-licenses.ts';
+import {FLAGS, classifyLicence, licenceFlagLines, licenceFlagRecords, obligationNote} from '../scripts/licence-policy.ts';
+import {releaseBlockers} from '../scripts/release-blockers.ts';
 
 const fresh = generate(ROOT, {packagedRuntime: false});
 const lock = JSON.parse(fs.readFileSync(path.join(ROOT, 'package-lock.json'), 'utf8'));
@@ -59,7 +59,7 @@ test('the committed notices flag what the product ships today, in the JSON and a
 });
 
 test('the generator exits 0 with flagged entries and prints them as LICENCE FLAG warnings', () => {
-  const run = spawnSync(process.execPath, [path.join(ROOT, 'scripts/generate-licenses.mjs'), '--check'], {cwd: ROOT, encoding: 'utf8'});
+  const run = spawnSync(process.execPath, [path.join(ROOT, 'scripts/generate-licenses.ts'), '--check'], {cwd: ROOT, encoding: 'utf8'});
   assert.equal(run.status, 0, run.stderr);
   assert.match(run.stderr, /^LICENCE FLAG copyleft-strong: pdf\.js standard fonts: Liberation@bundled with pdfjs-dist [^ ]+ \(GPL-2\.0-only WITH Font-exception-2\.0\)$/m);
   assert.match(run.stderr, /^LICENCE FLAG proprietary-licence-held-outside-repo: Denton typeface@[^\n]+ \(LicenseRef-Commercial-Font\)$/m);
@@ -142,8 +142,8 @@ test('a package without a licence file gets the canonical text and a flag; an un
 test('checked-in notices are byte-identical to a fresh generation', () => {
   const shipped = verifyCommittedNotices(ROOT);
   assert.deepEqual(shipped.errors, []);
-  assert.equal(fs.readFileSync(path.join(ROOT, JSON_OUTPUT), 'utf8'), shipped.json, `${JSON_OUTPUT} is stale; run node scripts/generate-licenses.mjs`);
-  assert.equal(fs.readFileSync(path.join(ROOT, TEXT_OUTPUT), 'utf8'), shipped.text, `${TEXT_OUTPUT} is stale; run node scripts/generate-licenses.mjs`);
+  assert.equal(fs.readFileSync(path.join(ROOT, JSON_OUTPUT), 'utf8'), shipped.json, `${JSON_OUTPUT} is stale; run node scripts/generate-licenses.ts`);
+  assert.equal(fs.readFileSync(path.join(ROOT, TEXT_OUTPUT), 'utf8'), shipped.text, `${TEXT_OUTPUT} is stale; run node scripts/generate-licenses.ts`);
 });
 
 test('generation fails when the shipped OCR cores or their pinned license copies change', t => {

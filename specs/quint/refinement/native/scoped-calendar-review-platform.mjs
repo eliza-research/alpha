@@ -1,8 +1,8 @@
 import {mkdtempSync,mkdirSync,readFileSync,rmSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {dirname,join} from 'node:path';
-import {materializeNativePatches} from '../../../../scripts/prepare-patched-native.mjs';
-import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.mjs';
+import {materializeNativePatches} from '../../../../scripts/prepare-patched-native.ts';
+import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.ts';
 import {root} from './java.mjs';
 
 const module='plugins/plugin-native-calendar/android';
@@ -169,7 +169,7 @@ export function scopedCalendarReviewPlatform(){
       ...['ContentResolver.java','ContentProviderOperation.java'].map(name=>fixtures+'scoped-calendar-jvm/android/content/'+name),
       ...['SqliteCalendarProvider.java','ScopedCalendarSnapshotTest.java'].map(name=>fixtures+name)];
     return {compiled:[...generated,...providerFiles],generated,
-      sources:[manifest,'upstream.lock.json','scripts/upstream-native-source.mjs','scripts/prepare-patched-native.mjs',
+      sources:[manifest,'upstream.lock.json','scripts/upstream-native-source.ts','scripts/prepare-patched-native.ts',
         ...guardFiles.map(name=>'vendor/eliza/'+name),...patches.map(row=>'patches/eliza/'+row.file),contentValues,...providerFiles],
       expected:Object.fromEntries(guardFiles.map(name=>[join(staged,name),verified.files[name]])),close};
   } catch(error){close();throw error;}

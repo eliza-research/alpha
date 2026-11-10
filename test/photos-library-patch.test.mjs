@@ -11,7 +11,7 @@ const root=path.resolve(import.meta.dirname,'..');
 const ready=fs.existsSync(path.join(root,'vendor/eliza/plugins/plugin-native-media'));
 let media;
 async function source(name){
- if(!media){const {preparePatchedNative}=await import('../scripts/prepare-patched-native.mjs');media=path.join(preparePatchedNative({root}).root,'plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media');}
+ if(!media){const {preparePatchedNative}=await import('../scripts/prepare-patched-native.ts');media=path.join(preparePatchedNative({root}).root,'plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media');}
  return fs.readFileSync(path.join(media,name+'.java'),'utf8');
 }
 const method=(text,signature)=>{const a=text.indexOf(signature);assert.ok(a>=0,signature);return text.slice(a,text.indexOf('\n  }\n',a));};

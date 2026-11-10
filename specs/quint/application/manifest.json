@@ -463,13 +463,13 @@
     "invariant": "safety",
     "sources": [
       "scripts/browser-cloud-dev-bridge.ts",
-      "scripts/cloud-resident-host.mjs",
-      "scripts/dev-agent.mjs",
-      "scripts/dev-cloud.mjs",
-      "scripts/dev-local.mjs",
-      "scripts/start-local-agent.mjs",
-      "scripts/start-local-voice-agent.mjs",
-      "scripts/start-local-remote.mjs",
+      "scripts/cloud-resident-host.ts",
+      "scripts/dev-agent.ts",
+      "scripts/dev-cloud.ts",
+      "scripts/dev-local.ts",
+      "scripts/start-local-agent.ts",
+      "scripts/start-local-voice-agent.ts",
+      "scripts/start-local-remote.ts",
       "scripts/cloud-email-code.ts"
     ],
     "tests": [
@@ -871,7 +871,7 @@
       "vendor/eliza/plugins/plugin-files/src/browser/files-agent-contract.ts",
       "patches/eliza/files-list-identity-client-manifest.json",
       "patches/eliza/files-list-identity-client.patch",
-      "scripts/prepare-client-features.mjs"
+      "scripts/prepare-client-features.ts"
     ],
     "abstractions": [
       "One outstanding storageSelect capability, three owner epochs, one representative selected identity. The caller keeps the document visible while awaiting selection.",

@@ -108,9 +108,9 @@ jobs:
           shred -u "$pass"
           # --no-verify: the signer check against android/release-signer.json still runs; verify-apks
           # and the SBOM run on the build host after download, where the full build tree exists.
-          node scripts/sign-release-apks.mjs --keys-dir "$keys" --no-verify
+          node scripts/sign-release-apks.ts --keys-dir "$keys" --no-verify
           if [ -f artifacts/sense-listener-unsigned.apk ]; then
-            node scripts/sign-release-apks.mjs --keys-dir "$keys" --apk artifacts/sense-listener-unsigned.apk --out artifacts/sense-listener-release.apk
+            node scripts/sign-release-apks.ts --keys-dir "$keys" --apk artifacts/sense-listener-unsigned.apk --out artifacts/sense-listener-release.apk
           fi
       - name: Wipe key material
         if: always()
@@ -214,7 +214,7 @@ jobs:
           chmod 600 "$keys"/*
           manifest=(); if [ -f "$RUNNER_TEMP/image/apk-manifest.json" ]; then manifest=(--apk-manifest "$RUNNER_TEMP/image/apk-manifest.json"); fi
           for mode in --dry-run ""; do
-            node scripts/sign-aosp-release.mjs \
+            node scripts/sign-aosp-release.ts \
               --target-files "$RUNNER_TEMP/image/unsigned-target_files.zip" --target-files-sha256 "$TARGET_FILES_SHA256" \
               --keys-dir "$keys" --releasetools "$RUNNER_TEMP/image/otatools/bin" "${manifest[@]}" \
               --apksigner "$ANDROID_HOME/build-tools/36.0.0/apksigner" --out "$RUNNER_TEMP/signed-release" $mode

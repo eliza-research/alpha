@@ -15,7 +15,7 @@ device, and Google's own verification result each prove only themselves.
 | Item | File |
 | --- | --- |
 | Capability-to-scope matrix, every consent path Alpha can start | [668-google-capability-scope-matrix.md](668-google-capability-scope-matrix.md) |
-| Generator and read-only privacy probe | `scripts/owner/google-oauth-scopes.mjs` (`matrix`, `probe`) |
+| Generator and read-only privacy probe | `scripts/owner/google-oauth-scopes.ts` (`matrix`, `probe`) |
 | Tests: matrix vs pinned Cloud source and real `CloudProtocol` bodies; readState gate; probe makes one credential-free GET | `test/owner-google-oauth-scopes.test.mjs` |
 | Browser test: inbox shows read state as unavailable when `inbox-v1/capabilities` omits or denies `readState` | `test/browser/owner-gmail-read-state-absent.spec.ts` |
 | Gmail OAuth acceptance row (draft) and evidence template with placeholders only | this file, [668-gmail-oauth-evidence-template.json](668-gmail-oauth-evidence-template.json) |
@@ -24,7 +24,7 @@ device, and Google's own verification result each prove only themselves.
 ## Read-only findings (2026-10-28)
 
 - **F-1 The served privacy text does not mention Google user data.**
-  `node scripts/owner/google-oauth-scopes.mjs probe` (one unauthenticated GET of
+  `node scripts/owner/google-oauth-scopes.ts probe` (one unauthenticated GET of
   `https://api.eliza.app/api/public/service`, HTTP 200) found the Privacy Policy "Last updated:
   November 4, 2025", 12 sections, with no mention of Google, Gmail, Calendar, the Google API
   Services User Data Policy or Limited Use. Google's verification reviews the privacy policy for
@@ -66,7 +66,7 @@ device, and Google's own verification result each prove only themselves.
    other Cloud product's, F-6). Do not paste the client secret anywhere in this repository.
 2. **Privacy policy (owner or counsel, then Cloud operator).** Publish a Google user data section
    (draft below) on the web privacy page and in `CLOUD_PUBLIC_SERVICE_JSON`, then rerun
-   `node scripts/owner/google-oauth-scopes.mjs probe`; it exits 0 only when the served text mentions
+   `node scripts/owner/google-oauth-scopes.ts probe`; it exits 0 only when the served text mentions
    Google, Gmail, Calendar and the User Data Policy or Limited Use.
 3. **Deploy and read back (Cloud operator).** Deploy the managed Gmail routes including read-state
    operations. With the H-27 account signed in, read `inbox-v1/capabilities` for that grant and
@@ -177,7 +177,7 @@ create; Disconnect in Settings. Use only the H-27 synthetic account.
   gmail.modify); `gmail.settings.basic` and Contacts are not requested by Alpha. Resolution of D-1
   and D-2 recorded here.
 - **P-draft (#668) Google user data disclosure.** Eliza Cloud's privacy policy carries the Google
-  user data section and the Limited Use statement (D-3); `scripts/owner/google-oauth-scopes.mjs
+  user data section and the Limited Use statement (D-3); `scripts/owner/google-oauth-scopes.ts
   probe` is the readback.
 - **P-draft (#668) Consent never narrows held grants.** Every consent request names what the
   selected account already holds, Gmail and Calendar alike (D-4).

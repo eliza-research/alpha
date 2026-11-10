@@ -5,9 +5,9 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { CHANNEL, DRILLS, GATES, GATE_CLASSES, TEMPLATES, evidenceClassProblems } from "../scripts/owner/evidence-class-check.mjs";
-import { CHECKS } from "../scripts/human-actions.mjs";
-import { placeholderFields } from "../scripts/owner/production-staging-preflight.mjs";
+import { CHANNEL, DRILLS, GATES, GATE_CLASSES, TEMPLATES, evidenceClassProblems } from "../scripts/owner/evidence-class-check.ts";
+import { CHECKS } from "../scripts/human-actions.ts";
+import { placeholderFields } from "../scripts/owner/production-staging-preflight.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
 const read = (base, rel) => JSON.parse(fs.readFileSync(path.join(base, rel), "utf8"));

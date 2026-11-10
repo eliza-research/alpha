@@ -29,7 +29,7 @@
     "recoveryHomePresent": "not run"
   },
   "verifierReport": {
-    "command": "node scripts/verify-cuttlefish-launcher.mjs <options per the shared verifier>",
+    "command": "node scripts/verify-cuttlefish-launcher.ts <options per the shared verifier>",
     "reportSha256": "UNSET",
     "exitCode": "UNSET"
   },

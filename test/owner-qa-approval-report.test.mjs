@@ -1,11 +1,11 @@
-// scripts/owner/qa-approval-report.mjs (issue #678): grouping, column predicates and the H-38
-// cross-check against scripts/human-actions.mjs, on the committed checklist and on fixtures.
+// scripts/owner/qa-approval-report.ts (issue #678): grouping, column predicates and the H-38
+// cross-check against scripts/human-actions.ts, on the committed checklist and on fixtures.
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { CHECKS } from "../scripts/human-actions.mjs";
-import { areaAnchor, buildReport, formatMarkdown, humanStatusDetail, markdownRows, seekerPendingWording } from "../scripts/owner/qa-approval-report.mjs";
+import { CHECKS } from "../scripts/human-actions.ts";
+import { areaAnchor, buildReport, formatMarkdown, humanStatusDetail, markdownRows, seekerPendingWording } from "../scripts/owner/qa-approval-report.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
 const checklist = JSON.parse(fs.readFileSync(path.join(root, "docs/app-qa-checklist.json"), "utf8"));

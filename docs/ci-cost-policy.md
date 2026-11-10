@@ -7,7 +7,7 @@ and both sides of renames. Missing history, unknown paths and shared dependencie
 select all lanes; they never silently skip checks. No GitHub file-list API or its
 300-file path-filter limit is used. Reference-only changes start small selection
 jobs but allocate no build/test runners. Reference files that node tests read
-(`testReadReference` in `scripts/ci/affected.mjs`: dependency-audit dispositions and
+(`testReadReference` in `scripts/ci/affected.ts`: dependency-audit dispositions and
 snapshot, requirements and inventories, this policy's embedded ruleset, and the
 Markdown that `test/docs-links.test.mjs` scans) select Repository verification only.
 
@@ -19,7 +19,7 @@ Markdown that `test/docs-links.test.mjs` scans) select Repository verification o
 | Browser specs/configuration | Yes | Yes | No | No |
 | Renderer, including assets | Yes | Yes | Yes | No |
 | Android packaging/native sources | Yes | No | Yes | No |
-| Android files that browser specs read (`browserReadAndroid` in `scripts/ci/affected.mjs`) | Yes | Yes | Yes | No |
+| Android files that browser specs read (`browserReadAndroid` in `scripts/ci/affected.ts`) | Yes | Yes | Yes | No |
 | Shared source pin, dependencies, unknown paths | Yes | Yes | Yes | Yes |
 | Individual workflow | Yes | Its automatic lane | Its automatic lane | Its automatic lane |
 
@@ -98,7 +98,7 @@ gate, Repository verification, every Chromium shard and the production surface)
 and **Android foundation result** (needs the change gate and `build`). An aggregate
 passes when every lane the change gate selected succeeded and unselected lanes were
 skipped; a selected lane that failed, was cancelled or was skipped fails it
-(`scripts/ci/required-result.mjs`). Reference-only changes therefore stay mergeable
+(`scripts/ci/required-result.ts`). Reference-only changes therefore stay mergeable
 with only the change gate and the two short aggregate jobs.
 
 The ruleset below (`scripts/ci/required-checks-ruleset.json`, integration 15368 is
@@ -145,7 +145,7 @@ the owner's explicit approval; it had not been applied when this was written.
 # Owner-approved only. Creates the ruleset; it does not modify the baseline ruleset.
 gh api --method POST repos/eliza-research/alphaphone/rulesets --input scripts/ci/required-checks-ruleset.json
 # Confirm:
-node scripts/ci/read-required-checks.mjs --repo eliza-research/alphaphone
+node scripts/ci/read-required-checks.ts --repo eliza-research/alphaphone
 ```
 
 Android still checks both standalone and launcher, debug and release outputs and
@@ -154,12 +154,12 @@ bytes are packaged into APKs. Gradle dependency/build caching reduces repeat set
 speech sources/models retain hash verification and generated native speech is still
 built fresh. No unverified generated runtime cache replaces qualification.
 
-`node scripts/verify-upstream.mjs` also reports whether elizaOS `develop` reaches
+`node scripts/verify-upstream.ts` also reports whether elizaOS `develop` reaches
 the pin, from the recorded compare in `scripts/ci/upstream-reachability.json`; CI
 never networks for it. The default warns; `--upstream-reachability=fail` or
 `ELIZA_UPSTREAM_REACHABILITY=fail` makes an unreachable or stale record fail, and
 `off` skips it. Refresh the record after a pin change with
-`node scripts/verify-upstream.mjs --record-reachability` (uses `gh api`).
+`node scripts/verify-upstream.ts --record-reachability` (uses `gh api`).
 
 ## Integration and end-to-end coverage
 
@@ -278,10 +278,10 @@ gh workflow run android-emulator.yml --ref <branch> -f suite=all
 | Suite | Job | Runs | Artifact (3 days) | Fails when |
 | --- | --- | --- | --- | --- |
 | `instrumentation` | `instrumentation` | `npm run test:android:instrumentation` with its default classes, standalone then launcher | `android-emulator-instrumentation-<sha>-<run>-<attempt>`: `test-results/android-instrumentation/ci-default/` (`results.json`, raw output per class), `test-results/emulator-suite/instrumentation.json` | any class is failed, skipped or missing |
-| `browser-reading` | `browser-reading` | `scripts/prepare-ci-webview.mjs` (WebView 157.0.8083.0), then BrowserReadingNavigation and BrowserPageQuestion on the flag-off pair and BrowserReading, BrowserSensitiveReading and BrowserIsolatedReading on the test-mocks pair | `android-emulator-browser-reading-…`: `ci-reading/`, `ci-reading-test-mocks/`, the provider provisioning evidence | the provider cannot be installed, or any class is failed, skipped or missing |
-| `fused-speech` | `fused-speech` | Refused in the build job until hosted Paradee staging exists (the voice outputs need a same-engine embedding host, which needs a reviewed receipt at this pin). When enabled: `scripts/ci/speech-candidate.mjs check` on the standalone APK, then LocalSpeech, LocalSpeechBridge, SpeechSentenceCancellation and VoiceNoteReadAloud on standalone with networking off | `fused-speech-x86_64-…`: `test-results/fused-speech-x86_64/` (the instrumentation record, the APK pair, `result.json`) | the APK carries no voice bundle or is not the recorded bytes, or any class is failed, skipped or missing; without the ASR slot pair transcription is not evidenced |
+| `browser-reading` | `browser-reading` | `scripts/prepare-ci-webview.ts` (WebView 157.0.8083.0), then BrowserReadingNavigation and BrowserPageQuestion on the flag-off pair and BrowserReading, BrowserSensitiveReading and BrowserIsolatedReading on the test-mocks pair | `android-emulator-browser-reading-…`: `ci-reading/`, `ci-reading-test-mocks/`, the provider provisioning evidence | the provider cannot be installed, or any class is failed, skipped or missing |
+| `fused-speech` | `fused-speech` | Refused in the build job until hosted Paradee staging exists (the voice outputs need a same-engine embedding host, which needs a reviewed receipt at this pin). When enabled: `scripts/ci/speech-candidate.ts check` on the standalone APK, then LocalSpeech, LocalSpeechBridge, SpeechSentenceCancellation and VoiceNoteReadAloud on standalone with networking off | `fused-speech-x86_64-…`: `test-results/fused-speech-x86_64/` (the instrumentation record, the APK pair, `result.json`) | the APK carries no voice bundle or is not the recorded bytes, or any class is failed, skipped or missing; without the ASR slot pair transcription is not evidenced |
 
-The suites are implemented in `scripts/ci/emulator-suite.mjs`, which refuses to run
+The suites are implemented in `scripts/ci/emulator-suite.ts`, which refuses to run
 outside a GitHub-hosted runner. Results are emulator-class evidence for developer-override
 APKs built in that run (resident runtime not packaged, voice host an unreviewed hosted
 build) on an x86_64 SDK image. They are not evidence for a distributable build, an arm64

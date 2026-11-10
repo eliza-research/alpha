@@ -7,8 +7,8 @@ import childProcess, {execFileSync, spawnSync} from 'node:child_process';
 import {syncBuiltinESMExports} from 'node:module';
 import {createHash} from 'node:crypto';
 import {CORE_STATE_TARGET, NOTES_STATE_TARGET, ROOM_QUEUE_TARGET, EMBEDDING_STATE_TARGET, PLUGIN_CONNECTOR_TARGET, CORE_STATE_MANIFEST, coreStatePatch, coreStateReceipt,
-  coreStateBuildPlugin, coreStateBuildRecord, verifyCoreStateBuildRecord, coreRuntimeArguments, combinedCoreRuntime, coreStateRequiredTargets} from '../scripts/core-state-patch.mjs';
-import {sourceManifest} from '../scripts/combined-agent-source.mjs';
+  coreStateBuildPlugin, coreStateBuildRecord, verifyCoreStateBuildRecord, coreRuntimeArguments, combinedCoreRuntime, coreStateRequiredTargets} from '../scripts/core-state-patch.ts';
+import {sourceManifest} from '../scripts/combined-agent-source.ts';
 import {writeCoreStateFixture} from './fixtures/core-state-root.mjs';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 function fixture(t, simple = false) {
@@ -105,12 +105,12 @@ test('real Bun preload transforms the selected clean source and refuses subseque
 
 });
 test('all selected product source launchers install the authenticated core preload', () => {
-  for (const file of ['cloud-resident-host.mjs', 'start-local-remote.mjs', 'start-cloud-qa.mjs', 'start-local-voice-agent.mjs', 'start-reviewed-workflow-agent.mjs']) {
+  for (const file of ['cloud-resident-host.ts', 'start-local-remote.ts', 'start-cloud-qa.ts', 'start-local-voice-agent.ts', 'start-reviewed-workflow-agent.ts']) {
     const source = fs.readFileSync(new URL('../scripts/'+file, import.meta.url), 'utf8');
     assert.match(source, /coreRuntimeArguments\(root,source,\[/, file);
     assert.match(source, /ALPHA_CORE_STATE_SOURCE:source/, file);
   }
-  const combined = fs.readFileSync(new URL('../scripts/start-combined-agent.mjs', import.meta.url), 'utf8');
+  const combined = fs.readFileSync(new URL('../scripts/start-combined-agent.ts', import.meta.url), 'utf8');
   assert.match(combined, /combinedCoreRuntime\(repo,realSource,manifestPath,actual,/);
   assert.match(combined, /env:\{\.\.\.env,\.\.\.core.environment\}/);
 });
@@ -120,7 +120,7 @@ test('independently frozen revisions retain their explicit version contract', t 
   const snapshot = {revision: receipt.baseCommit, entries: Object.fromEntries(Object.entries(receipt.files).map(([name, target]) => [name, {sha256: target.beforeSha256}]))};
   const matched = combinedCoreRuntime(f.root, f.source, '/frozen/manifest.json', snapshot, args);
   assert.equal(matched.status.applied, true);
-  assert.deepEqual(matched.args.slice(0, 2), ['--preload', path.join(f.root, 'scripts/core-state-preload.mjs')]);
+  assert.deepEqual(matched.args.slice(0, 2), ['--preload', path.join(f.root, 'scripts/core-state-preload.ts')]);
   assert.equal(matched.environment.ALPHA_CORE_STATE_FROZEN_MANIFEST, '/frozen/manifest.json');
   for (const input of [{...snapshot, revision: '2'.repeat(40)}, {...snapshot, entries: {}}]) {
     const independent = combinedCoreRuntime(f.root, f.source, '/frozen/manifest.json', input, args);

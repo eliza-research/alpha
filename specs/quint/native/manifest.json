@@ -77,7 +77,7 @@
         "android/app/src/main/java/ai/elizaresearch/alphaphone/VoiceEventAdmission.java",
         "patches/eliza/voice-assistant-streaming.patch",
         "patches/eliza/cloud-speech-client-manifest.json",
-        "scripts/client-speech-patch.mjs"
+        "scripts/client-speech-patch.ts"
       ],
       "tests": [
         "longGapAndPlaybackTest",

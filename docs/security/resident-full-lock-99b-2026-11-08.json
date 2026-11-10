@@ -19,5 +19,5 @@
   "packagedRuntimeReviewed": false,
   "exceptionsPreserved": true,
   "rawResponseSHA256": "4dca8fb865897100f14c9b7874e6b6d5ed461cbeca4cb8b515c35fa28f4b0fbd",
-  "reproduction": "node scripts/dependency-audit.mjs --resident --write"
+  "reproduction": "node scripts/dependency-audit.ts --resident --write"
 }

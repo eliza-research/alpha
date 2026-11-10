@@ -21,7 +21,7 @@ Detail and execution receipt routes remain owner-scoped and readable. Typed `WOR
 
 ## Validation
 
-`node --import=tsx scripts/test-workflow-lifecycle-ui-flow.mjs` checks explicit removal review, account changes, retained history and GET-only reconciliation against a synthetic HTTP host.
+`node --import=tsx scripts/test-workflow-lifecycle-ui-flow.ts` checks explicit removal review, account changes, retained history and GET-only reconciliation against a synthetic HTTP host.
 
 The shared implementation is consumed through [upstream.lock.json](../upstream.lock.json); see [agent integration](agent-integration.md) for the product boundary. These adapter checks are not live-provider, native process-death, HOME-role, AOSP or device acceptance.
 

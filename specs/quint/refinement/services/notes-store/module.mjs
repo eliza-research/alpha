@@ -4,7 +4,7 @@ import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {build} from 'esbuild';
-import {CORE_STATE_INPUTS,coreStatePatch,coreStateBuildRecord,coreStateRequiredTargets} from '../../../../../scripts/core-state-patch.mjs';
+import {CORE_STATE_INPUTS,coreStatePatch,coreStateBuildRecord,coreStateRequiredTargets} from '../../../../../scripts/core-state-patch.ts';
 import {captureInputs} from '../../check-traces.mjs';
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 

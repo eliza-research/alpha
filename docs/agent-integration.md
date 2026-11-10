@@ -134,14 +134,14 @@ npm run agent:dev
 Use an already authorized environment with `CEREBRAS_API_KEY` and
 `CEREBRAS_BASE_URL`; do not store credentials in the repository or APK. The host
 prints an owner-only temporary token file path. For an owned debug emulator,
-`node scripts/configure-dev-agent.mjs` provisions the debug bridge and port reverse.
+`node scripts/configure-dev-agent.ts` provisions the debug bridge and port reverse.
 `npm run agent:diagnostic` selects the direct Cerebras request path. It uses the same pinned canonical tool schemas, validators and non-effecting preparation host as `agent:dev`; it does not send diagnostic turns through runtime conversation memory. Both commands explicitly enable `ELIZA_DEV_ALLOW_TEST_MOCKS=1` and require Bun. For the full local host and resident
 runtime, follow [local agent setup](local-agent-development.md).
 
 `bun run backend/test-runtime.ts` is separate live acceptance: it uses a private
 fixture for real model turns, new-process history, cancellation and proposal-only
 navigation and reminder actions. It no longer checks a note proposal: its development
-`create_note` action is not in the resident. Note and reminder review is a simulation: it never writes a note or schedules a notification. View navigation can open only a registered local view after review. `scripts/test-dev-agent.mjs` exercises the host protocol and checks that proposals are marked simulated. Neither proves Android UI execution. Local ASR's
+`create_note` action is not in the resident. Note and reminder review is a simulation: it never writes a note or schedules a notification. View navigation can open only a registered local view after review. `scripts/test-dev-agent.ts` exercises the host protocol and checks that proposals are marked simulated. Neither proves Android UI execution. Local ASR's
 host-only and HTTP checks were in the retired `test-local-asr.mjs` (Whisper era, deleted on
 2026-10-14); the current ASR route contract is checked against the pinned upstream workers.
 
@@ -166,7 +166,7 @@ list/detail and source checks, so record it as a different result from the archi
 runs. Keep the fixture free from concurrent edits. Never pass session credentials as
 arguments, and never reuse a historical workflow UUID as proof of current admission.
 The isolated native workflow campaign that does exist is
-`node scripts/android-workflow-native.mjs` (see [verification](verification.md)).
+`node scripts/android-workflow-native.ts` (see [verification](verification.md)).
 
 ## Ownership and recovery invariants
 
@@ -224,7 +224,7 @@ failure and cleanup, and never weaken seccomp or SELinux to obtain a pass.
   owner decision records the owner-provided key path, which P-43 and P-68 describe as absent.
 - Account replacement (AP-03): a Cloud sign-in as a second account revokes the first
   account's key once, before the new key is stored, unless Cloud hands back the same key
-  (`cloud-account-replacement.production.spec.ts`, `scripts/test-cloud-protocol.mjs`). The
+  (`cloud-account-replacement.production.spec.ts`, `scripts/test-cloud-protocol.ts`). The
   resident conversation history is kept on the phone under the local owner, not under the
   Cloud account, so the second account's session restores the conversation started under the
   first. That is current behaviour, recorded here; no owner decision covers it yet.
@@ -253,15 +253,15 @@ compilation; nothing here ran on an emulator or a device.
 | Upstream change | What Alpha does with it | Test |
 | --- | --- | --- |
 | #35906 register `POST /api/workflow/hosted/dossier` | The resident agent registers the dossier route; the renderer offers the dossier with native phone sources on the resident agent (`hosted-digest-ui.tsx`), with the request body unchanged and capped at 2000 bytes by the dispatcher and the handler | `test/digest-route-registration.test.mjs`, `test/digest-capabilities.test.mjs` |
-| #35907 `clientMessageId` on history user rows | Stop's single reconciliation read matches the stopped turn by the `clientMessageId` it was sent with; the text and time match is kept only when no row carries an id (older agents, shared-tier Cloud) (shared `conversation-turn-controller.ts` matcher, `connection-ui.tsx`) | `test/stopped-reply-match.test.mjs`, `scripts/test-connection-history.mjs` |
-| #35908 Gmail `mailboxHistoryId` per search page | `gmailSearch` parses it; the Inbox keeps the first page's value and treats a later page with another as a changed list (Load newer mail), even when no row repeats. Needs the deployed Eliza Cloud to include the change | `scripts/test-cloud-protocol.mjs`, `scripts/test-inbox-cloud-flow.mjs` |
+| #35907 `clientMessageId` on history user rows | Stop's single reconciliation read matches the stopped turn by the `clientMessageId` it was sent with; the text and time match is kept only when no row carries an id (older agents, shared-tier Cloud) (shared `conversation-turn-controller.ts` matcher, `connection-ui.tsx`) | `test/stopped-reply-match.test.mjs`, `scripts/test-connection-history.ts` |
+| #35908 Gmail `mailboxHistoryId` per search page | `gmailSearch` parses it; the Inbox keeps the first page's value and treats a later page with another as a changed list (Load newer mail), even when no row repeats. Needs the deployed Eliza Cloud to include the change | `scripts/test-cloud-protocol.ts`, `scripts/test-inbox-cloud-flow.ts` |
 | #35909 `SystemLauncherApps` by component and profile | Alpha lists, launches and hands off to the dialer only through the shared ElizaSystem (`createSystemLauncherBridge`); `DeviceAppsPlugin` is deleted and the `failed` code, package-only refusal wording and malformed-request guard are upstream. Upstream sorts by label; the renderer sorts itself | `LauncherAppsInstrumentedTest` (compiled, not run) |
 | #35910 retained limit for JSON slots | `AlphaCredentialStore` passes `retainedLimit` (32 MiB for `notes-trash:v1:device`, else the slot limit), lowers the Trash cap to the 30 MiB policy limit and reports `CapacityException` as storage-full on every write path | `NotesStorageDurabilityInstrumentedTest` (compiled, not run) |
 | #35911 free/busy read of selected calendars | `CalendarAvailabilityReader.java` deleted; `AlphaCalendarPlugin` calls `SelectedCalendarReader.availabilitySources` and `readAvailability`, after `assertSourceIdentities` and Alpha's own fail-closed freshness gate (`CalendarSyncFreshness.java`, only device-local calendars; from main's `bed4b60b2`, which the upstream reader does not have); the zone check moved to `CalendarZones.java`; the 200-interval journal bound stays Alpha's | `test/calendar-availability-reader.test.mjs` (the upstream reader on the JVM) |
-| #35912 `creationId` on events the host created | Note links for device-calendar events are keyed by the `creationId` Alpha saves with, not the reusable row id; events from the Android Calendar hand-off are not linked and say so | `scripts/test-calendar-crud-review.mjs`, `journey-j04-android.production.spec.ts` |
+| #35912 `creationId` on events the host created | Note links for device-calendar events are keyed by the `creationId` Alpha saves with, not the reusable row id; events from the Android Calendar hand-off are not linked and say so | `scripts/test-calendar-crud-review.ts`, `journey-j04-android.production.spec.ts` |
 | #35913 Calendar review names the account and attendees | Inherited by `AlphaCalendarPlugin`; the review reads "Calendar: On this phone" and "Account: Alpha Phone (this phone only)" | `CalendarAgentCrudInstrumentedTest` checks the text (compiled, not run) |
 | #36123 no reply, transcript or image text in bionic inference logs | Staged in the resident runtime source | None in this repository |
-| #36124 handlebars 4.7.10, `@ai-sdk/openai` 3.0.118 | Resident dependency audit: the three handlebars advisories and GHSA-866g-f22w-33x8 are gone; their pending fix and exception were removed (`docs/dependency-audit.dispositions.json`) | `node scripts/dependency-audit.mjs --resident`, `test/dependency-audit.test.mjs` |
+| #36124 handlebars 4.7.10, `@ai-sdk/openai` 3.0.118 | Resident dependency audit: the three handlebars advisories and GHSA-866g-f22w-33x8 are gone; their pending fix and exception were removed (`docs/dependency-audit.dispositions.json`) | `node scripts/dependency-audit.ts --resident`, `test/dependency-audit.test.mjs` |
 | #36126 llama.cpp at elizaOS/llama.cpp `7efee0037524` (#58: CVE-2026-107183, and CVE-2026-52132 for the `/rerank` `top_n` bound) | The voice host record names the new pin and engine commit (it holds no qualified binaries). The reviewed ARM64 embedding host was built from the earlier engine, so `android/embedding-host/qualified-host.json` is marked for requalification and distribution builds refuse it; a candidate built at the new engine is recorded there, unreviewed | `test/embedding-host-admission.test.mjs`, `test/voice-host-record.test.mjs` |
 | `87fd32888d` and follow-ups: protected native password editor (`openEditor`) | Not used: Alpha's form calls `save`. The development vault implements `openEditor` as unavailable, like the web plugin | `npm run typecheck` |
 | `a7056c4adc` versioned device-unlocked custody migration for passwords and secure store | Consumed through the Gradle modules; the migration runs in upstream code on existing vaults | None in this repository; an installed-upgrade run is needed (class E) |
@@ -286,13 +286,13 @@ build includes it. Every result is class S or less; nothing here ran on an emula
 | `0e677fe010` | openai: report billed usage before rejecting an incomplete output | Staged, not on Alpha's route | Resident runtime source; Alpha's resident agent uses Eliza Cloud or direct Cerebras, and the Cloud environment removes `OPENAI_*` | `LocalAgentProviderAdmissionTest` (the variables are removed) |
 | `1aa07e01f3` | core: match a whole language subtag in `normalizeCharacterLanguage` | Staged | Resident runtime (`packages/core`) | None in this repository |
 | `dbcd5ff4c0` | core: end the first sentence at a question mark after a.m. or p.m. | Staged | Resident runtime (`packages/core` text splitting) | None in this repository |
-| `92ad9b6d21` | personal-assistant: preserve historical goal sleep time zones | Staged, no Alpha flow depends on it | Resident runtime source; the host launchers (`scripts/start-local-remote.mjs` and the others) disable `personal-assistant`; whether the Android resident loads it was not checked for this table | None |
+| `92ad9b6d21` | personal-assistant: preserve historical goal sleep time zones | Staged, no Alpha flow depends on it | Resident runtime source; the host launchers (`scripts/start-local-remote.ts` and the others) disable `personal-assistant`; whether the Android resident loads it was not checked for this table | None |
 | `bc58086519` | personal-assistant: owner time zone for the bulk reschedule window | Staged, no Alpha flow depends on it | As above | None |
 | `bf711ca611` | personal-assistant: owner time zone for the activity profile | Staged, no Alpha flow depends on it | As above | None |
 | `29c1b7ee8a` | lifeops: keep a by-weekday deadline | Staged, no Alpha flow depends on it | As above (`plugin-personal-assistant`) | None |
 | `915f31688c` | health: seconds for screen time under a minute | Staged, no Alpha flow depends on it | Resident runtime source; Alpha has no health view | None |
 | `0bdb664342` | plugin-health: average heart-rate readings | Staged, no Alpha flow depends on it | As above | None |
-| `d68625ff72` | plugin-maps: show the error message from the view broker result | Not consumed | Alpha copies only `plugins/plugin-maps/src/client` (`scripts/prepare-client-features.mjs`); the changed component is not copied | None |
+| `d68625ff72` | plugin-maps: show the error message from the view broker result | Not consumed | Alpha copies only `plugins/plugin-maps/src/client` (`scripts/prepare-client-features.ts`); the changed component is not copied | None |
 | `bab66a0719` | cloud: claim grace for a delivery intent stored without `dispatchedAt` | Not consumed | Eliza Cloud server code; Alpha is a client of the deployed service | None |
 | `7460221ec7` | cloud: voice prices under the API Explorer endpoint ids | Not consumed | Eliza Cloud server code | None |
 | `a2cc057730` | Keep the shared transport dependency in the pruned gateway image | Not consumed | Eliza Cloud gateway image | None |

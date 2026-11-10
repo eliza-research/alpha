@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { provisioningComponents, renderProvisioningOverlay, requestsAllFilesAccess, writeProvisioningOverlay } from "../scripts/aosp-provisioning-overlay.mjs";
+import { provisioningComponents, renderProvisioningOverlay, requestsAllFilesAccess, writeProvisioningOverlay } from "../scripts/aosp-provisioning-overlay.ts";
 
 const PKG = "ai.elizaresearch.alphaphone";
 const str = value => `"${value}" (Raw: "${value}")`;
@@ -62,7 +62,7 @@ test("the overlay sets default HOME, assistant and Autofill offer additively", t
 });
 
 test("stage-aosp gates the overlay behind --production, never with --development", () => {
-  const source = fs.readFileSync("scripts/stage-aosp.mjs", "utf8");
+  const source = fs.readFileSync("scripts/stage-aosp.ts", "utf8");
   assert.match(source, /if \(production && development\) throw/);
   assert.match(source, /const tree = execFileSync\(tool\("aapt"\), \["dump", "xmltree", apk, "AndroidManifest\.xml"\]/);
   assert.match(source, /if \(production\) \{\n  const components = provisioningComponents\(tree, identity\.appId\);/);

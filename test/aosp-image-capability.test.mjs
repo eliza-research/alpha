@@ -6,7 +6,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { detectAospImage, admittedAospViews, AOSP_IMAGE_VIEWS, ADMITTED_AOSP_VIEW_ADAPTERS } from "../apps/app/src/runtime/aosp-image.ts";
-import { IMAGE_FEATURE_VERSION, imageFeatureName, renderImageCapability, writeImageCapability } from "../scripts/aosp-image-capability.mjs";
+import { IMAGE_FEATURE_VERSION, imageFeatureName, renderImageCapability, writeImageCapability } from "../scripts/aosp-image-capability.ts";
 
 const PKG = "ai.elizaresearch.alphaphone";
 const read = file => fs.readFileSync(file, "utf8");
@@ -59,7 +59,7 @@ test("image staging declares the versioned system feature in the product partiti
 });
 
 test("staging, native check and feature declaration agree", () => {
-  const stage = read("scripts/stage-aosp.mjs");
+  const stage = read("scripts/stage-aosp.ts");
   const call = stage.indexOf("writeImageCapability(output, identity.appId)");
   assert.ok(call > 0, "stage-aosp writes the image capability");
   // The production-only provisioning overlay comes after the capability (an earlier production branch
@@ -71,7 +71,7 @@ test("staging, native check and feature declaration agree", () => {
   // Pixel 10a takes the declaration from the shared composition every brand uses; it is never written twice.
   assert.match(stage, /if \(!physical\) \{\n  const capability = writeImageCapability\(output, identity\.appId\);/);
   assert.match(read("vendor/eliza/packages/os/scripts/android/pixel10a-product.ts"), /writeImageCapability\(output, launcher\.packageName\)/);
-  assert.match(read("scripts/aosp-image-capability.mjs"), /from "\.\.\/vendor\/eliza\/packages\/os\/scripts\/android\/image-capability\.mjs"/);
+  assert.match(read("scripts/aosp-image-capability.ts"), /from "\.\.\/vendor\/eliza\/packages\/os\/scripts\/android\/image-capability\.mjs"/);
   // The on-device decision is the shared plugin-native-messages ImageCapability; Alpha passes only its build flags and resource.
   const shared = read("vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/ImageCapability.java");
   assert.match(shared, new RegExp(`public static final int FEATURE_VERSION = ${IMAGE_FEATURE_VERSION};`));
@@ -232,7 +232,7 @@ test("dialer- and SMS-role components exist only in the launcher, disabled until
   assert.equal((pad.match(/TelecomDial\.originate\(/g) || []).length, 1, "one placement, from the Call press");
   assert.match(pad, /call\.setOnClickListener\(view -> place\(\)\);/); assert.match(pad, /call\.setFilterTouchesWhenObscured\(true\)/);
   assert.match(dial, /telecom\.placeCall\(telUri, extras\)/);
-  const apk = read("scripts/apk.mjs");
+  const apk = read("scripts/apk.ts");
   assert.match(apk, /"ai\.elizaresearch\.alphaphone\.AlphaInCallService": "android\.permission\.BIND_INCALL_SERVICE"/);
   assert.match(apk, /if \(data\.xml\.includes\('android\.permission\.CALL_PHONE'\) !== wantsHome\)/);
   // Per-flavor recent-calls packaging: launcher only, and call-log writes never.

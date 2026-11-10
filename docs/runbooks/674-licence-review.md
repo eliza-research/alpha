@@ -26,7 +26,7 @@ its terms.** That settles decision 1 below as option (b). It changes this packet
 
 ## What was prepared
 
-- `scripts/owner/licence-review.mjs`: a read-only probe that builds the review packet. It reads
+- `scripts/owner/licence-review.ts`: a read-only probe that builds the review packet. It reads
   files and git objects, writes nothing and contacts no service. Test:
   `test/owner-licence-review.test.mjs`.
 - This runbook: the per-package summary, the `@metamask/sdk` dependency path at the current pin,
@@ -34,17 +34,17 @@ its terms.** That settles decision 1 below as option (b). It changes this packet
 
 ```sh
 # Newest archived packaged-runtime notices (default) plus the verify-apks rows in the evidence file
-node scripts/owner/licence-review.mjs --apk-manifest docs/evidence/merge-build-final-apks-v17-2026-10-27.json
+node scripts/owner/licence-review.ts --apk-manifest docs/evidence/merge-build-final-apks-v17-2026-10-27.json
 
 # After npm run android:build:local: the fresh staged bundle, APK, apk-manifest and SBOM
-node scripts/owner/licence-review.mjs \
+node scripts/owner/licence-review.ts \
   --notices apps/app/public/licenses/third-party-notices.json \
   --apk-manifest artifacts/apk-manifest.json --sbom artifacts/sbom/alphaphone.cdx.json \
   --bundle android/app/src/main/assets/agent/agent-bundle.js \
   --apk artifacts/launcher-release-unsigned.apk
 
 # Source chain at the pin, from git objects only (no checkout of vendor/eliza needed)
-node scripts/owner/licence-review.mjs --eliza-git-dir .git/modules/vendor/eliza --pin "$(node -p 'require("./upstream.lock.json").commit')"
+node scripts/owner/licence-review.ts --eliza-git-dir .git/modules/vendor/eliza --pin "$(node -p 'require("./upstream.lock.json").commit')"
 ```
 
 `--json` prints the packet as JSON. Absolute build-host paths found in a bundle are counted,
@@ -56,7 +56,7 @@ never printed.
 | --- | --- | --- |
 | `licenses/packaged-runtime/fd5511ca…/third-party-notices.json` (722 entries, 83 flagged) | Archived notices from the strict version 17 APK build at upstream `fd5511ca` | Not the current pin `1f2a922f`; no device or release evidence |
 | `docs/evidence/merge-build-final-apks-v17-2026-10-27.json` | verify-apks rows for 4 APKs (standalone and launcher, debug and release), each with `licenceFlags` (83 flagged), `licenceBlockers: []`, Denton `resolved-by-owner-statement` | APK build evidence only |
-| A local SBOM (`artifacts/sbom/alphaphone.cdx.json`, 2026-10-24, 1,909 components) | CycloneDX output of `generate-sbom.mjs` on that day's APKs | Older than the current pin; not committed |
+| A local SBOM (`artifacts/sbom/alphaphone.cdx.json`, 2026-10-24, 1,909 components) | CycloneDX output of `generate-sbom.ts` on that day's APKs | Older than the current pin; not committed |
 | A local staged agent bundle and APKs at upstream `00ee6397` (2026-10-24) | Static reading of `agent-bundle.js` (module headers, `__esm` init graph) and the APK entry list | Never run here. Static analysis is not runtime observation. `00ee6397` is an ancestor of the pin |
 | Upstream git objects at the pin `1f2a922f` (2026-10-28) | `bun.lock`, `packages/ui`, `packages/agent/scripts/build-mobile-bundle.ts`, `plugins/plugin-discord` | Source only; nothing built at this pin for this packet |
 
@@ -236,7 +236,7 @@ APK-build evidence. It does not prove anything about emulator, image, device or 
    - Recommendation: both. Ask counsel what "relink" means for a statically linked Bun.
    - What changes: an engineering task to publish the mirror. The offer text goes in
      `config/source-offer.json` (`{"offer": "..."}`); the Bun notice ships it, and until it is
-     recorded `scripts/owner/licence-review.mjs` reports it as a distribution blocker.
+     recorded `scripts/owner/licence-review.ts` reports it as a distribution blocker.
 5. **Phonon-2 training-data terms (CHiME-6 CC-BY-SA-4.0, SPGISpeech Kensho terms).**
    - Options: accept, with attribution as shipped; ask counsel; or switch the ASR slot model.
    - What changes: switching affects P-55 and voice quality.
@@ -273,7 +273,7 @@ Drafts only. The owner fills in the outcome. The text is not owner wording.
   via `wagmi` and RainbowKit in the shared `packages/ui` wallet login. It is not expected to
   execute, because the headless agent renders no wallet UI. The notices keep flagging it
   `non-open-source-terms` (P-09: flags never block). The acceptance covers 0.33.1 only, and any
-  other version needs a new decision (`scripts/owner/licence-review.mjs` reports
+  other version needs a new decision (`scripts/owner/licence-review.ts` reports
   `version-not-covered`). This entry records the owner's acceptance. It is not a legal review.
 - **P-?? (draft) — H-35 licence review, 2026-__-__ (owner / counsel ____):** The flagged
   obligations of `ffmpeg-static`, `ua-parser-js`, `rpc-websockets`, Bun/JavaScriptCore, eSpeak NG,

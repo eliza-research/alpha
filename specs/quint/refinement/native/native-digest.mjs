@@ -6,7 +6,7 @@ import {captureInputs,checkTraces,qmap} from '../check-traces.mjs';
 import {app,directory,javaTraceCampaign,root} from './java.mjs';
 import {digestBoundary,digestProduct,nativeDigestPlatform,noticeOwner} from './native-digest-platform.mjs';
 import {jsonJar} from '../../../../test/fixtures/jvm-tools.mjs';
-import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.mjs';
+import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.ts';
 
 const model='NativeDigestConsent';
 const harness='NativeDigestTraces.java';
@@ -21,7 +21,7 @@ export async function checkNativeDigestConsent(extraSources=[]) {
   try {
     const compiled=[...digestProduct,'vendor/eliza/'+noticeOwner];
     const sources=[...compiled,digestBoundary,app+'AlphaHostedResultsPlugin.java',app+'AlphaApplication.java',
-      nativeManifest,'upstream.lock.json','scripts/upstream-native-source.mjs',
+      nativeManifest,'upstream.lock.json','scripts/upstream-native-source.ts',
       'test/fixtures/jvm-tools.mjs',...(jsonJar?[jsonJar]:[]),...fixture.paths,...extraSources,
       ...[harness,'Trace.java','java.mjs','native-digest-platform.mjs'].map(name=>join(directory,name)),
       fileURLToPath(import.meta.url)];

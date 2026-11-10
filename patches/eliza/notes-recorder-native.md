@@ -1,7 +1,7 @@
 # Notes recorder native patches
 
 Two explicit native patches admitted by `native-manifest.json` (applied by
-`scripts/prepare-patched-native.mjs` into the staged Android sources; the vendor checkout is
+`scripts/prepare-patched-native.ts` into the staged Android sources; the vendor checkout is
 never edited). Base: elizaOS/eliza `475a8d59dc1811c2cde093613519906a5a3f6457` (regenerated
 unchanged from `0594fc72da`: their targets are byte-identical at both commits). Both are
 upstream proposals; once merged and the pin moves, drop them from the manifest.
@@ -32,7 +32,7 @@ id is always chosen first.
 
 ## Tests
 
-`node scripts/prepare-patched-native.mjs` admits both (digests, headers, `patch --fuzz=0`,
+`node scripts/prepare-patched-native.ts` admits both (digests, headers, `patch --fuzz=0`,
 full output inventory). `test/resident-native-patch-admission.test.mjs`,
 `test/gradle-verification.test.mjs`, `test/android-host.test.mjs`,
 `test/source-snapshot.test.mjs` and `test/android-dependency-fingerprint.test.mjs` pass.

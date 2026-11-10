@@ -84,7 +84,7 @@ the renderer rejects any provider row that has a field other than `start`, `end`
   changed window and an answer on a failed check are refused. The Keystore-backed journal
   itself is not exercised.
 - `CalendarAvailabilityInstrumentedTest`: the Android reader against the device
-  CalendarProvider with calendars the test creates. `scripts/test-calendar-regression.mjs --case=CalendarAvailabilityInstrumentedTest` grants
+  CalendarProvider with calendars the test creates. `scripts/test-calendar-regression.ts --case=CalendarAvailabilityInstrumentedTest` grants
   the calendar permissions. It passed 4 of 4 on both flavors at `2961bd9e` (pin `13c9857598`),
   class E on developer APKs ([verification](verification.md)).
 

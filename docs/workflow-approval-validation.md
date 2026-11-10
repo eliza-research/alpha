@@ -12,7 +12,7 @@ The phone records only a nonsecret intent under origin/owner/agent/workflow/run 
 
 ## Validation
 
-`node --import=tsx scripts/test-workflow-approval-ui-flow.mjs` checks confirmation, account changes and read-only reconciliation against a synthetic HTTP host.
+`node --import=tsx scripts/test-workflow-approval-ui-flow.ts` checks confirmation, account changes and read-only reconciliation against a synthetic HTTP host.
 
 The shared implementation is consumed through [upstream.lock.json](../upstream.lock.json); see [agent integration](agent-integration.md) for the product boundary. These adapter checks are not live-provider, native process-death, HOME-role, AOSP or device acceptance.
 

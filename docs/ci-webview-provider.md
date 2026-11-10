@@ -3,13 +3,13 @@
 Status (October 8): the Android emulator CI jobs that consumed this provider, the
 stock-video qualification step and the aggregate native runner were removed with the
 other smoke suites at the owner's request (commit `49b1bf4c`). No hosted job runs this
-provider today. `scripts/prepare-ci-webview.mjs` and its configuration test remain as a
+provider today. `scripts/prepare-ci-webview.ts` and its configuration test remain as a
 reviewed preparation tool for an owned disposable emulator. The rest of this page records
 the provider design and the historical CI matrix; it is not a current CI description.
 
 The positive Android emulator fixture used an unmodified, pinned Chromium development WebView. It is not the production provider selection or an update mechanism for users. The stock API35 image's WebView124 lacks APIs required by the positive browser flows. Version numbers and source declarations do not establish actual runtime feature support; hosted instrumentation must still pass.
 
-The official AndroidDesktop_x64 snapshot1709176 maps to Chromium commit `b1bde56dbc71dd73916cb44c9270c37086379bdf`, version157.0.8083.0. Its [archive configuration](https://chromium.googlesource.com/chromium/src/+/b1bde56dbc71dd73916cb44c9270c37086379bdf/infra/archive_config/android-desktop-x64-archive-rel.json) includes SystemWebView.apk. `scripts/prepare-ci-webview.mjs` pins the object generation, archive size/SHA256, APK SHA256 and developer certificate. APK v2 verifies with the public development certificate; that is not production signing authority. The APK contains x86 and x86_64 libraries, minSDK29/targetSDK37, and no Trichrome static-library dependency.
+The official AndroidDesktop_x64 snapshot1709176 maps to Chromium commit `b1bde56dbc71dd73916cb44c9270c37086379bdf`, version157.0.8083.0. Its [archive configuration](https://chromium.googlesource.com/chromium/src/+/b1bde56dbc71dd73916cb44c9270c37086379bdf/infra/archive_config/android-desktop-x64-archive-rel.json) includes SystemWebView.apk. `scripts/prepare-ci-webview.ts` pins the object generation, archive size/SHA256, APK SHA256 and developer certificate. APK v2 verifies with the public development certificate; that is not production signing authority. The APK contains x86 and x86_64 libraries, minSDK29/targetSDK37, and no Trichrome static-library dependency.
 
 The [official removal helper](https://chromium.googlesource.com/chromium/src/+/b1bde56dbc71dd73916cb44c9270c37086379bdf/android_webview/tools/remove_preinstalled_webview.py) was reviewed but is not executed: its Q+ branch removes Google WebView, Chrome and Trichrome. This AOSP fixture instead backs up and hashes exactly one stock124 `/product/app/webview/*.apk`, validates a fresh GitHub-hosted API35 x86_64 `test` AVD with user0 only, and removes only that verified file after writable-system remount. Framework startup is attempted in `finally`. Any failed admission or partial operation ends the job with evidence; it does not attempt broad cleanup or operate on another device.
 

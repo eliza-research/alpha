@@ -18,9 +18,9 @@ Use `adb install -r` to replace them. Do not uninstall a real user's app to swit
 flavors, Android instrumentation APKs and Android lint, all with
 `ELIZA_DEV_ALLOW_TEST_MOCKS` off. Release APKs are signed only when all four `ELIZAOS_*`
 signing values below are present; otherwise they are `*-release-unsigned.apk`.
-`android:verify` (`scripts/verify-apks.mjs`) inspects compiled package IDs, HOME/LAUNCHER
+`android:verify` (`scripts/verify-apks.ts`) inspects compiled package IDs, HOME/LAUNCHER
 filters, debug flags and signatures, the absence of test-mock classes, cleartext network
-configuration and fixture-package queries, and runs `scripts/audit-production-bundle.mjs`
+configuration and fixture-package queries, and runs `scripts/audit-production-bundle.ts`
 on each APK's extracted `assets/public`. These checks inspect APK bytes, not source
 strings alone.
 
@@ -34,7 +34,7 @@ step until a person supplies the reviewed embedding host libraries; `npm run
 android:build:inputs` lists every input and who supplies it (see the README). On-device speech
 uses only the libelizainference voice host ([fused speech](fused-speech.md), decision P-42); an
 APK without a voice bundle is valid. `npm run android:build` checks all of
-these first (`scripts/android-build-preflight.mjs`) and exits 2 with the command to run instead
+these first (`scripts/android-build-preflight.ts`) and exits 2 with the command to run instead
 of failing inside Gradle. It also refuses an upstream pin that is not `origin/main`'s pin or a
 descendant of it, so a stale branch cannot build an older agent onto a device (README; only a
 reviewed rollback passes `--allow-older-upstream-pin`). `npm run android:build -- --allow-unpackaged-runtime` is the developer
@@ -151,7 +151,7 @@ works with the default configuration. `ELIZAOS_APP_LINK_HOST`, if set, must matc
 `https://staging.eliza.app/alphaphone/auth/callback` from `src/testMocks/AndroidManifest.xml`.
 The release fingerprint must be listed at `/.well-known/assetlinks.json` on the host before a
 release build can receive the return (never a debug or placeholder fingerprint). On `eliza.app` Cloud
-serves that file from `ELIZA_ANDROID_ASSET_LINKS_JSON`: `node scripts/render-assetlinks.mjs --cloud-config`
+serves that file from `ELIZA_ANDROID_ASSET_LINKS_JSON`: `node scripts/render-assetlinks.ts --cloud-config`
 prints the value with Alpha's entry, and `--check <url>` verifies the published file
 ([human actions](human-actions.md) H-13). For a host Alpha controls, publish the file the default
 mode renders.
@@ -217,21 +217,21 @@ update and recovery gates below.
 8. Validate the same signed release on physical hardware: radios, audio/mic, touch,
    camera, suspend/resume, charging, keys, auth/agent reconnect, accessibility and
    recovery. Record image/APK/source hashes. Image signing, the OTA package and its
-   version/hash compatibility record come from `scripts/sign-aosp-release.mjs` on the image
+   version/hash compatibility record come from `scripts/sign-aosp-release.ts` on the image
    host ([Pixel 10a staging and release signing](pixel10a-staging.md)); the one OS update channel
    is `android/aosp/pixel10a-ota-channel.json` (the Alpha APK alone also has the owner-confirmed
    [one-tap app update](#one-tap-app-update)). The operator update client, interrupted-update
-   resume, slot fallback and stock-recovery checks are `scripts/aosp-ota-update.mjs`, and
-   `scripts/verify-pixel10a-image.mjs` checks a booted image; all are bindings of shared
-   Pixel 10a tooling. `scripts/aosp-retain-known-good.mjs` (the shared `retain-known-good`
+   resume, slot fallback and stock-recovery checks are `scripts/aosp-ota-update.ts`, and
+   `scripts/verify-pixel10a-image.ts` checks a booted image; all are bindings of shared
+   Pixel 10a tooling. `node scripts/aosp-ota-update.ts retain-known-good` (the shared `retain-known-good`
    command) archives and hash-records a verified signed image and its target-files, refusing
    placeholders, test-keys builds and inputs that differ from the release record;
-   `aosp-ota-update.mjs stock-archive --known-good DIR` re-verifies that archive and offers
+   `aosp-ota-update.ts stock-archive --known-good DIR` re-verifies that archive and offers
    its reflash plan beside the stock plan. The shared read-only update-channel client
    (`packages/os/scripts/android/update-channel-client.mjs`) is registered off in Alpha
    (`updateChannelCheckEnabled`); only a development build shows its state in About. No
    release key, signed image, applied OTA, interrupted-update, rollback, known-good or
-   stock-recovery drill exists yet, and `scripts/pilot-update.mjs` (shared signer-equal,
+   stock-recovery drill exists yet, and `scripts/pilot-update.ts` (shared signer-equal,
    higher-versionCode and per-domain readback checks) still refuses a lower APK versionCode.
 
 An SDK emulator with an installed launcher is useful HOME/app evidence, but is not
@@ -564,7 +564,7 @@ goes against the standing rule that no tap abandons a sealed session, so it stay
 
 Publish an update by building the manifest's flavor with `ELIZAOS_VERSION_CODE` above the
 installed versionCode and signing it with the installed app's key. Never write the manifest by hand:
-`scripts/publish-update-manifest.mjs` writes it only for a release row of `artifacts/apk-manifest.json`
+`scripts/publish-update-manifest.ts` writes it only for a release row of `artifacts/apk-manifest.json`
 that verify-apks recorded as distributable and signed by `android/release-signer.json`, and that
 provisioning would still admit, so run it before `lastRelease` records that versionCode. It copies
 the APK to `artifacts/app-stable/alpha-phone-<versionCode>.apk` and writes
@@ -575,7 +575,7 @@ the manifest that names it:
 # Once: the rolling release, never marked Latest.
 gh release create app-stable --repo eliza-research/alphaphone --latest=false --title "Alpha app update" --notes "One-tap app update manifest"
 # Each update (here versionCode 2, the launcher flavor the default URL serves).
-node scripts/publish-update-manifest.mjs --variant launcher
+node scripts/publish-update-manifest.ts --variant launcher
 cd artifacts/app-stable
 gh release upload app-stable alpha-phone-2.apk --repo eliza-research/alphaphone
 gh release upload app-stable alpha-update-stable.json --repo eliza-research/alphaphone --clobber
@@ -688,7 +688,7 @@ After booting the exact signed image, perform read-only handler admission for th
 
 ```sh
 ANDROID_SERIAL=<exact-serial> ALPHA_ANDROID_USER=<user-id> \
-  ALPHA_EXPECTED_IMAGE_FINGERPRINT=<exact-fingerprint> node scripts/verify-aosp-clock.mjs
+  ALPHA_EXPECTED_IMAGE_FINGERPRINT=<exact-fingerprint> node scripts/verify-aosp-clock.ts
 ```
 
 The check requires the exact expected build fingerprint, enabled system-installed `com.android.deskclock`, and its set/show/snooze/dismiss activity handlers. It does not launch an alarm, change permissions, provision a device, or prove ringing. Alpha's shared manifest declares the caller SET_ALARM permission and visibility queries; Clock's own notifications/exact-alarm access remains separately verified on the image. Confirm actual set/fire/snooze/dismiss, permission denial, reboot, time-zone/DST, cancellation and DND/physical audio before claiming alarm MVP completion.
@@ -701,7 +701,7 @@ After booting a development image, bind the observation to its independently ret
 staging descriptor and expected build fingerprint:
 
 ```sh
-node scripts/verify-cuttlefish-launcher.mjs --serial 127.0.0.1:6520 --user 0 \
+node scripts/verify-cuttlefish-launcher.ts --serial 127.0.0.1:6520 --user 0 \
   --descriptor /absolute/staged-overlay/launcher.json \
   --fingerprint 'exact expected build fingerprint' \
   --apk-path /product/app/AlphaPhone/AlphaPhone.apk --out /absolute/new-report.json
@@ -739,7 +739,7 @@ release, signing and reviewed descriptor gates apply before staging. Development
 staging never emits this capability overlay. The overlay generator and the
 default-resource check are the shared `image-capability.mjs` in
 `packages/os/scripts/android`; Alpha supplies only its installed identifiers
-(`scripts/aosp-capability-overlay.mjs`). For Pixel 10a the shared composition
+(`scripts/aosp-capability-overlay.ts`). For Pixel 10a the shared composition
 writes it from `launcher.imageProvisioning` in `products/pixel10a-alpha.json`.
 
 The capability is an OS-provisioning boundary, not remote image attestation or
@@ -798,11 +798,11 @@ recorded in the staged `secure-camera/source-evidence.json`. Development
 staging without a source path records `sourceVerified: false` explicitly.
 
 ```sh
-node scripts/verify-aosp-secure-camera.mjs --aosp-source /path/to/aosp
+node scripts/verify-aosp-secure-camera.ts --aosp-source /path/to/aosp
 # On a separately authorized booted target, read-only checks:
 ANDROID_SERIAL=explicit-serial ALPHA_ANDROID_USER=10 \
   ALPHA_EXPECTED_FINGERPRINT='exact/reviewed/image/fingerprint' \
-  node scripts/verify-aosp-secure-camera.mjs
+  node scripts/verify-aosp-secure-camera.ts
 ```
 
 The image check requires enabled system Camera2, both secure intent handlers,

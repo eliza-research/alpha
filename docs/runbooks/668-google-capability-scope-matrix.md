@@ -5,7 +5,7 @@ Alpha never names Google OAuth scopes. It posts Eliza Cloud capability names to
 `initiateGoogle` and `initiateGmail`), and Cloud's `capabilitiesToScopes`
 (`vendor/eliza/packages/cloud/shared/src/lib/services/agent-google-connector/shared.ts` at the pin
 in `upstream.lock.json`, `1f2a922f86`) turns them into the scopes on Google's consent page.
-Regenerate this table with `node scripts/owner/google-oauth-scopes.mjs matrix`; it parses the
+Regenerate this table with `node scripts/owner/google-oauth-scopes.ts matrix`; it parses the
 pinned Cloud source and exits 1 if that source has drifted from the embedded copy.
 `test/owner-google-oauth-scopes.test.mjs` checks every row below against the real `CloudProtocol`
 request bodies and the Settings buttons.

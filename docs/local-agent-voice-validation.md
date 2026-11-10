@@ -13,7 +13,7 @@ Only synthetic text/audio was used. No bearer appears in the evidence.
 
 ## Source fixes and reproducibility
 
-Upstream changes arrive as reviewed upstream commits through a pin move in `upstream.lock.json`, or as an explicit tested native patch admitted by `patches/eliza/native-manifest.json` (`scripts/prepare-patched-native.mjs`, rebased onto `bc71e21f3b` on 2026-10-13). The earlier voice patch series was retired in `34b3c82a` (2026-10-03) and `55c2944f` (2026-10-04), and its last reference went in `530d3b26` (2026-10-10), each when the pinned upstream already carried the change. The run below was made with the patch and is kept as history; it has not been repeated at the current pin.
+Upstream changes arrive as reviewed upstream commits through a pin move in `upstream.lock.json`, or as an explicit tested native patch admitted by `patches/eliza/native-manifest.json` (`scripts/prepare-patched-native.ts`, rebased onto `bc71e21f3b` on 2026-10-13). The earlier voice patch series was retired in `34b3c82a` (2026-10-03) and `55c2944f` (2026-10-04), and its last reference went in `530d3b26` (2026-10-10), each when the pinned upstream already carried the change. The run below was made with the patch and is kept as history; it has not been repeated at the current pin.
 
 Historical record: `patches/eliza/0002-paired-local-voice.patch` (historical; retired in `34b3c82a`) had its exact base and SHA256 in
 `patches/eliza/local-voice-source-base.json` (historical, retired with it). It was applied only to the isolated
@@ -36,7 +36,7 @@ Start with explicit, already-installed voice assets and native library:
 npm run agent:prepare   # artifacts/local-agent-resident-<pinned commit>
 ELIZA_INFERENCE_LIBRARY=/absolute/libelizainference.dylib \
 ELIZA_KOKORO_MODEL_DIR=/absolute/kokoro \
-node scripts/start-local-voice-agent.mjs   # optional: --source <prepared tree> --profile <dir> --port <n> --bun <path>
+node scripts/start-local-voice-agent.ts   # optional: --source <prepared tree> --profile <dir> --port <n> --bun <path>
 # test-paired-local-voice.mjs (Kokoro era) was deleted on 2026-10-14
 ```
 

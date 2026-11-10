@@ -27,15 +27,15 @@ remain that worker's responsibility.
 
 | Consumer | Admission and transformation |
 | --- | --- |
-| Android mobile bundle | `build-mobile-agent.mjs` installs the shared Bun plugin and requires its transform in `alpha-mobile-build.json`. Staging and APK verification bind the patch inputs and before/after hashes. |
-| Source-mode Cloud, local, voice and reviewed-workflow hosts | Each launcher supplies the owned source path and preloads `core-state-preload.mjs`. The preload authenticates the original source tree before installing the same transform. |
+| Android mobile bundle | `build-mobile-agent.ts` installs the shared Bun plugin and requires its transform in `alpha-mobile-build.json`. Staging and APK verification bind the patch inputs and before/after hashes. |
+| Source-mode Cloud, local, voice and reviewed-workflow hosts | Each launcher supplies the owned source path and preloads `core-state-preload.ts`. The preload authenticates the original source tree before installing the same transform. |
 | Development backend | `backend/loader.ts` preserves pinned-source admission, installs the plugin, and records its transform with the source map. |
 | Native Google host artifact | The builder installs the plugin and binds the core patch record. The 475a 35-input graph did not select TaskService. Current graph verification is separate. |
 | Workflow dependency artifact | The actual upstream producer was observed with Bun 1.4.2. The 475a 1123-input graph selected no `packages/core/src` module. Current graph verification is separate. |
 | Independently frozen combined host | Matching revision and all reviewed target preimages receive the transforms. The preload rechecks the host's frozen source manifest, including reviewed custom files. Other revisions/preimages retain their existing independent version contract and report `coreState.applied=false`. They require a separate patch review. |
 | Quint TaskService compiler | Uses the same byte map. The actual-class stop regressions already exercise the shared build plugin. The SQL-backed lifecycle campaign observes one-shot timers and exclusive admission. The counted-ownership SQL regression already executes the actual runtime, migrations and adapter. |
 
-`core-state-patch.mjs` validates the product pin, manifest schema, explicit target allowlist,
+`core-state-patch.ts` validates the product pin, manifest schema, explicit target allowlist,
 patch digest and exact patch headers, original bytes and resulting bytes. It
 rejects symlinked inputs and extra scratch outputs. Each consumer gets the same
 materialized bytes. The mobile receipt includes the patch manifest, helper,

@@ -4,7 +4,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { RECORDED_CATALOG, catalogPlanKeys, checkMapsAllowances, checkRateLimits, compareCatalog, main, placeholders } from "../scripts/owner/subscription-limits.mjs";
+import { RECORDED_CATALOG, catalogPlanKeys, checkMapsAllowances, checkRateLimits, compareCatalog, main, placeholders } from "../scripts/owner/subscription-limits.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
 const recorded = JSON.parse(fs.readFileSync(path.join(root, RECORDED_CATALOG), "utf8"));

@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {materializeNativePatches} from '../scripts/prepare-patched-native.mjs';
-import {upstreamNativeSource} from '../scripts/upstream-native-source.mjs';
+import {materializeNativePatches} from '../scripts/prepare-patched-native.ts';
+import {upstreamNativeSource} from '../scripts/upstream-native-source.ts';
 import {runJvm,upstreamVoiceSource,fixture} from './fixtures/jvm-tools.mjs';
 
 const root=path.resolve(import.meta.dirname,'..');

@@ -1,5 +1,5 @@
 {
-  "description": "Implementation terms scripts/audit-production-copy.mjs reports in user-visible copy, the development-only sources it skips, and reviewed uses that stay. An allow entry matches a finding with the same term whose copy contains its text (and, when given, in the same file). Copy changes from the report are owner decisions.",
+  "description": "Implementation terms scripts/audit-production-copy.ts reports in user-visible copy, the development-only sources it skips, and reviewed uses that stay. An allow entry matches a finding with the same term whose copy contains its text (and, when given, in the same file). Copy changes from the report are owner decisions.",
   "terms": [
     {"term": "receipt", "pattern": "\\breceipts?\\b"},
     {"term": "reconcil", "pattern": "\\breconcil\\w*"},
@@ -18,7 +18,7 @@
     {"path": "apps/app/src/browser/simulated-", "reason": "Simulated apps for the browser development host; test mocks only."},
     {"path": "apps/app/src/browser/development-", "reason": "Browser development agent, Cloud and digest fixtures; test mocks only."},
     {"path": "apps/app/src/runtime/development-", "reason": "Development transports and Cloud agents; test mocks only."},
-    {"path": "apps/app/src/browser/password-provider.ts", "reason": "Simulated password provider; scripts/audit-production-bundle.mjs denies its copy in production bundles."},
+    {"path": "apps/app/src/browser/password-provider.ts", "reason": "Simulated password provider; scripts/audit-production-bundle.ts denies its copy in production bundles."},
     {"path": "apps/app/src/prototype/fixtures", "reason": "Fixture data, not copy."}
   ],
   "allow": [

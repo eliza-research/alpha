@@ -12,12 +12,12 @@ prepared accounts.
 | [`evidence/cloud-readiness-2026-10-28.json`](evidence/cloud-readiness-2026-10-28.json) | Fresh probe record, both environments (draft; the owner may move it to `docs/evidence/`) |
 | [`drafts/666-latency-config.staging.template.json`](drafts/666-latency-config.staging.template.json) | Benchmark config template for staging; keys named by environment variable only |
 | [`drafts/666-latency-report.schema.json`](drafts/666-latency-report.schema.json) | JSON Schema for the committed report: the harness's `results.json` plus provenance, no credential fields |
-| [`scripts/owner/latency-report.mjs`](../../scripts/owner/latency-report.mjs) | `config` (pre-run check, request budget), `check` (schema + credential scan of a report), `wrap` (adds provenance, then checks). Local files only |
+| [`scripts/owner/latency-report.ts`](../../scripts/owner/latency-report.ts) | `config` (pre-run check, request budget), `check` (schema + credential scan of a report), `wrap` (adds provenance, then checks). Local files only |
 | [`test/owner-latency-report.test.mjs`](../../test/owner-latency-report.test.mjs) | Synthetic tests: template refusal, literal-key refusal, schema, redaction without echoing values |
 
 ## Read-only findings: probe, 2026-10-29 03:59 UTC (2026-10-28 local)
 
-`node scripts/cloud-readiness.mjs probe [--environment staging] --json` at origin/main `94676c82`, re-run at `f4ebce3b` (2026-10-28 22:15 local) with identical outcomes:
+`node scripts/cloud-readiness.ts probe [--environment staging] --json` at origin/main `94676c82`, re-run at `f4ebce3b` (2026-10-28 22:15 local) with identical outcomes:
 
 | Gate | Production | Staging |
 | --- | --- | --- |
@@ -57,7 +57,7 @@ Suggested replacement text for whoever owns `docs/human-actions.md`: "Deployed a
 measured with the pinned `packages/cloud/scripts/plan-admission-deployed-latency.ts` (conditions
 normal, cache-miss, exhausted, expired, billing-outage) only with the operator's confirmation; the
 committed report follows `docs/runbooks/drafts/666-latency-report.schema.json` and passes
-`node scripts/owner/latency-report.mjs check`."
+`node scripts/owner/latency-report.ts check`."
 
 ## Read-only review of the harness (pin `1f2a922f`, not executed)
 
@@ -88,7 +88,7 @@ Points the operator must plan for:
    been used before the run and should be created just before it.
 3. **Billing outage** cannot be produced in the shared deployment. It needs a separate deployment
    (`conditions["billing-outage"].apiBase`) whose billing store the operator has made unavailable;
-   `latency-report.mjs config` refuses a billing-outage condition pointing at the shared API.
+   `latency-report.ts config` refuses a billing-outage condition pointing at the shared API.
 4. **Maps** cannot be measured until H-03, H-04 and H-16 are applied: today every Maps request is
    `maps_allowance_unconfigured` (503), which the harness counts as a mismatch. The template
    therefore lists `services: ["inference"]`; add `"maps"` and `maps.query` (a place inside the
@@ -123,18 +123,18 @@ Points the operator must plan for:
    `NEXT` -> sign -> `PREVIOUS` (clear `PREVIOUS` after 30 minutes).
 2. **H-11 (operator):** keep Alpha's entry in `ELIZA_MOBILE_APP_AUTH_CLIENTS_JSON` and its `apps`
    row; after any registry change run "Mobile App Auth Registration Admin" (repair, then diagnose)
-   for `ai.elizaresearch.alphaphone`. `node scripts/cloud-readiness.mjs registration` prints it.
+   for `ai.elizaresearch.alphaphone`. `node scripts/cloud-readiness.ts registration` prints it.
 3. **H-14 (operator):** keep `CLOUD_PUBLIC_SERVICE_JSON` (passing today).
 4. **Operator:** fix the staging subscription catalog 503.
 5. **Benchmark (operator confirmation required):** prepare the accounts in the table; fill a copy of
-   the template; `node scripts/owner/latency-report.mjs config FILE` must print "ready" and the
+   the template; `node scripts/owner/latency-report.ts config FILE` must print "ready" and the
    request budget the operator confirms; export the key variables in the operator's shell only;
    run `node packages/cloud/scripts/plan-admission-deployed-latency.ts --config FILE --confirm-real-requests`
    from a separate eliza checkout at the pin; then
-   `node scripts/owner/latency-report.mjs wrap results.json --environment staging --upstream-revision "$(jq -r .commit upstream.lock.json)" --confirmed-by "Cloud operator" --confirmed-at <ISO> --billing-outage "<how>" --out docs/evidence/plan-admission-latency-staging-<date>.json`
+   `node scripts/owner/latency-report.ts wrap results.json --environment staging --upstream-revision "$(jq -r .commit upstream.lock.json)" --confirmed-by "Cloud operator" --confirmed-at <ISO> --billing-outage "<how>" --out docs/evidence/plan-admission-latency-staging-<date>.json`
    and commit only a report that `check` passes. Never commit the config with filled values if it
    contains anything but variable names, and never paste keys into chat, issues or commits.
-6. Re-run `node scripts/cloud-readiness.mjs probe` after any change and record it.
+6. Re-run `node scripts/cloud-readiness.ts probe` after any change and record it.
 
 ## Draft decision entries
 

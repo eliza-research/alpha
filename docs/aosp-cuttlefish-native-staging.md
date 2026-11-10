@@ -8,7 +8,7 @@ files. A sideloaded APK's extracted libraries do not prove a system-image instal
 For the reviewed x86_64 Cuttlefish product, explicitly select this staging lane:
 
 ```sh
-node scripts/stage-aosp.mjs --development --target cuttlefish \
+node scripts/stage-aosp.ts --development --target cuttlefish \
   --applied-build-patch soong-app-native \
   --apk /absolute/path/to/normalized-signed-launcher.apk \
   --apk-manifest /absolute/path/to/matching-apk-manifest.json \
@@ -30,8 +30,8 @@ this development command does not satisfy those gates. The product descriptor
 package hashes and the image platform certificate stay unset until the image
 host and release signer are chosen (A-01, A-06).
 
-Launcher APK admission is shared: `scripts/stage-aosp.mjs` passes Alpha's policy
-(`artifacts/test-mocks/`, its `apk-manifest.json` and `release-blockers.mjs`) to
+Launcher APK admission is shared: `scripts/stage-aosp.ts` passes Alpha's policy
+(`artifacts/test-mocks/`, its `apk-manifest.json` and `release-blockers.ts`) to
 `packages/os/scripts/android/image-apk-admission.mjs`, which refuses test-mocks paths and web
 bundles, judges the recorded release row, and admits only debuggable APKs for development. The
 same module checks the reviewed source overrides of a staging run (applied patch preimages,

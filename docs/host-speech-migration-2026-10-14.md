@@ -5,7 +5,7 @@ The explicit development host uses authenticated `/api/tts/paradee` and
 `libelizainference-paradee` and `local-inference`. This configuration does not
 admit Android models or establish product/device qualification.
 
-For `start-local-remote.mjs`, use the upstream names only (`scripts/speech-env.mjs`):
+For `start-local-remote.ts`, use the upstream names only (`scripts/speech-env.ts`):
 `ELIZA_PARADEE_ENABLED` and `ELIZA_ASR_ENABLED` (`1` requires the service, `0` turns it off,
 unset enables it only when its model directory is set). Supply the absolute
 `ELIZA_INFERENCE_LIBRARY` and its independently reviewed `ELIZA_INFERENCE_LIBRARY_SHA256`; the
@@ -37,7 +37,7 @@ receipt is not readiness: inspect the authenticated route status after native
 worker initialization. Cancellation releases the HTTP caller while the worker
 remains busy until its result or cancellation timeout retires that generation.
 
-`fingerprint-voice-assets.mjs` admits both configured model directories before
+`fingerprint-voice-assets.ts` admits both configured model directories before
 recording their hashes and discoverable Mach-O dependencies. Unresolved and
 system dependencies remain explicit limitations of that closure record.
 

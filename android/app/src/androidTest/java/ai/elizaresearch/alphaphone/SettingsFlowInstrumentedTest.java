@@ -123,11 +123,11 @@ public class SettingsFlowInstrumentedTest {
   }
  }
 
- /** node scripts/test-native-restart.mjs theme: prepare chooses Dark, the runner force-stops the
+ /** node scripts/test-native-restart.ts theme: prepare chooses Dark, the runner force-stops the
   * app, verify reads it in a new process, cleanup returns to Light through the same control. */
  @Test public void themeProcessRestartPhase()throws Exception{
   String phase=InstrumentationRegistry.getArguments().getString("themePhase");
-  org.junit.Assume.assumeTrue("Run by node scripts/test-native-restart.mjs theme","prepare".equals(phase)||"verify".equals(phase)||"cleanup".equals(phase));
+  org.junit.Assume.assumeTrue("Run by node scripts/test-native-restart.ts theme","prepare".equals(phase)||"verify".equals(phase)||"cleanup".equals(phase));
   try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
    if("prepare".equals(phase)){chooseDarkTheme();assertDark("before the process stops");return;}
    AppNavigation.liveMode();

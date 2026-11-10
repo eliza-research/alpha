@@ -8,8 +8,8 @@ import {app,directory,javaTraceCampaign,root} from './java.mjs';
 import {settingsCallSource,settingsDeviceSource,settingsHandoffPlatform,settingsPagesPath} from './settings-handoff-platform.mjs';
 import {jsonJar} from '../../../../test/fixtures/jvm-tools.mjs';
 import {prepareNativeFixture} from '../../../../test/fixtures/native-source.mjs';
-import {verifyNativePatchReceipt} from '../../../../scripts/prepare-patched-native.mjs';
-import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.mjs';
+import {verifyNativePatchReceipt} from '../../../../scripts/prepare-patched-native.ts';
+import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.ts';
 
 const model='NativeSettingsHandoff';
 const harness='SettingsHandoffTraces.java';
@@ -30,7 +30,7 @@ export async function checkNativeSettingsHandoff(extraSources=[]) {
       ...['Plugin.java','Bridge.java','BridgeActivity.java'].map(name=>join(dirname(settingsCallSource),name)),
       'android/consumer-host.json','upstream.lock.json','patches/eliza/native-manifest.json',
       'test/fixtures/native-source.mjs','test/fixtures/jvm-tools.mjs',
-      'scripts/prepare-patched-native.mjs','scripts/upstream-native-source.mjs',
+      'scripts/prepare-patched-native.ts','scripts/upstream-native-source.ts',
       join(directory,harness),join(directory,'Trace.java'),join(directory,'java.mjs'),join(directory,'settings-handoff-platform.mjs'),
       fileURLToPath(import.meta.url),...(jsonJar?[jsonJar]:[]),...generatedSources,...extraSources];
     const driverHashes=captureInputs(sources);

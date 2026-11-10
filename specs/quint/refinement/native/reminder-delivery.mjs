@@ -7,7 +7,7 @@ import {fileURLToPath} from 'node:url';
 import {captureInputs, checkTraces} from '../check-traces.mjs';
 import {app, directory, root} from './java.mjs';
 import {javaBinary, jsonJar, jvmTimeout} from '../../../../test/fixtures/jvm-tools.mjs';
-import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.mjs';
+import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.ts';
 import {reminderPlatform} from './reminder-delivery-platform.mjs';
 
 const model = 'NativeReminderDelivery';
@@ -43,7 +43,7 @@ export async function checkNativeReminderDelivery(extraSources = []) {
   const traceWriter = join(directory,'Trace.java');
   const manifest='android/app/src/main/AndroidManifest.xml';
   const sources = [...sourcePaths, manifest, harness, traceWriter, library, jsonJar, fileURLToPath(import.meta.url),
-    join(directory,'reminder-delivery-platform.mjs'),'scripts/upstream-native-source.mjs','upstream.lock.json',
+    join(directory,'reminder-delivery-platform.mjs'),'scripts/upstream-native-source.ts','upstream.lock.json',
     'patches/eliza/native-manifest.json','test/fixtures/jvm-tools.mjs',...extraSources];
   const driverHashes = captureInputs(sources);
   assert.match(readFileSync(join(root,manifest),'utf8'), /<receiver\s+android:name="\.ReminderReceiver"\s+android:exported="false"/);

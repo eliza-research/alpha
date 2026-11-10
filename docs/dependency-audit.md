@@ -97,15 +97,15 @@ emulator, device or legal result.
 ## Commands
 
 ```sh
-node scripts/dependency-audit.mjs            # network: npm audit against package-lock.json, compared with the dispositions
-node scripts/dependency-audit.mjs --write    # network: also rewrite docs/dependency-audit.snapshot.json
-node scripts/dependency-audit.mjs --offline  # the committed snapshot only
+node scripts/dependency-audit.ts            # network: npm audit against package-lock.json, compared with the dispositions
+node scripts/dependency-audit.ts --write    # network: also rewrite docs/dependency-audit.snapshot.json
+node scripts/dependency-audit.ts --offline  # the committed snapshot only
 node --test test/dependency-audit.test.mjs   # offline; part of npm test
-node scripts/generate-sbom.mjs               # offline: artifacts/sbom/alphaphone.cdx.json (source pins)
-node scripts/generate-sbom.mjs --packaged-runtime --apks artifacts   # offline: the release-candidate document; npm run android:build writes it
-node scripts/gradle-verification.mjs --check # offline; part of npm test (npm run android:deps:check)
-node scripts/gradle-verification.mjs --write # network, full Gradle build: rewrite the verification metadata (npm run android:deps:write-verification)
-node scripts/ci/read-required-checks.mjs     # network, read-only: enforced rules on main vs the intended ruleset
+node scripts/generate-sbom.ts               # offline: artifacts/sbom/alphaphone.cdx.json (source pins)
+node scripts/generate-sbom.ts --packaged-runtime --apks artifacts   # offline: the release-candidate document; npm run android:build writes it
+node scripts/gradle-verification.ts --check # offline; part of npm test (npm run android:deps:check)
+node scripts/gradle-verification.ts --write # network, full Gradle build: rewrite the verification metadata (npm run android:deps:write-verification)
+node scripts/ci/read-required-checks.ts     # network, read-only: enforced rules on main vs the intended ruleset
 ```
 
 The audit reads the registry advisory database for the lockfile (`npm audit --json
@@ -116,7 +116,7 @@ The audit reads the registry advisory database for the lockfile (`npm audit --js
 Audited 2026-10-10 with npm 11.18.0. Before triage `npm audit` reported 3 moderate and 1
 high finding, which reduce to two advisories. No finding is in a production dependency: all
 four packages are `dev` in `package-lock.json`, so none is in the web bundle or an APK
-(`productionLockPackages` in `scripts/generate-licenses.mjs` and the SBOM list only
+(`productionLockPackages` in `scripts/generate-licenses.ts` and the SBOM list only
 non-dev packages).
 
 | Advisory | Severity | Package and exact path | Ships? | Vulnerable code reachable? | Disposition |
@@ -153,7 +153,7 @@ Remove the exception when `@capacitor/cli` drops `xcode` or `xcode` moves to `uu
   - an exception passed its `reviewBy` date, lacks its justification, or no longer applies;
   - a recorded fix regressed in the lockfile.
 
-Any change to `package-lock.json` therefore needs a fresh `node scripts/dependency-audit.mjs
+Any change to `package-lock.json` therefore needs a fresh `node scripts/dependency-audit.ts
 --write` in the same change. The first date on which the test fails by itself is 2027-02-09,
 when the uuid exception expires. It was re-reviewed on 2026-10-11: the registry still has no
 `@capacitor/cli` release without `xcode` (latest 8.5.3; 8.5.4 nightly and 9.0.0-alpha.8 are
@@ -172,15 +172,15 @@ is prepared; they are not in this repository's lockfile. The resident audit belo
 ### Resident runtime advisories
 
 About 550 npm packages reach the APK inside the agent bundle and the workflow worker. The
-root audit does not see them. `node scripts/dependency-audit.mjs --resident` builds its input
+root audit does not see them. `node scripts/dependency-audit.ts --resident` builds its input
 as `name@version` and queries the npm bulk advisory endpoint:
 
 - by default from the pinned upstream lock (`vendor/eliza/bun.lock`): every registry package
   version of the upstream workspace, a superset of what ships;
 - with `--notices <third-party-notices.json>`, from the npm entries of
-  `generate-licenses.mjs --packaged-runtime` notices, exactly what one staged payload ships.
+  `generate-licenses.ts --packaged-runtime` notices, exactly what one staged payload ships.
 
-Run `node scripts/dependency-audit.mjs --resident --notices <third-party-notices.json>`
+Run `node scripts/dependency-audit.ts --resident --notices <third-party-notices.json>`
 without `--write` to audit a fresh staged payload. This subset audit requires each finding
 to have an applicable, unexpired reviewed **shipped** exception; shipped high or critical
 findings require an upstream fix. Exceptions for packages absent from the subset are
@@ -193,7 +193,7 @@ The result is stored under `resident` in `docs/dependency-audit.snapshot.json`, 
 in `docs/dependency-audit.dispositions.json` with the commit they were reviewed at, using the
 same exception fields and 120-day limit. `test/dependency-audit.test.mjs` fails offline when
 the upstream commit or the upstream lock changes without a refreshed resident snapshot
-(`node scripts/dependency-audit.mjs --resident --write`).
+(`node scripts/dependency-audit.ts --resident --write`).
 
 Audited 2026-10-12 at upstream `13c98575987a`, from the upstream lock (3689 package
 versions): 103 advisory findings in 34 packages, 3 critical, 42 high, 43 moderate and 15 low.
@@ -223,7 +223,7 @@ Re-audited 2026-10-13 at upstream `bc71e21f3b` (plan step A-3, after elizaOS/eli
 advisories and GHSA-866g-f22w-33x8 (`@ai-sdk/provider-utils` 4.0.26) are gone; their pending fix
 and their exception were removed, and the other 85 exceptions are unchanged, because every
 remaining finding resolves to the same package versions as at `13c98575987a`.
-`node scripts/dependency-audit.mjs --resident` now exits 0. The shipped-set evidence is still the
+`node scripts/dependency-audit.ts --resident` now exits 0. The shipped-set evidence is still the
 payload staged at `13c98575987a`; the payload was not re-staged at `bc71e21f3b`, so the
 packaged-notices audit (A-4) at this pin has not run.
 
@@ -231,7 +231,7 @@ packaged-notices audit (A-4) at this pin has not run.
 
 `.github/workflows/dependency-audit.yml` runs weekly (Mondays 06:17 UTC) and on manual
 dispatch, with `contents: read`, SHA-pinned actions and no secrets. It runs
-`node scripts/dependency-audit.mjs` against the registry, which fails on any advisory path
+`node scripts/dependency-audit.ts` against the registry, which fails on any advisory path
 without a reviewed disposition, and then the resident audit on the pinned upstream lock
 (fetched by commit). It is not a required check and never runs on a pull request or push
 (`test/ci-required-checks.test.mjs`). Since the pin `bc71e21f3b` the resident step has no
@@ -243,7 +243,7 @@ Before this change nothing produced a machine-readable inventory with versions a
 `third-party-notices.json` lists names, versions and licence texts for attribution, without
 hashes; `licenses/android-runtime-classpath.json` lists Gradle coordinates only.
 
-`node scripts/generate-sbom.mjs` writes a CycloneDX 1.6 JSON document to
+`node scripts/generate-sbom.ts` writes a CycloneDX 1.6 JSON document to
 `artifacts/sbom/alphaphone.cdx.json` (ignored by git; attach it to a release). It runs
 offline, has no timestamp, and derives its serial number from its content, so the same
 commit always yields the same bytes (`test/sbom.test.mjs`).
@@ -257,7 +257,7 @@ commit always yields the same bytes (`test/sbom.test.mjs`).
 | ARM64 embedding host libraries and embedding model | `android/embedding-host/qualified-host.json` | SHA-256 of the reviewed bytes (a pin; the libraries are not in Git) |
 | libelizainference voice-host libraries per ABI and GGUF speech models (when qualified) | `android/voice-host/qualified-voice-host.json` ([fused speech](fused-speech.md)) | SHA-256 and bytes |
 | elizaOS | `upstream.lock.json` | git commit |
-| Staged resident runtime, with `--packaged-runtime` only: Bun, every bundled agent and workflow-worker npm package, every staged payload file (musl loader, C++ runtime libraries, PGlite) | the staged `assets/agent` payload, its `android-agent-runtime-provenance.json` and `generate-licenses.mjs --packaged-runtime` | SHA-256 of each staged file, checked against the provenance; a bundled package carries the hash of the bundle or the staged `package.json` that holds it |
+| Staged resident runtime, with `--packaged-runtime` only: Bun, every bundled agent and workflow-worker npm package, every staged payload file (musl loader, C++ runtime libraries, PGlite) | the staged `assets/agent` payload, its `android-agent-runtime-provenance.json` and `generate-licenses.ts --packaged-runtime` | SHA-256 of each staged file, checked against the provenance; a bundled package carries the hash of the bundle or the staged `package.json` that holds it |
 
 ### Release-candidate document
 
@@ -268,10 +268,10 @@ that built a candidate; `npm run android:build` passes them itself and writes
 - `--packaged-runtime` reads the staged resident runtime: every staged file under
   `android/app/src/main/assets/agent` and `android/app/src/main/jniLibs` by SHA-256, Bun,
   and every npm package bundled into the agent and the workflow worker with its version
-  and licence (the same list as `generate-licenses.mjs --packaged-runtime`). A bundled
+  and licence (the same list as `generate-licenses.ts --packaged-runtime`). A bundled
   package has no hash of its own: its bytes are inside the bundle files, which are hashed.
   A staged embedding host library or model that differs from its pin is an error.
-- `--apks <dir>` reads `apk-manifest.json` from `scripts/verify-apks.mjs` and lists each
+- `--apks <dir>` reads `apk-manifest.json` from `scripts/verify-apks.ts` and lists each
   APK with its SHA-256, signer and the `distributable` verdict recorded there. It refuses an
   APK that is missing or no longer matches. A debug APK is always listed as not
   distributable.
@@ -284,7 +284,7 @@ an inventory of one local build, not a release.
 
 What the document still does not do, stated in the document itself:
 
-- It lists an APK by its hash. It does not unpack one; `scripts/verify-apks.mjs` and
+- It lists an APK by its hash. It does not unpack one; `scripts/verify-apks.ts` and
   `scripts/verify-packaged-runtime.py` inspect APK contents.
 - The engine library, the JNI host and the embedding model carry no licence in this
   inventory ("not recorded", flagged `unverified`).
@@ -303,7 +303,7 @@ Signatures are not used and no key server, trusted artifact or trusted key is co
 
 It was generated on 2026-10-11 by `npm run android:deps:write-verification`, which runs the
 tasks every script uses (the four APKs, both instrumentation APKs, `:app:lint` and the
-notification fixture; `VERIFIED_TASKS` in `scripts/gradle-verification.mjs`) with
+notification fixture; `VERIFIED_TASKS` in `scripts/gradle-verification.ts`) with
 `--write-verification-metadata sha256`. `aapt2` is the only host-specific artifact; its
 Linux and Windows archives were fetched from Google's Maven repository and hashed by the
 same command. A second, ordinary strict build then passed with verification enforced on
@@ -318,7 +318,7 @@ includes the generated app script, Alpha's `android/app/product.gradle` and the 
 upstream checkout), and some of those declare repositories too: the same named ones, Maven
 Central by URL (`https://repo.maven.apache.org/maven2`, four upstream plugins) and the
 plugin portal by URL (`https://plugins.gradle.org/m2/`, Capacitor's build script). The
-check reads every one of those scripts (`buildScripts` in `scripts/gradle-verification.mjs`)
+check reads every one of those scripts (`buildScripts` in `scripts/gradle-verification.ts`)
 and fails on any other repository, on a `maven { }` block without a literal reviewed URL,
 on `flatDir`, `mavenLocal()` and the like, and on an included script it cannot read. The
 four upstream plugins take a mirror in place of Maven Central when the root project
@@ -338,7 +338,7 @@ Enforcement was seen to refuse, in review on 2026-10-11 on the same macOS machin
 recorded checksum of the Android Gradle plugin jar changed, `./gradlew --offline help`
 failed with "Dependency verification failed for configuration 'classpath'" before any
 task ran. Gradle verifies when it reads an artifact file: `:app:dependencies`, which
-`generate-licenses.mjs` uses to list the runtime classpath and which resolves no artifact,
+`generate-licenses.ts` uses to list the runtime classpath and which resolves no artifact,
 passed with a metadata checksum changed, so that command is not a verification point. One
 checksum per artifact is accepted; a second value (`also-trust`) fails the check.
 
@@ -351,11 +351,11 @@ tools and test libraries) were not fetched a second time.
 
 `android/private-peer-fixture` is a debug-only module of the verified build
 (`:private-peer-fixture:assembleDebug`). Not covered: the calendar consumer fixture of
-`scripts/test-native-calendar-consumer.mjs` is built with its own Gradle root and has no
+`scripts/test-native-calendar-consumer.ts` is built with its own Gradle root and has no
 verification metadata. It does not ship.
 
 Both branches of the 2026-10-13 merge had generated a metadata file independently; the merge
-keeps the one described above (with `scripts/gradle-verification.mjs` and its reviewed groups).
+keeps the one described above (with `scripts/gradle-verification.ts` and its reviewed groups).
 The `:local-speech` project it was generated with has since been removed (P-42), so its entries
 for that project are unused; Gradle accepts unused entries, and the next
 `npm run android:deps:write-verification` drops them.
@@ -368,8 +368,8 @@ licence text and notice still ships, and anything copyleft, unknown or unverifie
 flagged with what it obliges. "Included and flagged" is all that is claimed here. It is not
 legal review, and nothing here shows that an obligation a flag names has been met.
 
-`scripts/licence-policy.mjs` holds the flags, the classification of licence expressions and
-the obligation notes. `scripts/generate-licenses.mjs` applies them.
+`scripts/licence-policy.ts` holds the flags, the classification of licence expressions and
+the obligation notes. `scripts/generate-licenses.ts` applies them.
 
 | Flag | Given to | What the entry's obligation note says |
 | --- | --- | --- |
@@ -395,10 +395,10 @@ Where the flags appear:
 - `THIRD_PARTY_NOTICES.txt`: a summary before the first entry lists every flagged package
   under each of its flags, and each flagged entry has `Flags:` and `Obligation (...)` lines.
 - Build output: `LICENCE FLAG <flag>: <package>@<version> (<licence>)` on standard error
-  from `generate-licenses.mjs`, `audit-production-bundle.mjs`, `verify-apks.mjs` and
-  `generate-sbom.mjs`. They are warnings; the exit status is not affected.
+  from `generate-licenses.ts`, `audit-production-bundle.ts`, `verify-apks.ts` and
+  `generate-sbom.ts`. They are warnings; the exit status is not affected.
 - `apk-manifest.json`: verify-apks records `licenceFlags` on each APK row from that APK's
-  packaged notices. `scripts/release-blockers.mjs` does not read it.
+  packaged notices. `scripts/release-blockers.ts` does not read it.
 - SBOM: every component has `alphaphone:licence-expression` and `alphaphone:licence-flags`.
 - Settings, Open source licenses: a flagged entry shows its flags and obligation notes.
 
@@ -410,7 +410,7 @@ hash, a stale Android classpath snapshot, a malformed font licence record.
 
 On 2026-10-10, at upstream pin `40dbe96bd1`, the runtime was prepared, the workflow worker
 built and the payload staged (`npm run agent:prepare`, `agent:build-workflow-worker`,
-`agent:stage-android`), and `node scripts/generate-licenses.mjs --packaged-runtime` ran on
+`agent:stage-android`), and `node scripts/generate-licenses.ts --packaged-runtime` ran on
 it. Before P-09 this command stopped on 24 entries. Result: exit 0, 660 entries, of which
 550 are npm packages bundled into the agent or the workflow worker (518 package directories
 named by the agent bundle and 53 workflow-worker dependencies, 550 distinct name and version
@@ -522,9 +522,9 @@ nothing.
 | `apps/app/src/prototype/asset-manifest.json` | Source URL, size and hash of the file |
 | `licenses/font-licenses.json` | The owner-statement record for "Denton typeface", by exact hash |
 | `apps/app/public/licenses/` | Generated notice entry flagged `proprietary-licence-held-outside-repo` |
-| `scripts/generate-licenses.mjs` | Reads every font under `apps/app/public`; no Denton-specific code |
+| `scripts/generate-licenses.ts` | Reads every font under `apps/app/public`; no Denton-specific code |
 | `config/alpha-product.json` | The product theme's display stack (Denton/Fraunces/Georgia), read by the shared mobile shell's Home and All apps |
-| `scripts/prototype-capture.mjs` line 111 | Records `document.fonts.check('300 30px Denton')` in capture output |
+| `scripts/prototype-capture.ts` line 111 | Records `document.fonts.check('300 30px Denton')` in capture output |
 | `test/licenses.test.mjs`, `test/font-license.test.mjs` | Use Denton as the proprietary-font example |
 
 There is no preload link. `apps/app/index.html`, the Vite configuration, the bundle audit
@@ -560,7 +560,7 @@ baselines rechecked.
 
 ### The font check
 
-`scripts/font-license-blockers.mjs` runs the one separately named licence check,
+`scripts/font-license-blockers.ts` runs the one separately named licence check,
 `unresolved-font-licence`, on a built payload. It sorts proprietary fonts into two lists:
 
 - Resolved by owner statement: a file with the bytes recorded in `licenses/font-licenses.json`
@@ -576,7 +576,7 @@ baselines rechecked.
 Open-source licence flags are never part of this check.
 
 Whether an unresolved font blocks is one constant, `UNRESOLVED_FONT_LICENCE_BLOCKS_DISTRIBUTION`
-in `scripts/licence-policy.mjs`. Its default is `false` (the owner's "flag only"). Setting it
+in `scripts/licence-policy.ts`. Its default is `false` (the owner's "flag only"). Setting it
 to `true` makes the check strict again.
 
 | | `false` (default) | `true` |
@@ -586,11 +586,11 @@ to `true` makes the check strict again.
 | A font with no record: line printed | `LICENCE FLAG (reported, not blocking) unresolved-font-licence: …` | `RELEASE BLOCKER unresolved-font-licence: …` |
 | A font with no record: row `licenceBlockers` | empty | the unresolved items |
 | A font with no record: release `distributable` | not affected | `false` |
-| A font with no record: `scripts/release-blockers.mjs` (provisioning, pilot update, AOSP staging, head qualification) | does not name it | names it and refuses the release |
+| A font with no record: `scripts/release-blockers.ts` (provisioning, pilot update, AOSP staging, head qualification) | does not name it | names it and refuses the release |
 
-- `scripts/verify-apks.mjs` never fails verification because of the check, under either
+- `scripts/verify-apks.ts` never fails verification because of the check, under either
   setting.
-- `scripts/audit-production-bundle.mjs` prints the same lines for `web-dist` and still
+- `scripts/audit-production-bundle.ts` prints the same lines for `web-dist` and still
   passes.
 
 Both settings are covered by unit tests of the shared functions
@@ -606,7 +606,7 @@ reviewed.
 
 ## Required checks (MVP-46)
 
-`scripts/ci/read-required-checks.mjs` reads the active rules for the default branch, every
+`scripts/ci/read-required-checks.ts` reads the active rules for the default branch, every
 ruleset and classic branch protection with `gh api --method GET`, and diffs the enforced
 status checks, their integration binding, the up-to-date policy, enforcement, target and
 bypass actors against `scripts/ci/required-checks-ruleset.json`. It changes nothing. It
@@ -624,7 +624,7 @@ request showing that a missing or failing check blocks the merge.
 SDK `3d6f68a129702a1a2779cc087c93a80ba0f2332e` changes Android service
 lifecycle code and its tests from `5c36344786274ce1a0b0e2ebcb560bc2da6ac0ab`.
 The upstream `bun.lock` and every package manifest are byte-identical. The existing
-`node scripts/dependency-audit.mjs --resident --write` command queried the registry
+`node scripts/dependency-audit.ts --resident --write` command queried the registry
 on 2026-10-21 for the same 3691 versions (normalized input SHA-256
 `e988789dc9267ab121df8114f3dd79d88a69c7de34545ec9024cba42f80bf85e`).
 The fresh result is 113 findings: 1 critical, 48 high, 49 moderate and 15 low;
@@ -670,7 +670,7 @@ No new packaged-runtime, APK or device acceptance is inferred from the refreshed
 
 SDK `cadacd7afa697851bd08f5574e7b2b00c9d3a446` normally merges the reviewed
 Hono/markdown-it dependency repair with SDK5c1d's native fixes. The official
-`node scripts/dependency-audit.mjs --resident --write` queried the registry for
+`node scripts/dependency-audit.ts --resident --write` queried the registry for
 3691 package versions and reports110 findings:1 critical, 47 high, 48 moderate, 14 low.
 The only removed rows are GHSA-5r4p-p66f-jhc7 (Hono), GHSA-gfr2-rv44-r23c and
 GHSA-vfgh-jcmw-g37q (markdown-it). All 110 retained finding rows are byte-identical
@@ -689,7 +689,7 @@ are attribution data and do not prove that a repaired dependency is packaged.
 SDK `405cc18f3b11f0b56e3f807e25c78ce357263b1f` changes the PGlite snapshot reader and its tests after CAD.
 Its `bun.lock` and every package manifest are unchanged from CAD. Existing advisory
 exception objects, deadlines and historical staged-set evidence remain unchanged.
-The actual official `node scripts/dependency-audit.mjs --resident --write` queried
+The actual official `node scripts/dependency-audit.ts --resident --write` queried
 the registry at this new pin and returned exactly the same110 finding rows across
 3691 package versions (1 critical,47 high,48 moderate,14 low). The resident snapshot
 and disposition pin were refreshed after this comparison; no exception was added
@@ -698,7 +698,7 @@ exact-pin preparation and package verification remain required.
 
 ### Local SDK public-read/usage source admission — 2026-10-21
 
-An actual `node scripts/dependency-audit.mjs --resident --write` refresh at `3e4c3c447e813080777aa4f6dcd4a6ee494f6fc5` returned the same 3691 package versions and 110 finding rows (1 critical, 47 high, 48 moderate, 14 low) as405. The normalized lock input and all 93 exception objects, original dates/deadlines and pending rows are unchanged. Re-review updates only the current source binding/description; no exception is renewed. Prior source receipt/dispositions are preserved in Git history and external exact-preimage review artifacts. This is source-registry evidence; no new prepared runtime, packaged-subset audit, provider or device result is claimed. See [source admission evidence](evidence/sdk-public-reads-usage-source-20261021.json).
+An actual `node scripts/dependency-audit.ts --resident --write` refresh at `3e4c3c447e813080777aa4f6dcd4a6ee494f6fc5` returned the same 3691 package versions and 110 finding rows (1 critical, 47 high, 48 moderate, 14 low) as405. The normalized lock input and all 93 exception objects, original dates/deadlines and pending rows are unchanged. Re-review updates only the current source binding/description; no exception is renewed. Prior source receipt/dispositions are preserved in Git history and external exact-preimage review artifacts. This is source-registry evidence; no new prepared runtime, packaged-subset audit, provider or device result is claimed. See [source admission evidence](evidence/sdk-public-reads-usage-source-20261021.json).
 
 
 ### Development-tool source audit — October21, SDK bdacc0709c

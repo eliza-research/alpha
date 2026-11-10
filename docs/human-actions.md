@@ -7,7 +7,7 @@ hardware, and acceptance runs. Each step names its seam, the file, setting, scri
 where the software already waits for it, and how to verify it. No step here is closed by
 writing more code in this repository.
 
-`npm run human:status` (`scripts/human-actions.mjs`) reads this page, the repository records and
+`npm run human:status` (`scripts/human-actions.ts`) reads this page, the repository records and
 this checkout's `artifacts/apk-manifest.json`, and prints each step as `done`, `open`,
 `not needed` or `external` (recorded outside this repository: use its Verify line). It reads
 files only.
@@ -24,8 +24,8 @@ Rules for every step:
   and update authority (P-16). "Cloud operator" below means a person with administrative access
   to the Eliza Cloud deployment (its GitHub environments, Workers configuration and Steward tenant
   administration).
-- Alpha's own Cloud values are printed by `node scripts/cloud-readiness.mjs registration`, and
-  `node scripts/cloud-readiness.mjs probe` checks a deployment with the same unauthenticated
+- Alpha's own Cloud values are printed by `node scripts/cloud-readiness.ts registration`, and
+  `node scripts/cloud-readiness.ts probe` checks a deployment with the same unauthenticated
   requests the phone makes. Cloud answers every protected `/api/` path that carries no
   credential with 401 before routing, so the Maps and Google connector routes cannot be checked
   that way: the probe lists them as needing an account. The probe of October 27 (Pacific time)
@@ -97,9 +97,9 @@ These are the values approved policy deliberately leaves open. None reopens a de
   and the certificates name the organization Alpha Compute. The CI signing job does not exist yet:
   no workflow under `.github/workflows` runs either signing tool. Adding it, limited to a reviewed
   trigger and environment, is an owner and security action tracked as open under AP-14.
-- Seam: both signing tools accept key files or a token. APKs: `scripts/sign-release-apks.mjs` (`--keys-dir`
+- Seam: both signing tools accept key files or a token. APKs: `scripts/sign-release-apks.ts` (`--keys-dir`
   or `--pkcs11-config` with `--key-label`) or Gradle's `ELIZAOS_KEYSTORE_*`. Image and OTA:
-  `scripts/sign-aosp-release.mjs` (key files, or the four managed options `--pkcs11-config`,
+  `scripts/sign-aosp-release.ts` (key files, or the four managed options `--pkcs11-config`,
   `--avb-signing-helper`, `--payload-signer` and `--payload-signer-signature-size`). The key list
   is `android/signing/alpha-key-manifest.json`.
 - Verify: `npm run human:status` shows H-01 done (decisions.md records P-58); nothing in the
@@ -202,7 +202,7 @@ These are the values approved policy deliberately leaves open. None reopens a de
 ### H-09 Enroll the public release identities
 
 - Who: release owner, in a reviewed change.
-- Do: `node scripts/enroll-release-keys.mjs --fingerprints <ceremony>/fingerprints.json --certificates <ceremony>`
+- Do: `node scripts/enroll-release-keys.ts --fingerprints <ceremony>/fingerprints.json --certificates <ceremony>`
   (a dry run), then the same with `--write`, and commit the three records together. It refuses a
   test-key ceremony, a debug or reused certificate and any change to a recorded digest (key
   rotation needs `--replace` and its own review). It prints the application certificate's SHA-1
@@ -228,15 +228,15 @@ These are the values approved policy deliberately leaves open. None reopens a de
   `ELIZAOS_VERSION_NAME` and `ELIZAOS_APP_LINK_HOST=eliza.app` set: `npm run android:build:local`.
   The signing job signs either in Gradle (`ELIZAOS_KEYSTORE_PATH`, `ELIZAOS_KEYSTORE_PASSWORD`,
   `ELIZAOS_KEY_ALIAS`, `ELIZAOS_KEY_PASSWORD` for a keystore holding the `alphaphone_app` key) or,
-  with those unset, afterwards with `node scripts/sign-release-apks.mjs --keys-dir /dev/shm/keys`
+  with those unset, afterwards with `node scripts/sign-release-apks.ts --keys-dir /dev/shm/keys`
   (the ceremony layout the upstream `decrypt-release-keys.ts` writes into tmpfs for one job, for
   example with `--only alphaphone_app`; wipe it after signing) or
   `--pkcs11-config <file> --key-label <label>` (a PIN only through `ELIZAOS_PKCS11_PIN`). Sign the
   prepared Sense listener APK with the same certificate (`--apk <file> --out <file>`). Do not
   record `lastRelease` yet: the release that is recorded is refused from then on (H-32).
-- Seam: `scripts/verify-apks.mjs` marks a release `distributable: true` only when it is signed by
+- Seam: `scripts/verify-apks.ts` marks a release `distributable: true` only when it is signed by
   the recorded certificate with an advancing versionCode, packages the resident runtime and its
-  notices, and carries a qualified voice host; `sign-release-apks.mjs` runs it again after signing.
+  notices, and carries a qualified voice host; `sign-release-apks.ts` runs it again after signing.
 - Verify: both release rows of `artifacts/apk-manifest.json` read `distributable: true`, and
   `npm run human:status` on that checkout shows H-10 done.
 - Unblocks: device verification in H-13, production staging (H-21) and the pilot (H-32).
@@ -244,7 +244,7 @@ These are the values approved policy deliberately leaves open. None reopens a de
 ## Eliza Cloud configuration
 
 Production and staging are configured separately; staging serves only test-mocks builds, which
-are debug-signed. `node scripts/cloud-readiness.mjs registration --environment staging` prints the
+are debug-signed. `node scripts/cloud-readiness.ts registration --environment staging` prints the
 staging values.
 
 ### H-11 Keep Alpha's App Auth registration active
@@ -255,8 +255,8 @@ staging values.
   then diagnose) for client `ai.elizaresearch.alphaphone`. The registration that answered 503 on
   October 24 ([diagnosis](evidence/cloud-native-auth-diagnosis-2026-10-24.md)) answered for both
   environments, with S256, on October 27.
-- Seam: `node scripts/cloud-readiness.mjs registration` prints the entry.
-- Verify: `node scripts/cloud-readiness.mjs probe` reports the registration gate passed.
+- Seam: `node scripts/cloud-readiness.ts registration` prints the entry.
+- Verify: `node scripts/cloud-readiness.ts probe` reports the registration gate passed.
 - Unblocks: in-app sign-in (AP-03).
 
 ### H-12 Steward sign-in and the native Google client
@@ -271,8 +271,8 @@ staging values.
   Staging advertises no native Google: add an Android client for the debug signer used for
   test-mocks builds to the staging Steward if staging Google sign-in is wanted. Keep the tenant
   redirect allowlists (both admit Alpha's return URL today) and the email and code routes.
-- Seam: `node scripts/cloud-readiness.mjs registration` prints the Steward values;
-  `node scripts/enroll-release-keys.mjs` prints the SHA-1.
+- Seam: `node scripts/cloud-readiness.ts registration` prints the Steward values;
+  `node scripts/enroll-release-keys.ts` prints the SHA-1.
 - Verify: the probe's email sign-in, native Google and browser return gates; then Continue with
   Google on a release-signed build (real-integration evidence).
 - Unblocks: Google sign-in on release builds (AP-03).
@@ -284,13 +284,13 @@ staging values.
   `ELIZA_ANDROID_ASSET_LINKS_JSON`, one entry per app; a malformed value or a second entry for
   the same package publishes `[]` for every app. Today it grants Alpha's package to two
   certificates, neither of them an enrolled release certificate (none is enrolled yet). Run
-  `node scripts/render-assetlinks.mjs --cloud-config --published https://eliza.app/.well-known/assetlinks.json`,
+  `node scripts/render-assetlinks.ts --cloud-config --published https://eliza.app/.well-known/assetlinks.json`,
   set the printed value, deploy, and run
-  `node scripts/render-assetlinks.mjs --check https://eliza.app/.well-known/assetlinks.json`.
+  `node scripts/render-assetlinks.ts --check https://eliza.app/.well-known/assetlinks.json`.
   Whether the certificates listed today stay listed in production is the operator's choice
   (`--keep-fingerprint` keeps one; staging lists the debug signer). Keep Alpha's
   `ELIZA_NATIVE_AUTH_CALLBACKS_JSON` entry: the hosted fallback page answers today.
-- Seam: `scripts/render-assetlinks.mjs`; builds declare the verified filters only with
+- Seam: `scripts/render-assetlinks.ts`; builds declare the verified filters only with
   `ELIZAOS_APP_LINK_HOST=eliza.app` (H-10).
 - Verify: the `--check` command exits 0, then `adb shell pm get-app-links ai.elizaresearch.alphaphone`
   reports `eliza.app` verified on an installed release build.
@@ -390,8 +390,8 @@ staging values.
 ### H-18 Admit the on-device voice host
 
 - Who: a named reviewer, with an operator for the device runs.
-- Do: build and stage the voice outputs at the pin (`node scripts/build-pinned-voice.mjs`, then
-  `node scripts/android-stage-voice-models.mjs --from <outputs> --from <models>`), run the upstream
+- Do: build and stage the voice outputs at the pin (`node scripts/build-pinned-voice.ts`, then
+  `node scripts/android-stage-voice-models.ts --from <outputs> --from <models>`), run the upstream
   qualification (`vendor/eliza/packages/app/scripts/paradee-voice/qualify`) on both ABIs, then the
   installed-app streaming and cancellation and physical capture and playback checks. Record device
   execution and user acceptance in `android/voice-host/qualified-voice-host.json` and only then set
@@ -407,8 +407,8 @@ staging values.
 - Do: nothing while `npm run android:build:inputs` reports the embedding host as script-supplied
   (`remapBuildPath: true` in `android/embedding-host/build-toolchain.json`). If a rebuild stops
   reproducing the reviewed bytes, either stage them with
-  `node scripts/stage-embedding-host.mjs --receipt <QUALIFICATION.json>` or qualify a candidate
-  from `node scripts/build-embedding-host.mjs --candidate` with ARM64 execution evidence.
+  `node scripts/stage-embedding-host.ts --receipt <QUALIFICATION.json>` or qualify a candidate
+  from `node scripts/build-embedding-host.ts --candidate` with ARM64 execution evidence.
 - Seam: `android/embedding-host/qualified-host.json`.
 - Verify: `npm run android:build:inputs` reports the embedding host libraries ready.
 - Unblocks: the strict build (H-10).
@@ -418,11 +418,11 @@ staging values.
 - Who: reviewer and device operator.
 - Do: run gates G1 to G6 of the [listener ADR](adr/0001-privileged-listener.md) on the image and a
   Pixel 10a: image build with privapp enforcement, boot and grants
-  (`node scripts/verify-aosp-listener.mjs --serial <serial> --user 0`), the system indicator and
+  (`node scripts/verify-aosp-listener.ts --serial <serial> --user 0`), the system indicator and
   Listening chip, press-and-hold power invocation, coexistence, and stop reliability with the
   24-hour power run, then record the evidence in `android/sense/qualified-listener.json`. G7, a
   dedicated SELinux domain, is optional hardening evaluated after G1 and G2.
-- Seam: `scripts/listener-qualification.mjs`; verify-apks copies the record into each listener row.
+- Seam: `scripts/listener-qualification.ts`; verify-apks copies the record into each listener row.
 - Verify: `npm run human:status` shows H-20 done.
 - Unblocks: AOSP always-on listening (P-40, #424) and production staging (H-21).
 
@@ -430,7 +430,7 @@ staging values.
 
 The [Pixel 10a staging and release signing](pixel10a-staging.md) guide owns the commands; the
 distinct gates are recorded in `android/aosp/pixel10a-qualification-gates.json`
-(`scripts/pixel10a-gates.mjs`). Source admission passed on October 26.
+(`scripts/pixel10a-gates.ts`). Source admission passed on October 26.
 
 ### H-21 Stage and build the production image
 
@@ -447,14 +447,14 @@ distinct gates are recorded in `android/aosp/pixel10a-qualification-gates.json`
 ### H-22 Sign the image and OTA and retain a known-good release
 
 - Who: release owner.
-- Do: `node scripts/sign-aosp-release.mjs --target-files <zip> --target-files-sha256 <hex> --keys-dir <dir> --releasetools <otatools/bin> --apk-manifest <apk-manifest.json> --out <new dir>`,
+- Do: `node scripts/sign-aosp-release.ts --target-files <zip> --target-files-sha256 <hex> --keys-dir <dir> --releasetools <otatools/bin> --apk-manifest <apk-manifest.json> --out <new dir>`,
   in the CI signing job with key files from the GitHub Actions secrets (P-58). The signing job requires mode 0600 for
   every file it reads from the key directory, public certificates and `avb_pkmd.bin` included,
   while the upstream `decrypt-release-keys.ts` writes the public files with the default mode: run
   `chmod 600` on the decrypted files before signing, and wipe the directory afterwards. Keep the
   signed release and its `release-record.json` as the known-good recovery release, and record it
   in the channel's `recovery.knownGoodRelease`.
-- Seam: `android/aosp/pixel10a-ota-channel.json`; `node scripts/aosp-release-record.mjs` writes
+- Seam: `android/aosp/pixel10a-ota-channel.json`; `node scripts/aosp-release-record.ts` writes
   the compatibility record on its own.
 - Verify: `npm run human:status` shows a recorded known-good release.
 - Unblocks: H-24 and H-25.
@@ -463,7 +463,7 @@ distinct gates are recorded in `android/aosp/pixel10a-qualification-gates.json`
 
 - Who: image host operator.
 - Do: build the Cuttlefish product from the same candidate, boot it and run
-  `node scripts/verify-cuttlefish-launcher.mjs` (system Alpha APK as HOME, recovery HOME,
+  `node scripts/verify-cuttlefish-launcher.ts` (system Alpha APK as HOME, recovery HOME,
   enforcing SELinux). Record a release-level entry in the `cuttlefishBoot` gate.
 - Seam: `android/aosp/product.json`; the 2026-10-25 observation is development evidence only.
 - Verify: `npm run human:status` shows the gate passed.
@@ -487,7 +487,7 @@ distinct gates are recorded in `android/aosp/pixel10a-qualification-gates.json`
 - Do: on a Pixel 10a run the signed update, interrupted update, compatible rollback and stock
   recovery drills with the update and recovery tools the staging guide names, then record each
   result in the channel's `drills` and the `signedUpdateRecovery` gate. For APK-only updates,
-  `scripts/pilot-update.mjs` checks an in-place update; a lower versionCode is refused. Field
+  `scripts/pilot-update.ts` checks an in-place update; a lower versionCode is refused. Field
   updates are unattended (P-75), through a privileged on-device update client that does not
   exist yet; host-driven drills do not stand in for it, and its `unattendedUpdate` gate stays open.
 - Seam: `android/aosp/pixel10a-ota-channel.json` (`drills`, `downgradeAllowed: false`) and the
@@ -542,7 +542,7 @@ distinct gates are recorded in `android/aosp/pixel10a-qualification-gates.json`
 
 - Who: each developer or operator who runs a development host or the resident instrumentation.
 - Do: keep a Cerebras key in the owner-only file `~/.config/alphaphone/cerebras-key` (mode 0600).
-  It serves `scripts/start-local-agent.mjs` and `scripts/android-resident-instrumentation.mjs`;
+  It serves `scripts/start-local-agent.ts` and `scripts/android-resident-instrumentation.ts`;
   product phones refuse direct keys.
 - Seam: [local agent development](local-agent-development.md).
 - Verify: the scripts refuse a group- or world-readable file.
@@ -559,8 +559,8 @@ distinct gates are recorded in `android/aosp/pixel10a-qualification-gates.json`
   voice staging exists) and `digest-restart.yml` on the candidate, and run the emulator campaigns
   in [verification](verification.md) and the [core loop audit](core-loop-audit.md) on the
   distributable build, including the resident redaction instrumentation on a disposable emulator
-  (`node scripts/android-resident-instrumentation.mjs`, which reads the H-30 key file).
-- Seam: the workflows under `.github/workflows`; `scripts/ci/emulator-suite.mjs`.
+  (`node scripts/android-resident-instrumentation.ts`, which reads the H-30 key file).
+- Seam: the workflows under `.github/workflows`; `scripts/ci/emulator-suite.ts`.
 - Verify: results committed with the commit they ran on.
 - Unblocks: emulator-class evidence for AP-01, AP-02, AP-04, AP-05, AP-11, AP-12 and AP-15.
 
@@ -569,12 +569,12 @@ distinct gates are recorded in `android/aosp/pixel10a-qualification-gates.json`
 ### H-32 Provision the units and run the pilot journeys
 
 - Who: device operator, with the release owner.
-- Do: `node scripts/provision-unit.mjs --serial <serial> --alias unit-a --apk-manifest <apk-manifest.json>`
+- Do: `node scripts/provision-unit.ts --serial <serial> --alias unit-a --apk-manifest <apk-manifest.json>`
   per unit (the operator makes the Home choice), then every journey of the
   [pilot runbook](pilot-acceptance-runbook.md), the upgrade from earlier mock state, the resident
-  redaction probes on a designated unit, and in-place updates with `scripts/pilot-update.mjs`.
+  redaction probes on a designated unit, and in-place updates with `scripts/pilot-update.ts`.
   Once the release is installed on the units, the release owner records it as the last release:
-  `node scripts/record-release.mjs --apk-manifest <apk-manifest.json>` (a dry run), then the same
+  `node scripts/record-release.ts --apk-manifest <apk-manifest.json>` (a dry run), then the same
   with `--write`, committed in a reviewed change.
 - Seam: the runbook's per-unit record; `lastRelease` in `android/release-signer.json`.
 - Verify: four complete unit records, and `lastRelease` names the provisioned release.
@@ -584,7 +584,7 @@ distinct gates are recorded in `android/aosp/pixel10a-qualification-gates.json`
 
 - Who: device operator.
 - Do: collect at least 50 voice trials per cohort (20 warm, 5 cold) from release builds of a
-  clean tree, aggregate them with `node scripts/aggregate-voice-latency.mjs <exports> --out summary.json`,
+  clean tree, aggregate them with `node scripts/aggregate-voice-latency.ts <exports> --out summary.json`,
   confirm the audible start with a physical loopback measurement, and run the battery and thermal
   soak plus TalkBack, large text, rotation and repeated Home on every retained view.
 - Seam: the runbook's Performance and stability section.
@@ -624,9 +624,9 @@ distinct gates are recorded in `android/aosp/pixel10a-qualification-gates.json`
   before merge" ruleset and classic protection that only blocks force pushes and deletion. Whether
   and when to require the checks is the repository owner's choice: install
   `scripts/ci/required-checks-ruleset.json` (the read-back prints the command) and confirm it with
-  `node scripts/ci/read-required-checks.mjs`, which needs a `gh` login.
+  `node scripts/ci/read-required-checks.ts`, which needs a `gh` login.
 - Seam: `scripts/ci/required-checks-ruleset.json`.
-- Verify: `node scripts/ci/read-required-checks.mjs` reports the installed ruleset.
+- Verify: `node scripts/ci/read-required-checks.ts` reports the installed ruleset.
 - Unblocks: enforced checks on main.
 
 ## Product defaults and owner review

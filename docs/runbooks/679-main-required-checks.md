@@ -10,7 +10,7 @@ Command (GET requests only; `GH_BIN` is not used by this older script, so put a 
 first on `PATH` on hosts where the shim hangs):
 
 ```sh
-node scripts/ci/read-required-checks.mjs --repo eliza-research/alphaphone
+node scripts/ci/read-required-checks.ts --repo eliza-research/alphaphone
 ```
 
 Result, exit 1:
@@ -48,7 +48,7 @@ if a selected verification was skipped, so the pair is sound.
 ## Owner decision (2026-10-29): deferred
 
 The owner decided: no branch protection for now. D1 is **B (defer)**; nothing is installed.
-`node scripts/ci/read-required-checks.mjs --repo eliza-research/alphaphone` is expected to keep
+`node scripts/ci/read-required-checks.ts --repo eliza-research/alphaphone` is expected to keep
 exiting 1 with `DIFF MISSING` / `not installed` until the owner revisits this; that output is the
 recorded state, not a failure to act on. Re-read on 2026-10-29 at `main` f4ebce3b: still no
 ruleset, classic protection without required checks, and the three contexts still match
@@ -77,7 +77,7 @@ The incident runbook (`docs/runbooks/658-forged-commit-incident.md`) prepares
 `scripts/owner/rulesets/shared-branch-integrity.json` (no force push, no deletion, signed commits
 on `main` and `develop`) and an optional `scripts/owner/rulesets/default-branch-baseline.json`
 (pull request required, squash only, zero approvals). They are separate rulesets with different
-names, so installing one never edits the other and `read-required-checks.mjs` keeps working (it
+names, so installing one never edits the other and `read-required-checks.ts` keeps working (it
 lists other rulesets as `NOTE Other ruleset`).
 
 | Option | What it changes |
@@ -92,7 +92,7 @@ Recommendation: A.
 The committed ruleset has `"bypass_actors": []`. An empty list means nobody, including admins, can
 merge past a failing check. Adding the repository admin role as a bypass actor (`actor_type:
 RepositoryRole`, `actor_id: 5`, `bypass_mode: pull_request`) keeps an emergency path but lets an
-admin merge red CI silently; `read-required-checks.mjs` reports any bypass actor as a difference.
+admin merge red CI silently; `read-required-checks.ts` reports any bypass actor as a difference.
 Default: empty.
 
 ## Commands (prepared, not executed)
@@ -106,7 +106,7 @@ gh api --method POST repos/eliza-research/alphaphone/rulesets --input scripts/ci
 Read back (read-only):
 
 ```sh
-node scripts/ci/read-required-checks.mjs --repo eliza-research/alphaphone
+node scripts/ci/read-required-checks.ts --repo eliza-research/alphaphone
 gh api --method GET repos/eliza-research/alphaphone/rules/branches/main
 ```
 
@@ -122,9 +122,9 @@ chosen one with the next free `P-` number.
   eliza-research/alphaphone yet. CI stays advisory on `main` until <trigger>. Shared-branch
   rulesets (#658) are also deferred; only classic protection (force push and deletion blocked,
   admins bypass) applies to `main`; `develop` is unprotected; shared branches are monitored with
-  `node scripts/owner/forged-branch-scan.mjs`. Revisit at <trigger>."
+  `node scripts/owner/forged-branch-scan.ts`. Revisit at <trigger>."
 - P-xx (draft, install): "2026-10-__: 'Main required checks' is installed on eliza-research/alphaphone
-  with no bypass actors; `node scripts/ci/read-required-checks.mjs --repo eliza-research/alphaphone`
+  with no bypass actors; `node scripts/ci/read-required-checks.ts --repo eliza-research/alphaphone`
   reports MATCH; controlled blocking PR #___ recorded."
 - P-xx (draft, decline): "2026-10-__: MVP-46 is not adopted. `main` relies on post-merge CI on push;
   the required-checks ruleset file stays in `scripts/ci/` for a later decision."

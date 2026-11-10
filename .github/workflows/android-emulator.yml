@@ -65,7 +65,7 @@ jobs:
       - run: npm ci
       # On-device speech is the shared paradee-voice library on libelizainference (Paradee-8M TTS,
       # misaki G2P, the ASR slot pair, Silero VAD). A developer APK that can speak needs the staged
-      # voice outputs (scripts/android-stage-voice-models.mjs) AND an embedding host built from the
+      # voice outputs (scripts/android-stage-voice-models.ts) AND an embedding host built from the
       # same engine bytes (Gradle :app:verifyParadeeAppLinkage). The hosted job cannot produce that
       # pair yet: the embedding host at this pin needs a reviewed receipt (requalification), and the
       # Paradee GGUF/lexicon are not published for download. Refuse instead of building an APK that
@@ -76,7 +76,7 @@ jobs:
           echo "::error::fused-speech needs staged Paradee voice outputs and a same-engine embedding host; see docs/fused-speech.md (hosted staging is an open item)"
           exit 1
       - name: Prepare pinned native lifecycle sources
-        run: node scripts/prepare-local-agent.mjs --source-only
+        run: node scripts/prepare-local-agent.ts --source-only
       - name: Build flag-off developer APKs with their instrumentation APKs
         env:
           ELIZA_DEV_ALLOW_TEST_MOCKS: ""
@@ -176,7 +176,7 @@ jobs:
           disk-size: 4096M
           emulator-options: -no-window -gpu swiftshader -no-snapshot -noaudio -no-boot-anim
           disable-animations: true
-          script: node scripts/ci/emulator-suite.mjs instrumentation
+          script: node scripts/ci/emulator-suite.ts instrumentation
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
@@ -245,7 +245,7 @@ jobs:
           # provisioner reads back (docs/ci-webview-provider.md).
           emulator-options: -no-window -gpu swiftshader -feature -Vulkan -no-snapshot -noaudio -no-boot-anim -writable-system -append-userspace-opt 'androidboot.boot_devices=pci0000:00/0000:00:03.0 pci0000:00/0000:00:05.0 pci0000:00/0000:00:06.0'
           disable-animations: true
-          script: node scripts/ci/emulator-suite.mjs browser-reading
+          script: node scripts/ci/emulator-suite.ts browser-reading
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
@@ -305,7 +305,7 @@ jobs:
           test "$(sha256sum artifacts/apk-manifest.json | cut -d' ' -f1)" = "$EXPECTED_MANIFEST_SHA256"
           # The build job's workspace record (unreviewed x86_64 receipt) is what the APK was admitted against.
           cp build-evidence/android/voice-host/qualified-voice-host.json android/voice-host/qualified-voice-host.json
-          node scripts/ci/speech-candidate.mjs check artifacts/standalone-debug.apk
+          node scripts/ci/speech-candidate.ts check artifacts/standalone-debug.apk
           python3 -c 'import shutil; assert shutil.disk_usage(".").free >= 8*1024**3, "Insufficient fresh-runner emulator capacity"'
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
@@ -320,10 +320,10 @@ jobs:
           disk-size: 4096M
           emulator-options: -no-window -gpu swiftshader -no-snapshot -noaudio -no-boot-anim
           disable-animations: true
-          script: node scripts/ci/emulator-suite.mjs fused-speech
+          script: node scripts/ci/emulator-suite.ts fused-speech
       - name: Package the run with its exact APK pair
         if: always()
-        run: node scripts/ci/speech-candidate.mjs package test-results/android-instrumentation/ci-fused-speech test-results/fused-speech-x86_64
+        run: node scripts/ci/speech-candidate.ts package test-results/android-instrumentation/ci-fused-speech test-results/fused-speech-x86_64
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:

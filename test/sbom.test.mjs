@@ -6,12 +6,12 @@ import path from 'node:path';
 import {createHash} from 'node:crypto';
 import os from 'node:os';
 import {spawnSync} from 'node:child_process';
-import {ROOT, VOICE_HOST, collectNotices, productionLockPackages} from '../scripts/generate-licenses.mjs';
-import {LICENCE_NOT_RECORDED, buildSbom, integrityHash, renderSbom} from '../scripts/generate-sbom.mjs';
-import {METADATA as GRADLE_METADATA, coordinateChecksum, parseVerificationMetadata} from '../scripts/gradle-verification.mjs';
-import {packagedRuntimePresent} from '../scripts/generate-licenses.mjs';
-import {sbomArgs} from '../scripts/build-android.mjs';
-import {FLAGS} from '../scripts/licence-policy.mjs';
+import {ROOT, VOICE_HOST, collectNotices, productionLockPackages} from '../scripts/generate-licenses.ts';
+import {LICENCE_NOT_RECORDED, buildSbom, integrityHash, renderSbom} from '../scripts/generate-sbom.ts';
+import {METADATA as GRADLE_METADATA, coordinateChecksum, parseVerificationMetadata} from '../scripts/gradle-verification.ts';
+import {packagedRuntimePresent} from '../scripts/generate-licenses.ts';
+import {sbomArgs} from '../scripts/build-android.ts';
+import {FLAGS} from '../scripts/licence-policy.ts';
 
 const sbom = buildSbom(ROOT);
 const read = rel => JSON.parse(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
@@ -131,7 +131,7 @@ test('release-candidate options list what was built and never upgrade it', t => 
   const apps = withApks.components.filter(component => component['bom-ref'].startsWith('apk:'));
   assert.deepEqual(apps.map(component => [component.name, component.hashes[0].content, prop(component, 'distributable'), prop(component, 'signed')]),
     [['standalone-debug.apk', digest(debug), 'false', 'true'], ['standalone-release-unsigned.apk', digest(apk), 'false', 'false']]);
-  assert.match(prop(withApks.metadata, 'evidence'), /APK files listed by the SHA-256 that scripts\/verify-apks\.mjs recorded; not a scan of the contents/);
+  assert.match(prop(withApks.metadata, 'evidence'), /APK files listed by the SHA-256 that scripts\/verify-apks\.ts recorded; not a scan of the contents/);
   assert.equal(withApks.components.length, sbom.components.length + 2);
   assert.doesNotMatch(renderSbom(withApks), new RegExp(dir.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), 'no machine path');
   // An APK that is no longer the recorded bytes is refused, as is a directory verify-apks never wrote to.
@@ -151,7 +151,7 @@ test('release-candidate options list what was built and never upgrade it', t => 
   fs.mkdirSync(path.join(dir, 'android/app/src/main/assets/agent'), {recursive: true});
   fs.writeFileSync(path.join(dir, 'android/app/src/main/assets/agent/agent-bundle.js'), '');
   assert.deepEqual(sbomArgs('artifacts', dir).slice(-1), ['--packaged-runtime']);
-  assert.match(fs.readFileSync(path.join(ROOT, 'scripts/build-android.mjs'), 'utf8'), /else run\("node", \["scripts\/generate-sbom\.mjs", \.\.\.sbomArgs\(outDir, root\)\]\);/);
+  assert.match(fs.readFileSync(path.join(ROOT, 'scripts/build-android.ts'), 'utf8'), /else run\("node", \["scripts\/generate-sbom\.ts", \.\.\.sbomArgs\(outDir, root\)\]\);/);
 });
 
 test('every component carries its licence expression and flags, matching the notices', () => {
@@ -184,7 +184,7 @@ test('every component carries its licence expression and flags, matching the not
   for (const component of unrecorded) assert.equal(prop(component, 'licence-flags'), 'unverified', component['bom-ref']);
   // Flags never fail the SBOM: the script exits 0 and prints them as warnings.
   const out = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-sbom-')), 'sbom.json');
-  const run = spawnSync(process.execPath, [path.join(ROOT, 'scripts/generate-sbom.mjs'), '--out', out], {cwd: ROOT, encoding: 'utf8'});
+  const run = spawnSync(process.execPath, [path.join(ROOT, 'scripts/generate-sbom.ts'), '--out', out], {cwd: ROOT, encoding: 'utf8'});
   fs.rmSync(path.dirname(out), {recursive: true, force: true});
   assert.equal(run.status, 0, run.stderr);
   assert.match(run.stderr, /^LICENCE FLAG copyleft-weak: mediabunny@[^ ]+ \(MPL-2\.0\)$/m);

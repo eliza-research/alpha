@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "description": "Distinct Pixel 10a (stallion) Android 17 distribution gates for issue #399. Each gate is recorded separately: one gate's evidence never satisfies another, and development evidence never makes a gate passed. Statuses are 'not run', 'development', 'failed' or 'passed'; 'passed' needs at least one release-level evidence entry. Statuses are recorded from executed builds, boots, drills and user sessions, never by software. scripts/aosp-pixel10a.mjs pixel10aGateProblems checks this file against the source lock, product descriptor and update channel.",
+  "description": "Distinct Pixel 10a (stallion) Android 17 distribution gates for issue #399. Each gate is recorded separately: one gate's evidence never satisfies another, and development evidence never makes a gate passed. Statuses are 'not run', 'development', 'failed' or 'passed'; 'passed' needs at least one release-level evidence entry. Statuses are recorded from executed builds, boots, drills and user sessions, never by software. scripts/aosp-pixel10a.ts pixel10aGateProblems checks this file against the source lock, product descriptor and update channel.",
   "target": "pixel10a",
   "product": "alpha_stallion_phone",
   "gates": {
@@ -29,7 +29,7 @@
       "scope": "Build and package contents only. Release APK signing (decision A-06) and installation are not part of this gate."
     },
     "cuttlefishBoot": {
-      "requirement": "A Cuttlefish image built from the release candidate boots and passes scripts/verify-cuttlefish-launcher.mjs (system Alpha APK, Alpha HOME, recovery HOME, enforcing SELinux).",
+      "requirement": "A Cuttlefish image built from the release candidate boots and passes scripts/verify-cuttlefish-launcher.ts (system Alpha APK, Alpha HOME, recovery HOME, enforcing SELinux).",
       "status": "development",
       "evidence": [
         {
@@ -67,7 +67,7 @@
     }
   },
   "alphaGates": {
-    "description": "Alpha gates beside the shared six, checked by scripts/pixel10a-gates.mjs with the same status and evidence rules.",
+    "description": "Alpha gates beside the shared six, checked by scripts/pixel10a-gates.ts with the same status and evidence rules.",
     "unattendedUpdate": {
       "requirement": "A narrowly privileged on-device update client applies signed channel packages through update_engine without a person (P-75), with its ADR, privapp allowlist and SELinux domain reviewed, on the release image on a physical Pixel 10a.",
       "status": "not run",

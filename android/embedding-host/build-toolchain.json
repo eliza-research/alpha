@@ -9,7 +9,7 @@
   "remapBuildPathEvidence": "Current c95a binaries were built with explicit path remapping. PREPARATION receipts retain exact compiler inputs and remap environment. Fresh-path reproduction of this engine revision has not been measured.",
   "remapBuildPathMeaning": "Automatic rebuilding remains fenced by the exact admitted library hashes. A differing output cannot be staged; cross-host/OS reproduction is not established. Historical candidate measurements below are not current evidence.",
   "unqualifiedCandidateMeasurement": {
-    "note": "NOT reviewed, NOT qualified and NOT staged by any script. Two --remap-build-path builds in different directories on one macOS arm64 host, 2026-10-11, were byte-identical to each other, and a third built by `node scripts/build-embedding-host.mjs --candidate` in another directory matched them. Recorded so a later candidate build can be compared with it.",
+    "note": "NOT reviewed, NOT qualified and NOT staged by any script. Two --remap-build-path builds in different directories on one macOS arm64 host, 2026-10-11, were byte-identical to each other, and a third built by `node scripts/build-embedding-host.ts --candidate` in another directory matched them. Recorded so a later candidate build can be compared with it.",
     "pin": "13c98575987a121decc45b161b0c8a4ee698554e",
     "libraries": [
       {

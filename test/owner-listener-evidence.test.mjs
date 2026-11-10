@@ -1,7 +1,7 @@
-// scripts/owner/listener-evidence.mjs captures G2-G6 listener evidence (issue #664). These cases run
+// scripts/owner/listener-evidence.ts captures G2-G6 listener evidence (issue #664). These cases run
 // it against synthetic dumpsys/logcat text only: they check the read-only command allowlist, the
 // privacy filters, the evidence-class separation and that the candidate record stays acceptable to
-// scripts/listener-qualification.mjs. They prove nothing about an image or a device.
+// scripts/listener-qualification.ts. They prove nothing about an image or a device.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
@@ -10,8 +10,8 @@ import os from "node:os";
 import path from "node:path";
 import {
   CAPTURE_GATES, MANUAL_ITEMS, assertReadOnly, buildEvidence, commandPlan, fixtureRunner, listenerNotifications, logcatFacts, userFacts,
-} from "../scripts/owner/listener-evidence.mjs";
-import { LISTENER_RECORD, listenerRecordProblems } from "../scripts/listener-qualification.mjs";
+} from "../scripts/owner/listener-evidence.ts";
+import { LISTENER_RECORD, listenerRecordProblems } from "../scripts/listener-qualification.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
 const fixtures = path.join(root, "test/fixtures/owner-listener-evidence");
@@ -19,7 +19,7 @@ const load = name => JSON.parse(fs.readFileSync(path.join(fixtures, name), "utf8
 const appId = "ai.elizaresearch.alphaphone", pkg = `${appId}.sense`;
 const record = JSON.parse(fs.readFileSync(path.join(root, LISTENER_RECORD), "utf8"));
 const okVerifier = () => ({ packageName: pkg, privileged: true, persistent: true, captureHotwordGranted: true });
-const script = path.join(root, "scripts/owner/listener-evidence.mjs");
+const script = path.join(root, "scripts/owner/listener-evidence.ts");
 
 test("every planned command is one of the read-only shapes and mutating commands are refused", () => {
   const plan = commandPlan({ appId, user: "0", gates: CAPTURE_GATES });
@@ -205,7 +205,7 @@ test("the G2 capture reports whether the booted image enforces the privapp allow
 });
 
 test("the pinned upstream G2 verifier accepts the fixture through the capture plan", { skip: !fs.existsSync(path.join(root, "vendor/eliza/packages/os/scripts/android/sense-listener.mjs")) && "needs vendor/eliza at the pin" }, async () => {
-  const { verifyAospListener } = await import("../scripts/aosp-listener.mjs");
+  const { verifyAospListener } = await import("../scripts/aosp-listener.ts");
   const run = fixtureRunner(commandPlan({ appId, user: "0", gates: ["G2"] }), load("pixel10a.json").captures);
   const facts = verifyAospListener(run, "0", appId);
   assert.equal(facts.captureHotwordGranted, true);

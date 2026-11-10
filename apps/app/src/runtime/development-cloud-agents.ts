@@ -12,7 +12,7 @@ import { CloudProtocol, CloudProtocolError, object, optionalString, string, uuid
  * Cloud agents (discovery, the personal/Dedicated setup, runtime conversations and the phone
  * device-action protocol on a hosted runtime) are kept only as development fixtures for
  * ELIZA_DEV_ALLOW_TEST_MOCKS=1 builds. connection-ui constructs this class only behind that flag, so
- * a flag-off bundle carries none of it (scripts/audit-production-bundle.mjs denies its markers), and
+ * a flag-off bundle carries none of it (scripts/audit-production-bundle.ts denies its markers), and
  * the production CloudProtocol has no agent routes. Native transport refuses these hosts and routes
  * in product builds independently (ConnectionRoutes.java).
  */

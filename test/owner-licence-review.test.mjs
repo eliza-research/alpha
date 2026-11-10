@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {
   acceptanceStatus, apkFfmpegEntries, distributionBlockers, apkManifestSummary, buildPacket, bundleProbe, flagCounts, formatPacket, newestSnapshot, reviewRows, sbomSummary, sourceChain, SOURCE_MARKERS,
-} from '../scripts/owner/licence-review.mjs';
+} from '../scripts/owner/licence-review.ts';
 
 const entries = [
   {name: '@metamask/sdk', version: '0.33.1', license: 'UNKNOWN', flags: ['unknown-licence', 'non-open-source-terms'], obligations: [{flag: 'unknown-licence', note: 'x'}], text: 'Bundled in the on-device agent bundle.\n\nAll rights reserved.'},

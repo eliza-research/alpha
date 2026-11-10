@@ -86,7 +86,7 @@
   <service android:name=".AlphaNavigationService" android:exported="false" android:foregroundServiceType="location" />
   <!-- Android alone binds this action tile. A locked-device tap requires unlocking; no capture
        or connection authority comes from a tile being present in Quick Settings. Disabled with
-       AlphaAssistActivity, its only target (P-78); scripts/apk.mjs keeps the two together. -->
+       AlphaAssistActivity, its only target (P-78); scripts/apk.ts keeps the two together. -->
   <service android:name=".AlphaQuickSettingsTile" android:enabled="false" android:label="@string/alpha_quick_settings_label" android:icon="@drawable/notification_icon" android:exported="true" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
    <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE"/></intent-filter>
    <meta-data android:name="android.service.quicksettings.TOGGLEABLE_TILE" android:value="false"/>
@@ -130,7 +130,7 @@
    <!-- Verified App Links on ${appLinkHost}, the production web host (android/app/product.gradle):
         /alphaphone/auth/callback is the in-app Eliza Cloud sign-in return (AlphaCloudSignInPlugin) and
         /alphaphone/gmail/callback the Google Workspace consent return (GoogleWorkspaceReturn). Publish
-        scripts/render-assetlinks.mjs output (release signer, never a debug or placeholder fingerprint)
+        scripts/render-assetlinks.ts output (release signer, never a debug or placeholder fingerprint)
         at /.well-known/assetlinks.json on that host. The in-app sign-in is offered only once its Cloud
         readiness probe sees this phone's App Link verified for the sign-in return host; until then the
         Cloud sign-in hand-off stays the product path. Cloud delegation returns only through the custom

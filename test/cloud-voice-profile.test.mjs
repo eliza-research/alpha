@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {resolveCloudSignatureClassifier,verifyCloudRecordingSignatures} from '../scripts/check-cloud-recording-signature.mjs';
+import {resolveCloudSignatureClassifier,verifyCloudRecordingSignatures} from '../scripts/check-cloud-recording-signature.ts';
 import {voiceFakeClock} from './fixtures/shared-batch-voice.mjs';
 import {cloudVoiceViewFixture} from './fixtures/cloud-voice-view.mjs';
 

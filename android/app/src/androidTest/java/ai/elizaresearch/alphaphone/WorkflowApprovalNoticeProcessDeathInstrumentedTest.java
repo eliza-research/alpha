@@ -16,7 +16,7 @@ import static org.junit.Assert.*;
  * inspects the same ledger from this helper process; the tap is captured by the restarted main's
  * own AlphaNotifications plugin. Synthetic route: no real account, review or device action.
  * Exact workflow review remains outside this native capture test. All three methods run in
- * scripts/android-workflow-native.mjs phase approval-notice-recovery: the first two on the test-mocks
+ * scripts/android-workflow-native.ts phase approval-notice-recovery: the first two on the test-mocks
  * archive after a standard-runner prepare run in the same user, the last on the flag-off archive. */
 public final class WorkflowApprovalNoticeProcessDeathInstrumentedTest {
  private static final String APP="ai.elizaresearch.alphaphone";

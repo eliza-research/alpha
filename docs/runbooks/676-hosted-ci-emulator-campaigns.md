@@ -11,9 +11,9 @@ results format below says so in every record.
 
 Prepared on this branch:
 
-- `node scripts/owner/emulator-campaign-check.mjs` — static check of every class #676 lists
+- `node scripts/owner/emulator-campaign-check.ts` — static check of every class #676 lists
   (test source, runner registration, hosted job, gaps) and the local command per class.
-- `node scripts/owner/emulator-campaign-check.mjs --dispatch-plan --sha <commit>` — prints the
+- `node scripts/owner/emulator-campaign-check.ts --dispatch-plan --sha <commit>` — prints the
   exact dispatch commands for one commit. It runs nothing.
 - `test/owner-emulator-campaign-check.test.mjs` — the batches below parse with the runner's own
   argument parser, and the plan only targets an exact SHA.
@@ -45,13 +45,13 @@ Other findings that change how the campaigns are run:
 3. The core loop audit's summary "9 (4 EMULATOR and 5 CI)" is stale: its per-loop tables now hold
    **13 EMULATOR** steps (A-29, D-23, E-3, E-8, E-9, E-14, E-22 to E-27, J05-2) and **5 CI** steps
    (A-23, A-27, C-7, D-15, F-16) open.
-4. `scripts/android-instrumentation.mjs` admits only `<variant>-debug.apk` rows of a verify-apks
+4. `scripts/android-instrumentation.ts` admits only `<variant>-debug.apk` rows of a verify-apks
    manifest. A signed release APK cannot be instrumented. "Again on the distributable build" therefore
    means the debug pair built by the strict chain (`npm run android:build:local`, packaged runtime,
-   no `--allow-unpackaged-runtime`); release-APK contents are covered by `scripts/verify-apks.mjs`
+   no `--allow-unpackaged-runtime`); release-APK contents are covered by `scripts/verify-apks.ts`
    and provisioning, not by these classes.
 5. `android-emulator.yml` builds with `--allow-unpackaged-runtime`: its results are developer-APK
-   evidence only. `resident-android.yml` builds the PACKAGED archive (`scripts/build-archive.mjs`).
+   evidence only. `resident-android.yml` builds the PACKAGED archive (`scripts/build-archive.ts`).
 6. Gaps from the static check: `ResetExternalFixture` has no runner (`NOT_RUN_BY_A_RUNNER`); no
    instrumented class drives the Quick Settings tile (`AlphaQuickSettingsTile`); the upgrade from
    saved mock state has no script (manual procedure in the
@@ -69,7 +69,7 @@ Pick the candidate commit (full 40-character SHA, on `main`), confirm it is not 
 forged commit, then print the plan:
 
 ```sh
-node scripts/owner/emulator-campaign-check.mjs --dispatch-plan --sha <SHA>
+node scripts/owner/emulator-campaign-check.ts --dispatch-plan --sha <SHA>
 ```
 
 It prints, for that SHA (shown here for `<SHA>` and its first 12 characters `<SHA12>`):
@@ -101,8 +101,8 @@ them until hosted voice staging exists ([fused speech](../fused-speech.md)).
 | Workflow | Input | Jobs | Suites / steps | Classes or methods | Evidence artifact and file | Limits |
 | --- | --- | --- | --- | --- | --- | --- |
 | `resident-android.yml` | `runtime_profile=native` | `build` → `native`, `recovery-ui` in parallel | `native`: `scripts/ci/resident-native.py`; `recovery-ui`: `scripts/ci/pending-recovery-ui.py` (16 methods) | `native`: PrivateResidentSocket, ResidentStreamTransport, ResidentWorkflowCrash (2 methods), both flavors, x86_64. `recovery-ui`: ConnectionInstrumentedTest (3), ClockAgentReview, WorkflowNoticeTap, WorkflowNoticeProcessDeath (2), ReminderTapProcessDeath, ReminderTiming, ReminderTapLifecycle, CalendarCreationRecovery, CloudDelegationCallback (2), NoteAudio, ReminderAgent, ReminderDeletionStorage | `resident-native-evidence-<RUN_ID>` → `test-results/resident-ci-native/result.json`; `pending-recovery-ui-evidence-<RUN_ID>` → `test-results/pending-recovery-ui-native/result.json` (`methods: 16`). A missing file is a failed run | build 180 min, native 100, recovery-ui 55; artifacts kept 3 days |
-| `android-emulator.yml` | `suite=instrumentation` | `build` → `instrumentation` | `scripts/ci/emulator-suite.mjs instrumentation` | runner defaults on both flavors: NoMockProduct, Shell, StartupReadiness, TextScale, BrowserSignins, BrowserFlow, BrowserContinuity | `test-results/emulator-suite/instrumentation.json` and `test-results/android-instrumentation/ci-default/results.json` | build 150 min, instrumentation 90; developer-override APKs |
-| `android-emulator.yml` | `suite=browser-reading` | `build` (adds the test-mocks pair) → `browser-reading` | `scripts/ci/emulator-suite.mjs browser-reading` (installs pinned Chromium 157.0.8083.0 WebView) | flag-off: BrowserReadingNavigation, BrowserPageQuestion; test-mocks: BrowserReading, BrowserSensitiveReading, BrowserIsolatedReading | `test-results/emulator-suite/browser-reading.json`, `…/ci-reading/results.json`, `…/ci-reading-test-mocks/results.json` | API 35 x86_64 image only |
+| `android-emulator.yml` | `suite=instrumentation` | `build` → `instrumentation` | `scripts/ci/emulator-suite.ts instrumentation` | runner defaults on both flavors: NoMockProduct, Shell, StartupReadiness, TextScale, BrowserSignins, BrowserFlow, BrowserContinuity | `test-results/emulator-suite/instrumentation.json` and `test-results/android-instrumentation/ci-default/results.json` | build 150 min, instrumentation 90; developer-override APKs |
+| `android-emulator.yml` | `suite=browser-reading` | `build` (adds the test-mocks pair) → `browser-reading` | `scripts/ci/emulator-suite.ts browser-reading` (installs pinned Chromium 157.0.8083.0 WebView) | flag-off: BrowserReadingNavigation, BrowserPageQuestion; test-mocks: BrowserReading, BrowserSensitiveReading, BrowserIsolatedReading | `test-results/emulator-suite/browser-reading.json`, `…/ci-reading/results.json`, `…/ci-reading-test-mocks/results.json` | API 35 x86_64 image only |
 | `digest-restart.yml` | none | `digest-restart` | `npm run agent:prepare`, then `npm run agent:test-digest-restart` | synthetic model in the pinned upstream runtime; no emulator | the uploaded `digest-restart` result JSON | 80 min; host-runtime evidence, not class E |
 
 ## Local campaigns (owned, disposable emulator)
@@ -124,11 +124,11 @@ give each run its own `--output test-results/android-instrumentation/<batch>-<bu
 Campaign classes, run by their own scripts:
 
 - `ResidentEgressRedaction` (and `ResidentService` with `RESIDENT_TEST=ai.elizaresearch.alphaphone.ResidentServiceInstrumentedTest`):
-  `ALPHA_RESIDENT_DISPOSABLE_EMULATOR=1 ANDROID_SERIAL=<fresh arm64 emulator, ≥4 GB RAM> node scripts/android-resident-instrumentation.mjs <app.apk> <androidTest.apk>`.
+  `ALPHA_RESIDENT_DISPOSABLE_EMULATOR=1 ANDROID_SERIAL=<fresh arm64 emulator, ≥4 GB RAM> node scripts/android-resident-instrumentation.ts <app.apk> <androidTest.apk>`.
   It reads the development key file `~/.config/alphaphone/cerebras-key` (mode 0600, H-30, #671) and
   refuses a group- or world-readable file. The key never goes into a result.
 - Restart phases skipped by the plain runner (`SettingsFlow` theme, `AccessibilityLifecycle`):
-  `node scripts/test-native-restart.mjs theme|accessibility APP.apk TEST.apk NEW_OUTPUT`.
+  `node scripts/test-native-restart.ts theme|accessibility APP.apk TEST.apk NEW_OUTPUT`.
 - `WorkflowNoticeTap` and `WorkflowNoticeProcessDeath`: only `resident-android.yml` job
   `recovery-ui` (`scripts/ci/pending-recovery-ui.py` refuses to run outside a GitHub-hosted runner).
 - The core loop audit's open EMULATOR steps use its campaigns 1, 2, 4 and 10 and the E-22 to E-27
@@ -149,8 +149,8 @@ dispatched job. A cell is filled with the result file path and its status, never
 | Shell/HOME | LauncherApps | launcher | h31-flagoff | not run | not run | n/a |
 | Shell/HOME | LauncherHome | launcher | h31-home-role | not run | not run | n/a |
 | Shell/HOME | SettingsRoles | launcher | h31-home-role | not run | not run | n/a |
-| Settings | SettingsFlow | standalone | h31-flagoff + `test-native-restart.mjs theme` | not run | not run | n/a |
-| Settings | SettingsFlow | launcher | h31-flagoff + `test-native-restart.mjs theme` | not run | not run | n/a |
+| Settings | SettingsFlow | standalone | h31-flagoff + `test-native-restart.ts theme` | not run | not run | n/a |
+| Settings | SettingsFlow | launcher | h31-flagoff + `test-native-restart.ts theme` | not run | not run | n/a |
 | Settings | ResetPolicy | standalone | h31-flagoff | not run | not run | n/a |
 | Settings | ResetPolicy | launcher | h31-flagoff | not run | not run | n/a |
 | Settings | ResetExternalFixture | both | no runner (manual, disposable fixture only) | not run | not run | n/a |
@@ -172,8 +172,8 @@ dispatched job. A cell is filled with the result file path and its status, never
 | Workflows | `npm run agent:test-digest-restart` | n/a | `digest-restart.yml` or local | host-runtime: not run | n/a | not dispatched |
 | Agent | ResidentAlwaysPresent | standalone | h31-flagoff (flag-off only) | not run | not run | n/a |
 | Agent | ResidentAlwaysPresent | launcher | h31-flagoff (flag-off only) | not run | not run | n/a |
-| Agent | ResidentService | both | `android-resident-instrumentation.mjs` with `RESIDENT_TEST` | not run | not run | n/a |
-| Agent | ResidentEgressRedaction | both | `android-resident-instrumentation.mjs` | not run | not run | n/a |
+| Agent | ResidentService | both | `android-resident-instrumentation.ts` with `RESIDENT_TEST` | not run | not run | n/a |
+| Agent | ResidentEgressRedaction | both | `android-resident-instrumentation.ts` | not run | not run | n/a |
 | Agent | resident restart (PrivateResidentSocket, ResidentStreamTransport, ResidentWorkflowCrash) | both | resident `native` only | n/a | n/a | not dispatched |
 | Agent | resident history and missed runs on an installed APK | both | no script (manual) | not run | not run | n/a |
 | Browser | BrowserDownload | standalone | h31-test-mocks | not run | not run | n/a |
@@ -188,8 +188,8 @@ dispatched job. A cell is filled with the result file path and its status, never
 | Accessibility | Accessibility | launcher | h31-flagoff | not run | not run | n/a |
 | Accessibility | AccessibilityViews | standalone | h31-test-mocks | not run | not run | n/a |
 | Accessibility | AccessibilityViews | launcher | h31-test-mocks | not run | not run | n/a |
-| Accessibility | AccessibilityLifecycle | standalone | h31-test-mocks + `test-native-restart.mjs accessibility` | not run | not run | n/a |
-| Accessibility | AccessibilityLifecycle | launcher | h31-test-mocks + `test-native-restart.mjs accessibility` | not run | not run | n/a |
+| Accessibility | AccessibilityLifecycle | standalone | h31-test-mocks + `test-native-restart.ts accessibility` | not run | not run | n/a |
+| Accessibility | AccessibilityLifecycle | launcher | h31-test-mocks + `test-native-restart.ts accessibility` | not run | not run | n/a |
 | Accessibility | AccessibilityHomeRole | launcher | h31-test-mocks-home-role | not run | not run | n/a |
 | Accessibility | Rotation | standalone | h31-flagoff | not run | not run | n/a |
 | Accessibility | Rotation | launcher | h31-flagoff | not run | not run | n/a |
@@ -218,7 +218,7 @@ Open core loop steps and the campaign that closes each ([core loop audit](../cor
 | E-8, E-9, J05-2 | EMULATOR | campaigns 2, 4 and 10 locally, or `android-emulator.yml suite=browser-reading` (CI-2) |
 | E-14 | EMULATOR | campaign 4 (`BrowserAutofill`, test-mocks) |
 | D-23 | EMULATOR | the dossier route run named in its row |
-| E-22 to E-27 | EMULATOR | the commands in each row (BrowserWebFeatures, BrowserShare, BrowserDialogLifecycle, BrowserUnsupportedReading, `scripts/test-browser-storage-format.mjs`, `scripts/android-browser-reading-live.mjs`) |
+| E-22 to E-27 | EMULATOR | the commands in each row (BrowserWebFeatures, BrowserShare, BrowserDialogLifecycle, BrowserUnsupportedReading, `scripts/test-browser-storage-format.ts`, `scripts/android-browser-reading-live.ts`) |
 
 ## Results format
 

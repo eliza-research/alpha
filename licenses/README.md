@@ -1,15 +1,15 @@
 # Third-party license sources
 
-`scripts/generate-licenses.mjs` builds `apps/app/public/licenses/third-party-notices.json`
+`scripts/generate-licenses.ts` builds `apps/app/public/licenses/third-party-notices.json`
 (`[{name, version, license, source, text, flags, obligations?, textSource?}]`) and
 `THIRD_PARTY_NOTICES.txt` beside it. Vite copies both into `web-dist/licenses/`, so they ship in
 the web bundle and in every APK's `assets/public`.
 
 ```sh
-node scripts/generate-licenses.mjs                    # regenerate
-node scripts/generate-licenses.mjs --check            # fail if stale or an input is broken
-node scripts/generate-licenses.mjs --packaged-runtime # also list the staged resident runtime (after agent:stage-android)
-node scripts/generate-licenses.mjs --refresh-android  # re-resolve the Gradle runtime classpath (needs SDK/JDK)
+node scripts/generate-licenses.ts                    # regenerate
+node scripts/generate-licenses.ts --check            # fail if stale or an input is broken
+node scripts/generate-licenses.ts --packaged-runtime # also list the staged resident runtime (after agent:stage-android)
+node scripts/generate-licenses.ts --refresh-android  # re-resolve the Gradle runtime classpath (needs SDK/JDK)
 node --test test/licenses.test.mjs test/runtime-licenses.test.mjs test/font-license.test.mjs
 ```
 
@@ -18,7 +18,7 @@ node --test test/licenses.test.mjs test/runtime-licenses.test.mjs test/font-lice
 Owner decision P-09 (`docs/decisions.md`, 2026-10-10): an open-source dependency licence never
 stops a build and is never a release blocker. Every licence text and notice still ships, and
 anything copyleft, unknown or unverified is flagged with what it obliges. The policy lives in
-`scripts/licence-policy.mjs`; `docs/dependency-audit.md` lists the flags and where they appear.
+`scripts/licence-policy.ts`; `docs/dependency-audit.md` lists the flags and where they appear.
 
 - Generation never fails on what a licence is. It exits 0 and prints each flag as
   `LICENCE FLAG <flag>: <package>@<version> (<licence>)` on standard error.
@@ -56,7 +56,7 @@ Inputs:
 - `android/voice-host/qualified-voice-host.json`, the record of the on-device speech engine:
   `libelizainference` (llama.cpp/ggml; Paradee-8M TTS with misaki G2P and statically linked
   eSpeak NG; the ASR slot; Silero VAD) and every voice bundle file. The schema is in
-  `scripts/voice-host.mjs` and `docs/fused-speech.md`. Each source component and each model or
+  `scripts/voice-host.ts` and `docs/fused-speech.md`. Each source component and each model or
   data file is listed with its licence: eSpeak NG (GPL-3.0-or-later) is flagged copyleft, Paradee,
   misaki and the ASR slot model are Apache-2.0, Silero VAD is MIT. The record carries no licence
   files, so canonical SPDX texts stand in and are flagged `licence-text-missing-from-package`;
@@ -108,7 +108,7 @@ under an open-source identifier. A font with no record is listed as `proprietary
 recorded` and flagged `proprietary-no-licence-recorded`. The separately named check
 `unresolved-font-licence` reports recorded fonts as resolved-by-owner-statement and unrecorded
 ones as unresolved; whether an unresolved font keeps a release `distributable: false` is the
-constant `UNRESOLVED_FONT_LICENCE_BLOCKS_DISTRIBUTION` in `scripts/licence-policy.mjs` (default
+constant `UNRESOLVED_FONT_LICENCE_BLOCKS_DISTRIBUTION` in `scripts/licence-policy.ts` (default
 `false`). See `docs/dependency-audit.md`.
 
 Prototype design images are not part of production builds; their licensing is recorded in

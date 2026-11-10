@@ -31,7 +31,7 @@ jobs:
         with:
           node-version-file: .nvmrc
       # Fails on an advisory path with no reviewed disposition (root package-lock.json).
-      - run: node scripts/dependency-audit.mjs
+      - run: node scripts/dependency-audit.ts
       # Resident runtime packages at the pinned upstream commit. Runs even when the root audit fails.
       - if: ${{ !cancelled() }}
-        run: node scripts/dependency-audit.mjs --resident
+        run: node scripts/dependency-audit.ts --resident

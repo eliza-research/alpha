@@ -5,7 +5,7 @@ import {join, resolve, relative} from 'node:path';
 import {createHash} from 'node:crypto';
 import {tmpdir} from 'node:os';
 import {execFileSync} from 'node:child_process';
-import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
+import {preparePatchedNative} from '../scripts/prepare-patched-native.ts';
 
 // Run the shared browser, callback and credential-ownership regressions against
 // exactly the authenticated source that Gradle packages, without editing vendor.

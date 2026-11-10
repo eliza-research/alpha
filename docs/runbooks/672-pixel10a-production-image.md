@@ -9,7 +9,7 @@ acceptance (#673) and do not prove each other.
 
 ## Prepared on this branch
 
-- `scripts/owner/production-staging-preflight.mjs`: read-only. Lists every `UNSET` or placeholder
+- `scripts/owner/production-staging-preflight.ts`: read-only. Lists every `UNSET` or placeholder
   field in `android/aosp/product.json`, its brand config and shared Cuttlefish lock profile,
   `android/aosp/pixel10a-product.json`, the Pixel 10a source lock, `android/release-signer.json`
   and `android/aosp/pixel10a-ota-channel.json`, with the step that fills each; checks the source
@@ -17,7 +17,7 @@ acceptance (#673) and do not prove each other.
   staging checks (`pixel10aProductProblems`, `cuttlefishProductProblems`). `--json`, `--strict`
   (exit 1 while anything is open). Test: `test/owner-production-staging-preflight.test.mjs`.
 - `test/owner-sign-aosp-release-edges.test.mjs`: extra mocked-releasetools tests of Alpha's
-  `sign-aosp-release.mjs` binding: managed signing with a re-signed APEX (SunPKCS11 keystore
+  `sign-aosp-release.ts` binding: managed signing with a re-signed APEX (SunPKCS11 keystore
   arguments, the AVB helper on vbmeta, `vbmeta_system`, `vbmeta_vendor` and APEX payloads, the
   payload signer on both tools, token labels, `signingMode: managed` in the record); managed option
   refusals (partial set, relative or shell-unsafe paths, non-executable helper, bad signature
@@ -30,13 +30,13 @@ acceptance (#673) and do not prove each other.
 
 ## Read-only state on 2026-10-28 (main 94676c82, Eliza pin 1f2a922f)
 
-`node scripts/owner/production-staging-preflight.mjs` reports **20 UNSET fields in 4 records**:
+`node scripts/owner/production-staging-preflight.ts` reports **20 UNSET fields in 4 records**:
 
 | Record | UNSET fields | Filled by |
 | --- | --- | --- |
 | `android/aosp/product.json` | `hostPackages[0..1].version`, `hostPackages[0..1].sha256` (cuttlefish-base, cuttlefish-user) | A-01 / H-23 image host operator |
 | `android/aosp/product.json` | `signer.platformCertificateSha256` | H-09, **by hand** (enrollment does not write this file) |
-| `android/aosp/pixel10a-product.json` | `signer.platformCertificateSha256`, `signer.releaseCertificates.{shared, media, networkstack, sdk_sandbox, bluetooth, nfc, apex}`, `avb.publicKeySha256` | H-09 `enroll-release-keys.mjs --write` |
+| `android/aosp/pixel10a-product.json` | `signer.platformCertificateSha256`, `signer.releaseCertificates.{shared, media, networkstack, sdk_sandbox, bluetooth, nfc, apex}`, `avb.publicKeySha256` | H-09 `enroll-release-keys.ts --write` |
 | `android/release-signer.json` | `signerSha256` | H-09 |
 | `android/aosp/pixel10a-ota-channel.json` | `otaCertificateSha256`, `avbPublicKeySha256` | H-09 |
 | `android/aosp/pixel10a-ota-channel.json` | `recovery.knownGoodRelease.{buildFingerprint, otaSha256, recordFile}` | H-22 |
@@ -50,7 +50,7 @@ Gates: `sourceAdmission` and `apkVariants` passed; `cuttlefishBoot` and `physica
 
 ## Findings for the owner
 
-1. **`android/aosp/product.json` platform digest is not enrolled.** `enroll-release-keys.mjs`
+1. **`android/aosp/product.json` platform digest is not enrolled.** `enroll-release-keys.ts`
    writes `pixel10a-product.json`, `release-signer.json` and the channel only, and `human:status`
    H-09 does not read `product.json`. After H-09 shows `done`, Cuttlefish production staging still
    refuses until `signer.platformCertificateSha256` in `product.json` is set by hand to the same
@@ -67,7 +67,7 @@ Gates: `sourceAdmission` and `apkVariants` passed; `cuttlefishBoot` and `physica
    before each signing.
 3. **Managed signing has missing pieces.** The AVB signing helper and the OTA payload signer are
    not in this repository; signapk needs a token that exposes keys without a PIN. See #661 D1.
-4. `sign-aosp-release.mjs` and `aosp-release-record.mjs` have still only run against mocked
+4. `sign-aosp-release.ts` and `aosp-release-record.ts` have still only run against mocked
    releasetools; no real stallion target-files or APEX has been signed.
 
 ## Decisions for the owner
@@ -114,7 +114,7 @@ and descriptor. Recommendation: record those identities in the Cuttlefish boot r
 ### 0. Before the image host (anyone, read-only)
 
 ```sh
-node scripts/owner/production-staging-preflight.mjs           # expect only H-22/A-01 rows after #661
+node scripts/owner/production-staging-preflight.ts           # expect only H-22/A-01 rows after #661
 node --test test/aosp-release-signing.test.mjs test/pixel10a-gates.test.mjs test/owner-sign-aosp-release-edges.test.mjs
 ```
 
@@ -158,11 +158,11 @@ signs outside CI:
 node vendor/eliza/packages/os/scripts/android/decrypt-release-keys.ts --input <bundle> \
   --output /dev/shm/keys --passphrase-file /dev/shm/pass
 chmod 600 /dev/shm/keys/*          # public certificates and avb_pkmd.bin too: the job requires 0600
-node scripts/sign-aosp-release.mjs \
+node scripts/sign-aosp-release.ts \
   --target-files /absolute/unsigned-target_files.zip --target-files-sha256 <from the build record> \
   --keys-dir /dev/shm/keys --releasetools /absolute/otatools/bin \
   --apk-manifest /absolute/apk-manifest.json --out /absolute/new-release-dir --dry-run
-node scripts/sign-aosp-release.mjs ...same options without --dry-run
+node scripts/sign-aosp-release.ts ...same options without --dry-run
 shred -u /dev/shm/keys/* /dev/shm/pass; rmdir /dev/shm/keys
 ```
 
@@ -180,14 +180,14 @@ and retain the signed release directory off-repo. `npm run human:status` H-22 mu
 Stage the Cuttlefish product with `--production` from the same candidate (D4), build, boot, then:
 
 ```sh
-node scripts/verify-cuttlefish-launcher.mjs <options of the shared launcher image verifier>
+node scripts/verify-cuttlefish-launcher.ts <options of the shared launcher image verifier>
 ```
 
 It must show the system Alpha APK (not a `/data/app` override) as HOME, a recovery HOME and
 enforcing SELinux. Fill `docs/runbooks/templates/cuttlefish-boot-evidence.template.json` into
 `docs/evidence/cuttlefish-release-boot-<date>.json`, add a `level: "release"` entry to the
 `cuttlefishBoot` gate and set it `passed`, then run
-`node scripts/owner/evidence-class-check.mjs` and `node --test test/pixel10a-gates.test.mjs`.
+`node scripts/owner/evidence-class-check.ts` and `node --test test/pixel10a-gates.test.mjs`.
 This record never satisfies `physicalDevice`.
 
 ## Draft decision entries

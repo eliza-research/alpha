@@ -61,8 +61,8 @@ export function npmScriptReferences(text) {
 }
 
 test('reference extraction ignores longer vendor paths and keeps product paths', () => {
-  const found = scriptReferences('Use `scripts/qualify-head.mjs`, [speech](../scripts/local-speech/README.md) and `packages/app/scripts/mobile/context.ts`.').map(item => item.reference);
-  assert.deepEqual(found, ['scripts/qualify-head.mjs', 'scripts/local-speech/README.md']);
+  const found = scriptReferences('Use `scripts/qualify-head.ts`, [speech](../scripts/local-speech/README.md) and `packages/app/scripts/mobile/context.ts`.').map(item => item.reference);
+  assert.deepEqual(found, ['scripts/qualify-head.ts', 'scripts/local-speech/README.md']);
   assert.deepEqual(npmScriptReferences('Run `npm run verify` then npm run android:build -- --x.').map(item => item.name), ['verify', 'android:build']);
 });
 
@@ -79,12 +79,15 @@ test('an upstream-relative script path needs its upstream directory named in the
 // Stale references in documents this check does not yet own. Each entry must still be
 // stale; remove it as soon as the document is corrected.
 const knownStale = new Map([
+  // Evidence commands describe the exact revisions captured in these receipts.
+  ['docs/evidence/digest-restart-1f2a922f-20261028/README.md|scripts/test-local-digest-restart.mjs', 'dated digest restart evidence'],
+  ['docs/evidence/embedding-host-4787d51a14/README.md|scripts/stage-embedding-host.mjs', 'dated embedding host evidence'],
   // Dated snapshots stay as written; the removed speech toolchain is replaced by docs/fused-speech.md.
   ['docs/mvp-audit-2026-10-11.md|scripts/local-speech/requalify-runtime.py', 'dated audit snapshot; the earlier speech toolchain was removed for the fused libelizainference engine'],
   ['docs/mvp-audit-2026-10-11.md|scripts/test-real-workflow.mjs', 'dated audit snapshot; the helper was removed with its deleted instrumented test'],
   ['docs/mvp-audit-2026-10-11.md|scripts/test-real-workflow-cancel.mjs', 'dated audit snapshot; the helper was removed with its deleted instrumented test'],
-  ['docs/mvp-audit-2026-10-11.md|scripts/test-calendar-upgrade.mjs', 'dated audit snapshot; the shim became `node scripts/test-installed-upgrade.mjs calendar`'],
-  ['docs/mvp-audit-2026-10-11.md|scripts/test-reminder-upgrade.mjs', 'dated audit snapshot; the shim became `node scripts/test-installed-upgrade.mjs reminder`'],
+  ['docs/mvp-audit-2026-10-11.md|scripts/test-calendar-upgrade.mjs', 'dated audit snapshot; the shim became `node scripts/test-installed-upgrade.ts calendar`'],
+  ['docs/mvp-audit-2026-10-11.md|scripts/test-reminder-upgrade.mjs', 'dated audit snapshot; the shim became `node scripts/test-installed-upgrade.ts reminder`'],
 ]);
 
 test('every scripts/... path in README.md and docs/ exists in this repository or the pinned upstream', () => {

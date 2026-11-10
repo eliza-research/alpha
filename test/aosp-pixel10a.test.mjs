@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {pixel10aVendorApi, writePixel10aProduct} from '../scripts/aosp-pixel10a.mjs';
+import {pixel10aVendorApi, writePixel10aProduct} from '../scripts/aosp-pixel10a.ts';
 
 function assertSingleProductRegistration(output) {
   const staged = fs.readdirSync(output, {recursive:true});
@@ -83,7 +83,7 @@ test('Pixel staging takes the shared stock stallion vendor API check before writ
   assert.deepEqual(pixel10aVendorApi({source}), {codename:'stallion', releaseConfig:release, vendorApiLevel:api});
   fs.writeFileSync(manifest, '<manifest><sepolicy><version>202504</version></sepolicy></manifest>\n');
   assert.throws(() => pixel10aVendorApi({source}), /must retain locked API/);
-  const stage = fs.readFileSync('scripts/stage-aosp.mjs', 'utf8');
+  const stage = fs.readFileSync('scripts/stage-aosp.ts', 'utf8');
   const check = stage.indexOf('pixel10aVendorApi({root:process.cwd()');
   assert.ok(check > stage.indexOf('verifyPixel10aSource({') && check < stage.indexOf('fs.mkdtempSync('), 'checked after source admission, before any output');
 });

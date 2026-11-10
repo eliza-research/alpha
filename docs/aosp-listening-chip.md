@@ -262,7 +262,7 @@ of this executes Android, SystemUI or an image.
 The chip bundle is separate from the microphone-op patch in
 [SystemUI source preparation](aosp-listener-systemui.md). Both target the same
 locked `frameworks/base` revision and touch disjoint files. Listener staging
-(`stageListener`, used by `scripts/stage-aosp.mjs` in production and development)
+(`stageListener`, used by `scripts/stage-aosp.ts` in production and development)
 copies both bundles, generates the exact certificate resource overlay in
 `listener/systemui/chip/overlay`, appends an include of
 `listener/listener.mk` to the staged `product.mk` **by default**, and
@@ -278,7 +278,7 @@ First verify/stage the original complete source as documented there. Then prepar
 the chip overlay outside that source:
 
 ```sh
-node scripts/aosp-listener-systemui.mjs --source /absolute/original-aosp --chip --output /absolute/new-chip-overlay
+node scripts/aosp-listener-systemui.ts --source /absolute/original-aosp --chip --output /absolute/new-chip-overlay
 ```
 
 Copy its manifest-listed files only into the separate disposable build copy,
@@ -292,7 +292,7 @@ receipt. The chip receipt verifies only its nine listed files; all other files
 in the build copy remain outside its verification scope. Newly added source files
 must be absent in the original input; collisions and changed bytes are refused.
 The ordinary full-source verifier still rejects this modified build tree. To check that
-such a copy is otherwise the exact locked baseline, run `scripts/verify-pixel10a-source.mjs`
+such a copy is otherwise the exact locked baseline, run `scripts/verify-pixel10a-source.ts`
 with `--applied-systemui-patch chip` (and `ops` when applied): only the bundle's listed files
 may differ, each preimage at the pinned revision and each postimage must match its manifest,
 and every other check is unchanged.

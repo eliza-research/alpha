@@ -25,15 +25,15 @@ Read-only audit reconstructed touched source files from upstream `4573712ebf0466
 
 Freeze0009 after its owner completes lifecycle tests; apply it after0008 and repeat clean composition. Use a separate immutable combined source checkout, pinned lockfile dependencies and explicit source resolution. Do not combine profile databases or copy arbitrary credentials between historical hosts. Preserve their rollback/evidence identity.
 
-`fingerprint-combined-agent.mjs` records HEAD plus every tracked/nonignored untracked file's SHA256, executable bit, missing-file state and symlink identity. Ignored dependencies are deliberately outside this fingerprint; pin/install the lockfile and separately record toolchain/native assets. The one explicitly reviewed gitlink `plugins/plugin-local-inference/native/llama.cpp` at `ea8b3f2dfc2641dea3e6238bc6dd99595584b076` is recorded as `type:gitlink, initialized:false` only while its directory exists and is completely empty. A populated, symlinked, differently pinned or other unqualified gitlink is rejected. This records omitted native build input honestly; it does not claim to build llama.cpp. Actual prebuilt CPU inference/voice assets and their dependency closure require separate hashes and runtime evidence. Keep the manifest outside the source tree; root must review its content before launch.
+`fingerprint-combined-agent.ts` records HEAD plus every tracked/nonignored untracked file's SHA256, executable bit, missing-file state and symlink identity. Ignored dependencies are deliberately outside this fingerprint; pin/install the lockfile and separately record toolchain/native assets. The one explicitly reviewed gitlink `plugins/plugin-local-inference/native/llama.cpp` at `ea8b3f2dfc2641dea3e6238bc6dd99595584b076` is recorded as `type:gitlink, initialized:false` only while its directory exists and is completely empty. A populated, symlinked, differently pinned or other unqualified gitlink is rejected. This records omitted native build input honestly; it does not claim to build llama.cpp. Actual prebuilt CPU inference/voice assets and their dependency closure require separate hashes and runtime evidence. Keep the manifest outside the source tree; root must review its content before launch.
 
 ```sh
-node scripts/fingerprint-combined-agent.mjs ABSOLUTE_COMBINED_SOURCE ABSOLUTE_NEW_MANIFEST
+node scripts/fingerprint-combined-agent.ts ABSOLUTE_COMBINED_SOURCE ABSOLUTE_NEW_MANIFEST
 ```
 
 ## Prepared launcher — do not start before root review
 
-`scripts/start-combined-agent.mjs` uses port47858 only. A read-only listener inventory found no listener during preparation; the launcher rechecks availability immediately before startup and never stops a competing process. Default profile is `~/.local/share/alphaphone/combined-agent-47858`, outside source; an existing unmarked profile is refused. It never adopts40/44/46/48/54 state.
+`scripts/start-combined-agent.ts` uses port47858 only. A read-only listener inventory found no listener during preparation; the launcher rechecks availability immediately before startup and never stops a competing process. Default profile is `~/.local/share/alphaphone/combined-agent-47858`, outside source; an existing unmarked profile is refused. It never adopts40/44/46/48/54 state.
 
 Required explicit configuration:
 

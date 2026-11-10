@@ -126,7 +126,7 @@ animation remains.
 
 The signing job, compatibility record, update client and recovery tooling are shared Pixel 10a
 tooling in `vendor/eliza/packages/os/scripts/android` (`aosp-release-signing.mjs`,
-`aosp-release-record.mjs`, `aosp-ota-update.mjs`; see `vendor/eliza/packages/os/android/releases/README.md`).
+`aosp-release-record.ts`, `aosp-ota-update.ts`; see `vendor/eliza/packages/os/android/releases/README.md`).
 Alpha keeps only its inputs: `android/aosp/pixel10a-product.json`, the update channel, the
 qualification gates and `android/release-signer.json`. The scripts below bind those inputs.
 
@@ -138,7 +138,7 @@ plus `<name>.x509.pem` for `releasekey`, `platform`, `shared`, `media`, `network
 APEXes it re-signs, `apex.pk8`/`apex.x509.pem`, `apex_payload.pem` and `apex_payload.avbpubkey`):
 
 ```sh
-node scripts/sign-aosp-release.mjs \
+node scripts/sign-aosp-release.ts \
   --target-files /absolute/unsigned-target_files.zip --target-files-sha256 <from the build record> \
   --keys-dir /dev/shm/keys --releasetools /absolute/otatools/bin \
   --apk-manifest /absolute/apk-manifest.json --out /absolute/new-release-dir \
@@ -177,7 +177,7 @@ security patch levels, the hashes of vbmeta and of each chained partition image 
 build's `misc_info.txt` lists with the AVB rollback index at each location (from the vbmeta
 headers and chain descriptors), payload hash and OTA metadata, release
 certificate digests and the APK signer digests from `apk-manifest.json`. The record
-generator also runs on its own: `node scripts/aosp-release-record.mjs --signed-target-files
+generator also runs on its own: `node scripts/aosp-release-record.ts --signed-target-files
 ZIP --ota ZIP --out NEW_FILE`.
 
 Keys are supplied only at signing time and never committed. The key directory must be an
@@ -201,7 +201,7 @@ options the job keeps every private key in a PKCS#11 token (an HSM, or a managed
 PKCS#11 library) and the key directory holds only public material:
 
 ```sh
-node scripts/sign-aosp-release.mjs ...the options above... \
+node scripts/sign-aosp-release.ts ...the options above... \
   --pkcs11-config /absolute/sunpkcs11.cfg --avb-signing-helper /absolute/avb-helper \
   --payload-signer /absolute/payload-signer [--payload-signer-arg ARG ...] \
   --payload-signer-signature-size 512
@@ -271,18 +271,18 @@ signed image, an image boot, an applied OTA, or a rollback or recovery drill.
 
 ## Update, interruption, rollback and recovery
 
-`scripts/aosp-ota-update.mjs` is the operator update client for one serial-bound Pixel 10a; it
+`scripts/aosp-ota-update.ts` is the operator update client for one serial-bound Pixel 10a; it
 defaults to Alpha's channel and the shared stallion source lock:
 
 ```sh
-node scripts/aosp-ota-update.mjs check --from installed/release-record.json --to candidate/release-record.json
-node scripts/aosp-ota-update.mjs apply --serial SERIAL --from installed/release-record.json \
+node scripts/aosp-ota-update.ts check --from installed/release-record.json --to candidate/release-record.json
+node scripts/aosp-ota-update.ts apply --serial SERIAL --from installed/release-record.json \
   --to candidate/release-record.json --ota candidate/ota.zip --journal /abs/new-journal.json \
   [--execute --confirm-update]
-node scripts/aosp-ota-update.mjs status --serial SERIAL --journal /abs/journal.json
-node scripts/aosp-ota-update.mjs fallback --serial SERIAL --journal /abs/journal.json [--execute --confirm-fallback]
-node scripts/aosp-ota-update.mjs stock-archive --archive /abs/stallion-cp3a.261005.005-factory-d1d25502.zip
-node scripts/aosp-ota-update.mjs verify-stock --serial SERIAL
+node scripts/aosp-ota-update.ts status --serial SERIAL --journal /abs/journal.json
+node scripts/aosp-ota-update.ts fallback --serial SERIAL --journal /abs/journal.json [--execute --confirm-fallback]
+node scripts/aosp-ota-update.ts stock-archive --archive /abs/stallion-cp3a.261005.005-factory-d1d25502.zip
+node scripts/aosp-ota-update.ts verify-stock --serial SERIAL
 ```
 
 `check` refuses a candidate that is not newer, lowers the security patch level or any AVB
@@ -305,7 +305,7 @@ is run by the operator; `verify-stock` checks the restored stock build. The unlo
 unless OEM unlocking was enabled from the running image's developer options, which a device that
 no longer boots cannot do: whether released units keep it enabled is a release decision that the
 stock-recovery drill must exercise.
-`scripts/verify-pixel10a-image.mjs` checks a booted image read-only (exact fingerprint, Alpha's
+`scripts/verify-pixel10a-image.ts` checks a booted image read-only (exact fingerprint, Alpha's
 system launcher bytes as HOME, recovery HOME, Clock handlers, WebView, a green or yellow verified boot state and,
 with `--listener`, the listener's privileges). These are drill tools: drill results and the
 known-good release are recorded in the channel by the release owner from executed drills.

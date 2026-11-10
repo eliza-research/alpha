@@ -2,8 +2,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
-import {MOBILE_BUILD_INPUTS, MOBILE_UUID_POLICY} from '../../scripts/mobile-uuid-adapter.mjs';
-import {coreStateReceipt} from '../../scripts/core-state-patch.mjs';
+import {MOBILE_BUILD_INPUTS, MOBILE_UUID_POLICY} from '../../scripts/mobile-uuid-adapter.ts';
+import {coreStateReceipt} from '../../scripts/core-state-patch.ts';
 import {writeCoreStateFixture} from './core-state-root.mjs';
 
 const repository = path.resolve(import.meta.dirname, '../..');

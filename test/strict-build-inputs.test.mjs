@@ -6,8 +6,8 @@ import os from 'node:os';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
-import {BUILD_TOOLCHAIN, HUMAN_ACTION, QUALIFIED_HOST, Stop, compareWithQualified, describeDifference, run, stageReproduced, stagedLibraries} from '../scripts/build-embedding-host.mjs';
-import {formatReport, strictBuildInputs} from '../scripts/android-build-preflight.mjs';
+import {BUILD_TOOLCHAIN, HUMAN_ACTION, QUALIFIED_HOST, Stop, compareWithQualified, describeDifference, run, stageReproduced, stagedLibraries} from '../scripts/build-embedding-host.ts';
+import {formatReport, strictBuildInputs} from '../scripts/android-build-preflight.ts';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const sha = text => createHash('sha256').update(text).digest('hex');
@@ -38,7 +38,7 @@ test('the embedding host step stages nothing it cannot prove and names the perso
     && error.message.includes(HUMAN_ACTION));
   assert.equal(fs.existsSync(path.join(f.root, '.eliza')), false, 'nothing was fetched or built');
   assert.match(HUMAN_ACTION, /^Needs a person: /);
-  assert.match(HUMAN_ACTION, /stage-embedding-host\.mjs --receipt/);
+  assert.match(HUMAN_ACTION, /stage-embedding-host\.ts --receipt/);
   assert.match(HUMAN_ACTION, /qualifiedAt/);
   assert.match(HUMAN_ACTION, /No script may do either\.$/);
   // What the staging command itself requires, so the instruction works on a clean checkout:
@@ -46,7 +46,7 @@ test('the embedding host step stages nothing it cannot prove and names the perso
   // agent:stage-android stages (the chain reaches that step after this one).
   assert.match(HUMAN_ACTION, /removes the superseded android\/embedding-host\/qualified-host\.json/);
   assert.match(HUMAN_ACTION, /run npm run agent:prepare, npm run agent:build-workflow-worker and npm run agent:stage-android before it/);
-  const staging = fs.readFileSync(path.join(ROOT, 'scripts/stage-embedding-host.mjs'), 'utf8');
+  const staging = fs.readFileSync(path.join(ROOT, 'scripts/stage-embedding-host.ts'), 'utf8');
   assert.match(staging, /Existing embedding qualification differs; review before replacing/);
   assert.ok(staging.indexOf('Pinned BGE model is not staged: run npm run agent:prepare') > 0);
   assert.ok(staging.indexOf('Pinned BGE model is not staged') < staging.indexOf('Pinned BGE model bytes changed'), 'a missing model is named before its bytes are read');
@@ -99,8 +99,8 @@ test('pending requalification stops every builder entry before historical bytes 
       assert.throws(() => run(f.root, {...options, build: () => assert.fail('historical producer must not run')}),
         error => error instanceof Stop && error.code === 3
           && error.message.includes(`requalification required at ${'c'.repeat(40)}`)
-          && error.message.includes('prepare-embedding-host.mjs --fork')
-          && error.message.includes('stage-embedding-host.mjs --receipt'));
+          && error.message.includes('prepare-embedding-host.ts --fork')
+          && error.message.includes('stage-embedding-host.ts --receipt'));
     }
   }
   assert.equal(fs.readFileSync(path.join(f.root, QUALIFIED_HOST), 'utf8'), stored);
@@ -169,17 +169,17 @@ test('the committed embedding host record states whether its bytes are reproduci
 });
 
 test('path remapping is opt-in, recorded in the receipt and leaves the default build unchanged', () => {
-  const source = fs.readFileSync(path.join(ROOT, 'scripts/prepare-embedding-host.mjs'), 'utf8');
+  const source = fs.readFileSync(path.join(ROOT, 'scripts/prepare-embedding-host.ts'), 'utf8');
   assert.match(source, /const remapEnv=remap\?embeddingBuildRemap\(root,/);
   assert.match(source, /:\{\};\nconst receipt=\{[^\n]*\.\.\.remapEnv\},buildPathRemapped:remap,/);
-  assert.match(source, /import \{embeddingBuildRemap\} from '\.\/embedding-build-remap\.mjs'/);
+  assert.match(source, /import \{embeddingBuildRemap\} from '\.\/embedding-build-remap\.ts'/);
   // An unknown option is still refused before anything is written.
   const output = path.join(os.tmpdir(), `alpha-embed-unknown-${process.pid}`);
-  const result = spawnSync(process.execPath, ['scripts/prepare-embedding-host.mjs', '--fork', ROOT, '--output', output, '--remap'], {cwd: ROOT, encoding: 'utf8'});
+  const result = spawnSync(process.execPath, ['scripts/prepare-embedding-host.ts', '--fork', ROOT, '--output', output, '--remap'], {cwd: ROOT, encoding: 'utf8'});
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /Unknown option/);
   assert.equal(fs.existsSync(output), false);
-  const step = fs.readFileSync(path.join(ROOT, 'scripts/build-embedding-host.mjs'), 'utf8');
+  const step = fs.readFileSync(path.join(ROOT, 'scripts/build-embedding-host.ts'), 'utf8');
   assert.doesNotMatch(step, /qualifiedAt\s*[:=]/, 'the step never writes a qualification');
   assert.doesNotMatch(step, /writeFileSync\([^)]*QUALIFIED_HOST/, 'the step never rewrites the reviewed manifest');
 });
@@ -196,7 +196,7 @@ test('the input report separates what a script produces from what needs a person
   assert.ok(rows.every(item => item.state === 'missing' && item.action), 'an empty checkout has nothing ready and an action for every input');
   assert.match(row('pinned upstream checkout').action, /git submodule update --init vendor\/eliza/);
   assert.match(row('on-device voice outputs').detail, /are not admitted by .*Voice bundle file missing or changed: asr\.gguf/);
-  assert.match(row('on-device voice outputs').action, /^Needs a person to supply the recorded voice outputs and models: node scripts\/android-stage-voice-models\.mjs --from /);
+  assert.match(row('on-device voice outputs').action, /^Needs a person to supply the recorded voice outputs and models: node scripts\/android-stage-voice-models\.ts --from /);
   assert.match(row('on-device voice qualified').action, /^Needs a person: on-device qualification on both ABIs/);
   assert.match(row('embedding host libraries').action, /^Needs a person: /);
   assert.match(row('release signer').action, /^Needs a person: Alpha Compute controls signing and Shaw owns release/);
@@ -242,7 +242,7 @@ test('a record awaiting requalification stops the step before any build and name
   assert.throws(() => run(f.root, {build: () => assert.fail('must not build')}), error => error instanceof Stop && error.code === 3
     && /Embedding host requalification required at c{40}\. the engine gitlink moved/.test(error.message)
     && error.message.includes('A reviewer must execute the ARM64 qualification')
-    && error.message.includes('node scripts/stage-embedding-host.mjs --receipt <QUALIFICATION.json>'));
+    && error.message.includes('node scripts/stage-embedding-host.ts --receipt <QUALIFICATION.json>'));
   assert.equal(fs.existsSync(path.join(f.root, '.eliza')), false, 'nothing was fetched or built');
   f.write('upstream.lock.json', JSON.stringify({commit: 'd'.repeat(40)}));
   f.write('android/release-signer.json', JSON.stringify({signerSha256: 'unset'}));
@@ -254,7 +254,7 @@ test('a record awaiting requalification stops the step before any build and name
 test('the real checkout reports its inputs without failing and without building', () => {
   // Signing values, if this machine has any, are not this test's input.
   const env = Object.fromEntries(Object.entries(process.env).filter(([name]) => !/^ELIZAOS_(KEYSTORE_PATH|KEYSTORE_PASSWORD|KEY_ALIAS|KEY_PASSWORD)$/.test(name)));
-  const result = spawnSync(process.execPath, ['scripts/android-build-preflight.mjs', '--report', '--json'], {cwd: ROOT, encoding: 'utf8', env});
+  const result = spawnSync(process.execPath, ['scripts/android-build-preflight.ts', '--report', '--json'], {cwd: ROOT, encoding: 'utf8', env});
   assert.equal(result.status, 0, result.stderr);
   const rows = JSON.parse(result.stdout);
   const row = name => rows.find(item => item.input === name);

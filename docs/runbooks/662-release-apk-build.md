@@ -67,7 +67,7 @@ read from GitHub. This prerequisite of the issue is met at this pin; a later rep
 | State | Input | Supplied by |
 | --- | --- | --- |
 | ready | pinned upstream checkout (`vendor/eliza` at the pin) | script |
-| **PERSON** | on-device voice outputs in `.eliza/paradee-voice/native` (not staged; Gradle `:app:verifyVoiceHost` rejects a distribution build) | H-18: `node scripts/android-stage-voice-models.mjs --from <directory>` ([fused speech](../fused-speech.md)) |
+| **PERSON** | on-device voice outputs in `.eliza/paradee-voice/native` (not staged; Gradle `:app:verifyVoiceHost` rejects a distribution build) | H-18: `node scripts/android-stage-voice-models.ts --from <directory>` ([fused speech](../fused-speech.md)) |
 | **PERSON** | on-device voice host qualified (`android/voice-host/qualified-voice-host.json` is `qualified: false`) | H-18 named reviewer |
 | script | embedding host libraries (`libelizainference.so`, `libelizavoicejni.so`, `libc++_shared.so`) | `npm run agent:build-embedding-host` (part of `android:build:local`) |
 | script | prepared resident runtime source, workflow worker, staged resident payload, embedding model | `android:build:local` chain |
@@ -96,7 +96,7 @@ H-01 is decided: the keys live as GitHub Actions secrets, and a CI job signs
 That makes post-build signing the path: build **unsigned** on the release build host, then run
 the draft `sign-apks` job
 ([drafts/661-release-signing.workflow.yml](drafts/661-release-signing.workflow.yml)). The job
-decrypts only `alphaphone_app` into tmpfs, runs `sign-release-apks.mjs --keys-dir ... --no-verify`
+decrypts only `alphaphone_app` into tmpfs, runs `sign-release-apks.ts --keys-dir ... --no-verify`
 (the signer check against `android/release-signer.json` still runs), and shreds the key. Gradle
 signing (`ELIZAOS_KEYSTORE_*`) is not used. It would need a keystore that the ceremony does not
 produce, and the passwords would sit in the build environment for the whole build. The PKCS#11
@@ -125,7 +125,7 @@ Prerequisites: #661 done (H-09 `done`), H-18 admitted, this pin (or a later one 
 1. On a clean checkout of the release commit: `git submodule update --init vendor/eliza`; confirm
    `npm run android:build:inputs` shows the pin `ready`.
 2. Stage the person inputs it lists:
-   `node scripts/android-stage-voice-models.mjs --from <directory of the recorded voice outputs and models>`
+   `node scripts/android-stage-voice-models.ts --from <directory of the recorded voice outputs and models>`
    (H-18; see [fused speech](../fused-speech.md)). Re-run `npm run android:build:inputs`: the only
    remaining `PERSON` row must be the release signer (it does not stop the build).
 3. `npm run verify`.
@@ -147,15 +147,15 @@ Prerequisites: #661 done (H-09 `done`), H-18 admitted, this pin (or a later one 
    `signed-release-apks-<run>` into `artifacts/` on this same build tree, remove the two
    `*-release-unsigned.apk` files, then run:
    ```sh
-   node scripts/verify-apks.mjs
-   node scripts/generate-sbom.mjs --out artifacts/sbom/alphaphone.cdx.json --apks artifacts --packaged-runtime
+   node scripts/verify-apks.ts
+   node scripts/generate-sbom.ts --out artifacts/sbom/alphaphone.cdx.json --apks artifacts --packaged-runtime
    ```
    (`--packaged-runtime` applies when the resident runtime is staged, as it is for a distributable build.)
    No key ever reaches the build host.
 6. Check: both release rows (`standalone`, `launcher`) of `artifacts/apk-manifest.json` read
-   `distributable: true`; `node scripts/audit-production-bundle.mjs` passes; `npm run human:status`
+   `distributable: true`; `node scripts/audit-production-bundle.ts` passes; `npm run human:status`
    shows H-10 `done`.
-7. Do **not** run `scripts/record-release.mjs --write` yet: `lastRelease` is recorded only after
+7. Do **not** run `scripts/record-release.ts --write` yet: `lastRelease` is recorded only after
    distribution (H-32).
 8. Keep `artifacts/apk-manifest.json`, both APKs, the signed listener APK and the build log as the
    release build record; these feed H-21 (#672).
@@ -165,7 +165,7 @@ Prerequisites: #661 done (H-09 `done`), H-18 admitted, this pin (or a later one 
 ```markdown
 - **P-5x — H-10 ([#662](https://github.com/eliza-research/alphaphone/issues/662)), decided <YYYY-MM-DD> by Shaw:**
   Release APKs are built unsigned on the release build host and signed by the CI release-signing job
-  (P-57) with scripts/sign-release-apks.mjs from key files decrypted into tmpfs for one step. The first pilot release uses versionCode <N> and
+  (P-57) with scripts/sign-release-apks.ts from key files decrypted into tmpfs for one step. The first pilot release uses versionCode <N> and
   versionName <name>; ELIZAOS_APP_LINK_HOST=eliza.app. Policy only, not build evidence.
 ```
 

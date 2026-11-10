@@ -65,7 +65,7 @@ identity-only link back to the note. The contract, including the Android limits,
 
 ## Verification
 
-Run `npm run typecheck` and `node scripts/test-notes-documents-browser.mjs`.
+Run `npm run typecheck` and `node scripts/test-notes-documents-browser.ts`.
 The latter renders the actual Notes adapter/template with a synthetic native
 boundary and checks development import, complete selected-note saving with its
 title and unchanged CR/LF body, cancellation,
@@ -80,7 +80,7 @@ these descriptions are not a claim that the current production UI passed them:
   re-import as a distinct note, and Activity recreation.
 - Actual selected oversized/invalid-UTF-8 documents leave Notes unchanged.
 - `documentProcessRestartPhase`, explicitly invoked by
-  `scripts/test-native-restart.mjs notes`, prepares the same real document flow,
+  `scripts/test-native-restart.ts notes`, prepares the same real document flow,
   then requires a changed PID before opening the saved note and checking exact
   stored content. The runner validates both APK hashes against one archive's
   manifest and matching distribution, force-stops between phases and attempts
@@ -91,7 +91,7 @@ Archive a matching APK pair with its flat `apk-manifest.json`, then run:
 
 ```
 ANDROID_SERIAL=emulator-N ALPHA_NATIVE_TEST_AVD=owned-avd ALPHA_NATIVE_TEST_ABI=x86_64 \
-node scripts/test-native-restart.mjs notes \
+node scripts/test-native-restart.ts notes \
   test-results/notes-archive/standalone-debug.apk \
   test-results/notes-archive/standalone-androidTest.apk \
   test-results/notes-archive/notes-standalone
