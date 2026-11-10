@@ -10,7 +10,7 @@ function fixture(){
  const listeners={},calls=[];let active;
  const emit=(event,value)=>{for(const listener of listeners[event]||[])listener(value);};
  const bridge={
-  addListener:async(event,listener)=>{(listeners[event]??=[]).push(listener);return {remove:async()=>{}};},
+  addListener:async(event,listener)=>{if(bridge.listenerFails===event)throw Error('listener refused');(listeners[event]??=[]).push(listener);return {remove:async()=>{listeners[event]=listeners[event].filter(value=>value!==listener);}};},
   synthesizeLocal:async input=>{calls.push(['synthesize',input.text,input.append]);if(active)return {playbackId:active,execution:'device',appended:true};active='p1';return {playbackId:'p1',execution:'device'};},
   play:async input=>{calls.push(['play',input.playbackId]);},
   cancel:async input=>{calls.push(['cancel']);},
@@ -20,7 +20,7 @@ function fixture(){
  let ids=0;const requests=[];
  const box={registerPlugin:()=>bridge,planLocalSpeech:text=>text?[text]:[],nativeVoiceTurnId:()=>undefined,crypto:{randomUUID:()=>{const id=`r${++ids}`;requests.push(id);return id;}},setTimeout,clearTimeout,Date,Math,Number,Promise,Error,Object,Map,DOMException,AbortController};
  vm.runInNewContext(source+'\nglobalThis.speaker=createLocalReplySpeaker();',box);
- return {speaker:box.speaker,calls,emit,requests,bridge,end:()=>{active=undefined;emit('playbackEnded',{playbackId:'p1'});}};
+ return {speaker:box.speaker,calls,emit,requests,bridge,listenerCount:()=>Object.values(listeners).reduce((count,values)=>count+values.length,0),end:()=>{active=undefined;emit('playbackEnded',{playbackId:'p1'});}};
 }
 test('the next sentence joins the playing utterance and each call settles when its own sentence ended',async()=>{
  const f=fixture(),order=[];
@@ -51,4 +51,18 @@ test('a phone call ends the sentence with its reason; silence resolves without t
  f.emit('playbackStopped',{playbackId:'p1',reason:'call-active'});await assert.rejects(speaking,{code:'call-active'});
  let started=0;await f.speaker.speak('',new AbortController().signal,()=>started++);assert.equal(started,1);
  f.speaker.hold();f.speaker.release();await tick();assert.deepEqual(f.calls.slice(-2),[['hold'],['release']]);
+});
+
+test('ending a conversation retires its bridge listeners and cannot reopen playback',async()=>{
+ const f=fixture();const speaking=f.speaker.speak('First sentence here.',new AbortController().signal,()=>{});await tick();
+ assert.equal(f.listenerCount(),4);f.end();await speaking;f.speaker.release();f.speaker.release();await tick();
+ assert.equal(f.listenerCount(),0);
+ await assert.rejects(f.speaker.speak('Late reply.',new AbortController().signal,()=>assert.fail('not audible')),{name:'AbortError'});
+ assert.equal(f.listenerCount(),0);
+ assert.equal(f.calls.filter(call=>call[0]==='release').length,1);
+});
+test('a partial listener setup failure removes every listener that opened',async()=>{
+ const f=fixture();f.bridge.listenerFails='playbackFailed';
+ await assert.rejects(f.speaker.speak('No playback.',new AbortController().signal,()=>assert.fail('not audible')),/listener refused/);
+ assert.equal(f.listenerCount(),0);assert.equal(f.calls.length,0);
 });

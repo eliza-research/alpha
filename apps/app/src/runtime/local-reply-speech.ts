@@ -24,13 +24,13 @@ const SENTENCE_LIMIT_MS = 120_000;
 
 export function createLocalReplySpeaker(bridge: Bridge = registerPlugin<Bridge>('AlphaVoiceCloud')) {
   const sentences = new Map<string, Sentence>(), playing = new Map<string, Sentence>();
-  let listening: Promise<unknown> | undefined;
+  let listening: Promise<{ remove(): Promise<void> }[]> | undefined, released = false;
   const finish = (playbackId: string | undefined, settle: (sentence: Sentence) => void) => {
     if (!playbackId) return;
     playing.delete(playbackId);
     for (const sentence of [...sentences.values()]) if (sentence.playbackId === playbackId) settle(sentence);
   };
-  const listen = () => listening ??= Promise.all([
+  const listen = () => listening ??= Promise.allSettled([
     bridge.addListener('playbackSegmentStarted', value => {
       const sentence = value.requestId ? sentences.get(value.requestId) : undefined;
       if (!sentence || !value.playbackId) return;
@@ -47,11 +47,18 @@ export function createLocalReplySpeaker(bridge: Bridge = registerPlugin<Bridge>(
     bridge.addListener('playbackEnded', value => finish(value.playbackId, sentence => { sentence.started(); sentence.ended(); })),
     bridge.addListener('playbackFailed', value => finish(value.playbackId, sentence => sentence.failed(Error(value.message || 'Speech playback failed.')))),
     bridge.addListener('playbackStopped', value => finish(value.playbackId, sentence => sentence.failed(Object.assign(Error(value.reason === 'call-active' ? 'Speech stopped for a phone call.' : 'Speech stopped.'), value.reason ? { code: value.reason, reason: value.reason } : {})))),
-  ]);
+  ]).then(async results => {
+    const handles = results.flatMap(result => result.status === 'fulfilled' ? [result.value] : []);
+    const failure = results.find(result => result.status === 'rejected');
+    if (failure) { await Promise.allSettled(handles.map(handle => handle.remove())); throw failure.reason; }
+    return handles;
+  });
   async function sentence(text: string, signal: AbortSignal, onStarted: () => void) {
     signal.throwIfAborted();
+    if (released) throw new DOMException('Speech session ended', 'AbortError');
     await listen();
     signal.throwIfAborted();
+    if (released) throw new DOMException('Speech session ended', 'AbortError');
     const requestId = crypto.randomUUID();
     let started!: () => void, ended!: () => void, failed!: (error: unknown) => void;
     const audible = new Promise<void>(resolve => { started = resolve; });
@@ -100,7 +107,13 @@ export function createLocalReplySpeaker(bridge: Bridge = registerPlugin<Bridge>(
     },
     /** Keeps the speech engine loaded while a conversation is open (advisory). */
     hold() { try { void Promise.resolve(bridge.holdSpeechEngine?.()).catch(() => {}); } catch { /* An older bridge has no hold. */ } },
-    release() { try { void Promise.resolve(bridge.releaseSpeechEngineHold?.()).catch(() => {}); } catch { /* An older bridge has no hold. */ } },
+    release() {
+      if (released) return;
+      released = true;
+      // Each conversation owns these listeners. Retire them even if registration is still opening.
+      void listening?.then(handles => Promise.allSettled(handles.map(handle => handle.remove()))).catch(() => {});
+      try { void Promise.resolve(bridge.releaseSpeechEngineHold?.()).catch(() => {}); } catch { /* An older bridge has no hold. */ }
+    },
   };
 }
 
