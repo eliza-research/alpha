@@ -34,19 +34,25 @@ public class AlphaFilesPlugin extends Plugin {
  private final StorageBrowser.WatchSlot watch=new StorageBrowser.WatchSlot();
  private final android.os.Handler main=new android.os.Handler(android.os.Looper.getMainLooper());
  private interface StorageWork {JSObject run(StorageBrowser browser)throws Exception;}
- private JSObject denied(){JSObject out=result("denied",StorageCatalog.legacy()?"Allow storage access to browse files.":"Allow all-files access to browse storage.");out.put("access",StorageCatalog.access(getContext()));return out;}
- private void storage(PluginCall call,StorageWork task){PluginWorkers.submit(storageWorker,()->{
+ private JSObject denied(){JSObject out=result("denied",StorageCatalog.legacy()?"Allow storage access to browse files.":"Allow all-files access to browse storage.");out.put("access",StorageCatalog.access(getContext()));out.put("legacy",StorageCatalog.legacy());return out;}
+ private void storage(PluginCall call,StorageWork task){storage(call,task,null);}
+ /** Runs refusal cleanup before answering, including when the worker has already closed. */
+ private void storage(PluginCall call,StorageWork task,Runnable failed){PluginWorkers.submit(storageWorker,()->{
   try{
-   if(!"granted".equals(StorageCatalog.access(getContext()))){call.resolve(denied());return;}
+   if(!"granted".equals(StorageCatalog.access(getContext()))){refuse(call,failed,denied());return;}
    StorageCatalog.Volume volume=StorageCatalog.volume(getContext(),call.getString("volume","primary"));
-   if(volume==null){call.resolve(result("unavailable","This storage is not mounted."));return;}
+   if(volume==null){refuse(call,failed,result("unavailable","This storage is not mounted."));return;}
    JSObject out=task.run(new StorageBrowser(volume.directory,STORAGE_TRASH_FOLDER));if(!out.has("status"))out.put("status","ready");call.resolve(out);
-  }catch(IllegalArgumentException e){call.resolve(result("invalid","Invalid name or path."));}
-  catch(IllegalStateException e){call.resolve(result("exists","That name is already used here."));}
-  catch(java.io.FileNotFoundException e){call.resolve(result("missing","This item is no longer there."));}
-  catch(SecurityException e){call.resolve(denied());}
-  catch(Exception e){call.resolve(result("failed","The operation could not be confirmed."));}
- },()->call.resolve(result("unavailable","Files closed.")));}
+  }catch(IllegalArgumentException e){refuse(call,failed,result("invalid","Invalid name or path."));}
+  catch(IllegalStateException e){refuse(call,failed,result("exists","That name is already used here."));}
+  catch(java.io.FileNotFoundException e){refuse(call,failed,result("missing","This item is no longer there."));}
+  catch(SecurityException e){refuse(call,failed,denied());}
+  catch(Exception e){refuse(call,failed,result("failed","The operation could not be confirmed."));}
+ },()->refuse(call,failed,result("unavailable","Files closed.")));}
+ private static void refuse(PluginCall call,Runnable failed,JSObject out){
+  try{if(failed!=null)failed.run();}catch(RuntimeException ignored){/* Resources attempted all cleanup; the refused call still needs its answer. */}
+  call.resolve(out);
+ }
  private static List<String> strings(PluginCall call,String key,int max){
   JSArray array=call.getArray(key);if(array==null||array.length()<1||array.length()>max)throw new IllegalArgumentException();
   List<String> out=new ArrayList<>();Set<String> seen=new HashSet<>();
@@ -72,7 +78,7 @@ public class AlphaFilesPlugin extends Plugin {
   if(!files.isEmpty())android.media.MediaScannerConnection.scanFile(getContext(),files.toArray(new String[0]),null,null);
  }
  @PluginMethod public void storageState(PluginCall call){PluginWorkers.submit(storageWorker,()->{
-  JSObject out=new JSObject();out.put("status","ready");String access=StorageCatalog.access(getContext());out.put("access",access);JSArray volumes=new JSArray();
+  JSObject out=new JSObject();out.put("status","ready");String access=StorageCatalog.access(getContext());out.put("access",access);out.put("legacy",StorageCatalog.legacy());JSArray volumes=new JSArray();
   if("granted".equals(access))for(StorageCatalog.Volume v:StorageCatalog.volumes(getContext()))volumes.put(StorageCatalog.describe(v));
   out.put("volumes",volumes);call.resolve(out);
  },()->call.resolve(result("unavailable","Files closed.")));}
@@ -215,7 +221,8 @@ public class AlphaFilesPlugin extends Plugin {
    return resources;
   });
   return new JSObject();
- });}
+ // A current refusal retires the previous folder's observers; an older request cannot stop a newer watch.
+ },()->watch.fail(ticket));}
  @PluginMethod public void storageUnwatch(PluginCall call){stopWatching();call.resolve(new JSObject());}
  private void burst(Runnable changed){main.removeCallbacks(changed);main.postDelayed(changed,400);}
  private void stopWatching(){watch.clear();}

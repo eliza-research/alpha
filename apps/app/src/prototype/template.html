@@ -2673,7 +2673,7 @@
     </sc-if>
     <sc-if value="{{files.browse.denied}}">
       <div role="alert" style="display: flex; align-items: center; gap: 12px; margin: 8px; padding: 14px 16px; border-radius: 20px; background: var(--s2)">
-        <span style="flex-grow: 1; font-size: 15px">Allow all files access</span>
+        <span style="flex-grow: 1; font-size: 15px">{{files.browse.deniedLabel}}</span>
         <button onClick="{{files.browse.grant}}" style="min-height: 40px; padding: 0 16px; border-radius: 20px; background: var(--acc); color: var(--alpha-white); font-weight: 600">Allow</button>
       </div>
     </sc-if>
