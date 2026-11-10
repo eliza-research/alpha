@@ -86,10 +86,10 @@ test('every subview of a retained view is opened by a state that asserts it is t
     ['Settings', 'Privacy', 'App permissions'], ['Settings', 'About'],
     ['Settings', 'Apps'], ['Settings', 'Apps', 'Calendar'],
     ['Settings', 'Apps', 'Passwords'],
-    ['Settings', 'Apps', 'Workflows', 'Scheduled summaries'],
-    ['Settings', 'Account', 'Account & plan'],
+    ['Workflows', 'New automation', 'Clock alarms'],
+    ['Settings', 'Account'],
     ['Settings', 'Account', 'Google & email'],
-  ]) assert.ok(states.includes(`[${steps.map(step => `'${step}'`).join(', ')}]`), `${steps.join(' > ')} is swept`);
+  ]) assert.ok((states+production).includes(`[${steps.map(step => `'${step}'`).join(', ')}]`), `${steps.join(' > ')} is swept`);
 });
 
 test('the sweep applies every dimension and cannot be narrowed silently', () => {
@@ -147,7 +147,7 @@ test('the sweep applies every dimension and cannot be narrowed silently', () => 
   assert.doesNotMatch(sweep, /test\.skip|test\.fixme|\.only\(/);
   assert.doesNotMatch(production, /test\.skip|test\.fixme|\.only\(/);
   assert.doesNotMatch(states, /fixme|largeTextOpen/);
-  assert.match(production, /const STATES = \[\.\.\.LIVE_STATES, PRODUCTION_APPS_STATE\];/);
+  assert.match(production, /const STATES = \[\.\.\.LIVE_STATES, PRODUCTION_APPS_STATE, PRODUCTION_CONNECTIONS_STATE\];/);
   assert.match(production, /for \(const state of STATES\)/);
   assert.match(production, /auditPage\(page, \{ contrast: true, targetSize: 24, clipping: true, overlap: true, dock: true \}\)/);
 });
@@ -252,7 +252,7 @@ test('the dock, title and toast fixes the sweep depends on stay in the source', 
   assert.match(main, /installToastLayer\(\)/);
   const toast = read('apps/app/src/runtime/toast-layer.ts');
   assert.match(toast, /region\.setAttribute\('aria-live', 'polite'\)/);
-  assert.match(toast, /dialog\.prepend\(region\)/);
+  assert.match(toast, /container\.prepend\(region\)/);
   assert.doesNotMatch(toast, /showPopover|position:fixed/);
   assert.match(toast, /dialog\.matches\('dialog\[open\]:modal'\)/);
 });
