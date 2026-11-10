@@ -185,7 +185,7 @@ npm run verify
 npm run dev
 ```
 
-`npm run verify` needs a JDK (`JAVA_HOME` or `javac` on `PATH`) for the host contract tests.
+`npm run verify` needs a JDK (`JAVA_HOME` or `javac` on `PATH`) for the host contract tests. It also needs the `sqlite3` command-line tool on `PATH` for the native Calendar query tests. Archive builds check SQLite before the long verification run.
 The tests that load the real SDK need Bun 1.4.2 and the prepared SDK; without them they
 skip. To run them, as CI's Repository verification does:
 
