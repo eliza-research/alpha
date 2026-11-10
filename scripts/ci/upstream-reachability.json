@@ -2,16 +2,26 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "af497c134d4d662c8a2c74d4b9fa587a414425f2",
-  "head": "3ac3c95119e2ca11f6d72714899faafd064b2c38",
+  "baseCommit": "9d95da4e77896947270e9372f53801aff1325767",
+  "head": "6d30856cfd2fbef63245d93a7f56a11490c956f1",
   "recordedAt": "2026-11-10",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...3ac3c95119e2ca11f6d72714899faafd064b2c38",
-  "status": "behind",
-  "aheadBy": 0,
-  "behindBy": 17,
-  "mergeBase": "3ac3c95119e2ca11f6d72714899faafd064b2c38",
-  "pinOnlyCommits": [],
+  "command": "gh api repos/elizaOS/eliza/compare/develop...6d30856cfd2fbef63245d93a7f56a11490c956f1",
+  "status": "diverged",
+  "aheadBy": 2,
+  "behindBy": 121,
+  "mergeBase": "00edc8ce2e8b9bd47ad5cce33e1dff66c2fe47c0",
+  "pinOnlyCommits": [
+    {
+      "sha": "e4b05b8f4b23666250b9b424757eb68036ddfaea",
+      "subject": "Keep Maps navigation and reviewed routes across view changes"
+    },
+    {
+      "sha": "6d30856cfd2fbef63245d93a7f56a11490c956f1",
+      "subject": "Pause unadmitted background guidance and retain its route"
+    }
+  ],
   "pullRequests": [
-    "https://github.com/elizaOS/eliza/pull/39196"
+    "https://github.com/elizaOS/eliza/pull/39196",
+    "https://github.com/elizaOS/eliza/pull/39229"
   ]
 }
