@@ -1,10 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
 import {parseBuildArgs,gradleFlagArgs,consumerBuildOptions,buildEnv} from '../scripts/build-android.ts';
-const stage=readFileSync(new URL('../scripts/stage-local-agent-runtime.ts',import.meta.url),'utf8');
-const start=stage.indexOf('export function runtimeProfileSelection('),end=stage.indexOf('\nfunction stageLocalAgentRuntime',start);
-const select=new Function(stage.slice(start,end).replace('export ', '')+';return runtimeProfileSelection;')();
+import {runtimeProfileSelection as select} from '../scripts/stage-local-agent-runtime.ts';
 test('local embeddings is explicit and keeps the Cloud profile',()=>{
  const options=parseBuildArgs(['--runtime-profile=cloud','--local-embeddings']);
  assert.equal(options.runtimeProfile,'cloud');assert.equal(options.localEmbeddings,true);

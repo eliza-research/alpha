@@ -29,7 +29,7 @@ test('Cloud profile checks the explicitly selected prepared source even when ano
 test('Cloud profile keeps native speech and embeddings guards as default',()=>{
  const gradle=fs.readFileSync('android/app/product.gradle','utf8');
  assert.match(gradle,/ELIZA_RUNTIME_PROFILE.*native/);
- assert.match(gradle,/runtimeProfile == 'cloud'.*runtime-profile.mjs/);
+ assert.match(gradle,/runtimeProfile == 'cloud'.*runtime-profile\.ts/);
  assert.match(fs.readFileSync('android/local-speech/build.gradle','utf8'),/cloudProfile \|\| \(unpackaged && !nativeOutput\.exists\(\)\)/);
  // Routing belongs to the shared upstream profile; Alpha declares only its deployment.
  const declaration=fs.readFileSync('apps/app/src/product/native-cloud-runtime.ts','utf8');

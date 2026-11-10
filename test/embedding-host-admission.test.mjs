@@ -5,6 +5,7 @@ import path from 'node:path';
 import os from 'node:os';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {verifyEmbeddingHost, verifyEmbeddingInputs} from '../scripts/stage-embedding-host.ts';
 import {embeddingProducerInputPaths,nativeInputPaths, nativeBinding, nativeInputs, nativeGenerated} from '../scripts/embedding-native-contract.ts';
 const root=path.resolve(import.meta.dirname,'..');
@@ -181,7 +182,7 @@ test('producer helper drift is rejected both dirty and after a committed source 
 });
 
 test('staging serializes the original producer receipt inputs without replacing its built pin',()=>{
- const stage=fs.readFileSync(new URL('../scripts/stage-embedding-host.ts',import.meta.url),'utf8');
+ const stage=stripTypeScriptTypes(fs.readFileSync(new URL('../scripts/stage-embedding-host.ts',import.meta.url),'utf8'));
  const literal=stage.match(/const manifest=(\{pin:receipt\.pin[^\n]+);/)[1];
  const make=new Function('receipt','identity','model','libraries','hash','args','return '+literal);
  const receipt={pin:'1'.repeat(40),forkPin:'2'.repeat(40),abi:'arm64-v8a',inputs:[],producerInputs:[{path:'packages/app/scripts/stage-elizavoice-lib.ts',sha256:'3'.repeat(64)}]};
