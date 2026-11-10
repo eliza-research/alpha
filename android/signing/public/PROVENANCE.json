@@ -1,0 +1,10 @@
+{
+  "workflowRun": 42919025243,
+  "workflowCommit": "e644bc1c630d6a2f2df3b528115c6565cc85e479",
+  "artifactId": 13812121031,
+  "artifactSHA256": "dc02a57408337e36d39fdc4889ff9bfc16a807394b2f26cfb3fdb4a9a5810e2c",
+  "keyPairsVerified": 12,
+  "fingerprintsSHA256": "dc8ce8c0864e3eecb5dcc429bb41f62c5ff26c2a6aa5b997a9e9c3a12c952806",
+  "signedImageProduced": false,
+  "deviceQualified": false
+}
