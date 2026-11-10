@@ -27,7 +27,7 @@ async function trackCsp(page: Page) {
 // Owner rule: speech runs only on the native libelizainference stack (on the phone, or the local
 // agent on a computer). The built web bundle carries no speech model, worker or inference runtime.
 test('the built bundle ships no in-browser speech engine, model or inference runtime', async ({ request }) => {
-  const dir = path.resolve('test-results/production-web');
+  const dir = path.resolve(`test-results/production-web-${Number(process.env.ALPHA_BROWSER_TEST_PORT||5317)+1}`);
   const walk = (current: string): string[] => readdirSync(current, { withFileTypes: true }).flatMap(entry => entry.isDirectory() ? walk(path.join(current, entry.name)) : [path.relative(dir, path.join(current, entry.name)).split(path.sep).join('/')]);
   const files = walk(dir);
   expect(files.length).toBeGreaterThan(10);
