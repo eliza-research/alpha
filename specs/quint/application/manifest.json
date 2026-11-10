@@ -1695,12 +1695,12 @@
     ],
     "stateMapping": {
       "installed/generation": "Exact installed observer cleanup and observed installation count",
-      "dialogs": "Fixture modal opening order, observed through the owner receiving visible feedback",
+      "dialogs": "Native or active ARIA modal opening order, observed through the owner receiving visible feedback",
       "sourceMessage/sourceUndo": "Actual page message and Undo availability",
       "regions/target/visible/undo/clicks": "Rendered live regions, visible feedback and forwarded click count"
     },
     "abstractions": [
-      "Two modal identities and two distinct toast messages. Observations follow observer/frame settlement.",
+      "Two native or ARIA modal identities and two distinct toast messages. Observations follow observer/frame settlement.",
       "Browser focus fallback for preexisting modal stacks and assistive technology behavior are separate."
     ],
     "bounds": {

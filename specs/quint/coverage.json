@@ -44967,7 +44967,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "c76ea870764fbca7595735b9ec32834492f5e22787c0dd86f0d6da94e56f803d",
+      "sha256": "7632482ef5751afb8bd9b7e45aa7771472f7c1b31912334b273828ad8875591c",
       "stateAnchors": [
         {
           "line": 19,
@@ -44978,82 +44978,83 @@
           "text": "const HOST = 'data-alpha-dialog-toast';"
         },
         {
-          "line": 22,
+          "line": 29,
           "text": "let installed: (() => void) | null = null;"
         },
         {
-          "line": 26,
+          "line": 33,
           "text": "let frame = 0, undo: HTMLButtonElement | null = null;"
         },
         {
-          "line": 39,
-          "text": "const host = (dialog: HTMLDialogElement) => {"
+          "line": 46,
+          "text": "const host = (dialog: HTMLElement) => {"
         },
         {
-          "line": 40,
+          "line": 47,
           "text": "let region = Array.from(dialog.children).find((child): child is HTMLElement => child instanceof HTMLElement && child.hasAttribute(HOST));"
         },
         {
-          "line": 51,
+          "line": 58,
           "text": "const sync = () => {"
         },
         {
-          "line": 53,
+          "line": 60,
           "text": "const open = modals(), topmost = open.at(-1);"
         },
         {
-          "line": 54,
-          "text": "for (const stale of document.querySelectorAll<HTMLElement>(`[${HOST}]`)) if (!open.includes(stale.parentElement as HTMLDialogElement)) stale.remove();"
+          "line": 61,
+          "text": "for (const stale of document.querySelectorAll<HTMLElement>(`[${HOST}]`)) if (!open.includes(stale.parentElement as HTMLElement)) stale.remove();"
         },
         {
-          "line": 56,
+          "line": 63,
           "text": "const regions = open.map(host);"
         },
         {
-          "line": 57,
+          "line": 64,
           "text": "const source = document.querySelector<HTMLElement>(SOURCE), shown = source?.firstElementChild as HTMLElement | null;"
         },
         {
-          "line": 58,
+          "line": 65,
           "text": "const text = (shown?.querySelector('span')?.textContent ?? '').trim();"
         },
         {
-          "line": 60,
+          "line": 67,
           "text": "const signature = text ? `${text}\\n${undo ? 'undo' : ''}` : '';"
         },
         {
-          "line": 61,
+          "line": 68,
           "text": "for (const region of regions) {"
         },
         {
-          "line": 62,
+          "line": 69,
           "text": "const wanted = region === regions.at(-1) ? signature : '';"
         },
         {
-          "line": 67,
+          "line": 74,
           "text": "const paint = getComputedStyle(shown);"
         },
         {
-          "line": 68,
+          "line": 75,
           "text": "const body = document.createElement('div');"
         },
         {
-          "line": 72,
+          "line": 79,
           "text": "const message = document.createElement('span');"
         },
         {
-          "line": 77,
+          "line": 84,
           "text": "const button = document.createElement('button');"
         },
         {
-          "line": 87,
+          "line": 94,
           "text": "const schedule = () => { if (!frame) frame = requestAnimationFrame(sync); };"
         },
         {
-          "line": 109,
+          "line": 128,
           "text": "for (const region of document.querySelectorAll(`[${HOST}]`)) region.remove();"
         }
-      ]
+      ],
+      "integrationReview": "Native top-layer dialogs and active ARIA dialogs share ordered toast ownership. Seven source-bound traces cover native, ARIA and mixed modal order, Undo, close/reopen and cleanup. Six production browser cases passed including Google accounts in portrait and landscape; assistive-technology announcement timing and exhaustive browser modal behavior remain separate qualification."
     },
     {
       "path": "apps/app/src/runtime/view-focus.ts",

@@ -131,7 +131,7 @@ export const LIVE_STATES: State[] = [
   // The remaining Settings pages, and each app's open menu, search field and editor.
   live('Settings apps', ['Settings', 'Apps']),
   live('Settings accounts', ['Settings', 'Account']),
-  live('Settings connections', ['Settings', 'Account', 'Google & email']),
+  // Google account management needs a signed-in fixture; production checks provide it.
   live('Settings notifications', ['Settings', 'General', 'Notifications']),
   live('Settings calendar', ['Settings', 'Apps', 'Calendar']),
   live('Settings password manager', ['Settings', 'Apps', 'Passwords']),

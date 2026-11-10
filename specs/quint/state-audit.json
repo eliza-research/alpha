@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "75b44015561368fc8ca982b70b8bafbdf1672a7b",
-  "ledgerSha256": "d19a2a0c28e2932b7769178594d4cb34a15240d2a1c053b62512c59a7cb3607b",
+  "ledgerSha256": "fe45145bef3294ce2304ea4edebc06ab8b5d2f928f2cec17ba5b2968a9fda2a6",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -29,8 +29,8 @@
     "languageReview": 96,
     "parseErrors": 0,
     "candidates": 69971,
-    "writeSites": 68735,
-    "writeAssociations": 61617,
+    "writeSites": 68739,
+    "writeAssociations": 61621,
     "asynchronous": 8622,
     "unassignedWrites": 10531
   },
@@ -45640,7 +45640,7 @@
     },
     {
       "path": "apps/app/src/runtime/toast-layer.ts",
-      "sha256": "c76ea870764fbca7595735b9ec32834492f5e22787c0dd86f0d6da94e56f803d",
+      "sha256": "7632482ef5751afb8bd9b7e45aa7771472f7c1b31912334b273828ad8875591c",
       "allocatedModels": [
         "ModalToastForwarding",
         "ShellNavigation"
@@ -45651,25 +45651,25 @@
       "owners": [
         {
           "owner": "<module>",
-          "line": 22,
+          "line": 29,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "installToastLayer",
-          "line": 26,
+          "line": 33,
           "bindings": 3,
-          "writes": 10
+          "writes": 14
         },
         {
           "owner": "installToastLayer.host",
-          "line": 40,
+          "line": 47,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "installToastLayer.sync",
-          "line": 61,
+          "line": 68,
           "bindings": 4,
           "writes": 10
         }
@@ -226031,6 +226031,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "bebd18448dbdf6ca5378e6f3e74f24c3bc783dfbdd72ba9030893dedcd8f371d"
+    "sha256": "9ddf07e23f1b79ffa30432ea4f139f304a6d0656e88991ea430c97be98d74798"
   }
 }

@@ -18,25 +18,32 @@
  */
 const SOURCE = '[data-alpha-toast]';
 const HOST = 'data-alpha-dialog-toast';
+const MODALS = 'dialog[open]:modal,[role="dialog"][aria-modal="true"]';
+
+function isOpenModal(element: HTMLElement): boolean {
+  if (element instanceof HTMLDialogElement) return element.matches('dialog[open]:modal');
+  return element.matches('[role="dialog"][aria-modal="true"]') &&
+    !element.closest('[inert],[hidden],[aria-hidden="true"]');
+}
 
 let installed: (() => void) | null = null;
 /** Installed once per document; a second call returns the same uninstaller. */
 export function installToastLayer(): () => void {
   if (installed) return installed;
   let frame = 0, undo: HTMLButtonElement | null = null;
-  const modalOrder = new Set<HTMLDialogElement>();
+  const modalOrder = new Set<HTMLElement>();
   const modals = () => {
-    for (const dialog of modalOrder) if (!dialog.isConnected || !dialog.matches('dialog[open]:modal')) modalOrder.delete(dialog);
-    for (const dialog of document.querySelectorAll<HTMLDialogElement>('dialog[open]:modal')) modalOrder.add(dialog);
+    for (const dialog of modalOrder) if (!dialog.isConnected || !isOpenModal(dialog)) modalOrder.delete(dialog);
+    for (const dialog of document.querySelectorAll<HTMLElement>(MODALS)) if (isOpenModal(dialog)) modalOrder.add(dialog);
     return [...modalOrder];
   };
   modals();
-  const focused = document.activeElement?.closest<HTMLDialogElement>('dialog[open]:modal');
-  if (focused) {
+  const focused = document.activeElement?.closest<HTMLElement>(MODALS);
+  if (focused && isOpenModal(focused)) {
     modalOrder.delete(focused);
     modalOrder.add(focused);
   }
-  const host = (dialog: HTMLDialogElement) => {
+  const host = (dialog: HTMLElement) => {
     let region = Array.from(dialog.children).find((child): child is HTMLElement => child instanceof HTMLElement && child.hasAttribute(HOST));
     if (region) return region;
     region = document.createElement('div');
@@ -51,7 +58,7 @@ export function installToastLayer(): () => void {
   const sync = () => {
     frame = 0;
     const open = modals(), topmost = open.at(-1);
-    for (const stale of document.querySelectorAll<HTMLElement>(`[${HOST}]`)) if (!open.includes(stale.parentElement as HTMLDialogElement)) stale.remove();
+    for (const stale of document.querySelectorAll<HTMLElement>(`[${HOST}]`)) if (!open.includes(stale.parentElement as HTMLElement)) stale.remove();
     if (!topmost) { undo = null; return; }
     const regions = open.map(host);
     const source = document.querySelector<HTMLElement>(SOURCE), shown = source?.firstElementChild as HTMLElement | null;
@@ -94,11 +101,23 @@ export function installToastLayer(): () => void {
         modalOrder.delete(dialog);
         modalOrder.add(dialog);
       }
+      if (record.attributeName === 'aria-modal' && record.oldValue !== 'true' &&
+          dialog instanceof HTMLElement && isOpenModal(dialog)) {
+        modalOrder.delete(dialog);
+        modalOrder.add(dialog);
+      }
+      for (const node of record.addedNodes) if (node instanceof HTMLElement) {
+        const added = [node, ...node.querySelectorAll<HTMLElement>(MODALS)];
+        for (const candidate of added) if (isOpenModal(candidate)) {
+          modalOrder.delete(candidate);
+          modalOrder.add(candidate);
+        }
+      }
     }
     schedule();
   });
   changes.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true,
-    attributeFilter: ['open'], attributeOldValue: true });
+    attributeFilter: ['open','aria-modal','aria-hidden','hidden','inert'], attributeOldValue: true });
   window.addEventListener('resize', schedule);
   sync();
   const uninstall = () => {
