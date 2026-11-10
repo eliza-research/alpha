@@ -2361,9 +2361,9 @@
         "missingWorkerAndStalePayloadRefuseTest",
         "payloadReportDoesNotAdmitCloudProfileTest",
         "missingMobileReceiptPrecedesGoogleHostTest",
-        "embeddingHumanActionDependsOnReceiptAndToolchainTest",
+        "embeddingBytesMustBePresentAndUnchangedTest",
         "signerNeedsIdentityAndEnvironmentTest",
-        "completeReportIncludesQualificationButIsNotBuildTest"
+        "completeInputReportDoesNotRunBuildTest"
       ],
       "invariants": [
         "FullAdmissionRequiresEarlyAdmission",
@@ -2379,7 +2379,7 @@
         "scripts/voice-host.mjs"
       ],
       "stateMapping": {
-        "input": "Selected disposable checkout, reviewed-byte, stamp, profile, receipt and qualification fixtures",
+        "input": "Selected disposable checkout, native-library byte, stamp, profile and build-receipt fixtures",
         "ready/attention/notices": "Real report rows and formatting for native build readiness and human actions",
         "before/full/googleChecked": "Actual early and full preflight problem classes and order of the Google host admission port"
       },
