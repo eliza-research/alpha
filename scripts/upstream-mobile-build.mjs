@@ -1,6 +1,6 @@
 export default {
   "schema": 1,
-  "baseCommit": "1d91747e897bd518c3b01e833f01a6729c3e8fdb",
+  "baseCommit": "268733c01f239b352396abefb1b9a112a3cb65a6",
   "bun": {
     "version": "1.4.2",
     "revision": "744846f844374847c902b5e7fd59b4342a51ef99"
@@ -39,5 +39,5 @@ export default {
       "dist-node/version.js": "5a43d6eb8496806fd5e152f92edda603dbb1f77108045edcf034f22c9e320ce8"
     }
   },
-  "lockSha256": "7e301d5135b063140f4016a7316953a821a5c4e9b280390a07ee4ff45dd71bec"
+  "lockSha256": "26aac0a51f31553ab4eef64894d88dfefd6bd1aab2c0cf9e6b46a083ed18b5b6"
 };

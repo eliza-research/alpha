@@ -8,7 +8,7 @@ Google's server key belongs to Cloud. Maps does not require the phone's optional
 Gmail/Calendar Google connection.
 
 These instructions were checked against Eliza source
-`1d91747e897bd518c3b01e833f01a6729c3e8fdb`. They describe operator setup and
+`268733c01f239b352396abefb1b9a112a3cb65a6`. They describe operator setup and
 acceptance work. Source checks and synthetic browser tests do not establish a
 live deployment or Pixel acceptance. The earlier self-hosted OSM/Nominatim/
 GraphHopper setup is superseded for production.
@@ -55,7 +55,7 @@ GraphHopper setup is superseded for production.
    Google service availability and does not guarantee a route for every request.
    Google results must retain the matching Google basemap and attribution.
    The OSM geocoder/router URLs, extract revisions and GraphHopper secrets are
-   unused by this provider. [Pinned provider configuration](https://github.com/elizaOS/eliza/blob/1d91747e897bd518c3b01e833f01a6729c3e8fdb/packages/cloud/shared/src/lib/services/maps/provider-registry.ts)
+   unused by this provider. [Pinned provider configuration](https://github.com/elizaOS/eliza/blob/268733c01f239b352396abefb1b9a112a3cb65a6/packages/cloud/shared/src/lib/services/maps/provider-registry.ts)
 
 3. **Configure the Maps allowance on the Worker that owns admission.**
 
@@ -91,8 +91,8 @@ GraphHopper setup is superseded for production.
    Do not use `placeholder` or `selected:false`. The current Maps admission code
    accepts subscription IDs `plus_monthly` and `pro_monthly`; inference rate-tier
    overrides do not replace the subscribed plan. Confirm the pilot account's
-   organization has an active or trialing one of these plans. [Admission code](https://github.com/elizaOS/eliza/blob/1d91747e897bd518c3b01e833f01a6729c3e8fdb/packages/cloud/api/src/lib/maps-request-admission.ts)
-   [Staging ownership contract](https://github.com/elizaOS/eliza/blob/1d91747e897bd518c3b01e833f01a6729c3e8fdb/packages/cloud/admission-worker/verify-staging-contract.ts)
+   organization has an active or trialing one of these plans. [Admission code](https://github.com/elizaOS/eliza/blob/268733c01f239b352396abefb1b9a112a3cb65a6/packages/cloud/api/src/lib/maps-request-admission.ts)
+   [Staging ownership contract](https://github.com/elizaOS/eliza/blob/268733c01f239b352396abefb1b9a112a3cb65a6/packages/cloud/admission-worker/verify-staging-contract.ts)
 
    This revision enforces credential revocation through the bound organization
    gate. `INFERENCE_STRONG_REVOCATION_ENABLED` is no longer the activation switch.
@@ -106,18 +106,20 @@ GraphHopper setup is superseded for production.
    more on pan/zoom. Capabilities and viewport copyright reads are entitled
    metadata and consume no allowance. Daily windows reset at 00:00 UTC. These
    request units are separate from inference funds. Provider errors, cancellation
-   after admission and lost acknowledgements remain consumed. [Maps service contract](https://github.com/elizaOS/eliza/blob/1d91747e897bd518c3b01e833f01a6729c3e8fdb/packages/cloud/api/README.md#maps)
+   after admission and lost acknowledgements remain consumed. [Maps service contract](https://github.com/elizaOS/eliza/blob/268733c01f239b352396abefb1b9a112a3cb65a6/packages/cloud/api/README.md#maps)
 
 4. **Deploy the reviewed Cloud cache fix before the Google pilot.**
 
-   Deploy the API from the reviewed commit `1d91747e897bd518c3b01e833f01a6729c3e8fdb`
-   or a release that includes its changes. Google tile fetches and both authenticated
-   tile response formats use `Cache-Control: no-store`; incomplete viewport copyright
+   Deploy the API from the reviewed commit `268733c01f239b352396abefb1b9a112a3cb65a6`
+   or a release that includes its changes. Google tile fetches use the `no-store`
+   fetch cache mode; both authenticated tile response formats carry
+   `Cache-Control: no-store`. Incomplete viewport copyright
    is refused. The phone also uses the reviewed renderer that withholds imagery outside
    its attributed area and keeps small navigation movements inside an already
    attributed margin. Read back both tile response formats after deployment.
    Alpha source pinning alone does not deploy the Cloud API.
    [Upstream Google rollout change](https://github.com/elizaOS/eliza/pull/39231)
+   [Worker fetch cache mode](https://developers.cloudflare.com/workers/runtime-apis/fetch/)
    Google's upstream policy and every third-party data credit remain applicable. [Tile caching rules](https://developers.google.com/maps/documentation/tile/policies#pre-fetching_caching_or_storage_of_content)
 
    The Cloud operator should record the deployed API commit/version and admission
@@ -199,6 +201,13 @@ GraphHopper setup is superseded for production.
    rename and Share, even when Google supplies the basemap. Verify those manual
    paths separately and confirm that viewing Google results does not write them
    into the saved-place namespace. [Google content and attribution requirements](https://developers.google.com/maps/documentation/places/web-service/policies)
+
+   Existing Google-derived saved rows remain readable and removable, with rename,
+   sharing and directions unavailable. Other provider-backed saved rows remain
+   mapless with those actions unavailable when their source cannot be verified
+   against the current provider. Restricted saved rows also
+   stay out of route-origin choices. Check this after a provider outage or
+   provider change, including a deployment with a custom Google provider ID.
 
    Record the APK digest, Cloud API and admission versions, runtime profile,
    device/Android build, connectivity, checked journeys and pass/fail. Keep APK

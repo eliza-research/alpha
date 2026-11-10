@@ -12,7 +12,7 @@ import type {MapBasemap} from '../../../../.eliza/client-features/plugins/plugin
 import { globalBasemap } from '../maps/basemap';
 import { initializeRegionalMaps, regionalMap, regionalDiagnostics, regionalMapsConfigured } from '../maps/regional-provider';
 import { initializeCloudMaps, cloudMapsCoverage, cloudMapsDiagnostics, cloudMapsBasemap } from '../maps/cloud-maps';
-import { describeMapsDisclosure, insideCloudCoverage, isGoogleMapsCoverage, isGoogleMapsProvider } from '../maps/cloud-provider';
+import { describeMapsDisclosure, insideCloudCoverage, isGoogleMapsCoverage, isGoogleMapsProvider, isLocalMapsPlace } from '../maps/cloud-provider';
 import googleMapsLogo from '../maps/google-maps-attribution.svg?url';
 import { SavedPlaces } from '../maps/saved-places';
 import { NativeMapsLocation, locationPermissionGranted } from '../maps/native-location';
@@ -58,8 +58,9 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     if (isGoogleMapsCoverage(coverage)) googleProviders.add(coverage!.providerId);
     return isGoogleMapsCoverage(coverage) || isGoogleProvider(mapsController?.snapshot().route.value?.providerId);
   };
-  const localPlace = (view: MapsScreenView) => !!view.place &&
-    (view.place.origin === 'manual' || view.place.origin === 'location' || !isGoogleProvider(view.place.providerId));
+  const localPlace = (view: MapsScreenView) => isLocalMapsPlace(
+    view.place, regionalMap()?.providerId || cloudMapsCoverage()?.providerId, isGoogleProvider,
+  );
   const navigationVoice = new NavigationVoice(
     error => screen.notify((error instanceof Error ? error.message + ' ' : '') + 'Voice guidance paused. Tap Enable voice guidance to retry.'),
     () => !googleContent(),
@@ -81,7 +82,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     },
     attribution: () => regionalMap()?.attribution || cloudMapsCoverage()?.attribution || '',
     createController: (config, provider) => (mapsController = new MapsController(
-      config, provider, new SavedPlaces(undefined, isGoogleProvider),
+      config, provider, new SavedPlaces(undefined, isGoogleProvider), undefined, isGoogleProvider,
     )),
     navigationLocation: new NativeMapsLocation(),
     agentLocation: new NativeMapsLocation(),
@@ -91,7 +92,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     share: (data, signal) => {
       signal.throwIfAborted();
       const view = screen.view();
-      if (googleContent() && (view.mode !== 'place' || !localPlace(view))) return Promise.resolve('closed');
+      if ((view.place && !localPlace(view)) || (view.mode !== 'place' && googleContent())) return Promise.resolve('closed');
       return shareMap(data, signal);
     },
     openWebsite: url => {
@@ -192,8 +193,25 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   }
   function bind(data: Bag, view: MapsScreenView, st: Bag, currentApi: Bag) {
     const status = view.status, region = regionalMap(), raster = cloudMapsBasemap();
-    const googleMaps = !region && googleContent();
-    const basemap = region || raster || (googleMaps ? undefined : globalBasemap);
+    const coverage = cloudMapsCoverage();
+    const connectedGoogle = !region && googleContent();
+    const restrictedPlace = !!view.place && !localPlace(view);
+    const googlePlace = restrictedPlace && isGoogleProvider(view.place?.providerId);
+    const placeSourceVerified = !restrictedPlace || view.place?.origin === 'provider' && googlePlace && isGoogleMapsCoverage(coverage);
+    const results = view.results.filter(row => !row.saved || view.saved.some(item =>
+      row.key === 'saved:' + item.id && isLocalMapsPlace(
+        {origin:'saved', providerId:item.providerId}, region?.providerId || coverage?.providerId, isGoogleProvider,
+      ),
+    ));
+    const savedListVisible = view.mode === 'base' || view.mode === 'results' && view.emptyQuery;
+    const restrictedSaved = savedListVisible ? view.saved.filter(item => !isLocalMapsPlace(
+      {origin:'saved', providerId:item.providerId}, region?.providerId || coverage?.providerId, isGoogleProvider,
+    )) : [];
+    const googleMaps = googlePlace || restrictedSaved.some(item => isGoogleProvider(item.providerId)) || connectedGoogle;
+    const googleOnly = (!restrictedPlace || googlePlace) && restrictedSaved.every(item => isGoogleProvider(item.providerId));
+    const basemap = restrictedPlace || restrictedSaved.length
+      ? googleOnly && isGoogleMapsCoverage(coverage) ? raster : undefined
+      : region || raster || (googleMaps ? undefined : globalBasemap);
     const globalMap = basemap === globalBasemap;
     // Alpha's Cloud provider is operator-owned. Translate only the generic setup
     // prompt after a service-configuration refusal; preserve other recovery messages.
@@ -209,11 +227,11 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       // Who receives search text and route points, from the connected Cloud provider.
       searchDisclosure:region?'':describeMapsDisclosure(cloudMapsCoverage()?.disclosure),
       cloudCredit:cloudCredit(directionsOpen),
-      notNative:false, hasNativeMap:true, globalBasemap:globalMap, regionalBasemap:!!region,
-      cloudBasemap:!region && !!raster && !googleMaps, googleMaps, googleMapsLogo,
-      googleMapMissing:googleMaps && !raster,
-      mapLabel:googleMaps ? 'Google Maps' : raster ? 'Cloud map' : globalMap ? 'World map' : 'Regional map',
-      mapAttribution:region?.attribution || (raster ? (planeBasemap === raster && mapCopyright || raster.attribution) : ''),
+      notNative:false, hasNativeMap:true, globalBasemap:globalMap, regionalBasemap:!!region && basemap === region,
+      cloudBasemap:!!raster && basemap === raster && !googleMaps, googleMaps, googleMapsLogo,
+      googleMapMissing:googleMaps && !basemap,
+      mapLabel:googleMaps ? 'Google Maps' : globalMap ? 'World map' : basemap === region && region ? 'Regional map' : basemap ? 'Cloud map' : 'Map',
+      mapAttribution:region && basemap === region ? region.attribution : raster && basemap === raster ? (planeBasemap === raster && mapCopyright || raster.attribution) : '',
       attributionBottom:directionsOpen||isPlace||isResults?sheetHeight+10:130,
       mapRef:(element:HTMLElement)=>{
         if (!element) return;
@@ -221,7 +239,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
           if (planeElement) dropPlane();
           delete element.dataset.mapReady;
           delete element.dataset.mapError;
-          queueMicrotask(() => { if (active() && googleContent() && !cloudMapsBasemap()) screen.setMapState('error'); });
+          queueMicrotask(() => { if (active() && element.isConnected && !planeElement) screen.setMapState('error'); });
           return;
         }
         if(element!==planeElement||planeBasemap!==basemap){
@@ -246,7 +264,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       retryNativeMap:()=>{
         if(!active())return;
         dropPlane();
-        if (googleMaps && !raster) void initializeCloudMaps();
+        if (!basemap && !regionalMapsConfigured) void initializeCloudMaps();
         screen.retryMap();
       },
       mode:view.mode==='navigation'?'nav':view.mode==='directions'?'dir':view.mode, isBase:view.mode==='base',isResults,isPlace,isDir:view.mode==='directions',isNav,
@@ -260,25 +278,24 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       chips: view.saved.map(item => ({ id: 'saved:' + item.id, label: item.label, d: PIN, go: () => screen.chooseSaved(item.id) })),
       cats: data.cats.map((category: Bag) => ({ ...category, go: () => screen.searchFor(category.label) })),
       savedRows: view.saved.map(item => ({ id: 'saved:' + item.id, name: item.label, sub: coordLabel(item.coordinate), d: PIN, go: () => screen.chooseSaved(item.id) })),
-      results: view.results.map(row => ({ id: row.key, name: row.name, sub: row.detail, d: PIN, go: () => screen.choose(row.key) })),
-      hasResults: view.hasResults, noResults: view.noResults, emptyQ: view.emptyQuery,
+      results: results.map(row => ({ id: row.key, name: row.name, sub: row.detail, d: PIN, go: () => screen.choose(row.key) })),
+      hasResults: results.length > 0, noResults: view.noResults || view.hasResults && results.length === 0, emptyQ: view.emptyQuery,
       recenter: () => screen.recenter(), recBottom: isPlace ? 414 : view.mode === 'results' ? 534 : 124, recCss: '',
       sheetH: sheetHeight, sheetSw: { down: () => {}, up: () => {} }, sheetTap: () => {},
       askAlpha: () => currentApi.send(view.query || 'Help me with Maps.'), noResTxt: `Ask ${currentApi.name} about this search`,
     });
     const place = view.place;
     if (place) {
-      const restrictedPlace = googleMaps && !localPlace(view);
       // Provider detail for this exact place: opening hours, phone and website when the
       // source has them. Phone is shown as text; calling stays deferred with Phone.
       data.pc = {
         name: place.name, meta: place.meta, addr: place.address,
         hasHours: !!place.hours, openTxt: 'Hours', openCss: '', hoursTxt: place.hours || '',
         hasPhone: false, hasWeb: !!place.website, web: () => screen.openWebsite(),
-        canDir: place.canDirections, min: 'Directions', saved: place.saved,
+        canDir: place.canDirections && placeSourceVerified, min: 'Directions', saved: place.saved,
         saveLabel: place.saved ? 'Remove from saved' : 'Save', starCss: place.saved ? 'color:var(--acct)' : '', starFill: place.saved ? 'fill:currentColor' : '',
         close: () => screen.closePlace(), save: !restrictedPlace || place.saved ? () => screen.toggleSaved() : undefined,
-        dirs: () => screen.openDirections(),
+        dirs: placeSourceVerified ? () => screen.openDirections() : undefined,
         share: restrictedPlace ? undefined : () => screen.sharePlace(),
         nativeName: place.name, nativeEditing: place.editingName,
         nativeTitleRole: restrictedPlace ? undefined : 'button', nativeTitleTabIndex: restrictedPlace ? undefined : 0,
