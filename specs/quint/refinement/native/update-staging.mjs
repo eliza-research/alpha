@@ -52,14 +52,10 @@ const initialNative = {'s.owner':0, 's.target':0, 's.phase':'idle', 's.file':'ab
 
 function settingsProgram() {
   const source = readFileSync(join(root, settings), 'utf8');
-  // Both slices end at the comment opening the next unrelated declaration; a missing marker fails here.
-  const between = (start, end) => {
-    const from = source.indexOf(start), to = source.indexOf(end, from);
-    assert.ok(from >= 0 && to > from, `settings source markers: ${start} .. ${end}`);
-    return source.slice(from, to);
-  };
-  const review = between('export const UPDATE_SCHEMA', "/** The Privacy page's voice fact");
-  const cache = between('const UPDATE_KEY', '/** Keep the reference settings components');
+  const reviewStart=source.indexOf('export const UPDATE_SCHEMA'), reviewEnd=source.indexOf('/** Field updates wait for Home',reviewStart);
+  const cacheStart=source.indexOf('const UPDATE_KEY'), cacheEnd=source.indexOf('/** Keep the reference settings components',cacheStart);
+  assert.ok(reviewStart>=0&&reviewEnd>reviewStart&&cacheStart>reviewEnd&&cacheEnd>cacheStart,'Exact non-overlapping update parser and cache source blocks');
+  const review=source.slice(reviewStart,reviewEnd), cache=source.slice(cacheStart,cacheEnd);
   assert.ok(review.includes('function parseUpdateManifest(') && cache.includes('device.checkForUpdate()'));
   return new vm.Script(stripTypeScriptTypes((review + cache).replace(/^export /gm, '') + `
 globalThis.inspect = () => ({cache: savedUpdate(), checking: !!updateCheck});

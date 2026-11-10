@@ -150,7 +150,8 @@ test('real workflow keeps main candidates unsigned and isolated while preserving
   assert.equal(build.env.ELIZA_ANDROID_BUN_TARGET, 'linux-musl');
   assert.equal(build.env.ELIZA_ANDROID_TARGET_ABIS, 'arm64-v8a,x86_64');
   assert.equal(evaluate(workflow.concurrency['cancel-in-progress'], main), true);
-  // Inspect the first substitution used to group candidate attempts.
+  // Literal expression checks, not execution of GitHub's concurrency backend.
+  // One template string holds two GHA substitutions; inspect its group key.
   const group = workflow.concurrency.group.match(/\$\{\{([\s\S]*?)\}\}/)[1];
   const newer = {...main, sha: 'b'.repeat(40), run_id: '102'};
   const oldRerun = {...main, run_attempt: '2'};
