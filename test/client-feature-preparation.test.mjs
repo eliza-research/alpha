@@ -70,12 +70,13 @@ test('client feature publication retires once while a peer moves the winner',()=
   const [actor,root,control,preparer]=process.argv.slice(1),destination=path.join(root,'.eliza/client-features');
   const original={rename:fs.renameSync,lstat:fs.lstatSync,remove:fs.rmSync,mkdtemp:fs.mkdtempSync};
   const wait=new Int32Array(new SharedArrayBuffer(4));let stage,aside,retire=0,publish=0,read=0,collided=false;
-  function gate(key,value){fs.writeFileSync(path.join(control,actor+'-'+key+'.json'),JSON.stringify({actor,...value,stage,aside}));const until=Date.now()+20000;while(!fs.existsSync(path.join(control,actor+'-'+key+'.allow'))){if(Date.now()>until)throw Error('Fixture gate timed out: '+actor+' '+key);Atomics.wait(wait,0,0,5);}}
+  function gate(key,value,timeout=20000){fs.writeFileSync(path.join(control,actor+'-'+key+'.json'),JSON.stringify({actor,...value,stage,aside}));const until=Date.now()+timeout;while(!fs.existsSync(path.join(control,actor+'-'+key+'.allow'))){if(Date.now()>until)throw Error('Fixture gate timed out: '+actor+' '+key);Atomics.wait(wait,0,0,5);}}
   fs.mkdtempSync=function(prefix,...args){const result=original.mkdtemp(prefix,...args);if(String(prefix).includes('client-features-stage-'))stage=result;return result;};
   fs.renameSync=function(from,to){
    const kind=from===destination?'retire':to===destination&&from===stage?'publish':undefined;
    if(!kind)return original.rename(from,to);
    const attempt=kind==='retire'?++retire:++publish;if(kind==='retire')aside=to;
+   if(kind==='retire'&&attempt===1)gate('prepared-ready',{operation:'prepared',phase:'ready'},60000);
    gate(kind+'-'+attempt+'-ready',{operation:kind,phase:'ready',attempt});
    let outcome='success',error;try{original.rename(from,to);}catch(cause){outcome=cause.code;error=cause;}
    if(kind==='publish'&&['EEXIST','ENOTEMPTY'].includes(outcome))collided=true;
@@ -100,12 +101,18 @@ test('client feature publication retires once while a peer moves the winner',()=
   const child=spawn(process.execPath,['--input-type=module','-e',worker,actor,root,control,pathToFileURL(path.resolve('scripts/prepare-client-features.mjs')).href],{stdio:['ignore','ignore','pipe']});
   let stderr='';child.stderr.on('data',chunk=>{stderr+=chunk;});
   const closed=new Promise(resolve=>child.on('close',status=>resolve({actor,status,stderr})));
-  return {actor,child,closed};
+  return {actor,child,closed,diagnostic:()=>({status:child.exitCode,signal:child.signalCode,stderr})};
  });
  const marker=(actor,key)=>path.join(control,actor+'-'+key);
- async function ready(actor,key){
-  const until=Date.now()+20000;
-  while(!fs.existsSync(marker(actor,key+'.json'))){if(Date.now()>until)throw Error('Missing fixture event: '+actor+' '+key);await new Promise(resolve=>setTimeout(resolve,5));}
+ async function ready(actor,key,timeout=20000){
+  const until=Date.now()+timeout;
+  while(!fs.existsSync(marker(actor,key+'.json'))){
+   const running=children.find(row=>row.actor===actor),state=running.diagnostic(),complete=marker(actor,'complete.json');
+   if(fs.existsSync(complete))throw Error('Worker completed before fixture event: '+actor+' '+key+'; '+fs.readFileSync(complete,'utf8')+'; '+JSON.stringify(state));
+   if(state.status!==null||state.signal!==null)throw Error('Worker exited before fixture event: '+actor+' '+key+'; '+JSON.stringify(state));
+   if(Date.now()>until)throw Error('Missing fixture event: '+actor+' '+key+'; '+JSON.stringify(state));
+   await new Promise(resolve=>setTimeout(resolve,5));
+  }
   const event=JSON.parse(fs.readFileSync(marker(actor,key+'.json')));locations[actor]={stage:event.stage,aside:event.aside};return event;
  }
  const allow=(actor,key)=>fs.writeFileSync(marker(actor,key+'.allow'),'');
@@ -131,6 +138,10 @@ test('client feature publication retires once while a peer moves the winner',()=
   return ready(actor,'complete');
  }
  try{
+  // Source authentication/materialization is setup. Start the controlled race only
+  // when every real worker has a complete private candidate, even on a busy host.
+  await Promise.all(actors.map(actor=>ready(actor,'prepared-ready',60000)));
+  for(const actor of actors)allow(actor,'prepared-ready');
   await Promise.all(actors.map(actor=>ready(actor,'retire-1-ready')));
   record({actor:'all',operation:'prepared',phase:'done'});
   await operation('reader','retire');
