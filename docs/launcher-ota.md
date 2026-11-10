@@ -36,7 +36,7 @@ The shared scheduler and mounted update gate are implemented in
 [Eliza PR 39166](https://github.com/elizaOS/eliza/pull/39166). The original OTA branch pinned the
 reviewed, source-identical commit `099e2d27ad7268fac0832c4a7e84cc707d2cf03e`; the
 [source comparison receipt](evidence/launcher-ota-upstream-source-20261109.json)
-and [Cloud APK build receipt](evidence/launcher-ota-cloud-apk-build-20261109.json)
+and [Cloud APK build receipt](evidence/launcher-ota-cloud-apk-build-e359d8d9-20261109.json)
 remain historical evidence: the APK receipt names product commit `e359d8d928`
 and upstream `b1817660a0`, while the source comparison names `099e2d27ad`.
 Neither describes the integrated package identity. The integrated
