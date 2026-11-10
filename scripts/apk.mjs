@@ -107,6 +107,22 @@ export function distributionProblems(apk, { mode, testMocks = false } = {}) {
     if (enabled(nodes[0]) && !enabled(assist))
       problems.push("Alpha Quick Settings tile must be disabled while AlphaAssistActivity is disabled");
   }
+  const dictationName = "ai.alphacompute.alphaphone.AlphaKeyboardDictationService";
+  const dictation = facts.components.find(component => component.name === dictationName);
+  if (dictation) {
+    const application = parseXmlTree(apk.xml).children.find(node => node.name === "manifest")
+      ?.children.find(node => node.name === "application");
+    const nodes = application?.children.filter(node =>
+      node.attrs.name === dictationName || node.attrs.name === ".AlphaKeyboardDictationService") ?? [];
+    const actions = nodes.flatMap(node => node.children.filter(child => child.name === "intent-filter")
+      .flatMap(filter => filter.children.filter(child => child.name === "action").map(child => child.attrs.name)));
+    const metadata = nodes.flatMap(node => node.children.filter(child => child.name === "meta-data" && child.attrs.name === "android.view.im"));
+    if (!apk.home || dictation.tag !== "service" || !dictation.exported ||
+        dictation.permission !== EXPORTED_COMPONENTS[dictationName] || nodes.length !== 1 ||
+        actions.length !== 1 || actions[0] !== "android.view.InputMethod" ||
+        metadata.length !== 1 || !metadata[0].attrs.resource)
+      problems.push("Alpha voice typing must be one launcher-only, Android-bound input-method service with subtype metadata");
+  }
   return { facts, problems };
 }
 

@@ -159,7 +159,8 @@
     "external-link",
     "send",
     "star",
-    "shield-alert"
+    "shield-alert",
+    "log-out"
   ],
   "filled": [
     "heart",

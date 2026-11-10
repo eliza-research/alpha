@@ -280,6 +280,13 @@ test('Settings › Eliza Cloud reports the verified plan without automatically o
  await expect(plan.getByRole('button',{name:'Redeem code',exact:true})).toBeVisible();
  await expect(page.getByLabel('Membership code',{exact:true})).toHaveCount(0);
  await expect(plan.getByRole('button',{name:'Manage plan',exact:true})).toBeVisible();
+ const iconPaths=await Promise.all(['Redeem code','Manage plan','Sign out of Eliza Cloud'].map(name=>plan.getByRole('button',{name,exact:true}).locator('span[aria-hidden="true"]').first().getAttribute('style')));
+ expect(new Set(iconPaths).size).toBe(3);
+ await plan.getByRole('button',{name:'Sign out of Eliza Cloud',exact:true}).click();
+ const signOut=page.getByRole('dialog',{name:'Sign out?',exact:true});await expect(signOut).toBeVisible();
+ await signOut.getByRole('button',{name:'Cancel',exact:true}).click();await expect(signOut).toHaveCount(0);
+ await expect(plan.getByText('synthetic-settings@example.invalid',{exact:true})).toBeVisible();
+
  expect(await page.evaluate(()=>(window as any).truth.calls.filter((c:any)=>c.plugin==='AlphaConnection'&&c.method==='request'&&new URL(c.input.url).pathname==='/api/v1/subscription/redeem').length)).toBe(0);
  expect(await page.evaluate(()=>(window as any).truth.calls.some((c:any)=>c.plugin==='AlphaConnection'&&c.method==='request'&&new URL(c.input.url).pathname==='/api/v1/credits/balance'))).toBe(false);
 });

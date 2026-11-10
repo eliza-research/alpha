@@ -33706,7 +33706,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "31e8f80a77cd2630d48d7d4110b39d91b69ad70e57f91e3d3b623fa15bc57747",
+      "sha256": "2d3a871009c754f45627ddac6287e7edb8fdfe3166f2e5c83b3dfbafcaf9d1bb",
       "stateAnchors": [
         {
           "line": 213,
@@ -33781,7 +33781,7 @@
           "text": "owner?.setState({theme,appearanceStorageRead:{theme}});"
         }
       ],
-      "integrationReview": "Reviewed Files access copy distinguishes owner-granted all-files access from individually opened/shared files. No permission or provider authority changes; platform acceptance remains separate. Retained Pixel lane review: 2026-11-09 preview review: saved Inbox before background refresh with owner/epoch invalidation; optional Cloud restore pending presentation; provider pending-vs-failed presentation; existing Cloud-preview storage eligibility; About removal; dedicated embedding authority separated from own text/voice. Existing domain allocations retained; actual browser and owning tests recorded separately. Semantic refinement and device acceptance remain open. 2026-11-10: Current-main composition retains the reviewed Pixel lane UI/IME/Calendar changes and canonical Alpha Compute namespace. Full merged-source qualification remains required; no historical APK/device acceptance transfer."
+      "integrationReview": "Reviewed Files access copy distinguishes owner-granted all-files access from individually opened/shared files. No permission or provider authority changes; platform acceptance remains separate. Retained Pixel lane review: 2026-11-09 preview review: saved Inbox before background refresh with owner/epoch invalidation; optional Cloud restore pending presentation; provider pending-vs-failed presentation; existing Cloud-preview storage eligibility; About removal; dedicated embedding authority separated from own text/voice. Existing domain allocations retained; actual browser and owning tests recorded separately. Semantic refinement and device acceptance remain open. 2026-11-10: Current-main composition retains the reviewed Pixel lane UI/IME/Calendar changes and canonical Alpha Compute namespace. Full merged-source qualification remains required; no historical APK/device acceptance transfer. 2026-11-10: Retained reviewed186a account/sign-out/image dismissal changes in current main composition; keep automatic update disposal and complete keyboard APK admission."
     },
     {
       "path": "apps/app/src/prototype/share-panel-adapter.ts",
@@ -38722,9 +38722,9 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "258d449e17a954884abfc3ce44fe7969e4c5da34a574da5b62d75bae51608470",
+      "sha256": "cc246ae8f0483a3e33cebf07152029be2b857f296ba01a5e53626a2ebc6627cc",
       "stateAnchors": [],
-      "integrationReview": "Reviewed browser connection close icon preserves the existing accessible name and controller close action. Connection identity, owner binding and stored history authority remain unchanged. Retained Pixel lane review: 2026-11-09 preview review: saved Inbox before background refresh with owner/epoch invalidation; optional Cloud restore pending presentation; provider pending-vs-failed presentation; existing Cloud-preview storage eligibility; About removal; dedicated embedding authority separated from own text/voice. Existing domain allocations retained; actual browser and owning tests recorded separately. Semantic refinement and device acceptance remain open. 2026-11-10: Current-main composition retains the reviewed Pixel lane UI/IME/Calendar changes and canonical Alpha Compute namespace. Full merged-source qualification remains required; no historical APK/device acceptance transfer."
+      "integrationReview": "Reviewed browser connection close icon preserves the existing accessible name and controller close action. Connection identity, owner binding and stored history authority remain unchanged. Retained Pixel lane review: 2026-11-09 preview review: saved Inbox before background refresh with owner/epoch invalidation; optional Cloud restore pending presentation; provider pending-vs-failed presentation; existing Cloud-preview storage eligibility; About removal; dedicated embedding authority separated from own text/voice. Existing domain allocations retained; actual browser and owning tests recorded separately. Semantic refinement and device acceptance remain open. 2026-11-10: Current-main composition retains the reviewed Pixel lane UI/IME/Calendar changes and canonical Alpha Compute namespace. Full merged-source qualification remains required; no historical APK/device acceptance transfer. 2026-11-10: Retained reviewed186a account/sign-out/image dismissal changes in current main composition; keep automatic update disposal and complete keyboard APK admission."
     },
     {
       "path": "apps/app/src/runtime/conversation-selection.ts",
@@ -41563,7 +41563,7 @@
     },
     {
       "path": "apps/app/src/runtime/image-preview.ts",
-      "sha256": "7ff5c26313203405044e023cbfc342e0a87d849d7f2c939d09c00c03b4a36781",
+      "sha256": "6f2b5275ce2e0e1e4f96328ff95a7b88264caf0a6aa909b787b65420b96b9e0c",
       "models": [
         "ModalScrimOwnership",
         "ChatAttachments"
@@ -41572,7 +41572,7 @@
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
       "stateAnchors": [],
-      "integrationReview": "Full-screen image-only pointer/zoom state. Reuses inline modal focus and inert ownership. DOM zoom does not mutate image or chat data; geometry/pointer integration remains a browser-test obligation."
+      "integrationReview": "Full-screen image-only pointer/zoom state. Reuses inline modal focus and inert ownership. DOM zoom does not mutate image or chat data; geometry/pointer integration remains a browser-test obligation. 2026-11-10: Retained reviewed186a account/sign-out/image dismissal changes in current main composition; keep automatic update disposal and complete keyboard APK admission."
     },
     {
       "path": "apps/app/src/runtime/image-sms.ts",
@@ -46457,9 +46457,9 @@
       "scope": "development-runtime",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "c2f15785ae273f49a6a4409b4f3b5663534a395b6025332a15863e949601ce36",
+      "sha256": "992008e1d2914afe6b0aba6089d589b285032e3bebebd8ec5f4390da58386704",
       "stateAnchors": [],
-      "integrationReview": " 2026-11-10: Current-main composition retains the reviewed Pixel lane UI/IME/Calendar changes and canonical Alpha Compute namespace. Full merged-source qualification remains required; no historical APK/device acceptance transfer."
+      "integrationReview": " 2026-11-10: Current-main composition retains the reviewed Pixel lane UI/IME/Calendar changes and canonical Alpha Compute namespace. Full merged-source qualification remains required; no historical APK/device acceptance transfer. 2026-11-10: Retained reviewed186a account/sign-out/image dismissal changes in current main composition; keep automatic update disposal and complete keyboard APK admission."
     },
     {
       "path": "scripts/audit-production-bundle.mjs",

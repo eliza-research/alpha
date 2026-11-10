@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "75b44015561368fc8ca982b70b8bafbdf1672a7b",
-  "ledgerSha256": "07809562625a23a8852e7ec9b7cabe2c668f6f7a80c4ca9520067f77e1cc92f1",
+  "ledgerSha256": "9efb8f0160d955718bb509beb5d7fe3db18f3904483f2af94370589cb2bfe510",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -28,10 +28,10 @@
     "parsedFiles": 5713,
     "languageReview": 94,
     "parseErrors": 0,
-    "candidates": 69843,
-    "writeSites": 68705,
-    "writeAssociations": 61633,
-    "asynchronous": 8603,
+    "candidates": 69844,
+    "writeSites": 68707,
+    "writeAssociations": 61622,
+    "asynchronous": 8605,
     "unassignedWrites": 10525
   },
   "files": [
@@ -39982,7 +39982,7 @@
     },
     {
       "path": "apps/app/src/prototype/settings-adapter.ts",
-      "sha256": "31e8f80a77cd2630d48d7d4110b39d91b69ad70e57f91e3d3b623fa15bc57747",
+      "sha256": "2d3a871009c754f45627ddac6287e7edb8fdfe3166f2e5c83b3dfbafcaf9d1bb",
       "allocatedModels": [
         "AppearancePreferenceAdmission",
         "AutomaticAppUpdateSchedule",
@@ -39997,55 +39997,55 @@
       "owners": [
         {
           "owner": "<module>",
-          "line": 46,
+          "line": 47,
           "bindings": 6,
           "writes": 8
         },
         {
           "owner": "parseUpdateManifest",
-          "line": 158,
+          "line": 159,
           "bindings": 3,
           "writes": 3
         },
         {
           "owner": "installSettingsAdapter",
-          "line": 254,
+          "line": 255,
           "bindings": 35,
           "writes": 109
         },
         {
           "owner": "installSettingsAdapter.refreshResidentDiagnostics",
-          "line": 316,
+          "line": 325,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installSettingsAdapter.refreshCapabilities",
-          "line": 332,
+          "line": 341,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installSettingsAdapter.exportDiagnostics",
-          "line": 442,
+          "line": 451,
           "bindings": 1,
           "writes": 3
         },
         {
-          "owner": "installSettingsAdapter.FunctionExpression@485",
-          "line": 513,
+          "owner": "installSettingsAdapter.FunctionExpression@494",
+          "line": 522,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installSettingsAdapter.ArrowFunction@565",
-          "line": 570,
+          "owner": "installSettingsAdapter.ArrowFunction@576",
+          "line": 581,
           "bindings": 37,
-          "writes": 638
+          "writes": 623
         },
         {
-          "owner": "installSettingsAdapter.ArrowFunction@565.ArrowFunction@932",
-          "line": 934,
+          "owner": "installSettingsAdapter.ArrowFunction@576.ArrowFunction@942",
+          "line": 944,
           "bindings": 1,
           "writes": 1
         }
@@ -42144,7 +42144,7 @@
     },
     {
       "path": "apps/app/src/runtime/connection-ui.tsx",
-      "sha256": "258d449e17a954884abfc3ce44fe7969e4c5da34a574da5b62d75bae51608470",
+      "sha256": "cc246ae8f0483a3e33cebf07152029be2b857f296ba01a5e53626a2ebc6627cc",
       "allocatedModels": [
         "Application",
         "ApplicationComposition",
@@ -43526,7 +43526,7 @@
     },
     {
       "path": "apps/app/src/runtime/image-preview.ts",
-      "sha256": "7ff5c26313203405044e023cbfc342e0a87d849d7f2c939d09c00c03b4a36781",
+      "sha256": "6f2b5275ce2e0e1e4f96328ff95a7b88264caf0a6aa909b787b65420b96b9e0c",
       "allocatedModels": [
         "ModalScrimOwnership",
         "ChatAttachments"
@@ -43544,30 +43544,30 @@
         {
           "owner": "createImagePreview.ref",
           "line": 11,
-          "bindings": 12,
-          "writes": 33
+          "bindings": 13,
+          "writes": 36
         },
         {
           "owner": "createImagePreview.ref.move",
-          "line": 31,
+          "line": 32,
           "bindings": 1,
           "writes": 3
         },
         {
           "owner": "createImagePreview.ref.up",
-          "line": 47,
+          "line": 48,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "createImagePreview.ref.cancel",
-          "line": 49,
+          "line": 50,
           "bindings": 1,
           "writes": 1
         }
       ],
       "parseErrors": [],
-      "asynchronous": 16,
+      "asynchronous": 18,
       "unassignedWrites": 0
     },
     {
@@ -45988,7 +45988,7 @@
     },
     {
       "path": "scripts/apk.mjs",
-      "sha256": "c2f15785ae273f49a6a4409b4f3b5663534a395b6025332a15863e949601ce36",
+      "sha256": "992008e1d2914afe6b0aba6089d589b285032e3bebebd8ec5f4390da58386704",
       "allocatedModels": [
         "Application"
       ],
@@ -46000,17 +46000,17 @@
           "owner": "distributionProblems",
           "line": 78,
           "bindings": 1,
-          "writes": 4
+          "writes": 5
         },
         {
           "owner": "legacyStorageProblems",
-          "line": 120,
+          "line": 136,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "verifyOwnerRouteTable",
-          "line": 153,
+          "line": 169,
           "bindings": 1,
           "writes": 1
         }
@@ -225650,6 +225650,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "d7b0d5ddf398015bff2d79f9dc55f8db8a1a92c520c0dca9cfbe034706f2fc91"
+    "sha256": "447f4e9200c16356e01d6b27443935a9e03e34bd3f7fec34f92175d5f7bdce65"
   }
 }
