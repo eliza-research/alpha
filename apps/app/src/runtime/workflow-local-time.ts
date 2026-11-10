@@ -23,6 +23,14 @@ export function workflowClockExpression(time:string,days:number[]):string{
 }
 
 export const workflowDeviceTimeZone=()=>Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';
+/** Existing recurrences retain their clock. Explain a foreign clock only where it affects an edit. */
+export function workflowClockContext(zone:string):string{
+ if(!zone||zone===OWNER_LOCAL_TZ||zone===workflowDeviceTimeZone())return '';
+ try{
+  const name=new Intl.DateTimeFormat(undefined,{timeZone:zone,timeZoneName:'long'}).formatToParts(Date.now()).find(part=>part.type==='timeZoneName')?.value||zone;
+  return `Time and repeat days use ${name}. The overview shows the time on this phone.`;
+ }catch{return 'Time and repeat days use the original saved time zone.';}
+}
 export function workflowLocalInstant(stamp:string|number,locale?:string):string{
  const date=new Date(stamp);return Number.isFinite(date.getTime())?date.toLocaleString(locale,{year:'numeric',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'';
 }

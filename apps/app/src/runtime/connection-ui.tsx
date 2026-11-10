@@ -3763,10 +3763,18 @@ export function ConnectionChooser() {
     if(!planShown&&keyNotice===null)return null;
     return <div className="alpha-plan-notices" ref={node=>{
       if(!node)return;
-      const measure=()=>{node.dataset.scrollable=String(node.scrollHeight>node.clientHeight+1);};
+      const measure=()=>{
+        node.dataset.scrollable=String(node.scrollHeight>node.clientHeight+1);
+        const box=node.getBoundingClientRect(),home=document.querySelector<HTMLElement>('[data-alpha-layer="home"]');
+        const prior=parseFloat(document.documentElement.style.getPropertyValue('--alpha-home-notice-clearance'))||0;
+        const baseTop=home?home.getBoundingClientRect().top-prior:0;
+        const clearance=box.height&&home?Math.max(0,box.bottom-baseTop+12):0;
+        document.documentElement.style.setProperty('--alpha-home-notice-clearance',clearance+'px');
+      };
       const observer=new ResizeObserver(measure);observer.observe(node);
       for(const child of node.children)observer.observe(child);
-      measure();return ()=>observer.disconnect();
+      window.addEventListener('resize',measure);
+      measure();return ()=>{observer.disconnect();window.removeEventListener('resize',measure);document.documentElement.style.removeProperty('--alpha-home-notice-clearance');};
     }}>{planShown&&<aside className="alpha-plan-notice" role="region" aria-label={`${serviceName} plan notice`}>
       <p role="status">{NEEDS_PLAN_NOTICE}</p>
       <div className="alpha-plan-notice-actions">

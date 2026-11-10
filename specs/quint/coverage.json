@@ -16195,7 +16195,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "d8170f138bcf9223132b21eeaaa5c3b8138e361f0ca2962c24cacae1721dea75",
+      "sha256": "131cc46ef28bc3e96534bec92ad3d45ae51d71676d2c78c799b0f4548f647854",
       "stateAnchors": [
         {
           "line": 32,
@@ -16290,7 +16290,7 @@
           "text": "const fields:Bag[]=[],moreFields:Bag[]=[],whenFields:Bag[]=[];if(editor?.kind==='prompt'){fields.push(field('instructions','What should Alpha do?',editor.draft.instructions));moreFields.push(field('title','Name (optional)',editor.draft.title));if(editor.draft.triggerType==='once')whenFields.push(field('scheduledAt','Date and time',editor.draft.scheduledAt,'datetime-local'));if(editor.draft.triggerType==='cron'){const clock=recurringClock(editor.draft.cron);if(clock)whenFields.push(field('recurringTime','Time',clock.time,'time'));moreFields.push(field('cron','Custom schedule (cron)',editor.draft.cron));}if(editor.draft.triggerType==='event')moreFields.push(field('eventKind','Event name',editor.draft.eventKind));}else if(editor){fields.push(field('message','Reminder',editor.draft.message));if(!editor.row||editor.row.record.definition.cadence?.kind==='once')fields.push(field('due','Due',editor.draft.due,'datetime-local'));}"
         }
       ],
-      "integrationReview": "2026-11-10: Reviewed owner UI intake plus current retention correction; bound source hashes and candidate anchors. Existing timezone metadata is preserved on edits, while new workflows use the device zone. Source/browser checks are bounded; full semantic refinement and new SDK bundle qualification remain separate gates."
+      "integrationReview": "2026-11-10: Current boundary and presentation correction. Account revalidation hides old headers before awaiting the response; notice clearance changes the Home scrollport, and foreign schedule editing explicitly identifies its preserved clock. Relevant browser/source tests and finite models remain separate from final runtime/device qualification."
     },
     {
       "path": "apps/app/src/prototype/automations.css",
@@ -21146,7 +21146,7 @@
     },
     {
       "path": "apps/app/src/prototype/inbox-cloud-adapter.ts",
-      "sha256": "ee10bd34170d97bad21573ed4b6654009a3bff3624ca5b375c80eb14978094f2",
+      "sha256": "70bc73b991aa6021ab125addaae4b8ac4f4e2cccffdd754e2f20f4088d312e30",
       "models": [
         "InboxCoordinator",
         "InboxDelivery",
@@ -21445,7 +21445,7 @@
           "text": "const summary=readSavedInboxSummary(saved.value,readGmailAccountChoice(connectionController.getSnapshot().cloudAccount));"
         },
         {
-          "line": 202,
+          "line": 203,
           "text": "const key=gmailReadCacheKey(binding.sessionId,summary.account);if(!key)return;"
         },
         {
@@ -21453,7 +21453,7 @@
           "text": "function persistMailbox(){const epoch=mailCacheEpoch;if(!accountsChecked||!selected||failure)return;const accountId=selected,snapshot={accounts,selected,spamTrashSearch,lists:folderLists.values().filt"
         },
         {
-          "line": 213,
+          "line": 214,
           "text": "let homeLoad:{key:string;client:object;abort:AbortController;task:Promise<void>}|null=null,homeLoadAttempt='',homeLoadAt=0;"
         },
         {
@@ -21461,75 +21461,75 @@
           "text": "const homeSummaryOwner=()=>{const account=connectionController.getSnapshot().cloudAccount,binding=connectionController.getCloudClient();return account?.environment&&account.userId&&binding?.credential"
         },
         {
-          "line": 215,
+          "line": 216,
           "text": "const homeOwnerKey=()=>{const binding=connectionController.getCloudClient(),owner=homeSummaryOwner();return binding&&owner?JSON.stringify([owner,binding.sessionId]):'';};"
         },
         {
-          "line": 218,
+          "line": 219,
           "text": "const binding=connectionController.getCloudClient(),key=homeOwnerKey();"
         },
         {
-          "line": 224,
+          "line": 225,
           "text": "const abort=new AbortController();let epoch=mailCacheEpoch;"
         },
         {
-          "line": 225,
+          "line": 226,
           "text": "const current=()=>!abort.signal.aborted&&!!shell&&epoch===mailCacheEpoch&&homeOwnerKey()===key&&connectionController.getCloudClient()?.client===binding.client;"
         },
         {
-          "line": 226,
+          "line": 227,
           "text": "const hint=readGmailAccountChoice(connectionController.getSnapshot().cloudAccount);"
         },
         {
-          "line": 227,
+          "line": 228,
           "text": "const task=(async()=>{"
         },
         {
-          "line": 229,
+          "line": 230,
           "text": "const rows=await binding.client.gmailAccounts(abort.signal);if(!current())return;"
         },
         {
-          "line": 230,
+          "line": 231,
           "text": "const allowed=rows.filter(gmailReadable);"
         },
         {
-          "line": 232,
+          "line": 233,
           "text": "const chosen=hint?allowed.find(a=>a.connectionId===hint):allowed.length===1?allowed[0]:undefined;"
         },
         {
-          "line": 233,
+          "line": 234,
           "text": "const previous=selected||homePreview?.accountId||'',prior=accounts.find(a=>a.connectionId===previous),next=rows.find(a=>a.connectionId===previous);"
         },
         {
-          "line": 234,
+          "line": 235,
           "text": "const grantChange=prior?gmailGrantChange({sessionId:accountsSession||null,account:prior},{sessionId:binding.sessionId,account:next}):{dropReadCache:false,withdrawn:[]};"
         },
         {
-          "line": 235,
+          "line": 236,
           "text": "const priorKey=inboxPreview?.accountId===previous?inboxPreview.key:homePreview?.accountId===previous?homePreview.key:null;"
         },
         {
-          "line": 242,
+          "line": 243,
           "text": "const readIdentity=gmailReadCacheKey(binding.sessionId,chosen);"
         },
         {
-          "line": 244,
+          "line": 245,
           "text": "const result=await binding.client.gmailSearch(chosen.connectionId!,'in:inbox',abort.signal,25);"
         },
         {
-          "line": 246,
+          "line": 247,
           "text": "const merged=mergeMailboxPage({messages:[],firstPageRevision:null,seenCursors:new Set<string>()},result,null),at=Date.now();spamTrashSearch=result.supportsSpamTrash===true;"
         },
         {
-          "line": 256,
+          "line": 260,
           "text": "const classified=classifyGmailFailure(error,'read');homeFailure=classified.kind;"
         },
         {
-          "line": 257,
+          "line": 261,
           "text": "const revoked=classified.kind==='revoked';"
         },
         {
-          "line": 263,
+          "line": 267,
           "text": "const load={key,client:binding.client,abort,task};homeLoad=load;"
         },
         {
@@ -21549,7 +21549,7 @@
           "text": "const value=readSavedMailbox<MailBody>(saved.value,readGmailAccountChoice(connectionController.getSnapshot().cloudAccount));if(!value)return false;"
         },
         {
-          "line": 273,
+          "line": 281,
           "text": "const chosen=value.chosen;"
         },
         {
@@ -21565,7 +21565,7 @@
           "text": "const pending=homeLoad;if(pending){status='Checking Gmail connection…';publish();await pending.task;}"
         },
         {
-          "line": 283,
+          "line": 296,
           "text": "const binding=connectionController.getCloudClient(),preview=homePreview;"
         },
         {
@@ -21573,67 +21573,67 @@
           "text": "const restored=await restoreMailbox();if(!api?.isActive())return;if(!restored)phase='ready';if(!restored||Date.now()-listReadAt>=60000)await refreshAccounts(restored);"
         },
         {
-          "line": 292,
+          "line": 305,
           "text": "const listKey=(accountId=selected)=>{const binding=connectionController.getCloudClient();return JSON.stringify([binding?.sessionId,binding?.credentialId,accountId,currentQuery()]);};"
         },
         {
-          "line": 295,
+          "line": 308,
           "text": "const binding=connectionController.getCloudClient(),cursor=nextPageToken,key=listKey(),accountId=selected,query=currentQuery();"
         },
         {
-          "line": 298,
+          "line": 311,
           "text": "const page=await binding.client.gmailSearch(accountId,query,signal,25,cursor);"
         },
         {
-          "line": 304,
+          "line": 317,
           "text": "const cachedList=folderLists.get(listKey());"
         },
         {
-          "line": 308,
+          "line": 321,
           "text": "const restoredGeneration=generation,restoredKey=readKey();"
         },
         {
-          "line": 316,
+          "line": 329,
           "text": "const publish = (patch: Bag = {}) => shell?.vset('inbox', { nativeMailTick: Date.now(), ...patch });"
         },
         {
-          "line": 317,
+          "line": 330,
           "text": "const provider = inboxProviderControls(() => publish(), text => api?.toast(text));"
         },
         {
-          "line": 318,
+          "line": 331,
           "text": "const drafts = inboxDrafts(() => publish(), text => api?.toast(text), provider);"
         },
         {
-          "line": 320,
+          "line": 333,
           "text": "const exact=()=>current()&&(!shell||shell===this)&&!pendingCompose&&!api?.get('inbox')?.compose&&"
         },
         {
-          "line": 327,
+          "line": 340,
           "text": "const readable = () => accounts.filter(gmailReadable);"
         },
         {
-          "line": 328,
+          "line": 341,
           "text": "const currentQuery = () => String(api?.get('inbox')?.q || '').trim() || folderQuery[folder];"
         },
         {
-          "line": 330,
+          "line": 343,
           "text": "const readKey = (id = selected) => gmailReadCacheKey(connectionController.getCloudClient()?.sessionId, accounts.find(a => a.connectionId === id));"
         },
         {
-          "line": 331,
+          "line": 344,
           "text": "const accountLabel = (id = selected) => accounts.find(a => a.connectionId === id)?.label || null;"
         },
         {
-          "line": 332,
+          "line": 345,
           "text": "const grants = () => accounts.find(a => a.connectionId === selected)?.grantedCapabilities ?? [];"
         },
         {
-          "line": 335,
+          "line": 348,
           "text": "const recountUnread = (more=inboxPreview?.more??nextPageToken!==null,fresh=false,restoredReadAt?:number) => {"
         },
         {
-          "line": 336,
+          "line": 349,
           "text": "const key=readKey();"
         },
         {
@@ -21641,55 +21641,55 @@
           "text": "stale: () => { if (!body) { void load(); return; } const key = bodyKey(body.message.id); messageBodies.delete(key); pendingBodies.get(key)?.controller.abort(); pendingBodies.delete(key); void open(bod"
         },
         {
-          "line": 349,
+          "line": 362,
           "text": "const id = typeof receipt.providerResult?.messageId === 'string' ? receipt.providerResult.messageId : '';"
         },
         {
-          "line": 376,
+          "line": 389,
           "text": "const binding = connectionController.getCloudClient();"
         },
         {
-          "line": 378,
+          "line": 391,
           "text": "const token = ++generation, controller = new AbortController();"
         },
         {
-          "line": 380,
+          "line": 393,
           "text": "const valid = () => token === generation && !controller.signal.aborted && binding.sessionId === connectionController.getCloudClient()?.sessionId;"
         },
         {
-          "line": 388,
+          "line": 401,
           "text": "const classified = classifyGmailFailure(error, 'read');"
         },
         {
-          "line": 392,
+          "line": 405,
           "text": "const revoked=classified.kind==='revoked',reader=body;"
         },
         {
-          "line": 395,
+          "line": 408,
           "text": "const keptReader=keep&&!revoked&&!!reader&&!reader.loading&&!reader.failed&&api?.get('inbox')?.open===reader.message.id;"
         },
         {
-          "line": 401,
+          "line": 414,
           "text": "const pendingReader=!revoked&&reader?.loading&&api?.get('inbox')?.open===reader.message.id;"
         },
         {
-          "line": 410,
+          "line": 423,
           "text": "let loadAfter = false;"
         },
         {
-          "line": 412,
+          "line": 425,
           "text": "const {client}=binding;"
         },
         {
-          "line": 413,
+          "line": 426,
           "text": "const hint=readGmailAccountChoice(connectionController.getSnapshot().cloudAccount);"
         },
         {
-          "line": 414,
+          "line": 427,
           "text": "const query=currentQuery(),captured=connectionController.getCloudClient();"
         },
         {
-          "line": 418,
+          "line": 431,
           "text": "const abort=()=>readAhead.invalidate();signal.addEventListener('abort',abort,{once:true});"
         },
         {
@@ -21697,75 +21697,75 @@
           "text": "try{const page=await client.gmailSearch(hint,query,pageSignal,25);pageSignal.throwIfAborted();const current=connectionController.getCloudClient();if(current?.client!==captured?.client||current?.sessio"
         },
         {
-          "line": 422,
+          "line": 435,
           "text": "const result = await client.gmailAccounts(signal);"
         },
         {
-          "line": 424,
+          "line": 437,
           "text": "const previous=selected,before={sessionId:accountsSession||null,account:accounts.find(a=>a.connectionId===previous)};accounts = result; accountsChecked = true; accountsSession = binding.sessionId;"
         },
         {
-          "line": 427,
+          "line": 440,
           "text": "const grantChange=gmailGrantChange(before,{sessionId:binding.sessionId,account:accounts.find(a=>a.connectionId===previous)});"
         },
         {
-          "line": 431,
+          "line": 444,
           "text": "const dropped=previous!==selected||(!!previous&&grantChange.dropReadCache);"
         },
         {
-          "line": 435,
+          "line": 448,
           "text": "const retained=preserveSelection&&!!selected&&!dropped;"
         },
         {
-          "line": 458,
+          "line": 471,
           "text": "const eligible = readable(); if (operation || eligible.length < 2) return;"
         },
         {
-          "line": 459,
+          "line": 472,
           "text": "const index = eligible.findIndex(a => a.connectionId === selected), previous = eligible[index], next = eligible[(index + 1) % eligible.length];"
         },
         {
-          "line": 461,
+          "line": 474,
           "text": "const content = await drafts.transfer(); if (!content) return;"
         },
         {
-          "line": 462,
+          "line": 475,
           "text": "const { savedRemains, restore, ...moved } = content;"
         },
         {
-          "line": 472,
+          "line": 485,
           "text": "const draftsView = () => folder === 'drafts' && !String(api?.get('inbox')?.q || '').trim();"
         },
         {
-          "line": 475,
+          "line": 488,
           "text": "const accountId = selected, pageToken = more && loadedQuery === 'in:drafts' ? nextPageToken : null;"
         },
         {
-          "line": 480,
+          "line": 493,
           "text": "const loadGeneration = generation + 1;"
         },
         {
-          "line": 482,
+          "line": 495,
           "text": "const result = await client.gmailDrafts(accountId, signal, pageToken || undefined);"
         },
         {
-          "line": 484,
+          "line": 497,
           "text": "const seen = new Set(pageToken ? providerDrafts.map(d => d.draftId) : []);"
         },
         {
-          "line": 495,
+          "line": 508,
           "text": "const draftsStatus = () => providerDrafts.length ? `${providerDrafts.length} Gmail drafts` : 'No Gmail drafts';"
         },
         {
-          "line": 498,
+          "line": 511,
           "text": "const accountId = selected, holder: { content: GmailDraftContent | null } = { content: null };"
         },
         {
-          "line": 500,
+          "line": 513,
           "text": "const value = await client.gmailDraftContent(accountId, summary.draftId, signal);"
         },
         {
-          "line": 504,
+          "line": 517,
           "text": "const draft = holder.content;"
         },
         {
@@ -21773,83 +21773,83 @@
           "text": "const opened = await drafts.editProvider({ mode: 'compose', to: draft.to, cc: draft.cc, bcc: draft.bcc, subject: draft.subject, bodyText: draft.bodyText, attachments: [] }, { draftId: draft.draftId, p"
         },
         {
-          "line": 510,
+          "line": 523,
           "text": "let loadingMore = false;"
         },
         {
-          "line": 516,
+          "line": 529,
           "text": "const accountId = selected, query = currentQuery();"
         },
         {
-          "line": 517,
+          "line": 530,
           "text": "const pageToken = more && query === loadedQuery ? nextPageToken : null;"
         },
         {
-          "line": 524,
+          "line": 537,
           "text": "const loadGeneration = generation + 1;"
         },
         {
-          "line": 526,
+          "line": 539,
           "text": "const prepared=await readAhead.take(listKey(),pageToken||'',signal);"
         },
         {
-          "line": 528,
+          "line": 541,
           "text": "const result = prepared??await client.gmailSearch(accountId, query, signal, 25, pageToken || undefined);"
         },
         {
-          "line": 533,
+          "line": 546,
           "text": "const merged = mergeMailboxPage({ messages, firstPageRevision, seenCursors }, result, pageToken), shifted = merged.shifted;"
         },
         {
-          "line": 556,
+          "line": 569,
           "text": "const binding = connectionController.getCloudClient(), accountId = selected;"
         },
         {
-          "line": 558,
+          "line": 571,
           "text": "const current = () => accountId === selected && binding.sessionId === connectionController.getCloudClient()?.sessionId;"
         },
         {
-          "line": 559,
+          "line": 572,
           "text": "const outcome = await readState.set(binding.client, accountId, { messageId: message.id, expectedHistoryId: historyId, unread }, explicit);"
         },
         {
-          "line": 560,
+          "line": 573,
           "text": "const notice = explicit ? mailReadStateMessage(outcome, unread, error => classifyGmailFailure(error, 'operation').message) : null;"
         },
         {
-          "line": 567,
+          "line": 580,
           "text": "const update = (m: GmailMessage) => m.id === message.id ? { ...m, unread } : m;"
         },
         {
-          "line": 572,
+          "line": 585,
           "text": "const next = outcome.historyId ?? null;"
         },
         {
-          "line": 581,
+          "line": 594,
           "text": "const current = () => accountId === selected && binding.sessionId === connectionController.getCloudClient()?.sessionId && body?.message.id === id && api?.get('inbox')?.open === id;"
         },
         {
-          "line": 584,
+          "line": 597,
           "text": "const fresh = await binding.client.gmailRead(accountId, id, new AbortController().signal);"
         },
         {
-          "line": 593,
+          "line": 606,
           "text": "const caps = provider.capabilities();"
         },
         {
-          "line": 596,
+          "line": 609,
           "text": "const accountId = selected; let historyId: string | null = null;"
         },
         {
-          "line": 598,
+          "line": 611,
           "text": "const page = await client.gmailThread(accountId, message.threadId, signal);"
         },
         {
-          "line": 610,
+          "line": 623,
           "text": "const accountId=selected,key=bodyKey(message.id),cached=messageBodies.get(key);"
         },
         {
-          "line": 616,
+          "line": 629,
           "text": "const pending=pendingBodies.get(key);let result:MailBody;"
         },
         {
@@ -21857,27 +21857,27 @@
           "text": "if(pending){const abort=()=>pending.controller.abort();signal.addEventListener('abort',abort,{once:true});try{const prepared=await pending.result;signal.throwIfAborted();if(!prepared.ok)throw prepared"
         },
         {
-          "line": 622,
+          "line": 635,
           "text": "const opened=body as typeof body;"
         },
         {
-          "line": 626,
+          "line": 640,
           "text": "const mailSelection=(id:string)=>({kind:'email',id,accountId:selected,revision});"
         },
         {
-          "line": 628,
+          "line": 642,
           "text": "let markRead:Promise<void>|null=null;"
         },
         {
-          "line": 629,
+          "line": 643,
           "text": "const afterRead=(id:string,action:(current:MailBody)=>void)=>void (markRead??Promise.resolve()).then(()=>{if(body&&!body.loading&&body.message.id===id&&api?.get('inbox')?.open===id)action(body);});"
         },
         {
-          "line": 632,
+          "line": 651,
           "text": "const message=body.message,accountId=selected;"
         },
         {
-          "line": 634,
+          "line": 653,
           "text": "const page=await client.gmailThread(accountId,message.threadId,signal);"
         },
         {
@@ -21897,7 +21897,7 @@
           "text": "async function sendContext(){if(!contextReview||contextBusy)return;contextBusy=true;publish();try{const review=contextReview,question=contextQuestion,destination=connectionController.getSnapshot().ses"
         },
         {
-          "line": 649,
+          "line": 680,
           "text": "if(!attachment.supported){await saveOpaque(source,attachment);return;}const accountId=selected;"
         },
         {
@@ -21905,7 +21905,7 @@
           "text": "await work('Loading selected attachment…',async({client},signal,valid)=>{const file=await client.gmailAttachment(accountId,source.message.id,attachment.partId,source.historyId!,signal).catch(error=>{t"
         },
         {
-          "line": 660,
+          "line": 691,
           "text": "const accountId=selected;"
         },
         {
@@ -21917,35 +21917,35 @@
           "text": "const review={name:file.name,text:`${formatBytes(file.size)}. Alpha can't preview this file type. Save to Files keeps a copy; it isn't shared with the agent.`,hash:file.sha256,external:false,open:()=>"
         },
         {
-          "line": 669,
+          "line": 700,
           "text": "const prior=thread,accountId=selected;if(!prior||(!previous&&prior.nextOffset===null))return;"
         },
         {
-          "line": 671,
+          "line": 702,
           "text": "const page=await client.gmailThread(accountId,prior.id,signal,{offset:previous?(prior.previousOffsets.at(-1)??0):prior.nextOffset!,historyId:prior.historyId});"
         },
         {
-          "line": 685,
+          "line": 716,
           "text": "const unsupported = () => api?.toast('Refresh this message, then try again.');"
         },
         {
-          "line": 688,
+          "line": 719,
           "text": "let url: URL; try { url = new URL(link.href); } catch { api?.toast(\"This link isn't valid.\"); return; }"
         },
         {
-          "line": 690,
+          "line": 721,
           "text": "const warning = linkTextMismatch(link) ? `\\n\\nWarning: the email shows “${link.text}”, but the link goes to ${url.hostname}.` : '';"
         },
         {
-          "line": 692,
+          "line": 723,
           "text": "const navigate = (shell as Bag | undefined)?.browserNavigateApproved;"
         },
         {
-          "line": 707,
+          "line": 738,
           "text": "const homeRender = p.renderVals;"
         },
         {
-          "line": 709,
+          "line": 740,
           "text": "const out = homeRender.call(this), binding=connectionController.getCloudClient(),key=readKey();"
         },
         {
@@ -21957,123 +21957,123 @@
           "text": "const disconnected=connectionController.getSnapshot().startupResolved===true&&(!binding||accountsChecked&&!connected);"
         },
         {
-          "line": 713,
+          "line": 744,
           "text": "const cached=key&&inboxPreview?.key===key&&inboxPreview.sessionId===binding?.sessionId&&inboxPreview.accountId===selected?inboxPreview:restored;"
         },
         {
-          "line": 714,
+          "line": 745,
           "text": "const pending=phase==='busy'||phase==='scheduled';"
         },
         {
-          "line": 718,
+          "line": 749,
           "text": "const googleConnected=accounts.some(a=>a.connected)||connected;"
         },
         {
-          "line": 719,
+          "line": 750,
           "text": "const homeGoogleConnected=binding&&connectionController.getSnapshot().startupResolved===true&&accountsChecked&&accountsSession===binding.sessionId?googleConnected:undefined;"
         },
         {
-          "line": 723,
+          "line": 754,
           "text": "const now=Date.now();"
         },
         {
-          "line": 724,
+          "line": 755,
           "text": "const card=presentHomeInboxCard({now,pending,connected,disconnected,unchecked:!!binding&&!accountsChecked,"
         },
         {
-          "line": 740,
+          "line": 771,
           "text": "const openReply = () => { const st = api?.get('inbox'), current = body; return current && st?.open != null && current.message.id === st.open ? current : undefined; };"
         },
         {
-          "line": 744,
+          "line": 775,
           "text": "const binding = connectionController.getCloudClient();"
         },
         {
-          "line": 746,
+          "line": 777,
           "text": "const known = !!binding && (!!homePreview || readable().length > 0 || !accountsChecked && !!readGmailAccountChoice(connectionController.getSnapshot().cloudAccount));"
         },
         {
-          "line": 750,
+          "line": 781,
           "text": "const current = openReply(), target = drafts.suggestionTarget(current?.message);"
         },
         {
-          "line": 758,
+          "line": 789,
           "text": "const reply = openReply()?.message;"
         },
         {
-          "line": 761,
+          "line": 792,
           "text": "const now = view.emailTarget() as EmailTarget;"
         },
         {
-          "line": 767,
+          "line": 798,
           "text": "const binding=connectionController.getCloudClient(),available=view.emailTarget() as EmailTarget;"
         },
         {
-          "line": 769,
+          "line": 800,
           "text": "const target=drafts.suggestionTarget();"
         },
         {
-          "line": 773,
+          "line": 804,
           "text": "const target=view.fileEmailTarget() as EmailTarget;"
         },
         {
-          "line": 780,
+          "line": 811,
           "text": "const list = (v: unknown) => Array.isArray(v) ? v.filter((a): a is string => typeof a === 'string') : typeof v === 'string' ? [v] : [];"
         },
         {
-          "line": 781,
+          "line": 812,
           "text": "const attached = Array.isArray(value.attach) && value.attach.length > 0;"
         },
         {
-          "line": 792,
+          "line": 775,
           "text": "const binding = connectionController.getCloudClient();"
         },
         {
-          "line": 797,
+          "line": 829,
           "text": "const folderIcons:Record<string,string>={Inbox:'inbox',Sent:'send',Archive:'archive',Spam:'shield-alert',Drafts:'file-text',Trash:'trash-2',Starred:'star',\"All mail\":'mail'};"
         },
         {
-          "line": 798,
+          "line": 830,
           "text": "const chip = (label: string, action: () => void, on = false) => ({ label, on,icon:folderIcons[label]?'/icons/lucide/'+folderIcons[label]+'.svg':null,"
         },
         {
-          "line": 801,
+          "line": 833,
           "text": "const incoming = lastCompose = st.compose;"
         },
         {
-          "line": 806,
+          "line": 838,
           "text": "const prefill = pendingCompose; pendingCompose = null;"
         },
         {
-          "line": 807,
+          "line": 839,
           "text": "const attempt = composeAttempt, account = selected, source = binding;"
         },
         {
-          "line": 808,
+          "line": 840,
           "text": "const current = () => {"
         },
         {
-          "line": 809,
+          "line": 841,
           "text": "const active = connectionController.getCloudClient();"
         },
         {
-          "line": 818,
+          "line": 850,
           "text": "const target = accounts.find(a => a.connectionId === prefill.account)?.label || 'The other account';"
         },
         {
-          "line": 820,
+          "line": 852,
           "text": "const back = accounts.find(a => a.connectionId === prefill.returnTo!.connectionId && gmailReadable(a));"
         },
         {
-          "line": 826,
+          "line": 858,
           "text": "const sentView = loadedQuery === 'in:sent';"
         },
         {
-          "line": 827,
+          "line": 859,
           "text": "const chips: Bag[] = binding ? ["
         },
         {
-          "line": 836,
+          "line": 867,
           "text": "const extraFolders = binding&&selected&&st.q==null?["
         },
         {
@@ -22081,31 +22081,31 @@
           "text": "for(const row of extraFolders)Object.assign(row,{icon:'/icons/lucide/'+folderIcons[row.value==='all'?'All mail':row.value==='spam'?'Spam':row.value==='trash'?'Trash':row.label]+'.svg',checkCss:row.on?"
         },
         {
-          "line": 844,
+          "line": 875,
           "text": "const localDrafts=drafts.chips(chip);"
         },
         {
-          "line": 848,
+          "line": 879,
           "text": "const date = (value: string | null) => { const d = new Date(value || ''); if (!value || Number.isNaN(d.valueOf())) return ''; const now = new Date();"
         },
         {
-          "line": 850,
+          "line": 881,
           "text": "const fullDate = (value: string) => { const d = new Date(value); return Number.isNaN(d.valueOf()) ? '' : `${weekdayName(d)}, ${formatMonthDay(d, true)}, ${formatTime(d)}`; };"
         },
         {
-          "line": 851,
+          "line": 882,
           "text": "const activeBody = st.open && body?.message.id === st.open ? body : null;"
         },
         {
-          "line": 852,
+          "line": 883,
           "text": "const rows:Bag[] = messages.map(m => {"
         },
         {
-          "line": 855,
+          "line": 886,
           "text": "const swipe = current.sw?.((dx: number, dy: number) => { if (dx >= 0 || Math.abs(dx) < Math.abs(dy)) return false; void swipeArchive(m); return true; }) ?? { down: () => {}, up: () => {} };"
         },
         {
-          "line": 856,
+          "line": 887,
           "text": "const senderImage=mailSenderImage(sentView?null:m.fromEmail,true);"
         },
         {
@@ -22113,11 +22113,11 @@
           "text": "const name = sentView ? (m.to.length ? `To: ${m.to.join(', ')}` : 'To: (no recipients)') : m.from; return { name, senderImage,hideSenderImage:(event:Event)=>{(event.currentTarget as HTMLImageElement)."
         },
         {
-          "line": 862,
+          "line": 893,
           "text": "if (draftsView()) rows.splice(0, rows.length, ...providerDrafts.map(d => { const name = d.to.length ? `Draft to ${d.to.join(', ')}` : 'Draft (no recipients)';"
         },
         {
-          "line": 866,
+          "line": 897,
           "text": "const linkRows = (source: NonNullable<typeof body>) => { const cached = linkRowCache.get(source); if (cached) return cached; const seen = new Set<string>(), list: GmailLink[] = [];"
         },
         {
@@ -22129,31 +22129,31 @@
           "text": "const rows = list.map(link => { const host = new URL(link.href).hostname; return { label: link.text === link.href ? host : `${link.text} (${host})`, href: link.href, host, mismatch: linkTextMismatch(l"
         },
         {
-          "line": 871,
+          "line": 902,
           "text": "const showRemoteImages=true;"
         },
         {
-          "line": 872,
+          "line": 903,
           "text": "let formatted:ReturnType<typeof prepareMailHtml>|null=null;"
         },
         {
-          "line": 874,
+          "line": 905,
           "text": "let cached=htmlBodies.get(activeBody);if(!cached){cached={};htmlBodies.set(activeBody,cached);}"
         },
         {
-          "line": 875,
+          "line": 906,
           "text": "const mode=showRemoteImages?'shown':'hidden';"
         },
         {
-          "line": 878,
+          "line": 909,
           "text": "const activeLinks=activeBody?(formatted?linkRows(activeBody).filter(link=>!formatted!.inlineLinks.has(link.href)):linkRows(activeBody)):[];"
         },
         {
-          "line": 879,
+          "line": 910,
           "text": "const htmlLoaded=(event:Bag)=>{const frame=event.currentTarget as HTMLIFrameElement,doc=frame.contentDocument;if(!doc)return;"
         },
         {
-          "line": 880,
+          "line": 911,
           "text": "const resize=()=>{if(frame.isConnected)frame.style.height=Math.min(32000,Math.max(120,doc.documentElement.scrollHeight,doc.body.scrollHeight))+'px';};resize();doc.addEventListener('load',resize,true);"
         },
         {
@@ -22161,7 +22161,7 @@
           "text": "const follow=(event:Event)=>{const target=(event.target as Element)?.closest('a[data-alpha-link]');if(!target)return;event.preventDefault();if(body!==activeBody)return;openLink({href:target.getAttribu"
         },
         {
-          "line": 885,
+          "line": 916,
           "text": "const needsGmailConnection=!!binding&&accountsChecked&&accountsSession===binding.sessionId&&!selected&&!operation&&phase!=='scheduled'&&!failure;"
         },
         {
@@ -22177,35 +22177,35 @@
           "text": "body: activeBody.loading?'Loading message…':activeBody.bodyText || '(Empty message)', loading:!!activeBody.loading,canLoadThread:!thread&&!activeBody.loading&&!!provider.capabilities()?.threads,loadTh"
         },
         {
-          "line": 902,
+          "line": 933,
           "text": "const parts=current.attachments??[],kept=current.historyId?parts.filter(a=>a.partId&&a.size<=5*1024*1024):[],omitted=parts.filter(a=>!kept.includes(a));"
         },
         {
-          "line": 907,
+          "line": 938,
           "text": "const mount = p.componentDidMount, unmount = p.componentWillUnmount;"
         },
         {
-          "line": 915,
+          "line": 948,
           "text": "const next = connectionController.getCloudClient()?.sessionId,nextKey=homeOwnerKey();"
         },
         {
-          "line": 919,
+          "line": 952,
           "text": "const nextAgent = connectionController.getSnapshot().session?.sessionId;"
         },
         {
-          "line": 931,
+          "line": 964,
           "text": "const binding = connectionController.getCloudClient(), cloudAccount = connectionController.getSnapshot().cloudAccount;"
         },
         {
-          "line": 932,
+          "line": 965,
           "text": "const grant = selected || homePreview?.accountId || readGmailAccountChoice(cloudAccount) || '';"
         },
         {
-          "line": 934,
+          "line": 974,
           "text": "let rows: GmailAccount[] | null = null;"
         },
         {
-          "line": 937,
+          "line": 977,
           "text": "const next = rows?.find(a => a.connectionId === grant), prior = accounts.find(a => a.connectionId === grant);"
         },
         {
@@ -22213,7 +22213,7 @@
           "text": "const dropped = !grant || !gmailReadable(next) || !!prior && gmailGrantChange({ sessionId: accountsSession || null, account: prior }, { sessionId: binding?.sessionId ?? null, account: next }).dropRead"
         },
         {
-          "line": 945,
+          "line": 985,
           "text": "const read = attention.updatedAt !== null && attention.unread !== undefined;"
         },
         {
@@ -22221,7 +22221,7 @@
           "text": "void restoreHomeMailbox().finally(() => warmHomeMailbox(true).then(() => { const hint = readGmailAccountChoice(connectionController.getSnapshot().cloudAccount); if (hint && hint === selected && accoun"
         }
       ],
-      "integrationReview": " Retained Pixel lane review: 2026-11-09 mail reader: automatic same-account thread read preserves the fresher selected body and all operation receipts. Compact menu changes presentation only. Email chat attachment reuses message persistence, validates the exact selected source and destination before sending, and leaves provider text untrusted. Existing models remain projections; complete mail rendering and revision/expiry checks are tested separately. 2026-11-10: Current-main composition retains the reviewed Pixel lane UI/IME/Calendar changes and canonical Alpha Compute namespace. Full merged-source qualification remains required; no historical APK/device acceptance transfer."
+      "integrationReview": "2026-11-10: Account-change revalidation immediately hides old Home header metadata and clears attention before awaiting the account list. Existing generation and summary epochs fence late reads; stored drafts/credentials remain untouched. The accepted account is then read normally. Final model/browser acceptance follows the current source."
     },
     {
       "path": "apps/app/src/prototype/inbox-drafts.ts",
@@ -31575,9 +31575,9 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "6264ba95dc84ca27a5665a81ce88205fb6cdcfb49e95be66597df5bd0895515a",
+      "sha256": "7ea841da6289d86cb85593de89096c0c5711a9d32039b306c6f1b26089ca396d",
       "stateAnchors": [],
-      "integrationReview": "Reviewed native cutout styling now selects the explicit system-cutout marker instead of an arbitrary first child. Visibility styling is source-bound; this is not a device layout or complete mounted-state proof. Retained Pixel lane review: Compact voice status is an accessible live announcement outside layout flow; spinner and activity graphics preserve visible state and all44px controls. Captured rendered startup/listening retain the exact146x54 pill footprint. Existing state allocations retained; no model transition changed. 2026-11-10: Current-main composition retains the reviewed Pixel lane UI/IME/Calendar changes and canonical Alpha Compute namespace. Full merged-source qualification remains required; no historical APK/device acceptance transfer."
+      "integrationReview": "2026-11-10: Current boundary and presentation correction. Account revalidation hides old headers before awaiting the response; notice clearance changes the Home scrollport, and foreign schedule editing explicitly identifies its preserved clock. Relevant browser/source tests and finite models remain separate from final runtime/device qualification."
     },
     {
       "path": "apps/app/src/prototype/photo-library-adapter.ts",
@@ -33888,14 +33888,9 @@
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "5f5518681a13cb374656a0ff683bfa5b7853f8bce4957f2c7d51bb7ca5c484e9",
-      "stateAnchors": [
-        {
-          "line": 3359,
-          "text": "<sc-if value=\"{{workflows.automation.editingSchedule}}\"><sc-if value=\"{{workflows.automation.scheduleClockEditable}}\"><label class=\"schedule-instructions\">Time ({{workflows.automation.e"
-        }
-      ],
-      "integrationReview": "2026-11-10: Reviewed owner UI intake plus current retention correction; bound source hashes and candidate anchors. Existing timezone metadata is preserved on edits, while new workflows use the device zone. Source/browser checks are bounded; full semantic refinement and new SDK bundle qualification remain separate gates."
+      "sha256": "f353e6df276a3e39412fb045a91e6c5ff892476f1a00fd5a5e4c40e90ce3132d",
+      "stateAnchors": [],
+      "integrationReview": "2026-11-10: Current boundary and presentation correction. Account revalidation hides old headers before awaiting the response; notice clearance changes the Home scrollport, and foreign schedule editing explicitly identifies its preserved clock. Relevant browser/source tests and finite models remain separate from final runtime/device qualification."
     },
     {
       "path": "apps/app/src/prototype/use-in-email-review.ts",
@@ -34913,7 +34908,7 @@
     },
     {
       "path": "apps/app/src/prototype/workflow-authoring.ts",
-      "sha256": "321669ae3d3af320d83b00cf4f330f77886c5c8d2504101c6f1c4588f8987329",
+      "sha256": "420d2969734c9006ffe78395f685e58f3bb9cf61069443b3f0f63fd292b37b39",
       "models": [
         "WorkflowExecution"
       ],
@@ -35158,7 +35153,7 @@
         }
       ],
       "reviewStatus": "state-audit-required",
-      "integrationReview": "2026-11-10: Reviewed owner UI intake plus current retention correction; bound source hashes and candidate anchors. Existing timezone metadata is preserved on edits, while new workflows use the device zone. Source/browser checks are bounded; full semantic refinement and new SDK bundle qualification remain separate gates."
+      "integrationReview": "2026-11-10: Current boundary and presentation correction. Account revalidation hides old headers before awaiting the response; notice clearance changes the Home scrollport, and foreign schedule editing explicitly identifies its preserved clock. Relevant browser/source tests and finite models remain separate from final runtime/device qualification."
     },
     {
       "path": "apps/app/src/prototype/workflow-filters.ts",
@@ -38255,7 +38250,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "230de0d61f6481cf7e41f5480eb89d6c7131f8c49838856867da14f0b3868083",
+      "sha256": "ea7c28b911723a4bb9f2bdf00382d3adddd3d5c74532e3c1bafb25a013274cf9",
       "stateAnchors": [
         {
           "line": 205,
@@ -39070,35 +39065,35 @@
           "text": "const environment = useRef<HTMLSelectElement>(null);"
         },
         {
-          "line": 4011,
+          "line": 4019,
           "text": "const ai=useRef<HTMLInputElement>(null),speech=useRef<HTMLInputElement>(null);"
         },
         {
-          "line": 4032,
+          "line": 4040,
           "text": "const [editing,setEditing]=useState(false),[viewing,setViewing]=useState(false);"
         },
         {
-          "line": 4070,
+          "line": 4078,
           "text": "const [editing,setEditing]=useState<LocalProviderKey|null>(null),[removing,setRemoving]=useState<LocalProviderKey|null>(null);"
         },
         {
-          "line": 4071,
+          "line": 4079,
           "text": "const [revealed,setRevealed]=useState<{key:LocalProviderKey;value:string}|null>(null),[pending,setPending]=useState(false),[error,setError]=useState('');"
         },
         {
-          "line": 4072,
+          "line": 4080,
           "text": "const field=useRef<HTMLInputElement>(null),request=useRef<AbortController|null>(null),epoch=useRef(0),revision=useRef(status.revision);"
         },
         {
-          "line": 4073,
+          "line": 4081,
           "text": "const requestKind=useRef<'edit'|'remove'|'reveal'|null>(null);"
         },
         {
-          "line": 4088,
+          "line": 4096,
           "text": "const expected=status.revision,token=++epoch.current,controller=new AbortController();request.current=controller;requestKind.current=action;setPending(true);setError('');setRevealed(null);"
         }
       ],
-      "integrationReview": "2026-11-10: Reviewed owner UI intake plus current retention correction; bound source hashes and candidate anchors. Existing timezone metadata is preserved on edits, while new workflows use the device zone. Source/browser checks are bounded; full semantic refinement and new SDK bundle qualification remain separate gates."
+      "integrationReview": "2026-11-10: Current boundary and presentation correction. Account revalidation hides old headers before awaiting the response; notice clearance changes the Home scrollport, and foreign schedule editing explicitly identifies its preserved clock. Relevant browser/source tests and finite models remain separate from final runtime/device qualification."
     },
     {
       "path": "apps/app/src/runtime/conversation-selection.ts",
@@ -46002,7 +45997,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "ab81f26c2fc0f1628f5d846cd3cb8f8b4285a22077f7ef78148dc5a37ed9585b",
+      "sha256": "41fa7647c9049625e4ac872d2b8d54e4882acc6fa6e488badf12078b1bd4d5a7",
       "stateAnchors": [
         {
           "line": 10,
@@ -46013,11 +46008,11 @@
           "text": "for(let day=first;day<=last;day++)if(!days.includes(day))days.push(day);"
         },
         {
-          "line": 43,
+          "line": 51,
           "text": "for(let offset=0;offset<8;offset++){"
         }
       ],
-      "integrationReview": "2026-11-10: Reviewed owner UI intake plus current retention correction; bound source hashes and candidate anchors. Existing timezone metadata is preserved on edits, while new workflows use the device zone. Source/browser checks are bounded; full semantic refinement and new SDK bundle qualification remain separate gates."
+      "integrationReview": "2026-11-10: Current boundary and presentation correction. Account revalidation hides old headers before awaiting the response; notice clearance changes the Home scrollport, and foreign schedule editing explicitly identifies its preserved clock. Relevant browser/source tests and finite models remain separate from final runtime/device qualification."
     },
     {
       "path": "apps/app/src/runtime/workflow-presentation.ts",
@@ -612158,7 +612153,7 @@
         "CoreRuntimeShutdown",
         "CoreServiceLifecycle"
       ],
-      "sha256": "6bee3c6d008d953e609af9626f81c2adc0bf96e7d60fbdcdfbb43a2270e5c691",
+      "sha256": "deb7c12cdb97902e63e9ba3ed0cf14f09114d80ebab91141dee06f565723de08",
       "integrationReview": "Shared9ac50 and reviewed producer inputs. Pixel opts into source staging only; updater activation, enrollment and device acceptance stay separate."
     },
     {

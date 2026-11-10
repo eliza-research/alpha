@@ -50,6 +50,11 @@ async function proveHitTargets(page, {short = false} = {}) {
   const overflow = await stack(page).evaluate(node => ({needed: node.scrollHeight > node.clientHeight + 1, enabled: node.dataset.scrollable === 'true'}));
   assert.equal(overflow.enabled, overflow.needed, 'Only an overflowing notice stack owns body gestures');
   const {notices} = await observeCloudNotices(page);
+  // Back changes display before ResizeObserver measures the newly exposed stack.
+  await expect.poll(async()=>{
+    const home=await page.locator('[data-alpha-layer="home"]').boundingBox(),noticeBox=await stack(page).boundingBox();
+    return !!home&&!!noticeBox&&home.y>=noticeBox.y+noticeBox.height;
+  },{timeout:2000,message:'Home scroll area stays below the visible notice controls'}).toBe(true);
   for (const [index, notice] of notices.entries()) {
     assert.ok(notice.visible, notice.label+' is laid out');
     if (index > 0) assert.ok(notices[index - 1].bounds.bottom <= notice.bounds.top, 'Rendered notices occupy separate rows');

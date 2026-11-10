@@ -347,7 +347,7 @@ for (const mode of ['signed-out','empty','credits','unavailable','funded','repla
    const w=window as any;w.androidBridge={};w.residentCalls=[];
    const id='9f1dc45a-4011-4e44-947a-30d999d24fa5';
    const resident=w.residentAgent=w.createResidentAgentPlugin({owner:()=>id,agentId:id});
-   const values:Record<string,string>={};let credentialReads=0;
+   const values:Record<string,string>={};let credentialReplaced=false;
    // An older build's "Use local apps without AI" choice.
    if(mode==='legacy-offline')localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline',localApps:true}));
    if(mode!=='signed-out'&&mode!=='unpackaged'&&mode!=='legacy-offline')values['cloud:production']=JSON.stringify({token:'synthetic-cloud-key',credentialId:id,expiresAt:Date.now()+60000});
@@ -378,13 +378,14 @@ for (const mode of ['signed-out','empty','credits','unavailable','funded','repla
      }
      return {};
     }
-    if(method==='secureRead'){if(input.slot==='cloud:production'&&++credentialReads===5&&mode==='replaced')values[input.slot]=JSON.stringify({token:'synthetic-replacement-key',credentialId:'f04d4d24-6978-42a2-a968-995d76debf77',expiresAt:Date.now()+60000});return{value:values[input.slot]??null};}
+    if(method==='secureRead')return{value:values[input.slot]??null};
     if(method==='secureWrite'){values[input.slot]=input.value;return{};}
     if(method==='secureRemove'){delete values[input.slot];return{};}
     if(method==='request'){
      const path=new URL(input.url).pathname;
      if(path==='/api/v1/user')return{status:200,data:{success:true,data:{id}}};
      if(path==='/api/v1/subscription/entitlement')return { status: 404, data: {} }; // Entitlement route absent: the billing snapshot answers.
+     if(path==='/api/v1/billing/limits'&&mode==='replaced'&&!credentialReplaced){credentialReplaced=true;values['cloud:production']=JSON.stringify({token:'synthetic-replacement-key',credentialId:'f04d4d24-6978-42a2-a968-995d76debf77',expiresAt:Date.now()+60000});}
      if(path==='/api/v1/billing/limits')return mode==='unavailable'?{status:503,data:{error:'temporary'}}:{status:200,data:{success:true,data:{v2:{subscription:mode==='funded'||mode==='replaced'?{status:'available',value:{planKey:'plus_monthly',state:'active',currentPeriodEnd:'2099-01-01T00:00:00.000Z'}}:{status:'not_applicable',reason:mode==='credits'?'no_organization_subscription':'subscription_not_active'}}}}};
      throw Error('Unexpected Cloud route: '+path);
     }
@@ -405,6 +406,7 @@ for (const mode of ['signed-out','empty','credits','unavailable','funded','repla
   // On the phone's own agent that plan panel is the resident account & plan panel; it carries the
   // approved Subscription controls, opened at the code field.
   const signedOut=mode==='signed-out'||mode==='legacy-offline'||mode==='unpackaged',needsPlan=mode==='empty'||mode==='unavailable';
+  const requiresSignIn=signedOut;
   const dialog=signedOut?page.locator('[role="main"].alpha-cloud-sign-in'):mode==='replaced'?page.getByRole('region',{name:'Settings',exact:true}):page.getByRole('dialog',{name:'Account',exact:true});
   if(needsPlan){
    const notice=page.getByRole('region',{name:'Eliza Cloud plan notice'});
@@ -429,7 +431,7 @@ for (const mode of ['signed-out','empty','credits','unavailable','funded','repla
    await expect(dialog.getByRole('status').filter({hasText:'This developer build does not include the on-device agent.'})).toHaveText('This developer build does not include the on-device agent.');
   }else if(needsPlan)await expect(dialog.getByRole('region',{name:'Balance and membership',exact:true})).toBeVisible();
   else if(!signedOut&&mode!=='replaced'){await expect(dialog.getByRole('button',{name:'Sign out',exact:true})).toBeVisible();await expect(dialog.getByRole('button',{name:mode==='credits'?'Choose a plan':'Manage plan',exact:true})).toBeVisible();}
-  if(signedOut){
+  if(requiresSignIn){
    await expect(dialog.getByText(/Sign in to verify your account|review access/)).toHaveCount(0);
    await expect(dialog.getByRole('button',{name:'Email me a code',exact:true})).toBeVisible();
    await expect(dialog.getByRole('button',{name:'Close connection settings',exact:true})).toHaveCount(0);
@@ -447,7 +449,7 @@ for (const mode of ['signed-out','empty','credits','unavailable','funded','repla
    await expect(dialog.getByRole('region',{name:'Balance and membership',exact:true}).getByText(mode==='empty'?'No active subscription':'Subscription not confirmed',{exact:true})).toHaveCount(1);
    await expect(dialog).not.toContainText(/Available credits|Add credits|\$\d/);
   }
-  if(mode==='replaced')await expect(dialog.getByText(/account changed/i)).toBeVisible();
+  if(mode==='replaced'){await expect(dialog.getByText(/account changed/i)).toBeVisible();const saved=await page.evaluate(async()=>JSON.parse((await (window as any).Capacitor.nativePromise('AlphaConnection','secureRead',{slot:'cloud:production'})).value));expect(saved.credentialId).toBe('f04d4d24-6978-42a2-a968-995d76debf77');}
   if(admitted)await expect(dialog.getByRole('button',{name:'Sign out',exact:true})).toBeVisible();
   // Legacy credit admission keeps the subscription and membership-code options visible.
   if(mode==='credits'){await expect(dialog).toContainText('Sign-in expires soon');await expect(dialog.getByRole('button',{name:'Use code',exact:true})).toBeVisible();await expect(dialog.getByRole('textbox',{name:'Membership code',exact:true})).toHaveCount(0);}
@@ -460,7 +462,7 @@ for (const mode of ['signed-out','empty','credits','unavailable','funded','repla
   const native=await agentCalls();
   // Inference is bound only when Cloud admits the plan; the agent runs either way.
   if(admitted){expect(native.indexOf('stop')).toBeLessThan(native.indexOf('configureCloudProvider'));expect(native.indexOf('configureCloudProvider')).toBeLessThan(native.lastIndexOf('start'));}
-  else if(mode!=='replaced')expect(native).not.toContain('configureCloudProvider');
+  else expect(native).not.toContain('configureCloudProvider');
   if(mode==='unpackaged')expect(native).not.toContain('start');
  });
 }

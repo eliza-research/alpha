@@ -164,10 +164,20 @@ delete revisions['in:inbox'];pages['in:inbox']=savedInbox;
 // Only a complete successful empty page can claim no unread mail.
 pages['in:inbox']=[[]];chip('Refresh').pick();await tick();assert.equal(shell.renderVals().homeInboxTitle,'No unread email');assert.equal(shell.renderVals().homeInboxHasRows,false);
 views.inbox.onLeave();const leftSearches=searches.length;assert.equal(shell.renderVals().homeInboxTitle,'No unread email','Home retains metadata after full messages are retired');assert.equal(searches.length,leftSearches,'returning Home never fetches mail');render();await tick();
-// Accounts changed elsewhere while Inbox is closed: stale, with the count and time of the last real read.
-views.inbox.onLeave();const lastRead=local(sandbox.inboxAttention());assert.equal(lastRead.state,'stale');assert.equal(lastRead.unread,0);assert.ok(lastRead.updatedAt,'the last read time is kept');
-inboxActive=false;events.find(e=>e.name==='alpha:gmail-accounts-changed').fn(new CustomEvent('alpha:gmail-accounts-changed',{detail:{source:'settings'}}));
-assert.deepEqual(local(sandbox.inboxAttention()),{...lastRead,state:'stale'},'stale keeps the last real read, never a new zero');
+// Account changes withdraw the previous visible summary until the current grant is verified.
+pages['in:inbox']=[[mail('scope-proof',{unread:true})]];chip('Refresh').pick();await tick();
+views.inbox.onLeave();const lastRead=local(sandbox.inboxAttention());assert.equal(lastRead.unread,1);assert.ok(lastRead.updatedAt);
+inboxActive=false;delayAccounts=true;
+const changed=events.find(e=>e.name==='alpha:gmail-accounts-changed').fn;
+const firstCheck=changed(new CustomEvent('alpha:gmail-accounts-changed',{detail:{source:'settings'}})),firstAccounts=releaseAccounts;
+assert.equal(sandbox.inboxAttention().state,'loading');assert.equal(sandbox.inboxAttention().unread,undefined);assert.equal(sandbox.inboxAttention().source,null);
+assert.deepEqual(local(shell.renderVals().homeInboxRows),[],'the previous account summary disappears before account lookup returns');
+const secondCheck=changed(new CustomEvent('alpha:gmail-accounts-changed',{detail:{source:'settings'}})),secondAccounts=releaseAccounts;
+assert.notEqual(firstAccounts,secondAccounts);
+firstAccounts();await firstCheck;
+assert.equal(sandbox.inboxAttention().state,'loading','a superseded account reply cannot republish the old summary');
+assert.deepEqual(local(shell.renderVals().homeInboxRows),[]);
+delayAccounts=false;secondAccounts();await secondCheck;await tick();
 inboxActive=true;render();await tick();
 
 // Account management lives in Settings; a connected inbox never prompts to connect again.

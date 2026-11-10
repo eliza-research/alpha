@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "3406b628f30a90c5b47128b6dc30bae177b7870e",
-  "ledgerSha256": "8214bb2957be6d8efa11148731ac113d9a19f6ffcf564ca97f1cf9a7bc3f5cb9",
+  "ledgerSha256": "4ef4f05e9ef2832475f7f63a4e9b29c1377d846cf77b87b31551d6a0b4d89592",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -29,9 +29,9 @@
     "languageReview": 95,
     "parseErrors": 0,
     "candidates": 70006,
-    "writeSites": 68813,
-    "writeAssociations": 61684,
-    "asynchronous": 8626,
+    "writeSites": 68818,
+    "writeAssociations": 61689,
+    "asynchronous": 8628,
     "unassignedWrites": 10542
   },
   "files": [
@@ -34010,7 +34010,7 @@
     },
     {
       "path": "apps/app/src/prototype/automations-adapter.ts",
-      "sha256": "d8170f138bcf9223132b21eeaaa5c3b8138e361f0ca2962c24cacae1721dea75",
+      "sha256": "131cc46ef28bc3e96534bec92ad3d45ae51d71676d2c78c799b0f4548f647854",
       "allocatedModels": [
         "ReminderOpenIntent",
         "ScheduledTaskControls",
@@ -35609,7 +35609,7 @@
     },
     {
       "path": "apps/app/src/prototype/inbox-cloud-adapter.ts",
-      "sha256": "ee10bd34170d97bad21573ed4b6654009a3bff3624ca5b375c80eb14978094f2",
+      "sha256": "70bc73b991aa6021ab125addaae4b8ac4f4e2cccffdd754e2f20f4088d312e30",
       "allocatedModels": [
         "InboxCoordinator",
         "InboxDelivery",
@@ -35629,7 +35629,7 @@
           "owner": "installInboxCloudAdapter",
           "line": 56,
           "bindings": 59,
-          "writes": 343
+          "writes": 348
         },
         {
           "owner": "installInboxCloudAdapter.openNotice",
@@ -35753,7 +35753,7 @@
         },
         {
           "owner": "installInboxCloudAdapter.FunctionExpression@939.ArrowFunction@963",
-          "line": 967,
+          "line": 974,
           "bindings": 1,
           "writes": 2
         }
@@ -39806,7 +39806,7 @@
     },
     {
       "path": "apps/app/src/prototype/phone.css",
-      "sha256": "6264ba95dc84ca27a5665a81ce88205fb6cdcfb49e95be66597df5bd0895515a",
+      "sha256": "7ea841da6289d86cb85593de89096c0c5711a9d32039b306c6f1b26089ca396d",
       "allocatedModels": [
         "ChatInput",
         "DockClearanceOwnership",
@@ -40636,7 +40636,7 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "5f5518681a13cb374656a0ff683bfa5b7853f8bce4957f2c7d51bb7ca5c484e9",
+      "sha256": "f353e6df276a3e39412fb045a91e6c5ff892476f1a00fd5a5e4c40e90ce3132d",
       "allocatedModels": [
         "CalendarPreservationConfirmation",
         "CameraPreviewRetirement",
@@ -41034,7 +41034,7 @@
     },
     {
       "path": "apps/app/src/prototype/workflow-authoring.ts",
-      "sha256": "321669ae3d3af320d83b00cf4f330f77886c5c8d2504101c6f1c4588f8987329",
+      "sha256": "420d2969734c9006ffe78395f685e58f3bb9cf61069443b3f0f63fd292b37b39",
       "allocatedModels": [
         "WorkflowExecution"
       ],
@@ -42485,7 +42485,7 @@
     },
     {
       "path": "apps/app/src/runtime/connection-ui.tsx",
-      "sha256": "230de0d61f6481cf7e41f5480eb89d6c7131f8c49838856867da14f0b3868083",
+      "sha256": "ea7c28b911723a4bb9f2bdf00382d3adddd3d5c74532e3c1bafb25a013274cf9",
       "allocatedModels": [
         "Application",
         "ApplicationComposition",
@@ -42892,31 +42892,31 @@
         },
         {
           "owner": "OwnKeyForm",
-          "line": 4011,
+          "line": 4019,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "OwnProviderChoice",
-          "line": 4032,
+          "line": 4040,
           "bindings": 4,
           "writes": 0
         },
         {
           "owner": "ProviderKeys",
-          "line": 4070,
+          "line": 4078,
           "bindings": 15,
           "writes": 16
         },
         {
           "owner": "ProviderKeys.run",
-          "line": 4088,
+          "line": 4096,
           "bindings": 1,
           "writes": 0
         }
       ],
       "parseErrors": [],
-      "asynchronous": 121,
+      "asynchronous": 123,
       "unassignedWrites": 18
     },
     {
@@ -45968,7 +45968,7 @@
     },
     {
       "path": "apps/app/src/runtime/workflow-local-time.ts",
-      "sha256": "ab81f26c2fc0f1628f5d846cd3cb8f8b4285a22077f7ef78148dc5a37ed9585b",
+      "sha256": "41fa7647c9049625e4ac872d2b8d54e4882acc6fa6e488badf12078b1bd4d5a7",
       "allocatedModels": [
         "ScheduledTaskControls",
         "WorkflowExecution"
@@ -45985,7 +45985,7 @@
         },
         {
           "owner": "workflowCronLabel",
-          "line": 43,
+          "line": 51,
           "bindings": 1,
           "writes": 1
         }
@@ -226098,6 +226098,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "5f7ba2723a78d54e5b25e94c0e89390cc095ff06a72956e937f87b17c6cb8b13"
+    "sha256": "cc195351139fdea6f0e291c375eb09a83f970c203e61c472d40e385818c3908c"
   }
 }

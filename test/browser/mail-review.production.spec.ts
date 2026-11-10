@@ -247,7 +247,8 @@ test('Android: Home withholds the old count until a changed account is reverifie
   // The current-account background reader clears the old identity while it is
   // unverified, rather than retaining another account's count or timestamp.
   await expect(card).toHaveCount(0);
-  await expect(page.locator('[data-alpha-layer="home"] [data-alpha-home-date]')).toBeVisible();
+  await expect(page.locator('[data-alpha-layer="home"] [data-alpha-home-date]')).toHaveCount(0);
+  await expect(page.locator('[data-alpha-layer="home"]').getByText('Harbour schedule',{exact:true})).toHaveCount(0);
   expect((await fixture(page)).searches).toBe(searches);
   await page.evaluate(()=>(window as any).releaseHomeAccountRead());
   await expect(card).toContainText(/Updated \d{1,2}:\d{2}/);
@@ -255,6 +256,8 @@ test('Android: Home withholds the old count until a changed account is reverifie
   await expect(card).toHaveAccessibleName('Open Inbox: 1 unread email');
   await expect.poll(async()=>(await fixture(page)).searches).toBeGreaterThan(searches);
   // The current card still opens the same verified mailbox.
+  await page.locator('[data-alpha-layer="home"]').evaluate(element=>{element.scrollTop=element.scrollHeight;});
+  await card.scrollIntoViewIfNeeded();
   await card.click();
   await expect(button(page, 'Unread, Synthetic sender, Harbour schedule')).toBeVisible({ timeout: 30_000 });
   expect((await fixture(page)).unexpected).toEqual([]);

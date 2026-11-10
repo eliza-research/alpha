@@ -101,6 +101,31 @@ test('schedule time, days and instructions change only after confirmation',async
  expect(writes()[0].body).toEqual({promptInstructions:'Review my week.',trigger:{kind:'cron',expression:'30 9 * * 1-5',tz:'UTC'}});
 });
 
+test.describe('a schedule created on another clock',()=>{
+ test.use({timezoneId:'America/Los_Angeles'});
+ test('the editor explains its saved UTC clock and preserves it across both edits',async({page})=>{
+  await page.clock.setFixedTime(new Date('2026-11-10T20:00:00Z'));
+  const calls=await setup(page,true),writes=()=>calls.filter(c=>c.method==='POST'&&c.path.endsWith('/weekly/edit'));
+  await page.getByRole('region',{name:'Workflows',exact:true}).getByText('Weekly review',{exact:true}).click();
+  const edit=async()=>{await page.getByLabel('More schedule actions').click();await page.getByRole('button',{name:'Edit schedule',exact:true}).click();};
+  await edit();
+  await expect(page.getByRole('note').filter({hasText:'Time and repeat days use Coordinated Universal Time.'})).toBeVisible();
+  await expect(page.getByLabel('Hour',{exact:true})).toHaveValue('8');
+  await page.getByLabel('Instructions',{exact:true}).fill('Same clock, new words.');
+  await page.getByRole('button',{name:'Save',exact:true}).click();expect(writes()).toHaveLength(0);
+  await page.getByRole('button',{name:'Confirm Save schedule',exact:true}).click();
+  await expect.poll(()=>writes().length).toBe(1);
+  expect(writes()[0].body).toEqual({promptInstructions:'Same clock, new words.'});
+  await edit();
+  await page.getByLabel('Hour',{exact:true}).fill('9');await page.getByLabel('Minute',{exact:true}).fill('30');
+  await page.getByRole('group',{name:'Repeat pattern',exact:true}).getByRole('button',{name:'Weekdays',exact:true}).click();
+  await page.getByRole('button',{name:'Save',exact:true}).click();expect(writes()).toHaveLength(1);
+  await page.getByRole('button',{name:'Confirm Save schedule',exact:true}).click();
+  await expect.poll(()=>writes().length).toBe(2);
+  expect(writes()[1].body).toEqual({promptInstructions:'Same clock, new words.',trigger:{kind:'cron',expression:'30 9 * * 1-5',tz:'UTC'}});
+ });
+});
+
 test('workflow choices collapse and a confirmed schedule run fires once',async({page})=>{
  const calls=await setup(page,true);
  await page.getByRole('button',{name:'New automation',exact:true}).click();

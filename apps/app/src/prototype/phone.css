@@ -46,6 +46,7 @@ html:not(.standalone-app) [data-alpha-layer="home"][data-alpha-home-fits="true"]
  * (--phone-scale, main.tsx): the inset and its 12px margin are divided by that scale, so the
  * handle starts 12 screen pixels below the bar on a narrow phone as well as on a 412px one. */
 [data-alpha-home-layout] { padding-top:max(20px,calc((var(--native-top-inset,0px) + 12px) / var(--phone-scale,1) - 44px))!important; }
+.alpha-phone [data-alpha-layer="home"] { top:calc(44px + var(--alpha-home-notice-clearance,0px) / var(--phone-scale,1))!important; }
 /* Home cards are at least their design size and grow with their text (PRD AP-15 large font).
  * Android delivers large text as WebView text zoom, which leaves a fixed 196px box and an em
  * max-height at their authored size while the glyphs double: the title was then printed over the
@@ -225,7 +226,7 @@ html:not(.standalone-app) [data-alpha-layer="home"][data-alpha-home-fits="true"]
 /* Standalone Alpha uses Android system chrome, including in its app preview. */
 .standalone-app [data-alpha-system-cutout],.native-phone [data-alpha-system-cutout]{display:none}
 /* The app WebView is already fitted below native bars; only the launcher reserves OS chrome. */
-.standalone-app [data-alpha-layer="home"]{top:0!important}
+.standalone-app [data-alpha-layer="home"]{top:calc(var(--alpha-home-notice-clearance,0px) / var(--phone-scale,1))!important}
 .standalone-app [data-alpha-home-layout]{padding-top:12px!important}
 
 [data-alpha-message-text][role="button"] { cursor: pointer; }

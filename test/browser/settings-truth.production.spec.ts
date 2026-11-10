@@ -322,8 +322,9 @@ for(const scenario of ['unbound','recovering','connected'] as const)test(`Agent 
  }
  await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await openCloudPlanFromSettings(page);
- const account=current(page);await expect(account.getByText('AI connection',{exact:true})).toBeVisible();
+ await current(page).getByRole('button',{name:'About',exact:true}).click();
+ await current(page).getByRole('button',{name:'Connection help',exact:true}).click();
+ const account=current(page);await expect(account.getByRole('heading',{name:'Connection help',exact:true})).toBeVisible();
  await expect(account).not.toContainText('On this computer');
  await expect(account).not.toContainText('Running on this phone');
  if(scenario==='recovering')await expect(account).not.toContainText('Running on this device');
