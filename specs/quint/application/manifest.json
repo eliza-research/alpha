@@ -598,7 +598,7 @@
     },
     "abstractions": [
       "Three files, three folders and three names model the current volume browser, categories, Trash and reviewed agent transfers. The previous SAF-tree listing model is superseded.",
-      "The transition structure follows design/view-refresh-2026-11/tla/files-browser with category, name-conflict and reviewed-identity fixes enabled. Grant withdrawal is additionally modeled.",
+      "The transition structure follows the retained FilesBrowser design model with category, name-conflict and reviewed-identity fixes enabled. Grant withdrawal is additionally modeled.",
       "Multi-volume traversal, recursive byte copying, per-item batch failures, MIME parsing and the 30-day Trash timer remain covered by their implementation tests. This model does not represent document-picker or persistent SAF-tree access.",
       "Opaque identity revisions represent the native size/modified pair. Matching that pair is the current implementation guard, not a cryptographic assertion about file contents."
     ],

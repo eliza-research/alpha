@@ -15,6 +15,6 @@ source-refinement, signing, device or user acceptance receipts.
 | cloud-resident-host | Explicit selected Cerebras Qwen model now also handles image description through the existing Cloud or Direct provider paths. No credentials, account, paid cap or embedding selection changed. DevelopmentHost and ResidentRuntime retain lifecycle boundaries; real provider image result was separately verified. |
 
 Retained limitations: finite models and sampled traces do not prove every implementation
-state or real provider behavior. Existing state-audit-required flags remain. Native
+state or real provider behavior. Native
 Browser layering, final APK, Pixel checks, fresh-account signup and production rollouts
 are not approved by this ledger refresh.

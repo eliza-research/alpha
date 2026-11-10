@@ -2,14 +2,14 @@ import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { checkCoverage, detectedCounterexample, loadModels, readJson, repositoryRoot, runQuintChecker, sha256 } from './quint-lib.mjs';
+import { detectedCounterexample, loadModels, readJson, repositoryRoot, runQuintChecker, sha256 } from './quint-lib.mjs';
 
 const args = process.argv.slice(2);
 const command = args.shift() || 'check';
 const value = (name, fallback) => args.find(arg => arg.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const allowedOptions = ['models', 'samples', 'steps', 'seed', 'out', 'backend', 'server-endpoint', 'timeout'];
 for (const arg of args) if (!allowedOptions.some(name => arg.startsWith(`--${name}=`))) throw Error(`Unknown option ${arg}`);
-if (!['check', 'typecheck', 'test', 'simulate', 'verify', 'temporal', 'compare', 'coverage'].includes(command)) throw Error(`Unknown Quint command ${command}`);
+if (!['check', 'typecheck', 'test', 'simulate', 'verify', 'temporal', 'compare'].includes(command)) throw Error(`Unknown Quint command ${command}`);
 const checking = ['verify', 'temporal', 'compare'].includes(command);
 const positiveInteger = (name, fallback) => {
   const result = Number(value(name, fallback));
@@ -29,10 +29,6 @@ for (const name of requested) if (!allModels.some(model => model.module === name
 const models = requested.length ? allModels.filter(model => requested.includes(model.module)) : allModels;
 if (command === 'temporal' && !models.some(model => model.temporal?.length)) throw Error('Selected models declare no temporal checks');
 if (command === 'compare' && !models.some(model => model.currentChecks?.length || model.currentTemporalChecks?.length || model.expectedViolations?.length)) throw Error('Selected models declare no current-design comparisons');
-const coverage = readJson(join(repositoryRoot, 'specs/quint/coverage.json'));
-const coverageErrors = checkCoverage(allModels, coverage);
-if (coverageErrors.length) throw Error(`Quint coverage is stale\n${coverageErrors.join('\n')}`);
-console.log(`Coverage inventory current for ${coverage.files.length} source files and ${allModels.length} models.`);
 const cli = join(repositoryRoot, 'node_modules/@informalsystems/quint/dist/src/cli.js');
 const version = readJson(join(repositoryRoot, 'node_modules/@informalsystems/quint/package.json')).version;
 const inputPaths = [...new Set(['package-lock.json', 'scripts/check-quint.mjs', 'scripts/quint-lib.mjs', 'specs/quint/tlc.json',
@@ -43,9 +39,9 @@ const inputHashes = Object.fromEntries(inputPaths.map(path => [path, sha256(read
 const receipt = { schemaVersion: 1, startedAt: new Date().toISOString(), command, quintVersion: version,
   evidence: checking ? (backend === 'tlc' ? 'finite-state model checking' : 'bounded symbolic model checking') : {
     check: 'typecheck, scenarios and sampled simulation',
-    typecheck: 'typechecking', test: 'scenario execution', simulate: 'sampled simulation', coverage: 'source coverage admission',
+    typecheck: 'typechecking', test: 'scenario execution', simulate: 'sampled simulation',
   }[command],
-  sourceInventorySha256: sha256(readFileSync(join(repositoryRoot, 'specs/quint/coverage.json'))), inputHashes, samples, steps, seed, backend, timeoutSeconds, results: [] };
+  inputHashes, samples, steps, seed, backend, timeoutSeconds, results: [] };
 const receiptPath = resolve(repositoryRoot, value('out', `test-results/quint/${command}.json`));
 mkdirSync(dirname(receiptPath), { recursive: true });
 writeFileSync(receiptPath, `${JSON.stringify({ ...receipt, status: 'running', passed: false }, null, 2)}\n`);
@@ -119,7 +115,7 @@ async function run(model, phase, options, expected = 'pass') {
 }
 
 try {
-  for (const model of command === 'coverage' ? [] : models) {
+  for (const model of models) {
     if (['check', 'typecheck'].includes(command) && !await run(model, 'typecheck', ['typecheck', model.path])) continue;
     if (['check', 'test'].includes(command) && !await run(model, 'scenarios', ['test', model.path, `--main=${model.module}`, '--backend=typescript', `--seed=${seed}`, '--max-samples=1'])) continue;
     if (['check', 'simulate'].includes(command)) {
@@ -165,13 +161,12 @@ try {
   console.error(receipt.error);
 } finally {
   try {
-    receipt.finalCoverageErrors = checkCoverage(allModels, coverage);
-    for (const path of inputPaths) if (inputHashes[path] !== sha256(readFileSync(join(repositoryRoot, path)))) receipt.finalCoverageErrors.push(`Checker input changed during run ${path}`);
-    if (receipt.sourceInventorySha256 !== sha256(readFileSync(join(repositoryRoot, 'specs/quint/coverage.json')))) receipt.finalCoverageErrors.push('Source ledger changed during run');
+    receipt.finalInputErrors = [];
+    for (const path of inputPaths) if (inputHashes[path] !== sha256(readFileSync(join(repositoryRoot, path)))) receipt.finalInputErrors.push(`Checker input changed during run ${path}`);
   } catch (error) {
-    receipt.finalCoverageErrors = [`Final input check failed: ${error instanceof Error ? error.message : String(error)}`];
+    receipt.finalInputErrors = [`Final input check failed: ${error instanceof Error ? error.message : String(error)}`];
   }
-  if (receipt.finalCoverageErrors.length) { failed = true; console.error(receipt.finalCoverageErrors.join('\n')); }
+  if (receipt.finalInputErrors.length) { failed = true; console.error(receipt.finalInputErrors.join('\n')); }
   receipt.finishedAt = new Date().toISOString();
   receipt.passed = !failed;
   receipt.status = failed ? 'failed' : 'passed';

@@ -50,7 +50,6 @@ import { packagedGzipProblems } from "./android-gzip-assets.mjs";
 import { appLinkFilters, requiredAppLinkProblems, webViewFilterProblems } from "./render-assetlinks.mjs";
 import { readVoiceHost, voiceBundleAdmission } from "./voice-host.mjs";
 import { apkPermissions, checkListenerPermissions, checkListenerSpeechBundle, listenerPackage } from "./aosp-listener.mjs";
-import { listenerApkRow, listenerManifestSection, readListenerRecord } from "./listener-qualification.mjs";
 
 import {verifyEmbeddingHost} from './stage-embedding-host.mjs';
 import {cloudVoiceAdmission, cloudVoiceBlockers} from '../vendor/eliza/packages/os/scripts/android/apk-release-record.mjs';
@@ -290,9 +289,7 @@ for (const row of results.filter(row => row.mode === "debug")) {
     throw new Error(`On-device voice in ${row.file} is not admitted:\n  - ${row.voiceHost.differences.join("\n  - ")}`);
 }
 
-// The always-on listener (android/sense) is a separate image-only APK with its own qualification
-// record. Its rows are written when its APKs were copied next to the Alpha APKs; bytes never qualify it.
-const listenerRecord = readListenerRecord();
+// Inspect the separate image-only listener APKs when they are present beside the app APKs.
 function listenerFacts(file, mode, signed) {
   const facts = { file, mode, signed, sha256: createHash("sha256").update(fs.readFileSync(file)).digest("hex") };
   if (signed) {
@@ -308,15 +305,34 @@ function listenerFacts(file, mode, signed) {
     const abis = checkListenerSpeechBundle(entries, readVoiceHost("."), entry => execFileSync("unzip", ["-p", file, entry], { encoding: "utf8", maxBuffer: 1 << 20 }));
     facts.voiceBundle = { packaged: true, abis };
   } catch (error) { facts.voiceBundle = { packaged: false, problem: error.message }; }
-  return facts;
+  const network = (facts.requested ?? []).filter(name => /\.(INTERNET|ACCESS_NETWORK_STATE)$/.test(name));
+  return {
+    file: facts.file,
+    mode: facts.mode,
+    sha256: facts.sha256,
+    packageName: facts.packageName,
+    signed: facts.signed === true,
+    signerSha256: facts.signerSha256 ?? null,
+    requestedPermissions: [...(facts.requested ?? [])].sort(),
+    networkPermission: network.length > 0,
+    voiceBundle: facts.voiceBundle,
+    evidence: "apk-build",
+    problems: [
+      facts.packageName !== listenerPackage(identity.appId) && `package ${facts.packageName}, expected ${listenerPackage(identity.appId)}`,
+      network.length && `network permission requested: ${network.join(", ")}`,
+      facts.permissionProblem,
+      facts.voiceBundle?.packaged !== true && `listener voice bundle: ${facts.voiceBundle?.problem ?? "missing"}`,
+      facts.signed && !/^[0-9a-f]{64}$/.test(facts.signerSha256 ?? "") && "signed APK without a SHA-256 signer digest",
+    ].filter(Boolean),
+  };
 }
 const listenerRows = [["sense-debug.apk", "debug", true], ["sense-release.apk", "release", true], ["sense-release-unsigned.apk", "release", false]]
   .filter(([name]) => fs.existsSync(path.join(directory, name)))
-  .map(([name, mode, signed]) => listenerApkRow(listenerRecord, listenerFacts(path.join(directory, name), mode, signed)));
+  .map(([name, mode, signed]) => listenerFacts(path.join(directory, name), mode, signed));
 const listenerFailures = listenerRows.filter(row => row.problems.length);
 if (listenerFailures.length)
   throw new Error(`Listener APK verification failed:\n${listenerFailures.map(row => `${row.file}:\n  - ${row.problems.join("\n  - ")}`).join("\n")}`);
-const listener = listenerManifestSection(listenerRecord, listenerRows);
+const listener = { apks: listenerRows };
 
 const mappings = {};
 for (const variant of ["standalone", "launcher"]) {
@@ -370,8 +386,7 @@ fs.writeFileSync(
 console.log(JSON.stringify(results, null, 2));
 const undistributable = release.filter(row => !row.distributable);
 if (undistributable.length)
-  console.warn(`Not distributable: ${undistributable.map(row => `${row.file} (${[row.runtime !== "PACKAGED" && "no packaged runtime", testMocks && "test-mocks build", updateChannel.kind === "private-qa" && "private QA update channel", !row.runtimeNotices && "notices lack the packaged runtime (run node scripts/generate-licenses.mjs --packaged-runtime after staging)", ...(runtimeProfile === "cloud" ? cloudVoiceBlockers(row, "cartesia") : [!row.voiceHost.packaged && "no on-device voice packaged", row.voiceHost.packaged && !row.voiceHost.qualified && "on-device voice not qualified (no recorded device acceptance)"]), ...row.releaseAdmission.blockers, ...row.licenceBlockers].filter(Boolean).join(", ")})`).join("; ")}`);
-console.warn(`Listener (${listener.record}): ${listener.blockers.join("; ")}.`);
+  console.warn(`Not distributable: ${undistributable.map(row => `${row.file} (${[row.runtime !== "PACKAGED" && "no packaged runtime", testMocks && "test-mocks build", updateChannel.kind === "private-qa" && "private QA update channel", !row.runtimeNotices && "notices lack the packaged runtime (run node scripts/generate-licenses.mjs --packaged-runtime after staging)", ...(runtimeProfile === "cloud" ? cloudVoiceBlockers(row, "cartesia") : [!row.voiceHost.packaged && "no on-device voice packaged"]), ...row.releaseAdmission.blockers, ...row.licenceBlockers].filter(Boolean).join(", ")})`).join("; ")}`);
 // Licence flags are warnings: recorded per APK above, printed once here, never a failure.
 for (const line of flagLines) console.warn(line);
 const fontItems = new Map(release.flatMap(row => [...row.fontLicenceCheck.items, ...row.fontLicenceCheck.resolved].map(item => [item, row.fontLicenceCheck.blocksDistribution])));

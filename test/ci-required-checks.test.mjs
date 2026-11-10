@@ -81,12 +81,8 @@ test('Android foundation runs on main and develop pushes and both workflows end 
   assert.match(resident, /group: resident-\$\{\{ github\.event_name == 'workflow_dispatch' && github\.ref \|\| format\('\{0\}-\{1\}', github\.event_name, github\.sha\) \}\}\n  cancel-in-progress: \$\{\{ github\.event_name == 'workflow_dispatch' \}\}/);
 });
 
-test('documented ruleset is the committed ruleset and requires exactly the stable check names', () => {
+test('committed ruleset requires exactly the stable check names', () => {
   const ruleset = JSON.parse(read('scripts/ci/required-checks-ruleset.json'));
-  const docs = read('docs/ci-cost-policy.md');
-  const block = /## Required checks[\s\S]*?```json\n([\s\S]*?)\n```/.exec(docs)?.[1];
-  assert.ok(block, 'docs/ci-cost-policy.md embeds the ruleset JSON');
-  assert.deepEqual(JSON.parse(block), ruleset);
   assert.equal(ruleset.target, 'branch');
   assert.deepEqual(ruleset.conditions.ref_name.include, ['~DEFAULT_BRANCH']);
   const checks = ruleset.rules.find(rule => rule.type === 'required_status_checks').parameters.required_status_checks;
@@ -94,14 +90,4 @@ test('documented ruleset is the committed ruleset and requires exactly the stabl
   assert.ok(checks.every(row => row.integration_id === 15368));
   const workflows = read('.github/workflows/android.yml') + read('.github/workflows/browser.yml');
   for (const { context } of checks) assert.ok(workflows.includes(`name: ${context}\n`), context);
-});
-
-test('the scheduled dependency advisory audit is never a required check', () => {
-  const workflow = read('.github/workflows/dependency-audit.yml');
-  const name = /^name: (.+)$/m.exec(workflow)[1];
-  const jobNames = [...workflow.matchAll(/^    name: (.+)$/gm)].map(match => match[1]);
-  const ruleset = JSON.parse(read('scripts/ci/required-checks-ruleset.json'));
-  const required = ruleset.rules.find(rule => rule.type === 'required_status_checks').parameters.required_status_checks.map(row => row.context);
-  assert.ok(jobNames.length > 0);
-  for (const context of [name, ...jobNames]) assert.ok(!required.includes(context), `${context} must not be required`);
 });

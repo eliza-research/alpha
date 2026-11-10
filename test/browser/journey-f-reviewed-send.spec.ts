@@ -11,7 +11,7 @@ import {localDraftRow} from './inbox-draft-navigation';
 // provider keeps its "server" state in localStorage under a test-owned key so it survives reloads
 // like a remote provider would, and it records the exact JSON text of every prepare and dispatch.
 //
-// Covered (audit step IDs, docs/core-loop-audit.md):
+// Covered (audit step IDs):
 //  F-5   Cc, Bcc and an attachment appear in the send review, and the dispatched request equals
 //        the reviewed one byte for byte.
 //  F-10  An email edited after its review gets a new review under a new request ID; the first
@@ -619,7 +619,7 @@ test('F-12: a cursor the provider refuses after the mailbox changed keeps the lo
 test('F-12: a message removed between pages is never duplicated, and Refresh shows the exact mailbox', async ({page}) => {
   // Recorded limit: the search contract carries no mailbox revision, so when a row is REMOVED
   // between pages a provider that keeps serving the old cursor skips one message and the
-  // renderer cannot tell (see docs/core-loop-audit.md F-12). This asserts what does hold.
+  // renderer cannot tell. This asserts what does hold.
   test.setTimeout(120_000);
   await openInbox(page, {inbox: ['m1', 'm2', 'm3', 'm4', 'm5'], pageSize: 2});
   await expect.poll(() => rows(page)).toEqual(['m1', 'm2']);

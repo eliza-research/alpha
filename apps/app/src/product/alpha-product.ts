@@ -22,7 +22,7 @@ export const ALPHA_PRODUCT: MobileProductRegistration = defineMobileProductRegis
 /** Alpha's view registry and its navigation answers for one availability policy, given by
  * Alpha renderer key. The app uses the MVP scope and AOSP image admission (below). */
 export function alphaNavigation(available: (hostKey: string) => boolean) {
-  // Every view is drawn by Alpha's own renderer (docs/architecture.md, remaining host pieces): none
+  // Every view is drawn by Alpha's own renderer: none
   // is contributed to the shell's MobileViewHost.
   const views = createMobileViewRegistry(ALPHA_PRODUCT, {available: view => available(views.hostKey(view))});
   return {

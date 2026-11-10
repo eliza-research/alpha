@@ -1,5 +1,5 @@
-// Eliza Cloud operator values and the credential-free readiness probe (docs/human-actions.md H-11 to
-// H-16). A stubbed fetch stands in for Cloud; nothing here contacts a network, signs in or sends a code.
+// Eliza Cloud operator values and the credential-free readiness probe. A stubbed fetch stands
+// in for Cloud; nothing here contacts a network, signs in or sends a code.
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -142,7 +142,7 @@ test("each observed deployment gap fails its own gate and names its step", async
   assert.match(byGate["email sign-in"].detail, /not offered \(or behind a captcha\)/);
   assert.match(byGate["native Google"].detail, /STEWARD_GOOGLE_NATIVE_CLIENT_IDS/);
   assert.match(byGate["browser return"].detail, /redirect_uri is not allowed for this tenant/);
-  assert.match(byGate["App Links"].detail, /H-09/);
+  assert.match(byGate["App Links"].detail, /release certificate is not recorded yet/);
   assert.match(byGate["service documents"].detail, /CLOUD_PUBLIC_SERVICE_JSON/);
   assert.match(byGate["entitlement keys"].detail, /ELIZA_ENTITLEMENT_/);
   assert.match(byGate["Maps route"].detail, /^needs an account: .*401 before routing/);

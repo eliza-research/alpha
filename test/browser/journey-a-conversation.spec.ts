@@ -1,7 +1,7 @@
 import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import {openLegacyNotes} from './helpers/legacy-notes';
 /*
- * Journey A (docs/mvp-completion-plan.md "A. Boot, authenticate and keep a conversation"), browser build.
+ * Journey A, browser build.
  *
  * Evidence level: a pass is SOURCE/TEST evidence for the browser development profile only. It is not APK,
  * emulator, AOSP image, physical-device or real-integration evidence.
@@ -216,7 +216,7 @@ test('journey A: boot, connect, converse across apps, stop a reply, reload and r
  expect(external).toEqual([]);
 });
 
-// Journey hardening (docs/core-loop-audit.md, work order 14): journey A had no declined action.
+// Journey hardening: journey A had no declined action.
 // The proposal is authored through the development "Action JSON" control (no model decides it);
 // the card, Decline and the read-back are the real rendered path.
 test('journey A: a proposed phone action is declined from the conversation and nothing runs, before or after a reload',async({page})=>{
@@ -273,7 +273,7 @@ test('journey A: a proposed phone action is declined from the conversation and n
  expect(state.journal).toEqual([]);
 });
 
-// Journey hardening (docs/core-loop-audit.md, work order 14): journey A had no spoken request.
+// Journey hardening: journey A had no spoken request.
 // Synthetic boundaries only: the microphone is a Web Audio oscillator (the browser's real recorder
 // and the product's own voice-activity detection hear it), Cloud transcription is the closed
 // fixture returning a fixed string, and speech output is recorded instead of played. The turn is

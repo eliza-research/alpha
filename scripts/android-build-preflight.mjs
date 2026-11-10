@@ -23,7 +23,7 @@ import {verifyMobileBuildReceipt,MOBILE_UUID_POLICY} from './mobile-uuid-adapter
 export {VOICE_ASSET_ROOT, VOICE_HOST_MANIFEST};
 export const GRADLE_VERIFICATION = 'android/gradle/verification-metadata.xml';
 const FULL_CHAIN = 'npm run android:build:local';
-const VOICE_GUIDE = 'docs/fused-speech.md';
+const VOICE_GUIDE = 'README.md';
 
 function readHead(directory) {
   try {
@@ -222,10 +222,10 @@ export function strictBuildInputs(root, preparedSource, {env = process.env, voic
     const voice = voiceHostProblems(root, {voiceHost: (...args) => { voiceStatus = voiceHost(...args); return voiceStatus; }});
     add('on-device voice outputs', voice.length === 0, 'person',
       voice.length ? voice[0] : `staged outputs match ${VOICE_HOST_MANIFEST}`,
-      `Needs a person to supply the recorded voice outputs and models: node scripts/android-stage-voice-models.mjs --from <directory> (see ${VOICE_GUIDE}; docs/human-actions.md H-18).`);
+      `Needs a person to supply the recorded voice outputs and models: node scripts/android-stage-voice-models.mjs --from <directory> (see ${VOICE_GUIDE}).`);
     add('on-device voice qualified', voiceStatus?.qualified === true, 'person',
       voiceStatus?.qualified === true ? `${VOICE_HOST_MANIFEST} records device qualification` : `${VOICE_HOST_MANIFEST} is not qualified (no device acceptance recorded)`,
-      'Needs a person: on-device qualification on both ABIs (packages/app/scripts/paradee-voice/qualify) and device acceptance, recorded by a named reviewer (docs/human-actions.md H-18).');
+      'Needs a person: on-device qualification on both ABIs (packages/app/scripts/paradee-voice/qualify) and device acceptance, recorded by a named reviewer.');
   }
 
   if (runtimeProfile !== "cloud" || localEmbeddings) {
@@ -258,7 +258,7 @@ export function strictBuildInputs(root, preparedSource, {env = process.env, voic
   const missingSigning = SIGNING_ENV.filter(name => !(typeof env[name] === 'string' && env[name].trim() !== ''));
   add('release signer', signer !== 'unset' && missingSigning.length === 0, 'person',
     [signer === 'unset' ? 'android/release-signer.json says unset' : `android/release-signer.json names ${signer}`, missingSigning.length ? `not set in this environment: ${missingSigning.join(', ')}` : 'signing variables are set'].join('; '),
-    'Needs a person: Alpha Compute controls signing and Shaw owns release/support/rollback (#400). After the offline key ceremony, node scripts/enroll-release-keys.mjs records the certificate digest in android/release-signer.json (docs/human-actions.md H-08, H-09); then the release operator either supplies ELIZAOS_KEYSTORE_PATH, ELIZAOS_KEYSTORE_PASSWORD, ELIZAOS_KEY_ALIAS and ELIZAOS_KEY_PASSWORD to the build or signs the unsigned releases afterwards with node scripts/sign-release-apks.mjs (ceremony key files or a PKCS#11 token; H-10). Without either the build still completes and records unsigned, non-distributable releases.');
+    'Needs a person: Alpha Compute controls signing and Shaw owns release/support/rollback (#400). After the offline key ceremony, node scripts/enroll-release-keys.mjs records the certificate digest in android/release-signer.json; then the release operator either supplies ELIZAOS_KEYSTORE_PATH, ELIZAOS_KEYSTORE_PASSWORD, ELIZAOS_KEY_ALIAS and ELIZAOS_KEY_PASSWORD to the build or signs the unsigned releases afterwards with node scripts/sign-release-apks.mjs (ceremony key files or a PKCS#11 token; H-10). Without either the build still completes and records unsigned, non-distributable releases.');
   return rows;
 }
 

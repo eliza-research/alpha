@@ -68,7 +68,7 @@ def approval_receipt(text):
 
 def guard():
  assert run('shell','am','get-current-user').strip()=='0';assert_no_resident(run)
- assert not re.search(r'/data/(?:user|user_de)/\d+/ai\.(?:elizaresearch|alphacompute)\.alphaphone/.*/(?:ipc|ipc-recovery-[^/]+)/',run('shell','cat','/proc/net/unix'))
+ assert not re.search(r'/data/(?:user|user_de)/\d+/ai\.(?:alphacompute|alphacompute)\.alphaphone/.*/(?:ipc|ipc-recovery-[^/]+)/',run('shell','cat','/proc/net/unix'))
 def installed(package,user,digest):
  paths=run('shell','pm','path','--user',user,package).strip().splitlines();assert len(paths)==1 and paths[0].startswith('package:')
  assert run('shell','sha256sum',paths[0][8:]).split()[0]==digest

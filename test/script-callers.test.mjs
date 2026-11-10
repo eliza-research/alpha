@@ -8,7 +8,7 @@ import { execFileSync } from 'node:child_process';
 const root = path.resolve(import.meta.dirname, '..');
 const tracked = execFileSync('git', ['ls-files', '-z', 'package.json', 'README.md', '.github', 'test', 'scripts', 'docs'], {cwd: root, encoding: 'utf8'}).split('\0').filter(file => file && fs.existsSync(path.join(root, file)));
 const text = file => { try { return fs.readFileSync(path.join(root, file), 'utf8'); } catch { return ''; } };
-const callerFiles = tracked.filter(file => !file.startsWith('docs/evidence/') && !/^docs\/mvp-audit/.test(file) && !/\.(png|jpe?g|webp|zip|pyc)$/.test(file));
+const callerFiles = tracked.filter(file => !/\.(png|jpe?g|webp|zip|pyc)$/.test(file));
 const scripts = tracked.filter(file => file.startsWith('scripts/') && !file.startsWith('scripts/owner/') && !file.includes('/__pycache__/'));
 
 test('every script has a caller or a documented use', () => {
@@ -27,5 +27,5 @@ test('every script has a caller or a documented use', () => {
     }
     return true;
   });
-  assert.deepEqual(orphans, [], 'Delete these scripts or reference them from package.json, README, .github, test/, another script or a docs/ page');
+  assert.deepEqual(orphans, [], 'Delete these scripts or reference them from package.json, README, .github, test/, another script or the PRD');
 });

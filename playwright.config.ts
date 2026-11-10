@@ -9,7 +9,7 @@ const productionOutput=`test-results/production-web-${productionPort}`;
 // The production lane runs production-surface.spec.ts and every <name>.production.spec.ts.
 const productionSpec=/(production-surface|\.production)\.spec\.ts$/;
 // Live specs need a running local agent and real providers; only the live project runs them
-// (npm run test:browser:live, docs/live-browser-qa.md).
+// (npm run test:browser:live).
 const liveSpec=/\.local\.spec\.ts$/;
 
 // The top-level webServer list is not per-project. Start only the servers that the

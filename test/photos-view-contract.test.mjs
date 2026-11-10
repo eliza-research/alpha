@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-// Photos view agent tools (design/view-refresh-2026-11/PLAN.md section 2). Source-level: the phone
+// Photos view agent tools. Source-level: the phone
 // consumer tests of the shared Photos view leaf.
 const m=await import('../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/photos-view-contract.ts');
 const {LIBRARY_LIMITS}=await import('../apps/app/src/runtime/photo-library.ts');

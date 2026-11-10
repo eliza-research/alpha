@@ -603,7 +603,7 @@ test('Stop is offered while an agent has not produced its first chunk, and a lat
 // That is the current behaviour: AlphaClient.setViewContext (runtime/alpha-client.ts) aborts the
 // foreground request whenever the view context's revision moves. Whether a view change should stop a
 // reply at all, or let it finish while refusing only the actions bound to the old screen, is an open
-// owner question (docs/decisions.md, "Open engineering question: a view change during a reply");
+// owner question;
 // this test pins the current answer until it is decided.
 for (const step of ['Back from full to sheet', 'HOME on Home'] as const) {
   test(`${step} during a reply keeps it: the finished reply appears once and nothing is resent`, async ({ page }) => {

@@ -6,7 +6,7 @@
  *   node scripts/cloud-readiness.mjs probe [--environment production|staging] [--signer SHA256] [--json]
  *
  * `registration` prints the values an Eliza Cloud operator enters for Alpha
- * (docs/human-actions.md H-11 to H-15), derived from committed product configuration:
+ * derived from committed product configuration:
  * app.config.json (package and App Auth client), scripts/cloud-deployment-policy.mjs (hosts, tenant and
  * entitlement audience) and the sign-in callback path and Steward app client that Alpha's native
  * sign-in registers. It reads no secret and contacts nothing. Values only the operator knows (the
@@ -71,7 +71,7 @@ export function productRegistration(root = process.cwd(), environment = "product
   };
 }
 
-/** The operator entries for one environment (docs/human-actions.md H-11 to H-15). */
+/** The operator entries for one environment. */
 export function registrationValues(registration) {
   const { environment, api, web, tenant, clientId, callback, packageName, appName, browserSignIn, stewardAppClient, entitlementAudience } = registration;
   return [
@@ -89,7 +89,7 @@ export function registrationValues(registration) {
       then: `Set the printed value, deploy, then node scripts/render-assetlinks.mjs --check ${web}/.well-known/assetlinks.json.` },
     { step: "H-13", where: `ELIZA_NATIVE_AUTH_CALLBACKS_JSON (Pages environment of ${new URL(web).host}), Alpha's entry`,
       value: { redirectUri: callback, androidPackage: packageName, appName, browserSignIn },
-      then: "Merge this entry into the protected Pages environment registration and keep every other app's entry. See docs/runbooks/pages-browser-sign-in.md; this command does not deploy configuration." },
+      then: "Merge this entry into the protected Pages environment registration and keep every other app's entry. This command does not deploy configuration." },
     { step: "H-15", where: "Entitlement issuer audience", value: entitlementAudience,
       then: "Cloud's ELIZA_ENTITLEMENT_* signer must issue this audience (scripts/cloud-deployment-policy.mjs entitlementAudience)." },
   ];
@@ -201,7 +201,7 @@ export function formatProbe(registration, gates) {
   for (const row of gates) lines.push(`  [${mark(row.passed)}] ${row.gate} (${row.step}): ${row.detail}`);
   const failed = gates.filter(row => row.passed === false);
   const account = gates.filter(row => row.passed === null).length;
-  lines.push("", failed.length ? `${failed.length} gate(s) open. Each names its step in docs/human-actions.md. This is deployment configuration evidence only.`
+  lines.push("", failed.length ? `${failed.length} gate(s) open. This is deployment configuration evidence only.`
     : "Every checkable gate passes. This is deployment configuration evidence only, not a sign-in, plan admission or device result.");
   if (account) lines.push(`${account} row(s) need a signed-in account and were not requested.`);
   return lines.join("\n");

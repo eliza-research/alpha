@@ -56,7 +56,7 @@ test("a pilot release must be signed by the recorded signer, advance versionCode
 test("a pilot or acceptance unit never gets a non-distributable release, and every blocker is named", t => {
   const admit = (row, extra) => admitUnitApk(build(t, { ...DISTRIBUTABLE, ...row }, extra), { variant: "launcher", build: "release" }, { descriptor: descriptor() });
   const refusal = (row, extra) => { try { admit(row, extra); } catch (error) { return error.message; } return assert.fail(`admitted ${JSON.stringify(row)}`); };
-  const font = "unresolved-font-licence: Denton typeface (assets/denton.woff2) has no recorded embedding licence; license it or replace it before distribution (owner decision A-21, docs/dependency-audit.md#denton-typeface-mvp-43)";
+  const font = "unresolved-font-licence: Denton typeface (assets/denton.woff2) has no recorded embedding licence; license it or replace it before distribution (owner decision A-21, licenses/font-licenses.json)";
   // Owner decision 2026-10-10 (P-09, A-21): the Denton font check is flag-only. It is recorded but is not a blocker,
   // so a row that names it and is otherwise distributable is admitted, and a refused row does not cite it.
   assert.equal(admit({ licenceBlockers: [font], fontLicenceCheck: { check: "unresolved-font-licence", blocksDistribution: false, items: [font] } }).distributable, true);
@@ -301,4 +301,13 @@ test("campaign records are read from emulator-suite, resident proofs and residen
   // A resident proof without the hash of the APK it ran on is not admitted.
   write("test-results/resident-instrumentation/unbound.json", { passed: true });
   assert.equal(recordCandidate({ qualified: true, androidBuild: { apks: [{ sha256: app }] } }, root).candidate.campaigns.find(row => row.id === "resident-instrumentation").status, "mismatched");
+});
+
+
+test("the provisioning record keeps only its secret-free fields", () => {
+  const source = fs.readFileSync("scripts/provision-unit.mjs", "utf8");
+  const body = /const record = \{([\s\S]*?)\n  \};/.exec(source)[1];
+  const keys = [...body.matchAll(/^\s{4}([a-zA-Z]+)[:,]/gm)].map(match => match[1]);
+  assert.deepEqual(keys, ["schema", "alias", "createdAt", "sourceCommit", "evidence", "notEvidenceFor", "device", "apk", "installed", "runtimeIdentity", "homeRole"]);
+  assert.match(source, /buildFingerprintSha256: sha256\(/);
 });

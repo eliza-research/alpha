@@ -18,12 +18,12 @@
  * relations?} entry per app, and any malformed entry or duplicate package publishes [] for every
  * app. --cloud-config prints that variable's value with Alpha's entry carrying the release
  * fingerprint (plus each --keep-fingerprint), keeping every other app's entry from the --published
- * document unchanged; the operator sets it (docs/human-actions.md H-13). --check reads a rendered
+ * document unchanged; the operator sets it. --check reads a rendered
  * file or the published URL (HTTPS, HTTP 200 without a redirect, application/json, as Android's
  * verifier requires) and exits 0 only when it grants handle_all_urls to Alpha's package for the
  * recorded release signer.
  *
- * Publishing is the operator's step (docs/human-actions.md H-13). The https
+ * Publishing is the operator's step. The https
  * autoVerify filter itself defaults to the configured production web host
  * (android/app/product.gradle); appLinkFilters() reads it back from an APK manifest dump.
  */
@@ -252,7 +252,7 @@ export function statementsToCloudEntries(statements) {
  * recorded debug signers (legitimate on staging, never a release identity).
  */
 export function cloudAssetLinksConfig({ entries = [], packageName, signerSha256, keep = [], debugFingerprints = [] }) {
-  if (signerSha256 === "unset") throw new Error(`${SIGNER_FILE} signerSha256 is "unset"; record the release certificate first (docs/human-actions.md H-09)`);
+  if (signerSha256 === "unset") throw new Error(`${SIGNER_FILE} signerSha256 is "unset"; record the release certificate first`);
   if (!HEX64.test(signerSha256 ?? "")) throw new Error(`${SIGNER_FILE} signerSha256 must be 64 lower-case hex characters`);
   const release = fingerprint(signerSha256);
   const debug = new Set(debugFingerprints.map(value => { try { return fingerprint(value); } catch { return null; } }).filter(Boolean));
@@ -296,7 +296,7 @@ export function publishedAssetLinksCheck(text, { packageName, signerSha256, debu
   const problems = [...parsed.problems];
   const granted = new Set(parsed.granted);
   let release = null;
-  if (signerSha256 === "unset") problems.push(`${SIGNER_FILE} signerSha256 is "unset"; the release certificate is not recorded yet (docs/human-actions.md H-09)`);
+  if (signerSha256 === "unset") problems.push(`${SIGNER_FILE} signerSha256 is "unset"; the release certificate is not recorded yet`);
   else if (!HEX64.test(signerSha256 ?? "")) problems.push(`${SIGNER_FILE} signerSha256 is not a SHA-256`);
   else {
     release = fingerprint(signerSha256);
@@ -377,7 +377,7 @@ async function main(argv) {
       const result = cloudAssetLinksConfig({ entries, packageName, signerSha256, keep: options.keep, debugFingerprints });
       for (const value of result.removed) console.error(`note: ${packageName} no longer lists ${value}; pass --keep-fingerprint ${value} to keep it`);
       for (const value of result.keptDebug) console.error(`warning: ${value} is a recorded debug signing certificate; keep it only where debug builds must verify (staging), never as a release identity`);
-      console.error(`Set ${CLOUD_ASSET_LINKS.variable} on the Cloud environment to the value below (docs/human-actions.md H-13), deploy, then run: node scripts/render-assetlinks.mjs --check https://<web host>/.well-known/assetlinks.json`);
+      console.error(`Set ${CLOUD_ASSET_LINKS.variable} on the Cloud environment to the value below, deploy, then run: node scripts/render-assetlinks.mjs --check https://<web host>/.well-known/assetlinks.json`);
       console.log(result.text);
       return 0;
     }

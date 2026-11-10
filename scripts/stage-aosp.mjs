@@ -151,7 +151,7 @@ if (production && development) throw new Error("--production and --development a
 // lands on the disabled AlphaAssistActivity, so no production image carries it while P-78 stands.
 // Development staging still takes it so the listener can be tested.
 if (production && (get("--listener-apk") || get("--listener-descriptor")))
-  throw new Error("Refusing --listener-apk for --production: wake listening is deferred (P-78, docs/decisions.md), so production images leave AlphaSense out. Stage the listener with --development.");
+  throw new Error("Refusing --listener-apk for --production: wake listening is deferred (P-78), so production images leave AlphaSense out. Stage the listener with --development.");
 // The product lock is checked before any source or APK is read: production never stages into an
 // unset product. Pixel 10a has its own production descriptor; the Cuttlefish product its own lock.
 if (production) {

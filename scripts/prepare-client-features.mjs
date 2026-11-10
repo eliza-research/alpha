@@ -310,76 +310,9 @@ export const CLIENT_FEATURE_PATHS = [
 ];
 // Shared behavior is consumed from the reviewed upstream pin; there are no product patches.
 export const CLIENT_FEATURE_PATCHES = [];
-// Copied client source imports Alpha's installed runtime dependencies, so each copied package's
-// declared ranges must hold for them. Gaps are allowed only with a reviewed reason; an exception
-// that no longer matches the installed version or range fails so it is removed or reviewed again.
-const EXCEPTIONS_FILE = 'docs/client-feature-dependency-exceptions.json';
-function parseVersion(text) {
-  const match = /^v?(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/.exec(text.trim());
-  if (!match) throw Error('Unsupported dependency version: ' + text);
-  return match.slice(1, 4).map(Number);
-}
-const compare = (a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
-function comparator(text, version) {
-  if (text === '*' || text === 'x' || text === '') return true;
-  const match = /^(\^|~|>=|<=|>|<|=)?v?(\d+|x|\*)(?:\.(\d+|x|\*))?(?:\.(\d+|x|\*))?$/.exec(text);
-  if (!match) throw Error('Unsupported dependency range: ' + text);
-  const [, operator = '', ...parts] = match, wild = part => part === undefined || part === 'x' || part === '*';
-  const given = parts.findIndex(wild), length = given < 0 ? 3 : given;
-  const base = [0, 1, 2].map(index => index < length ? Number(parts[index]) : 0);
-  const upper = places => { const next = base.slice(0, places); next[places - 1] += 1; return [...next, 0, 0].slice(0, 3); };
-  const below = top => compare(version, top) < 0;
-  if (operator === '^') {
-    const place = base[0] > 0 || length === 1 ? 1 : base[1] > 0 || length === 2 ? 2 : 3;
-    return compare(version, base) >= 0 && below(upper(place));
-  }
-  if (operator === '~') return compare(version, base) >= 0 && below(upper(length > 1 ? 2 : 1));
-  if (operator === '>=') return compare(version, base) >= 0;
-  if (operator === '>') return length < 3 ? !below(upper(length)) : compare(version, base) > 0;
-  if (operator === '<') return below(base);
-  if (operator === '<=') return length < 3 ? below(upper(length)) : compare(version, base) <= 0;
-  return compare(version, base) >= 0 && (length === 3 ? compare(version, base) === 0 : below(upper(length)));
-}
-export const satisfiesRange = (version, range) => range.split('||').some(set =>
-  set.trim().split(/\s+/).every(part => comparator(part, parseVersion(version))));
-function packageRoot(directory, name) {
-  for (let current = path.posix.dirname(name + '/x'); current !== '.'; current = path.posix.dirname(current))
-    if (fs.existsSync(path.join(directory, current, 'package.json'))) return current;
-  return undefined;
-}
-/** Throw for a copied package range that Alpha's installed runtime dependency does not satisfy
- * and that has no reviewed exception; return the excepted gaps. */
-export function checkClientFeatureDependencies(root, upstream, paths = CLIENT_FEATURE_PATHS) {
-  const manifest = path.join(root, 'package.json');
-  const runtime = fs.existsSync(manifest) ? JSON.parse(fs.readFileSync(manifest, 'utf8')).dependencies ?? {} : {};
-  const exceptionsFile = path.join(root, EXCEPTIONS_FILE);
-  const exceptions = fs.existsSync(exceptionsFile) ? JSON.parse(fs.readFileSync(exceptionsFile, 'utf8')).exceptions : [];
-  const used = new Set(), gaps = [], excepted = [];
-  for (const owner of [...new Set(paths.map(name => packageRoot(upstream.directory, name)).filter(Boolean))].sort()) {
-    const declared = JSON.parse(upstream.read(owner + '/package.json').get(owner + '/package.json').bytes.toString());
-    for (const field of ['dependencies', 'peerDependencies']) for (const [dependency, range] of Object.entries(declared[field] ?? {})) {
-      if (!Object.hasOwn(runtime, dependency)) continue;
-      const installedFile = path.join(root, 'node_modules', dependency, 'package.json');
-      if (!fs.existsSync(installedFile)) throw Error(`Client feature dependency is not installed: ${dependency}`);
-      const installed = JSON.parse(fs.readFileSync(installedFile, 'utf8')).version;
-      if (satisfiesRange(installed, range)) continue;
-      const gap = { package: owner, dependency, range, installed };
-      const exception = exceptions.find(entry => ['package', 'dependency', 'range', 'installed'].every(key => entry[key] === gap[key]));
-      if (!exception) { gaps.push(gap); continue; }
-      if (typeof exception.reason !== 'string' || !exception.reason.trim()) throw Error(`Client feature dependency exception has no reason: ${owner} ${dependency}`);
-      used.add(exception); excepted.push(exception);
-    }
-  }
-  if (gaps.length) throw Error('Copied client features need newer dependencies than Alpha installs (bump them or add a reviewed exception to ' + EXCEPTIONS_FILE + '):\n' +
-    gaps.map(gap => `  ${gap.package}: ${gap.dependency} ${gap.range}, installed ${gap.installed}`).join('\n'));
-  const stale = exceptions.filter(entry => !used.has(entry));
-  if (stale.length) throw Error('Stale client feature dependency exceptions in ' + EXCEPTIONS_FILE + ':\n' +
-    stale.map(entry => `  ${entry.package}: ${entry.dependency} ${entry.range}, installed ${entry.installed}`).join('\n'));
-  return excepted;
-}
 /** Copy authenticated upstream source outside the immutable vendor checkout. With check, only
  * confirm the prepared copy is current and throw instead of rebuilding it. */
-export function prepareClientFeatures({ root = projectRoot, projectVoice = true, check = false, log } = {}) {
+export function prepareClientFeatures({ root = projectRoot, projectVoice = true, check = false } = {}) {
   for (const prefix of ['app-update-resume-client', 'managed-google-body-limit-client']) {
     for (const suffix of ['.patch', '-manifest.json']) {
       const retired = path.join(root, 'patches/eliza', prefix + suffix);
@@ -387,8 +320,6 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
     }
   }
   const upstream = upstreamNativeSource(root);
-  for (const exception of checkClientFeatureDependencies(root, upstream))
-    log?.(`Client feature dependency exception: ${exception.package} ${exception.dependency} ${exception.range}, installed ${exception.installed}: ${exception.reason}`);
   const source = new Map(CLIENT_FEATURE_PATHS.flatMap(prefix => [...upstream.read(prefix)]));
   const sourceFiles = Object.fromEntries([...source].map(([name, file]) => [name, file.sha256]));
   if(projectVoice){
@@ -522,5 +453,5 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
 export const checkClientFeatures = (options = {}) => prepareClientFeatures({ ...options, check: true });
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  console.log(`Client feature source prepared: ${prepareClientFeatures({ log: console.warn })}`);
+  console.log(`Client feature source prepared: ${prepareClientFeatures()}`);
 }

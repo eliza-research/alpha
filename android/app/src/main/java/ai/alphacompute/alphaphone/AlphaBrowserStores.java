@@ -16,7 +16,7 @@ import java.util.Set;
  * plugin-native-browser-surface: the WebView profiles, preferences files, activity-result keys and
  * Android Keystore aliases that earlier builds wrote, so website sign-ins, saved bookmarks, tabs,
  * history, downloads and site-permission decisions stay readable. The host, the stores, their
- * formats and their rules are upstream; see docs/browser-storage.md.
+ * formats and their rules are upstream.
  */
 final class AlphaBrowserStores {
  /** Alpha's own URL scheme: an intent: link may never carry it as data. */

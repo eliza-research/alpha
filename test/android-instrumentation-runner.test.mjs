@@ -649,22 +649,3 @@ test("no registered instrumented class drives a control the view refresh removed
   for (const label of removed) assert.equal(template.includes(label), false, `the renderer has no "${label}"`);
   assert.match(template, /Photos tools[\s\S]*photos\.importAvailable[\s\S]*photos\.importImage[\s\S]*Choose image/, "image import remains an explicit Photos tool");
 });
-
-test("documented campaign commands name current classes or explicitly retained historical entries", () => {
-  const documents = ["docs/runbooks/676-hosted-ci-emulator-campaigns.md", "docs/core-loop-audit.md"];
-  const retiredAuditEntries = new Set(["LocalAgentOfflineApps", "FusedSpeech"]);
-  for (const document of documents) {
-    let commands = 0;
-    for (const line of fs.readFileSync(document, "utf8").split("\n")) {
-      for (const match of line.matchAll(/--classes ([A-Za-z0-9,]+)/g)) {
-        commands += 1;
-        for (const name of match[1].split(",")) {
-          if (document === "docs/core-loop-audit.md" && retiredAuditEntries.has(name)) continue;
-          if (name === "FilesTree" && line.includes("Historical command retained from the round-8 plan. FilesTree has since retired")) continue;
-          assert.ok(Object.hasOwn(CLASS_REGISTRY, name) && !Object.hasOwn(NOT_RUN_BY_A_RUNNER, name), `${document} names an unavailable class ${name}`);
-        }
-      }
-    }
-    assert.ok(commands > 0, `${document} contains campaign commands`);
-  }
-});

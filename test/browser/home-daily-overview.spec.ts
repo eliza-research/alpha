@@ -297,7 +297,7 @@ test('Inbox card never reads mail from Home and shows the account and read time 
  const card=inboxCard(page);
  // A connected account alone does not make Home read mail: re-render, wait, and come back to the foreground.
  await page.getByRole('textbox',{name:'Ask Alpha',exact:true}).fill('Unsent rerender');
- // A focused composer is a raised dock that would take the next tap (tla/ChatInput.tla).
+ // A focused composer is a raised dock that would take the next tap.
  await page.getByRole('textbox',{name:'Ask Alpha',exact:true}).blur();
  await page.evaluate(()=>{window.dispatchEvent(new Event('focus'));document.dispatchEvent(new Event('visibilitychange'));});
  await page.waitForTimeout(1500);

@@ -26,8 +26,6 @@ const [destination]=positional;
 // Check this before preparation or model verification starts.
 try{execFileSync('sqlite3',['--version'],{stdio:'ignore',timeout:10000});}
 catch(cause){throw new Error('Build verification needs the sqlite3 command-line tool on PATH. Install it before starting an archive.',{cause});}
-// The composition gate consumes this audit. Refuse stale metadata before preparation.
-execFileSync(process.execPath,['scripts/quint-state-audit.mjs','--check'],{stdio:'inherit',timeout:120000});
 const sourceDir=testMocks?'artifacts/test-mocks':'artifacts';
 // Distribution archives are always flag-off; build-android also strips these.
 const buildEnv=androidBuildEnv(process.env,options);

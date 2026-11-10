@@ -7,7 +7,7 @@
  <application android:usesCleartextTraffic="true" android:networkSecurityConfig="@xml/development_network_security_config" tools:replace="android:usesCleartextTraffic,android:networkSecurityConfig">
   <!-- Staging Eliza Cloud sign-in return, test-mocks builds only. Staging assetlinks lists the debug and
        release certificates. For another debug keystore, approve the host for this package with adb's
-       pm set-app-links-user-selection command (docs/cloud-subscription-qa.md has the exact line). -->
+       pm set-app-links-user-selection command. -->
   <activity android:name=".MainActivity" tools:node="merge">
    <intent-filter android:autoVerify="true"><action android:name="android.intent.action.VIEW"/><category android:name="android.intent.category.DEFAULT"/><category android:name="android.intent.category.BROWSABLE"/><data android:scheme="https" android:host="${stagingCloudWebHost}" android:path="/alphaphone/auth/callback"/></intent-filter>
   </activity>

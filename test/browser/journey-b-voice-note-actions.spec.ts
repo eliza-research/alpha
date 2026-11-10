@@ -142,7 +142,7 @@ test('Journey B: recorded note UI and retained scheduling contract save one even
  await localBrowserVoice(page);
  await openSavedRecording(page);
  await expect(page.getByText(transcript,{exact:true}).first()).toBeVisible();
- // Reading aloud is asked of Alpha; the voice note toolbar has no Read aloud button (PLAN.md section 3).
+ // Reading aloud is asked of Alpha; the voice note toolbar has no Read aloud button.
  await expect(page.getByRole('button',{name:'Read aloud',exact:true})).toHaveCount(0);
  expect(await page.evaluate(()=>(window as any).voiceFixture.spoken as string[])).toEqual([]);
  const recorded=(await notes(page))[0];

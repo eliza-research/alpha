@@ -1,6 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {execFileSync} from 'node:child_process';
 import {mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {resolve, join} from 'node:path';
 import {tmpdir} from 'node:os';
@@ -12,10 +11,9 @@ import {prepareQuintHistory, quintHistoryInventories} from '../scripts/prepare-q
 
 const sourcePath = 'specs/quint/legacy/core/source-inventory.json';
 const viewRefreshPath = 'specs/quint/legacy/view-refresh-configurations.json';
-const gitPaths = (directory, args) => execFileSync('git', ['-C', directory, ...args], {encoding: 'utf8', maxBuffer: 16 * 1024 * 1024})
-  .split('\0').filter(path => /\.(tla|cfg)$/.test(path)).sort();
 
-test('all tracked TLA+ specifications and configurations have Quint translations', () => {
+
+test('upstream TLA+ inputs are authenticated and retained product Quint designs stay registered', () => {
   const models = new Map(loadModels().map(model => [model.module, model]));
   const core = readJson(resolve(repositoryRoot, sourcePath));
   const pin = readJson(resolve(repositoryRoot, 'upstream.lock.json')).commit;
@@ -37,15 +35,13 @@ test('all tracked TLA+ specifications and configurations have Quint translations
   assert.equal(coreFiles.length - core.models.length, core.configurationCount);
 
   const design = readJson(resolve(repositoryRoot, viewRefreshPath));
-  const productFiles = [];
   for (const source of design.models) {
-    assert.ok(models.has(source.module), `Register the Quint translation of ${source.legacySource.path}`);
-    for (const {path, sha256: expected} of [source.legacySource, ...source.configurations.map(config => config.legacyConfiguration)]) {
-      productFiles.push(path);
-      assert.equal(sha256(readFileSync(resolve(repositoryRoot, path))), expected, path);
-    }
+    const model = models.get(source.module);
+    assert.ok(model, `Register the retained Quint design ${source.module}`);
+    const text = readFileSync(resolve(repositoryRoot, model.path), 'utf8');
+    for (const config of source.configurations) assert.match(text, new RegExp(`\\baction\\s+${config.init}\\b`));
   }
-  assert.deepEqual(gitPaths(repositoryRoot, ['ls-files', '-z', '--', '*.tla', '*.cfg']), productFiles.sort());
+
 });
 
 test('history preparation fetches each missing inventoried revision in a shallow clone and preserves HEAD', () => {

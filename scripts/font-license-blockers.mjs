@@ -34,7 +34,7 @@ export const FONT_FLAG = 'proprietary-no-licence-recorded';
 /** Flag of a font recorded on the owner's statement that the licence is held outside the repository. */
 export const FONT_HELD_FLAG = 'proprietary-licence-held-outside-repo';
 export const RESOLVED_BY_OWNER_STATEMENT = 'resolved-by-owner-statement';
-export const FONT_BLOCKER_REFERENCE = 'docs/dependency-audit.md#denton-typeface-mvp-43';
+export const FONT_BLOCKER_REFERENCE = 'licenses/font-licenses.json';
 
 function walk(root, directory = root, out = []) {
   for (const entry of fs.readdirSync(directory, {withFileTypes: true})) {

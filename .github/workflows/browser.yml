@@ -4,7 +4,7 @@ on:
     branches: [main, develop]
   pull_request:
   # Daily full chromium and production run of main, so a red baseline has a dated first
-  # failure. Main pushes still skip the browser lanes (docs/ci-cost-policy.md).
+  # failure. Main pushes still skip the browser lanes.
   schedule:
     - cron: '23 7 * * *'
   workflow_dispatch:
@@ -194,8 +194,8 @@ jobs:
             test-results/browser/
             test-results/browser-report/
           retention-days: 3
-  # Stable aggregate for the dynamically named shard matrix. docs/ci-cost-policy.md
-  # proposes requiring it; no ruleset is installed (P-57). Pushes to main skip the
+  # Stable aggregate for the dynamically named shard matrix.
+  # No ruleset is installed (P-57). Pushes to main skip the
   # browser lanes (they already ran on the PR); the daily schedule runs them on main.
   result:
     name: Browser MVP result

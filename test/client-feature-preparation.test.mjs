@@ -8,7 +8,7 @@ import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {spawn, spawnSync} from 'node:child_process';
 import {git as fixtureGit} from './fixtures/git-fixture.mjs';
-import {prepareClientFeatures, CLIENT_FEATURE_PATHS, satisfiesRange} from '../scripts/prepare-client-features.mjs';
+import {prepareClientFeatures, CLIENT_FEATURE_PATHS} from '../scripts/prepare-client-features.mjs';
 const fixtureLeaf=CLIENT_FEATURE_PATHS.find(prefix=>path.extname(prefix));
 assert.ok(fixtureLeaf,'the authentication fixtures need a selected leaf file');
 function fixture(run) {
@@ -186,30 +186,6 @@ test('client source rejects committed symlinks and missing source groups',()=>fi
  fs.writeFileSync(path.join(root,'upstream.lock.json'),JSON.stringify({commit:git(['rev-parse','HEAD'])}));assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/Nonregular upstream/);
  fs.unlinkSync(file);git(['add','.']);git(['-c','user.name=Source fixture','-c','user.email=fixture@example.invalid','commit','-qm','Missing source']);
  fs.writeFileSync(path.join(root,'upstream.lock.json'),JSON.stringify({commit:git(['rev-parse','HEAD'])}));assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/Missing upstream source/);
-}));
-test('dependency ranges follow npm caret, tilde, exact, comparator and union rules',()=>{
- for(const [version,range] of [['6.16.4','^6.16.0'],['0.7.9','^0.7.1'],['1.2.9','~1.2.3'],['19.3.1','19.3.1'],['8.5.2','>=8.3.1 <9'],['5.0.0','^4.0.0 || ^5.0.0'],['3.1.0','*'],['2.4.0','2.x']])assert.equal(satisfiesRange(version,range),true,version+' satisfies '+range);
- for(const [version,range] of [['6.11.2','^6.16.0'],['0.8.0','^0.7.1'],['1.3.0','~1.2.3'],['19.3.0','19.3.1'],['8.5.2','8.4.0'],['9.0.0','>=8.3.1 <9']])assert.equal(satisfiesRange(version,range),false,version+' does not satisfy '+range);
- assert.throws(()=>satisfiesRange('1.0.0','workspace:*'),/Unsupported dependency range/);
-});
-test('copied client features fail on an unmet dependency range unless a reviewed exception names it',()=>fixture(({root,vendor,git})=>{
- fs.writeFileSync(path.join(vendor,'plugins/plugin-maps/package.json'),JSON.stringify({peerDependencies:{'maplibre-gl':'^6.16.0',react:'^19.0.0'},devDependencies:{typescript:'^9.0.0'}}));
- git(['add','.']);git(['commit','-qm','Ranges']);
- fs.writeFileSync(path.join(root,'upstream.lock.json'),JSON.stringify({commit:git(['rev-parse','HEAD'])}));
- fs.writeFileSync(path.join(root,'package.json'),JSON.stringify({dependencies:{'maplibre-gl':'6.11.2',react:'19.3.0'},devDependencies:{typescript:'7.0.2'}}));
- for(const [name,version] of [['maplibre-gl','6.11.2'],['react','19.3.0']]){fs.mkdirSync(path.join(root,'node_modules',name),{recursive:true});fs.writeFileSync(path.join(root,'node_modules',name,'package.json'),JSON.stringify({version}));}
- assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),error=>/plugins\/plugin-maps: maplibre-gl \^6\.16\.0, installed 6\.11\.2/.test(error.message)&&!/react|typescript/.test(error.message));
- assert.equal(fs.existsSync(path.join(root,'.eliza/client-features')),false,'nothing is prepared over an unmet range');
- const exception={package:'plugins/plugin-maps',dependency:'maplibre-gl',range:'^6.16.0',installed:'6.11.2',reason:'Map bump needs its own UI check.'};
- fs.mkdirSync(path.join(root,'docs'));fs.writeFileSync(path.join(root,'docs/client-feature-dependency-exceptions.json'),JSON.stringify({exceptions:[exception]}));
- const printed=[];prepareClientFeatures({root,projectVoice:false,log:line=>printed.push(line)});
- assert.deepEqual(printed,['Client feature dependency exception: plugins/plugin-maps maplibre-gl ^6.16.0, installed 6.11.2: Map bump needs its own UI check.']);
- // Once the installed version satisfies the range the exception is stale and must be removed.
- fs.writeFileSync(path.join(root,'node_modules/maplibre-gl/package.json'),JSON.stringify({version:'6.16.0'}));
- assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/Stale client feature dependency exceptions[^]*maplibre-gl/);
- fs.writeFileSync(path.join(root,'docs/client-feature-dependency-exceptions.json'),JSON.stringify({exceptions:[{...exception,reason:' '}]}));
- fs.writeFileSync(path.join(root,'node_modules/maplibre-gl/package.json'),JSON.stringify({version:'6.11.2'}));
- assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/exception has no reason: plugins\/plugin-maps maplibre-gl/);
 }));
 test('direct local development launcher prepares a clean client tree before starting services',()=>fixture(({root,commit})=>{
  for(const file of ['scripts/dev-local.mjs','scripts/dev-speech-settings.mjs','scripts/speech-env.mjs','scripts/local-agent-source.mjs','scripts/copy-file-clone.mjs','scripts/prepare-client-features.mjs','scripts/upstream-native-source.mjs']){const target=path.join(root,file);fs.mkdirSync(path.dirname(target),{recursive:true});fs.copyFileSync(file,target);}

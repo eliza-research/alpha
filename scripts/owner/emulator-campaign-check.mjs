@@ -57,7 +57,7 @@ export const ITEM_RUNNERS = Object.freeze({
   "Quick Settings tile placement and unlock": { runner: null, gap: "no instrumented class drives AlphaQuickSettingsTile (scripts/apk.mjs only checks the manifest declaration); manual emulator check only" },
   "npm run agent:test-digest-restart": { runner: ".github/workflows/digest-restart.yml (job digest-restart) or locally `npm run agent:test-digest-restart`", gap: null, evidence: "host-runtime evidence (synthetic model, no emulator), not class E" },
   "resident restart, history and missed-run checks on an installed APK": { runner: "resident-android.yml job native (scripts/ci/resident-native.py) for restart; no script covers history or missed runs on an installed APK", gap: "history and missed-run checks have no runner; record them as a manual emulator procedure" },
-  "upgrade from earlier installs that saved mock state": { runner: null, gap: "manual procedure only (docs/pilot-acceptance-runbook.md, Upgrade from earlier mock state); scripts/test-installed-upgrade.mjs covers Calendar and reminder upgrades, not saved mock state" },
+  "upgrade from earlier installs that saved mock state": { runner: null, gap: "manual procedure only; scripts/test-installed-upgrade.mjs covers Calendar and reminder upgrades, not saved mock state" },
 });
 
 const read = (root, file) => fs.readFileSync(path.join(root, file), "utf8");
@@ -134,17 +134,10 @@ export function buildPairOf(spec) {
   return "flag-off pair (also test-mocks where the class allows)";
 }
 
-/** Verification sections ("## Emulator results at …") that mention the class, newest first as the page orders them. */
-export function recordedSections(verification, name) {
-  const sections = verification.split(/^## /m).slice(1).filter(section => /^Emulator results at /.test(section));
-  return sections.filter(section => new RegExp(`\\b${name}(InstrumentedTest)?\\b`).test(section)).map(section => section.split("\n")[0].trim());
-}
-
 export function analyse(root, runner, suite) {
   const sources = instrumentedSources(root);
   const suites = hostedSuites(root, { ...suite, DEFAULT_CLASSES: runner.DEFAULT_CLASSES });
   const campaignText = Object.fromEntries(runner.CAMPAIGN_RUNNERS.filter(file => fs.existsSync(path.join(root, file))).map(file => [file, read(root, file)]));
-  const verification = read(root, "docs/verification.md");
   const rows = [];
   for (const group of ISSUE_676) {
     for (const name of group.classes) {
@@ -161,7 +154,7 @@ export function analyse(root, runner, suite) {
         group: group.group, class: name, note: group.notes?.[name] ?? null,
         sources: sources.get(name) ?? [], registered: Boolean(spec), defaultClass: runner.DEFAULT_CLASSES.includes(name),
         homeRole: spec?.homeRole ?? null, buildPair: buildPairOf(spec), flavors: flavorsOf(spec),
-        hosted, campaigns, notRunByARunner: notRun, local: localCommand(name, spec), recorded: recordedSections(verification, name), gaps,
+        hosted, campaigns, notRunByARunner: notRun, local: localCommand(name, spec), gaps,
       });
     }
     for (const item of group.items ?? []) rows.push({ group: group.group, item, ...ITEM_RUNNERS[item], gaps: ITEM_RUNNERS[item]?.gap ? [ITEM_RUNNERS[item].gap] : [] });
@@ -195,7 +188,7 @@ export function dispatchPlan(sha, { repo = "eliza-research/alphaphone", gh = "gh
       `${gh} run view <RUN_ID> ${R} --json jobs --jq '.jobs[] | [.name, .conclusion] | @tsv'   # native and recovery-ui must not be "skipped"`,
       `${gh} run download <RUN_ID> ${R} -D test-results/h31/<RUN_ID>`,
     ],
-    refused: ["android-emulator.yml -f suite=fused-speech and -f suite=all stop in the build job until hosted voice staging exists (docs/fused-speech.md); do not dispatch them"],
+    refused: ["android-emulator.yml -f suite=fused-speech and -f suite=all stop in the build job until hosted voice staging exists; do not dispatch them"],
     cleanup: [`git push origin --delete ${ref}   # after the evidence is downloaded and committed`],
     evidenceClass: "Emulator HOME-role evidence (class E) on developer-override APKs for android-emulator.yml; PACKAGED developer APKs for resident-android.yml; host-runtime for digest-restart.yml. Not an image boot, real integration, device or user acceptance.",
   };

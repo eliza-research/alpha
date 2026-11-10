@@ -1,4 +1,4 @@
-// Every product script path and npm script named in README.md and docs/ must exist.
+// Every product script path and npm script named in README.md and the PRD must exist.
 // Paths that are relative to the pinned upstream checkout (for example
 // `packages/os/browser/scripts/...` written as `scripts/...` beside a vendor path)
 // are accepted only when that file really exists under vendor/eliza and the same
@@ -11,17 +11,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const root = path.resolve(import.meta.dirname, '..');
-// docs/market-research holds research and proposals that name tools which do not
-// exist yet; it is not an operating instruction and is excluded from these checks.
-const excluded = /^docs\/market-research\//;
-function markdown(directory) {
-  return fs.readdirSync(path.join(root, directory), { withFileTypes: true }).flatMap(entry => {
-    const relative = `${directory}/${entry.name}`;
-    if (entry.isDirectory()) return markdown(relative);
-    return entry.name.endsWith('.md') ? [relative] : [];
-  });
-}
-const docs = ['README.md', ...markdown('docs')].filter(file => !excluded.test(file)).sort();
+const docs = ['README.md', 'docs/prd.md'];
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 const lineOf = (text, index) => text.slice(0, index).split('\n').length;
 
@@ -76,33 +66,20 @@ test('an upstream-relative script path needs its upstream directory named in the
   assert.equal(vendorRelativeInContext('scripts/release.mjs', 'In `vendor/eliza`, run it.', files), false);
 });
 
-// Stale references in documents this check does not yet own. Each entry must still be
-// stale; remove it as soon as the document is corrected.
-const knownStale = new Map([
-  // Dated snapshots stay as written; the removed speech toolchain is replaced by docs/fused-speech.md.
-  ['docs/mvp-audit-2026-10-11.md|scripts/local-speech/requalify-runtime.py', 'dated audit snapshot; the earlier speech toolchain was removed for the fused libelizainference engine'],
-  ['docs/mvp-audit-2026-10-11.md|scripts/test-real-workflow.mjs', 'dated audit snapshot; the helper was removed with its deleted instrumented test'],
-  ['docs/mvp-audit-2026-10-11.md|scripts/test-real-workflow-cancel.mjs', 'dated audit snapshot; the helper was removed with its deleted instrumented test'],
-  ['docs/mvp-audit-2026-10-11.md|scripts/test-calendar-upgrade.mjs', 'dated audit snapshot; the shim became `node scripts/test-installed-upgrade.mjs calendar`'],
-  ['docs/mvp-audit-2026-10-11.md|scripts/test-reminder-upgrade.mjs', 'dated audit snapshot; the shim became `node scripts/test-installed-upgrade.mjs reminder`'],
-]);
-
-test('every scripts/... path in README.md and docs/ exists in this repository or the pinned upstream', () => {
-  const failures = [], stillStale = new Set();
+test('every scripts/... path in README.md and the PRD exists in this repository or the pinned upstream', () => {
+  const failures = [];
   for (const file of docs) {
     const text = read(file);
     for (const { reference, index } of scriptReferences(text)) {
       if (fs.existsSync(path.join(root, reference))) continue;
       if (vendorRelativeInContext(reference, text, listVendorFiles())) continue;
-      if (knownStale.has(`${file}|${reference}`)) { stillStale.add(`${file}|${reference}`); continue; }
       failures.push(`${file}:${lineOf(text, index)}: ${reference}`);
     }
   }
   assert.deepEqual(failures, [], 'Replace or remove references to scripts that no longer exist');
-  assert.deepEqual([...knownStale.keys()].filter(key => !stillStale.has(key)), [], 'remove corrected entries from knownStale');
 });
 
-test('every `npm run X` in README.md and docs/ names a root package.json script', () => {
+test('every `npm run X` in README.md and the PRD names a root package.json script', () => {
   const scripts = JSON.parse(read('package.json')).scripts;
   const failures = [];
   for (const file of docs) {
@@ -124,7 +101,7 @@ const retired = [
   [/AlphaPhotos\.describe/, 'no such native method'],
 ];
 
-test('README.md and docs/ contain no retired runner or superseded architecture wording', () => {
+test('README.md and the PRD contain no retired runner or superseded architecture wording', () => {
   const failures = [];
   for (const file of docs) {
     const text = read(file);

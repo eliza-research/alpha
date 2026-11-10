@@ -1,7 +1,7 @@
 import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import {returnToApps} from './app-navigation';
 /*
- * Journey D (docs/mvp-completion-plan.md "D. Two hosted loops with the phone powered off"), browser build.
+ * Journey D, browser build.
  *
  * Evidence level: a pass is SOURCE/TEST evidence for the browser development profile only. It is not APK,
  * emulator, AOSP image, physical-device, hosted-service or real-integration evidence.
@@ -12,11 +12,11 @@ import {returnToApps} from './app-navigation';
  *    "output" is the saved scripted development reply. No model, hosted worker, account or network.
  *  - The source is a typed snapshot reviewed in the panel; no mail, calendar or task provider is read.
  *  - Time is moved with page.clock, paused before the first occurrence so only the test advances it. "App closed"
- *    is modelled by navigating to about:blank across a scheduled time.
+ *   is modelled by navigating to about:blank across a scheduled time.
  *
  * Native-only / not coverable here (not claimed):
  *  - Hosted execution while the phone is POWERED OFF and delivery once on reconnect. That is owner decision A-09
- *    (docs/decisions.md); this spec does not decide it and proves nothing about it. The panel itself says
+ *    and is outside this browser check. The panel itself says
  *    "Schedules run while this app is open."
  *  - Resident-runtime restart/crash recovery (scripts/test-local-digest-restart.mjs), Doze/battery/lock, real
  *    provider sources, result notifications on a device.
@@ -44,7 +44,7 @@ const digests=(page:Page)=>page.evaluate(async()=>{
 });
 /**
  * The workflows tile, which in this profile only ever carried the brief. Home draws a card only when
- * it has something to show (docs/ui-refresh-2026-11): with no enabled workflow it is absent, and the
+ * it has something to show: with no enabled workflow it is absent, and the
  * brief is the dedicated card below.
  */
 const homeBrief=(page:Page)=>page.locator('button[aria-label^="Open workflows"]');
@@ -238,7 +238,7 @@ test('journey D: morning and evening digests run once each, are retained and ack
  expect(new Set(state.results.map(r=>r.workflowId+'|'+r.scheduledAt)).size).toBe(4);
 });
 
-// Proposed policy (docs/mvp-completion-plan.md section D): "explicit missed/overlap records". A schedule whose
+// Proposed policy: "explicit missed/overlap records". A schedule whose
 // only occurrence so far passed while the app was closed has no earlier brief: the single record is the missed one.
 test('journey D: an occurrence missed while the app was closed leaves one explicit missed record and no brief for Home',async({page})=>{
  test.setTimeout(240_000);

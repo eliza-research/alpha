@@ -135,7 +135,7 @@ function embeddingHostComponents(root) {
   if (!exists(root, EMBEDDING_HOST)) return [];
   const host = readJson(root, EMBEDDING_HOST);
   const hostScope = exists(root, 'vendor/eliza/plugins/plugin-local-inference/native/android/consumer.gradle') ? 'legacy qualification record; incompatible with current Paradee engine; not current packaged bytes' : WITH_RESIDENT_RUNTIME;
-  const source = `${EMBEDDING_HOST} (elizaOS ${host.pin}, engine ${host.forkPin}, qualification receipt sha256 ${host.qualificationReceiptSha256})`;
+  const source = `${EMBEDDING_HOST} (elizaOS ${host.pin}, engine ${host.forkPin})`;
   return [
     ...host.libraries.map(library => ({
       type: 'library', 'bom-ref': `embedding-host:${host.abi}/${library.name}`, name: `${library.name} (${host.abi})`, version: library.name === 'libc++_shared.so' ? 'Android NDK C++ runtime' : `engine ${host.forkPin}`,
@@ -165,7 +165,7 @@ function residentRuntimeComponents(root) {
   if (!packagedRuntimePresent(root)) throw new Error('--packaged-runtime: no resident runtime is staged. Run: npm run agent:build-workflow-worker && npm run agent:stage-android');
   const out = [];
   const record = exists(root, EMBEDDING_HOST) ? readJson(root, EMBEDDING_HOST) : null;
-  // While requalification is pending the record names superseded bytes; the staged files are listed as they are.
+  // Pending requalification names superseded bytes; enumerate the staged candidate independently.
   const embedding = record?.requalification?.required === true ? null : record;
   for (const [base, kind] of [[AGENT_ASSETS, 'asset'], [JNI_LIBS, 'native library']])
     for (const rel of exists(root, base) ? walkFiles(path.join(root, base)) : []) {

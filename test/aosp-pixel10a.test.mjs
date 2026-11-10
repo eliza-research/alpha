@@ -13,7 +13,7 @@ test('consumer composition retains installed product, vendor and Pixel provider 
   assert.equal(product.productName,'alpha_stallion_phone');
   assert.equal(product.launcher.packageName,'ai.alphacompute.alphaphone');
   assert.equal(product.sense.componentPackage,'ai.alphacompute.alphaphone.sense');
-  assert.deepEqual(product.pixelConfig,{moduleName:'AlphaPixelConfig',packageName:'ai.elizaresearch.pixelconfig',mimeType:'vnd.android.cursor.dir/vnd.alpha.pixel-flags'});
+  assert.deepEqual(product.pixelConfig,{moduleName:'AlphaPixelConfig',packageName:'ai.alphacompute.pixelconfig',mimeType:'vnd.android.cursor.dir/vnd.alpha.pixel-flags'});
   assert.equal(product.releaseQualified,false);
 });
 

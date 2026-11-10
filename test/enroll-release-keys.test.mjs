@@ -1,4 +1,4 @@
-// Release identity enrollment (docs/human-actions.md H-08, H-09): Alpha's key list drives the
+// Release identity enrollment: Alpha's key list drives the
 // pinned upstream ceremony, and scripts/enroll-release-keys.mjs records only the ceremony's public
 // digests in Alpha's three release records. No key material is created outside a temporary
 // directory, and nothing here signs an APK or image.
