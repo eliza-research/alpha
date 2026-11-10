@@ -125,8 +125,8 @@ test('a plan activated in Cloud billing closes the subscription popup on return 
   await page.evaluate(() => { (window as any).sameDocument = true; });
   // Plan selection opens Cloud's billing page only after the account check; nothing is bought here.
   await controls(page).getByRole('button', { name: 'Choose a monthly plan', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Check the billing account', exact: true })).toBeVisible();
-  await page.getByRole('checkbox', { name: 'I’ll check the account before paying.', exact: true }).check();
+  await expect(page.getByRole('heading', { name: 'Billing', exact: true })).toBeVisible();
+  await expect(page.getByRole('checkbox')).toHaveCount(0);
   await page.getByRole('button', { name: 'Open billing', exact: true }).click();
   await expect.poll(() => stub(page, s => s.opened)).toEqual(['https://cloud.eliza.app/cloud/billing']);
   // The synthetic Cloud answer now reports an active plan, with the cash balance still zero.

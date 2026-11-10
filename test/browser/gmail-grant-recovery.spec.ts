@@ -93,9 +93,9 @@ test('Reconnect Gmail opens Google accounts; each authorization hands off once a
   expect(after.opened.slice(before.opened.length),label).toEqual([AUTH]);
   expect(after.reads,label+': no mailbox read until the owner checks again').toBe(before.reads);
  }
- // Check Google connections lists again; it never reads mail.
+ // A returned account update lists again automatically; it never reads mail.
  const lists=(await f()).lists;
- await panel.getByRole('button',{name:'Check Google connections',exact:true}).click();
+ await page.evaluate(async()=>window.dispatchEvent(new Event((await import('/src/runtime/google-accounts.ts')).GOOGLE_ACCOUNTS_CHANGED)));
  await expect.poll(async()=>(await f()).lists).toBeGreaterThan(lists);
  expect((await f()).reads).toBe(1);
  // A handoff abandoned while the browser is open (Escape closes the panel) reports nothing as pending.

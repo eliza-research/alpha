@@ -56,8 +56,8 @@ test('Google settings offer no calendar choice, revalidate grants and own Androi
   assert.doesNotMatch(panel.textContent,/Calendar to display|Local calendars only/);
   assert.equal(panel.querySelector('[role="status"]').textContent,'Calendar includes the calendars you show in Google.');
   assert.ok([...dom.window.document.querySelectorAll('button')].some(button=>button.textContent==='Add Google account'));
-  const refresh=[...dom.window.document.querySelectorAll('button')].find(button=>button.textContent==='Check Google connections');assert.ok(refresh);
-  await React.act(async()=>{refresh.click();await flush();});
+  assert.equal([...dom.window.document.querySelectorAll('button')].some(button=>button.textContent==='Check Google connections'),false);
+  await React.act(async()=>{dom.window.dispatchEvent(new dom.window.Event(ACCOUNTS));await flush();});
   assert.deepEqual(counts,{accounts:2,calendars:0});
   assert.deepEqual(published.at(-1),{gmailChanges:true,calendarEdits:true},'The agent host receives the default-on switches');
   assert.deepEqual(hostCalls,[],'Loading the default-on switches never enables browser host Calendar writes');

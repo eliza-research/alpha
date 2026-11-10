@@ -67,8 +67,7 @@ export function CloudMembershipControls({balance,busy,error,connectionError,noti
  </section>;
 }
 
-/** Acknowledgment is not proof of the external browser session; the owner must check it there. */
+/** Opening billing is navigation only; the hosted billing page owns purchase confirmation. */
 export function BillingAccountReview({email,busy,error,onOpen,onCancel}:{email:string;busy:boolean;error?:string;onOpen:()=>void;onCancel:()=>void}){
- const [acknowledged,setAcknowledged]=useState(false);
- return <section className="alpha-billing-review"><header><h1 className="serif">Check the billing account</h1></header><p>Alpha is signed in as <strong>{email}</strong>.</p><p>Your browser may be signed into a different account. Before subscribing, use the billing page’s account menu to check it shows <strong>{email}</strong>. Subscription changes apply to the account shown there.</p><form onSubmit={event=>{event.preventDefault();if(acknowledged&&!busy)onOpen();}}><label><input type="checkbox" checked={acknowledged} onChange={event=>setAcknowledged(event.target.checked)} disabled={busy} required/>I’ll check the account before paying.</label><div className="alpha-membership-actions"><button type="submit" disabled={!acknowledged||busy}>Open billing</button><button type="button" disabled={busy} onClick={onCancel}>Cancel</button></div></form>{error&&<p role="alert">{error}</p>}</section>;
+ return <section className="alpha-billing-review"><header><h1 className="serif">Billing</h1></header><p>Account <strong>{email}</strong></p><div className="alpha-membership-actions"><button type="button" disabled={busy} onClick={onOpen}>Open billing</button><button type="button" disabled={busy} onClick={onCancel}>Cancel</button></div>{error&&<p role="alert">{error}</p>}</section>;
 }

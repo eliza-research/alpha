@@ -67,9 +67,9 @@ async function confirmBillingAccount(page:Page){
  await expect(review).toBeVisible();
  await expect(review).toContainText('synthetic-plan@example.invalid');
  const open=review.getByRole('button',{name:'Open billing',exact:true});
- await expect(open).toBeDisabled();
+ await expect(open).toBeEnabled();
  expect((await calls(page)).filter(c=>c.method==='openExternal')).toEqual([]);
- await review.getByRole('checkbox',{name:'I’ll check the account before paying.',exact:true}).check();
+ await expect(review.getByRole('checkbox')).toHaveCount(0);
  await open.click();
  await expect(review).toHaveCount(0);
 }
