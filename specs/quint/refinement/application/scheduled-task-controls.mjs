@@ -7,7 +7,7 @@ import {call, checkpoint, trace} from './support.mjs';
 const model = 'ScheduledTaskControls';
 const taskPrefix = '/api/lifeops/scheduled-tasks/weekly/';
 const controls = {'Run now': 'fire', 'Edit schedule': 'edit', 'Save schedule': 'edit',
-  'Snooze 1 hour': 'snooze', Acknowledge: 'acknowledge', Complete: 'complete', Dismiss: 'dismiss', Reopen: 'reopen'};
+  'Snooze 10 minutes': 'snooze', Acknowledge: 'acknowledge', Complete: 'complete', Dismiss: 'dismiss', Reopen: 'reopen'};
 const buttons = Object.fromEntries(Object.entries(controls).filter(([label]) => label !== 'Save schedule')
   .map(([label, verb]) => [verb, label]));
 const messages = {
@@ -22,17 +22,18 @@ function payload(path, body) {
   assert.ok(path.startsWith(taskPrefix), path);
   const verb = path.slice(taskPrefix.length);
   assert.deepEqual(Object.keys(body).sort(), verb === 'edit'
-    ? body.trigger ? ['promptInstructions', 'trigger'] : ['promptInstructions'] : verb === 'snooze' ? ['minutes'] : []);
+    ? body.trigger ? ['promptInstructions', 'trigger'] : ['promptInstructions'] : verb === 'snooze' ? ['untilIso'] : []);
+  if(verb==='snooze')assert.ok(typeof body.untilIso==='string'&&Number.isFinite(Date.parse(body.untilIso)),'Exact snooze instant is required');
   if (body.trigger) {
     assert.deepEqual(Object.keys(body.trigger).sort(), ['expression', 'kind', 'tz']);
     assert.equal(body.trigger.kind, 'cron');
   }
   return {verb, text: body.promptInstructions ?? '',
-    cron: body.trigger?.expression ?? '', zone: body.trigger?.tz ?? '', minutes: body.minutes ?? 0};
+    cron: body.trigger?.expression ?? '', zone: body.trigger?.tz ?? '', minutes: verb==='snooze'?10:0};
 }
 function fields(state) {
   assert.ok(Object.hasOwn(messages, state.message), state.message);
-  assert.ok(!state.review || Object.hasOwn(controls, state.review), state.review);
+  assert.ok(!state.review || Object.hasOwn(controls, state.review)||state.review.startsWith('Snooze until '), state.review);
   assert.ok(state.actions.every(action => Object.hasOwn(controls, action.label)));
   const result = {
     owner: state.owner, visible: state.visible, kind: state.kind, storedStatus: state.storedStatus,
@@ -45,7 +46,7 @@ function fields(state) {
     intents: qset(state.intents.map(entry => ({owner: entry.owner, request: payload(entry.intent.path, entry.intent.body)}))),
   };
   return {...Object.fromEntries(Object.entries(result).map(([key, value]) => [`s.${key}`, value])),
-    's.review.verb': controls[state.review] ?? '', busy: state.busy, locked: state.locked,
+    's.review.verb': state.review.startsWith('Snooze until ')?'snooze':controls[state.review] ?? '', busy: state.busy, locked: state.locked,
     clockEditable: state.clockEditable, menu: state.actions.map(action => controls[action.label]),
     menuDisabled: state.actions.length > 0 && state.actions.every(action => action.disabled)};
 }
@@ -106,7 +107,7 @@ export async function checkScheduledTaskControls() {
   await scenario('leaving Workflows clears edit without writing a schedule', [
     ['open'], ['pick', 'edit'], ['enter', 'New instructions.', '09:30'], ['leave'],
   ]);
-  await scenario('Snooze review and dispatch retain the exact one-hour body', [
+  await scenario('Snooze review and dispatch retain the exact ten-minute intent', [
     ['open'], ['pick', 'snooze'], confirm, ['answer', 'exact'],
   ]);
 
@@ -115,5 +116,6 @@ export async function checkScheduledTaskControls() {
     'One listed synthetic task, two owner bindings, one held response at a time and fixed UTC preset examples. The synthetic remote row does not execute the LifeOps scheduler.',
     'The source replay invokes renderer callbacks against a controlled shell. Mounted DOM ordering, browser document persistence, server-side task CAS and external effects are separate.',
     'The review verb is visible, while the reviewed request body is observed at intent admission and dispatch.',
+    'The explicit untilIso is validated by the fixture and represented as the ten-minute intent here; timezone/recurrence math is checked separately by the exact-time protocol tests.',
   ]});
 }

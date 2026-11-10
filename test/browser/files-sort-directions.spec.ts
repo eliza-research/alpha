@@ -23,13 +23,13 @@ test('All files exposes direct folder/view controls and all six sort directions 
  await expect(page.getByRole('heading',{name:'All files',exact:true})).toBeVisible();
  const names=()=>page.locator('[data-alpha-subview="files-folder"] button[aria-label^="Open "]').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('aria-label')!.slice(5)).filter(n=>['Zulu.txt','Alpha.txt','Middle.txt'].includes(n)));
  // Choosing a different field returns to that field's conventional order.
- await choose(page,/^Date/);await choose(page,/^Name/);
+ await choose(page,'Newest first');await choose(page,'Name A–Z');
  await expect.poll(names).toEqual(['Alpha.txt','Middle.txt','Zulu.txt']);
- await choose(page,'Name · A–Z');await expect.poll(names).toEqual(['Zulu.txt','Middle.txt','Alpha.txt']);
- await choose(page,/^Size/);await expect.poll(names).toEqual(['Zulu.txt','Middle.txt','Alpha.txt']);
- await choose(page,'Reverse order');await expect.poll(names).toEqual(['Alpha.txt','Middle.txt','Zulu.txt']);
- await choose(page,/^Date/);await expect.poll(names).toEqual(['Middle.txt','Alpha.txt','Zulu.txt']);
- await choose(page,'Reverse order');await expect.poll(names).toEqual(['Zulu.txt','Alpha.txt','Middle.txt']);
+ await choose(page,'Name Z–A');await expect.poll(names).toEqual(['Zulu.txt','Middle.txt','Alpha.txt']);
+ await choose(page,'Largest first');await expect.poll(names).toEqual(['Zulu.txt','Middle.txt','Alpha.txt']);
+ await choose(page,'Smallest first');await expect.poll(names).toEqual(['Alpha.txt','Middle.txt','Zulu.txt']);
+ await choose(page,'Newest first');await expect.poll(names).toEqual(['Middle.txt','Alpha.txt','Zulu.txt']);
+ await choose(page,'Oldest first');await expect.poll(names).toEqual(['Zulu.txt','Alpha.txt','Middle.txt']);
  await page.getByRole('button',{name:'Files options',exact:true}).click();await page.getByRole('button',{name:'Grid view',exact:true}).click();
  await page.getByRole('button',{name:'Files options',exact:true}).click();await expect(page.getByRole('button',{name:'List view',exact:true})).toBeVisible();await page.getByRole('button',{name:'List view',exact:true}).click();
  await expect.poll(names).toEqual(['Zulu.txt','Alpha.txt','Middle.txt']);

@@ -1,6 +1,6 @@
 import {reminderDeliveryLabel,reminderDue} from "../../../../.eliza/client-features/packages/ui/src/utils/reminder-presentation";
-import {workflowDeviceTimeZone,workflowLocalInstant,workflowCronLabel,automationLocalDateInput,localDate} from './workflow-local-time';
-export {workflowDeviceTimeZone,automationLocalDateInput,localDate} from './workflow-local-time';
+import {workflowDeviceTimeZone,workflowLocalInstant,workflowCronLabel,automationLocalDateInput,localDate,workflowNextClockOccurrence,workflowSnoozeTime} from './workflow-local-time';
+export {workflowDeviceTimeZone,automationLocalDateInput,localDate,workflowNextClockOccurrence,workflowSnoozeTime} from './workflow-local-time';
 /** Alpha presentation over OG's canonical automation, ScheduledTask and LifeOps contracts.
  * No runner, mirroring, task storage or automatic execution lives in this client. */
 import type {AutomationsMethod} from './automations-route-policy.ts';
@@ -59,8 +59,17 @@ function scheduled(value:unknown):AutomationRow {
  const title=labels[text(row.metadata?.recordKey)]||text(row.metadata?.slot)||text(row.kind)||'Scheduled task';
  const status=text(state.status),ended=scheduledTaskEnded(status);
  const snoozed=status==='scheduled'&&typeof state.firedAt==='string'&&Number.isFinite(Date.parse(state.firedAt))&&state.lastDecisionLog===`snoozed until ${state.firedAt} (ladder reset)`;
- const when=snoozed?'Snoozed until '+automationWhen(state.firedAt):schedule(trigger);
+ const when=schedule(trigger)+(snoozed?' · Snoozed until '+workflowSnoozeTime(state.firedAt):'');
  return {key:'scheduled:'+id,id,kind:'schedule',title,description:text(row.promptInstructions),status:snoozed?'snoozed':trigger.kind==='manual'&&!ended?'paused':status,enabled:trigger.kind!=='manual'&&!ended,source:'Agent schedule',schedule:when,record:row};
+}
+/** Ten minutes defers the scheduled occurrence. Keep a valid existing deferral; repair an old deferral that precedes today's scheduled time. */
+export function scheduledSnoozeAt(row:AutomationRow,now=Date.now()):string{
+ const trigger=row.record.trigger,state=row.record.state||{},zone=trigger?.tz==='owner_local'||!trigger?.tz?workflowDeviceTimeZone():String(trigger.tz);
+ const next=trigger?.kind==='cron'?workflowNextClockOccurrence(String(trigger.expression||''),zone,now):null;
+ let base=state.status==='scheduled'&&next!==null?next:now;
+ const saved=Date.parse(String(state.firedAt||''));
+ if(row.status==='snoozed'&&saved>now){const day=(at:number)=>new Date(at).toLocaleDateString('sv-SE',{timeZone:zone});if(next===null||saved>=next||day(saved)!==day(next))base=saved;}
+ return new Date(base+10*60000).toISOString();
 }
 function reminder(value:unknown):AutomationRow {
  const row=object(value),definition=object(row.definition),id=automationId(definition.id),occurrence=row.occurrence?object(row.occurrence):null;
