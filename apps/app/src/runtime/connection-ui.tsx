@@ -3516,7 +3516,7 @@ export const connectionController = {
       // A local agent refusing its own session is not a Cloud sign-in: the agent restarts, nothing else changes.
       if (expired(error) && generation === epoch && selected.kind === 'resident') {
         residentLost(generation);
-        const failure = new AlphaClientError('transport-failed', 'Your agent reconnected. Check history before resending.');
+        const failure = Object.assign(new AlphaClientError('transport-failed', 'Your agent reconnected. Check history before resending.'),{residentSessionRetired:true});
         mark(failure); throw failure;
       }
       if (expired(error) && generation === epoch) {

@@ -80,7 +80,7 @@ const elizaSystem = registerPlugin<{ setFlashlight(input: { enabled: boolean }):
 // intentionally kept intact; authenticated effects are installed at this seam.
 type Shell = any;
 /** One composer send. A message is dispatched once the transport accepted it for delivery. */
-type SendAttempt={transportCalled:boolean;preDispatch:boolean;streamed:boolean;settled?:Promise<unknown>};
+type SendAttempt={transportCalled:boolean;preDispatch:boolean;streamed:boolean;residentSessionRetired?:boolean;settled?:Promise<unknown>};
 /** Refused before any request carrying the message could leave this phone. */
 class NotDispatched extends Error {}
 // connectionController.send refuses these before creating a conversation or posting the message.
@@ -205,7 +205,7 @@ function dispatched(attempt:SendAttempt,error:unknown){return !(error instanceof
 /** Mark the in-flight composer send as handed to the transport, and classify early refusals. */
 async function trackDispatch<T>(shell:Shell,run:()=>Promise<T>):Promise<T>{
   const attempt:SendAttempt|null=shell.sendAttempt??null;if(attempt)attempt.transportCalled=true;
-  const task=run().catch(error=>{if(attempt&&isPreDispatchError(error))attempt.preDispatch=true;throw error;});
+  const task=run().catch(error=>{if(attempt){if(isPreDispatchError(error))attempt.preDispatch=true;if(error&&typeof error==='object'&&error.residentSessionRetired===true)attempt.residentSessionRetired=true;}throw error;});
   // A cancellation can reject the client first; the classification waits for the transport's own result.
   if(attempt)attempt.settled=task.then(()=>undefined,()=>undefined);
   return task;
@@ -1784,7 +1784,17 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         if(this.live){const previewHeld=fromComposer&&privateLocalPreviewEnabled&&this.composerDraft?.holding===true;this.setState((previous:Shell)=>({msgs:previous.msgs.filter((item:Shell)=>item.id!==userId)}));if(fromComposer)releaseComposerSend(this,heldKey,heldText);if(reviewedSource&&!this.reviewedSourceDraft)this.reviewedSourceDraft=reviewedSource;if(!previewHeld){if(e instanceof NotDispatched)this.toast(message);else if(e instanceof AlphaClientError&&(['unconfigured','sensitive','busy'].includes(e.code)||(e as {refusedBeforeTurn?:unknown}).refusedBeforeTurn===true))this.toast('Not sent. '+message);else if(!fromComposer)this.toast('Not sent.');}}
         else if(fromComposer)this.composerDraft?.release();
       }else{
-        if(pageLeaving){if(fromComposer)this.composerDraft?.abandon();return;}
+        const sessionRetired=attempt.residentSessionRetired===true;
+        if(pageLeaving||sessionRetired){
+          if(fromComposer){
+            this.composerDraft?.abandon();
+            // The refused resident session cannot show an outcome. Keep its exact
+            // sending mark for review, and reopen only the same owner/agent draft.
+            const key=this.composerDraft?.binding;
+            if(!pageLeaving&&this.live&&heldKey&&key&&(key===heldKey||createdFromSlot(heldKey,key))){this.composerDraft.retire(false);this.refreshDraftBinding();}
+          }
+          return;
+        }
         if(fromComposer)await this.composerDraft?.commit();
         // The agent recorded the user turn before the reply failed: the sent bubble adopts its
         // message identity, as on success, so a later conversation re-read merges onto it.

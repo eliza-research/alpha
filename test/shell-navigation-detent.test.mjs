@@ -8,7 +8,7 @@ import vm from 'node:vm';
 import {tsImport} from 'tsx/esm/api';
 const {navigateMobileShell}=await tsImport('../.eliza/client-features/packages/ui/src/mobile-shell/navigation.ts',import.meta.url);
 
-const model=readFileSync('apps/app/src/prototype/model.js','utf8');
+const model=readFileSync(process.env.ALPHA_SHELL_MODEL_SOURCE||'apps/app/src/prototype/model.js','utf8');
 const start=model.indexOf('  goHome(chat) {'),end=model.indexOf('\n  }\n',model.indexOf('  back() {'))+4;
 const methods=model.slice(start,end);
 assert.ok(methods.includes('shellNavigate(action)')&&methods.trim().endsWith('}'));
@@ -79,4 +79,14 @@ test('Back closes the Home drawer before stopping voice and lowering the convers
   s.back();assert.deepEqual([s.state.voice,s.state.chat],['off','full']);
   s.back();assert.equal(s.state.chat,'sheet');
   s.back();assert.equal(s.state.chat,'input');
+});
+
+for(const chat of ['sheet','full'])test(`Alpha Home closes the ${chat} overlay and keeps the unsent draft`,()=>{
+  const s=shell({view:'notes',chat,stack:['files'],draft:'Keep this unsent draft'});
+  s.swallowed=()=>false;
+  const source=model.match(/backToApps: (function \(event\) \{[^\n]+\}),\n/)[1];
+  const backToApps=vm.runInNewContext('('+source+')',{self:s});
+  backToApps({detail:1,currentTarget:{hasAttribute:name=>name==='data-alpha-chat-home'}});
+  assert.deepEqual(at(s),{view:null,chat:'input',stack:[]});
+  assert.equal(s.state.draft,'Keep this unsent draft');
 });

@@ -118,7 +118,7 @@ export async function scheduledTaskControlsFixture({kind = 'preset', status = 's
   };
   window.confirm = () => dialogAccepted;
   const context = vm.createContext({exports: module.exports, module, document, window, localStorage: storage,
-    Event, AbortController, queueMicrotask, crypto: {randomUUID},
+    Event, AbortController, TextEncoder, TextDecoder, queueMicrotask, crypto: {randomUUID},
     ports: {connection, daily: {listReminders: async () => ({reminders: []})}}});
   vm.runInContext(code, context);
   class Shell {

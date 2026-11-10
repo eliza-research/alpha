@@ -1,3 +1,5 @@
+import {workflowDeviceTimeZone,workflowLocalInstant} from '../runtime/workflow-local-time';
+import {automationLocalDateInput,localDate} from '../runtime/workflow-local-time';
 import {Capacitor} from '@capacitor/core';
 import {testMocksEnabled} from '../build-flags';
 import {browserWorkflowDraftStore} from '../browser/workflow-drafts';
@@ -24,7 +26,8 @@ const supported=(id:string)=>known.has(id)&&(!['app_notification','read_aloud'].
 /** Monday-first weekday chips for a reviewed local-time trigger (0 = Sunday in the shared contract). */
 const WEEKDAYS:Array<[number,string]>=[[1,'Mon'],[2,'Tue'],[3,'Wed'],[4,'Thu'],[5,'Fri'],[6,'Sat'],[0,'Sun']];
 const TRIGGER_LABELS:Record<string,string>={manual:'Manual',time:'Time'};
-const deviceTimeZone=()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';}catch{return 'UTC';}};
+const deviceTimeZone=workflowDeviceTimeZone;
+function followDeviceClock(spec:PhoneSpec){const zone=deviceTimeZone();if(spec.trigger.kind==='time')spec.trigger.timeZone=zone;for(const step of spec.steps){if(step.operation==='selected_reminders')step.scope.timeZone=zone;if(step.operation==='calendar_range')step.range.timeZone=zone;}}
 const shiftLocalTime=(value:string,minutes:number)=>{const [h,m]=value.split(':').map(Number);const total=Math.min(23*60+59,Math.max(0,h*60+m+minutes));return String(Math.floor(total/60)).padStart(2,'0')+':'+String(total%60).padStart(2,'0');};
 /** Owner-facing policy for a scheduled typed workflow; the agent enforces each part. */
 const SCHEDULE_POLICY='Runs only while this phone is on and the agent is running. A time that passes without a run (the phone or agent was off, or Android delayed it) is recorded as missed and never run later. Each phone step still waits for your approval.';
@@ -80,7 +83,7 @@ export function createWorkflowAuthoring(owner:()=>any,publish:()=>void,onSaved:(
   if(!exact()||target.queue!==queue||target.raw!==raw||saved.value!==raw)
    throw Error('Workflow draft could not be verified');
  }
- function change(run:()=>void){if(locked()||!draft)return;run();review=null;generated=null;discard=false;status=`Draft stays ${draftStorageDescription} until you confirm Save.`;persist();publish();}
+ function change(run:()=>void){if(locked()||!draft)return;run();if(!draft.workflowId)followDeviceClock(draft.spec);review=null;generated=null;discard=false;status=`Draft stays ${draftStorageDescription} until you confirm Save.`;persist();publish();}
  async function localSaved(){await storage?.queue;if(!storage||storage.failed)throw new Error('Resolve local draft storage before saving');}
  function close(){requested=null;unreceipted=false;resendReview=false;describeOn=false;descriptionPrompt='';generated=null;generating=false;active=false;generation++;controller?.abort();controller=null;busy=false;sheet=null;review=null;discard=false;calendars=[];publish();}
  async function open(workflow?:RemoteWorkflow){
@@ -101,6 +104,7 @@ export function createWorkflowAuthoring(owner:()=>any,publish:()=>void,onSaved:(
     // over the one the owner opened; Discard opens that one instead.
     status=draft!.pending?`An unconfirmed save for ${name} is still pending. Refresh to check it.`:unsaved&&JSON.stringify(unsaved)!==saved.value?`Another window changed this draft, so unsaved edits from the failed save were not kept. Restored the newer draft stored ${draftStorageDescription}.`:retained.workflowId!==workflow?.id?(requested={workflow},`You have an unsaved draft for ${name}. Finish it, or discard it to open ${workflow?.name??'a new workflow'}.`):`Restored the draft stored ${draftStorageDescription}. Resume it or discard it explicitly.`;}
    else{const spec=workflow?normalizePhoneSpec(workflow.phoneSpec):{version:1 as const,name:'New workflow',description:'',trigger:{kind:'manual' as const},steps:[]};draft={format:1,identity,spec,...(workflow?{workflowId:workflow.id,versionId:workflow.versionId}:{})};status=catalog.triggers.some(t=>t.kind==='time'&&t.available)?'Build a workflow. It will be saved paused; choose When to run it manually or at a set time.':'Build a manual workflow. It will be saved paused.';}
+   if(draft&&!draft.pending&&!draft.workflowId)followDeviceClock(draft.spec);
    // Nothing is stored until the first change: opening and leaving without an edit keeps the slot empty.
   }catch(error){if(valid()){status=error instanceof Error?error.message:'Workflows aren\'t available on your agent.';draft=null;toast(status);}}finally{if(token===generation){busy=false;controller=null;publish();}}
  }
@@ -129,7 +133,7 @@ export function createWorkflowAuthoring(owner:()=>any,publish:()=>void,onSaved:(
   if(host.notesSourceMode==='canonical'){const notes=host.canonicalNotesUi;if(!notes?.current)throw new Error('Notes is unavailable. Reconnect your agent, then try again.');const found=noteRows().filter(n=>n.id===id);if(found.length!==1)throw new Error('Note text is unavailable');const revision=await workflowSha([found[0].title,found[0].body]);if(expected!==generation||target!==selected()||locked()||host.canonicalNotesUi!==notes)return;change(()=>{ensureDevice();step.notes.push({id,revision});});return;}
   await host.notesStore?.assertCurrent();const raw=host.notesStore?.raw;if(host.notesStorageFailed||host.notesPending||host.notesRaw!==raw)throw new Error('Notes changed. Reopen Notes before selecting');const found=host.vget('notes').list.filter((n:Bag)=>n.id===id);if(found.length!==1||typeof found[0].title!=='string'||typeof found[0].body!=='string')throw new Error('Note text is unavailable');const revision=await workflowSha([found[0].title,found[0].body]);await host.notesStore.assertCurrent();if(expected!==generation||target!==selected()||locked()||host.notesStore.raw!==raw)return;change(()=>{ensureDevice();step.notes.push({id,revision});});}catch(error){toast((error as Error).message);}}
  async function loadCalendars(request=false){const step=selected();if(step?.operation!=='calendar_range'||locked())return;const token=generation;try{if(request&&(await calendar.requestWorkflowReadAccess()).status!=='granted')throw new Error('Calendar read permission was not granted');const result=await calendar.workflowCalendars();if(token!==generation||selected()!==step)return;if(result.status!=='ready')throw new Error('Choose Connect calendars to grant read access');calendars=result.calendars;status=calendars.length?'Select only the calendars this workflow may read':'No calendars are available on this phone';publish();}catch(error){if(token===generation){status=(error as Error).message;publish();}}}
- async function save(){if(describeOn||!draft||!catalog||locked())return;const binding=connectionController.getWorkflowClient(),session=connectionController.getSnapshot().session;if(!binding||!session)return;let spec:PhoneSpec;const draftAtStart=draft,revisionAtStart=JSON.stringify(draft.spec),generationAtStart=generation;try{spec=normalizePhoneSpec(draft.spec);assertPhoneCapabilities(spec,catalog);await localSaved();if(draft!==draftAtStart||generation!==generationAtStart||JSON.stringify(draft.spec)!==revisionAtStart)return;}catch(error){status=(error as Error).message;publish();return;}const encoded=JSON.stringify(spec);if(review!==encoded){review=encoded;sheet=null;status='Review the steps, then tap Save again. It saves paused, and each phone step still needs your approval.'+(spec.trigger.kind==='time'?' Its schedule stays off until you turn it on.':'');publish();return;}
+ async function save(){if(describeOn||!draft||!catalog||locked())return;const binding=connectionController.getWorkflowClient(),session=connectionController.getSnapshot().session;if(!binding||!session)return;let spec:PhoneSpec;if(!draft.workflowId)followDeviceClock(draft.spec);const draftAtStart=draft,revisionAtStart=JSON.stringify(draft.spec),generationAtStart=generation;try{spec=normalizePhoneSpec(draft.spec);assertPhoneCapabilities(spec,catalog);await localSaved();if(draft!==draftAtStart||generation!==generationAtStart||JSON.stringify(draft.spec)!==revisionAtStart)return;}catch(error){status=(error as Error).message;publish();return;}const encoded=JSON.stringify(spec);if(review!==encoded){review=encoded;sheet=null;status='Review the steps, then tap Save again. It saves paused, and each phone step still needs your approval.'+(spec.trigger.kind==='time'?' Its schedule stays off until you turn it on.':'');publish();return;}
   const token=generation,expectedCatalog=catalog;controller=new AbortController();const signal=controller.signal;busy=true;publish();const valid=()=>token===generation&&!signal.aborted&&connectionController.getWorkflowClient()?.sessionId===binding.sessionId&&!document.hidden;
   try{const validation=await binding.client.validatePhone(spec,expectedCatalog,signal);if(!valid())return;const pending:Pending={mutationId:crypto.randomUUID(),specDigest:validation.specDigest,compilerRevision:expectedCatalog.compilerRevision,...(draft.workflowId?{workflowId:draft.workflowId,versionId:draft.versionId}:{})};draft.spec=validation.spec;draft.pending=pending;persist();await localSaved();if(!valid())return;const receipt=await binding.client.savePhone(validation.spec,expectedCatalog,pending,signal);if(!valid())return;await committed(receipt.workflowId,token);}
   catch(error){if(valid()){if(error instanceof WorkflowTypedRejected&&draft?.pending){await refused();}else status=draft?.pending?'Save outcome unknown. Refresh the exact save receipt. The app will not submit a second workflow.':(error as Error).message;toast(status);}}finally{if(token===generation){busy=false;controller=null;publish();}}
@@ -190,7 +194,7 @@ export function createWorkflowAuthoring(owner:()=>any,publish:()=>void,onSaved:(
    text:time?describePhoneTrigger(time)+'. '+(note=>note?note+' ':'')(phoneTriggerClockChangeNote(time))+SCHEDULE_POLICY:'Run manually after reviewing the workflow',isTime:!!time,isEvent:false,isPlace:false,isMsg:false,isEmail:false,
    days:time?WEEKDAYS.map(([day,label])=>{const on=time.days.includes(day);return {label,pressed:on,css:on?'background:var(--fg);color:var(--bg)':'background:var(--s2)',pick:()=>toggleDay(day)};}):[],
    time:time?.localTime??'',tMinus:()=>editTime(t=>({...t,localTime:shiftLocalTime(t.localTime,-15)})),tPlus:()=>editTime(t=>({...t,localTime:shiftLocalTime(t.localTime,15)}))};}
- function field(label:string,value:string,onChange:(value:string)=>void,type='text',multiline=false){return {label,value,type,multiline,single:!multiline,change:(event:Bag)=>change(()=>onChange(String(event.target.value)))};}
+ function field(label:string,value:string,onChange:(value:string)=>void,type='text',multiline=false){return {label,value,type,multiline,single:!multiline,change:(event:Bag)=>(()=>{try{change(()=>onChange(String(event.target.value)));}catch(error){toast(error instanceof Error?error.message:'Choose a valid time.');}})()};}
  /** The owner-facing save review: where it saves, when it runs and each step. The full specification stays under Technical details. */
  function reviewSummary(spec:PhoneSpec):string{
   const target=draft?.workflowId?`Replaces ${targetName||spec.name}. It will be paused and its schedule turned off.`:'Creates a new workflow. It saves paused.';
@@ -204,8 +208,8 @@ export function createWorkflowAuthoring(owner:()=>any,publish:()=>void,onSaved:(
   if(step.operation==='model_draft')fields.push(field('Drafting instruction',step.instruction,v=>step.instruction=v,'text',true));
   if(step.operation==='app_notification')fields.push(field('Notification title',step.title,v=>step.title=v));
   if(step.operation==='save_note')fields.push(field('New note title',step.title,v=>step.title=v));
-  if(step.operation==='selected_reminders')fields.push(field('Review time zone',step.scope.timeZone,v=>step.scope.timeZone=v),field('Maximum reminders (1–200)',String(step.scope.maximumItems),v=>step.scope.maximumItems=Number(v),'number'));
-  if(step.operation==='calendar_range'){fields.push(field('Range start (UTC ISO)',step.range.start,v=>step.range.start=v),field('Range end, exclusive (UTC ISO)',step.range.end,v=>step.range.end=v),field('Review time zone',step.range.timeZone,v=>step.range.timeZone=v),field('Maximum events (1–200)',String(step.range.maximumEvents),v=>step.range.maximumEvents=Number(v),'number'));}
+  if(step.operation==='selected_reminders')fields.push(field('Maximum reminders (1–200)',String(step.scope.maximumItems),v=>step.scope.maximumItems=Number(v),'number'));
+  if(step.operation==='calendar_range'){fields.push(field('Range start',automationLocalDateInput(step.range.start),v=>step.range.start=localDate(v).toISOString(),'datetime-local'),field('Range end',automationLocalDateInput(step.range.end),v=>step.range.end=localDate(v).toISOString(),'datetime-local'),field('Maximum events (1–200)',String(step.range.maximumEvents),v=>step.range.maximumEvents=Number(v),'number'));}
  }
  const generatedSteps=generated?.steps.map((s,i)=>{
   const input=s.source?'Input: step '+(generated!.steps.findIndex(p=>p.id===s.source)+1)+'\n':'';
@@ -213,8 +217,8 @@ export function createWorkflowAuthoring(owner:()=>any,publish:()=>void,onSaved:(
   let text='';
   if(s.operation==='supplied_text')text=s.text;
   else if(s.operation==='selected_notes')text=s.notes.map((n:Bag)=>noteRows().find(note=>note.id===n.id)?.title||n.id).join('\n');
-  else if(s.operation==='selected_reminders')text='Open by the end of each run’s day (overdue included) and completed that day\n'+s.scope.timeZone+' · Up to '+s.scope.maximumItems+' reminders';
-  else if(s.operation==='calendar_range')text=s.range.start+' to '+s.range.end+' (end excluded)\n'+s.range.timeZone+' · Up to '+s.range.maximumEvents+' events\nCalendars: '+s.range.calendarIds.map((id:string)=>calendars.find(c=>c.id===id)?.name||id).join(', ');
+  else if(s.operation==='selected_reminders')text='Open by the end of each run’s day (overdue included) and completed that day\n'+'Up to '+s.scope.maximumItems+' reminders';
+  else if(s.operation==='calendar_range')text=workflowLocalInstant(s.range.start)+' to '+workflowLocalInstant(s.range.end)+' (end excluded)\nUp to '+s.range.maximumEvents+' events\nCalendars: '+s.range.calendarIds.map((id:string)=>calendars.find(c=>c.id===id)?.name||id).join(', ');
   else if(s.operation==='contains')text='Match: '+JSON.stringify(s.text)+'\n'+(s.caseSensitive?'Case-sensitive':'Ignore letter case');
   else if(s.operation==='compose_draft')text='Prefix: '+JSON.stringify(s.prefix)+'\nSuffix: '+JSON.stringify(s.suffix);
   else if(s.operation==='model_draft')text=s.instruction;

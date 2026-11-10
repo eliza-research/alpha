@@ -16,7 +16,8 @@ export function homeCalendarSelection(
 		!state?.ownerKey ||
 		(state.savedAt == null && (state.status !== "ready" || !!state.error)) ||
 		state.mutating ||
-		state.feed?.state !== "complete"
+		!state.feed ||
+		(state.savedAt == null && state.feed.state !== "complete")
 	)
 		return quiet;
 	const p = getZonedDateParts(now, timeZone),

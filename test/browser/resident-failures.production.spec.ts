@@ -144,7 +144,7 @@ for (const frame of ['done', 'error'] as const) test(`a provider-less turn witho
   await plan.click();
   // On the phone's own agent the plan action opens the resident account & plan panel (plan headline,
   // Check plan again, Approve this phone again); it carries the Subscription controls.
-  const account = page.getByRole('dialog', { name: 'Eliza Cloud account & plan', exact: true });
+  const account = page.getByRole('dialog', { name: 'Account', exact: true });
   await expect(account).toBeVisible();
   await expect(account.getByRole('region', { name: 'Balance and membership', exact: true })).toBeVisible();
   // Nothing was purchased or opened, and the message was sent once.
@@ -257,17 +257,27 @@ test('a restart while the resident holds a reply posts nothing and shows the use
   expect(await stub(page, s => s.recoveries)).toEqual([]);
 });
 
-test('a resident send the runtime no longer accepts (401) asks for an Eliza Cloud sign-in, never pairing', async ({ page }) => {
+test('a resident session refusal reconnects without changing Cloud sign-in or resending', async ({ page }) => {
   test.setTimeout(120_000);
   await connected(page, true);
+  const key = await harness(page, f => f.slots['cloud:production']);
+  const starts = await harness(page, f => f.calls.filter((call:string) => call === 'Agent.start').length);
   await setStub(page, { stream: 'expired' });
   await send(page, 'Sent with an expired session');
-  const dialog = page.getByRole('main',{name:'Welcome to Alpha.',exact:true});
-  await expect(dialog.getByRole('alert')).toHaveText('Sign in to Eliza Cloud again to turn AI back on.', { timeout: 30_000 });
-  // This fixture reports Google unavailable: a quiet retry instead of a dead Google button.
-  await expect(dialog.getByRole('button', { name: 'Retry Google sign-in', exact: true })).toBeVisible();
-  await expect(dialog.getByRole('button', { name: 'Email me a code', exact: true })).toBeEnabled();
-  expect(await harness(page, f => ({ streams: f.streams, posts: f.posts.length }))).toEqual({ streams: 1, posts: 0 });
+  await expect.poll(() => harness(page, f => f.calls.filter((call:string) => call === 'Agent.start').length)).toBeGreaterThan(starts);
+  await expect(page.locator('.alpha-cloud-sign-in')).toHaveCount(0);
+  expect(await harness(page, f => f.slots['cloud:production'])).toBe(key);
+  const retained=()=>harness(page, f => Object.entries(f.slots).filter(([key]) => key.startsWith('assistant-draft:')).map(([,value]) => JSON.parse(String(value))).filter(row => row.text).map(row => ({text:row.text,sending:row.sending===true})));
+  await expect.poll(retained).toEqual([{text:'Sent with an expired session',sending:true}]);
+  await expect(page.getByRole('button',{name:'Restore saved draft',exact:true})).toBeVisible();
+  expect(await harness(page, f => ({streams:f.streams,posts:f.posts.length}))).toEqual({streams:1,posts:0});
+  await page.reload();
+  await expect(page.getByRole('button',{name:'Restore saved draft',exact:true})).toBeVisible();
+  expect(await retained()).toEqual([{text:'Sent with an expired session',sending:true}]);
+  await page.getByRole('button',{name:'Restore saved draft',exact:true}).click();
+  await expect(composer(page)).toHaveValue('Sent with an expired session');
+  await expect.poll(retained).toEqual([{text:'Sent with an expired session',sending:false}]);
+  expect(await harness(page, f => ({ streams: f.streams, posts: f.posts.length }))).toEqual({ streams: 0, posts: 0 });
   await expect(page.locator('body')).not.toContainText(/pair/i);
   expect(await stub(page, s => s.recoveries)).toEqual([]);
 });
