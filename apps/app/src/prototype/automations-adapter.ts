@@ -54,16 +54,37 @@ export function installAutomationsAdapter(Component:any,views:Bag){
  const uncertain=new Set<string>();
  let intentStore:WorkflowIntentStore|null=null,suspended=document.hidden;
  let homeCache:{sessionId:string;rows:Array<{name:string;status:string}>;total:number;complete:boolean;partial:boolean;stale:boolean;error:boolean;loadedAt:number}|null=null;
+ let homeRead:AbortController|null=null,homeVisit:string|null=null;
  const binding=():Binding|null=>(connectionController as typeof connectionController & {getAutomationsClient():Binding|null}).getAutomationsClient();
  const reminderBlock=()=>!binding()?agentPendingText():loadedSession!==binding()?.sessionId||state!=='ready'?'Refresh agent reminders before creating or changing one.':issues.find(issue=>issue.source==='reminders')?.message||'';
  const automationBlock=()=>!binding()?agentPendingText():loadedSession!==binding()?.sessionId||state!=='ready'?'Refresh agent automations before creating one.':issues.find(issue=>issue.source==='automations'&&issue.unavailable)?.message||'';
  const scheduleBlock=()=>!binding()?agentPendingText():loadedSession!==binding()?.sessionId||state!=='ready'?'Refresh scheduled items before changing one.':issues.find(issue=>issue.source==='schedules')?.message||'';
  const publish=()=>{if(owner?.live&&!suspended&&!document.hidden)owner.vset('workflows',{automationTick:Date.now()});};
- const retire=(clear=false)=>{dismissFilters();epoch++;controller?.abort();controller=null;detail=null;scheduleDraft=null;editor=null;creating=false;review=null;message='';if(clear){completionDirty=false;rows=[];issues=[];intentStore=null;state='idle';loadedSession=null;}publish();};
+ const retire=(clear=false)=>{dismissFilters();epoch++;controller?.abort();controller=null;homeRead?.abort();homeRead=null;homeVisit=null;detail=null;scheduleDraft=null;editor=null;creating=false;review=null;message='';if(clear){completionDirty=false;rows=[];issues=[];intentStore=null;state='idle';loadedSession=null;}publish();};
  const requestKey=(id:string)=>{const owner=connectionController.getSnapshot().session;return owner?workflowIntentKey(owner,'automation:'+id):'offline:'+id;};
  const key=(row:AutomationRow)=>requestKey(row.key);
  const locked=(row:AutomationRow)=>uncertain.has(key(row))||(!!binding()&&(intentStore?.locked(key(row))??true));
  const visible=()=>owner?.live&&!suspended&&owner.S().view==='workflows'&&!document.hidden&&!connectionController.getSnapshot().open;
+ const cacheHome=(fresh:AutomationRow[],failures:AutomationIssue[],sessionId:string,connected:boolean)=>{
+  const enabled=fresh.filter(row=>row.enabled);
+  homeCache={sessionId,rows:enabled.map(row=>({name:row.title,status:''})),total:enabled.length,complete:connected&&failures.length===0,partial:failures.some(issue=>!issue.unavailable||issue.source==='device'),stale:false,error:false,loadedAt:Date.now()};
+ };
+ // Home reads the same list as Workflows, without settling requests or executing actions.
+ const preloadHome=async(force=false)=>{
+  const shell=owner,selected=binding(),snapshot=connectionController.getSnapshot();
+  if(!shell?.live||shell.S().view||suspended||document.hidden||snapshot.open||controller||!selected)return;
+  if(homeRead||!force&&homeVisit===selected.sessionId)return;
+  homeVisit=selected.sessionId;const abort=homeRead=new AbortController(),ticket=epoch;
+  const valid=()=>owner===shell&&shell.live&&!shell.S().view&&!suspended&&!document.hidden&&!connectionController.getSnapshot().open&&homeRead===abort&&!abort.signal.aborted&&epoch===ticket&&binding()?.sessionId===selected.sessionId;
+  try{
+   const [remote,local]=await Promise.allSettled([new AutomationsProtocol(selected.request).list(abort.signal),DailyApps.listReminders()]);
+   if(!valid())return;
+   const fresh:AutomationRow[]=[],failures:AutomationIssue[]=[];
+   if(remote.status==='fulfilled'){fresh.push(...remote.value.rows);failures.push(...remote.value.issues);}else failures.push(automationIssue('automations',remote.reason));
+   if(local.status==='fulfilled')fresh.push(...local.value.reminders.map(deviceRow));else failures.push(automationIssue('device',local.reason));
+   cacheHome(mergeAutomationRows(fresh),failures,selected.sessionId,true);
+  }catch{if(valid()&&homeCache){homeCache.error=true;homeCache.stale=true;}}finally{if(homeRead===abort){homeRead=null;publish();}}
+ };
  /** Retained requests that fresh rows prove applied: a delete whose row is gone, or an enable/reminder edit whose fields match.
   * Run now, fire, snooze and new items never settle here, since a row's absence or presence proves nothing about them. */
  const settled=(entries:Record<string,string>,fresh:AutomationRow[],complete:(source:AutomationIssue['source'])=>boolean)=>Object.entries(entries).filter(([id,raw])=>{
@@ -91,9 +112,8 @@ export function installAutomationsAdapter(Component:any,views:Bag){
    if(!valid())return;
    intentStore=store;if(pending.status==='rejected'||store?.stale)failures.push({source:'automations',unavailable:false,message:'Pending requests could not be checked. Changes stay blocked until this agent’s request history is available.'});
    rows=fresh;issues=failures;state='ready';loadedSession=selected?.sessionId||'offline';
-   const enabled=rows.filter(row=>row.enabled);
    // Home shows only enabled automations; with none its card is hidden.
-   homeCache={sessionId:loadedSession,rows:enabled.map(row=>({name:row.title,status:''})),total:enabled.length,complete:!!selected&&failures.length===0,partial:failures.some(issue=>!issue.unavailable||issue.source==='device'),stale:false,error:false,loadedAt:Date.now()};
+   cacheHome(rows,failures,loadedSession,!!selected);
    if(!selected)message=ownerContext?'Reminders on this phone stay available.':[agentAvailabilityNotice(),'Reminders on this phone stay available.'].filter(Boolean).join(' ');
    if(detail){
     const freshDetail=rows.find(row=>row.key===detail!.key);
@@ -156,7 +176,7 @@ export function installAutomationsAdapter(Component:any,views:Bag){
  const values=p.renderVals;
  p.renderVals=function(){const out=values?.call(this)||{},cached=this.cachedAutomationsHome();if(!cached)return out.homeWorkflowHasRows?out:{...out,homeWorkflowFreshness:'',homeWorkflowDescription:'',homeWorkflowConfirmedEmpty:false,homeWorkflowTitle:'Workflows',homeWorkflowTime:'Open to view',homeWorkflowLabel:'Open workflows and automations',goFlows:()=>this.openView('workflows')};const loaded=presentHomeWorkflowFreshness({loadedAt:cached.loadedAt,now:Date.now(),unified:true,agent:cached.sessionId!=='offline'});return {...out,homeWorkflowFreshness:loaded.visible,homeWorkflowDescription:loaded.description,homeWorkflowRows:cached.rows.slice(0,2),homeWorkflowHasRows:cached.total>0,homeWorkflowConfirmedEmpty:cached.complete&&!cached.stale&&!cached.error&&cached.total===0&&cached.loadedAt>0&&cached.loadedAt<=Date.now()&&!homeReadIsStale(cached.loadedAt,Date.now()),homeWorkflowTitle:cached.total?'':cached.partial?'Some automations unavailable':'No automations yet',homeWorkflowTime:cached.error?'Couldn’t refresh · last loaded':cached.stale?'Last loaded items':cached.partial?'Some items unavailable':cached.total>2?`+${cached.total-2} more`:cached.total?'View automations':'',homeWorkflowLabel:'Open workflows and automations',goFlows:()=>this.openView('workflows')};};
  view.render=(value:Bag,current:Bag)=>{
-  api=current;const workflow=render(value,current),currentSession=binding()?.sessionId||'offline';
+  api=current;if(visible()&&homeRead){homeRead.abort();homeRead=null;homeVisit=null;}const workflow=render(value,current),currentSession=binding()?.sessionId||'offline';
   if(visible()&&(state==='idle'||completionDirty)&&!controller&&!editor&&!detail&&!creating&&!review&&!workflow.detail&&!workflow.builder&&!workflow.runOpen&&!workflow.removedList){completionDirty=false;state='loading';queueMicrotask(()=>void refresh(true));}
   if(workflow.detail||workflow.builder||workflow.runOpen||workflow.removedList)return {...workflow,workflowDetail:workflow.detail,automation:null};
   const cards=rows.filter(row=>rowPasses(row,typeFilter)&&rowPasses(row,statusFilter)).map(row=>({name:row.title,icon:current.ic[row.kind==='reminder'||row.kind==='device-reminder'?'bell':row.kind==='prompt'?'spark':row.kind==='schedule'||row.kind==='routine'?'cal':'flow'],short:row.schedule||row.source.replace(/^Agent /,''),statusLabel:locked(row)?'Outcome unknown':row.kind==='workflow'&&row.workflowId&&workflow.waitingFor?.(row.workflowId)?'Waiting for you':rowStatus(row),on:row.enabled,track:current.track(row.enabled),kx:current.kx(row.enabled),dim:'',failed:row.status==='failed',open:()=>show(row),toggle:()=>show(row)}));
@@ -209,7 +229,8 @@ export function installAutomationsAdapter(Component:any,views:Bag){
    review:!!review,reviewLabel:review?.label||'',reviewPrompt:`${review?.label||''}?`,reviewDetails:detail?.kind==='reminder'?[detail.title,detail.description,detail.schedule].filter(Boolean).join('\n'):'',reviewConfirmLabel:review?.label.startsWith('Snooze until ')?'Snooze':`Confirm ${review?.label||''}`,confirm:()=>{const selected=review;if(selected){review=null;void work(selected.run,selected.key);}},cancelReview:()=>{review=null;publish();},
   }};
  };
- const mount=p.componentDidMount,unmount=p.componentWillUnmount;
- p.componentDidMount=function(){mount.call(this);owner=this;session=binding()?.sessionId||null;this.automationCommitted=(event:CustomEvent<{sessionId:string}>)=>{const selected=binding();if(!owner?.live||suspended||!selected||!event.detail?.sessionId||event.detail.sessionId!==selected.sessionId)return;completionDirty=true;if(homeCache)homeCache.stale=true;publish();};window.addEventListener(AUTOMATIONS_COMMITTED_EVENT,this.automationCommitted);this.automationConnection=connectionController.subscribe(()=>{const next=binding()?.sessionId||null;if(next!==session||connectionController.getSnapshot().open){session=next;homeCache=null;retire(true);}});this.automationSuspend=()=>{suspended=true;homeCache=null;retire(true);};this.automationResume=()=>{suspended=false;publish();};this.automationVisibility=()=>document.hidden?this.automationSuspend():this.automationResume();document.addEventListener('visibilitychange',this.automationVisibility);window.addEventListener('pagehide',this.automationSuspend);window.addEventListener('pageshow',this.automationResume);};
- p.componentWillUnmount=function(){window.removeEventListener(AUTOMATIONS_COMMITTED_EVENT,this.automationCommitted);this.automationConnection?.();document.removeEventListener('visibilitychange',this.automationVisibility);window.removeEventListener('pagehide',this.automationSuspend);window.removeEventListener('pageshow',this.automationResume);suspended=true;retire(true);owner=null;unmount.call(this);};
+ const mount=p.componentDidMount,unmount=p.componentWillUnmount,update=p.componentDidUpdate;
+ p.componentDidMount=function(){mount.call(this);owner=this;session=binding()?.sessionId||null;this.automationCommitted=(event:CustomEvent<{sessionId:string}>)=>{const selected=binding();if(!owner?.live||suspended||!selected||!event.detail?.sessionId||event.detail.sessionId!==selected.sessionId)return;completionDirty=true;if(homeCache)homeCache.stale=true;homeRead?.abort();homeRead=null;homeVisit=null;publish();void preloadHome();};window.addEventListener(AUTOMATIONS_COMMITTED_EVENT,this.automationCommitted);this.automationConnection=connectionController.subscribe(()=>{const next=binding()?.sessionId||null;if(next!==session||connectionController.getSnapshot().open){session=next;homeCache=null;retire(true);}void preloadHome();});this.automationSuspend=()=>{suspended=true;homeCache=null;retire(true);};this.automationResume=()=>{suspended=false;publish();void preloadHome(true);};this.automationVisibility=()=>document.hidden?this.automationSuspend():this.automationResume();document.addEventListener('visibilitychange',this.automationVisibility);window.addEventListener('pagehide',this.automationSuspend);window.addEventListener('pageshow',this.automationResume);window.addEventListener('focus',this.automationResume);void preloadHome();};
+ p.componentDidUpdate=function(){update?.call(this);void preloadHome();};
+ p.componentWillUnmount=function(){window.removeEventListener(AUTOMATIONS_COMMITTED_EVENT,this.automationCommitted);this.automationConnection?.();document.removeEventListener('visibilitychange',this.automationVisibility);window.removeEventListener('pagehide',this.automationSuspend);window.removeEventListener('pageshow',this.automationResume);window.removeEventListener('focus',this.automationResume);suspended=true;retire(true);owner=null;unmount.call(this);};
 }

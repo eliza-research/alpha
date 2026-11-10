@@ -277,3 +277,13 @@ test('8am recurrence snoozes to8:10 and repairs an earlier from-now deferral',()
  assert.equal(protocol.scheduledSnoozeAt({record:task,status:'snoozed'},now),new Date(2026,10,10,8,10).toISOString());
  const valid=new Date(2026,10,10,8,10).toISOString();task.state.firedAt=valid;assert.equal(protocol.scheduledSnoozeAt({record:task,status:'snoozed'},new Date(2026,10,10,8,5).getTime()),new Date(2026,10,10,8,20).toISOString());
 });
+
+test('Home preloads enabled unified automations without opening Workflows or writing requests',async()=>{
+ const f=await fixture(read),app=adapterFixture(f.request,{}, {view:null,deviceReminders:[]});
+ try{
+  await wait(()=>app.home().homeWorkflowHasRows===true);
+  assert.ok(app.home().homeWorkflowRows.length>0);
+  assert.ok(f.calls.length>0);assert.ok(f.calls.every(call=>call.method==='GET'));
+  app.retire();assert.notEqual(app.home().homeWorkflowHasRows,true,'the previous owner rows clear immediately');
+ }finally{app.close();await f.close();}
+});

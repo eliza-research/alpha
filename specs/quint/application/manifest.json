@@ -3493,5 +3493,28 @@
       "One event, two owners and provider revisions; confirmed/cancelled UI actions and receipt-backed stale-row suppression.",
       "Provider I/O and real account permissions remain in AgentCalendarMutation conformance and live QA. Progress requires confirmation and provider response; cancellation has no progress assumption."
     ]
+  },
+  {
+    "path": "specs/quint/application/HomeAutomationsRead.qnt",
+    "module": "HomeAutomationsRead",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "homeLoadsWithoutOpeningWorkflowsTest",
+      "ownerChangeClearsRowsTest",
+      "leavingAbortsReadTest"
+    ],
+    "invariants": [
+      "safety"
+    ],
+    "sources": [
+      "apps/app/src/prototype/automations-adapter.ts",
+      "test/automations-unified.test.mjs"
+    ],
+    "abstractions": [
+      "One Home preload, two owners and zero to two rows. Preloading has no action or request-settlement transition.",
+      "Visibility and owner retirement abort old reads. Real provider delivery and full scheduler effects remain in separate models."
+    ]
   }
 ]
