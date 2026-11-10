@@ -142,8 +142,10 @@ Main pushes automatically build unsigned native candidates in the existing
 Resident Android workflow. The separate `app-native-candidate-*` artifact holds
 the genuine distribution archive and `app-update-candidate.json`, which binds
 source, SDK, run/attempt, profile, channel and actual APK hashes. Test-mocks stay
-in the qualification archive. New main pushes supersede older candidate runs;
-completion needs a quiet main, build capacity and admitted native inputs.
+in the qualification archive. Primary main-push attempts share a canceling group;
+reruns use their own run ID group and do not cancel running work. GitHub does not
+guarantee commit order. Completion needs a quiet main, build capacity and admitted
+native inputs.
 The existing workflow run number is the candidate versionCode, checked against
 all retained stable APKs, the public pointer and committed version floors.
 Failed or canceled runs consume their number. A manual release or workflow
@@ -181,9 +183,12 @@ engine and physical recovery gates pass. Resolve
 and [applied-candidate recovery #891](https://github.com/eliza-research/alphaphone/issues/891)
 before enrollment. [#400](https://github.com/eliza-research/alphaphone/issues/400)
 tracks the overall release gate. A successful host test or model does not close
-these release and device gates. The rejected-download retry repair is upstream
-in [eliza#39235](https://github.com/elizaOS/eliza/pull/39235); consume a reviewed,
-verified commit and qualify that exact product pin before OS enrollment.
+these release and device gates. Alpha consumes the reviewed rejected-download
+retry repair [eliza#39235](https://github.com/elizaOS/eliza/pull/39235) at
+`4ce6c083f80893ce1601f15e9ff7fbb30028ec30`. Its dependency-upgrade ancestry changes
+the SDK lock; core/mobile builder and installed UUID inputs were compared
+separately. Earlier APK, voice and device evidence does not qualify this pin;
+rebuild and qualify the exact product inputs before OS enrollment.
 
 ## Generated files
 
