@@ -23,6 +23,24 @@ public class MainActivity extends BridgeActivity {
  private volatile int bottomInsetDp = 0;
  private volatile int topInsetDp = 0;
  private boolean keyboardReturnPending;
+ private static final NavigationOpenRequest navigationOpen = new NavigationOpenRequest();
+ private boolean captureNavigationOpen(Intent intent) {
+  if (isAssistantSurface() || intent == null) return false;
+  if (AlphaNavigationService.ACTION_SHOW_MAPS.equals(intent.getAction())) {
+   navigationOpen.offer(SystemClock.elapsedRealtime());
+   // The Activity keeps its launch intent across recreation. Never replay an already captured tap.
+   intent.setAction(Intent.ACTION_MAIN);
+   return true;
+  }
+  if (isHomeIntent(intent)) navigationOpen.clear();
+  return false;
+ }
+ boolean consumeNavigationOpen() { return !isAssistantSurface() && navigationOpen.consume(SystemClock.elapsedRealtime()); }
+ void clearNavigationOpen() { if (!isAssistantSurface()) navigationOpen.clear(); }
+ private void signalNavigationOpen() {
+  if (getBridge() != null && getBridge().getWebView() != null && !isAssistantSurface())
+   getBridge().getWebView().evaluateJavascript("window.dispatchEvent(new Event('alpha:maps-open'))", null);
+ }
  public int getTopInsetDp() { return topInsetDp; }
  public int getBottomInsetDp() { return bottomInsetDp; }
  static void refreshKeyboardInsets() {
@@ -111,8 +129,10 @@ public class MainActivity extends BridgeActivity {
  }
  private final WebViewListener rendererRecovery = new WebViewListener() {
   @Override public void onPageLoaded(WebView view) {
-   if (getBridge() != null && view == getBridge().getWebView())
+   if (getBridge() != null && view == getBridge().getWebView()) {
     ViewCompat.requestApplyInsets(getWindow().getDecorView());
+    signalNavigationOpen();
+   }
   }
   @Override public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
    if (getBridge() == null || view != getBridge().getWebView()) return false;
@@ -341,6 +361,7 @@ public class MainActivity extends BridgeActivity {
   // Dialer-role components follow the verified image; Android's role dialog stays the owner's choice.
   AlphaTelephonyRoles.sync(this);
   if (AlphaImageCapability.verified(this)) registerPlugin(AlphaTelephonyPlugin.class);
+  captureNavigationOpen(getIntent());
   AlphaCanonicalNotifications.captureTap(this,getIntent());
   super.onCreate(state);
   // Capacitor displays its no-WebView fallback without creating a bridge when
@@ -407,6 +428,7 @@ public class MainActivity extends BridgeActivity {
   });
  }
  @Override public void onNewIntent(Intent intent) {
+  boolean showMaps = captureNavigationOpen(intent);
   AlphaCanonicalNotifications.captureTap(this,intent);
   super.onNewIntent(intent);
   // Our own bring-to-front start (see handOff) carries nothing: the real intent was delivered first.
@@ -416,8 +438,7 @@ public class MainActivity extends BridgeActivity {
    else unackedFrontStarts = 0;
    return;
   }
-  if (getBridge() != null && !isAssistantSurface() && intent != null && AlphaNavigationService.ACTION_SHOW_MAPS.equals(intent.getAction()))
-   getBridge().getWebView().evaluateJavascript("window.dispatchEvent(new Event('alpha:maps-open'))", null);
+  if (showMaps) signalNavigationOpen();
   if (getBridge() != null && !isAssistantSurface() && isHomeIntent(intent))
    getBridge().getWebView().evaluateJavascript("window.dispatchEvent(new Event('launcher-home'))", null);
  }

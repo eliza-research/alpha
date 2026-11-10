@@ -67,6 +67,11 @@ public final class AlphaMapsTransportPlugin extends Plugin {
  @PluginMethod public void cancel(PluginCall call){String id=call.getString("requestId");Pending job=id==null?null:pending.get(id);if(job!=null){job.cancel("Regional request cancelled");pending.remove(id,job);}else if(id!=null&&id.matches("[a-zA-Z0-9_-]{1,80}")){long now=android.os.SystemClock.elapsedRealtime();earlyCancelled.entrySet().removeIf(e->now-e.getValue()>30000);if(earlyCancelled.size()<64)earlyCancelled.put(id,now);}call.resolve();}
  private final AlphaNavigationService.StopListener navigationStops=(session,reason)->{if(destroyed)return;JSObject event=new JSObject();event.put("sessionId",session);event.put("reason",reason);notifyListeners("navigationStopped",event);};
  private static String text(PluginCall call,String name){String value=call.getString(name,"");return value==null?"":value.length()>200?value.substring(0,200):value;}
+ @PluginMethod public void consumeNavigationOpen(PluginCall call){
+  Activity activity=getActivity();JSObject result=new JSObject();
+  result.put("open",!destroyed&&activity instanceof MainActivity&&!activity.isFinishing()&&!activity.isDestroyed()&&((MainActivity)activity).consumeNavigationOpen());call.resolve(result);
+ }
+ @PluginMethod public void clearNavigationOpen(PluginCall call){Activity activity=getActivity();if(activity instanceof MainActivity)((MainActivity)activity).clearNavigationOpen();call.resolve();}
  @PluginMethod public void navigationAvailability(PluginCall call){JSObject result=new JSObject();result.put("background",AlphaNavigationService.declared(getContext()));result.put("activeSessionId",AlphaNavigationService.activeSession());call.resolve(result);}
  @PluginMethod public void startNavigation(PluginCall call){
   String session=call.getString("sessionId");

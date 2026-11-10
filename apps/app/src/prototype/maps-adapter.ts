@@ -1,3 +1,4 @@
+import {createMapsNotificationOpen} from '../runtime/maps-notification-open';
 import {mapsChatText} from '../runtime/action-message-presentation';
 import {BackgroundNavigation,type NavigationBridge} from '../maps/background-navigation';
 import {registerPlugin} from '../platform-plugins';
@@ -65,7 +66,8 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     error => screen.notify((error instanceof Error ? error.message + ' ' : '') + 'Voice guidance paused. Tap Enable voice guidance to retry.'),
     () => !googleContent(),
   );
-  const background=new BackgroundNavigation(registerPlugin<NavigationBridge>('AlphaMapsTransport'),()=>Capacitor.isNativePlatform());
+  const navigationTransport=registerPlugin<NavigationBridge & {consumeNavigationOpen():Promise<{open:boolean}>;clearNavigationOpen():Promise<unknown>}>('AlphaMapsTransport');
+  const background=new BackgroundNavigation(navigationTransport,()=>Capacitor.isNativePlatform());
   // A Cloud read already made or under way for this account is not repeated: a second read would
   // uninstall the provider an open Maps search is using. An account change retires it first (cloud-maps.ts).
   const readCloudMaps = () => { const read = cloudMapsDiagnostics(); return read.configured && !read.error ? Promise.resolve() : initializeCloudMaps(); };
@@ -336,9 +338,14 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   }
   // The shell instance opens Maps for an agent request, exactly as a user's open would.
   let shell: Bag | undefined;
+  const notificationOpen=createMapsNotificationOpen({
+    ready:()=>{const state=shell?.S?.();return Capacitor.isNativePlatform()&&!disposed&&!!shell?.live&&!document.hidden&&!shell.pageSuspended&&!shell.props?.assistantSurface&&!connectionController.getSnapshot().open&&state?.screen==='home'&&!state.secure&&!state.shade;},
+    consume:()=>navigationTransport.consumeNavigationOpen(),clear:()=>navigationTransport.clearNavigationOpen(),
+    open:()=>shell!.openView('maps',{keepState:true}),
+  });
   const renderVals=Component.prototype.renderVals;
   // Later adapters wrap renderVals too, so disposal leaves this wrapper in place as a pass-through.
-  Component.prototype.renderVals=function(this: Bag,...args: unknown[]){if(!disposed)shell=this;return renderVals.apply(this,args);};
+  Component.prototype.renderVals=function(this: Bag,...args: unknown[]){if(!disposed){shell=this;queueMicrotask(()=>void notificationOpen.flush());}return renderVals.apply(this,args);};
   // Maps opens only over Home or itself, on an unlocked, visible, non-sensitive launcher screen.
   // Any other app keeps the screen; the agent hears that the phone cannot show Maps now.
   const surface = screen.surface(async () => {
@@ -377,17 +384,19 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     if (document.hidden) {
       retireEventReturn();
       screen.hidden();
-    } else screen.refresh();
+    } else {screen.refresh();void notificationOpen.flush();}
   };
   const pagehide = () => {
     retireEventReturn();
     screen.release();
   };
-  const openNavigation=()=>{const state=shell?.S?.();if(screen.isNavigating()&&shell?.live&&!document.hidden&&state?.screen==='home'&&!state.secure&&!state.shade)shell.openView('maps',{keepState:true});};
+  const openNavigation=()=>notificationOpen.request();
+  const cancelNavigationOpen=()=>notificationOpen.cancel();
+  window.addEventListener('launcher-home',cancelNavigationOpen);
   window.addEventListener('alpha:maps-open',openNavigation);
   window.addEventListener('pagehide', pagehide);
   document.addEventListener('visibilitychange', visibility);
-  return () => { disposed = true; retireEventReturn(); stopCoverage(); agentNavigation.dispose(); shell=undefined; for(const event of shareEvents)window.removeEventListener(event,retireShare); screen.dispose(); window.removeEventListener('alpha:maps-open',openNavigation); window.removeEventListener('pagehide', pagehide); document.removeEventListener('visibilitychange', visibility); Object.assign(module, original); };
+  return () => { disposed = true; notificationOpen.dispose(); window.removeEventListener('launcher-home',cancelNavigationOpen); retireEventReturn(); stopCoverage(); agentNavigation.dispose(); shell=undefined; for(const event of shareEvents)window.removeEventListener(event,retireShare); screen.dispose(); window.removeEventListener('alpha:maps-open',openNavigation); window.removeEventListener('pagehide', pagehide); document.removeEventListener('visibilitychange', visibility); Object.assign(module, original); };
 }
 
 /** Presentation only: stored messages, model context and copied source text remain unchanged.
