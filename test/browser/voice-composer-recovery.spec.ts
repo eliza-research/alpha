@@ -92,9 +92,10 @@ test('synthetic pending retirement stays unconfirmed until Stop acknowledgement'
 
 test('synthetic pending microphone startup is unconfirmed until the ready state',async({page})=>{
  await setup(page);await page.evaluate(()=>(window as any).voicePresentationFixture.startHold=true);await page.getByRole('button',{name:'Talk',exact:true}).click();const controls=page.locator('.alpha-voice-composer');await expect(controls).toHaveAttribute('data-voice-state','starting');
- await expect(controls.locator('[data-alpha-voice-animation]')).toBeVisible();
+ await expect(controls.locator('[data-alpha-voice-animation]')).toHaveCount(0);
+ await expect(controls.getByText('Connecting…',{exact:true})).toBeVisible();
  const mic=controls.getByRole('button',{name:'Microphone status unconfirmed',exact:true});await expect(mic).toBeDisabled();await expect(mic).toHaveAttribute('aria-pressed','mixed');
- await page.evaluate(()=>(window as any).voicePresentationFixture.releaseStart());await expect(controls.getByRole('button',{name:'Mute microphone',exact:true})).toBeEnabled();await controls.getByRole('button',{name:'Stop voice conversation',exact:true}).click();await expect(controls).toHaveCount(0);await noMediaOrSends(page);
+ await page.evaluate(()=>(window as any).voicePresentationFixture.releaseStart());await expect(controls.getByRole('button',{name:'Mute microphone',exact:true})).toBeEnabled();await expect(controls.locator('[data-alpha-voice-animation]')).toBeVisible();await controls.getByRole('button',{name:'Stop voice conversation',exact:true}).click();await expect(controls).toHaveCount(0);await noMediaOrSends(page);
 });
 
 
