@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "80fbb1d25937585b24fd85132d623d5391c8ca07",
-  "ledgerSha256": "2d7bede91a0955734bb23acdb2e31c1a35a50b77b8cf29d9a521dfaac43a91e8",
+  "ledgerSha256": "659048fa028f8107e59bae98ff06869e711cdcab113ac3b77198137072f35acd",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -28,11 +28,11 @@
     "parsedFiles": 5666,
     "languageReview": 90,
     "parseErrors": 0,
-    "candidates": 67623,
-    "writeSites": 67169,
-    "writeAssociations": 60223,
+    "candidates": 67634,
+    "writeSites": 67179,
+    "writeAssociations": 60231,
     "asynchronous": 8377,
-    "unassignedWrites": 10352
+    "unassignedWrites": 10354
   },
   "files": [
     {
@@ -35594,7 +35594,7 @@
     },
     {
       "path": "apps/app/src/prototype/model.js",
-      "sha256": "615a3b0235596b4883f42ec1e406a3b89abec76eaade83b636215e35c4c2ce20",
+      "sha256": "ce47f78efc266c11166a33bd75a652951d47e311cb0ea9e2c0b4b4f642ecac69",
       "allocatedModels": [
         "Application",
         "CalendarPresentation",
@@ -38199,362 +38199,374 @@
         },
         {
           "owner": "Component.toast",
-          "line": 5157,
-          "bindings": 1,
-          "writes": 1
+          "line": 5158,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "Component.scheduleToast",
+          "line": 5169,
+          "bindings": 2,
+          "writes": 0
+        },
+        {
+          "owner": "Component.closeToast",
+          "line": 5175,
+          "bindings": 3,
+          "writes": 0
         },
         {
           "owner": "Component.vget",
-          "line": 5165,
+          "line": 5185,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "Component.vset.FunctionExpression@5167",
-          "line": 5168,
+          "owner": "Component.vset.FunctionExpression@5187",
+          "line": 5188,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "Component.vreset.FunctionExpression@5174",
-          "line": 5175,
+          "owner": "Component.vreset.FunctionExpression@5194",
+          "line": 5195,
           "bindings": 4,
           "writes": 2
         },
         {
           "owner": "Component.api",
-          "line": 5183,
+          "line": 5203,
           "bindings": 3,
           "writes": 3
         },
         {
           "owner": "Component.api.person",
-          "line": 5186,
+          "line": 5206,
           "bindings": 3,
           "writes": 1
         },
         {
           "owner": "Component.rest",
-          "line": 5216,
+          "line": 5236,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.leave",
-          "line": 5218,
+          "line": 5238,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "Component.preset",
-          "line": 5224,
+          "line": 5244,
           "bindings": 6,
           "writes": 0
         },
         {
           "owner": "Component.runBoot",
-          "line": 5245,
+          "line": 5265,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.unlock",
-          "line": 5253,
+          "line": 5273,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.power",
-          "line": 5258,
+          "line": 5278,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.openView",
-          "line": 5283,
+          "line": 5303,
           "bindings": 6,
           "writes": 0
         },
         {
           "owner": "Component.shellNav",
-          "line": 5299,
+          "line": 5319,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.shellNavigate",
-          "line": 5303,
+          "line": 5323,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "Component.back",
-          "line": 5307,
+          "line": 5327,
           "bindings": 3,
           "writes": 0
         },
         {
           "owner": "Component.openShade",
-          "line": 5330,
+          "line": 5350,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.openSystemShade",
-          "line": 5342,
+          "line": 5362,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.syncShadeFocus",
-          "line": 5352,
+          "line": 5372,
           "bindings": 4,
           "writes": 0
         },
         {
           "owner": "Component.scale",
-          "line": 5364,
+          "line": 5384,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "Component.gDown",
-          "line": 5365,
+          "line": 5385,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.gUp",
-          "line": 5366,
+          "line": 5386,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.swipe",
-          "line": 5371,
+          "line": 5391,
           "bindings": 3,
           "writes": 0
         },
         {
           "owner": "Component.pullContext",
-          "line": 5383,
+          "line": 5403,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.sw",
-          "line": 5387,
+          "line": 5407,
           "bindings": 1,
           "writes": 6
         },
         {
           "owner": "Component.sw.down",
-          "line": 5390,
+          "line": 5410,
           "bindings": 3,
           "writes": 0
         },
         {
           "owner": "Component.sw.up",
-          "line": 5399,
+          "line": 5419,
           "bindings": 4,
           "writes": 0
         },
         {
           "owner": "Component.reply",
-          "line": 5415,
+          "line": 5435,
           "bindings": 9,
           "writes": 3
         },
         {
-          "owner": "Component.reply.FunctionExpression@5418",
-          "line": 5418,
+          "owner": "Component.reply.FunctionExpression@5438",
+          "line": 5438,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.send",
-          "line": 5435,
+          "line": 5455,
           "bindings": 6,
           "writes": 0
         },
         {
-          "owner": "Component.send.FunctionExpression@5447",
-          "line": 5448,
+          "owner": "Component.send.FunctionExpression@5467",
+          "line": 5468,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "Component.send.FunctionExpression@5447.FunctionExpression@5450",
-          "line": 5450,
+          "owner": "Component.send.FunctionExpression@5467.FunctionExpression@5470",
+          "line": 5470,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.agentSay",
-          "line": 5455,
+          "line": 5475,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.cardAct",
-          "line": 5459,
+          "line": 5479,
           "bindings": 4,
           "writes": 0
         },
         {
           "owner": "Component.startVoice",
-          "line": 5470,
+          "line": 5490,
           "bindings": 6,
           "writes": 1
         },
         {
-          "owner": "Component.startVoice.FunctionExpression@5482.FunctionExpression@5487",
-          "line": 5488,
+          "owner": "Component.startVoice.FunctionExpression@5502.FunctionExpression@5507",
+          "line": 5508,
           "bindings": 5,
           "writes": 1
         },
         {
-          "owner": "Component.startVoice.FunctionExpression@5482.FunctionExpression@5487.FunctionExpression@5494",
-          "line": 5494,
+          "owner": "Component.startVoice.FunctionExpression@5502.FunctionExpression@5507.FunctionExpression@5514",
+          "line": 5514,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "Component.startVoice.FunctionExpression@5482.FunctionExpression@5496",
-          "line": 5496,
+          "owner": "Component.startVoice.FunctionExpression@5502.FunctionExpression@5516",
+          "line": 5516,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.renderVals",
-          "line": 5507,
+          "line": 5527,
           "bindings": 45,
-          "writes": 27
+          "writes": 25
         },
         {
           "owner": "Component.renderVals.rootRef",
-          "line": 5518,
+          "line": 5538,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5549",
-          "line": 5550,
+          "owner": "Component.renderVals.FunctionExpression@5569",
+          "line": 5570,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5549.FunctionExpression@5550.FunctionExpression@5550",
-          "line": 5550,
+          "owner": "Component.renderVals.FunctionExpression@5569.FunctionExpression@5570.FunctionExpression@5570",
+          "line": 5570,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5557",
-          "line": 5560,
+          "owner": "Component.renderVals.FunctionExpression@5577",
+          "line": 5580,
           "bindings": 3,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5557.toggle",
-          "line": 5564,
+          "owner": "Component.renderVals.FunctionExpression@5577.toggle",
+          "line": 5584,
           "bindings": 1,
           "writes": 5
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5570",
-          "line": 5571,
+          "owner": "Component.renderVals.FunctionExpression@5590",
+          "line": 5591,
           "bindings": 4,
           "writes": 1
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5602",
-          "line": 5603,
+          "owner": "Component.renderVals.FunctionExpression@5622",
+          "line": 5623,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5606",
-          "line": 5607,
+          "owner": "Component.renderVals.FunctionExpression@5626",
+          "line": 5627,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5606.go",
-          "line": 5608,
+          "owner": "Component.renderVals.FunctionExpression@5626.go",
+          "line": 5628,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5623",
-          "line": 5625,
+          "owner": "Component.renderVals.FunctionExpression@5643",
+          "line": 5645,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.renderVals.backToApps",
-          "line": 5641,
+          "line": 5661,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.renderVals.doUndo",
-          "line": 5644,
+          "line": 5668,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5680",
-          "line": 5680,
+          "owner": "Component.renderVals.FunctionExpression@5704",
+          "line": 5704,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.renderVals.voiceToType",
-          "line": 5687,
+          "line": 5711,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.renderVals.fireHeads",
-          "line": 5693,
+          "line": 5717,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.renderVals.pUp",
-          "line": 5698,
+          "line": 5722,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "Component.renderVals.homeBar",
-          "line": 5708,
+          "line": 5732,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.renderVals.toggleFs",
-          "line": 5710,
+          "line": 5734,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5713",
-          "line": 5713,
+          "owner": "Component.renderVals.FunctionExpression@5737",
+          "line": 5737,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component",
           "line": 5056,
-          "bindings": 20,
-          "writes": 40
+          "bindings": 25,
+          "writes": 51
         }
       ],
       "parseErrors": [],
       "asynchronous": 52,
-      "unassignedWrites": 416
+      "unassignedWrites": 418
     },
     {
       "path": "apps/app/src/prototype/mvp-features.ts",
@@ -40009,7 +40021,7 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "eef7edc9144ca3b9c30e659375115e730b95a58d86249d7634baa40a0508ca37",
+      "sha256": "369cbc55bbcffbafccf4fc83c149ba29d9073a237b975cafa75e2fec25ff4575",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -221160,6 +221172,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "257b74b5545f3ec8659c5269f81f71e0c5dec16e52520b942e1865ffc921dc02"
+    "sha256": "fd3812d684e6988f15f3842b7749f825a7ac76a44468eeb37d14a15edbc50f6b"
   }
 }

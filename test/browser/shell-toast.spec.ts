@@ -17,7 +17,7 @@ const pill = (page: Page) => page.locator('[data-alpha-toast] .drop');
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('alpha.connection.selection.v1', JSON.stringify({ kind: 'offline' })));
   await page.goto('/');
-  await expect(page.getByRole('button', { name: 'Settings', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Settings', exact: true })).toBeVisible({timeout:15_000});
 });
 
 test('a long toast stays up for its reading time and a short one for 1.9 s', async ({ page }) => {

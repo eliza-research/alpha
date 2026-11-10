@@ -1641,7 +1641,8 @@
       "staleBootCannotReplaceResumeTest",
       "resetInvalidatesPendingNativeReadTest",
       "failedReadKeepsLastGoodScaleTest",
-      "refreshAffectsOnlyNewToastsTest"
+      "refreshAffectsOnlyNewToastsTest",
+      "longMessageAndFocusHoldKeepCapturedDurationTest"
     ],
     "invariants": [
       "requestOwnership",

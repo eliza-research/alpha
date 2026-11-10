@@ -63,6 +63,21 @@ test('Notes create, edit, reload and delete to Recently deleted', async ({ page 
 });
 // Folder controls were removed at the owner's request. Canonical Notes CRUD and
 // retained-device-data isolation remain covered by canonical-notes.spec.ts.
+test('the single Notes list preserves retained folder records across reload',async({page})=>{
+ await page.goto('/');
+ const folderId=await page.evaluate(async()=>{
+  const m=await import('/src/runtime/notes-folders.ts');const id=m.newNotesFolderId();
+  await m.editNotesFolders(doc=>m.addNotesFolder(doc,{id,name:'Kept folder',createdAt:Date.now()}));return id;
+ });
+ await openLegacyNotes(page,[{id:'retained-folder-note',kind:'text',title:'Retained folder note',body:'Keep this content.',folderId}]);
+ const stored=()=>page.evaluate(async()=>({raw:await(await import('/src/runtime/browser-notes-document.ts')).readBrowserNotesRaw(),folders:await(await import('/src/runtime/notes-folders.ts')).readNotesFolders()}));
+ const before=await stored();expect(JSON.parse(before.raw!).records[0].folderId).toBe(folderId);
+ await expect(page.getByRole('button',{name:'New folder',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Open Retained folder note',exact:true})).toBeVisible();
+ await page.reload();await openLegacyNotes(page);
+ await expect(page.getByRole('button',{name:'Open Retained folder note',exact:true})).toBeVisible();
+ expect(await stored()).toEqual(before);
+});
 for (const [label, text] of [['unicode CRLF', 'Local 🧪 file\r\nExact bytes\n'], ['UTF-8 BOM', '\ufeffLocal 🧪 file\r\nExact bytes\n'], ['empty', '']]) test(`Local text import and complete selected-note download: ${label}`, async ({ page }) => {
   await page.goto('/');
   await openLegacyNotes(page);

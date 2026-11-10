@@ -56,7 +56,9 @@ fs.writeFileSync(path.join(destination,'configuration.json'),JSON.stringify({tes
 for(const command of ['verify','android:build']){
  const log=fs.openSync(path.join(destination,command.replace(':','-')+'.log'),'wx');
  const extra=command==='android:build'&&buildArgs.length?['--',...buildArgs]:[];
- try{execFileSync('npm',['run',command,...extra],{stdio:['ignore',log,log],timeout:1200000,env:command==='verify'?verifyEnv:buildEnv});}
+ // Full verification includes the real staged JVM/runtime campaigns. Retain a
+ // finite two-hour verification budget and the existing twenty-minute APK budget.
+ try{execFileSync('npm',['run',command,...extra],{stdio:['ignore',log,log],timeout:command==='verify'?7200000:1200000,env:command==='verify'?verifyEnv:buildEnv});}
  finally{fs.closeSync(log);}
  console.log(command+': passed');
 }

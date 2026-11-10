@@ -5154,11 +5154,31 @@ class Component extends DCLogic {
   every(fn, ms, grp) { this.I = this.I || {}; var id = setInterval(fn, ms); (this.I[grp] = this.I[grp] || []).push(id); return id; }
   stopEvery(grp) { this.I = this.I || {}; (this.I[grp] || []).forEach(clearInterval); this.I[grp] = []; }
   toast(msg, opts) {
-    opts = opts || {}; var self = this;
+    opts = opts || {};
+    var active = typeof document !== "undefined" ? document.activeElement : null;
+    var inside = !!active?.closest?.("[data-alpha-toast]");
+    if (!inside) this.toastOrigin = active;
+    this.toastHeld = inside; this.toastActive = true;
+    this.toastSequence = (this.toastSequence || 0) + 1;
+    this.toastDuration = Math.max(opts.undo ? 5000 : 1900, Math.min(12000, String(msg).length * 50 + 500)) * accessibilityTimeoutScale();
     this.undoFn = opts.undo || null;
-    this.setState({ toast: msg, toastUndo: !!opts.undo }); this.clear("t");
-    this.later(function () { self.undoFn = null; self.setState({ toast: "", toastUndo: false }); },
-      (opts.undo ? 5000 : 1900) * accessibilityTimeoutScale(), "t");
+    this.setState({ toast: msg, toastUndo: !!opts.undo }); this.scheduleToast();
+  }
+  scheduleToast() {
+    this.clear("t"); if (!this.toastActive || this.toastHeld) return;
+    var self = this, sequence = this.toastSequence;
+    this.later(function () { if (self.toastSequence === sequence && !self.toastHeld) self.closeToast(); }, this.toastDuration, "t");
+  }
+  holdToast() { if (this.toastActive) { this.toastHeld = true; this.clear("t"); } }
+  resumeToast() { this.toastHeld = false; if (this.toastActive) this.scheduleToast(); }
+  closeToast() {
+    var doc = typeof document !== "undefined" ? document : null, origin = this.toastOrigin;
+    var heldFocus = !!doc?.activeElement?.closest?.("[data-alpha-toast]");
+    this.toastActive = false; this.toastHeld = false; this.toastSequence = (this.toastSequence || 0) + 1;
+    this.undoFn = null; this.clear("t");
+    this.setState({ toast: "", toastUndo: false }, function () {
+      if (heldFocus && doc?.activeElement === doc.body && origin?.isConnected && !origin.closest("[inert],[hidden]")) origin.focus({ preventScroll: true });
+    });
   }
 
   /* ---- per-app state ---- */
@@ -5641,7 +5661,11 @@ class Component extends DCLogic {
       backToApps: function (event) { var fromChat = event && event.currentTarget && event.currentTarget.hasAttribute("data-alpha-chat-home"); if (fromChat && event.detail > 0 && self.swallowed()) return; self.goHome(fromChat ? self.S().chat : undefined); },
       showStatus: !P.nativeSystemChrome && S.screen !== "boot" && S.screen !== "off" && !imm.noStatus, micLive: S.voice === "listening",
       showIndicator: !P.nativeSystemChrome && (isOn || S.screen === "lock") && !(isOn && !S.view && !S.drawer && !S.shade && S.chat !== "sheet" && S.chat !== "full"),
-      toast: S.toast, toastOn: !!S.toast, toastUndo: !!S.toastUndo, toastPadR: S.toastUndo ? 5 : 18, doUndo: function () { var f = self.undoFn; self.undoFn = null; self.clear("t"); self.setState({ toast: "", toastUndo: false }); if (f) f(); },
+      toast: S.toast, toastOn: !!S.toast, toastUndo: !!S.toastUndo, toastPadR: S.toastUndo ? 5 : 18,
+      toastFocus: function () { self.holdToast(); },
+      toastBlur: function (event) { if (!event.currentTarget.contains(event.relatedTarget)) self.resumeToast(); },
+      toastTap: function () { if (!S.toastUndo) self.closeToast(); },
+      doUndo: function () { var f = self.undoFn; self.closeToast(); if (f) f(); },
       hasOngoing: !!ongoing && isOn, ongoing: ongoing || {}, sbWifi: S.q.wifi, sbPlane: S.q.plane,
       goCalendar: function () { self.openView("calendar", copy("shell").homeCalendar || null); },
       goTriage: function () { self.send("What needs me?"); },
