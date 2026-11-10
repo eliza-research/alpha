@@ -35,9 +35,10 @@ import javax.net.ssl.HttpsURLConnection;
 /**
  * Host-JVM run of AlphaDevicePlugin's update members, compiled from the plugin source by
  * test/app-update.test.mjs against the stubs in test/fixtures/app-update-jvm: one Context is one process whose
- * bridges all hear each broadcast, and the HTTPS download is served in memory, with the plugin's deadline
+ * bridges all hear each broadcast. Most HTTPS responses are served in memory, with the plugin's deadline
  * shortened to three seconds (300 ms in the one scenario that waits it out). Not Android, PackageInstaller or network evidence: the stubs transcribe what AOSP's source
- * does, they do not prove it.
+ * does, they do not prove it. One separate cache-retry scenario uses owned loopback TLS and real files;
+ * its APK bytes and Android archive/installer ports are still synthetic.
  */
 public final class UpdateFlowTest {
  /** Fixture-only ownership. A new installing() Context starts an independent scenario/iteration;
@@ -203,7 +204,7 @@ public final class UpdateFlowTest {
  private static void forgetProcess()throws Exception{
   AlphaDevicePlugin.UpdatePause.liveOwner=null;AlphaDevicePlugin.UpdatePause.shutdownRequest=-1;
 
-  plugin("activation",null);plugin("updateResume",null);plugin("settledActivation",null);plugin("settledOutcome",null);plugin("settledResumeBridge",null);
+  plugin("activation",null);plugin("updateResume",null);plugin("settledActivation",null);plugin("settledOutcome",null);plugin("settledResumeBridge",null);plugin("updateVerified",null);
   var registry=AlphaDevicePlugin.class.getDeclaredField("updateBridges");
   registry.setAccessible(true);((java.util.Set<?>)registry.get(null)).clear();
   plugin("updateOwner",null);plugin("updateConfirm",null);plugin("updateSession",0);plugin("updateDue",false);plugin("updateOpen",false);plugin("updateAutomatic",false);plugin("updateAsked",0L);
@@ -1837,8 +1838,25 @@ public final class UpdateFlowTest {
    check(context.packages.installer.committed.isEmpty()&&context.packages.installer.sessions.isEmpty(),"refused activation abandons only its staged session");
   }finally{com.getcapacitor.Plugin.ready=original;}
  }
+ private static com.sun.net.httpserver.HttpsServer cacheTlsServer;
+ private static URL cacheTlsTransport;
+ private static final java.util.concurrent.atomic.AtomicInteger cacheTlsRequests=new java.util.concurrent.atomic.AtomicInteger();
+ private static void prepareCacheTls(String file)throws Exception{
+  var keys=java.security.KeyStore.getInstance("PKCS12");
+  try(var input=Files.newInputStream(java.nio.file.Path.of(file))){keys.load(input,"fixture-pass".toCharArray());}
+  var managers=javax.net.ssl.KeyManagerFactory.getInstance(javax.net.ssl.KeyManagerFactory.getDefaultAlgorithm());managers.init(keys,"fixture-pass".toCharArray());
+  var trust=javax.net.ssl.TrustManagerFactory.getInstance(javax.net.ssl.TrustManagerFactory.getDefaultAlgorithm());trust.init(keys);
+  var tls=javax.net.ssl.SSLContext.getInstance("TLS");tls.init(managers.getKeyManagers(),trust.getTrustManagers(),null);
+  HttpsURLConnection.setDefaultSSLSocketFactory(tls.getSocketFactory());
+  cacheTlsServer=com.sun.net.httpserver.HttpsServer.create(new java.net.InetSocketAddress("127.0.0.1",0),0);
+  cacheTlsServer.setHttpsConfigurator(new com.sun.net.httpserver.HttpsConfigurator(tls));
+  cacheTlsServer.createContext("/cache",exchange->{cacheTlsRequests.incrementAndGet();exchange.sendResponseHeaders(200,APK.length);try(var output=exchange.getResponseBody()){output.write(APK);}finally{exchange.close();}});
+  // Capture the real JDK handler before this JVM's controlled URL route is installed.
+  // Hostname/certificate verification stays on the owned TLS transport's IP SAN.
+  cacheTlsTransport=new URL("https://127.0.0.1:"+cacheTlsServer.getAddress().getPort()+"/cache");cacheTlsServer.start();
+ }
  static void serveFixtureHttps(){
-  URL.setURLStreamHandlerFactory(protocol->!"https".equals(protocol)?null:new URLStreamHandler(){@Override protected URLConnection openConnection(URL url){return new Served(url);}});
+  URL.setURLStreamHandlerFactory(protocol->!"https".equals(protocol)?null:new URLStreamHandler(){@Override protected URLConnection openConnection(URL url)throws IOException{return cacheTlsTransport!=null&&url.getPath().equals("/tls-cache.apk")?cacheTlsTransport.openConnection():new Served(url);}});
  }
  private static PluginCall automatic(AlphaDevicePlugin owner)throws Exception{
   PluginCall call=offered();call.getData().put("automatic",true);owner.installUpdate(call);call.awaitAnswer();return call;
@@ -1980,16 +1998,82 @@ public final class UpdateFlowTest {
     check(context.packages.installer.committed.isEmpty()&&context.packages.installer.sessions.isEmpty()&&AlphaDevicePlugin.UpdatePause.store().read()==null,"only uncommitted staging is abandoned and any acquired pause reconciles: "+cut);
     check(AlphaLocalAgentPlugin.stops==(cut.startsWith("stop-")?1:0),"foreground loss before activation never stops the resident: "+cut);
     ai.eliza.plugins.agent.updater.RuntimeUpdatePause.beforeStart();
+    check(java.util.Arrays.equals(Files.readAllBytes(download(context).toPath()),APK),"each known postverification lifecycle deferral keeps exact bytes: "+cut);
+    int requests=connections.size();context.packages.archiveRead=()->{};context.packages.installer.staging=()->{};AlphaLocalAgentPlugin.pauseObserver=()->{};
+    owner.activity.focused=true;owner.activity.state=Lifecycle.State.RESUMED;context.calls.active=false;context.calls.unavailable=false;
+    check(automatic(owner).resolved.get()==1&&connections.size()==requests&&context.packages.installer.committed.size()==1&&!download(context).exists(),"a later idle retry reuses admitted bytes without another controlled transport call: "+cut);
    }finally{AlphaLocalAgentPlugin.pauseObserver=()->{};}
   }
  }
+ private static AlphaDevicePlugin deferredVerifiedAutomatic(Context context)throws Exception{
+  AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);connections.clear();
+  context.packages.archiveRead=()->owner.activity.focused=false;
+  check(automatic(owner).rejected.get()==1,"foreground loss after verification defers without a commit");
+  check(connections.size()==1&&java.util.Arrays.equals(Files.readAllBytes(download(context).toPath()),APK),"a deferred automatic attempt retains exact verified download bytes");
+  check(context.packages.installer.committed.isEmpty()&&context.packages.installer.sessions.isEmpty()&&AlphaDevicePlugin.UpdatePause.store().read()==null,"deferred cache owns no session or pause authority");
+  context.packages.archiveRead=()->{};owner.activity.focused=true;return owner;
+ }
+ private static void verifiedAutomaticCacheAvoidsRedownloadButNeverBypassesAdmission(File cache)throws Exception{
+  for(String change:List.of("same-offer","sibling-load","corrupt","short","missing","symlink","url","version","sha","size","signer","flavor","interrupted","commit-uncertain","process-restart")){
+   Context context=installing(cache);AlphaDevicePlugin owner=deferredVerifiedAutomatic(context);
+   if(change.equals("sibling-load")){bridge(context,Lifecycle.State.RESUMED);check(download(context).exists(),"a sibling load preserves only the process's marked file");}
+   if(change.equals("corrupt")){byte[] corrupt=APK.clone();corrupt[0]^=1;Files.write(download(context).toPath(),corrupt);}
+   if(change.equals("short"))Files.write(download(context).toPath(),new byte[]{1});
+   if(change.equals("missing"))Files.delete(download(context).toPath());
+   java.nio.file.Path external=context.data.toPath().resolve("unrelated-cache-target");
+   if(change.equals("symlink")){Files.write(external,APK);Files.delete(download(context).toPath());Files.createSymbolicLink(download(context).toPath(),external);}
+   if(change.equals("process-restart")){owner=restarted(context);check(!download(context).exists(),"process death loses the cache hint and sweeps the orphan");}
+   if(change.equals("signer")){Signature different=new Signature(new byte[]{8});context.packages.archive.signingInfo=new SigningInfo(new Signature[]{different},new Signature[]{different});}
+   if(change.equals("flavor"))context.packages.archive.requestedPermissions=new String[]{"android.permission.INTERNET"};
+   if(change.equals("commit-uncertain"))context.packages.installer.failAt="reply";
+   if(change.equals("interrupted"))context.packages.installer.querying=()->Thread.currentThread().interrupt();
+   PluginCall next=offered(change.equals("version")?9:8);next.getData().put("automatic",true);
+   if(change.equals("version"))context.packages.archive.versionCode=9;
+   if(change.equals("url"))next.getData().put("apkUrl","https://updates.test/relocated.apk");
+   if(change.equals("sha"))next.getData().put("sha256",sha256(new byte[]{1}));
+   if(change.equals("size"))next.getData().put("sizeBytes",(long)APK.length+1);
+   owner.installUpdate(next);next.awaitAnswer();
+   boolean rejected=List.of("sha","size","signer","flavor","interrupted","commit-uncertain").contains(change);
+   boolean downloaded=List.of("corrupt","short","missing","symlink","url","version","sha","size","process-restart").contains(change);
+   check((next.rejected.get()==1)==rejected,"cached metadata and uncertain commit keep the original outcome: "+change);
+   check(connections.size()==(downloaded?2:1),"only a matching intact process-local tuple avoids another HTTPS download: "+change);
+   check(!download(context).exists(),"success, invalid metadata and uncertain commit do not retain APK bytes: "+change);
+   if(change.equals("symlink"))check(java.util.Arrays.equals(Files.readAllBytes(external),APK),"cache replacement unlinks a symlink without writing its target");
+   check(context.packages.installer.committed.size()==(rejected&&!change.equals("commit-uncertain")?0:1),"invalid cached metadata never commits: "+change);
+  }
+  Context context=installing(cache);AlphaDevicePlugin owner=deferredVerifiedAutomatic(context);
+  owner.activity.keyguard.locked=true;check(automatic(owner).rejected.get()==1&&connections.size()==1&&download(context).exists(),"an initially locked retry preserves the exact hint but performs no IO/session work");
+  owner.activity.keyguard.locked=false;
+  int pending=leftBehind(context,binding(context,9,AlphaDevicePlugin.appSigner(context)));
+  check(automatic(owner).resolved.get()==1&&connections.size()==1&&context.packages.installer.sessions.equals(List.of(pending))&&context.packages.installer.committed.isEmpty(),"a pending Android session fences cached reuse before any archive work");
+  check(!download(context).exists(),"a pending or uncertain session retains its own authority, not the redundant cache");
+  context=installing(cache);owner=deferredVerifiedAutomatic(context);
+  Files.delete(download(context).toPath());Files.createDirectory(download(context).toPath());
+  var child=download(context).toPath().resolve("unrelated");Files.write(child,APK);
+  check(automatic(owner).rejected.get()==1&&connections.size()==1&&context.packages.installer.committed.isEmpty()&&java.util.Arrays.equals(Files.readAllBytes(child),APK),"a failed unlink neither follows nor overwrites the stale cache path, and starts no fetch");
+  Files.delete(child);Files.delete(download(context).toPath());
+ }
+ private static void verifiedAutomaticCacheUsesOneRealTlsResponse(File cache)throws Exception{
+  Context context=installing(cache);AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);
+  context.packages.archiveRead=()->owner.activity.focused=false;
+  PluginCall first=offered();first.getData().put("automatic",true).put("apkUrl","https://updates.test/tls-cache.apk");
+  owner.installUpdate(first);first.awaitAnswer();
+  check(first.rejected.get()==1&&cacheTlsRequests.get()==1&&java.util.Arrays.equals(Files.readAllBytes(download(context).toPath()),APK),"owned TLS delivers exact bytes retained on foreground loss");
+  check(context.packages.installer.committed.isEmpty()&&context.packages.installer.sessions.isEmpty()&&AlphaDevicePlugin.UpdatePause.store().read()==null,"TLS deferral grants no session/pause authority");
+  context.packages.archiveRead=()->{};owner.activity.focused=true;
+  PluginCall next=offered();next.getData().put("automatic",true).put("apkUrl","https://updates.test/tls-cache.apk");owner.installUpdate(next);next.awaitAnswer();
+  check(next.resolved.get()==1&&cacheTlsRequests.get()==1&&context.packages.installer.committed.size()==1&&!download(context).exists(),"retry revalidates cached bytes and commits once without a second TLS request");
+  System.out.println("PASS verified cache retry over owned TLS: one request, exact retained bytes, one synthetic installer commit");
+ }
  public static void main(String[] args)throws Exception{
+  if(args.length>0)prepareCacheTls(args[0]);
   serveFixtureHttps();
   // A retired crash unwinds its worker by design; anything else a worker throws is still printed.
   Thread.setDefaultUncaughtExceptionHandler((thread,thrown)->{if(!(thrown instanceof RetiredCrash)){System.err.print("Exception in thread \""+thread.getName()+"\" ");thrown.printStackTrace();}});
   File cache=Files.createTempDirectory("alpha-update-flow").toFile();
   int status=1;
   try{
+   if(cacheTlsServer!=null)verifiedAutomaticCacheUsesOneRealTlsResponse(cache);
    automaticUpdatesRequireSupportedAndroidAndExistingConsent(cache);
    manualUpdateDoesNotWaitForAutomaticColdBootReadiness(cache);
    automaticPendingActionWaitsForAnExplicitContinue(cache);
@@ -1999,6 +2083,7 @@ public final class UpdateFlowTest {
    automaticModeIsStrictAndExplicitFalseKeepsManualBehavior(cache);
    automaticUpdatesRequireForegroundUnlockedMainAndKnownImageCallState(cache);
    automaticUpdatesRecheckUseAfterDownloadAndBeforeCommit(cache);
+   verifiedAutomaticCacheAvoidsRedownloadButNeverBypassesAdmission(cache);
    applicationAttachBeforePublicationDoesNotFenceOrdinaryStartup(cache);
    onlyTheInstalledFlavorAndLineageReachAndroid(cache);
    updateWaitsForDraftsAndExactShutdown(cache);
@@ -2084,6 +2169,7 @@ public final class UpdateFlowTest {
   }catch(Exception|Error failed){
    failed.printStackTrace();
   }finally{
+   if(cacheTlsServer!=null)cacheTlsServer.stop(0);
    // A worker still blocked after a failure must not hide it: the first failure stands, and the run ends either way.
    try{retireFixtureWorkers();}catch(Exception|Error stuck){stuck.printStackTrace();status=1;}
    File[] left=cache.listFiles();

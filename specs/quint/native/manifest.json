@@ -1949,7 +1949,11 @@
         "processRestartCannotFabricateBootReadinessTest",
         "downloadFailureAndRestartKeepWarmReadinessTest",
         "newBootReturnsWarmProcessToStartingTest",
-        "manualColdAttemptKeepsItsExistingPathTest"
+        "manualColdAttemptKeepsItsExistingPathTest",
+        "sameProcessDeferredCacheRevalidatesWithoutRefetchTest",
+        "corruptRetainedCacheMustRefetchTest",
+        "changedOfferCannotUseRetainedCacheTest",
+        "processRestartSweepsMarkedCacheTest"
       ],
       "invariants": [
         "CacheCustody",
@@ -1957,7 +1961,8 @@
         "CleanupBound",
         "ConnectionCustody",
         "AutomaticAdmissionHadReadyBoot",
-        "MonotonicBootReadiness"
+        "MonotonicBootReadiness",
+        "RetainedHintIsNotAdmission"
       ],
       "sources": [
         "apps/app/src/prototype/settings-adapter.ts",
@@ -1970,10 +1975,12 @@
         "owner/target/phase/file/bytes/connected": "Process guard, exact reviewed tuple, active bridge connection and real cache-file bytes",
         "session/stagedBytes/created/abandoned": "Synthetic PackageInstaller custody and actual staged output bytes",
         "outcome/fetches": "Observed tap settlement class and controlled HTTPS opens",
+        "kept/reuses": "Actual process-local exact tuple hint and archive readbacks that completed without another controlled transport open",
         "platform/automatic/admitted": "Actual SDK capability class, install consent, controlled Android SystemClock uptime, boot/process identities and automatic call captured before worker admission"
       },
       "abstractions": [
-        "Two reviewed tuples and one installed identity, three bridge classes, four byte positions and up to two admitted attempts. Native source checks terminate at the activation boundary.",
+        "Two reviewed tuples and one installed identity, three bridge classes, four byte positions, up to two fetches and two successful cache revalidations. Native source checks terminate at the activation boundary.",
+        "Only a known automatic postverification lifecycle deferral retains one process-local hint. Real bytes and current archive metadata are rechecked; corruption refetches, another tuple misses, and process loss removes the hint. The hint grants no install/session/pause authority. No completion is promised under continued activity, input withdrawal, storage eviction, IO failure or process death.",
         "Actual renderer review and cache share the selected tuple with the JVM. Native response limits and soft expiry run through controlled inputs. Independent durable pause and install-session behavior remain separate.",
         "SDK classes 30 and 31 represent below31 and at-least31 capability. Six boot-relative monotonic uptime observations are 0,26681,29999,30000,30001,35000. At most two boots and two process identities; same-boot process replacement preserves uptime and only reboot resets readiness.",
         "Cold automatic refusals frame all network/cache/session custody fields and precede worker submission. Manual admission is unchanged. Selected actual-Java traces use a shut-down executor, exact boundary observations, failure cleanup and later warm admission. These between-attempt process cuts do not replace the separate durable journal model or establish clock/network/install progress."
