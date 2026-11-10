@@ -124,7 +124,7 @@ test('the Home calendar card shows its whole title at 200% and widens to the row
   const card = page.locator('[data-alpha-home-calendar]');
   const design = (await card.boundingBox())!;
   expect(Math.round(design.width)).toBe(280);
-  // The card row has one fixed height (docs/ui-refresh-2026-11).
+  // The card row has one fixed height.
   expect(Math.round(design.height)).toBe(196);
   await setTextScale(page, 2);
   const title = card.locator('.home-calendar-title');
