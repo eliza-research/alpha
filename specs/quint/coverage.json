@@ -23002,7 +23002,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "8fa1d2468330bcbf37f74df094df62ecb443bc53f4919457234e63a95b04e4c0",
+      "sha256": "e3d38b3705183fb3e83ff7609a5310992594ba3ac2f142e478911fecf1379127",
       "stateAnchors": [
         {
           "line": 29,
@@ -23141,115 +23141,115 @@
           "text": "const sheetHeight = directionsOpen ? 300+(view.directions?.routes.length??0)*50 : isPlace ? 400 : 520;"
         },
         {
-          "line": 190,
+          "line": 191,
           "text": "mapObserver?.disconnect();plane?.destroy();mapFailed=false;mapCopyright='';planeElement=element;planeBasemap=basemap;const generation=++mapGeneration;delete element.dataset.mapReady;delete element.dat"
         },
         {
-          "line": 191,
+          "line": 192,
           "text": "const current=()=>generation===mapGeneration&&planeElement===element&&!disposed&&!!api?.isActive();"
         },
         {
-          "line": 226,
+          "line": 227,
           "text": "const place = view.place;"
         },
         {
-          "line": 247,
+          "line": 248,
           "text": "const directions = view.directions;"
         },
         {
-          "line": 254,
+          "line": 255,
           "text": "const nav = view.navigation;"
         },
         {
-          "line": 256,
+          "line": 257,
           "text": "modes:data.nativeModeMetadata.map((reference:{mode:'drive'|'walk'|'bike'|'transit';label:string;d:string})=>{const mode:TravelMode=reference.mode==='bike'?'bicycle':reference.mode;const on=!!direction"
         },
         {
-          "line": 266,
+          "line": 267,
           "text": "const eventOrigin=mapsEventReturnOffered(st.fromEvent,currentApi.S.stack,isNav);"
         },
         {
-          "line": 274,
+          "line": 275,
           "text": "let shell: Bag | undefined;"
         },
         {
-          "line": 275,
+          "line": 276,
           "text": "const renderVals=Component.prototype.renderVals;"
         },
         {
-          "line": 280,
+          "line": 281,
           "text": "const surface = screen.surface(async () => {"
         },
         {
-          "line": 281,
+          "line": 282,
           "text": "const showable=()=>{"
         },
         {
-          "line": 282,
+          "line": 283,
           "text": "const value=shell?.S?.();"
         },
         {
-          "line": 294,
+          "line": 295,
           "text": "const agentNavigation=bindAgentNavigation({"
         },
         {
-          "line": 297,
+          "line": 298,
           "text": "installation:()=>{const coverage=cloudMapsCoverage();return coverage&&{providerId:coverage.providerId,attribution:coverage.attribution};},"
         },
         {
-          "line": 302,
+          "line": 303,
           "text": "const stopCoverage=keepCloudMapsCoverage({"
         },
         {
-          "line": 310,
+          "line": 311,
           "text": "const retireShare=()=>screen.retireShare();"
         },
         {
-          "line": 311,
+          "line": 312,
           "text": "const shareEvents=['launcher-home','alpha:device-state','alpha:dev-incoming-call'];for(const event of shareEvents)window.addEventListener(event,retireShare);"
         },
         {
-          "line": 330,
+          "line": 331,
           "text": "const p=Component.prototype,render=p.renderVals;"
         },
         {
-          "line": 331,
+          "line": 332,
           "text": "const answered=new WeakMap<object,Set<string>>();"
         },
         {
-          "line": 332,
+          "line": 333,
           "text": "const answers=(shell:Bag)=>{let value=answered.get(shell);if(!value){value=new Set();answered.set(shell,value);}return value;};"
         },
         {
-          "line": 334,
+          "line": 335,
           "text": "const snapshot=connectionController.getSnapshot(),done=answers(shell);"
         },
         {
-          "line": 343,
+          "line": 344,
           "text": "const out=render.call(this),msgs=out.msgs||[],done=answers(this);"
         },
         {
-          "line": 346,
+          "line": 347,
           "text": "const source=String(message.displayText??message.text??''),parsed=mapsChatText(source);"
         },
         {
-          "line": 349,
+          "line": 350,
           "text": "const choice=parsed.choice,id=choice?String(message.id)+':'+choice.id:'',snapshot=connectionController.getSnapshot(),session=snapshot.session,conversation=connectionController.getSelectedConversationI"
         },
         {
-          "line": 350,
+          "line": 351,
           "text": "const saved=this.S().msgs?.find((row:Bag)=>row.id===message.id),savedText=saved?String(saved.displayText??saved.text??''):undefined;"
         },
         {
-          "line": 351,
+          "line": 352,
           "text": "const current=()=>{const latest=this.S().msgs?.at(-1);return !!session&&connectionController.getSnapshot().session===session&&connectionController.getSelectedConversationId()===conversation&&latest?.i"
         },
         {
-          "line": 352,
+          "line": 353,
           "text": "const open=!!choice&&index===msgs.length-1&&!done.has(id)&&current();"
         }
       ],
-      "integrationReview": "Reviewed distinct voice-on/off icons for the existing Maps voice setting; route and navigation authority remain unchanged. Source allocation does not establish installed navigation acceptance. Retained Pixel lane review: Domain allocation retained after merging the audit fixes. The refreshed source hash and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations. 2026-11-09: suppress only duplicate navigation metadata when it equals remaining-distance status. Distinct arrival/background notices remain. Four-trace mounted Maps comparison and five existing accessibility scenarios passed on the parent composition; current-main replay follows. No action or permission transition changed."
+      "integrationReview": "Restore the existing Cloud attribution projection consumed by the map credit template; actual search/navigation browser coverage passes."
     },
     {
       "path": "apps/app/src/prototype/maps-chat-adapter.ts",
@@ -33151,7 +33151,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "41e36332eb78867ec7568a110d7e3051236f577a61c1e12cf5374294c4004930",
+      "sha256": "01563da1e0d60899cd92068f77c46a0ff10368a3be3617e5f760e00e37f1da5a",
       "stateAnchors": [
         {
           "line": 213,
@@ -33226,7 +33226,7 @@
           "text": "owner?.setState({theme,appearanceStorageRead:{theme}});"
         }
       ],
-      "integrationReview": "Reviewed Files access copy distinguishes owner-granted all-files access from individually opened/shared files. No permission or provider authority changes; platform acceptance remains separate. Retained Pixel lane review: 2026-11-09 preview review: saved Inbox before background refresh with owner/epoch invalidation; optional Cloud restore pending presentation; provider pending-vs-failed presentation; existing Cloud-preview storage eligibility; About removal; dedicated embedding authority separated from own text/voice. Existing domain allocations retained; actual browser and owning tests recorded separately. Semantic refinement and device acceptance remain open. 2026-11-10: Current-main composition retains the reviewed Pixel lane UI/IME/Calendar changes and canonical Alpha Compute namespace. Full merged-source qualification remains required; no historical APK/device acceptance transfer. 2026-11-10: Retained reviewed186a account/sign-out/image dismissal changes in current main composition; keep automatic update disposal and complete keyboard APK admission."
+      "integrationReview": "Keep the actual unconfirmed wake-stop state visible in Settings; no new listening control or capture path. Production stopped/unconfirmed companion checks pass."
     },
     {
       "path": "apps/app/src/prototype/share-panel-adapter.ts",

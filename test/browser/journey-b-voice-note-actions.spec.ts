@@ -1,16 +1,16 @@
 import {installNoteScheduleContract,reviewNoteScheduleContract} from './helpers/note-schedule-contract';
 import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import {openLegacyNotes} from './helpers/legacy-notes';
-import {openBrowserCalendar} from './helpers/browser-calendar';
+import {openBrowserCalendar,chooseCalendarEventAction} from './helpers/browser-calendar';
 /*
  * Journey B / J02: Voice -> note -> calendar event and reminder, driven start to finish through
  * rendered controls in the browser build with the development agent profile. Notes-to-Calendar
  * scheduling starts through the retained programmatic contract, not a menu control.
  *
  * Loop covered in one test:
- *  1. Notes "Record voice note" -> Done -> Cloud transcript saved as a voice note.
+ *  1. Notes "Record voice note" -> Stop -> saved audio -> explicit Cloud transcript.
  *  2. Reload, reopen the saved recording and "Read aloud" / "Stop reading".
- *  3. "Review transcript with Alpha" -> Send -> "Review summary note" -> "Save recording summary".
+ *  3. "Ask Alpha about this transcript" -> Send -> "Review summary note" -> "Save recording summary".
  *  4. Hand-offs from the note: the retained reminder contract -> Calendar form -> Save (a reminder), and
  *     the retained event contract -> Calendar form -> Save (a calendar event). Each saved record
  *     shows "From note: Venue meeting" and opens that note.
@@ -97,6 +97,7 @@ async function openHandoffDayInCalendar(page:Page,titles:string){
 }
 
 test('Journey B: recorded note UI and retained scheduling contract save one event and reminder, then edit and delete them',async({page})=>{
+ page.setDefaultTimeout(15_000);
  const dialogs:string[]=[];
  page.on('dialog',d=>{dialogs.push(d.message());void d.accept();});
  // Keep retained-audio playback silent; playback itself is real.
@@ -123,13 +124,16 @@ test('Journey B: recorded note UI and retained scheduling contract save one even
  });
  await openLegacyNotes(page);
  await page.getByRole('button',{name:'Record voice note',exact:true}).click();
- // The recorder starts at once; Done transcribes and saves one voice note (corrections happen in the note).
+ // Stop retains audio; no Cloud transcription begins until Generate transcript is clicked.
  const recorder=page.locator('[data-alpha-subview="notes-recorder"]');
  await expect(recorder).toHaveAttribute('data-recorder-state','recording');
  await expect.poll(()=>page.evaluate(()=>(window as any).recordedBytes)).toBeGreaterThan(0);
- await recorder.getByRole('button',{name:'Done',exact:true}).click();
+ expect(await page.evaluate(()=>(window as any).cloudVoiceFixture.transcriptions)).toEqual([]);
+ await recorder.getByRole('button',{name:'Stop recording',exact:true}).click();
  await expect(page.getByRole('button',{name:'Play recording',exact:true})).toBeVisible();
  await page.getByRole('textbox',{name:'Title',exact:true}).fill('Venue meeting');
+ await page.getByRole('button',{name:'Generate transcript',exact:true}).click();
+ await expect.poll(()=>page.evaluate(()=>(window as any).cloudVoiceFixture.transcriptions.length)).toBe(1);
  await expect.poll(async()=>(await notes(page)).filter(n=>n.kind==='voice'&&n.title==='Venue meeting'&&n.body===transcript&&!!n.audio?.audioId).length).toBe(1);
  await page.evaluate(async()=>{const {ctx,osc}=(window as any).fixture;osc.stop();await ctx.close();});
 
@@ -144,12 +148,9 @@ test('Journey B: recorded note UI and retained scheduling contract save one even
  const recorded=(await notes(page))[0];
 
  // ---- 3. Reviewed transcript question -> reviewed summary and action items ----
- await page.getByRole('button',{name:'Review transcript with Alpha',exact:true}).click();
- const question=page.getByRole('dialog',{name:'Ask about selected content'});
- await expect(question.getByRole('textbox',{name:'Content excerpt'})).toHaveValue(transcript);
- await expect(question.getByRole('textbox',{name:'Question about content'})).toHaveValue(/Do not change or schedule anything/);
- await question.getByRole('button',{name:'Use in conversation',exact:true}).click();
- await expect(question).toHaveCount(0);
+ await page.getByRole('button',{name:'Ask Alpha about this transcript',exact:true}).click();
+ await expect(page.getByRole('group',{name:'Attached transcript',exact:true})).toBeVisible();
+ await expect(page.getByRole('dialog',{name:'Ask about selected content'})).toHaveCount(0);
  await page.getByRole('button',{name:'Send',exact:true}).click();
  await page.getByText('Review summary note',{exact:true}).click();
  const summaryReview=page.getByRole('dialog',{name:'Save reviewed summary note'});
@@ -285,7 +286,7 @@ test('Journey B: recorded note UI and retained scheduling contract save one even
  // ---- 7a. Edit the event and the reminder through Calendar controls ----
  await openHandoffDayInCalendar(page,'Book the venue|Venue walkthrough');
  await page.getByRole('button',{name:/^Venue walkthrough,/}).click();
- await page.getByRole('button',{name:'Edit event',exact:true}).click();
+ await chooseCalendarEventAction(page,'Edit event');
  await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveValue('Venue walkthrough');
  await page.getByRole('textbox',{name:'Title',exact:true}).fill('Venue walkthrough edited');
  await page.getByRole('textbox',{name:'Location',exact:true}).fill('Main hall');
@@ -299,7 +300,7 @@ test('Journey B: recorded note UI and retained scheduling contract save one even
  await openHandoffDayInCalendar(page,'Book the venue|Venue walkthrough edited');
  await page.getByRole('button',{name:/^Book the venue,/}).click();
  await expect(page.getByText('From note: Venue meeting',{exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Edit event',exact:true}).click();
+ await chooseCalendarEventAction(page,'Edit event');
  await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveValue('Book the venue');
  await page.getByRole('textbox',{name:'Title',exact:true}).fill('Book the venue edited');
  await page.getByRole('button',{name:'Start later',exact:true}).click();
@@ -316,17 +317,17 @@ test('Journey B: recorded note UI and retained scheduling contract save one even
  await page.getByRole('button',{name:/^Venue walkthrough edited,/}).click();
  // One review step names the event; Cancel deletes nothing.
  const deleteReview=page.getByRole('dialog',{name:'Delete calendar event?'});
- await page.getByRole('button',{name:'Delete event',exact:true}).click();
+ await chooseCalendarEventAction(page,'Delete event');
  await expect(deleteReview).toContainText('Venue walkthrough edited');
  await deleteReview.getByRole('button',{name:'Cancel',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Venue walkthrough edited',level:1})).toBeVisible();
  expect(await eventTitles(page)).toEqual(['Venue booking call','Venue walkthrough edited']);
- await page.getByRole('button',{name:'Delete event',exact:true}).click();
+ await chooseCalendarEventAction(page,'Delete event');
  await deleteReview.getByRole('button',{name:'Delete event',exact:true}).click();
  await expect.poll(()=>eventTitles(page),{timeout:15000}).toEqual(['Venue booking call']);
  await expect(page.getByRole('button',{name:/^Venue walkthrough edited,/})).toHaveCount(0);
  await page.getByRole('button',{name:/^Book the venue edited,/}).click();
- await page.getByRole('button',{name:'Delete event',exact:true}).click();
+ await chooseCalendarEventAction(page,'Delete event');
  await page.getByRole('dialog',{name:'Delete reminder?',exact:true}).getByRole('button',{name:'Delete reminder',exact:true}).click();
  await expect.poll(()=>liveReminders(page),{timeout:15000}).toEqual(['Email the caterer']);
  await expect(page.getByRole('button',{name:/^Book the venue edited,/})).toHaveCount(0);

@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "bf0f888222ce6f7f679cc35a306e2c14936dbdc6",
-  "ledgerSha256": "d6464dfd57d0cf56e35e3f1df8ad6e59d21464deb86ff95a1b9fa01571bde196",
+  "ledgerSha256": "39012fcdb8b8e25f12bbc6839fe0123ef4bdae2159456cffdce3f1717679143c",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -29,8 +29,8 @@
     "languageReview": 95,
     "parseErrors": 0,
     "candidates": 69993,
-    "writeSites": 68775,
-    "writeAssociations": 61650,
+    "writeSites": 68776,
+    "writeAssociations": 61651,
     "asynchronous": 8625,
     "unassignedWrites": 10538
   },
@@ -36029,7 +36029,7 @@
     },
     {
       "path": "apps/app/src/prototype/maps-adapter.ts",
-      "sha256": "8fa1d2468330bcbf37f74df094df62ecb443bc53f4919457234e63a95b04e4c0",
+      "sha256": "e3d38b3705183fb3e83ff7609a5310992594ba3ac2f142e478911fecf1379127",
       "allocatedModels": [
         "Maps",
         "MapsEventReturn",
@@ -36061,25 +36061,25 @@
         },
         {
           "owner": "installMapsChatAdapter",
-          "line": 330,
+          "line": 331,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "installMapsChatAdapter.answers",
-          "line": 332,
+          "line": 333,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installMapsChatAdapter.answer",
-          "line": 334,
+          "line": 335,
           "bindings": 1,
           "writes": 3
         },
         {
-          "owner": "installMapsChatAdapter.FunctionExpression@342",
-          "line": 343,
+          "owner": "installMapsChatAdapter.FunctionExpression@343",
+          "line": 344,
           "bindings": 1,
           "writes": 1
         }
@@ -40313,7 +40313,7 @@
     },
     {
       "path": "apps/app/src/prototype/settings-adapter.ts",
-      "sha256": "41e36332eb78867ec7568a110d7e3051236f577a61c1e12cf5374294c4004930",
+      "sha256": "01563da1e0d60899cd92068f77c46a0ff10368a3be3617e5f760e00e37f1da5a",
       "allocatedModels": [
         "AppearancePreferenceAdmission",
         "AutomaticAppUpdateSchedule",
@@ -40373,7 +40373,7 @@
           "owner": "installSettingsAdapter.ArrowFunction@565",
           "line": 570,
           "bindings": 36,
-          "writes": 557
+          "writes": 558
         },
         {
           "owner": "installSettingsAdapter.ArrowFunction@565.ArrowFunction@914",
@@ -226058,6 +226058,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "dcfc8f26b4f6f131454fab18e4499e7e3927545ad5cd4b64dc7a77d1753e4590"
+    "sha256": "074cb1f164546fe40dcb7b9321890b9d578b9c38f1e5bd4fe8ca6b14c826ca17"
   }
 }
