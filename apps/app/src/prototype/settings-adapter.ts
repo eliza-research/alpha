@@ -283,7 +283,9 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     const [installed, build, pending] = await Promise.all([device.snapshot(), system.getBuildInfo(), device.updateState()]);
     if (!current()) return;
     if (updateBusy || !idle()) throw Error('Current activity must finish');
-    if (pending.pending || installed.appAutomaticUpdates !== 'supported') return;
+    if (pending.pending) return;
+    if (installed.appAutomaticUpdates === 'starting') throw Error('Android is still starting');
+    if (installed.appAutomaticUpdates !== 'supported') return;
     const update = parseUpdateManifest(savedUpdate().manifest, {versionCode: installed.appVersionCode,
       launcher: build.launcher, signerSha256: installed.appSigner});
     if (!update) return;
@@ -291,6 +293,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     // renderer's saved-draft receipt before stopping the resident or committing.
     const result = await device.installUpdate({apkUrl:update.apkUrl,sha256:update.sha256,
       sizeBytes:update.sizeBytes,versionCode:update.versionCode,automatic:true});
+    if (result?.status === 'starting') throw Error('Android is still starting');
     if (result?.status === 'permission-required' || result?.status === 'unsupported') return;
   }
   let gmail = 'Not checked';

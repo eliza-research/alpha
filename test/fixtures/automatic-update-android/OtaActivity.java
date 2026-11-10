@@ -36,7 +36,7 @@ public final class OtaActivity extends Activity {
  static String digest(byte[] bytes)throws Exception{return java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));}
  private JSONObject snapshot()throws Exception{
   var info=getPackageManager().getPackageInfo(getPackageName(),PackageManager.GET_SIGNING_CERTIFICATES);
-  JSONObject result=new JSONObject().put("versionCode",info.getLongVersionCode()).put("uid",android.os.Process.myUid()).put("pid",android.os.Process.myPid())
+  JSONObject result=new JSONObject().put("versionCode",info.getLongVersionCode()).put("uid",android.os.Process.myUid()).put("pid",android.os.Process.myPid()).put("uptimeMillis",android.os.SystemClock.uptimeMillis())
    .put("firstInstallTime",info.firstInstallTime).put("lastUpdateTime",info.lastUpdateTime)
    .put("signerSha256",digest(info.signingInfo.getSigningCertificateHistory()[0].toByteArray()))
    .put("automaticCapability",SourcePolicy.automaticUpdateStatus(this)).put("sessionCount",getPackageManager().getPackageInstaller().getMySessions().size());
@@ -63,7 +63,7 @@ public final class OtaActivity extends Activity {
  }
  private void install()throws Exception{
   String admitted=SourcePolicy.automaticUpdateStatus(this);
-  if(!"supported".equals(admitted)){save(this,"attempt.json",new JSONObject().put("status",admitted));return;}
+  if(!"supported".equals(admitted)){save(this,"attempt.json",new JSONObject().put("status",admitted).put("uptimeMillis",android.os.SystemClock.uptimeMillis()));return;}
   File apk=new File(getFilesDir(),"candidate.apk");
   if(!getIntent().getStringExtra("sha256").equals(digest(Files.readAllBytes(apk.toPath()))))throw new IllegalArgumentException();
   var archive=getPackageManager().getPackageArchiveInfo(apk.getPath(),PackageManager.GET_SIGNING_CERTIFICATES);

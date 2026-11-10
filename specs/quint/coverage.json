@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "reviewDate": "2026-11-09",
+  "reviewDate": "2026-11-10",
   "coverageMeaning": "Reviewed domain allocation and source-drift ledger for authored code and declared consumed shared module dependencies. State-audit-required dependencies retain unproved field/transition obligations. File allocation and source hashes do not establish implementation refinement or exhaustive variable coverage.",
   "sourceRoots": [
     "apps/app/src",
@@ -6220,7 +6220,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "7267709a92e0d81544c8c9fc5c3f5b631eee5cbb283e39678b8ad8864f8db2d2",
+      "sha256": "9ecc1fd570c897af5b22ddc9b9787c67af4196c812c4904f6ce3630ad204777a",
       "stateAnchors": [
         {
           "line": 154,
@@ -6231,95 +6231,95 @@
           "text": "private static final String UPDATE_STATUS=\"ai.alphacompute.alphaphone.UPDATE_STATUS\";"
         },
         {
-          "line": 343,
+          "line": 345,
           "text": "var record=store().read();if(record==null||record.id.equals(liveOwner))return null;"
         },
         {
-          "line": 346,
+          "line": 348,
           "text": "var observation=ai.eliza.plugins.agent.updater.RuntimeUpdatePause.Session.PENDING;"
         },
         {
-          "line": 359,
+          "line": 361,
           "text": "var installed=context.getPackageManager().getPackageInfo(context.getPackageName(),0);"
         },
         {
-          "line": 386,
+          "line": 388,
           "text": "private static final Object updateBarrier=new Object();"
         },
         {
-          "line": 387,
+          "line": 389,
           "text": "private static final java.util.Set<AlphaDevicePlugin> updateBridges=new java.util.HashSet<>();"
         },
         {
-          "line": 388,
+          "line": 390,
           "text": "private final String updateBridgeId=java.util.UUID.randomUUID().toString();"
         },
         {
-          "line": 389,
+          "line": 391,
           "text": "private static volatile UpdateActivation activation;"
         },
         {
-          "line": 461,
+          "line": 463,
           "text": "var session=getContext().getPackageManager().getPackageInstaller().getSessionInfo(record.session);"
         },
         {
-          "line": 481,
+          "line": 483,
           "text": "try{var settled=UpdatePause.reconcile();if(settled!=null){settleUpdate(settled.id,BuildConfig.VERSION_CODE==settled.targetCode?\"installed\":\"canceled\");return true;}}catch(Exception unavailable){/* Unk"
         },
         {
-          "line": 488,
+          "line": 490,
           "text": "private final java.util.concurrent.ExecutorService updateWorker=java.util.concurrent.Executors.newSingleThreadExecutor();"
         },
         {
-          "line": 490,
+          "line": 492,
           "text": "private static volatile int updateSession;"
         },
         {
-          "line": 495,
+          "line": 497,
           "text": "private static volatile Intent updateConfirm;"
         },
         {
-          "line": 497,
+          "line": 499,
           "text": "private static volatile boolean updateDue;"
         },
         {
-          "line": 499,
+          "line": 501,
           "text": "private static volatile boolean updateOpen;"
         },
         {
-          "line": 503,
+          "line": 505,
           "text": "private static volatile long updateAsked;"
         },
         {
-          "line": 505,
+          "line": 507,
           "text": "private static volatile AlphaDevicePlugin updateOwner;"
         },
         {
-          "line": 507,
+          "line": 509,
           "text": "private final android.content.BroadcastReceiver updateStatus=new android.content.BroadcastReceiver(){"
         },
         {
-          "line": 546,
+          "line": 548,
           "text": "var current=getContext().getPackageManager().getPackageInstaller().getSessionInfo(id);"
         },
         {
-          "line": 561,
+          "line": 563,
           "text": "var pending=getContext().getPackageManager().getPackageInstaller().getSessionInfo(record.session);"
         },
         {
-          "line": 591,
+          "line": 593,
           "text": "private static final java.util.concurrent.atomic.AtomicBoolean updating=new java.util.concurrent.atomic.AtomicBoolean();"
         },
         {
-          "line": 597,
+          "line": 599,
           "text": "private static final java.util.concurrent.atomic.AtomicInteger updatesCommitted=new java.util.concurrent.atomic.AtomicInteger();"
         },
         {
-          "line": 607,
+          "line": 609,
           "text": "private volatile javax.net.ssl.HttpsURLConnection updateActive;"
         }
       ],
-      "integrationReview": "Reviewed merged source and upstream contract integration. Existing domain allocation is retained; refreshed hashes do not establish implementation refinement or device acceptance."
+      "integrationReview": "Reviewed merged source and upstream contract integration. Existing domain allocation is retained; refreshed hashes do not establish implementation refinement or device acceptance. Automatic admission now defers through 30 seconds of boot uptime before update effects; NativeUpdateStaging and NativeUpdateComposition bind the cold/warm entry boundary."
     },
     {
       "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaFilesPlugin.java",
@@ -33668,7 +33668,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "c85044b36ae548a0beccafff269d303889e94e8e5b5a831ff4b7657d72df48cf",
+      "sha256": "9c30af6e4ef46e98ffee2e0531b4643178478eadb08007f8701df564d602e9b4",
       "stateAnchors": [
         {
           "line": 213,
@@ -33683,67 +33683,67 @@
           "text": "}"
         },
         {
-          "line": 498,
+          "line": 501,
           "text": "if(!hasAppearancePreview(new URLSearchParams(location.search))){"
         },
         {
-          "line": 499,
+          "line": 502,
           "text": "// A read from storage or the system scheme carries a marker, so componentDidUpdate never writes it back."
         },
         {
-          "line": 500,
+          "line": 503,
           "text": "const apply=()=>{const theme=resolveAppearance(readAppearanceChoice());this.setState({theme,appearanceStorageRead:{theme}});};"
         },
         {
-          "line": 501,
+          "line": 504,
           "text": "if(!Capacitor.isNativePlatform()){"
         },
         {
-          "line": 503,
+          "line": 506,
           "text": "this.appearanceResumeListener=apply;"
         },
         {
-          "line": 506,
+          "line": 509,
           "text": "apply();"
         },
         {
-          "line": 528,
+          "line": 531,
           "text": "// The marker travels with React state, so queued external reads cannot echo an older theme."
         },
         {
-          "line": 529,
+          "line": 532,
           "text": "const external=this.state?.appearanceStorageRead;"
         },
         {
-          "line": 533,
+          "line": 536,
           "text": "catch { this.toast('Theme changed for this session, but could not be saved.'); }"
         },
         {
-          "line": 535,
+          "line": 538,
           "text": "};"
         },
         {
-          "line": 540,
+          "line": 543,
           "text": "window.removeEventListener('alpha:settings-page',this.settingsNavigation);"
         },
         {
-          "line": 948,
+          "line": 951,
           "text": "if(row.label==='Theme'&&row.kSeg){"
         },
         {
-          "line": 950,
+          "line": 953,
           "text": "const stored=readAppearanceChoice(),choice:AppearanceChoice=resolveAppearance(stored)===api.theme?stored:api.theme==='dark'?'dark':'light';"
         },
         {
-          "line": 953,
+          "line": 956,
           "text": "try{localStorage.setItem(APPEARANCE_KEY,next);}"
         },
         {
-          "line": 956,
+          "line": 959,
           "text": "owner?.setState({theme,appearanceStorageRead:{theme}});"
         }
       ],
-      "integrationReview": "Reviewed Files access copy distinguishes owner-granted all-files access from individually opened/shared files. No permission or provider authority changes; platform acceptance remains separate."
+      "integrationReview": "Reviewed Files access copy distinguishes owner-granted all-files access from individually opened/shared files. No permission or provider authority changes; platform acceptance remains separate. Starting snapshot and install replies use the existing single-owner scheduler retry; pending sessions and permission refusals retain their prior boundaries."
     },
     {
       "path": "apps/app/src/prototype/share-panel-adapter.ts",

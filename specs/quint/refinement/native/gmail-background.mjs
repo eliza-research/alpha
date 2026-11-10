@@ -60,7 +60,7 @@ export async function checkNativeGmailBackground(extraSources=[]) {
       }
     }
     const traces=javaTraceCampaign(harness,[...compiled,...fixture.paths],scenarios.map(name=>[name]));
-    const receipt=await checkTraces({model,sources,driverHashes,generatedSources,traces,
+    const receipt=await checkTraces({model,sources,driverHashes,generatedSources,traces,batchSize:8,
       scope:'bounded-orchestration',assumptions:[
         'The app-owned AlphaGmailPlugin, GmailBackground, GmailDeliveryWorker and CloudDeployment run with authenticated staged MailBackgroundDelivery and MailHistoryReconciliation. The exact native verified Cloud identity helper runs over synthetic responses.',
         'Every JVM URL open is intercepted and accepts only the exact constructed Cloud routes. No network request, socket, real credential or provider action is used. One held transport callback and two serial bridge instances exercise owner retirement and readback.',

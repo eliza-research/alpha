@@ -3218,7 +3218,15 @@
       "staysForegroundAndFindsLaterReleaseTest",
       "offlineRetriesAreBoundedAndRecoverTest",
       "backgroundInvalidatesBeforeLaterEffectTest",
-      "disposedInFlightCannotAcquireAnotherAttemptTest"
+      "disposedInFlightCannotAcquireAnotherAttemptTest",
+      "coldSnapshotRetriesBeforeAnyNativeRequestTest",
+      "coldInstallReplyRetriesWithoutOverlappingTest",
+      "pendingPrecedesColdCapabilityAndDoesNotDispatchTest",
+      "lateColdFactsAfterResumeLoseAuthorityTest",
+      "disposedColdReplyNeverRearmsTest",
+      "readyCannotBackgroundTest",
+      "readyCannotDisposeTest",
+      "readyDispatchCompletesTest"
     ],
     "sources": [
       "apps/app/src/prototype/settings-adapter.ts",
@@ -3227,16 +3235,27 @@
     "stateMapping": {
       "active/disposed/busy/failures/wakeAt": "Actual shared foreground scheduler snapshot",
       "valid": "Authority of the actual in-flight scheduler callback",
-      "now": "Controlled clock supplied to the scheduler"
+      "now": "Controlled clock supplied to the scheduler",
+      "poll.phase": "Actual product poll awaiting manifest, native facts or native install promise; completion is observed from the shared scheduler",
+      "poll.capability/pending/candidate": "Controlled native fact classes, actual pending-session result and actual source parser result",
+      "poll.requests/lastCapability/lastPending/lastCandidate/lastCurrent/lastIdle": "Actual install bridge call count and capability, pending, candidate, owner and idle observations at dispatch"
     },
     "abstractions": [
-      "One minute is one unit, normal interval four units. Native bridge completions and timer delivery are controlled.",
-      "Retries and periodic foreground progress are checked; eventual network service and Android background execution are separate obligations."
+      "One shared scheduler with interval4/retry1 controlled clock units; the default fifteen-minute/one-minute configuration is also tested by the owning renderer tests.",
+      "Four native capability classes; native SDK, consent and monotonic uptime/reboot ownership remain native admission obligations. The renderer does not own a second boot clock.",
+      "At most three native bridge requests in the finite model, at most two in source scenarios. A bridge request is not PackageInstaller session creation, installation or physical-device proof.",
+      "The original generic scheduler schedules remain. Product scenarios execute the actual poll and authenticated scheduler through controlled promise cutpoints, including pending precedence, exact signer admission, cold deferral and lifecycle invalidation.",
+      "Progress requires foreground timer delivery, eligible idle Home, suitable native capability and settling calls. OS acceptance, network availability and background delivery remain external.",
+      "The ready microstep is unobservable: actual facts admission, pure parsing and native dispatch share one synchronous JavaScript continuation. Lifecycle transitions are disabled only during that microstep; they remain enabled at real awaited ports."
     ],
     "bounds": {
       "maxSamples": 1000,
       "maxSteps": 80,
       "maxVerifyDepth": 6
-    }
+    },
+    "invariants": [
+      "NativeRequestWasAdmitted",
+      "PollHasOneOwner"
+    ]
   }
 ]

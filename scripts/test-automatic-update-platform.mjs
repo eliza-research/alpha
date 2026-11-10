@@ -70,7 +70,24 @@ try{
  // Synthetic consent on this disposable fixture only; production requires the owner's Android choice.
  adb('shell','cmd','appops','set',pkg,'REQUEST_INSTALL_PACKAGES','allow');
  adb('shell','am','start','-W','-n',activity,'--es','phase','install','--es','sha256',record.apks[1].sha256);
- record.attempt=await waitRead('attempt.json',value=>value.status==='committing');
+ record.earlyAutomatic=await waitRead('attempt.json',value=>value.status==='starting'||value.status==='committing');
+ if(record.earlyAutomatic.status==='starting'){
+  // A proven admission refusal has no session to retry. Observe the real native
+  // capability until it is ready; never replay a request that reached commit.
+  record.readinessObservations=[];let observedAt=record.earlyAutomatic.uptimeMillis,supported=false;
+  for(let i=0;i<60;i++){
+   adb('shell','am','start','-W','-n',activity,'--es','phase','readback');
+   const state=await waitRead('readback.json',value=>value.uptimeMillis>observedAt);observedAt=state.uptimeMillis;
+   assert.equal(state.versionCode,1);assert.equal(state.sessionCount,0,'A starting attempt must not create an installer session.');
+   for(const key of ['uid','firstInstallTime','preference','signerSha256','ciphertextSha256'])assert.equal(state[key],record.baseline[key],`${key} stays unchanged while starting`);
+   assert.equal(state.keystoreValueRetained,true);record.readinessObservations.push(state);
+   if(state.automaticCapability==='supported'){supported=true;break;}
+   assert.equal(state.automaticCapability,'starting');await pause(1000);
+  }
+  assert(supported,'Native automatic update capability must become supported within the bounded readiness poll.');
+  adb('shell','am','start','-W','-n',activity,'--es','phase','install','--es','sha256',record.apks[1].sha256);
+  record.attempt=await waitRead('attempt.json',value=>value.status==='committing');
+ }else record.attempt=record.earlyAutomatic;
  // Android may defer a background manifest broadcast until this package is active. Observe the
  // installed successor independently, then launch only readback (never Android's confirmation).
  let replaced=false;
