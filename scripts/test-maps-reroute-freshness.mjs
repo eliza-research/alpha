@@ -5,7 +5,8 @@ import vm from 'node:vm';
 import { stripTypeScriptTypes } from '../test/support/strip-types.mjs';
 import { usableNavigationFix } from '../.eliza/client-features/plugins/plugin-maps/src/client/navigation-fix.ts';
 import { MapsController } from '../.eliza/client-features/plugins/plugin-maps/src/client/state.ts';
-import { SavedPlaces } from '../.eliza/client-features/plugins/plugin-maps/src/client/saved-places.ts';
+import { SavedPlaces } from '../apps/app/src/maps/saved-places.ts';
+import { isGoogleMapsCoverage, isGoogleMapsProvider, isLocalMapsPlace } from '../apps/app/src/maps/cloud-provider.ts';
 import { MapsFailure, coordinate, failure } from '../.eliza/client-features/plugins/plugin-maps/src/client/contracts.ts';
 import { distanceToRoute, routeProgress } from '../apps/app/src/maps/route-distance.ts';
 import { atStep, guidanceView } from '../apps/app/src/maps/guidance.ts';
@@ -37,7 +38,9 @@ async function fixture() {
  const context = vm.createContext({console,queueMicrotask, setTimeout, clearTimeout, AbortController,
   MapsScreenController, shareMap:async()=>'closed', insideCloudCoverage:()=>true, describeMapsDisclosure:()=>'', DailyApps:{}, mapsEventStillThere:()=>false, connectionController:{getSnapshot:()=>({open:false})},
   initializeRegionalMaps:async()=>{}, regionalDiagnostics:()=>({}),
-  MapsController:class extends MapsController { constructor(c,p){super(c,p,new SavedPlaces('freshness',storage),new Location());} },
+  SavedPlaces:class extends SavedPlaces { constructor(_storage,isGoogleProvider){super(storage,isGoogleProvider);} },
+  MapsController:class extends MapsController { constructor(c,p,saved){super(c,p,saved,new Location());} },
+  isGoogleMapsCoverage,isGoogleMapsProvider,isLocalMapsPlace,googleMapsLogo:'fixture-google-attribution.svg',
   locationPermissionGranted:async()=>true,NativeMapsLocation:Location,BackgroundNavigation:Background,NavigationVoice:Voice,registerPlugin:()=>({}),Capacitor:{isNativePlatform:()=>false},isAndroid:false,
   regionalMapsConfigured:false,initializeCloudMaps:async()=>{},regionalMap:()=>undefined,cloudMapsCoverage:()=>undefined,cloudMapsBasemap:()=>undefined,cloudMapsDiagnostics:()=>({}),globalBasemap:{attribution:'Fixture'},
   mapsConnection:()=>({config,provider}),onMapsConnectionChange:()=>noop,
