@@ -5064,6 +5064,10 @@ class Component extends DCLogic {
     this.clock = setInterval(function () { self.setState({ now: Date.now() }); }, 15000);
     this.chatWindowScroll = function (event) { self.growChatWindow(event.target); };
     document.addEventListener("scroll", this.chatWindowScroll, true);
+    this.chatReadingInput = function (event) {
+      if (event.target instanceof Element && event.target.closest("[data-alpha-transcript]")) self.cancelVoiceScrollFollow();
+    };
+    for (var kind of ["wheel", "pointerdown", "touchstart", "keydown"]) document.addEventListener(kind, this.chatReadingInput, true);
     this.chatWindowCommitted = this.chatWindowRows;
     this.preset(this.props.initial || "boot");
   }
@@ -5082,6 +5086,20 @@ class Component extends DCLogic {
     this.chatWindowSize = rows + CHAT_PAGE_ROWS;
     this.setState({});
   }
+  beginVoiceScrollFollow() {
+    this.voiceScrollOpened = !["sheet", "full"].includes(this.S().chat);
+    this.voiceScrollPending = null;
+    this.voiceScrollLastUserId = this.S().msgs.filter(m => m.from === "user").at(-1)?.id;
+  }
+  followVoiceTurn(conversationId, text) {
+    var list = document.querySelector("[data-alpha-transcript]");
+    var following = this.voiceScrollOpened || list && list.scrollHeight - list.scrollTop - list.clientHeight < 80;
+    this.voiceScrollOpened = false;
+    if (following && window.getSelection()?.isCollapsed !== false) {
+      this.voiceScrollPending = { conversationId, text: text.trim(), previousUserId: this.voiceScrollLastUserId };
+    }
+  }
+  cancelVoiceScrollFollow() { this.voiceScrollOpened = false; this.voiceScrollPending = null; }
   getSnapshotBeforeUpdate(_props, previous) {
     var list = document.querySelector("[data-alpha-transcript]");
     if (!list) { this.chatScrollSnapshot = null; return null; }
@@ -5098,7 +5116,14 @@ class Component extends DCLogic {
     var anchor = rows.find(function (row) { return row.getBoundingClientRect().bottom >= bounds.top; });
     var oldUser = (previous.msgs || []).filter(function (m) { return m.from === "user"; }).at(-1);
     var newUser = state.msgs.filter(function (m) { return m.from === "user"; }).at(-1);
-    var newTurn = state.typing && newUser && newUser.id !== oldUser?.id;
+    var pendingVoice = this.voiceScrollPending;
+    var voiceTurn = isOpen && pendingVoice && newUser && newUser.id !== pendingVoice.previousUserId
+      && newUser.messageBinding?.conversationId === pendingVoice.conversationId
+      && String(newUser.text || "").trim() === pendingVoice.text && window.getSelection()?.isCollapsed !== false;
+    if (pendingVoice && (!isOpen || newUser && newUser.id !== pendingVoice.previousUserId)) {
+      this.voiceScrollPending = null; this.voiceScrollLastUserId = newUser?.id;
+    }
+    var newTurn = voiceTurn || state.typing && newUser && newUser.id !== oldUser?.id;
     var atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 80 && window.getSelection()?.isCollapsed !== false;
     var reading = { anchor: anchor?.getAttribute("data-alpha-message-id"), offset: anchor ? (anchor.getBoundingClientRect().top - bounds.top) / scale : 0 };
     // Closing the chat (Back, HOME) remembers where the owner was reading older history; reopening
@@ -5140,6 +5165,7 @@ class Component extends DCLogic {
   componentWillUnmount() {
     this.chatScrollObserver?.disconnect();
     document.removeEventListener("scroll", this.chatWindowScroll, true);
+    for (var kind of ["wheel", "pointerdown", "touchstart", "keydown"]) document.removeEventListener(kind, this.chatReadingInput, true);
     clearInterval(this.clock); clearInterval(this.vI);
     var G = this.G || {}; Object.keys(G).forEach(function (k) { G[k].forEach(clearTimeout); });
     var I = this.I || {}; Object.keys(I).forEach(function (k) { I[k].forEach(clearInterval); });

@@ -12402,7 +12402,7 @@
     },
     {
       "path": "apps/app/src/browser/note-audio-store.ts",
-      "sha256": "918c9412a43387762bb3dd7e8d0f5332d787be701042db3ec442787e90df1747",
+      "sha256": "28cbfe1779ea411aebcbbb33858a220e21aca51d6bf2070448180fe0950a873f",
       "models": [
         "NotesLifecycle",
         "NotesRecorderMediaAdmission"
@@ -12430,7 +12430,8 @@
           "line": 13,
           "text": "export const {retainAudio,audioRecord,audioDeletionStatus,changeAudioDeleted,purgeAudio,migrateAudio}=store;"
         }
-      ]
+      ],
+      "integrationReview": "2026-11-10: accepted voice transcript follow reviewed with both delivery orders and reading cancellation; Notes pending audio patch independently reviewed after MIME correction. Models are bounded and do not prove live provider or installed-device behavior."
     },
     {
       "path": "apps/app/src/browser/notice-action.ts",
@@ -13635,7 +13636,7 @@
     },
     {
       "path": "apps/app/src/browser/voice.ts",
-      "sha256": "895093f74afd65c2e1e43bf9d91b6861dec10115e96a87f4cf4a4cb1dafc39fa",
+      "sha256": "007c20b809f59b30dd2ec07e4352d4e55d5047a0ac9a65a548b07737c1d53bd8",
       "models": [
         "VoiceSession",
         "NotesRecorderMediaAdmission"
@@ -14035,7 +14036,8 @@
           "line": 393,
           "text": "target.addEventListener(type,done);for(const name of failures)target.addEventListener(name,failed);signal.addEventListener('abort',aborted);"
         }
-      ]
+      ],
+      "integrationReview": "2026-11-10: accepted voice transcript follow reviewed with both delivery orders and reading cancellation; Notes pending audio patch independently reviewed after MIME correction. Models are bounded and do not prove live provider or installed-device behavior."
     },
     {
       "path": "apps/app/src/browser/workflow-calendar.ts",
@@ -15680,7 +15682,7 @@
     },
     {
       "path": "apps/app/src/prototype/agent-adapter.ts",
-      "sha256": "b4b3c2e4fdc864ec97ff80709eb120412db60482faea6911a956908cb5f8d498",
+      "sha256": "31f98b2ecf9e32cf786767e69e110a4fc54d16eb3b217503b10d4d4d3c21bd83",
       "models": [
         "Application",
         "AssistantConversation",
@@ -15690,7 +15692,8 @@
         "WorkflowClockAdmission",
         "NotesTrashReadPublication",
         "PreviousNotesAvailability",
-        "PreviousNotesSourceOpening"
+        "PreviousNotesSourceOpening",
+        "VoiceTranscriptFollow"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -16933,7 +16936,7 @@
         }
       ],
       "reviewStatus": "state-audit-required",
-      "integrationReview": "2026-11-09 mail reader: automatic same-account thread read preserves the fresher selected body and all operation receipts. Compact menu changes presentation only. Email chat attachment reuses message persistence, validates the exact selected source and destination before sending, and leaves provider text untrusted. Existing models remain projections; complete mail rendering and revision/expiry checks are tested separately."
+      "integrationReview": "2026-11-10: accepted voice transcript follow reviewed with both delivery orders and reading cancellation; Notes pending audio patch independently reviewed after MIME correction. Models are bounded and do not prove live provider or installed-device behavior."
     },
     {
       "path": "apps/app/src/prototype/agent-calendar-adapter.ts",
@@ -25025,12 +25028,13 @@
         "AppearancePreferenceAdmission",
         "WorkflowClockAdmission",
         "SettingsPageFocus",
-        "CalendarFormControls"
+        "CalendarFormControls",
+        "VoiceTranscriptFollow"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "beebe4acb3a5d0b996322d9a28985a4df6542f2b5789ca94930b5078e0fcc89e",
+      "sha256": "b974b26073ca87c165e79956c3700281f0b31ff2585153d6a8ee3cded22d28a0",
       "stateAnchors": [
         {
           "line": 26,
@@ -30577,7 +30581,7 @@
           "text": "var ICON_ASSETS = Object.fromEntries(Object.entries(iconCatalog.ic).map(function (entry) { return [IC[entry[0]], '/icons/lucide/' + entry[1] + '.svg']; }));"
         }
       ],
-      "integrationReview": "Retained Calendar form window, monotonic Start later and month-row construction reviewed and source-refined under CalendarFormControls; all existing domain allocations and open platform obligations remain."
+      "integrationReview": "2026-11-10: accepted voice transcript follow reviewed with both delivery orders and reading cancellation; Notes pending audio patch independently reviewed after MIME correction. Models are bounded and do not prove live provider or installed-device behavior."
     },
     {
       "path": "apps/app/src/prototype/mvp-features.ts",
@@ -34967,19 +34971,20 @@
         "VoiceSession",
         "ControllerComposition",
         "BatchCaptureCompletion",
-        "NotesRecorderMediaAdmission"
+        "NotesRecorderMediaAdmission",
+        "VoiceTranscriptFollow"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "184549594547be71995cc61d06558e4048ae9c597e229574f8b248765a8eaae2",
+      "sha256": "2951ea2f23bbe17c30bef0dcdf04bdb0b5b4887e00c7a7d520d4f14defc10215",
       "stateAnchors": [
         {
           "line": 1105,
           "text": "window.dispatchEvent(new CustomEvent(STARTUP_PERMISSIONS_REOPEN, {detail:{permission:'microphone'}}));"
         }
       ],
-      "integrationReview": "2026-11-09: Cloud now uses same canonical bounded recovery as Direct; readiness and failure visible without changing manual mute/Stop. 42 tests including actual SDK reconnection passed; live Cloud returned to Listening at 74s without another Talk click. Renewal latency remains open. 2026-11-09: Owned recorder failure opens only the existing microphone review while Notes is visible. No permission is granted, no setup history is reset and no recording retries automatically."
+      "integrationReview": "2026-11-10: accepted voice transcript follow reviewed with both delivery orders and reading cancellation; Notes pending audio patch independently reviewed after MIME correction. Models are bounded and do not prove live provider or installed-device behavior."
     },
     {
       "path": "apps/app/src/prototype/workflow-adapter.ts",
@@ -39296,9 +39301,10 @@
     },
     {
       "path": "apps/app/src/runtime/development-cartesia-conversation.ts",
-      "sha256": "e0567afa559337d619a218058c82dc7bd4e6d082f6488141d7fd9cbc757f031f",
+      "sha256": "e65e56436c0d73409c0f3f8233f0fdfa4ec776d558e07eab2a520a2aeb6fc9c3",
       "models": [
-        "DevelopmentSurfaces"
+        "DevelopmentSurfaces",
+        "VoiceTranscriptFollow"
       ],
       "scope": "development-only",
       "treatment": "state-and-transition-projection",
@@ -39468,7 +39474,7 @@
           "text": "const previous=renderer;renderer=next;pendingRenderer=undefined;"
         }
       ],
-      "integrationReview": "2026-11-09: Cloud now uses same canonical bounded recovery as Direct; readiness and failure visible without changing manual mute/Stop. 42 tests including actual SDK reconnection passed; live Cloud returned to Listening at 74s without another Talk click. Renewal latency remains open."
+      "integrationReview": "2026-11-10: accepted voice transcript follow reviewed with both delivery orders and reading cancellation; Notes pending audio patch independently reviewed after MIME correction. Models are bounded and do not prove live provider or installed-device behavior."
     },
     {
       "path": "apps/app/src/runtime/development-cartesia-flag.ts",
@@ -47916,9 +47922,9 @@
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
-      "sha256": "e4d7a4c50aef1a86e6b5594d5d08fbae40e6745b7a031bd95fd13549aebf6236",
+      "sha256": "daf0f2a4748ab4d0e423be25fe84c5d9097f023f5ef94e8c64d5e39e2f0342c6",
       "stateAnchors": [],
-      "integrationReview": "Reviewed integration source. Domain allocation is retained; source-hash refresh does not establish semantic refinement. See targeted validation and remaining obligations."
+      "integrationReview": "2026-11-10: accepted voice transcript follow reviewed with both delivery orders and reading cancellation; Notes pending audio patch independently reviewed after MIME correction. Models are bounded and do not prove live provider or installed-device behavior."
     },
     {
       "path": "scripts/prepare-embedding-host.mjs",
@@ -619283,7 +619289,7 @@
         "InboxProviderDrafts",
         "NativeGoogleHostArtifact"
       ],
-      "sha256": "e4d7a4c50aef1a86e6b5594d5d08fbae40e6745b7a031bd95fd13549aebf6236",
+      "sha256": "daf0f2a4748ab4d0e423be25fe84c5d9097f023f5ef94e8c64d5e39e2f0342c6",
       "integrationReview": "Retains the reviewed source boundary and authenticated patch catalog; integration also admits installed dependency ranges and bounded source-copy helpers. Configuration identity alone is not runtime/refinement evidence."
     },
     {

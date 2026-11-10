@@ -308,6 +308,7 @@ export const CLIENT_FEATURE_PATHS = [
   'packages/auth/src/auth/cloud-resident-binding.ts',
 ];
 export const CLIENT_FEATURE_PATCHES = [
+  ['notesPendingAudioPatch', 'notes-pending-audio-client', 'plugins/plugin-notes/src/client/notes-audio-store.ts'],
   ['appUpdateResumePatch', 'app-update-resume-client', 'packages/ui/src/state/app-update-gate.ts'],
   ['filesListIdentityPatch', 'files-list-identity-client', 'plugins/plugin-files/src/browser/files-browser-adapter.ts'],
   ['filesStorageQueryPatch', 'files-storage-query-client', 'plugins/plugin-files/src/browser/storage-volume.ts'],
