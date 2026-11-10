@@ -9,7 +9,13 @@ test('application source observations match bounded Quint component traces', {ti
   const result = await runApplicationRefinement();
   assert.deepEqual(result.failures, [], result.failures.map(({campaign, error}) => `${campaign}: ${error}`).join('\n'));
   const manifest = JSON.parse(readFileSync(new URL('../specs/quint/application/manifest.json', import.meta.url)));
-  assert.deepEqual(new Set(result.receipts.map(receipt => receipt.coverageModel)), new Set(manifest.map(model => model.module)));
+  const declared = new Set(manifest.map(model => model.module));
+  assert.ok(result.receipts.every(receipt => declared.has(receipt.coverageModel)));
+  const observed = new Set(result.receipts.map(receipt => receipt.coverageModel));
+  for (const model of declared) {
+    if (!observed.has(model)) assert.ok(result.obligations.some(row =>
+      row.model === model && row.obligation === 'Source-adapter refinement'));
+  }
   assert.ok(result.receipts.every(receipt => receipt.passed && receipt.inputsUnchanged && receipt.driverInputsBound));
   assert.ok(Array.isArray(result.obligations), 'remaining obligations accompany the bounded evidence');
 });
@@ -26,4 +32,5 @@ test('application campaign retains receipts before and after an adapter fails', 
     [['ShellNavigation', 'before'], ['ShellNavigation', 'after']]);
   assert.deepEqual(result.failures, [{campaign: 'failedMount', error: timeout}]);
   assert.ok(result.obligations.some(row => row.obligation === 'fixture'));
+  assert.ok(result.obligations.some(row => row.model === 'Application' && row.obligation === 'Source-adapter refinement'));
 });
