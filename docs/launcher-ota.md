@@ -190,6 +190,17 @@ delivery path until a native producer bridge is separately qualified.
 
 ## Acceptance on the phone host
 
+The [historical DAE software qualification](evidence/launcher-ota-dae-qualification-20261110.json)
+records four freshly packaged Cloud APKs for `ai.alphacompute.alphaphone` at
+`f452aa42` and the passing full repository run at `019b289325`. The production
+input trees at those two DAE commits match exactly; they do not qualify the
+current SDK `75b44015`. The full run reports 5,065 passed tests, zero failures,
+four explicit environment/applicability skips and all 741 model checks passed.
+Release APKs are unsigned; all four APKs are non-distributable. Signing,
+exact-APK voice, public feed delivery and phone/image acceptance remain open. Start both deployment
+surfaces with a fresh baseline of the new package; an old-namespace installation
+cannot be updated into it.
+
 The historical [November 9 software verification](evidence/launcher-ota-verification-20261109.json)
 records consumer `17dacc127beb7febf5520b078f4d647f3ed9a755` with SDK
 `9add52f6b83efa77241fb72ae769729121944cac`: its full repository run, four Cloud
