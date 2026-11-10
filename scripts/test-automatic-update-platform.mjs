@@ -94,6 +94,16 @@ try{
   try{record.fixtureError=read('error.json');}catch{}
   try{record.lastReadback=read('readback.json');}catch{}
   try{record.lastStatus=read('status.json');}catch{}
+  record.failureDiagnostics={};
+  for(const [name,args] of [['package-dump',['shell','dumpsys','package',pkg]],['appops',['shell','cmd','appops','get',pkg]],['uptime',['shell','cat','/proc/uptime']]]){
+   const file=`failure-${name}.txt`,destination=path.join(output,file);
+   try{fs.writeFileSync(destination,adb(...args));record.failureDiagnostics[name]={file,sha256:sha(destination)};}
+   catch(diagnostic){
+    record.failureDiagnostics[name]={file,error:diagnostic.message};
+    try{fs.writeFileSync(destination,String(diagnostic.stdout??'')+String(diagnostic.stderr??''));record.failureDiagnostics[name].sha256=sha(destination);}
+    catch(writeError){record.failureDiagnostics[name].writeError=writeError.message;}
+   }
+  }
  }
  throw error;
 }finally{

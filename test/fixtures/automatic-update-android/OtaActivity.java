@@ -75,7 +75,7 @@ public final class OtaActivity extends Activity {
   int id=installer.createSession(params);
   try(PackageInstaller.Session session=installer.openSession(id)){
    try(var in=new FileInputStream(apk);var out=session.openWrite("base.apk",0,apk.length())){in.transferTo(out);session.fsync(out);}
-   save(this,"attempt.json",new JSONObject().put("status","committing").put("session",id).put("pid",android.os.Process.myPid()));
+   save(this,"attempt.json",new JSONObject().put("status","committing").put("session",id).put("pid",android.os.Process.myPid()).put("uptimeMillis",android.os.SystemClock.uptimeMillis()));
    session.commit(PendingIntent.getBroadcast(this,id,new Intent(this,ResultReceiver.class),PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_MUTABLE).getIntentSender());
   }
  }
@@ -98,7 +98,15 @@ public final class OtaActivity extends Activity {
  }
  public static final class ResultReceiver extends BroadcastReceiver {
   @Override public void onReceive(Context context,Intent intent){
-   try{save(context,"status.json",new JSONObject().put("status",intent.getIntExtra(PackageInstaller.EXTRA_STATUS,PackageInstaller.STATUS_FAILURE)).put("session",intent.getIntExtra(PackageInstaller.EXTRA_SESSION_ID,-1)).put("pid",android.os.Process.myPid()));}catch(Exception ignored){}
+   try{
+    Intent confirmation=intent.getParcelableExtra(Intent.EXTRA_INTENT,Intent.class);
+    String message=intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE);
+    JSONObject result=new JSONObject().put("status",intent.getIntExtra(PackageInstaller.EXTRA_STATUS,PackageInstaller.STATUS_FAILURE)).put("session",intent.getIntExtra(PackageInstaller.EXTRA_SESSION_ID,-1)).put("pid",android.os.Process.myPid()).put("uptimeMillis",android.os.SystemClock.uptimeMillis())
+     .put("statusMessage",message==null?JSONObject.NULL:message)
+     .put("confirmationAction",confirmation==null||confirmation.getAction()==null?JSONObject.NULL:confirmation.getAction())
+     .put("confirmationComponent",confirmation==null||confirmation.getComponent()==null?JSONObject.NULL:confirmation.getComponent().flattenToString());
+    save(context,"status.json",result);
+   }catch(Exception ignored){}
    // Deliberately never launch optional confirmation: this campaign asserts that none was needed.
   }
  }
