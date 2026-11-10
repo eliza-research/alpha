@@ -5,7 +5,7 @@ import {call, checkpoint, sourceContext, tick, trace} from './support.mjs';
 
 const model = 'SharePanelAdmission';
 const source = 'apps/app/src/runtime/share-panel.ts';
-const labels = {email: 'Share to email', external: 'Share externally', copy: 'Copy text', save: 'Save locally', cancel: 'Cancel'};
+const labels = {email: 'Email', external: 'Share', copy: 'Copy text', save: 'Save file', cancel: 'Close share'};
 const ownInputs = [source, fileURLToPath(import.meta.url), fileURLToPath(new URL('./support.mjs', import.meta.url)),
   fileURLToPath(new URL('../../../../test/support/strip-types.mjs', import.meta.url))];
 
@@ -52,17 +52,16 @@ function sharePanelFixture() {
       };
       const done = openSharePanel({title: 'Synthetic item ' + panel.id, current: () => panel.current,
         email: email ? run('email') : undefined, external: run('external'), copy: run('copy'), save: run('save')});
-      panel.dialog = [...document.querySelectorAll('dialog')].find(dialog =>
-        [...dialog.querySelectorAll('p')].some(p => p.textContent === 'Synthetic item ' + panel.id));
+      panel.dialog = document.querySelector('dialog.alpha-share-panel');
       panel.buttons = Object.fromEntries([...panel.dialog?.querySelectorAll('button') ?? []].map(button =>
-        [Object.keys(labels).find(name => labels[name] === button.textContent), button]));
+        [Object.keys(labels).find(name => labels[name] === (button.textContent||button.getAttribute('aria-label'))), button]));
       void done.then(() => settled.add(panel.id));
     },
     choose(id, destination, outcome) {
       const panel = panels[id - 1];
       panel.outcome = outcome;
       // Retain the actual button to exercise a late or repeated DOM event.
-      panel.buttons[destination].dispatchEvent(new window.MouseEvent('click', {bubbles: true, cancelable: true}));
+      panel.buttons[destination]?.dispatchEvent(new window.MouseEvent('click', {bubbles: true, cancelable: true}));
     },
     invalidate() {current().current = false;},
     poll() {for (const run of [...polls]) run();},

@@ -852,3 +852,20 @@ html[data-alpha-browser-underlay] [data-alpha-layer="app"]{background:linear-gra
 .mail-thread-message small { color:var(--mut); white-space:nowrap; }
 .mail-thread-message > span:last-child { color:var(--mut); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; font-size:14px; }
 .mail-thread-page { min-height:44px; color:var(--acct); }
+
+/* The viewer has one secondary-action menu; primary controls stay above the dock. */
+.photo-viewer-menu > div { min-width:208px; max-width:calc(100vw - 40px); }
+.photo-viewer-menu > div button { display:flex; align-items:center; gap:12px; white-space:nowrap; }
+.photo-viewer-menu .alpha-compute-mark { width:20px; height:20px; flex-shrink:0; }
+.photo-viewer-menu .i { width:20px; height:20px; flex-shrink:0; }
+[data-alpha-popup] .photo-info-sheet[role="dialog"] { left:8px!important; right:8px!important; bottom:calc(var(--alpha-dock-reserve,108px) + 8px)!important; border-radius:28px!important; padding:12px 24px 24px!important; }
+.alpha-share-panel::backdrop { background:rgba(0,0,0,.35); }
+.alpha-share-panel h2 { margin:0; font-size:1.5em; line-height:1.2; }
+.alpha-share-panel .share-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:20px; }
+.alpha-share-panel .share-close { width:44px; min-height:44px; padding:10px; border:0; border-radius:50%; background:var(--s2); color:inherit; display:grid; place-items:center; }
+.alpha-share-panel .share-close::before { content:""; display:block; width:22px; height:22px; background:currentColor; mask:url('/icons/lucide/x.svg') center/contain no-repeat; }
+.alpha-share-panel .share-row { display:flex; align-items:center; gap:12px; width:100%; min-height:52px; padding:14px 16px; margin-top:8px; border:0; border-radius:16px; background:var(--s2,#eee); color:inherit; text-align:left; font:inherit; }
+.alpha-share-panel .share-row::before { content:""; width:21px; height:21px; flex:none; background:currentColor; mask:var(--share-icon) center/contain no-repeat; }
+.alpha-share-panel [role="status"]:empty { display:none; }
+
+[data-alpha-popup] .files-actions-menu[role="dialog"] { bottom:auto!important; height:auto; max-height:calc(100% - var(--alpha-dock-reserve,108px) - 112px)!important; }

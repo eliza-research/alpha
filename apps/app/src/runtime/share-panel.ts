@@ -15,29 +15,32 @@ export function openSharePanel(options:SharePanelOptions):Promise<void>{
  return new Promise(resolve=>{
   const prior=document.activeElement as HTMLElement|null,dialog=document.createElement('dialog');
   dialog.className='alpha-share-panel';dialog.setAttribute('aria-label','Share');
-  Object.assign(dialog.style,{border:'0',borderRadius:'24px',padding:'24px',width:'min(360px,calc(100vw - 32px))',maxHeight:'80dvh',boxSizing:'border-box',background:'var(--bg,#fff)',color:'var(--fg,#222)',overflow:'auto'});
+  Object.assign(dialog.style,{border:'0',borderRadius:'24px',padding:'20px',width:'min(360px,calc(100vw - 32px))',maxHeight:'80dvh',boxSizing:'border-box',background:'var(--bg,#fff)',color:'var(--fg,#222)',overflow:'auto'});
   const theme=document.querySelector('.os');if(theme){const style=getComputedStyle(theme);dialog.style.fontSize=style.fontSize;dialog.style.fontFamily=style.fontFamily;for(const name of ['--bg','--fg','--s2','--mut'])dialog.style.setProperty(name,style.getPropertyValue(name));}
-  const heading=document.createElement('h2');heading.textContent='Share';heading.style.margin='0 0 8px';
-  const title=document.createElement('p');title.textContent=options.title;Object.assign(title.style,{overflowWrap:'anywhere',margin:'0 0 18px',color:'var(--mut,#666)'});
+  const heading=document.createElement('h2');heading.textContent='Share';
+  const header=document.createElement('div');header.className='share-heading';
+  const close=document.createElement('button');close.type='button';close.className='share-close';close.setAttribute('aria-label','Close share');close.style.font='inherit';header.append(heading,close);
+  const place=()=>{const frame=document.querySelector<HTMLElement>('.alpha-phone [data-screen="1"]');if(!frame)return;const rect=frame.getBoundingClientRect(),scale=rect.width/frame.offsetWidth,reserve=(parseFloat(getComputedStyle(frame).getPropertyValue('--alpha-dock-reserve'))||108)*scale,lower=Math.min(innerHeight-12,rect.bottom-reserve-8),upper=Math.max(12,rect.top+16);Object.assign(dialog.style,{position:'fixed',margin:'0',inset:'auto',left:`${Math.max(12,rect.left+12)}px`,bottom:`${innerHeight-lower}px`,width:`${Math.max(0,Math.min(innerWidth-24,rect.width-24))}px`,maxHeight:`${Math.max(0,lower-upper)}px`});};
   const status=document.createElement('p');status.setAttribute('role','status');
   const retirementEvents=['launcher-home','alpha:device-state','alpha:dev-incoming-call'];
   let selectionWatch:ReturnType<typeof setInterval>;
   let closed=false;
-  const finish=()=>{if(closed)return;closed=true;document.removeEventListener('visibilitychange',hidden);window.removeEventListener('alpha-back',back,true);window.removeEventListener('pagehide',finish);for(const event of retirementEvents)window.removeEventListener(event,finish);clearInterval(selectionWatch);if(openPanel===finish)openPanel=undefined;dialog.close();dialog.remove();if(prior?.isConnected&&!document.hidden)prior.focus();resolve();};
+  const finish=()=>{if(closed)return;closed=true;document.removeEventListener('visibilitychange',hidden);window.removeEventListener('alpha-back',back,true);window.removeEventListener('pagehide',finish);for(const event of retirementEvents)window.removeEventListener(event,finish);clearInterval(selectionWatch);window.removeEventListener('resize',place);if(openPanel===finish)openPanel=undefined;dialog.close();dialog.remove();if(prior?.isConnected&&!document.hidden)prior.focus();resolve();};
   const hidden=()=>{if(document.hidden)finish();};
   const back=(event:Event)=>{event.preventDefault();event.stopImmediatePropagation();finish();};
   const action=(label:string,run?:()=>unknown|Promise<unknown>,reason?:string)=>{
-   const button=document.createElement('button');button.type='button';button.textContent=label;Object.assign(button.style,{display:'block',width:'100%',minHeight:'48px',padding:'12px 16px',marginTop:'8px',border:'0',borderRadius:'14px',background:'var(--s2,#eee)',color:'inherit',textAlign:'left',font:'inherit'});
+   const button=document.createElement('button');button.type='button';button.className='share-row';button.style.font='inherit';button.textContent=label;button.style.setProperty('--share-icon',`url('/icons/lucide/${label==='Email'?'mail':label==='Share'?'share-2':label==='Save file'?'download':'copy'}.svg')`);
    if(!run){button.disabled=true;button.style.opacity='.5';if(reason){const hint=document.createElement('p');hint.textContent=reason;hint.style.fontSize='13px';dialog.append(button,hint);return;}}
    button.onclick=()=>{if(closed)return;if(document.hidden||!options.current()){status.textContent='The selection changed. Close and choose it again.';return;}finish();try{void Promise.resolve(run?.()).catch(destinationFailure);}catch(error){destinationFailure(error);}};dialog.append(button);
   };
-  dialog.append(heading,title);if(options.email||options.emailUnavailable!==null)action('Share to email',options.email,options.emailUnavailable||'Email is unavailable for this selection.');action('Share externally',options.external);
+  close.onclick=finish;dialog.append(header);if(options.email)action('Email',options.email);action('Share',options.external);
   if(options.copy)action(options.copyLabel||'Copy text',options.copy);
-  if(options.save)action('Save locally',options.save);
-  action('Cancel',()=>{});dialog.append(status);dialog.addEventListener('cancel',event=>{event.preventDefault();finish();});dialog.addEventListener('close',finish);
+  if(options.save)action('Save file',options.save);
+  dialog.append(status);dialog.addEventListener('click',event=>{if(event.target===dialog){const rect=dialog.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)finish();}});dialog.addEventListener('cancel',event=>{event.preventDefault();finish();});dialog.addEventListener('close',finish);
   // Keep keyboard traversal inside the panel; chooser handoff happens only after finish().
   dialog.addEventListener('keydown',event=>{if(event.key!=='Tab')return;const buttons=Array.from(dialog.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')),first=buttons[0],last=buttons.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}});
   document.addEventListener('visibilitychange',hidden);window.addEventListener('alpha-back',back,true);window.addEventListener('pagehide',finish);for(const event of retirementEvents)window.addEventListener(event,finish);selectionWatch=setInterval(()=>{if(!options.current())finish();},250);document.body.append(dialog);openPanel=finish;
+  window.addEventListener('resize',place);place();
   try{dialog.showModal();dialog.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();}catch{finish();}
  });
 }

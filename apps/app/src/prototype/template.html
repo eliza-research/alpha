@@ -1805,23 +1805,23 @@
             <h2 style="margin: 0; font-size: 15px; font-weight: 600">{{photos.v.day}}</h2>
             <div style="font-size: 12.5px; opacity: .72; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{photos.v.sub}}</div>
           </div>
-          <sc-if value="{{photos.v.ask}}"><button class="ib" aria-label="{{photos.v.askLabel}}" onClick="{{photos.v.ask}}"><span style="width: 30px; height: 30px; border-radius: 15px; background: rgba(255,255,255,.16); display: flex; align-items: center; justify-content: center; font-family: Denton, Fraunces, Georgia, serif; font-style: italic; font-size: 18px"><span class="alpha-compute-mark" aria-hidden="true"></span></span></button></sc-if>
+          <details class="photo-import-menu photo-viewer-menu"><summary aria-label="Photo actions"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.more}}"></path></svg></summary><div onClick="{{photos.closeActions}}">
+            <sc-if value="{{photos.v.ask}}"><button onClick="{{photos.v.ask}}"><span class="alpha-compute-mark" aria-hidden="true"></span>Ask Alpha</button></sc-if>
+            <sc-if value="{{photos.v.info2.canAlbum}}"><button onClick="{{photos.v.info2.addToAlbum}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.folder}}"></path></svg>Add to album</button></sc-if>
+            <sc-if value="{{photos.v.canEmail}}"><button onClick="{{photos.v.email}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.mail}}"></path></svg>Email</button></sc-if>
+            <sc-if value="{{photos.v.notSecure}}"><button onClick="{{photos.v.share}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.share}}"></path></svg>Share</button></sc-if>
+            <sc-if value="{{photos.v.notDeleted}}"><button aria-label="{{photos.v.deleteLabel}}" onClick="{{photos.v.del}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.trash}}"></path></svg>Delete</button></sc-if>
+            <sc-if value="{{photos.v.isDeleted}}"><button onClick="{{photos.v.recover}}">Recover</button><sc-if value="{{photos.v.canDeleteForever}}"><button aria-label="Delete this item forever" onClick="{{photos.v.deleteForever}}">Delete permanently</button></sc-if></sc-if>
+          </div></details>
         </div>
       </div>
-      <sc-if value="{{photos.v.hasPrev}}"><button class="ib" aria-label="Previous" onClick="{{photos.v.prev}}" style="position: absolute; left: 4px; top: 50%; margin-top: -22px; z-index: 3; color: var(--alpha-white); opacity: {{photos.v.chromeOp}}; pointer-events: {{photos.v.chromePE}}; transition: opacity .25s"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if>
-      <sc-if value="{{photos.v.hasNext}}"><button class="ib" aria-label="Next" onClick="{{photos.v.next}}" style="position: absolute; right: 4px; top: 50%; margin-top: -22px; z-index: 3; color: var(--alpha-white); transform: scaleX(-1); opacity: {{photos.v.chromeOp}}; pointer-events: {{photos.v.chromePE}}; transition: opacity .25s"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if>
       <div data-alpha-photo-actions style="position: absolute; left: 0; right: 0; bottom: var(--alpha-dock-reserve,108px); height: 100px; background: linear-gradient(to top, rgba(0,0,0,.8) 70px, rgba(0,0,0,0)); pointer-events: none; opacity: {{photos.v.chromeOp}}; transition: opacity .25s; z-index: 3; display: flex; align-items: flex-end">
         <div style="display: flex; justify-content: space-around; width: 100%; padding: 0 16px 34px; pointer-events: {{photos.v.chromePE}}">
-          <sc-if value="{{photos.v.hasPrevItem}}"><button class="ib" aria-label="Previous item" onClick="{{photos.v.prevItem}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if>
-          <sc-if value="{{photos.v.canEmail}}"><button class="ib" aria-label="Use photo in email" onClick="{{photos.v.email}}" style="font-size:12px">Email</button></sc-if>
-          <sc-if value="{{photos.v.notSecure}}"><button class="ib" aria-label="{{photos.v.shareLabel}}" onClick="{{photos.v.share}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.share}}"></path></svg></button></sc-if>
-          <sc-if value="{{photos.v.isDeleted}}"><button class="tap" aria-label="Recover deleted item" onClick="{{photos.v.recover}}" style="min-height:48px;padding:0 18px;color:var(--alpha-white);font:inherit;font-weight:600">Recover</button><sc-if value="{{photos.v.canDeleteForever}}"><button class="tap" aria-label="Delete this item forever" onClick="{{photos.v.deleteForever}}" style="min-height:48px;padding:0 18px;color:var(--alpha-white);font:inherit">Delete</button></sc-if></sc-if><sc-if value="{{photos.v.notDeleted}}">
+          <sc-if value="{{photos.v.notDeleted}}">
           <button class="ib" aria-label="{{photos.v.favLabel}}" onClick="{{photos.v.fav}}"><svg class="i" viewBox="0 0 24 24" style="{{photos.v.favIcon}}"><path d="{{ic.heart}}"></path></svg></button>
           <button class="ib" aria-label="{{photos.v.editLabel}}" onClick="{{photos.v.edit}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.edit}}"></path></svg></button>
           <sc-if value="{{photos.v.notSecure}}"><button class="ib" aria-label="{{photos.v.infoLabel}}" onClick="{{photos.v.info}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.info}}"></path></svg></button></sc-if>
-          <button class="ib" aria-label="{{photos.v.deleteLabel}}" onClick="{{photos.v.del}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.trash}}"></path></svg></button>
           </sc-if>
-          <sc-if value="{{photos.v.hasNextItem}}"><button class="ib" aria-label="Next item" onClick="{{photos.v.nextItem}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.right}}"></path></svg></button></sc-if>
         </div>
       </div>
     </div>
@@ -1851,7 +1851,7 @@
   <sc-if value="{{photos.infoOpen}}">
     <div ref="{{photos.infoModal}}" data-alpha-popup style="display: contents">
     <button data-alpha-backdrop tabindex="-1" aria-label="Close info" onClick="{{photos.closeSheet}}" style="position: absolute; inset: 0; z-index: 12; background: rgba(0,0,0,.35)"></button>
-    <div class="enter" role="dialog" aria-label="{{photos.v.infoLabel}}" style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 13; background: var(--s1); color: var(--fg); border-radius: 28px 28px 0 0; padding: 12px 24px 44px">
+    <div class="enter photo-info-sheet" role="dialog" aria-label="{{photos.v.infoLabel}}" style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 13; background: var(--s1); color: var(--fg); border-radius: 28px 28px 0 0; padding: 12px 24px 44px">
       <div style="display: flex; justify-content: center; padding-bottom: 14px"><span style="width: 40px; height: 4px; border-radius: 2px; background: var(--mut); opacity: .45"></span></div>
       <div class="serif" style="font-size: 26px; line-height: 1.1">{{photos.v.info2.date}}</div>
       <div style="font-size: 14px; color: var(--mut); margin-top: 4px">{{photos.v.info2.time}}</div>
@@ -1861,7 +1861,6 @@
           <sc-for list="{{photos.v.info2.facts}}" as="f"><dt style="color: var(--mut)">{{f.label}}</dt><dd style="margin: 0; overflow-wrap: anywhere">{{f.value}}</dd></sc-for>
         </dl>
       </sc-if>
-      <sc-if value="{{photos.v.info2.canAlbum}}"><button class="tap" aria-label="Add to album" onClick="{{photos.v.info2.addToAlbum}}" style="width: 100%; min-height: 48px; margin-top: 18px; border-radius: 24px; background: var(--s2); color: var(--fg); font-size: 15px; font-weight: 600">Add to album</button></sc-if>
       <sc-if value="{{photos.v.info2.hasPlace}}">
         <button class="tap" aria-label="{{photos.v.info2.placeLabel}}" onClick="{{photos.v.info2.openPlace}}" style="display: flex; align-items: center; gap: 14px; width: 100%; height: 56px; margin-top: 14px; padding: 0 16px; border-radius: 18px; background: var(--s2); box-sizing: border-box">
           <svg class="i" viewBox="0 0 24 24"><path d="{{ic.pin}}"></path></svg>
@@ -2649,7 +2648,11 @@
   <div data-alpha-app-header="main" style="display: flex; align-items: center; height: 56px; margin-top: 44px; padding: 0 8px 0 20px; gap: 2px; flex-shrink: 0">
   <sc-if value="{{showAppBack}}"><button class="app-header-back" aria-label="Back to apps" onClick="{{backToApps}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if>
     <h1 data-alpha-app-title class="serif" style="margin: 0; font-size: 32px; flex-grow: 1; letter-spacing: -.01em">Files</h1>
-    <sc-if value="{{files.toolbar.ready}}"><sc-if value="{{files.toolbar.canCreate}}"><button class="ib" aria-label="New folder" onClick="{{files.toolbar.newFolder}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.plus}}"></path></svg></button></sc-if><button class="ib" aria-label="Sort files" onClick="{{files.toolbar.sort}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.filesSort}}"></path></svg></button><button class="ib" aria-label="{{files.toolbar.viewLabel}}" onClick="{{files.toolbar.toggleView}}"><svg class="i" viewBox="0 0 24 24"><path d="{{files.toolbar.viewIcon}}"></path></svg></button></sc-if>
+    <sc-if value="{{files.toolbar.ready}}"><details class="photo-import-menu"><summary aria-label="Files tools"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.more}}"></path></svg></summary><div>
+      <sc-if value="{{files.toolbar.canCreate}}"><button aria-label="New folder" onClick="{{files.toolbar.newFolder}}">New folder</button></sc-if>
+      <button aria-label="Sort files" onClick="{{files.toolbar.sort}}">Sort and select</button>
+      <button aria-label="{{files.toolbar.viewLabel}}" onClick="{{files.toolbar.toggleView}}">{{files.toolbar.viewLabel}}</button>
+    </div></details></sc-if>
   </div>
   <sc-if value="{{files.chip}}">
     <div style="display: flex; padding: 0 16px 8px; flex-shrink: 0">
@@ -2708,7 +2711,7 @@
           <button class="ib" aria-label="Back" onClick="{{files.fd.close}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button>
           <h1 data-alpha-app-title class="serif" style="margin: 0 0 0 6px; font-size: 26px; flex-grow: 1; min-width: 0; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{files.fd.name}}</h1>
           <sc-if value="{{files.fd.canEmpty}}"><button onClick="{{files.fd.empty_}}" style="min-height: 44px; padding: 0 14px; color: var(--warn); font-size: 15px; font-weight: 600">Empty</button></sc-if>
-    <sc-if value="{{files.toolbar.ready}}"><sc-if value="{{files.toolbar.canCreate}}"><button class="ib" aria-label="New folder" onClick="{{files.toolbar.newFolder}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.plus}}"></path></svg></button></sc-if><button class="ib" aria-label="Sort files" onClick="{{files.toolbar.sort}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.filesSort}}"></path></svg></button><button class="ib" aria-label="{{files.toolbar.viewLabel}}" onClick="{{files.toolbar.toggleView}}"><svg class="i" viewBox="0 0 24 24"><path d="{{files.toolbar.viewIcon}}"></path></svg></button></sc-if>
+          <sc-if value="{{files.toolbar.ready}}"><button class="ib" aria-label="Files options" onClick="{{files.toolbar.sort}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.more}}"></path></svg></button></sc-if>
         </div>
       </sc-if>
       <sc-if value="{{files.isSel}}">
@@ -2769,7 +2772,11 @@
   <sc-if value="{{files.menuOpen}}">
     <div ref="{{files.menuModal}}" data-alpha-popup style="display: contents">
     <button data-alpha-backdrop tabindex="-1" aria-label="Close menu" onClick="{{files.closeMenu}}" style="position: absolute; inset: 0; z-index: 7"></button>
-    <div class="drop" role="dialog" aria-label="Sort and more" style="position: absolute; top: 96px; right: 12px; width: 220px; max-width: calc(100% - 24px); max-height: calc(100% - 108px); overflow-y: auto; box-sizing: border-box; z-index: 8; background: var(--bg); border-radius: 22px; padding: 6px; box-shadow: 0 0 0 1px var(--line), 0 16px 40px var(--shc)">
+    <div class="drop files-actions-menu" role="dialog" aria-label="Sort and more" style="position: absolute; top: 96px; right: 12px; width: 220px; max-width: calc(100% - 24px); max-height: calc(100% - 108px); overflow-y: auto; box-sizing: border-box; z-index: 8; background: var(--bg); border-radius: 22px; padding: 6px; box-shadow: 0 0 0 1px var(--line), 0 16px 40px var(--shc)">
+      <div onClick="{{files.closeMenu}}">
+      <sc-if value="{{files.toolbar.canCreate}}"><button class="tap" aria-label="New folder" onClick="{{files.toolbar.newFolder}}" style="display:flex;align-items:center;gap:12px;width:100%;min-height:44px;padding:8px 14px;text-align:left"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.plus}}"></path></svg><span>New folder</span></button></sc-if>
+      <button class="tap" aria-label="{{files.toolbar.viewLabel}}" onClick="{{files.toolbar.toggleView}}" style="display:flex;align-items:center;gap:12px;width:100%;min-height:44px;padding:8px 14px;text-align:left"><svg class="i" viewBox="0 0 24 24"><path d="{{files.toolbar.viewIcon}}"></path></svg><span>{{files.toolbar.viewLabel}}</span></button>
+      </div>
       <sc-for list="{{files.fd.menuRows}}" as="m" key="{{m.id}}">
         <button onClick="{{m.go}}" aria-label="{{m.label}}" aria-pressed="{{m.on}}" class="tap" style="display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 0 12px; border-radius: 16px; font-size: 15px; text-align: left">
           <svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{m.d}}"></path></svg><span style="flex-grow: 1; min-width: 0">{{m.label}}</span>

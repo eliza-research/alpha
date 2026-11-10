@@ -58,7 +58,9 @@ function scheduled(value:unknown):AutomationRow {
  const labels:Record<string,string>={gm:'Good morning',gn:'Good night',checkin:'Daily check-in','weekly-review':'Weekly review'};
  const title=labels[text(row.metadata?.recordKey)]||text(row.metadata?.slot)||text(row.kind)||'Scheduled task';
  const status=text(state.status),ended=scheduledTaskEnded(status);
- return {key:'scheduled:'+id,id,kind:'schedule',title,description:text(row.promptInstructions),status:trigger.kind==='manual'&&!ended?'paused':status,enabled:trigger.kind!=='manual'&&!ended,source:'Agent schedule',schedule:schedule(trigger),record:row};
+ const snoozed=status==='scheduled'&&typeof state.firedAt==='string'&&Number.isFinite(Date.parse(state.firedAt))&&state.lastDecisionLog===`snoozed until ${state.firedAt} (ladder reset)`;
+ const when=snoozed?'Snoozed until '+automationWhen(state.firedAt):schedule(trigger);
+ return {key:'scheduled:'+id,id,kind:'schedule',title,description:text(row.promptInstructions),status:snoozed?'snoozed':trigger.kind==='manual'&&!ended?'paused':status,enabled:trigger.kind!=='manual'&&!ended,source:'Agent schedule',schedule:when,record:row};
 }
 function reminder(value:unknown):AutomationRow {
  const row=object(value),definition=object(row.definition),id=automationId(definition.id),occurrence=row.occurrence?object(row.occurrence):null;
