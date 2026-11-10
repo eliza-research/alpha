@@ -13,7 +13,7 @@ if(!loaded)throw Error('Vite configuration unavailable');
 const plugins=[];
 async function append(value){for(const item of await value||[]){const plugin=await item;if(Array.isArray(plugin))await append(plugin);else if(plugin&&!['alpha-local-agent-development','alpha-browser-cloud-dev-bridge'].includes(plugin.name))plugins.push(plugin);}}
 await append(loaded.config.plugins);
-const server=await createServer({...loaded.config,configFile:false,plugins,server:{...loaded.config.server,host:'127.0.0.1',port,strictPort:true,hmr:{host:'127.0.0.1',clientPort:port},proxy:{'^/__alpha-(browser-cloud|local-agent|local-renderer|local-voice)(/|\\?|$)':{target:remote.origin,changeOrigin:false,ws:true,timeout:180000,proxyTimeout:180000}},warmup:{clientFiles:['./src/main.tsx']}}});
+const server=await createServer({...loaded.config,configFile:false,plugins,server:{...loaded.config.server,host:'127.0.0.1',port,strictPort:true,hmr:{host:'127.0.0.1',clientPort:port},proxy:{'^/__alpha-(browser-cloud|local-agent|local-renderer|local-voice|agent-google-access|owner-gmail)(/|\\?|$)':{target:remote.origin,changeOrigin:false,ws:true,timeout:180000,proxyTimeout:180000}},warmup:{clientFiles:['./src/main.tsx']}}});
 let closing=false;async function close(){if(closing)return;closing=true;await server.close();process.exitCode=0;}
 process.once('SIGINT',close);process.once('SIGTERM',close);
 await server.listen();
