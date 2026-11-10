@@ -384,7 +384,8 @@
         "apps/app/src/browser/workflow-trigger-runtime.ts",
         "apps/app/src/browser/workflow-triggers.ts",
         "apps/app/src/prototype/workflow-authoring.ts",
-        "apps/app/src/prototype/workflow-adapter.ts"
+        "apps/app/src/prototype/workflow-adapter.ts",
+        "apps/app/src/runtime/workflow-local-time.ts"
       ],
       "stateMapping": {
         "version/reviewedVersion/phase": "normalized authoring, validation and exact-version save/run",
@@ -1136,7 +1137,10 @@
         "completionAfterEgressTest",
         "occurrenceFenceGapTest"
       ],
-      "invariants": ["EgressHasClaimAndGuard", "FireReplyIdentity"],
+      "invariants": [
+        "EgressHasClaimAndGuard",
+        "FireReplyIdentity"
+      ],
       "stateMapping": {
         "state/at/completed/text/cron/zone": "Actual task-store snapshot and bounded clock instant",
         "slots/claims/writes/guards/egress": "Held SDK calls and actual in-memory conditional write and claim outcomes at controlled dispatch boundaries",
@@ -1147,7 +1151,11 @@
         "The as-built model preserves the occurrence ABA witness. ExactOccurrenceEgress and NoOlderOccurrenceRestore are desired properties with a directed violation witness, not passing invariants.",
         "Route framing and host authorization, real SQL, configured host admission and provider dispatch remain separate."
       ],
-      "bounds": {"maxSamples": 1000, "maxSteps": 80, "seed": "123"}
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "seed": "123"
+      }
     },
     {
       "path": "specs/quint/services/PersonalAssistantScheduledTaskCustody.qnt",
@@ -1174,7 +1182,10 @@
         "sameStateMetadataFenceTest",
         "sameStateDefinitionFenceTest"
       ],
-      "invariants": ["ClaimConsumesProposedDay", "ConditionalWritesUseClaimSnapshot"],
+      "invariants": [
+        "ClaimConsumesProposedDay",
+        "ConditionalWritesUseClaimSnapshot"
+      ],
       "stateMapping": {
         "managed/clock/state/at/completed/dossier/lastActivity/lastDispatch/metadataRevised/definitionRevised": "Stored SQL task and dossier state, controlled clock and activity outcome",
         "slots/claims/writes/guards/egress": "Held attempts, atomic SQL claim, full conditional write, status guard and synthetic egress",
@@ -1185,7 +1196,11 @@
         "ExactOccurrenceEgress remains a desired property. A directed witness shows an old guard still permits synthetic egress while the SQL write rejects its stale snapshot.",
         "Production runtime construction, family wrappers, PostgreSQL deployment, real provider dispatch and external authentication remain separate."
       ],
-      "bounds": {"maxSamples": 1000, "maxSteps": 80, "seed": "123"}
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "seed": "123"
+      }
     },
     {
       "path": "specs/quint/services/WorkflowScheduleTasks.qnt",
@@ -2349,23 +2364,44 @@
       "init": "init",
       "step": "step",
       "invariant": "safety",
-      "tests": ["earlyAdmissionDoesNotAdmitFullBuildTest", "onlyCurrentOrDescendantPinAdmitsTest",
-        "missingWorkerAndStalePayloadRefuseTest", "payloadReportDoesNotAdmitCloudProfileTest",
-        "missingMobileReceiptPrecedesGoogleHostTest", "embeddingHumanActionDependsOnReceiptAndToolchainTest",
-        "signerNeedsIdentityAndEnvironmentTest", "completeReportIncludesQualificationButIsNotBuildTest"],
-      "invariants": ["FullAdmissionRequiresEarlyAdmission", "ReportedPayloadRequiresExactStamp",
-        "GoogleCheckFollowsPayloadAdmission", "HumanAttentionNeverReady"],
-      "sources": ["scripts/android-build-preflight.mjs", "scripts/build-embedding-host.mjs",
-        "scripts/mobile-uuid-adapter.mjs", "scripts/stage-embedding-host.mjs", "scripts/voice-host.mjs"],
+      "tests": [
+        "earlyAdmissionDoesNotAdmitFullBuildTest",
+        "onlyCurrentOrDescendantPinAdmitsTest",
+        "missingWorkerAndStalePayloadRefuseTest",
+        "payloadReportDoesNotAdmitCloudProfileTest",
+        "missingMobileReceiptPrecedesGoogleHostTest",
+        "embeddingHumanActionDependsOnReceiptAndToolchainTest",
+        "signerNeedsIdentityAndEnvironmentTest",
+        "completeReportIncludesQualificationButIsNotBuildTest"
+      ],
+      "invariants": [
+        "FullAdmissionRequiresEarlyAdmission",
+        "ReportedPayloadRequiresExactStamp",
+        "GoogleCheckFollowsPayloadAdmission",
+        "HumanAttentionNeverReady"
+      ],
+      "sources": [
+        "scripts/android-build-preflight.mjs",
+        "scripts/build-embedding-host.mjs",
+        "scripts/mobile-uuid-adapter.mjs",
+        "scripts/stage-embedding-host.mjs",
+        "scripts/voice-host.mjs"
+      ],
       "stateMapping": {
         "input": "Selected disposable checkout, reviewed-byte, stamp, profile, receipt and qualification fixtures",
         "ready/attention/notices": "Real report rows and formatting for native build readiness and human actions",
         "before/full/googleChecked": "Actual early and full preflight problem classes and order of the Google host admission port"
       },
-      "abstractions": ["Two synthetic SDK commits and controlled external voice, embedding and Google host admission results.",
+      "abstractions": [
+        "Two synthetic SDK commits and controlled external voice, embedding and Google host admission results.",
         "Source stamps, worker and profile presence are private fixture bytes. The mobile receipt projection covers refusal of a missing mandatory receipt.",
-        "Cloud runtime verification, signing, build execution and actual Android artifacts remain separate."],
-      "bounds": {"maxSamples": 1000, "maxSteps": 80, "maxVerifyDepth": 8}
+        "Cloud runtime verification, signing, build execution and actual Android artifacts remain separate."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 8
+      }
     },
     {
       "path": "specs/quint/services/AndroidBrowserModuleStage.qnt",
@@ -2373,24 +2409,47 @@
       "init": "init",
       "step": "step",
       "invariant": "safety",
-      "tests": ["publishAndReuseTest", "badPatchPreservesHostTest", "publicationFailurePreservesPriorTest",
-        "cacheDriftRefusesReuseTest", "badRouteKeepsPriorHostTest", "markerAllowsInterruptedHostRetryTest",
-        "unownedOutputIsPreservedTest", "receiptMustMatchCurrentGenerationTest"],
-      "invariants": ["PublishedHostReferencesStagedModule", "SuccessBindsCurrentReviewedCache",
-        "OwnedIncompleteHostHasProfile", "SuccessfulReceiptRequiresExactCurrentCache"],
-      "sources": ["android/consumer-host.json", "scripts/android-host.mjs", "scripts/prepare-patched-native.mjs",
-        "scripts/upstream-native-source.mjs", "patches/eliza/native-manifest.json", "patches/eliza/browser-tab-underlay-native.patch",
+      "tests": [
+        "publishAndReuseTest",
+        "badPatchPreservesHostTest",
+        "publicationFailurePreservesPriorTest",
+        "cacheDriftRefusesReuseTest",
+        "badRouteKeepsPriorHostTest",
+        "markerAllowsInterruptedHostRetryTest",
+        "unownedOutputIsPreservedTest",
+        "receiptMustMatchCurrentGenerationTest"
+      ],
+      "invariants": [
+        "PublishedHostReferencesStagedModule",
+        "SuccessBindsCurrentReviewedCache",
+        "OwnedIncompleteHostHasProfile",
+        "SuccessfulReceiptRequiresExactCurrentCache"
+      ],
+      "sources": [
+        "android/consumer-host.json",
+        "scripts/android-host.mjs",
+        "scripts/prepare-patched-native.mjs",
+        "scripts/upstream-native-source.mjs",
+        "patches/eliza/native-manifest.json",
+        "patches/eliza/browser-tab-underlay-native.patch",
         "vendor/eliza/packages/app/scripts/mobile/android/consumer-host.mjs",
         "vendor/eliza/packages/app/scripts/mobile/android/consumer-host/settings.gradle",
-        "vendor/eliza/plugins/plugin-native-browser-surface/android/build.gradle"],
+        "vendor/eliza/plugins/plugin-native-browser-surface/android/build.gradle"
+      ],
       "stateMapping": {
         "selected/reviewed/patchValid": "Exact manifest byte identity, reviewed module route and authenticated patch bytes",
         "stage1/stage2": "Keyed staged source and provenance receipts with observed cache drift",
         "host/hostGeneration/fresh/result": "Generated output ownership, module and asset path, input digest freshness and actual generator or receipt-verifier result"
       },
-      "abstractions": ["One independent browser module, two manifest byte identities and one reviewed patch with all pinned module files.",
-        "The source generator and exact receipt verification execute in scratch. Full Gradle, concurrent publication, arbitrary interruption and installed behavior remain separate."],
-      "bounds": {"maxSamples": 1000, "maxSteps": 80, "maxVerifyDepth": 8}
+      "abstractions": [
+        "One independent browser module, two manifest byte identities and one reviewed patch with all pinned module files.",
+        "The source generator and exact receipt verification execute in scratch. Full Gradle, concurrent publication, arbitrary interruption and installed behavior remain separate."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 8
+      }
     },
     {
       "path": "specs/quint/services/ResidentJavaSourceStage.qnt",

@@ -3,7 +3,8 @@ import test from 'node:test';
 import {AgentCalendar,calendarSourceKey,type CalendarPreservation} from '../apps/app/src/runtime/agent-calendar';
 import {assertAppRecordRequestAllowed} from '../apps/app/src/runtime/app-record-route-policy';
 import type {AppRecordPort} from '../apps/app/src/runtime/agent-calendar-client';
-import {canonicalCalendarRow,calendarFormMinutes,calendarFormPatch,type CanonicalCalendarForm} from '../apps/app/src/runtime/agent-calendar-view';
+import type {LifeOpsCalendarEvent} from '../.eliza/client-features/packages/contracts/src/calendar';
+import {canonicalCalendarRow,calendarFormMinutes,calendarFormPatch,calendarFormRange,type CanonicalCalendarForm} from '../apps/app/src/runtime/agent-calendar-view';
 
 function deferred<T>(){
  let resolve!:(value:T)=>void, reject!:(error:Error)=>void;
@@ -112,6 +113,16 @@ test('sync route exposure remains exact and rejects unowned bodies, query change
 // The editor copies a row's fractional hours into the form; every minute of the day must survive the round trip.
 const timed=(start:string,end:string)=>({id:'event',externalId:'event',agentId:'test-agent',provider:'google',side:'owner',grantId:'test-grant',connectorAccountId:'test-account',calendarId:'primary',title:'Synthetic',description:'',location:'',status:'confirmed',startAt:start,endAt:end,timezone:'UTC',isAllDay:false,htmlLink:null,conferenceLink:null,organizer:{self:true},attendees:[],metadata:{etag:'v1'}}) as never;
 const form=(row:{t:number;d:number},day:number):CanonicalCalendarForm=>({ownerKey:'owner',operationKey:'operation',sourceKey:'source',date:{year:2026,month:11,day},startMinutes:calendarFormMinutes(row.t),durationMinutes:calendarFormMinutes(row.d),timeZone:'UTC',title:'Synthetic',notes:'',location:''});
+test('device-local editor fields preserve a foreign event’s instants and recurrence without a zone picker',()=>{
+ const event=structuredClone(timed('2026-11-07T16:20:00Z','2026-11-07T17:35:00Z')) as LifeOpsCalendarEvent;event.recurrence=['RRULE:FREQ=WEEKLY'];
+ const row=canonicalCalendarRow(event,'America/Los_Angeles',new Date('2026-11-07T12:00:00Z'));
+ assert.equal(calendarFormMinutes(row.t),8*60+20);
+ const edit={...form(row,7),timeZone:'America/Los_Angeles',title:'Updated title'};
+ assert.deepEqual(calendarFormRange(edit),{startAt:new Date(event.startAt).toISOString(),endAt:new Date(event.endAt).toISOString()});
+ const patch=calendarFormPatch(edit,event,{timing:false,zone:false});
+ assert.equal(patch.title,'Updated title');for(const key of ['startAt','endAt','timeZone','recurrence'])assert.equal(Object.hasOwn(patch,key),false,key);
+ assert.throws(()=>calendarFormRange({...edit,date:{year:2026,month:3,day:8},startMinutes:150}),/exist|clock|ambiguous/i);
+});
 test('every start minute of the day round-trips from an event row to whole form minutes',()=>{
  const now=new Date('2026-11-07T00:00:00Z');
  for(let minute=0;minute<1440;minute++){

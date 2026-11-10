@@ -16949,7 +16949,7 @@
       "scope": "application",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "dd74f0c1c3ebbe987f9e4a5ea52bbb51dbce677fdfefed2e614974b03815af69",
+      "sha256": "022d3206266480c83f283f9b0f94082a04253593c10100bc41a118a8e5bea9f7",
       "stateAnchors": [
         {
           "line": 24,
@@ -17239,7 +17239,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "87c366822ad3f38b743ec22393978f7f08de675547b19053b57114907fa2a2d6",
+      "sha256": "98d570148204cb1df372c37d9e7c73be0ed98c7d2df2993893c29a3b9abc8509",
       "stateAnchors": [
         {
           "line": 6,
@@ -17547,7 +17547,7 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "db32bf5adbf8fda7ac689b98e6d9f07b6d87a37617a11a8ed7d4116db8ab4a08",
+      "sha256": "e5bca44b581ae379a680d9417480ddd26e391273b102e690969801b481267517",
       "stateAnchors": [],
       "integrationReview": "2026-11-09 UI and browser-return delta reviewed against existing domain models and new ChatAttachments/BrowserGoogleReturn contracts; see ui-return-review-20261109.md. Source-model refinement and device acceptance remain separate."
     },
@@ -34788,7 +34788,7 @@
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "9bfacbecd9070975a9ae512b64c6cc53ce62db0442077b8825337bfd7083bf51",
+      "sha256": "b16497078616d2a557406cb5e6838e89d91cf62f4b27c83d719fa4514637c02d",
       "stateAnchors": [
         {
           "line": 3358,
@@ -35419,7 +35419,7 @@
     },
     {
       "path": "apps/app/src/prototype/workflow-authoring.ts",
-      "sha256": "ff3c733c9e45da415ecced4d5f1bb66fa1fc311a9b3b080f3efcfe04e97e2d23",
+      "sha256": "ad35f825c72c34412f347a91cc0200fafd1f28f9d670f11fdb181473200d06f8",
       "models": [
         "WorkflowExecution"
       ],
@@ -36339,7 +36339,7 @@
       "scope": "application",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "cc32afd77a8bac062af62677eda601a847830d879630504f16d967283b491ef1",
+      "sha256": "c45877ed5146cbf9dc9fb897b6639938d1f68449ada4335132c2664a629ffc45",
       "stateAnchors": [
         {
           "line": 13,
@@ -37000,7 +37000,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "d47943bea26fa2f06a43b7fe680ebc80334d5601ddee01cf2840945af60f2d6e",
+      "sha256": "2fcc2fce4f2340f5da6f452d733e958a5ea2e446c25dc8da00d85f82d768587a",
       "stateAnchors": [
         {
           "line": 9,
@@ -44390,7 +44390,7 @@
     },
     {
       "path": "apps/app/src/runtime/phone-workflow-authoring.ts",
-      "sha256": "c33dbfb6f00c99b8c6689d7f8749f1a1b309666905c30f6520920c2824c0e363",
+      "sha256": "754f5b382cf439020cd8135947f63cc9a6a0abbe24f903d137ab96f068079cf9",
       "models": [
         "WorkflowExecution"
       ],
@@ -618419,6 +618419,16 @@
       ],
       "treatment": "domain-contract-or-support",
       "scope": "Pure numbered default title selection from current owner notes and Trash; explicit titles and existing records are unchanged."
+    },
+    {
+      "path": "apps/app/src/runtime/workflow-local-time.ts",
+      "sha256": "68b85ea867b216b0df6b6b72bd1657a8c975c96883c1f3c38cf7d2cad6107526",
+      "models": [
+        "WorkflowExecution",
+        "ScheduledTaskControls"
+      ],
+      "treatment": "domain-contract-or-support",
+      "scope": "Pure device-local formatting and datetime validation; source instants and existing foreign-clock recurrences are preserved."
     }
   ],
   "configurationInputs": [

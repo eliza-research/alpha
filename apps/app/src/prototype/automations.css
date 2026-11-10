@@ -23,6 +23,11 @@
 .automation-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}
 .automation-actions button{min-height:44px;padding:10px 18px;border-radius:22px;background:var(--s2);font-size:15px}
 .automation-actions .primary{background:var(--acc);color:#fff}
+.schedule-instructions{display:flex;flex-direction:column;gap:8px;margin:0 0 20px;font-size:14px;color:var(--mut)}
+.schedule-instructions input,.schedule-instructions textarea{box-sizing:border-box;width:100%;min-width:0;min-height:48px;border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:var(--s2);color:var(--fg);font:inherit;font-size:16px;line-height:1.5;resize:none}
+.schedule-instructions textarea{min-height:144px}
+.schedule-instructions input:focus-visible,.schedule-instructions textarea:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.automation-actions .schedule-save{background:var(--fg);color:var(--bg);border-radius:14px;min-height:48px;padding:12px 24px;font-weight:600}
 .automation-actions button:disabled{opacity:.5}
 .automation-actions button:focus-visible,.automation-fields input:focus-visible,.automation-fields textarea:focus-visible,.automation-filters button:focus-visible{outline:2px solid var(--acc);outline-offset:3px}
 .automation-new{display:flex;flex-direction:column;gap:2px}

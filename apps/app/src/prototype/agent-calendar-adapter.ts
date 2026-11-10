@@ -7,7 +7,9 @@ import {Capacitor} from '@capacitor/core';
 import {testMocksEnabled} from '../build-flags';
 import {connectionController,agentPendingText} from '../runtime/connection-ui';
 
-import {serviceReadCache} from '../runtime/service-read-cache-store';
+import {serviceReadCache,type ReadCacheOwner} from '../runtime/service-read-cache-store';
+import {cloudCredentialStore} from '../runtime/native-connection';
+import {browserCloudResidentEnabled,browserCloudResidentEnvironment} from '../runtime/browser-cloud-resident';
 import {legacyCalendarPreservation} from '../runtime/legacy-calendar-preservation';
 import {AgentCalendar,calendarOwnerKey,calendarEventKey,calendarSourceKey,type CalendarPreservation} from '../runtime/agent-calendar';
 import type {AppRecordPort} from '../runtime/app-record-route-policy';
@@ -78,11 +80,40 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
  });
 
  const port=()=>typeof (connectionController as any).getAppRecordClient==='function'?(connectionController as unknown as {getAppRecordClient():AppRecordPort|null}).getAppRecordClient():null;
- const readCacheOwner=()=>{const account=connectionController.getSnapshot().cloudAccount,cloud=connectionController.getCloudClient();return account?.organizationId&&cloud?{environment:account.environment,userId:account.userId,organizationId:account.organizationId,credentialId:cloud.credentialId}:null;};
+ const readCacheOwner=()=>{const account=connectionController.getSnapshot().cloudAccount;return account?.organizationId?{environment:account.environment,userId:account.userId,organizationId:account.organizationId,credentialId:account.credentialId}:null;};
+ let bootstrapOwner:ReadCacheOwner|null=null,bootstrapEpoch=0;
+ const bootstrapAllowed=()=>{const snapshot=connectionController.getSnapshot();return snapshot.residentSavedCredential!==false&&snapshot.errorKind!=='sign-in-rejected'&&!snapshot.signOutNotice;};
+ const bootstrapCurrent=()=>!!bootstrapOwner&&bootstrapAllowed()&&(!readCacheOwner()||JSON.stringify(readCacheOwner())===JSON.stringify(bootstrapOwner));
+ // This reads only the existing local credential metadata (a private-host reference
+ // in the browser). It does not start or verify the resident or contact Cloud.
+ const storedOwner=async(environment:'production'|'staging'):Promise<ReadCacheOwner|null>=>{
+  const credential=await cloudCredentialStore.read(environment),account=readCacheOwner();
+  if(!credential||credential.expiresAt!==undefined&&(!Number.isFinite(credential.expiresAt)||credential.expiresAt<=Date.now()))return null;
+  const value={environment,userId:credential.userId??account?.userId,organizationId:credential.organizationId??account?.organizationId,credentialId:credential.credentialId};
+  if(Object.values(value).some(item=>typeof item!=='string'||!item||item.length>1024)||account&&JSON.stringify(account)!==JSON.stringify(value))return null;
+  return value as ReadCacheOwner;
+ };
+ const restoreBeforeAgent=async(window:ReturnType<typeof range>)=>{
+  const shell=owner,calendar=controller;if(!shell||!calendar||!bootstrapAllowed())return;
+  const account=readCacheOwner(),environment=account?.environment??(browserCloudResidentEnabled?browserCloudResidentEnvironment:Capacitor.isNativePlatform()&&!testMocksEnabled?'production':null);
+  if(environment!=='production'&&environment!=='staging')return;
+  const token=++bootstrapEpoch;let attemptOwner=bootstrapOwner;
+  const discard=()=>{if(token===bootstrapEpoch&&owner===shell&&shell.live&&controller===calendar&&!port()?.current()&&bootstrapOwner===attemptOwner){++bootstrapEpoch;bootstrapOwner=null;calendar.retire();}};
+  try{
+   const saved=await storedOwner(environment);
+   if(token!==bootstrapEpoch||owner!==shell||!shell.live||controller!==calendar||port()?.current())return;
+   if(!saved||!bootstrapAllowed()){discard();return;}
+   if(bootstrapOwner&&JSON.stringify(bootstrapOwner)!==JSON.stringify(saved))calendar.retire();
+   bootstrapOwner=attemptOwner=saved;
+   const current=()=>token===bootstrapEpoch&&owner===shell&&shell.live&&controller===calendar&&bootstrapCurrent();
+   const cache=await serviceReadCache(saved);if(!current())return;
+   await calendar.restoreSaved(window,cache,current,async()=>{const same=JSON.stringify(await storedOwner(environment))===JSON.stringify(saved);if(!same)discard();return same;},JSON.stringify(saved));
+  }catch{discard();}
+ };
  const zone=()=>Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';
  const range=(state:Bag)=>{const today=new Date(),day=new Date(today.getFullYear(),today.getMonth(),today.getDate()+Number(state.day||0));day.setMonth(day.getMonth()+Number(state.month||0));return{side:'owner' as const,timeMin:new Date(day.getFullYear(),day.getMonth()-1,1).toISOString(),timeMax:new Date(day.getFullYear(),day.getMonth()+2,1).toISOString(),timeZone:zone()};};
  const invalidate=(sessionId:string)=>{const target=port();if(!target?.current()||target.sessionId!==sessionId||invalidating)return;invalidating=true;queueMicrotask(()=>{invalidating=false;const current=port();if(owner?.live&&current?.current()&&current.sessionId===sessionId)refresh(true);});};
- const refresh=(force=false)=>{if(!owner?.live||!controller)return;const target=port(),window=range(owner.S?.()?.view==='calendar'?owner.vget('calendar'):{}),key=JSON.stringify([target?.identity,target?.scope,window]);if(!force&&requestKey===key)return;requestKey=key;void controller.refresh(window);};
+ const refresh=(force=false)=>{if(!owner?.live||!controller)return;const target=port(),window=range(owner.S?.()?.view==='calendar'?owner.vget('calendar'):{}),key=JSON.stringify([target?.identity,target?.scope,window]);if(!force&&requestKey===key)return;requestKey=key;if(!target?.current()){if(!bootstrapCurrent()||controller.state.savedAt==null)void controller.refresh(window);void restoreBeforeAgent(window);return;}void controller.refresh(window);};
  // One end-time wake plus foreground events; no polling or background reads.
  const readNext=()=>{if(!owner?.live||!controller)return;controller.invalidateNext();if(document.hidden)return;refresh(true);};
  const watchNextEnd=()=>{clearTimeout(nextEnded);const end=Date.parse(controller?.state.next?.event?.endAt??'');if(end>Date.now())nextEnded=setTimeout(readNext,Math.min(end-Date.now()+1000,2147483647));};
@@ -96,9 +127,9 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
    const bound=()=>{const active=port();return target.current()&&active?.current()&&mapBinding(active)===binding&&connectionController.getCloudClient()?.sessionId===session&&JSON.stringify(readCacheOwner())===identity;};
    const cache=await serviceReadCache(readOwner);if(!bound())return null;
    return {get:async<T>(key:string)=>{if(!bound())return null;const value=await cache.get<T>(key);return bound()?value:null;},put:async(key:string,value:unknown)=>{if(bound())await cache.put(key,value);}};
-  });this.agentCalendar=controller;this.canonicalCalendarDispose=controller.subscribe(()=>{if(owner!==this)return;retireRetention();watchNextEnd();if(this.live)this.setState({});});this.canonicalCalendarConnection=connectionController.subscribe(()=>{if(owner!==this)return;retireRetention();const target=port(),key=JSON.stringify([target?.identity,target?.scope,readCacheOwner()]);if(key!==boundKey){boundKey=key;controller?.retire();requestKey='';refresh();}});this.canonicalCalendarInvalidated=(event:Event)=>{const sessionId=(event as CustomEvent<{sessionId?:unknown}>).detail?.sessionId;if(typeof sessionId==='string')invalidate(sessionId);};window.addEventListener('alpha:canonical-calendar-invalidated',this.canonicalCalendarInvalidated);document.addEventListener('visibilitychange',resumed);window.addEventListener('pagehide',cancelRetention);refresh();};
+  },()=>{const account=readCacheOwner()??bootstrapOwner;return account?JSON.stringify(account):null;});this.agentCalendar=controller;this.canonicalCalendarDispose=controller.subscribe(()=>{if(owner!==this)return;retireRetention();watchNextEnd();if(this.live)this.setState({});});this.canonicalCalendarConnection=connectionController.subscribe(()=>{if(owner!==this)return;retireRetention();const target=port(),key=JSON.stringify([target?.identity,target?.scope,readCacheOwner()]);if(key!==boundKey){boundKey=key;const keepSaved=controller?.state.savedAt!=null&&bootstrapCurrent()&&(!target?.current()||controller.state.ownerKey===calendarOwnerKey(target));if(!keepSaved){++bootstrapEpoch;bootstrapOwner=null;controller?.retire();}requestKey='';refresh();}});this.canonicalCalendarInvalidated=(event:Event)=>{const sessionId=(event as CustomEvent<{sessionId?:unknown}>).detail?.sessionId;if(typeof sessionId==='string')invalidate(sessionId);};window.addEventListener('alpha:canonical-calendar-invalidated',this.canonicalCalendarInvalidated);document.addEventListener('visibilitychange',resumed);window.addEventListener('pagehide',cancelRetention);refresh();};
  p.componentDidUpdate=function(...args:any[]){update?.apply(this,args);if(owner===this){retireRetention();refresh();}};
- p.componentWillUnmount=function(){this.canonicalCalendarConnection?.();window.removeEventListener('alpha:canonical-calendar-invalidated',this.canonicalCalendarInvalidated);this.canonicalCalendarDispose?.();if(owner===this){cancelRetention();clearTimeout(nextEnded);document.removeEventListener('visibilitychange',resumed);window.removeEventListener('pagehide',cancelRetention);controller?.retire();controller=undefined;owner=undefined;}unmount.call(this);};
+ p.componentWillUnmount=function(){this.canonicalCalendarConnection?.();window.removeEventListener('alpha:canonical-calendar-invalidated',this.canonicalCalendarInvalidated);this.canonicalCalendarDispose?.();if(owner===this){++bootstrapEpoch;bootstrapOwner=null;cancelRetention();clearTimeout(nextEnded);document.removeEventListener('visibilitychange',resumed);window.removeEventListener('pagehide',cancelRetention);controller?.retire();controller=undefined;owner=undefined;}unmount.call(this);};
  // A Calendar connection belongs to the exact app-record session that opened it.
  p.calendarConnectionScope=function(){
   const shell=this,calendar=controller,target=port(),ownerKey=calendar?.state.ownerKey;
@@ -265,7 +296,7 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
   if(deviceCalendarScope(this))return out;
   // Canonical feed visibility is authoritative. Keep old device preferences stored, but do not hide its events.
   const now=Date.now(),hidden=new Set<string>();
-  const target=port(),model=target?.current()&&controller?.state.ownerKey===calendarOwnerKey(target)?controller.state:undefined;
+  const target=port(),model=target?.current()?controller?.state.ownerKey===calendarOwnerKey(target)?controller.state:undefined:bootstrapCurrent()&&controller?.state.savedAt!=null?controller.state:undefined;
   const home=homeCalendarSelection(model,zone(),hidden,new Date(now)),event=home.event;
   const syncedAt=Date.parse(model?.feed?.syncedAt??'');
   const confirmedEmpty=home.verified&&!event&&Number.isFinite(syncedAt)&&syncedAt>0&&syncedAt<=now&&!homeReadIsStale(syncedAt,now);
@@ -280,7 +311,8 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
   // A partial feed is still retryable, but Home need only show the Calendar entry.
   if(unverified&&!failed){feed.title=home.emptyLabel;feed.description=feed.read;}
   if(model?.savedAt!=null)feed={state:'stale',read:controller?.refreshing?'Saved · Refreshing…':'Saved · Open Calendar to retry',description:'Saved Calendar event. Not yet checked with your calendars.',stale:true,title:'Calendar'};
-  const provenance={origin:'',read:feed.read,description:feed.description};
+  // Routine saved/refresh state remains accessible without adding status prose to Home.
+  const provenance={origin:'',read:'',description:feed.description};
   // The agent's next event as an agenda item; an all-day event starts at local midnight of its first day.
   const day=(at:string)=>{const d=new Date(at);return new Date(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()).getTime();};
   const item=event?{title:String(event.title||''),begin:event.isAllDay?day(event.startAt):Date.parse(event.startAt),end:event.isAllDay?day(event.endAt):Date.parse(event.endAt),allDay:!!event.isAllDay,video:!!event.conferenceLink}:null;
@@ -292,7 +324,7 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
   const local=out.homeAgendaInput as HomeAgendaCardInput|undefined;
   // A failed or out-of-date agent read stays visible above it, and opening the card reads it again.
   if(out.homeAgendaReminder===true&&local?.item&&(!item||local.item.begin<item.begin)){const retry=feed.state==='error'||feed.state==='stale';
-   return{...out,...homeCalendarValues(presentHomeAgendaCard(agentReminderLead(local,feed))),...(retry&&typeof out.goCalendar==='function'?{goCalendar:()=>{refresh(true);out.goCalendar();}}:{})};}
+   return{...out,...homeCalendarValues(presentHomeAgendaCard(agentReminderLead(local,{...feed,read:''}))),...(retry&&typeof out.goCalendar==='function'?{goCalendar:()=>{refresh(true);out.goCalendar();}}:{})};}
   return{...out,...homeCalendarValues(presentHomeAgendaCard({now,item,provenance,stale:feed.stale,emptyTitle:feed.title,sourceName:'Agent Calendar'})),
    homeCalendarConfirmedEmpty:confirmedEmpty,
    goCalendar:()=>{if(feed.state==='error'||feed.state==='stale')refresh(true);this.openView('calendar',{calendarAuthority:'canonical',...(event?(key=>({open:key,deepOpened:key,day:canonicalCalendarRow(event,zone()).off}))('canonical-calendar:'+calendarEventKey(event)):{} )});}};

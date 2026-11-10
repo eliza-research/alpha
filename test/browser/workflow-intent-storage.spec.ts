@@ -36,11 +36,18 @@ for(const operation of ['run','metadata','lifecycle'])for(const outcome of ['sav
   await ready;const beforePosts=posts;if(outcome==='cancelled')controller.abort();release();return {beforePosts,accepted:await pending,posts};
  },{operation,outcome});expect(result).toEqual({beforePosts:0,accepted:outcome==='saved',posts:outcome==='saved'?1:0});
 });
-for(const mode of ['reset','leave'])test(`workflow request recovery uses the captured account: ${mode}`,async({page})=>{
+for(const mode of ['reset','leave'])test(`retained workflow recovery contract uses the captured account: ${mode}`,async({page})=>{
  test.setTimeout(120_000);
  await page.goto('/?mode=dev&workflows=agent');await page.getByRole('button',{name:'Settings',exact:true}).click();await openConnectionDiagnostics(page);await page.getByRole('button',{name:'Connect development profile'}).click();await expect(page.getByRole('dialog',{name:'Development connections'})).toHaveCount(0);await returnToApps(page);
  const {key,capturedOwner}=await page.evaluate(async()=>{const {connectionController}=await import('/src/runtime/connection-ui.tsx'),{workflowIntentKey}=await import('/src/runtime/workflow-intents.ts');const {origin,ownerId,agentId}=connectionController.getSnapshot().session!,capturedOwner={origin,ownerId,agentId};const key=workflowIntentKey(capturedOwner,'lost-flow')+':lifecycle';localStorage.setItem(key,' {unreadable intent ');return {key,capturedOwner};});
- await page.getByRole('button',{name:'Workflows',exact:true}).click();await expect(page.getByText('Workflow request recovery',{exact:true})).toBeVisible();await expect(page.getByText('Loading workflows…',{exact:true})).toHaveCount(0);await page.getByText('Workflow request recovery',{exact:true}).click();
+ await page.getByRole('button',{name:'Workflows',exact:true}).click();await expect(page.getByText('Workflow request recovery',{exact:true})).toHaveCount(0);
+ // Retained recovery contract only: the ordinary Workflows entry was removed.
+ await page.evaluate(async capturedOwner=>{
+  const {connectionController}=await import('/src/runtime/connection-ui.tsx'),{WorkflowIntentStore}=await import('/src/runtime/workflow-intents.ts'),{createWorkflowRequestRecovery}=await import('/src/runtime/workflow-request-recovery.ts');
+  const store=new WorkflowIntentStore(capturedOwner),recovery=createWorkflowRequestRecovery(async()=>(await import('/src/browser/domain-recovery')).openDomainRecovery);
+  window.addEventListener('pagehide',()=>recovery.retire(),{once:true});
+  await recovery.open({store,current:()=>{const s=connectionController.getSnapshot().session;return !!s&&s.origin===capturedOwner.origin&&s.ownerId===capturedOwner.ownerId&&s.agentId===capturedOwner.agentId;},changed:()=>store.invalidate(),unavailable:()=>{throw Error('Recovery fixture unavailable');}});
+ },capturedOwner);
  const dialog=page.getByRole('dialog',{name:'Browser workflow request recovery'});await expect(dialog).toContainText('does not cancel executions');
  if(mode==='leave'){await page.evaluate(()=>window.dispatchEvent(new Event('pagehide')));await expect(dialog).toHaveCount(0);expect(await page.evaluate(key=>localStorage.getItem(key),key)).toBe(' {unreadable intent ');return;}
  const download=page.waitForEvent('download');await dialog.getByRole('button',{name:'Download workflow requests backup',exact:true}).click();const stream=await(await download).createReadStream(),chunks:Buffer[]=[];for await(const chunk of stream!)chunks.push(Buffer.from(chunk));expect(JSON.parse(Buffer.concat(chunks).toString()).entries[key]).toBe(' {unreadable intent ');

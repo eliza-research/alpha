@@ -1,17 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {build} from 'esbuild';
+import {workflowCronLabel} from '../apps/app/src/runtime/workflow-local-time.ts';
 
 const bundle=await build({entryPoints:['apps/app/src/runtime/automations-protocol.ts'],bundle:true,write:false,format:'esm',platform:'neutral',logLevel:'silent'});
 const {automationWhen,AutomationsProtocol}=await import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].text).toString('base64'));
 
-test('automationWhen renders a short month, no seconds, in the named zone, and ignores a zone it cannot use',()=>{
- assert.equal(automationWhen('2026-10-29T18:00:00Z','UTC','en-US'),'Oct 29, 2026, 6:00 PM');
- assert.equal(automationWhen('2026-10-29T18:00:00Z','America/New_York','en-US'),'Oct 29, 2026, 2:00 PM');
- assert.equal(automationWhen(Date.parse('2026-10-29T18:00:00Z'),'Asia/Tokyo','en-US'),'Oct 30, 2026, 3:00 AM');
- assert.equal(automationWhen('2026-10-29T18:00:00Z','Not/AZone','en-US'),automationWhen('2026-10-29T18:00:00Z',undefined,'en-US'));
- assert.equal(automationWhen('not a date'),'');
- assert.equal(automationWhen(Number.NaN),'');
+test('automationWhen uses device-local time regardless of stored zone metadata',()=>{
+ const before=process.env.TZ;process.env.TZ='America/Los_Angeles';
+ try{
+  for(const zone of ['UTC','America/New_York','Asia/Tokyo','Not/AZone',undefined])assert.equal(automationWhen('2026-10-29T18:00:00Z',zone,'en-US'),'Oct 29, 2026, 11:00 AM');
+  assert.equal(automationWhen('not a date'),'');assert.equal(automationWhen(Number.NaN),'');
+ }finally{if(before===undefined)delete process.env.TZ;else process.env.TZ=before;}
 });
 
 test('once prompts and agent reminders share the human instant format instead of the raw locale dump',async()=>{
@@ -22,4 +22,14 @@ test('once prompts and agent reminders share the human instant format instead of
  assert.equal(rows.find(row=>row.kind==='prompt').schedule,automationWhen('2026-10-29T18:00:00Z','UTC'));
  assert.equal(rows.find(row=>row.kind==='reminder').schedule,automationWhen('2030-01-01T12:00:00Z','UTC'));
  for(const row of rows)assert.doesNotMatch(row.schedule,/:\d{2}:\d{2}/,row.kind);
+});
+
+test('foreign recurring clocks show their actual next local instant across daylight saving',()=>{
+ const before=process.env.TZ;process.env.TZ='America/Los_Angeles';
+ try{
+  assert.equal(workflowCronLabel('0 8 * * *','America/Los_Angeles'),'Every day at 8am');
+  assert.equal(workflowCronLabel('0 8 * * *','owner_local'),'Every day at 8am');
+  for(const [now,expected] of [['2026-01-15T07:00:00Z','Jan 15, 2026, 12:00 AM'],['2026-07-15T07:00:00Z','Jul 15, 2026, 1:00 AM']])assert.equal(workflowCronLabel('0 8 * * *','UTC',Date.parse(now)),'Next '+expected);
+  assert.equal(workflowCronLabel('0 8 * * *','Invalid/Zone'),'Scheduled time unavailable');
+ }finally{if(before===undefined)delete process.env.TZ;else process.env.TZ=before;}
 });

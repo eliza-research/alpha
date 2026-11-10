@@ -77,7 +77,7 @@ out.timeOffered=await message(async()=>A.assertPhoneCapabilities(A.normalizePhon
 console.log(JSON.stringify(out));`);
  assert.deepEqual(out.manual,{kind:'manual'});
  assert.deepEqual(out.time,{kind:'time',localTime:'07:30',timeZone:'Europe/Paris',days:[1,2,3,4,5]});
- assert.deepEqual(out.describe,['Weekdays at 07:30 (Europe/Paris)','Only when you choose Run now']);
+ assert.match(out.describe[0],/^(Next |Every weekday at )/);assert.doesNotMatch(out.describe[0],/Europe\/|UTC/);assert.equal(out.describe[1],'Only when you choose Run now');
  for(const name of ['schedule','cron','event'])assert.equal(out[name],'PhoneWorkflowSpecError: This workflow trigger is unavailable',name);
  assert.equal(out.legacyTime,'PhoneWorkflowSpecError: Unsupported workflow field');
  for(const name of ['unordered','noDays','badZone','badTime'])assert.equal(out[name],'PhoneWorkflowSpecError: Choose a local time, a valid time zone and at least one day',name);

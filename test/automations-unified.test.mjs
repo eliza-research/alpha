@@ -6,6 +6,8 @@ import fs from 'node:fs';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {build} from 'esbuild';
 import {JSDOM} from 'jsdom';
+import React from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
 
 const bundle=await build({entryPoints:['apps/app/src/runtime/automations-protocol.ts'],bundle:true,write:false,format:'esm',platform:'neutral',logLevel:'silent'});
 const protocol=await import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].text).toString('base64'));
@@ -75,7 +77,7 @@ function adapterFixture(request,storage={},options={}){
  return {window:context.window,document:context.document,notify:(sessionId=session.sessionId)=>context.window.dispatchEvent(dom?new dom.window.CustomEvent(context.AUTOMATIONS_COMMITTED_EVENT,{detail:{sessionId}}):{type:context.AUTOMATIONS_COMMITTED_EVENT,detail:{sessionId}}),leave:()=>views.workflows.onLeave(),setView:next=>view=next,home:()=>shell.renderVals(),render:()=>views.workflows.render({},api),close:()=>shell.componentWillUnmount(),storage,retire:()=>{session.sessionId='replacement';session.ownerId='other';for(const fn of listeners)fn();},back:()=>views.workflows.back(),get workflowOpened(){return workflowOpened;},get deviceOpened(){return deviceOpened;},get newWorkflow(){return newWorkflow;}};
 }
 const wait=async fn=>{for(let count=0;count<300;count++){if(fn())return;await new Promise(resolve=>setTimeout(resolve,5));}throw Error('Unified automation UI did not settle.');};
-test('unified Workflows keeps browser request recovery in its management controls',async()=>{
+test('unified Workflows hides request recovery from ordinary management controls',async()=>{
  const f=await fixture(read);
  const browser=adapterFixture(f.request,{}, {native:false});
  const native=adapterFixture(f.request);
@@ -83,10 +85,40 @@ test('unified Workflows keeps browser request recovery in its management control
   for(const app of [browser,native])app.render();
   await wait(()=>[browser,native].every(app=>!app.render().automation.loading&&app.render().cards.length===5));
   const recovery=app=>app.render().automation.managementCards.filter(card=>card.name==='Workflow request recovery');
-  assert.equal(recovery(browser).length,1);
-  assert.equal(typeof recovery(browser)[0].open,'function');
+  assert.equal(recovery(browser).length,0);
   assert.equal(recovery(native).length,0);
  }finally{browser.close();native.close();await f.close();}
+});
+
+test('editing an existing daily schedule adopts the device clock without enabling it or running it',async()=>{
+ const before=process.env.TZ;process.env.TZ='America/Los_Angeles';
+ const task={...schedule,promptInstructions:'Good morning',trigger:{kind:'cron',expression:'0 8 * * *',tz:'UTC'},metadata:{recordKey:'gm'}};
+ const f=await fixture(call=>call.path.startsWith('/api/lifeops/scheduled-tasks')?(call.method==='GET'?{tasks:[task]}:{task:{...task,...call.body}}):read(call)),app=adapterFixture(f.request);
+ try{
+  app.render();await wait(()=>app.render().cards.length===5&&!app.render().automation.loading);app.render().cards.find(card=>card.name==='Good morning').open();
+  assert.match(app.render().automation.schedule,/^Next /);assert.doesNotMatch(app.render().automation.schedule,/UTC|America\//);
+  app.render().automation.scheduleMore.find(action=>action.label==='Edit schedule').run();assert.equal(app.render().automation.editedScheduleTime,'08:00');
+  app.render().automation.changeScheduleTime({target:{value:'10:00'}});app.back();assert.equal(app.render().automation.editingSchedule,false);assert.equal(f.calls.filter(call=>call.method!=='GET').length,0);
+  app.render().automation.scheduleMore.find(action=>action.label==='Edit schedule').run();assert.equal(app.render().automation.editedScheduleTime,'08:00');
+  app.render().automation.saveScheduleEdit();assert.equal(f.calls.filter(call=>call.method!=='GET').length,0);
+  app.render().automation.confirm();await wait(()=>f.calls.some(call=>call.method==='POST')&&!app.render().automation.busy);
+  const writes=f.calls.filter(call=>call.method!=='GET');assert.equal(writes.length,1);assert.equal(writes[0].path,'/api/lifeops/scheduled-tasks/scheduled-task/edit');
+  assert.deepEqual(writes[0].body,{promptInstructions:'Good morning',trigger:{kind:'cron',expression:'0 8 * * *',tz:'America/Los_Angeles'}});
+ }finally{app.close();await f.close();if(before===undefined)delete process.env.TZ;else process.env.TZ=before;}
+});
+
+test('the actual schedule menu renders visible text and accessible names for every action',async()=>{
+ const f=await fixture(read),app=adapterFixture(f.request);
+ try{
+  app.render();await wait(()=>app.render().cards.length===5&&!app.render().automation.loading);app.render().cards.find(card=>card.name==='Weekly review').open();
+  const dom=new JSDOM('<!doctype html><body></body>'),document=dom.window.document,template=document.createElement('template');const htmlSource=fs.readFileSync('apps/app/src/prototype/template.html','utf8'),start=htmlSource.indexOf('<div class="schedule-controls">');template.innerHTML=htmlSource.slice(start,htmlSource.indexOf('\n        <div class="automation-actions">',start));
+  const source=fs.readFileSync('apps/app/src/prototype/dc-lite.js','utf8').replace(/^import .*;\n/gm,'');
+  const node=vm.runInNewContext(source.slice(0,source.indexOf('  const templateElement'))+';node;',{React,document,iconStyle:()=>({})});
+  const html=renderToStaticMarkup(node(template.content.querySelector('.schedule-controls'),{workflows:{automation:app.render().automation},ic:{}},'controls'));
+  const buttons=[...new JSDOM(html).window.document.querySelectorAll('button')];
+  assert.deepEqual(buttons.map(button=>button.textContent),['Run now','Edit schedule','Snooze 1 hour','Acknowledge','Complete','Dismiss']);
+  for(const button of buttons)assert.equal(button.getAttribute('aria-label'),button.textContent);
+ }finally{app.close();await f.close();}
 });
 test('actual Alpha adapter unifies five kinds, filters, delegates workflow/device detail and reviews canonical actions',async()=>{const f=await fixture(read),app=adapterFixture(f.request);try{app.render();await wait(()=>app.render().cards.length===5&&!app.render().automation.loading);assert.equal(app.home().homeWorkflowHasRows,true);assert.equal(app.home().homeWorkflowRows.length,2);assert.equal(app.home().homeWorkflowTime,'View automations');assert.deepEqual(Array.from(app.home().homeWorkflowRows,row=>row.name).sort(),['Check the draft','On-device reminder']);assert.match(app.home().homeWorkflowFreshness,/^Loaded \d{1,2}:\d{2}/);assert.match(app.home().homeWorkflowDescription,/^Automations from your agent and reminders on this phone, loaded \d/);app.render().automation.filters.find(filter=>filter.name==='Schedules').pick();assert.deepEqual(Array.from(app.render().cards,card=>card.name),['Weekly review']);app.render().automation.filters.find(filter=>filter.name==='All').pick();app.render().cards.find(card=>card.name==='Reviewed workflow').open();assert.equal(app.workflowOpened,'flow');app.render().cards.find(card=>card.name==='On-device reminder').open();assert.equal(app.deviceOpened,'device');}finally{app.close();await f.close();}});
 test('unknown mutation stays locked in the existing owner request journal after adapter recreation',async()=>{let writes=0;const f=await fixture((call,_req,res)=>{if(call.method!=='GET'){writes++;res.destroy();return;}return read(call);});const storage={};let app=adapterFixture(f.request,storage);try{app.render();await wait(()=>app.render().cards.length===5&&!app.render().automation.loading);app.render().cards.find(card=>card.name==='Owner prompt').open();app.render().automation.actions.find(action=>action.label==='Enable').run();assert.equal(writes,0);app.render().automation.confirm();await wait(()=>writes===1&&!app.render().automation.busy);assert.equal(app.render().automation.locked,true);assert.equal(Object.keys(storage).length,1);app.close();app=adapterFixture(f.request,storage);app.render();await wait(()=>app.render().cards.length===5&&!app.render().automation.loading);app.render().cards.find(card=>card.name==='Owner prompt').open();assert.equal(app.render().automation.actions.find(action=>action.label==='Enable').disabled,true);assert.equal(writes,1);}finally{app.close();await f.close();}});
@@ -135,15 +167,15 @@ test('nonexistent local DST time is rejected before either prompt or reminder mu
  const previous=process.env.TZ;process.env.TZ='America/New_York';const f=await fixture(call=>({trigger:{id:'prompt',...call.body},definition:{id:'definition',...call.body}}));
  try{await assert.rejects(f.client.savePrompt({title:'Gap',instructions:'Supplied text only',triggerType:'once',scheduledAt:'2030-03-10T02:30',cron:'',eventKind:'',timezone:'Asia/Tokyo'},signal()),/does not exist/);await assert.rejects(f.client.createReminder({message:'Gap',due:'2030-03-10T02:30',timezone:'Asia/Tokyo',idempotencyKey:'same'},signal()),/does not exist/);await assert.rejects(f.client.editReminder({kind:'reminder',id:'definition',record:reminder},'Changed','2030-03-10T02:30',signal()),/does not exist/);assert.equal(f.calls.length,0);}finally{if(previous===undefined)delete process.env.TZ;else process.env.TZ=previous;await f.close();}
 });
-test('once and reminder edit inputs name the browser zone while stored zones stay unchanged',async()=>{
+test('once and reminder edits use the device clock while preserving exact instants',async()=>{
  const when=new Date(Date.now()+3600000).toISOString(),zone=Intl.DateTimeFormat().resolvedOptions().timeZone;
  const f=await fixture(call=>{if(call.path==='/api/triggers/prompt'&&call.method==='GET')return {trigger:{id:'prompt',displayName:'Owner prompt',instructions:'Keep this source',enabled:false,triggerType:'once',scheduledAtIso:when,timezone:'Asia/Tokyo'}};if(call.method==='PUT')return call.path.startsWith('/api/triggers')?{trigger:{id:'prompt',...call.body,enabled:false}}:{definition:{id:'definition',...call.body}};if(call.path==='/api/lifeops/reminders')return {reminders:[{...reminder,definition:{...reminder.definition,timezone:'Asia/Tokyo',cadence:{kind:'once',dueAt:when}}}]};return read(call);});const app=adapterFixture(f.request);
- try{app.render();await wait(()=>app.render().cards.length===5&&!app.render().automation.loading);app.render().cards.find(card=>card.name==='Owner prompt').open();app.render().automation.actions.find(action=>action.label==='Edit prompt').run();await wait(()=>app.render().automation.editing);assert.equal(app.render().automation.whenFields.find(field=>field.name==='scheduledAt').label,'Date and time');app.render().automation.moreFields.find(field=>field.name==='title').change({target:{value:'Revised prompt'}});app.render().automation.save();await wait(()=>f.calls.some(call=>call.method==='PUT')&&!app.render().automation.busy);const saved=f.calls.find(call=>call.method==='PUT');assert.equal(saved.body.timezone,'Asia/Tokyo');assert.equal(saved.body.scheduledAtIso,when);app.render().automation.close();app.render().cards.find(card=>card.name==='Check the draft').open();app.render().automation.actions.find(action=>action.label==='Edit reminder').run();assert.equal(app.render().automation.fields.find(field=>field.name==='due').label,'Due · '+zone);}finally{app.close();await f.close();}
+ try{app.render();await wait(()=>app.render().cards.length===5&&!app.render().automation.loading);app.render().cards.find(card=>card.name==='Owner prompt').open();app.render().automation.actions.find(action=>action.label==='Edit prompt').run();await wait(()=>app.render().automation.editing);assert.equal(app.render().automation.whenFields.find(field=>field.name==='scheduledAt').label,'Date and time');app.render().automation.moreFields.find(field=>field.name==='title').change({target:{value:'Revised prompt'}});app.render().automation.save();await wait(()=>f.calls.some(call=>call.method==='PUT')&&!app.render().automation.busy);const saved=f.calls.find(call=>call.method==='PUT');assert.equal(saved.body.timezone,zone);assert.equal(saved.body.scheduledAtIso,when);app.render().automation.close();app.render().cards.find(card=>card.name==='Check the draft').open();app.render().automation.actions.find(action=>action.label==='Edit reminder').run();assert.equal(app.render().automation.fields.find(field=>field.name==='due').label,'Due');}finally{app.close();await f.close();}
 });
 
 test('unchanged repeated local times keep the original later offset and sub-minute precision',async()=>{
  const previous=process.env.TZ;process.env.TZ='America/New_York';const original='2030-11-03T06:30:47.123Z';const f=await fixture(call=>call.path.startsWith('/api/triggers')?{trigger:{id:'prompt',...call.body}}:{definition:{id:'definition',...call.body}});
- try{const local=protocol.automationLocalDateInput(original);assert.equal(local,'2030-11-03T01:30');await f.client.savePrompt({title:'Keep exact instant',instructions:'Supplied text',triggerType:'once',scheduledAt:local,originalScheduledAt:original,originalEnabled:false,cron:'',eventKind:'',timezone:'Asia/Tokyo'},signal(),'prompt');assert.equal(f.calls[0].body.scheduledAtIso,original);assert.equal(f.calls[0].body.timezone,'Asia/Tokyo');await f.client.editReminder({kind:'reminder',id:'definition',record:{definition:{...reminder.definition,cadence:{kind:'once',dueAt:original}}}},'Changed message',local,signal());assert.equal(Object.hasOwn(f.calls[1].body,'cadence'),false);}finally{if(previous===undefined)delete process.env.TZ;else process.env.TZ=previous;await f.close();}
+ try{const local=protocol.automationLocalDateInput(original);assert.equal(local,'2030-11-03T01:30');await f.client.savePrompt({title:'Keep exact instant',instructions:'Supplied text',triggerType:'once',scheduledAt:local,originalScheduledAt:original,originalEnabled:false,cron:'',eventKind:'',timezone:'Asia/Tokyo'},signal(),'prompt');assert.equal(f.calls[0].body.scheduledAtIso,original);assert.equal(f.calls[0].body.timezone,Intl.DateTimeFormat().resolvedOptions().timeZone);await f.client.editReminder({kind:'reminder',id:'definition',record:{definition:{...reminder.definition,cadence:{kind:'once',dueAt:original}}}},'Changed message',local,signal());assert.equal(Object.hasOwn(f.calls[1].body,'cadence'),false);}finally{if(previous===undefined)delete process.env.TZ;else process.env.TZ=previous;await f.close();}
 });
 
 // The real template must never ship ahead of its controller again.
@@ -170,7 +202,7 @@ test('shared canonical reminder labels and snooze policy cover delivery, termina
 test('snoozed occurrence due is displayed and message-only edit preserves the original cadence instant',async()=>{
  const due=new Date(Date.now()+7200000).toISOString(),snoozed={...reminder,occurrence:{id:'occurrence',state:'snoozed',dueAt:reminder.definition.cadence.dueAt,snoozedUntil:due}};
  const f=await fixture(call=>call.path==='/api/lifeops/reminders'?{reminders:[snoozed]}:call.method==='PUT'?{definition:{...snoozed.definition,...call.body}}:read(call));const app=adapterFixture(f.request);
- try{app.render();await wait(()=>app.render().cards.length===5&&!app.render().automation.loading);app.render().cards.find(card=>card.name==='Check the draft').open();assert.equal(app.render().automation.status,'Snoozed');assert.match(app.render().automation.schedule,/UTC/);app.render().automation.actions.find(action=>action.label==='Edit reminder').run();const fields=app.render().automation.fields;assert.equal(fields.find(field=>field.name==='due').value,protocol.automationLocalDateInput(due));fields.find(field=>field.name==='message').change({target:{value:'Only the message changes'}});app.render().automation.save();await wait(()=>f.calls.some(call=>call.method==='PUT')&&!app.render().automation.busy);assert.deepEqual(f.calls.find(call=>call.method==='PUT').body,{title:'Only the message changes'});assert.equal(presentation.reminderDue(snoozed),due);}finally{app.close();await f.close();}
+ try{app.render();await wait(()=>app.render().cards.length===5&&!app.render().automation.loading);app.render().cards.find(card=>card.name==='Check the draft').open();assert.equal(app.render().automation.status,'Snoozed');assert.doesNotMatch(app.render().automation.schedule,/UTC|America\//);app.render().automation.actions.find(action=>action.label==='Edit reminder').run();const fields=app.render().automation.fields;assert.equal(fields.find(field=>field.name==='due').value,protocol.automationLocalDateInput(due));fields.find(field=>field.name==='message').change({target:{value:'Only the message changes'}});app.render().automation.save();await wait(()=>f.calls.some(call=>call.method==='PUT')&&!app.render().automation.busy);assert.deepEqual(f.calls.find(call=>call.method==='PUT').body,{title:'Only the message changes'});assert.equal(presentation.reminderDue(snoozed),due);}finally{app.close();await f.close();}
 });
 for(const status of ['archived','completed'])test(`canonical ${status} reminder has details but no edit/cancel/snooze controls`,async()=>{
  const f=await fixture(call=>call.path==='/api/lifeops/reminders'?{reminders:[{...reminder,definition:{...reminder.definition,status}}]}:read(call));const app=adapterFixture(f.request);

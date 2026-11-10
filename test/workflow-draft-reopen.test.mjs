@@ -1,3 +1,5 @@
+import {workflowDeviceTimeZone,workflowLocalInstant} from '../apps/app/src/runtime/workflow-local-time.ts';
+import {automationLocalDateInput,localDate} from '../apps/app/src/runtime/workflow-local-time.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -10,7 +12,7 @@ async function harness(options={}){
  const records=new Map(),gate=deferred(),entered=deferred();let held=false,fail=false;
  let session={origin:'owned-origin',ownerId:'owner-a',agentId:'agent-a'},binding={sessionId:'session-a',client:{async phoneCatalog(){return {palette:[],triggers:[],...options.catalog};}}};
  const storage={async secureRead({slot}){return {value:records.get(slot)??null};},async secureCompareExchange(input){if(held){entered.resolve();await gate.promise;}if(fail)throw Error('Synthetic write unavailable');if((records.get(input.slot)??null)!==input.expectedValue)return {status:'conflict'};records.set(input.slot,input.value);return {status:'saved'};}};
- const ctx=vm.createContext({AbortController,TextEncoder,document:{hidden:false},browserLocalAgentEnabled:true,browserDevProfile:false,developmentWorkflowDraftStore:storage,registerPlugin:()=>({}),workflowSha:async values=>JSON.stringify(values),normalizePhoneSpec:spec=>JSON.parse(JSON.stringify(spec)),assertPhoneCapabilities:()=>{},connectionController:{getWorkflowClient:()=>binding,getWorkflowDeviceTarget:()=>null,getSnapshot:()=>({session,open:false})},WORKFLOW_OPERATION_LABELS:{supplied_text:'Read supplied text'},checkWorkflowScope});
+ const ctx=vm.createContext({describePhoneTrigger:()=>'Scheduled',phoneTriggerClockChangeNote:()=>'',workflowDeviceTimeZone,workflowLocalInstant,automationLocalDateInput,localDate,AbortController,TextEncoder,document:{hidden:false},browserLocalAgentEnabled:true,browserDevProfile:false,developmentWorkflowDraftStore:storage,registerPlugin:()=>({}),workflowSha:async values=>JSON.stringify(values),normalizePhoneSpec:spec=>JSON.parse(JSON.stringify(spec)),assertPhoneCapabilities:()=>{},connectionController:{getWorkflowClient:()=>binding,getWorkflowDeviceTarget:()=>null,getSnapshot:()=>({session,open:false})},WORKFLOW_OPERATION_LABELS:{supplied_text:'Read supplied text'},checkWorkflowScope});
  vm.runInContext(source+';globalThis.create=createWorkflowAuthoring',ctx);
  const authoring=ctx.create(()=>({toast:options.toast??(()=>{})}),()=>{},async()=>{}),api={ic:{},get:()=>({})};
  await authoring.open();for(let i=0;i<5;i++)await Promise.resolve();
@@ -65,6 +67,11 @@ test('discard is still possible after a failed local save',async()=>{
 });
 
 const flow=(id,name)=>({id,name,versionId:id+'-v1',phoneSpec:{version:1,name,description:'',trigger:{kind:'manual'},steps:[{id:'s1',kind:'Read',operation:'supplied_text',text:'input'}]}});
+test('an editable scheduled draft uses the current device zone without writing or enabling the workflow',async()=>{
+ const h=await harness(),original=flow('local','Local workflow');original.phoneSpec.trigger={kind:'time',localTime:'08:00',timeZone:'UTC',days:[0,1,2,3,4,5,6]};
+ await h.reopen(original);assert.equal(h.records.size,0);await h.edit('Local workflow');
+ const draft=JSON.parse([...h.records.values()][0]);assert.equal(draft.spec.trigger.timeZone,workflowDeviceTimeZone());assert.equal(draft.spec.trigger.localTime,'08:00');assert.equal(original.phoneSpec.trigger.timeZone,'UTC');h.authoring.close();
+});
 test('opening and leaving without an edit stores nothing',async()=>{
  const h=await harness();h.authoring.close();await h.reopen(flow('x','Workflow X'));h.authoring.close();for(let i=0;i<10;i++)await Promise.resolve();
  assert.equal(h.records.size,0);

@@ -52,6 +52,14 @@ test('Start later near midnight never moves the start earlier', async ({ page })
   expect((await calendar(page)).form.t).toBe(22.75);
 });
 
+test('the Calendar form has no manual time zone picker and keeps a restored draft’s clock',async({page})=>{
+ await page.getByRole('button',{name:'New event',exact:true}).click();
+ await expect(page.getByRole('combobox',{name:'Time zone',exact:true})).toHaveCount(0);
+ await calendar(page,{zone:'Asia/Tokyo',t:9.5,d:1.5,repeat:'weekly'});const before=await calendar(page);
+ await expect(page.getByRole('combobox',{name:'Time zone',exact:true})).toHaveCount(0);
+ const after=await calendar(page);expect(after.form).toMatchObject({zone:'Asia/Tokyo',t:9.5,d:1.5,repeat:'weekly'});expect(after.form).toEqual(before.form);
+});
+
 test('a month that fits five rows draws 35 cells and a six-row month 42', async ({ page }) => {
   await page.getByRole('button', { name: 'Month view', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Choose calendar date' });
