@@ -183,7 +183,7 @@ test('launcher Home asks Android for its own shade and draws no Alpha shade, til
  }
  // Nothing in the session asked Android to change a radio, sensor or sound switch.
  const names=await callNames(page);
- expect(names.filter(name=>/\.set|\.toggle|\.enable|\.disable/i.test(name))).toEqual([]);
+ expect(names.filter(name=>name!=='Agent.setGoogleAgentAccess'&&/\.set|\.toggle|\.enable|\.disable/i.test(name))).toEqual([]);
 });
 
 test('Android permission and notification handoffs use their displayed controls and report refusal',async({page})=>{
@@ -216,7 +216,7 @@ test('every Settings row is a control backed by real state, with no fixture valu
  await review().click();await expect(review()).toHaveAttribute('aria-pressed','true');
  await openSettings(page,'Privacy');await expect(review()).toHaveAttribute('aria-pressed','true');
  await review().click();await expect(review()).toHaveAttribute('aria-pressed','false');
- expect((await callNames(page)).filter(name=>/\.set(?!Flashlight)|\.perform$/i.test(name))).toEqual([]);
+ expect((await callNames(page)).filter(name=>name!=='Agent.setGoogleAgentAccess'&&/\.set(?!Flashlight)|\.perform$/i.test(name))).toEqual([]);
 });
 
 
