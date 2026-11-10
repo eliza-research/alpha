@@ -31,7 +31,8 @@ final class WorkflowWorkerAssets {
   return result.toByteArray();
  }
  /** Package identity recorded beside an install; a new APK version or update time forces re-extraction. */
- private static final String PACKAGE_STAMP=".installed-package";
+ // The APK identity of the installed tree lives beside it: the resident rejects any file the index does not name.
+ private static final String PACKAGE_STAMP="workflow-worker.package";
  static synchronized File install(File root, InputStream indexStream, Source source, String packageStamp) throws IOException {
   byte[] index;try(InputStream input=indexStream){index=bounded(input);}
   LinkedHashMap<String,String> entries=new LinkedHashMap<>();
@@ -39,11 +40,11 @@ final class WorkflowWorkerAssets {
    if(line.isEmpty())continue;String[] fields=line.split("\t",-1);
    if(fields.length!=2||!fields[0].matches("[a-f0-9]{64}")||!fields[1].matches("[A-Za-z0-9@_.+/-]+"))throw new IOException("Invalid worker index entry");
    for(String part:fields[1].split("/",-1))if(part.isEmpty()||part.equals(".")||part.equals(".."))throw new IOException("Invalid worker path");
-   if(fields[1].equals("files.sha256")||fields[1].equals(PACKAGE_STAMP)||entries.put(fields[1],fields[0])!=null||entries.size()>4096)throw new IOException("Duplicate or excessive worker entries");
+   if(fields[1].equals("files.sha256")||entries.put(fields[1],fields[0])!=null||entries.size()>4096)throw new IOException("Duplicate or excessive worker entries");
   }
   for(String required:new String[]{"manifest.json","dependencies.json","node_modules/smthrs/package.json","node_modules/zod/package.json","node_modules/effect/package.json","node_modules/@smthrs/engine/package.json"})if(!entries.containsKey(required))throw new IOException("Missing worker dependency");
   File canonical=root.getCanonicalFile();if(!canonical.isDirectory())throw new IOException("Missing agent resource directory");
-  File target=new File(canonical,"workflow-worker"),staging=new File(canonical,".workflow-worker-"+UUID.randomUUID()),backup=new File(canonical,".workflow-worker-old-"+UUID.randomUUID());
+  File target=new File(canonical,"workflow-worker"),stamp=new File(canonical,PACKAGE_STAMP),staging=new File(canonical,".workflow-worker-"+UUID.randomUUID()),backup=new File(canonical,".workflow-worker-old-"+UUID.randomUUID());
   if(Files.isSymbolicLink(target.toPath()))throw new IOException("Worker resource directory is a symlink");
   // Staging and backup names are random, so a process death mid-install leaves them behind.
   File[] leftovers=canonical.listFiles();if(leftovers==null)throw new IOException("Cannot list agent resource directory");
@@ -51,8 +52,9 @@ final class WorkflowWorkerAssets {
   // Reuse the same APK payload only while its installed bytes still match the index.
   if(packageStamp!=null&&Files.isDirectory(target.toPath(),LinkOption.NOFOLLOW_LINKS)
    &&Arrays.equals(index,readInstalled(new File(target,"files.sha256")))
-   &&Arrays.equals(packageStamp.getBytes(StandardCharsets.UTF_8),readInstalled(new File(target,PACKAGE_STAMP)))
+   &&Arrays.equals(packageStamp.getBytes(StandardCharsets.UTF_8),readInstalled(stamp))
    &&validInstalled(target,entries))return target;
+  remove(stamp);
   if(!staging.mkdir())throw new IOException("Could not create worker staging directory");
   boolean moved=false;
   try {
@@ -68,13 +70,13 @@ final class WorkflowWorkerAssets {
     if(!hex(hash.digest()).equals(entry.getValue()))throw new IOException("Worker payload hash mismatch");
    }
    try(OutputStream stream=new FileOutputStream(new File(staging,"files.sha256"))){stream.write(index);}
-   if(packageStamp!=null)try(OutputStream stream=new FileOutputStream(new File(staging,PACKAGE_STAMP))){stream.write(packageStamp.getBytes(StandardCharsets.UTF_8));}
    if(target.exists()){if(!target.renameTo(backup))throw new IOException("Could not preserve previous worker artifact");moved=true;}
    if(!staging.renameTo(target)){
     if(moved&&!backup.renameTo(target))throw new IOException("Worker installation failed; prior artifact retained at "+backup.getName());
     throw new IOException("Could not install worker artifact");
    }
    if(moved)remove(backup);
+   if(packageStamp!=null)try(OutputStream stream=new FileOutputStream(stamp)){stream.write(packageStamp.getBytes(StandardCharsets.UTF_8));}
    return target;
   }finally{remove(staging);}
  }
@@ -92,7 +94,7 @@ final class WorkflowWorkerAssets {
     @Override public FileVisitResult visitFile(Path file,BasicFileAttributes attributes) throws IOException {
      String name=relative(file),expected=entries.get(name);
      if(!attributes.isRegularFile())throw new IOException("Invalid installed worker file");
-     if(name.equals("files.sha256")||name.equals(PACKAGE_STAMP))return FileVisitResult.CONTINUE;
+     if(name.equals("files.sha256"))return FileVisitResult.CONTINUE;
      if(expected==null)throw new IOException("Unexpected installed worker file");
      MessageDigest hash=digest();byte[] buffer=new byte[8192];
      try(InputStream input=Files.newInputStream(file)) {
