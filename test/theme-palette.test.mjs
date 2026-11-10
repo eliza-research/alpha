@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 // the theme tokens and aliases, and its palette of fixed product colours, all emitted as CSS custom
 // properties by the shared shell's mobileShellThemeVariables. A new colour is added to the record's
 // palette and referenced as var(--alpha-...); a hex literal in these files fails here.
-const FILES = ['template.html', 'model.js', 'phone.css', 'scan-dialog.css'].map(name => `apps/app/src/prototype/${name}`);
+const FILES = ['template.html', 'development-rail.html', 'model.js', 'phone.css', 'scan-dialog.css'].map(name => `apps/app/src/prototype/${name}`);
 const palette = record.theme.palette ?? {};
 const HEX = /#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})\b/g;
 
