@@ -603,7 +603,12 @@ export function installChatOverlayMotion(Component: Shell) {
 				const over = cover.getBoundingClientRect();
 				// A dock beside the page (landscape) covers nothing of it.
 				if (over.right <= box.left || over.left >= box.right) continue;
-				hidden = Math.max(hidden, box.bottom - over.top + 12);
+				// Focus can arrive before the opening transition reaches its target.
+				// Keep it above both the painted sheet and its destination; a live drag owns its actual bounds.
+				const top = sheet && !shell.chatMotion
+					? Math.min(over.top, over.bottom - sheetHeight(shell, geometry) * geometry.scale)
+					: over.top;
+				hidden = Math.max(hidden, box.bottom - top + 12);
 			}
 			if (hidden > 0) scroll.scrollTop += hidden / geometry.scale;
 		};
