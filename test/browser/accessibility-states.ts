@@ -31,7 +31,19 @@ const settle = async (page: Page) => {
   await settled(page);
 };
 
-const press = async (page: Page, steps: string[]) => { for (const step of steps) { if(step==='Edit event'||step==='Delete event') await chooseCalendarEventAction(page,step); else await (step === 'Photos tools' ? page.getByLabel(step, { exact: true }) : page.getByRole('button', { name: step, exact: true }).first()).click(); } };
+const press = async (page: Page, steps: string[]) => {
+  for (const step of steps) {
+    if (step === 'Edit event' || step === 'Delete event') {
+      await chooseCalendarEventAction(page, step);
+      continue;
+    }
+    if (['Reply', 'Reply all', 'Forward', 'Move to Trash'].includes(step) &&
+      await page.locator('.mail-message-menu').count() && !await page.locator('.mail-message-menu[open]').count()) {
+      await page.getByLabel('Message actions', {exact: true}).click();
+    }
+    await (step === 'Photos tools' ? page.getByLabel(step, {exact: true}) : page.getByRole('button', {name: step, exact: true}).first()).click();
+  }
+};
 /** The named subview is on screen and exposed (not retired behind another subview). */
 const showing = async (page: Page, subview?: string) => {
   if (subview) await expect(page.locator(`[data-alpha-subview="${subview}"]:not([inert])`)).toBeVisible();
