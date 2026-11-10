@@ -213,3 +213,36 @@ test('authorization refusal also suppresses older saved windows on reload',async
  const reload=f.make({...f.api,getLifeOpsCalendarFeed:async()=>{throw Error('offline');}});await reload.refresh(window);
  assert.equal(reload.state.feed,null);assert.equal(reload.state.savedAt,null);reload.retire();f.retire();
 });
+
+
+test('saved Calendar bootstrap remains read-only without a resident or provider request',async()=>{
+ const f=await savedFixture(),before=f.reads.length,calendar=f.make(f.api,f.cache,null);
+ await calendar.restoreSaved(f.window,f.cache,()=>true,async()=>true);
+ assert.equal(calendar.state.feed.events[0].title,f.event.title);
+ assert.ok(calendar.state.savedAt);assert.equal(calendar.state.nextFresh,false);
+ assert.equal(calendar.selection(JSON.stringify([f.event.provider,f.event.side,f.event.grantId,f.event.connectorAccountId,f.event.calendarId,f.event.externalId,f.event.id])),undefined);
+ await assert.rejects(calendar.create(JSON.stringify([f.source.provider,f.source.side,f.source.grantId,f.source.connectorAccountId,f.source.calendarId]),{idempotencyKey:'bootstrap-must-not-write',title:'No'}),/current Calendar source/);
+ assert.equal(f.reads.length,before);assert.deepEqual(f.writes,[]);calendar.retire();f.retire();
+});
+
+for(const change of ['owner','retirement','resident'])test(`late saved Calendar bootstrap cannot publish after ${change} change`,async()=>{
+ const f=await savedFixture(),held=defer();let live=true,resident=false;
+ const port={...f.port,current:()=>resident};
+ const calendar=f.make(f.api,f.cache,port);
+ let entered=false;
+ const pending=calendar.restoreSaved(f.window,f.cache,()=>live,async()=>{entered=true;return held.promise;});
+ await settleLocal(()=>entered);
+ if(change==='owner')live=false;
+ if(change==='retirement')calendar.retire();
+ if(change==='resident')resident=true;
+ held.resolve(change!=='owner');await pending;
+ assert.equal(calendar.state.feed,null);assert.equal(calendar.state.savedAt,null);assert.equal(calendar.state.next,null);
+ assert.deepEqual(f.writes,[]);calendar.retire();f.retire();
+});
+
+test('saved Calendar bootstrap respects a retained provider-access refusal',async()=>{
+ const f=await savedFixture(),refused=f.make({...f.api,getLifeOpsCalendarFeed:async()=>{throw Object.assign(Error('Access refused'),{status:403});}});
+ await refused.refresh(f.window);refused.retire();
+ const calendar=f.make(f.api,f.cache,null);await calendar.restoreSaved(f.window,f.cache,()=>true,async()=>true);
+ assert.equal(calendar.state.feed,null);assert.equal(calendar.state.savedAt,null);assert.deepEqual(f.writes,[]);calendar.retire();f.retire();
+});
