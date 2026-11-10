@@ -15,7 +15,7 @@ export async function compileCanonicalNotesUi(extraSources = [], observationPlug
       builder.onResolve({filter: /^\.\.\/runtime\/connection-ui$/}, () => ({path: 'copy', namespace: 'ports'}));
       builder.onResolve({filter: /^\.\.\/daily$/}, () => ({path: 'daily', namespace: 'ports'}));
       builder.onLoad({filter: /.*/, namespace: 'ports'}, args => ({loader: 'js', contents: args.path === 'copy'
-        ? `export const agentPendingText=()=>{throw Error('Global connection copy is outside this view fixture')}; export const agentAvailabilityNotice=agentPendingText;`
+        ? `export const agentPendingText=()=>{throw Error('Global connection copy is outside this view fixture')}; export const agentAvailabilityNotice=agentPendingText; export const connectionController={open:agentPendingText};`
         : `export const DailyApps=__ports.daily;`}));
     }}]});
   const sources = [...Object.keys(compiled.metafile.inputs).filter(path => !path.startsWith('<') && !path.startsWith('ports:')),
