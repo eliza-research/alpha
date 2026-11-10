@@ -231,7 +231,7 @@ test('the dock, title and toast fixes the sweep depends on stay in the source', 
   assert.match(css, /html:not\(\.alpha-landscape\) \.alpha-phone \[data-alpha-layer="home"\] \{ bottom:0!important; scroll-padding-bottom:var\(--alpha-dock-reserve\)!important;/);
   assert.match(css, /html:not\(\.alpha-landscape\) \.alpha-phone \[data-alpha-layer="drawer"\] \{ padding-bottom:0!important; \}/);
   const homeLayout=css.split('\n').find(line=>line.includes('[data-alpha-home-layout] {')&&line.includes('padding-bottom:'));assert.ok(homeLayout);
-  assert.match(homeLayout,/--alpha-home-clearance/);assert.match(homeLayout,/--alpha-home-height/);
+  assert.match(homeLayout,/--alpha-home-clearance/);assert.match(homeLayout,/min-height:100%!important/);
   assert.doesNotMatch(homeLayout,/--alpha-dock-reserve|--alpha-dock-clearance/,'animated dock clearance must not resize the Home icon layout');
   assert.match(css, /:is\(\[data-alpha-app-scroll\],\.calendar-timeline,\.calendar-draft-fields\) \{ scroll-padding-bottom:calc\(var\(--alpha-dock-clearance,102px\) \+ 16px\); \}/);
   assert.match(css, /\.inbox-compose-fields \{[^}]*padding-bottom:max\(64px,calc\(var\(--alpha-dock-clearance,102px\) \+ 8px\)\)!important/);
